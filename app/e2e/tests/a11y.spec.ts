@@ -8,7 +8,14 @@ import AxeBuilder from '@axe-core/playwright';
 test.describe('Accessibility (axe)', () => {
   test.describe.configure({ timeout: 45000 });
 
-  const paths = ['/', '/timeline', '/timeline?review=1', '/migration-calendar', '/videos/0'];
+  const paths = [
+    '/',
+    '/timeline',
+    '/timeline?review=1',
+    '/timeline?favorites=1',
+    '/migration-calendar',
+    '/videos/0',
+  ];
 
   for (const path of paths) {
     test(`no critical or serious violations: ${path}`, async ({ page }) => {

@@ -41,6 +41,7 @@ export const queryKeys = {
     visitors: (days: number) => ['system', 'visitors', days] as const,
     processorLogs: (lines: number) =>
       ['system', 'processorLogs', lines] as const,
+    retentionConfig: ['system', 'retention-config'] as const,
   },
   /** Карточки страницы «Система» с плоскими ключами кэша (legacy-строки). */
   systemPanels: {
@@ -86,7 +87,8 @@ export const queryKeys = {
       date: string,
       timeOfDay: string,
       filterHour: number | null,
-    ) => ['speciesVisits', date, timeOfDay, filterHour] as const,
+      favoritesOnly: boolean,
+    ) => ['speciesVisits', date, timeOfDay, filterHour, favoritesOnly ? 1 : 0] as const,
     /** Префикс для invalidateQueries — все окна таймлайна. */
     speciesVisitsAll: ['speciesVisits'] as const,
     unknownsCount: (

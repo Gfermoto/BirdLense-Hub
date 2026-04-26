@@ -421,7 +421,74 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update recording (favorite)
+         * @description Set ``favorite`` so retention can skip this recording when ``retention.protect_favorites`` is enabled (cascade and files_only). Contributor or admin session required (same gate as DELETE / download).
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    video_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        favorite: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated video details (same shape as GET) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VideoDetails"];
+                    };
+                };
+                /** @description Invalid body */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Access denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Video not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Recording already soft-deleted (files_only retention) */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/videos/{video_id}/detection-frames": {
@@ -818,12 +885,22 @@ export interface paths {
         /**
          * Get timeline of species visits
          * @description Retrieve a timeline of species visits, including start and end times, weather conditions, optional feeder-scale delta (same shape as GET video `scales`, from the visit's earliest linked video), and detected species. All timestamps (including start_time and end_time) are in UTC. The maximum allowed date range between start_time and end_time is 1 day (24 hours). All returned dates are also in UTC.
+         *
+         *     Observer-local mode uses `date` + `time_of_day` / `hour` (see implementation). With `favorite_only=1` (or `favorites=1`), only visits that include at least one non-deleted favorite Video are returned, plus unlinked favorite-only clips in the window.
          */
         get: {
             parameters: {
-                query: {
-                    start_time: number;
-                    end_time: number;
+                query?: {
+                    start_time?: number;
+                    end_time?: number;
+                    /** @description Observer-local calendar day (YYYY-MM-DD) when not using start_time/end_time */
+                    date?: string;
+                    time_of_day?: "all" | "day" | "night";
+                    hour?: number;
+                    /** @description Pass `1`, `true`, or `yes` to show only favorite recordings (alias query name `favorites`). */
+                    favorite_only?: string;
+                    /** @description Same as `favorite_only` (either may be used). */
+                    favorites?: string;
                 };
                 header?: never;
                 path?: never;
@@ -5098,6 +5175,107 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/retention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get retention configuration and last run stats */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Retention config and stats */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RetentionConfigResponse"];
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Run retention policy (delete old recordings) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Preview only, do not actually delete */
+                        dry_run?: boolean;
+                        /**
+                         * @description Override retention mode
+                         * @enum {string}
+                         */
+                        mode?: "cascade" | "files_only" | "disabled";
+                    };
+                };
+            };
+            responses: {
+                /** @description Retention completed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message?: string;
+                            deletedCount?: number;
+                            deletedSize?: number;
+                            dryRun?: boolean;
+                            mode?: string;
+                        };
+                    };
+                };
+                /** @description Error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/diagnostics/birdnet-fifo": {
         parameters: {
             query?: never;
@@ -6318,71 +6496,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/system/retention": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Run retention policy
-         * @description Admin: apply configured retention rules.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Error */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/system/review-queue/delete": {
         parameters: {
             query?: never;
@@ -7481,6 +7594,22 @@ export interface components {
     schemas: {
         Error: {
             error?: string;
+        };
+        RetentionConfigResponse: {
+            /** @enum {string} */
+            mode?: "cascade" | "files_only" | "disabled";
+            days?: number | null;
+            max_gb?: number | null;
+            dataset_max_age_days?: number;
+            migration_max_age_days?: number;
+            protect_favorites?: boolean;
+            min_age_hours?: number;
+            batch_size?: number;
+            /** Format: date-time */
+            last_run?: string | null;
+            last_deleted_count?: number;
+            last_freed_bytes?: number;
+            last_mode?: string;
         };
         ConfigAuditResponse: {
             deprecated_keys_present: string[];

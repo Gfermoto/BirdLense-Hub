@@ -105,13 +105,23 @@ export function TimelinePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isReviewMode = searchParams.get('review') === '1';
+  const isFavoritesMode =
+    searchParams.get('favorites') === '1' ||
+    searchParams.get('favorite_only') === '1';
+  const isPlainTimeline = !isReviewMode && !isFavoritesMode;
 
   useEffect(() => {
     if (accessContextLoading || canEdit || !isReviewMode) return;
     navigate('/timeline', { replace: true });
   }, [accessContextLoading, canEdit, isReviewMode, navigate]);
 
-  useDocumentTitle(isReviewMode ? t('timeline.modeReview') : t('nav.timeline'));
+  useDocumentTitle(
+    isReviewMode
+      ? t('timeline.modeReview')
+      : isFavoritesMode
+        ? t('timeline.modeFavorites')
+        : t('nav.timeline'),
+  );
   const filterHour = useMemo(
     () => parseHourFromSearchParams(searchParams),
     [searchParams],
@@ -167,12 +177,15 @@ export function TimelinePage() {
       selectedDate?.format('YYYY-MM-DD') ?? '',
       timeOfDay,
       filterHour,
+      isFavoritesMode,
     ),
     queryFn: () => {
       if (!selectedDate) return [];
+      const base =
+        filterHour !== null ? { hour: filterHour } : { timeOfDay };
       return fetchTimelineForObserverDate(
         selectedDate.format('YYYY-MM-DD'),
-        filterHour !== null ? { hour: filterHour } : { timeOfDay },
+        { ...base, favoritesOnly: isFavoritesMode },
       );
     },
     enabled: !isReviewMode,
@@ -274,7 +287,10 @@ export function TimelinePage() {
       await exportTimelineForObserverDate(
         selectedDate.format('YYYY-MM-DD'),
         format,
-        filterHour !== null ? { hour: filterHour } : { timeOfDay },
+        {
+          ...(filterHour !== null ? { hour: filterHour } : { timeOfDay }),
+          favoritesOnly: isFavoritesMode,
+        },
       );
     } catch (err) {
       console.error('Export failed:', err);
@@ -312,18 +328,42 @@ export function TimelinePage() {
       sx={{ mb: 2 }}
     >
       <Chip
-        color={!isReviewMode ? 'primary' : 'default'}
-        variant={!isReviewMode ? 'filled' : 'outlined'}
+        color={isPlainTimeline ? 'primary' : 'default'}
+        variant={isPlainTimeline ? 'filled' : 'outlined'}
         label={t('timeline.modeTimeline')}
-        aria-pressed={!isReviewMode}
-        onClick={() => navigate('/timeline')}
+        aria-pressed={isPlainTimeline}
+        onClick={() => {
+          const next = new URLSearchParams(searchParams);
+          next.delete('review');
+          next.delete('favorites');
+          next.delete('favorite_only');
+          setSearchParams(next, { replace: true });
+        }}
+      />
+      <Chip
+        color={isFavoritesMode && !isReviewMode ? 'primary' : 'default'}
+        variant={isFavoritesMode && !isReviewMode ? 'filled' : 'outlined'}
+        label={t('timeline.modeFavorites')}
+        aria-pressed={isFavoritesMode && !isReviewMode}
+        onClick={() => {
+          const next = new URLSearchParams(searchParams);
+          next.delete('review');
+          next.set('favorites', '1');
+          setSearchParams(next, { replace: true });
+        }}
       />
       {showReviewModeEntry ? (
         <Chip
           color={isReviewMode ? 'primary' : 'default'}
           variant={isReviewMode ? 'filled' : 'outlined'}
           aria-pressed={isReviewMode}
-          onClick={() => navigate('/timeline?review=1')}
+          onClick={() => {
+            const next = new URLSearchParams(searchParams);
+            next.set('review', '1');
+            next.delete('favorites');
+            next.delete('favorite_only');
+            setSearchParams(next, { replace: true });
+          }}
           sx={{ px: 0.5 }}
           label={
             <Box
@@ -372,7 +412,7 @@ export function TimelinePage() {
             color="text.secondary"
             sx={{ mb: showReportsAndSharingHint ? 1 : 2 }}
           >
-            {t('timeline.intro')}
+            {isFavoritesMode ? t('timeline.favoritesIntro') : t('timeline.intro')}
           </Typography>
           {showReportsAndSharingHint ? (
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

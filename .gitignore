@@ -5,6 +5,8 @@ __pycache__
 *.db
 *.db-shm
 *.db-wal
+# Снимки БД, скачанные scripts/recover-sqlite-from-backups.sh pull-*
+backups-recovered/
 app/data/recordings
 app/data/dataset/
 app/data/cache/

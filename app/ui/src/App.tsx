@@ -73,7 +73,7 @@ const theme = createTheme({
     },
     text: {
       primary: '#F8FAFC', // Slate 50
-      secondary: '#94A3B8', // Slate 400
+      secondary: '#CBD5E1', // Slate 300; readable on dark cards/forms
     },
   },
   shape: {
@@ -100,6 +100,15 @@ const theme = createTheme({
     MuiCssBaseline: {
       styleOverrides: {
         body: {
+          /** :any-link = link + visited одним цветом; не трогаем :visited отдельно — иначе перебиваем sx (футер и т.д.). */
+          '& a:not(.MuiButtonBase-root):any-link': {
+            color: '#5EEAD4',
+            textDecorationColor: 'rgba(94, 234, 212, 0.45)',
+          },
+          '& a:not(.MuiButtonBase-root):hover': {
+            color: '#99F6E4',
+            textDecorationColor: 'rgba(153, 246, 228, 0.65)',
+          },
           scrollbarColor: '#334155 #0F172A',
           '&::-webkit-scrollbar, & *::-webkit-scrollbar': {
             backgroundColor: '#0F172A',
@@ -169,16 +178,69 @@ const theme = createTheme({
         },
       },
     },
+    MuiFormHelperText: {
+      styleOverrides: {
+        root: {
+          color: '#CBD5E1',
+        },
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          color: '#CBD5E1',
+          '&.Mui-focused': {
+            color: '#5EEAD4',
+          },
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        notchedOutline: {
+          borderColor: 'rgba(203, 213, 225, 0.35)',
+        },
+        root: {
+          '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: 'rgba(203, 213, 225, 0.65)',
+          },
+          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: '#5EEAD4',
+          },
+        },
+      },
+    },
     MuiAlert: {
       styleOverrides: {
+        root: {
+          '& .MuiAlert-message': {
+            color: '#F8FAFC',
+          },
+          '& .MuiAlert-icon': {
+            color: 'inherit',
+          },
+        },
         standardInfo: {
-          color: 'text.primary',
+          backgroundColor: 'rgba(14, 165, 233, 0.16)',
+          color: '#E0F2FE',
           '& .MuiAlert-message .MuiButton-root': {
             color: '#7dd3fc',
           },
-          '& .MuiAlert-message a': {
+          '& .MuiAlert-message a:any-link': {
             color: '#7dd3fc',
           },
+        },
+        standardWarning: {
+          backgroundColor: 'rgba(245, 158, 11, 0.18)',
+          color: '#FEF3C7',
+        },
+        standardError: {
+          backgroundColor: 'rgba(239, 68, 68, 0.18)',
+          color: '#FEE2E2',
+        },
+        standardSuccess: {
+          backgroundColor: 'rgba(16, 185, 129, 0.16)',
+          color: '#D1FAE5',
         },
       },
     },

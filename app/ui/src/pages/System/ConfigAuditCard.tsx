@@ -14,6 +14,21 @@ import { queryKeys } from '../../api/queryKeys';
 import { localizedConfigAuditWarning } from './configAuditWarningLocale';
 import { SystemCardShell } from './SystemCardShell';
 
+function telegramProxyLabel(t: (key: string) => string, value?: string | null) {
+  if (!value) return '—';
+  const key = `system.telegramProxyTypeValue.${value}`;
+  const label = t(key);
+  return label === key ? value : label;
+}
+
+function scalesSourceLabel(t: (key: string) => string, value?: unknown) {
+  if (value == null || value === '') return '—';
+  const raw = String(value);
+  const key = `system.scalesSourceValue.${raw}`;
+  const label = t(key);
+  return label === key ? raw : label;
+}
+
 export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
   const { t } = useTranslation();
   const { data, isLoading, error } = useQuery({
@@ -72,7 +87,7 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
               component="div"
               sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}
             >
-              {t('system.configAuditScalesSource')}: {String(sm.source ?? '—')}
+              {t('system.configAuditScalesSource')}: {scalesSourceLabel(t, sm.source)}
               {' · '}
               {t('system.configAuditScalesBroker')}:{' '}
               {sm.mqtt_broker_configured === true
@@ -92,7 +107,7 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
             {sm.mqtt_note === 'esphome_or_ha' ? (
               <Typography
                 variant="caption"
-                color="text.secondary"
+                color="inherit"
                 display="block"
                 sx={{ mt: 0.5 }}
               >
@@ -109,7 +124,7 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
             </Typography>
             <Typography
               variant="caption"
-              color="text.secondary"
+              color="inherit"
               display="block"
               sx={{ mb: 0.75 }}
             >
@@ -161,7 +176,7 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
             </Typography>
             <Typography
               variant="caption"
-              color="text.secondary"
+              color="inherit"
               display="block"
               sx={{ mb: 0.75 }}
             >
@@ -208,7 +223,7 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
           <>
             <Typography variant="body2" sx={{ mb: 0.5 }}>
               <strong>{t('system.telegramProxyType')}:</strong>{' '}
-              {data.telegram?.proxy_type || '—'}
+              {telegramProxyLabel(t, data.telegram?.proxy_type)}
             </Typography>
           </>
         ) : null}

@@ -22,6 +22,11 @@ type Props = {
 
 export function ProcessorModelsScopeBlock({ form }: Props) {
   const { t } = useTranslation();
+  const strategyLabel = (value: string) => {
+    const key = `settings.processorDetectionStrategyValue.${value}`;
+    const label = t(key);
+    return label === key ? value : label;
+  };
 
   return (
     <Box id="processor-models" sx={{ minWidth: 0, maxWidth: '100%' }}>
@@ -88,7 +93,7 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                       <Chip
                         size="small"
                         color={isTwo ? 'success' : 'warning'}
-                        label={v}
+                        label={strategyLabel(v)}
                         variant="outlined"
                       />
                       {!isTwo ? (

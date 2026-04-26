@@ -1,5 +1,6 @@
 import * as React from 'react';
 import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import LanguageIcon from '@mui/icons-material/Language';
@@ -22,14 +23,16 @@ export function LanguageSwitcher() {
 
   return (
     <>
-      <IconButton
-        color="inherit"
-        onClick={handleOpen}
-        aria-label={t('common.language')}
-        sx={{ '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' } }}
-      >
-        <LanguageIcon />
-      </IconButton>
+      <Tooltip title={t('common.language')}>
+        <IconButton
+          color="inherit"
+          onClick={handleOpen}
+          aria-label={t('common.language')}
+          sx={{ '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' } }}
+        >
+          <LanguageIcon />
+        </IconButton>
+      </Tooltip>
       <Menu
         anchorEl={anchorEl}
         open={open}

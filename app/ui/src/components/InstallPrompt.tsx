@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Snackbar from '@mui/material/Snackbar';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import CloseIcon from '@mui/icons-material/Close';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -74,9 +75,16 @@ export function InstallPrompt() {
           <Button color="primary" size="small" onClick={handleInstall}>
             {t('pwa.install')}
           </Button>
-          <IconButton size="small" color="inherit" onClick={handleClose}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
+          <Tooltip title={t('common.close')}>
+            <IconButton
+              size="small"
+              color="inherit"
+              onClick={handleClose}
+              aria-label={t('common.close')}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </>
       }
       onClose={handleClose}

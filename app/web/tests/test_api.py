@@ -873,6 +873,112 @@ class TestTimeline:
         assert unlinked and all(row["id"] < 0 for row in unlinked)
         assert all(row.get("detections") == [] for row in unlinked)
 
+    def test_timeline_favorite_only_filters_visits_and_orphans(self, app, client):
+        """favorite_only=1: визиты без избранного ролика скрыты; осиротевшие favorite — в списке."""
+        from datetime import datetime, timezone
+
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+        from services.http_response_cache import bust_response_caches
+
+        with app.app_context():
+            sp_nf = Species(name=f"NoFavTL {id(app)}")
+            sp_f = Species(name=f"FavTL {id(app)}")
+            db.session.add_all([sp_nf, sp_f])
+            db.session.flush()
+            nf_name = sp_nf.name
+            fav_name = sp_f.name
+
+            st = datetime(2026, 3, 24, 12, 0, 0)
+            et = datetime(2026, 3, 24, 12, 0, 30)
+            visit_nf = SpeciesVisit(
+                species=sp_nf,
+                start_time=st,
+                end_time=et,
+                max_simultaneous=1,
+            )
+            v_nf = Video(
+                processor_version="test",
+                start_time=st,
+                end_time=et,
+                favorite=False,
+                video_path=f"data/recordings/2026/03/24/120001/nf_{id(app)}.mp4",
+            )
+            vs_nf = VideoSpecies(
+                video=v_nf,
+                species=sp_nf,
+                species_visit=visit_nf,
+                start_time=0.0,
+                end_time=5.0,
+                confidence=0.9,
+                source="video",
+            )
+            st2 = datetime(2026, 3, 24, 13, 0, 0)
+            et2 = datetime(2026, 3, 24, 13, 0, 30)
+            visit_f = SpeciesVisit(
+                species=sp_f,
+                start_time=st2,
+                end_time=et2,
+                max_simultaneous=1,
+            )
+            v_f = Video(
+                processor_version="test",
+                start_time=st2,
+                end_time=et2,
+                favorite=True,
+                video_path=f"data/recordings/2026/03/24/120002/f_{id(app)}.mp4",
+            )
+            vs_f = VideoSpecies(
+                video=v_f,
+                species=sp_f,
+                species_visit=visit_f,
+                start_time=0.0,
+                end_time=5.0,
+                confidence=0.91,
+                source="video",
+            )
+            st3 = datetime(2026, 3, 24, 14, 0, 0)
+            et3 = datetime(2026, 3, 24, 14, 0, 30)
+            v_orphan = Video(
+                processor_version="test",
+                start_time=st3,
+                end_time=et3,
+                favorite=True,
+                video_path=f"data/recordings/2026/03/24/120003/orphan_fav_{id(app)}.mp4",
+            )
+            db.session.add_all(
+                [visit_nf, v_nf, vs_nf, visit_f, v_f, vs_f, v_orphan],
+            )
+            db.session.commit()
+
+        bust_response_caches()
+        ts_start = int(datetime(2026, 3, 24, 0, 0, 0, tzinfo=timezone.utc).timestamp())
+        ts_end = int(datetime(2026, 3, 24, 23, 59, 59, tzinfo=timezone.utc).timestamp())
+        r = client.get(
+            "/api/ui/timeline",
+            query_string={"start_time": ts_start, "end_time": ts_end, "favorite_only": "1"},
+        )
+        assert r.status_code == 200
+        names = [row.get("species", {}).get("name") for row in r.json]
+        assert nf_name not in names
+        assert fav_name in names
+        kinds = [row.get("timeline_kind") for row in r.json]
+        assert kinds.count("unlinked_video") == 1
+        assert len(r.json) == 2
+
+        r_alias = client.get(
+            "/api/ui/timeline",
+            query_string={"start_time": ts_start, "end_time": ts_end, "favorites": "1"},
+        )
+        assert r_alias.status_code == 200
+        assert len(r_alias.json) == 2
+
+        r_all = client.get(
+            "/api/ui/timeline",
+            query_string={"start_time": ts_start, "end_time": ts_end},
+        )
+        assert r_all.status_code == 200
+        assert len(r_all.json) >= 3
+
 
 class TestOverview:
     """Overview API with lastDetection."""
@@ -1442,6 +1548,48 @@ class TestVideos:
         # 403 if password required and no session; 404 if video not found; 200 if no password
         assert r.status_code in (200, 403, 404)
 
+    def test_patch_video_favorite_updates_and_blocks_deleted(self, app, client):
+        """PATCH favorite: toggles DB flag; 410 when deleted_at is set (FLASK_TESTING: open access)."""
+        from datetime import datetime, timezone
+
+        from app_config.app_config import app_config
+        from models import Video, db
+
+        old_admin = app_config.get("general.settings_password")
+        old_contrib = app_config.get("general.contributor_password")
+        app_config.set("general.settings_password", "")
+        app_config.set("general.contributor_password", "")
+        try:
+            with app.app_context():
+                v = Video(
+                    processor_version="test",
+                    start_time=datetime(2025, 6, 1, 10, 0, 0, tzinfo=timezone.utc),
+                    end_time=datetime(2025, 6, 1, 10, 0, 30, tzinfo=timezone.utc),
+                    video_path="data/recordings/2025/06/01/100000/video.mp4",
+                    favorite=False,
+                )
+                db.session.add(v)
+                db.session.commit()
+                vid = v.id
+
+            r0 = client.patch(f"/api/ui/videos/{vid}", json={"favorite": True})
+            assert r0.status_code == 200
+            assert r0.get_json().get("favorite") is True
+
+            with app.app_context():
+                row = db.session.get(Video, vid)
+                assert row is not None
+                assert row.favorite is True
+                row.favorite = False
+                row.deleted_at = datetime.now(timezone.utc)
+                db.session.commit()
+
+            r1 = client.patch(f"/api/ui/videos/{vid}", json={"favorite": True})
+            assert r1.status_code == 410
+        finally:
+            app_config.set("general.settings_password", old_admin)
+            app_config.set("general.contributor_password", old_contrib)
+
 
 class TestBirdfood:
     def test_birdfood_get_returns_list(self, client):
@@ -1795,6 +1943,193 @@ class TestStoragePurge:
             app_config.set("general.settings_password", old_admin)
             app_config.set("general.contributor_password", old_contrib)
 
+    def test_purge_storage_skips_favorite_when_protect_favorites_enabled(self, app, client, tmp_path, monkeypatch):
+        """Ручной purge не удаляет избранные ролики и каталог сессии при protect_favorites."""
+        from app_config.app_config import app_config
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+        import util as util_mod
+
+        old_admin = app_config.get("general.settings_password")
+        old_contrib = app_config.get("general.contributor_password")
+        old_prot = app_config.get("retention.protect_favorites", True)
+        app_config.set("general.settings_password", "")
+        app_config.set("general.contributor_password", "")
+        app_config.set("retention.protect_favorites", True)
+
+        recordings_root = tmp_path / "app" / "data" / "recordings"
+        clip_nf = recordings_root / "2026" / "03" / "26" / "031309"
+        clip_f = recordings_root / "2026" / "03" / "26" / "031310"
+        clip_nf.mkdir(parents=True, exist_ok=True)
+        clip_f.mkdir(parents=True, exist_ok=True)
+        (clip_nf / "video.mp4").write_bytes(b"nf-bytes")
+        (clip_f / "video.mp4").write_bytes(b"fav-bytes")
+        monkeypatch.setattr(util_mod, "recordings_dir", lambda: str(recordings_root))
+
+        try:
+            with app.app_context():
+                species = Species(name="Purge Fav Bird")
+                visit_nf = SpeciesVisit(
+                    species=species,
+                    start_time=datetime(2026, 3, 26, 3, 13, 9),
+                    end_time=datetime(2026, 3, 26, 3, 13, 21),
+                    max_simultaneous=1,
+                )
+                visit_f = SpeciesVisit(
+                    species=species,
+                    start_time=datetime(2026, 3, 26, 4, 0, 0),
+                    end_time=datetime(2026, 3, 26, 4, 0, 30),
+                    max_simultaneous=1,
+                )
+                video_nf = Video(
+                    processor_version="test",
+                    start_time=datetime(2026, 3, 26, 3, 13, 9),
+                    end_time=datetime(2026, 3, 26, 3, 13, 39),
+                    favorite=False,
+                    video_path="data/recordings/2026/03/26/031309/video.mp4",
+                )
+                video_f = Video(
+                    processor_version="test",
+                    start_time=datetime(2026, 3, 26, 4, 0, 0),
+                    end_time=datetime(2026, 3, 26, 4, 0, 30),
+                    favorite=True,
+                    video_path="data/recordings/2026/03/26/031310/video.mp4",
+                )
+                db.session.add_all([species, visit_nf, visit_f, video_nf, video_f])
+                db.session.flush()
+                db.session.add_all(
+                    [
+                        VideoSpecies(
+                            video=video_nf,
+                            species=species,
+                            species_visit=visit_nf,
+                            start_time=0.0,
+                            end_time=12.0,
+                            confidence=0.91,
+                            source="video",
+                        ),
+                        VideoSpecies(
+                            video=video_f,
+                            species=species,
+                            species_visit=visit_f,
+                            start_time=0.0,
+                            end_time=12.0,
+                            confidence=0.92,
+                            source="video",
+                        ),
+                    ]
+                )
+                db.session.commit()
+
+            response = client.post("/api/ui/storage/purge", json={"date": "2026-03-26"})
+            assert response.status_code == 200
+
+            with app.app_context():
+                assert Video.query.count() == 1
+                remaining = Video.query.one()
+                assert remaining.favorite is True
+                assert VideoSpecies.query.count() == 1
+                assert SpeciesVisit.query.count() == 1
+
+            assert not clip_nf.exists()
+            assert clip_f.exists()
+            assert (clip_f / "video.mp4").read_bytes() == b"fav-bytes"
+        finally:
+            app_config.set("general.settings_password", old_admin)
+            app_config.set("general.contributor_password", old_contrib)
+            app_config.set("retention.protect_favorites", old_prot)
+
+    def test_purge_storage_skips_non_favorite_in_session_with_favorite(self, app, client, tmp_path, monkeypatch):
+        """Один каталог сессии с избранным: соседний ролик не трогается (ни БД, ни файлы)."""
+        from app_config.app_config import app_config
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+        import util as util_mod
+
+        old_admin = app_config.get("general.settings_password")
+        old_contrib = app_config.get("general.contributor_password")
+        old_prot = app_config.get("retention.protect_favorites", True)
+        app_config.set("general.settings_password", "")
+        app_config.set("general.contributor_password", "")
+        app_config.set("retention.protect_favorites", True)
+
+        recordings_root = tmp_path / "app" / "data" / "recordings"
+        sess = recordings_root / "2026" / "03" / "26" / "031309"
+        sess.mkdir(parents=True, exist_ok=True)
+        (sess / "video.mp4").write_bytes(b"fav-bytes")
+        (sess / "other.mp4").write_bytes(b"nf-bytes")
+        monkeypatch.setattr(util_mod, "recordings_dir", lambda: str(recordings_root))
+
+        try:
+            with app.app_context():
+                species = Species(name="Shared Session Bird")
+                visit_f = SpeciesVisit(
+                    species=species,
+                    start_time=datetime(2026, 3, 26, 3, 13, 9),
+                    end_time=datetime(2026, 3, 26, 3, 13, 21),
+                    max_simultaneous=1,
+                )
+                visit_nf = SpeciesVisit(
+                    species=species,
+                    start_time=datetime(2026, 3, 26, 3, 14, 0),
+                    end_time=datetime(2026, 3, 26, 3, 14, 20),
+                    max_simultaneous=1,
+                )
+                video_f = Video(
+                    processor_version="test",
+                    start_time=datetime(2026, 3, 26, 3, 13, 9),
+                    end_time=datetime(2026, 3, 26, 3, 13, 39),
+                    favorite=True,
+                    video_path="data/recordings/2026/03/26/031309/video.mp4",
+                )
+                video_nf = Video(
+                    processor_version="test",
+                    start_time=datetime(2026, 3, 26, 3, 14, 0),
+                    end_time=datetime(2026, 3, 26, 3, 14, 15),
+                    favorite=False,
+                    video_path="data/recordings/2026/03/26/031309/other.mp4",
+                )
+                db.session.add_all([species, visit_f, visit_nf, video_f, video_nf])
+                db.session.flush()
+                db.session.add_all(
+                    [
+                        VideoSpecies(
+                            video=video_f,
+                            species=species,
+                            species_visit=visit_f,
+                            start_time=0.0,
+                            end_time=12.0,
+                            confidence=0.91,
+                            source="video",
+                        ),
+                        VideoSpecies(
+                            video=video_nf,
+                            species=species,
+                            species_visit=visit_nf,
+                            start_time=0.0,
+                            end_time=12.0,
+                            confidence=0.9,
+                            source="video",
+                        ),
+                    ]
+                )
+                db.session.commit()
+
+            response = client.post("/api/ui/storage/purge", json={"date": "2026-03-26"})
+            assert response.status_code == 200
+
+            with app.app_context():
+                assert Video.query.count() == 2
+                assert sum(1 for v in Video.query.all() if v.favorite) == 1
+
+            assert sess.exists()
+            assert (sess / "video.mp4").exists()
+            assert (sess / "video.mp4").read_bytes() == b"fav-bytes"
+            assert (sess / "other.mp4").exists()
+            assert (sess / "other.mp4").read_bytes() == b"nf-bytes"
+        finally:
+            app_config.set("general.settings_password", old_admin)
+            app_config.set("general.contributor_password", old_contrib)
+            app_config.set("retention.protect_favorites", old_prot)
+
     def test_purge_storage_range_deletes_only_in_range(self, app, client, tmp_path, monkeypatch):
         from app_config.app_config import app_config
         from models import Species, SpeciesVisit, Video, VideoSpecies, db
@@ -1865,6 +2200,64 @@ class TestStoragePurge:
         finally:
             app_config.set("general.settings_password", old_admin)
             app_config.set("general.contributor_password", old_contrib)
+
+
+class TestRetentionFavoriteSession:
+    def test_retention_cascade_skips_coworker_in_favorite_session(self, app, tmp_path, monkeypatch):
+        """Cascade retention: рядом с избранным в той же сессии неизбранный ролик и файлы не трогаются."""
+        from app_config.app_config import app_config
+        from models import Species, Video, db
+        from services.retention_service import run_retention
+        import util as util_mod
+
+        old_days = app_config.get("retention.days")
+        old_mode = app_config.get("retention.mode")
+        old_max = app_config.get("retention.max_gb")
+        old_prot = app_config.get("retention.protect_favorites", True)
+        app_config.set("retention.days", 1)
+        app_config.set("retention.max_gb", None)
+        app_config.set("retention.mode", "cascade")
+        app_config.set("retention.protect_favorites", True)
+
+        recordings_root = tmp_path / "app" / "data" / "recordings"
+        sess = recordings_root / "2020" / "01" / "01" / "120000"
+        sess.mkdir(parents=True, exist_ok=True)
+        (sess / "video.mp4").write_bytes(b"a")
+        (sess / "other.mp4").write_bytes(b"b")
+        monkeypatch.setattr(util_mod, "recordings_dir", lambda: str(recordings_root))
+
+        try:
+            with app.app_context():
+                sp = Species(name="RetFavSess")
+                db.session.add(sp)
+                db.session.flush()
+                vf = Video(
+                    processor_version="test",
+                    start_time=datetime(2020, 1, 1, 12, 0, 0),
+                    end_time=datetime(2020, 1, 1, 12, 0, 30),
+                    favorite=True,
+                    video_path="data/recordings/2020/01/01/120000/video.mp4",
+                )
+                vnf = Video(
+                    processor_version="test",
+                    start_time=datetime(2020, 1, 1, 12, 1, 0),
+                    end_time=datetime(2020, 1, 1, 12, 1, 30),
+                    favorite=False,
+                    video_path="data/recordings/2020/01/01/120000/other.mp4",
+                )
+                db.session.add_all([vf, vnf])
+                db.session.commit()
+
+                run_retention(dry_run=False, mode="cascade")
+
+                assert Video.query.count() == 2
+            assert (sess / "video.mp4").exists()
+            assert (sess / "other.mp4").exists()
+        finally:
+            app_config.set("retention.days", old_days)
+            app_config.set("retention.mode", old_mode)
+            app_config.set("retention.max_gb", old_max)
+            app_config.set("retention.protect_favorites", old_prot)
 
 
 class TestReportPdf:

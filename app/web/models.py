@@ -183,6 +183,7 @@ class Video(db.Model):
     video_path: Mapped[str] = mapped_column(nullable=False)
     spectrogram_path: Mapped[str] = mapped_column(String, nullable=True)  # spectrogram image
     favorite: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
+    deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Weather data
     weather_main: Mapped[str] = mapped_column(String(), nullable=True)  # short category, e.g., Rain
     weather_description: Mapped[str] = mapped_column(
@@ -206,6 +207,7 @@ class Video(db.Model):
         # Hot paths: overview/report overlap on [start,end] vs day/window (#294).
         Index("ix_video_start_time", "start_time"),
         Index("ix_video_end_time", "end_time"),
+        Index("ix_video_deleted_at", "deleted_at"),
     )
 
 
