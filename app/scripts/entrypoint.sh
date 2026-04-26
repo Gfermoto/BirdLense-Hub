@@ -64,10 +64,15 @@ mkdir -p /app/data/file_test
 
 mkdir -p /tmp/nginx-client-body /tmp/nginx-proxy /tmp/nginx-fastcgi /tmp/nginx-uwsgi /tmp/nginx-scgi
 # =============================================================================
-# SECTION 4 — Nginx (reverse proxy :8080 → static, /api → gunicorn, /mcp, go2rtc, …)
+# SECTION 4b — Wait for gunicorn on 8000 before nginx
+# =============================================================================
+# give gunicorn time to bind (the health‑wait block below will retry up to 400s)
+sleep 2
+
+# =============================================================================
+# SECTION 5 — Nginx (reverse proxy :8080 → gunicorn, /mcp, go2rtc, …)
 # =============================================================================
 nginx -c /app/nginx/docker-nginx-main.conf &
-sleep 1
 # =============================================================================
 # SECTION 5 — Gunicorn (Flask on 127.0.0.1:8000; PYTHONPATH=/app for web + repo root)
 # =============================================================================
