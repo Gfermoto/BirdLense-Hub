@@ -885,12 +885,22 @@ export interface paths {
         /**
          * Get timeline of species visits
          * @description Retrieve a timeline of species visits, including start and end times, weather conditions, optional feeder-scale delta (same shape as GET video `scales`, from the visit's earliest linked video), and detected species. All timestamps (including start_time and end_time) are in UTC. The maximum allowed date range between start_time and end_time is 1 day (24 hours). All returned dates are also in UTC.
+         *
+         *     Observer-local mode uses `date` + `time_of_day` / `hour` (see implementation). With `favorite_only=1` (or `favorites=1`), only visits that include at least one non-deleted favorite Video are returned, plus unlinked favorite-only clips in the window.
          */
         get: {
             parameters: {
-                query: {
-                    start_time: number;
-                    end_time: number;
+                query?: {
+                    start_time?: number;
+                    end_time?: number;
+                    /** @description Observer-local calendar day (YYYY-MM-DD) when not using start_time/end_time */
+                    date?: string;
+                    time_of_day?: "all" | "day" | "night";
+                    hour?: number;
+                    /** @description Pass `1`, `true`, or `yes` to show only favorite recordings (alias query name `favorites`). */
+                    favorite_only?: string;
+                    /** @description Same as `favorite_only` (either may be used). */
+                    favorites?: string;
                 };
                 header?: never;
                 path?: never;
