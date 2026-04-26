@@ -218,9 +218,44 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "next_step": "Evaluate control placement in Video advanced section.",
     },
     "retention.days": {
-        "category": "planned-ui",
-        "reason": "Retention policy managed outside current settings form.",
-        "next_step": "Add dedicated retention block in System/Settings.",
+        "category": "library-ui",
+        "reason": "Retention knobs are shown and run from Library → Database maintenance (RetentionPolicy), not Settings forms.",
+        "next_step": "Optional: mirror in Settings later; single UX entry is Library card.",
+    },
+    "retention.mode": {
+        "category": "library-ui",
+        "reason": "Retention run mode override lives next to dry-run/apply on Library maintenance card.",
+        "next_step": "Keep Library as single UX entry unless Settings parity is required.",
+    },
+    "retention.max_gb": {
+        "category": "library-ui",
+        "reason": "Optional size cap for retention; configured in YAML; surfaced read-only on Library retention card context.",
+        "next_step": "Keep YAML + Library readout; optional Settings field later.",
+    },
+    "retention.dataset_max_age_days": {
+        "category": "library-ui",
+        "reason": "Dataset TTL for retention; YAML + read-only summary on Library retention card.",
+        "next_step": "Keep Library card / YAML.",
+    },
+    "retention.migration_max_age_days": {
+        "category": "library-ui",
+        "reason": "Migration history TTL; YAML + read-only summary on Library retention card.",
+        "next_step": "Keep Library card / YAML.",
+    },
+    "retention.protect_favorites": {
+        "category": "library-ui",
+        "reason": "Safety flag for retention; YAML + read-only summary on Library retention card.",
+        "next_step": "Keep Library card / YAML.",
+    },
+    "retention.min_age_hours": {
+        "category": "library-ui",
+        "reason": "Grace period for retention; YAML + read-only summary on Library retention card.",
+        "next_step": "Keep Library card / YAML.",
+    },
+    "retention.batch_size": {
+        "category": "library-ui",
+        "reason": "Batch size for retention API; YAML + read-only summary on Library retention card.",
+        "next_step": "Keep Library card / YAML.",
     },
     "ebird.protocol": {
         "category": "planned-ui",

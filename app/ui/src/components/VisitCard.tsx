@@ -235,19 +235,27 @@ export const VisitCard = memo(function VisitCard({
                   </Typography>
                 )}
               </Box>
-              <IconButton
-                size="small"
-                onClick={() => setExpanded(!expanded)}
-                sx={{ mt: -0.5 }}
-                aria-expanded={expanded}
-                aria-label={
+              <Tooltip
+                title={
                   expanded
                     ? t('timeline.collapseVisitDetails')
                     : t('timeline.expandVisitDetails')
                 }
               >
-                {expanded ? <ExpandLess /> : <ExpandMore />}
-              </IconButton>
+                <IconButton
+                  size="small"
+                  onClick={() => setExpanded(!expanded)}
+                  sx={{ mt: -0.5 }}
+                  aria-expanded={expanded}
+                  aria-label={
+                    expanded
+                      ? t('timeline.collapseVisitDetails')
+                      : t('timeline.expandVisitDetails')
+                  }
+                >
+                  {expanded ? <ExpandLess /> : <ExpandMore />}
+                </IconButton>
+              </Tooltip>
             </Box>
             <Box display="flex" gap={1.5} mt={1.5} flexWrap="wrap">
               {visit.timeline_kind !== 'unlinked_video' ? (

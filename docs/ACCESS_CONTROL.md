@@ -66,6 +66,7 @@ Exact UI gates follow `settings_check_access()` (admin) and `contributor_or_admi
 | Action | Allowed |
 |--------|:-------:|
 | Everything Viewer | ✅ |
+| Set/clear recording favorite (`PATCH /api/ui/videos/:id`) | ✅ |
 | Species correction, Unknowns | ✅ |
 | iNaturalist | ✅ |
 | Dataset export (where exposed to contributor) | ✅ |

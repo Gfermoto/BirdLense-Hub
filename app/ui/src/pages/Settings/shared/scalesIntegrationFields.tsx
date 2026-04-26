@@ -25,6 +25,31 @@ type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
 };
 
+type BooleanField = {
+  state: { value?: boolean };
+  handleChange: (value: boolean) => void;
+};
+
+type NumberField = {
+  state: { value?: number };
+  handleChange: (value: number) => void;
+};
+
+type StringField = {
+  state: { value?: string };
+  handleChange: (value: string) => void;
+};
+
+type ScalesSourceField = {
+  state: { value?: ScalesSource };
+  handleChange: (value: ScalesSource) => void;
+};
+
+type ScalesUnitField = {
+  state: { value?: ScalesUnit };
+  handleChange: (value: ScalesUnit) => void;
+};
+
 /** integrations.scales.* — вес в UI и карточке визита (не триггер). */
 export function ScalesIntegrationFields({ form }: Props) {
   const { t } = useTranslation();
@@ -33,7 +58,7 @@ export function ScalesIntegrationFields({ form }: Props) {
     <Grid container spacing={2}>
       <Grid size={{ xs: 12 }}>
         <form.Field name="integrations.scales.enabled">
-          {(field) => (
+          {(field: BooleanField) => (
             <FormControlLabel
               control={
                 <Switch
@@ -46,13 +71,15 @@ export function ScalesIntegrationFields({ form }: Props) {
           )}
         </form.Field>
       </Grid>
-      <form.Subscribe selector={(s) => s.values.integrations?.scales?.enabled}>
-        {(scalesOn) =>
+      <form.Subscribe
+        selector={(s: { values: Settings }) => s.values.integrations?.scales?.enabled}
+      >
+        {(scalesOn: boolean | undefined) =>
           scalesOn ? (
             <>
               <Grid size={{ xs: 12 }}>
                 <form.Field name="integrations.scales.source">
-                  {(field) => (
+                  {(field: ScalesSourceField) => (
                     <FormControl fullWidth>
                       <InputLabel id="settings-scales-src">
                         {t('settings.scalesSource')}
@@ -84,7 +111,7 @@ export function ScalesIntegrationFields({ form }: Props) {
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <form.Field name="integrations.scales.unit">
-                  {(field) => (
+                  {(field: ScalesUnitField) => (
                     <FormControl fullWidth>
                       <InputLabel id="settings-scales-unit">
                         {t('settings.scalesUnit')}
@@ -112,9 +139,11 @@ export function ScalesIntegrationFields({ form }: Props) {
                 </form.Field>
               </Grid>
               <form.Subscribe
-                selector={(s) => s.values.integrations?.scales?.source}
+                selector={(s: { values: Settings }) =>
+                  s.values.integrations?.scales?.source
+                }
               >
-                {(src) => (
+                {(src: ScalesSource | undefined) => (
                   <>
                     {(src ?? 'mqtt') === 'mqtt' ? (
                       <>
@@ -125,7 +154,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                         </Grid>
                         <Grid size={{ xs: 12 }}>
                           <form.Field name="integrations.scales.mqtt_topic_prefix">
-                            {(field) => (
+                            {(field: StringField) => (
                               <TextField
                                 fullWidth
                                 value={field.state.value ?? ''}
@@ -141,7 +170,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                         </Grid>
                         <Grid size={{ xs: 12 }}>
                           <form.Field name="integrations.scales.mqtt_topic">
-                            {(field) => (
+                            {(field: StringField) => (
                               <TextField
                                 fullWidth
                                 value={field.state.value ?? ''}
@@ -157,7 +186,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                         </Grid>
                         <Grid size={{ xs: 12 }}>
                           <form.Field name="integrations.scales.mqtt_bird_present_topic">
-                            {(field) => (
+                            {(field: StringField) => (
                               <TextField
                                 fullWidth
                                 value={field.state.value ?? ''}
@@ -175,7 +204,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                         </Grid>
                         <Grid size={{ xs: 12 }}>
                           <form.Field name="integrations.scales.mqtt_command_topic">
-                            {(field) => (
+                            {(field: StringField) => (
                               <TextField
                                 fullWidth
                                 value={field.state.value ?? ''}
@@ -193,7 +222,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
                           <form.Field name="integrations.scales.mqtt_tare_payload">
-                            {(field) => (
+                            {(field: StringField) => (
                               <TextField
                                 fullWidth
                                 value={field.state.value ?? 'TARE'}
@@ -218,7 +247,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                         </Grid>
                         <Grid size={{ xs: 12 }}>
                           <form.Field name="integrations.scales.homeassistant_entity_id">
-                            {(field) => (
+                            {(field: StringField) => (
                               <TextField
                                 fullWidth
                                 value={field.state.value ?? ''}
@@ -242,7 +271,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
                           <form.Field name="integrations.scales.esphome_url">
-                            {(field) => (
+                            {(field: StringField) => (
                               <TextField
                                 fullWidth
                                 value={field.state.value ?? ''}
@@ -257,7 +286,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
                           <form.Field name="integrations.scales.esphome_weight_sensor_id">
-                            {(field) => (
+                            {(field: StringField) => (
                               <TextField
                                 fullWidth
                                 value={field.state.value ?? ''}
@@ -275,7 +304,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
                           <form.Field name="integrations.scales.esphome_bird_present_sensor_id">
-                            {(field) => (
+                            {(field: StringField) => (
                               <TextField
                                 fullWidth
                                 value={field.state.value ?? ''}
@@ -293,7 +322,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
                           <form.Field name="integrations.scales.esphome_tare_button_id">
-                            {(field) => (
+                            {(field: StringField) => (
                               <TextField
                                 fullWidth
                                 value={field.state.value ?? ''}
@@ -315,7 +344,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                       <>
                         <Grid size={{ xs: 12 }}>
                           <form.Field name="integrations.scales.weight_estimate_enabled">
-                            {(field) => (
+                            {(field: BooleanField) => (
                               <>
                                 <FormControlLabel
                                   control={
@@ -340,17 +369,17 @@ export function ScalesIntegrationFields({ form }: Props) {
                           </form.Field>
                         </Grid>
                         <form.Subscribe
-                          selector={(s) =>
+                          selector={(s: { values: Settings }) =>
                             s.values.integrations?.scales
                               ?.weight_estimate_enabled !== false
                           }
                         >
-                          {(weOn) =>
+                          {(weOn: boolean) =>
                             weOn ? (
                               <>
                                 <Grid size={{ xs: 12 }}>
                                   <form.Field name="integrations.scales.estimate_require_consecutive_spike">
-                                    {(field) => (
+                                    {(field: BooleanField) => (
                                       <>
                                         <FormControlLabel
                                           control={
@@ -384,7 +413,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                                 </Grid>
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                   <form.Field name="integrations.scales.min_delta_kg_for_estimate">
-                                    {(field) => {
+                                    {(field: NumberField) => {
                                       const kg = field.state.value ?? 0.008;
                                       const grams = Math.round(kg * 1000);
                                       return (
@@ -419,7 +448,7 @@ export function ScalesIntegrationFields({ form }: Props) {
                                 </Grid>
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                   <form.Field name="integrations.scales.history_max_lines">
-                                    {(field) => (
+                                    {(field: NumberField) => (
                                       <TextField
                                         fullWidth
                                         type="number"

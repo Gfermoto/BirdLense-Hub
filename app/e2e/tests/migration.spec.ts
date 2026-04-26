@@ -8,17 +8,24 @@ test.describe('Migration calendar', () => {
   test.describe.configure({ timeout: 45_000 });
 
   async function expectMigrationTableOrEmptyState(page: import('@playwright/test').Page) {
-    const table = page.getByRole('table');
-    const emptyState = page.getByText(/No observed species for the selected period/i);
-    const loadError = page.getByText(/Error loading migration calendar|Ошибка загрузки/i);
+    // При смене фильтра React Query снова ставит isLoading — целая страница в PageLoadingState
+    // без таблицы и без пустого текста; нельзя один раз проверять table.isVisible().
+    const migrationTable = page.getByRole('table', {
+      name: /Species by month|Виды по месяцам|按月/i,
+    });
+    const emptyState = page.getByText(
+      /No observed species for the selected period|Нет наблюдаемых видов|所选期间没有观察到的物种/i,
+    );
+    const loadError = page.getByText(
+      /Could not load the seasonality|Не удалось загрузить таблицу сезонности|无法加载季节性/i,
+    );
 
     await expect(loadError).toHaveCount(0);
-    if (await table.isVisible().catch(() => false)) {
-      await expect(table).toBeVisible({ timeout: 25_000 });
+    const settled = migrationTable.or(emptyState);
+    await expect(settled).toBeVisible({ timeout: 35_000 });
+    if (await migrationTable.isVisible().catch(() => false)) {
       await expect(page.getByRole('columnheader', { name: 'Σ' })).toBeVisible();
-      return;
     }
-    await expect(emptyState).toBeVisible({ timeout: 25_000 });
   }
 
   test('From year filter refetches table without error', async ({ page }) => {

@@ -39,6 +39,15 @@ const FALLBACK_ORDER = [
   'unknown',
 ] as const;
 
+function translatedOrFallback(
+  t: (key: string) => string,
+  key: string,
+  fallback: string,
+) {
+  const value = t(key);
+  return value === key ? fallback : value;
+}
+
 export function ObservabilityCard({ simple = false }: { simple?: boolean }) {
   const { t } = useTranslation();
   const { data, isLoading, error } = useQuery({
@@ -84,6 +93,8 @@ export function ObservabilityCard({ simple = false }: { simple?: boolean }) {
     const [, value] = entry;
     return typeof value === 'object' && value !== null;
   });
+  const artifactLabel = (key: string) =>
+    translatedOrFallback(t, `system.modelLineageArtifact.${key}`, key);
 
   return (
     <SystemCardShell
@@ -222,7 +233,7 @@ export function ObservabilityCard({ simple = false }: { simple?: boolean }) {
                       size="small"
                       color={value.exists ? 'success' : 'default'}
                       variant="outlined"
-                      label={`${key}: ${value.exists ? t('system.statusPresent') : t('system.statusMissing')}`}
+                      label={`${artifactLabel(key)}: ${value.exists ? t('system.statusPresent') : t('system.statusMissing')}`}
                     />
                   ))}
                 </Box>

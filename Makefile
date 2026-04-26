@@ -69,8 +69,14 @@ proxy-rotation-remove:
 # Примеры:
 #   make audit-cards
 #   BASE_URL=https://hub.example.com make audit-cards
+# По умолчанию — меньше параллели и игнор HTTP 429 на прямых запросах к Wikimedia (внешний rate limit).
+# Строго все изображения: AUDIT_CARDS_STRICT=1 make audit-cards
 audit-cards:
-	@python3 scripts/audit_species_cards.py --base-url "$${BASE_URL:-http://127.0.0.1:8085}"
+	@if [ "$${AUDIT_CARDS_STRICT:-0}" = 1 ]; then \
+		python3 scripts/audit_species_cards.py --base-url "$${BASE_URL:-http://127.0.0.1:8085}" --workers "$${AUDIT_CARDS_WORKERS:-12}"; \
+	else \
+		python3 scripts/audit_species_cards.py --base-url "$${BASE_URL:-http://127.0.0.1:8085}" --workers "$${AUDIT_CARDS_WORKERS:-6}" --ignore-direct-image-429; \
+	fi
 
 # Валидация rollout-кандидата весов перед загрузкой в Hub/UI.
 # Пример:

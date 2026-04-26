@@ -1,5 +1,6 @@
 """
-Retention policy: delete old recordings and DB records.
+Retention policy: delete old recordings and optionally DB records (files_only mode).
+Supports: mode=cascade|files_only|disabled; dataset TTL; migration TTL; batch_size; min_age_hours.
 """
 
 import logging
@@ -9,9 +10,21 @@ from datetime import datetime, timedelta, timezone
 
 from app_config.app_config import app_config
 from models import SpeciesVisit, Video, VideoSpecies, db
+from services.recording_protection import (
+    protected_favorite_session_dirs,
+    video_row_in_protected_session,
+)
 from util import recordings_dir
 
 logger = logging.getLogger(__name__)
+
+# Cache for last run metrics (updated after each successful run)
+_last_run_metrics = {
+    "retention_last_run": None,
+    "retention_last_deleted_count": 0,
+    "retention_last_freed_bytes": 0,
+    "retention_mode": "cascade",
+}
 
 
 def _delete_video_row_cascade(video: Video) -> None:
@@ -50,94 +63,302 @@ def _get_recordings_size_gb():
     return total / (1024**3)
 
 
-def run_retention():
-    """Delete recordings by retention.days and/or retention.max_gb. Returns (deleted_count, deleted_size)."""
-    days = app_config.get("retention.days")
-    max_gb = app_config.get("retention.max_gb")
-    if not days and not max_gb:
+def _recordings_dir():
+    """Return recordings directory path."""
+    return recordings_dir()
+
+
+def _files_only_cleanup(
+    rec_dir: str, cutoff: datetime, batch_size: int, grace_hours: int, protect_favorites: bool, dry_run: bool
+) -> tuple[int, int]:
+    """Delete recording files older than cutoff without touching DB.
+    Returns (deleted_count, freed_bytes).
+    """
+    protected_dirs: set[str] = protected_favorite_session_dirs(rec_dir) if protect_favorites else set()
+
+    if not os.path.isdir(rec_dir):
+        return 0, 0
+    now = datetime.now(timezone.utc)
+    deleted_count = 0
+    freed_bytes = 0
+    extensions = {".mp4", ".mkv", ".mov", ".avi", ".webm", ".ts", ".m3u8"}
+    for year in sorted(os.listdir(rec_dir), reverse=True):
+        year_path = os.path.join(rec_dir, year)
+        if not os.path.isdir(year_path):
+            continue
+        for month in sorted(os.listdir(year_path), reverse=True):
+            month_path = os.path.join(year_path, month)
+            if not os.path.isdir(month_path):
+                continue
+            for day in sorted(os.listdir(month_path), reverse=True):
+                day_path = os.path.join(month_path, day)
+                if not os.path.isdir(day_path):
+                    continue
+                # prune empty dirs from leaves upward
+                dir_date = datetime.strptime(f"{year}-{month}-{day}", "%Y-%m-%d")
+                if dir_date.replace(tzinfo=timezone.utc) >= cutoff:
+                    continue
+                if (now - dir_date.replace(tzinfo=timezone.utc)).total_seconds() < grace_hours * 3600:
+                    continue
+                to_remove = []
+                for root, _, files in os.walk(day_path):
+                    for fname in files:
+                        ext = os.path.splitext(fname)[1].lower()
+                        if ext not in extensions:
+                            continue
+                        fp = os.path.join(root, fname)
+                        try:
+                            fsize = os.path.getsize(fp)
+                            # Favorites: DB flag (whole session dir) + legacy filename heuristic
+                            if protect_favorites:
+                                if "favorite" in fname.lower():
+                                    continue
+                                try:
+                                    if os.path.realpath(os.path.dirname(fp)) in protected_dirs:
+                                        continue
+                                except OSError:
+                                    pass
+                            to_remove.append(fp)
+                            freed_bytes += fsize
+                        except OSError:
+                            pass
+                if to_remove:
+                    if not dry_run:
+                        for fp in to_remove:
+                            try:
+                                os.remove(fp)
+                            except OSError:
+                                pass
+                        # remove empty dirs
+                        try:
+                            os.removedirs(day_path)
+                        except OSError:
+                            pass
+                    deleted_count += len(to_remove)
+                    if deleted_count >= batch_size:
+                        return deleted_count, freed_bytes
+    return deleted_count, freed_bytes
+
+
+def _cleanup_dataset_ttl(dataset_max_age_days: int, grace_hours: int, dry_run: bool):
+    """Delete dataset files older than dataset_max_age_days based on mtime."""
+    if dataset_max_age_days <= 0:
+        return
+    root = os.path.join(os.path.dirname(recordings_dir()), "dataset")
+    if not os.path.isdir(root):
+        return
+    cutoff = datetime.now(timezone.utc) - timedelta(days=dataset_max_age_days, hours=grace_hours)
+    for base, dirs, files in os.walk(root, topdown=False):
+        for fname in files:
+            if fname.lower().endswith((".jpg", ".jpeg", ".png")):
+                fp = os.path.join(base, fname)
+                try:
+                    mtime = datetime.fromtimestamp(os.path.getmtime(fp), tz=timezone.utc)
+                    if mtime >= cutoff:
+                        continue
+                    if not dry_run:
+                        os.remove(fp)
+                except OSError:
+                    pass
+
+
+def _cleanup_migration_ttl(migration_max_age_days: int, grace_hours: int, dry_run: bool):
+    """Remove SpeciesVisit rows older than migration_max_age_days that have no live references."""
+    if migration_max_age_days <= 0:
+        return
+    cutoff = datetime.now(timezone.utc) - timedelta(days=migration_max_age_days, hours=grace_hours)
+    subq = db.session.query(VideoSpecies.species_visit_id).distinct().subquery()
+    q = db.session.query(SpeciesVisit).filter(
+        SpeciesVisit.start_time < cutoff,
+        ~SpeciesVisit.id.in_(subq),
+    )
+    if dry_run:
+        deleted = q.count()
+        logger.info(f"Migration TTL (dry_run): would remove {deleted} stale SpeciesVisit rows")
+        return
+    deleted = q.delete(synchronize_session=False)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Migration TTL cleanup failed: {e}")
+    if deleted:
+        logger.info(f"Migration TTL: removed {deleted} stale SpeciesVisit rows")
+
+
+def _fetch_metrics():
+    """Return last run metrics for UI display."""
+    # Populate from cached state
+    return {
+        "retention_last_run": _last_run_metrics.get("retention_last_run"),
+        "retention_mode": _last_run_metrics.get("retention_mode"),
+        "retention_last_deleted_count": _last_run_metrics.get("retention_last_deleted_count"),
+        "retention_last_freed_bytes": _last_run_metrics.get("retention_last_freed_bytes"),
+    }
+
+
+def run_retention(dry_run: bool = False, mode: str = None):
+    """Apply retention policies based on configured mode.
+    Returns (deleted_count, deleted_size) for recordings cleanup.
+    """
+    cfg = app_config.config
+    mode_raw = mode if mode is not None else cfg.get("retention.mode", "cascade")
+    mode = str(mode_raw).strip().lower() if mode_raw else "cascade"
+    if mode == "disabled":
+        logger.info("Retention mode=disabled, skipping")
         return 0, 0
 
-    cutoff = None
-    if days and days > 0:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=int(days))
-    deleted_count = 0
-    deleted_size = 0
+    grace_hours = int(cfg.get("retention.min_age_hours", 1))
+    batch_size = int(cfg.get("retention.batch_size", 50))
+    protect_favorites = bool(cfg.get("retention.protect_favorites", True))
 
-    # retention.days: delete videos older than cutoff
-    if cutoff:
-        videos = Video.query.filter(Video.start_time < cutoff).all()
-        for video in videos:
+    recordings_deleted = 0
+    recordings_freed = 0
+    deleted_video_ids = set()
+
+    if mode == "files_only":
+        # files_only: only remove files; mark Video as deleted
+        rec_dir = _recordings_dir()
+        cut_days = cfg.get("retention.days")
+        max_gb = cfg.get("retention.max_gb")
+        if not cut_days and not max_gb:
+            return 0, 0
+        if not cut_days and max_gb and float(max_gb) > 0:
+            logger.warning(
+                "Retention mode=files_only: max_gb is set but retention.days is empty — "
+                "size-based trimming is only implemented for cascade; skipping files_only run."
+            )
+            return 0, 0
+        cutoff = None
+        if cut_days and int(cut_days) > 0:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=int(cut_days), hours=grace_hours)
+
+        deleted_files, freed = _files_only_cleanup(
+            rec_dir, cutoff or datetime.min, batch_size, grace_hours, protect_favorites, dry_run
+        )
+        recordings_deleted = deleted_files
+        recordings_freed = freed
+
+        # Soft-delete Video rows (align with cascade: skip favorites when enabled)
+        if not dry_run and cutoff:
+            q = Video.query.filter(Video.start_time < cutoff, Video.deleted_at.is_(None))
+            if protect_favorites:
+                q = q.filter(Video.favorite.is_(False))
+            videos = q.all()
+            if protect_favorites:
+                prot_sd = protected_favorite_session_dirs(rec_dir)
+                videos = [v for v in videos if not video_row_in_protected_session(rec_dir, v.video_path, prot_sd)]
+            for v in videos:
+                v.deleted_at = datetime.now(timezone.utc)
+                # keep paths unchanged to avoid NOT NULL violation
+                # (optional: could clear spectrogram_path if nullable)
+                v.spectrogram_path = None
+                deleted_video_ids.add(v.id)
             try:
-                if video.video_path:
-                    app_base = os.path.dirname(os.path.dirname(recordings_dir()))
-                    dir_path = os.path.join(app_base, os.path.dirname(video.video_path))
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Soft-delete Video rows failed: {e}")
+    else:
+        # cascade or full_row: original behavior
+        cut_days = cfg.get("retention.days")
+        max_gb = cfg.get("retention.max_gb")
+        if not cut_days and not max_gb:
+            return 0, 0
+        cutoff = None
+        if cut_days and int(cut_days) > 0:
+            cutoff = datetime.now(timezone.utc) - timedelta(days=int(cut_days), hours=grace_hours)
+        if max_gb and float(max_gb) > 0:
+            rec_max = _recordings_dir()
+            prot_max = protected_favorite_session_dirs(rec_max) if protect_favorites else set()
+            # size-based loop (cascade mode must delete oldest first)
+            while True:
+                sz = _get_recordings_size_gb()
+                if sz <= float(max_gb):
+                    break
+                q = Video.query.order_by(Video.start_time.asc())
+                if protect_favorites:
+                    q = q.filter(Video.favorite.is_(False))
+                oldest = None
+                for cand in q:
+                    if protect_favorites and video_row_in_protected_session(rec_max, cand.video_path, prot_max):
+                        continue
+                    oldest = cand
+                    break
+                if not oldest:
+                    break
+                try:
+                    app_base = os.path.dirname(os.path.dirname(_recordings_dir()))
+                    dir_path = os.path.join(app_base, os.path.dirname(oldest.video_path or ""))
                     if os.path.isdir(dir_path):
                         for f in os.listdir(dir_path):
                             fp = os.path.join(dir_path, f)
                             if os.path.isfile(fp):
-                                deleted_size += os.path.getsize(fp)
+                                recordings_freed += os.path.getsize(fp)
                         shutil.rmtree(dir_path)
-                        deleted_count += 1
-                _delete_video_row_cascade(video)
-            except Exception as e:
-                logger.error(f"Retention delete failed for {video.video_path}: {e}")
-        try:
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Retention commit failed: {e}")
-            return 0, 0
-
-    # Clean empty dirs
-    if cutoff:
-        try:
-            rec_dir = recordings_dir()
-            for year in os.listdir(rec_dir):
-                year_path = os.path.join(rec_dir, year)
-                if not os.path.isdir(year_path):
-                    continue
-                for month in os.listdir(year_path):
-                    month_path = os.path.join(year_path, month)
-                    if not os.path.isdir(month_path):
-                        continue
-                    for day in os.listdir(month_path):
-                        day_path = os.path.join(month_path, day)
-                        if not os.path.isdir(day_path):
-                            continue
-                        dir_date = datetime.strptime(f"{year}-{month}-{day}", "%Y-%m-%d")
-                        if dir_date.replace(tzinfo=timezone.utc) < cutoff:
-                            if not os.listdir(day_path):
-                                shutil.rmtree(day_path)
-                    if os.path.exists(month_path) and not os.listdir(month_path):
-                        os.rmdir(month_path)
-                if os.path.exists(year_path) and not os.listdir(year_path):
-                    os.rmdir(year_path)
-        except Exception as e:
-            logger.warning(f"Retention dir cleanup: {e}")
-
-    # retention.max_gb: delete oldest until under limit
-    if max_gb and max_gb > 0:
-        while _get_recordings_size_gb() > max_gb:
-            oldest = Video.query.order_by(Video.start_time.asc()).first()
-            if not oldest:
-                break
+                        recordings_deleted += 1
+                    _delete_video_row_cascade(oldest)
+                    deleted_video_ids.add(oldest.id)
+                except Exception as e:
+                    logger.error(f"Retention max_gb delete failed: {e}")
+                    break
+                if len(deleted_video_ids) >= int(cfg.get("retention.batch_size", 50)):
+                    break
             try:
-                app_base = os.path.dirname(os.path.dirname(recordings_dir()))
-                dir_path = os.path.join(app_base, os.path.dirname(oldest.video_path))
-                if os.path.isdir(dir_path):
-                    for f in os.listdir(dir_path):
-                        fp = os.path.join(dir_path, f)
-                        if os.path.isfile(fp):
-                            deleted_size += os.path.getsize(fp)
-                    shutil.rmtree(dir_path)
-                    deleted_count += 1
-                _delete_video_row_cascade(oldest)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+        if cutoff and mode == "cascade":
+            rec_cascade = _recordings_dir()
+            prot_cascade = protected_favorite_session_dirs(rec_cascade) if protect_favorites else set()
+            videos = Video.query.filter(Video.start_time < cutoff)
+            if protect_favorites:
+                videos = videos.filter(Video.favorite.is_(False))
+            videos = videos.all()
+            for video in videos:
+                if protect_favorites and video_row_in_protected_session(rec_cascade, video.video_path, prot_cascade):
+                    continue
+                try:
+                    if video.video_path:
+                        app_base = os.path.dirname(os.path.dirname(_recordings_dir()))
+                        dir_path = os.path.join(app_base, os.path.dirname(video.video_path))
+                        if os.path.isdir(dir_path):
+                            for f in os.listdir(dir_path):
+                                fp = os.path.join(dir_path, f)
+                                if os.path.isfile(fp):
+                                    recordings_freed += os.path.getsize(fp)
+                            shutil.rmtree(dir_path)
+                            recordings_deleted += 1
+                    _delete_video_row_cascade(video)
+                    deleted_video_ids.add(video.id)
+                except Exception as e:
+                    logger.error(f"Retention delete failed: {e}")
+            try:
                 db.session.commit()
             except Exception as e:
                 db.session.rollback()
-                logger.error(f"Retention max_gb delete failed: {e}")
-                break
+                logger.error(f"Retention commit failed: {e}")
 
-    if deleted_count:
-        logger.info(f"Retention: deleted {deleted_count} videos, {deleted_size / 1024 / 1024:.1f} MB")
-    return deleted_count, deleted_size
+        # dataset TTL
+        _cleanup_dataset_ttl(cfg.get("retention.dataset_max_age_days", 0), grace_hours, dry_run)
+        # migration TTL
+        _cleanup_migration_ttl(cfg.get("retention.migration_max_age_days", 0), grace_hours, dry_run)
+
+        if recordings_deleted:
+            logger.info(f"Retention: deleted {recordings_deleted} videos, {recordings_freed / 1024 / 1024:.1f} MB")
+        if deleted_video_ids:
+            logger.info(f"Retention: soft-deleted Video rows: {len(deleted_video_ids)}")
+
+    # Update cached metrics for UI
+    _last_run_metrics["retention_last_run"] = datetime.now(timezone.utc).isoformat()
+    _last_run_metrics["retention_last_deleted_count"] = recordings_deleted
+    _last_run_metrics["retention_last_freed_bytes"] = recordings_freed
+    _last_run_metrics["retention_mode"] = mode
+
+    # metrics
+    m = _fetch_metrics()
+    m["retention_last_deleted_count"] = recordings_deleted
+    m["retention_last_freed_bytes"] = recordings_freed
+    logger.info(f"Retention metrics: {m}")
+    return recordings_deleted, recordings_freed

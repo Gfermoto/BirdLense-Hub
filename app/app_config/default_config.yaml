@@ -429,6 +429,19 @@ retention:
   days: 90
   # max_gb: 50
 
+  # Режим работы (cascade = текущее поведение, files_only = только файлы + пометка deleted_at, disabled = выключить)
+  mode: cascade
+
+  # Раздельные TTL (0 = выкл)
+  dataset_max_age_days: 0       # TTL для data/dataset/** (по mtime файлов)
+  migration_max_age_days: 0    # TTL для SpeciesVisit (по start_time)
+
+  # Безопасность: не трогать Video с favorite=true (переключатель на странице записи). В files_only
+  # также не удалять файлы из каталога такой записи; legacy — пропуск файлов, в имени есть «favorite».
+  protect_favorites: true
+  min_age_hours: 1             # Grace period: не трогать свежее N часов
+  batch_size: 50                  # Макс. записей за один вызов API
+
 # Notifications (Telegram)
 # TODO: корм за Stars — sendInvoice / paid broadcast для кнопки «Выдать корм»
 notifications:

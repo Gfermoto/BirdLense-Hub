@@ -303,8 +303,11 @@ export const StorageOverview = ({ simple = false }: { simple?: boolean }) => {
               <Typography variant="h6" gutterBottom>
                 {t('storage.purgeOld')}
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                 {t('storage.purgeHint')}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {t('storage.purgeSkipsFavorites')}
               </Typography>
               <ToggleButtonGroup
                 value={purgeMode}

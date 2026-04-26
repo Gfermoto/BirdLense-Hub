@@ -340,6 +340,58 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+    patch:
+      summary: Update recording (favorite)
+      description: |
+        Set ``favorite`` so retention can skip this recording when ``retention.protect_favorites`` is enabled (cascade and files_only). Contributor or admin session required (same gate as DELETE / download).
+      parameters:
+        - in: path
+          name: video_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [favorite]
+              additionalProperties: false
+              properties:
+                favorite:
+                  type: boolean
+      responses:
+        "200":
+          description: Updated video details (same shape as GET)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoDetails"
+        "400":
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Video not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "410":
+          description: Recording already soft-deleted (files_only retention)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     delete:
       summary: Delete recording
       description: |
@@ -637,19 +689,53 @@ paths:
       summary: Get timeline of species visits
       description: |
         Retrieve a timeline of species visits, including start and end times, weather conditions, optional feeder-scale delta (same shape as GET video `scales`, from the visit's earliest linked video), and detected species. All timestamps (including start_time and end_time) are in UTC. The maximum allowed date range between start_time and end_time is 1 day (24 hours). All returned dates are also in UTC.
+
+        Observer-local mode uses `date` + `time_of_day` / `hour` (see implementation). With `favorite_only=1` (or `favorites=1`), only visits that include at least one non-deleted favorite Video are returned, plus unlinked favorite-only clips in the window.
       parameters:
         - in: query
           name: start_time
-          required: true
+          required: false
           schema:
             type: integer
-            description: Unix timestamp (UTC)
+            description: Unix timestamp (UTC); required unless `date` is used
         - in: query
           name: end_time
-          required: true
+          required: false
           schema:
             type: integer
-            description: Unix timestamp (UTC)
+            description: Unix timestamp (UTC); required unless `date` is used
+        - in: query
+          name: date
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Observer-local calendar day (YYYY-MM-DD) when not using start_time/end_time
+        - in: query
+          name: time_of_day
+          required: false
+          schema:
+            type: string
+            enum: [all, day, night]
+        - in: query
+          name: hour
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 23
+        - in: query
+          name: favorite_only
+          required: false
+          schema:
+            type: string
+          description: Pass `1`, `true`, or `yes` to show only favorite recordings (alias query name `favorites`).
+        - in: query
+          name: favorites
+          required: false
+          schema:
+            type: string
+          description: Same as `favorite_only` (either may be used).
       responses:
         "200":
           description: Timeline data
@@ -2814,6 +2900,67 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Restore SQLite from upload
+  /system/retention:
+    get:
+      summary: Get retention configuration and last run stats
+      responses:
+        '200':
+          description: Retention config and stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetentionConfigResponse'
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+    post:
+      summary: Run retention policy (delete old recordings)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dry_run:
+                  type: boolean
+                  description: Preview only, do not actually delete
+                mode:
+                  type: string
+                  enum: [cascade, files_only, disabled]
+                  description: Override retention mode
+      responses:
+        '200':
+          description: Retention completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  deletedCount:
+                    type: integer
+                  deletedSize:
+                    type: integer
+                  dryRun:
+                    type: boolean
+                  mode:
+                    type: string
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
   /system/diagnostics/birdnet-fifo:
     get:
       description: Named pipe or FIFO status for BirdNET path.
@@ -3342,37 +3489,6 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Track batch status
-  /system/retention:
-    post:
-      description: 'Admin: apply configured retention rules.'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              additionalProperties: true
-              type: object
-        required: false
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                additionalProperties: true
-                type: object
-          description: OK
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Error
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Error
-      summary: Run retention policy
   /system/review-queue/delete:
     post:
       description: 'Admin: apply bulk delete.'
@@ -3893,6 +4009,38 @@ components:
       type: object
       properties:
         error:
+          type: string
+    RetentionConfigResponse:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [cascade, files_only, disabled]
+        days:
+          type: integer
+          nullable: true
+        max_gb:
+          type: number
+          nullable: true
+        dataset_max_age_days:
+          type: integer
+        migration_max_age_days:
+          type: integer
+        protect_favorites:
+          type: boolean
+        min_age_hours:
+          type: integer
+        batch_size:
+          type: integer
+        last_run:
+          type: string
+          format: date-time
+          nullable: true
+        last_deleted_count:
+          type: integer
+        last_freed_bytes:
+          type: integer
+        last_mode:
           type: string
     ConfigAuditResponse:
       type: object

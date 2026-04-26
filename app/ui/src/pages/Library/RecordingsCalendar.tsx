@@ -9,6 +9,7 @@ import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import { alpha, useTheme } from '@mui/material/styles';
 import ChevronLeft from '@mui/icons-material/ChevronLeft';
 import ChevronRight from '@mui/icons-material/ChevronRight';
@@ -219,36 +220,44 @@ export function RecordingsCalendar() {
                 {t('library.recordingsCalendarMonth')}
               </Typography>
               <Stack direction="row" alignItems="center" spacing={0}>
-                <IconButton
-                  size="small"
-                  onClick={() =>
-                    setSelectedMonth((month) =>
-                      month.subtract(1, 'month').startOf('month'),
-                    )
-                  }
-                  disabled={!canGoPrev}
-                  aria-label={t('library.prevMonth')}
-                >
-                  <ChevronLeft />
-                </IconButton>
+                <Tooltip title={t('library.prevMonth')}>
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={() =>
+                        setSelectedMonth((month) =>
+                          month.subtract(1, 'month').startOf('month'),
+                        )
+                      }
+                      disabled={!canGoPrev}
+                      aria-label={t('library.prevMonth')}
+                    >
+                      <ChevronLeft />
+                    </IconButton>
+                  </span>
+                </Tooltip>
                 <Typography
                   variant="body1"
                   sx={{ minWidth: 140, textAlign: 'center' }}
                 >
                   {selectedMonth.locale(calendarLocale).format('MMMM YYYY')}
                 </Typography>
-                <IconButton
-                  size="small"
-                  onClick={() =>
-                    setSelectedMonth((month) =>
-                      month.add(1, 'month').startOf('month'),
-                    )
-                  }
-                  disabled={!canGoNext}
-                  aria-label={t('library.nextMonth')}
-                >
-                  <ChevronRight />
-                </IconButton>
+                <Tooltip title={t('library.nextMonth')}>
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={() =>
+                        setSelectedMonth((month) =>
+                          month.add(1, 'month').startOf('month'),
+                        )
+                      }
+                      disabled={!canGoNext}
+                      aria-label={t('library.nextMonth')}
+                    >
+                      <ChevronRight />
+                    </IconButton>
+                  </span>
+                </Tooltip>
               </Stack>
             </Box>
 

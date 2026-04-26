@@ -20,7 +20,11 @@ export const fetchTimeline = async (
 
 export const fetchTimelineForObserverDate = async (
   date: string,
-  options?: { timeOfDay?: TimeOfDay; hour?: number | null },
+  options?: {
+    timeOfDay?: TimeOfDay;
+    hour?: number | null;
+    favoritesOnly?: boolean;
+  },
 ): Promise<SpeciesVisit[]> => {
   const response = await axios.get(`${BASE_API_URL}/timeline`, {
     params: {
@@ -28,6 +32,7 @@ export const fetchTimelineForObserverDate = async (
       ...(options?.hour != null
         ? { hour: options.hour }
         : { time_of_day: options?.timeOfDay ?? 'all' }),
+      ...(options?.favoritesOnly ? { favorite_only: 1 } : {}),
     },
   });
   return response.data;
@@ -64,7 +69,11 @@ export const exportTimeline = async (
 export const exportTimelineForObserverDate = async (
   date: string,
   format: 'csv' | 'json' | 'ebird',
-  options?: { timeOfDay?: TimeOfDay; hour?: number | null },
+  options?: {
+    timeOfDay?: TimeOfDay;
+    hour?: number | null;
+    favoritesOnly?: boolean;
+  },
 ): Promise<void> => {
   const params = new URLSearchParams({
     date,
@@ -72,6 +81,7 @@ export const exportTimelineForObserverDate = async (
     ...(options?.hour != null
       ? { hour: String(options.hour) }
       : { time_of_day: options?.timeOfDay ?? 'all' }),
+    ...(options?.favoritesOnly ? { favorite_only: '1' } : {}),
   });
   const url = `${BASE_API_URL}/timeline/export?${params}`;
   const res = await fetch(url);

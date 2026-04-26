@@ -40,6 +40,7 @@ export function LibraryCardShell({
       sx={{
         height: '100%',
         minHeight,
+        bgcolor: 'rgba(30, 41, 59, 0.98)',
         borderColor:
           statusTone === 'warning'
             ? 'warning.dark'
@@ -59,8 +60,7 @@ export function LibraryCardShell({
             {eyebrow ? (
               <Typography
                 variant="subtitle2"
-                color="text.secondary"
-                sx={{ mb: 0.5 }}
+                sx={{ mb: 0.5, color: '#A7F3D0', fontWeight: 700 }}
               >
                 {eyebrow}
               </Typography>
@@ -84,8 +84,7 @@ export function LibraryCardShell({
             {description ? (
               <Typography
                 variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.75 }}
+                sx={{ mt: 0.75, color: '#E2E8F0' }}
               >
                 {description}
               </Typography>

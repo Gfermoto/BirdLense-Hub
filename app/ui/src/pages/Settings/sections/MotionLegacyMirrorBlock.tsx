@@ -42,10 +42,10 @@ export function MotionLegacyMirrorBlock({ form }: Props) {
                     field.handleChange(e.target.value as MotionSource)
                   }
                 >
-                  <MenuItem value="opencv">opencv</MenuItem>
-                  <MenuItem value="frigate">frigate</MenuItem>
-                  <MenuItem value="mqtt">mqtt</MenuItem>
-                  <MenuItem value="esphome">esphome</MenuItem>
+                  <MenuItem value="opencv">{t('settings.motionLegacySourceOpenCV')}</MenuItem>
+                  <MenuItem value="frigate">{t('settings.motionLegacySourceFrigate')}</MenuItem>
+                  <MenuItem value="mqtt">{t('settings.motionLegacySourceMqtt')}</MenuItem>
+                  <MenuItem value="esphome">{t('settings.motionLegacySourceEsphome')}</MenuItem>
                 </Select>
                 <FormHelperText>
                   {t('settings.motionLegacySourceHint')}
@@ -143,6 +143,7 @@ export function MotionLegacyMirrorBlock({ form }: Props) {
                 value={field.state.value ?? ''}
                 onChange={(e) => field.handleChange(e.target.value)}
                 label={t('settings.motionLegacyEsphomeUrl')}
+                helperText={t('settings.motionLegacyEsphomeUrlHint')}
               />
             )}
           </form.Field>

@@ -163,10 +163,16 @@ export const MigrationCalendar = () => {
             onChange={handlePeriodMode}
             aria-label={t('migrationCalendar.periodModeAria')}
           >
-            <ToggleButton value="years">
+            <ToggleButton
+              value="years"
+              title={t('migrationCalendar.periodModeYearsTooltip')}
+            >
               {t('migrationCalendar.periodModeYears')}
             </ToggleButton>
-            <ToggleButton value="dates">
+            <ToggleButton
+              value="dates"
+              title={t('migrationCalendar.periodModeDatesTooltip')}
+            >
               {t('migrationCalendar.periodModeDates')}
             </ToggleButton>
           </ToggleButtonGroup>
@@ -275,13 +281,22 @@ export const MigrationCalendar = () => {
             }
             sx={{ minWidth: 220 }}
           >
-            <MenuItem value="observed">
+            <MenuItem
+              value="observed"
+              title={t('migrationCalendar.catalogMenuHintObserved')}
+            >
               {t('migrationCalendar.catalogObserved')}
             </MenuItem>
-            <MenuItem value="dataset">
+            <MenuItem
+              value="dataset"
+              title={t('migrationCalendar.catalogMenuHintDataset')}
+            >
               {t('migrationCalendar.catalogDataset')}
             </MenuItem>
-            <MenuItem value="full_eu">
+            <MenuItem
+              value="full_eu"
+              title={t('migrationCalendar.catalogMenuHintFullEu')}
+            >
               {t('migrationCalendar.catalogFullEu')}
             </MenuItem>
           </TextField>

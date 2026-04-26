@@ -73,6 +73,7 @@ export { fetchMigrationCalendar } from './migrationCalendar';
 
 export {
   deleteVideo,
+  patchVideoFavorite,
   fetchNearestRecordingDay,
   fetchVideo,
   fetchVideoDetectionFrames,

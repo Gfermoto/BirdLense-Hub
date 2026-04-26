@@ -80,7 +80,23 @@ def build_metrics_summary_dict(flask_app: Flask) -> dict[str, Any]:
         "notify_delivery_24h": delivery,
         "ingest_gate_24h": ingest_gate,
         "notify_suppressed_24h": notify_suppressed,
+        # Retention metrics
+        "retention_last_run": None,
+        "retention_last_deleted_count": 0,
+        "retention_last_freed_bytes": 0,
+        "retention_mode": "cascade",
     }
+    # Fetch latest retention metrics from service
+    try:
+        from services.retention_service import _fetch_metrics
+
+        m = _fetch_metrics()
+        payload["retention_last_run"] = m.get("retention_last_run")
+        payload["retention_last_deleted_count"] = m.get("retention_last_deleted_count", 0)
+        payload["retention_last_freed_bytes"] = m.get("retention_last_freed_bytes", 0)
+        payload["retention_mode"] = m.get("retention_mode", "cascade")
+    except Exception:
+        pass  # best effort
     if sys_m["gpu_percent"] is not None:
         payload["gpu_usage_percent"] = float(sys_m["gpu_percent"])
     return payload

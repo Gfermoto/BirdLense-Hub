@@ -7,9 +7,14 @@ import os
 import shutil
 from datetime import datetime, timedelta
 
+from app_config.app_config import app_config
 from models import Video, db
 from services.http_response_cache import bust_system_response_caches
 from services.api_json_validation import validation_error
+from services.recording_protection import (
+    protected_favorite_session_dirs,
+    video_row_in_protected_session,
+)
 from services.retention_service import _delete_video_row_cascade
 from services.storage_tree_utils import get_tree_storage_info
 import util as _util
@@ -205,11 +210,15 @@ def purge_storage_from_body(data: dict) -> tuple[dict, int]:
         rec_dir = _util.recordings_dir()
         app_base = os.path.dirname(os.path.dirname(rec_dir))
 
+        protect_favorites = bool(app_config.get("retention.protect_favorites", True))
+        vq = Video.query.filter(Video.deleted_at.is_(None))
+        if protect_favorites:
+            vq = vq.filter(Video.favorite.is_(False))
         if range_mode:
             assert range_start is not None and range_end is not None
             range_end_exclusive = range_end + timedelta(days=1)
             videos = (
-                Video.query.filter(
+                vq.filter(
                     Video.start_time >= range_start,
                     Video.start_time < range_end_exclusive,
                 )
@@ -219,7 +228,11 @@ def purge_storage_from_body(data: dict) -> tuple[dict, int]:
         else:
             assert purge_date is not None
             purge_cutoff = purge_date + timedelta(days=1)
-            videos = Video.query.filter(Video.start_time < purge_cutoff).order_by(Video.start_time.asc()).all()
+            videos = vq.filter(Video.start_time < purge_cutoff).order_by(Video.start_time.asc()).all()
+
+        protected_session = protected_favorite_session_dirs(rec_dir)
+        if protect_favorites:
+            videos = [v for v in videos if not video_row_in_protected_session(rec_dir, v.video_path, protected_session)]
 
         video_dirs_to_delete: set[str] = set()
         for video in videos:
@@ -232,6 +245,11 @@ def purge_storage_from_body(data: dict) -> tuple[dict, int]:
         for dir_path in sorted(video_dirs_to_delete):
             if not os.path.isdir(dir_path):
                 continue
+            try:
+                if os.path.realpath(dir_path) in protected_session:
+                    continue
+            except OSError:
+                pass
             count, size = get_tree_storage_info(dir_path)
             deleted_count += count
             deleted_size += size
@@ -261,10 +279,25 @@ def purge_storage_from_body(data: dict) -> tuple[dict, int]:
                         assert purge_date is not None
                         if dir_date > purge_date:
                             continue
-                    count, size = summarize_recording_day_directory(day_path)
-                    deleted_count += count
-                    deleted_size += size
-                    shutil.rmtree(day_path)
+                    for ts_name in list(os.listdir(day_path)):
+                        ts_path = os.path.join(day_path, ts_name)
+                        if not os.path.isdir(ts_path):
+                            continue
+                        try:
+                            ts_real = os.path.realpath(ts_path)
+                        except OSError:
+                            continue
+                        if ts_real in protected_session:
+                            continue
+                        count, size = get_tree_storage_info(ts_path)
+                        deleted_count += count
+                        deleted_size += size
+                        shutil.rmtree(ts_path)
+                    if os.path.isdir(day_path) and not os.listdir(day_path):
+                        try:
+                            os.rmdir(day_path)
+                        except OSError:
+                            pass
                 if os.path.isdir(month_path) and not os.listdir(month_path):
                     os.rmdir(month_path)
             if os.path.isdir(year_path) and not os.listdir(year_path):
