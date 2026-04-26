@@ -7,8 +7,6 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-logger = logging.getLogger(__name__)
-
 from app_config.app_config import app_config
 from models import Species, SpeciesUnresolvedName, Video, VideoSpecies, db
 from services.species_data_quality_service import find_duplicate_name_groups
@@ -18,6 +16,8 @@ from services.species_visit_maintenance_service import (
     _collect_species_sync_actions,
 )
 from species_constants import GENERIC_BIRD_SPECIES
+
+logger = logging.getLogger(__name__)
 
 
 def _utc_now() -> datetime:
