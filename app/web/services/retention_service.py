@@ -10,6 +10,10 @@ from datetime import datetime, timedelta, timezone
 
 from app_config.app_config import app_config
 from models import SpeciesVisit, Video, VideoSpecies, db
+from services.recording_protection import (
+    protected_favorite_session_dirs,
+    video_row_in_protected_session,
+)
 from util import recordings_dir
 
 logger = logging.getLogger(__name__)
@@ -70,6 +74,8 @@ def _files_only_cleanup(
     """Delete recording files older than cutoff without touching DB.
     Returns (deleted_count, freed_bytes).
     """
+    protected_dirs: set[str] = protected_favorite_session_dirs(rec_dir) if protect_favorites else set()
+
     if not os.path.isdir(rec_dir):
         return 0, 0
     now = datetime.now(timezone.utc)
@@ -103,9 +109,15 @@ def _files_only_cleanup(
                         fp = os.path.join(root, fname)
                         try:
                             fsize = os.path.getsize(fp)
-                            # favorites check: inspect content (lightweight by filename heuristics)
-                            if protect_favorites and "favorite" in fname.lower():
-                                continue
+                            # Favorites: DB flag (whole session dir) + legacy filename heuristic
+                            if protect_favorites:
+                                if "favorite" in fname.lower():
+                                    continue
+                                try:
+                                    if os.path.realpath(os.path.dirname(fp)) in protected_dirs:
+                                        continue
+                                except OSError:
+                                    pass
                             to_remove.append(fp)
                             freed_bytes += fsize
                         except OSError:
@@ -211,6 +223,12 @@ def run_retention(dry_run: bool = False, mode: str = None):
         max_gb = cfg.get("retention.max_gb")
         if not cut_days and not max_gb:
             return 0, 0
+        if not cut_days and max_gb and float(max_gb) > 0:
+            logger.warning(
+                "Retention mode=files_only: max_gb is set but retention.days is empty — "
+                "size-based trimming is only implemented for cascade; skipping files_only run."
+            )
+            return 0, 0
         cutoff = None
         if cut_days and int(cut_days) > 0:
             cutoff = datetime.now(timezone.utc) - timedelta(days=int(cut_days), hours=grace_hours)
@@ -221,9 +239,17 @@ def run_retention(dry_run: bool = False, mode: str = None):
         recordings_deleted = deleted_files
         recordings_freed = freed
 
-        # Soft-delete Video rows
+        # Soft-delete Video rows (align with cascade: skip favorites when enabled)
         if not dry_run and cutoff:
-            videos = Video.query.filter(Video.start_time < cutoff).all()
+            q = Video.query.filter(Video.start_time < cutoff, Video.deleted_at.is_(None))
+            if protect_favorites:
+                q = q.filter(Video.favorite.is_(False))
+            videos = q.all()
+            if protect_favorites:
+                prot_sd = protected_favorite_session_dirs(rec_dir)
+                videos = [
+                    v for v in videos if not video_row_in_protected_session(rec_dir, v.video_path, prot_sd)
+                ]
             for v in videos:
                 v.deleted_at = datetime.now(timezone.utc)
                 # keep paths unchanged to avoid NOT NULL violation
@@ -245,6 +271,8 @@ def run_retention(dry_run: bool = False, mode: str = None):
         if cut_days and int(cut_days) > 0:
             cutoff = datetime.now(timezone.utc) - timedelta(days=int(cut_days), hours=grace_hours)
         if max_gb and float(max_gb) > 0:
+            rec_max = _recordings_dir()
+            prot_max = protected_favorite_session_dirs(rec_max) if protect_favorites else set()
             # size-based loop (cascade mode must delete oldest first)
             while True:
                 sz = _get_recordings_size_gb()
@@ -253,7 +281,14 @@ def run_retention(dry_run: bool = False, mode: str = None):
                 q = Video.query.order_by(Video.start_time.asc())
                 if protect_favorites:
                     q = q.filter(Video.favorite.is_(False))
-                oldest = q.first()
+                oldest = None
+                for cand in q:
+                    if protect_favorites and video_row_in_protected_session(
+                        rec_max, cand.video_path, prot_max
+                    ):
+                        continue
+                    oldest = cand
+                    break
                 if not oldest:
                     break
                 try:
@@ -279,11 +314,17 @@ def run_retention(dry_run: bool = False, mode: str = None):
                 db.session.rollback()
 
         if cutoff and mode == "cascade":
+            rec_cascade = _recordings_dir()
+            prot_cascade = protected_favorite_session_dirs(rec_cascade) if protect_favorites else set()
             videos = Video.query.filter(Video.start_time < cutoff)
             if protect_favorites:
                 videos = videos.filter(Video.favorite.is_(False))
             videos = videos.all()
             for video in videos:
+                if protect_favorites and video_row_in_protected_session(
+                    rec_cascade, video.video_path, prot_cascade
+                ):
+                    continue
                 try:
                     if video.video_path:
                         app_base = os.path.dirname(os.path.dirname(_recordings_dir()))

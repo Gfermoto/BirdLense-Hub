@@ -8,6 +8,7 @@ import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Toolbar from '@mui/material/Toolbar';
@@ -242,14 +243,16 @@ export function Navigation() {
               gap: 0.5,
             }}
           >
-            <IconButton
-              size="large"
-              onClick={(e) => setMobileMenuAnchor(e.currentTarget)}
-              color="inherit"
-              aria-label={t('common.openMenu')}
-            >
-              <MenuIcon />
-            </IconButton>
+            <Tooltip title={t('common.openMenu')}>
+              <IconButton
+                size="large"
+                onClick={(e) => setMobileMenuAnchor(e.currentTarget)}
+                color="inherit"
+                aria-label={t('common.openMenu')}
+              >
+                <MenuIcon />
+              </IconButton>
+            </Tooltip>
             <Menu
               anchorEl={mobileMenuAnchor}
               open={Boolean(mobileMenuAnchor)}
@@ -274,6 +277,7 @@ export function Navigation() {
                   onClick={handleMobileMenuClose}
                   component={Link}
                   to={item.path}
+                  title={t(`nav.${item.key}Hint`)}
                   selected={
                     currentPath === item.path &&
                     !(item.path === '/timeline' && isReviewRoute)
@@ -288,6 +292,7 @@ export function Navigation() {
                 onClick={handleMobileMenuClose}
                 component={Link}
                 to="/live"
+                title={t('nav.liveViewHint')}
                 selected={currentPath === '/live'}
                 sx={{
                   color: '#fca5a5',
@@ -346,6 +351,7 @@ export function Navigation() {
                 <MenuItem
                   key="mobile-menu-logout"
                   onClick={() => void handleLogout()}
+                  title={t('nav.logoutHint')}
                 >
                   <LogoutIcon sx={{ mr: 1, fontSize: 20 }} />
                   {t('nav.logout')}
@@ -400,27 +406,29 @@ export function Navigation() {
             </Box>
 
             {showAppBarDonate ? (
-              <IconButton
-                component="a"
-                href={donateUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                size="small"
-                color="inherit"
-                aria-label={t('nav.supportProject')}
-                sx={{
-                  flexShrink: 0,
-                  color: 'rgba(255, 255, 255, 0.92)',
-                }}
-              >
-                <FavoriteIcon
+              <Tooltip title={t('nav.supportProject')}>
+                <IconButton
+                  component="a"
+                  href={donateUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="small"
+                  color="inherit"
+                  aria-label={t('nav.supportProject')}
                   sx={{
-                    fontSize: 22,
-                    color: '#fca5a5',
-                    animation: `${heartbeat} 1.25s ease-in-out infinite`,
+                    flexShrink: 0,
+                    color: 'rgba(255, 255, 255, 0.92)',
                   }}
-                />
-              </IconButton>
+                >
+                  <FavoriteIcon
+                    sx={{
+                      fontSize: 22,
+                      color: '#fca5a5',
+                      animation: `${heartbeat} 1.25s ease-in-out infinite`,
+                    }}
+                  />
+                </IconButton>
+              </Tooltip>
             ) : null}
           </Box>
 
@@ -439,6 +447,7 @@ export function Navigation() {
                 data-testid={`nav-pill-${item.key}`}
                 component={Link}
                 to={item.path}
+                title={t(`nav.${item.key}Hint`)}
                 aria-current={isNavItemActive(item.path) ? 'page' : undefined}
                 sx={isNavItemActive(item.path) ? activeNavPillStyles : navPillStyles}
               >
@@ -460,6 +469,7 @@ export function Navigation() {
               component={Link}
               to="/live"
               data-testid="nav-live"
+              title={t('nav.liveViewHint')}
               aria-current={currentPath === '/live' ? 'page' : undefined}
               startIcon={
                 <FiberManualRecordIcon
@@ -502,46 +512,49 @@ export function Navigation() {
             <LanguageSwitcher />
 
             {showAppBarDonate ? (
-              <IconButton
-                component="a"
-                href={donateUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                size="small"
-                color="inherit"
-                aria-label={t('nav.supportProject')}
-                title={t('nav.supportProject')}
-                sx={{
-                  color: 'rgba(255, 255, 255, 0.92)',
-                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.12)' },
-                }}
-              >
-                <FavoriteIcon
+              <Tooltip title={t('nav.supportProject')}>
+                <IconButton
+                  component="a"
+                  href={donateUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="small"
+                  color="inherit"
+                  aria-label={t('nav.supportProject')}
                   sx={{
-                    fontSize: 22,
-                    color: '#fca5a5',
-                    animation: `${heartbeat} 1.25s ease-in-out infinite`,
+                    color: 'rgba(255, 255, 255, 0.92)',
+                    '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.12)' },
                   }}
-                />
-              </IconButton>
+                >
+                  <FavoriteIcon
+                    sx={{
+                      fontSize: 22,
+                      color: '#fca5a5',
+                      animation: `${heartbeat} 1.25s ease-in-out infinite`,
+                    }}
+                  />
+                </IconButton>
+              </Tooltip>
             ) : null}
 
             {/* Settings Icon */}
-            <IconButton
-              ref={gearButtonRef}
-              color="inherit"
-              onClick={handleGearClick}
-              aria-label={t('common.openSettingsMenu')}
-              aria-controls="settings-menu"
-              aria-expanded={Boolean(settingsMenuAnchor)}
-              sx={{
-                '&:hover': {
-                  bgcolor: 'rgba(255, 255, 255, 0.1)',
-                },
-              }}
-            >
-              <SettingsIcon />
-            </IconButton>
+            <Tooltip title={t('common.openSettingsMenu')}>
+              <IconButton
+                ref={gearButtonRef}
+                color="inherit"
+                onClick={handleGearClick}
+                aria-label={t('common.openSettingsMenu')}
+                aria-controls="settings-menu"
+                aria-expanded={Boolean(settingsMenuAnchor)}
+                sx={{
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 255, 255, 0.1)',
+                  },
+                }}
+              >
+                <SettingsIcon />
+              </IconButton>
+            </Tooltip>
           </Box>
 
           {/* Settings Menu - Desktop */}
@@ -603,6 +616,7 @@ export function Navigation() {
               <MenuItem
                 key="settings-menu-logout"
                 onClick={() => void handleLogout()}
+                title={t('nav.logoutHint')}
                 sx={{ color: 'error.main' }}
               >
                 <LogoutIcon sx={{ mr: 1, fontSize: 20 }} />

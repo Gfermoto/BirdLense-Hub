@@ -52,6 +52,38 @@ def register_ui_video_routes(app):
             return {"error": "Video not found"}, 404
         return build_video_detail_dict(video), 200
 
+    @app.route("/api/ui/videos/<int:video_id>", methods=["PATCH"])
+    def patch_video(video_id):
+        """Поле favorite: защита от retention при включённой настройке. Только contributor/admin."""
+        if not contributor_or_admin_access():
+            return {"error": "Access denied"}, 403
+        data, v_err = parse_request_json_dict(request)
+        if v_err is not None:
+            return v_err, 400
+        if "favorite" not in data:
+            return {"error": "favorite is required"}, 400
+        fav = data["favorite"]
+        if not isinstance(fav, bool):
+            return {"error": "favorite must be a boolean"}, 400
+        video = db.session.get(Video, video_id)
+        if not video:
+            return {"error": "Video not found"}, 404
+        if video.deleted_at is not None:
+            return {"error": "Video deleted"}, 410
+        video.favorite = fav
+        db.session.commit()
+        bust_response_caches()
+        video = (
+            db.session.query(Video)
+            .options(
+                joinedload(Video.video_species).joinedload(VideoSpecies.species),
+                joinedload(Video.food),
+            )
+            .filter(Video.id == video_id)
+            .first()
+        )
+        return build_video_detail_dict(video), 200
+
     @app.route("/api/ui/videos/<int:video_id>/neighbors", methods=["GET"])
     def get_video_neighbors(video_id):
         """Соседние ролики для страницы видео.

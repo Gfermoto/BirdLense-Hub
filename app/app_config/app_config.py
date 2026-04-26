@@ -571,6 +571,46 @@ class AppConfig:
         with open(save_file, 'w', encoding='utf-8') as file:
             yaml.safe_dump(data, file, allow_unicode=True)
 
+    def update_retention_config(self, retention: dict) -> dict:
+        """Обновить retention в user_config.yaml и перезагрузить конфиг.
+
+        Возвращает актуальную безопасную конфигурацию (как GET /retention).
+        """
+        raw = self.load_raw_user_config_dict()
+        if retention:
+            raw.setdefault('retention', {})
+            raw['retention'].update(retention)
+        self._persist_raw_user_config(raw)
+        self.reload()
+        rc = self.get('retention', {})
+        safe = {
+            'mode': rc.get('mode', 'cascade'),
+            'days': rc.get('days'),
+            'max_gb': rc.get('max_gb'),
+            'dataset_max_age_days': rc.get('dataset_max_age_days', 0),
+            'migration_max_age_days': rc.get(
+                'migration_max_age_days',
+                0,
+            ),
+            'protect_favorites': rc.get('protect_favorites', True),
+            'min_age_hours': rc.get('min_age_hours', 1),
+            'batch_size': rc.get('batch_size', 50),
+        }
+        try:
+            from services.retention_service import _fetch_metrics
+
+            m = _fetch_metrics()
+            safe['last_run'] = m.get('retention_last_run')
+            safe['last_deleted_count'] = m.get(
+                'retention_last_deleted_count',
+                0,
+            )
+            safe['last_freed_bytes'] = m.get('retention_last_freed_bytes', 0)
+            safe['last_mode'] = m.get('retention_mode', 'cascade')
+        except Exception:
+            pass
+        return safe
+
     def save(self, filename=None):
         save_file = filename or self.user_config_file
         self._enforce_confidence_floors(self.config)

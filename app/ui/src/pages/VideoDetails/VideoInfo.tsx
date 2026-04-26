@@ -7,6 +7,8 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
 import Chip from '@mui/material/Chip';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -32,6 +34,7 @@ import { getApiErrorMessage, resolveImageUrl } from '../../api/api';
 import { BASE_API_URL } from '../../api/client';
 import {
   deleteVideo,
+  patchVideoFavorite,
   fetchVideoFusionTrace,
   type FusionTracePayload,
   type FusionTraceStep,
@@ -163,6 +166,15 @@ export const VideoInfo = ({ video }: { video: Video }) => {
     void loadFusionTrace();
   }, [fusionOpen, loadFusionTrace]);
 
+  const favoriteMutation = useMutation({
+    mutationFn: (next: boolean) => patchVideoFavorite(Number(video.id), next),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.video.detail(String(video.id)),
+      });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: () => deleteVideo(Number(video.id)),
     onSuccess: async () => {
@@ -284,15 +296,36 @@ export const VideoInfo = ({ video }: { video: Video }) => {
         </DialogActions>
       </Dialog>
 
-      {/* Favorite Badge */}
-      {favorite && (
-        <Chip
-          icon={<FavoriteIcon />}
-          label={t('videoInfo.favorite')}
-          color="primary"
-          size="small"
-          sx={{ alignSelf: 'flex-start' }}
-        />
+      {/* Favorite: toggle when unlocked; read-only chip for viewers if already marked */}
+      {unlocked ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={!!favorite}
+                disabled={favoriteMutation.isPending}
+                onChange={(_, v) => favoriteMutation.mutate(v)}
+                inputProps={{
+                  'aria-label': t('videoInfo.favoriteToggle'),
+                }}
+              />
+            }
+            label={t('videoInfo.favoriteToggle')}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 420 }}>
+            {t('videoInfo.favoriteHint')}
+          </Typography>
+        </Box>
+      ) : (
+        favorite && (
+          <Chip
+            icon={<FavoriteIcon />}
+            label={t('videoInfo.favorite')}
+            color="primary"
+            size="small"
+            sx={{ alignSelf: 'flex-start' }}
+          />
+        )
       )}
 
       {/* Recording Info Card */}

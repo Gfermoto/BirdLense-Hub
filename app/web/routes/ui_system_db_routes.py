@@ -14,6 +14,75 @@ from services.system_sqlite_admin_api_service import (
     run_retention_and_bust_caches,
 )
 
+_RETENTION_ALLOWED_MODES = {"cascade", "files_only", "disabled"}
+
+
+def _nullable_number(value, *, field: str, minimum: float = 0) -> tuple[float | int | None, str | None]:
+    if value is None or value == "":
+        return None, None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None, f"{field} must be a number or null"
+    if value < minimum:
+        return None, f"{field} must be >= {minimum:g}"
+    return value, None
+
+
+def _non_negative_int(value, *, field: str, minimum: int = 0) -> tuple[int | None, str | None]:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None, f"{field} must be an integer"
+    if value < minimum:
+        return None, f"{field} must be >= {minimum}"
+    return value, None
+
+
+def _validate_retention_update(data: dict) -> tuple[dict, dict | None]:
+    allowed = {
+        "mode",
+        "days",
+        "max_gb",
+        "dataset_max_age_days",
+        "migration_max_age_days",
+        "protect_favorites",
+        "min_age_hours",
+        "batch_size",
+    }
+    extra = sorted(set(data) - allowed)
+    if extra:
+        return {}, {"error": f"Unknown retention fields: {', '.join(extra)}"}
+
+    update = {}
+    if "mode" in data:
+        mode = data["mode"]
+        if not isinstance(mode, str) or mode not in _RETENTION_ALLOWED_MODES:
+            return {}, {"error": "Invalid mode (allowed: cascade, files_only, disabled)"}
+        update["mode"] = mode
+
+    for field in ("days", "max_gb"):
+        if field in data:
+            value, error = _nullable_number(data[field], field=field)
+            if error:
+                return {}, {"error": error}
+            update[field] = value
+
+    for field, minimum in (
+        ("dataset_max_age_days", 0),
+        ("migration_max_age_days", 0),
+        ("min_age_hours", 0),
+        ("batch_size", 1),
+    ):
+        if field in data:
+            value, error = _non_negative_int(data[field], field=field, minimum=minimum)
+            if error:
+                return {}, {"error": error}
+            update[field] = value
+
+    if "protect_favorites" in data:
+        if not isinstance(data["protect_favorites"], bool):
+            return {}, {"error": "protect_favorites must be a boolean"}
+        update["protect_favorites"] = data["protect_favorites"]
+
+    return update, None
+
 
 def register_ui_system_db_routes(app):
     """DB backup/restore и POST retention."""
@@ -81,6 +150,23 @@ def register_ui_system_db_routes(app):
             pass
         return safe, 200
 
+    @app.route("/api/ui/system/retention", methods=["PUT"])
+    @require_ui_settings_password
+    def update_retention_config():
+        """Update retention parameters in user_config.yaml.
+        Accepts JSON with any of the retention fields (mode, days, max_gb, dataset_max_age_days,
+        migration_max_age_days, protect_favorites, min_age_hours, batch_size). Returns the
+        updated safe config (same shape as GET)."""
+        data = request.get_json(silent=True) or {}
+        if not isinstance(data, dict):
+            return {"error": "JSON object required"}, 400
+        update, error = _validate_retention_update(data)
+        if error:
+            return error, 400
+        from app_config.app_config import app_config as cfg
+        safe = cfg.update_retention_config(update)
+        return safe, 200
+
     @app.route("/api/ui/system/retention", methods=["POST"])
     @require_ui_settings_password
     def trigger_retention():
@@ -90,6 +176,6 @@ def register_ui_system_db_routes(app):
         mode = data.get("mode")
         # validate mode if provided
         if mode is not None:
-            if not isinstance(mode, str) or mode not in {"cascade", "files_only", "disabled"}:
+            if not isinstance(mode, str) or mode not in _RETENTION_ALLOWED_MODES:
                 return {"error": "Invalid mode (allowed: cascade, files_only, disabled)"}, 400
         return run_retention_and_bust_caches(dry_run=dry_run, mode=mode)

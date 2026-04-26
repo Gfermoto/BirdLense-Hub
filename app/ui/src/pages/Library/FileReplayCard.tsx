@@ -460,6 +460,7 @@ export function FileReplayCard({
             color="primary"
             disabled={!isAdmin || runMut.isPending}
             onClick={() => runMut.mutate()}
+            title={t('library.fileReplayStartTooltip')}
           >
             {t('library.fileReplayStart')}
           </Button>
@@ -468,6 +469,7 @@ export function FileReplayCard({
             color="warning"
             disabled={!isAdmin || stopMut.isPending}
             onClick={() => stopMut.mutate()}
+            title={t('library.fileReplayStopTooltip')}
           >
             {t('library.fileReplayStop')}
           </Button>
@@ -494,6 +496,7 @@ export function FileReplayCard({
           variant="outlined"
           disabled={!isAdmin || upMut.isPending}
           onClick={() => fileInputRef.current?.click()}
+          title={t('library.fileReplayUploadTooltip')}
         >
           {t('library.fileReplayUpload')}
         </Button>
@@ -612,6 +615,9 @@ export function FileReplayCard({
                         color="error"
                         disabled={!isAdmin || delMut.isPending}
                         onClick={() => setPendingDeleteName(row.name)}
+                        title={t('library.fileReplayDeleteRowTooltip', {
+                          name: row.name,
+                        })}
                       >
                         {t('library.fileReplayDelete')}
                       </Button>

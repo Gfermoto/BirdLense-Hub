@@ -38,6 +38,11 @@ from routes.ui_route_constants import (
 from routes.ui_timeline_helpers import build_merged_timeline_items
 
 
+def _favorite_only_from_request() -> bool:
+    raw = (request.args.get("favorite_only") or request.args.get("favorites") or "").strip().lower()
+    return raw in ("1", "true", "yes", "on")
+
+
 def register_ui_overview_timeline_routes(app):
     @app.route("/api/ui/overview", methods=["GET"])
     def get_overview():
@@ -121,10 +126,11 @@ def register_ui_overview_timeline_routes(app):
             )
         except TimelineWindowError as exc:
             return {"error": str(exc)}, 400
+        fav = 1 if _favorite_only_from_request() else 0
         if date_param:
-            tck = f"timeline:local:{date_param}:{time_of_day}:{hour_param}"
+            tck = f"timeline:local:{date_param}:{time_of_day}:{hour_param}:f{fav}"
         else:
-            tck = f"timeline:{start_time}:{end_time}"
+            tck = f"timeline:{start_time}:{end_time}:f{fav}"
         hit, tcached = cache_get(tck)
         if hit:
             return tcached
@@ -132,7 +138,9 @@ def register_ui_overview_timeline_routes(app):
         if end_dt - start_dt > timedelta(days=1):
             return {"error": "The interval between start_time and end_time must not exceed 1 day"}, 400
 
-        response = build_merged_timeline_items(db.session, start_dt, end_dt)
+        response = build_merged_timeline_items(
+            db.session, start_dt, end_dt, favorite_only=bool(fav)
+        )
         cache_set(tck, response, CACHE_TIMELINE_SEC)
         return response
 
@@ -166,7 +174,12 @@ def register_ui_overview_timeline_routes(app):
         if end_dt - start_dt > timedelta(days=1):
             return {"error": "Interval must not exceed 1 day"}, 400
 
-        merged = build_merged_timeline_items(db.session, start_dt, end_dt)
+        merged = build_merged_timeline_items(
+            db.session,
+            start_dt,
+            end_dt,
+            favorite_only=_favorite_only_from_request(),
+        )
         rows = build_timeline_export_rows(merged)
         body, mimetype, headers = build_timeline_export_response_parts(
             fmt,

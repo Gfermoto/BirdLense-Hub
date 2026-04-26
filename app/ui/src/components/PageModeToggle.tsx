@@ -40,10 +40,18 @@ export function PageModeToggle({
         },
       }}
     >
-      <ToggleButton value="simple" aria-label={resolvedSimpleLabel}>
+      <ToggleButton
+        value="simple"
+        aria-label={resolvedSimpleLabel}
+        title={t('common.simpleModeHint')}
+      >
         {resolvedSimpleLabel}
       </ToggleButton>
-      <ToggleButton value="advanced" aria-label={resolvedAdvancedLabel}>
+      <ToggleButton
+        value="advanced"
+        aria-label={resolvedAdvancedLabel}
+        title={t('common.advancedModeHint')}
+      >
         {resolvedAdvancedLabel}
       </ToggleButton>
     </ToggleButtonGroup>

@@ -8,6 +8,7 @@ import React, {
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
@@ -56,6 +57,7 @@ const ViewToggle: React.FC<ViewToggleProps> = ({ view, onChange }) => {
       <Tabs
         value={view}
         onChange={(_, newView) => onChange(newView)}
+        aria-label={t('video.mediaViewTabs')}
         sx={{
           minHeight: 'auto',
           '& .MuiTab-root': {
@@ -89,6 +91,7 @@ interface CompactDetectionOverlayProps {
 const CompactDetectionOverlay: React.FC<CompactDetectionOverlayProps> = ({
   species,
 }) => {
+  const { t } = useTranslation();
   if (species.length === 0) {
     return null;
   }
@@ -140,6 +143,7 @@ const CompactDetectionOverlay: React.FC<CompactDetectionOverlayProps> = ({
             </Typography>
             <Chip
               label={`${Math.round(s.confidence * 100)}%`}
+              title={`${t('video.confidence')}: ${Math.round(s.confidence * 100)}%`}
               size="small"
               color="primary"
               sx={{
@@ -428,35 +432,40 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <CompactDetectionOverlay species={activeDetections} />
 
         {(!playing || showControls) && (
-          <IconButton
-            aria-label={playing ? t('video.pause') : t('video.play')}
-            onClick={(e) => {
-              e.stopPropagation();
-              togglePlayPause();
-            }}
-            sx={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              color: 'white',
-              minWidth: 44,
-              minHeight: 44,
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                backgroundColor: 'rgba(0,0,0,0.5)',
-                transform: 'translate(-50%, -50%) scale(1.1)',
-              },
-              zIndex: 1,
-            }}
+          <Tooltip
+            title={playing ? t('video.pause') : t('video.play')}
+            placement="top"
           >
-            {playing ? (
-              <PauseIcon fontSize="medium" />
-            ) : (
-              <PlayArrowIcon fontSize="medium" />
-            )}
-          </IconButton>
+            <IconButton
+              aria-label={playing ? t('video.pause') : t('video.play')}
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePlayPause();
+              }}
+              sx={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                backgroundColor: 'rgba(0,0,0,0.3)',
+                color: 'white',
+                minWidth: 44,
+                minHeight: 44,
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  backgroundColor: 'rgba(0,0,0,0.5)',
+                  transform: 'translate(-50%, -50%) scale(1.1)',
+                },
+                zIndex: 1,
+              }}
+            >
+              {playing ? (
+                <PauseIcon fontSize="medium" />
+              ) : (
+                <PlayArrowIcon fontSize="medium" />
+              )}
+            </IconButton>
+          </Tooltip>
         )}
 
         {/* Playback speed + Fullscreen */}
@@ -477,6 +486,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 key={speed}
                 component="button"
                 role="button"
+                title={`${t('video.speed')}: ${speed}×`}
                 aria-label={`${t('video.speed')} ${speed}x`}
                 aria-pressed={playbackRate === speed}
                 onClick={(e) => {
@@ -509,24 +519,26 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
                 {speed}x
               </Typography>
             ))}
-            <IconButton
-              aria-label={t('video.fullscreen')}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleFullscreen();
-              }}
-              sx={{
-                backgroundColor: 'rgba(0,0,0,0.3)',
-                color: 'white',
-                minWidth: 44,
-                minHeight: 44,
-                '&:hover': {
-                  backgroundColor: 'rgba(0,0,0,0.5)',
-                },
-              }}
-            >
-              <FullscreenIcon />
-            </IconButton>
+            <Tooltip title={t('video.fullscreen')} placement="top">
+              <IconButton
+                aria-label={t('video.fullscreen')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFullscreen();
+                }}
+                sx={{
+                  backgroundColor: 'rgba(0,0,0,0.3)',
+                  color: 'white',
+                  minWidth: 44,
+                  minHeight: 44,
+                  '&:hover': {
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                  },
+                }}
+              >
+                <FullscreenIcon />
+              </IconButton>
+            </Tooltip>
           </Box>
         )}
 

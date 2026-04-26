@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from app_config.app_config import app_config
 from models import Species, SpeciesUnresolvedName, Video, VideoSpecies, db
@@ -157,51 +160,99 @@ def _recent_review_only_detections(limit: int = 10) -> list[dict[str, Any]]:
     return items
 
 
-def build_domain_health_payload() -> tuple[dict[str, Any], int]:
-    orphaned_visits = _collect_orphaned_visits(db.session)
-    species_sync_actions = _collect_species_sync_actions(db.session)
-    duplicate_groups = find_duplicate_name_groups(
-        db.session,
-        limit_groups=500,
-        skip_inactive_empty_groups=False,
-    )
-    large_gap_plans = _collect_large_gap_visit_splits(db.session, _large_gap_seconds())
-    duplicate_clip_candidates = _duplicate_clip_candidates(limit=200)
-    review_only_count = (
-        db.session.query(VideoSpecies)
-        .filter(
-            VideoSpecies.source == "video",
-            VideoSpecies.species_visit_id.is_(None),
-        )
-        .count()
-    )
-
-    payload = {
-        "domain_contract_version": "2026-04-polish-v1",
-        "thresholds": {
+def _thresholds_safe() -> dict[str, Any]:
+    try:
+        return {
             "clip_duplicate_gap_seconds": _clip_duplicate_gap_seconds(),
             "visit_large_gap_seconds": _large_gap_seconds(),
             "visit_timeout_seconds": int(app_config.get("detection.dedup_window_seconds") or 60),
-            "min_seconds_between_recordings": float(app_config.get("processor.min_seconds_between_recordings") or 0),
-        },
-        "metrics": {
-            "orphaned_visits": len(orphaned_visits),
-            "visit_species_mismatches": len(species_sync_actions),
-            "duplicate_species_name_groups": len(duplicate_groups),
-            "large_gap_visits": len(large_gap_plans),
-            "review_only_video_detections": int(review_only_count or 0),
-            "unresolved_species_names": SpeciesUnresolvedName.query.count(),
-            "duplicate_clip_candidates_24h": len(duplicate_clip_candidates),
-        },
-        "samples": {
-            "duplicate_clip_candidates": duplicate_clip_candidates[:12],
-            "recent_unresolved_species": _recent_unresolved_names(),
-            "recent_review_only_video_detections": _recent_review_only_detections(),
-        },
-        "contracts": {
-            "review_only_detection_has_no_visit": True,
-            "species_visit_is_derived_from_video_species": True,
-            "duplicate_clip_candidates_are_gap_based": True,
-        },
+            "min_seconds_between_recordings": float(
+                app_config.get("processor.min_seconds_between_recordings") or 0
+            ),
+        }
+    except (TypeError, ValueError):
+        return {
+            "clip_duplicate_gap_seconds": 15,
+            "visit_large_gap_seconds": 300,
+            "visit_timeout_seconds": 60,
+            "min_seconds_between_recordings": 0.0,
+        }
+
+
+def build_domain_health_payload() -> tuple[dict[str, Any], int]:
+    contract = "2026-04-polish-v1"
+    contracts_block = {
+        "review_only_detection_has_no_visit": True,
+        "species_visit_is_derived_from_video_species": True,
+        "duplicate_clip_candidates_are_gap_based": True,
     }
-    return payload, 200
+    try:
+        orphaned_visits = _collect_orphaned_visits(db.session)
+        species_sync_actions = _collect_species_sync_actions(db.session)
+        duplicate_groups = find_duplicate_name_groups(
+            db.session,
+            limit_groups=500,
+            skip_inactive_empty_groups=False,
+        )
+        large_gap_plans = _collect_large_gap_visit_splits(db.session, _large_gap_seconds())
+        duplicate_clip_candidates = _duplicate_clip_candidates(limit=200)
+        review_only_count = (
+            db.session.query(VideoSpecies)
+            .filter(
+                VideoSpecies.source == "video",
+                VideoSpecies.species_visit_id.is_(None),
+            )
+            .count()
+        )
+
+        payload: dict[str, Any] = {
+            "domain_contract_version": contract,
+            "thresholds": {
+                "clip_duplicate_gap_seconds": _clip_duplicate_gap_seconds(),
+                "visit_large_gap_seconds": _large_gap_seconds(),
+                "visit_timeout_seconds": int(app_config.get("detection.dedup_window_seconds") or 60),
+                "min_seconds_between_recordings": float(
+                    app_config.get("processor.min_seconds_between_recordings") or 0
+                ),
+            },
+            "metrics": {
+                "orphaned_visits": len(orphaned_visits),
+                "visit_species_mismatches": len(species_sync_actions),
+                "duplicate_species_name_groups": len(duplicate_groups),
+                "large_gap_visits": len(large_gap_plans),
+                "review_only_video_detections": int(review_only_count or 0),
+                "unresolved_species_names": SpeciesUnresolvedName.query.count(),
+                "duplicate_clip_candidates_24h": len(duplicate_clip_candidates),
+            },
+            "samples": {
+                "duplicate_clip_candidates": duplicate_clip_candidates[:12],
+                "recent_unresolved_species": _recent_unresolved_names(),
+                "recent_review_only_video_detections": _recent_review_only_detections(),
+            },
+            "contracts": contracts_block,
+        }
+        return payload, 200
+    except Exception as exc:
+        logger.exception("domain-health snapshot failed")
+        err_type = type(exc).__name__
+        return {
+            "domain_contract_version": contract,
+            "snapshot_degraded": True,
+            "snapshot_error_class": err_type,
+            "thresholds": _thresholds_safe(),
+            "metrics": {
+                "orphaned_visits": None,
+                "visit_species_mismatches": None,
+                "duplicate_species_name_groups": None,
+                "large_gap_visits": None,
+                "review_only_video_detections": None,
+                "unresolved_species_names": None,
+                "duplicate_clip_candidates_24h": None,
+            },
+            "samples": {
+                "duplicate_clip_candidates": [],
+                "recent_unresolved_species": [],
+                "recent_review_only_video_detections": [],
+            },
+            "contracts": contracts_block,
+        }, 200

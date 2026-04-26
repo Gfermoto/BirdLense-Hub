@@ -98,6 +98,19 @@ export const fetchNearestRecordingDay = async (
   return response.data;
 };
 
+/** Mark recording as favorite (retention may skip it when protect favorites is on). Contributor/admin. */
+export const patchVideoFavorite = async (
+  id: number,
+  favorite: boolean,
+): Promise<{ favorite?: boolean } & Record<string, unknown>> => {
+  const response = await axios.patch(
+    `${BASE_API_URL}/videos/${id}`,
+    { favorite },
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
 /** Delete video recording. Requires contributor or admin access. */
 export const deleteVideo = async (id: number): Promise<void> => {
   const res = await fetch(`${BASE_API_URL}/videos/${id}`, {

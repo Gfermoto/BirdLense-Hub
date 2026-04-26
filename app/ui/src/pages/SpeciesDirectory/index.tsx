@@ -163,6 +163,7 @@ export function SpeciesDirectoryPage() {
                         component={RouterLink}
                         to={`/species/${species.id}`}
                         size="small"
+                        title={t('speciesDirectory.openSpeciesTooltip')}
                       >
                         {t('speciesDirectory.openSpecies')}
                       </Button>
@@ -171,6 +172,7 @@ export function SpeciesDirectoryPage() {
                         to={`/timeline?speciesId=${species.id}`}
                         size="small"
                         color="inherit"
+                        title={t('speciesDirectory.openRecordingsTooltip')}
                       >
                         {t('speciesDirectory.openRecordingsForSpecies')}
                       </Button>

@@ -8,6 +8,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Grid from '@mui/material/Grid2';
 import Box from '@mui/material/Box';
 import FormControl from '@mui/material/FormControl';
+import FormHelperText from '@mui/material/FormHelperText';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
@@ -250,6 +251,7 @@ export const SystemMonitor = ({
             <MenuItem value={24}>{t('system.history24h')}</MenuItem>
             <MenuItem value={48}>{t('system.history48h')}</MenuItem>
           </Select>
+          <FormHelperText>{t('system.metricsHistoryWindowHint')}</FormHelperText>
         </FormControl>
       </Box>
 
@@ -347,6 +349,7 @@ export const SystemMonitor = ({
                   {t('system.lastDays', { count: 30 })}
                 </MenuItem>
               </Select>
+              <FormHelperText>{t('system.uniqueVisitorsPeriodHint')}</FormHelperText>
             </FormControl>
           </Box>
 

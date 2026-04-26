@@ -9,6 +9,15 @@ from species_constants import GENERIC_BIRD_SPECIES
 from util import ensure_utc, format_unlinked_video_for_timeline, format_visit_for_timeline
 
 
+def _visit_has_favorite_active_video(visit) -> bool:
+    """Есть ли у визита связанный ролик с favorite и без soft-delete."""
+    for vs in visit.video_species or []:
+        vid = getattr(vs, "video", None)
+        if vid is not None and bool(getattr(vid, "favorite", False)) and getattr(vid, "deleted_at", None) is None:
+            return True
+    return False
+
+
 def _timeline_visits_deduped_ordered(visits_raw):
     """JOIN с VideoSpecies даёт дубликаты SpeciesVisit при нескольких роликах в одном визите."""
     seen = set()
@@ -40,8 +49,11 @@ def _timeline_entry_sort_key(item: dict):
     return parsed
 
 
-def build_merged_timeline_items(session, start_dt, end_dt) -> list:
-    """Визиты за интервал + ролики, которые ни в один визит не попали."""
+def build_merged_timeline_items(session, start_dt, end_dt, favorite_only: bool = False) -> list:
+    """Визиты за интервал + ролики, которые ни в один визит не попали.
+
+    favorite_only: только визиты с избранным роликом и «осиротевшие» ролики с favorite=true.
+    """
     visits_raw = (
         session.query(SpeciesVisit)
         .join(Species)
@@ -59,6 +71,8 @@ def build_merged_timeline_items(session, start_dt, end_dt) -> list:
         .all()
     )
     visits = _timeline_visits_deduped_ordered(visits_raw)
+    if favorite_only:
+        visits = [v for v in visits if _visit_has_favorite_active_video(v)]
     visit_payloads = [format_visit_for_timeline(v) for v in visits]
     video_ids_in_visits: set[int] = set()
     for p in visit_payloads:
@@ -67,7 +81,7 @@ def build_merged_timeline_items(session, start_dt, end_dt) -> list:
             if vid is not None:
                 video_ids_in_visits.add(int(vid))
     fallback_species = session.query(Species).filter(Species.name == GENERIC_BIRD_SPECIES).first()
-    unlinked_videos = (
+    uq = (
         session.query(Video)
         .options(
             joinedload(Video.video_species).joinedload(VideoSpecies.species),
@@ -75,10 +89,12 @@ def build_merged_timeline_items(session, start_dt, end_dt) -> list:
         .filter(
             Video.end_time > start_dt,
             Video.start_time < end_dt,
+            Video.deleted_at.is_(None),
         )
-        .order_by(Video.start_time.desc())
-        .all()
     )
+    if favorite_only:
+        uq = uq.filter(Video.favorite.is_(True))
+    unlinked_videos = uq.order_by(Video.start_time.desc()).all()
     unlinked_payloads = [
         format_unlinked_video_for_timeline(v, fallback_species=fallback_species)
         for v in unlinked_videos
