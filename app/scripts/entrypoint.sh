@@ -67,13 +67,15 @@ cd /app/web && PYTHONPATH=/app gunicorn -w 1 -k gthread --threads "$GUNICORN_THR
 # =============================================================================
 # SECTION 5 — Wait for web liveness (/api/ui/health)
 # =============================================================================
+# даём Gunicorn время привязаться к порту перед проверкой
+sleep 5
 health_wait_left=400
-until curl -sf http://127.0.0.1:8000/api/ui/health >/dev/null; do
+until curl -sf --max-time 120 http://127.0.0.1:8000/api/ui/health >/dev/null; do
   health_wait_left=$((health_wait_left - 1))
   [ "$health_wait_left" -le 0 ] && break
   sleep 1
 done
-if ! curl -sf http://127.0.0.1:8000/api/ui/health >/dev/null; then
+if ! curl -sf --max-time 120 http://127.0.0.1:8000/api/ui/health >/dev/null; then
   echo "WARNING: API health check failed after 400s (continuing anyway)"
 fi
 
