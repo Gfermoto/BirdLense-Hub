@@ -1943,9 +1943,7 @@ class TestStoragePurge:
             app_config.set("general.settings_password", old_admin)
             app_config.set("general.contributor_password", old_contrib)
 
-    def test_purge_storage_skips_favorite_when_protect_favorites_enabled(
-        self, app, client, tmp_path, monkeypatch
-    ):
+    def test_purge_storage_skips_favorite_when_protect_favorites_enabled(self, app, client, tmp_path, monkeypatch):
         """Ручной purge не удаляет избранные ролики и каталог сессии при protect_favorites."""
         from app_config.app_config import app_config
         from models import Species, SpeciesVisit, Video, VideoSpecies, db
@@ -2040,9 +2038,7 @@ class TestStoragePurge:
             app_config.set("general.contributor_password", old_contrib)
             app_config.set("retention.protect_favorites", old_prot)
 
-    def test_purge_storage_skips_non_favorite_in_session_with_favorite(
-        self, app, client, tmp_path, monkeypatch
-    ):
+    def test_purge_storage_skips_non_favorite_in_session_with_favorite(self, app, client, tmp_path, monkeypatch):
         """Один каталог сессии с избранным: соседний ролик не трогается (ни БД, ни файлы)."""
         from app_config.app_config import app_config
         from models import Species, SpeciesVisit, Video, VideoSpecies, db

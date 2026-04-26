@@ -166,9 +166,7 @@ def _thresholds_safe() -> dict[str, Any]:
             "clip_duplicate_gap_seconds": _clip_duplicate_gap_seconds(),
             "visit_large_gap_seconds": _large_gap_seconds(),
             "visit_timeout_seconds": int(app_config.get("detection.dedup_window_seconds") or 60),
-            "min_seconds_between_recordings": float(
-                app_config.get("processor.min_seconds_between_recordings") or 0
-            ),
+            "min_seconds_between_recordings": float(app_config.get("processor.min_seconds_between_recordings") or 0),
         }
     except (TypeError, ValueError):
         return {

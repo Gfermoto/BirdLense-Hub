@@ -247,9 +247,7 @@ def run_retention(dry_run: bool = False, mode: str = None):
             videos = q.all()
             if protect_favorites:
                 prot_sd = protected_favorite_session_dirs(rec_dir)
-                videos = [
-                    v for v in videos if not video_row_in_protected_session(rec_dir, v.video_path, prot_sd)
-                ]
+                videos = [v for v in videos if not video_row_in_protected_session(rec_dir, v.video_path, prot_sd)]
             for v in videos:
                 v.deleted_at = datetime.now(timezone.utc)
                 # keep paths unchanged to avoid NOT NULL violation
@@ -283,9 +281,7 @@ def run_retention(dry_run: bool = False, mode: str = None):
                     q = q.filter(Video.favorite.is_(False))
                 oldest = None
                 for cand in q:
-                    if protect_favorites and video_row_in_protected_session(
-                        rec_max, cand.video_path, prot_max
-                    ):
+                    if protect_favorites and video_row_in_protected_session(rec_max, cand.video_path, prot_max):
                         continue
                     oldest = cand
                     break
@@ -321,9 +317,7 @@ def run_retention(dry_run: bool = False, mode: str = None):
                 videos = videos.filter(Video.favorite.is_(False))
             videos = videos.all()
             for video in videos:
-                if protect_favorites and video_row_in_protected_session(
-                    rec_cascade, video.video_path, prot_cascade
-                ):
+                if protect_favorites and video_row_in_protected_session(rec_cascade, video.video_path, prot_cascade):
                     continue
                 try:
                     if video.video_path:

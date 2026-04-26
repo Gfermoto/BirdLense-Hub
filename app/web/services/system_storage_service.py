@@ -232,11 +232,7 @@ def purge_storage_from_body(data: dict) -> tuple[dict, int]:
 
         protected_session = protected_favorite_session_dirs(rec_dir)
         if protect_favorites:
-            videos = [
-                v
-                for v in videos
-                if not video_row_in_protected_session(rec_dir, v.video_path, protected_session)
-            ]
+            videos = [v for v in videos if not video_row_in_protected_session(rec_dir, v.video_path, protected_session)]
 
         video_dirs_to_delete: set[str] = set()
         for video in videos:

@@ -164,6 +164,7 @@ def register_ui_system_db_routes(app):
         if error:
             return error, 400
         from app_config.app_config import app_config as cfg
+
         safe = cfg.update_retention_config(update)
         return safe, 200
 

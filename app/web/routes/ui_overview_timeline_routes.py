@@ -138,9 +138,7 @@ def register_ui_overview_timeline_routes(app):
         if end_dt - start_dt > timedelta(days=1):
             return {"error": "The interval between start_time and end_time must not exceed 1 day"}, 400
 
-        response = build_merged_timeline_items(
-            db.session, start_dt, end_dt, favorite_only=bool(fav)
-        )
+        response = build_merged_timeline_items(db.session, start_dt, end_dt, favorite_only=bool(fav))
         cache_set(tck, response, CACHE_TIMELINE_SEC)
         return response
 
