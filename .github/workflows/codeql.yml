@@ -7,6 +7,10 @@
 # check с именем «CodeQL» без контекста workflow — это может быть агрегат Code Scanning с иным жизненным циклом.
 name: BirdLense CodeQL
 
+# Сохраняем расчёт file coverage на PR (иначе с ~Apr 2026 CodeQL Action пропускает его по умолчанию).
+env:
+  CODEQL_ACTION_FILE_COVERAGE_ON_PRS: "true"
+
 on:
   # Ручной запуск: Actions → BirdLense CodeQL → Run workflow
   workflow_dispatch:
