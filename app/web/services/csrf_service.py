@@ -28,11 +28,12 @@ def csrf_protection_enabled() -> bool:
 
 
 def _get_or_create_token() -> str:
-    token = str(session.get(CSRF_SESSION_KEY) or "")
-    if not token:
-        token = secrets.token_urlsafe(32)
-        session[CSRF_SESSION_KEY] = token
-    return token
+    existing = str(session.get(CSRF_SESSION_KEY) or "")
+    if existing:
+        return existing
+    fresh = secrets.token_urlsafe(32)
+    session[CSRF_SESSION_KEY] = fresh
+    return fresh
 
 
 def _set_csrf_cookie(response):

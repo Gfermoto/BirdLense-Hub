@@ -13,12 +13,17 @@ paths = [
   '''(^|/)datasets/''',
   '''(^|/)app/ui/src/generated/''',
   '''package-lock\.json$''',
+  # Исторически попал в коммиты; в .gitignore, не сканируем артефакты site-packages
+  '''(^|/)\.venv-docs-polish/''',
 ]
 regexes = [
   '''your-[A-Za-z0-9_-]+''',
   '''<[^>\n]*(secret|token|key)[^>\n]*>''',
   '''ghp_…''',
   '''hf_x{6,}''',
+  # Плейсхолдеры в esphome/*.example и шаблонах
+  '''^YOUR_[A-Z0-9_]+$''',
+  '''^REPLACE_[A-Z0-9_]+$''',
 ]
 
 [[rules]]
