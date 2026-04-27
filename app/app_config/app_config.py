@@ -46,6 +46,7 @@ CONTRIBUTOR_ADMIN_ONLY_PATCH_PATHS = frozenset({
     'general.contributor_password',
     'general.session_idle_minutes',
     'mcp.token',
+    'storage.recordings_mirror',
 })
 MASK_PLACEHOLDER = '***'
 

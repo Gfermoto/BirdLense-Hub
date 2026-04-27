@@ -1,6 +1,7 @@
 """UI API for NAS/SFTP recordings mirror (#350)."""
 
 from app_config.app_config import app_config
+from services.settings_patch_service import normalize_settings_patch_updates
 
 
 def test_recordings_mirror_test_requires_host_and_username(client):
@@ -43,3 +44,24 @@ def test_recordings_mirror_test_requires_password_or_key(client):
             app_config.config.pop("storage", None)
         else:
             app_config.config["storage"] = old_storage
+
+
+def test_contributor_patch_cannot_update_recordings_mirror():
+    updates = {
+        "storage": {
+            "recordings_mirror": {
+                "enabled": True,
+                "host": "nas.local",
+                "username": "operator-should-not-set-this",
+                "sftp_password": "secret",
+            }
+        }
+    }
+
+    normalized = normalize_settings_patch_updates(
+        updates,
+        access_role="contributor",
+        contributor_tier_configured=True,
+    )
+
+    assert normalized == {"storage": {}}
