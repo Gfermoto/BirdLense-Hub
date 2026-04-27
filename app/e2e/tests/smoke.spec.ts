@@ -119,6 +119,13 @@ test.describe('Smoke tests', () => {
     });
   });
 
+  test('Favorites page loads', async ({ page }) => {
+    await gotoReady(page, '/favorites');
+    await expect(page.getByRole('heading', { name: /Favorites|Избранное|收藏/i })).toBeVisible({
+      timeout: 15000,
+    });
+  });
+
   test('Migration page shows region comparison block', async ({ page }) => {
     await gotoReady(page, '/migration-calendar');
     await waitMainSpinnerGone(page);

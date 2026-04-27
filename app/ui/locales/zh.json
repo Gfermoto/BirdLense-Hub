@@ -916,6 +916,23 @@
     "expandVisitDetails": "展开参观详情",
     "collapseVisitDetails": "折叠访问详情"
   },
+  "favoritesPage": {
+    "title": "收藏",
+    "intro": "按物种组织的受保护收藏录像库。使用物种索引在页面内快速跳转，打开卡片查看原始片段。",
+    "errorLoad": "无法加载收藏录像。",
+    "totalVideos": "{{count}} 个收藏录像",
+    "totalSpecies": "{{count}} 个物种",
+    "unclassifiedCount": "{{count}} 个无物种",
+    "searchSpecies": "搜索物种",
+    "sort": "排序",
+    "sortRecent": "最近收藏的物种",
+    "sortName": "物种名称",
+    "speciesIndex": "物种索引",
+    "groupMeta": "{{count}} 个录像 · 最近 {{date}}",
+    "protected": "已保护",
+    "unclassifiedSpecies": "无物种",
+    "empty": "还没有收藏录像。打开录像并标记为收藏，即可防止清理删除。"
+  },
   "pwa": {
     "installPrompt": "将 BirdLense Hub 添加到您的主屏幕",
     "install": "安装",

@@ -89,6 +89,11 @@ def test_fusion_trace_allows_mcp_style_non_session_access(monkeypatch):
     )
     monkeypatch.setitem(
         sys.modules,
+        "services.favorites_catalog_service",
+        types.SimpleNamespace(build_favorites_by_species_payload=lambda session: {}),
+    )
+    monkeypatch.setitem(
+        sys.modules,
         "services.visit_processor",
         types.SimpleNamespace(VisitProcessor=object),
     )
@@ -103,7 +108,7 @@ def test_fusion_trace_allows_mcp_style_non_session_access(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "routes.ui_route_constants",
-        types.SimpleNamespace(CACHE_DETECTION_FRAMES_SEC=30),
+        types.SimpleNamespace(CACHE_DETECTION_FRAMES_SEC=30, CACHE_FAVORITES_CATALOG_SEC=30),
     )
 
     module_path = Path(__file__).resolve().parents[1] / "routes" / "ui_video_routes.py"
