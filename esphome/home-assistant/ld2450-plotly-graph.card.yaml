@@ -1,0 +1,178 @@
+# Lovelace: custom:plotly-graph — карта LD2450 (цели + HW зоны).
+# Зависимость: HACS / plotly-graph (https://github.com/dbuezas/lovelace-plotly-graph).
+#
+# ВАЖНО: подставьте реальные entity_id из HA (Настройки → Устройства → LD2450 → сущности).
+# Имена в esphome/ld2450-native-zones.yaml на русском → slug в HA может отличаться от примеров ниже
+# (например number.ld2450_zona_1_x1 vs number.ld2450_zona_1_x1 — проверьте в Developer tools → States).
+
+type: custom:plotly-graph
+title: LD2450 - Native Component
+refresh_interval: 2
+hours_to_show: current_day
+ha_theme: true
+layout:
+  legend:
+    "y": 8000
+    orientation: h
+  autosize: true
+  margin:
+    autoexpand: true
+    l: 50
+    r: 20
+    t: 20
+    b: 40
+  showlegend: true
+  xaxis:
+    dtick: 1000
+    gridcolor: RGBA(200,200,200,0.15)
+    zerolinecolor: RGBA(200,200,200,0.15)
+    type: number
+    fixedrange: true
+    range:
+      - -4000
+      - 4000
+  yaxis:
+    dtick: 1000
+    gridcolor: RGBA(200,200,200,0.15)
+    zerolinecolor: RGBA(200,200,200,0.15)
+    scaleanchor: x
+    scaleratio: 1
+    fixedrange: true
+    range:
+      - 8000
+      - 0
+entities:
+  - entity: ""
+    name: Target1
+    show_value: true
+    unit_of_measurement: mm
+    marker:
+      size: 12
+    line:
+      shape: spline
+      width: 5
+    x:
+      - $ex hass.states["sensor.ld2450_tsel_1_x"].state * -1
+    "y":
+      - $ex hass.states["sensor.ld2450_tsel_1_y"].state
+  - entity: ""
+    name: Target2
+    show_value: true
+    unit_of_measurement: mm
+    marker:
+      size: 12
+    line:
+      shape: spline
+      width: 5
+    x:
+      - $ex hass.states["sensor.ld2450_tsel_2_x"].state * -1
+    "y":
+      - $ex hass.states["sensor.ld2450_tsel_2_y"].state
+  - entity: ""
+    name: Target3
+    show_value: true
+    unit_of_measurement: mm
+    marker:
+      size: 12
+    line:
+      shape: spline
+      width: 5
+    x:
+      - $ex hass.states["sensor.ld2450_tsel_3_x"].state * -1
+    "y":
+      - $ex hass.states["sensor.ld2450_tsel_3_y"].state
+  - entity: ""
+    name: HW Zone1
+    mode: lines
+    fill: toself
+    fillcolor: RGBA(0,250,0,0.2)
+    line:
+      color: RGBA(0,250,0,0.9)
+      shape: line
+      width: 2
+    x:
+      - $ex hass.states["number.ld2450_zona_1_x1"].state*1
+      - $ex hass.states["number.ld2450_zona_1_x2"].state*1
+      - $ex hass.states["number.ld2450_zona_1_x2"].state*1
+      - $ex hass.states["number.ld2450_zona_1_x1"].state*1
+      - $ex hass.states["number.ld2450_zona_1_x1"].state*1
+    "y":
+      - $ex hass.states["number.ld2450_zona_1_y1"].state*1
+      - $ex hass.states["number.ld2450_zona_1_y1"].state*1
+      - $ex hass.states["number.ld2450_zona_1_y2"].state*1
+      - $ex hass.states["number.ld2450_zona_1_y2"].state*1
+      - $ex hass.states["number.ld2450_zona_1_y1"].state*1
+  - entity: ""
+    name: HW Zone2
+    mode: lines
+    fill: toself
+    fillcolor: RGBA(250,110,0,0.2)
+    line:
+      color: RGBA(250,110,0,0.9)
+      shape: line
+      width: 2
+    x:
+      - $ex hass.states["number.ld2450_zona_2_x1"].state*1
+      - $ex hass.states["number.ld2450_zona_2_x2"].state*1
+      - $ex hass.states["number.ld2450_zona_2_x2"].state*1
+      - $ex hass.states["number.ld2450_zona_2_x1"].state*1
+      - $ex hass.states["number.ld2450_zona_2_x1"].state*1
+    "y":
+      - $ex hass.states["number.ld2450_zona_2_y1"].state*1
+      - $ex hass.states["number.ld2450_zona_2_y1"].state*1
+      - $ex hass.states["number.ld2450_zona_2_y2"].state*1
+      - $ex hass.states["number.ld2450_zona_2_y2"].state*1
+      - $ex hass.states["number.ld2450_zona_2_y1"].state*1
+  - entity: ""
+    name: HW Zone3
+    mode: lines
+    fill: toself
+    fillcolor: RGBA(0,0,250,0.2)
+    line:
+      color: RGBA(0,0,250,0.9)
+      shape: line
+      width: 2
+    x:
+      - $ex hass.states["number.ld2450_zona_3_x1"].state*1
+      - $ex hass.states["number.ld2450_zona_3_x2"].state*1
+      - $ex hass.states["number.ld2450_zona_3_x2"].state*1
+      - $ex hass.states["number.ld2450_zona_3_x1"].state*1
+      - $ex hass.states["number.ld2450_zona_3_x1"].state*1
+    "y":
+      - $ex hass.states["number.ld2450_zona_3_y1"].state*1
+      - $ex hass.states["number.ld2450_zona_3_y1"].state*1
+      - $ex hass.states["number.ld2450_zona_3_y2"].state*1
+      - $ex hass.states["number.ld2450_zona_3_y2"].state*1
+      - $ex hass.states["number.ld2450_zona_3_y1"].state*1
+  - entity: ""
+    name: Coverage
+    mode: lines
+    line:
+      width: 1
+      color: rgba(100, 100, 100, .6)
+      dash: dot
+    x:
+      - 0
+      - 1000
+      - 3700
+      - 3500
+      - 2000
+      - 0
+      - -2000
+      - -3500
+      - -3700
+      - -1000
+      - 0
+    "y":
+      - 0
+      - 500
+      - 3700
+      - 6000
+      - 7400
+      - 8000
+      - 7400
+      - 6000
+      - 3700
+      - 500
+      - 0
+raw_plotly_config: true
