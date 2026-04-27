@@ -101,7 +101,12 @@ class TestProductionSettingsAccess:
         monkeypatch.setenv("BIRDLENSE_ENV", "production")
         monkeypatch.delenv("FLASK_ENV", raising=False)
 
-        response = client.post("/api/ui/settings/verify-password", json={"password": ""})
+        csrf = client.get("/api/ui/csrf-token").get_json()["csrf_token"]
+        response = client.post(
+            "/api/ui/settings/verify-password",
+            json={"password": ""},
+            headers={"X-Birdlense-CSRF-Token": csrf},
+        )
         assert response.status_code == 401
         assert response.get_json()["ok"] is False
 

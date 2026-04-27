@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -10,6 +10,9 @@ install-pull:
 # Все проверки как в CI (Python security, ruff, pytest web, UI, docs). Без Docker по умолчанию.
 ci-local:
 	@./scripts/ci-full-local.sh
+
+security-gitleaks:
+	@gitleaks detect --source=. --config=.gitleaks.toml --verbose --redact
 
 # Плюс сборка образа, make test / test-web и Playwright smoke (как job docker-tests в CI).
 ci-local-docker:

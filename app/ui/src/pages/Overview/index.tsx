@@ -111,6 +111,11 @@ export const Overview = () => {
     return `${(s / 3600).toFixed(1)} ${t('time.hrs')}`;
   };
 
+  const stats = overviewData?.stats;
+  const topSpecies = overviewData?.topSpecies ?? [];
+  const detectionByProvider = stats?.detectionByProvider ?? {};
+  const hasDetectionByProvider = Object.keys(detectionByProvider).length > 0;
+
   return (
     <Box sx={{ pb: 4 }}>
       <Box sx={{ mb: 4 }}>
@@ -188,12 +193,14 @@ export const Overview = () => {
               <BirdIcon sx={{ fontSize: 40 }} />
               <Box>
                 <Typography
+                  component="p"
                   variant="subtitle2"
                   sx={{ color: 'rgba(255,255,255,0.92)' }}
                 >
                   {t('overview.lastBird')}
                 </Typography>
                 <Typography
+                  component="p"
                   variant="h6"
                   sx={{ fontWeight: 600, color: '#ffffff' }}
                 >
@@ -221,7 +228,7 @@ export const Overview = () => {
               <StatCard
                 icon={BirdIcon}
                 title={t('overview.uniqueSpecies')}
-                value={overviewData?.stats.uniqueSpecies || 0}
+                value={stats?.uniqueSpecies || 0}
                 hint={t('overview.uniqueSpeciesHint')}
               />
             </Grid>
@@ -229,7 +236,7 @@ export const Overview = () => {
               <StatCard
                 icon={VisibilityOutlined}
                 title={t('overview.totalVisits')}
-                value={overviewData?.stats.totalDetections || 0}
+                value={stats?.totalDetections || 0}
                 hint={t('overview.totalVisitsHint')}
               />
             </Grid>
@@ -237,7 +244,7 @@ export const Overview = () => {
               <StatCard
                 icon={ScheduleOutlined}
                 title={t('overview.visitsLastHour')}
-                value={overviewData?.stats.lastHourDetections || 0}
+                value={stats?.lastHourDetections || 0}
                 hint={t('overview.visitsLastHourHint')}
               />
             </Grid>
@@ -245,7 +252,7 @@ export const Overview = () => {
               <StatCard
                 icon={TimelapseOutlined}
                 title={t('overview.meanDuration')}
-                value={`${Math.round(overviewData?.stats.avgVisitDuration || 0)} ${t('time.sec')}`}
+                value={`${Math.round(stats?.avgVisitDuration || 0)} ${t('time.sec')}`}
                 hint={t('overview.meanDurationHint')}
               />
             </Grid>
@@ -254,8 +261,8 @@ export const Overview = () => {
                 icon={WbSunnyOutlined}
                 title={t('overview.busiestHour')}
                 value={
-                  (overviewData?.stats.totalDetections ?? 0) > 0
-                    ? formatHour(overviewData?.stats.busiestHour ?? 0)
+                  (stats?.totalDetections ?? 0) > 0
+                    ? formatHour(stats?.busiestHour ?? 0)
                     : t('common.na')
                 }
                 hint={t('overview.busiestHourHint')}
@@ -266,71 +273,71 @@ export const Overview = () => {
                 icon={VideocamOutlined}
                 title={t('overview.recordingTime')}
                 value={formatRecordingTime(
-                  Math.max(0, overviewData?.stats.videoDuration ?? 0),
+                  Math.max(0, stats?.videoDuration ?? 0),
                 )}
                 hint={t('overview.recordingTimeHint')}
               />
             </Grid>
           </Grid>
-          {overviewData?.stats.detectionByProvider &&
-            Object.keys(overviewData.stats.detectionByProvider).length > 0 && (
-              <Paper sx={{ p: 2, mt: 2 }}>
+          {hasDetectionByProvider && (
+            <Paper sx={{ p: 2, mt: 2 }}>
+              <Typography
+                component="p"
+                variant="subtitle2"
+                gutterBottom
+                color="text.secondary"
+              >
+                {t('overview.bySource')}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ mb: 1 }}
+              >
+                {t('overview.bySourceHint')}
+              </Typography>
+              {showVolunteerDataLabelingHint && (
                 <Typography
-                  variant="subtitle2"
-                  gutterBottom
-                  color="text.secondary"
+                  variant="body2"
+                  sx={{
+                    mb: 1.5,
+                    color: 'info.main',
+                    fontWeight: 500,
+                    bgcolor: (theme) =>
+                      theme.palette.mode === 'dark'
+                        ? 'rgba(2, 136, 209, 0.12)'
+                        : 'rgba(2, 136, 209, 0.08)',
+                    px: 1.25,
+                    py: 0.75,
+                    borderRadius: 1,
+                    border: 1,
+                    borderColor: 'info.light',
+                  }}
                 >
-                  {t('overview.bySource')}
+                  {t('overview.volunteerDataLabelingHint')}
                 </Typography>
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  display="block"
-                  sx={{ mb: 1 }}
-                >
-                  {t('overview.bySourceHint')}
-                </Typography>
-                {showVolunteerDataLabelingHint && (
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      mb: 1.5,
-                      color: 'info.main',
-                      fontWeight: 500,
-                      bgcolor: (theme) =>
-                        theme.palette.mode === 'dark'
-                          ? 'rgba(2, 136, 209, 0.12)'
-                          : 'rgba(2, 136, 209, 0.08)',
-                      px: 1.25,
-                      py: 0.75,
-                      borderRadius: 1,
-                      border: 1,
-                      borderColor: 'info.light',
-                    }}
-                  >
-                    {t('overview.volunteerDataLabelingHint')}
-                  </Typography>
+              )}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+                {Object.entries(detectionByProvider).map(
+                  ([provider, count]) => (
+                    <Typography key={provider} variant="body2">
+                      <strong>
+                        {provider === 'yolo'
+                          ? 'YOLO'
+                          : provider === 'frigate'
+                            ? 'Frigate'
+                            : provider === 'birdnet_mqtt'
+                              ? 'BirdNET (MQTT)'
+                              : provider}
+                      </strong>
+                      : {count}
+                    </Typography>
+                  ),
                 )}
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-                  {Object.entries(overviewData.stats.detectionByProvider).map(
-                    ([provider, count]) => (
-                      <Typography key={provider} variant="body2">
-                        <strong>
-                          {provider === 'yolo'
-                            ? 'YOLO'
-                            : provider === 'frigate'
-                              ? 'Frigate'
-                              : provider === 'birdnet_mqtt'
-                                ? 'BirdNET (MQTT)'
-                                : provider}
-                        </strong>
-                        : {count}
-                      </Typography>
-                    ),
-                  )}
-                </Box>
-              </Paper>
-            )}
+              </Box>
+            </Paper>
+          )}
         </Grid>
 
         {/* Weather Card — высота как две StatCard слева */}
@@ -340,7 +347,12 @@ export const Overview = () => {
         >
           {errorWeather && weather === undefined ? (
             <Paper sx={{ p: 2, width: '100%' }}>
-              <Typography variant="subtitle2" color="error" gutterBottom>
+              <Typography
+                component="p"
+                variant="subtitle2"
+                color="error"
+                gutterBottom
+              >
                 {t('overview.weatherLoadError')}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -356,7 +368,7 @@ export const Overview = () => {
             </Paper>
           ) : weatherAwaitingFirstPaint ? (
             <Paper sx={{ p: 2, width: '100%', height: '100%', minHeight: 200 }}>
-              <Typography variant="h6" gutterBottom>
+              <Typography component="h2" variant="h6" gutterBottom>
                 {t('weather.title')}
               </Typography>
               <Skeleton variant="rounded" height={36} sx={{ mb: 1 }} />
@@ -397,12 +409,11 @@ export const Overview = () => {
               <FeedCard />
             </Box>
             <Paper sx={{ p: 2, minWidth: 0 }}>
-              <Typography variant="h6" gutterBottom>
+              <Typography component="h2" variant="h6" gutterBottom>
                 {t('overview.hourlyActivity')}
               </Typography>
-              {overviewData?.topSpecies &&
-              overviewData.topSpecies.length > 0 ? (
-                <HourlyActivityChart data={overviewData.topSpecies} />
+              {topSpecies.length > 0 ? (
+                <HourlyActivityChart data={topSpecies} />
               ) : (
                 <Typography color="text.secondary" sx={{ py: 4 }}>
                   {t('overview.noData')}
@@ -417,15 +428,15 @@ export const Overview = () => {
         {/* Daily Pattern Chart */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 1, overflow: 'hidden' }}>
-            <Typography variant="h6" sx={{ px: 1 }} gutterBottom>
+            <Typography component="h2" variant="h6" sx={{ px: 1 }} gutterBottom>
               {t('overview.dailyPattern')}
             </Typography>
-            {overviewData?.topSpecies && overviewData.topSpecies.length > 0 ? (
+            {topSpecies.length > 0 ? (
               <DailyPatternChart
-                data={overviewData.topSpecies}
+                data={topSpecies}
                 date={selectedDay}
                 size={450}
-                observerTimezone={overviewData.observer_timezone}
+                observerTimezone={overviewData?.observer_timezone}
               />
             ) : (
               <Typography
@@ -441,12 +452,12 @@ export const Overview = () => {
         {/* Species Distribution */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 1, overflow: 'hidden', minWidth: 0 }}>
-            <Typography variant="h6" sx={{ px: 1 }} gutterBottom>
+            <Typography component="h2" variant="h6" sx={{ px: 1 }} gutterBottom>
               {t('overview.topSpecies')}
             </Typography>
-            {overviewData?.topSpecies && overviewData.topSpecies.length > 0 ? (
+            {topSpecies.length > 0 ? (
               <SpeciesDistributionChart
-                data={overviewData.topSpecies}
+                data={topSpecies}
                 date={selectedDay}
                 size={450}
               />

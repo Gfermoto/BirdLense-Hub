@@ -72,7 +72,9 @@ export function ScalesIntegrationFields({ form }: Props) {
         </form.Field>
       </Grid>
       <form.Subscribe
-        selector={(s: { values: Settings }) => s.values.integrations?.scales?.enabled}
+        selector={(s: { values: Settings }) =>
+          s.values.integrations?.scales?.enabled
+        }
       >
         {(scalesOn: boolean | undefined) =>
           scalesOn ? (

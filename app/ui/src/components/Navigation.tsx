@@ -449,7 +449,11 @@ export function Navigation() {
                 to={item.path}
                 title={t(`nav.${item.key}Hint`)}
                 aria-current={isNavItemActive(item.path) ? 'page' : undefined}
-                sx={isNavItemActive(item.path) ? activeNavPillStyles : navPillStyles}
+                sx={
+                  isNavItemActive(item.path)
+                    ? activeNavPillStyles
+                    : navPillStyles
+                }
               >
                 {t(`nav.${item.key}`)}
               </Box>

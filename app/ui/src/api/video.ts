@@ -1,7 +1,7 @@
 /** Video details, neighbors, fusion trace, storage day navigation (#343). */
 import axios from 'axios';
 import type { TrackFrame } from '../types';
-import { BASE_API_URL, JOB_STATUS_POLL_TIMEOUT_MS } from './client';
+import { BASE_API_URL, JOB_STATUS_POLL_TIMEOUT_MS, csrfFetch } from './client';
 
 export const fetchVideo = async (id: string) => {
   const response = await axios.get(`${BASE_API_URL}/videos/${id}`);
@@ -113,7 +113,7 @@ export const patchVideoFavorite = async (
 
 /** Delete video recording. Requires contributor or admin access. */
 export const deleteVideo = async (id: number): Promise<void> => {
-  const res = await fetch(`${BASE_API_URL}/videos/${id}`, {
+  const res = await csrfFetch(`${BASE_API_URL}/videos/${id}`, {
     method: 'DELETE',
     credentials: 'include',
   });

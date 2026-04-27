@@ -421,7 +421,11 @@ export function NotificationsSection({ form, observedSpecies }: Props) {
                           {proxyType === 'mtproto' && (
                             <>
                               <Grid size={{ xs: 12 }}>
-                                <Alert severity="info" variant="outlined" sx={{ py: 1 }}>
+                                <Alert
+                                  severity="info"
+                                  variant="outlined"
+                                  sx={{ py: 1 }}
+                                >
                                   {t('settings.telegramMtprotoApiHint')}
                                 </Alert>
                               </Grid>

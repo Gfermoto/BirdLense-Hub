@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, csrfFetch } from './client';
 
 /** Web Push: get VAPID public key for subscription. */
 export const fetchVapidPublicKey = async (): Promise<string> => {
@@ -21,7 +21,7 @@ export const subscribePush = async (
   const sub = subscription.toJSON();
   const keys = sub.keys;
   if (!keys) throw new Error('Invalid subscription');
-  const res = await fetch(`${BASE_API_URL}/push/subscribe`, {
+  const res = await csrfFetch(`${BASE_API_URL}/push/subscribe`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

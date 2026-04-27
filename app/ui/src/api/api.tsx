@@ -1,11 +1,7 @@
 import axios from 'axios';
 import { BASE_URL } from './client';
 
-export {
-  BASE_URL,
-  BASE_API_URL,
-  JOB_STATUS_POLL_TIMEOUT_MS,
-} from './client';
+export { BASE_URL, BASE_API_URL, JOB_STATUS_POLL_TIMEOUT_MS } from './client';
 
 /** Текст ошибки из JSON `{ error: string }` или fallback (для мутаций UI). */
 export function getApiErrorMessage(err: unknown, fallback: string): string {
@@ -108,11 +104,7 @@ export {
 } from './birdFoodFeed';
 
 export type { ReadinessPayload } from './camerasHealth';
-export {
-  fetchCameras,
-  fetchReadiness,
-  fetchStatus,
-} from './camerasHealth';
+export { fetchCameras, fetchReadiness, fetchStatus } from './camerasHealth';
 
 export {
   fetchFileTestFiles,

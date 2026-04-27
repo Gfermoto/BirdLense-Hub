@@ -197,7 +197,11 @@ export function CaptureFeederSection({ form }: Props) {
                     {(enabled) =>
                       enabled ? (
                         <>
-                          <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+                          <Alert
+                            severity="info"
+                            variant="outlined"
+                            sx={{ mb: 2 }}
+                          >
                             {t('settings.frigateMotionIntro')}
                           </Alert>
                           <Grid container spacing={2}>

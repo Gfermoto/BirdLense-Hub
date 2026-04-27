@@ -103,8 +103,7 @@ export function ProtectedAreaProvider({
     checkResult?.unlocked === true
       ? ('role' in checkResult ? checkResult.role : undefined) || 'admin'
       : null;
-  const role =
-    unlockedState && roleState != null ? roleState : serverRole;
+  const role = unlockedState && roleState != null ? roleState : serverRole;
 
   const unlocked =
     !requiresPassword ||

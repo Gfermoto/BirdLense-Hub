@@ -27,7 +27,10 @@ import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { getApiErrorMessage, resolveImageUrl } from '../../api/api';
 import { downloadDetectionCropForINaturalist } from '../../api/dataset';
-import { fetchBirdDirectory, updateDetectionSpecies } from '../../api/speciesOverviewDetections';
+import {
+  fetchBirdDirectory,
+  updateDetectionSpecies,
+} from '../../api/speciesOverviewDetections';
 import { mergeVideoSpecies } from '../../api/video';
 import { queryKeys } from '../../api/queryKeys';
 import { invalidateLocalSpeciesEditCaches } from '../../api/invalidateLocalSpeciesCaches';
@@ -93,7 +96,12 @@ const INaturalistButton = ({
         onClose={() => setErrorMsg(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="error" variant="filled" elevation={6} onClose={() => setErrorMsg(null)}>
+        <Alert
+          severity="error"
+          variant="filled"
+          elevation={6}
+          onClose={() => setErrorMsg(null)}
+        >
           {errorMsg}
         </Alert>
       </Snackbar>
@@ -533,7 +541,12 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
         onClose={() => setCorrectError(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="error" variant="filled" elevation={6} onClose={() => setCorrectError(null)}>
+        <Alert
+          severity="error"
+          variant="filled"
+          elevation={6}
+          onClose={() => setCorrectError(null)}
+        >
           {correctError}
         </Alert>
       </Snackbar>
@@ -543,7 +556,12 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
         onClose={() => setCorrectSuccess(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="success" variant="filled" elevation={6} onClose={() => setCorrectSuccess(null)}>
+        <Alert
+          severity="success"
+          variant="filled"
+          elevation={6}
+          onClose={() => setCorrectSuccess(null)}
+        >
           {correctSuccess}
         </Alert>
       </Snackbar>

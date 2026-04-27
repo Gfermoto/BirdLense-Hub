@@ -275,12 +275,22 @@ export function ProcessorWeightsCard({
   const inner = (
     <Box>
       {info ? (
-        <Alert severity="success" variant="outlined" sx={{ mb: 2 }} onClose={() => setInfo(null)}>
+        <Alert
+          severity="success"
+          variant="outlined"
+          sx={{ mb: 2 }}
+          onClose={() => setInfo(null)}
+        >
           {info}
         </Alert>
       ) : null}
       {err ? (
-        <Alert severity="error" variant="outlined" sx={{ mb: 2 }} onClose={() => setErr(null)}>
+        <Alert
+          severity="error"
+          variant="outlined"
+          sx={{ mb: 2 }}
+          onClose={() => setErr(null)}
+        >
           {err}
         </Alert>
       ) : null}

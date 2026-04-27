@@ -58,6 +58,7 @@ _STRICT_ALLOWLIST: frozenset[tuple[str, str]] = frozenset(
     {
         ("GET", "/api/ui/health"),
         ("GET", "/api/ui/readiness"),
+        ("GET", "/api/ui/csrf-token"),
         ("GET", "/api/ui/settings/requires-password"),
         ("GET", "/api/ui/settings/check-access"),
         ("POST", "/api/ui/settings/verify-password"),

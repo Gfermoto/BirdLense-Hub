@@ -109,6 +109,14 @@ cd app && PYTHONPATH="${PWD}:${PWD}/web" ../.venv-ci/bin/python -m pytest web/te
 **UI map (where to click):** [docs/UI_SETTINGS_MAP.md](./docs/UI_SETTINGS_MAP.md) · [RU](./docs/UI_SETTINGS_MAP.ru.md)
 - **Weights workflow:** `scripts/fetch-processor-weights.sh` prefers the two-stage detector/classifier paths; use `--legacy-single-stage` only if you explicitly need the compatibility `app/yolo11n.pt` asset from GitHub Release `weights/v1`.
 
+## Before Release
+
+- Run `make ci-local` and keep GitHub CI green (`python-security`, `openapi-contract`, `ui-build`, `docker-tests`, `docs`, `CodeQL — gate`).
+- Confirm production env gates: `BIRDLENSE_ENV=production`, `BIRDLENSE_STRICT_API_AUTH=1`, non-empty `FLASK_SECRET_KEY` and `PROCESSOR_SECRET`.
+- Verify public deployment terminates TLS at the edge and does not expose Gunicorn directly.
+- Keep `CORS_ORIGINS` explicit; never use `*` with credentialed UI requests.
+- Review `PRODUCTION_READINESS.md` and `.review-automation/critical-issues.md` before tagging a release.
+
 ## Requirements
 
 - **Docker** — x86/amd64
