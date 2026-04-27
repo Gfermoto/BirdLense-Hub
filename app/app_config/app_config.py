@@ -36,6 +36,8 @@ SENSITIVE_KEYS = frozenset({
     'secrets.xeno_canto_api_key',
     'secrets.ebird_api_key',
     'mcp.token',
+    'storage.recordings_mirror.sftp_password',
+    'storage.recordings_mirror.sftp_key_passphrase',
 })
 
 # Только админ (при двух паролях): оператор не может менять даже реальными значениями
@@ -64,6 +66,7 @@ _CONFIG_TOP_LEVEL_MAPPING_KEYS = frozenset({
     'processor',
     'secrets',
     'species',
+    'storage',
     'triggers',
     'video',
     'weather',

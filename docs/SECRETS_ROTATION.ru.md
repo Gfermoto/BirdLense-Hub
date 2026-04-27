@@ -38,6 +38,8 @@
 | **`HA_TOKEN`** | Long-lived token Home Assistant | Погода/кормушки до обновления не работают. |
 | **`OPENWEATHER_API_KEY`** | Виджет погоды | Ошибки виджета до замены ключа. |
 | **`GO2RTC_URL`** | Не секрет; часто меняется вместе с сетью | Неверный URL — нет стрима. |
+| **`BIRDLENSE_RECORDINGS_MIRROR_SFTP_PASSWORD`** | Зеркало записей на NAS по SFTP (#350) | Пока не задан — выгрузка на NAS не удаётся; локальная запись работает. |
+| **`BIRDLENSE_RECORDINGS_MIRROR_SFTP_KEY_PASSPHRASE`** | Пасфраза к SSH-ключу зеркала | То же при аутентификации по ключу. |
 
 ### В настройках / YAML (предпочитать env)
 

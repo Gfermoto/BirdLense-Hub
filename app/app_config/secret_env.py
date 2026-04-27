@@ -33,6 +33,8 @@ _SECRET_ENV_MAPPINGS: tuple[tuple[str, str], ...] = (
     ("BIRDLENSE_MCP_TOKEN", "mcp.token"),
     ("BIRDLENSE_VAPID_PRIVATE_KEY", "web_push.vapid_private_key"),
     ("BIRDLENSE_REDIS_URL", "performance.redis_url"),
+    ("BIRDLENSE_RECORDINGS_MIRROR_SFTP_PASSWORD", "storage.recordings_mirror.sftp_password"),
+    ("BIRDLENSE_RECORDINGS_MIRROR_SFTP_KEY_PASSPHRASE", "storage.recordings_mirror.sftp_key_passphrase"),
 )
 
 

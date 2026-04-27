@@ -548,6 +548,25 @@ ebird:
   # Гармонизация Gray/Grey и «Scientific (Common)» → общее имя уже в detection.species_mapping.
   species_mapping: {}
 
+# Зеркалирование записей на SFTP (NAS): после сохранения сессии процессор копирует каталог на сервер.
+# Пути в БД остаются локальными (data/recordings/...); веб по-прежнему читает файлы с диска хаба.
+# Пароль/пасфраза ключа — только через env (см. docs/CONFIGURATION.md). Альтернатива: смонтировать NAS в DATA_DIR.
+storage:
+  recordings_mirror:
+    enabled: false
+    protocol: sftp
+    host: ""
+    port: 22
+    username: ""
+    remote_base_path: "/birdlense/recordings"
+    ssh_private_key_path: ""
+    max_concurrent_uploads: 2
+    upload_retries: 3
+    retry_backoff_seconds: 5
+    strict_host_key: true
+    known_hosts_path: ""
+    delete_local_after_success: false
+
 # Каталог видов: строго соответствует классам EU классификатора (best.pt, HF birdlense-birds-eu) + Rodent.
 # class_names.txt сгенерирован из best.pt через scripts/datasets/dump_classifier_allowlist.py.
 species:
