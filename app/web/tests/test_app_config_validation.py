@@ -13,6 +13,7 @@ def test_validate_merged_config_nested_sections_ok():
     merged = {
         "mqtt": {"broker": "localhost"},
         "processor": {"detection_device": "cpu"},
+        "storage": {"recordings_mirror": {"enabled": False}},
     }
     assert validate_merged_config(merged) == []
 

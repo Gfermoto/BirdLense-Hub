@@ -38,6 +38,8 @@
 | **`HA_TOKEN`** | Long-lived token Home Assistant | Погода/кормушки до обновления не работают. |
 | **`OPENWEATHER_API_KEY`** | Виджет погоды | Ошибки виджета до замены ключа. |
 | **`GO2RTC_URL`** | Не секрет; часто меняется вместе с сетью | Неверный URL — нет стрима. |
+| **`BIRDLENSE_RECORDINGS_MIRROR_SFTP_PASSWORD`** | Опциональное **рантайм**-перекрытие пароля зеркала из UI/YAML (#350) | Если не задан — берётся значение из настроек / `user_config.yaml`. |
+| **`BIRDLENSE_RECORDINGS_MIRROR_SFTP_KEY_PASSPHRASE`** | Опциональное перекрытие пасфразы ключа | Тот же принцип. |
 
 ### В настройках / YAML (предпочитать env)
 
