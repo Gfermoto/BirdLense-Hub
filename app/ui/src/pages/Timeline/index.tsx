@@ -346,10 +346,7 @@ export function TimelinePage() {
         label={t('timeline.modeFavorites')}
         aria-pressed={isFavoritesMode && !isReviewMode}
         onClick={() => {
-          const next = new URLSearchParams(searchParams);
-          next.delete('review');
-          next.set('favorites', '1');
-          setSearchParams(next, { replace: true });
+          navigate('/favorites');
         }}
       />
       {showReviewModeEntry ? (
