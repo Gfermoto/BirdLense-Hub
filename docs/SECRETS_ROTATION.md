@@ -38,6 +38,8 @@ Operational guide for self-hosted BirdLense Hub: where secrets live, how to rota
 | **`HA_TOKEN`** | Home Assistant long-lived token | Weather/feeder integrations break until updated. |
 | **`OPENWEATHER_API_KEY`** | Weather widget | Widget errors until key replaced. |
 | **`GO2RTC_URL`** | Not a secret; often paired with network changes | Streams break if URL wrong. |
+| **`BIRDLENSE_RECORDINGS_MIRROR_SFTP_PASSWORD`** | Optional **runtime** override of mirror password from UI/YAML (#350) | If unset, mirror uses value from Settings / `user_config.yaml`. |
+| **`BIRDLENSE_RECORDINGS_MIRROR_SFTP_KEY_PASSPHRASE`** | Optional **runtime** override of mirror key passphrase | Same pattern as password. |
 
 ### In Settings / YAML (prefer env when possible)
 

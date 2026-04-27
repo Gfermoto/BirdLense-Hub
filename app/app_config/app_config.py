@@ -36,6 +36,8 @@ SENSITIVE_KEYS = frozenset({
     'secrets.xeno_canto_api_key',
     'secrets.ebird_api_key',
     'mcp.token',
+    'storage.recordings_mirror.sftp_password',
+    'storage.recordings_mirror.sftp_key_passphrase',
 })
 
 # Только админ (при двух паролях): оператор не может менять даже реальными значениями
@@ -44,6 +46,7 @@ CONTRIBUTOR_ADMIN_ONLY_PATCH_PATHS = frozenset({
     'general.contributor_password',
     'general.session_idle_minutes',
     'mcp.token',
+    'storage.recordings_mirror',
 })
 MASK_PLACEHOLDER = '***'
 
@@ -64,6 +67,7 @@ _CONFIG_TOP_LEVEL_MAPPING_KEYS = frozenset({
     'processor',
     'secrets',
     'species',
+    'storage',
     'triggers',
     'video',
     'weather',

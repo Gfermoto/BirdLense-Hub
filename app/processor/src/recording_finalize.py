@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from collections import Counter
 from datetime import datetime
@@ -26,6 +27,7 @@ from recording_post_fusion_rejections import collect_post_fusion_rejections
 from recording_scales_evidence import estimate_recording_scales_delta
 from recording_session_cleanup import remove_session_dir
 from recording_video_response import response_video_id
+from recordings_remote_mirror import schedule_recordings_session_mirror
 from recording_spectrogram import maybe_generate_recording_spectrogram
 from spectrogram import generate_spectrogram
 
@@ -280,3 +282,9 @@ def finalize_motion_recording(
             )
         else:
             remove_session_dir(output_path_physical, reason="empty")
+    # Фоновая копия на SFTP/NAS (#350): не блокирует finalize; только если каталог ещё на диске.
+    try:
+        if os.path.isdir(output_path_physical):
+            schedule_recordings_session_mirror(output_path_physical)
+    except Exception as e:
+        logging.debug("recordings mirror schedule skipped: %s", e)

@@ -257,6 +257,82 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Batch size for retention API; YAML + read-only summary on Library retention card.",
         "next_step": "Keep Library card / YAML.",
     },
+    # SFTP mirror for recordings (#350): Library → Storage / System storage card, not Settings forms.
+    "storage.recordings_mirror.enabled": {
+        "category": "library-ui",
+        "reason": "Edited in Library → Storage (NAS mirror card); processor reads after restart.",
+        "next_step": "Keep Library/System as single UX entry.",
+    },
+    "storage.recordings_mirror.protocol": {
+        "category": "library-ui",
+        "reason": "SFTP-only today; exposed on NAS mirror card, not Settings.",
+        "next_step": "Keep Library/System card.",
+    },
+    "storage.recordings_mirror.host": {
+        "category": "library-ui",
+        "reason": "Mirror host on NAS mirror card.",
+        "next_step": "Keep Library/System card.",
+    },
+    "storage.recordings_mirror.port": {
+        "category": "library-ui",
+        "reason": "SFTP port on NAS mirror card.",
+        "next_step": "Keep Library/System card.",
+    },
+    "storage.recordings_mirror.username": {
+        "category": "library-ui",
+        "reason": "SFTP user on NAS mirror card.",
+        "next_step": "Keep Library/System card.",
+    },
+    "storage.recordings_mirror.sftp_password": {
+        "category": "library-ui",
+        "reason": "Secret on NAS mirror card; masked in settings API like other hub secrets.",
+        "next_step": "Keep Library/System card.",
+    },
+    "storage.recordings_mirror.sftp_key_passphrase": {
+        "category": "library-ui",
+        "reason": "Key passphrase on NAS mirror card.",
+        "next_step": "Keep Library/System card.",
+    },
+    "storage.recordings_mirror.remote_base_path": {
+        "category": "library-ui",
+        "reason": "Remote base path on NAS mirror card.",
+        "next_step": "Keep Library/System card.",
+    },
+    "storage.recordings_mirror.ssh_private_key_path": {
+        "category": "library-ui",
+        "reason": "Optional key path on NAS mirror card.",
+        "next_step": "Keep Library/System card.",
+    },
+    "storage.recordings_mirror.max_concurrent_uploads": {
+        "category": "library-ui",
+        "reason": "Processor concurrency; advanced on NAS mirror card / YAML.",
+        "next_step": "Optional Settings advanced later.",
+    },
+    "storage.recordings_mirror.upload_retries": {
+        "category": "library-ui",
+        "reason": "Retry count on NAS mirror card / YAML.",
+        "next_step": "Keep Library/System card.",
+    },
+    "storage.recordings_mirror.retry_backoff_seconds": {
+        "category": "library-ui",
+        "reason": "Backoff on NAS mirror card / YAML.",
+        "next_step": "Keep Library/System card.",
+    },
+    "storage.recordings_mirror.strict_host_key": {
+        "category": "library-ui",
+        "reason": "Host key policy toggle on NAS mirror card.",
+        "next_step": "Keep Library/System card.",
+    },
+    "storage.recordings_mirror.known_hosts_path": {
+        "category": "library-ui",
+        "reason": "Optional known_hosts path on NAS mirror card.",
+        "next_step": "Keep Library/System card.",
+    },
+    "storage.recordings_mirror.delete_local_after_success": {
+        "category": "library-ui",
+        "reason": "Expert destructive option on NAS mirror card.",
+        "next_step": "Keep expert-only on Library/System card.",
+    },
     "ebird.protocol": {
         "category": "planned-ui",
         "reason": "Protocol is currently fixed in product flow.",
