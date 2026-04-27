@@ -979,6 +979,127 @@ class TestTimeline:
         assert r_all.status_code == 200
         assert len(r_all.json) >= 3
 
+    def test_favorites_by_species_groups_active_favorite_videos(self, app, client):
+        """Catalog view: all favorite videos grouped by detected species; no calendar required."""
+        from datetime import datetime, timezone
+
+        from models import Species, Video, VideoSpecies, db
+        from services.http_response_cache import bust_response_caches
+
+        with app.app_context():
+            sp_a = Species(name=f"Fav Catalog A {id(app)}", image_url="data/images/a.jpg")
+            sp_b = Species(name=f"Fav Catalog B {id(app)}", image_url="data/images/b.jpg")
+            db.session.add_all([sp_a, sp_b])
+            db.session.flush()
+
+            v_a_new = Video(
+                processor_version="test",
+                start_time=datetime(2026, 4, 10, 15, 0, 0, tzinfo=timezone.utc),
+                end_time=datetime(2026, 4, 10, 15, 0, 20, tzinfo=timezone.utc),
+                favorite=True,
+                video_path=f"data/recordings/2026/04/10/150000/fav_a_new_{id(app)}.mp4",
+            )
+            v_a_old = Video(
+                processor_version="test",
+                start_time=datetime(2026, 4, 9, 9, 0, 0, tzinfo=timezone.utc),
+                end_time=datetime(2026, 4, 9, 9, 0, 10, tzinfo=timezone.utc),
+                favorite=True,
+                video_path=f"data/recordings/2026/04/09/090000/fav_a_old_{id(app)}.mp4",
+            )
+            v_b = Video(
+                processor_version="test",
+                start_time=datetime(2026, 4, 8, 8, 0, 0, tzinfo=timezone.utc),
+                end_time=datetime(2026, 4, 8, 8, 0, 30, tzinfo=timezone.utc),
+                favorite=True,
+                video_path=f"data/recordings/2026/04/08/080000/fav_b_{id(app)}.mp4",
+            )
+            v_unlinked = Video(
+                processor_version="test",
+                start_time=datetime(2026, 4, 7, 7, 0, 0, tzinfo=timezone.utc),
+                end_time=datetime(2026, 4, 7, 7, 0, 30, tzinfo=timezone.utc),
+                favorite=True,
+                video_path=f"data/recordings/2026/04/07/070000/fav_unlinked_{id(app)}.mp4",
+            )
+            v_deleted = Video(
+                processor_version="test",
+                start_time=datetime(2026, 4, 6, 7, 0, 0, tzinfo=timezone.utc),
+                end_time=datetime(2026, 4, 6, 7, 0, 30, tzinfo=timezone.utc),
+                favorite=True,
+                deleted_at=datetime(2026, 4, 6, 8, 0, 0, tzinfo=timezone.utc),
+                video_path=f"data/recordings/2026/04/06/070000/fav_deleted_{id(app)}.mp4",
+            )
+            v_not_fav = Video(
+                processor_version="test",
+                start_time=datetime(2026, 4, 5, 7, 0, 0, tzinfo=timezone.utc),
+                end_time=datetime(2026, 4, 5, 7, 0, 30, tzinfo=timezone.utc),
+                favorite=False,
+                video_path=f"data/recordings/2026/04/05/070000/not_fav_{id(app)}.mp4",
+            )
+            db.session.add_all([v_a_new, v_a_old, v_b, v_unlinked, v_deleted, v_not_fav])
+            db.session.flush()
+            db.session.add_all(
+                [
+                    VideoSpecies(
+                        video=v_a_new,
+                        species=sp_a,
+                        start_time=0,
+                        end_time=4,
+                        confidence=0.91,
+                        source="video",
+                    ),
+                    VideoSpecies(
+                        video=v_a_old,
+                        species=sp_a,
+                        start_time=0,
+                        end_time=3,
+                        confidence=0.82,
+                        source="video",
+                    ),
+                    VideoSpecies(
+                        video=v_b,
+                        species=sp_b,
+                        start_time=0,
+                        end_time=5,
+                        confidence=0.88,
+                        source="video",
+                    ),
+                    VideoSpecies(
+                        video=v_not_fav,
+                        species=sp_a,
+                        start_time=0,
+                        end_time=3,
+                        confidence=0.99,
+                        source="video",
+                    ),
+                ]
+            )
+            db.session.commit()
+            a_name = sp_a.name
+            b_name = sp_b.name
+            a_new_id = v_a_new.id
+            a_old_id = v_a_old.id
+            deleted_id = v_deleted.id
+            not_fav_id = v_not_fav.id
+
+        bust_response_caches()
+        r = client.get("/api/ui/favorites/by-species")
+        assert r.status_code == 200
+        body = r.json
+        assert body["total_videos"] == 4
+        assert body["total_species"] == 2
+
+        groups = {group["species"]["name"]: group for group in body["groups"]}
+        assert list(groups)[:2] == [a_name, b_name]
+        assert [video["id"] for video in groups[a_name]["videos"]] == [a_new_id, a_old_id]
+        assert groups[a_name]["latest_start_time"].startswith("2026-04-10T15:00:00")
+        assert groups[a_name]["videos"][0]["species"][0]["confidence"] == 0.91
+        assert groups[a_name]["species"]["image_url"] == "data/images/a.jpg"
+        assert all(not video["deleted"] for group in body["groups"] for video in group["videos"])
+        assert deleted_id not in [video["id"] for group in body["groups"] for video in group["videos"]]
+        assert not_fav_id not in [video["id"] for group in body["groups"] for video in group["videos"]]
+        assert body["unclassified"]["count"] == 1
+        assert body["unclassified"]["videos"][0]["species"] == []
+
 
 class TestOverview:
     """Overview API with lastDetection."""

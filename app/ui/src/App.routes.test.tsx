@@ -44,6 +44,10 @@ vi.mock('./pages/Timeline', () => ({
   default: () => <div>timeline-page</div>,
 }));
 
+vi.mock('./pages/Favorites', () => ({
+  default: () => <div>favorites-page</div>,
+}));
+
 vi.mock('./pages/VideoDetails', () => ({
   VideoDetails: () => <div>video-details-page</div>,
 }));
@@ -104,5 +108,13 @@ describe('App species routes', () => {
     render(<App />);
 
     expect(await screen.findByText('species-directory-page')).toBeInTheDocument();
+  });
+
+  it('renders favorites catalog on /favorites', async () => {
+    window.history.pushState({}, '', '/favorites');
+
+    render(<App />);
+
+    expect(await screen.findByText('favorites-page')).toBeInTheDocument();
   });
 });

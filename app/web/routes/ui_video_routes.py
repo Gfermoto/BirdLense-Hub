@@ -17,6 +17,7 @@ from services.dataset_export_service import (
     move_crop_on_species_correction,
 )
 from services.detection_crop_service import VIDEO_PATH_SAFE_RE
+from services.favorites_catalog_service import build_favorites_by_species_payload
 from services.http_response_cache import bust_response_caches
 from services.video_neighbors_service import (
     VideoNeighborsParamError,
@@ -32,10 +33,21 @@ from services.visit_processor import VisitProcessor
 import util as util_mod
 from util import ensure_utc
 
-from routes.ui_route_constants import CACHE_DETECTION_FRAMES_SEC
+from routes.ui_route_constants import CACHE_DETECTION_FRAMES_SEC, CACHE_FAVORITES_CATALOG_SEC
 
 
 def register_ui_video_routes(app):
+    @app.route("/api/ui/favorites/by-species", methods=["GET"])
+    def get_favorites_by_species():
+        """Каталог избранных роликов без календаря: группы по виду + нераспознанные."""
+        ck = "favorites:by-species:v1"
+        hit, cached = cache_get(ck)
+        if hit:
+            return cached, 200
+        body = build_favorites_by_species_payload(db.session)
+        cache_set(ck, body, CACHE_FAVORITES_CATALOG_SEC)
+        return body, 200
+
     @app.route("/api/ui/videos/<int:video_id>", methods=["GET"])
     def get_video_details(video_id):
         video = (
