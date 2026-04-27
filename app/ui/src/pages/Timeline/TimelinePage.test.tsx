@@ -39,7 +39,9 @@ vi.mock('../../api/video', async (importOriginal) => {
 
 vi.mock('../../api/speciesOverviewDetections', async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import('../../api/speciesOverviewDetections')>();
+    await importOriginal<
+      typeof import('../../api/speciesOverviewDetections')
+    >();
   return {
     ...actual,
     fetchOverviewData: vi.fn().mockResolvedValue({

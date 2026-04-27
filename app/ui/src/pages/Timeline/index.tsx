@@ -181,12 +181,11 @@ export function TimelinePage() {
     ),
     queryFn: () => {
       if (!selectedDate) return [];
-      const base =
-        filterHour !== null ? { hour: filterHour } : { timeOfDay };
-      return fetchTimelineForObserverDate(
-        selectedDate.format('YYYY-MM-DD'),
-        { ...base, favoritesOnly: isFavoritesMode },
-      );
+      const base = filterHour !== null ? { hour: filterHour } : { timeOfDay };
+      return fetchTimelineForObserverDate(selectedDate.format('YYYY-MM-DD'), {
+        ...base,
+        favoritesOnly: isFavoritesMode,
+      });
     },
     enabled: !isReviewMode,
   });
@@ -409,7 +408,9 @@ export function TimelinePage() {
             color="text.secondary"
             sx={{ mb: showReportsAndSharingHint ? 1 : 2 }}
           >
-            {isFavoritesMode ? t('timeline.favoritesIntro') : t('timeline.intro')}
+            {isFavoritesMode
+              ? t('timeline.favoritesIntro')
+              : t('timeline.intro')}
           </Typography>
           {showReportsAndSharingHint ? (
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

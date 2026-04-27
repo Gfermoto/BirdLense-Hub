@@ -59,6 +59,7 @@ export function LibraryCardShell({
           <Box sx={{ minWidth: 0 }}>
             {eyebrow ? (
               <Typography
+                component="p"
                 variant="subtitle2"
                 sx={{ mb: 0.5, color: '#A7F3D0', fontWeight: 700 }}
               >
@@ -72,7 +73,9 @@ export function LibraryCardShell({
               flexWrap="wrap"
               useFlexGap
             >
-              <Typography variant="h6">{title}</Typography>
+              <Typography component="h3" variant="h6">
+                {title}
+              </Typography>
               {statusLabel ? (
                 <Chip
                   size="small"
@@ -82,10 +85,7 @@ export function LibraryCardShell({
               ) : null}
             </Stack>
             {description ? (
-              <Typography
-                variant="body2"
-                sx={{ mt: 0.75, color: '#E2E8F0' }}
-              >
+              <Typography variant="body2" sx={{ mt: 0.75, color: '#E2E8F0' }}>
                 {description}
               </Typography>
             ) : null}

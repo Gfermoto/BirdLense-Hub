@@ -1,0 +1,12 @@
+README.md
+app/ui/package-lock.json
+app/ui/package.json
+app/ui/src/App.routes.test.tsx
+app/ui/src/App.tsx
+[truncated: showing 10/45 lines, 35 omitted]
+app/ui/src/pages/Timeline/index.tsx
+app/ui/src/pages/Unknowns/index.tsx
+app/ui/src/pages/VideoDetails/DetectedSpecies.tsx
+app/ui/src/pages/VideoDetails/VideoInfo.tsx
+app/ui/src/pages/VideoDetails/index.tsx
+[lean-ctx: 521→102 tok, -80%]

@@ -189,7 +189,12 @@ export function DatabaseMaintenanceCard() {
 
         {isAnyLoading && <LinearProgress sx={{ mb: 2 }} />}
         {error && (
-          <Alert severity="error" variant="outlined" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          <Alert
+            severity="error"
+            variant="outlined"
+            sx={{ mb: 2 }}
+            onClose={() => setError(null)}
+          >
             {error}
           </Alert>
         )}
@@ -231,7 +236,12 @@ export function DatabaseMaintenanceCard() {
               </Button>
             </Stack>
             <Collapse in={!!scanResult}>
-              <Alert severity="success" variant="outlined" icon={false} sx={{ py: 0.5, mt: 1 }}>
+              <Alert
+                severity="success"
+                variant="outlined"
+                icon={false}
+                sx={{ py: 0.5, mt: 1 }}
+              >
                 {scanResult?.message}
                 {typeof scanResult?.imported === 'number' && (
                   <Chip

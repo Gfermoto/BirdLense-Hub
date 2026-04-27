@@ -1,0 +1,1 @@
+gitleaks not installed locally; CI uses gitleaks/gitleaks-action@v2

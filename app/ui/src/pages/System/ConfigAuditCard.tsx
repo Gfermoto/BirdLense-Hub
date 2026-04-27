@@ -39,7 +39,11 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
 
   if (isLoading) return <LinearProgress />;
   if (error || !data)
-    return <Alert severity="warning" variant="outlined">{t('system.configAuditLoadError')}</Alert>;
+    return (
+      <Alert severity="warning" variant="outlined">
+        {t('system.configAuditLoadError')}
+      </Alert>
+    );
   const mappingOk = data.mapping?.gray_to_grey_ok ?? false;
   const telegramPhoto = data.telegram?.send_photo ?? false;
   const deprecatedKeys = Array.isArray(data.deprecated_keys_present)
@@ -87,7 +91,8 @@ export function ConfigAuditCard({ simple = false }: { simple?: boolean }) {
               component="div"
               sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}
             >
-              {t('system.configAuditScalesSource')}: {scalesSourceLabel(t, sm.source)}
+              {t('system.configAuditScalesSource')}:{' '}
+              {scalesSourceLabel(t, sm.source)}
               {' · '}
               {t('system.configAuditScalesBroker')}:{' '}
               {sm.mqtt_broker_configured === true

@@ -74,6 +74,7 @@ app/e2e/test-results/
 # Coverage
 app/htmlcov/
 app/.coverage
+app/ui/coverage/
 
 # CodeQL локально: БД, SARIF, скачанный CLI (см. scripts/codeql-local.sh)
 .tools/

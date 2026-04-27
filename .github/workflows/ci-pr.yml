@@ -132,6 +132,7 @@ jobs:
         working-directory: app/ui
         run: |
           npm run test -- --run
+          npm run coverage
           npm run typecheck
           npm run lint
           npm run build

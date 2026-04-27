@@ -263,9 +263,15 @@ export function ProcessorBirdnetExtendedBlock({ form }: Props) {
                   value={field.state.value ?? 'info'}
                   onChange={(e) => field.handleChange(String(e.target.value))}
                 >
-                  <MenuItem value="off">{t('settings.processorBirdnetObsLevelOff')}</MenuItem>
-                  <MenuItem value="info">{t('settings.processorBirdnetObsLevelInfo')}</MenuItem>
-                  <MenuItem value="debug">{t('settings.processorBirdnetObsLevelDebug')}</MenuItem>
+                  <MenuItem value="off">
+                    {t('settings.processorBirdnetObsLevelOff')}
+                  </MenuItem>
+                  <MenuItem value="info">
+                    {t('settings.processorBirdnetObsLevelInfo')}
+                  </MenuItem>
+                  <MenuItem value="debug">
+                    {t('settings.processorBirdnetObsLevelDebug')}
+                  </MenuItem>
                 </Select>
               </FormControl>
             )}

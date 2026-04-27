@@ -152,7 +152,10 @@ export function ProcessorFrigateFusionBlock({ form }: Props) {
                 })}
               </Typography>
               <Typography variant="body2" component="div">
-                <Link component={RouterLink} to="/system#recognition-improvement">
+                <Link
+                  component={RouterLink}
+                  to="/system#recognition-improvement"
+                >
                   {t('settings.recognitionImprovementOpenSystem')}
                 </Link>
               </Typography>

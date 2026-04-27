@@ -20,7 +20,11 @@ import Star from '@mui/icons-material/Star';
 import VideoCall from '@mui/icons-material/VideoCall';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
-import { fetchFavoritesBySpecies, type FavoriteSpeciesGroup, type FavoriteVideo } from '../../api/favorites';
+import {
+  fetchFavoritesBySpecies,
+  type FavoriteSpeciesGroup,
+  type FavoriteVideo,
+} from '../../api/favorites';
 import { queryKeys } from '../../api/queryKeys';
 import { formatLocalDateTime } from '../../util';
 import { formatDuration } from '../../utils/timeUtils';
@@ -36,7 +40,8 @@ function FavoriteVideoCard({ video }: { video: FavoriteVideo }) {
   const { t } = useTranslation();
   const location = useLocation();
   const primarySpecies = video.species[0];
-  const speciesLabel = primarySpecies?.name ?? t('favoritesPage.unclassifiedSpecies');
+  const speciesLabel =
+    primarySpecies?.name ?? t('favoritesPage.unclassifiedSpecies');
   const duration =
     video.duration_seconds > 0 ? formatDuration(video.duration_seconds) : null;
 
@@ -177,7 +182,9 @@ export function FavoritesPage() {
     const query = search.trim().toLowerCase();
     const source = data?.groups ?? [];
     const filtered = query
-      ? source.filter((group) => group.species.name.toLowerCase().includes(query))
+      ? source.filter((group) =>
+          group.species.name.toLowerCase().includes(query),
+        )
       : source;
     return [...filtered].sort((a, b) => {
       if (sortMode === 'name') {
@@ -263,7 +270,9 @@ export function FavoritesPage() {
               size="small"
               sx={{ minWidth: { md: 220 } }}
             >
-              <MenuItem value="recent">{t('favoritesPage.sortRecent')}</MenuItem>
+              <MenuItem value="recent">
+                {t('favoritesPage.sortRecent')}
+              </MenuItem>
               <MenuItem value="name">{t('favoritesPage.sortName')}</MenuItem>
             </TextField>
           </Stack>
@@ -274,7 +283,11 @@ export function FavoritesPage() {
             {t('favoritesPage.empty')}
           </Alert>
         ) : (
-          <Stack direction={{ xs: 'column', lg: 'row' }} spacing={3} alignItems="flex-start">
+          <Stack
+            direction={{ xs: 'column', lg: 'row' }}
+            spacing={3}
+            alignItems="flex-start"
+          >
             <Paper
               variant="outlined"
               sx={{
@@ -284,7 +297,11 @@ export function FavoritesPage() {
                 top: { lg: 16 },
               }}
             >
-              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                gutterBottom
+              >
                 {t('favoritesPage.speciesIndex')}
               </Typography>
               <Stack spacing={0.5}>
@@ -296,7 +313,14 @@ export function FavoritesPage() {
                     sx={{ justifyContent: 'space-between' }}
                     endIcon={<Chip size="small" label={group.count} />}
                   >
-                    <Box component="span" sx={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <Box
+                      component="span"
+                      sx={{
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
                       {group.species.name}
                     </Box>
                   </Button>

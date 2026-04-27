@@ -42,9 +42,15 @@ interface RetentionRunResponse {
   mode?: string;
 }
 
-type FormData = Omit<RetentionConfig, 'last_run' | 'last_deleted_count' | 'last_freed_bytes' | 'last_mode'>;
+type FormData = Omit<
+  RetentionConfig,
+  'last_run' | 'last_deleted_count' | 'last_freed_bytes' | 'last_mode'
+>;
 
-function retentionModeLabel(t: (key: string) => string, mode: RetentionMode | string): string {
+function retentionModeLabel(
+  t: (key: string) => string,
+  mode: RetentionMode | string,
+): string {
   const map: Record<RetentionMode, string> = {
     cascade: 'system.retentionModeOptionCascade',
     files_only: 'system.retentionModeOptionFilesOnly',
@@ -142,9 +148,7 @@ export function RetentionPolicy() {
   }
 
   if (configQuery.error || !configQuery.data) {
-    return (
-      <Alert severity="error">{t('system.retentionConfigError')}</Alert>
-    );
+    return <Alert severity="error">{t('system.retentionConfigError')}</Alert>;
   }
 
   const cfg = configQuery.data;
@@ -159,7 +163,11 @@ export function RetentionPolicy() {
   const nullableNumber = (value: string): number | null =>
     value === '' ? null : Number(value);
 
-  const boundedNumber = (value: string, fallback: number, min: number): number =>
+  const boundedNumber = (
+    value: string,
+    fallback: number,
+    min: number,
+  ): number =>
     Math.max(min, Number.isFinite(Number(value)) ? Number(value) : fallback);
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -194,9 +202,15 @@ export function RetentionPolicy() {
           disabled={updateMutation.isPending}
           helperText={t('system.retentionModeConfigHelper')}
         >
-          <MenuItem value="cascade">{retentionModeLabel(t, 'cascade')}</MenuItem>
-          <MenuItem value="files_only">{retentionModeLabel(t, 'files_only')}</MenuItem>
-          <MenuItem value="disabled">{retentionModeLabel(t, 'disabled')}</MenuItem>
+          <MenuItem value="cascade">
+            {retentionModeLabel(t, 'cascade')}
+          </MenuItem>
+          <MenuItem value="files_only">
+            {retentionModeLabel(t, 'files_only')}
+          </MenuItem>
+          <MenuItem value="disabled">
+            {retentionModeLabel(t, 'disabled')}
+          </MenuItem>
         </TextField>
 
         <TextField
@@ -234,7 +248,10 @@ export function RetentionPolicy() {
           inputProps={{ min: 0, step: 1 }}
           value={formData?.dataset_max_age_days ?? 0}
           onChange={(e) =>
-            setField('dataset_max_age_days', boundedNumber(e.target.value, 0, 0))
+            setField(
+              'dataset_max_age_days',
+              boundedNumber(e.target.value, 0, 0),
+            )
           }
           fullWidth
           disabled={updateMutation.isPending}
@@ -248,7 +265,10 @@ export function RetentionPolicy() {
           inputProps={{ min: 0, step: 1 }}
           value={formData?.migration_max_age_days ?? 0}
           onChange={(e) =>
-            setField('migration_max_age_days', boundedNumber(e.target.value, 0, 0))
+            setField(
+              'migration_max_age_days',
+              boundedNumber(e.target.value, 0, 0),
+            )
           }
           fullWidth
           disabled={updateMutation.isPending}
@@ -260,13 +280,20 @@ export function RetentionPolicy() {
             control={
               <Switch
                 checked={formData?.protect_favorites ?? true}
-                onChange={(e) => setField('protect_favorites', e.target.checked)}
+                onChange={(e) =>
+                  setField('protect_favorites', e.target.checked)
+                }
                 disabled={updateMutation.isPending}
               />
             }
             label={t('system.retentionProtectFavorites')}
           />
-          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: -0.5, mb: 0.5 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display="block"
+            sx={{ mt: -0.5, mb: 0.5 }}
+          >
             {t('system.retentionProtectFavoritesHelper')}
           </Typography>
         </Box>
@@ -341,23 +368,33 @@ export function RetentionPolicy() {
           disabled={runMutation.isPending}
           helperText={t('system.retentionModeRunHelper')}
         >
-          <MenuItem value="cascade">{retentionModeLabel(t, 'cascade')}</MenuItem>
-          <MenuItem value="files_only">{retentionModeLabel(t, 'files_only')}</MenuItem>
-          <MenuItem value="disabled">{retentionModeLabel(t, 'disabled')}</MenuItem>
+          <MenuItem value="cascade">
+            {retentionModeLabel(t, 'cascade')}
+          </MenuItem>
+          <MenuItem value="files_only">
+            {retentionModeLabel(t, 'files_only')}
+          </MenuItem>
+          <MenuItem value="disabled">
+            {retentionModeLabel(t, 'disabled')}
+          </MenuItem>
         </TextField>
         <Typography variant="subtitle2" gutterBottom>
-          {t('system.retentionPreview')
-            + (runMode === 'disabled' ? ` — ${t('system.retentionDisabled')}` : '')}
+          {t('system.retentionPreview') +
+            (runMode === 'disabled'
+              ? ` — ${t('system.retentionDisabled')}`
+              : '')}
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          {t('system.retentionConfigFromServer')}: {retentionModeLabel(t, cfg.mode)},{' '}
-          {t('system.retentionDays')}:{' '}
+          {t('system.retentionConfigFromServer')}:{' '}
+          {retentionModeLabel(t, cfg.mode)}, {t('system.retentionDays')}:{' '}
           {cfg.days ?? '—'}, {t('system.retentionMaxGb')}: {cfg.max_gb ?? '—'},{' '}
           {t('system.retentionDatasetTtl')}: {cfg.dataset_max_age_days},{' '}
           {t('system.retentionMigrationTtl')}: {cfg.migration_max_age_days},{' '}
           {t('system.retentionProtectFavorites')}:{' '}
-          {cfg.protect_favorites ? t('system.retentionBoolYes') : t('system.retentionBoolNo')},{' '}
-          {t('system.retentionMinAgeHours')}: {cfg.min_age_hours},{' '}
+          {cfg.protect_favorites
+            ? t('system.retentionBoolYes')
+            : t('system.retentionBoolNo')}
+          , {t('system.retentionMinAgeHours')}: {cfg.min_age_hours},{' '}
           {t('system.retentionBatch')}: {cfg.batch_size}
         </Typography>
 
@@ -374,10 +411,16 @@ export function RetentionPolicy() {
           >
             {runMutation.data.message}
             {runMutation.data.deletedCount != null && (
-              <Typography component="span" variant="body2" sx={{ display: 'block', mt: 0.5 }}>
+              <Typography
+                component="span"
+                variant="body2"
+                sx={{ display: 'block', mt: 0.5 }}
+              >
                 {t('system.retentionResultCounts', {
                   n: runMutation.data.deletedCount,
-                  mb: Math.round((runMutation.data.deletedSize ?? 0) / 1024 / 1024),
+                  mb: Math.round(
+                    (runMutation.data.deletedSize ?? 0) / 1024 / 1024,
+                  ),
                 })}
               </Typography>
             )}

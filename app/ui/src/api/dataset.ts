@@ -1,4 +1,4 @@
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, csrfFetch } from './client';
 
 /** Export dataset crops as ZIP. Requires settings access. */
 export const exportDataset = async (params?: {
@@ -55,7 +55,7 @@ export const retroExportDataset = async (
   if (period?.end_date) body.end_date = period.end_date;
   if (onlyManuallyCorrected) body.only_manually_corrected = true;
   if (rebuild) body.rebuild = true;
-  const res = await fetch(`${BASE_API_URL}/dataset/retro-export`, {
+  const res = await csrfFetch(`${BASE_API_URL}/dataset/retro-export`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -79,7 +79,7 @@ export const cleanDataset = async (params?: {
   errors: string[];
   dry_run: boolean;
 }> => {
-  const res = await fetch(`${BASE_API_URL}/dataset/clean`, {
+  const res = await csrfFetch(`${BASE_API_URL}/dataset/clean`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },

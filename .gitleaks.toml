@@ -1,0 +1,48 @@
+title = "BirdLense secret scanning"
+
+[allowlist]
+description = "Generated assets, dependencies, review artifacts, and documentation examples."
+paths = [
+  '''(^|/)node_modules/''',
+  '''(^|/)dist/''',
+  '''(^|/)build/''',
+  '''(^|/)site/''',
+  '''(^|/)\.git/''',
+  '''(^|/)\.review-automation/''',
+  '''(^|/)app/data/''',
+  '''(^|/)datasets/''',
+  '''(^|/)app/ui/src/generated/''',
+  '''package-lock\.json$''',
+]
+regexes = [
+  '''your-[A-Za-z0-9_-]+''',
+  '''<[^>\n]*(secret|token|key)[^>\n]*>''',
+  '''ghp_…''',
+  '''hf_x{6,}''',
+]
+
+[[rules]]
+id = "generic-api-key-assignment"
+description = "Generic API key/token/secret assignment"
+regex = '''(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*['"]?([A-Za-z0-9_./+=:-]{16,})['"]?'''
+secretGroup = 2
+entropy = 3.5
+keywords = ["api_key", "apikey", "secret", "token", "password"]
+
+[[rules]]
+id = "private-key"
+description = "Private key block"
+regex = '''-----BEGIN (RSA|OPENSSH|EC|DSA|PRIVATE) PRIVATE KEY-----'''
+keywords = ["BEGIN", "PRIVATE KEY"]
+
+[[rules]]
+id = "github-token"
+description = "GitHub token"
+regex = '''gh[pousr]_[A-Za-z0-9_]{20,}'''
+keywords = ["ghp_", "gho_", "ghu_", "ghs_", "ghr_"]
+
+[[rules]]
+id = "huggingface-token"
+description = "Hugging Face token"
+regex = '''hf_[A-Za-z0-9]{20,}'''
+keywords = ["hf_"]
