@@ -178,8 +178,8 @@ Analogous work **exists in datasets and papers**; few off-the-shelf solutions ta
 
 | Track | Notes |
 |-------|--------|
-| **Visual WetlandBirds** (2025, [Scientific Data](https://www.nature.com/articles/s41597-025-05516-5), [arXiv](https://arxiv.org/abs/2501.08931), [code](https://github.com/3dperceptionlab/visual-wetlandbirds)) | Video + **7 behavior classes**, frame-level bbox + species; video-classification baselines (MViT, S3D, Swin, ResNet, …) show **moderate** accuracy; domain is **wetland** birds (Spain), not feeders. |
-| **Automated ethograms / event segmentation** | Example: long Kagu nest videos with *feeding*, *walk-in/out*, etc. ([Dryad](https://datadryad.org/dataset/doi:10.5061/dryad.kh18932bb)) — different setup, same **temporal segmentation** problem class. |
+| **Visual WetlandBirds** (2025, [Scientific Data](https://www.nature.com/articles/s41597-025-05516-5), [arXiv](https://arxiv.org/abs/2501.08931), [code](https://github.com/3dperceptionlab/visual-wetlandbirds)) | **178** videos, **858** behavior clips (~**20 s** mean, ~**59 min** total), **13** species, **7** behaviors: Alert, Feeding, Flying, Preening, Resting, Swimming, Walking — **per-frame** bbox + species. Behavior baselines (accuracy): Video ResNet **0.56**, MViT/Swin **0.51**, TimeSFormer **0.49**, S3D **0.29**; species detection (YOLOv9): mAP50 **0.801**. Domain: Spanish wetlands, **not** feeders. Details — [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379). |
+| **Automated ethograms / event segmentation** | **Kagu nest** ([Dryad](https://datadryad.org/dataset/doi:10.5061/dryad.kh18932bb), IJCV [2023](https://doi.org/10.1007/s11263-023-01781-2)): **~253 h** @25 FPS (**~23M** frames), bbox + **5** events (Feeding, Pushing/Throwing leaves, Walk-In/Out) + lighting; untrimmed stream segmentation. See [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379). |
 | **Practical path for the hub** | Often: **track** (bbox) + clip classifier (TSN / SlowFast / VideoMAE), or **weak cues**: scales + detection → “feeding” without full vision; explicit land/leave usually needs labels or rules on tracks / clip boundaries. |
 
 **System initiative (P1):**
