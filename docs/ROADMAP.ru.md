@@ -168,6 +168,18 @@ bash scripts/github-project-add-backlog-consilium.sh
 | 15  | Telegram: SOCKS5h proxy в UI и MTProto (`telebot.apihelper.proxy`)                                                                      | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) ✅ issue закрыт; идея здесь; новый issue при старте | P3, web                                                      |
 | 16  | Heimdall: ручные виджеты / docs                                                                                                          | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) ✅ docs-направление сохранено; runtime-интеграции не обещаем | P3, infra                                                    |
 | 17  | Весы: триггер + дельта + UI видео ✅ ([#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) закрыт); карточка визита ✅ ([#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) закрыт); полевая приёмка — [#243](https://github.com/Gfermoto/BirdLense-Hub/issues/243) (открыт до прогона) | — | P3, web + API                                               |
+| 18  | **ML / видео: распознавание действий** птицы (прилёт, отлёт, кормление у кормушки, питьё, драка и т.п.) — отдельно от классификации вида по кадру | [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) — эпик/исследование; рядом: [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) (запись), [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) (виды). **Research:** [§ ниже](#bird-behavior-ml-research) | P3, processor, ML, research |
+
+
+<h3 id="bird-behavior-ml-research">Research: действия птиц на видео (кратко)</h3>
+
+Похожее **в науке и данных есть**, готового коммерческого «прилёт/отлёт/кормление» именно под **кормушечную камеру** в открытом виде — мало; обычно свой датасет или гибрид сигналов.
+
+| Направление | Комментарий |
+|-------------|-------------|
+| **Visual WetlandBirds** (2025, [Scientific Data](https://www.nature.com/articles/s41597-025-05516-5), [arXiv](https://arxiv.org/abs/2501.08931), [код](https://github.com/3dperceptionlab/visual-wetlandbirds)) | Видео + **7 классов поведения**, разметка по кадрам (bbox) + вид; бейзлайны video-classification (MViT, S3D, Swin, ResNet и др.) — **умеренная** точность; домен — **водно-болотные** птицы (Испания), не feeder. |
+| **Авто-этограммы / сегменты событий** | Пример: длинные ролики гнезда Kagu с метками *feeding*, *walk-in/out* и др. ([Dryad](https://datadryad.org/dataset/doi:10.5061/dryad.kh18932bb)) — другой сценарий, но задача **темпоральной сегментации** близка. |
+| **Практика под хаб** | Часто: **трек** (bbox) + клип-классификатор (TSN / SlowFast / VideoMAE) или **слабые признаки**: весы + детекция → «есть кормление» без полного vision; явные «прилёт/отлёт» требуют разметки или правил по трекам/кадрам на границе клипа. |
 
 
 **Системная инициатива (приоритет P1):**
