@@ -251,7 +251,9 @@ export const SystemMonitor = ({
             <MenuItem value={24}>{t('system.history24h')}</MenuItem>
             <MenuItem value={48}>{t('system.history48h')}</MenuItem>
           </Select>
-          <FormHelperText>{t('system.metricsHistoryWindowHint')}</FormHelperText>
+          <FormHelperText>
+            {t('system.metricsHistoryWindowHint')}
+          </FormHelperText>
         </FormControl>
       </Box>
 
@@ -349,7 +351,9 @@ export const SystemMonitor = ({
                   {t('system.lastDays', { count: 30 })}
                 </MenuItem>
               </Select>
-              <FormHelperText>{t('system.uniqueVisitorsPeriodHint')}</FormHelperText>
+              <FormHelperText>
+                {t('system.uniqueVisitorsPeriodHint')}
+              </FormHelperText>
             </FormControl>
           </Box>
 

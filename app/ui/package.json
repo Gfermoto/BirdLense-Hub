@@ -16,7 +16,9 @@
     "lint": "eslint . --quiet",
     "lint:all": "eslint .",
     "preview": "vite preview",
-    "docs": "node ./node_modules/typedoc/bin/typedoc"
+    "docs": "node ./node_modules/typedoc/bin/typedoc",
+    "coverage": "vitest --run --coverage",
+    "coverage:critical": "vitest --run --coverage --config vitest.coverage-critical.config.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.13.5",
@@ -47,6 +49,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9.15.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",

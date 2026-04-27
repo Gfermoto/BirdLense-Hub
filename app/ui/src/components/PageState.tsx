@@ -24,6 +24,23 @@ export function PageLoadingState({
       }}
     >
       <Stack spacing={1.5} alignItems="center">
+        <Typography
+          component="h1"
+          variant="h6"
+          sx={{
+            border: 0,
+            clip: 'rect(0 0 0 0)',
+            height: 1,
+            margin: -1,
+            overflow: 'hidden',
+            padding: 0,
+            position: 'absolute',
+            whiteSpace: 'nowrap',
+            width: 1,
+          }}
+        >
+          {label || 'Loading'}
+        </Typography>
         <CircularProgress aria-label={label} />
         {label ? (
           <Typography variant="body2" color="text.secondary">

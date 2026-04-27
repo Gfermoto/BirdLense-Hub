@@ -190,7 +190,9 @@ export const StorageOverview = ({ simple = false }: { simple?: boolean }) => {
           size: formatBytes(res.deletedSize),
         }),
       );
-      await queryClient.invalidateQueries({ queryKey: queryKeys.storage.stats });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.storage.stats,
+      });
     } catch (e: unknown) {
       const err = e as {
         response?: { data?: { error?: string } };
@@ -206,25 +208,29 @@ export const StorageOverview = ({ simple = false }: { simple?: boolean }) => {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ mb: 3 }}>
+      <Typography component="h3" variant="h5" sx={{ mb: 3 }}>
         {t('system.storage')}
       </Typography>
       <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', mb: 3 }}>
         <Paper sx={{ p: 2, flex: 1, minWidth: 160 }}>
-          <Typography variant="subtitle2" gutterBottom>
+          <Typography component="p" variant="subtitle2" gutterBottom>
             {t('storage.totalStorage')}
           </Typography>
-          <Typography variant="h5">{formatBytes(totalSize)}</Typography>
+          <Typography component="p" variant="h5">
+            {formatBytes(totalSize)}
+          </Typography>
         </Paper>
         <Paper sx={{ p: 2, flex: 1, minWidth: 160 }}>
-          <Typography variant="subtitle2" gutterBottom>
+          <Typography component="p" variant="subtitle2" gutterBottom>
             {t('storage.totalFiles')}
           </Typography>
-          <Typography variant="h5">{totalFiles}</Typography>
+          <Typography component="p" variant="h5">
+            {totalFiles}
+          </Typography>
         </Paper>
       </Box>
       <Paper sx={{ p: 2 }}>
-        <Typography variant="h6" gutterBottom>
+        <Typography component="h4" variant="h6" gutterBottom>
           {t('storage.usageOverTime')}
         </Typography>
         {chartData.length > 0 ? (
@@ -258,7 +264,7 @@ export const StorageOverview = ({ simple = false }: { simple?: boolean }) => {
       {!simple ? (
         <>
           <Paper sx={{ p: 2, mt: 2 }}>
-            <Typography variant="h6" gutterBottom>
+            <Typography component="h4" variant="h6" gutterBottom>
               {t('storage.dbBackupRestore')}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -306,7 +312,7 @@ export const StorageOverview = ({ simple = false }: { simple?: boolean }) => {
 
           {isAdmin && (
             <Paper sx={{ p: 2, mt: 2 }}>
-              <Typography variant="h6" gutterBottom>
+              <Typography component="h4" variant="h6" gutterBottom>
                 {t('storage.purgeOld')}
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>

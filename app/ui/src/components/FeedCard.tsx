@@ -11,7 +11,11 @@ import ScaleIcon from '@mui/icons-material/Scale';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { dispenseFeed, fetchFeedInfo, postScaleTare } from '../api/birdFoodFeed';
+import {
+  dispenseFeed,
+  fetchFeedInfo,
+  postScaleTare,
+} from '../api/birdFoodFeed';
 import { queryKeys } from '../api/queryKeys';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { formatLocalDateTime } from '../util';
@@ -137,7 +141,7 @@ export const FeedCard = () => {
   return (
     <Paper sx={{ padding: 2, height: '100%' }}>
       <Stack spacing={2}>
-        <Typography variant="h6">
+        <Typography component="h2" variant="h6">
           {feedEnabled ? t('feed.feederControl') : t('feed.feederIdleTitle')}
         </Typography>
         {feedEnabled && (

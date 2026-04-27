@@ -52,7 +52,7 @@ function ErrorFallback({
   const { t } = useTranslation();
   return (
     <Box sx={{ p: 4, textAlign: 'center' }}>
-      <Typography variant="h5" color="error" gutterBottom>
+      <Typography component="h1" variant="h5" color="error" gutterBottom>
         {t('errors.unexpectedError', 'Something went wrong')}
       </Typography>
       {error && (

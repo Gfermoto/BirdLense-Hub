@@ -954,7 +954,12 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
         onClose={() => setCorrectError(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="error" variant="filled" elevation={6} onClose={() => setCorrectError(null)}>
+        <Alert
+          severity="error"
+          variant="filled"
+          elevation={6}
+          onClose={() => setCorrectError(null)}
+        >
           {correctError}
         </Alert>
       </Snackbar>
@@ -980,7 +985,12 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
           ) : undefined
         }
       >
-        <Alert severity="success" variant="filled" elevation={6} onClose={clearSuccessSnackbar}>
+        <Alert
+          severity="success"
+          variant="filled"
+          elevation={6}
+          onClose={clearSuccessSnackbar}
+        >
           {correctSuccess}
         </Alert>
       </Snackbar>

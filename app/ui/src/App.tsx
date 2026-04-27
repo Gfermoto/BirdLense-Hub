@@ -332,6 +332,23 @@ function App() {
                           py: 8,
                         }}
                       >
+                        <Typography
+                          component="h1"
+                          variant="h6"
+                          sx={{
+                            border: 0,
+                            clip: 'rect(0 0 0 0)',
+                            height: 1,
+                            margin: -1,
+                            overflow: 'hidden',
+                            padding: 0,
+                            position: 'absolute',
+                            whiteSpace: 'nowrap',
+                            width: 1,
+                          }}
+                        >
+                          {i18n.t('common.pageLoading')}
+                        </Typography>
                         <CircularProgress
                           aria-label={i18n.t('common.loading')}
                           size={44}
@@ -353,7 +370,10 @@ function App() {
                         />
                         <Route path="/videos/:id" element={<VideoDetails />} />
                         <Route path="/food" element={<FoodManagement />} />
-                        <Route path="/species" element={<MigrationCalendar />} />
+                        <Route
+                          path="/species"
+                          element={<MigrationCalendar />}
+                        />
                         <Route
                           path="/species-directory"
                           element={<SpeciesDirectoryPage />}

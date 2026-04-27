@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, csrfFetch } from './client';
 
 const _downloadYamlResponse = async (url: string, fallbackName: string) => {
   const res = await fetch(url, { credentials: 'include' });
@@ -36,7 +36,7 @@ export const importSettingsYaml = async (
 ): Promise<{ ok: boolean; message?: string }> => {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await fetch(`${BASE_API_URL}/settings/yaml-import`, {
+  const res = await csrfFetch(`${BASE_API_URL}/settings/yaml-import`, {
     method: 'POST',
     credentials: 'include',
     body: formData,
@@ -77,7 +77,7 @@ export const restoreDbBackup = async (
 ): Promise<{ message: string; backup_path?: string }> => {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await fetch(`${BASE_API_URL}/system/db/restore`, {
+  const res = await csrfFetch(`${BASE_API_URL}/system/db/restore`, {
     method: 'POST',
     credentials: 'include',
     body: formData,

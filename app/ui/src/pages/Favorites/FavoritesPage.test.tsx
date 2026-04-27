@@ -78,7 +78,9 @@ describe('FavoritesPage', () => {
   it('renders favorite videos grouped by species', async () => {
     renderPage();
 
-    expect(await screen.findByRole('heading', { name: /favorites/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: /favorites/i }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText('Great Tit').length).toBeGreaterThan(0);
     expect(screen.getByText(/2 favorite recordings/i)).toBeInTheDocument();
     expect(screen.getByText(/1 species/i)).toBeInTheDocument();
