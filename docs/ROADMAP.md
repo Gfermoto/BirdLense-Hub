@@ -170,6 +170,17 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | 15 | Telegram: SOCKS5h proxy in UI and MTProto (`apihelper.proxy`) | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) ✅ issue closed; idea retained here; new issue when work starts | P3, web |
 | 16 | Heimdall manual widgets / docs | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) ✅ docs direction retained; no runtime integration promised | P3, infra |
 | 17 | Scales: trigger + per-clip delta + video UI ✅ ([#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) closed); visit card ✅ ([#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) closed); field acceptance — [#243](https://github.com/Gfermoto/BirdLense-Hub/issues/243) (open until run) | — | P3, web + API |
+| 18 | **ML / video: bird action recognition** (land, leave, feed at feeder, drink, aggression, …) — separate from per-frame species ID | [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) — epic/research tracker; related: [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) (clip capture), [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) (species TL). **Research:** [§ below](#bird-behavior-ml-research) | P3, processor, ML, research |
+
+<h3 id="bird-behavior-ml-research">Research: bird behaviors on video (short)</h3>
+
+Analogous work **exists in datasets and papers**; few off-the-shelf solutions target **feeder cameras** specifically — expect custom labels or hybrid signals.
+
+| Track | Notes |
+|-------|--------|
+| **Visual WetlandBirds** (2025, [Scientific Data](https://www.nature.com/articles/s41597-025-05516-5), [arXiv](https://arxiv.org/abs/2501.08931), [code](https://github.com/3dperceptionlab/visual-wetlandbirds)) | Video + **7 behavior classes**, frame-level bbox + species; video-classification baselines (MViT, S3D, Swin, ResNet, …) show **moderate** accuracy; domain is **wetland** birds (Spain), not feeders. |
+| **Automated ethograms / event segmentation** | Example: long Kagu nest videos with *feeding*, *walk-in/out*, etc. ([Dryad](https://datadryad.org/dataset/doi:10.5061/dryad.kh18932bb)) — different setup, same **temporal segmentation** problem class. |
+| **Practical path for the hub** | Often: **track** (bbox) + clip classifier (TSN / SlowFast / VideoMAE), or **weak cues**: scales + detection → “feeding” without full vision; explicit land/leave usually needs labels or rules on tracks / clip boundaries. |
 
 **System initiative (P1):**
 
