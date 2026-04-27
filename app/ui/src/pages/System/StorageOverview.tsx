@@ -24,6 +24,7 @@ import {
 import { queryKeys } from '../../api/queryKeys';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+import { RecordingsNasMirrorCard } from './RecordingsNasMirrorCard';
 
 type PurgeMode = 'before' | 'range';
 
@@ -249,6 +250,11 @@ export const StorageOverview = ({ simple = false }: { simple?: boolean }) => {
           </Typography>
         )}
       </Paper>
+      {isAdmin ? (
+        <Box sx={{ mt: 2 }}>
+          <RecordingsNasMirrorCard enabled />
+        </Box>
+      ) : null}
       {!simple ? (
         <>
           <Paper sx={{ p: 2, mt: 2 }}>

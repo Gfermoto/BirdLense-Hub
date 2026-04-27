@@ -15,6 +15,9 @@ from services.system_storage_service import (
     nearest_recording_day_response,
     purge_storage_from_body,
 )
+from services.recordings_mirror_test_service import (
+    test_recordings_mirror_connection,
+)
 from util import recordings_dir
 
 
@@ -50,3 +53,9 @@ def register_ui_system_storage_routes(app):
             return err, 400
         body, code = purge_storage_from_body(data)
         return body, code
+
+    @app.route("/api/ui/storage/recordings-mirror/test", methods=["POST"])
+    @require_ui_settings_password
+    def test_recordings_mirror():
+        """Admin: test configured SFTP mirror target from current settings."""
+        return test_recordings_mirror_connection()
