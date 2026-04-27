@@ -93,10 +93,10 @@
 | `BIRDLENSE_MCP_TOKEN` | Переопределяет `mcp.token` |
 | `BIRDLENSE_VAPID_PRIVATE_KEY` | Переопределяет `web_push.vapid_private_key` |
 | `BIRDLENSE_REDIS_URL` | Переопределяет `performance.redis_url` |
-| `BIRDLENSE_RECORDINGS_MIRROR_SFTP_PASSWORD` | Пароль SFTP для `storage.recordings_mirror` (зеркало записей на NAS, issue #350) |
-| `BIRDLENSE_RECORDINGS_MIRROR_SFTP_KEY_PASSPHRASE` | Пасфраза к зашифрованному SSH-ключу, если задан `storage.recordings_mirror.ssh_private_key_path` |
+| `BIRDLENSE_RECORDINGS_MIRROR_SFTP_PASSWORD` | **Опциональное** перекрытие в рантайме для `storage.recordings_mirror.sftp_password` (обычно задаётся в **Библиотека → Хранилище** или в `user_config.yaml`) |
+| `BIRDLENSE_RECORDINGS_MIRROR_SFTP_KEY_PASSPHRASE` | **Опциональное** перекрытие для `storage.recordings_mirror.sftp_key_passphrase` |
 
-**Зеркало записей на NAS / SFTP:** при `storage.recordings_mirror.enabled: true` процессор после финализации в фоне загружает каталог сессии на SFTP. Пути в БД остаются `data/recordings/...`; воспроизведение с локального диска, пока не включён **`delete_local_after_success`** (только для экспертов: без локальных файлов плеер не найдёт ролик). **Альтернатива:** смонтировать NAS в `DATA_DIR` или в `recordings/` — без использования SFTP в коде. См. [INSTALL.ru.md](./INSTALL.ru.md) про пути данных.
+**Зеркало записей на NAS / SFTP:** хост, пользователь, пароль и опции — в UI хаба (**Библиотека → Хранилище**, админ) или в `user_config.yaml`; в API секреты маскируются. После сохранения запрашивается **перезапуск процессора** (флаг), чтобы процесс подхватил конфиг. При `storage.recordings_mirror.enabled: true` процессор после финализации в фоне загружает каталог сессии на SFTP. Пути в БД остаются `data/recordings/...`; воспроизведение с локального диска, пока не включён **`delete_local_after_success`**. **Альтернатива:** смонтировать NAS в `DATA_DIR` или в `recordings/`. См. [INSTALL.ru.md](./INSTALL.ru.md) про пути данных.
 
 **Пароли UI:** при сохранении из веб-интерфейса новые значения в виде plaintext **хешируются (bcrypt)** в `user_config.yaml`; старые записи в plaintext продолжают работать, пока не смените пароль. В env можно передать и plaintext, и уже готовый bcrypt-строковый хеш.
 

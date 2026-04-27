@@ -550,7 +550,8 @@ ebird:
 
 # Зеркалирование записей на SFTP (NAS): после сохранения сессии процессор копирует каталог на сервер.
 # Пути в БД остаются локальными (data/recordings/...); веб по-прежнему читает файлы с диска хаба.
-# Пароль/пасфраза ключа — только через env (см. docs/CONFIGURATION.md). Альтернатива: смонтировать NAS в DATA_DIR.
+# Пароль и пасфраза ключа задаются в UI (Библиотека → Хранилище) или в user_config; в API маскируются.
+# Опционально: BIRDLENSE_RECORDINGS_MIRROR_SFTP_* в env перекрывают YAML в рантайме. Альтернатива без SFTP: смонтировать NAS в DATA_DIR.
 storage:
   recordings_mirror:
     enabled: false
@@ -558,6 +559,8 @@ storage:
     host: ""
     port: 22
     username: ""
+    sftp_password: ""
+    sftp_key_passphrase: ""
     remote_base_path: "/birdlense/recordings"
     ssh_private_key_path: ""
     max_concurrent_uploads: 2

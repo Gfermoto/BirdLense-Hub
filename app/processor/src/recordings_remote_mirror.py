@@ -103,8 +103,9 @@ def _upload_session_impl(session_dir: str) -> None:
 
     if not password and not (key_path and os.path.isfile(key_path)):
         logger.warning(
-            "recordings_mirror: no credentials (set BIRDLENSE_RECORDINGS_MIRROR_SFTP_PASSWORD "
-            "and/or ssh_private_key_path to a key inside the container)",
+            "recordings_mirror: no credentials (set SFTP password in Library → Storage or "
+            "user_config storage.recordings_mirror; optional env BIRDLENSE_RECORDINGS_MIRROR_SFTP_*; "
+            "or ssh_private_key_path to a key inside the container)",
         )
         inc_counter("recordings_mirror_uploads_failed_total")
         return

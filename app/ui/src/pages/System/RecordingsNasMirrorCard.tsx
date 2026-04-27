@@ -13,12 +13,23 @@ import Typography from '@mui/material/Typography';
 import { patchSettings } from '../../api/settingsSession';
 import { queryKeys } from '../../api/queryKeys';
 import { useSettingsQuery } from '../../hooks/useSettingsQueries';
+import { restartProcessor } from '../../api/notificationsProcessor';
+
+const MASK_PLACEHOLDER = '***';
+
+function secretFieldForForm(raw: unknown): string {
+  const s = String(raw ?? '').trim();
+  if (!s || s === MASK_PLACEHOLDER) return '';
+  return s;
+}
 
 type MirrorForm = {
   enabled: boolean;
   host: string;
   port: string;
   username: string;
+  sftp_password: string;
+  sftp_key_passphrase: string;
   remote_base_path: string;
   ssh_private_key_path: string;
   max_concurrent_uploads: string;
@@ -37,6 +48,8 @@ function readMirrorFromSettings(data: unknown): MirrorForm {
     host: String(m.host ?? ''),
     port: String(m.port ?? '22'),
     username: String(m.username ?? ''),
+    sftp_password: secretFieldForForm(m.sftp_password),
+    sftp_key_passphrase: secretFieldForForm(m.sftp_key_passphrase),
     remote_base_path: String(m.remote_base_path ?? '/birdlense/recordings'),
     ssh_private_key_path: String(m.ssh_private_key_path ?? ''),
     max_concurrent_uploads: String(m.max_concurrent_uploads ?? '2'),
@@ -90,27 +103,42 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
       if (!Number.isFinite(backoff)) backoff = 5;
       backoff = Math.min(120, Math.max(1, backoff));
 
+      const recordings_mirror: Record<string, unknown> = {
+        enabled: form.enabled,
+        protocol: 'sftp',
+        host: form.host.trim(),
+        port,
+        username: form.username.trim(),
+        remote_base_path: form.remote_base_path.trim() || '/birdlense/recordings',
+        ssh_private_key_path: form.ssh_private_key_path.trim(),
+        max_concurrent_uploads: maxConc,
+        upload_retries: retries,
+        retry_backoff_seconds: backoff,
+        strict_host_key: form.strict_host_key,
+        known_hosts_path: form.known_hosts_path.trim(),
+        delete_local_after_success: form.delete_local_after_success,
+      };
+      const pw = form.sftp_password.trim();
+      if (pw) {
+        recordings_mirror.sftp_password = pw;
+      }
+      const kph = form.sftp_key_passphrase.trim();
+      if (kph) {
+        recordings_mirror.sftp_key_passphrase = kph;
+      }
+
       await patchSettings({
         storage: {
-          recordings_mirror: {
-            enabled: form.enabled,
-            protocol: 'sftp',
-            host: form.host.trim(),
-            port,
-            username: form.username.trim(),
-            remote_base_path: form.remote_base_path.trim() || '/birdlense/recordings',
-            ssh_private_key_path: form.ssh_private_key_path.trim(),
-            max_concurrent_uploads: maxConc,
-            upload_retries: retries,
-            retry_backoff_seconds: backoff,
-            strict_host_key: form.strict_host_key,
-            known_hosts_path: form.known_hosts_path.trim(),
-            delete_local_after_success: form.delete_local_after_success,
-          },
+          recordings_mirror,
         },
       });
       await queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
-      setMessage(t('storage.nasMirrorSaved'));
+      const restart = await restartProcessor();
+      setMessage(
+        restart.success
+          ? `${t('storage.nasMirrorSaved')} ${t('storage.nasMirrorProcessorRestartRequested')}`
+          : t('storage.nasMirrorSaved'),
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setErrMsg(msg);
@@ -174,6 +202,28 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
           onChange={(e) => setForm((f) => (f ? { ...f, username: e.target.value } : f))}
           fullWidth
           autoComplete="username"
+        />
+        <TextField
+          label={t('storage.nasMirrorSftpPassword')}
+          type="password"
+          value={form.sftp_password}
+          onChange={(e) =>
+            setForm((f) => (f ? { ...f, sftp_password: e.target.value } : f))
+          }
+          fullWidth
+          autoComplete="new-password"
+          helperText={t('storage.nasMirrorSftpPasswordHint')}
+        />
+        <TextField
+          label={t('storage.nasMirrorKeyPassphrase')}
+          type="password"
+          value={form.sftp_key_passphrase}
+          onChange={(e) =>
+            setForm((f) => (f ? { ...f, sftp_key_passphrase: e.target.value } : f))
+          }
+          fullWidth
+          autoComplete="new-password"
+          helperText={t('storage.nasMirrorKeyPassphraseHint')}
         />
         <TextField
           label={t('storage.nasMirrorRemoteBase')}
@@ -247,7 +297,9 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
           label={t('storage.nasMirrorDeleteLocal')}
         />
         <Alert severity="warning">{t('storage.nasMirrorDeleteLocalWarn')}</Alert>
-        <Alert severity="info">{t('storage.nasMirrorSecretsHint')}</Alert>
+        <Alert severity="info" variant="outlined">
+          {t('storage.nasMirrorEnvOverrideHint')}
+        </Alert>
         {message ? (
           <Alert severity="success" onClose={() => setMessage(null)}>
             {message}
