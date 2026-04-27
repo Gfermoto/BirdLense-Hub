@@ -10,10 +10,12 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import axios from 'axios';
 import { patchSettings } from '../../api/settingsSession';
 import { queryKeys } from '../../api/queryKeys';
 import { useSettingsQuery } from '../../hooks/useSettingsQueries';
 import { restartProcessor } from '../../api/notificationsProcessor';
+import { BASE_API_URL } from '../../api/client';
 
 const MASK_PLACEHOLDER = '***';
 
@@ -67,6 +69,7 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
   const { data, isLoading, isError, error } = useSettingsQuery(enabled);
   const [form, setForm] = useState<MirrorForm | null>(null);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [errMsg, setErrMsg] = useState<string | null>(null);
 
@@ -144,6 +147,32 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
       setErrMsg(msg);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const onTestConnection = async () => {
+    setTesting(true);
+    setMessage(null);
+    setErrMsg(null);
+    try {
+      const { data: result } = await axios.post<{ ok?: boolean; error?: string }>(
+        `${BASE_API_URL}/storage/recordings-mirror/test`,
+        {},
+        { withCredentials: true },
+      );
+      if (!result.ok) {
+        throw new Error(result.error || t('storage.nasMirrorTestFailed'));
+      }
+      setMessage(t('storage.nasMirrorTestOk'));
+    } catch (e) {
+      const err = e as { response?: { data?: { error?: string } }; message?: string };
+      setErrMsg(
+        err.response?.data?.error ||
+          err.message ||
+          t('storage.nasMirrorTestFailed'),
+      );
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -311,13 +340,22 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
           </Alert>
         ) : null}
         <Box>
-          <Button
-            variant="contained"
-            onClick={() => void onSave()}
-            disabled={saving || !dirty}
-          >
-            {saving ? t('common.loading') : t('storage.nasMirrorSave')}
-          </Button>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+            <Button
+              variant="contained"
+              onClick={() => void onSave()}
+              disabled={saving || !dirty}
+            >
+              {saving ? t('common.loading') : t('storage.nasMirrorSave')}
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => void onTestConnection()}
+              disabled={testing || dirty}
+            >
+              {testing ? t('common.loading') : t('storage.nasMirrorTest')}
+            </Button>
+          </Stack>
         </Box>
       </Stack>
     </Paper>

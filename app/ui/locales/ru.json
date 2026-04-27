@@ -1080,6 +1080,9 @@
     "nasMirrorKeyPassphraseHint": "Только если ключ зашифрован. Пусто — не менять сохранённую пасфразу.",
     "nasMirrorProcessorRestartRequested": "Запрошен перезапуск процессора — настройки зеркала подхватятся в ближайшем цикле.",
     "nasMirrorEnvOverrideHint": "По желанию: непустые BIRDLENSE_RECORDINGS_MIRROR_SFTP_PASSWORD / …_KEY_PASSPHRASE в app/.env перекрывают значения из YAML только в памяти (см. CONFIGURATION.ru.md).",
+    "nasMirrorTest": "Проверить подключение",
+    "nasMirrorTestOk": "Подключение к SFTP успешно, каталог доступен.",
+    "nasMirrorTestFailed": "Не удалось подключиться к SFTP",
     "nasMirrorSave": "Сохранить настройки зеркала",
     "nasMirrorSaved": "Настройки зеркала сохранены.",
     "nasMirrorLoadError": "Не удалось загрузить настройки"

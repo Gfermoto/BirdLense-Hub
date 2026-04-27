@@ -250,6 +250,11 @@ export const StorageOverview = ({ simple = false }: { simple?: boolean }) => {
           </Typography>
         )}
       </Paper>
+      {isAdmin ? (
+        <Box sx={{ mt: 2 }}>
+          <RecordingsNasMirrorCard enabled />
+        </Box>
+      ) : null}
       {!simple ? (
         <>
           <Paper sx={{ p: 2, mt: 2 }}>
@@ -385,11 +390,6 @@ export const StorageOverview = ({ simple = false }: { simple?: boolean }) => {
               )}
             </Paper>
           )}
-          {isAdmin ? (
-            <Box sx={{ mt: 2 }}>
-              <RecordingsNasMirrorCard enabled />
-            </Box>
-          ) : null}
         </>
       ) : null}
 

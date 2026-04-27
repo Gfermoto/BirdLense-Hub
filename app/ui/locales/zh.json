@@ -1080,6 +1080,9 @@
     "nasMirrorKeyPassphraseHint": "仅在私钥加密时需要。留空表示保留已保存的口令。",
     "nasMirrorProcessorRestartRequested": "已请求重启处理器，镜像设置将在下一轮处理周期生效。",
     "nasMirrorEnvOverrideHint": "可选：app/.env 中非空的 BIRDLENSE_RECORDINGS_MIRROR_SFTP_PASSWORD / …_KEY_PASSPHRASE 仅在运行时覆盖 YAML（见 CONFIGURATION.md）。",
+    "nasMirrorTest": "测试连接",
+    "nasMirrorTestOk": "SFTP 连接正常，远程目录可用。",
+    "nasMirrorTestFailed": "无法连接到 SFTP",
     "nasMirrorSave": "保存镜像设置",
     "nasMirrorSaved": "镜像设置已保存。",
     "nasMirrorLoadError": "无法加载设置"

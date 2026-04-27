@@ -1080,6 +1080,9 @@
     "nasMirrorKeyPassphraseHint": "Only if the private key file is encrypted. Leave blank to keep the current passphrase.",
     "nasMirrorProcessorRestartRequested": "Processor restart was requested so the mirror settings apply on the next processor cycle.",
     "nasMirrorEnvOverrideHint": "Optional: non-empty BIRDLENSE_RECORDINGS_MIRROR_SFTP_PASSWORD / …_KEY_PASSPHRASE in app/.env override these values in memory only (see CONFIGURATION.md).",
+    "nasMirrorTest": "Test connection",
+    "nasMirrorTestOk": "SFTP connection OK; remote directory is available.",
+    "nasMirrorTestFailed": "Could not connect to SFTP",
     "nasMirrorSave": "Save mirror settings",
     "nasMirrorSaved": "Mirror settings saved.",
     "nasMirrorLoadError": "Could not load settings"
