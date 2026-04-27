@@ -293,7 +293,7 @@ def test_notify_detections_logs_decode_failed_reason(app, client, monkeypatch):
     from models import ActivityLog, db
 
     with app.app_context():
-        old_secret = processor_routes_mod.os.environ.get("PROCESSOR_SECRET")
+        prior_processor_value = processor_routes_mod.os.environ.get("PROCESSOR_SECRET")
         processor_routes_mod.os.environ["PROCESSOR_SECRET"] = ""
 
         monkeypatch.setattr(
@@ -338,17 +338,17 @@ def test_notify_detections_logs_decode_failed_reason(app, client, monkeypatch):
         assert payload["telegram_delivery"] == "text"
         assert payload["fallback_reason"] == "decode_failed"
 
-        if old_secret is None:
+        if prior_processor_value is None:
             processor_routes_mod.os.environ.pop("PROCESSOR_SECRET", None)
         else:
-            processor_routes_mod.os.environ["PROCESSOR_SECRET"] = old_secret
+            processor_routes_mod.os.environ["PROCESSOR_SECRET"] = prior_processor_value
 
 
 def test_notify_detections_skips_when_no_preview_context(app, client, monkeypatch):
     from models import ActivityLog, db
 
     with app.app_context():
-        old_secret = processor_routes_mod.os.environ.get("PROCESSOR_SECRET")
+        prior_processor_value = processor_routes_mod.os.environ.get("PROCESSOR_SECRET")
         processor_routes_mod.os.environ["PROCESSOR_SECRET"] = ""
 
         called = []
@@ -385,10 +385,10 @@ def test_notify_detections_skips_when_no_preview_context(app, client, monkeypatc
         assert payload["fallback_reason"] == "no_preview_context"
         assert payload["has_image"] is False
 
-        if old_secret is None:
+        if prior_processor_value is None:
             processor_routes_mod.os.environ.pop("PROCESSOR_SECRET", None)
         else:
-            processor_routes_mod.os.environ["PROCESSOR_SECRET"] = old_secret
+            processor_routes_mod.os.environ["PROCESSOR_SECRET"] = prior_processor_value
 
 
 def test_notify_detections_skips_when_notification_ineligible_even_with_image(app, client, monkeypatch):
@@ -396,7 +396,7 @@ def test_notify_detections_skips_when_notification_ineligible_even_with_image(ap
     import base64
 
     with app.app_context():
-        old_secret = processor_routes_mod.os.environ.get("PROCESSOR_SECRET")
+        prior_processor_value = processor_routes_mod.os.environ.get("PROCESSOR_SECRET")
         processor_routes_mod.os.environ["PROCESSOR_SECRET"] = ""
 
         called = []
@@ -439,10 +439,10 @@ def test_notify_detections_skips_when_notification_ineligible_even_with_image(ap
         assert payload["suppress_reason"] == "review_only_generic"
         assert payload["telegram_delivery"] == "skipped"
 
-        if old_secret is None:
+        if prior_processor_value is None:
             processor_routes_mod.os.environ.pop("PROCESSOR_SECRET", None)
         else:
-            processor_routes_mod.os.environ["PROCESSOR_SECRET"] = old_secret
+            processor_routes_mod.os.environ["PROCESSOR_SECRET"] = prior_processor_value
 
 
 def test_system_observability_includes_delivery_and_fallback_counts(app, client):
