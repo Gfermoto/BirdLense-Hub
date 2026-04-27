@@ -65,3 +65,15 @@ esphome upload esphome/bird-feeder-scale.yaml
 
 - Калибровку **HX711** (`calibrate_linear`) и пины **GPIO** подставьте под свою плату.
 - Сущность температуры HA (`ha_temperature_entity`) замените на свою или временно отключите блок компенсации в лямбде, если HA не используется.
+
+## LD2450 (микроволновый радар, ESP-IDF) — `ld2450-native-zones.yaml`
+
+- Прошивка на базе [ESP32_LD2450](https://github.com/53l3cu5/ESP32_LD2450) / [веб-конфигуратор](https://53l3cu5.github.io/): нативный компонент `ld2450`, три HW-зоны, цели 1–3, кнопки записи конфигурации в радар.
+- **Секреты:** в `secrets.yaml` добавьте `api_encryption_key`, `hotspot_password` (см. `secrets.yaml.example`) плюс стандартные `wifi_*`, `ota_password`.
+- **BirdLense:** триггер записи можно взять из HA через MQTT binary или напрямую `triggers.motion_sensor` с `source: mqtt` / `source: esphome` — см. `app/app_config/default_config.yaml` и `app/processor/src/motion_detectors/factory.py`. Сейчас в конфиге один канал motion; объединение **радар ИЛИ PIR** удобнее сделать в ESPHome template + один MQTT topic или в HA automation (в YAML есть комментарий в конце файла).
+- **Карта в HA:** пример `custom:plotly-graph` — `esphome/home-assistant/ld2450-plotly-graph.card.yaml` (подставьте реальные `entity_id` из Developer Tools → States).
+
+```bash
+esphome compile esphome/ld2450-native-zones.yaml
+esphome upload esphome/ld2450-native-zones.yaml
+```
