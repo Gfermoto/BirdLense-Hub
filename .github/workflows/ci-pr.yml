@@ -99,6 +99,16 @@ jobs:
       - name: Strict UI API auth (production gate #279)
         run: python -m pytest web/tests/test_strict_ui_api_auth.py -q
 
+      - name: Critical production hardening coverage
+        run: |
+          python -m coverage run -m pytest \
+            web/tests/test_csrf_service.py \
+            web/tests/test_strict_ui_api_auth.py \
+            web/tests/test_config.py -q
+          python -m coverage report \
+            --include="web/config.py,web/services/csrf_service.py,web/services/strict_ui_api_auth_service.py" \
+            --fail-under=80
+
       - name: Processor POST /videos smoke
         run: python -m pytest web/tests/test_processor_videos_smoke.py -q
 
@@ -133,6 +143,7 @@ jobs:
         run: |
           npm run test -- --run
           npm run coverage
+          npm run coverage:critical
           npm run typecheck
           npm run lint
           npm run build
