@@ -9,7 +9,8 @@ paths-ignore:
   # Только ingest-guard: regex + full_path_for_video; CodeQL py/path-injection не моделирует sanitizer.
   - app/web/recording_layout_paths.py
 
-# Сводная проверка «CodeQL» на PR падает на ложных срабатываниях для JSON API и наших санитайзеров путей.
+# Ложные срабатывания для JSON API и путей — отфильтрованы ниже. Для branch protection используйте
+# Actions job «CodeQL — gate» (workflow BirdLense CodeQL), а не одноимённый check Code Scanning без контекста.
 query-filters:
   # Ответы через jsonify — Content-Type application/json; отражение полей запроса в JSON не является HTML/XSS.
   - exclude:
