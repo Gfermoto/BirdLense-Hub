@@ -117,6 +117,17 @@ test-coverage:
 		python -m coverage run -a -m pytest web/tests/ -v && \
 		python -m coverage report -m'
 
+test-coverage-critical:
+	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense bash -c '\
+		export PYTHONPATH=/app:/app/web:/app/processor/src && \
+		python -m coverage run -m pytest \
+			web/tests/test_csrf_service.py \
+			web/tests/test_strict_ui_api_auth.py \
+			web/tests/test_config.py -q && \
+		python -m coverage report \
+			--include="web/config.py,web/services/csrf_service.py,web/services/strict_ui_api_auth_service.py" \
+			--fail-under=80'
+
 # Покрытие + HTML-отчёт в app/htmlcov/
 test-report:
 	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense bash -c '\

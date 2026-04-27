@@ -51,3 +51,8 @@ stderr | src/components/Navigation.test.tsx > Navigation > shows species and rec
 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
 All checks passed!
 318 files already formatted
+
+## Critical coverage gates
+
+- UI: `npm run coverage:critical` passed. `src/api/client.ts`: 95.16% statements/lines, 70.58% branches, 100% functions.
+- Python: `make test-coverage-critical` passed. `web/config.py`, `web/services/csrf_service.py`, `web/services/strict_ui_api_auth_service.py`: 92% total.
