@@ -65,6 +65,12 @@ GUNICORN_THREADS="${GUNICORN_THREADS:-16}"
 cd /app/web && PYTHONPATH=/app gunicorn -w 1 -k gthread --threads "$GUNICORN_THREADS" --timeout 0 -b 127.0.0.1:8000 app:app &
 
 # =============================================================================
+# SECTION 4b — Nginx раньше ожидания API (порт :8080 сразу на хосте; до готовности upstream — 502, не «молча»)
+# =============================================================================
+# Иначе CI/прокси ждут до 400 с без ответа на :8085 → curl 56. См. scripts/wait-hub-http.sh, .github/workflows/ci-pr.yml.
+nginx -c /app/nginx/docker-nginx-main.conf &
+
+# =============================================================================
 # SECTION 5 — Wait for web liveness (/api/ui/health)
 # =============================================================================
 # даём Gunicorn время привязаться к порту перед проверкой
@@ -78,11 +84,6 @@ done
 if ! curl -sf --max-time 120 http://127.0.0.1:8000/api/ui/health >/dev/null; then
   echo "WARNING: API health check failed after 400s (continuing anyway)"
 fi
-
-# =============================================================================
-# SECTION 6 — Nginx (reverse proxy :8080 → gunicorn)
-# =============================================================================
-nginx -c /app/nginx/docker-nginx-main.conf &
 
 # =============================================================================
 # SECTION 7 — Optional MCP (127.0.0.1:8001)
