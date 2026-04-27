@@ -1,9 +1,14 @@
-# Статический анализ безопасности (GitHub CodeQL) для Python и TypeScript UI.
-# Результаты: вкладка Security → Code scanning (на GitHub.com).
-name: CodeQL
+# Статический анализ (GitHub CodeQL): Python (Flask web + processor исходники) и TypeScript UI.
+# SARIF → Security → Code scanning. Полные зависимости процессора (torch/ultralytics) в CI не ставим —
+# CodeQL сканирует файлы по paths в .github/codeql/codeql-config-python.yml.
+#
+# Branch protection: помечайте обязательными job'ы **этого workflow** (например «CodeQL — gate»
+# и/или «Analyze (python)» / «Analyze (javascript-typescript)»). Не полагайтесь на отдельный
+# check с именем «CodeQL» без контекста workflow — это может быть агрегат Code Scanning с иным жизненным циклом.
+name: BirdLense CodeQL
 
 on:
-  # Ручной запуск: GitHub → Actions → CodeQL → Run workflow (без push)
+  # Ручной запуск: Actions → BirdLense CodeQL → Run workflow
   workflow_dispatch:
   push:
     branches: [main, dev]
@@ -14,7 +19,7 @@ on:
     - cron: '32 5 * * 1'
 
 concurrency:
-  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  group: birdlense-codeql-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -41,7 +46,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@v4.35.2
         with:
           languages: ${{ matrix.language }}
           config-file: ${{ matrix.config-file }}
@@ -62,7 +67,7 @@ jobs:
 
       - name: Autobuild (Python)
         if: matrix.language == 'python'
-        uses: github/codeql-action/autobuild@v4
+        uses: github/codeql-action/autobuild@v4.35.2
 
       - name: Set up Node (UI)
         if: matrix.language == 'javascript-typescript'
@@ -80,6 +85,26 @@ jobs:
           npm run build
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@v4.35.2
         with:
           category: '/language:${{ matrix.language }}'
+
+  # Единый детерминированный статус для branch protection (всегда success или failure, не «skipped»).
+  codeql-gate:
+    name: CodeQL — gate
+    runs-on: ubuntu-latest
+    needs: analyze
+    if: always()
+    timeout-minutes: 5
+    steps:
+      - name: Require all matrix Analyze jobs succeeded
+        env:
+          ANALYZE_RESULT: ${{ needs.analyze.result }}
+        run: |
+          set -euo pipefail
+          echo "needs.analyze.result=${ANALYZE_RESULT}"
+          if [ "${ANALYZE_RESULT}" != success ]; then
+            echo "CodeQL matrix did not complete successfully (failure, cancelled, or skipped)."
+            exit 1
+          fi
+          echo "CodeQL: all language analyses succeeded."
