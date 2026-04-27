@@ -92,6 +92,9 @@ RUN groupadd -r birdlense -g 1000 \
     && mkdir -p /var/log/nginx \
     && chown -R birdlense:birdlense /app /usr/share/nginx/html /etc/nginx/conf.d /var/log/nginx
 
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -sf http://127.0.0.1:8000/api/ui/health > /dev/null || exit 1
+
 EXPOSE 8080
 
 ENV API_URL_BASE=http://127.0.0.1:8000/api/processor
@@ -101,4 +104,3 @@ ENV OPENCV_LOG_LEVEL=ERROR
 ENV OPENCV_FFMPEG_LOGLEVEL=quiet
 
 CMD ["/bin/bash", "/app/scripts/entrypoint.sh"]
-
