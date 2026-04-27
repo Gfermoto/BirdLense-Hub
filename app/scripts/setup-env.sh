@@ -11,6 +11,16 @@ if [ ! -f "$ENV_FILE" ]; then
   echo "Создан ${ENV_FILE} из .env.example"
 fi
 
+if ! grep -q '^BIRDLENSE_ENV=.\+' "$ENV_FILE" 2>/dev/null; then
+  echo "BIRDLENSE_ENV=production" >> "$ENV_FILE"
+  echo "Добавлен BIRDLENSE_ENV=production в ${ENV_FILE}"
+fi
+
+if ! grep -q '^BIRDLENSE_STRICT_API_AUTH=.\+' "$ENV_FILE" 2>/dev/null; then
+  echo "BIRDLENSE_STRICT_API_AUTH=1" >> "$ENV_FILE"
+  echo "Добавлен BIRDLENSE_STRICT_API_AUTH=1 в ${ENV_FILE}"
+fi
+
 # PROCESSOR_SECRET — генерируем если нет или пустой
 if ! grep -q '^PROCESSOR_SECRET=.\+' "$ENV_FILE" 2>/dev/null; then
   SECRET=$(openssl rand -hex 16)

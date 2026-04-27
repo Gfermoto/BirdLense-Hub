@@ -28,9 +28,16 @@ def test_production_strict_blocks_species_list_without_session(client, _strict_p
 def test_production_strict_allows_bootstrap_endpoints(client, _strict_prod_env):
     assert client.get("/api/ui/health").status_code == 200
     assert client.get("/api/ui/readiness").status_code == 200
+    csrf = client.get("/api/ui/csrf-token")
+    assert csrf.status_code == 200
+    token = csrf.get_json()["csrf_token"]
     assert client.get("/api/ui/settings/requires-password").status_code == 200
     assert client.get("/api/ui/settings/check-access").status_code == 200
-    r = client.post("/api/ui/settings/verify-password", json={"password": ""})
+    r = client.post(
+        "/api/ui/settings/verify-password",
+        json={"password": ""},
+        headers={"X-Birdlense-CSRF-Token": token},
+    )
     assert r.status_code in (200, 401)
 
 
@@ -77,5 +84,13 @@ def test_session_unlock_allows_timeline(client, monkeypatch, _strict_prod_env):
     general["settings_password"] = "hub-secret-279"
     general["contributor_password"] = ""
     monkeypatch.setitem(app_config.config, "general", general)
-    assert client.post("/api/ui/settings/verify-password", json={"password": "hub-secret-279"}).status_code == 200
+    csrf = client.get("/api/ui/csrf-token").get_json()["csrf_token"]
+    assert (
+        client.post(
+            "/api/ui/settings/verify-password",
+            json={"password": "hub-secret-279"},
+            headers={"X-Birdlense-CSRF-Token": csrf},
+        ).status_code
+        == 200
+    )
     assert client.get("/api/ui/species").status_code == 200

@@ -532,7 +532,11 @@ export const VideoDetails = () => {
                   {followTrackRegen !== null &&
                     trackRemoteStatus?.status === 'running' &&
                     trackProgressOtherJob && (
-                      <Alert severity="warning" variant="outlined" sx={{ mb: 1 }}>
+                      <Alert
+                        severity="warning"
+                        variant="outlined"
+                        sx={{ mb: 1 }}
+                      >
                         {t('video.trackRegenOtherVideo', {
                           id: trackProgress?.active_request_video_id ?? '?',
                         })}

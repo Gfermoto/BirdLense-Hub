@@ -201,7 +201,9 @@ export const VideoInfo = ({ video }: { video: Video }) => {
         queryClient.invalidateQueries({
           queryKey: queryKeys.calendar.migration,
         }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.birdDirectory.all }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.birdDirectory.all,
+        }),
         queryClient.invalidateQueries({
           queryKey: queryKeys.speciesSummary.all,
         }),
@@ -298,7 +300,14 @@ export const VideoInfo = ({ video }: { video: Video }) => {
 
       {/* Favorite: toggle when unlocked; read-only chip for viewers if already marked */}
       {unlocked ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0.5,
+            alignItems: 'flex-start',
+          }}
+        >
           <FormControlLabel
             control={
               <Switch
@@ -312,7 +321,11 @@ export const VideoInfo = ({ video }: { video: Video }) => {
             }
             label={t('videoInfo.favoriteToggle')}
           />
-          <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 420 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ maxWidth: 420 }}
+          >
             {t('videoInfo.favoriteHint')}
           </Typography>
         </Box>

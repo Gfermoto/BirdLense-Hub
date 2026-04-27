@@ -8,7 +8,10 @@ import Chip from '@mui/material/Chip';
 import LinearProgress from '@mui/material/LinearProgress';
 import Typography from '@mui/material/Typography';
 import { getApiErrorMessage } from '../../api/api';
-import { fetchCatalogRepairStatus, startCatalogRepair } from '../../api/speciesRegistryHub';
+import {
+  fetchCatalogRepairStatus,
+  startCatalogRepair,
+} from '../../api/speciesRegistryHub';
 import { queryKeys } from '../../api/queryKeys';
 import { SystemCardShell } from './SystemCardShell';
 
@@ -60,7 +63,9 @@ export function CatalogRepairCard() {
   if (isLoading) return <LinearProgress />;
   if (error || !data)
     return (
-      <Alert severity="warning" variant="outlined">{t('system.catalogRepairLoadError')}</Alert>
+      <Alert severity="warning" variant="outlined">
+        {t('system.catalogRepairLoadError')}
+      </Alert>
     );
 
   const liveNextSec = Math.max(

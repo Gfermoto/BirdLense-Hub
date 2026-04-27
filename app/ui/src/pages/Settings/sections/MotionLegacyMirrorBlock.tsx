@@ -42,10 +42,18 @@ export function MotionLegacyMirrorBlock({ form }: Props) {
                     field.handleChange(e.target.value as MotionSource)
                   }
                 >
-                  <MenuItem value="opencv">{t('settings.motionLegacySourceOpenCV')}</MenuItem>
-                  <MenuItem value="frigate">{t('settings.motionLegacySourceFrigate')}</MenuItem>
-                  <MenuItem value="mqtt">{t('settings.motionLegacySourceMqtt')}</MenuItem>
-                  <MenuItem value="esphome">{t('settings.motionLegacySourceEsphome')}</MenuItem>
+                  <MenuItem value="opencv">
+                    {t('settings.motionLegacySourceOpenCV')}
+                  </MenuItem>
+                  <MenuItem value="frigate">
+                    {t('settings.motionLegacySourceFrigate')}
+                  </MenuItem>
+                  <MenuItem value="mqtt">
+                    {t('settings.motionLegacySourceMqtt')}
+                  </MenuItem>
+                  <MenuItem value="esphome">
+                    {t('settings.motionLegacySourceEsphome')}
+                  </MenuItem>
                 </Select>
                 <FormHelperText>
                   {t('settings.motionLegacySourceHint')}

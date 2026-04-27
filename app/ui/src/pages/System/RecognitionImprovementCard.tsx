@@ -161,11 +161,7 @@ export function RecognitionImprovementCard() {
         sx={{ py: 2, minWidth: 0 }}
       >
         <LinearProgress />
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ mt: 1.5 }}
-        >
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
           {t('common.loading')}
         </Typography>
       </Box>
@@ -274,7 +270,11 @@ export function RecognitionImprovementCard() {
         </Box>
 
         <Stack spacing={1.25} alignItems="flex-start">
-          <Stack direction={{ xs: 'column', sm: 'row' }} flexWrap="wrap" gap={1}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            flexWrap="wrap"
+            gap={1}
+          >
             <Button
               variant="contained"
               disabled={busy || !summary.feedback.ready_for_training}
@@ -295,7 +295,11 @@ export function RecognitionImprovementCard() {
               })}
             </Button>
           </Stack>
-          <Typography variant="caption" color="text.secondary" sx={{ maxWidth: 720 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ maxWidth: 720 }}
+          >
             {t('system.recognitionImprovementActionsHint')}
           </Typography>
         </Stack>

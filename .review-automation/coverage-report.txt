@@ -1,0 +1,1192 @@
+# Coverage report
+
+## Python coverage (web + processor, Docker)
+docker compose run --rm -v $(pwd):/app -v $(pwd)/..:/workspace birdlense bash -c '\
+	export PYTHONPATH=/app:/app/web:/app/processor/src && \
+	python -m coverage run -m unittest discover -s processor/tests -v && \
+	python -m coverage run -a -m pytest web/tests/ -v && \
+	python -m coverage report -m'
+ Container birdlense-redis  Running
+Creating new Ultralytics Settings v0.0.6 file ✅
+View Ultralytics Settings with 'yolo settings' or at '/root/.config/Ultralytics/settings.json'
+Update Settings with 'yolo settings key=value', i.e. 'yolo settings runs_dir=path/to/dir'. For help see https://docs.ultralytics.com/quickstart/#ultralytics-settings.
+test_create_video_uses_processor_version_from_environment (test_api_client.TestApiClient.test_create_video_uses_processor_version_from_environment)
+create_video should not hardcode processor_version. ... ok
+test_insert_hydrate_roundtrip (test_birdnet_fifo_persist.BirdnetFifoPersistTests.test_insert_hydrate_roundtrip) ... ok
+test_prune_birdnet_event_list_matches_cap (test_birdnet_fifo_persist.BirdnetFifoPersistTests.test_prune_birdnet_event_list_matches_cap) ... ok
+test_sqlite_payload_roundtrip_json (test_birdnet_fifo_persist.BirdnetFifoPersistTests.test_sqlite_payload_roundtrip_json) ... ok
+test_table_accumulates_multiple_rows (test_birdnet_fifo_persist.BirdnetFifoPersistTests.test_table_accumulates_multiple_rows)
+Проверка накопления: несколько INSERT подряд увеличивают COUNT(*) в SQLite. ... ok
+test_build_payload_counts_and_recent (test_birdnet_fifo_snapshot.BirdnetFifoSnapshotTests.test_build_payload_counts_and_recent) ... ok
+test_sanitize_strips_internal_keys (test_birdnet_fifo_snapshot.BirdnetFifoSnapshotTests.test_sanitize_strips_internal_keys) ... ok
+test_species_hearing_active_within_window (test_birdnet_fifo_snapshot.BirdnetFifoSnapshotTests.test_species_hearing_active_within_window) ... ok
+test_write_creates_file (test_birdnet_fifo_snapshot.BirdnetFifoSnapshotTests.test_write_creates_file) ... ok
+test_alias_when_no_scientific (test_birdnet_merge_key.TestBirdnetMergeKey.test_alias_when_no_scientific) ... ok
+test_no_db_falls_back_to_normalize (test_birdnet_merge_key.TestBirdnetMergeKey.test_no_db_falls_back_to_normalize) ... ok
+test_scientific_mapping_without_sqlite_file (test_birdnet_merge_key.TestBirdnetMergeKey.test_scientific_mapping_without_sqlite_file) ... ok
+test_scientific_maps_ignoring_localized_common (test_birdnet_merge_key.TestBirdnetMergeKey.test_scientific_maps_ignoring_localized_common) ... ok
+test_yaml_canonical_keeps_ebird_hyphenation (test_birdnet_merge_key.TestBirdnetMergeKey.test_yaml_canonical_keeps_ebird_hyphenation)
+Значение из species_mapping не прогоняется через _to_title_case (Red-breasted, не Red-Breasted). ... ok
+test_yaml_scientific_overrides_russian_db_common_name (test_birdnet_merge_key.TestBirdnetMergeKey.test_yaml_scientific_overrides_russian_db_common_name)
+species_mapping по Sci (EN) важнее русского common_name в SQLite. ... ok
+test_adds_species_from_recent_birdnet (test_birdnet_mqtt_confidence.TestBirdnetMqttConfidence.test_adds_species_from_recent_birdnet) ... 2026-04-27 11:46:05,989 - birdnet_mqtt_confidence - INFO - BirdNET MQTT auto-confidence: +1 species (prior_window=24.0h ttl=25.0h half_life=6.0h base=0.300 delta=0.050)
+ok
+test_deprecated_window_seconds_alias_used_when_hours_missing (test_birdnet_mqtt_confidence.TestBirdnetMqttConfidence.test_deprecated_window_seconds_alias_used_when_hours_missing) ... 2026-04-27 11:46:05,991 - birdnet_mqtt_confidence - INFO - BirdNET MQTT: using deprecated processor.birdnet_mqtt_bias_window_seconds=7200.0s -> prior_window_hours=2.000
+ok
+test_disabled_returns_base (test_birdnet_mqtt_confidence.TestBirdnetMqttConfidence.test_disabled_returns_base) ... ok
+test_manual_override_preserved (test_birdnet_mqtt_confidence.TestBirdnetMqttConfidence.test_manual_override_preserved) ... ok
+test_no_aggregator (test_birdnet_mqtt_confidence.TestBirdnetMqttConfidence.test_no_aggregator) ... ok
+test_prior_score_scales_threshold_reduction (test_birdnet_mqtt_confidence.TestBirdnetMqttConfidence.test_prior_score_scales_threshold_reduction) ... 2026-04-27 11:46:05,994 - birdnet_mqtt_confidence - INFO - BirdNET MQTT auto-confidence: +1 species (prior_window=24.0h ttl=25.0h half_life=6.0h base=0.300 delta=0.050)
+ok
+test_accepted_species_has_green_or_yellow_trust_band (test_decision_maker.TestDecisionMaker.test_accepted_species_has_green_or_yellow_trust_band) ... ok
+test_accepted_species_uses_classifier_evidence_only (test_decision_maker.TestDecisionMaker.test_accepted_species_uses_classifier_evidence_only) ... ok
+test_classifier_majority_vote_uses_classifier_subset (test_decision_maker.TestDecisionMaker.test_classifier_majority_vote_uses_classifier_subset) ... ok
+test_classifier_uncertain_emits_review_only_generic_bird_with_frames (test_decision_maker.TestDecisionMaker.test_classifier_uncertain_emits_review_only_generic_bird_with_frames) ... ok
+test_classifier_uncertain_respects_fallback_off (test_decision_maker.TestDecisionMaker.test_classifier_uncertain_respects_fallback_off) ... ok
+test_conflicting_classifier_votes_get_conflict_reject_code (test_decision_maker.TestDecisionMaker.test_conflicting_classifier_votes_get_conflict_reject_code) ... ok
+test_decision_trace_includes_keyframe_and_vote_metadata (test_decision_maker.TestDecisionMaker.test_decision_trace_includes_keyframe_and_vote_metadata) ... ok
+test_detector_only_rodent_fallback (test_decision_maker.TestDecisionMaker.test_detector_only_rodent_fallback) ... ok
+test_detector_only_weak_bird_is_review_only (test_decision_maker.TestDecisionMaker.test_detector_only_weak_bird_is_review_only) ... ok
+test_generic_bird_promotion_thresholds_are_configurable (test_decision_maker.TestDecisionMaker.test_generic_bird_promotion_thresholds_are_configurable) ... ok
+test_get_decisions_includes_rejected_short_track (test_decision_maker.TestDecisionMaker.test_get_decisions_includes_rejected_short_track) ... ok
+test_get_results_sorts_by_confidence_then_track_id (test_decision_maker.TestDecisionMaker.test_get_results_sorts_by_confidence_then_track_id) ... ok
+test_post_record_extends_inactive_window (test_decision_maker.TestDecisionMaker.test_post_record_extends_inactive_window) ... ok
+test_review_only_generic_has_review_only_outcome_bucket (test_decision_maker.TestDecisionMaker.test_review_only_generic_has_review_only_outcome_bucket) ... ok
+test_rodent_species_uses_relaxed_threshold_vs_passerines (test_decision_maker.TestDecisionMaker.test_rodent_species_uses_relaxed_threshold_vs_passerines) ... ok
+test_species_confidence_overrides (test_decision_maker.TestDecisionMaker.test_species_confidence_overrides) ... ok
+test_species_confidence_overrides_match_scientific_common_labels (test_decision_maker.TestDecisionMaker.test_species_confidence_overrides_match_scientific_common_labels) ... ok
+test_apply_and_reset_runtime_overrides (test_decision_maker_runtime_profile.TestDecisionMakerRuntimeProfile.test_apply_and_reset_runtime_overrides) ... ok
+test_bird_skip_classifier_area (test_detection_strategy.TestBinaryConfHelpers.test_bird_skip_classifier_area) ... ok
+test_conf_floor_min_of_per_label_and_base (test_detection_strategy.TestBinaryConfHelpers.test_conf_floor_min_of_per_label_and_base) ... ok
+test_conf_floor_reads_legacy_min_confidence_binary_squirrel_key (test_detection_strategy.TestBinaryConfHelpers.test_conf_floor_reads_legacy_min_confidence_binary_squirrel_key) ... ok
+test_per_label_thresholds (test_detection_strategy.TestBinaryConfHelpers.test_per_label_thresholds) ... ok
+test_blur_detection_logic (test_detection_strategy.TestDetectionStrategy.test_blur_detection_logic) ... 2026-04-27 11:46:13,207 - TestDetectionStrategy - INFO - --- Testing Blur Detection Logic ---
+2026-04-27 11:46:13,639 - TestDetectionStrategy - INFO - Sharp image variance: 7750.98
+2026-04-27 11:46:13,641 - detection_strategy - INFO - Blur detected: variance=11.2 < threshold=100.0
+2026-04-27 11:46:13,641 - TestDetectionStrategy - INFO - Blurred image variance: 11.16695024
+ok
+test_regional_class_ids_matches_hyphenated_common_names (test_detection_strategy.TestDetectionStrategy.test_regional_class_ids_matches_hyphenated_common_names) ... ok
+test_regional_class_ids_matches_normalized_common_names (test_detection_strategy.TestDetectionStrategy.test_regional_class_ids_matches_normalized_common_names) ... ok
+test_two_stage_classifies_multiple_tracks_per_frame_with_budget (test_detection_strategy.TestDetectionStrategy.test_two_stage_classifies_multiple_tracks_per_frame_with_budget) ... ok
+test_two_stage_limits_blur_scan_with_max_blur_checks (test_detection_strategy.TestDetectionStrategy.test_two_stage_limits_blur_scan_with_max_blur_checks) ... ok
+test_two_stage_skips_frame_when_tracker_ids_absent (test_detection_strategy.TestDetectionStrategy.test_two_stage_skips_frame_when_tracker_ids_absent) ... ok
+test_two_stage_strategy_integration (test_detection_strategy.TestDetectionStrategy.test_two_stage_strategy_integration) ... 2026-04-27 11:46:13,668 - TestDetectionStrategy - INFO - --- Testing TwoStageStrategy Integration ---
+2026-04-27 11:46:14,556 - TestDetectionStrategy - INFO - TwoStage Results: [DetectionResult(track_id=1, detector_label='Bird', class_name='Eurasian Jay', confidence=0.6519710789781641, detector_confidence=0.8820462226867676, bbox=array([    0.09894,     0.12916,     0.80259,     0.93907], dtype=float32), classifier_confidence=0.739157497882843, blur_variance=np.float64(235.86131415639935), crop=array([[[ 60, 162, 120],
+        [ 59, 162, 117],
+        [ 59, 162, 117],
+        ...,
+        [ 68, 145, 111],
+        [ 65, 145, 108],
+        [ 65, 145, 108]],
+
+       [[ 60, 162, 120],
+        [ 59, 162, 117],
+        [ 60, 163, 118],
+        ...,
+        [ 70, 147, 113],
+        [ 65, 145, 108],
+        [ 65, 145, 108]],
+
+       [[ 60, 163, 118],
+        [ 59, 162, 117],
+        [ 60, 163, 118],
+        ...,
+        [ 70, 147, 113],
+        [ 65, 145, 110],
+        [ 66, 146, 111]],
+
+       ...,
+
+       [[ 88,  93,  94],
+        [ 93,  85,  86],
+        [116,  96,  95],
+        ...,
+        [ 35,  40,  38],
+        [ 25,  30,  28],
+        [ 20,  25,  23]],
+
+       [[ 81,  86,  87],
+        [100,  92,  92],
+        [119, 104, 102],
+        ...,
+        [ 17,  19,  19],
+        [ 14,  19,  18],
+        [  8,  13,  12]],
+
+       [[ 85,  94,  97],
+        [ 91,  93,  93],
+        [111, 108, 104],
+        ...,
+        [ 42,  44,  44],
+        [ 14,  19,  18],
+        [ 11,  16,  15]]], shape=(486, 563, 3), dtype=uint8))]
+ok
+test_track_maybe_does_not_retry_when_first_id_exists (test_detection_strategy.TestTrackIdMissingBehavior.test_track_maybe_does_not_retry_when_first_id_exists) ... ok
+test_track_maybe_retries_once_when_first_id_is_none (test_detection_strategy.TestTrackIdMissingBehavior.test_track_maybe_retries_once_when_first_id_is_none) ... ok
+test_two_stage_returns_empty_when_ids_stay_none (test_detection_strategy.TestTrackIdMissingBehavior.test_two_stage_returns_empty_when_ids_stay_none) ... ok
+test_tiny_bird_skips_classifier_when_area_limit_set (test_detection_strategy.TestTwoStageBirdSkipClassifier.test_tiny_bird_skips_classifier_when_area_limit_set) ... ok
+test_frame_processor_invokes_stub_detect_with_min_confidence (test_detection_strategy_protocol.TestDetectionStrategyProtocol.test_frame_processor_invokes_stub_detect_with_min_confidence) ... 2026-04-27 11:46:14,567 - frame_processor - INFO - FrameProcessor initialized.
+ok
+test_reset_delegates_to_strategy (test_detection_strategy_protocol.TestDetectionStrategyProtocol.test_reset_delegates_to_strategy) ... 2026-04-27 11:46:14,572 - frame_processor - INFO - FrameProcessor initialized.
+ok
+test_adds_mapped_top_not_overwriting_manual (test_ebird_regional_confidence.TestMergeEbirdRegionalConfidence.test_adds_mapped_top_not_overwriting_manual) ... 2026-04-27 11:46:14,579 - ebird_regional_confidence - INFO - eBird regional auto-confidence: region=US-NY +1 species @ 0.250 (base=0.300 delta=0.050 floor=0.050; manual keys preserved)
+ok
+test_disabled_returns_manual_only (test_ebird_regional_confidence.TestMergeEbirdRegionalConfidence.test_disabled_returns_manual_only) ... ok
+test_no_api_key_returns_manual_only (test_ebird_regional_confidence.TestMergeEbirdRegionalConfidence.test_no_api_key_returns_manual_only) ... ok
+test_missing_dir_empty (test_file_test_paths.TestFileTestPaths.test_missing_dir_empty) ... ok
+test_scan_sorted_and_filtered (test_file_test_paths.TestFileTestPaths.test_scan_sorted_and_filtered) ... ok
+test_update_track_keeps_best_scored_key_frames (test_frame_processor_keyframes.TestFrameProcessorKeyFrames.test_update_track_keeps_best_scored_key_frames) ... 2026-04-27 11:46:14,584 - frame_processor - INFO - FrameProcessor initialized.
+ok
+test_invalid_returns_none (test_frigate_bbox.TestFrigateBbox.test_invalid_returns_none) ... ok
+test_normalized_box_passthrough (test_frigate_bbox.TestFrigateBbox.test_normalized_box_passthrough) ... ok
+test_pixel_box_with_frame_shape (test_frigate_bbox.TestFrigateBbox.test_pixel_box_with_frame_shape) ... ok
+test_region_xywh_when_not_valid_xyxy (test_frigate_bbox.TestFrigateBbox.test_region_xywh_when_not_valid_xyxy)
+region как x,y,w,h если не получается прочитать как xyxy. ... ok
+test_snapshot_box_uses_parent_dimensions (test_frigate_bbox.TestFrigateBbox.test_snapshot_box_uses_parent_dimensions) ... ok
+test_false_when_unset (test_heavy_skip.TestHeavySkipEnv.test_false_when_unset) ... ok
+test_maybe_skip_raises_skip_test (test_heavy_skip.TestHeavySkipEnv.test_maybe_skip_raises_skip_test) ... ok
+test_true_for_one_true_yes (test_heavy_skip.TestHeavySkipEnv.test_true_for_one_true_yes) ... ok
+test_frigate_source_keeps_opencv_fallback (test_motion_detector_factory.TestMotionDetectorFactory.test_frigate_source_keeps_opencv_fallback) ... ok
+test_frigate_without_primary_is_opencv_only (test_motion_detector_factory.TestMotionDetectorFactory.test_frigate_without_primary_is_opencv_only) ... ok
+test_opencv_with_primary_uses_or (test_motion_detector_factory.TestMotionDetectorFactory.test_opencv_with_primary_uses_or) ... ok
+test_parse_birdnet_event_keeps_normalized_fields (test_mqtt_aggregator_birdnet_prior.TestBirdnetEventParsing.test_parse_birdnet_event_keeps_normalized_fields) ... ok
+test_parse_birdnet_event_with_reason_code (test_mqtt_aggregator_birdnet_prior.TestBirdnetEventParsing.test_parse_birdnet_event_with_reason_code) ... ok
+test_prior_buckets_by_canonical_name_from_scientific (test_mqtt_aggregator_birdnet_prior.TestBirdnetRollingPrior.test_prior_buckets_by_canonical_name_from_scientific) ... ok
+test_prior_respects_min_confidence_and_decay (test_mqtt_aggregator_birdnet_prior.TestBirdnetRollingPrior.test_prior_respects_min_confidence_and_decay) ... ok
+test_prior_uses_last_24_hours_and_expires_after_25 (test_mqtt_aggregator_birdnet_prior.TestBirdnetRollingPrior.test_prior_uses_last_24_hours_and_expires_after_25) ... 2026-04-27 11:46:14,630 - mqtt_aggregator - INFO - BirdNET FIFO prune: reason=ttl_or_fifo cap=10000 before=3 after=2 expired_dropped=1 fifo_dropped=0 ttl_hours=25.00
+ok
+test_drain_publish_queue_flushes_to_client (test_mqtt_aggregator_publish_queue.TestMqttAggregatorPublishQueue.test_drain_publish_queue_flushes_to_client) ... ok
+test_drain_publish_queue_noop_when_disconnected_preserves_queue (test_mqtt_aggregator_publish_queue.TestMqttAggregatorPublishQueue.test_drain_publish_queue_noop_when_disconnected_preserves_queue) ... ok
+test_on_disconnect_preserves_queue (test_mqtt_aggregator_publish_queue.TestMqttAggregatorPublishQueue.test_on_disconnect_preserves_queue) ... 2026-04-27 11:46:14,637 - mqtt_aggregator - WARNING - MQTT aggregator disconnected: 0
+ok
+test_publish_detection_does_not_call_client_publish_directly (test_mqtt_aggregator_publish_queue.TestMqttAggregatorPublishQueue.test_publish_detection_does_not_call_client_publish_directly) ... ok
+test_publish_enqueues_when_disconnected (test_mqtt_aggregator_publish_queue.TestMqttAggregatorPublishQueue.test_publish_enqueues_when_disconnected) ... ok
+test_publish_ha_discovery_adds_scale_entities_when_topics_configured (test_mqtt_aggregator_publish_queue.TestMqttAggregatorPublishQueue.test_publish_ha_discovery_adds_scale_entities_when_topics_configured) ... 2026-04-27 11:46:14,644 - mqtt_aggregator - INFO - Home Assistant MQTT Autodiscovery configs published
+ok
+test_publish_ha_discovery_replays_scale_snapshot (test_mqtt_aggregator_publish_queue.TestMqttAggregatorPublishQueue.test_publish_ha_discovery_replays_scale_snapshot) ... 2026-04-27 11:46:14,648 - mqtt_aggregator - INFO - Home Assistant MQTT Autodiscovery configs published
+ok
+test_publish_skips_when_broker_unset (test_mqtt_aggregator_publish_queue.TestMqttAggregatorPublishQueue.test_publish_skips_when_broker_unset) ... ok
+test_publish_skips_when_stopped (test_mqtt_aggregator_publish_queue.TestMqttAggregatorPublishQueue.test_publish_skips_when_stopped) ... ok
+test_scale_mqtt_messages_enqueue_ha_state_updates (test_mqtt_aggregator_publish_queue.TestMqttAggregatorPublishQueue.test_scale_mqtt_messages_enqueue_ha_state_updates) ... ok
+test_module_parses_current_mqtt_payload_shapes (test_mqtt_event_parsers.TestMqttEventParsers.test_module_parses_current_mqtt_payload_shapes) ... ok
+test_empty_motion_label_filter_stays_empty_wildcard (test_mqtt_frigate_filters.TestMqttFrigateFilters.test_empty_motion_label_filter_stays_empty_wildcard) ... ok
+test_frigate_camera_filter_empty_list_uses_all_camera_ids (test_mqtt_frigate_filters.TestMqttFrigateFilters.test_frigate_camera_filter_empty_list_uses_all_camera_ids) ... ok
+test_frigate_camera_filter_list_passthrough (test_mqtt_frigate_filters.TestMqttFrigateFilters.test_frigate_camera_filter_list_passthrough) ... ok
+test_frigate_camera_filter_mqtt_fallback_when_motion_absent (test_mqtt_frigate_filters.TestMqttFrigateFilters.test_frigate_camera_filter_mqtt_fallback_when_motion_absent) ... ok
+test_frigate_camera_filter_none_uses_all_camera_ids (test_mqtt_frigate_filters.TestMqttFrigateFilters.test_frigate_camera_filter_none_uses_all_camera_ids) ... ok
+test_frigate_camera_filter_scalar_string_is_single_id (test_mqtt_frigate_filters.TestMqttFrigateFilters.test_frigate_camera_filter_scalar_string_is_single_id) ... ok
+test_frigate_label_filter_scalar_string_is_single_label (test_mqtt_frigate_filters.TestMqttFrigateFilters.test_frigate_label_filter_scalar_string_is_single_label) ... ok
+test_empty_label_filter_means_any_label (test_mqtt_frigate_geometry_trigger.TestFrigateGeometryTrigger.test_empty_label_filter_means_any_label) ... 2026-04-27 11:46:14,655 - mqtt_aggregator - INFO - Frigate trigger accepted: reason=label_filter camera=BirdBox label=jay sub_label= score=0.000 min_score=0.000 merge_suppressed=False has_geometry=False filter_empty=True
+ok
+test_excluded_cat_still_triggers_recording_queued_with_merge_suppressed (test_mqtt_frigate_geometry_trigger.TestFrigateGeometryTrigger.test_excluded_cat_still_triggers_recording_queued_with_merge_suppressed)
+Excluded labels: motion fires; event is stored for Frigate standalone, not for YOLO merge. ... 2026-04-27 11:46:14,657 - mqtt_aggregator - INFO - Frigate trigger: geometry fallback (excluded label, recording only) camera=BirdBox label=cat
+2026-04-27 11:46:14,658 - mqtt_aggregator - INFO - Frigate trigger accepted: reason=geometry_fallback camera=BirdBox label=cat sub_label= score=0.000 min_score=0.000 merge_suppressed=True has_geometry=True filter_empty=False
+ok
+test_labels_match_exclude_case_insensitive (test_mqtt_frigate_geometry_trigger.TestFrigateGeometryTrigger.test_labels_match_exclude_case_insensitive) ... ok
+test_min_trigger_score_blocks_low_confidence_event (test_mqtt_frigate_geometry_trigger.TestFrigateGeometryTrigger.test_min_trigger_score_blocks_low_confidence_event) ... 2026-04-27 11:46:14,659 - mqtt_aggregator - INFO - Frigate trigger rejected: reason=score_below_trigger_min camera=BirdBox label=bird sub_label= camera_filter=none label_filter=['bird'] has_geometry=True relaxed=True score=0.310 min_score=0.500
+ok
+test_on_message_triggers_on_box_when_label_mismatch (test_mqtt_frigate_geometry_trigger.TestFrigateGeometryTrigger.test_on_message_triggers_on_box_when_label_mismatch) ... 2026-04-27 11:46:14,662 - mqtt_aggregator - INFO - Frigate trigger: geometry fallback (label not in filter) camera=BirdBox label=strange_tf_label sub_label=
+2026-04-27 11:46:14,662 - mqtt_aggregator - INFO - Frigate trigger accepted: reason=geometry_fallback camera=BirdBox label=strange_tf_label sub_label= score=0.000 min_score=0.000 merge_suppressed=False has_geometry=True filter_empty=False
+ok
+test_parse_frigate_event_dict_bad_score (test_mqtt_frigate_geometry_trigger.TestFrigateGeometryTrigger.test_parse_frigate_event_dict_bad_score) ... ok
+test_snapshot_topic_triggers_recording_when_events_missing (test_mqtt_frigate_geometry_trigger.TestFrigateGeometryTrigger.test_snapshot_topic_triggers_recording_when_events_missing) ... 2026-04-27 11:46:14,664 - mqtt_aggregator - INFO - Frigate trigger accepted: reason=snapshot_topic camera=BirdBox label=bird sub_label= merge_suppressed=False has_geometry=False filter_empty=False
+ok
+test_tracked_geometry_detects_box (test_mqtt_frigate_geometry_trigger.TestFrigateGeometryTrigger.test_tracked_geometry_detects_box) ... ok
+test_tracked_geometry_detects_snapshot_box (test_mqtt_frigate_geometry_trigger.TestFrigateGeometryTrigger.test_tracked_geometry_detects_snapshot_box)
+Новые версии Frigate держат box внутри snapshot, не только в корне after. ... ok
+test_boost_when_two_cameras_same_group (test_multi_camera_confidence.TestMultiCameraConfidence.test_boost_when_two_cameras_same_group) ... 2026-04-27 11:46:14,665 - multi_camera_confidence - INFO - Multi-camera confidence boost: +0.100 on 1 detection(s) (groups=[['A', 'B']])
+ok
+test_no_groups_noop (test_multi_camera_confidence.TestMultiCameraConfidence.test_no_groups_noop) ... ok
+test_build_detection_stack_raises_when_binary_weights_missing (test_notify_preview.TestDetectionStackWeights.test_build_detection_stack_raises_when_binary_weights_missing) ... ok
+test_notify_preview_retries_until_video_becomes_readable (test_notify_preview.TestEncodeNotifyPreview.test_notify_preview_retries_until_video_becomes_readable) ... ok
+test_prefers_video_crop_over_memory_best_frame (test_notify_preview.TestEncodeNotifyPreview.test_prefers_video_crop_over_memory_best_frame)
+TG preview must match saved file: video bbox before in-memory best_frame. ... ok
+test_extra_triggers_before_additional (test_or_motion_extras.TestOrMotionExtras.test_extra_triggers_before_additional) ... 2026-04-27 11:46:14,770 - motion_detectors.or_motion - INFO - Motion: extra_0 trigger
+ok
+test_has_recent_frigate_activity_delegates_to_primary (test_or_motion_extras.TestOrMotionExtras.test_has_recent_frigate_activity_delegates_to_primary) ... ok
+test_requeue_last_trigger_rearms_extra_event (test_or_motion_extras.TestOrMotionExtras.test_requeue_last_trigger_rearms_extra_event) ... 2026-04-27 11:46:14,771 - motion_detectors.or_motion - INFO - Motion: extra_0 trigger
+2026-04-27 11:46:14,772 - motion_detectors.or_motion - INFO - Motion: extra_0 trigger
+ok
+test_recording_cooldown_remaining_positive_inside_gap (test_processor_bootstrap.TestProcessorBootstrapCooldown.test_recording_cooldown_remaining_positive_inside_gap) ... ok
+test_recording_cooldown_remaining_zero_after_gap_elapsed (test_processor_bootstrap.TestProcessorBootstrapCooldown.test_recording_cooldown_remaining_zero_after_gap_elapsed) ... ok
+test_recording_cooldown_remaining_zero_when_disabled (test_processor_bootstrap.TestProcessorBootstrapCooldown.test_recording_cooldown_remaining_zero_when_disabled) ... ok
+test_run_motion_loop_requeues_trigger_when_cooldown_blocks_start (test_processor_bootstrap.TestProcessorBootstrapCooldown.test_run_motion_loop_requeues_trigger_when_cooldown_blocks_start) ... 2026-04-27 11:46:14,776 - processor_bootstrap - INFO - Skipping motion trigger: processor.min_seconds_between_recordings=8.0s (6.0s since last clip, requeued=True)
+ok
+test_keeps_empty_recording_only_for_file_source_with_flag (test_recording_cleanup_policy.TestRecordingCleanupPolicy.test_keeps_empty_recording_only_for_file_source_with_flag) ... ok
+test_calls_dataset_saver_with_configured_threshold (test_recording_dataset_crops.TestRecordingDatasetCrops.test_calls_dataset_saver_with_configured_threshold) ... ok
+test_skips_without_video_id (test_recording_dataset_crops.TestRecordingDatasetCrops.test_skips_without_video_id) ... ok
+test_skips_empty_trace (test_recording_decision_trace_log.TestRecordingDecisionTraceLog.test_skips_empty_trace) ... ok
+test_writes_activity_when_trace_has_rows (test_recording_decision_trace_log.TestRecordingDecisionTraceLog.test_writes_activity_when_trace_has_rows) ... ok
+test_decision_trace_includes_pipeline_fingerprint_and_scales_evidence (test_recording_finalize_file_gate.TestRecordingFinalizeFileGate.test_decision_trace_includes_pipeline_fingerprint_and_scales_evidence) ... 2026-04-27 11:46:14,791 - root - INFO - Finalize merge snapshot: bytetrack_rows=0 pre_fusion_accepted=1 post_fusion_persisted=1 rejected_decision_rows=0 mqtt_events_in_window=0 fusion_frigate_standalone_rows=0 fusion_provider_yolo=0 fusion_provider_frigate=0
+2026-04-27 11:46:14,792 - root - INFO - Detection 0: Great Tit has 1 track frames
+2026-04-27 11:46:14,793 - root - INFO - Fusion audio evidence summary: {'none': 1}
+2026-04-27 11:46:14,797 - root - INFO - Processing stopped. Video Result: [{'accepted': True, 'species_name': 'Great Tit', 'start_time': 0.0, 'end_time': 1.0, 'confidence': 0.84, 'frames': [{'t': 0.0, 'bbox': [0.0, 0.0, 1.0, 1.0]}], 'decision_reason': 'accepted_species', 'decision_kind': 'accepted_species', 'visit_eligible': True, 'notification_eligible': True}]; Audio Result: []
+2026-04-27 11:46:15,511 - root - INFO - Notify preview source: best_frame (Great Tit)
+ok
+test_decision_trace_keeps_frigate_generic_absorb_reason (test_recording_finalize_file_gate.TestRecordingFinalizeFileGate.test_decision_trace_keeps_frigate_generic_absorb_reason) ... 2026-04-27 11:46:15,519 - root - INFO - Finalize merge snapshot: bytetrack_rows=0 pre_fusion_accepted=0 post_fusion_persisted=1 rejected_decision_rows=0 mqtt_events_in_window=0 fusion_frigate_standalone_rows=0 fusion_provider_yolo=0 fusion_provider_frigate=1
+2026-04-27 11:46:15,519 - root - INFO - Detection 0: Eurasian Jay has 1 track frames
+2026-04-27 11:46:15,519 - root - INFO - Fusion audio evidence summary: {'none': 1}
+2026-04-27 11:46:15,521 - root - INFO - Processing stopped. Video Result: [{'accepted': True, 'species_name': 'Eurasian Jay', 'species': 'Eurasian Jay', 'start_time': 0.0, 'end_time': 4.0, 'confidence': 0.79, 'frames': [{'t': 0.0, 'bbox': [0.0, 0.0, 1.0, 1.0]}], 'decision_reason': 'absorbed_generic_into_frigate_species', 'decision_reason_before_arbitration': 'frigate_standalone', 'arbitration_reason': 'absorbed_generic_into_frigate_species', 'decision_kind': 'frigate_standalone', 'visit_eligible': True, 'notification_eligible': True, 'detection_provider': 'frigate', '_fusion_used': 'absorbed_generic_into_frigate_species'}]; Audio Result: []
+2026-04-27 11:46:16,230 - root - INFO - Notify preview source: best_frame (Eurasian Jay)
+ok
+test_is_playable_video_file_direct_module_rejects_missing_path (test_recording_finalize_file_gate.TestRecordingFinalizeFileGate.test_is_playable_video_file_direct_module_rejects_missing_path) ... ok
+test_keeps_session_when_no_detections_file_source_flag (test_recording_finalize_file_gate.TestRecordingFinalizeFileGate.test_keeps_session_when_no_detections_file_source_flag) ... 2026-04-27 11:46:16,238 - root - INFO - Finalize merge snapshot: bytetrack_rows=0 pre_fusion_accepted=0 post_fusion_persisted=0 rejected_decision_rows=0 mqtt_events_in_window=0 fusion_frigate_standalone_rows=0 fusion_provider_yolo=0 fusion_provider_frigate=0
+2026-04-27 11:46:16,241 - root - INFO - Processing stopped. Video Result: []; Audio Result: []
+2026-04-27 11:46:16,242 - root - INFO - keep_recording_when_no_detections: retaining session (0 detections, file source): /tmp/tmp97n2hnnb/session
+ok
+test_skips_api_when_output_video_missing (test_recording_finalize_file_gate.TestRecordingFinalizeFileGate.test_skips_api_when_output_video_missing) ... 2026-04-27 11:46:16,247 - root - WARNING - Spectrogram generation failed (BirdNET event present)
+2026-04-27 11:46:16,249 - root - INFO - Finalize merge snapshot: bytetrack_rows=0 pre_fusion_accepted=1 post_fusion_persisted=1 rejected_decision_rows=0 mqtt_events_in_window=0 fusion_frigate_standalone_rows=0 fusion_provider_yolo=1 fusion_provider_frigate=0
+2026-04-27 11:46:16,249 - root - INFO - Fusion audio evidence summary: {'none': 1}
+2026-04-27 11:46:16,260 - root - INFO - Processing stopped. Video Result: [{'accepted': True, 'species_name': 'Bird', 'start_time': 0.0, 'end_time': 2.0, 'confidence': 0.9, 'frames': [], 'decision_reason': 'accepted_species', 'decision_kind': 'accepted_species', 'visit_eligible': True, 'notification_eligible': True, 'species': 'Bird', 'source': 'video', 'detection_provider': 'yolo', '_pre_fusion_confidence': 0.9, 'track_id': None, 'contributing_providers': ['yolo'], '_birdnet_prior': 0.0, 'audio_evidence': 'none', 'outcome_bucket': 'auto_accept', 'primary_provider': 'yolo', 'provider_lineage': ['yolo'], 'yolo_track_present': True, 'primary_signal': 'species_classifier', 'threshold_path': 'classifier_threshold', 'fallback_used': False, 'fallback_reason': None}]; Audio Result: []
+2026-04-27 11:46:16,260 - root - ERROR - Finalize: 1 detection(s) but video file missing: /tmp/tmpmtl98dp5/session/missing.mp4
+ok
+test_skips_telegram_when_below_min_confidence_to_notify (test_recording_finalize_file_gate.TestRecordingFinalizeFileGate.test_skips_telegram_when_below_min_confidence_to_notify) ... 2026-04-27 11:46:16,269 - root - INFO - Finalize merge snapshot: bytetrack_rows=0 pre_fusion_accepted=1 post_fusion_persisted=1 rejected_decision_rows=0 mqtt_events_in_window=0 fusion_frigate_standalone_rows=0 fusion_provider_yolo=0 fusion_provider_frigate=0
+2026-04-27 11:46:16,270 - root - INFO - Detection 0: Great Tit has 1 track frames
+2026-04-27 11:46:16,270 - root - INFO - Fusion audio evidence summary: {'none': 1}
+2026-04-27 11:46:16,275 - root - INFO - Processing stopped. Video Result: [{'accepted': True, 'species_name': 'Great Tit', 'start_time': 0.0, 'end_time': 1.0, 'confidence': 0.4, 'frames': [{'t': 0.0, 'bbox': [0.0, 0.0, 1.0, 1.0]}], 'key_frames': [], 'decision_reason': 'accepted_species', 'decision_kind': 'accepted_species', 'visit_eligible': True, 'notification_eligible': True}]; Audio Result: []
+2026-04-27 11:46:16,981 - root - INFO - Notify suppressed for Great Tit: confidence=0.400 < processor.min_confidence_to_notify=0.550
+ok
+test_log_missing_video_gate_ignores_empty_api (test_recording_ingest_gate.TestRecordingIngestGate.test_log_missing_video_gate_ignores_empty_api) ... ok
+test_log_missing_video_gate_writes_activity_log_payload (test_recording_ingest_gate.TestRecordingIngestGate.test_log_missing_video_gate_writes_activity_log_payload) ... ok
+test_extends_lookback_for_frigate_trigger_without_yolo_tracks (test_recording_mqtt_window.TestRecordingMqttWindow.test_extends_lookback_for_frigate_trigger_without_yolo_tracks)
+Frigate-triggered zero-YOLO sessions use extended lookback. ... 2026-04-27 11:46:16,986 - root - INFO - Frigate trigger, 0 YOLO: extended MQTT lookback to 60s
+ok
+test_returns_empty_without_aggregator (test_recording_mqtt_window.TestRecordingMqttWindow.test_returns_empty_without_aggregator)
+No aggregator means no MQTT events. ... ok
+test_uses_merge_window_when_yolo_tracks_exist (test_recording_mqtt_window.TestRecordingMqttWindow.test_uses_merge_window_when_yolo_tracks_exist)
+YOLO sessions use normal merge-window lookback. ... ok
+test_debugs_inside_throttle_window (test_recording_no_detection_log.TestRecordingNoDetectionLog.test_debugs_inside_throttle_window) ... ok
+test_warns_and_advances_next_warning_time (test_recording_no_detection_log.TestRecordingNoDetectionLog.test_warns_and_advances_next_warning_time) ... ok
+test_notifies_each_species_once_with_video_link (test_recording_notify_dispatch.TestRecordingNotifyDispatch.test_notifies_each_species_once_with_video_link) ... 2026-04-27 11:46:16,991 - root - INFO - Notify preview source: best_frame (Robin)
+ok
+test_skips_when_preview_missing (test_recording_notify_dispatch.TestRecordingNotifyDispatch.test_skips_when_preview_missing) ... 2026-04-27 11:46:16,993 - root - INFO - Notify Robin without photo: no preview (provider=unknown, source=missing)
+ok
+test_suppresses_low_confidence (test_recording_notify_dispatch.TestRecordingNotifyDispatch.test_suppresses_low_confidence) ... 2026-04-27 11:46:16,994 - root - INFO - Notify suppressed for Robin: confidence=0.900 < processor.min_confidence_to_notify=0.950
+ok
+test_notify_error_hint_includes_plain_status_for_other_response (test_recording_notify_errors.TestRecordingNotifyErrors.test_notify_error_hint_includes_plain_status_for_other_response) ... ok
+test_notify_error_hint_includes_processor_secret_for_403 (test_recording_notify_errors.TestRecordingNotifyErrors.test_notify_error_hint_includes_processor_secret_for_403) ... ok
+test_notify_suppression_reason_blocks_ineligible_kind_and_low_confidence (test_recording_notify_policy.TestRecordingNotifyPolicy.test_notify_suppression_reason_blocks_ineligible_kind_and_low_confidence) ... ok
+test_resolve_min_confidence_to_notify_falls_back_to_process_threshold (test_recording_notify_policy.TestRecordingNotifyPolicy.test_resolve_min_confidence_to_notify_falls_back_to_process_threshold) ... ok
+test_ignores_empty_api (test_recording_notify_preview_log.TestRecordingNotifyPreviewLog.test_ignores_empty_api) ... ok
+test_writes_notify_preview_payload (test_recording_notify_preview_log.TestRecordingNotifyPreviewLog.test_writes_notify_preview_payload) ... ok
+test_ignores_rows_persisted_by_fusion_or_above_store_threshold (test_recording_post_fusion_rejections.TestRecordingPostFusionRejections.test_ignores_rows_persisted_by_fusion_or_above_store_threshold)
+Do not reject persisted, high confidence, or trackless rows. ... ok
+test_marks_missing_low_confidence_accepted_track_as_rejected (test_recording_post_fusion_rejections.TestRecordingPostFusionRejections.test_marks_missing_low_confidence_accepted_track_as_rejected)
+Low confidence accepted row missing after fusion becomes rejected. ... ok
+test_estimates_delta_and_evidence_for_visual_detection (test_recording_scales_evidence.TestRecordingScalesEvidence.test_estimates_delta_and_evidence_for_visual_detection) ... ok
+test_skips_audio_only_detections (test_recording_scales_evidence.TestRecordingScalesEvidence.test_skips_audio_only_detections) ... ok
+test_session_activity_camera_ids_include_multi_camera_group (test_recording_session.TestRecordingSessionActivity.test_session_activity_camera_ids_include_multi_camera_group) ... ok
+test_session_activity_falls_back_to_default_camera_when_trigger_camera_missing (test_recording_session.TestRecordingSessionActivity.test_session_activity_falls_back_to_default_camera_when_trigger_camera_missing) ... ok
+test_session_activity_uses_grouped_camera_recent_frigate_event (test_recording_session.TestRecordingSessionActivity.test_session_activity_uses_grouped_camera_recent_frigate_event) ... ok
+test_session_activity_without_any_camera_scope_does_not_query_aggregator (test_recording_session.TestRecordingSessionActivity.test_session_activity_without_any_camera_scope_does_not_query_aggregator) ... ok
+test_remove_session_dir_removes_existing_directory (test_recording_session_cleanup.TestRecordingSessionCleanup.test_remove_session_dir_removes_existing_directory) ... ok
+test_returns_logical_path_when_generation_succeeds (test_recording_spectrogram.TestRecordingSpectrogram.test_returns_logical_path_when_generation_succeeds)
+Return API-facing logical spectrogram path on success. ... ok
+test_skips_when_not_forced_and_no_birdnet_event (test_recording_spectrogram.TestRecordingSpectrogram.test_skips_when_not_forced_and_no_birdnet_event)
+Skip spectrograms unless config or BirdNET requires one. ... ok
+test_response_video_id_reads_dict_only (test_recording_video_response.TestRecordingVideoResponse.test_response_video_id_reads_dict_only) ... ok
+test_frame_processor_uses_profile_overrides_for_detection (test_runtime_profile.TestRuntimeProfile.test_frame_processor_uses_profile_overrides_for_detection) ... 2026-04-27 11:46:17,001 - frame_processor - INFO - FrameProcessor initialized.
+ok
+test_resolve_night_profile_on_low_light (test_runtime_profile.TestRuntimeProfile.test_resolve_night_profile_on_low_light) ... ok
+test_runtime_overlay_resolve_strategy_field_order (test_runtime_profile.TestRuntimeProfile.test_runtime_overlay_resolve_strategy_field_order) ... ok
+test_parse_bird_present (test_scale_mqtt_topics.TestScaleMqttTopics.test_parse_bird_present) ... ok
+test_write_feeder_scale_state_direct_module (test_scale_mqtt_topics.TestScaleMqttTopics.test_write_feeder_scale_state_direct_module) ... ok
+test_write_feeder_scale_state_merge (test_scale_mqtt_topics.TestScaleMqttTopics.test_write_feeder_scale_state_merge) ... ok
+test_bird_alone_kept (test_species_normalizer.TestMergeDetections.test_bird_alone_kept) ... ok
+test_bird_can_coexist_with_other_species (test_species_normalizer.TestMergeDetections.test_bird_can_coexist_with_other_species)
+Без поля classifier / accepted_species второй ряд не считается «уверенным видом». ... ok
+test_birdnet_does_not_create_detection_without_yolo (test_species_normalizer.TestMergeDetections.test_birdnet_does_not_create_detection_without_yolo) ... ok
+test_frigate_does_not_create_detection_without_yolo (test_species_normalizer.TestMergeDetections.test_frigate_does_not_create_detection_without_yolo) ... ok
+test_frigate_event_outside_video_window_is_skipped (test_species_normalizer.TestMergeDetections.test_frigate_event_outside_video_window_is_skipped) ... ok
+test_frigate_merges_into_same_species_yolo_detection (test_species_normalizer.TestMergeDetections.test_frigate_merges_into_same_species_yolo_detection) ... ok
+test_frigate_promotes_generic_bird_track (test_species_normalizer.TestMergeDetections.test_frigate_promotes_generic_bird_track) ... ok
+test_frigate_promotes_review_only_generic_bird_track (test_species_normalizer.TestMergeDetections.test_frigate_promotes_review_only_generic_bird_track)
+Слабый классификатор → review_only_generic_bird; Frigate sub_label должен подменять Bird. ... ok
+test_generic_bird_absorbed_when_overlapping_classified_jay (test_species_normalizer.TestMergeDetections.test_generic_bird_absorbed_when_overlapping_classified_jay) ... ok
+test_one_per_species_preserves_all_contributing_providers (test_species_normalizer.TestMergeDetections.test_one_per_species_preserves_all_contributing_providers) ... ok
+test_rodent_fallback_is_not_promoted_by_bird_frigate_event (test_species_normalizer.TestMergeDetections.test_rodent_fallback_is_not_promoted_by_bird_frigate_event) ... ok
+test_species_mapping_normalizes_mqtt_before_merge (test_species_normalizer.TestMergeDetections.test_species_mapping_normalizes_mqtt_before_merge) ... ok
+test_collapses_same_track_even_with_small_time_drift (test_track_regenerator.TestTrackRegeneratorDedup.test_collapses_same_track_even_with_small_time_drift) ... 2026-04-27 11:46:17,009 - track_regenerator - WARNING - Track regen: collapsed duplicate track_id=1 provider=yolo -> kept Eurasian Jay, dropped Unknown
+ok
+test_keeps_distinct_tracks_separate (test_track_regenerator.TestTrackRegeneratorDedup.test_keeps_distinct_tracks_separate) ... ok
+test_prefers_specific_species_over_unknown_for_same_track (test_track_regenerator.TestTrackRegeneratorDedup.test_prefers_specific_species_over_unknown_for_same_track) ... 2026-04-27 11:46:17,010 - track_regenerator - WARNING - Track regen: collapsed duplicate track_id=1 provider=yolo -> kept Eurasian Jay, dropped Unknown
+ok
+test_build_detection_stack_called_for_track_regen (test_track_regenerator.TestTrackRegeneratorTwoStage.test_build_detection_stack_called_for_track_regen) ... ok
+test_min_center_dist_override_is_forwarded_to_stack (test_track_regenerator.TestTrackRegeneratorTwoStage.test_min_center_dist_override_is_forwarded_to_stack) ... ok
+test_regional_species_override_is_forwarded_to_stack (test_track_regenerator.TestTrackRegeneratorTwoStage.test_regional_species_override_is_forwarded_to_stack) ... ok
+test_capture_restarts_from_beginning_with_loop (test_video_file_source.TestVideoFileSource.test_capture_restarts_from_beginning_with_loop)
+Loop mode reopens source and continues frames. ... 2026-04-27 11:46:17,012 - sources.video_file_source - INFO - VideoFileSource: 25.0 FPS
+2026-04-27 11:46:17,013 - sources.video_file_source - INFO - Video loop: restarting source /tmp/test.mp4 after 1 frames
+ok
+test_capture_stops_at_end_without_loop (test_video_file_source.TestVideoFileSource.test_capture_stops_at_end_without_loop)
+Non-loop mode returns None at EOF. ... 2026-04-27 11:46:17,013 - sources.video_file_source - INFO - VideoFileSource: 25.0 FPS
+2026-04-27 11:46:17,014 - sources.video_file_source - INFO - Video ended after 1 frames
+ok
+test_playlist_advances_on_each_start_recording (test_video_playlist_source.TestVideoPlaylistSource.test_playlist_advances_on_each_start_recording)
+Each new session moves to the next file in playlist. ... 2026-04-27 11:46:17,014 - sources.video_file_source - INFO - Playlist now playing: /tmp/a.mp4 (fps=25.00)
+2026-04-27 11:46:17,014 - sources.video_file_source - INFO - VideoPlaylistSource: 2 files, first=a.mp4
+2026-04-27 11:46:17,015 - sources.video_file_source - INFO - Start video recording to /tmp/out1.mp4
+[ERROR:0@16.577] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.577] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+OpenCV: FFMPEG: tag 0x34363248/'H264' is not supported with codec id 27 and format 'mp4 / MP4 (MPEG-4 Part 14)'
+OpenCV: FFMPEG: fallback to use tag 0x31637661/'avc1'
+[ERROR:0@16.578] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.578] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+OpenCV: FFMPEG: tag 0x34363258/'X264' is not supported with codec id 27 and format 'mp4 / MP4 (MPEG-4 Part 14)'
+OpenCV: FFMPEG: fallback to use tag 0x31637661/'avc1'
+[ERROR:0@16.578] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.578] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+2026-04-27 11:46:17,016 - sources.video_file_source - INFO - Video writer opened with codec=mp4v
+2026-04-27 11:46:17,017 - sources.video_file_source - INFO - Playlist now playing: /tmp/b.mp4 (fps=25.00)
+2026-04-27 11:46:17,017 - sources.video_file_source - INFO - Start video recording to /tmp/out2.mp4
+[ERROR:0@16.580] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.580] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+OpenCV: FFMPEG: tag 0x34363248/'H264' is not supported with codec id 27 and format 'mp4 / MP4 (MPEG-4 Part 14)'
+OpenCV: FFMPEG: fallback to use tag 0x31637661/'avc1'
+[ERROR:0@16.580] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.580] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+OpenCV: FFMPEG: tag 0x34363258/'X264' is not supported with codec id 27 and format 'mp4 / MP4 (MPEG-4 Part 14)'
+OpenCV: FFMPEG: fallback to use tag 0x31637661/'avc1'
+[ERROR:0@16.580] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.580] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+2026-04-27 11:46:17,018 - sources.video_file_source - INFO - Video writer opened with codec=mp4v
+2026-04-27 11:46:17,019 - sources.video_file_source - INFO - Playlist now playing: /tmp/a.mp4 (fps=25.00)
+2026-04-27 11:46:17,019 - sources.video_file_source - INFO - Start video recording to /tmp/out3.mp4
+[ERROR:0@16.581] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.581] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+OpenCV: FFMPEG: tag 0x34363248/'H264' is not supported with codec id 27 and format 'mp4 / MP4 (MPEG-4 Part 14)'
+OpenCV: FFMPEG: fallback to use tag 0x31637661/'avc1'
+[ERROR:0@16.582] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.582] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+OpenCV: FFMPEG: tag 0x34363258/'X264' is not supported with codec id 27 and format 'mp4 / MP4 (MPEG-4 Part 14)'
+OpenCV: FFMPEG: fallback to use tag 0x31637661/'avc1'
+[ERROR:0@16.582] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.582] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+2026-04-27 11:46:17,020 - sources.video_file_source - INFO - Video writer opened with codec=mp4v
+ok
+test_playlist_no_loop_stops_after_last_file (test_video_playlist_source.TestVideoPlaylistSource.test_playlist_no_loop_stops_after_last_file)
+With loop=False, EOF on last clip yields None (folder run finishes). ... 2026-04-27 11:46:17,021 - sources.video_file_source - INFO - Playlist now playing: /tmp/a.mp4 (fps=25.00)
+2026-04-27 11:46:17,021 - sources.video_file_source - INFO - VideoPlaylistSource: 2 files, first=a.mp4
+2026-04-27 11:46:17,021 - sources.video_file_source - INFO - Playlist now playing: /tmp/b.mp4 (fps=25.00)
+ok
+test_playlist_segment_same_file_without_advance_on_start (test_video_playlist_source.TestVideoPlaylistSource.test_playlist_segment_same_file_without_advance_on_start) ... 2026-04-27 11:46:17,022 - sources.video_file_source - INFO - Playlist now playing: /tmp/a.mp4 (fps=25.00)
+2026-04-27 11:46:17,022 - sources.video_file_source - INFO - VideoPlaylistSource: 2 files, first=a.mp4
+2026-04-27 11:46:17,022 - sources.video_file_source - INFO - Start video recording to /tmp/out1.mp4
+[ERROR:0@16.585] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.585] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+OpenCV: FFMPEG: tag 0x34363248/'H264' is not supported with codec id 27 and format 'mp4 / MP4 (MPEG-4 Part 14)'
+OpenCV: FFMPEG: fallback to use tag 0x31637661/'avc1'
+[ERROR:0@16.585] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.585] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+OpenCV: FFMPEG: tag 0x34363258/'X264' is not supported with codec id 27 and format 'mp4 / MP4 (MPEG-4 Part 14)'
+OpenCV: FFMPEG: fallback to use tag 0x31637661/'avc1'
+[ERROR:0@16.585] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.585] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+2026-04-27 11:46:17,023 - sources.video_file_source - INFO - Video writer opened with codec=mp4v
+2026-04-27 11:46:17,023 - sources.video_file_source - INFO - Start video recording to /tmp/out2.mp4
+[ERROR:0@16.586] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.586] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+OpenCV: FFMPEG: tag 0x34363248/'H264' is not supported with codec id 27 and format 'mp4 / MP4 (MPEG-4 Part 14)'
+OpenCV: FFMPEG: fallback to use tag 0x31637661/'avc1'
+[ERROR:0@16.586] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.586] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+OpenCV: FFMPEG: tag 0x34363258/'X264' is not supported with codec id 27 and format 'mp4 / MP4 (MPEG-4 Part 14)'
+OpenCV: FFMPEG: fallback to use tag 0x31637661/'avc1'
+[ERROR:0@16.586] global cap_ffmpeg_impl.hpp:3514 open Could not open codec h264_v4l2m2m, error: Unspecified error (-22)
+[ERROR:0@16.586] global cap_ffmpeg_impl.hpp:3531 open VIDEOIO/FFMPEG: Failed to initialize VideoWriter
+2026-04-27 11:46:17,024 - sources.video_file_source - INFO - Video writer opened with codec=mp4v
+ok
+test_playlist_switches_to_next_file (test_video_playlist_source.TestVideoPlaylistSource.test_playlist_switches_to_next_file)
+Reads first file, then continues from second file. ... 2026-04-27 11:46:17,025 - sources.video_file_source - INFO - Playlist now playing: /tmp/a.mp4 (fps=25.00)
+2026-04-27 11:46:17,025 - sources.video_file_source - INFO - VideoPlaylistSource: 2 files, first=a.mp4
+2026-04-27 11:46:17,026 - sources.video_file_source - INFO - Playlist now playing: /tmp/b.mp4 (fps=25.00)
+ok
+test_split_session_per_file_finalizes_between_clips (test_video_playlist_source.TestVideoPlaylistSource.test_split_session_per_file_finalizes_between_clips)
+After clip A ends, capture returns None once; next capture yields first frame of B. ... 2026-04-27 11:46:17,026 - sources.video_file_source - INFO - Playlist now playing: /tmp/a.mp4 (fps=25.00)
+2026-04-27 11:46:17,027 - sources.video_file_source - INFO - VideoPlaylistSource: 2 files, first=a.mp4
+2026-04-27 11:46:17,027 - sources.video_file_source - INFO - Playlist now playing: /tmp/b.mp4 (fps=25.00)
+2026-04-27 11:46:17,027 - sources.video_file_source - INFO - Playlist: end of clip — finalize session; next clip=b.mp4
+ok
+
+----------------------------------------------------------------------
+Ran 187 tests in 12.287s
+
+OK
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.0.3, pluggy-1.6.0 -- /opt/conda/bin/python
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /app
+configfile: pyproject.toml
+plugins: hypothesis-6.147.0, cov-6.0.0, anyio-4.13.0
+collecting ... collected 508 items
+
+web/tests/test_api.py::TestMetrics::test_metrics_returns_prometheus_format PASSED [  0%]
+web/tests/test_api.py::TestMetrics::test_metrics_values_are_numeric PASSED [  0%]
+web/tests/test_api.py::TestMetrics::test_api_metrics_same_as_metrics PASSED [  0%]
+web/tests/test_api.py::TestMetrics::test_metrics_summary_json PASSED     [  0%]
+web/tests/test_api.py::TestMetrics::test_system_metrics_live_only PASSED [  0%]
+web/tests/test_api.py::TestMetrics::test_system_visitors_endpoint_counts_anonymous_browsers PASSED [  1%]
+web/tests/test_api.py::TestMetrics::test_system_visitors_counts_browser_days_as_unique_visits PASSED [  1%]
+web/tests/test_api.py::TestMetrics::test_system_metrics_history_endpoint PASSED [  1%]
+web/tests/test_api.py::TestLibraryDatasetFlow::test_library_dataset_endpoints_smoke PASSED [  1%]
+web/tests/test_api.py::TestTrackRegenFallback::test_precise_fallback_runs_after_empty_fast_pass PASSED [  1%]
+web/tests/test_api.py::TestTrackRegenFallback::test_precise_fallback_skips_second_pass_when_fast_found_detections PASSED [  2%]
+web/tests/test_api.py::TestTrackRegenFallback::test_manual_conflict_filter_drops_unknown_same_track PASSED [  2%]
+web/tests/test_api.py::TestTrackRegenFallback::test_derive_track_regen_species_scope_uses_mapping_and_prior_observed PASSED [  2%]
+web/tests/test_api.py::TestTrackRegenFallback::test_remap_detection_to_local_scope_maps_exotics_to_unknown PASSED [  2%]
+web/tests/test_api.py::TestTrackRegenFallback::test_single_video_regen_writes_fresh_decision_trace PASSED [  2%]
+web/tests/test_api.py::TestTrackRegenFallback::test_single_video_regen_uses_quality_profile PASSED [  3%]
+web/tests/test_api.py::TestTrackRegenFallback::test_single_video_regen_skips_species_wiki_enrichment PASSED [  3%]
+web/tests/test_api.py::TestTimelineExport::test_export_requires_params PASSED [  3%]
+web/tests/test_api.py::TestTimelineExport::test_export_requires_format PASSED [  3%]
+web/tests/test_api.py::TestTimelineExport::test_export_json_returns_array PASSED [  3%]
+web/tests/test_api.py::TestTimelineExport::test_export_csv_returns_text PASSED [  4%]
+web/tests/test_api.py::TestTimelineExport::test_export_ebird_returns_csv PASSED [  4%]
+web/tests/test_api.py::TestTimelineExport::test_export_rejects_interval_over_one_day PASSED [  4%]
+web/tests/test_api.py::TestTimeline::test_timeline_requires_params PASSED [  4%]
+web/tests/test_api.py::TestTimeline::test_timeline_returns_list PASSED   [  4%]
+web/tests/test_api.py::TestTimeline::test_timeline_rejects_interval_over_one_day PASSED [  5%]
+web/tests/test_api.py::TestTimeline::test_timeline_accepts_observer_local_date PASSED [  5%]
+web/tests/test_api.py::TestTimeline::test_timeline_dedupes_visit_with_multiple_video_species PASSED [  5%]
+web/tests/test_api.py::TestTimeline::test_timeline_visit_includes_scales_from_primary_video PASSED [  5%]
+web/tests/test_api.py::TestTimeline::test_timeline_includes_video_not_attached_to_any_visit PASSED [  5%]
+web/tests/test_api.py::TestTimeline::test_timeline_favorite_only_filters_visits_and_orphans PASSED [  6%]
+web/tests/test_api.py::TestTimeline::test_favorites_by_species_groups_active_favorite_videos PASSED [  6%]
+web/tests/test_api.py::TestOverview::test_overview_returns_last_detection_key PASSED [  6%]
+web/tests/test_api.py::TestOverview::test_overview_rejects_invalid_timestamp PASSED [  6%]
+web/tests/test_api.py::TestHealth::test_health_returns_ok PASSED         [  6%]
+web/tests/test_api.py::TestHealth::test_readiness_returns_checks_and_components PASSED [  7%]
+web/tests/test_api.py::TestHealth::test_readiness_returns_503_when_database_check_fails PASSED [  7%]
+web/tests/test_api.py::TestHealth::test_readiness_survives_component_status_exception PASSED [  7%]
+web/tests/test_api.py::TestStatus::test_status_returns_component_status PASSED [  7%]
+web/tests/test_api.py::TestStatus::test_status_mqtt_reflects_feed_source PASSED [  7%]
+web/tests/test_api.py::TestStatus::test_status_esphome_reflects_feed_source PASSED [  8%]
+web/tests/test_api.py::TestStatus::test_status_survives_component_status_exception PASSED [  8%]
+web/tests/test_api.py::TestSettings::test_settings_get_returns_config PASSED [  8%]
+web/tests/test_api.py::TestSettings::test_settings_with_mcp_token PASSED [  8%]
+web/tests/test_api.py::TestFeed::test_feed_dispense_returns_200_or_403_or_500 PASSED [  8%]
+web/tests/test_api.py::TestCameras::test_cameras_returns_list PASSED     [  9%]
+web/tests/test_api.py::TestWeather::test_weather_returns_dict PASSED     [  9%]
+web/tests/test_api.py::TestWeather::test_weather_includes_source_metadata PASSED [  9%]
+web/tests/test_api.py::TestVideos::test_videos_not_found_returns_404 PASSED [  9%]
+web/tests/test_api.py::TestVideos::test_video_neighbors_not_found_returns_404 PASSED [  9%]
+web/tests/test_api.py::TestVideos::test_video_neighbors_prev_next_same_utc_day PASSED [ 10%]
+web/tests/test_api.py::TestVideos::test_video_neighbors_local_scope_and_cross_day PASSED [ 10%]
+web/tests/test_api.py::TestVideos::test_video_neighbors_can_follow_primary_videos_of_visits PASSED [ 10%]
+web/tests/test_api.py::TestVideos::test_video_neighbors_visit_primary_requires_visit_id PASSED [ 10%]
+web/tests/test_api.py::TestVideos::test_video_neighbors_visit_primary_uses_primary_video_inside_current_day PASSED [ 10%]
+web/tests/test_api.py::TestVideos::test_video_neighbors_includes_clip_starting_before_day_but_overlapping PASSED [ 11%]
+web/tests/test_api.py::TestVideos::test_storage_nearest_recording_day_skips_empty_days PASSED [ 11%]
+web/tests/test_api.py::TestVideos::test_delete_video_requires_access PASSED [ 11%]
+web/tests/test_api.py::TestVideos::test_patch_video_favorite_updates_and_blocks_deleted PASSED [ 11%]
+web/tests/test_api.py::TestBirdfood::test_birdfood_get_returns_list PASSED [ 11%]
+web/tests/test_api.py::TestSpecies::test_species_returns_list PASSED     [ 12%]
+web/tests/test_api.py::TestSpecies::test_species_observed_returns_list PASSED [ 12%]
+web/tests/test_api.py::TestSpecies::test_species_track_regen_options_returns_list PASSED [ 12%]
+web/tests/test_api.py::TestCorrectionsHistory::test_recent_corrections_endpoint_shape PASSED [ 12%]
+web/tests/test_api.py::TestDetectionSpeciesPatch::test_patch_default_single_track_only_one_row PASSED [ 12%]
+web/tests/test_api.py::TestDetectionSpeciesPatch::test_patch_video_source_defaults_legacy_fanout PASSED [ 12%]
+web/tests/test_api.py::TestBirdFamilies::test_bird_families_returns_list PASSED [ 13%]
+web/tests/test_api.py::TestSettingsEndpoints::test_settings_requires_password_returns_bool PASSED [ 13%]
+web/tests/test_api.py::TestSettingsEndpoints::test_settings_check_access_returns_status PASSED [ 13%]
+web/tests/test_api.py::TestStatusDebug::test_status_debug_requires_access PASSED [ 13%]
+web/tests/test_api.py::TestStatusDebug::test_status_debug_returns_diagnostics_when_unlocked PASSED [ 13%]
+web/tests/test_api.py::TestDatabaseBackupRestore::test_db_backup_endpoint_exists PASSED [ 14%]
+web/tests/test_api.py::TestDatabaseBackupRestore::test_db_restore_requires_file PASSED [ 14%]
+web/tests/test_api.py::TestDatabaseBackupRestore::test_sqlite_backup_helper_captures_live_database PASSED [ 14%]
+web/tests/test_api.py::TestDatabaseBackupRestore::test_sqlite_replace_live_db_swaps_file_and_removes_sidecars PASSED [ 14%]
+web/tests/test_api.py::TestStoragePurge::test_purge_storage_deletes_db_rows_and_files PASSED [ 14%]
+web/tests/test_api.py::TestStoragePurge::test_purge_storage_skips_favorite_when_protect_favorites_enabled PASSED [ 15%]
+web/tests/test_api.py::TestStoragePurge::test_purge_storage_skips_non_favorite_in_session_with_favorite PASSED [ 15%]
+web/tests/test_api.py::TestStoragePurge::test_purge_storage_range_deletes_only_in_range PASSED [ 15%]
+web/tests/test_api.py::TestRetentionFavoriteSession::test_retention_cascade_skips_coworker_in_favorite_session PASSED [ 15%]
+web/tests/test_api.py::TestReportPdf::test_report_requires_params PASSED [ 15%]
+web/tests/test_api.py::TestReportPdf::test_report_month_returns_pdf PASSED [ 16%]
+web/tests/test_api.py::TestReportPdf::test_report_rejects_invalid_month PASSED [ 16%]
+web/tests/test_api.py::TestSpeciesRegionalScope::test_species_list_includes_regional_scope_boolean PASSED [ 16%]
+web/tests/test_api.py::TestSpeciesRegionalScope::test_regional_scope_true_for_birdnet_detection PASSED [ 16%]
+web/tests/test_api.py::TestSpeciesXenoCanto::test_xeno_canto_404_for_unknown_species PASSED [ 16%]
+web/tests/test_api.py::TestSpeciesXenoCanto::test_xeno_canto_returns_recordings_or_empty PASSED [ 17%]
+web/tests/test_api.py::TestPush::test_push_vapid_returns_key_or_503 PASSED [ 17%]
+web/tests/test_api.py::TestPush::test_push_subscribe_rejects_empty_or_invalid PASSED [ 17%]
+web/tests/test_api.py::TestPush::test_push_subscribe_requires_keys PASSED [ 17%]
+web/tests/test_api.py::TestMigrationCalendar::test_migration_calendar_returns_200 PASSED [ 17%]
+web/tests/test_api.py::TestMigrationCalendar::test_migration_calendar_species_structure PASSED [ 18%]
+web/tests/test_api.py::TestMigrationCalendar::test_migration_calendar_filter_by_year PASSED [ 18%]
+web/tests/test_api.py::TestMigrationCalendar::test_migration_calendar_filter_by_date PASSED [ 18%]
+web/tests/test_api.py::TestMigrationCalendar::test_migration_calendar_rejects_invalid_start_date PASSED [ 18%]
+web/tests/test_api.py::TestMigrationCalendar::test_migration_calendar_rejects_reversed_date_range PASSED [ 18%]
+web/tests/test_api.py::TestMigrationCalendar::test_migration_calendar_catalog_full_and_evidence_video PASSED [ 19%]
+web/tests/test_api.py::TestMigrationCalendar::test_migration_calendar_evidence_param_ignored PASSED [ 19%]
+web/tests/test_api.py::TestMigrationCalendar::test_migration_calendar_rejects_bad_catalog PASSED [ 19%]
+web/tests/test_api.py::TestUnknowns::test_unknowns_requires_params PASSED [ 19%]
+web/tests/test_api.py::TestUnknowns::test_unknowns_returns_list PASSED   [ 19%]
+web/tests/test_api.py::TestUnknowns::test_unknowns_rejects_interval_over_one_day PASSED [ 20%]
+web/tests/test_api.py::TestUnknowns::test_unknowns_limit_is_capped PASSED [ 20%]
+web/tests/test_api.py::TestUnknowns::test_unknowns_excludes_legacy_import_placeholders PASSED [ 20%]
+web/tests/test_api.py::TestUnknowns::test_unknowns_include_clip_that_overlaps_window PASSED [ 20%]
+web/tests/test_api.py::TestScanRecordings::test_scan_import_avoids_new_legacy_unknowns_and_cleans_old_ones PASSED [ 20%]
+web/tests/test_api.py::TestVerifyPasswordRateLimit::test_five_wrong_then_429 PASSED [ 21%]
+web/tests/test_api.py::TestVerifyPasswordRateLimit::test_success_clears_counter PASSED [ 21%]
+web/tests/test_api.py::TestVerifyPasswordRateLimit::test_x_real_ip_separate_buckets PASSED [ 21%]
+web/tests/test_api.py::TestConfigAudit::test_config_audit_ignores_valid_dynamic_and_schema_keys PASSED [ 21%]
+web/tests/test_api.py::TestConfigAudit::test_update_settings_does_not_persist_transient_zip_field PASSED [ 21%]
+web/tests/test_api.py::TestSpeciesSummaryReadOnly::test_summary_includes_metadata_trust PASSED [ 22%]
+web/tests/test_api.py::TestSpeciesSummaryReadOnly::test_summary_hourly_activity_uses_observer_local_hour PASSED [ 22%]
+web/tests/test_api.py::TestSpeciesSummaryReadOnly::test_refresh_metadata_requires_settings_password PASSED [ 22%]
+web/tests/test_api.py::TestVideoStreamAccess::test_stream_allows_guest_when_not_locked PASSED [ 22%]
+web/tests/test_api.py::TestVideoStreamAccess::test_stream_requires_password_when_locked PASSED [ 22%]
+web/tests/test_api_http_errors.py::test_api_unknown_path_returns_json_404 PASSED [ 23%]
+web/tests/test_api_http_errors.py::test_non_api_404_not_forced_to_json PASSED [ 23%]
+web/tests/test_api_http_errors.py::test_api_method_not_allowed_returns_json PASSED [ 23%]
+web/tests/test_api_http_errors.py::test_api_request_id_header_is_generated PASSED [ 23%]
+web/tests/test_api_http_errors.py::test_api_request_id_header_preserves_client_value PASSED [ 23%]
+web/tests/test_api_json_validation.py::test_parse_request_json_dict_unit PASSED [ 24%]
+web/tests/test_api_json_validation.py::test_parse_request_json_object_allow_empty_unit PASSED [ 24%]
+web/tests/test_api_json_validation.py::test_parse_request_json_array_allow_empty_unit PASSED [ 24%]
+web/tests/test_api_json_validation.py::test_verify_password_rejects_non_object_json PASSED [ 24%]
+web/tests/test_api_json_validation.py::test_settings_patch_rejects_non_object_json PASSED [ 24%]
+web/tests/test_api_json_validation.py::test_push_subscribe_rejects_invalid_json PASSED [ 25%]
+web/tests/test_api_json_validation.py::test_dataset_clean_rejects_non_object_json PASSED [ 25%]
+web/tests/test_api_json_validation.py::test_merge_species_rejects_non_object_json PASSED [ 25%]
+web/tests/test_api_json_validation.py::test_birdfood_post_invalid_json_400 PASSED [ 25%]
+web/tests/test_api_json_validation.py::test_birdfood_post_array_body_400 PASSED [ 25%]
+web/tests/test_api_json_validation.py::test_birdfood_post_name_type_and_active_type PASSED [ 25%]
+web/tests/test_api_json_validation.py::test_purge_storage_requires_json_object PASSED [ 26%]
+web/tests/test_api_json_validation.py::test_purge_storage_date_must_be_string PASSED [ 26%]
+web/tests/test_api_json_validation.py::test_processor_videos_rejects_broken_json PASSED [ 26%]
+web/tests/test_api_json_validation.py::test_processor_videos_rejects_json_array PASSED [ 26%]
+web/tests/test_api_json_validation.py::test_processor_species_active_rejects_non_array_json PASSED [ 26%]
+web/tests/test_app_config_validation.py::test_validate_merged_config_empty_ok PASSED [ 27%]
+web/tests/test_app_config_validation.py::test_validate_merged_config_nested_sections_ok PASSED [ 27%]
+web/tests/test_app_config_validation.py::test_validate_merged_config_rejects_scalar_section PASSED [ 27%]
+web/tests/test_app_startup_async.py::test_create_app_schedules_startup_notify_in_background PASSED [ 27%]
+web/tests/test_bird_food_seed.py::TestBirdFoodSeed::test_seed_bird_food_idempotent PASSED [ 27%]
+web/tests/test_bird_food_seed.py::TestBirdFoodSeed::test_seed_bird_food_skips_existing_name PASSED [ 28%]
+web/tests/test_bird_food_seed.py::TestBirdFoodSeed::test_seed_bird_food_relative_assets_exist PASSED [ 28%]
+web/tests/test_bird_food_seed.py::TestBirdFoodSeed::test_remove_legacy_apple_pieces_deletes_row_and_association PASSED [ 28%]
+web/tests/test_bird_food_service.py::test_create_then_list PASSED        [ 28%]
+web/tests/test_bird_food_service.py::test_create_duplicate_400 PASSED    [ 28%]
+web/tests/test_bird_food_service.py::test_toggle_missing_404 PASSED      [ 29%]
+web/tests/test_bird_food_service.py::test_toggle_flips_active PASSED     [ 29%]
+web/tests/test_birdlense_mcp.py::test_main_uses_streamable_http_transport PASSED [ 29%]
+web/tests/test_birdnet_fifo_hearing_state.py::test_build_species_hearing_state_fresh_vs_stale PASSED [ 29%]
+web/tests/test_birdnet_fifo_hearing_state.py::test_repeated_singing_updates_last_heard PASSED [ 29%]
+web/tests/test_birdnet_fifo_hearing_state.py::test_build_species_fifo_table_rows_sorts_active_first_and_counts PASSED [ 30%]
+web/tests/test_birdnet_fifo_view_service.py::test_build_birdnet_fifo_snapshot_prefers_db PASSED [ 30%]
+web/tests/test_birdnet_fifo_view_service.py::test_birdnet_fifo_table_accumulates_via_orm PASSED [ 30%]
+web/tests/test_config.py::test_cors_default_origins_from_env PASSED      [ 30%]
+web/tests/test_config.py::test_cors_local_dev_origins_default PASSED     [ 30%]
+web/tests/test_config.py::test_cors_local_dev_origins_empty_overrides_default PASSED [ 31%]
+web/tests/test_config.py::test_cors_local_dev_origins_disabled_by_default_in_production PASSED [ 31%]
+web/tests/test_dataset_export_service.py::TestDatasetExportOrphans::test_retro_export_skips_and_deletes_orphaned_detections PASSED [ 31%]
+web/tests/test_dataset_export_service.py::TestDatasetExportOrphans::test_retro_export_deletes_orphan_with_date_filter PASSED [ 31%]
+web/tests/test_dataset_export_service.py::TestDatasetExportOrphans::test_clean_dataset_remove_orphaned_keeps_only_valid_tracks PASSED [ 31%]
+web/tests/test_dataset_export_service.py::TestDatasetExportOrphans::test_build_dataset_zip_ready_for_train_split PASSED [ 32%]
+web/tests/test_dataset_export_service.py::TestDatasetExportOrphans::test_ready_for_train_test_split_and_manifest PASSED [ 32%]
+web/tests/test_dataset_export_service.py::TestDatasetExportOrphans::test_strict_quality_rejects_duplicate_tracks PASSED [ 32%]
+web/tests/test_dataset_export_service.py::TestDatasetExportOrphans::test_strict_quality_rejects_skipped_small_classes PASSED [ 32%]
+web/tests/test_dataset_export_service.py::TestDatasetExportOrphans::test_ready_for_train_keeps_same_day_group_together PASSED [ 32%]
+web/tests/test_detection_quality_baseline_service.py::test_build_detection_quality_baseline_summarizes_traces_and_slices PASSED [ 33%]
+web/tests/test_ebird_mapping_suggestions.py::TestEbirdMappingSuggestionsEndpoint::test_no_api_key PASSED [ 33%]
+web/tests/test_ebird_mapping_suggestions.py::TestEbirdMappingSuggestionsEndpoint::test_case_variant_in_suggestions PASSED [ 33%]
+web/tests/test_ebird_mapping_suggestions.py::TestEbirdMappingSuggestionsEndpoint::test_resolved_by_exact_name_not_listed PASSED [ 33%]
+web/tests/test_ebird_mapping_suggestions.py::TestEbirdMappingSuggestionsEndpoint::test_403_when_settings_locked PASSED [ 33%]
+web/tests/test_feed_scale_tare_auth.py::test_feed_scale_tare_403_without_session PASSED [ 34%]
+web/tests/test_feed_scale_tare_auth.py::test_feed_scale_tare_200_contributor_session PASSED [ 34%]
+web/tests/test_feeder_scale_sources.py::test_scale_tare_available_for_esphome PASSED [ 34%]
+web/tests/test_feeder_scale_sources.py::test_trigger_scale_tare_esphome_posts_button PASSED [ 34%]
+web/tests/test_feeder_scale_sources.py::test_get_feeder_scale_snapshot_esphome_reads_weight_and_bird_present PASSED [ 34%]
+web/tests/test_fusion_product_api.py::test_recognition_improvement_summary_route_reports_feedback PASSED [ 35%]
+web/tests/test_fusion_product_api.py::test_recognition_improvement_train_route_exposes_done_status PASSED [ 35%]
+web/tests/test_fusion_product_service.py::test_build_recognition_improvement_summary_reports_heuristic_feedback PASSED [ 35%]
+web/tests/test_fusion_product_service.py::test_run_recognition_training_job_exports_trains_registers_and_activates PASSED [ 35%]
+web/tests/test_fusion_product_service.py::test_rollback_recognition_model_falls_back_to_heuristic_without_previous_model PASSED [ 35%]
+web/tests/test_fusion_trace_api.py::test_fusion_trace_403_when_passwords_and_anonymous PASSED [ 36%]
+web/tests/test_fusion_trace_api.py::test_fusion_trace_200_contributor_session PASSED [ 36%]
+web/tests/test_fusion_trace_api.py::test_fusion_trace_404_unknown_video PASSED [ 36%]
+web/tests/test_fusion_trace_api.py::test_fusion_trace_no_log_returns_available_false PASSED [ 36%]
+web/tests/test_fusion_trace_api.py::test_fusion_trace_matches_by_video_id PASSED [ 36%]
+web/tests/test_fusion_trace_api.py::test_fusion_trace_path_fallback_without_video_id_in_payload PASSED [ 37%]
+web/tests/test_fusion_trace_api.py::test_fusion_trace_ignores_non_list_rejected_tracks PASSED [ 37%]
+web/tests/test_homeassistant_config.py::test_get_homeassistant_prefers_new_keys_over_legacy PASSED [ 37%]
+web/tests/test_homeassistant_config.py::test_get_homeassistant_falls_back_to_legacy PASSED [ 37%]
+web/tests/test_homeassistant_config.py::test_get_homeassistant_env_overrides_config PASSED [ 37%]
+web/tests/test_homeassistant_config.py::test_prepare_settings_for_api_hides_legacy_weather_ha_keys PASSED [ 37%]
+web/tests/test_http_guards.py::test_require_ui_settings_password_denied PASSED [ 38%]
+web/tests/test_http_guards.py::test_require_ui_settings_unauthorized_denied PASSED [ 38%]
+web/tests/test_http_guards.py::test_require_admin_track_regen_denied PASSED [ 38%]
+web/tests/test_http_guards.py::test_decorators_allow_when_auth_ok PASSED [ 38%]
+web/tests/test_legacy_config_migration.py::test_migrate_copies_legacy_ha_into_homeassistant PASSED [ 38%]
+web/tests/test_legacy_config_migration.py::test_migrate_does_not_overwrite_existing_homeassistant PASSED [ 39%]
+web/tests/test_legacy_config_migration.py::test_migrate_noop_when_no_legacy_keys PASSED [ 39%]
+web/tests/test_legacy_config_migration.py::test_migrate_partial_only_url_in_weather PASSED [ 39%]
+web/tests/test_legacy_config_migration.py::test_migrate_drops_empty_legacy_keys PASSED [ 39%]
+web/tests/test_legacy_config_migration.py::test_processor_rodent_migration_from_legacy_squirrel_keys PASSED [ 39%]
+web/tests/test_legacy_config_migration.py::test_confidence_floors_clamp_legacy_soft_values PASSED [ 40%]
+web/tests/test_legacy_config_migration.py::test_migrate_legacy_trigger_topics_copies_into_new_domains PASSED [ 40%]
+web/tests/test_legacy_config_migration.py::test_grouped_trigger_helpers_fall_back_to_legacy_keys PASSED [ 40%]
+web/tests/test_legacy_config_migration.py::test_migrate_processor_classifier_best_eu_relative_path PASSED [ 40%]
+web/tests/test_legacy_config_migration.py::test_migrate_processor_classifier_best_eu_absolute_path PASSED [ 40%]
+web/tests/test_legacy_config_migration.py::test_migrate_processor_classifier_unchanged_for_canonical PASSED [ 41%]
+web/tests/test_ml_lineage_service.py::test_model_lineage_resolves_processor_models_binary_classifier PASSED [ 41%]
+web/tests/test_ml_quality_cycle_service.py::test_build_review_retrain_cycle_report_reads_quality_gates PASSED [ 41%]
+web/tests/test_ml_quality_cycle_service.py::test_build_review_retrain_cycle_report_requires_strict_quality_flag PASSED [ 41%]
+web/tests/test_notifications.py::test_notify_returns_photo_delivery_metadata_on_success PASSED [ 41%]
+web/tests/test_notifications.py::test_telegram_request_triggers_proxy_refresh_after_connection_error PASSED [ 42%]
+web/tests/test_notifications.py::test_notify_retries_photo_with_aggressive_jpeg_before_text_fallback PASSED [ 42%]
+web/tests/test_notifications.py::test_notify_returns_text_fallback_reason_when_photo_send_fails PASSED [ 42%]
+web/tests/test_notifications.py::test_notify_text_fallback_includes_diagnostic_note PASSED [ 42%]
+web/tests/test_notifications.py::test_notify_text_only_mode_skips_preview_diagnostic PASSED [ 42%]
+web/tests/test_notifications.py::test_notify_app_startup_uses_text_only_notification PASSED [ 43%]
+web/tests/test_notifications.py::test_notify_marks_text_failure_when_photo_and_fallback_both_fail PASSED [ 43%]
+web/tests/test_notifications.py::test_notify_detections_logs_decode_failed_reason PASSED [ 43%]
+web/tests/test_notifications.py::test_notify_detections_skips_when_no_preview_context PASSED [ 43%]
+web/tests/test_notifications.py::test_notify_detections_skips_when_notification_ineligible_even_with_image PASSED [ 43%]
+web/tests/test_notifications.py::test_system_observability_includes_delivery_and_fallback_counts PASSED [ 44%]
+web/tests/test_notifications.py::test_system_observability_ignores_processor_preview_generation_rows PASSED [ 44%]
+web/tests/test_openapi_contract.py::TestOpenApiContractSmoke::test_health_matches_openapi_schema PASSED [ 44%]
+web/tests/test_openapi_contract.py::TestOpenApiContractSmoke::test_readiness_matches_openapi_schema PASSED [ 44%]
+web/tests/test_openapi_contract.py::TestOpenApiContractSmoke::test_readiness_503_matches_openapi_schema PASSED [ 44%]
+web/tests/test_openapi_contract.py::TestOpenApiContractSmoke::test_species_matches_openapi_schema PASSED [ 45%]
+web/tests/test_openapi_contract.py::TestOpenApiContractSmoke::test_bird_families_matches_openapi_schema PASSED [ 45%]
+web/tests/test_openapi_contract.py::TestOpenApiContractSmoke::test_overview_matches_openapi_schema PASSED [ 45%]
+web/tests/test_openapi_contract.py::TestOpenApiContractSmoke::test_unknowns_matches_openapi_schema PASSED [ 45%]
+web/tests/test_openapi_contract.py::TestOpenApiContractSmoke::test_video_neighbors_matches_openapi_schema PASSED [ 45%]
+web/tests/test_openapi_contract.py::TestOpenApiContractSmoke::test_video_fusion_trace_matches_openapi_schema PASSED [ 46%]
+web/tests/test_openapi_contract.py::TestOpenApiContractSmoke::test_system_config_audit_matches_openapi_schema PASSED [ 46%]
+web/tests/test_perf_sql_query_budget.py::TestOverviewSqlBudget::test_get_overview_data_query_count_bounded_with_many_visits PASSED [ 46%]
+web/tests/test_perf_sql_query_budget.py::TestTimelineSqlBudget::test_build_merged_timeline_query_count_bounded PASSED [ 46%]
+web/tests/test_processor_custom_weights_api.py::test_processor_weights_status_ok PASSED [ 46%]
+web/tests/test_processor_custom_weights_api.py::test_processor_weights_upload_binary_and_reset PASSED [ 47%]
+web/tests/test_processor_custom_weights_api.py::test_processor_weights_classifier_requires_allowlist_or_ack PASSED [ 47%]
+web/tests/test_processor_custom_weights_api.py::test_processor_weights_class_names_upload PASSED [ 47%]
+web/tests/test_processor_restart_service.py::test_write_processor_restart_flag_creates_files PASSED [ 47%]
+web/tests/test_processor_runtime_diagnostics_service.py::test_build_processor_runtime_snapshot_response_reads_snapshot PASSED [ 47%]
+web/tests/test_processor_video_ingest.py::test_prepare_rejects_invalid_datetime PASSED [ 48%]
+web/tests/test_processor_video_ingest.py::test_prepare_rejects_below_min_confidence PASSED [ 48%]
+web/tests/test_processor_video_ingest.py::test_prepare_success_strips_bad_spectrogram PASSED [ 48%]
+web/tests/test_processor_videos_smoke.py::test_processor_videos_forbidden_wrong_token PASSED [ 48%]
+web/tests/test_processor_videos_smoke.py::test_processor_videos_missing_species_400 PASSED [ 48%]
+web/tests/test_processor_videos_smoke.py::test_processor_videos_all_below_threshold_400 PASSED [ 49%]
+web/tests/test_processor_videos_smoke.py::test_processor_videos_rejects_missing_video_file PASSED [ 49%]
+web/tests/test_processor_videos_smoke.py::test_processor_videos_success_201 PASSED [ 49%]
+web/tests/test_processor_videos_smoke.py::test_processor_videos_hot_path_skips_species_metadata_enrichment PASSED [ 49%]
+web/tests/test_processor_videos_smoke.py::test_processor_videos_scales_delta_persisted_when_enabled PASSED [ 49%]
+web/tests/test_processor_videos_smoke.py::test_processor_videos_scales_ignored_when_disabled PASSED [ 50%]
+web/tests/test_processor_videos_smoke.py::test_processor_videos_invalid_iso_400 PASSED [ 50%]
+web/tests/test_recordings_mirror_ui_api.py::test_recordings_mirror_test_requires_host_and_username PASSED [ 50%]
+web/tests/test_recordings_mirror_ui_api.py::test_recordings_mirror_test_requires_password_or_key PASSED [ 50%]
+web/tests/test_recordings_mirror_ui_api.py::test_contributor_patch_cannot_update_recordings_mirror PASSED [ 50%]
+web/tests/test_resolve_recording_video_file.py::test_resolve_standard_data_recordings_path PASSED [ 50%]
+web/tests/test_resolve_recording_video_file.py::test_resolve_legacy_path_relative_to_recordings PASSED [ 51%]
+web/tests/test_resolve_recording_video_file.py::test_resolve_rejects_traversal PASSED [ 51%]
+web/tests/test_resolve_recording_video_file.py::test_resolve_missing_file_returns_none PASSED [ 51%]
+web/tests/test_scales_config.py::test_normalize_scales_source_accepts_new_values PASSED [ 51%]
+web/tests/test_scales_config.py::test_normalize_scales_source_maps_legacy_values PASSED [ 51%]
+web/tests/test_scales_config.py::test_scales_source_uses_mqtt_only_for_mqtt_family PASSED [ 52%]
+web/tests/test_scales_config.py::test_esphome_default_weight_sensor_id_matches_repo_firmware PASSED [ 52%]
+web/tests/test_scales_config.py::test_migrate_legacy_scales_source_fixes_bad_esphome_weight_sensor_default PASSED [ 52%]
+web/tests/test_secret_env.py::test_apply_secret_env_overrides_sets_nested_keys PASSED [ 52%]
+web/tests/test_secret_env.py::test_apply_secret_env_skips_empty_and_unset PASSED [ 52%]
+web/tests/test_security_hardening.py::TestTrustedProxyIpParsing::test_ignores_forwarded_headers_without_trusted_proxy PASSED [ 53%]
+web/tests/test_security_hardening.py::TestTrustedProxyIpParsing::test_uses_forwarded_headers_with_trusted_proxy PASSED [ 53%]
+web/tests/test_security_hardening.py::TestPushSubscribeAuth::test_push_subscribe_requires_settings_access_when_password_set PASSED [ 53%]
+web/tests/test_security_hardening.py::TestProductionSettingsAccess::test_settings_access_denied_in_production_when_passwords_missing PASSED [ 53%]
+web/tests/test_security_hardening.py::TestProductionSettingsAccess::test_settings_verify_password_rejects_empty_password_bootstrap_in_production PASSED [ 53%]
+web/tests/test_security_hardening.py::TestProductionSettingsAccess::test_settings_requires_password_reports_true_in_production_without_passwords PASSED [ 54%]
+web/tests/test_security_hardening.py::TestProductionSettingsAccess::test_settings_access_denied_in_prod_alias_when_passwords_missing PASSED [ 54%]
+web/tests/test_security_hardening.py::TestWebhookUrlValidation::test_rejects_private_ip_webhook PASSED [ 54%]
+web/tests/test_security_hardening.py::TestWebhookUrlValidation::test_rejects_non_http_scheme_webhook PASSED [ 54%]
+web/tests/test_security_hardening.py::TestWebhookUrlValidation::test_create_video_skips_unsafe_webhook_url PASSED [ 54%]
+web/tests/test_security_hardening.py::TestSpeciesImageProxyAllowlist::test_rejects_inaturalist_open_data_substring_on_evil_host PASSED [ 55%]
+web/tests/test_security_hardening.py::TestSpeciesImageProxyAllowlist::test_rejects_malformed_ipv6_url PASSED [ 55%]
+web/tests/test_security_hardening.py::TestSpeciesImageProxyAllowlist::test_rejects_wikimedia_url_with_invalid_port PASSED [ 55%]
+web/tests/test_security_hardening.py::TestSafeImagePathDataDirBoundary::test_safe_image_rejects_sibling_directory_prefix PASSED [ 55%]
+web/tests/test_security_hardening.py::TestSafeImagePathDataDirBoundary::test_safe_image_reads_and_removes_under_data_dir PASSED [ 55%]
+web/tests/test_security_hardening.py::TestVisitorTrackRateLimit::test_visitors_track_returns_429_when_over_limit PASSED [ 56%]
+web/tests/test_security_hardening.py::TestMetricsBearerToken::test_metrics_open_when_token_unset PASSED [ 56%]
+web/tests/test_security_hardening.py::TestMetricsBearerToken::test_metrics_require_bearer_when_token_set PASSED [ 56%]
+web/tests/test_security_hardening.py::TestMetricsBearerToken::test_metrics_ok_with_valid_bearer PASSED [ 56%]
+web/tests/test_security_hardening.py::TestMetricsBearerToken::test_metrics_accepts_lowercase_bearer_scheme PASSED [ 56%]
+web/tests/test_security_hardening.py::TestSingleVideoTrackRegenAuth::test_contributor_cannot_start_single_video_track_regen PASSED [ 57%]
+web/tests/test_sensitive_export_routes_auth.py::test_timeline_export_403_anonymous_when_passwords PASSED [ 57%]
+web/tests/test_sensitive_export_routes_auth.py::test_timeline_export_200_contributor_session PASSED [ 57%]
+web/tests/test_sensitive_export_routes_auth.py::test_report_pdf_403_anonymous_when_passwords PASSED [ 57%]
+web/tests/test_sensitive_export_routes_auth.py::test_report_pdf_200_contributor_session PASSED [ 57%]
+web/tests/test_sensitive_export_routes_auth.py::test_unknowns_403_anonymous_when_passwords PASSED [ 58%]
+web/tests/test_sensitive_export_routes_auth.py::test_unknowns_200_contributor_session PASSED [ 58%]
+web/tests/test_service_layer_slice_293.py::test_validate_migration_calendar_params_ok_and_errors PASSED [ 58%]
+web/tests/test_service_layer_slice_293.py::test_migration_calendar_cache_key_stable PASSED [ 58%]
+web/tests/test_service_layer_slice_293.py::test_validate_timeline_export_format PASSED [ 58%]
+web/tests/test_service_layer_slice_293.py::test_resolve_timeline_utc_window_unix_range PASSED [ 59%]
+web/tests/test_service_layer_slice_293.py::test_resolve_timeline_utc_window_requires_both_timestamps PASSED [ 59%]
+web/tests/test_service_layer_slice_293.py::test_resolve_monthly_report_window_month PASSED [ 59%]
+web/tests/test_service_layer_slice_293.py::test_resolve_monthly_report_window_rejects_long_range PASSED [ 59%]
+web/tests/test_service_layer_slice_293.py::test_build_timeline_export_response_json_and_empty_csv PASSED [ 59%]
+web/tests/test_service_layer_slice_293.py::test_parse_dataset_export_query_args_defaults PASSED [ 60%]
+web/tests/test_service_layer_slice_293.py::test_parse_system_activity_month PASSED [ 60%]
+web/tests/test_service_layer_slice_293.py::test_clamp_processor_log_line_count PASSED [ 60%]
+web/tests/test_service_layer_slice_293.py::test_parse_video_neighbors_request_args PASSED [ 60%]
+web/tests/test_service_layer_slice_293.py::test_parse_push_subscription_body_ok_and_errors PASSED [ 60%]
+web/tests/test_service_layer_slice_293.py::test_trigger_format_helpers_match_processor_and_status PASSED [ 61%]
+web/tests/test_service_layer_slice_293.py::test_parse_unresolved_limit_species_registry PASSED [ 61%]
+web/tests/test_service_layer_slice_293.py::test_nearest_recording_day_next_prev PASSED [ 61%]
+web/tests/test_service_layer_slice_293.py::test_coerce_duplicate_group_limit PASSED [ 61%]
+web/tests/test_service_layer_slice_293.py::test_normalize_export_format PASSED [ 61%]
+web/tests/test_service_layer_slice_293.py::test_parse_broken_videos_list_params_clamped PASSED [ 62%]
+web/tests/test_service_layer_slice_293.py::test_parse_review_only_noise_limit PASSED [ 62%]
+web/tests/test_service_layer_slice_293.py::test_birdnet_fifo_snapshot_missing_file PASSED [ 62%]
+web/tests/test_service_layer_slice_293.py::test_flatten_config_keys_terminal_maps PASSED [ 62%]
+web/tests/test_service_layer_slice_293.py::test_build_system_config_audit_payload PASSED [ 62%]
+web/tests/test_service_layer_slice_293.py::test_build_system_config_audit_payload_processor_runtime_hints PASSED [ 62%]
+web/tests/test_service_layer_slice_293.py::test_recall_frigate_standalone_false_emits_fusion_hint PASSED [ 63%]
+web/tests/test_service_layer_slice_293.py::test_recall_frigate_blocking_goes_to_config_warnings_not_recall_hints PASSED [ 63%]
+web/tests/test_service_layer_slice_293.py::test_scales_mqtt_audit_warns_broker_and_prefix PASSED [ 63%]
+web/tests/test_service_layer_slice_293.py::test_scales_mqtt_audit_no_warn_explicit_empty_topics_when_prefix_set PASSED [ 63%]
+web/tests/test_service_layer_slice_293.py::test_scales_mqtt_audit_detects_explicit_empty_prefix PASSED [ 63%]
+web/tests/test_service_layer_slice_293.py::test_build_timeline_export_response_ebird PASSED [ 64%]
+web/tests/test_service_layer_slice_293.py::test_compute_system_activity_uptime_bad_month PASSED [ 64%]
+web/tests/test_service_layer_slice_293.py::test_fusion_export_download_file_or_error_missing PASSED [ 64%]
+web/tests/test_service_layer_slice_293.py::test_fusion_eval_download_file_or_error_missing PASSED [ 64%]
+web/tests/test_service_layer_slice_293.py::test_prepare_sqlite_db_backup_rejects_non_sqlite_engine PASSED [ 64%]
+web/tests/test_service_layer_slice_293.py::test_start_bulk_spectrogram_requires_birdnet PASSED [ 65%]
+web/tests/test_service_layer_slice_293.py::test_review_queue_bulk_delete_confirm_mismatch PASSED [ 65%]
+web/tests/test_service_layer_slice_293.py::test_parse_visitors_days_and_metrics_history_clamps PASSED [ 65%]
+web/tests/test_session_idle.py::test_session_idle_expires_unlocked_session PASSED [ 65%]
+web/tests/test_session_idle.py::test_session_idle_disabled_when_zero PASSED [ 65%]
+web/tests/test_settings_access_service.py::test_gate_no_passwords_non_prod_false PASSED [ 66%]
+web/tests/test_settings_access_service.py::test_gate_no_passwords_prod_true PASSED [ 66%]
+web/tests/test_settings_access_service.py::test_gate_any_password_true PASSED [ 66%]
+web/tests/test_settings_access_service.py::test_resolve_unlock_admin_contributor_nomatch PASSED [ 66%]
+web/tests/test_settings_access_service.py::test_resolve_unlock_admin_bcrypt_stored PASSED [ 66%]
+web/tests/test_settings_access_service.py::test_empty_passwords_block_in_prod PASSED [ 67%]
+web/tests/test_settings_access_service.py::test_empty_passwords_allow_outside_prod PASSED [ 67%]
+web/tests/test_settings_mutations_smoke.py::test_birdfood_post_forbidden_when_settings_locked PASSED [ 67%]
+web/tests/test_settings_mutations_smoke.py::test_birdfood_post_and_toggle_happy_path PASSED [ 67%]
+web/tests/test_settings_mutations_smoke.py::test_birdfood_post_duplicate_name_400 PASSED [ 67%]
+web/tests/test_settings_mutations_smoke.py::test_push_subscribe_success_when_notifications_on PASSED [ 68%]
+web/tests/test_settings_mutations_smoke.py::test_video_stream_allows_contributor_when_stream_auth_required PASSED [ 68%]
+web/tests/test_settings_mutations_smoke.py::test_settings_logout_clears_session PASSED [ 68%]
+web/tests/test_settings_mutations_smoke.py::test_settings_patch_general_with_admin_session PASSED [ 68%]
+web/tests/test_settings_mutations_smoke.py::test_settings_patch_rejects_invalid_section_shape PASSED [ 68%]
+web/tests/test_settings_mutations_smoke.py::test_settings_patch_contributor_merges_safe_field PASSED [ 69%]
+web/tests/test_settings_mutations_smoke.py::test_settings_patch_contributor_placeholder_does_not_wipe_telegram_token PASSED [ 69%]
+web/tests/test_settings_mutations_smoke.py::test_settings_patch_json_null_contributor_password_does_not_wipe PASSED [ 69%]
+web/tests/test_settings_mutations_smoke.py::test_settings_patch_admin_password_stored_as_bcrypt_and_verify_ok PASSED [ 69%]
+web/tests/test_settings_patch_service.py::test_normalize_drops_cameras_without_stream_name PASSED [ 69%]
+web/tests/test_settings_patch_service.py::test_normalize_contributor_calls_strip_when_tier PASSED [ 70%]
+web/tests/test_settings_patch_service.py::test_normalize_contributor_skips_strip_without_tier PASSED [ 70%]
+web/tests/test_settings_patch_service.py::test_strip_contributor_admin_only_removes_session_idle_minutes PASSED [ 70%]
+web/tests/test_settings_patch_service.py::test_filter_sensitive_json_null_removes_secret_from_patch PASSED [ 70%]
+web/tests/test_settings_patch_service.py::test_apply_merge_updates_donate_url PASSED [ 70%]
+web/tests/test_settings_yaml_backup.py::test_yaml_export_safe_masks_secret PASSED [ 71%]
+web/tests/test_settings_yaml_backup.py::test_yaml_export_full_requires_ack PASSED [ 71%]
+web/tests/test_settings_yaml_backup.py::test_yaml_import_merge_and_validate PASSED [ 71%]
+web/tests/test_settings_yaml_backup.py::test_yaml_import_rejects_bad_root PASSED [ 71%]
+web/tests/test_settings_yaml_backup.py::test_contributor_yaml_export_safe_ok PASSED [ 71%]
+web/tests/test_settings_yaml_backup.py::test_contributor_yaml_export_full_forbidden PASSED [ 72%]
+web/tests/test_settings_yaml_backup.py::test_contributor_yaml_import_forbidden PASSED [ 72%]
+web/tests/test_species_catalog_reconcile.py::test_merge_species_into_moves_fks PASSED [ 72%]
+web/tests/test_species_catalog_reconcile.py::test_merge_species_into_preserves_missing_target_metadata PASSED [ 72%]
+web/tests/test_species_catalog_reconcile.py::test_merge_duplicate_species_endpoint_preserves_missing_target_metadata PASSED [ 72%]
+web/tests/test_species_catalog_reconcile.py::test_reconcile_dry_run_finds_duplicate_norm PASSED [ 73%]
+web/tests/test_species_catalog_reconcile.py::test_reconcile_endpoint PASSED [ 73%]
+web/tests/test_species_data_quality.py::test_build_report_has_structure PASSED [ 73%]
+web/tests/test_species_data_quality.py::test_species_ids_to_exclude_from_bird_catalog_filters_off_allowlist_active_species PASSED [ 73%]
+web/tests/test_species_data_quality.py::test_build_report_ignores_duplicate_names_without_activity PASSED [ 73%]
+web/tests/test_species_dataset_alignment.py::test_normalize_classifier_label_matches_processor_style PASSED [ 74%]
+web/tests/test_species_dataset_alignment.py::test_alignment_when_weights_unreadable PASSED [ 74%]
+web/tests/test_species_dataset_alignment.py::test_alignment_model_class_matches_catalog_scientific_common PASSED [ 74%]
+web/tests/test_species_dataset_alignment.py::test_alignment_common_name_catalog_row_matches_scientific_common_label PASSED [ 74%]
+web/tests/test_species_dataset_alignment.py::test_alignment_extra_model_class_not_in_catalog PASSED [ 74%]
+web/tests/test_species_dataset_alignment.py::test_alignment_ignores_model_classes_outside_allowlist PASSED [ 75%]
+web/tests/test_species_dataset_alignment.py::test_alignment_species_outside_allowlist_but_present_in_model_is_not_flagged PASSED [ 75%]
+web/tests/test_species_dataset_alignment.py::test_alignment_species_with_video_not_in_model PASSED [ 75%]
+web/tests/test_species_dataset_alignment.py::test_alignment_does_not_treat_allowlist_only_species_as_classifier_match PASSED [ 75%]
+web/tests/test_species_dataset_alignment.py::test_alignment_hint_when_allowlist_and_classifier_counts_differ PASSED [ 75%]
+web/tests/test_species_dataset_alignment.py::test_alignment_ignores_birds_parent_not_in_classifier PASSED [ 75%]
+web/tests/test_species_dataset_alignment.py::test_alignment_generic_bird_flagged_when_not_in_classifier PASSED [ 76%]
+web/tests/test_species_dataset_alignment.py::test_alignment_apostrophe_variants_match_classifier PASSED [ 76%]
+web/tests/test_species_dataset_alignment.py::test_alignment_ignores_service_species_not_in_classifier PASSED [ 76%]
+web/tests/test_species_dataset_alignment.py::test_alignment_ignores_service_dataset_folders PASSED [ 76%]
+web/tests/test_species_dataset_alignment.py::test_dataset_split_class_names_uses_real_folders_only PASSED [ 76%]
+web/tests/test_species_dataset_alignment.py::test_species_name_match_keys_include_dataset_sanitized_variant PASSED [ 77%]
+web/tests/test_species_dataset_alignment.py::TestClassifierDatasetAlignmentApi::test_endpoint_ok_without_weights PASSED [ 77%]
+web/tests/test_species_registry.py::test_rotate_need_slice_for_catalog_repair_window PASSED [ 77%]
+web/tests/test_species_registry.py::TestSpeciesRegistryApi::test_species_registry_sync_endpoints_removed PASSED [ 77%]
+web/tests/test_species_registry.py::TestSpeciesRegistryApi::test_species_registry_seed_endpoint PASSED [ 77%]
+web/tests/test_species_registry.py::TestSpeciesRegistryApi::test_species_registry_backfill_endpoint_dry_run PASSED [ 78%]
+web/tests/test_species_registry.py::TestSpeciesRegistryApi::test_species_registry_health_endpoint PASSED [ 78%]
+web/tests/test_species_registry.py::TestSpeciesRegistryApi::test_species_registry_health_reports_resolution_drift PASSED [ 78%]
+web/tests/test_species_registry.py::TestSpeciesRegistryApi::test_species_registry_backfill_reaches_full_coverage PASSED [ 78%]
+web/tests/test_species_registry.py::TestSpeciesRegistryApi::test_species_registry_async_enrichment_status PASSED [ 78%]
+web/tests/test_species_registry.py::TestSpeciesResolverIntegration::test_visit_processor_creates_canonical_hooded_crow PASSED [ 79%]
+web/tests/test_species_registry.py::TestSpeciesResolverIntegration::test_resolve_species_name_matches_normalized_common_name_without_alias PASSED [ 79%]
+web/tests/test_species_registry.py::TestSpeciesResolverIntegration::test_unresolved_name_is_logged_and_reported PASSED [ 79%]
+web/tests/test_species_registry.py::TestSpeciesMetadataRepair::test_enrich_species_metadata_treats_blank_description_as_missing PASSED [ 79%]
+web/tests/test_species_registry.py::TestSpeciesMetadataRepair::test_repair_recently_reset_species_metadata_restores_images PASSED [ 79%]
+web/tests/test_species_registry.py::test_catalog_cards_coverage_counts_per_allowlist_line PASSED [ 80%]
+web/tests/test_species_registry.py::test_update_species_info_from_wiki_whitespace_image_counts_as_empty PASSED [ 80%]
+web/tests/test_species_registry.py::test_wikipedia_extract_rejects_human_hair_article PASSED [ 80%]
+web/tests/test_species_registry.py::test_wikipedia_extract_accepts_duck_article PASSED [ 80%]
+web/tests/test_species_registry.py::test_disambiguated_wikipedia_title_redhead_variants PASSED [ 80%]
+web/tests/test_species_registry.py::test_typo_catalog_wikipedia_title_maps_misspellings PASSED [ 81%]
+web/tests/test_species_registry.py::test_wikipedia_query_titles_includes_typo_catalog_title PASSED [ 81%]
+web/tests/test_species_registry.py::test_update_species_info_from_wiki_skips_bad_wikipedia_then_accepts_good PASSED [ 81%]
+web/tests/test_species_registry.py::test_update_species_info_from_wiki_clears_suspicious_existing_description PASSED [ 81%]
+web/tests/test_sqlite_admin_service.py::test_sqlite_main_file_path_memory_database_name PASSED [ 81%]
+web/tests/test_sqlite_admin_service.py::test_sqlite_main_file_path_none_for_non_sqlite_engine PASSED [ 82%]
+web/tests/test_sqlite_admin_service.py::test_sqlite_main_file_path_file PASSED [ 82%]
+web/tests/test_strict_ui_api_auth.py::test_strict_flag_without_production_does_not_block_public_ui_api PASSED [ 82%]
+web/tests/test_strict_ui_api_auth.py::test_production_strict_blocks_species_list_without_session PASSED [ 82%]
+web/tests/test_strict_ui_api_auth.py::test_production_strict_allows_bootstrap_endpoints PASSED [ 82%]
+web/tests/test_strict_ui_api_auth.py::test_production_strict_allows_ui_api_key_header PASSED [ 83%]
+web/tests/test_strict_ui_api_auth.py::test_production_strict_allows_bearer_ui_api_key PASSED [ 83%]
+web/tests/test_strict_ui_api_auth.py::test_production_strict_allows_mcp_bearer PASSED [ 83%]
+web/tests/test_strict_ui_api_auth.py::test_options_preflight_not_blocked PASSED [ 83%]
+web/tests/test_strict_ui_api_auth.py::test_strict_gate_only_under_api_ui_prefix PASSED [ 83%]
+web/tests/test_strict_ui_api_auth.py::test_session_unlock_allows_timeline PASSED [ 84%]
+web/tests/test_system_automation.py::test_shipped_fusion_scripts_match_container_contract PASSED [ 84%]
+web/tests/test_system_automation.py::test_fusion_processor_src_resolvable PASSED [ 84%]
+web/tests/test_system_automation.py::test_repo_root_finds_script_in_container_layout PASSED [ 84%]
+web/tests/test_system_automation.py::test_repo_root_falls_back_to_cwd PASSED [ 84%]
+web/tests/test_system_automation.py::test_fusion_export_route_runs_job_and_exposes_status PASSED [ 85%]
+web/tests/test_system_automation.py::test_flatten_fusion_eval_report_rows_roundtrip PASSED [ 85%]
+web/tests/test_system_automation.py::test_fusion_eval_download_sends_csv PASSED [ 85%]
+web/tests/test_system_automation.py::test_fusion_eval_route_runs_job_and_exposes_status PASSED [ 85%]
+web/tests/test_system_automation.py::test_telegram_proxy_refresh_route_runs_job_and_exposes_status PASSED [ 85%]
+web/tests/test_system_file_test_api.py::test_file_test_files_409_when_not_file_source PASSED [ 86%]
+web/tests/test_system_file_test_api.py::test_file_test_status_200_when_not_file_source PASSED [ 86%]
+web/tests/test_system_file_test_api.py::test_file_test_list_and_status PASSED [ 86%]
+web/tests/test_system_file_test_api.py::test_file_test_upload_delete_admin PASSED [ 86%]
+web/tests/test_system_file_test_api.py::test_file_test_run_stop_writes_desired PASSED [ 86%]
+web/tests/test_system_routes_smoke.py::test_system_activity_returns_list PASSED [ 87%]
+web/tests/test_system_routes_smoke.py::test_system_activity_invalid_month_400 PASSED [ 87%]
+web/tests/test_system_routes_smoke.py::test_system_metrics_history_shape PASSED [ 87%]
+web/tests/test_system_routes_smoke.py::test_system_logs_forbidden_when_locked PASSED [ 87%]
+web/tests/test_system_routes_smoke.py::test_system_logs_ok_when_settings_open PASSED [ 87%]
+web/tests/test_system_stabilization.py::TestSystemMaintenanceEndpoints::test_domain_health_snapshot_reports_integrity_counters PASSED [ 87%]
+web/tests/test_system_stabilization.py::TestSystemMaintenanceEndpoints::test_review_only_detections_do_not_inflate_monthly_report_stats PASSED [ 88%]
+web/tests/test_system_stabilization.py::TestSystemMaintenanceEndpoints::test_clean_orphaned_visits_preview_and_apply PASSED [ 88%]
+web/tests/test_system_stabilization.py::TestSystemMaintenanceEndpoints::test_realign_visit_times_preview_and_apply PASSED [ 88%]
+web/tests/test_system_stabilization.py::TestSystemMaintenanceEndpoints::test_split_large_gap_visits_preview_and_apply PASSED [ 88%]
+web/tests/test_system_stabilization.py::TestOverviewDayOverlap::test_overview_counts_visit_that_crosses_midnight PASSED [ 88%]
+web/tests/test_system_stabilization.py::TestOverviewDayOverlap::test_overview_date_uses_observer_local_day_and_local_hour PASSED [ 89%]
+web/tests/test_system_stabilization.py::TestOverviewDayOverlap::test_overview_date_counts_overlapping_video_duration_and_local_temperature PASSED [ 89%]
+web/tests/test_system_stabilization.py::TestOverviewDayOverlap::test_overview_detection_by_provider_counts_distinct_visits PASSED [ 89%]
+web/tests/test_system_stabilization.py::TestObserverLocalRanges::test_observer_local_night_covers_early_morning_of_selected_date PASSED [ 89%]
+web/tests/test_system_stabilization.py::TestReviewQueueBulkDelete::test_unknowns_expose_explicit_review_state PASSED [ 89%]
+web/tests/test_system_stabilization.py::TestReviewQueueBulkDelete::test_review_queue_bulk_delete_preview_and_apply PASSED [ 90%]
+web/tests/test_system_stabilization.py::TestReviewQueueBulkDelete::test_review_queue_bulk_delete_denies_guest_when_passwords_configured PASSED [ 90%]
+web/tests/test_system_stabilization.py::TestReviewQueueBulkDelete::test_review_queue_bulk_delete_preview_allows_contributor_session PASSED [ 90%]
+web/tests/test_system_stabilization.py::TestReviewQueueBulkDelete::test_broken_video_diagnostics_list_delete_preview_and_apply PASSED [ 90%]
+web/tests/test_system_stabilization.py::TestReviewQueueBulkDelete::test_broken_video_zero_byte_and_purge_batch PASSED [ 90%]
+web/tests/test_system_stabilization.py::TestReviewQueueBulkDelete::test_no_species_videos_purge_dry_and_batch PASSED [ 91%]
+web/tests/test_system_stabilization.py::TestReviewQueueBulkDelete::test_review_only_noise_candidates_list PASSED [ 91%]
+web/tests/test_telegram_proxy.py::test_telegram_http_proxies_empty PASSED [ 91%]
+web/tests/test_telegram_proxy.py::test_telegram_http_proxies_set PASSED  [ 91%]
+web/tests/test_telegram_proxy.py::test_telegram_http_proxies_mtproto_ignores_url PASSED [ 91%]
+web/tests/test_track_regen_service.py::test_summarize_empty PASSED       [ 92%]
+web/tests/test_track_regen_service.py::test_summarize_with_frames PASSED [ 92%]
+web/tests/test_ui_password_service.py::test_verify_plaintext_legacy PASSED [ 92%]
+web/tests/test_ui_password_service.py::test_verify_bcrypt_roundtrip PASSED [ 92%]
+web/tests/test_ui_password_service.py::test_verify_bcrypt_prefixed_string PASSED [ 92%]
+web/tests/test_ui_password_service.py::test_hash_password_fields_in_updates_replaces_plaintext PASSED [ 93%]
+web/tests/test_ui_password_service.py::test_hash_password_fields_leaves_bcrypt_unchanged PASSED [ 93%]
+web/tests/test_ui_video_routes_auth.py::test_fusion_trace_allows_mcp_style_non_session_access PASSED [ 93%]
+web/tests/test_upload_request_encoding_guard.py::test_upload_rejects_gzip_content_encoding PASSED [ 93%]
+web/tests/test_upload_request_encoding_guard.py::test_upload_allows_missing_content_encoding PASSED [ 93%]
+web/tests/test_upload_request_encoding_guard.py::test_yaml_import_rejects_br PASSED [ 94%]
+web/tests/test_upload_request_encoding_guard.py::test_upload_allows_identity_only PASSED [ 94%]
+web/tests/test_util_metadata.py::TestInferMetadataSourceFields::test_wikipedia_by_hostname PASSED [ 94%]
+web/tests/test_util_metadata.py::TestInferMetadataSourceFields::test_inaturalist_host PASSED [ 94%]
+web/tests/test_util_metadata.py::TestInferMetadataSourceFields::test_inaturalist_open_data_bucket PASSED [ 94%]
+web/tests/test_util_metadata.py::TestInferMetadataSourceFields::test_unknown_host_no_substring_bypass PASSED [ 95%]
+web/tests/test_util_metadata.py::TestInferMetadataSourceFields::test_no_inaturalist_via_query_string_on_untrusted_host PASSED [ 95%]
+web/tests/test_util_metadata.py::TestExtractCommonForHierarchy::test_parentheses PASSED [ 95%]
+web/tests/test_util_metadata.py::TestINaturalistMetadata::test_filters_non_bird_taxa PASSED [ 95%]
+web/tests/test_util_metadata.py::TestINaturalistMetadata::test_rejects_order_level_piciformes_hit PASSED [ 95%]
+web/tests/test_util_metadata.py::TestINaturalistMetadata::test_binomial_picks_matching_species_row PASSED [ 96%]
+web/tests/test_util_metadata.py::TestINaturalistMetadata::test_ambiguous_common_name_picks_highest_observations PASSED [ 96%]
+web/tests/test_util_metadata.py::TestEnWikipediaBirdTitleVariant::test_eurasian_magpie_matches_wikipedia_url_style PASSED [ 96%]
+web/tests/test_util_metadata.py::TestAllowlistScientificForDisplayName::test_magpie_common_name_maps_to_pica_pica PASSED [ 96%]
+web/tests/test_visit_processor_ingest_filters.py::test_no_strict_allows_any_name PASSED [ 96%]
+web/tests/test_visit_processor_ingest_filters.py::test_strict_allowlist_routes_unknown_placeholder_to_bird_review PASSED [ 97%]
+web/tests/test_visit_processor_ingest_filters.py::test_strict_allowlist_fails_closed_when_allowlist_missing PASSED [ 97%]
+web/tests/test_visit_processor_ingest_filters.py::test_strict_allowlist_still_blocks_real_off_allowlist_species PASSED [ 97%]
+web/tests/test_visit_processor_ingest_filters.py::test_out_of_order_video_ingest_does_not_attach_to_future_visit PASSED [ 97%]
+web/tests/test_visit_processor_ingest_filters.py::test_out_of_order_video_ingest_within_timeout_rewinds_visit_start PASSED [ 97%]
+web/tests/test_visit_processor_ingest_filters.py::test_visit_eligible_false_creates_detection_without_visit PASSED [ 98%]
+web/tests/test_web_push_service.py::TestSendWebPushCleanup::test_drops_sub_on_key_deserialize_error PASSED [ 98%]
+web/tests/test_web_push_service.py::TestSendWebPushCleanup::test_removes_subscription_missing_keys PASSED [ 98%]
+web/tests/test_xeno_canto_service.py::TestSearchTermFromSpeciesName::test_common_name_in_parentheses PASSED [ 98%]
+web/tests/test_xeno_canto_service.py::TestSearchTermFromSpeciesName::test_plain_name PASSED [ 98%]
+web/tests/test_xeno_canto_service.py::TestSearchTermFromSpeciesName::test_empty PASSED [ 99%]
+web/tests/test_xeno_canto_service.py::TestFetchRecordings::test_empty_when_term_empty PASSED [ 99%]
+web/tests/test_xeno_canto_service.py::TestFetchRecordings::test_parses_ok_response PASSED [ 99%]
+web/tests/test_xeno_canto_service.py::TestFetchRecordings::test_escapes_quotes_in_query PASSED [ 99%]
+web/tests/test_xeno_canto_service.py::TestFetchRecordings::test_returns_empty_on_request_error PASSED [ 99%]
+web/tests/test_xeno_canto_service.py::TestFetchRecordings::test_returns_empty_on_bad_json PASSED [100%]
+
+======================= 508 passed in 199.98s (0:03:19) ========================
+Name                                                   Stmts   Miss  Cover   Missing
+------------------------------------------------------------------------------------
+ebird_region_core.py                                      70     41    41%   41-43, 48-62, 67-75, 80-92, 99
+processor/src/api.py                                      80     37    54%   17, 45, 47-59, 63, 75-87, 116, 121-123, 126-130
+processor/src/birdnet_fifo_persist.py                    164     47    71%   28-32, 38, 41-42, 44, 58-59, 66-70, 76-77, 96, 106, 112, 116, 121-123, 139, 147-148, 153-154, 186-188, 192-198, 204, 209-210, 227, 234-235, 239-242
+processor/src/birdnet_fifo_snapshot.py                   100     27    73%   39, 42-43, 45, 57, 61-62, 89-93, 106-107, 153-154, 165-167, 180-187
+processor/src/birdnet_merge_key.py                         2      0   100%
+processor/src/birdnet_mqtt_confidence.py                  83     24    71%   26-27, 36-37, 51-52, 55-56, 59-60, 63-64, 68-69, 72-73, 76-77, 98-100, 105, 110-111
+processor/src/dataset_saver.py                            71     63    11%   15-17, 31-71, 75-100
+processor/src/decision_maker.py                          332     69    79%   24, 63-64, 79-80, 88-89, 92-93, 96-97, 100-101, 137, 146, 165, 168-169, 180, 196, 205, 207, 239-240, 244-245, 256, 265, 275-281, 285-291, 296, 367, 397-413, 460-471, 482-484, 507-510, 519-531, 555-558
+processor/src/decision_outcome.py                          8      0   100%
+processor/src/decision_trace_builder.py                   80      6    92%   103, 202-203, 220-221, 223
+processor/src/detection_fusion.py                        247    160    35%   27-28, 42, 46-75, 102-134, 150-262, 267-273, 295-296, 313-314, 321-334, 343-350, 399-410, 453-454, 456-484
+processor/src/detection_stack.py                          72     49    32%   20, 53, 80-192
+processor/src/detection_strategy.py                      277     50    82%   30-31, 47-48, 57, 71-72, 90-91, 116, 153, 171, 175, 196, 198, 238-248, 264, 269, 276, 282-288, 357, 386, 388, 395, 399, 414, 420-423, 449, 457-460, 486, 512-516
+processor/src/ebird_regional_confidence.py                68     18    74%   26, 29-30, 44-45, 48-49, 52-53, 67-72, 77-79, 82, 89, 92
+processor/src/file_test_control.py                       184    136    26%   28, 32-34, 38-41, 45-59, 63-65, 69-73, 104-127, 131-135, 138, 141-173, 176-183, 186-193, 196-230, 233, 244-253
+processor/src/file_test_paths.py                          11      0   100%
+processor/src/fps_tracker.py                              33     22    33%   9-12, 16-18, 21, 24-25, 28-30, 34-51
+processor/src/frame_processor.py                         142     41    71%   18, 21, 46, 51-52, 85, 97, 117-119, 128-135, 142-143, 158-159, 161-162, 167-183, 190-205, 237-238, 259-261
+processor/src/frigate_bbox.py                             76     11    86%   11-12, 23-24, 31-33, 54, 58, 75, 80
+processor/src/frigate_scope.py                            28      8    71%   12-18, 40
+processor/src/fusion_metrics.py                           68     59    13%   11-14, 18-21, 29-61, 73-111, 131-137
+processor/src/fusion_model.py                             66     49    26%   21-22, 27-28, 37, 49-79, 82-89, 93-113
+processor/src/hypothesis_arbitration.py                  225    189    16%   21-24, 28-29, 33, 37-38, 42-43, 47-49, 53, 57-59, 63-73, 77-94, 98, 106-112, 127-133, 141-159, 163-191, 195-224, 232-295
+processor/src/interfaces.py                                6      0   100%
+processor/src/light_level_detector.py                     35     12    66%   21-22, 27, 31-33, 44-50
+processor/src/media_runtime.py                           100     77    23%   32-47, 51-61, 71-197
+processor/src/motion_detectors/factory.py                 52     21    60%   60, 85-122, 128, 131-132, 134-135
+processor/src/motion_detectors/fake.py                     8      4    50%   6-7, 10-11
+processor/src/motion_detectors/opencv_motion.py           65     48    26%   31-32, 36-62, 66-86
+processor/src/motion_detectors/or_motion.py               72     12    83%   37, 41, 45, 63, 69, 74, 77, 83, 93, 96-98
+processor/src/motion_runtime.py                           63     53    16%   28-94, 98-111
+processor/src/mqtt_aggregator.py                         726    318    56%   55, 166-168, 182-183, 185-187, 193-194, 198-199, 205-228, 241-257, 264, 267, 276-277, 280, 297-298, 305-309, 317-318, 325, 350-372, 382-391, 407-408, 414-415, 419-430, 435, 444, 543-544, 552, 556-557, 565-566, 582-587, 591, 595-597, 610-612, 620-622, 626-627, 659-660, 666-667, 716-717, 721, 723-726, 748, 767, 788-796, 809-820, 832-837, 846-857, 862-867, 881, 884-950, 953-979, 986-999, 1008-1043, 1063-1064, 1067-1068, 1071-1072, 1075-1076, 1093, 1096-1097, 1103, 1107, 1128, 1130, 1132, 1163, 1173-1179, 1183, 1187-1191, 1195, 1198-1207
+processor/src/mqtt_event_parsers.py                      180     50    72%   17-18, 20, 30-31, 36, 42, 45-46, 48, 57-62, 68, 71, 74, 87, 92, 99, 111, 119, 121, 129-133, 149-154, 161, 163, 167, 175-176, 178, 192, 198-199, 211, 238, 240, 243, 245
+processor/src/mqtt_runtime.py                             95     80    16%   27-42, 47-58, 71-72, 81, 85-96, 111-190
+processor/src/mqtt_scale_state.py                         34      4    88%   35-36, 49-50
+processor/src/multi_camera_confidence.py                  67      9    87%   37-38, 51, 54, 58, 72, 79, 84-85
+processor/src/notify_preview_encode.py                   106     22    79%   25-27, 32-34, 47-50, 68, 85, 107, 110-112, 126-132
+processor/src/pipeline_policy.py                          20     18    10%   14-39
+processor/src/processor_bootstrap.py                      98     44    55%   40-58, 62-146, 157-160, 162, 190-194
+processor/src/processor_provenance.py                     59      1    98%   68
+processor/src/processor_runtime_profile.py                72     18    75%   19-22, 26, 30, 38, 45, 67-68, 74-75, 81, 98-99, 103-104, 106
+processor/src/processor_runtime_stats.py                  82     16    80%   36-38, 52-53, 55, 63, 76, 115-117, 123-127
+processor/src/processor_support.py                        86     55    36%   49-50, 58-62, 67-68, 73-80, 85-122, 127-129
+processor/src/recording_cleanup_policy.py                  6      0   100%
+processor/src/recording_dataset_crops.py                  12      2    83%   9-11
+processor/src/recording_decision_trace_log.py             12      3    75%   11, 16-17
+processor/src/recording_file_gate.py                      18     13    28%   11-25
+processor/src/recording_finalize.py                      112     20    82%   72-105, 110, 185, 212, 257-258, 284, 289-290
+processor/src/recording_ingest_gate.py                    10      2    80%   29-30
+processor/src/recording_mqtt_window.py                    14      0   100%
+processor/src/recording_no_detection_log.py                9      0   100%
+processor/src/recording_notify_dispatch.py                34      4    88%   38-44, 82-83
+processor/src/recording_notify_errors.py                  10      0   100%
+processor/src/recording_notify_policy.py                  20      2    90%   22-23
+processor/src/recording_notify_preview_log.py             10      2    80%   29-30
+processor/src/recording_post_fusion_rejections.py         21      2    90%   13-14
+processor/src/recording_scales_evidence.py                18      2    89%   29-30
+processor/src/recording_session.py                       170    119    30%   46-59, 63, 67, 76, 90, 92, 96, 105-107, 124-126, 130-282
+processor/src/recording_session_cleanup.py                 8      2    75%   12-13
+processor/src/recording_spectrogram.py                    18      0   100%
+processor/src/recording_video_response.py                  6      0   100%
+processor/src/recordings_remote_mirror.py                173    142    18%   31, 40-41, 45-50, 54-67, 72-87, 91-218, 222-233, 240-250
+processor/src/runtime_contract.py                        128     17    87%   29, 50, 60, 72-73, 96, 107, 114, 120, 133, 143, 148-152, 155
+processor/src/scale_sample_log.py                        104     77    26%   17-20, 25, 31, 43-44, 52-53, 56-61, 65-81, 99-147
+processor/src/schemas/__init__.py                          2      0   100%
+processor/src/schemas/events.py                           35      5    86%   53-57
+processor/src/sources/go2rtc_stream_source.py            196    169    14%   23-32, 44-59, 82-110, 114-130, 134-136, 140-148, 152-157, 161-164, 168-199, 203-222, 226-323, 327-347, 354-364, 368-377, 381-384
+processor/src/sources/streaming_server.py                 59     42    29%   19-20, 23-26, 29, 34-54, 57, 67-83
+processor/src/sources/video_file_source.py               297    124    58%   48-76, 80-91, 94-150, 155, 158-164, 181-185, 188-192, 200-202, 211-213, 217-219, 240, 328, 334-345, 348-404, 408, 415-417, 421-427, 451, 461, 465-467, 470-472, 479-484, 487, 490, 493, 496, 499
+processor/src/species_normalizer.py                      306     65    79%   21, 33, 36, 56, 58, 94, 96, 102-105, 135-145, 158, 162, 164-165, 201, 226, 228, 249, 252, 257, 275-279, 282-292, 318, 334, 352-355, 367-370, 401, 422-424, 427-440, 458, 467, 474-492
+processor/src/spectrogram.py                              62     56    10%   19-102
+processor/src/track_regenerator.py                        94     57    39%   20, 34, 41-42, 51, 97-196
+shared/__init__.py                                         0      0   100%
+shared/detection_crop_contract.py                         45     28    38%   12-17, 20-35, 48-49, 52-53, 57, 64
+web/app.py                                                34      1    97%   63
+web/app_logging.py                                        40      3    92%   20-22
+web/app_startup.py                                        84     46    45%   50-51, 63-65, 72-75, 86-88, 101-121, 123-131, 140-191
+web/auth.py                                              143     16    89%   31-33, 50, 67, 77, 94, 102, 107, 113, 131, 159, 161, 165-166, 196, 198
+web/birdlense_mcp.py                                      57     26    54%   26-28, 46-50, 55-72, 77-82, 102-103, 110
+web/compat_reexports.py                                    4      0   100%
+web/config.py                                             26      5    81%   10-13, 40
+web/data_paths.py                                        115     38    67%   23-24, 30, 36-38, 42, 51-55, 69-71, 76-78, 88-90, 94-95, 110, 113, 115, 120-121, 125, 138, 143, 149-150, 159-160, 163, 165, 168-169
+web/errors.py                                             18      4    78%   25-28
+web/extensions.py                                         20      0   100%
+web/flask_extensions.py                                   37      5    86%   24, 27, 48-49, 51
+web/metrics_auth.py                                       16      0   100%
+web/migrations/env.py                                     44     13    70%   20-21, 31, 35-43, 48-52, 68
+web/migrations/versions/001_schema_patches.py             58     28    52%   21, 35, 37, 46-52, 57, 59, 68, 77, 79, 81, 83, 91-97, 101-106, 110
+web/migrations/versions/002_hazel_grouse_species.py       17      3    82%   26, 46-47
+web/migrations/versions/002_video_deleted_at.py           30     10    67%   21, 27, 37-43, 46, 50
+web/migrations/versions/003_perf_list_indexes.py          32     14    56%   20, 30, 32, 36, 45-54
+web/migrations/versions/004_birdnet_fifo_event.py         23     10    57%   24-31, 40-47
+web/models.py                                            156      0   100%
+web/notifications/__init__.py                            403    184    54%   30, 40-46, 87, 90, 96, 107-108, 125, 131-135, 154-221, 228-231, 245, 253-301, 306-321, 339-340, 344-348, 354-365, 369-370, 376-377, 392-393, 421-422, 437-438, 442-443, 446, 455, 473-478, 490-491, 494-495, 503, 507, 521-543, 555, 558, 574-576, 593-599, 624-625, 672-682
+web/observer_time.py                                      91     38    58%   16-49, 64-65, 73, 83-84, 111-119, 147, 156, 179
+web/recording_layout_paths.py                             30      6    80%   35, 38, 41, 46-48
+web/routes/__init__.py                                     7      0   100%
+web/routes/http_guards.py                                 33      0   100%
+web/routes/processor_routes.py                           107     37    65%   57, 79-80, 98, 108-111, 117, 121-139, 144, 147, 158-160, 164-170
+web/routes/ui_birdfood_routes.py                          23      1    96%   30
+web/routes/ui_corrections_dataset_routes.py               95     51    46%   25-35, 43-50, 58-79, 84, 100-108, 113, 121, 125, 134-140
+web/routes/ui_overview_timeline_routes.py                137      6    96%   67-69, 97, 136, 236
+web/routes/ui_route_constants.py                          11      0   100%
+web/routes/ui_routes.py                                   21      0   100%
+web/routes/ui_settings_routes.py                         183     50    73%   59, 82-87, 97-102, 117, 148, 160, 162, 186, 190-191, 198, 201, 205-207, 221, 226, 237-239, 243-254, 258-265
+web/routes/ui_species_catalog_routes.py                   44      7    84%   29, 41, 50, 59, 62, 65-66
+web/routes/ui_species_media_routes.py                     87     32    63%   29, 49, 52, 66-87, 94, 100-102, 106-116
+web/routes/ui_status_push_routes.py                      108     21    81%   50, 59, 77, 92, 120-131, 149, 153, 158, 161, 186-190
+web/routes/ui_system_db_routes.py                        106     76    28%   21-27, 31-35, 39-84, 97-106, 126-151, 160-169, 175-182
+web/routes/ui_system_diagnostics_routes.py                64     12    81%   34-35, 43, 52, 66, 81, 89-90, 95-96, 103-104
+web/routes/ui_system_file_test_routes.py                  56      7    88%   44, 52, 59, 62, 66, 73, 76
+web/routes/ui_system_fusion_routes.py                     47      6    87%   40-43, 56, 72
+web/routes/ui_system_jobs_state.py                        22      0   100%
+web/routes/ui_system_maintenance_routes.py                48      4    92%   42, 52, 62, 94
+web/routes/ui_system_metrics_routes.py                    80      4    95%   82, 101, 111, 127
+web/routes/ui_system_processor_weights_routes.py          41      6    85%   42-43, 51, 54, 59-60
+web/routes/ui_system_recognition_routes.py                23      1    96%   41
+web/routes/ui_system_review_queue_routes.py               23      2    91%   24, 36
+web/routes/ui_system_routes.py                            83      7    92%   94, 109-112, 121, 142
+web/routes/ui_system_species_registry_routes.py           87     21    76%   47, 71, 98-102, 111-115, 124, 130-132, 158-159, 168-170
+web/routes/ui_system_storage_routes.py                    41      3    93%   32, 34-35
+web/routes/ui_timeline_helpers.py                         55      6    89%   27, 40, 42, 45-46, 48
+web/routes/ui_video_routes.py                            216    116    46%   46, 71, 74, 76, 79, 82, 131-140, 157, 161-199, 204-216, 235, 237, 240, 251, 255, 260-322
+web/seed/seed.py                                          56     20    64%   20-28, 124-130, 154-158, 166, 168-169
+web/services/__init__.py                                   0      0   100%
+web/services/activity_notify_insights_service.py          77      6    92%   14-15, 54, 72, 98, 117
+web/services/api_json_validation.py                       35      3    91%   67, 91, 100
+web/services/artifact_paths_service.py                    33      3    91%   21, 44-45
+web/services/bird_food_service.py                         34      2    94%   30, 34
+web/services/birdnet_fifo_view_service.py                148     43    71%   38, 41-42, 44, 59, 63-64, 75-76, 90-91, 98-102, 108-109, 114, 138-142, 155-156, 195-198, 202-204, 207, 213-216, 218, 225-226, 236-237
+web/services/broken_videos_inventory_service.py           64      9    86%   19, 22, 28-29, 32, 35-36, 74, 77
+web/services/cache.py                                    157     83    47%   35, 38-40, 48, 54, 58-59, 64-65, 72, 83-110, 118-121, 125-131, 138-144, 150-155, 163-167, 172-173, 180-183, 193-197, 201, 207-222
+web/services/component_status_service.py                  59     15    75%   57-62, 65-70, 78-81, 85, 93
+web/services/corrections_activity_service.py              39     15    62%   19, 23-26, 68-70, 84-90
+web/services/dataset_export/__init__.py                    0      0   100%
+web/services/dataset_export/export_core.py               815    414    49%   34-63, 68-74, 82, 85-86, 95-109, 113-122, 128, 142-159, 165, 180-220, 253-257, 291, 325-326, 331-332, 338-350, 380, 386, 388, 390, 416, 420, 424, 431, 433-447, 451-453, 497-498, 508, 515-518, 520-523, 538-539, 553-554, 568-569, 583-585, 594-597, 600-603, 619, 644, 646-648, 653-667, 670-673, 675-680, 683-686, 688-691, 697, 701, 709-710, 724-725, 739-740, 742-755, 780-803, 806-809, 845-846, 856-914, 987-1006, 1019, 1026, 1037-1055, 1073, 1097, 1100, 1108-1113, 1117-1118, 1120-1130, 1146-1172, 1204-1205, 1214, 1222-1223, 1228-1229, 1245-1246, 1248-1268, 1275-1279, 1289
+web/services/dataset_export_request_service.py            27      9    67%   21-22, 25-26, 29-30, 33-34, 49
+web/services/dataset_export_service.py                     4      0   100%
+web/services/detection_crop_api_service.py                22     17    23%   13-30
+web/services/detection_crop_service.py                    75     61    19%   20, 30-68, 77, 85-110, 119-122, 128-137
+web/services/detection_quality_baseline_service.py       127     21    83%   25-29, 46, 49-50, 52, 59, 62-63, 65, 69, 72, 75-76, 85, 90, 95, 118
+web/services/detection_species_correction_service.py     119     36    70%   35-71, 79-95, 116, 120, 123-124, 128, 132, 139, 144, 205-206
+web/services/ebird_export_service.py                      30      6    80%   43-44, 50-53
+web/services/ebird_mapping_suggestions.py                 51     14    73%   29, 57, 74-100, 110
+web/services/ebird_region_service.py                      43     32    26%   28-38, 49-97
+web/services/ebird_util.py                                11      7    36%   12-18
+web/services/favorites_catalog_service.py                 35      1    97%   80
+web/services/feed_service.py                             173    129    25%   13-15, 28, 33-39, 44-51, 59-60, 66, 68-72, 78-101, 109-120, 128-135, 144, 151-183, 194-229
+web/services/feeder_scale.py                             189     97    49%   32, 39-47, 52, 54, 58-60, 64-82, 86-99, 109, 115-117, 125, 140-141, 153, 164-165, 167, 175, 184-188, 194, 197, 202, 207, 214-218, 223, 231-234, 239, 245, 248-249, 252-276
+web/services/fusion_product_service.py                   214     32    85%   61-62, 64, 67, 85, 98, 106, 118, 123, 142-143, 184, 249, 258, 264-265, 303-314, 328, 344-346
+web/services/fusion_trace_service.py                     104     15    86%   19, 27, 29, 32, 41, 54, 57-58, 78, 84-85, 89, 101, 215-216
+web/services/fusion_training_service.py                  253    152    40%   39-40, 47-52, 68, 77-79, 84-90, 95-101, 110, 129, 135, 141, 147-170, 199-200, 202, 209, 216-218, 223-227, 232-245, 279-310, 315-425, 440-481
+web/services/homeassistant_config.py                      19      2    89%   22, 37
+web/services/http_response_cache.py                       12      2    83%   46-47
+web/services/legacy_import_cleanup_service.py             28      2    93%   43, 56
+web/services/migration_calendar_request_service.py        16      1    94%   30
+web/services/migration_calendar_service.py               110     43    61%   23-44, 48, 75, 79, 141-142, 161-162, 164-166, 186-187, 198-217
+web/services/ml_health_stats_service.py                   31      1    97%   40
+web/services/ml_lineage_service.py                        13      0   100%
+web/services/ml_quality_cycle_service.py                  44      5    89%   17, 21-22, 27, 61
+web/services/monthly_report_window_service.py             28      5    82%   35, 65-66, 69-70
+web/services/overview_request_service.py                  16      0   100%
+web/services/overview_service.py                          60      1    98%   40
+web/services/processor_custom_weights_service.py         219     48    78%   76, 79-80, 91, 101, 106-107, 137, 162, 164, 166, 170-171, 173, 179, 181, 184-185, 188, 190, 205, 211, 214, 221, 224, 244-247, 253-257, 277, 280, 283, 294-295, 304-307, 310-313, 317
+web/services/processor_ingest/__init__.py                  0      0   100%
+web/services/processor_ingest/activity_log_ingest.py      35     28    20%   13-42
+web/services/processor_ingest/gateway.py                  71     26    63%   22-23, 29, 59-60, 77, 80-81, 86, 88, 91-92, 94, 99, 104-120
+web/services/processor_ingest/notify_ingest.py            60      6    90%   72-78, 106-107, 152-153
+web/services/processor_ingest/video_ingest.py             46      3    93%   38, 51, 60
+web/services/processor_logs_service.py                    19      1    95%   26
+web/services/processor_restart_service.py                 10      0   100%
+web/services/prometheus_metrics_service.py                29      1    97%   88
+web/services/readiness_service.py                         22      0   100%
+web/services/recording_protection.py                      49     12    76%   17, 29, 32, 35-36, 39-40, 47, 50, 55-56, 59
+web/services/recordings_mirror_test_service.py            70     47    33%   14, 20-31, 39, 52-98
+web/services/report_service.py                           116     33    72%   159-211, 238, 247-249
+web/services/retention_service.py                        275    227    17%   53-63, 68, 77-140, 145-162, 167-186, 208-209, 221-261, 268-364
+web/services/review_queue_bulk_delete_api_service.py      60     12    80%   42-44, 67, 79, 97-103
+web/services/review_queue_bulk_plan.py                    63     11    83%   17, 19, 24-25, 35, 41-43, 46, 88-89
+web/services/review_queue_service.py                      40      5    88%   37-38, 45-46, 112
+web/services/session_idle_service.py                      58      6    90%   33, 40, 43-44, 69-70
+web/services/settings_access_service.py                   29      1    97%   35
+web/services/settings_patch_service.py                    42      1    98%   33
+web/services/species_catalog/__init__.py                   3      0   100%
+web/services/species_catalog/allowlist.py                119     16    87%   32, 36, 47, 57, 68, 87, 100, 114, 134, 144-146, 165, 180, 183, 186
+web/services/species_catalog/api.py                       36      7    81%   32-33, 95-96, 103-105
+web/services/species_catalog/reconcile.py                 97     41    58%   26-30, 34, 76-78, 95-99, 105, 117, 126-127, 132, 137, 139, 143-167, 172
+web/services/species_catalog/registry.py                 545    265    51%   42, 61, 65-69, 96, 105, 118, 136, 155, 159-160, 177-190, 194-201, 203-204, 230-235, 268-274, 279-282, 354, 395-396, 399, 423, 451, 453, 455-458, 465-469, 481-487, 493-495, 500, 590, 606-692, 710-711, 724-763, 776-930, 955
+web/services/species_catalog_allowlist_service.py          3      0   100%
+web/services/species_catalog_api_service.py                3      0   100%
+web/services/species_catalog_reconcile_service.py          3      0   100%
+web/services/species_data_quality_service.py              57      5    91%   27, 109, 130, 132-133
+web/services/species_dataset_alignment_service.py        191     52    73%   29, 57, 64-77, 84-92, 99, 156-157, 214, 263-272, 300-335
+web/services/species_identity_service.py                  71      6    92%   67, 70, 84, 94-96
+web/services/species_image_proxy_service.py              148    111    25%   25-35, 43-44, 46, 53-65, 69-75, 79-108, 115, 121, 124-125, 133-204
+web/services/species_merge_service.py                     30      4    87%   20, 22, 31, 35
+web/services/species_metadata_enrichment_service.py        4      0   100%
+web/services/species_regional_scope.py                    22      9    59%   35-43
+web/services/species_registry_admin_service.py           178     97    46%   51-54, 64-65, 70-73, 80-82, 97, 103-104, 134-136, 159-161, 165-183, 187-243, 250-254, 258-269, 290-292, 296-305, 309-325
+web/services/species_registry_service.py                   3      0   100%
+web/services/species_summary_service.py                   37      4    89%   15, 17-19
+web/services/species_tuning_targets_service.py            69     58    16%   15-25, 29-34, 38-58, 62-95, 99-109
+web/services/species_visit_maintenance_service.py        164     13    92%   55, 99-103, 137, 147-150, 171, 190
+web/services/sqlite_admin_service.py                      38      6    84%   19-22, 43-44
+web/services/status_service.py                            42     27    36%   28-41, 49-61
+web/services/storage_tree_utils.py                        16      2    88%   21-22
+web/services/strict_ui_api_auth_service.py                54      1    98%   43
+web/services/system_activity_service.py                   18      1    94%   26
+web/services/system_admin_api_service.py                  69     31    55%   49-51, 64-65, 78-93, 103-134, 149-178
+web/services/system_config_audit_service.py              179     25    86%   60-61, 67-68, 77-82, 209, 222-224, 249, 278, 294-295, 308-309, 311, 315-316, 323-324
+web/services/system_diagnostics_service.py               281     68    76%   62, 67, 72, 88, 93, 114-115, 136, 148, 151, 159, 164, 166, 199-205, 233, 243, 255, 260, 262, 299-305, 335, 341, 351, 353, 388-394, 405-406, 419-420, 436-451, 466, 479-482
+web/services/system_domain_health_service.py              88     19    78%   31-32, 35-39, 45-46, 77, 110, 164-172, 233-236
+web/services/system_file_test_service.py                 201     62    69%   35-36, 61-64, 75-76, 83, 88-89, 91, 115-120, 126, 131, 134-135, 151-156, 162, 166-172, 199-201, 215, 218, 221-223, 235, 239, 242, 247-248, 250, 261-265, 267-273
+web/services/system_fusion_telegram_jobs_service.py       75     13    83%   27, 53-55, 80, 96, 129-131, 155, 181-183
+web/services/system_live_metrics_service.py               39     14    64%   28-35, 40, 43-48
+web/services/system_maintenance_service.py               192     51    73%   46, 60, 73, 77, 81, 85, 88, 91, 94-96, 99, 117-118, 130-132, 144-151, 163-166, 179-182, 195-198, 212-215, 224, 240, 244, 255-258, 271, 292-293, 295-298
+web/services/system_metrics_api_service.py               140     38    73%   98-99, 101, 108-110, 116-118, 131-133, 162-164, 177-179, 193, 222-236, 239-242, 248-249, 258-259, 288-290
+web/services/system_metrics_constants.py                  21      5    76%   13-17
+web/services/system_metrics_sampler_service.py            78     56    28%   44-61, 66-123, 128-134, 145-158, 173-177
+web/services/system_route_payload_parsers.py              16      4    75%   10, 12, 17-18
+web/services/system_spectrogram_regen_service.py          82     72    12%   16, 29-166
+web/services/system_sqlite_admin_api_service.py           80     57    29%   35-46, 64-109, 114-127
+web/services/system_storage_service.py                   227     55    76%   33, 40-43, 52, 57, 61, 65, 69-70, 78, 84, 88, 92, 102-103, 109, 111, 114-115, 141, 158, 167-168, 174-175, 180, 186, 193-199, 247, 250-252, 261, 265, 269, 272-273, 281, 285, 288-289, 292-295, 299-300, 312-315
+web/services/system_track_regen/__init__.py                0      0   100%
+web/services/system_track_regen/worker_core.py           373    196    47%   39, 59-64, 112-120, 156-157, 173-178, 191-197, 199-205, 208-209, 215, 220, 237-242, 303-311, 315-321, 324-337, 340-359, 362-370, 380-394, 397-411, 425-439, 461-475, 481, 483-498, 500, 516, 533-561, 565-637, 649-664, 748, 763-766
+web/services/system_track_regen_worker.py                  3      0   100%
+web/services/telegram_proxy_service.py                    48     38    21%   20-22, 31-43, 53-88
+web/services/timeline_export_service.py                   46      8    83%   39-43, 96-98
+web/services/timeline_window_service.py                   18      4    78%   30-31, 37-38
+web/services/track_regen_service.py                       59      9    85%   27, 62, 67-69, 104, 107-110
+web/services/ui_password_service.py                       56     12    79%   24, 27, 34-36, 39-40, 47, 63, 66, 71-72
+web/services/upload_request_encoding_guard.py             27      0   100%
+web/services/video_neighbors_service.py                   65     11    83%   28, 38-39, 43, 103-104, 120-129, 156-166
+web/services/video_payload_service.py                     22     11    50%   24, 56-73
+web/services/visit_processor.py                          108     24    78%   116-138, 150-151, 183-192, 239-245, 259, 266, 273, 279
+web/services/visitor_stats_service.py                     42      9    79%   18-22, 75, 90, 92, 94
+web/services/web_push_service.py                         119     30    75%   56-58, 70-75, 83, 88, 91-92, 126, 128-138, 148-151, 166, 196-200
+web/services/xeno_canto_service.py                        42      0   100%
+web/species_constants.py                                   3      0   100%
+web/species_metadata.py                                  513    180    65%   121-122, 134-135, 160, 172, 215, 218, 223, 236, 240, 248, 272, 279, 288-289, 307, 342-351, 357-372, 386-398, 405, 423, 427-433, 436-444, 449-452, 460-484, 497, 500-501, 507-508, 518-519, 534, 542-550, 558, 561, 564, 593, 608, 612-618, 623, 636-651, 658, 682, 686, 701, 705, 709, 711, 713-715, 722, 741-747, 764, 791-804, 807-819, 822, 844-848, 853-884
+web/telegram_mtproto.py                                  141    116    18%   20-39, 43-55, 64-66, 69-74, 79-91, 95-102, 107-128, 146-228, 247-261, 270
+web/time_util.py                                          20      8    60%   21, 24, 30-35
+web/timeline_payloads.py                                  68     12    82%   37, 41, 111-124, 126-127, 134
+web/util.py                                                9      0   100%
+web/weather_service.py                                    98     49    50%   23, 45, 51-77, 82, 93-98, 101-103, 106-129, 133-138, 144
+------------------------------------------------------------------------------------
+TOTAL                                                  20131   7633    62%
+
+## UI coverage attempt
+
+> birdlense-ui@0.3.7 test
+> vitest --run --coverage
+
+
+ MISSING DEPENDENCY  Cannot find dependency '@vitest/coverage-v8'
+
+[lean-ctx: full output -> /home/gfer/.lean-ctx/tee/2026-04-27_144937_npm_run_test_--_--run_--coverage.log (redacted, 24h TTL)]

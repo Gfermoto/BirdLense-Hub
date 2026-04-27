@@ -168,14 +168,22 @@ export function DatasetExportsCard({ simple = false }: { simple?: boolean }) {
       >
         <Stack spacing={2.5}>
           {error && (
-            <Alert severity="error" variant="outlined" onClose={() => setError(null)}>
+            <Alert
+              severity="error"
+              variant="outlined"
+              onClose={() => setError(null)}
+            >
               <AlertTitle>{t('common.error')}</AlertTitle>
               {error}
             </Alert>
           )}
 
           {success && (
-            <Alert severity="success" variant="outlined" onClose={() => setSuccess(null)}>
+            <Alert
+              severity="success"
+              variant="outlined"
+              onClose={() => setSuccess(null)}
+            >
               <AlertTitle>{t('common.success')}</AlertTitle>
               {success}
             </Alert>

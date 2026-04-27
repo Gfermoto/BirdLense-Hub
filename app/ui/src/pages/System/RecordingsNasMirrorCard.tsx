@@ -43,7 +43,9 @@ type MirrorForm = {
 };
 
 function readMirrorFromSettings(data: unknown): MirrorForm {
-  const root = data as { storage?: { recordings_mirror?: Record<string, unknown> } };
+  const root = data as {
+    storage?: { recordings_mirror?: Record<string, unknown> };
+  };
   const m = root?.storage?.recordings_mirror ?? {};
   return {
     enabled: Boolean(m.enabled),
@@ -112,7 +114,8 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
         host: form.host.trim(),
         port,
         username: form.username.trim(),
-        remote_base_path: form.remote_base_path.trim() || '/birdlense/recordings',
+        remote_base_path:
+          form.remote_base_path.trim() || '/birdlense/recordings',
         ssh_private_key_path: form.ssh_private_key_path.trim(),
         max_concurrent_uploads: maxConc,
         upload_retries: retries,
@@ -155,7 +158,10 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
     setMessage(null);
     setErrMsg(null);
     try {
-      const { data: result } = await axios.post<{ ok?: boolean; error?: string }>(
+      const { data: result } = await axios.post<{
+        ok?: boolean;
+        error?: string;
+      }>(
         `${BASE_API_URL}/storage/recordings-mirror/test`,
         {},
         { withCredentials: true },
@@ -165,7 +171,10 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
       }
       setMessage(t('storage.nasMirrorTestOk'));
     } catch (e) {
-      const err = e as { response?: { data?: { error?: string } }; message?: string };
+      const err = e as {
+        response?: { data?: { error?: string } };
+        message?: string;
+      };
       setErrMsg(
         err.response?.data?.error ||
           err.message ||
@@ -188,7 +197,9 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
     return (
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Alert severity="error">
-          {error instanceof Error ? error.message : t('storage.nasMirrorLoadError')}
+          {error instanceof Error
+            ? error.message
+            : t('storage.nasMirrorLoadError')}
         </Alert>
       </Paper>
     );
@@ -196,7 +207,7 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
 
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>
+      <Typography component="h4" variant="h6" gutterBottom>
         {t('storage.nasMirrorTitle')}
       </Typography>
       <Typography variant="body2" color="text.secondary" paragraph>
@@ -207,7 +218,9 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
           control={
             <Switch
               checked={form.enabled}
-              onChange={(_, v) => setForm((f) => (f ? { ...f, enabled: v } : f))}
+              onChange={(_, v) =>
+                setForm((f) => (f ? { ...f, enabled: v } : f))
+              }
             />
           }
           label={t('storage.nasMirrorEnabled')}
@@ -215,20 +228,26 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
         <TextField
           label={t('storage.nasMirrorHost')}
           value={form.host}
-          onChange={(e) => setForm((f) => (f ? { ...f, host: e.target.value } : f))}
+          onChange={(e) =>
+            setForm((f) => (f ? { ...f, host: e.target.value } : f))
+          }
           fullWidth
           autoComplete="off"
         />
         <TextField
           label={t('storage.nasMirrorPort')}
           value={form.port}
-          onChange={(e) => setForm((f) => (f ? { ...f, port: e.target.value } : f))}
+          onChange={(e) =>
+            setForm((f) => (f ? { ...f, port: e.target.value } : f))
+          }
           sx={{ maxWidth: 160 }}
         />
         <TextField
           label={t('storage.nasMirrorUsername')}
           value={form.username}
-          onChange={(e) => setForm((f) => (f ? { ...f, username: e.target.value } : f))}
+          onChange={(e) =>
+            setForm((f) => (f ? { ...f, username: e.target.value } : f))
+          }
           fullWidth
           autoComplete="username"
         />
@@ -248,7 +267,9 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
           type="password"
           value={form.sftp_key_passphrase}
           onChange={(e) =>
-            setForm((f) => (f ? { ...f, sftp_key_passphrase: e.target.value } : f))
+            setForm((f) =>
+              f ? { ...f, sftp_key_passphrase: e.target.value } : f,
+            )
           }
           fullWidth
           autoComplete="new-password"
@@ -267,7 +288,9 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
           label={t('storage.nasMirrorKeyPath')}
           value={form.ssh_private_key_path}
           onChange={(e) =>
-            setForm((f) => (f ? { ...f, ssh_private_key_path: e.target.value } : f))
+            setForm((f) =>
+              f ? { ...f, ssh_private_key_path: e.target.value } : f,
+            )
           }
           fullWidth
           helperText={t('storage.nasMirrorKeyPathHint')}
@@ -276,7 +299,9 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
           label={t('storage.nasMirrorMaxConcurrent')}
           value={form.max_concurrent_uploads}
           onChange={(e) =>
-            setForm((f) => (f ? { ...f, max_concurrent_uploads: e.target.value } : f))
+            setForm((f) =>
+              f ? { ...f, max_concurrent_uploads: e.target.value } : f,
+            )
           }
           sx={{ maxWidth: 200 }}
         />
@@ -292,7 +317,9 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
           label={t('storage.nasMirrorBackoff')}
           value={form.retry_backoff_seconds}
           onChange={(e) =>
-            setForm((f) => (f ? { ...f, retry_backoff_seconds: e.target.value } : f))
+            setForm((f) =>
+              f ? { ...f, retry_backoff_seconds: e.target.value } : f,
+            )
           }
           sx={{ maxWidth: 200 }}
         />
@@ -300,7 +327,9 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
           control={
             <Switch
               checked={form.strict_host_key}
-              onChange={(_, v) => setForm((f) => (f ? { ...f, strict_host_key: v } : f))}
+              onChange={(_, v) =>
+                setForm((f) => (f ? { ...f, strict_host_key: v } : f))
+              }
             />
           }
           label={t('storage.nasMirrorStrictHostKey')}
@@ -319,13 +348,17 @@ export const RecordingsNasMirrorCard = ({ enabled }: { enabled: boolean }) => {
             <Switch
               checked={form.delete_local_after_success}
               onChange={(_, v) =>
-                setForm((f) => (f ? { ...f, delete_local_after_success: v } : f))
+                setForm((f) =>
+                  f ? { ...f, delete_local_after_success: v } : f,
+                )
               }
             />
           }
           label={t('storage.nasMirrorDeleteLocal')}
         />
-        <Alert severity="warning">{t('storage.nasMirrorDeleteLocalWarn')}</Alert>
+        <Alert severity="warning">
+          {t('storage.nasMirrorDeleteLocalWarn')}
+        </Alert>
         <Alert severity="info" variant="outlined">
           {t('storage.nasMirrorEnvOverrideHint')}
         </Alert>

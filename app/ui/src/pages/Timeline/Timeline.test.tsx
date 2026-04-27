@@ -36,9 +36,7 @@ const visits: SpeciesVisit[] = [
 describe('Timeline', () => {
   it('shows an empty-state message when there are no visits', () => {
     render(<Timeline visits={[]} />);
-    expect(
-      screen.getByText(/no visits for this day/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/no visits for this day/i)).toBeInTheDocument();
   });
 
   it('keeps desktop visit card shells full width on both sides of the rail', () => {

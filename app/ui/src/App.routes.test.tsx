@@ -33,7 +33,9 @@ vi.mock('./components/PwaUpdatePrompt', () => ({
 }));
 
 vi.mock('./components/ErrorBoundary', () => ({
-  ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  ErrorBoundary: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 
 vi.mock('./pages/Overview', () => ({
@@ -98,8 +100,12 @@ describe('App species routes', () => {
 
     render(<App />);
 
-    expect(await screen.findByText('migration-catalog-page')).toBeInTheDocument();
-    expect(screen.queryByText('species-directory-page')).not.toBeInTheDocument();
+    expect(
+      await screen.findByText('migration-catalog-page'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('species-directory-page'),
+    ).not.toBeInTheDocument();
   });
 
   it('renders card directory on /species-directory', async () => {
@@ -107,7 +113,9 @@ describe('App species routes', () => {
 
     render(<App />);
 
-    expect(await screen.findByText('species-directory-page')).toBeInTheDocument();
+    expect(
+      await screen.findByText('species-directory-page'),
+    ).toBeInTheDocument();
   });
 
   it('renders favorites catalog on /favorites', async () => {
