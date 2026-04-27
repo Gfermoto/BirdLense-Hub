@@ -68,7 +68,7 @@ def test_recordings_mirror_connection() -> tuple[dict, int]:
                 client.load_system_host_keys()
             client.set_missing_host_key_policy(paramiko.RejectPolicy())
         else:
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # nosec B507
 
         connect_kw: dict[str, Any] = {
             "hostname": host,

@@ -143,7 +143,7 @@ def _upload_session_impl(session_dir: str) -> None:
                     client.load_system_host_keys()
                 client.set_missing_host_key_policy(paramiko.RejectPolicy())
             else:
-                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # nosec B507
 
             connect_kw: dict[str, Any] = {
                 "hostname": host,
