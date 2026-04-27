@@ -80,6 +80,7 @@ function renderPage() {
       >
         <Routes>
           <Route path="/timeline" element={<TimelinePage />} />
+          <Route path="/favorites" element={<div>favorites-page</div>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -118,4 +119,13 @@ describe('TimelinePage', () => {
       errSpy.mockRestore();
     }
   }, 10000);
+
+  it('opens the favorites catalog from the existing favorites chip', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /favorites/i }));
+
+    expect(await screen.findByText('favorites-page')).toBeInTheDocument();
+  });
 });

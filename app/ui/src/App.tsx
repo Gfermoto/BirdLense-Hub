@@ -20,6 +20,7 @@ import { trackSiteVisitor } from './api/systemAuditMetrics';
 
 const Overview = lazy(() => import('./pages/Overview'));
 const TimelinePage = lazy(() => import('./pages/Timeline'));
+const FavoritesPage = lazy(() => import('./pages/Favorites'));
 const VideoDetails = lazy(() =>
   import('./pages/VideoDetails').then((m) => ({ default: m.VideoDetails })),
 );
@@ -345,6 +346,7 @@ function App() {
                       <Routes>
                         <Route path="/" element={<Overview />} />
                         <Route path="/timeline" element={<TimelinePage />} />
+                        <Route path="/favorites" element={<FavoritesPage />} />
                         <Route
                           path="/migration-calendar"
                           element={<MigrationCalendar />}

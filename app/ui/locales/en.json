@@ -916,6 +916,23 @@
     "expandVisitDetails": "Expand visit details",
     "collapseVisitDetails": "Collapse visit details"
   },
+  "favoritesPage": {
+    "title": "Favorites",
+    "intro": "A species-first library of protected favorite recordings. Use the species index to jump through the page; open any card to inspect the original clip.",
+    "errorLoad": "Could not load favorite recordings.",
+    "totalVideos": "{{count}} favorite recordings",
+    "totalSpecies": "{{count}} species",
+    "unclassifiedCount": "{{count}} without species",
+    "searchSpecies": "Search species",
+    "sort": "Sort",
+    "sortRecent": "Recently favorited species",
+    "sortName": "Species name",
+    "speciesIndex": "Species index",
+    "groupMeta": "{{count}} recordings · latest {{date}}",
+    "protected": "Protected",
+    "unclassifiedSpecies": "Without species",
+    "empty": "No favorite recordings yet. Open a recording and mark it as favorite to protect it from cleanup."
+  },
   "pwa": {
     "installPrompt": "Add BirdLense Hub to your home screen",
     "install": "Install",

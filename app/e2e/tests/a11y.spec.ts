@@ -12,7 +12,7 @@ test.describe('Accessibility (axe)', () => {
     '/',
     '/timeline',
     '/timeline?review=1',
-    '/timeline?favorites=1',
+    '/favorites',
     '/migration-calendar',
     '/videos/0',
   ];

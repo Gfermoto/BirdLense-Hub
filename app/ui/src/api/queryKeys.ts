@@ -80,6 +80,9 @@ export const queryKeys = {
   speciesDirectory: {
     list: ['species-directory'] as const,
   },
+  favorites: {
+    bySpecies: ['favorites', 'by-species'] as const,
+  },
   /** Таймлайн + счётчик unknowns на той же дате (#343). */
   timeline: {
     observerTimezone: ['timeline-observer-timezone'] as const,
