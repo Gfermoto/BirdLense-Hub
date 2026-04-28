@@ -13,4 +13,13 @@ python3 scripts/reid/embed_dinov2_crop.py --image path/to/crop.jpg
 python3 scripts/reid/embed_dinov2_crop.py --glob 'samples/*.jpg' --output embeddings.jsonl
 ```
 
+## `embed_cosine_report.py`
+
+Сводка по **pairwise cosine** (numpy), опционально **top-K соседей** и сравнение пар из файла (`path1<TAB>path2`) со случайными «разными» парами.
+
+```bash
+pip install numpy   # если ещё нет (рядом с torch не обязательно ставить отдельно)
+python3 scripts/reid/embed_cosine_report.py --jsonl embeddings.jsonl --topk 5 -o report.md
+```
+
 См. также [REID_ROADMAP.md](../../docs/REID_ROADMAP.md).

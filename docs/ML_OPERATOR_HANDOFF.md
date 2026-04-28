@@ -11,7 +11,7 @@ This page closes the **repository-side** ML Phase‑1 track as documented in [CV
 - Inference stack: torch / OpenVINO binary detector paths, weight contract, benchmarks, CI smoke, docs.
 - Dataset **merge** helpers for a **3-class** detector layout (`Bird` / `Rodent` / `Background`): [DATASETS](./DATASETS.md) § three-class.
 - Operator docs for decode benchmarks, active-learning manifest stubs, Re-ID / federated **roadmaps** (not product features by themselves).
-- Offline **DINOv2 crop embeddings** CLI: [`scripts/reid/embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py) + [`scripts/reid/README.md`](../scripts/reid/README.md) — run outside Docker when experimenting ([#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383)).
+- Offline **DINOv2 crop embeddings** CLI: [`scripts/reid/embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py) + [`scripts/reid/embed_cosine_report.py`](../scripts/reid/embed_cosine_report.py) + [`scripts/reid/README.md`](../scripts/reid/README.md) — run outside Docker when experimenting ([#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383)).
 
 Nothing here replaces **your** labeled images, GPU time, or rollout decisions.
 

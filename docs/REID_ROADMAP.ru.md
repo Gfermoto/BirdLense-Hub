@@ -41,6 +41,7 @@ DINO/DINOv2 нужен **не только** для Re-ID особи. Тот ж�
 ### Офлайн-скрипт в репозитории
 
 - **`scripts/reid/embed_dinov2_crop.py`** — загрузка DINOv2 через `torch.hub`, L2-нормированный эмбеддинг на файл; вывод JSON Lines. См. **`scripts/reid/README.md`**. Нужны PyTorch + torchvision + Pillow в среде обучения/экспериментов (не обязательный dependency Docker-процессора).
+- **`scripts/reid/embed_cosine_report.py`** — статистика pairwise cosine, опционально **top-K соседей**, файл пар `--pairs` для контроля «та же особь» vs случайные пары (отчёт Markdown). Нужен только **numpy**.
 
 ## Остальное
 
