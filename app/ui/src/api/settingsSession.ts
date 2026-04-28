@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { Settings } from '../types';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, resetCsrfToken } from './client';
 
 export type RequiresPasswordResult = {
   requires: boolean;
@@ -52,12 +52,15 @@ export type VerifyPasswordResult =
 export const verifySettingsPassword = async (
   password: string,
 ): Promise<VerifyPasswordResult> => {
-  try {
-    const response = await axios.post(
+  const postPassword = () =>
+    axios.post(
       `${BASE_API_URL}/settings/verify-password`,
       { password },
       { withCredentials: true },
     );
+
+  try {
+    const response = await postPassword();
     if (response.data?.ok === true) {
       return { ok: true, role: response.data?.role || 'admin' };
     }
@@ -75,6 +78,15 @@ export const verifySettingsPassword = async (
       status === 403 &&
       (msg === 'CSRF token required' || msg === 'Authentication required')
     ) {
+      resetCsrfToken();
+      try {
+        const response = await postPassword();
+        if (response.data?.ok === true) {
+          return { ok: true, role: response.data?.role || 'admin' };
+        }
+      } catch {
+        // Fall through to the user-facing CSRF/session hint below.
+      }
       return { ok: false, error: 'csrf_or_auth' };
     }
     return { ok: false, error: 'server_error' };

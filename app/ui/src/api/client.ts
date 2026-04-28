@@ -18,6 +18,11 @@ const mutatingMethods = new Set(['post', 'put', 'patch', 'delete']);
 let csrfToken: string | null = null;
 let csrfTokenPromise: Promise<string> | null = null;
 
+export function resetCsrfToken() {
+  csrfToken = null;
+  csrfTokenPromise = null;
+}
+
 export async function getCsrfToken(): Promise<string> {
   if (csrfToken) return csrfToken;
   if (!csrfTokenPromise) {
