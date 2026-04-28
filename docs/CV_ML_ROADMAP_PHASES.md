@@ -90,7 +90,8 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 
 ### Epic [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) — 3-class detector **dataset** (Phase 1 entrypoint)
 
-- **`scripts/datasets/merge_datasets_three_class.py`** + **`make dataset-merge-three-class`** → `Bird` / `Rodent` / `Background` `dataset.yaml` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) trains/rolls up separately).
+- Local layout: **`scripts/datasets/binary/birds`**, **`binary/rodent`**, **`binary/background`** — see [binary/README.md](../scripts/datasets/binary/README.md).
+- **`scripts/datasets/merge_datasets_three_class.py`** + **`make dataset-merge-three-class`** → `Bird` / `Rodent` / `Background` `dataset.yaml` under `scripts/datasets/binary/merged/` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) trains/rolls up separately).
 - Optional **`hard_negatives_manifest@v1`** schema + merge **`--manifest-out`**; see [DATASETS.md](DATASETS.md).
 
 ---

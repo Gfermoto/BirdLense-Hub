@@ -10,7 +10,7 @@
 ## Что нужно
 
 - Аккаунт Google, место на Drive под zip и ран  
-- Архив датасета с **`dataset.yaml`** внутри (например `birds_rodent_background_yolo/` после `merge_datasets_three_class`)  
+- Архив датасета с **`dataset.yaml`** внутри (например папка `binary/merged/` после `make dataset-merge-three-class`)  
 - Среда Colab с **GPU T4**
 
 ---

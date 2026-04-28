@@ -1,28 +1,37 @@
 # Локальные данные для трёхклассового детектора (YOLO)
 
-Каталоги **`birds_binary_yolo/`**, **`rodent_yolo/`**, **`background_yolo/`** создаются рядом со скриптами (`scripts/datasets/`) и **не коммитятся** (см. корневой `.gitignore`): там лежат изображения и `.txt` разметки.
+Используйте каталог **`scripts/datasets/binary/`** с тремя подпапками (**`birds`**, **`rodent`**, **`background`**). Содержимое с бинарниками **не коммитится** (корневой `.gitignore`).
 
-## Структура (одинаковая для каждого источника)
+## Структура
 
 ```
-<имя>/
-  train/
-    images/    # *.jpg / *.png …
-    labels/    # для каждого изображения stem.txt (YOLO: class xc yc w h); фон — пустой файл
-  val/
-    images/
-    labels/
+binary/
+  README.md          # этот коммитится (краткая шпаргалка)
+  birds/
+    train/images/
+    train/labels/
+    val/images/
+    val/labels/
+  rodent/
+    train/...
+    val/...
+  background/
+    train/...
+    val/...
+  merged/            # только после make dataset-merge-three-class — слитый датасет
 ```
+
+Формат строк в `labels/*.txt`: YOLO (`class xc yc w h`). У фона допускаются **пустые** файлы.
 
 ## Смысл классов до слияния
 
-| Каталог              | Источник (bootstrap по умолчанию) | Один логический класс в labels |
-|----------------------|-----------------------------------|--------------------------------|
-| `birds_binary_yolo`  | MS COCO 2017, только `bird`       | id `0`                         |
-| `rodent_yolo`        | Open Images V6, `Squirrel`        | id `0` (позже merge → Rodent) |
-| `background_yolo`    | COCO без детекции `bird`          | пустые `.txt`                  |
+| Подпапка      | Типичный источник (bootstrap) | Один логический класс в labels |
+|---------------|-------------------------------|--------------------------------|
+| `birds/`      | COCO 2017, только `bird`      | id `0`                         |
+| `rodent/`     | Open Images V6, `Squirrel`    | id `0` → после merge = Rodent |
+| `background/` | COCO без детекции `bird`    | пустые `.txt`                  |
 
-## Сборка датасета для Hub
+## Сборка `dataset.yaml` для Hub
 
 Из **корня репозитория**:
 
@@ -30,17 +39,17 @@
 make dataset-merge-three-class
 ```
 
-На выходе: `scripts/datasets/birds_rodent_background_yolo/` с `dataset.yaml` (**Bird** / **Rodent** / **Background**). Обучение — [docs/ML_DETECTOR_COLAB.md](../../docs/ML_DETECTOR_COLAB.md).
+Выход: **`scripts/datasets/binary/merged/`** с классами **Bird / Rodent / Background**. Обучение: [docs/ML_DETECTOR_COLAB.md](../../docs/ML_DETECTOR_COLAB.md).
 
 ## Автозаполнение из интернета
 
 ```bash
 cd scripts/datasets
-python3 -m venv .venv-detector && . .venv-detector/bin/activate
-pip install fiftyone pyyaml
 python3 bootstrap_detector_yolo.py
 ```
 
-Параметры лимитов см. `python3 bootstrap_detector_yolo.py --help`. Для пробного прогона уменьшите `--birds-train`, `--rodent-train` и т.д.
+См. также [binary/README.md](./binary/README.md).
 
-Дополнительно можно заполнить **`rodent_yolo`** вручную из выгрузки Open Images Toolkit ([convert_oidv4_rodent_to_yolo.py](./convert_oidv4_rodent_to_yolo.py)) — классы Mouse/Rat можно слить в один Rodent отдельным скриптом при необходимости.
+## Раньше были плоские имена (`birds_binary_yolo/` …)
+
+Скрипт слияния по-прежнему принимает любые `--birds-dir` / `--rodent-dir` / `--background-dir`. Старые каталоги можно переименовать в `binary/birds` и т.д. или указать явные пути при вызове `merge_datasets_three_class.py`.

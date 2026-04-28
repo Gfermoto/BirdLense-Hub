@@ -10,7 +10,7 @@ This page is the **detection** counterpart: train a **binary** or **3-class** (`
 ## Prerequisites
 
 - Google account, ~2 GB Drive space for zip + runs  
-- A zipped dataset whose root contains **`dataset.yaml`** (e.g. `birds_rodent_background_yolo/` after `merge_datasets_three_class`)  
+- A zipped dataset whose root contains **`dataset.yaml`** (e.g. `binary/merged/` after `merge_datasets_three_class`)  
 - Runtime: **GPU** (T4)
 
 ---
@@ -20,8 +20,8 @@ This page is the **detection** counterpart: train a **binary** or **3-class** (`
 From your PC (after `make dataset-merge-three-class` or equivalent):
 
 ```bash
-cd scripts/datasets   # or parent of birds_rodent_background_yolo
-zip -r ~/BirdLense_detector_dataset.zip birds_rodent_background_yolo/
+cd scripts/datasets   # or parent of binary/merged
+zip -r ~/BirdLense_detector_dataset.zip binary/merged/
 ```
 
 Upload **`BirdLense_detector_dataset.zip`** to Google Drive (e.g. `BirdLense_Training/`).
@@ -63,7 +63,7 @@ os.makedirs(EXTRACT_DIR, exist_ok=True)
 Find `dataset.yaml` (adjust `DATA_YAML` if nested):
 
 ```python
-DATA_YAML = "/content/detector_data/birds_rodent_background_yolo/dataset.yaml"
+DATA_YAML = "/content/detector_data/binary/merged/dataset.yaml"
 assert os.path.isfile(DATA_YAML), DATA_YAML
 ```
 

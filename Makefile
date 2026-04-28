@@ -89,13 +89,13 @@ audit-cards:
 # Пример:
 #   make validate-weights DATASET_INFO=app/data/dataset/exports/latest/dataset_info.json
 # Epic #367 Phase 1 — YOLO detection Bird/Rodent/Background (see scripts/datasets/README.md).
-# Requires prior birds_binary_yolo, rodent_yolo, background_yolo under scripts/datasets/.
+# Requires binary/birds, binary/rodent, binary/background under scripts/datasets/.
 dataset-merge-three-class:
 	@cd scripts/datasets && python3 merge_datasets_three_class.py \
-	  --birds-dir birds_binary_yolo \
-	  --rodent-dir rodent_yolo \
-	  --background-dir background_yolo \
-	  --output-dir birds_rodent_background_yolo
+	  --birds-dir binary/birds \
+	  --rodent-dir binary/rodent \
+	  --background-dir binary/background \
+	  --output-dir binary/merged
 
 # Скачать стартовые подмножества COCO + Open Images в три каталога (нужен pip install fiftyone).
 # Переопределение лимитов: make bootstrap-detector-data ARGS='--birds-train 50 --birds-val 20'
