@@ -16,3 +16,15 @@
 | Мета | [#332](https://github.com/Gfermoto/BirdLense-Hub/issues/332) |
 
 Доска: [проект Roadmap](https://github.com/users/Gfermoto/projects/2).
+
+---
+
+## Эпик CV / ML (отдельный трек)
+
+Не смешивать с строками «целостность» выше:
+
+| Эпик | Issue |
+|------|--------|
+| CV / ML roadmap (детектор, классификатор, инференс, бенчмарки) | [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) |
+
+Контракт подготовки: [CV_ML_PREP.ru.md](./CV_ML_PREP.ru.md) · [#377](https://github.com/Gfermoto/BirdLense-Hub/issues/377) (закрыт).

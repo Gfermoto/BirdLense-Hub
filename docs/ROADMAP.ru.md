@@ -126,17 +126,17 @@ bash scripts/github-project-add-backlog-consilium.sh
 | **Системная база видов (канонизация)**     | [#168](https://github.com/Gfermoto/BirdLense-Hub/issues/168): ✅ реализовано — единый реестр видов, нормализация по ID, backfill, фоновые metadata jobs и CI smoke quality-gate для всей базы.       |
 
 
-### Пожелания пользователей (backlog, март 2026)
+### Пожелания пользователей (backlog, апрель 2026)
 
 Отдельные issues для планирования; детали и критерии — в каждом issue.
 
 **Подготовка перед реализацией ([#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131), [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139)):** [чеклист](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md) (файл в репозитории; не входит в статический сайт документации).
 
-**Прогресс (март 2026):**
+**Прогресс (апрель 2026):**
 
 - [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) — baseline a11y и **v0.2.9** (PR [#187](https://github.com/Gfermoto/BirdLense-Hub/pull/187), release [#188](https://github.com/Gfermoto/BirdLense-Hub/pull/188)); см. [A11Y.ru.md](./A11Y.ru.md).
 - [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — реализовано и закрыто: убран пункт «Неизвестные», legacy-редирект `/unknowns` → `/timeline?review=1`, режим «На проверке» на Timeline (чип + счётчик), обновлены OpenAPI + API тесты + smoke редиректа.
-- [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — реализовано и закрыто: навигация к таблице сезонности; **актуальный UI (v0.3.6+):** пункт **Виды** → `/species` (та же сетка, что и `/migration-calendar` — второй URL-алиас); карточный каталог → `/species-directory`; deep-link `/species/:id` сохранён. (В тексте issue описан промежуточный вариант с редиректом только с `/species` — уже не соответствует коду.)
+- [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — реализовано и закрыто: навигация к таблице сезонности; **актуальный UI (v0.3.7+):** пункт **Виды** → `/species` (та же сетка, что и `/migration-calendar` — второй URL-алиас); карточный каталог → `/species-directory`; deep-link `/species/:id` сохранён. (В тексте issue описан промежуточный вариант с редиректом только с `/species` — уже не соответствует коду.)
 - [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — реализовано и закрыто: блок «Сравнение с регионом» перенесён с Overview на Migration; оставшаяся ссылка-переход с Overview удалена.
 - [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) — реализовано и закрыто: диаграмма распределения видов на Overview (сектор и легенда) ведёт в Timeline с фильтрами вида и даты.
 - [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) — реализовано и закрыто: добавлен фильтр периода по датам (день-точность) для Migration; применяется к таблице, но не к региональному справочнику.
@@ -146,7 +146,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 - [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) — **закрыт:** дельта весов на карточке визита (timeline/overview), как корм/погода.
 - [#243](https://github.com/Gfermoto/BirdLense-Hub/issues/243) — **QA до закрытия:** полевой прогон весов (ESPHome HX711 + хаб). Перед тестами: карточка на доске [BirdLense Hub — Roadmap](https://github.com/users/Gfermoto/projects/2) в **Ready** (или явный assignee + дата), на хабе выкатить код и выставить `integrations.scales.*` под свои топики/единицу (`g`); чеклист — в теле issue.
 
-**Новые идеи (март 2026) — таблица с историческими номерами GitHub; открытый issue заводится при старте работ:**
+**Новые идеи (апрель 2026) — таблица с историческими номерами GitHub; открытый issue заводится при старте работ:**
 
 
 | #   | Тема                                                                                                                                     | Issue                                                        | Приоритет / зона                                             |
@@ -191,7 +191,7 @@ bash scripts/github-project-add-backlog-consilium.sh
   - [#171](https://github.com/Gfermoto/BirdLense-Hub/issues/171) — backfill + repair целостности исторических данных ✅
   - [#172](https://github.com/Gfermoto/BirdLense-Hub/issues/172) — фоновые metadata jobs (image/description) ✅
   - [#173](https://github.com/Gfermoto/BirdLense-Hub/issues/173) — наблюдаемость и CI quality-gate ✅
-- Финальный результат (март 2026): в проде `processed=806`, `matched=806`, `unresolved=0` при старте; добавлены API `seed/backfill/unresolved/health/enrich`, async enrichment status и CI smoke-тест реестра.
+- Финальный результат (март 2026 — закрытие эпика реестра): в проде `processed=806`, `matched=806`, `unresolved=0` при старте; добавлены API `seed/backfill/unresolved/health/enrich`, async enrichment status и CI smoke-тест реестра.
 
 
 | #                                                            | Issue                             | Кратко                                                                                     |
