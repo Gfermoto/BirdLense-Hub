@@ -67,10 +67,57 @@ _STRICT_ALLOWLIST: frozenset[tuple[str, str]] = frozenset(
     }
 )
 
+_PUBLIC_GET_EXACT: frozenset[str] = frozenset(
+    {
+        "/api/ui/status",
+        "/api/ui/cameras",
+        "/api/ui/feed/info",
+        "/api/ui/weather",
+        "/api/ui/sun-times",
+        "/api/ui/overview",
+        "/api/ui/region-comparison",
+        "/api/ui/migration-calendar",
+        "/api/ui/timeline",
+        "/api/ui/timeline/export",
+        "/api/ui/unknowns",
+        "/api/ui/species",
+        "/api/ui/species/observed",
+        "/api/ui/species/track-regen-options",
+        "/api/ui/species/tuning-targets",
+        "/api/ui/bird_families",
+        "/api/ui/species-image",
+        "/api/ui/birdfood",
+        "/api/ui/favorites/by-species",
+        "/api/ui/corrections/recent",
+    }
+)
+
+_PUBLIC_GET_PREFIXES: tuple[str, ...] = (
+    "/api/ui/videos/",
+    "/api/ui/species/",
+    "/api/ui/detections/",
+)
+
+_PRIVATE_GET_PREFIXES: tuple[str, ...] = (
+    "/api/ui/settings",
+    "/api/ui/system",
+    "/api/ui/storage",
+    "/api/ui/status/debug",
+    "/api/ui/dataset",
+)
+
 
 def _canonical_path(path: str) -> str:
     p = (path or "").split("?", 1)[0].rstrip("/")
     return p if p else "/"
+
+
+def _public_get_allowed(path: str) -> bool:
+    if path in _PUBLIC_GET_EXACT:
+        return True
+    if any(path == prefix.rstrip("/") or path.startswith(prefix) for prefix in _PRIVATE_GET_PREFIXES):
+        return False
+    return any(path.startswith(prefix) for prefix in _PUBLIC_GET_PREFIXES)
 
 
 def register_strict_ui_api_auth_middleware(app: Flask) -> None:
@@ -89,6 +136,8 @@ def register_strict_ui_api_auth_middleware(app: Flask) -> None:
             return None
         key = (request.method.upper(), _canonical_path(path))
         if key in _STRICT_ALLOWLIST:
+            return None
+        if key[0] == "GET" and _public_get_allowed(key[1]):
             return None
         if strict_ui_request_authorized():
             return None
