@@ -65,7 +65,7 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 
 ## Parallel branch `ML` (recovery baseline on `dev`)
 
-Inference and benchmark work ships on branch **`ML`** until reviewed; **`dev`** stays the branch used to restore a known-good hub deploy. Merge **`ML` → `main`** (or into `dev` when you choose) via PR after CI is green; deploy with `make deploy` when ready — same as other features.
+Inference and benchmarks land on **`ML`** first. **`dev`** stays the branch for restoring a known-good hub deploy. **Merge `ML` → `main` only after** the stack is proven working on your side (deployed or otherwise validated — green CI alone is not the gate). Until then, iterate on **`ML`**; PR [#382](https://github.com/Gfermoto/BirdLense-Hub/pull/382) tracks the eventual merge but does not imply a timeline.
 
 ---
 
