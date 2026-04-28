@@ -82,7 +82,9 @@
 | Эпик CV / ML (GitHub) | [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) | [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) |
 | Контракт подготовки CV / ML | [CV_ML_PREP](./CV_ML_PREP.md) | [RU](./CV_ML_PREP.ru.md) |
 | Фазы roadmap CV / ML | [CV_ML_ROADMAP_PHASES](./CV_ML_ROADMAP_PHASES.md) | [RU](./CV_ML_ROADMAP_PHASES.ru.md) |
+| ML: репозиторий и ваши шаги | [ML_OPERATOR_HANDOFF](./ML_OPERATOR_HANDOFF.md) | [RU](./ML_OPERATOR_HANDOFF.ru.md) |
 | Датасеты и скрипты | [DATASETS](./DATASETS.md) | [RU](./DATASETS.ru.md) |
+| Детектор в Colab | [ML_DETECTOR_COLAB](./ML_DETECTOR_COLAB.md) | [RU](./ML_DETECTOR_COLAB.ru.md) |
 | Декод видео (#373) | [CV_ML_DECODE](./CV_ML_DECODE.md) | [RU](./CV_ML_DECODE.ru.md) |
 | Active learning (#369) | [ACTIVE_LEARNING](./ACTIVE_LEARNING.md) | [RU](./ACTIVE_LEARNING.ru.md) |
 | Re-ID (#374) | [REID_ROADMAP](./REID_ROADMAP.md) | [RU](./REID_ROADMAP.ru.md) |

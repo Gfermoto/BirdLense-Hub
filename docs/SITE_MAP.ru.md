@@ -68,9 +68,11 @@
 | Страница | Источник |
 |----------|----------|
 | Обучение | [TRAINING.ru.md](./TRAINING.ru.md) · [EN](./TRAINING.md) |
+| Детектор в Colab | [ML_DETECTOR_COLAB.ru.md](./ML_DETECTOR_COLAB.ru.md) · [EN](./ML_DETECTOR_COLAB.md) |
 | Цикл качества ML | [ML_QUALITY_LOOP.ru.md](./ML_QUALITY_LOOP.ru.md) (только RU) |
 | Контракт подготовки CV / ML | [CV_ML_PREP.ru.md](./CV_ML_PREP.ru.md) · [EN](./CV_ML_PREP.md) |
 | Фазы roadmap CV / ML | [CV_ML_ROADMAP_PHASES.ru.md](./CV_ML_ROADMAP_PHASES.ru.md) · [EN](./CV_ML_ROADMAP_PHASES.md) |
+| ML: репозиторий и ваши шаги | [ML_OPERATOR_HANDOFF.ru.md](./ML_OPERATOR_HANDOFF.ru.md) · [EN](./ML_OPERATOR_HANDOFF.md) |
 | Датасеты | [DATASETS.ru.md](./DATASETS.ru.md) · [EN](./DATASETS.md) |
 | Декод видео — замеры (#373) | [CV_ML_DECODE.ru.md](./CV_ML_DECODE.ru.md) · [EN](./CV_ML_DECODE.md) |
 | Active learning (#369) | [ACTIVE_LEARNING.ru.md](./ACTIVE_LEARNING.ru.md) · [EN](./ACTIVE_LEARNING.md) |

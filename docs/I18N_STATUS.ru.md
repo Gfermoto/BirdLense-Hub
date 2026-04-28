@@ -76,6 +76,8 @@
 | ML_QUALITY_LOOP | — | ✅ (только RU) |
 | CV_ML_PREP | ✅ | ✅ |
 | CV_ML_ROADMAP_PHASES | ✅ | ✅ |
+| ML_OPERATOR_HANDOFF | ✅ | ✅ |
+| ML_DETECTOR_COLAB | ✅ | ✅ |
 | DATASETS | ✅ | ✅ |
 | CV_ML_DECODE | ✅ | ✅ |
 | ACTIVE_LEARNING | ✅ | ✅ |

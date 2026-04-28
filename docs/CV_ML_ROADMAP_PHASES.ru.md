@@ -70,4 +70,6 @@
 ## Ссылки
 
 - Контракт подготовки: [CV_ML_PREP.ru.md](CV_ML_PREP.ru.md)
+- **Репозиторий vs обучение снаружи:** [ML_OPERATOR_HANDOFF.ru.md](ML_OPERATOR_HANDOFF.ru.md)
+- Детектор в Colab: [ML_DETECTOR_COLAB.ru.md](ML_DETECTOR_COLAB.ru.md)
 - Эпик: [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367)

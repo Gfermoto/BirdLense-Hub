@@ -68,9 +68,11 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Page | Source |
 |------|--------|
 | Training | [TRAINING.md](./TRAINING.md) · [RU](./TRAINING.ru.md) |
+| Detector training (Colab) | [ML_DETECTOR_COLAB.md](./ML_DETECTOR_COLAB.md) · [RU](./ML_DETECTOR_COLAB.ru.md) |
 | ML quality loop (RU only) | [ML_QUALITY_LOOP.ru.md](./ML_QUALITY_LOOP.ru.md) |
 | CV / ML prep contract | [CV_ML_PREP.md](./CV_ML_PREP.md) · [RU](./CV_ML_PREP.ru.md) |
 | CV / ML roadmap phases | [CV_ML_ROADMAP_PHASES.md](./CV_ML_ROADMAP_PHASES.md) · [RU](./CV_ML_ROADMAP_PHASES.ru.md) |
+| ML operator handoff | [ML_OPERATOR_HANDOFF.md](./ML_OPERATOR_HANDOFF.md) · [RU](./ML_OPERATOR_HANDOFF.ru.md) |
 | Datasets | [DATASETS.md](./DATASETS.md) · [RU](./DATASETS.ru.md) |
 | Video decode baseline (#373) | [CV_ML_DECODE.md](./CV_ML_DECODE.md) · [RU](./CV_ML_DECODE.ru.md) |
 | Active learning (#369) | [ACTIVE_LEARNING.md](./ACTIVE_LEARNING.md) · [RU](./ACTIVE_LEARNING.ru.md) |
