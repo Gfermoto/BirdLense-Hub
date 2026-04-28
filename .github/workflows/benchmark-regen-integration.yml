@@ -1,0 +1,112 @@
+# Полный smoke: benchmark-track-regen на сгенерированном mp4 внутри образа birdlense (#372).
+# Не дублирует «общий» CI: только при изменениях в процессоре / скриптах бенчмарка.
+name: benchmark-regen-integration
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, dev, ML]
+    paths:
+      - 'scripts/benchmark*.py'
+      - 'scripts/compare_benchmark_reports.py'
+      - 'scripts/verify_benchmark_report_schema.py'
+      - 'scripts/ci/gen_smoke_benchmark_clip.sh'
+      - 'scripts/ci/reference_smoke_report.json'
+      - 'app/processor/**'
+      - '.github/workflows/benchmark-regen-integration.yml'
+
+concurrency:
+  group: benchmark-regen-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: docker-benchmark-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install ffmpeg (generate smoke clip)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+
+      - name: Generate smoke MP4
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p .artifacts
+          bash scripts/ci/gen_smoke_benchmark_clip.sh .artifacts/smoke_clip.mp4
+          test -s .artifacts/smoke_clip.mp4
+
+      - name: Free disk space (Docker image)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/share/powershell || true
+          df -h
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Prepare .env and data dirs
+        run: |
+          test -f .env || cp .env.example .env
+          mkdir -p data/db data/recordings
+
+      - name: Processor .pt weights
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if ./scripts/fetch-processor-weights.sh; then
+              exit 0
+            fi
+            sleep $((attempt * 10))
+          done
+          echo "Failed to fetch processor weights" >&2
+          exit 1
+
+      - name: Build birdlense image
+        run: docker compose build birdlense
+        env:
+          DOCKER_BUILDKIT: 1
+          COMPOSE_DOCKER_CLI_BUILD: 1
+
+      - name: Run benchmark-track-regen on smoke clip
+        env:
+          WS: ${{ github.workspace }}
+        run: |
+          docker compose run --rm \
+            -v "${WS}:/workspace:rw" \
+            birdlense \
+            bash -lc 'export PYTHONPATH=/app:/app/web:/app/processor/src && \
+              python3 /workspace/scripts/benchmark-track-regen.py \
+                --video /workspace/.artifacts/smoke_clip.mp4 \
+                --frame-step 24 \
+                --max-runtime-sec 300 \
+                --write-report /workspace/.artifacts/benchmark_smoke_report.json'
+
+      - name: Verify benchmark report schema
+        working-directory: ${{ github.workspace }}
+        run: |
+          python3 scripts/verify_benchmark_report_schema.py \
+            --report .artifacts/benchmark_smoke_report.json
+
+      - name: Compare to committed reference smoke report
+        working-directory: ${{ github.workspace }}
+        run: |
+          python3 scripts/compare_benchmark_reports.py \
+            --baseline scripts/ci/reference_smoke_report.json \
+            --current .artifacts/benchmark_smoke_report.json \
+            --match-by-basename \
+            --tolerance 0
+
+      - name: Upload benchmark JSON artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: benchmark-smoke-report
+          path: .artifacts/benchmark_smoke_report.json
+          if-no-files-found: ignore

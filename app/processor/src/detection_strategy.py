@@ -238,12 +238,15 @@ class TwoStageStrategy(DetectionStrategy):
             sorted(self.detector_scope),
         )
 
-        if self.inference_backend == "torch":
-            self.binary_model = load_yolo_detector(binary_model_path)
+        if self.inference_backend in ("torch", "openvino"):
+            self.binary_model = load_yolo_detector(
+                binary_model_path,
+                backend=self.inference_backend,
+            )
             self.classifier_model = load_yolo_classifier(classifier_model_path)
         else:
             raise NotImplementedError(
-                f"inference_backend={self.inference_backend!r} is not implemented; use torch (#371).",
+                f"inference_backend={self.inference_backend!r} is not implemented (#371).",
             )
 
         validate_detector_weight_contract(

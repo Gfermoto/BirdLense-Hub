@@ -80,6 +80,9 @@ RUN mkdir -p processor/models/detection/weights processor/models/classification/
 RUN pip install --no-cache-dir -r web/requirements.txt \
     && pip install --no-cache-dir -r processor/requirements.txt
 
+# Опционально: OpenVINO для processor.inference_backend=openvino (размер образа; не в базовой сборке):
+#   RUN pip install --no-cache-dir 'openvino>=2024.0'
+
 # UI + nginx (template, подставляется при старте)
 COPY --from=ui /ui/dist /usr/share/nginx/html
 COPY app/nginx/standalone.conf.template /etc/nginx/conf.d/default.conf.template

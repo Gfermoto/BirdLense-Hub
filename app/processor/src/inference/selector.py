@@ -1,18 +1,17 @@
-"""Выбор backend инференса: torch (дефолт), далее OpenVINO / ORT (#371)."""
+"""Выбор backend инференса: torch (дефолт), OpenVINO; ONNX Runtime — позже (#371)."""
 
 from __future__ import annotations
 
 import os
 from typing import Any, Mapping
 
-_ALLOWED = frozenset({"torch"})
+_IMPLEMENTED = frozenset({"torch", "openvino"})
+_PLANNED = frozenset({"onnxruntime", "tensorrt"})
 
 
 def resolve_inference_backend(app_config: Mapping[str, Any] | None = None) -> str:
     """
     Приоритет: ``BIRDLENSE_INFERENCE_BACKEND``, затем ``processor.inference_backend``, иначе ``torch``.
-
-    Phase 1: допускается только ``torch``; иные значения — ошибка при сборке стека.
     """
     raw = (os.environ.get("BIRDLENSE_INFERENCE_BACKEND") or "").strip().lower()
     if raw:
@@ -28,10 +27,15 @@ def resolve_inference_backend(app_config: Mapping[str, Any] | None = None) -> st
 
 
 def assert_backend_supported(backend: str) -> None:
-    """Проверить, что backend реализован в этом билде."""
+    """Проверить, что backend реализован или запланирован с понятной ошибкой."""
     b = (backend or "torch").strip().lower()
-    if b not in _ALLOWED:
+    if b in _PLANNED:
         raise NotImplementedError(
-            f"Inference backend {b!r} is not implemented in this build (#371). "
-            f"Supported: {sorted(_ALLOWED)}. Unset BIRDLENSE_INFERENCE_BACKEND or use torch.",
+            f"Inference backend {b!r} is planned (#371) but not implemented yet. "
+            f"Use: {sorted(_IMPLEMENTED)}.",
+        )
+    if b not in _IMPLEMENTED:
+        raise NotImplementedError(
+            f"Inference backend {b!r} is not supported. "
+            f"Implemented: {sorted(_IMPLEMENTED)}.",
         )

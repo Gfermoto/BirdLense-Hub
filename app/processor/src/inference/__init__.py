@@ -1,4 +1,4 @@
-"""Абстракция инференса процессора (roadmap #371). Phase 1: torch + контракт весов."""
+"""Абстракция инференса процессора (roadmap #371). Torch/OpenVINO binary detector + контракт весов."""
 
 from __future__ import annotations
 

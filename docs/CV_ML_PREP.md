@@ -104,10 +104,11 @@ Draft config names reserved for the epic:
 
 | Key / env overlay | Purpose | Initial value |
 |-------------------|---------|---------------|
-| `processor.inference_backend` / `BIRDLENSE_INFERENCE_BACKEND` | backend selector | `ultralytics_torch` |
+| `processor.inference_backend` / `BIRDLENSE_INFERENCE_BACKEND` | backend selector | `torch` (also `openvino` for binary IR) |
 | `processor.inference_device` / `BIRDLENSE_INFERENCE_DEVICE` | device hint (`cpu`, `cuda`, `auto`, `openvino:CPU`) | `auto` |
 | `processor.inference_precision` / `BIRDLENSE_INFERENCE_PRECISION` | precision hint (`fp32`, `fp16`, `int8`, `auto`) | `auto` |
-| `processor.models.binary` | current detector path; stays authoritative for Torch `.pt` | existing path |
+| `processor.models.binary` | Torch `.pt` binary detector path | existing path |
+| `processor.models.binary_openvino` | OpenVINO export dir or `.xml` when backend is `openvino` | empty until configured |
 | `processor.models.classifier` | current classifier path; stays authoritative for Torch `.pt` | existing path |
 
 Do not rename the existing `processor.models.binary` and

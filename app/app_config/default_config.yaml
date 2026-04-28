@@ -201,6 +201,9 @@ processor:
     # Бинарный детектор: артефакты из форка (zip в дереве processor/models/detection).
     # Источник: https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor
     binary: "models/detection/weights/best.pt"
+    # OpenVINO IR (processor.inference_backend=openvino): каталог экспорта или путь к .xml.
+    # Экспорт: yolo export model=... format=openvino. Пусто — задайте BIRDLENSE_BINARY_OPENVINO_PATH.
+    binary_openvino: ""
     # EU-классификатор (~491 вид): скачивать как best.pt с Hugging Face gfermoto/birdlense-birds-eu
     classifier: "models/classification/weights/best.pt"
 

@@ -105,10 +105,11 @@ detection_stack factory
 
 | Ключ / env overlay | Назначение | Начальное значение |
 |--------------------|------------|--------------------|
-| `processor.inference_backend` / `BIRDLENSE_INFERENCE_BACKEND` | выбор backend | `ultralytics_torch` |
+| `processor.inference_backend` / `BIRDLENSE_INFERENCE_BACKEND` | выбор backend | `torch` (также `openvino` для IR бинарника) |
 | `processor.inference_device` / `BIRDLENSE_INFERENCE_DEVICE` | device hint (`cpu`, `cuda`, `auto`, `openvino:CPU`) | `auto` |
 | `processor.inference_precision` / `BIRDLENSE_INFERENCE_PRECISION` | precision hint (`fp32`, `fp16`, `int8`, `auto`) | `auto` |
-| `processor.models.binary` | текущий путь детектора; остаётся главным для Torch `.pt` | существующий путь |
+| `processor.models.binary` | путь к Torch `.pt` бинарного детектора | существующий путь |
+| `processor.models.binary_openvino` | каталог или `.xml` OpenVINO при backend `openvino` | пусто, пока не задано |
 | `processor.models.classifier` | текущий путь классификатора; остаётся главным для Torch `.pt` | существующий путь |
 
 Не переименовывать существующие `processor.models.binary` и

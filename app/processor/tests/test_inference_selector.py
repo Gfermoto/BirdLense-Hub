@@ -51,11 +51,16 @@ class TestInferenceSelector(unittest.TestCase):
 
         assert_backend_supported("torch")
 
-    def test_assert_unknown_raises(self):
+    def test_assert_openvino_supported(self):
+        from inference.selector import assert_backend_supported
+
+        assert_backend_supported("openvino")
+
+    def test_assert_planned_backend_raises(self):
         from inference.selector import assert_backend_supported
 
         with self.assertRaises(NotImplementedError):
-            assert_backend_supported("openvino")
+            assert_backend_supported("onnxruntime")
 
 
 if __name__ == "__main__":

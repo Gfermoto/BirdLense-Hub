@@ -26,18 +26,20 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 
 ## Phases (repository execution plan)
 
-### Phase 1 — Foundation (current)
+### Phase 1 — Foundation (done)
 
 - Shared **`normalize_detector_label`** in `app/processor/src/detector_labels.py` (same semantics as legacy `TwoStageStrategy`).
 - **`inference/`** package: **`resolve_inference_backend`**, **`torch_backend`** loaders, **`validate_detector_weight_contract`** (`off` / `warn` / `enforce`).
 - Config: **`processor.inference_backend`** (default `torch`), **`processor.detector_weight_contract`** (default `warn`).
-- Env override: **`BIRDLENSE_INFERENCE_BACKEND`** (Phase 1: `torch` only; other values → `NotImplementedError` until [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) ships OV/ORT).
+- Env override: **`BIRDLENSE_INFERENCE_BACKEND`**.
 - **Do not** change `go2rtc_stream_source.py` / stream ingestion semantics in Phase 1.
 
-### Phase 2 — Inference backends + benchmarks
+### Phase 2 — Inference backends + benchmarks (core done; CI/docs shipped)
 
-- OpenVINO / ONNX Runtime paths ([#371]), smoke tests without shipping giant weights in CI.
-- Extend **`scripts/benchmark-track-regen.py`** and CI hooks ([#372]).
+- **OpenVINO** for the binary detector: **`processor.models.binary_openvino`** or **`BIRDLENSE_BINARY_OPENVINO_PATH`**, optional **`inference_backend_cache.json`** after successful stack build ([#371]).
+- Shared resolver **`inference/binary_paths.py`**: provenance fingerprint, ML lineage, processor weights status UI.
+- ONNX Runtime / TensorRT: planned (`NotImplementedError` until implemented).
+- **`scripts/benchmark-track-regen.py`** / **`compare_benchmark_reports.py`** / **`verify_benchmark_report_schema.py`**; эталон **`scripts/ci/reference_smoke_report.json`**; CI: unit-тесты + **`benchmark-regen-integration.yml`** (Docker smoke → verify → compare к эталону, [#372]).
 
 ### Phase 3 — Video pipeline optimization
 
@@ -53,9 +55,17 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 
 | Key | Meaning |
 |-----|---------|
-| `processor.inference_backend` | `torch` (default). Future: `openvino`, … ([#371]). |
+| `processor.inference_backend` | `torch` (default) \| `openvino` (binary detector IR). ONNX/TensorRT: [#371]. |
+| `processor.models.binary_openvino` | Path to OpenVINO export dir or `.xml` when `inference_backend` is `openvino`. |
 | `processor.detector_weight_contract` | `off` \| `warn` \| `enforce` — detector class names vs `processor.detector_scope` ([#368]). |
 | Env `BIRDLENSE_INFERENCE_BACKEND` | Overrides `processor.inference_backend`. |
+| Env `BIRDLENSE_BINARY_OPENVINO_PATH` | Optional override for OpenVINO binary weights path. |
+
+---
+
+## Parallel branch `ML` (recovery baseline on `dev`)
+
+Inference and benchmark work ships on branch **`ML`** until reviewed; **`dev`** stays the branch used to restore a known-good hub deploy. Merge **`ML` → `main`** (or into `dev` when you choose) via PR after CI is green; deploy with `make deploy` when ready — same as other features.
 
 ---
 
