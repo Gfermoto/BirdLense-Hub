@@ -44,7 +44,10 @@ export const checkSettingsAccess = async (): Promise<CheckAccessResult> => {
 
 export type VerifyPasswordResult =
   | { ok: true; role?: 'admin' | 'contributor' }
-  | { ok: false; error: 'wrong_password' | 'server_error' };
+  | {
+      ok: false;
+      error: 'wrong_password' | 'csrf_or_auth' | 'server_error';
+    };
 
 export const verifySettingsPassword = async (
   password: string,
@@ -60,9 +63,21 @@ export const verifySettingsPassword = async (
     }
     return { ok: false, error: 'wrong_password' };
   } catch (e: unknown) {
-    return axios.isAxiosError(e) && e.response?.status === 401
-      ? { ok: false, error: 'wrong_password' }
-      : { ok: false, error: 'server_error' };
+    if (!axios.isAxiosError(e) || e.response == null) {
+      return { ok: false, error: 'server_error' };
+    }
+    const status = e.response.status;
+    const msg = (e.response.data as { error?: string })?.error;
+    if (status === 401) {
+      return { ok: false, error: 'wrong_password' };
+    }
+    if (
+      status === 403 &&
+      (msg === 'CSRF token required' || msg === 'Authentication required')
+    ) {
+      return { ok: false, error: 'csrf_or_auth' };
+    }
+    return { ok: false, error: 'server_error' };
   }
 };
 

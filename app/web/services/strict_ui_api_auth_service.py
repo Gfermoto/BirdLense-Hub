@@ -1,4 +1,9 @@
-"""Strict /api/ui/* auth in production when BIRDLENSE_STRICT_API_AUTH (#279)."""
+"""Strict /api/ui/* auth in production when BIRDLENSE_STRICT_API_AUTH (#279).
+
+Публичные GET (_PUBLIC_GET_EXACT / префиксы): только read-only дашборд; доступ к данным
+персона/настроек — в обработчике (contributor/admin/MCP/UI key). При добавлении новых
+GET для главной страницы — расширять списки и тест ``test_strict_ui_api_auth``.
+"""
 
 from __future__ import annotations
 
@@ -79,6 +84,7 @@ _PUBLIC_GET_EXACT: frozenset[str] = frozenset(
         "/api/ui/migration-calendar",
         "/api/ui/timeline",
         "/api/ui/timeline/export",
+        "/api/ui/report/pdf",
         "/api/ui/unknowns",
         "/api/ui/species",
         "/api/ui/species/observed",

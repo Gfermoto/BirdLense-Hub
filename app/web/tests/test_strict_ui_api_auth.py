@@ -35,6 +35,13 @@ def test_production_strict_allows_public_status_and_feed(client, _strict_prod_en
     assert client.get("/api/ui/feed/info").status_code == 200
 
 
+def test_production_strict_report_pdf_passes_gate_route_denies_guest(client, _strict_prod_env):
+    """Как unknowns/export: strict не режет; доступ — в обработчике (ui_sensitive_export_access)."""
+    r = client.get("/api/ui/report/pdf")
+    assert r.status_code == 403
+    assert r.get_json().get("error") == "Access denied"
+
+
 def test_production_strict_allows_bootstrap_endpoints(client, _strict_prod_env):
     assert client.get("/api/ui/health").status_code == 200
     assert client.get("/api/ui/readiness").status_code == 200
