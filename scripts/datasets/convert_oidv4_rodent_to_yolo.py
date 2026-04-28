@@ -5,6 +5,7 @@
 (таково имя класса в Open Images); числовой id в этом скрипте — как в прежней
 сборке для слияния с NABirds. В ``dataset.yaml`` метка задаётся **Rodent**,
 чтобы новые обучения совпадали с каноном BirdLense Hub.
+Выход по умолчанию: ``binary/rodent/`` (рядом со скриптами в ``scripts/datasets/``).
 """
 import os
 import shutil
@@ -14,7 +15,7 @@ import yaml
 # OIDv4 Toolkit: имена каталогов задаёт выгрузка (класс /m/071qp в Open Images).
 original_train_dir = "./train/Squirrel"
 original_val_dir = "./validation/Squirrel"
-new_dataset_dir = "./rodent_yolo"
+new_dataset_dir = "./binary/rodent"
 os.makedirs(new_dataset_dir, exist_ok=True)
 
 # Create directories for YOLO format

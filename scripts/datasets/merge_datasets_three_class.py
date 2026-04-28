@@ -5,9 +5,9 @@
 Ожидаемые входы (типовая цепочка после ``merge_datasets_binary.py`` и
 ``convert_oidv4_rodent_to_yolo.py``):
 
-- ``birds_binary_yolo/`` — один класс bird (id 0), train/val/images + labels;
-- ``rodent_yolo/`` — Rodent (исторически id 1011 в OID-конвертере);
-- ``background_yolo/`` — кадры без объектов (пустые ``.txt``) и/или боксы
+- ``binary/birds/`` — один класс bird (id 0), train/val/images + labels;
+- ``binary/rodent/`` — Rodent (исторически id 1011 в OID-конвертере);
+- ``binary/background/`` — кадры без объектов (пустые ``.txt``) и/или боксы
   background-кропов; любые непустые строки перенумеруются в класс 2.
 
 Имена классов в ``dataset.yaml``: **Bird**, **Rodent**, **Background** —
@@ -17,10 +17,10 @@
 
     cd scripts/datasets
     python3 merge_datasets_three_class.py \\
-      --birds-dir birds_binary_yolo \\
-      --rodent-dir rodent_yolo \\
-      --background-dir background_yolo \\
-      --output-dir birds_rodent_background_yolo
+      --birds-dir binary/birds \\
+      --rodent-dir binary/rodent \\
+      --background-dir binary/background \\
+      --output-dir binary/merged
 
 Или: ``make dataset-merge-three-class`` из корня репозитория (пути по умолчанию).
 """
@@ -161,25 +161,25 @@ def main() -> int:
     ap.add_argument(
         "--birds-dir",
         type=Path,
-        default=Path("birds_binary_yolo"),
+        default=Path("binary/birds"),
         help="Выход merge_datasets_binary (binary bird)",
     )
     ap.add_argument(
         "--rodent-dir",
         type=Path,
-        default=Path("rodent_yolo"),
+        default=Path("binary/rodent"),
         help="Выход convert_oidv4_rodent_to_yolo",
     )
     ap.add_argument(
         "--background-dir",
         type=Path,
-        default=Path("background_yolo"),
+        default=Path("binary/background"),
         help="Каталог с train|val/images (+ опционально labels)",
     )
     ap.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("birds_rodent_background_yolo"),
+        default=Path("binary/merged"),
         help="Куда слить три класса",
     )
     ap.add_argument(

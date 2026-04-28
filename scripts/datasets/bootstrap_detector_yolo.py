@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Заполняет три каталога под ``merge_datasets_three_class.py``:
+Заполняет дерево ``binary/`` под ``merge_datasets_three_class.py``:
 
-  birds_binary_yolo/   — COCO 2017, только класс ``bird`` → один класс в YOLO (id 0).
-  rodent_yolo/         — Open Images V6, класс ``Squirrel`` → один класс (id 0); при слиянии станет Rodent.
-  background_yolo/     — COCO train/val: кадры **без** детекции ``bird``, пустые ``.txt``.
+  binary/birds/      — COCO 2017, только класс ``bird`` → один класс в YOLO (id 0).
+  binary/rodent/     — Open Images V6, ``Squirrel`` → один класс (id 0); после merge → Rodent.
+  binary/background/ — COCO train/val: кадры **без** ``bird``, пустые ``.txt``.
 
 Зависимости::
 
@@ -36,11 +36,17 @@ import sys
 from pathlib import Path
 
 
+def _binary(root: Path) -> Path:
+    """Корень ``binary/`` рядом со скриптами: ``scripts/datasets/binary``."""
+    return root / "binary"
+
+
 def _ensure_layout(root: Path) -> None:
-    for sub in ("birds_binary_yolo", "rodent_yolo", "background_yolo"):
+    base = _binary(root)
+    for sub in ("birds", "rodent", "background"):
         for split in ("train", "val"):
-            (root / sub / split / "images").mkdir(parents=True, exist_ok=True)
-            (root / sub / split / "labels").mkdir(parents=True, exist_ok=True)
+            (base / sub / split / "images").mkdir(parents=True, exist_ok=True)
+            (base / sub / split / "labels").mkdir(parents=True, exist_ok=True)
 
 
 def _detections(sample) -> list:
@@ -85,8 +91,8 @@ def _bootstrap_birds(root: Path, train_max: int, val_max: int) -> None:
         ("train", train_max, "train"),
         ("validation", val_max, "val"),
     ):
-        images_dir = root / "birds_binary_yolo" / tag / "images"
-        labels_dir = root / "birds_binary_yolo" / tag / "labels"
+        images_dir = _binary(root) / "birds" / tag / "images"
+        labels_dir = _binary(root) / "birds" / tag / "labels"
         print(f"[birds] COCO 2017 {split_name}, class bird, max_samples={lim} …")
         ds = foz.load_zoo_dataset(
             "coco-2017",
@@ -116,8 +122,8 @@ def _bootstrap_rodents(root: Path, train_max: int, val_max: int) -> None:
         ("train", train_max, "train"),
         ("validation", val_max, "val"),
     ):
-        images_dir = root / "rodent_yolo" / tag / "images"
-        labels_dir = root / "rodent_yolo" / tag / "labels"
+        images_dir = _binary(root) / "rodent" / tag / "images"
+        labels_dir = _binary(root) / "rodent" / tag / "labels"
         print(f"[rodent] Open Images V6 {split_name}, Squirrel, max_samples={lim} …")
         ds = foz.load_zoo_dataset(
             "open-images-v6",
@@ -151,8 +157,8 @@ def _collect_no_bird_background(
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    images_dir = root / "background_yolo" / out_tag / "images"
-    labels_dir = root / "background_yolo" / out_tag / "labels"
+    images_dir = _binary(root) / "background" / out_tag / "images"
+    labels_dir = _binary(root) / "background" / out_tag / "labels"
     print(f"[background] COCO {coco_split}, scan ≤{pool} samples, need {target} without bird → {out_tag}/ …")
     ds = foz.load_zoo_dataset(
         "coco-2017",
@@ -228,7 +234,8 @@ def main() -> int:
         )
 
     print("\nГотово. Дальше из корня репозитория: make dataset-merge-three-class")
-    print(f"Каталоги: {root}/birds_binary_yolo, {root}/rodent_yolo, {root}/background_yolo")
+    b = _binary(root)
+    print(f"Данные: {b}/birds, {b}/rodent, {b}/background")
     return 0
 
 
