@@ -1,16 +1,20 @@
 import axios from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+type AxiosInterceptorConfig = {
+  method?: string;
+  headers: InstanceType<typeof axios.AxiosHeaders>;
+  withCredentials?: boolean;
+};
+
 async function loadHandlers() {
   await import('./client');
   return (
     axios.interceptors.request as unknown as {
       handlers: Array<{
-        fulfilled?: (config: {
-          method?: string;
-          headers: InstanceType<typeof axios.AxiosHeaders>;
-          withCredentials?: boolean;
-        }) => Promise<unknown>;
+        fulfilled?: (
+          config: AxiosInterceptorConfig,
+        ) => Promise<AxiosInterceptorConfig>;
       }>;
     }
   ).handlers;
