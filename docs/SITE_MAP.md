@@ -70,6 +70,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Training | [TRAINING.md](./TRAINING.md) · [RU](./TRAINING.ru.md) |
 | ML quality loop (RU only) | [ML_QUALITY_LOOP.ru.md](./ML_QUALITY_LOOP.ru.md) |
 | CV / ML prep contract | [CV_ML_PREP.md](./CV_ML_PREP.md) · [RU](./CV_ML_PREP.ru.md) |
+| CV / ML roadmap phases | [CV_ML_ROADMAP_PHASES.md](./CV_ML_ROADMAP_PHASES.md) · [RU](./CV_ML_ROADMAP_PHASES.ru.md) |
 | Datasets | [DATASETS.md](./DATASETS.md) · [RU](./DATASETS.ru.md) |
 | Versioning | [VERSIONING.md](./VERSIONING.md) · [RU](./VERSIONING.ru.md) |
 | Roadmap | [ROADMAP.md](./ROADMAP.md) · [RU](./ROADMAP.ru.md) |

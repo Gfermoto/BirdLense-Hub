@@ -3,8 +3,10 @@ import logging
 from typing import Any, List, Mapping, Optional, Tuple
 from dataclasses import dataclass
 import numpy as np
-from ultralytics import YOLO
 import cv2
+from detector_labels import normalize_detector_label
+from inference.torch_backend import load_yolo_classifier, load_yolo_detector
+from inference.weight_contract import validate_detector_weight_contract
 from processor_runtime_profile import RuntimeProfileConfigOverlay
 
 logger = logging.getLogger(__name__)
@@ -214,18 +216,42 @@ class TwoStageStrategy(DetectionStrategy):
         max_classifications_per_frame: int = 2,
         classification_scheduler: str = "priority",
         binary_imgsz: int = 320,
+        *,
+        weight_contract_mode: str = "warn",
+        inference_backend: str = "torch",
     ):
         super().__init__(min_center_dist, min_box_size_px, blur_threshold, max_blur_checks)
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.inference_backend = (inference_backend or "torch").strip().lower()
+        self.weight_contract_mode = (weight_contract_mode or "warn").strip().lower()
         self.regional_species = regional_species
         self.max_classifications_per_frame = max(1, int(max_classifications_per_frame or 1))
         self.classification_scheduler = str(classification_scheduler or "priority").strip().lower()
         self.binary_imgsz = max(320, int(binary_imgsz or 320))
         raw_scope = detector_scope or ["Bird", "Rodent"]
-        self.detector_scope = {self._normalize_detector_label(name) for name in raw_scope if str(name or "").strip()}
+        self.detector_scope = {normalize_detector_label(name) for name in raw_scope if str(name or "").strip()}
 
-        self.binary_model = YOLO(binary_model_path, task="detect")
-        self.classifier_model = YOLO(classifier_model_path, task="classify")
+        self.logger.info(
+            "TwoStageStrategy: inference_backend=%s detector_weight_contract=%s detector_scope=%s",
+            self.inference_backend,
+            self.weight_contract_mode,
+            sorted(self.detector_scope),
+        )
+
+        if self.inference_backend == "torch":
+            self.binary_model = load_yolo_detector(binary_model_path)
+            self.classifier_model = load_yolo_classifier(classifier_model_path)
+        else:
+            raise NotImplementedError(
+                f"inference_backend={self.inference_backend!r} is not implemented; use torch (#371).",
+            )
+
+        validate_detector_weight_contract(
+            getattr(self.binary_model, "names", None),
+            self.detector_scope,
+            self.weight_contract_mode,
+            self.logger,
+        )
 
         # Round-robin index for classification scheduling
         self._classification_index = 0
@@ -258,15 +284,7 @@ class TwoStageStrategy(DetectionStrategy):
         return name.replace("_OR_", "/").replace("_", " ")
 
     def _normalize_detector_label(self, name: str) -> str:
-        raw = self._normalize_class_name(str(name or "")).replace("-", " ").strip()
-        key = " ".join(raw.lower().split())
-        if not key:
-            return "Unknown"
-        if any(token in key for token in ("squirrel", "chipmunk", "rodent", "грызун")):
-            return "Rodent"
-        if any(token in key for token in ("bird", "avian")):
-            return "Bird"
-        return " ".join(part.capitalize() for part in raw.split())
+        return normalize_detector_label(name)
 
     def _classify_crop(self, crop: np.ndarray) -> Tuple[Optional[str], float]:
         """Классификация кропа. (species_name, confidence)."""

@@ -73,6 +73,7 @@ When you add, remove, or rename a **published** page under `docs/`: update root 
 | TRAINING | ✅ | ✅ |
 | ML_QUALITY_LOOP | — | ✅ (RU only) |
 | CV_ML_PREP | ✅ | ✅ |
+| CV_ML_ROADMAP_PHASES | ✅ | ✅ |
 | DATASETS | ✅ | ✅ |
 | ROADMAP (incl. Issues/board reporting) | ✅ | ✅ |
 | VERSIONING | ✅ | ✅ |
