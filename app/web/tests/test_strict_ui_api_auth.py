@@ -19,10 +19,20 @@ def test_strict_flag_without_production_does_not_block_public_ui_api(client, mon
     assert r.status_code == 200
 
 
-def test_production_strict_blocks_species_list_without_session(client, _strict_prod_env):
+def test_production_strict_allows_public_species_list_without_session(client, _strict_prod_env):
     r = client.get("/api/ui/species")
+    assert r.status_code == 200
+
+
+def test_production_strict_blocks_private_system_without_session(client, _strict_prod_env):
+    r = client.get("/api/ui/system/config-audit")
     assert r.status_code == 403
     assert r.get_json().get("error") == "Authentication required"
+
+
+def test_production_strict_allows_public_status_and_feed(client, _strict_prod_env):
+    assert client.get("/api/ui/status").status_code == 200
+    assert client.get("/api/ui/feed/info").status_code == 200
 
 
 def test_production_strict_allows_bootstrap_endpoints(client, _strict_prod_env):
