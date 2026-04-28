@@ -17,6 +17,20 @@ that scope.
 
 ---
 
+## Three-class detector dataset — epic [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Phase 1
+
+Reproducible **YOLO detection** layout with classes **Bird**, **Rodent**, **Background** (aligned with `normalize_detector_label` in `app/processor/src/detector_labels.py`). Prerequisite folders under `scripts/datasets/` (after `merge_datasets_binary.py`, `convert_oidv4_rodent_to_yolo.py`, and your curated **`background_yolo/`** with `train|val/images` and optional `labels/`):
+
+- **Entrypoint:** `make dataset-merge-three-class` from the repo root, or  
+  `python3 scripts/datasets/merge_datasets_three_class.py --help`
+- **Output:** `birds_rodent_background_yolo/dataset.yaml` + merged `train`/`val`/`test` splits.
+- **Train/val policy:** follow Ultralytics defaults unless you fix a seed; treat **minimum images per class** as a training constraint — enforce via Hub export (`min_images_per_class`) or document your floor before shipping weights.
+- **Hard negatives manifest** (optional bookkeeping for curated mines): JSON Schema `scripts/datasets/schemas/hard_negatives_manifest_v1.schema.json`, example `scripts/datasets/example_hard_negatives_manifest.json`. Pass `--manifest-out path.json` on merge to record paths and counts.
+
+Phase 2 items from the epic (MineUp, dual mining, COCO export) remain future work; track under [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) / [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368).
+
+---
+
 ## Library operational flow (Hub)
 
 Critical daily operator happy-path in `Library`:

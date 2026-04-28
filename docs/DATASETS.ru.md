@@ -19,6 +19,18 @@ Background / hard-negative классы детектора — только dete
 
 ---
 
+## Трёхклассовый детектор — эпик [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367), фаза 1
+
+Сборка YOLO-детекции **Bird / Rodent / Background** (согласовано с `detector_labels.normalize_detector_label`). Нужны каталоги под `scripts/datasets/` (после `merge_datasets_binary.py`, `convert_oidv4_rodent_to_yolo.py` и вашего **`background_yolo/`**).
+
+- Точка входа: **`make dataset-merge-three-class`** или `python3 scripts/datasets/merge_datasets_three_class.py --help`.
+- Выход: `birds_rodent_background_yolo/dataset.yaml` и объединённые сплиты.
+- Манифест hard negatives (учёт курируемых негативов): схема `scripts/datasets/schemas/hard_negatives_manifest_v1.schema.json`, пример `example_hard_negatives_manifest.json`; при слиянии можно передать `--manifest-out`.
+
+Дальнейшие шаги эпика — в [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) / [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368).
+
+---
+
 ## Операционный flow в Library (Hub)
 
 Критичный happy-path для ежедневной работы оператора в `Library`:
