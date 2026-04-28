@@ -8,6 +8,17 @@
 
 ---
 
+## Ворота подготовки CV / ML (#377)
+
+Перед стартом эпика CV / ML держите контракт detector/classifier из
+[CV_ML_PREP](./CV_ML_PREP.ru.md) согласованным с этой страницей. Коротко: боксы
+первого детектора попадают в классификатор видов только если их нормализованная
+метка входит в `processor.detector_scope` (по умолчанию `["Bird", "Rodent"]`).
+Background / hard-negative классы детектора — только detector evidence и должны
+оставаться вне этого scope.
+
+---
+
 ## Операционный flow в Library (Hub)
 
 Критичный happy-path для ежедневной работы оператора в `Library`:
@@ -33,12 +44,25 @@
 В `Library -> Экспорт датасета` включите опцию **«Готово к train (авто split train/val, без пост-скрипта)»**.  
 Опционально: **«Добавить test split (~10%)»** — в ZIP попадёт и `test/<class>/...` (hold-out).
 
+Для официального цикла дообучения BirdLense используйте:
+
+- `ready_for_train=1`
+- `strict_quality=1`
+- `only_manually_corrected=1`, когда нужен самый чистый corrective set
+- `dataset_info.json` + `classes.txt` как обязательные rollout evidence artifacts
+
 ZIP будет содержать:
 - `train/<class>/...`, `val/<class>/...`, при необходимости `test/<class>/...`
 - `classes.txt`
 - `dataset_info.json` — паспорт выгрузки (`manifest.schema=birdlense_dataset_export_v2`, фильтры, `split_seed`, `fingerprint_sha256_16`) и блок **`quality`**: дубликаты `(video_id, track_id)`, «утечка» одного `video_id` между сплитами.
 
 API: `GET /api/ui/dataset/export` — параметры `test_ratio`, `strict_quality=1` (отменить выгрузку при дубликатах треков, утечке `video_id` между сплитами или если при **ready_for_train** есть классы ниже `min_images_per_class`).
+
+Перед rollout новых весов проверяйте выгрузку и артефакты вместе:
+
+```bash
+make validate-weights DATASET_INFO=/path/to/dataset_info.json CLASS_NAMES=/path/to/classes.txt
+```
 
 Это убирает обязательный промежуточный запуск `scripts/datasets/export_birdlense_to_yolo.py` для базового сценария дообучения.
 

@@ -69,6 +69,7 @@
 |----------|----------|
 | Обучение | [TRAINING.ru.md](./TRAINING.ru.md) · [EN](./TRAINING.md) |
 | Цикл качества ML | [ML_QUALITY_LOOP.ru.md](./ML_QUALITY_LOOP.ru.md) (только RU) |
+| Контракт подготовки CV / ML | [CV_ML_PREP.ru.md](./CV_ML_PREP.ru.md) · [EN](./CV_ML_PREP.md) |
 | Датасеты | [DATASETS.ru.md](./DATASETS.ru.md) · [EN](./DATASETS.md) |
 | Версионирование | [VERSIONING.ru.md](./VERSIONING.ru.md) · [EN](./VERSIONING.md) |
 | Roadmap | [ROADMAP.ru.md](./ROADMAP.ru.md) · [EN](./ROADMAP.md) |
