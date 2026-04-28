@@ -74,6 +74,8 @@ When you add, remove, or rename a **published** page under `docs/`: update root 
 | ML_QUALITY_LOOP | — | ✅ (RU only) |
 | CV_ML_PREP | ✅ | ✅ |
 | CV_ML_ROADMAP_PHASES | ✅ | ✅ |
+| ML_OPERATOR_HANDOFF | ✅ | ✅ |
+| ML_DETECTOR_COLAB | ✅ | ✅ |
 | DATASETS | ✅ | ✅ |
 | CV_ML_DECODE | ✅ | ✅ |
 | ACTIVE_LEARNING | ✅ | ✅ |

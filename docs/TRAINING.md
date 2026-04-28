@@ -2,6 +2,8 @@
 
 Step-by-step: bird **classification** on a free **T4 GPU**. Dataset layout and scripts: [DATASETS](./DATASETS.md).
 
+**Detector (YOLO detection)** in Colab — separate guide: [ML_DETECTOR_COLAB](./ML_DETECTOR_COLAB.md) · [RU](./ML_DETECTOR_COLAB.ru.md). **Operator handoff** (what the repo finished vs what you train): [ML_OPERATOR_HANDOFF](./ML_OPERATOR_HANDOFF.md) · [RU](./ML_OPERATOR_HANDOFF.ru.md).
+
 [Русский](./TRAINING.ru.md)
 
 ---

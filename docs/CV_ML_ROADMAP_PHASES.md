@@ -94,4 +94,6 @@ Inference and benchmarks land on **`ML`** first. **`dev`** stays the branch for 
 ## References
 
 - Prep contract: [CV_ML_PREP.md](CV_ML_PREP.md)
+- **Repository vs training responsibilities:** [ML_OPERATOR_HANDOFF.md](ML_OPERATOR_HANDOFF.md) · [RU](ML_OPERATOR_HANDOFF.ru.md)
+- Detector Colab guide: [ML_DETECTOR_COLAB.md](ML_DETECTOR_COLAB.md) · [RU](ML_DETECTOR_COLAB.ru.md)
 - Epic: [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367)
