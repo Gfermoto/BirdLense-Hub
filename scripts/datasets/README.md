@@ -44,3 +44,9 @@ Requires: `pip install fiftyone pycocotools`
 ## merge_datasets_binary.py
 
 Merges the cleaned NABirds dataset (`nabirds_yolo_cleaned/`) with COCO birds (`coco_birds_yolo/`) and collapses all species into a single "bird" class (class 0). Creates a binary detection dataset for training a general bird detector without species classification.
+
+## merge_datasets_three_class.py ([epic #367](https://github.com/Gfermoto/BirdLense-Hub/issues/367))
+
+Merges **`birds_binary_yolo/`** + **`rodent_yolo/`** + **`background_yolo/`** into **`birds_rodent_background_yolo/`** with YOLO class ids **0 = Bird**, **1 = Rodent**, **2 = Background** and `dataset.yaml` names matching the Hub (`Bird` / `Rodent` / `Background`). Background images may use **empty** label files (image-level negatives).
+
+From repo root: **`make dataset-merge-three-class`** (expects those folders under `scripts/datasets/`). Options: `--manifest-out` for a merge audit JSON; see [DATASETS.md](../docs/DATASETS.md). Hard-negative manifest schema: `schemas/hard_negatives_manifest_v1.schema.json`.

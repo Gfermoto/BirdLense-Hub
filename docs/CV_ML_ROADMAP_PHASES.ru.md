@@ -47,6 +47,11 @@
 
 - [#369], [#370], [#374], [#375].
 
+### Эпик [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) — датасет 3-классового детектора (фаза 1)
+
+- ``merge_datasets_three_class.py`` + ``make dataset-merge-three-class`` → ``dataset.yaml`` Bird/Rodent/Background; обучение/релиз — [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368).
+- Схема манифеста hard negatives и ``--manifest-out`` — см. [DATASETS.ru.md](DATASETS.ru.md).
+
 ---
 
 ## Параллельная ветка `ML` (база восстановления — `dev`)

@@ -93,6 +93,7 @@ jobs:
             processor/tests/test_compare_benchmark_reports.py \
             processor/tests/test_verify_benchmark_report_schema.py \
             processor/tests/test_reference_smoke_compare.py \
+            processor/tests/test_merge_three_class_dataset.py \
             -q --tb=short
 
       - name: OpenAPI contract smoke tests

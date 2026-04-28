@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -88,6 +88,15 @@ audit-cards:
 # Валидация rollout-кандидата весов перед загрузкой в Hub/UI.
 # Пример:
 #   make validate-weights DATASET_INFO=app/data/dataset/exports/latest/dataset_info.json
+# Epic #367 Phase 1 — YOLO detection Bird/Rodent/Background (see scripts/datasets/README.md).
+# Requires prior birds_binary_yolo, rodent_yolo, background_yolo under scripts/datasets/.
+dataset-merge-three-class:
+	@cd scripts/datasets && python3 merge_datasets_three_class.py \
+	  --birds-dir birds_binary_yolo \
+	  --rodent-dir rodent_yolo \
+	  --background-dir background_yolo \
+	  --output-dir birds_rodent_background_yolo
+
 validate-weights:
 	@python3 scripts/validate-processor-weights.py \
 		--binary "$${BINARY:-app/processor/models/detection/weights/best.pt}" \
