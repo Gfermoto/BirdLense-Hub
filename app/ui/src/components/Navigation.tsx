@@ -21,6 +21,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import Divider from '@mui/material/Divider';
 import { keyframes } from '@emotion/react';
 import { StatusIndicator } from './StatusIndicator';
+import { ProductName } from './ProductName';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { SettingsPasswordDialog } from './SettingsPasswordDialog';
 import { useQuery } from '@tanstack/react-query';
@@ -231,7 +232,7 @@ export function Navigation() {
               sx={{ mr: 1.5, height: 40, width: 40, borderRadius: 1 }}
             />
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              {t('common.appName')}
+              <ProductName />
             </Typography>
           </Box>
 
@@ -401,7 +402,7 @@ export function Navigation() {
                 }}
               />
               <Typography variant="h6" noWrap>
-                {t('common.appName')}
+                <ProductName />
               </Typography>
             </Box>
 
