@@ -33,7 +33,11 @@ build start stop logs:
 	@$(MAKE) -C app $@
 
 verify:
-	@./scripts/verify-stack.sh --base-url "$${BASE_URL:-http://127.0.0.1:8085}"
+	@set -e; cd "$(CURDIR)"; \
+	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
+	_url="$${BASE_URL:-$${DEPLOY_URL:-http://127.0.0.1:8085}}"; \
+	MCP_TOKEN="$${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="$${BIRDLENSE_UI_API_KEY:-}" \
+	  ./scripts/verify-stack.sh --base-url "$$_url"
 
 docs:
 	@$(MAKE) -C app docs

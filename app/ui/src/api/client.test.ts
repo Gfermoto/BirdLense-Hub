@@ -1,6 +1,25 @@
 import axios from 'axios';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+type AxiosInterceptorConfig = {
+  method?: string;
+  headers: InstanceType<typeof axios.AxiosHeaders>;
+  withCredentials?: boolean;
+};
+
+async function loadHandlers() {
+  await import('./client');
+  return (
+    axios.interceptors.request as unknown as {
+      handlers: Array<{
+        fulfilled?: (
+          config: AxiosInterceptorConfig,
+        ) => Promise<AxiosInterceptorConfig>;
+      }>;
+    }
+  ).handlers;
+}
+
 describe('api client', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -37,6 +56,37 @@ describe('api client', () => {
       credentials: 'include',
       headers: { Accept: 'application/json' },
     });
+  });
+
+  it('resetCsrfToken clears cache so the next getCsrfToken refetches', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ csrf_token: 'csrf-token-reset' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { getCsrfToken, resetCsrfToken } = await import('./client');
+    await getCsrfToken();
+    resetCsrfToken();
+    await getCsrfToken();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects when CSRF token HTTP response is not ok', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({}),
+      }),
+    );
+    const { getCsrfToken } = await import('./client');
+
+    await expect(getCsrfToken()).rejects.toThrow(
+      'CSRF token request failed: 503',
+    );
   });
 
   it('rejects invalid CSRF token responses', async () => {
@@ -100,20 +150,7 @@ describe('api client', () => {
     );
     await import('./client');
 
-    const handlers = (
-      axios.interceptors.request as unknown as {
-        handlers: Array<{
-          fulfilled?: (config: {
-            method: string;
-            headers: InstanceType<typeof axios.AxiosHeaders>;
-            withCredentials?: boolean;
-          }) => Promise<{
-            headers: InstanceType<typeof axios.AxiosHeaders>;
-            withCredentials?: boolean;
-          }>;
-        }>;
-      }
-    ).handlers;
+    const handlers = await loadHandlers();
     const interceptor = handlers[handlers.length - 1];
     const config = await interceptor?.fulfilled?.({
       method: 'post',
@@ -122,5 +159,22 @@ describe('api client', () => {
 
     expect(config?.withCredentials).toBe(true);
     expect(config?.headers.get('X-Birdlense-CSRF-Token')).toBe('csrf-token-3');
+  });
+
+  it('axios interceptor leaves GET requests unchanged', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    await import('./client');
+
+    const handlers = await loadHandlers();
+    const interceptor = handlers[handlers.length - 1];
+    const headers = new axios.AxiosHeaders();
+    const config = await interceptor?.fulfilled?.({
+      method: 'get',
+      headers,
+    });
+
+    expect(config?.headers).toBe(headers);
+    expect(config?.withCredentials).toBeUndefined();
+    expect(vi.mocked(globalThis.fetch)).not.toHaveBeenCalled();
   });
 });

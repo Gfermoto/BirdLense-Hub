@@ -29,6 +29,7 @@ import { queryKeys } from '../../api/queryKeys';
 import { formatLocalDateTime } from '../../util';
 import { formatDuration } from '../../utils/timeUtils';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import { RecordingsModeSwitcher } from '../../components/RecordingsModeSwitcher';
 
 type SortMode = 'recent' | 'name';
 
@@ -194,38 +195,60 @@ export function FavoritesPage() {
     });
   }, [data?.groups, search, sortMode]);
 
-  if (isLoading) {
-    return <PageLoadingState label={t('common.loading')} />;
-  }
-
-  if (error || !data) {
-    return (
-      <PageMessageState
-        title={t('favoritesPage.title')}
-        message={t('favoritesPage.errorLoad')}
-        severity="error"
-        action={
-          <Button variant="outlined" onClick={() => refetch()}>
-            {t('common.retry')}
-          </Button>
-        }
-      />
-    );
-  }
-
-  const hasResults = groups.length > 0 || data.unclassified.count > 0;
+  const hasResults =
+    !error &&
+    data &&
+    (groups.length > 0 || data.unclassified.count > 0);
 
   return (
     <Box sx={{ py: 3 }}>
       <Stack spacing={3}>
-        <Box>
-          <Typography variant="h3" component="h1" gutterBottom>
-            {t('favoritesPage.title')}
-          </Typography>
-          <Typography variant="body1" color="text.secondary" maxWidth="900px">
-            {t('favoritesPage.intro')}
-          </Typography>
-        </Box>
+        {isLoading ? (
+          <>
+            <Box>
+              <Typography variant="h3" component="h1" gutterBottom>
+                {t('favoritesPage.title')}
+              </Typography>
+              <Typography variant="body1" color="text.secondary" maxWidth="900px">
+                {t('favoritesPage.intro')}
+              </Typography>
+            </Box>
+            <RecordingsModeSwitcher />
+            <PageLoadingState label={t('common.loading')} />
+          </>
+        ) : error || !data ? (
+          <>
+            <Box>
+              <Typography variant="h3" component="h1" gutterBottom>
+                {t('favoritesPage.title')}
+              </Typography>
+              <Typography variant="body1" color="text.secondary" maxWidth="900px">
+                {t('favoritesPage.intro')}
+              </Typography>
+            </Box>
+            <RecordingsModeSwitcher />
+            <PageMessageState
+              title={t('favoritesPage.title')}
+              message={t('favoritesPage.errorLoad')}
+              severity="error"
+              action={
+                <Button variant="outlined" onClick={() => refetch()}>
+                  {t('common.retry')}
+                </Button>
+              }
+            />
+          </>
+        ) : (
+          <>
+            <Box>
+              <Typography variant="h3" component="h1" gutterBottom>
+                {t('favoritesPage.title')}
+              </Typography>
+              <Typography variant="body1" color="text.secondary" maxWidth="900px">
+                {t('favoritesPage.intro')}
+              </Typography>
+            </Box>
+            <RecordingsModeSwitcher />
 
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Stack
@@ -356,6 +379,8 @@ export function FavoritesPage() {
               ) : null}
             </Stack>
           </Stack>
+        )}
+          </>
         )}
       </Stack>
     </Box>

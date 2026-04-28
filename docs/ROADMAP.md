@@ -170,6 +170,17 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | 15 | Telegram: SOCKS5h proxy in UI and MTProto (`apihelper.proxy`) | [#165](https://github.com/Gfermoto/BirdLense-Hub/issues/165) ✅ issue closed; idea retained here; new issue when work starts | P3, web |
 | 16 | Heimdall manual widgets / docs | [#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) ✅ docs direction retained; no runtime integration promised | P3, infra |
 | 17 | Scales: trigger + per-clip delta + video UI ✅ ([#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) closed); visit card ✅ ([#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) closed); field acceptance — [#243](https://github.com/Gfermoto/BirdLense-Hub/issues/243) (open until run) | — | P3, web + API |
+| 18 | **ML / video: bird action recognition** (land, leave, forage, drink, aggression, …) — **any** deployment: feeders, parks/reserves over IP cameras, etc.; separate from per-frame species ID | [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) — epic/research tracker; related: [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) (clip capture), [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164) (species TL). **Research:** [§ below](#bird-behavior-ml-research) | P3, processor, ML, research |
+
+<h3 id="bird-behavior-ml-research">Research: bird behaviors on video (short)</h3>
+
+Analogous work **exists in datasets and papers**; few off-the-shelf solutions cover **your** scene out of the box (backyard feeders at any complexity, park/reserve IP cameras, wetland hides, …) — expect custom labels, fine-tuning, or hybrid signals (e.g. scales only where installed).
+
+| Track | Notes |
+|-------|--------|
+| **Visual WetlandBirds** (2025, [Scientific Data](https://www.nature.com/articles/s41597-025-05516-5), [arXiv](https://arxiv.org/abs/2501.08931), [code](https://github.com/3dperceptionlab/visual-wetlandbirds)) | **178** videos, **858** behavior clips (~**20 s** mean, ~**59 min** total), **13** species, **7** behaviors: Alert, Feeding, Flying, Preening, Resting, Swimming, Walking — **per-frame** bbox + species. Behavior baselines (accuracy): Video ResNet **0.56**, MViT/Swin **0.51**, TimeSFormer **0.49**, S3D **0.29**; species detection (YOLOv9): mAP50 **0.801**. Capture domain: Spanish wetlands (visual world **≠** typical feeder rig or a fixed park pole). Details — [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379). |
+| **Automated ethograms / event segmentation** | **Kagu nest** ([Dryad](https://datadryad.org/dataset/doi:10.5061/dryad.kh18932bb), IJCV [2023](https://doi.org/10.1007/s11263-023-01781-2)): **~253 h** @25 FPS (**~23M** frames), bbox + **5** events (Feeding, Pushing/Throwing leaves, Walk-In/Out) + lighting; untrimmed stream segmentation. See [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379). |
+| **Practical path for the hub** | Often: **track** (bbox) + clip classifier (TSN / SlowFast / VideoMAE), or **weak cues** (feeders: scales + detection; parks/reserves: vision-only / track heuristics). Explicit land/leave usually needs labels or rules on tracks / clip boundaries. |
 
 **System initiative (P1):**
 

@@ -19,10 +19,40 @@ def test_strict_flag_without_production_does_not_block_public_ui_api(client, mon
     assert r.status_code == 200
 
 
-def test_production_strict_blocks_species_list_without_session(client, _strict_prod_env):
+def test_production_strict_allows_public_species_list_without_session(client, _strict_prod_env):
     r = client.get("/api/ui/species")
+    assert r.status_code == 200
+
+
+def test_production_strict_blocks_private_system_without_session(client, _strict_prod_env):
+    r = client.get("/api/ui/system/config-audit")
     assert r.status_code == 403
     assert r.get_json().get("error") == "Authentication required"
+
+
+def test_production_strict_monitor_only_logs_without_blocking(
+    client,
+    _strict_prod_env,
+    monkeypatch,
+    caplog,
+):
+    monkeypatch.setenv("BIRDLENSE_SECURITY_MONITOR_ONLY", "1")
+    with caplog.at_level("WARNING"):
+        r = client.get("/api/ui/storage/overview")
+    assert r.status_code != 403
+    assert "strict_ui_api_auth_denied_monitor_only" in caplog.text
+
+
+def test_production_strict_allows_public_status_and_feed(client, _strict_prod_env):
+    assert client.get("/api/ui/status").status_code == 200
+    assert client.get("/api/ui/feed/info").status_code == 200
+
+
+def test_production_strict_report_pdf_passes_gate_route_denies_guest(client, _strict_prod_env):
+    """Как unknowns/export: strict не режет; доступ — в обработчике (ui_sensitive_export_access)."""
+    r = client.get("/api/ui/report/pdf")
+    assert r.status_code == 403
+    assert r.get_json().get("error") == "Access denied"
 
 
 def test_production_strict_allows_bootstrap_endpoints(client, _strict_prod_env):

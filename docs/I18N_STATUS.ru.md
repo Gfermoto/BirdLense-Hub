@@ -74,6 +74,7 @@
 | UX_CANONICAL_MAP (роли / маршруты) | ✅ | ✅ |
 | TRAINING | ✅ | ✅ |
 | ML_QUALITY_LOOP | — | ✅ (только RU) |
+| CV_ML_PREP | ✅ | ✅ |
 | DATASETS | ✅ | ✅ |
 | ROADMAP (в т.ч. Issues / доска) | ✅ | ✅ |
 | VERSIONING | ✅ | ✅ |

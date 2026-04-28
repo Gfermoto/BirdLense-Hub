@@ -21,6 +21,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import Divider from '@mui/material/Divider';
 import { keyframes } from '@emotion/react';
 import { StatusIndicator } from './StatusIndicator';
+import { ProductName } from './ProductName';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { SettingsPasswordDialog } from './SettingsPasswordDialog';
 import { useQuery } from '@tanstack/react-query';
@@ -162,12 +163,13 @@ export function Navigation() {
   };
 
   const needsPassword = isLoading || (requiresPassword && !unlocked);
-  const isReviewRoute =
-    currentPath === '/timeline' &&
-    /(?:^|[?&])review=1(?:&|$)/.test(location.search);
+  /** Записи: лента, избранное (каталог), на проверке — один пункт навигации «Записи». */
+  const isRecordingsNavActive = (path: string) => {
+    if (path !== '/timeline') return currentPath === path;
+    return currentPath === '/timeline' || currentPath === '/favorites';
+  };
 
-  const isNavItemActive = (path: string) =>
-    currentPath === path && !(path === '/timeline' && isReviewRoute);
+  const isNavItemActive = (path: string) => isRecordingsNavActive(path);
 
   const handleGearClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (needsPassword) {
@@ -225,11 +227,12 @@ export function Navigation() {
             <Box
               component="img"
               src={logoUrl}
-              alt="BirdLense Hub Logo"
+              alt=""
+              aria-hidden
               sx={{ mr: 1.5, height: 40, width: 40, borderRadius: 1 }}
             />
             <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              {t('common.appName')}
+              <ProductName />
             </Typography>
           </Box>
 
@@ -278,10 +281,7 @@ export function Navigation() {
                   component={Link}
                   to={item.path}
                   title={t(`nav.${item.key}Hint`)}
-                  selected={
-                    currentPath === item.path &&
-                    !(item.path === '/timeline' && isReviewRoute)
-                  }
+                  selected={isNavItemActive(item.path)}
                 >
                   {t(`nav.${item.key}`)}
                 </MenuItem>
@@ -391,7 +391,8 @@ export function Navigation() {
               <Box
                 component="img"
                 src={logoUrl}
-                alt="BirdLense Hub Logo"
+                alt=""
+                aria-hidden
                 sx={{
                   mr: 1,
                   height: 32,
@@ -401,7 +402,7 @@ export function Navigation() {
                 }}
               />
               <Typography variant="h6" noWrap>
-                {t('common.appName')}
+                <ProductName />
               </Typography>
             </Box>
 

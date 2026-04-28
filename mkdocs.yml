@@ -90,6 +90,7 @@ nav:
   - "ML & project":
       - Training: TRAINING.md
       - "ML quality loop (RU)": ML_QUALITY_LOOP.ru.md
+      - "CV / ML prep contract": CV_ML_PREP.md
       - Datasets: DATASETS.md
       - Versioning: VERSIONING.md
       - Roadmap: ROADMAP.md
@@ -152,6 +153,7 @@ nav:
       - "Настройки: триггеры (фаза 2, черновик)": SETTINGS_TRIGGERS_PHASE2.ru.md
       - Обучение: TRAINING.ru.md
       - "Цикл качества ML": ML_QUALITY_LOOP.ru.md
+      - "Контракт подготовки CV / ML": CV_ML_PREP.ru.md
       - Датасеты: DATASETS.ru.md
       - Версионирование: VERSIONING.ru.md
       - Roadmap: ROADMAP.ru.md

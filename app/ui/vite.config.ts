@@ -29,8 +29,8 @@ export default defineConfig({
         'web-app-manifest-*.png',
       ],
       manifest: {
-        name: 'BirdLense Hub',
-        short_name: 'BirdLense Hub',
+        name: 'BirdLense Hub ML',
+        short_name: 'BirdLense Hub ML',
         theme_color: '#0F172A',
         background_color: '#0F172A',
         display: 'standalone',
