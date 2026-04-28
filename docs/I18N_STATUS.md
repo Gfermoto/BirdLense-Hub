@@ -72,6 +72,7 @@ When you add, remove, or rename a **published** page under `docs/`: update root 
 | UX_CANONICAL_MAP (roles / routes / journeys) | ✅ | ✅ |
 | TRAINING | ✅ | ✅ |
 | ML_QUALITY_LOOP | — | ✅ (RU only) |
+| CV_ML_PREP | ✅ | ✅ |
 | DATASETS | ✅ | ✅ |
 | ROADMAP (incl. Issues/board reporting) | ✅ | ✅ |
 | VERSIONING | ✅ | ✅ |

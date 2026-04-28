@@ -6,6 +6,17 @@ Formats, scripts, sources, and training hardware. **End-to-end training:** [TRAI
 
 ---
 
+## CV / ML prep gate (#377)
+
+Before starting the CV / ML roadmap epic, keep the detector/classifier contract
+in [CV_ML_PREP](./CV_ML_PREP.md) in sync with this page. In short: first-stage
+detector boxes enter the species classifier only if their normalized label is in
+`processor.detector_scope` (default `["Bird", "Rodent"]`). Background /
+hard-negative detector classes are detector-only evidence and must stay outside
+that scope.
+
+---
+
 ## Library operational flow (Hub)
 
 Critical daily operator happy-path in `Library`:
