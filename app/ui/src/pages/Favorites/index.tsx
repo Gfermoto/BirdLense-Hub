@@ -203,30 +203,52 @@ export function FavoritesPage() {
   return (
     <Box sx={{ py: 3 }}>
       <Stack spacing={3}>
-        <RecordingsModeSwitcher />
         {isLoading ? (
-          <PageLoadingState label={t('common.loading')} />
+          <>
+            <Box>
+              <Typography variant="h3" component="h1" gutterBottom>
+                {t('favoritesPage.title')}
+              </Typography>
+              <Typography variant="body1" color="text.secondary" maxWidth="900px">
+                {t('favoritesPage.intro')}
+              </Typography>
+            </Box>
+            <RecordingsModeSwitcher />
+            <PageLoadingState label={t('common.loading')} />
+          </>
         ) : error || !data ? (
-          <PageMessageState
-            title={t('favoritesPage.title')}
-            message={t('favoritesPage.errorLoad')}
-            severity="error"
-            action={
-              <Button variant="outlined" onClick={() => refetch()}>
-                {t('common.retry')}
-              </Button>
-            }
-          />
+          <>
+            <Box>
+              <Typography variant="h3" component="h1" gutterBottom>
+                {t('favoritesPage.title')}
+              </Typography>
+              <Typography variant="body1" color="text.secondary" maxWidth="900px">
+                {t('favoritesPage.intro')}
+              </Typography>
+            </Box>
+            <RecordingsModeSwitcher />
+            <PageMessageState
+              title={t('favoritesPage.title')}
+              message={t('favoritesPage.errorLoad')}
+              severity="error"
+              action={
+                <Button variant="outlined" onClick={() => refetch()}>
+                  {t('common.retry')}
+                </Button>
+              }
+            />
+          </>
         ) : (
           <>
-        <Box>
-          <Typography variant="h3" component="h1" gutterBottom>
-            {t('favoritesPage.title')}
-          </Typography>
-          <Typography variant="body1" color="text.secondary" maxWidth="900px">
-            {t('favoritesPage.intro')}
-          </Typography>
-        </Box>
+            <Box>
+              <Typography variant="h3" component="h1" gutterBottom>
+                {t('favoritesPage.title')}
+              </Typography>
+              <Typography variant="body1" color="text.secondary" maxWidth="900px">
+                {t('favoritesPage.intro')}
+              </Typography>
+            </Box>
+            <RecordingsModeSwitcher />
 
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Stack
