@@ -42,6 +42,7 @@ DINO/DINOv2 нужен **не только** для Re-ID особи. Тот ж�
 
 - **`scripts/reid/embed_dinov2_crop.py`** — загрузка DINOv2 через `torch.hub`, L2-нормированный эмбеддинг на файл; вывод JSON Lines. См. **`scripts/reid/README.md`**. Нужны PyTorch + torchvision + Pillow в среде обучения/экспериментов (не обязательный dependency Docker-процессора).
 - **`scripts/reid/embed_cosine_report.py`** — статистика pairwise cosine, опционально **top-K соседей**, файл пар `--pairs` для контроля «та же особь» vs случайные пары (отчёт Markdown). Нужен только **numpy**.
+- **`scripts/reid/export_crops_from_sqlite.py`** — выгрузка кропов из SQLite (`video_species`, bbox из `frames`), тот же смысл кропа, что у хаба; дальше в `embed_dinov2_crop.py`. Нужны **ffmpeg**, OpenCV, доступ к БД только на чтение.
 
 ## Остальное
 

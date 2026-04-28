@@ -40,6 +40,7 @@ The [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) prototype focus
 
 - **`scripts/reid/embed_dinov2_crop.py`** — load DINOv2 via `torch.hub`, L2-normalized embedding per image path; JSON Lines output. See **`scripts/reid/README.md`**. Requires PyTorch + torchvision + Pillow in your training/offline environment (not bundled as a processor runtime dependency).
 - **`scripts/reid/embed_cosine_report.py`** — pairwise cosine stats, optional **top-K neighbors** per row, optional `--pairs` file for labeled same-individual pairs vs random negatives (Markdown report). Requires **numpy** only.
+- **`scripts/reid/export_crops_from_sqlite.py`** — export detector crops from **`video_species`** rows (bbox + ffmpeg frame grab), matching Hub crop semantics; feed output JPEGs into `embed_dinov2_crop.py`. Requires **ffmpeg**, OpenCV, read-only SQLite access.
 
 ## Phase 1 (design)
 
