@@ -93,6 +93,10 @@ nav:
       - "CV / ML prep contract": CV_ML_PREP.md
       - "CV / ML roadmap phases": CV_ML_ROADMAP_PHASES.md
       - Datasets: DATASETS.md
+      - "Video decode baseline (#373)": CV_ML_DECODE.md
+      - "Active learning (#369)": ACTIVE_LEARNING.md
+      - "Re-ID roadmap (#374)": REID_ROADMAP.md
+      - "Federated learning prototype (#375)": FEDERATED_LEARNING.md
       - Versioning: VERSIONING.md
       - Roadmap: ROADMAP.md
   - Meta:
@@ -157,6 +161,10 @@ nav:
       - "Контракт подготовки CV / ML": CV_ML_PREP.ru.md
       - "Фазы roadmap CV / ML": CV_ML_ROADMAP_PHASES.ru.md
       - Датасеты: DATASETS.ru.md
+      - "Декод видео — замеры (#373)": CV_ML_DECODE.ru.md
+      - "Active learning (#369)": ACTIVE_LEARNING.ru.md
+      - "Re-ID roadmap (#374)": REID_ROADMAP.ru.md
+      - "Федеративное обучение (#375)": FEDERATED_LEARNING.ru.md
       - Версионирование: VERSIONING.ru.md
       - Roadmap: ROADMAP.ru.md
       - Структура репозитория: REPOSITORY_LAYOUT.ru.md

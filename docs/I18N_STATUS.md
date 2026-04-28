@@ -75,6 +75,10 @@ When you add, remove, or rename a **published** page under `docs/`: update root 
 | CV_ML_PREP | ✅ | ✅ |
 | CV_ML_ROADMAP_PHASES | ✅ | ✅ |
 | DATASETS | ✅ | ✅ |
+| CV_ML_DECODE | ✅ | ✅ |
+| ACTIVE_LEARNING | ✅ | ✅ |
+| REID_ROADMAP | ✅ | ✅ |
+| FEDERATED_LEARNING | ✅ | ✅ |
 | ROADMAP (incl. Issues/board reporting) | ✅ | ✅ |
 | VERSIONING | ✅ | ✅ |
 | VERIFICATION (release checks log) | ✅ | ✅ |

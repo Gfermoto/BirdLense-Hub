@@ -70,7 +70,12 @@
 | Обучение | [TRAINING.ru.md](./TRAINING.ru.md) · [EN](./TRAINING.md) |
 | Цикл качества ML | [ML_QUALITY_LOOP.ru.md](./ML_QUALITY_LOOP.ru.md) (только RU) |
 | Контракт подготовки CV / ML | [CV_ML_PREP.ru.md](./CV_ML_PREP.ru.md) · [EN](./CV_ML_PREP.md) |
+| Фазы roadmap CV / ML | [CV_ML_ROADMAP_PHASES.ru.md](./CV_ML_ROADMAP_PHASES.ru.md) · [EN](./CV_ML_ROADMAP_PHASES.md) |
 | Датасеты | [DATASETS.ru.md](./DATASETS.ru.md) · [EN](./DATASETS.md) |
+| Декод видео — замеры (#373) | [CV_ML_DECODE.ru.md](./CV_ML_DECODE.ru.md) · [EN](./CV_ML_DECODE.md) |
+| Active learning (#369) | [ACTIVE_LEARNING.ru.md](./ACTIVE_LEARNING.ru.md) · [EN](./ACTIVE_LEARNING.md) |
+| Re-ID roadmap (#374) | [REID_ROADMAP.ru.md](./REID_ROADMAP.ru.md) · [EN](./REID_ROADMAP.md) |
+| Федеративное обучение (#375) | [FEDERATED_LEARNING.ru.md](./FEDERATED_LEARNING.ru.md) · [EN](./FEDERATED_LEARNING.md) |
 | Версионирование | [VERSIONING.ru.md](./VERSIONING.ru.md) · [EN](./VERSIONING.md) |
 | Roadmap | [ROADMAP.ru.md](./ROADMAP.ru.md) · [EN](./ROADMAP.md) |
 

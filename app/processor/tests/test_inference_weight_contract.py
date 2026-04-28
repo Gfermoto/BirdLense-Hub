@@ -68,6 +68,18 @@ class TestWeightContract(unittest.TestCase):
                 log,
             )
 
+    def test_validate_enforce_three_class_weights_ok(self):
+        """3-class детектор: модель содержит Background, scope только Bird+Rodent (#368)."""
+        from inference.weight_contract import validate_detector_weight_contract
+
+        log = logging.getLogger("test_validate_enforce_three_class_weights_ok")
+        validate_detector_weight_contract(
+            {0: "Bird", 1: "Rodent", 2: "Background"},
+            {"Bird", "Rodent"},
+            "enforce",
+            log,
+        )
+
 
 class TestDetectorLabels(unittest.TestCase):
     def test_normalize_matches_epic(self):

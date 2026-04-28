@@ -43,11 +43,27 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 
 ### Phase 3 — Video pipeline optimization
 
-- [#373] baseline benchmarks (decode + resize, no YOLO), platform matrix (bare Intel vs Docker `/dev/dri` vs WSL2), optional GStreamer/ffmpeg hwaccel **after** measured win (≥15% CPU / latency where stated in issue).
+- [#373] **`scripts/benchmark_video_decode_resize.py`** + measurement matrix template [CV_ML_DECODE.md](CV_ML_DECODE.md). Optional GStreamer/ffmpeg hwaccel **after** measured win on your platforms.
 
 ### Phase 4 — Product / research tracks
 
-- [#369] active learning exports, [#370] classifier uncertainty and hierarchy, [#374] Re-ID, [#375] federated prototype — separate milestones.
+- [#369] Active learning: JSONL schema + `scripts/active_learning/emit_pool_template.py` + [ACTIVE_LEARNING.md](ACTIVE_LEARNING.md).
+- [#370] Classifier uncertainty product wiring (entropy/margin → DB/UI) — hook documented at `_classify_crop`; rollout TBD.
+- [#374] [REID_ROADMAP.md](REID_ROADMAP.md).
+- [#375] Runnable **`scripts/federated/simulate_fedavg.py`** + [FEDERATED_LEARNING.md](FEDERATED_LEARNING.md) (**not production**).
+
+### Child issues — what landed in the repo (ML branch snapshot)
+
+| Issue | Deliverable |
+|-------|-------------|
+| [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) | `detector_weight_contract` + tests including **3-class** weights (`Background` in model, not in scope). Train/calibrate/INT8 — still issue-owned. |
+| [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) | torch/OpenVINO + cache + optional **`BIRDLENSE_INFERENCE_AUTO_BENCHMARK`** → `cold_start_predict_ms`. ONNX/TensorRT remain `NotImplementedError`. |
+| [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) | Benchmark scripts + CI + reference JSON (drift/Grafana still future). |
+| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) | Decode/resize script + docs table. |
+| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) | Pool manifest schema + template emitter + docs. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) | Design doc only (embeddings DB/UI later). |
+| [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) | FedAvg toy simulation + threat-model doc. |
+| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) | Documented hook points; full product uncertainty flags still roadmap. |
 
 ### Epic [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) — 3-class detector **dataset** (Phase 1 entrypoint)
 
@@ -65,6 +81,7 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 | `processor.detector_weight_contract` | `off` \| `warn` \| `enforce` — detector class names vs `processor.detector_scope` ([#368]). |
 | Env `BIRDLENSE_INFERENCE_BACKEND` | Overrides `processor.inference_backend`. |
 | Env `BIRDLENSE_BINARY_OPENVINO_PATH` | Optional override for OpenVINO binary weights path. |
+| Env `BIRDLENSE_INFERENCE_AUTO_BENCHMARK` | Optional one-shot binary `predict` timing → `inference_backend_cache.json` ([#371]). |
 
 ---
 

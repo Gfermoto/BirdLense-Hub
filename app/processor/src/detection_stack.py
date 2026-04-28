@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -140,10 +140,27 @@ def build_detection_stack(
         inference_backend=_inf_backend,
     )
 
+    extra_cache: Optional[Dict[str, Any]] = None
+    raw_auto = (os.environ.get("BIRDLENSE_INFERENCE_AUTO_BENCHMARK") or "").strip().lower()
+    if raw_auto in ("1", "true", "yes", "on"):
+        from inference.auto_benchmark import measure_binary_detector_predict_ms
+
+        try:
+            _isz = int(app_config.get("processor.binary_imgsz", 320) or 320)
+        except (TypeError, ValueError):
+            _isz = 320
+        _ms = measure_binary_detector_predict_ms(
+            detection_strategy.binary_model,
+            imgsz=max(320, _isz),
+        )
+        if _ms is not None:
+            extra_cache = {"cold_start_predict_ms": round(float(_ms), 3)}
+
     write_inference_backend_cache(
         processor_root,
         backend=_inf_backend,
         binary_model_path=binary_path,
+        extra=extra_cache,
     )
 
     tracker = app_config.get("processor.tracker") or "bytetrack.yaml"
