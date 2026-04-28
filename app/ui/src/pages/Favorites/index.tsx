@@ -29,6 +29,7 @@ import { queryKeys } from '../../api/queryKeys';
 import { formatLocalDateTime } from '../../util';
 import { formatDuration } from '../../utils/timeUtils';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import { RecordingsModeSwitcher } from '../../components/RecordingsModeSwitcher';
 
 type SortMode = 'recent' | 'name';
 
@@ -194,30 +195,30 @@ export function FavoritesPage() {
     });
   }, [data?.groups, search, sortMode]);
 
-  if (isLoading) {
-    return <PageLoadingState label={t('common.loading')} />;
-  }
-
-  if (error || !data) {
-    return (
-      <PageMessageState
-        title={t('favoritesPage.title')}
-        message={t('favoritesPage.errorLoad')}
-        severity="error"
-        action={
-          <Button variant="outlined" onClick={() => refetch()}>
-            {t('common.retry')}
-          </Button>
-        }
-      />
-    );
-  }
-
-  const hasResults = groups.length > 0 || data.unclassified.count > 0;
+  const hasResults =
+    !error &&
+    data &&
+    (groups.length > 0 || data.unclassified.count > 0);
 
   return (
     <Box sx={{ py: 3 }}>
       <Stack spacing={3}>
+        <RecordingsModeSwitcher />
+        {isLoading ? (
+          <PageLoadingState label={t('common.loading')} />
+        ) : error || !data ? (
+          <PageMessageState
+            title={t('favoritesPage.title')}
+            message={t('favoritesPage.errorLoad')}
+            severity="error"
+            action={
+              <Button variant="outlined" onClick={() => refetch()}>
+                {t('common.retry')}
+              </Button>
+            }
+          />
+        ) : (
+          <>
         <Box>
           <Typography variant="h3" component="h1" gutterBottom>
             {t('favoritesPage.title')}
@@ -356,6 +357,8 @@ export function FavoritesPage() {
               ) : null}
             </Stack>
           </Stack>
+        )}
+          </>
         )}
       </Stack>
     </Box>
