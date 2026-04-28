@@ -7,7 +7,7 @@ import secrets
 
 from flask import Flask, jsonify, request, session
 
-from auth import _is_production_runtime
+from auth import _is_production_runtime, request_client_https
 
 CSRF_COOKIE_NAME = "birdlense_csrf_token"
 CSRF_HEADER_NAME = "X-Birdlense-CSRF-Token"
@@ -36,11 +36,16 @@ def _get_or_create_token() -> str:
     return fresh
 
 
+def _csrf_cookie_secure() -> bool:
+    """Secure только при HTTPS у клиента; на HTTP (LAN) cookie иначе не применяется."""
+    return _is_production_runtime() and request_client_https()
+
+
 def _set_csrf_cookie(response):
     response.set_cookie(
         CSRF_COOKIE_NAME,
         _get_or_create_token(),
-        secure=_is_production_runtime(),
+        secure=_csrf_cookie_secure(),
         httponly=False,
         samesite="Strict",
         path="/",

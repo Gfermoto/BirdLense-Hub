@@ -14,6 +14,19 @@ def test_csrf_token_endpoint_sets_cookie(client, monkeypatch):
     assert r.status_code == 200
     assert r.get_json()["csrf_token"]
     assert "birdlense_csrf_token=" in r.headers.get("Set-Cookie", "")
+    # HTTP (тестовый клиент): без Secure — иначе LAN prod не получает cookie
+    assert "; Secure" not in (r.headers.get("Set-Cookie") or "")
+
+
+def test_csrf_cookie_secure_behind_https_proxy(client, monkeypatch):
+    _enable_prod_csrf(monkeypatch)
+    monkeypatch.setenv("TRUSTED_PROXY", "1")
+    r = client.get(
+        "/api/ui/csrf-token",
+        headers={"X-Forwarded-Proto": "https"},
+    )
+    assert r.status_code == 200
+    assert "; Secure" in (r.headers.get("Set-Cookie") or "")
 
 
 def test_prod_ui_mutation_requires_csrf_token(client, monkeypatch):

@@ -256,6 +256,7 @@
     "passwordError": "密码错误",
     "adminRequired": "设置需要管理员密码",
     "passwordServerError": "服务器错误。请稍后重试。",
+    "passwordCsrfHint": "会话保护阻止了请求。请刷新页面后重新登录。",
     "accessErrorNetwork": "网络不可用。检查您的连接。",
     "settingsLoadFailed": "无法加载设置。重新登录或检查您的连接。",
     "loaded": "设置已加载。标有 *** 的字段已有值（敏感值已隐藏）。",
