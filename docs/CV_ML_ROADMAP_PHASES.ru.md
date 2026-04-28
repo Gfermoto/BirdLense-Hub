@@ -23,7 +23,7 @@
 | [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Инференс-бэкенды | **Готово** / **Запланировано** | torch + OpenVINO + кэш **готовы**; ONNX Runtime / TensorRT — **запланировано**. |
 | [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Бенчмарки | **Готово** / **Запланировано** | Скрипты + CI + docker-smoke **готовы**; drift / Grafana — **запланировано**. |
 | [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Декод видео | **В работе** | Скрипт замеров + шаблон таблицы **готовы**; **заполнение матрицы платформ** у вас — в работе. |
-| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **В работе** / **Запланировано** | Доки + DINO ([REID_ROADMAP.ru.md](./REID_ROADMAP.ru.md)); офлайн-скрипт [`scripts/reid/embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py) — в репо; подзадача [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) — галерея/cosine в проде **запланировано**. Один backbone на виды + Re-ID — см. REID. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **В работе** / **Запланировано** | Доки + DINO ([REID_ROADMAP.ru.md](./REID_ROADMAP.ru.md)); офлайн [`embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py) + [`embed_cosine_report.py`](../scripts/reid/embed_cosine_report.py); подзадача [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) — галерея в проде **запланировано**. Один backbone на виды + Re-ID — см. REID. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Готово** (исслед.) / **Запланировано** (прод) | Игрушечная симуляция + threat model **готовы**; прод-канал — **запланировано**. |
 
 *Обновляйте таблицу при закрытии вех или смене фокуса.*
