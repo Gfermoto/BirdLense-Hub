@@ -91,6 +91,7 @@ nav:
       - Training: TRAINING.md
       - "ML quality loop (RU)": ML_QUALITY_LOOP.ru.md
       - "CV / ML prep contract": CV_ML_PREP.md
+      - "CV / ML roadmap phases": CV_ML_ROADMAP_PHASES.md
       - Datasets: DATASETS.md
       - Versioning: VERSIONING.md
       - Roadmap: ROADMAP.md
@@ -154,6 +155,7 @@ nav:
       - Обучение: TRAINING.ru.md
       - "Цикл качества ML": ML_QUALITY_LOOP.ru.md
       - "Контракт подготовки CV / ML": CV_ML_PREP.ru.md
+      - "Фазы roadmap CV / ML": CV_ML_ROADMAP_PHASES.ru.md
       - Датасеты: DATASETS.ru.md
       - Версионирование: VERSIONING.ru.md
       - Roadmap: ROADMAP.ru.md

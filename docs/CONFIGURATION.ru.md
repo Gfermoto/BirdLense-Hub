@@ -304,6 +304,8 @@
 
 **Трассировка fusion (UI):** на странице ролика кнопка **Трассировка fusion** подгружает последнюю запись `decision_trace` из ActivityLog (сначала по `video_id` в JSON после ingest, иначе по совпадению `video_path`). По каждому треку этапы: **детектор** (общая метка YOLO), **классификатор** (вид, доля голосов, порог), **scores** (кадры, trust band, причина отклонения), **audio** (согласование с BirdNET), **fusion** (несколько камер / Frigate), **outcome** (сохранённый вид и уверенность). API: `GET /api/ui/videos/{video_id}/fusion-trace` — **только сессия оператора или администратора**, не для анонимных зрителей.
 
+**Инференс и контракт имён детектора (CV/ML):** `processor.inference_backend` по умолчанию `torch` (прочие бэкенды — roadmap [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)). Переменная окружения `BIRDLENSE_INFERENCE_BACKEND` переопределяет YAML. `processor.detector_weight_contract`: `off` \| `warn` \| `enforce` — проверка имён классов детектора против `processor.detector_scope` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)). Фазы: [CV_ML_ROADMAP_PHASES.ru.md](./CV_ML_ROADMAP_PHASES.ru.md).
+
 **EU-модель:** `best.pt` с [HF gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (дефолт `processor.models.classifier`). US — `best_US.pt`. Обучение: [TRAINING](./TRAINING.ru.md).
 
 ## Retention

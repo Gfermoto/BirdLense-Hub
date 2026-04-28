@@ -34,6 +34,7 @@ def build_detection_stack(
     from detection_strategy import TwoStageStrategy
     from frame_processor import FrameProcessor
     from decision_maker import DecisionMaker
+    from inference.selector import assert_backend_supported, resolve_inference_backend
     from ebird_regional_confidence import (
         merge_species_confidence_overrides_with_ebird_top,
     )
@@ -109,6 +110,12 @@ def build_detection_stack(
         "priority",
     )
 
+    _inf_backend = resolve_inference_backend(app_config)
+    assert_backend_supported(_inf_backend)
+    _weight_contract = str(
+        app_config.get("processor.detector_weight_contract") or "warn",
+    ).strip().lower()
+
     detection_strategy = TwoStageStrategy(
         binary_model_path=binary_path,
         classifier_model_path=classifier_path,
@@ -121,6 +128,8 @@ def build_detection_stack(
         max_classifications_per_frame=max_classifications_per_frame,
         classification_scheduler=classification_scheduler,
         binary_imgsz=app_config.get("processor.binary_imgsz", 320),
+        weight_contract_mode=_weight_contract,
+        inference_backend=_inf_backend,
     )
 
     tracker = app_config.get("processor.tracker") or "bytetrack.yaml"

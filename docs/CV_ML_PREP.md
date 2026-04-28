@@ -4,12 +4,14 @@
 
 This page freezes the prep contract for
 [issue #377](https://github.com/Gfermoto/BirdLense-Hub/issues/377) before
-starting the larger CV / ML roadmap epic.
+starting the larger CV / ML roadmap epic ([#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367)).
 
 The scope is intentionally narrow: document the detector/classifier boundary,
 future inference backend boundary, training-data reproducibility rules, and the
 process for unblocking the epic. It does not implement OpenVINO/ONNX Runtime,
 new training jobs, or a processor refactor.
+
+**Execution order** for implementation after prep: [CV_ML_ROADMAP_PHASES.md](CV_ML_ROADMAP_PHASES.md).
 
 ---
 

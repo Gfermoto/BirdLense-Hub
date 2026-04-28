@@ -304,6 +304,8 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 
 **Fusion trace (UI):** On the video page, **Fusion trace** loads the latest processor `decision_trace` row from ActivityLog (matched by `video_id` in the payload after ingest, or legacy match on `video_path`). Stages shown per track: **detector** (YOLO generic label and confidence), **classifier** (species head, vote share, threshold), **scores** (frame evidence, trust band, reject reason), **audio** (BirdNET alignment), **fusion** (multi-camera / Frigate flags), **outcome** (species and confidence stored on the clip). API: `GET /api/ui/videos/{video_id}/fusion-trace` — **contributor or admin session only** (not anonymous viewers).
 
+**Inference backend & detector weight contract (CV/ML):** `processor.inference_backend` defaults to `torch` (other backends: roadmap [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)). Environment variable `BIRDLENSE_INFERENCE_BACKEND` overrides the YAML value when set. `processor.detector_weight_contract` is `off` \| `warn` \| `enforce` and validates loaded detector `model.names` against `processor.detector_scope` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)). Phase overview: [CV_ML_ROADMAP_PHASES.md](./CV_ML_ROADMAP_PHASES.md).
+
 **EU model:** `best.pt` from [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (default `processor.models.classifier`). US: `best_US.pt`. Training: [TRAINING](./TRAINING.md).
 
 ## Retention
