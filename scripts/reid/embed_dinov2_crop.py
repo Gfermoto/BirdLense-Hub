@@ -55,20 +55,6 @@ def _infer_side(model: Any) -> int:
 
 
 def main() -> int:
-    try:
-        import torch
-        import torch.nn.functional as F
-        from PIL import Image
-        from torchvision import transforms
-    except ImportError as e:
-        print(
-            "Requires torch, torchvision, Pillow (offline GPU/CPU env).\n"
-            "Example: pip install torch torchvision pillow",
-            file=sys.stderr,
-        )
-        print(str(e), file=sys.stderr)
-        return 2
-
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--image", help="Один файл изображения (jpeg/png)")
     ap.add_argument("--glob", dest="glob_pat", help="Шаблон glob для нескольких файлов")
@@ -83,6 +69,20 @@ def main() -> int:
 
     if not args.image and not args.glob_pat:
         ap.error("Укажите --image или --glob")
+
+    try:
+        import torch
+        import torch.nn.functional as F
+        from PIL import Image
+        from torchvision import transforms
+    except ImportError as e:
+        print(
+            "Requires torch, torchvision, Pillow (offline GPU/CPU env).\n"
+            "Example: pip install torch torchvision pillow",
+            file=sys.stderr,
+        )
+        print(str(e), file=sys.stderr)
+        return 2
 
     paths: list[Path] = []
     if args.image:
