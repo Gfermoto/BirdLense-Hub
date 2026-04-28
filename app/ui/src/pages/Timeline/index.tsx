@@ -30,7 +30,6 @@ import { getApiErrorMessage } from '../../api/api';
 import {
   exportTimelineForObserverDate,
   fetchTimelineForObserverDate,
-  fetchUnknownsForObserverDate,
 } from '../../api/timeline';
 import { fetchNearestRecordingDay } from '../../api/video';
 import { fetchOverviewData } from '../../api/speciesOverviewDetections';
@@ -45,6 +44,7 @@ import { type TimeOfDay } from '../../utils/timeUtils';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Chip from '@mui/material/Chip';
 import { UnknownsPage } from '../Unknowns';
+import { RecordingsModeSwitcher } from '../../components/RecordingsModeSwitcher';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import Snackbar from '@mui/material/Snackbar';
 
@@ -95,8 +95,6 @@ export function TimelinePage() {
     requiresPassword,
     isLoading: accessContextLoading,
   } = useProtectedArea();
-  /** Пока контекст доступа грузится — не прячем чип (избегаем мигания у вошедших по cookie). */
-  const showReviewModeEntry = canEdit || accessContextLoading;
   /** Только админ: оператор не ходит в Библиотеку — подсказка про скан диска ему не нужна. */
   const showLibraryDiskScanHint = canEdit && role === 'admin';
   /** Только после входа админа или оператора, если включён пароль (не гостю с улицы). */
@@ -108,8 +106,6 @@ export function TimelinePage() {
   const isFavoritesMode =
     searchParams.get('favorites') === '1' ||
     searchParams.get('favorite_only') === '1';
-  const isPlainTimeline = !isReviewMode && !isFavoritesMode;
-
   useEffect(() => {
     if (accessContextLoading || canEdit || !isReviewMode) return;
     navigate('/timeline', { replace: true });
@@ -188,25 +184,6 @@ export function TimelinePage() {
       });
     },
     enabled: !isReviewMode,
-  });
-
-  const { data: unknownsCount = 0 } = useQuery({
-    queryKey: queryKeys.timeline.unknownsCount(
-      selectedDate?.format('YYYY-MM-DD') ?? '',
-      timeOfDay,
-      filterHour,
-    ),
-    queryFn: async () => {
-      if (!selectedDate) return 0;
-      const rows = await fetchUnknownsForObserverDate(
-        selectedDate.format('YYYY-MM-DD'),
-        filterHour !== null
-          ? { hour: filterHour, limit: 500 }
-          : { timeOfDay, limit: 500 },
-      );
-      return rows.length;
-    },
-    enabled: showReviewModeEntry,
   });
 
   useEffect(() => {
@@ -317,92 +294,14 @@ export function TimelinePage() {
       />
     );
 
-  const timelineModeSwitcher = (
-    <Box
-      role="group"
-      aria-label={t('timeline.modeSwitcherAria')}
-      display="flex"
-      gap={1}
-      alignItems="center"
-      sx={{ mb: 2 }}
-    >
-      <Chip
-        color={isPlainTimeline ? 'primary' : 'default'}
-        variant={isPlainTimeline ? 'filled' : 'outlined'}
-        label={t('timeline.modeTimeline')}
-        aria-pressed={isPlainTimeline}
-        onClick={() => {
-          const next = new URLSearchParams(searchParams);
-          next.delete('review');
-          next.delete('favorites');
-          next.delete('favorite_only');
-          setSearchParams(next, { replace: true });
-        }}
-      />
-      <Chip
-        color={isFavoritesMode && !isReviewMode ? 'primary' : 'default'}
-        variant={isFavoritesMode && !isReviewMode ? 'filled' : 'outlined'}
-        label={t('timeline.modeFavorites')}
-        aria-pressed={isFavoritesMode && !isReviewMode}
-        onClick={() => {
-          navigate('/favorites');
-        }}
-      />
-      {showReviewModeEntry ? (
-        <Chip
-          color={isReviewMode ? 'primary' : 'default'}
-          variant={isReviewMode ? 'filled' : 'outlined'}
-          aria-pressed={isReviewMode}
-          onClick={() => {
-            const next = new URLSearchParams(searchParams);
-            next.set('review', '1');
-            next.delete('favorites');
-            next.delete('favorite_only');
-            setSearchParams(next, { replace: true });
-          }}
-          sx={{ px: 0.5 }}
-          label={
-            <Box
-              component="span"
-              sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}
-            >
-              <Box component="span">{t('timeline.modeReview')}</Box>
-              {unknownsCount > 0 && (
-                <Box
-                  component="span"
-                  sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minWidth: 20,
-                    height: 20,
-                    px: 0.75,
-                    borderRadius: 10,
-                    bgcolor: 'warning.main',
-                    color: 'warning.contrastText',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    lineHeight: 1,
-                  }}
-                >
-                  {Math.min(unknownsCount, 500)}
-                </Box>
-              )}
-            </Box>
-          }
-        />
-      ) : null}
-    </Box>
-  );
-
   return (
     <>
       {isReviewMode ? (
-        <UnknownsPage afterTitleSlot={timelineModeSwitcher} />
+        <UnknownsPage afterTitleSlot={<RecordingsModeSwitcher />} />
       ) : (
         <>
           <PageHelp {...timelineHelpConfig} />
-          {timelineModeSwitcher}
+          <RecordingsModeSwitcher />
           <Typography
             variant="body2"
             color="text.secondary"

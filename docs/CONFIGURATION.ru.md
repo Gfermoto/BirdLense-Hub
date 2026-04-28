@@ -162,13 +162,13 @@
 | `spectrogram_px_per_sec` | Горизонтальная детализация mel-спектрограммы (пикселей на секунду аудио). |
 | `generate_spectrogram_always` | По умолчанию **true**: после **каждой** финализированной записи строить `spectrogram_*.jpg` (FFmpeg + librosa). **false** — только если в окне записи было событие BirdNET по MQTT (меньше нагрузка). |
 | `regional_species` | Опциональное сужение classifier scope (пусто — классификатор использует все классы). |
-| `detector_scope` | Цели детектора первого уровня. По умолчанию: `["Bird", "Rodent"]`. В EU-классификаторе не-птица — **Rodent**; сырые веса могут отдавать Squirrel, хаб нормализует в Rodent. |
+| `detector_scope` | Цели детектора первого уровня. По умолчанию: `["Bird", "Rodent"]`. В EU-классификаторе не-птица — **Rodent**; сырые веса могут отдавать Squirrel, хаб нормализует в Rodent. Background / hard-negative классы детектора должны оставаться вне этого scope; см. [контракт подготовки CV / ML](./CV_ML_PREP.ru.md). |
 | `classifier_fallback_bird` | Сохранять generic detector label, если detector подтвердил target, а классификатор остался ниже порога. Затем Frigate может продвинуть этот fallback до species label. |
 | `single_stage_coco_animals_only_auto` | Устаревший compat-ключ. Production runtime использует только `two_stage`. |
 | `included_bird_families` | Список семейств птиц для фильтра (напр. Perching Birds); к Rodent не относится |
 | `save_images` | Сохранять кадры детекций |
-| `detection_strategy` | В production используется только `two_stage`; другие значения игнорируются с warning. |
-| `models.single_stage` | Устаревший compat-path; в production runtime не используется. `scripts/fetch-processor-weights.sh --legacy-single-stage` нужен только для compatibility `app/yolo11n.pt`. |
+| `detection_strategy` | В production используется только `two_stage`; другие значения (включая старый `single_stage`) игнорируются с warning. Перед CV / ML rollout удалите их из `user_config.yaml`. |
+| `models.single_stage` | Устаревший compat-path; в production runtime не используется. Не тюньте его для новой CV / ML работы; `scripts/fetch-processor-weights.sh --legacy-single-stage` нужен только для compatibility `app/yolo11n.pt`. |
 | `models.binary` | Путь к бинарному детектору (.pt) |
 | `models.classifier` | Путь к классификатору (.pt) |
 | *(свои веса)* | **Система → Веса процессора** ([#276](https://github.com/Gfermoto/BirdLense-Hub/issues/276)): загрузка кладёт `binary.pt` / `classifier.pt` / `class_names.txt` в **`DATA_DIR/custom_weights/`** и прописывает в `user_config` **абсолютные** пути (относительные пути здесь резолвятся от `app/processor`, не от `DATA_DIR`). После загрузки/сброса выставляется флаг перезапуска процессора. |

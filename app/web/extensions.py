@@ -29,7 +29,8 @@ def init_extensions(app: Flask) -> None:
     web_dir = os.path.dirname(os.path.abspath(__file__))
     migrations_dir = os.path.join(web_dir, "migrations")
     migrate.init_app(app, db, directory=migrations_dir)
+    # Idle до strict/CSRF: сброс просроченной сессии до проверок.
+    register_session_idle_middleware(app)
     register_csrf_protection(app)
     register_strict_ui_api_auth_middleware(app)
-    register_session_idle_middleware(app)
     register_upload_request_encoding_guard(app)

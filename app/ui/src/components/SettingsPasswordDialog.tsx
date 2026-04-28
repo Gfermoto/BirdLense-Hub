@@ -37,11 +37,13 @@ export const SettingsPasswordDialog = ({
       setPassword('');
       onSuccess(result.role);
     } else {
-      setError(
+      const msg =
         result.error === 'server_error'
           ? t('settings.passwordServerError')
-          : t('settings.passwordError'),
-      );
+          : result.error === 'csrf_or_auth'
+            ? t('settings.passwordCsrfHint')
+            : t('settings.passwordError');
+      setError(msg);
     }
   };
 

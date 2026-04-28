@@ -14,6 +14,7 @@ export function PwaUpdatePrompt() {
       return;
     import('virtual:pwa-register').then(({ registerSW }) => {
       const upd = registerSW({
+        immediate: true,
         onNeedRefresh() {
           setShowRefresh(true);
         },

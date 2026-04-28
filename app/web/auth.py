@@ -26,6 +26,32 @@ def _is_production_runtime() -> bool:
     return any(value in {"production", "prod"} for value in values)
 
 
+def trusted_proxy_enabled() -> bool:
+    """Совпадает с логикой доверия к X-Forwarded-* в ``client_ip_for_rate_limit``."""
+    return (os.environ.get("TRUSTED_PROXY") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+
+def request_client_https() -> bool:
+    """Клиентское соединение считается HTTPS (или за TRUSTED_PROXY с ``X-Forwarded-Proto: https``).
+
+    Используется для флага ``Secure`` у CSRF-cookie; без контекста запроса — False.
+    """
+    from flask import has_request_context, request
+
+    if not has_request_context():
+        return False
+    if getattr(request, "is_secure", False):
+        return True
+    if trusted_proxy_enabled():
+        proto = (request.headers.get("X-Forwarded-Proto") or "").strip().lower()
+        return proto == "https"
+    return False
+
+
 def _get_session_role():
     """Return 'admin' | 'contributor' | None from session."""
     from flask import session

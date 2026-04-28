@@ -65,6 +65,8 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/app_config/user_config.yaml --excl
 # Локальные venv / сборка док — не на сервер
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --exclude=.venv-ci --exclude=site"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.venv --exclude=.venv-datasets"
+# Локальная песочница проверки не должна попадать на сервер.
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.sandbox"
 # Кэши линтера/тестов (часто root после docker compose run) — иначе rsync code 23 Permission denied
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.ruff_cache --exclude=app/.pytest_cache"
 # CodeQL CLI, БД и SARIF (scripts/codeql-local.sh) — десятки МБ/ГБ, на хаб не нужны
@@ -180,7 +182,10 @@ echo "  - Docker logs (последние 25 строк):"
 ssh ${SSH_OPTS} "${HOST}" "docker logs birdlense --tail=25 2>&1" | tail -30
 echo ""
 echo "  - Shared verify contract:"
-BASE_URL="${DEPLOY_URL}" ATTEMPTS=20 SLEEP_SEC=3 CHECK_CAMERAS=1 ./scripts/verify-stack.sh
+# strict production: /api/ui/status требует Bearer (MCP) или UI key — передаём из deploy.local.sh
+BASE_URL="${DEPLOY_URL}" ATTEMPTS=20 SLEEP_SEC=3 CHECK_CAMERAS=1 \
+  MCP_TOKEN="${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
+  ./scripts/verify-stack.sh
 echo ""
 echo "=== Готово. UI: ${DEPLOY_URL} ==="
 echo "Записи и БД не трогаем; user_config.yaml не синхронизируем (есть бэкап .bak.deploy-* перед rsync)."

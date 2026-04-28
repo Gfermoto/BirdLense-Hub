@@ -256,6 +256,7 @@
     "passwordError": "密码错误",
     "adminRequired": "设置需要管理员密码",
     "passwordServerError": "服务器错误。请稍后重试。",
+    "passwordCsrfHint": "会话保护阻止了请求。请刷新页面后重新登录。",
     "accessErrorNetwork": "网络不可用。检查您的连接。",
     "settingsLoadFailed": "无法加载设置。重新登录或检查您的连接。",
     "loaded": "设置已加载。标有 *** 的字段已有值（敏感值已隐藏）。",
@@ -934,7 +935,7 @@
     "empty": "还没有收藏录像。打开录像并标记为收藏，即可防止清理删除。"
   },
   "pwa": {
-    "installPrompt": "将 BirdLense Hub 添加到您的主屏幕",
+    "installPrompt": "将 BirdLense Hub ML 添加到您的主屏幕",
     "install": "安装",
     "updateAvailable": "新版本可用",
     "refresh": "刷新",
@@ -1103,7 +1104,7 @@
     "success": "成功",
     "loading": "加载中...",
     "clickForHelp": "点击寻求帮助",
-    "appName": "BirdLense 中心",
+    "appName": "BirdLense Hub ML",
     "na": "不适用",
     "help": "帮助",
     "helpAbout": "{{title}} 帮助",

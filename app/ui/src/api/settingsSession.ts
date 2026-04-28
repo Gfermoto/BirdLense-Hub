@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { Settings } from '../types';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, resetCsrfToken } from './client';
 
 export type RequiresPasswordResult = {
   requires: boolean;
@@ -44,25 +44,52 @@ export const checkSettingsAccess = async (): Promise<CheckAccessResult> => {
 
 export type VerifyPasswordResult =
   | { ok: true; role?: 'admin' | 'contributor' }
-  | { ok: false; error: 'wrong_password' | 'server_error' };
+  | {
+      ok: false;
+      error: 'wrong_password' | 'csrf_or_auth' | 'server_error';
+    };
 
 export const verifySettingsPassword = async (
   password: string,
 ): Promise<VerifyPasswordResult> => {
-  try {
-    const response = await axios.post(
+  const postPassword = () =>
+    axios.post(
       `${BASE_API_URL}/settings/verify-password`,
       { password },
       { withCredentials: true },
     );
+
+  try {
+    const response = await postPassword();
     if (response.data?.ok === true) {
       return { ok: true, role: response.data?.role || 'admin' };
     }
     return { ok: false, error: 'wrong_password' };
   } catch (e: unknown) {
-    return axios.isAxiosError(e) && e.response?.status === 401
-      ? { ok: false, error: 'wrong_password' }
-      : { ok: false, error: 'server_error' };
+    if (!axios.isAxiosError(e) || e.response == null) {
+      return { ok: false, error: 'server_error' };
+    }
+    const status = e.response.status;
+    const msg = (e.response.data as { error?: string })?.error;
+    if (status === 401) {
+      return { ok: false, error: 'wrong_password' };
+    }
+    if (
+      status === 403 &&
+      (msg === 'CSRF token required' || msg === 'Authentication required')
+    ) {
+      resetCsrfToken();
+      try {
+        const response = await postPassword();
+        if (response.data?.ok === true) {
+          return { ok: true, role: response.data?.role || 'admin' };
+        }
+      } catch {
+        // Fall through to the user-facing CSRF/session hint below.
+      }
+      return { ok: false, error: 'csrf_or_auth' };
+    }
+    return { ok: false, error: 'server_error' };
   }
 };
 

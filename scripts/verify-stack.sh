@@ -17,10 +17,10 @@ Usage: scripts/verify-stack.sh [--base-url URL] [--attempts N] [--sleep SEC] [--
 Verifies the shared install/deploy contract:
 1. /api/ui/health responds with {"status":"ok"}
 2. /api/ui/readiness responds with {"ready":true}
-3. /api/ui/status reports web=ok
+3. /api/ui/status reports web=ok (на strict production — с MCP_TOKEN или BIRDLENSE_UI_API_KEY)
 
 Optional:
-  --check-cameras   Also fetch /api/ui/cameras and print a short preview.
+  --check-cameras   Also fetch /api/ui/cameras and print a short preview (те же заголовки, если заданы).
   --check-domain-health   Also require domain-health, species-registry health, and config-audit.
                             On strict hubs set BIRDLENSE_UI_API_KEY (or UI_API_KEY) for
                             X-Birdlense-Api-Key, or MCP_TOKEN for Authorization: Bearer (same as MCP);
@@ -126,10 +126,23 @@ if ! printf '%s' "${readiness_body}" | normalize_json | grep -q '"ready":true'; 
 fi
 echo "readiness: OK ${readiness_body}"
 
-status_body="$(fetch_with_retries '/api/ui/status')" || {
-  echo "status: FAIL (${BASE_URL}/api/ui/status unreachable)" >&2
-  exit 1
-}
+# /api/ui/status не в strict allowlist — без сессии нужен MCP Bearer или UI API key
+if [[ -n "${UI_API_KEY}" ]] || [[ -n "${MCP_TOKEN}" ]]; then
+  if [[ -n "${UI_API_KEY}" ]]; then
+    echo "verify-stack: status auth=BIRDLENSE_UI_API_KEY (X-Birdlense-Api-Key)"
+  else
+    echo "verify-stack: status auth=MCP_TOKEN (Authorization: Bearer)"
+  fi
+  status_body="$(fetch_with_retries_auth '/api/ui/status')" || {
+    echo "status: FAIL (${BASE_URL}/api/ui/status unreachable)" >&2
+    exit 1
+  }
+else
+  status_body="$(fetch_with_retries '/api/ui/status')" || {
+    echo "status: FAIL (${BASE_URL}/api/ui/status unreachable)" >&2
+    exit 1
+  }
+fi
 if ! printf '%s' "${status_body}" | normalize_json | grep -q '"web":"ok"'; then
   echo "status: FAIL ${status_body}" >&2
   exit 1
@@ -137,7 +150,13 @@ fi
 echo "status: OK ${status_body}"
 
 if [[ "${CHECK_CAMERAS}" == "1" ]]; then
-  if cameras_body="$(curl -sS -L --max-time "${TIMEOUT_SEC}" "${BASE_URL}/api/ui/cameras" 2>/dev/null)"; then
+  cam_auth=()
+  if [[ -n "${UI_API_KEY}" ]]; then
+    cam_auth=(-H "X-Birdlense-Api-Key: ${UI_API_KEY}")
+  elif [[ -n "${MCP_TOKEN}" ]]; then
+    cam_auth=(-H "Authorization: Bearer ${MCP_TOKEN}")
+  fi
+  if cameras_body="$(curl -sS -L --max-time "${TIMEOUT_SEC}" "${cam_auth[@]}" "${BASE_URL}/api/ui/cameras" 2>/dev/null)"; then
     preview="$(printf '%s' "${cameras_body}" | head -c 200)"
     echo "cameras: INFO ${preview}..."
   else

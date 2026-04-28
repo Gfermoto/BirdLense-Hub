@@ -81,6 +81,7 @@ Pick what matches you — you can read the rest as reference.
 |-------|---------|---------|
 | Model training (EU/US) | [TRAINING](./TRAINING.md) | [RU](./TRAINING.ru.md) |
 | ML quality loop (operators) | — | [RU only](./ML_QUALITY_LOOP.ru.md) |
+| CV / ML prep contract | [CV_ML_PREP](./CV_ML_PREP.md) | [RU](./CV_ML_PREP.ru.md) |
 | Datasets & scripts | [DATASETS](./DATASETS.md) | [RU](./DATASETS.ru.md) |
 | Versioning & releases | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
 | Direction / backlog | [ROADMAP](./ROADMAP.md) | [RU](./ROADMAP.ru.md) |

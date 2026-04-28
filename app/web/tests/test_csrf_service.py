@@ -14,6 +14,19 @@ def test_csrf_token_endpoint_sets_cookie(client, monkeypatch):
     assert r.status_code == 200
     assert r.get_json()["csrf_token"]
     assert "birdlense_csrf_token=" in r.headers.get("Set-Cookie", "")
+    # HTTP (тестовый клиент): без Secure — иначе LAN prod не получает cookie
+    assert "; Secure" not in (r.headers.get("Set-Cookie") or "")
+
+
+def test_csrf_cookie_secure_behind_https_proxy(client, monkeypatch):
+    _enable_prod_csrf(monkeypatch)
+    monkeypatch.setenv("TRUSTED_PROXY", "1")
+    r = client.get(
+        "/api/ui/csrf-token",
+        headers={"X-Forwarded-Proto": "https"},
+    )
+    assert r.status_code == 200
+    assert "; Secure" in (r.headers.get("Set-Cookie") or "")
 
 
 def test_prod_ui_mutation_requires_csrf_token(client, monkeypatch):
@@ -21,6 +34,15 @@ def test_prod_ui_mutation_requires_csrf_token(client, monkeypatch):
     r = client.post("/api/ui/settings/logout")
     assert r.status_code == 403
     assert r.get_json()["error"] == "CSRF token required"
+
+
+def test_prod_ui_mutation_monitor_only_logs_without_blocking(client, monkeypatch, caplog):
+    _enable_prod_csrf(monkeypatch)
+    monkeypatch.setenv("BIRDLENSE_SECURITY_MONITOR_ONLY", "1")
+    with caplog.at_level("WARNING"):
+        r = client.post("/api/ui/settings/logout")
+    assert r.status_code == 200
+    assert "csrf_denied_monitor_only" in caplog.text
 
 
 def test_prod_ui_mutation_accepts_matching_csrf_cookie_and_header(client, monkeypatch):
