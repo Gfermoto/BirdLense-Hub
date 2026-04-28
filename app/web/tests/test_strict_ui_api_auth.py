@@ -30,6 +30,19 @@ def test_production_strict_blocks_private_system_without_session(client, _strict
     assert r.get_json().get("error") == "Authentication required"
 
 
+def test_production_strict_monitor_only_logs_without_blocking(
+    client,
+    _strict_prod_env,
+    monkeypatch,
+    caplog,
+):
+    monkeypatch.setenv("BIRDLENSE_SECURITY_MONITOR_ONLY", "1")
+    with caplog.at_level("WARNING"):
+        r = client.get("/api/ui/storage/overview")
+    assert r.status_code != 403
+    assert "strict_ui_api_auth_denied_monitor_only" in caplog.text
+
+
 def test_production_strict_allows_public_status_and_feed(client, _strict_prod_env):
     assert client.get("/api/ui/status").status_code == 200
     assert client.get("/api/ui/feed/info").status_code == 200

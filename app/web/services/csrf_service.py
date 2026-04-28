@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import secrets
+import logging
 
 from flask import Flask, jsonify, request, session
 
@@ -25,6 +26,11 @@ def csrf_protection_enabled() -> bool:
     if raw is not None:
         return _env_flag_enabled(raw)
     return _is_production_runtime()
+
+
+def security_monitor_only_enabled() -> bool:
+    """Production emergency mode: log security denials, but do not block."""
+    return _env_flag_enabled(os.environ.get("BIRDLENSE_SECURITY_MONITOR_ONLY"))
 
 
 def _get_or_create_token() -> str:
@@ -88,5 +94,16 @@ def register_csrf_protection(app: Flask) -> None:
         if path.rstrip("/") == "/api/ui/csrf-token":
             return None
         if _csrf_tokens_match():
+            return None
+        msg = "csrf_denied_monitor_only" if security_monitor_only_enabled() else "csrf_denied"
+        logging.warning(
+            msg,
+            extra={
+                "method": request.method,
+                "path": request.path,
+                "remote_addr": request.remote_addr,
+            },
+        )
+        if security_monitor_only_enabled():
             return None
         return jsonify({"error": "CSRF token required"}), 403

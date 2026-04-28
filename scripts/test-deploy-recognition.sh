@@ -26,6 +26,12 @@ SSH_OPTS="${_PORT_OPT} -o ServerAliveInterval=30 -o ServerAliveCountMax=60"
 
 echo "=== Тест распознавания на ${HOST} ==="
 
+if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]] && [[ "${BIRDLENSE_ALLOW_REMOTE_MUTATION:-}" != "1" ]]; then
+  echo "Отказ: этот тест запускает processor на удалённом контейнере и может создать запись в prod." >&2
+  echo "Для осознанного запуска: BIRDLENSE_ALLOW_REMOTE_MUTATION=1 $0" >&2
+  exit 2
+fi
+
 if [ -n "${VIDEO_ID}" ]; then
   # Получить путь видео по ID через API
   VIDEO_PATH=$(ssh ${SSH_OPTS} "${HOST}" "curl -s '${API_URL}/api/ui/videos/${VIDEO_ID}'" | jq -r '.video_path // empty')
