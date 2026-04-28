@@ -935,7 +935,7 @@
     "empty": "No favorite recordings yet. Open a recording and mark it as favorite to protect it from cleanup."
   },
   "pwa": {
-    "installPrompt": "Add BirdLense Hub to your home screen",
+    "installPrompt": "Add BirdLense Hub ML to your home screen",
     "install": "Install",
     "updateAvailable": "New version available",
     "refresh": "Refresh",
@@ -1104,7 +1104,7 @@
     "success": "Success",
     "loading": "Loading...",
     "clickForHelp": "Click for help",
-    "appName": "BirdLense Hub",
+    "appName": "BirdLense Hub ML",
     "na": "N/A",
     "help": "Help",
     "helpAbout": "Help about {{title}}",

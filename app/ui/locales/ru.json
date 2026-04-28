@@ -935,7 +935,7 @@
     "empty": "Избранных записей пока нет. Откройте запись и отметьте её как избранную, чтобы защитить от очистки."
   },
   "pwa": {
-    "installPrompt": "Добавить BirdLense Hub на главный экран",
+    "installPrompt": "Добавить BirdLense Hub ML на главный экран",
     "install": "Установить",
     "updateAvailable": "Доступна новая версия",
     "refresh": "Обновить",
@@ -1104,7 +1104,7 @@
     "success": "Успешно",
     "loading": "Загрузка...",
     "clickForHelp": "Нажмите для справки",
-    "appName": "BirdLense Hub",
+    "appName": "BirdLense Hub ML",
     "na": "н/д",
     "help": "Справка",
     "helpAbout": "Справка о разделе «{{title}}»",
