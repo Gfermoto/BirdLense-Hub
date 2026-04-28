@@ -6,6 +6,8 @@
 [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) и подзадачам после gap analysis. Дополняет
 [CV_ML_PREP.ru.md](CV_ML_PREP.ru.md).
 
+**Доска GitHub Project:** [BirdLense Hub — Roadmap](https://github.com/users/Gfermoto/projects/2/views/1) — держите поля Status / «Поток» вместе с таблицей ниже.
+
 ---
 
 ## Статус задач (GitHub)
@@ -17,11 +19,11 @@
 | [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Эпик | **В работе** | Phase‑1 в репо сделана; **ваши** новые веса и при необходимости merge `ML`→`main` после проверки на хабе. |
 | [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Детектор train/ship | **В работе** | Контракт и скрипты датасета **готовы** в репо; **обучение детектора** (Colab) — оператор. |
 | [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Готово** (репо фаза 1) / **Запланировано** (продукт) | Схема манифеста + шаблон + доки **готовы**; очередь ревью / расписание — позже. |
-| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Классификатор | **В работе** / **Запланировано** | Дообучение в Colab ([TRAINING.ru.md](./TRAINING.ru.md)) — оператор; uncertainty в UI/БД — **запланировано**. |
+| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Классификатор | **В работе** / **Запланировано** | Дообучение в Colab ([TRAINING.ru.md](./TRAINING.ru.md)) — оператор; uncertainty в UI/БД — **запланировано**. Опционально backbone **DINO/DINOv2** для видов и AL — [REID_ROADMAP.ru.md](./REID_ROADMAP.ru.md) (раздел *Классификация видов — тот же backbone*); прототип [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383). |
 | [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Инференс-бэкенды | **Готово** / **Запланировано** | torch + OpenVINO + кэш **готовы**; ONNX Runtime / TensorRT — **запланировано**. |
 | [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Бенчмарки | **Готово** / **Запланировано** | Скрипты + CI + docker-smoke **готовы**; drift / Grafana — **запланировано**. |
 | [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Декод видео | **В работе** | Скрипт замеров + шаблон таблицы **готовы**; **заполнение матрицы платформ** у вас — в работе. |
-| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **Запланировано** | Пока только дорожная карта в доках. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **В работе** / **Запланировано** | Доки + DINO ([REID_ROADMAP.ru.md](./REID_ROADMAP.ru.md)); офлайн-скрипт [`scripts/reid/embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py) — в репо; подзадача [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) — галерея/cosine в проде **запланировано**. Один backbone на виды + Re-ID — см. REID. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Готово** (исслед.) / **Запланировано** (прод) | Игрушечная симуляция + threat model **готовы**; прод-канал — **запланировано**. |
 
 *Обновляйте таблицу при закрытии вех или смене фокуса.*
@@ -67,7 +69,7 @@
 
 - [#369] схема пула + ``emit_pool_template.py`` + [ACTIVE_LEARNING.ru.md](ACTIVE_LEARNING.ru.md).
 - [#370] точки расширения в ``_classify_crop``; продуктовые флаги — позже.
-- [#374] [REID_ROADMAP.ru.md](REID_ROADMAP.ru.md).
+- [#374] [REID_ROADMAP.ru.md](REID_ROADMAP.ru.md) — **DINO / DINOv2**: Re-ID эмбеддинги и опционально **виды** / AL; на хабе целесообразен **один** backbone на два выхода при интеграции · [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383).
 - [#375] ``simulate_fedavg.py`` + [FEDERATED_LEARNING.ru.md](FEDERATED_LEARNING.ru.md).
 
 ### Сводка по подзадачам (ветка ML)
