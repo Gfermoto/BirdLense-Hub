@@ -50,3 +50,11 @@ Merges the cleaned NABirds dataset (`nabirds_yolo_cleaned/`) with COCO birds (`c
 Merges **`birds_binary_yolo/`** + **`rodent_yolo/`** + **`background_yolo/`** into **`birds_rodent_background_yolo/`** with YOLO class ids **0 = Bird**, **1 = Rodent**, **2 = Background** and `dataset.yaml` names matching the Hub (`Bird` / `Rodent` / `Background`). Background images may use **empty** label files (image-level negatives).
 
 From repo root: **`make dataset-merge-three-class`** (expects those folders under `scripts/datasets/`). Options: `--manifest-out` for a merge audit JSON; see [DATASETS.md](../docs/DATASETS.md). Hard-negative manifest schema: `schemas/hard_negatives_manifest_v1.schema.json`.
+
+## bootstrap_detector_yolo.py
+
+Creates the three folder trees under `scripts/datasets/` and downloads **starter** subsets via **FiftyOne**: COCO 2017 (`bird`), Open Images V6 (`Squirrel`), COCO scenes **without** `bird` for background (empty labels). Large blobs are gitignored — see [DETECTOR_DATA_LAYOUT.md](./DETECTOR_DATA_LAYOUT.md).
+
+Requires: `pip install fiftyone pyyaml`
+
+From repo root: **`make bootstrap-detector-data`** (optional: `ARGS='--birds-train 80 …'`).
