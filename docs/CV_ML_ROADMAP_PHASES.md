@@ -23,7 +23,7 @@ Legend: **Done** = shipped on branch `ML` in the repo (code/docs/scripts). **In 
 | [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Multi-backend inference | **Done** / **Planned** | torch + OpenVINO + cache **done**; ONNX Runtime / TensorRT — **planned** (`NotImplementedError`). |
 | [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Benchmarking | **Done** / **Planned** | Scripts + CI + docker smoke **done**; drift / PSI / Grafana — **planned**. |
 | [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Video decode | **In progress** | Benchmark script + doc template **done**; **filling decode matrix** on your platforms — in progress. |
-| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **In progress** / **Planned** | Design doc + DINO scope ([REID_ROADMAP](./REID_ROADMAP.md)); sub-issue [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) — offline **`embed_dinov2_crop.py`** + **`embed_cosine_report.py`** shipped; hub gallery / wiring — **planned**. Same backbone may serve species + Re-ID — see REID doc. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **In progress** / **Planned** | Design doc + DINO scope ([REID_ROADMAP](./REID_ROADMAP.md)); sub-issue [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) — offline **`embed_dinov2_crop.py`** + **`embed_cosine_report.py`** + **`export_crops_from_sqlite.py`** shipped; hub gallery / wiring — **planned**. Same backbone may serve species + Re-ID — see REID doc. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Done** (research) / **Planned** (prod) | Toy simulation + threat-model doc **done**; opt-in prod channel — **planned**. |
 
 *Refresh this table when a milestone closes or scope shifts.*
@@ -83,8 +83,8 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 | [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) | Benchmark scripts + CI + reference JSON (drift/Grafana still future). |
 | [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) | Decode/resize script + docs table. |
 | [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) | Pool manifest schema + template emitter + docs. |
-| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) | Design doc + offline [`embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py) + [`embed_cosine_report.py`](../scripts/reid/embed_cosine_report.py); embeddings DB/UI later. |
-| [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) | Sub-issue of [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374): [`embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py) + [`embed_cosine_report.py`](../scripts/reid/embed_cosine_report.py); hub gallery / prod — later. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) | Design doc + offline [`embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py) + [`embed_cosine_report.py`](../scripts/reid/embed_cosine_report.py) + [`export_crops_from_sqlite.py`](../scripts/reid/export_crops_from_sqlite.py); embeddings DB/UI later. |
+| [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) | Sub-issue of [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374): [`embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py) + [`embed_cosine_report.py`](../scripts/reid/embed_cosine_report.py) + [`export_crops_from_sqlite.py`](../scripts/reid/export_crops_from_sqlite.py); hub gallery / prod — later. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) | FedAvg toy simulation + threat-model doc. |
 | [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) | Documented hook points; full product uncertainty flags still roadmap. |
 

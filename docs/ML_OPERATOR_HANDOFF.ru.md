@@ -10,7 +10,7 @@
 
 - Стек инференса, контракт весов, бенчмарки, CI, документация.
 - Скрипты сборки датасета детектора на **три класса** — см. [DATASETS.ru.md](./DATASETS.ru.md).
-- Офлайн CLI эмбеддингов **DINOv2** по кропам и отчёт cosine: [`embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py), [`embed_cosine_report.py`](../scripts/reid/embed_cosine_report.py), см. [`README`](../scripts/reid/README.md) — вне Docker ([#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383)).
+- Офлайн цепочка Re-ID/DINO: [`embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py), [`embed_cosine_report.py`](../scripts/reid/embed_cosine_report.py), [`export_crops_from_sqlite.py`](../scripts/reid/export_crops_from_sqlite.py), см. [`README`](../scripts/reid/README.md) — вне Docker ([#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383)).
 
 Это **не заменяет** ваши данные, разметку и время на GPU.
 

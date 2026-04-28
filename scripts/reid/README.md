@@ -22,4 +22,18 @@ pip install numpy   # если ещё нет (рядом с torch не обяз�
 python3 scripts/reid/embed_cosine_report.py --jsonl embeddings.jsonl --topk 5 -o report.md
 ```
 
+## `export_crops_from_sqlite.py`
+
+Выгрузка **кропов из SQLite Hub** (`video_species` + bbox из `frames`), те же правила пути, что и UI/датасет. Нужны **ffmpeg**, **opencv-python**, запуск с корня репозитория (скрипт сам добавляет `app/` в `PYTHONPATH`).
+
+```bash
+# из корня BirdLense-Hub, при наличии app/data/db/birdlense.db и записей
+PYTHONPATH=app DATA_DIR=app/data \
+  python3 scripts/reid/export_crops_from_sqlite.py \
+  --db app/data/db/birdlense.db -o /tmp/reid_crops --limit 80 --manifest /tmp/reid_manifest.jsonl
+
+python3 scripts/reid/embed_dinov2_crop.py --glob '/tmp/reid_crops/*.jpg' -o /tmp/embed.jsonl
+python3 scripts/reid/embed_cosine_report.py --jsonl /tmp/embed.jsonl --topk 5 -o /tmp/report.md
+```
+
 См. также [REID_ROADMAP.md](../../docs/REID_ROADMAP.md).
