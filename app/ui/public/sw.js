@@ -1,7 +1,9 @@
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
 import { clientsClaim } from 'workbox-core';
 
-// skipWaiting по сообщению от клиента (когда пользователь нажмёт «Обновить»)
+// Production deployments must not leave old UI bundles waiting behind the PWA prompt.
+self.skipWaiting();
+
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
