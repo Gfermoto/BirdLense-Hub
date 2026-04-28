@@ -19,6 +19,7 @@ from auth import (
     mcp_bearer_authorized,
 )
 
+
 def _env_flag_enabled(raw: str | None) -> bool:
     if raw is None:
         return False
@@ -153,9 +154,7 @@ def register_strict_ui_api_auth_middleware(app: Flask) -> None:
         if strict_ui_request_authorized():
             return None
         msg = (
-            "strict_ui_api_auth_denied_monitor_only"
-            if security_monitor_only_enabled()
-            else "strict_ui_api_auth_denied"
+            "strict_ui_api_auth_denied_monitor_only" if security_monitor_only_enabled() else "strict_ui_api_auth_denied"
         )
         logging.warning(
             msg,
