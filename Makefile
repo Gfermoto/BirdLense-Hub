@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class bootstrap-detector-data
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -96,6 +96,11 @@ dataset-merge-three-class:
 	  --rodent-dir rodent_yolo \
 	  --background-dir background_yolo \
 	  --output-dir birds_rodent_background_yolo
+
+# Скачать стартовые подмножества COCO + Open Images в три каталога (нужен pip install fiftyone).
+# Переопределение лимитов: make bootstrap-detector-data ARGS='--birds-train 50 --birds-val 20'
+bootstrap-detector-data:
+	@cd scripts/datasets && python3 bootstrap_detector_yolo.py $(ARGS)
 
 validate-weights:
 	@python3 scripts/validate-processor-weights.py \
