@@ -34,7 +34,9 @@ _CONFIG_DIGEST_KEYS = (
     "processor.min_confidence_to_process",
     "processor.min_confidence_to_notify",
     "processor.classifier_fallback_bird",
+    "processor.inference_backend",
     "processor.models.binary",
+    "processor.models.binary_openvino",
     "processor.models.classifier",
     "detection.merge_window_seconds",
     "detection.dedup_window_seconds",
@@ -98,6 +100,42 @@ def _model_record(path: str | None) -> dict[str, Any]:
     return rec
 
 
+def _binary_detector_record(app_config) -> dict[str, Any]:
+    """Снимок бинарного детектора: torch ``.pt`` или OpenVINO IR (#371)."""
+    from inference.binary_paths import (
+        detector_weights_available,
+        openvino_bundle_fingerprint,
+        processor_package_root,
+        resolve_binary_detector_weight_path,
+    )
+    from inference.selector import resolve_inference_backend
+
+    backend = resolve_inference_backend(app_config)
+    root = processor_package_root()
+    path, _ = resolve_binary_detector_weight_path(app_config, root)
+    rec: dict[str, Any] = {
+        "inference_backend": backend,
+        "path": path or None,
+    }
+    if backend != "openvino":
+        merged = _model_record(app_config.get("processor.models.binary"))
+        merged["inference_backend"] = backend
+        return merged
+    rec["exists"] = bool(path and detector_weights_available(path))
+    rec["bundle_sha256"] = openvino_bundle_fingerprint(path)
+    if path and os.path.isfile(path):
+        stat = os.stat(path)
+        rec["size_bytes"] = int(stat.st_size)
+        rec["mtime_epoch_seconds"] = float(stat.st_mtime)
+    elif path and os.path.isdir(path):
+        try:
+            xmls = sorted(f for f in os.listdir(path) if f.endswith(".xml"))
+        except OSError:
+            xmls = []
+        rec["xml_files"] = xmls
+    return rec
+
+
 def resolve_processor_version() -> tuple[str, str]:
     """Return the processor version string and where it came from."""
     for key in (
@@ -126,7 +164,7 @@ def build_pipeline_fingerprint(app_config) -> dict[str, Any]:
         "processor_version": processor_version,
         "version_source": version_source,
         "config_digest": config_digest,
-        "binary_model": _model_record(app_config.get("processor.models.binary")),
+        "binary_model": _binary_detector_record(app_config),
         "classifier_model": _model_record(app_config.get("processor.models.classifier")),
         "fusion": {
             "enabled": bool(app_config.get("detection.use_learned_fusion") or False),

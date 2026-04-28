@@ -75,6 +75,8 @@
 | `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT` | `1` — при старте удалять legacy-плейсхолдеры после старого «импорта с диска»; по умолчанию выкл.; очистка при сканировании записей всё равно выполняется |
 | `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA` | `1` — фоновой repair метаданных (картинки) при старте; по умолчанию выкл. |
 | `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — не слать Telegram «App is UP!» при старте; по умолчанию включено |
+| `BIRDLENSE_INFERENCE_BACKEND` | Переопределяет `processor.inference_backend` (`torch`, `openvino`, …) — см. [CV_ML_ROADMAP_PHASES.ru.md](./CV_ML_ROADMAP_PHASES.ru.md) |
+| `BIRDLENSE_BINARY_OPENVINO_PATH` | Опциональный путь к IR OpenVINO (каталог или `.xml`) для бинарника; при непустом значении важнее YAML |
 | `BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC` | Интервал сэмплера метрик «Система» (секунды); по умолчанию `30`; допустимо 10–600 — см. [§ История метрик на странице «Система»](#system-page-metrics-history) |
 | `BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS` | Хранить строки `system_resource_sample` не старше (часы); по умолчанию `72`; допустимо 6–720 |
 | `DISABLE_SYSTEM_METRICS_SAMPLER` | `1` / `true` — отключить фоновый сэмплер (тесты, CI) |
@@ -304,7 +306,7 @@
 
 **Трассировка fusion (UI):** на странице ролика кнопка **Трассировка fusion** подгружает последнюю запись `decision_trace` из ActivityLog (сначала по `video_id` в JSON после ingest, иначе по совпадению `video_path`). По каждому треку этапы: **детектор** (общая метка YOLO), **классификатор** (вид, доля голосов, порог), **scores** (кадры, trust band, причина отклонения), **audio** (согласование с BirdNET), **fusion** (несколько камер / Frigate), **outcome** (сохранённый вид и уверенность). API: `GET /api/ui/videos/{video_id}/fusion-trace` — **только сессия оператора или администратора**, не для анонимных зрителей.
 
-**Инференс и контракт имён детектора (CV/ML):** `processor.inference_backend` по умолчанию `torch` (прочие бэкенды — roadmap [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)). Переменная окружения `BIRDLENSE_INFERENCE_BACKEND` переопределяет YAML. `processor.detector_weight_contract`: `off` \| `warn` \| `enforce` — проверка имён классов детектора против `processor.detector_scope` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)). Фазы: [CV_ML_ROADMAP_PHASES.ru.md](./CV_ML_ROADMAP_PHASES.ru.md).
+**Инференс и контракт имён детектора (CV/ML):** `processor.inference_backend` — `torch` (по умолчанию) или `openvino` для бинарного детектора (экспорт Ultralytics OpenVINO, [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)). `BIRDLENSE_INFERENCE_BACKEND` переопределяет YAML. Для `openvino` задайте `processor.models.binary_openvino` (каталог экспорта или `.xml`) или `BIRDLENSE_BINARY_OPENVINO_PATH` (абсолютный или относительно корня пакета процессора). Классификатор — по-прежнему `.pt`. `processor.detector_weight_contract`: `off` \| `warn` \| `enforce` — проверка имён классов детектора против `processor.detector_scope` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)). Фазы: [CV_ML_ROADMAP_PHASES.ru.md](./CV_ML_ROADMAP_PHASES.ru.md).
 
 **EU-модель:** `best.pt` с [HF gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (дефолт `processor.models.classifier`). US — `best_US.pt`. Обучение: [TRAINING](./TRAINING.ru.md).
 

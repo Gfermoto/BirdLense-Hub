@@ -14,12 +14,6 @@ from typing import List, Optional
 logger = logging.getLogger(__name__)
 
 
-def _resolve_model_path(rel_or_abs: str, processor_root: str) -> str:
-    if os.path.isabs(rel_or_abs):
-        return rel_or_abs
-    return os.path.join(processor_root, rel_or_abs)
-
-
 def build_detection_stack(
     app_config,
     *,
@@ -34,6 +28,12 @@ def build_detection_stack(
     from detection_strategy import TwoStageStrategy
     from frame_processor import FrameProcessor
     from decision_maker import DecisionMaker
+    from inference.backend_cache import write_inference_backend_cache
+    from inference.binary_paths import (
+        detector_weights_available,
+        resolve_binary_detector_weight_path,
+        resolve_relative_to_processor_root,
+    )
     from inference.selector import assert_backend_supported, resolve_inference_backend
     from ebird_regional_confidence import (
         merge_species_confidence_overrides_with_ebird_top,
@@ -61,11 +61,19 @@ def build_detection_stack(
         if min_center_dist_override is not None
         else float(app_config.get("processor.min_center_dist", 0.1))
     )
-    binary_path = _resolve_model_path(
-        app_config.get("processor.models.binary", "models/detection/weights/best.pt"),
-        processor_root,
-    )
-    classifier_path = _resolve_model_path(
+
+    _inf_backend = resolve_inference_backend(app_config)
+    assert_backend_supported(_inf_backend)
+
+    binary_path, _ = resolve_binary_detector_weight_path(app_config, processor_root)
+    if _inf_backend == "openvino" and not (binary_path or "").strip():
+        raise FileNotFoundError(
+            "OpenVINO binary detector path missing: set processor.models.binary_openvino "
+            "or environment variable BIRDLENSE_BINARY_OPENVINO_PATH "
+            "(export: yolo export ... format=openvino).",
+        )
+
+    classifier_path = resolve_relative_to_processor_root(
         app_config.get(
             "processor.models.classifier",
             "models/classification/weights/best.pt",
@@ -73,10 +81,12 @@ def build_detection_stack(
         processor_root,
     )
 
-    if not os.path.isfile(binary_path):
+    if not detector_weights_available(binary_path):
         raise FileNotFoundError(
-            f"YOLO binary detector weights missing: {binary_path}. "
-            "Set processor.models.binary or run scripts/fetch-processor-weights.sh",
+            f"YOLO binary detector weights missing or invalid path: {binary_path}. "
+            "For torch set processor.models.binary (.pt); for OpenVINO use a directory or .xml "
+            "from yolo export format=openvino (processor.models.binary_openvino or "
+            "BIRDLENSE_BINARY_OPENVINO_PATH).",
         )
     if not os.path.isfile(classifier_path):
         raise FileNotFoundError(
@@ -110,8 +120,6 @@ def build_detection_stack(
         "priority",
     )
 
-    _inf_backend = resolve_inference_backend(app_config)
-    assert_backend_supported(_inf_backend)
     _weight_contract = str(
         app_config.get("processor.detector_weight_contract") or "warn",
     ).strip().lower()
@@ -130,6 +138,12 @@ def build_detection_stack(
         binary_imgsz=app_config.get("processor.binary_imgsz", 320),
         weight_contract_mode=_weight_contract,
         inference_backend=_inf_backend,
+    )
+
+    write_inference_backend_cache(
+        processor_root,
+        backend=_inf_backend,
+        binary_model_path=binary_path,
     )
 
     tracker = app_config.get("processor.tracker") or "bytetrack.yaml"
