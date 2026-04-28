@@ -4,6 +4,16 @@ Short log of automated checks. Full cycle: [CONTRIBUTING.md](https://github.com/
 
 Shared install/deploy smoke contract: `make verify` (or `scripts/verify-stack.sh --base-url ...`) checks `/api/ui/health`, `/api/ui/readiness`, and `/api/ui/status`.
 
+## 2026-04-28 — documentation sync (roadmap, security, CV/ML index)
+
+| Check | Result |
+|-------|--------|
+| `python3 scripts/check-docs-version.py` | OK (`VERSION` ↔ `mkdocs.yml`, `app/ui/package.json`, `app/web/openapi.yaml`) |
+| `python3 scripts/check_site_map_meta_paths.py` | OK |
+| `mkdocs build --strict` | OK |
+
+**Doc updates in repo:** ROADMAP EN/RU — April 2026 backlog labels, Species UI note **v0.3.7+**, registry outcome wording; SECURITY EN/RU — “Last updated” / gitleaks baseline April 2026; docs README EN/RU — row linking GitHub epic [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367); [CV_ML_PREP](./CV_ML_PREP.md) intro ties prep to epic **#367**; [HUB_EPICS_TRACKER](./HUB_EPICS_TRACKER.md) — parallel CV/ML section.
+
 ## Offline fusion calibration
 
 1. Export processor decision traces to CSV:

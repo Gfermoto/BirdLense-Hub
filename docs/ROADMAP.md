@@ -117,16 +117,16 @@ Prioritize by capacity; open a new **GitHub issue** when work is scoped (see [CO
 | **Interactive life list (planning)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125) ✅ issue closed: same intent — manual flags/notes vs migration table; open a new issue when a spec exists. |
 | **Species canonical registry** | [#168](https://github.com/Gfermoto/BirdLense-Hub/issues/168) ✅: unified registry, name normalization, backfill, background metadata jobs, CI quality gate for the full dataset. |
 
-### User wishes backlog (Mar 2026)
+### User wishes backlog (Apr 2026)
 
 Tracked as separate issues; acceptance criteria live in each issue.
 
 **Preparation before coding ([#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131), [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139)):** [pre-implementation checklist](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md) (maintainer notes in the repository; omitted from the static documentation site).
 
-**Progress update (Mar 2026):**
+**Progress update (Apr 2026):**
 - [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) — a11y baseline shipped in **v0.2.9** (PR [#187](https://github.com/Gfermoto/BirdLense-Hub/pull/187), release [#188](https://github.com/Gfermoto/BirdLense-Hub/pull/188)); see [A11Y.md](./A11Y.md).
 - [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — shipped and closed: Unknowns nav removed, `/unknowns` legacy redirect to `/timeline?review=1`, Timeline review mode (chip + counter), OpenAPI + API tests + smoke redirect coverage.
-- [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — shipped and closed: catalog nav reshaped toward the seasonality table; **current UI (v0.3.6+):** nav **Species** → `/species` (same grid as `/migration-calendar`, which remains an alias URL); card directory → `/species-directory`; deep links `/species/:id` preserved. (Issue text described an intermediate redirect-only `/species` — no longer accurate.)
+- [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — shipped and closed: catalog nav reshaped toward the seasonality table; **current UI (v0.3.7+):** nav **Species** → `/species` (same grid as `/migration-calendar`, which remains an alias URL); card directory → `/species-directory`; deep links `/species/:id` preserved. (Issue text described an intermediate redirect-only `/species` — no longer accurate.)
 - [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — shipped and closed: region comparison block moved from Overview to Migration; leftover Overview pointer removed.
 - [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) — shipped and closed: Overview species distribution chart (slice and legend) now drills down to Timeline with species/date filters.
 - [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) — shipped and closed: Migration page now supports day-level date-range filtering for the migration table while keeping regional reference block unfiltered.
@@ -149,7 +149,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Food list for Europe | ✅ expanded `seed.py` + idempotent merge by name; [CONFIGURATION.md](./CONFIGURATION.md) → Bird food |
 | [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping` | ✅ `GET /api/ui/settings/ebird-species-mapping-suggestions`, Settings UI button, shared eBird top cache; [CONFIGURATION.md](./CONFIGURATION.md) |
 
-**New ideas (Mar 2026) — table keeps historical GitHub numbers; open a new issue when work starts:**
+**New ideas (Apr 2026) — table keeps historical GitHub numbers; open a new issue when work starts:**
 
 | # | Theme | Issue | Priority / area |
 |---|--------|-------|-----------------|
@@ -186,7 +186,7 @@ Analogous work **exists in datasets and papers**; few off-the-shelf solutions co
 
 - [#168](https://github.com/Gfermoto/BirdLense-Hub/issues/168) — **Species Canonical Registry** epic: canonical registry, universal name resolver, history migration, metadata enrichment, CI invariants (not one-off per-species patches).
 - Phases closed: [#169](https://github.com/Gfermoto/BirdLense-Hub/issues/169) ✅ SSOT registry · [#170](https://github.com/Gfermoto/BirdLense-Hub/issues/170) ✅ universal resolver · [#171](https://github.com/Gfermoto/BirdLense-Hub/issues/171) ✅ backfill/repair · [#172](https://github.com/Gfermoto/BirdLense-Hub/issues/172) ✅ background metadata jobs · [#173](https://github.com/Gfermoto/BirdLense-Hub/issues/173) ✅ observability + CI quality gate.
-- Outcome (Mar 2026): production `processed=806`, `matched=806`, `unresolved=0` on startup; APIs `seed/backfill/unresolved/health/enrich`, async enrichment status, CI smoke for the registry.
+- Outcome (Mar 2026 — registry epic completed): production `processed=806`, `matched=806`, `unresolved=0` on startup; APIs `seed/backfill/unresolved/health/enrich`, async enrichment status, CI smoke for the registry.
 
 ---
 
