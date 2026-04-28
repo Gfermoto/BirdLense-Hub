@@ -36,6 +36,15 @@ def test_prod_ui_mutation_requires_csrf_token(client, monkeypatch):
     assert r.get_json()["error"] == "CSRF token required"
 
 
+def test_prod_ui_mutation_monitor_only_logs_without_blocking(client, monkeypatch, caplog):
+    _enable_prod_csrf(monkeypatch)
+    monkeypatch.setenv("BIRDLENSE_SECURITY_MONITOR_ONLY", "1")
+    with caplog.at_level("WARNING"):
+        r = client.post("/api/ui/settings/logout")
+    assert r.status_code == 200
+    assert "csrf_denied_monitor_only" in caplog.text
+
+
 def test_prod_ui_mutation_accepts_matching_csrf_cookie_and_header(client, monkeypatch):
     _enable_prod_csrf(monkeypatch)
     token = client.get("/api/ui/csrf-token").get_json()["csrf_token"]

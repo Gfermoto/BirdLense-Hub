@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import secrets
+import logging
 
 from flask import Flask, jsonify
 
@@ -17,7 +18,6 @@ from auth import (
     contributor_or_admin_access,
     mcp_bearer_authorized,
 )
-
 
 def _env_flag_enabled(raw: str | None) -> bool:
     if raw is None:
@@ -28,6 +28,11 @@ def _env_flag_enabled(raw: str | None) -> bool:
 def strict_ui_api_auth_enabled() -> bool:
     """Strict gate: production runtime and explicit env flag."""
     return _is_production_runtime() and _env_flag_enabled(os.environ.get("BIRDLENSE_STRICT_API_AUTH"))
+
+
+def security_monitor_only_enabled() -> bool:
+    """Production emergency mode: log security denials, but do not block."""
+    return _env_flag_enabled(os.environ.get("BIRDLENSE_SECURITY_MONITOR_ONLY"))
 
 
 def ui_api_key_authorized() -> bool:
@@ -146,5 +151,20 @@ def register_strict_ui_api_auth_middleware(app: Flask) -> None:
         if key[0] == "GET" and _public_get_allowed(key[1]):
             return None
         if strict_ui_request_authorized():
+            return None
+        msg = (
+            "strict_ui_api_auth_denied_monitor_only"
+            if security_monitor_only_enabled()
+            else "strict_ui_api_auth_denied"
+        )
+        logging.warning(
+            msg,
+            extra={
+                "method": request.method,
+                "path": request.path,
+                "remote_addr": request.remote_addr,
+            },
+        )
+        if security_monitor_only_enabled():
             return None
         return jsonify({"error": "Authentication required"}), 403
