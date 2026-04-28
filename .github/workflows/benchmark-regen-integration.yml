@@ -14,6 +14,17 @@ on:
       - 'scripts/ci/reference_smoke_report.json'
       - 'app/processor/**'
       - '.github/workflows/benchmark-regen-integration.yml'
+  # Прямой push в ML: полный docker-smoke при изменениях по тем же paths (без открытого PR).
+  push:
+    branches: [ML]
+    paths:
+      - 'scripts/benchmark*.py'
+      - 'scripts/compare_benchmark_reports.py'
+      - 'scripts/verify_benchmark_report_schema.py'
+      - 'scripts/ci/gen_smoke_benchmark_clip.sh'
+      - 'scripts/ci/reference_smoke_report.json'
+      - 'app/processor/**'
+      - '.github/workflows/benchmark-regen-integration.yml'
 
 concurrency:
   group: benchmark-regen-${{ github.workflow }}-${{ github.ref }}
