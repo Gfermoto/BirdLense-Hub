@@ -85,6 +85,10 @@ Pick what matches you — you can read the rest as reference.
 | CV / ML prep contract | [CV_ML_PREP](./CV_ML_PREP.md) | [RU](./CV_ML_PREP.ru.md) |
 | CV / ML roadmap phases | [CV_ML_ROADMAP_PHASES](./CV_ML_ROADMAP_PHASES.md) | [RU](./CV_ML_ROADMAP_PHASES.ru.md) |
 | Datasets & scripts | [DATASETS](./DATASETS.md) | [RU](./DATASETS.ru.md) |
+| Video decode baseline (#373) | [CV_ML_DECODE](./CV_ML_DECODE.md) | [RU](./CV_ML_DECODE.ru.md) |
+| Active learning (#369) | [ACTIVE_LEARNING](./ACTIVE_LEARNING.md) | [RU](./ACTIVE_LEARNING.ru.md) |
+| Re-ID roadmap (#374) | [REID](./REID_ROADMAP.md) | [RU](./REID_ROADMAP.ru.md) |
+| Federated learning (#375) | [FEDERATED_LEARNING](./FEDERATED_LEARNING.md) | [RU](./FEDERATED_LEARNING.ru.md) |
 | Versioning & releases | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
 | Direction / backlog | [ROADMAP](./ROADMAP.md) | [RU](./ROADMAP.ru.md) |
 

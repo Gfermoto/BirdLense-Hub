@@ -41,11 +41,18 @@
 
 ### Фаза 3 — оптимизация видеопайплайна
 
-- [#373] после замеров.
+- [#373] скрипт ``benchmark_video_decode_resize.py`` + таблица замеров [CV_ML_DECODE.ru.md](CV_ML_DECODE.ru.md).
 
 ### Фаза 4 — продукт и исследования
 
-- [#369], [#370], [#374], [#375].
+- [#369] схема пула + ``emit_pool_template.py`` + [ACTIVE_LEARNING.ru.md](ACTIVE_LEARNING.ru.md).
+- [#370] точки расширения в ``_classify_crop``; продуктовые флаги — позже.
+- [#374] [REID_ROADMAP.ru.md](REID_ROADMAP.ru.md).
+- [#375] ``simulate_fedavg.py`` + [FEDERATED_LEARNING.ru.md](FEDERATED_LEARNING.ru.md).
+
+### Сводка по подзадачам (ветка ML)
+
+См. таблицу в [CV_ML_ROADMAP_PHASES.md](CV_ML_ROADMAP_PHASES.md) (англ.) — что уже есть в репозитории по [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)–[#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375).
 
 ### Эпик [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) — датасет 3-классового детектора (фаза 1)
 

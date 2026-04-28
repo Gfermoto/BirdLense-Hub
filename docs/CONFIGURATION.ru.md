@@ -77,6 +77,7 @@
 | `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — не слать Telegram «App is UP!» при старте; по умолчанию включено |
 | `BIRDLENSE_INFERENCE_BACKEND` | Переопределяет `processor.inference_backend` (`torch`, `openvino`, …) — см. [CV_ML_ROADMAP_PHASES.ru.md](./CV_ML_ROADMAP_PHASES.ru.md) |
 | `BIRDLENSE_BINARY_OPENVINO_PATH` | Опциональный путь к IR OpenVINO (каталог или `.xml`) для бинарника; при непустом значении важнее YAML |
+| `BIRDLENSE_INFERENCE_AUTO_BENCHMARK` | `1` / `true` / `yes` / `on` — после загрузки стека один `predict` бинарника на пустом кадре; в **`cold_start_predict_ms`** в `data/processor/inference_backend_cache.json` ([#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)) |
 | `BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC` | Интервал сэмплера метрик «Система» (секунды); по умолчанию `30`; допустимо 10–600 — см. [§ История метрик на странице «Система»](#system-page-metrics-history) |
 | `BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS` | Хранить строки `system_resource_sample` не старше (часы); по умолчанию `72`; допустимо 6–720 |
 | `DISABLE_SYSTEM_METRICS_SAMPLER` | `1` / `true` — отключить фоновый сэмплер (тесты, CI) |

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "birdlense://schemas/active_learning_pool_entry_v1",
+  "title": "Active learning pool manifest line (#369)",
+  "type": "object",
+  "required": ["schema", "video_id", "track_id", "crop_relative_path"],
+  "additionalProperties": true,
+  "properties": {
+    "schema": { "type": "string", "const": "active_learning_pool_entry@v1" },
+    "video_id": { "type": "string" },
+    "track_id": { "type": "integer" },
+    "crop_relative_path": {
+      "type": "string",
+      "description": "Path under active_learning_pool/"
+    },
+    "detector_conf": { "type": "number" },
+    "classifier_entropy": { "type": "number" },
+    "classifier_margin_top1_minus_top2": { "type": "number" },
+    "model_version": { "type": "string" },
+    "seed": { "type": "integer" }
+  }
+}
