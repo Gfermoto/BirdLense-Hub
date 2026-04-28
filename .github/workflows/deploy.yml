@@ -46,6 +46,31 @@ jobs:
             --exclude='.venv-datasets' \
             ./ "$DEPLOY_DIR"/
 
+      # Сборка UI на runner: Dockerfile использует pre-built dist/index.html и не вызывает npm внутри образа
+      # (на сервере npm до registry.npmjs.org часто ETIMEDOUT — см. app/Dockerfile stage ui).
+      - name: Setup Node (UI host build)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: app/ui/package-lock.json
+
+      - name: Build UI on host (pre-built dist for Docker)
+        run: |
+          set -euo pipefail
+          DEPLOY_DIR="${DEPLOY_DIR:-/root/BirdLense}"
+          cd "$DEPLOY_DIR/app/ui"
+          npm config set fetch-retries 7
+          npm config set fetch-retry-mintimeout 20000
+          npm config set fetch-retry-maxtimeout 120000
+          for attempt in 1 2 3; do
+            npm ci --legacy-peer-deps && break
+            [ "$attempt" -eq 3 ] && exit 1
+            sleep 45
+          done
+          npm run build
+          test -f dist/index.html
+
       - name: Intel GPU compose override
         run: |
           cd "${DEPLOY_DIR:-/root/BirdLense}/app"
