@@ -8,6 +8,26 @@ supplements the prep contract in [CV_ML_PREP.md](CV_ML_PREP.md).
 
 ---
 
+## Task status (GitHub issues)
+
+Legend: **Done** = shipped on branch `ML` in the repo (code/docs/scripts). **In progress** = active work now (operator training, measurements on your hardware, or deploy validation). **Planned** = next phase / not started.
+
+| Issue | Status | Notes |
+|-------|--------|--------|
+| [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Epic | **In progress** | Repo Phase‑1 delivered; **your** new weights + optional merge `ML`→`main` when validated on hub. |
+| [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Train & ship detector | **In progress** | Runtime contract + dataset merge helpers **done** in repo; **training detector weights** (Colab) — operator. |
+| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Done** (Phase‑1 repo) / **Planned** (product) | Manifest schema + template + docs **done**; review queue / scheduled retrain — later. |
+| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Classifier roadmap | **In progress** / **Planned** | Fine-tune in Colab ([TRAINING](./TRAINING.md)) — operator; uncertainty → DB/UI — **planned**. |
+| [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Multi-backend inference | **Done** / **Planned** | torch + OpenVINO + cache **done**; ONNX Runtime / TensorRT — **planned** (`NotImplementedError`). |
+| [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Benchmarking | **Done** / **Planned** | Scripts + CI + docker smoke **done**; drift / PSI / Grafana — **planned**. |
+| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Video decode | **In progress** | Benchmark script + doc template **done**; **filling decode matrix** on your platforms — in progress. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **Planned** | Design doc only; embeddings product — later. |
+| [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Done** (research) / **Planned** (prod) | Toy simulation + threat-model doc **done**; opt-in prod channel — **planned**. |
+
+*Refresh this table when a milestone closes or scope shifts.*
+
+---
+
 ## Order correction (vs a naive “decode first” stack)
 
 GitHub priorities differ slightly from “hardware decode before everything”:
