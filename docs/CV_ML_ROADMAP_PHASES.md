@@ -6,6 +6,8 @@ This document fixes the **implementation order** for epic
 [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) and child issues, after gap analysis. It
 supplements the prep contract in [CV_ML_PREP.md](CV_ML_PREP.md).
 
+**GitHub Project board:** [BirdLense Hub — Roadmap](https://github.com/users/Gfermoto/projects/2/views/1) — track issue Status / «Поток» alongside this table.
+
 ---
 
 ## Task status (GitHub issues)
@@ -17,11 +19,11 @@ Legend: **Done** = shipped on branch `ML` in the repo (code/docs/scripts). **In 
 | [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Epic | **In progress** | Repo Phase‑1 delivered; **your** new weights + optional merge `ML`→`main` when validated on hub. |
 | [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Train & ship detector | **In progress** | Runtime contract + dataset merge helpers **done** in repo; **training detector weights** (Colab) — operator. |
 | [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Done** (Phase‑1 repo) / **Planned** (product) | Manifest schema + template + docs **done**; review queue / scheduled retrain — later. |
-| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Classifier roadmap | **In progress** / **Planned** | Fine-tune in Colab ([TRAINING](./TRAINING.md)) — operator; uncertainty → DB/UI — **planned**. |
+| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Classifier roadmap | **In progress** / **Planned** | Fine-tune in Colab ([TRAINING](./TRAINING.md)) — operator; uncertainty → DB/UI — **planned**. Optional **DINO/DINOv2** backbone for species + AL embeddings — [REID_ROADMAP](./REID_ROADMAP.md) (section *Species classification — same backbone*); prototype [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383). |
 | [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Multi-backend inference | **Done** / **Planned** | torch + OpenVINO + cache **done**; ONNX Runtime / TensorRT — **planned** (`NotImplementedError`). |
 | [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Benchmarking | **Done** / **Planned** | Scripts + CI + docker smoke **done**; drift / PSI / Grafana — **planned**. |
 | [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Video decode | **In progress** | Benchmark script + doc template **done**; **filling decode matrix** on your platforms — in progress. |
-| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **Planned** | Design doc only; embeddings product — later. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **In progress** / **Planned** | Design doc + DINO scope ([REID_ROADMAP](./REID_ROADMAP.md)); sub-issue [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) — offline **`scripts/reid/embed_dinov2_crop.py`** shipped; gallery / hub wiring — **planned**. Same backbone may serve species + Re-ID — see REID doc. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Done** (research) / **Planned** (prod) | Toy simulation + threat-model doc **done**; opt-in prod channel — **planned**. |
 
 *Refresh this table when a milestone closes or scope shifts.*
@@ -69,7 +71,7 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 
 - [#369] Active learning: JSONL schema + `scripts/active_learning/emit_pool_template.py` + [ACTIVE_LEARNING.md](ACTIVE_LEARNING.md).
 - [#370] Classifier uncertainty product wiring (entropy/margin → DB/UI) — hook documented at `_classify_crop`; rollout TBD.
-- [#374] [REID_ROADMAP.md](REID_ROADMAP.md).
+- [#374] [REID_ROADMAP.md](REID_ROADMAP.md) — **DINO / DINOv2**: planned for **Re-ID embeddings** and optional **species** fine-tune / AL; **one backbone** on-hub can feed both heads when integrated · [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383).
 - [#375] Runnable **`scripts/federated/simulate_fedavg.py`** + [FEDERATED_LEARNING.md](FEDERATED_LEARNING.md) (**not production**).
 
 ### Child issues — what landed in the repo (ML branch snapshot)
@@ -81,7 +83,8 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 | [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) | Benchmark scripts + CI + reference JSON (drift/Grafana still future). |
 | [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) | Decode/resize script + docs table. |
 | [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) | Pool manifest schema + template emitter + docs. |
-| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) | Design doc only (embeddings DB/UI later). |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) | Design doc + offline [`scripts/reid/embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py); embeddings DB/UI later. |
+| [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) | Sub-issue of [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374): DINOv2 crop embedding CLI + [`scripts/reid/README.md`](../scripts/reid/README.md); cosine gallery / prod — later. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) | FedAvg toy simulation + threat-model doc. |
 | [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) | Documented hook points; full product uncertainty flags still roadmap. |
 

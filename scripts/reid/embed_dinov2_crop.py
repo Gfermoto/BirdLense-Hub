@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""
+Эмбеддинг кропов через DINOv2 (torch.hub) — офлайн-прототип для Re-ID (#383 / #374).
+
+Пример::
+
+    python3 scripts/reid/embed_dinov2_crop.py --image crop.jpg
+    python3 scripts/reid/embed_dinov2_crop.py --glob 'exports/crops/*.jpg' --output embed.jsonl
+
+Зависимости (не в базовом образе процессора): torch, torchvision, Pillow.
+Первый запуск может скачать веса через torch.hub (нужен доступ в интернет).
+"""
+
+from __future__ import annotations
+
+import argparse
+import glob as glob_mod
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+
+def _pick_cls_embedding(features: Any) -> Any:
+    """Из выхода forward_features достаём вектор [B, D]."""
+    import torch
+
+    if isinstance(features, torch.Tensor):
+        if features.dim() == 3:
+            return features[:, 0, :]
+        if features.dim() == 2:
+            return features
+        raise RuntimeError(f"Unexpected tensor shape {tuple(features.shape)}")
+    if isinstance(features, dict):
+        for key in ("x_norm_clstoken", "x_prenorm_clstoken", "cls_token"):
+            t = features.get(key)
+            if torch.is_tensor(t):
+                return t.squeeze(1) if t.dim() == 3 else t
+        for _k, v in features.items():
+            if torch.is_tensor(v) and v.dim() in (2, 3):
+                return v.squeeze(1) if v.dim() == 3 else v
+    raise RuntimeError("Cannot interpret forward_features output")
+
+
+def _infer_side(model: Any) -> int:
+    pe = getattr(model, "patch_embed", None)
+    if pe is None:
+        return 518
+    img_size = getattr(pe, "img_size", None)
+    if isinstance(img_size, tuple) and len(img_size) >= 1:
+        return int(img_size[0])
+    if isinstance(img_size, int):
+        return img_size
+    return 518
+
+
+def main() -> int:
+    try:
+        import torch
+        import torch.nn.functional as F
+        from PIL import Image
+        from torchvision import transforms
+    except ImportError as e:
+        print(
+            "Requires torch, torchvision, Pillow (offline GPU/CPU env).\n"
+            "Example: pip install torch torchvision pillow",
+            file=sys.stderr,
+        )
+        print(str(e), file=sys.stderr)
+        return 2
+
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--image", help="Один файл изображения (jpeg/png)")
+    ap.add_argument("--glob", dest="glob_pat", help="Шаблон glob для нескольких файлов")
+    ap.add_argument(
+        "--model",
+        default="dinov2_vits14",
+        help="Имя модели в hub facebookresearch/dinov2 (dinov2_vits14, dinov2_vitb14, …)",
+    )
+    ap.add_argument("--output", "-o", help="Писать JSON Lines в файл (иначе stdout)")
+    ap.add_argument("--device", default=None, help="cuda | cpu (по умолчанию: cuda если доступен)")
+    args = ap.parse_args()
+
+    if not args.image and not args.glob_pat:
+        ap.error("Укажите --image или --glob")
+
+    paths: list[Path] = []
+    if args.image:
+        paths.append(Path(args.image))
+    if args.glob_pat:
+        paths.extend(sorted(Path(p) for p in glob_mod.glob(args.glob_pat)))
+
+    if not paths:
+        print("Нет файлов по заданным путям.", file=sys.stderr)
+        return 2
+
+    device_s = args.device or ("cuda" if __import__("torch").cuda.is_available() else "cpu")
+    device = torch.device(device_s)
+
+    print(f"Loading {args.model} from torch.hub on {device_s} …", file=sys.stderr)
+    model = torch.hub.load("facebookresearch/dinov2", args.model)
+    model.eval()
+    model.to(device)
+
+    side = _infer_side(model)
+    tfm = transforms.Compose(
+        [
+            transforms.Resize(side, interpolation=transforms.InterpolationMode.BICUBIC),
+            transforms.CenterCrop(side),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        ]
+    )
+
+    out_lines: list[str] = []
+
+    with torch.inference_mode():
+        for p in paths:
+            if not p.is_file():
+                print(f"Skip missing: {p}", file=sys.stderr)
+                continue
+            img = Image.open(p).convert("RGB")
+            batch = tfm(img).unsqueeze(0).to(device)
+            feats = model.forward_features(batch)
+            vec = _pick_cls_embedding(feats)
+            vec = F.normalize(vec.float(), dim=-1).squeeze(0)
+            emb = vec.cpu().numpy().astype("float64")
+            row = {
+                "path": str(p.resolve()),
+                "model": args.model,
+                "dim": int(emb.shape[0]),
+                "embedding": emb.tolist(),
+            }
+            out_lines.append(json.dumps(row, ensure_ascii=False))
+
+    text = "\n".join(out_lines) + ("\n" if out_lines else "")
+    if args.output:
+        Path(args.output).write_text(text, encoding="utf-8")
+        print(f"Wrote {len(out_lines)} rows → {args.output}", file=sys.stderr)
+    else:
+        sys.stdout.write(text)
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
