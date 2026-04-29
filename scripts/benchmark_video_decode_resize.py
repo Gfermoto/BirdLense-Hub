@@ -14,6 +14,8 @@ Baseline: только декод + resize без YOLO (#373 Phase 1).
 from __future__ import annotations
 
 import argparse
+import os
+import platform
 import subprocess
 import sys
 import time
@@ -47,6 +49,7 @@ def _run_opencv(args, cv2) -> int:
 
     n = 0
     t0 = time.perf_counter()
+    cpu0 = time.process_time()
     while True:
         ok, frame = cap.read()
         if not ok:
@@ -57,13 +60,25 @@ def _run_opencv(args, cv2) -> int:
             break
     cap.release()
     elapsed = time.perf_counter() - t0
+    cpu_elapsed = max(0.0, time.process_time() - cpu0)
     if n <= 0 or elapsed <= 0:
         print("No frames decoded.", file=sys.stderr)
         return 1
     fps = n / elapsed
     ms_per_frame = 1000.0 * elapsed / n
+    cpu_process_pct = 100.0 * cpu_elapsed / elapsed if elapsed > 0 else 0.0
     print(
-        json_summary("opencv", n, elapsed, fps, ms_per_frame, args.width, args.height),
+        json_summary(
+            "opencv",
+            n,
+            elapsed,
+            fps,
+            ms_per_frame,
+            args.width,
+            args.height,
+            cpu_process_pct=cpu_process_pct,
+            video_path=args.video,
+        ),
     )
     return 0
 
@@ -109,6 +124,7 @@ def _run_ffmpeg_vaapi(args) -> int:
     frame_bytes = int(args.width) * int(args.height) * 3
     n = 0
     t0 = time.perf_counter()
+    cpu0 = time.process_time()
     assert proc.stdout is not None
     while True:
         data = proc.stdout.read(frame_bytes)
@@ -126,6 +142,7 @@ def _run_ffmpeg_vaapi(args) -> int:
         proc.kill()
         _, stderr = proc.communicate(timeout=2)
     elapsed = time.perf_counter() - t0
+    cpu_elapsed = max(0.0, time.process_time() - cpu0)
     if n <= 0 or elapsed <= 0:
         if stderr:
             print(stderr.decode("utf-8", errors="replace")[:1000], file=sys.stderr)
@@ -133,8 +150,19 @@ def _run_ffmpeg_vaapi(args) -> int:
         return 1
     fps = n / elapsed
     ms_per_frame = 1000.0 * elapsed / n
+    cpu_process_pct = 100.0 * cpu_elapsed / elapsed if elapsed > 0 else 0.0
     print(
-        json_summary("ffmpeg_vaapi", n, elapsed, fps, ms_per_frame, args.width, args.height),
+        json_summary(
+            "ffmpeg_vaapi",
+            n,
+            elapsed,
+            fps,
+            ms_per_frame,
+            args.width,
+            args.height,
+            cpu_process_pct=cpu_process_pct,
+            video_path=args.video,
+        ),
     )
     return 0
 
@@ -147,6 +175,9 @@ def json_summary(
     ms_per_frame: float,
     width: int,
     height: int,
+    *,
+    cpu_process_pct: float | None = None,
+    video_path: str | None = None,
 ) -> str:
     import json
 
@@ -158,7 +189,11 @@ def json_summary(
             "elapsed_sec": round(elapsed, 4),
             "fps": round(fps, 2),
             "ms_per_frame": round(ms_per_frame, 3),
+            "cpu_process_pct": None if cpu_process_pct is None else round(float(cpu_process_pct), 3),
             "resize": [width, height],
+            "host": platform.node() or None,
+            "platform": platform.platform(),
+            "video": os.path.abspath(video_path) if video_path else None,
         },
         ensure_ascii=False,
     )

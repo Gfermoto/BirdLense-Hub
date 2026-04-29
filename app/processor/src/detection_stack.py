@@ -14,6 +14,26 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
+def _inference_device_label(binary_model: Any) -> str:
+    """Best-effort device label for startup log (#371)."""
+    try:
+        predictor = getattr(binary_model, "predictor", None)
+        args = getattr(predictor, "args", None)
+        device = getattr(args, "device", None)
+        if device:
+            return str(device)
+    except Exception:
+        pass
+    try:
+        model = getattr(binary_model, "model", None)
+        dev = getattr(model, "device", None)
+        if dev:
+            return str(dev)
+    except Exception:
+        pass
+    return "unknown"
+
+
 def build_detection_stack(
     app_config,
     *,
@@ -142,6 +162,12 @@ def build_detection_stack(
         binary_imgsz=app_config.get("processor.binary_imgsz", 320),
         weight_contract_mode=_weight_contract,
         inference_backend=_inf_backend,
+    )
+    logger.info(
+        "Inference startup: backend=%s device=%s binary_path=%s",
+        _inf_backend,
+        _inference_device_label(detection_strategy.binary_model),
+        binary_path,
     )
 
     extra_cache: Optional[Dict[str, Any]] = None

@@ -139,3 +139,32 @@ class TestCompareBenchmarkReports(unittest.TestCase):
         )
         self.assertFalse(ok)
         self.assertTrue(any('psi_drift' in e for e in errs))
+
+    def test_species_recall_deltas(self):
+        """Пер-видовые дельты recall считаются по gold/predicted."""
+        base = {
+            'videos': [
+                {
+                    'video': '/tmp/a.mp4',
+                    'label_eval': {
+                        'gold_species': ['Great Tit', 'Robin'],
+                        'predicted_species_unique': ['Great Tit'],
+                    },
+                },
+            ],
+        }
+        cur = {
+            'videos': [
+                {
+                    'video': '/tmp/a.mp4',
+                    'label_eval': {
+                        'gold_species': ['Great Tit', 'Robin'],
+                        'predicted_species_unique': ['Great Tit', 'Robin'],
+                    },
+                },
+            ],
+        }
+        rows = self.mod.species_recall_deltas(base, cur, match_by_basename=False)
+        by_species = {r['species']: r for r in rows}
+        self.assertAlmostEqual(by_species['Great Tit']['delta_recall'], 0.0)
+        self.assertAlmostEqual(by_species['Robin']['delta_recall'], 1.0)

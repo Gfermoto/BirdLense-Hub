@@ -78,9 +78,15 @@ python3 scripts/compare_benchmark_reports.py \
   --tolerance 0.02
 ```
 
-Use **`--match-by-basename`** if video paths differ between machines but filenames match.
+Use **`--match-by-basename`** if video paths differ between machines but filenames match.  
+The output now includes `species_recall_deltas` (per-species recall vs baseline), so PRs can quote a rare-species line directly, for example:
 
-**CI:** быстрые проверки скриптов и юнит-тестов отчётов — в общем workflow CI (`benchmark-track-regen --help`, pytest helpers, **`verify_benchmark_report_schema.py --help`**). Полный прогон пайплайна на коротком сгенерированном mp4 — workflow **`benchmark-regen-integration.yml`** (Docker + веса + запись отчёта + **`verify_benchmark_report_schema`** по артефакту при изменениях в `app/processor/**` или скриптах бенчмарка).
+```text
+species=Robin baseline_recall=0.50 current_recall=0.75 delta_recall=+0.25 gold_samples=4
+```
+
+**CI:** fast checks for scripts/report helpers are in the main CI workflow (`benchmark-track-regen --help`, pytest helpers, **`verify_benchmark_report_schema.py --help`**). Full smoke run is in **`benchmark-regen-integration.yml`** (Docker + weights + report write + schema verify).  
+Skip conditions are explicit in workflow path filters (`app/processor/**`, benchmark scripts, workflow file itself) so unrelated PRs do not run this job.
 
 Локально сгенерировать такой же клип (требуется **ffmpeg**):
 

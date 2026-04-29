@@ -21,14 +21,26 @@ python3 scripts/benchmark_video_decode_resize.py --video path/to/clip.mp4 --fram
 python3 scripts/benchmark_video_decode_resize.py --video path/to/clip.mp4 --backend ffmpeg_vaapi --frames 300
 ```
 
-Output JSON uses `schema: video_decode_resize_benchmark@v1` (`backend`, `fps`, `ms_per_frame`, `resize`).
+Output JSON uses `schema: video_decode_resize_benchmark@v1` and now includes
+`cpu_process_pct`, `host`, `platform`, and absolute `video` path in addition to
+`backend`, `fps`, `ms_per_frame`, `frames`, `elapsed_sec`, `resize`.
 
 ## Result table (fill locally)
 
-| Date | Host | OS | Docker | `/dev/dri` | OpenCV build | Clip | Resolution | FPS | ms/frame | Notes |
-|------|------|----|--------|------------|--------------|------|------------|-----|----------|-------|
-| | bare Intel | | | | | 1080p sample | | | | |
+| Date | Host | Platform | Backend | Frames | FPS | ms/frame | CPU% (process) | `/dev/dri` | Notes |
+|------|------|----------|---------|--------|-----|----------|----------------|------------|-------|
+| _fill from script JSON_ |  |  | opencv |  |  |  |  | n/a | baseline |
+| _fill from script JSON_ |  |  | ffmpeg_vaapi |  |  |  |  | yes/no | VA-API path |
 
-**Unsupported / caution:** WSL2 video backends differ from bare Linux; headless servers may lack VA-API render nodes — document “decode path used” (CPU vs attempted hwaccel).
+## Support matrix (WSL2/headless)
+
+| Environment | `opencv` backend | `ffmpeg_vaapi` backend | Notes |
+|-------------|------------------|------------------------|-------|
+| Bare-metal Linux + Intel iGPU + `/dev/dri/renderD*` | Supported | Supported | Preferred validation target for VA-API |
+| Headless Linux server without `/dev/dri` | Supported | Unsupported | CPU decode only |
+| WSL2 (typical setup) | Supported | Usually unsupported | Treat VA-API as experimental unless preflight confirms |
+
+Always record the actual decode path used (`opencv` fallback vs `ffmpeg_vaapi`)
+for each row in the table above.
 
 Phase 2 (optional GStreamer/ffmpeg hwaccel) starts only if Phase 1 shows a clear win on your matrix (see issue text).

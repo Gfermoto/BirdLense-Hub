@@ -415,6 +415,45 @@ export function ConnectionsSection({ form }: Props) {
                   )}
                 </form.Field>
               </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="video.pre_record_seconds">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 30, step: 1 }}
+                      value={field.state.value ?? 0}
+                      onChange={(e) =>
+                        field.handleChange(Number(e.target.value) || 0)
+                      }
+                      label={t('settings.videoPreRecordSeconds')}
+                      helperText={t('settings.videoPreRecordSecondsHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="video.auto_reconnect">
+                  {(field) => (
+                    <>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={field.state.value ?? true}
+                            onChange={(e) =>
+                              field.handleChange(e.target.checked)
+                            }
+                          />
+                        }
+                        label={t('settings.videoAutoReconnect')}
+                      />
+                      <FormHelperText>
+                        {t('settings.videoAutoReconnectHint')}
+                      </FormHelperText>
+                    </>
+                  )}
+                </form.Field>
+              </Grid>
             </Grid>
           </ServiceBlock>
         </Box>

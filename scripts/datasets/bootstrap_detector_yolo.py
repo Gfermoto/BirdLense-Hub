@@ -3,7 +3,8 @@
 Заполняет дерево ``binary/`` под ``merge_datasets_three_class.py``:
 
   binary/birds/      — COCO 2017, только класс ``bird`` → один класс в YOLO (id 0).
-  binary/rodent/     — Open Images V6, ``Squirrel`` → один класс (id 0); после merge → Rodent.
+  binary/rodent/     — Open Images V6, несколько классов грызунов (по умолчанию
+                       ``Squirrel,Mouse,Rat,Hamster``) → один класс (id 0); после merge → Rodent.
   binary/background/ — COCO train/val: кадры **без** ``bird``, пустые ``.txt``.
 
 Зависимости::
@@ -19,7 +20,8 @@
 ``.gitignore`` — смотрите ``ls binary/birds/train/images`` в терминале или включите показ
 исключённых файлов.
 
-**Грызуны:** только Open Images V6, класс ``Squirrel``. Нужен доступ к ``storage.googleapis.com``
+**Грызуны:** Open Images V6, список классов задаётся ``--rodent-classes``. Нужен доступ к
+``storage.googleapis.com``
 (метаданные и часть загрузок). Флаг ``--rodent-validation-only`` не качает огромный train CSV.
 При обрывах SSL — VPN/другая сеть или скопировать готовый ``~/fiftyone/`` с машины, где OID уже скачан.
 
@@ -138,7 +140,12 @@ def _bootstrap_birds(root: Path, train_max: int, val_max: int, *, chunk_size: in
 
 
 def _bootstrap_rodents_validation_only(
-    root: Path, train_max: int, val_max: int, *, chunk_size: int
+    root: Path,
+    train_max: int,
+    val_max: int,
+    *,
+    chunk_size: int,
+    rodent_classes: list[str],
 ) -> None:
     """Только split ``validation`` Open Images: меньше метаданных, без гигантского train CSV."""
     import fiftyone as fo
@@ -155,14 +162,14 @@ def _bootstrap_rodents_validation_only(
     while got_train + got_val < total_need:
         take = min(chunk_size, total_need - got_train - got_val)
         print(
-            f"[rodent] Open Images V6 validation-only Squirrel — chunk size={take}, "
+            f"[rodent] Open Images V6 validation-only {','.join(rodent_classes)} — chunk size={take}, "
             f"seed={seed}, train {got_train}/{train_max}, val {got_val}/{val_max}"
         )
         ds = foz.load_zoo_dataset(
             "open-images-v6",
             split="validation",
             label_types=["detections"],
-            classes=["Squirrel"],
+            classes=rodent_classes,
             max_samples=take,
             only_matching=True,
             shuffle=True,
@@ -170,18 +177,18 @@ def _bootstrap_rodents_validation_only(
         )
         n_chunk = 0
         for sample in ds:
-            sq = [d for d in _detections(sample) if d.label == "Squirrel"]
-            if not sq:
+            rods = [d for d in _detections(sample) if d.label in rodent_classes]
+            if not rods:
                 continue
             if got_train < train_max:
                 dst_img = _unique_copy(Path(sample.filepath), images_train)
                 stem = dst_img.stem
-                _write_yolo_label(labels_train / f"{stem}.txt", 0, sq)
+                _write_yolo_label(labels_train / f"{stem}.txt", 0, rods)
                 got_train += 1
             elif got_val < val_max:
                 dst_img = _unique_copy(Path(sample.filepath), images_val)
                 stem = dst_img.stem
-                _write_yolo_label(labels_val / f"{stem}.txt", 0, sq)
+                _write_yolo_label(labels_val / f"{stem}.txt", 0, rods)
                 got_val += 1
             n_chunk += 1
             if got_train >= train_max and got_val >= val_max:
@@ -201,10 +208,17 @@ def _bootstrap_rodents(
     val_max: int,
     *,
     chunk_size: int,
+    rodent_classes: list[str],
     validation_only: bool = False,
 ) -> None:
     if validation_only:
-        _bootstrap_rodents_validation_only(root, train_max, val_max, chunk_size=chunk_size)
+        _bootstrap_rodents_validation_only(
+            root,
+            train_max,
+            val_max,
+            chunk_size=chunk_size,
+            rodent_classes=rodent_classes,
+        )
         return
 
     import fiftyone as fo
@@ -220,12 +234,15 @@ def _bootstrap_rodents(
         seed = 0
         while total < lim:
             take = min(chunk_size, lim - total)
-            print(f"[rodent] Open Images V6 {split_name} Squirrel — chunk size={take}, seed={seed}, have {total}/{lim}")
+            print(
+                f"[rodent] Open Images V6 {split_name} {','.join(rodent_classes)} — "
+                f"chunk size={take}, seed={seed}, have {total}/{lim}"
+            )
             ds = foz.load_zoo_dataset(
                 "open-images-v6",
                 split=split_name,
                 label_types=["detections"],
-                classes=["Squirrel"],
+                classes=rodent_classes,
                 max_samples=take,
                 only_matching=True,
                 shuffle=True,
@@ -233,12 +250,12 @@ def _bootstrap_rodents(
             )
             n_chunk = 0
             for sample in ds:
-                sq = [d for d in _detections(sample) if d.label == "Squirrel"]
-                if not sq:
+                rods = [d for d in _detections(sample) if d.label in rodent_classes]
+                if not rods:
                     continue
                 dst_img = _unique_copy(Path(sample.filepath), images_dir)
                 stem = dst_img.stem
-                _write_yolo_label(labels_dir / f"{stem}.txt", 0, sq)
+                _write_yolo_label(labels_dir / f"{stem}.txt", 0, rods)
                 n_chunk += 1
                 total += 1
                 if total >= lim:
@@ -267,15 +284,20 @@ def _collect_no_bird_background(
     labels_dir = _binary(root) / "background" / out_tag / "labels"
     seen_fp: set[str] = set()
     n = 0
-    scanned = 0
     seed = 0
+    zero_streak = 0
     print(
         f"[background] COCO {coco_split} → {out_tag}/: цель {target} кадров без bird, "
-        f"бюджет просмотра ≤{pool}, порции по {scan_chunk}",
+        f"бюджет уникальных путей ≤{pool}, порции по {scan_chunk}",
     )
-    while n < target and scanned < pool:
-        chunk = min(scan_chunk, pool - scanned)
-        print(f"[background] chunk seed={seed}, samples={chunk}, уже принято {n}/{target}")
+    # Считать бюджет по числу *новых* путей (первый просмотр), а не по chunk*итерациям:
+    # иначе при shuffle к одним и тем же jpg в val быстро съедается pool, не обойдя весь сплит.
+    while n < target and len(seen_fp) < pool:
+        chunk = min(scan_chunk, max(1, pool - len(seen_fp)))
+        print(
+            f"[background] chunk seed={seed}, samples={chunk}, "
+            f"уникальных {len(seen_fp)}/{pool}, принято {n}/{target}"
+        )
         ds = foz.load_zoo_dataset(
             "coco-2017",
             split=coco_split,
@@ -284,11 +306,13 @@ def _collect_no_bird_background(
             shuffle=True,
             seed=seed,
         )
+        novel = 0
         for sample in ds:
             fp = sample.filepath
             if fp in seen_fp:
                 continue
             seen_fp.add(fp)
+            novel += 1
             has_bird = any(d.label == "bird" for d in _detections(sample))
             if has_bird:
                 continue
@@ -299,8 +323,17 @@ def _collect_no_bird_background(
             if n >= target:
                 break
         fo.delete_dataset(ds.name)
-        scanned += chunk
         seed += 1
+        if novel == 0:
+            zero_streak += 1
+            if zero_streak >= 40:
+                print(
+                    f"[background] {zero_streak} батчей подряд без новых путей — дальше "
+                    f"нельзя (кэш COCO неполон?). Принято {n}/{target}."
+                )
+                break
+        else:
+            zero_streak = 0
     print(f"[background] → {out_tag}/: {n} images (empty labels)")
     return n
 
@@ -317,6 +350,12 @@ def main() -> int:
     ap.add_argument("--birds-val", type=int, default=120)
     ap.add_argument("--rodent-train", type=int, default=300)
     ap.add_argument("--rodent-val", type=int, default=80)
+    ap.add_argument(
+        "--rodent-classes",
+        type=str,
+        default="Squirrel,Mouse,Rat,Hamster",
+        help="Open Images классы для Rodent (через запятую)",
+    )
     ap.add_argument("--background-train", type=int, default=280)
     ap.add_argument("--background-val", type=int, default=120)
     ap.add_argument("--background-train-pool", type=int, default=12000, help="Сколько кадров COCO train просмотреть")
@@ -355,6 +394,10 @@ def main() -> int:
 
     ch = max(5, args.chunk_size)
     bg_ch = max(100, args.bg_scan_chunk)
+    rodent_classes = [c.strip() for c in args.rodent_classes.split(",") if c.strip()]
+    if not rodent_classes:
+        print("--rodent-classes не должен быть пустым", file=sys.stderr)
+        return 2
 
     if not args.skip_birds:
         _bootstrap_birds(root, args.birds_train, args.birds_val, chunk_size=ch)
@@ -364,6 +407,7 @@ def main() -> int:
             args.rodent_train,
             args.rodent_val,
             chunk_size=ch,
+            rodent_classes=rodent_classes,
             validation_only=args.rodent_validation_only,
         )
     if not args.skip_background:
