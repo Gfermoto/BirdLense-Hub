@@ -422,6 +422,53 @@ def test_build_system_config_audit_payload_processor_runtime_hints(monkeypatch, 
     assert any("DETECT_P95" in h and "480.0" in h for h in hints)
 
 
+def test_build_system_config_audit_payload_classifier_needs_review_counter_hint(monkeypatch, tmp_path):
+    from services import system_config_audit_service as scas
+    import data_paths
+
+    diag = tmp_path / "diagnostics"
+    diag.mkdir(parents=True)
+    stats = diag / "processor_runtime_stats.json"
+    stats.write_text(
+        '{"counters": {"classifier_needs_review_total": 7}}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(data_paths, "data_dir", lambda: str(tmp_path))
+
+    user = tmp_path / "user.yaml"
+    user.write_text("known: 1\n", encoding="utf-8")
+    default_f = tmp_path / "default.yaml"
+    default_f.write_text("known: 1\n", encoding="utf-8")
+
+    def _get(key, default=None):
+        mapping = {
+            "notifications": {"telegram_proxy_type": "none", "send_photo": False},
+            "motion.source": "opencv",
+            "mqtt.broker": "",
+            "motion.check_every_n_frames": 1,
+            "motion.opencv_diff_threshold": 18,
+            "motion.opencv_min_contour_area": 240,
+            "processor.light_gate_enabled": True,
+            "processor.light_gate_min_brightness": 25,
+            "processor.light_gate_min_contrast": 20,
+            "processor.binary_imgsz": 512,
+            "processor.min_center_dist": 0.06,
+            "processor.min_box_size_px": 72,
+            "processor.frame_processing_warn_ms": 450,
+            "detection.species_mapping": {},
+            "ebird.species_mapping": {},
+        }
+        return mapping.get(key, default)
+
+    payload = scas.build_system_config_audit_payload(
+        user_config_file=str(user),
+        default_config_file=str(default_f),
+        app_config_get=_get,
+    )
+    hints = payload["processor_runtime_hints"]
+    assert any("CLASSIFIER_NEEDS_REVIEW" in h and "total=7" in h for h in hints)
+
+
 def test_recall_frigate_standalone_false_emits_fusion_hint(monkeypatch, tmp_path):
     from services import system_config_audit_service as scas
     import data_paths

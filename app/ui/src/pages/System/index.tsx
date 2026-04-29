@@ -5,6 +5,7 @@ import Stack from '@mui/material/Stack';
 import { SystemMonitor } from './SystemMonitor';
 import { ConfigAuditCard } from './ConfigAuditCard';
 import { ObservabilityCard } from './ObservabilityCard';
+import { MlRuntimeCard } from './MlRuntimeCard';
 import { CatalogDiagnosticsAccordion } from './CatalogDiagnosticsAccordion';
 import { CatalogRepairCard } from './CatalogRepairCard';
 import { AutomationCard } from './AutomationCard';
@@ -94,6 +95,7 @@ export const System: React.FC = () => {
               >
                 <RecognitionImprovementCard />
               </Box>
+              <MlRuntimeCard />
               <ConfigAuditCard simple={!isAdvanced} />
               <ObservabilityCard simple={!isAdvanced} />
             </Stack>

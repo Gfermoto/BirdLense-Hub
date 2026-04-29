@@ -1,10 +1,13 @@
 from abc import ABC, abstractmethod
 import logging
+import math
 from typing import Any, List, Mapping, Optional, Tuple
 from dataclasses import dataclass
 import numpy as np
-from ultralytics import YOLO
 import cv2
+from detector_labels import normalize_detector_label
+from inference.torch_backend import load_yolo_classifier, load_yolo_detector
+from inference.weight_contract import validate_detector_weight_contract
 from processor_runtime_profile import RuntimeProfileConfigOverlay
 
 logger = logging.getLogger(__name__)
@@ -96,6 +99,38 @@ def _normalize_species_filter_text(name: str) -> str:
     return str(name or "").replace("_OR_", "/").replace("_", " ").replace("-", " ").strip().lower()
 
 
+def entropy_and_margin_from_prob_vector(probs_flat: Any) -> tuple[float, float]:
+    """
+    Shannon entropy (nats) and top1−top2 margin from a classifier probability vector (#370, AL hooks).
+
+    Accepts a 1D torch.Tensor or array-like (Ultralytics ``probs.data``).
+    """
+    try:
+        import torch
+
+        if isinstance(probs_flat, torch.Tensor):
+            arr = probs_flat.detach().float().cpu().numpy().reshape(-1)
+        else:
+            arr = np.asarray(probs_flat, dtype=np.float64).reshape(-1)
+    except Exception:
+        arr = np.asarray(probs_flat, dtype=np.float64).reshape(-1)
+    if arr.size == 0:
+        return 0.0, 0.0
+    p = np.clip(arr.astype(np.float64), 1e-12, 1.0)
+    s = float(p.sum())
+    if s <= 0:
+        return 0.0, 0.0
+    p = p / s
+    entropy = float(-np.sum(p * np.log(p)))
+    sorted_p = np.sort(p)[::-1]
+    margin = float(sorted_p[0] - sorted_p[1]) if sorted_p.size >= 2 else float(sorted_p[0])
+    if not math.isfinite(entropy):
+        entropy = 0.0
+    if not math.isfinite(margin):
+        margin = 0.0
+    return entropy, margin
+
+
 def _regional_class_ids(
     names: dict,
     regional_species: List[str],
@@ -120,6 +155,16 @@ def _track_maybe_retry(model, frame: np.ndarray, **kwargs):
 
 
 @dataclass
+class ClassifierOutput:
+    """Результат YOLO-cls по кропу: вид, уверенность top1, энтропия и margin (#370)."""
+
+    species_name: Optional[str]
+    top1_confidence: float
+    entropy: float
+    top1_top2_margin: float
+
+
+@dataclass
 class DetectionResult:
     """Одна детекция: track_id, вид, confidence, bbox, crop (опционально)."""
 
@@ -130,6 +175,8 @@ class DetectionResult:
     detector_confidence: float
     bbox: List[float]
     classifier_confidence: Optional[float] = None
+    classifier_entropy: Optional[float] = None
+    classifier_top1_top2_margin: Optional[float] = None
     blur_variance: Optional[float] = None
     crop: Optional[np.ndarray] = None
 
@@ -214,18 +261,45 @@ class TwoStageStrategy(DetectionStrategy):
         max_classifications_per_frame: int = 2,
         classification_scheduler: str = "priority",
         binary_imgsz: int = 320,
+        *,
+        weight_contract_mode: str = "warn",
+        inference_backend: str = "torch",
     ):
         super().__init__(min_center_dist, min_box_size_px, blur_threshold, max_blur_checks)
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.inference_backend = (inference_backend or "torch").strip().lower()
+        self.weight_contract_mode = (weight_contract_mode or "warn").strip().lower()
         self.regional_species = regional_species
         self.max_classifications_per_frame = max(1, int(max_classifications_per_frame or 1))
         self.classification_scheduler = str(classification_scheduler or "priority").strip().lower()
         self.binary_imgsz = max(320, int(binary_imgsz or 320))
         raw_scope = detector_scope or ["Bird", "Rodent"]
-        self.detector_scope = {self._normalize_detector_label(name) for name in raw_scope if str(name or "").strip()}
+        self.detector_scope = {normalize_detector_label(name) for name in raw_scope if str(name or "").strip()}
 
-        self.binary_model = YOLO(binary_model_path, task="detect")
-        self.classifier_model = YOLO(classifier_model_path, task="classify")
+        self.logger.info(
+            "TwoStageStrategy: inference_backend=%s detector_weight_contract=%s detector_scope=%s",
+            self.inference_backend,
+            self.weight_contract_mode,
+            sorted(self.detector_scope),
+        )
+
+        if self.inference_backend in ("torch", "openvino"):
+            self.binary_model = load_yolo_detector(
+                binary_model_path,
+                backend=self.inference_backend,
+            )
+            self.classifier_model = load_yolo_classifier(classifier_model_path)
+        else:
+            raise NotImplementedError(
+                f"inference_backend={self.inference_backend!r} is not implemented (#371).",
+            )
+
+        validate_detector_weight_contract(
+            getattr(self.binary_model, "names", None),
+            self.detector_scope,
+            self.weight_contract_mode,
+            self.logger,
+        )
 
         # Round-robin index for classification scheduling
         self._classification_index = 0
@@ -258,24 +332,17 @@ class TwoStageStrategy(DetectionStrategy):
         return name.replace("_OR_", "/").replace("_", " ")
 
     def _normalize_detector_label(self, name: str) -> str:
-        raw = self._normalize_class_name(str(name or "")).replace("-", " ").strip()
-        key = " ".join(raw.lower().split())
-        if not key:
-            return "Unknown"
-        if any(token in key for token in ("squirrel", "chipmunk", "rodent", "грызун")):
-            return "Rodent"
-        if any(token in key for token in ("bird", "avian")):
-            return "Bird"
-        return " ".join(part.capitalize() for part in raw.split())
+        return normalize_detector_label(name)
 
-    def _classify_crop(self, crop: np.ndarray) -> Tuple[Optional[str], float]:
-        """Классификация кропа. (species_name, confidence)."""
+    def _classify_crop(self, crop: np.ndarray) -> ClassifierOutput:
+        """Классификация кропа: вид, top1 conf, энтропия и top1−top2 margin по полному вектору probs."""
         result_cls = self.classifier_model(crop, verbose=False)
 
         if not result_cls or not result_cls[0].probs:
-            return None, 0.0
+            return ClassifierOutput(None, 0.0, 0.0, 0.0)
 
         probs = result_cls[0].probs
+        ent, margin = entropy_and_margin_from_prob_vector(probs.data)
 
         if self.classes:
             # Filter for best regional species
@@ -284,11 +351,21 @@ class TwoStageStrategy(DetectionStrategy):
 
             if valid_probs:
                 best_id, best_conf = max(valid_probs.items(), key=lambda x: x[1])
-                return self._normalize_class_name(result_cls[0].names[best_id]), best_conf
-            return "Unknown", 0.0
+                return ClassifierOutput(
+                    self._normalize_class_name(result_cls[0].names[best_id]),
+                    float(best_conf),
+                    ent,
+                    margin,
+                )
+            return ClassifierOutput("Unknown", 0.0, ent, margin)
 
         top1_idx = probs.top1
-        return self._normalize_class_name(result_cls[0].names[top1_idx]), probs.top1conf.item()
+        return ClassifierOutput(
+            self._normalize_class_name(result_cls[0].names[top1_idx]),
+            float(probs.top1conf.item()),
+            ent,
+            margin,
+        )
 
     def _priority_score(self, box: dict) -> tuple:
         stats = self._track_stats.get(box["track_id"]) or {}
@@ -484,8 +561,11 @@ class TwoStageStrategy(DetectionStrategy):
                 runtime_cfg,
             ):
                 classified = None
+            co: ClassifierOutput | None = None
             if classified:
-                species_name, cls_conf = self._classify_crop(classified["crop"])
+                co = self._classify_crop(classified["crop"])
+                species_name = co.species_name
+                cls_conf = co.top1_confidence
                 classifier_conf = cls_conf
                 combined_conf = box["conf"] * cls_conf
 
@@ -500,6 +580,8 @@ class TwoStageStrategy(DetectionStrategy):
                     confidence=combined_conf,
                     detector_confidence=box["conf"],
                     classifier_confidence=classifier_conf,
+                    classifier_entropy=(co.entropy if co else None),
+                    classifier_top1_top2_margin=(co.top1_top2_margin if co else None),
                     bbox=box["bbox_norm"],
                     blur_variance=blur_variance,
                     crop=crop,

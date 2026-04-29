@@ -53,8 +53,12 @@ def _resolve_model_path(rel_or_abs: str) -> str:
 
 
 def effective_binary_path() -> str:
-    raw = app_config.get("processor.models.binary", "models/detection/weights/best.pt")
-    return _resolve_model_path(str(raw).strip())
+    """Эффективный путь бинарника (torch ``.pt`` или OpenVINO каталог/``xml``, #371)."""
+    root = _processor_root()
+    from inference.binary_paths import resolve_binary_detector_weight_path
+
+    path, _backend = resolve_binary_detector_weight_path(app_config, root)
+    return path
 
 
 def effective_classifier_path() -> str:
@@ -145,12 +149,15 @@ def _allowlist_slot() -> dict[str, Any]:
 
 def get_status() -> dict[str, Any]:
     """Сводка для UI: эффективные пути, встроенные дефолты, признак «наш» custom-файл."""
+    from inference.selector import resolve_inference_backend
+
     def_bin = _resolve_model_path("models/detection/weights/best.pt")
     def_cls = _resolve_model_path("models/classification/weights/best.pt")
     eb = effective_binary_path()
     ec = effective_classifier_path()
     return {
         "custom_weights_dir": _custom_dir(),
+        "inference_backend": resolve_inference_backend(app_config),
         "binary": _slot_info(eb, def_bin),
         "classifier": _slot_info(ec, def_cls),
         "allowlist": _allowlist_slot(),

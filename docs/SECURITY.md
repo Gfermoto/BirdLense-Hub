@@ -4,7 +4,7 @@
 
 ---
 
-> Last updated: March 2026
+> Last updated: April 2026
 
 ## Summary
 
@@ -117,7 +117,7 @@
 - Tool: Gitleaks in Docker image `zricethezav/gitleaks:latest`
 - Report path: `.artifacts/gitleaks-history.json`
 
-Current baseline (Mar 2026): scan of full git history completed with **no leaks found**.
+Current baseline (Apr 2026): scan of full git history completed with **no leaks found**.
 
 ## 8.2 Leaked hostname / IP — keep full commit history
 

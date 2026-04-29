@@ -80,6 +80,9 @@ RUN mkdir -p processor/models/detection/weights processor/models/classification/
 RUN pip install --no-cache-dir -r web/requirements.txt \
     && pip install --no-cache-dir -r processor/requirements.txt
 
+# Опционально: OpenVINO для processor.inference_backend=openvino (размер образа; не в базовой сборке):
+#   RUN pip install --no-cache-dir 'openvino>=2024.0'
+
 # UI + nginx (template, подставляется при старте)
 COPY --from=ui /ui/dist /usr/share/nginx/html
 COPY app/nginx/standalone.conf.template /etc/nginx/conf.d/default.conf.template
@@ -99,6 +102,8 @@ EXPOSE 8080
 
 ENV API_URL_BASE=http://127.0.0.1:8000/api/processor
 ENV DATA_DIR=/app/data
+# Ultralytics: writable settings dir (avoids /app/.config not owned by birdlense) — #385
+ENV YOLO_CONFIG_DIR=/app/data/.ultralytics
 # Меньше шума libav/h264 от OpenCV VideoCapture (RTSP) в docker logs
 ENV OPENCV_LOG_LEVEL=ERROR
 ENV OPENCV_FFMPEG_LOGLEVEL=quiet

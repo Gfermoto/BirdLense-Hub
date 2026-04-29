@@ -3,9 +3,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [main, dev, ML]
   push:
-    branches: [main, dev]
+    branches: [main, dev, ML]
   # Ежедневно на default branch — регрессии без пушей от людей.
   schedule:
     - cron: "17 4 * * *"
@@ -75,6 +75,31 @@ jobs:
       - name: VERSION sync (package.json, openapi, mkdocs)
         run: cd .. && python3 scripts/check-docs-version.py
 
+      - name: benchmark-track-regen CLI (--help smoke)
+        working-directory: ${{ github.workspace }}
+        run: |
+          pip install opencv-python-headless==4.10.0.84 numpy
+          PYTHONPATH=app:app/processor/src python3 scripts/benchmark-track-regen.py --help
+          PYTHONPATH=app:app/processor/src:scripts python3 -c \
+            "from benchmark_regen_labels import load_gold_by_basename; print('benchmark_regen_labels:ok')"
+          python3 scripts/compare_benchmark_reports.py --help
+          python3 scripts/verify_benchmark_report_schema.py --help
+          python3 scripts/benchmark_video_decode_resize.py --help
+          python3 scripts/federated/simulate_fedavg.py --clients 3 --samples-per-client 50 --dim 6 --seed 0
+
+      - name: Benchmark report helpers (pytest, no Docker)
+        working-directory: ${{ github.workspace }}/app
+        run: |
+          PYTHONPATH=web:processor/src python3 -m pytest \
+            processor/tests/test_benchmark_regen_labels.py \
+            processor/tests/test_compare_benchmark_reports.py \
+            processor/tests/test_verify_benchmark_report_schema.py \
+            processor/tests/test_reference_smoke_compare.py \
+            processor/tests/test_merge_three_class_dataset.py \
+            processor/tests/test_auto_benchmark.py \
+            processor/tests/test_inference_weight_contract.py \
+            -q --tb=short
+
       - name: OpenAPI contract smoke tests
         run: python -m pytest web/tests/test_openapi_contract.py -q
 
@@ -114,6 +139,9 @@ jobs:
 
       - name: System routes smoke (activity, logs, metrics history)
         run: python -m pytest web/tests/test_system_routes_smoke.py -q
+
+      - name: Settings UI coverage guard regression
+        run: python -m pytest web/tests/test_settings_ui_coverage_guard.py -q
 
   ui-build:
     runs-on: ubuntu-latest

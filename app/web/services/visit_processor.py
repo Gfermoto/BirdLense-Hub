@@ -15,6 +15,16 @@ def _ensure_utc(dt: datetime) -> datetime:
     return dt
 
 
+def _review_reason_from_detection(det: dict) -> str | None:
+    """Normalize optional review reason fields from processor payload."""
+    reason = (det.get("review_reason") or "").strip()
+    if reason:
+        return reason
+    if bool(det.get("classifier_needs_review")):
+        return "classifier_uncertainty"
+    return None
+
+
 class VisitProcessor:
     """Правила склейки визитов по таймауту и привязки детекций к видео."""
 
@@ -44,6 +54,10 @@ class VisitProcessor:
         track_id: Optional[int] = None,
         frames: Optional[List[Dict]] = None,
         detection_provider: Optional[str] = None,
+        classifier_entropy: float | None = None,
+        classifier_top1_top2_margin: float | None = None,
+        classifier_needs_review: bool = False,
+        review_reason: str | None = None,
     ) -> Tuple[SpeciesVisit, VideoSpecies]:
         """
         Process a video detection and create/update associated visit.
@@ -63,6 +77,10 @@ class VisitProcessor:
             source="video",
             detection_provider=detection_provider,
             track_id=track_id,
+            classifier_entropy=classifier_entropy,
+            classifier_top1_top2_margin=classifier_top1_top2_margin,
+            classifier_needs_review=bool(classifier_needs_review),
+            review_reason=review_reason,
             created_at=detection_time,
             species_visit=visit,
             video=video,
@@ -83,6 +101,10 @@ class VisitProcessor:
         track_id: Optional[int] = None,
         frames: Optional[List[Dict]] = None,
         detection_provider: Optional[str] = None,
+        classifier_entropy: float | None = None,
+        classifier_top1_top2_margin: float | None = None,
+        classifier_needs_review: bool = False,
+        review_reason: str | None = None,
     ) -> VideoSpecies:
         """Persist a video detection without creating/extending a SpeciesVisit."""
         video_start = _ensure_utc(video.start_time)
@@ -95,6 +117,10 @@ class VisitProcessor:
             source="video",
             detection_provider=detection_provider,
             track_id=track_id,
+            classifier_entropy=classifier_entropy,
+            classifier_top1_top2_margin=classifier_top1_top2_margin,
+            classifier_needs_review=bool(classifier_needs_review),
+            review_reason=review_reason,
             created_at=detection_time,
             species_visit_id=None,
             video=video,
@@ -161,6 +187,10 @@ class VisitProcessor:
                         track_id=det.get("track_id"),
                         frames=det.get("frames"),
                         detection_provider=det.get("detection_provider"),
+                        classifier_entropy=det.get("classifier_entropy"),
+                        classifier_top1_top2_margin=det.get("classifier_top1_top2_margin"),
+                        classifier_needs_review=bool(det.get("classifier_needs_review")),
+                        review_reason=_review_reason_from_detection(det),
                     )
                     visit_key = (visit.species_id, visit.start_time)
                     if visit_key not in visits_to_update:
@@ -177,6 +207,10 @@ class VisitProcessor:
                         track_id=det.get("track_id"),
                         frames=det.get("frames"),
                         detection_provider=det.get("detection_provider"),
+                        classifier_entropy=det.get("classifier_entropy"),
+                        classifier_top1_top2_margin=det.get("classifier_top1_top2_margin"),
+                        classifier_needs_review=bool(det.get("classifier_needs_review")),
+                        review_reason=_review_reason_from_detection(det),
                     )
                     video_species_records.append(video_species)
             else:  # audio

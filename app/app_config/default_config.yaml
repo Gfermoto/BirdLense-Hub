@@ -191,14 +191,25 @@ processor:
   # video.source=file: оставить папку сессии с записанным mp4 при 0 детекций (без create_video / кропов из пайплайна)
   keep_recording_when_no_detections: false
   detection_strategy: "two_stage"
+  # CV/ML epic (#367, #371): движок инференса. Phase 1: ultralytics/torch. Env BIRDLENSE_INFERENCE_BACKEND имеет приоритет.
+  inference_backend: torch
+  # Контракт имён классов бинарного детектора при загрузке весов (#368): off | warn | enforce
+  detector_weight_contract: warn
   models:
     # Production: только binary + classifier (.pt). single_stage в коде не подключается.
     single_stage: "yolo11n.pt"
     # Бинарный детектор: артефакты из форка (zip в дереве processor/models/detection).
     # Источник: https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor
     binary: "models/detection/weights/best.pt"
+    # OpenVINO IR (processor.inference_backend=openvino): каталог экспорта или путь к .xml.
+    # Экспорт: yolo export model=... format=openvino. Пусто — задайте BIRDLENSE_BINARY_OPENVINO_PATH.
+    binary_openvino: ""
     # EU-классификатор (~491 вид): скачивать как best.pt с Hugging Face gfermoto/birdlense-birds-eu
     classifier: "models/classification/weights/best.pt"
+  # Неопределённость YOLO-cls (#370): энтропия (наты) и margin top1−top2 по полному вектору probs.
+  # null — не выставлять classifier_needs_review в decision rows; задайте пороги для AL/аналитики.
+  classifier_uncertainty_entropy_ge: null
+  classifier_uncertainty_margin_le: null
 
 # Video source: go2rtc | file
 video:
@@ -220,6 +231,9 @@ video:
   go2rtc_password: ""
   # Кодирование записи: cpu | intel (встроенная видеокарта Intel — VA-API)
   encoding: cpu
+  # Захват кадров для motion/detection: auto | opencv | ffmpeg_vaapi.
+  # auto: при encoding=intel пробует FFmpeg VA-API, иначе OpenCV; при ошибке fallback на OpenCV.
+  capture_backend: auto
   # Запись с RTSP: h264 — перекодировать в H.264 (воспроизведение в браузере, меньше сюрпризов с HEVC).
   # copy — без перекодирования (ниже CPU; если поток HEVC, в Chrome может быть «Не удалось загрузить видео»).
   record_stream_codec: h264

@@ -14,6 +14,7 @@ from app_config.app_config import app_config
 from decision_trace_builder import build_decision_trace_payload
 from detection_fusion import build_fused_video_detections
 from notify_preview_encode import encode_notify_preview_base64
+from processor_runtime_stats import inc_counter
 from processor_support import get_data_dir
 from recording_cleanup_policy import should_keep_empty_recording
 from recording_dataset_crops import maybe_save_dataset_crops
@@ -59,6 +60,9 @@ def finalize_motion_recording(
     decisions = decision_maker.get_decisions(frame_processor.tracks)
     video_detections = [item for item in decisions if item.get("accepted", False)]
     rejected_decisions = [item for item in decisions if not item.get("accepted", False)]
+    clf_review_n = sum(1 for item in decisions if bool(item.get("classifier_needs_review")))
+    if clf_review_n:
+        inc_counter("classifier_needs_review_total", clf_review_n)
     yolo_passed_count = len(video_detections)
     mqtt_events = get_recording_mqtt_events(
         mqtt_aggregator,

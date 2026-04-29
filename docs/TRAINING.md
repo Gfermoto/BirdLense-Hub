@@ -2,6 +2,8 @@
 
 Step-by-step: bird **classification** on a free **T4 GPU**. Dataset layout and scripts: [DATASETS](./DATASETS.md).
 
+**Detector (YOLO detection)** in Colab — separate guide: [ML_DETECTOR_COLAB](./ML_DETECTOR_COLAB.md) · [RU](./ML_DETECTOR_COLAB.ru.md). **Operator handoff** (what the repo finished vs what you train): [ML_OPERATOR_HANDOFF](./ML_OPERATOR_HANDOFF.md) · [RU](./ML_OPERATOR_HANDOFF.ru.md).
+
 [Русский](./TRAINING.ru.md)
 
 ---
@@ -50,6 +52,50 @@ python3 scripts/benchmark-track-regen.py \
   --video /path/to/video1.mp4 \
   --video /path/to/video2.mp4
 ```
+
+To compare inference backends on the same clips (sets `BIRDLENSE_INFERENCE_BACKEND` for the process; JSON output includes `inference_backend`):
+
+```bash
+python3 scripts/benchmark-track-regen.py \
+  --inference-backend openvino \
+  --video /path/to/video1.mp4
+```
+
+Optional **gold labels sidecar** (species-level check vs fused pipeline output, [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372)): JSON with `schema_version` `1` and `gold_by_basename` mapping **video basename** → list of expected species names (same spelling as classifier output). The benchmark prints `label_eval` per video (missing/extra vs gold, `gold_species_recall`) and top-level `labels_sidecar` metadata when `--labels-json` is set. Schema reference: docstring in `scripts/benchmark_regen_labels.py`.
+
+```bash
+python3 scripts/benchmark-track-regen.py \
+  --video /path/to/clip.mp4 \
+  --labels-json /path/to/gold_labels.json
+```
+
+Save the same JSON to a file (for CI artifacts or baseline storage) with **`--write-report path.json`**. To compare two reports after a change (requires **`label_eval`** / **`gold_species_recall`** on matching videos):
+
+```bash
+python3 scripts/compare_benchmark_reports.py \
+  --baseline /path/to/main_report.json \
+  --current /path/to/pr_report.json \
+  --tolerance 0.02
+```
+
+Use **`--match-by-basename`** if video paths differ between machines but filenames match.  
+The output now includes `species_recall_deltas` (per-species recall vs baseline), so PRs can quote a rare-species line directly, for example:
+
+```text
+species=Robin baseline_recall=0.50 current_recall=0.75 delta_recall=+0.25 gold_samples=4
+```
+
+**CI:** fast checks for scripts/report helpers are in the main CI workflow (`benchmark-track-regen --help`, pytest helpers, **`verify_benchmark_report_schema.py --help`**). Full smoke run is in **`benchmark-regen-integration.yml`** (Docker + weights + report write + schema verify).  
+Skip conditions are explicit in workflow path filters (`app/processor/**`, benchmark scripts, workflow file itself) so unrelated PRs do not run this job.
+
+Локально сгенерировать такой же клип (требуется **ffmpeg**):
+
+```bash
+chmod +x scripts/ci/gen_smoke_benchmark_clip.sh
+./scripts/ci/gen_smoke_benchmark_clip.sh .artifacts/smoke_clip.mp4
+```
+
+Эталонный отчёт для smoke (**без жёстких метрик recall**, только совместимость и совпадение по basename с эталоном): **`scripts/ci/reference_smoke_report.json`**. Его обновляют в том же PR, если меняется контракт smoke (например осознанно другие счётчики треков после смены весов). Интеграционный workflow вызывает **`compare_benchmark_reports.py --match-by-basename`** после **`verify_benchmark_report_schema`**.
 
 For product-level rates from persisted `decision_trace` logs:
 
