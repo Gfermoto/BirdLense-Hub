@@ -8,7 +8,10 @@ from pathlib import Path
 from types import SimpleNamespace
 import unittest
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+_REPO_ROOT = next(
+    (p for p in (Path(__file__).resolve().parents[3], Path('/workspace')) if (p / 'scripts').exists()),
+    Path(__file__).resolve().parents[3],
+)
 _AL_DIR = _REPO_ROOT / "scripts" / "active_learning"
 if str(_AL_DIR) not in sys.path:
     sys.path.insert(0, str(_AL_DIR))
