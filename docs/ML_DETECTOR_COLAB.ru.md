@@ -9,21 +9,23 @@
 
 ## Что нужно
 
-- Аккаунт Google, место на Drive под zip и ран  
-- Архив датасета с **`dataset.yaml`** внутри (например папка `binary/merged/` после `make dataset-merge-three-class`)  
+- Аккаунт Google, место на Drive под архивы и ран (рекомендуемо 3-4 GB)  
+- Два архива датасета с Hugging Face:  
+  [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)  
+  (`detector_merged_balanced_20260429.zip` и `detector_merged_full_20260429.zip`)  
 - Среда Colab с **GPU T4**
 
 ---
 
 ## Краткие шаги
 
-1. Локально упаковать папку датасета в zip и загрузить на Drive.  
-2. В Colab: `pip install ultralytics`, подключить Drive, распаковать zip.  
-3. Указать путь к `dataset.yaml`, запустить `YOLO(...).train(...)`.  
-4. Забрать `weights/best.pt` с Drive; при необходимости `export(format='openvino')`.  
-5. Положить веса на хаб, выставить `processor.inference_backend` и пути — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md).
+1. Загрузить оба архива в Google Drive (balanced + full).  
+2. Stage A: распаковать `detector_merged_balanced_20260429.zip`, поправить `dataset.yaml` (`path` на `/content/...`), запустить train.  
+3. Stage B: взять `best.pt` Stage A, распаковать `detector_merged_full_20260429.zip`, поправить `dataset.yaml`, запустить fine-tune.  
+4. Забрать `BEST_B` с Drive; при необходимости `export(format='openvino')`.  
+5. Положить веса на хаб и выставить пути в Hub — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md).
 
-Полные ячейки — в английской версии [ML_DETECTOR_COLAB.md](./ML_DETECTOR_COLAB.md).
+Полный Colab-пайплайн (готовые ячейки) — в [ML_DETECTOR_COLAB.md](./ML_DETECTOR_COLAB.md).
 
 ---
 

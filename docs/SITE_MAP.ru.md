@@ -74,6 +74,7 @@
 | Фазы roadmap CV / ML | [CV_ML_ROADMAP_PHASES.ru.md](./CV_ML_ROADMAP_PHASES.ru.md) · [EN](./CV_ML_ROADMAP_PHASES.md) |
 | ML: репозиторий и ваши шаги | [ML_OPERATOR_HANDOFF.ru.md](./ML_OPERATOR_HANDOFF.ru.md) · [EN](./ML_OPERATOR_HANDOFF.md) |
 | Датасеты | [DATASETS.ru.md](./DATASETS.ru.md) · [EN](./DATASETS.md) |
+| Артефакты датасета детектора (HF) | [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) |
 | Декод видео — замеры (#373) | [CV_ML_DECODE.ru.md](./CV_ML_DECODE.ru.md) · [EN](./CV_ML_DECODE.md) |
 | Active learning (#369) | [ACTIVE_LEARNING.ru.md](./ACTIVE_LEARNING.ru.md) · [EN](./ACTIVE_LEARNING.md) |
 | Re-ID roadmap (#374) | [REID_ROADMAP.ru.md](./REID_ROADMAP.ru.md) · [EN](./REID_ROADMAP.md) |

@@ -33,6 +33,10 @@
 3. `make validate-weights` и смоук на хабе; затем `make deploy`.
 4. Для вида «грызун» в классификаторе — обновить allowlist / `class_names.txt` после дообучения ([TRAINING.ru.md](./TRAINING.ru.md)).
 
+Артефакты для этого пути обучения опубликованы на Hugging Face:
+[gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)
+(`merged_balanced` для Stage A, `merged` full для Stage B fine-tune).
+
 ---
 
 ## Ноутбуки в репозитории

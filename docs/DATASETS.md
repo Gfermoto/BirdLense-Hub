@@ -24,8 +24,14 @@ Reproducible **YOLO detection** layout with classes **Bird**, **Rodent**, **Back
 - **Entrypoint:** `make dataset-merge-three-class` from the repo root, or  
   `python3 scripts/datasets/merge_datasets_three_class.py --help`
 - **Output:** `scripts/datasets/binary/merged/dataset.yaml` + merged `train`/`val`/`test` splits.
+- **Published artifacts (zip):** [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)  
+  (`detector_merged_balanced_20260429.zip`, `detector_merged_full_20260429.zip`).
 - **Train/val policy:** follow Ultralytics defaults unless you fix a seed; treat **minimum images per class** as a training constraint — enforce via Hub export (`min_images_per_class`) or document your floor before shipping weights.
 - **Hard negatives manifest** (optional bookkeeping for curated mines): JSON Schema `scripts/datasets/schemas/hard_negatives_manifest_v1.schema.json`, example `scripts/datasets/example_hard_negatives_manifest.json`. Pass `--manifest-out path.json` on merge to record paths and counts.
+
+Recommended detector training flow for these artifacts:
+- **Stage A (stability):** train on `merged_balanced`
+- **Stage B (diversity):** fine-tune from Stage A checkpoint on `merged` (full)
 
 Phase 2 items from the epic (MineUp, dual mining, COCO export) remain future work; track under [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) / [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368).
 
@@ -188,6 +194,7 @@ birds-525 + iNaturalist → merge_classification_datasets.py → merged_cls
 | Platform | Use |
 |----------|-----|
 | **Hugging Face** | [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged), [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) — see [TRAINING](./TRAINING.md) |
+| **Hugging Face (detector)** | [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) — 3-class detector zips (balanced + full) |
 | **Zenodo** | DOI snapshots for papers |
 
 ---

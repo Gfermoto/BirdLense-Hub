@@ -25,7 +25,13 @@ Background / hard-negative классы детектора — только dete
 
 - Точка входа: **`make dataset-merge-three-class`** или `python3 scripts/datasets/merge_datasets_three_class.py --help`.
 - Выход: `scripts/datasets/binary/merged/dataset.yaml` и объединённые сплиты.
+- Опубликованные архивы: [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)  
+  (`detector_merged_balanced_20260429.zip`, `detector_merged_full_20260429.zip`).
 - Манифест hard negatives (учёт курируемых негативов): схема `scripts/datasets/schemas/hard_negatives_manifest_v1.schema.json`, пример `example_hard_negatives_manifest.json`; при слиянии можно передать `--manifest-out`.
+
+Рекомендованный путь обучения детектора:
+- **Stage A (устойчивость):** train на `merged_balanced`
+- **Stage B (разнообразие):** fine-tune с весов Stage A на `merged` (full)
 
 Дальнейшие шаги эпика — в [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) / [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368).
 
@@ -189,6 +195,7 @@ birds-525 + iNaturalist → merge_classification_datasets.py → merged_cls
 | Платформа | Назначение |
 |-----------|------------|
 | **Hugging Face** | [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged), [birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) — см. [TRAINING](./TRAINING.ru.md) |
+| **Hugging Face (детектор)** | [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) — ZIP для 3-классового детектора (balanced + full) |
 | **Zenodo** | DOI для статей, снапшоты |
 
 ---

@@ -160,6 +160,7 @@ Repository norms: [Contributing](./project/contributing.md).
 | Access control | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) |
 | Site nav template | [SITE_MAP.md](./SITE_MAP.md) |
 | Training (Colab) | [TRAINING.md](./TRAINING.md) |
+| Detector dataset artifacts (HF) | [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) |
 | Datasets | [DATASETS.md](./DATASETS.md) |
 | Versioning | [VERSIONING.md](./VERSIONING.md) |
 | Roadmap | [ROADMAP.md](./ROADMAP.md) |

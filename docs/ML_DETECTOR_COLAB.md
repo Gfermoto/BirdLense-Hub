@@ -9,32 +9,29 @@ This page is the **detection** counterpart: train a **binary** or **3-class** (`
 
 ## Prerequisites
 
-- Google account, ~2 GB Drive space for zip + runs  
-- A zipped dataset whose root contains **`dataset.yaml`** (e.g. `binary/merged/` after `merge_datasets_three_class`)  
+- Google account, ~3-4 GB Drive space for zips + runs  
+- Two zipped detector datasets (balanced + full), published at  
+  [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)  
 - Runtime: **GPU** (T4)
 
 ---
 
-## Part 1 — Zip the dataset locally
+## Part 1 — Dataset source (Hugging Face)
 
-From your PC (after `make dataset-merge-three-class` or equivalent):
+Use these files from the dataset repo (upload both to Drive):
 
-```bash
-cd scripts/datasets   # or parent of binary/merged
-zip -r ~/BirdLense_detector_dataset.zip binary/merged/
-```
-
-Upload **`BirdLense_detector_dataset.zip`** to Google Drive (e.g. `BirdLense_Training/`).
+- `detector_merged_balanced_20260429.zip` (Stage A, stability)
+- `detector_merged_full_20260429.zip` (Stage B, diversity fine-tune)
 
 ---
 
-## Part 2 — Colab notebook (minimal)
+## Part 2 — Colab notebook (Stage A -> Stage B)
 
 1. New notebook → **Runtime → Change runtime type → T4 GPU**  
-2. Install Ultralytics:
+2. Install Ultralytics + YAML parser:
 
 ```python
-!pip install -q ultralytics
+!pip install -q ultralytics pyyaml
 ```
 
 3. Mount Drive:
@@ -48,55 +45,114 @@ drive.mount('/content/drive')
 
 ```python
 import os
-DRIVE_ROOT = "/content/drive/MyDrive/BirdLense_Training"
-ZIP_NAME = "BirdLense_detector_dataset.zip"
-EXTRACT_DIR = "/content/detector_data"
-os.makedirs(EXTRACT_DIR, exist_ok=True)
+import shutil
+import yaml
+DRIVE_ROOT = "/content/drive/MyDrive/BirdLense_Detector"
+ZIP_BALANCED = "detector_merged_balanced_20260429.zip"
+ZIP_FULL = "detector_merged_full_20260429.zip"
 ```
 
-5. Unzip:
+5. Stage A unzip (balanced):
 
 ```python
-!unzip -q "{DRIVE_ROOT}/{ZIP_NAME}" -d "{EXTRACT_DIR}"
+EXTRACT_A = "/content/data_stage_a"
+if os.path.exists(EXTRACT_A):
+    shutil.rmtree(EXTRACT_A)
+os.makedirs(EXTRACT_A, exist_ok=True)
+!unzip -q "{DRIVE_ROOT}/{ZIP_BALANCED}" -d "{EXTRACT_A}"
 ```
 
-Find `dataset.yaml` (adjust `DATA_YAML` if nested):
+6. Fix `dataset.yaml` path for Colab runtime  
+(archive has an absolute local path from export machine):
 
 ```python
-DATA_YAML = "/content/detector_data/binary/merged/dataset.yaml"
-assert os.path.isfile(DATA_YAML), DATA_YAML
+DATA_YAML_A = "/content/data_stage_a/binary/merged_balanced/dataset.yaml"
+assert os.path.isfile(DATA_YAML_A), DATA_YAML_A
+with open(DATA_YAML_A, "r", encoding="utf-8") as f:
+    cfg = yaml.safe_load(f)
+cfg["path"] = "/content/data_stage_a/binary/merged_balanced"
+with open(DATA_YAML_A, "w", encoding="utf-8") as f:
+    yaml.safe_dump(cfg, f, sort_keys=False, allow_unicode=True)
+print(cfg)
 ```
 
-6. Train:
+7. Stage A train (balanced):
 
 ```python
 from ultralytics import YOLO
-model = YOLO("yolo11n.pt")  # or yolo11s.pt — heavier
-model.train(
-    data=DATA_YAML,
-    epochs=100,
-    imgsz=640,
+model_a = YOLO("yolo11n.pt")  # or yolo11s.pt — heavier
+model_a.train(
+    data=DATA_YAML_A,
+    epochs=80,
+    imgsz=960,
+    batch=16,
     patience=20,
     project=f"{DRIVE_ROOT}/yolo_detector_runs",
-    name="hub_detector_v1",
+    name="stage_a_balanced",
 )
 ```
 
-7. Best weights path (Ultralytics default):
+8. Stage A best checkpoint:
 
 ```python
-best_pt = f"{DRIVE_ROOT}/yolo_detector_runs/hub_detector_v1/weights/best.pt"
-print(best_pt)
+BEST_A = f"{DRIVE_ROOT}/yolo_detector_runs/stage_a_balanced/weights/best.pt"
+print(BEST_A)
 ```
 
-8. Optional OpenVINO for Hub (`processor.inference_backend: openvino`):
+9. Stage B unzip (full):
 
 ```python
-export_model = YOLO(best_pt)
+EXTRACT_B = "/content/data_stage_b"
+if os.path.exists(EXTRACT_B):
+    shutil.rmtree(EXTRACT_B)
+os.makedirs(EXTRACT_B, exist_ok=True)
+!unzip -q "{DRIVE_ROOT}/{ZIP_FULL}" -d "{EXTRACT_B}"
+```
+
+10. Fix Stage B `dataset.yaml` path:
+
+```python
+DATA_YAML_B = "/content/data_stage_b/binary/merged/dataset.yaml"
+assert os.path.isfile(DATA_YAML_B), DATA_YAML_B
+with open(DATA_YAML_B, "r", encoding="utf-8") as f:
+    cfg = yaml.safe_load(f)
+cfg["path"] = "/content/data_stage_b/binary/merged"
+with open(DATA_YAML_B, "w", encoding="utf-8") as f:
+    yaml.safe_dump(cfg, f, sort_keys=False, allow_unicode=True)
+print(cfg)
+```
+
+11. Stage B fine-tune (full):
+
+```python
+model_b = YOLO(BEST_A)
+model_b.train(
+    data=DATA_YAML_B,
+    epochs=40,
+    imgsz=960,
+    batch=16,
+    lr0=0.003,
+    patience=15,
+    project=f"{DRIVE_ROOT}/yolo_detector_runs",
+    name="stage_b_full_ft",
+)
+```
+
+12. Stage B best checkpoint:
+
+```python
+BEST_B = f"{DRIVE_ROOT}/yolo_detector_runs/stage_b_full_ft/weights/best.pt"
+print(BEST_B)
+```
+
+13. Optional OpenVINO for Hub (`processor.inference_backend: openvino`):
+
+```python
+export_model = YOLO(BEST_B)
 export_model.export(format="openvino")
 ```
 
-Download `best.pt` (and OpenVINO folder if needed) to your Hub host and set paths in config or **Processor weights** UI.
+Download `BEST_B` (and OpenVINO folder if needed) to your Hub host and set paths in config or **Processor weights** UI.
 
 ---
 
