@@ -98,6 +98,7 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 - Local layout: **`scripts/datasets/binary/birds`**, **`binary/rodent`**, **`binary/background`** — see [binary/README.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/datasets/binary/README.md).
 - **`scripts/datasets/merge_datasets_three_class.py`** + **`make dataset-merge-three-class`** → `Bird` / `Rodent` / `Background` `dataset.yaml` under `scripts/datasets/binary/merged/` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) trains/rolls up separately).
 - Published detector zips for operator training: [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) (`detector_merged_balanced_20260429.zip`, `detector_merged_full_20260429.zip`), with recommended Stage A -> Stage B flow from [ML_DETECTOR_COLAB.md](ML_DETECTOR_COLAB.md).
+- Published detector weights package (YOLO + OpenVINO): [weights-20260429T125011Z-3-001.zip](https://huggingface.co/gfermoto/BirdLense_Detector/blob/main/weights-20260429T125011Z-3-001.zip).
 - Optional **`hard_negatives_manifest@v1`** schema + merge **`--manifest-out`**; see [DATASETS.md](DATASETS.md).
 
 ---

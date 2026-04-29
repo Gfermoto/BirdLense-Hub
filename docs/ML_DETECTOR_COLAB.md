@@ -13,6 +13,8 @@ This page is the **detection** counterpart: train a **binary** or **3-class** (`
 - Two zipped detector datasets (balanced + full), published at  
   [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)  
 - Runtime: **GPU** (T4)
+- Weights package (YOLO + OpenVINO):  
+  [weights-20260429T125011Z-3-001.zip](https://huggingface.co/gfermoto/BirdLense_Detector/blob/main/weights-20260429T125011Z-3-001.zip)
 
 ---
 
@@ -153,6 +155,10 @@ export_model.export(format="openvino")
 ```
 
 Download `BEST_B` (and OpenVINO folder if needed) to your Hub host and set paths in config or **Processor weights** UI.
+
+If you already use the published package
+`weights-20260429T125011Z-3-001.zip`, skip the export step and use its
+ready YOLO/OpenVINO artifacts directly.
 
 ---
 
