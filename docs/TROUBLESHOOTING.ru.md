@@ -77,6 +77,28 @@ docker logs birdlense --tail 200 2>&1
 
 ---
 
+## Контракт весов: `detector_scope` и классы модели {#detector-weight-contract-mismatch}
+
+**Симптом в логах:** `Detector weight contract: ... miss scoped labels` — в `processor.detector_scope` указан класс, которого **нет** в текущих бинарных весах (например в модели только `Bird`, а в scope ещё и `Rodent`).
+
+**Падения нет** при `processor.detector_weight_contract: warn` (дефолт). В режиме **`enforce`** старт не пройдёт, пока веса и scope не согласованы.
+
+**Что сделать:** (1) Сузьте `processor.detector_scope` под реальные `model.names` / манифест обучения. (2) Либо выкатите веса, где есть все scoped-классы, и перезапустите processor. (3) Не добавляйте `Background` в scope — см. [CV_ML_PREP.ru.md](./CV_ML_PREP.ru.md).
+
+**Связано:** [CV_ML_ROADMAP_PHASES.ru.md](./CV_ML_ROADMAP_PHASES.ru.md) (эпик #368). Англ. версия: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md#detector-weight-contract-mismatch).
+
+---
+
+## Processor: шум «Slow frame processing» на большом разрешении {#processor-slow-frame-warnings}
+
+**Симптом:** много строк `Slow frame processing: …ms >= …ms`, низкий эффективный FPS — типично для **2.7K+** и тяжёлого YOLO.
+
+**Важно:** `processor.frame_processing_warn_ms` (по умолчанию **450**) влияет только на **частоту предупреждений в логах**, не на скорость инференса. Снижать **реальную** задержку: `processor.binary_imgsz`, профиль, ресурсы — см. [PROCESSOR_PERFORMANCE.ru.md](./PROCESSOR_PERFORMANCE.ru.md) и [RUNBOOKS.ru.md](./RUNBOOKS.ru.md). Подсказка **config-audit** в UI (`configAuditRuntimeSlowFrames`) об этом же компромиссе.
+
+**Англ. версия:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md#processor-slow-frame-warnings).
+
+---
+
 ## Медленный ответ веб-интерфейса (API/UI)
 
 **Типичная причина:** в одном контейнере крутятся **processor** (декодирование, детекция, запись) и **gunicorn** (API). Под нагрузкой CPU занят кадрами и моделью — запросы к UI ждут в очереди потоков.

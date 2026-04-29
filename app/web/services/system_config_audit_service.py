@@ -316,6 +316,15 @@ def _processor_runtime_hints(app_config_get) -> list[str]:
         slow = 0
     if slow > 0 and warn_ms > 0:
         hints.append(f"processor.runtime.SLOW_FRAMES total={slow} warn_ms={int(warn_ms)}")
+    try:
+        clf_rev = int(counters.get("classifier_needs_review_total") or 0)
+    except (TypeError, ValueError):
+        clf_rev = 0
+    if clf_rev > 0:
+        hints.append(
+            "processor.runtime.CLASSIFIER_NEEDS_REVIEW "
+            f"total={clf_rev} (entropy/margin thresholds in processor.classifier_uncertainty_*)"
+        )
     lat = snap.get("latency_ms") if isinstance(snap.get("latency_ms"), dict) else {}
     p95_raw = lat.get("frame_processor_detect_p95")
     try:

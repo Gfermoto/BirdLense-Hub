@@ -171,6 +171,9 @@ def process_video_for_tracks(
             "detector_confidence",
             "classifier_confidence",
             "classifier_species_name",
+            "classifier_entropy",
+            "classifier_top1_top2_margin",
+            "classifier_needs_review",
             "evidence_state",
             "reject_reason_code",
         ):

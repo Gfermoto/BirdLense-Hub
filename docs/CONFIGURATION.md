@@ -75,6 +75,9 @@ Examples are **secret-free**; copy into `app/app_config/user_config.yaml` and ad
 | `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT` | `1` — remove legacy disk-import placeholder detections on startup; default off; recording scan still cleans |
 | `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA` | `1` — background metadata/image repair on startup; default off |
 | `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — skip Telegram “App is UP!” on startup; default on |
+| `BIRDLENSE_INFERENCE_BACKEND` | Overrides `processor.inference_backend` (`torch`, `openvino`, …) — see [CV_ML_ROADMAP_PHASES](./CV_ML_ROADMAP_PHASES.md) |
+| `BIRDLENSE_BINARY_OPENVINO_PATH` | Optional path to OpenVINO IR (directory or `.xml`) for the binary detector; highest precedence over YAML when set |
+| `BIRDLENSE_INFERENCE_AUTO_BENCHMARK` | `1` / `true` / `yes` / `on` — after the detection stack loads, run one blank-frame `predict` on the binary detector and record **`cold_start_predict_ms`** in `data/processor/inference_backend_cache.json` ([#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)) |
 | `BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC` | System page resource sampler interval (seconds); default `30`; allowed 10–600 — see [§ System page metrics history](#system-page-metrics-history) |
 | `BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS` | Keep `system_resource_sample` rows up to this age (hours); default `72`; allowed 6–720 |
 | `DISABLE_SYSTEM_METRICS_SAMPLER` | `1` / `true` — disable the background sampler (tests, CI) |
@@ -303,6 +306,8 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 | `species_mapping` | Species name mapping |
 
 **Fusion trace (UI):** On the video page, **Fusion trace** loads the latest processor `decision_trace` row from ActivityLog (matched by `video_id` in the payload after ingest, or legacy match on `video_path`). Stages shown per track: **detector** (YOLO generic label and confidence), **classifier** (species head, vote share, threshold), **scores** (frame evidence, trust band, reject reason), **audio** (BirdNET alignment), **fusion** (multi-camera / Frigate flags), **outcome** (species and confidence stored on the clip). API: `GET /api/ui/videos/{video_id}/fusion-trace` — **contributor or admin session only** (not anonymous viewers).
+
+**Inference backend & detector weight contract (CV/ML):** `processor.inference_backend` is `torch` (default) or `openvino` for the binary detector via Ultralytics OpenVINO export ([#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)). `BIRDLENSE_INFERENCE_BACKEND` overrides YAML. For `openvino`, set `processor.models.binary_openvino` to the export directory or `.xml`, or set `BIRDLENSE_BINARY_OPENVINO_PATH` (absolute or relative to the processor package root). Classifier weights stay PyTorch `.pt`. `processor.detector_weight_contract` is `off` \| `warn` \| `enforce` and validates loaded detector `model.names` against `processor.detector_scope` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)). Phase overview: [CV_ML_ROADMAP_PHASES.md](./CV_ML_ROADMAP_PHASES.md).
 
 **EU model:** `best.pt` from [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (default `processor.models.classifier`). US: `best_US.pt`. Training: [TRAINING](./TRAINING.md).
 

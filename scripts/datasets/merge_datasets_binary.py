@@ -12,7 +12,7 @@ Inputs expected:
     - coco_birds_yolo/ (from download_coco_birds.py)
 
 Output:
-    - birds_binary_yolo/ (merged dataset with single 'bird' class)
+    - binary/birds/ (merged dataset with single 'bird' class)
 """
 
 import os
@@ -25,7 +25,7 @@ NABIRDS_DIR = './nabirds_yolo_cleaned'
 COCO_BIRDS_DIR = './coco_birds_yolo'
 
 # Output directory
-OUTPUT_DIR = './birds_binary_yolo'
+OUTPUT_DIR = './binary/birds'
 
 # Single class ID for all birds
 BIRD_CLASS_ID = 0

@@ -198,6 +198,8 @@ class FrameProcessor:
                 frame_time,
                 res.crop,
                 res.blur_variance,
+                classifier_entropy=getattr(res, "classifier_entropy", None),
+                classifier_top1_top2_margin=getattr(res, "classifier_top1_top2_margin", None),
             )
 
         self.logger.debug(f"Detection Time: {(time.time() - st) * 1000:.0f} msec | Valid: {len(results)}")
@@ -215,6 +217,9 @@ class FrameProcessor:
         frame_time,
         crop=None,
         blur_variance=None,
+        *,
+        classifier_entropy=None,
+        classifier_top1_top2_margin=None,
     ):
         if track_id not in self.tracks:
             self.tracks[track_id] = {
@@ -235,15 +240,18 @@ class FrameProcessor:
         )
         if class_name is not None and classifier_confidence is not None:
             combined_conf = float(detector_confidence or 0.0) * float(classifier_confidence or 0.0)
-            self.tracks[track_id]["classifier_events"].append(
-                {
-                    "species_name": class_name,
-                    "confidence": float(classifier_confidence or 0.0),
-                    "detector_confidence": float(detector_confidence or 0.0),
-                    "combined_confidence": combined_conf,
-                    "t": frame_time,
-                }
-            )
+            ev = {
+                "species_name": class_name,
+                "confidence": float(classifier_confidence or 0.0),
+                "detector_confidence": float(detector_confidence or 0.0),
+                "combined_confidence": combined_conf,
+                "t": frame_time,
+            }
+            if classifier_entropy is not None:
+                ev["entropy"] = float(classifier_entropy)
+            if classifier_top1_top2_margin is not None:
+                ev["top1_top2_margin"] = float(classifier_top1_top2_margin)
+            self.tracks[track_id]["classifier_events"].append(ev)
         self.tracks[track_id]["end_time"] = frame_time
 
         self.tracks[track_id]["frames"].append({"t": frame_time, "bbox": [round(float(b), 4) for b in bbox]})

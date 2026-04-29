@@ -75,7 +75,14 @@
 | TRAINING | ✅ | ✅ |
 | ML_QUALITY_LOOP | — | ✅ (только RU) |
 | CV_ML_PREP | ✅ | ✅ |
+| CV_ML_ROADMAP_PHASES | ✅ | ✅ |
+| ML_OPERATOR_HANDOFF | ✅ | ✅ |
+| ML_DETECTOR_COLAB | ✅ | ✅ |
 | DATASETS | ✅ | ✅ |
+| CV_ML_DECODE | ✅ | ✅ |
+| ACTIVE_LEARNING | ✅ | ✅ |
+| REID_ROADMAP | ✅ | ✅ |
+| FEDERATED_LEARNING | ✅ | ✅ |
 | ROADMAP (в т.ч. Issues / доска) | ✅ | ✅ |
 | VERSIONING | ✅ | ✅ |
 | VERIFICATION (журнал проверок релиза) | ✅ | ✅ |

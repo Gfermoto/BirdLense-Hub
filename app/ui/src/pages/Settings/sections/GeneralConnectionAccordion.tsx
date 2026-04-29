@@ -322,6 +322,36 @@ export function GeneralConnectionAccordion({ form }: Props) {
                   )}
                 </form.Field>
               </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="video.capture_backend">
+                  {(field) => (
+                    <FormControl fullWidth>
+                      <InputLabel id="settings-capture-backend-label">
+                        {t('settings.captureBackendLabel')}
+                      </InputLabel>
+                      <Select
+                        labelId="settings-capture-backend-label"
+                        value={(field.state.value ?? 'auto').toLowerCase()}
+                        label={t('settings.captureBackendLabel')}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                      >
+                        <MenuItem value="auto">
+                          {t('settings.captureBackendAuto')}
+                        </MenuItem>
+                        <MenuItem value="opencv">
+                          {t('settings.captureBackendOpenCv')}
+                        </MenuItem>
+                        <MenuItem value="ffmpeg_vaapi">
+                          {t('settings.captureBackendFfmpegVaapi')}
+                        </MenuItem>
+                      </Select>
+                      <FormHelperText>
+                        {t('settings.captureBackendHint')}
+                      </FormHelperText>
+                    </FormControl>
+                  )}
+                </form.Field>
+              </Grid>
               <Grid size={{ xs: 12 }}>
                 <form.Field name="video.cameras">
                   {(field) => (

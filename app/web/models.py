@@ -36,6 +36,10 @@ class VideoSpecies(db.Model):
     track_id: Mapped[int] = mapped_column(Integer, nullable=True)  # ByteTrack ID for stable identification
     # JSON: [{t: 0.1, bbox: [x1,y1,x2,y2]}, ...] for track visualization
     frames: Mapped[str] = mapped_column(String, nullable=True)
+    classifier_entropy: Mapped[float | None] = mapped_column(Float, nullable=True)
+    classifier_top1_top2_margin: Mapped[float | None] = mapped_column(Float, nullable=True)
+    classifier_needs_review: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
+    review_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # True if user corrected species — track regen must not overwrite
     manually_corrected: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
     video: Mapped["Video"] = relationship(back_populates="video_species")

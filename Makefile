@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -88,6 +88,54 @@ audit-cards:
 # Валидация rollout-кандидата весов перед загрузкой в Hub/UI.
 # Пример:
 #   make validate-weights DATASET_INFO=app/data/dataset/exports/latest/dataset_info.json
+# Epic #367 Phase 1 — YOLO detection Bird/Rodent/Background (see scripts/datasets/README.md).
+# Requires binary/birds, binary/rodent, binary/background under scripts/datasets/.
+dataset-merge-three-class:
+	@cd scripts/datasets && python3 merge_datasets_three_class.py \
+	  --birds-dir binary/birds \
+	  --rodent-dir binary/rodent \
+	  --background-dir binary/background \
+	  --output-dir binary/merged
+
+# Скачать стартовые подмножества COCO + Open Images в три каталога (нужен pip install fiftyone).
+# Переопределение лимитов: make bootstrap-detector-data ARGS='--birds-train 50 --birds-val 20'
+bootstrap-detector-data:
+	@cd scripts/datasets && python3 bootstrap_detector_yolo.py $(ARGS)
+
+# Validate YOLO labels before Colab training. Example:
+# LABELS_DIR=scripts/datasets/binary/merged/labels/train CLASS_COUNT=3 make dataset-validate-yolo-labels
+dataset-validate-yolo-labels:
+	@test -n "$${LABELS_DIR:-}" || (echo "Set LABELS_DIR=path/to/labels" >&2; exit 1)
+	@python3 scripts/datasets/validate_yolo_labels.py "$${LABELS_DIR}" --class-count "$${CLASS_COUNT:-3}"
+
+# Экспорт decision_trace JSON → JSONL манифеста AL (см. scripts/active_learning/README.md). Пример: INPUT=trace.json make active-learning-trace-to-pool
+active-learning-trace-to-pool:
+	@test -n "$${INPUT:-}" || (echo "Set INPUT=path/to/decision_trace.json" >&2; exit 1)
+	@python3 scripts/active_learning/decision_trace_to_pool_manifest.py "$${INPUT}"
+
+# SQLite activity_log decision_trace → active-learning JSONL.
+# Example: DB=app/data/db/birdlense.db OUT=pool.jsonl make active-learning-pool-from-sqlite
+active-learning-pool-from-sqlite:
+	@test -n "$${DB:-}" || (echo "Set DB=path/to/birdlense.db" >&2; exit 1)
+	@test -n "$${OUT:-}" || (echo "Set OUT=pool.jsonl" >&2; exit 1)
+	@python3 scripts/active_learning/export_pool_from_sqlite.py --db "$${DB}" --output "$${OUT}" $${ARGS:-}
+
+# Import DINO JSONL embeddings into local SQLite sidecar table reid_embedding.
+reid-import-embeddings:
+	@test -n "$${DB:-}" || (echo "Set DB=path/to/birdlense.db" >&2; exit 1)
+	@test -n "$${JSONL:-}" || (echo "Set JSONL=embeddings.jsonl" >&2; exit 1)
+	@python3 scripts/reid/import_embeddings_sqlite.py --db "$${DB}" --jsonl "$${JSONL}" $$(test -n "$${MANIFEST:-}" && printf -- '--manifest "%s" ' "$${MANIFEST}") $${ARGS:-}
+
+# VA-API /dev/dri preflight (#373). Example: make ml-check-decode
+ml-check-decode:
+	@python3 scripts/check_video_decode_environment.py
+
+# Export decision_trace rows from SQLite (#369 tooling). Set OUT=dir and DB=path/to/birdlense.db
+ml-export-decision-traces:
+	@test -n "$${OUT:-}" || (echo "Set OUT=output/dir and DB=app/data/db/birdlense.db (or your path)" >&2; exit 1)
+	@test -n "$${DB:-}" || (echo "Set DB=path/to/birdlense.db" >&2; exit 1)
+	@python3 scripts/export_decision_traces_sqlite.py --db "$${DB}" --out-dir "$${OUT}"
+
 validate-weights:
 	@python3 scripts/validate-processor-weights.py \
 		--binary "$${BINARY:-app/processor/models/detection/weights/best.pt}" \

@@ -651,6 +651,59 @@ class TestReviewQueueBulkDelete:
         assert row["review_reason"] == "generic_bird"
         assert row["review_source"] == "unknowns"
 
+    def test_unknowns_include_classifier_uncertainty_review(self, app, client):
+        from app_config.app_config import app_config
+        from models import Species, Video, VideoSpecies, db
+
+        old_admin = app_config.get("general.settings_password")
+        old_contrib = app_config.get("general.contributor_password")
+        with app.app_context():
+            app_config.set("general.settings_password", "")
+            app_config.set("general.contributor_password", "")
+            try:
+                species = Species(name="Review Queue Robin")
+                db.session.add(species)
+                db.session.flush()
+                video = Video(
+                    processor_version="test",
+                    start_time=datetime(2026, 3, 24, 12, 0, 0),
+                    end_time=datetime(2026, 3, 24, 12, 0, 30),
+                    video_path="data/recordings/2026/03/24/120000/video.mp4",
+                )
+                db.session.add(video)
+                db.session.flush()
+                db.session.add(
+                    VideoSpecies(
+                        video_id=video.id,
+                        species_id=species.id,
+                        start_time=0.0,
+                        end_time=2.0,
+                        confidence=0.95,
+                        source="video",
+                        detection_provider="yolo",
+                        classifier_entropy=1.2,
+                        classifier_top1_top2_margin=0.04,
+                        classifier_needs_review=True,
+                        review_reason="classifier_uncertainty",
+                    ),
+                )
+                db.session.commit()
+            finally:
+                app_config.set("general.settings_password", old_admin or "")
+                app_config.set("general.contributor_password", old_contrib or "")
+
+        response = client.get(
+            "/api/ui/unknowns",
+            query_string={"date": "2026-03-24", "time_of_day": "all", "limit": 10},
+        )
+        assert response.status_code == 200
+        assert response.json
+        row = response.json[0]
+        assert row["review_reason"] == "classifier_uncertainty"
+        assert row["classifier_needs_review"] is True
+        assert row["classifier_entropy"] == 1.2
+        assert row["classifier_top1_top2_margin"] == 0.04
+
     def test_review_queue_bulk_delete_preview_and_apply(self, app, client, tmp_path, monkeypatch):
         from app_config.app_config import app_config
         import util as util_mod

@@ -20,6 +20,18 @@ app.log
 .DS_Store
 /datasets
 scripts/datasets/.cache/
+# Локальная выгрузка YOLO для трёхклассового детектора (bootstrap_detector_yolo.py)
+scripts/datasets/binary/birds/
+scripts/datasets/binary/rodent/
+scripts/datasets/binary/background/
+scripts/datasets/binary/merged/
+# старые пути (миграция с прежней схемы)
+scripts/datasets/birds_binary_yolo/
+scripts/datasets/rodent_yolo/
+scripts/datasets/background_yolo/
+scripts/datasets/birds_rodent_background_yolo/
+scripts/datasets/coco_birds_yolo/
+scripts/datasets/.venv-detector/
 .venv-datasets/
 app/.venv/
 app/.ruff_cache/

@@ -6,8 +6,15 @@ import os
 
 from app_config.app_config import app_config
 
+from inference.binary_paths import (
+    openvino_bundle_fingerprint,
+    resolve_binary_detector_weight_path,
+)
+from inference.selector import resolve_inference_backend
+
 from services.artifact_paths_service import (
     config_fingerprint,
+    repo_root_path,
     resolve_artifact_path,
     sha256_file,
 )
@@ -25,6 +32,8 @@ def current_model_lineage_snapshot() -> dict:
             "min_confidence_to_store": app_config.get("detection.min_confidence_to_store"),
         },
         "processor": {
+            "inference_backend": app_config.get("processor.inference_backend"),
+            "models_binary_openvino": app_config.get("processor.models.binary_openvino"),
             "min_confidence_to_process": app_config.get("processor.min_confidence_to_process"),
             "min_confidence_to_notify": app_config.get("processor.min_confidence_to_notify"),
             "min_track_duration": app_config.get("processor.min_track_duration"),
@@ -38,14 +47,18 @@ def current_model_lineage_snapshot() -> dict:
             "enabled_region": app_config.get("ebird.region_code"),
         },
     }
-    # Пути как у процессора / processor_provenance: processor.models.binary|classifier.
-    # Старые ключи processor.*_model_path оставлены как fallback для старых user_config.
-    binary_rel = (
-        app_config.get("processor.models.binary")
-        or app_config.get("processor.detector_model_path")
-        or app_config.get("detection.detector_model_path")
-        or "models/detection/weights/best.pt"
-    )
+    processor_root = os.path.join(repo_root_path(), "app", "processor")
+    backend = resolve_inference_backend(app_config)
+    if backend == "openvino":
+        det_path, _ = resolve_binary_detector_weight_path(app_config, processor_root)
+    else:
+        binary_rel = (
+            app_config.get("processor.models.binary")
+            or app_config.get("processor.detector_model_path")
+            or app_config.get("detection.detector_model_path")
+            or "models/detection/weights/best.pt"
+        )
+        det_path = resolve_artifact_path(binary_rel)
     classifier_rel = (
         app_config.get("processor.models.classifier")
         or app_config.get("processor.classifier_model_path")
@@ -53,7 +66,7 @@ def current_model_lineage_snapshot() -> dict:
         or "models/classification/weights/best.pt"
     )
     artifacts = {
-        "detector": resolve_artifact_path(binary_rel),
+        "detector": det_path,
         "classifier": resolve_artifact_path(classifier_rel),
         "fusion": resolve_artifact_path(app_config.get("detection.fusion_model_path")),
         "allowlist": resolve_artifact_path(
@@ -62,10 +75,16 @@ def current_model_lineage_snapshot() -> dict:
     }
     resolved = {}
     for name, path in artifacts.items():
+        digest = None
+        if name == "detector" and backend == "openvino":
+            digest = openvino_bundle_fingerprint(path)
+        else:
+            digest = sha256_file(path)
         resolved[name] = {
             "configured_path": path,
             "exists": bool(path and os.path.exists(path)),
-            "sha256": sha256_file(path),
+            "sha256": digest,
+            **({"detector_backend": backend} if name == "detector" else {}),
         }
     return {
         "config_fingerprint": config_fingerprint(relevant_config),

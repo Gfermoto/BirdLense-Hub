@@ -131,6 +131,50 @@ def test_fusion_trace_matches_by_video_id(app, client):
     assert "outcome" in stages
 
 
+def test_fusion_trace_classifier_uncertainty_in_classifier_steps(app, client):
+    """Entropy / margin / needs_review в шагах fusion-trace (#370)."""
+    from models import ActivityLog, Video, db
+
+    with app.app_context():
+        v = Video(
+            processor_version="t",
+            start_time=datetime(2026, 4, 10, 12, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 4, 10, 12, 1, 0, tzinfo=timezone.utc),
+            video_path="data/recordings/fusion-trace/unc.mp4",
+        )
+        db.session.add(v)
+        db.session.flush()
+        vid = v.id
+        payload = {
+            "video_id": vid,
+            "persisted_tracks": [
+                {
+                    "track_id": 9,
+                    "species_name": "Robin",
+                    "accepted": True,
+                    "classifier_entropy": 1.25,
+                    "classifier_top1_top2_margin": 0.08,
+                    "classifier_needs_review": True,
+                }
+            ],
+            "rejected_tracks": [],
+        }
+        db.session.add(ActivityLog(type="decision_trace", data=json.dumps(payload)))
+        db.session.commit()
+
+    r = client.get(f"/api/ui/videos/{vid}/fusion-trace")
+    assert r.status_code == 200
+    body = r.get_json()
+    tracks = body.get("tracks") or []
+    assert len(tracks) == 1
+    clf_stage = next((s for s in tracks[0]["steps"] if s.get("stage") == "classifier"), None)
+    assert clf_stage
+    fields = {ln["field"]: ln["value"] for ln in clf_stage.get("lines", [])}
+    assert fields.get("classifier_entropy") == "1.25"
+    assert fields.get("classifier_top1_top2_margin") == "0.08"
+    assert fields.get("classifier_needs_review") == "True"
+
+
 def test_fusion_trace_path_fallback_without_video_id_in_payload(app, client):
     from models import ActivityLog, Video, db
 

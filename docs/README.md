@@ -81,8 +81,16 @@ Pick what matches you — you can read the rest as reference.
 |-------|---------|---------|
 | Model training (EU/US) | [TRAINING](./TRAINING.md) | [RU](./TRAINING.ru.md) |
 | ML quality loop (operators) | — | [RU only](./ML_QUALITY_LOOP.ru.md) |
+| CV / ML roadmap epic (GitHub) | [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) | [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) |
 | CV / ML prep contract | [CV_ML_PREP](./CV_ML_PREP.md) | [RU](./CV_ML_PREP.ru.md) |
+| CV / ML roadmap phases | [CV_ML_ROADMAP_PHASES](./CV_ML_ROADMAP_PHASES.md) | [RU](./CV_ML_ROADMAP_PHASES.ru.md) |
+| ML handoff (repo vs your training) | [ML_OPERATOR_HANDOFF](./ML_OPERATOR_HANDOFF.md) | [RU](./ML_OPERATOR_HANDOFF.ru.md) |
 | Datasets & scripts | [DATASETS](./DATASETS.md) | [RU](./DATASETS.ru.md) |
+| Detector training (Colab) | [ML_DETECTOR_COLAB](./ML_DETECTOR_COLAB.md) | [RU](./ML_DETECTOR_COLAB.ru.md) |
+| Video decode baseline (#373) | [CV_ML_DECODE](./CV_ML_DECODE.md) | [RU](./CV_ML_DECODE.ru.md) |
+| Active learning (#369) | [ACTIVE_LEARNING](./ACTIVE_LEARNING.md) | [RU](./ACTIVE_LEARNING.ru.md) |
+| Re-ID roadmap (#374) | [REID](./REID_ROADMAP.md) | [RU](./REID_ROADMAP.ru.md) |
+| Federated learning (#375) | [FEDERATED_LEARNING](./FEDERATED_LEARNING.md) | [RU](./FEDERATED_LEARNING.ru.md) |
 | Versioning & releases | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
 | Direction / backlog | [ROADMAP](./ROADMAP.md) | [RU](./ROADMAP.ru.md) |
 

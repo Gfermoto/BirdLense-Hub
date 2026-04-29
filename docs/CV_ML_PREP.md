@@ -4,12 +4,14 @@
 
 This page freezes the prep contract for
 [issue #377](https://github.com/Gfermoto/BirdLense-Hub/issues/377) before
-starting the larger CV / ML roadmap epic.
+starting the larger CV / ML roadmap epic ([#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367)).
 
 The scope is intentionally narrow: document the detector/classifier boundary,
 future inference backend boundary, training-data reproducibility rules, and the
 process for unblocking the epic. It does not implement OpenVINO/ONNX Runtime,
 new training jobs, or a processor refactor.
+
+**Execution order** for implementation after prep: [CV_ML_ROADMAP_PHASES.md](CV_ML_ROADMAP_PHASES.md).
 
 ---
 
@@ -102,10 +104,11 @@ Draft config names reserved for the epic:
 
 | Key / env overlay | Purpose | Initial value |
 |-------------------|---------|---------------|
-| `processor.inference_backend` / `BIRDLENSE_INFERENCE_BACKEND` | backend selector | `ultralytics_torch` |
+| `processor.inference_backend` / `BIRDLENSE_INFERENCE_BACKEND` | backend selector | `torch` (also `openvino` for binary IR) |
 | `processor.inference_device` / `BIRDLENSE_INFERENCE_DEVICE` | device hint (`cpu`, `cuda`, `auto`, `openvino:CPU`) | `auto` |
 | `processor.inference_precision` / `BIRDLENSE_INFERENCE_PRECISION` | precision hint (`fp32`, `fp16`, `int8`, `auto`) | `auto` |
-| `processor.models.binary` | current detector path; stays authoritative for Torch `.pt` | existing path |
+| `processor.models.binary` | Torch `.pt` binary detector path | existing path |
+| `processor.models.binary_openvino` | OpenVINO export dir or `.xml` when backend is `openvino` | empty until configured |
 | `processor.models.classifier` | current classifier path; stays authoritative for Torch `.pt` | existing path |
 
 Do not rename the existing `processor.models.binary` and

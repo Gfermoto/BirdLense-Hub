@@ -2,6 +2,16 @@
 
 Краткий журнал автоматических проверок перед возвратом к roadmap. Полный цикл — см. [CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md), [TESTING.ru.md](./TESTING.ru.md).
 
+## 2026-04-28 — синхронизация документации (roadmap, security, индекс CV/ML)
+
+| Проверка | Результат |
+|----------|-----------|
+| `python3 scripts/check-docs-version.py` | OK (`VERSION` ↔ `mkdocs.yml`, `app/ui/package.json`, `app/web/openapi.yaml`) |
+| `python3 scripts/check_site_map_meta_paths.py` | OK |
+| `mkdocs build --strict` | OK |
+
+**Что обновлено в репозитории:** ROADMAP EN/RU — метки backlog на апрель 2026, примечание про UI **v0.3.7+**, формулировка outcome реестра; SECURITY EN/RU — дата обновления / baseline gitleaks на апрель 2026; docs README EN/RU — строка с эпиком [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367); [CV_ML_PREP.ru.md](./CV_ML_PREP.ru.md) — связка prep с эпиком **#367**; [HUB_EPICS_TRACKER.ru.md](./HUB_EPICS_TRACKER.ru.md) — отдельная секция CV/ML.
+
 ## Offline-оценка fusion-калибровки
 
 1. Выгрузить decision traces процессора в CSV:

@@ -16,3 +16,15 @@ This repo’s docs and CI implement the **BirdLense Hub** product-integrity plan
 | Meta (board / ordering) | [#332](https://github.com/Gfermoto/BirdLense-Hub/issues/332) |
 
 Project board (when GitHub UI cooperates): [Roadmap project](https://github.com/users/Gfermoto/projects/2).
+
+---
+
+## CV / ML roadmap (parallel epic)
+
+Tracked separately from the integrity rows above:
+
+| Epic | Issue |
+|------|--------|
+| CV / ML roadmap (detector, classifier, inference, benchmarks) | [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) |
+
+Prep contract and unblock flow: [CV_ML_PREP.md](./CV_ML_PREP.md) · [issue #377](https://github.com/Gfermoto/BirdLense-Hub/issues/377) (closed).

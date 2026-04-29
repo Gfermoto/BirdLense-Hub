@@ -148,6 +148,19 @@ export function EBirdSection({ form }: Props) {
                 </Box>
               </Grid>
               <Grid size={{ xs: 12 }}>
+                <form.Field name="ebird.protocol">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      value={field.state.value ?? 'https'}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      label={t('settings.ebirdProtocol')}
+                      helperText={t('settings.ebirdProtocolHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
                 <form.Field name="ebird.location_name">
                   {(field) => (
                     <TextField
