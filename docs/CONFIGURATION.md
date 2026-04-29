@@ -167,11 +167,9 @@ The System page also lists these endpoints under **Notification observability** 
 | `regional_species` | Optional classifier narrowing list (empty = classifier can use all classes). |
 | `detector_scope` | First-stage detector targets. Default: `["Bird", "Rodent"]`. EU classifier non-bird class **Rodent** is the catalog name; raw detector weights may still label that head “Squirrel”, which the hub maps to **Rodent**. Background / hard-negative detector classes must stay outside this scope; see [CV / ML prep contract](./CV_ML_PREP.md). |
 | `classifier_fallback_bird` | Keep the generic detector label when the detector confirmed a target but the classifier stayed below threshold. Frigate may still promote that fallback label later if it has a matching species/sub-label. |
-| `single_stage_coco_animals_only_auto` | Deprecated compatibility key. Production runtime uses only `two_stage`. |
 | `included_bird_families` | Bird family filter list (e.g. Perching Birds); not related to Rodent |
 | `save_images` | Save detection frames |
 | `detection_strategy` | Production runtime uses `two_stage` only. Other values (including old `single_stage`) are ignored with a warning; remove them from `user_config.yaml` before CV / ML rollout work. |
-| `models.single_stage` | Deprecated compatibility path; not used by the production runtime. Do not tune it for new CV / ML work; use `scripts/fetch-processor-weights.sh --legacy-single-stage` only for the compatibility `app/yolo11n.pt` asset. |
 | `models.binary` | Binary detector path (`.pt`) |
 | `models.classifier` | Classifier path (`.pt`) |
 | *(custom weights)* | **System → Processor weights** ([#276](https://github.com/Gfermoto/BirdLense-Hub/issues/276)): upload writes `binary.pt` / `classifier.pt` / `class_names.txt` under **`DATA_DIR/custom_weights/`** and sets **absolute** paths in `user_config` (relative paths here resolve from `app/processor`, not from `DATA_DIR`). After upload/reset the hub sets the processor restart flag. |

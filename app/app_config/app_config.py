@@ -347,19 +347,14 @@ class AppConfig:
 
     @staticmethod
     def _cleanup_legacy_processor_keys(config):
-        """Удаляет устаревшие ключи процессора (single_stage), если они остались в user_config."""
+        """Нормализует устаревшие processor-ключи в merged config."""
         if not isinstance(config, dict):
             return
         processor = config.get('processor')
         if not isinstance(processor, dict):
             return
-        # Удаляем legacy-ключи, которые больше не должны редактироваться в UI
-        processor.pop('single_stage_coco_animals_only_auto', None)
-        models = processor.get('models')
-        if isinstance(models, dict):
-            models.pop('single_stage', None)
-        # Убедимся, что detection_strategy по умолчанию two_stage
-        if processor.get('detection_strategy') not in ('two_stage', 'single_stage'):
+        # Runtime поддерживает только two_stage.
+        if processor.get('detection_strategy') != 'two_stage':
             processor['detection_strategy'] = 'two_stage'
         # Канон Rodent: явный min_confidence_binary_squirrel в merge (обычно из user YAML) перекрывает rodent
         sq_thr = processor.get('min_confidence_binary_squirrel')

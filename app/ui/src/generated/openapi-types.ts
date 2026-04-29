@@ -8294,7 +8294,6 @@ export interface components {
                     [key: string]: unknown;
                 };
                 save_images?: boolean;
-                single_stage_coco_animals_only_auto?: boolean;
                 birdnet_mqtt_prior_window_hours?: number;
                 birdnet_mqtt_bias_window_seconds?: number;
                 birdnet_mqtt_prior_ttl_hours?: number;

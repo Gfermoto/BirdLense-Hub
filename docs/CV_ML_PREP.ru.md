@@ -154,8 +154,9 @@ Production runtime поддерживает только `two_stage`. Если �
 
 1. Удалить `processor.detection_strategy: single_stage` из локального
    `user_config.yaml`.
-2. Не тюнить `processor.models.single_stage`; это compatibility artifact, не
-   production runtime input.
+2. Тюнить только production-пути/пороги детектора и классификатора
+   (`processor.models.binary`, `processor.models.classifier`,
+   `min_confidence_binary`, `min_confidence_to_process`).
 3. Держать `processor.detector_scope` явным при тестировании новых весов
    детектора, чтобы rollout notes могли воспроизвести точный scope первого
    этапа.

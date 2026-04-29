@@ -70,7 +70,7 @@ Status/assignee/checklist sync: `bash scripts/github-project-sync.sh --assign Gf
 
 **Goal:** run a consilium (product/operator, ML, platform) and record a decision on reducing **false positives** and **non-living object** detections in production. By default this runs **after** the current development wave is closed and basic manual acceptance; see [§ Finish work, then operator testing](#completion-then-operator-testing).
 
-**Context:** with `detection_strategy: two_stage` and values in `user_config.yaml`, behavior **does not** match **single_stage** + typical COCO, where the default **animals-only** auto-filter applies (`processor.single_stage_coco_animals_only_auto` — excludes person and inanimate COCO classes). Deploying code does not overwrite `user_config.yaml`.
+**Context:** with `detection_strategy: two_stage` and values in `user_config.yaml`, behavior **does not** match **single_stage** + typical COCO defaults (animals-only vs full COCO classes). Deploying code does not overwrite `user_config.yaml`.
 
 **Options to compare (combinations allowed):**
 
@@ -84,7 +84,7 @@ See [CONFIGURATION.md](./CONFIGURATION.md) (processor, motion). Non-bird classes
 
 | Step | Action |
 |------|--------|
-| 1 | Capture the live hub **`processor`** snippet from `user_config.yaml`: `detection_strategy`, `models.binary` / `models.classifier` / `models.single_stage`, `min_confidence_binary`, `min_confidence_to_process`, `single_stage_coco_animals_only_auto`. |
+| 1 | Capture the live hub **`processor`** snippet from `user_config.yaml`: `detection_strategy`, `models.binary` / `models.classifier`, `min_confidence_binary`, `min_confidence_to_process`, `detector_scope`. |
 | 2 | Note **symptoms**: what triggers false positives / non-animal detections (scene, time of day, weather when possible). |
 | 3 | At the consilium, pick an approach (two_stage + thresholds/model **or** single_stage + COCO/custom **or** Frigate hybrid, etc.) and **write the decision** into Issue(s) (one epic or children). |
 | 4 | After the decision: update **this ROADMAP** (row 17 — outcome or link to closed issue), **CONFIGURATION** / examples if keys change; on the server **edit `user_config.yaml` manually** if needed (**deploy does not overwrite it**). |

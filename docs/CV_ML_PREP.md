@@ -154,8 +154,9 @@ Recommended cleanup before starting the epic:
 
 1. Remove `processor.detection_strategy: single_stage` from local
    `user_config.yaml`.
-2. Do not tune `processor.models.single_stage`; it is a compatibility artifact,
-   not a production runtime input.
+2. Tune only production detector/classifier paths and thresholds
+   (`processor.models.binary`, `processor.models.classifier`,
+   `min_confidence_binary`, `min_confidence_to_process`).
 3. Keep `processor.detector_scope` explicit when testing new detector weights so
    rollout notes can reproduce the exact first-stage scope.
 

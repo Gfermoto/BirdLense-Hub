@@ -66,16 +66,51 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Superseded by triggers.scales.motion_trigger_debounce_seconds with fallback in trigger_config.",
         "next_step": "YAML-only once old configs are rare.",
     },
+    "motion.source": {
+        "category": "legacy",
+        "reason": "Legacy mirror of grouped triggers.* selectors; modern UI edits triggers.* fields directly.",
+        "next_step": "Keep YAML-only until old motion.* configs are phased out.",
+    },
+    "motion.check_every_n_frames": {
+        "category": "legacy",
+        "reason": "Legacy mirror of triggers.opencv.check_every_n_frames.",
+        "next_step": "Keep YAML-only until old motion.* configs are phased out.",
+    },
+    "motion.opencv_diff_threshold": {
+        "category": "legacy",
+        "reason": "Legacy mirror of triggers.opencv.diff_threshold.",
+        "next_step": "Keep YAML-only until old motion.* configs are phased out.",
+    },
+    "motion.opencv_min_contour_area": {
+        "category": "legacy",
+        "reason": "Legacy mirror of triggers.opencv.min_contour_area.",
+        "next_step": "Keep YAML-only until old motion.* configs are phased out.",
+    },
+    "motion.frigate_min_trigger_score": {
+        "category": "legacy",
+        "reason": "Legacy Frigate motion key retained for backward compatibility.",
+        "next_step": "Keep YAML-only until old motion.* configs are phased out.",
+    },
+    "motion.mqtt_topic": {
+        "category": "legacy",
+        "reason": "Legacy mirror of triggers.motion_sensor.mqtt_topic.",
+        "next_step": "Keep YAML-only until old motion.* configs are phased out.",
+    },
+    "motion.esphome_url": {
+        "category": "legacy",
+        "reason": "Legacy mirror of triggers.motion_sensor.esphome_url.",
+        "next_step": "Keep YAML-only until old motion.* configs are phased out.",
+    },
+    "motion.esphome_sensor_id": {
+        "category": "legacy",
+        "reason": "Legacy mirror of triggers.motion_sensor.esphome_sensor_id.",
+        "next_step": "Keep YAML-only until old motion.* configs are phased out.",
+    },
     # Processor internals.
     "processor.detection_strategy": {
         "category": "advanced",
         "reason": "Deployment-level model strategy; unsafe for casual UI edits.",
         "next_step": "Expose behind Advanced/Expert mode after UX spec.",
-    },
-    "processor.models.single_stage": {
-        "category": "ops-only",
-        "reason": "Model path is environment/deployment-specific.",
-        "next_step": "Keep config-level; expose only if model manager is introduced.",
     },
     "processor.models.binary": {
         "category": "ops-only",
@@ -171,11 +206,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "advanced",
         "reason": "Track regeneration parallelism when mixing auto and manual scope; heavy ops.",
         "next_step": "Expose under System/track regen advanced if users need it without YAML.",
-    },
-    "processor.single_stage_coco_animals_only_auto": {
-        "category": "advanced",
-        "reason": "COCO 80-class detect filter; deployment tuning.",
-        "next_step": "Document in Settings advanced if single_stage becomes common in UI.",
     },
     # Merge internals (partially in UI: see Processor → Frigate fusion).
     "detection.source_priority": {

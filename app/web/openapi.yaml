@@ -5065,8 +5065,6 @@ components:
               additionalProperties: true
             save_images:
               type: boolean
-            single_stage_coco_animals_only_auto:
-              type: boolean
             birdnet_mqtt_prior_window_hours:
               type: number
             birdnet_mqtt_bias_window_seconds:
