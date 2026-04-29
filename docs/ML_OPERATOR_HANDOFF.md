@@ -37,6 +37,8 @@ Nothing here replaces **your** labeled images, GPU time, or rollout decisions.
 Detector training artifacts for this flow are published as zips at
 [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)
 (`merged_balanced` for Stage A, `merged` full for Stage B fine-tune).
+Published detector weights package (YOLO + OpenVINO):
+[weights-20260429T125011Z-3-001.zip](https://huggingface.co/gfermoto/BirdLense_Detector/blob/main/weights-20260429T125011Z-3-001.zip).
 
 ---
 

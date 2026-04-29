@@ -36,6 +36,8 @@
 Артефакты для этого пути обучения опубликованы на Hugging Face:
 [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)
 (`merged_balanced` для Stage A, `merged` full для Stage B fine-tune).
+Пакет весов детектора (YOLO + OpenVINO):
+[weights-20260429T125011Z-3-001.zip](https://huggingface.co/gfermoto/BirdLense_Detector/blob/main/weights-20260429T125011Z-3-001.zip).
 
 ---
 

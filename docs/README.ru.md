@@ -85,6 +85,7 @@
 | ML: репозиторий и ваши шаги | [ML_OPERATOR_HANDOFF](./ML_OPERATOR_HANDOFF.md) | [RU](./ML_OPERATOR_HANDOFF.ru.md) |
 | Датасеты и скрипты | [DATASETS](./DATASETS.md) | [RU](./DATASETS.ru.md) |
 | Датасет детектора (HF, ZIP) | [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) | [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) |
+| Веса детектора (HF, YOLO + OpenVINO) | [weights-20260429T125011Z-3-001.zip](https://huggingface.co/gfermoto/BirdLense_Detector/blob/main/weights-20260429T125011Z-3-001.zip) | [weights-20260429T125011Z-3-001.zip](https://huggingface.co/gfermoto/BirdLense_Detector/blob/main/weights-20260429T125011Z-3-001.zip) |
 | Детектор в Colab | [ML_DETECTOR_COLAB](./ML_DETECTOR_COLAB.md) | [RU](./ML_DETECTOR_COLAB.ru.md) |
 | Декод видео (#373) | [CV_ML_DECODE](./CV_ML_DECODE.md) | [RU](./CV_ML_DECODE.ru.md) |
 | Active learning (#369) | [ACTIVE_LEARNING](./ACTIVE_LEARNING.md) | [RU](./ACTIVE_LEARNING.ru.md) |
