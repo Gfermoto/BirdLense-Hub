@@ -178,8 +178,6 @@ processor:
   # Если классификатор ниже порога, но detector подтвердил target — сохранить generic detector label.
   # Bird fallback может быть затем promoted Frigate, если есть уверенный sub_label/label в окне ролика.
   classifier_fallback_bird: true
-  # Устарело: single_stage / NCNN не используются в runtime и track regen (оставлено для совместимости чтения конфига).
-  single_stage_coco_animals_only_auto: true
   included_bird_families:
     - "Perching Birds"
     - "Pigeons and Doves"
@@ -199,8 +197,6 @@ processor:
   # Контракт имён классов бинарного детектора при загрузке весов (#368): off | warn | enforce
   detector_weight_contract: warn
   models:
-    # Production: только binary + classifier (.pt). single_stage в коде не подключается.
-    single_stage: "yolo11n.pt"
     # Бинарный детектор: артефакты из форка (zip в дереве processor/models/detection).
     # Источник: https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor
     binary: "models/detection/weights/best.pt"

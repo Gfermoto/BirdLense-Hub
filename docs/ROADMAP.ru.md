@@ -74,7 +74,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 **Задача:** собрать консилиум (продукт/оператор, ML, платформа) и зафиксировать решение, как на проде снижать **ложные срабатывания** и детекции **неодушевлённых объектов**. По договорённости — **после** закрытия текущей волны разработки и ручной приёмки базового сценария; см. [§ «Завершение задач → тестирование оператором»](#completion-then-operator-testing).
 
-**Контекст:** при `detection_strategy: two_stage` и настройках в `user_config.yaml` поведение **не** совпадает с режимом **single_stage** + типичный COCO, где по умолчанию включён авто-фильтр **только животные** (`processor.single_stage_coco_animals_only_auto` — без person и без «вещей»). Деплой кода не подменяет `user_config.yaml`.
+**Контекст:** при `detection_strategy: two_stage` и настройках в `user_config.yaml` поведение **не** совпадает с режимом **single_stage** + типичный COCO по умолчанию (animals-only vs полный COCO набор классов). Деплой кода не подменяет `user_config.yaml`.
 
 **Варианты для сравнения (не исключая комбинации):**
 
@@ -88,7 +88,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 
 | Шаг | Что сделать |
 |-----|-------------|
-| 1 | Зафиксировать **как сейчас на хабе** фрагмент `processor` из `user_config.yaml`: `detection_strategy`, пути `models.binary` / `models.classifier` / `models.single_stage`, `min_confidence_binary`, `min_confidence_to_process`, `single_stage_coco_animals_only_auto`. |
+| 1 | Зафиксировать **как сейчас на хабе** фрагмент `processor` из `user_config.yaml`: `detection_strategy`, пути `models.binary` / `models.classifier`, `min_confidence_binary`, `min_confidence_to_process`, `detector_scope`. |
 | 2 | Кратко описать **симптомы**: что именно даёт ложные срабатывания / «не-животное» (кадр, время суток, погода — по возможности). |
 | 3 | На консилиуме выбрать ветку (two_stage + пороги/модель **или** single_stage + COCO/своя модель **или** гибрид с Frigate и т.д.) и **записать решение** в Issue (один эпик или несколько дочерних). |
 | 4 | После решения: обновить **этот ROADMAP** (строка 17 — итог или ссылка на закрытый issue), при смене ключей — **CONFIGURATION** / примеры; на сервере **вручную** поправить `user_config.yaml` при необходимости (**деплой его не перезаписывает**). |
