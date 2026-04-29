@@ -18,6 +18,9 @@ app/processor/data/
 app/data/processor.log*
 app.log
 .DS_Store
+# Windows NTFS ADS artifacts from downloaded/copied files
+**/*:Zone.Identifier
+**/*:Zone.Identifier.*
 /datasets
 scripts/datasets/.cache/
 # Локальная выгрузка YOLO для трёхклассового детектора (bootstrap_detector_yolo.py)

@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 _current_dir = os.path.dirname(os.path.abspath(__file__))
 _src_path = os.path.abspath(os.path.join(_current_dir, '../src'))
@@ -47,6 +48,45 @@ class TestBinaryPaths(unittest.TestCase):
             fp = openvino_bundle_fingerprint(d)
             self.assertIsNotNone(fp)
             self.assertEqual(len(fp), 64)
+
+    def test_auto_prefers_openvino_when_available(self):
+        from inference.binary_paths import resolve_binary_detector_weight_path
+
+        with tempfile.TemporaryDirectory() as d:
+            ov = os.path.join(d, "openvino")
+            os.makedirs(ov, exist_ok=True)
+            with open(os.path.join(ov, "best.xml"), "w", encoding="utf-8") as f:
+                f.write("<net />")
+            with patch("inference.selector.openvino_runtime_available", return_value=True):
+                path, backend = resolve_binary_detector_weight_path(
+                    {
+                        "processor.inference_backend": "auto",
+                        "processor.models.binary_openvino": ov,
+                    },
+                    "/tmp/processor",
+                )
+        self.assertEqual(backend, "openvino")
+        self.assertEqual(path, ov)
+
+    def test_auto_falls_back_to_torch_when_openvino_runtime_missing(self):
+        from inference.binary_paths import resolve_binary_detector_weight_path
+
+        with tempfile.TemporaryDirectory() as d:
+            ov = os.path.join(d, "openvino")
+            os.makedirs(ov, exist_ok=True)
+            with open(os.path.join(ov, "best.xml"), "w", encoding="utf-8") as f:
+                f.write("<net />")
+            with patch("inference.selector.openvino_runtime_available", return_value=False):
+                path, backend = resolve_binary_detector_weight_path(
+                    {
+                        "processor.inference_backend": "auto",
+                        "processor.models.binary_openvino": ov,
+                        "processor.models.binary": "models/detection/weights/best.pt",
+                    },
+                    "/tmp/processor",
+                )
+        self.assertEqual(backend, "torch")
+        self.assertTrue(path.endswith("best.pt"))
 
 
 if __name__ == '__main__':

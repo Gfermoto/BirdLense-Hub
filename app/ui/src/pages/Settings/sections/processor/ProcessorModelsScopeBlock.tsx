@@ -67,6 +67,9 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                     label={t('settings.processorInferenceBackend')}
                     onChange={(e) => field.handleChange(e.target.value)}
                   >
+                    <MenuItem value="auto">
+                      {t('settings.processorInferenceBackendAuto')}
+                    </MenuItem>
                     <MenuItem value="torch">
                       {t('settings.processorInferenceBackendTorch')}
                     </MenuItem>

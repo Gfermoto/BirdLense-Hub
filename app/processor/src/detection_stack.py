@@ -82,11 +82,11 @@ def build_detection_stack(
         else float(app_config.get("processor.min_center_dist", 0.1))
     )
 
-    _inf_backend = resolve_inference_backend(app_config)
-    assert_backend_supported(_inf_backend)
+    _requested_backend = resolve_inference_backend(app_config)
+    assert_backend_supported(_requested_backend)
 
-    binary_path, _ = resolve_binary_detector_weight_path(app_config, processor_root)
-    if _inf_backend == "openvino" and not (binary_path or "").strip():
+    binary_path, _inf_backend = resolve_binary_detector_weight_path(app_config, processor_root)
+    if _requested_backend == "openvino" and not (binary_path or "").strip():
         raise FileNotFoundError(
             "OpenVINO binary detector path missing: set processor.models.binary_openvino "
             "or environment variable BIRDLENSE_BINARY_OPENVINO_PATH "
@@ -148,27 +148,63 @@ def build_detection_stack(
         .lower()
     )
 
-    detection_strategy = TwoStageStrategy(
-        binary_model_path=binary_path,
-        classifier_model_path=classifier_path,
-        regional_species=regional_species,
-        detector_scope=detector_scope,
-        min_center_dist=min_center_dist,
-        min_box_size_px=min_box_size_px,
-        blur_threshold=blur_threshold,
-        max_blur_checks=max_blur_checks,
-        max_classifications_per_frame=max_classifications_per_frame,
-        classification_scheduler=classification_scheduler,
-        binary_imgsz=app_config.get("processor.binary_imgsz", 320),
-        weight_contract_mode=_weight_contract,
-        inference_backend=_inf_backend,
-    )
+    try:
+        detection_strategy = TwoStageStrategy(
+            binary_model_path=binary_path,
+            classifier_model_path=classifier_path,
+            regional_species=regional_species,
+            detector_scope=detector_scope,
+            min_center_dist=min_center_dist,
+            min_box_size_px=min_box_size_px,
+            blur_threshold=blur_threshold,
+            max_blur_checks=max_blur_checks,
+            max_classifications_per_frame=max_classifications_per_frame,
+            classification_scheduler=classification_scheduler,
+            binary_imgsz=app_config.get("processor.binary_imgsz", 320),
+            weight_contract_mode=_weight_contract,
+            inference_backend=_inf_backend,
+        )
+    except Exception:
+        if not (_requested_backend == "auto" and _inf_backend == "openvino"):
+            raise
+        torch_binary_path = resolve_relative_to_processor_root(
+            str(
+                app_config.get("processor.models.binary", "models/detection/weights/best.pt"),
+            ).strip(),
+            processor_root,
+        )
+        if not detector_weights_available(torch_binary_path):
+            raise
+        logger.exception(
+            "Inference auto backend fallback: OpenVINO failed for %s, falling back to torch (%s)",
+            binary_path,
+            torch_binary_path,
+        )
+        binary_path = torch_binary_path
+        _inf_backend = "torch"
+        detection_strategy = TwoStageStrategy(
+            binary_model_path=binary_path,
+            classifier_model_path=classifier_path,
+            regional_species=regional_species,
+            detector_scope=detector_scope,
+            min_center_dist=min_center_dist,
+            min_box_size_px=min_box_size_px,
+            blur_threshold=blur_threshold,
+            max_blur_checks=max_blur_checks,
+            max_classifications_per_frame=max_classifications_per_frame,
+            classification_scheduler=classification_scheduler,
+            binary_imgsz=app_config.get("processor.binary_imgsz", 320),
+            weight_contract_mode=_weight_contract,
+            inference_backend=_inf_backend,
+        )
     logger.info(
         "Inference startup: backend=%s device=%s binary_path=%s",
         _inf_backend,
         _inference_device_label(detection_strategy.binary_model),
         binary_path,
     )
+    if _requested_backend == "auto":
+        logger.info("Inference backend auto resolved to %s", _inf_backend)
 
     extra_cache: Optional[Dict[str, Any]] = None
     raw_auto = (os.environ.get("BIRDLENSE_INFERENCE_AUTO_BENCHMARK") or "").strip().lower()

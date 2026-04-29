@@ -78,10 +78,10 @@ RUN mkdir -p processor/models/detection/weights processor/models/classification/
          && mv processor/models/classification/weights/best.pt.tmp processor/models/classification/weights/best.pt; \
        fi
 RUN pip install --no-cache-dir -r web/requirements.txt \
-    && pip install --no-cache-dir -r processor/requirements.txt
+    && pip install --no-cache-dir -r processor/requirements.txt \
+    && pip install --no-cache-dir 'openvino>=2024.0'
 
-# Опционально: OpenVINO для processor.inference_backend=openvino (размер образа; не в базовой сборке):
-#   RUN pip install --no-cache-dir 'openvino>=2024.0'
+# OpenVINO runtime нужен для dual-mode (processor.inference_backend=auto/openvino).
 
 # UI + nginx (template, подставляется при старте)
 COPY --from=ui /ui/dist /usr/share/nginx/html
