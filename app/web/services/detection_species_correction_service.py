@@ -7,6 +7,7 @@ import threading
 from datetime import timedelta
 
 from app_config.app_config import app_config
+from sqlalchemy import text
 from models import Species, VideoSpecies, db
 from services.corrections_activity_service import (
     normalize_apply_scope,
@@ -232,4 +233,54 @@ def apply_detection_species_patch(
         "species_id": species_id,
         "updated_count": updated_count,
         "apply_scope": apply_scope,
+    }
+
+
+def apply_detection_nickname_patch(
+    session,
+    detection_id: int,
+    data: dict,
+) -> tuple[dict | None, dict | None]:
+    """Update per-detection nickname (and sidecar label when present)."""
+    if "individual_nickname" not in data:
+        return {"error": "individual_nickname is required"}, None
+
+    raw = data.get("individual_nickname")
+    if raw is None:
+        nickname = None
+    elif isinstance(raw, str):
+        nickname = raw.strip() or None
+    else:
+        return {"error": "individual_nickname must be a string or null"}, None
+
+    if nickname and len(nickname) > 64:
+        return {"error": "individual_nickname is too long (max 64)"}, None
+
+    vs = session.get(VideoSpecies, detection_id)
+    if not vs:
+        return {"error": "Detection not found"}, None
+
+    vs.individual_nickname = nickname
+    session.flush()
+
+    try:
+        has_reid = bool(
+            session.execute(
+                text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")
+            ).scalar()
+        )
+        if has_reid:
+            session.execute(
+                text("UPDATE reid_embedding SET individual_label = :label WHERE video_species_id = :vsid"),
+                {"label": nickname, "vsid": vs.id},
+            )
+    except Exception:
+        _log.exception("Failed to sync nickname into reid_embedding sidecar")
+
+    session.commit()
+    bust_response_caches()
+    return None, {
+        "message": "Nickname updated",
+        "detection_id": vs.id,
+        "individual_nickname": nickname,
     }

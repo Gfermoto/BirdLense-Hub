@@ -12,8 +12,10 @@ import {
 } from '../../api/speciesOverviewDetections';
 import {
   fetchVideo,
+  fetchVideoActionEvents,
   fetchVideoDetectionFrames,
   fetchVideoNeighbors,
+  fetchVideoReidMatch,
   regenerateSpectrogramForSingleVideo,
   regenerateTracksForSingleVideo,
 } from '../../api/video';
@@ -187,6 +189,18 @@ export const VideoDetails = () => {
   } = useQuery({
     queryKey: queryKeys.video.detectionFrames(String(params.id)),
     queryFn: () => fetchVideoDetectionFrames(params.id as string),
+    enabled: Boolean(params.id),
+  });
+
+  const { data: actionEventsPayload } = useQuery({
+    queryKey: queryKeys.video.actionEvents(String(params.id)),
+    queryFn: () => fetchVideoActionEvents(params.id as string),
+    enabled: Boolean(params.id),
+  });
+
+  const { data: reidMatchPayload } = useQuery({
+    queryKey: queryKeys.video.reidMatch(String(params.id)),
+    queryFn: () => fetchVideoReidMatch(params.id as string),
     enabled: Boolean(params.id),
   });
 
@@ -679,11 +693,17 @@ export const VideoDetails = () => {
           <DetectedSpecies
             species={(displayVideo ?? (video as Video)).species}
             videoId={(video as Video).id}
+            reidMatchByDetectionId={Object.fromEntries(
+              (reidMatchPayload?.matches ?? []).map((m) => [m.video_species_id, m]),
+            )}
           />
         </Grid>
         {/* Video Info Column */}
         <Grid size={{ xs: 12, lg: 4 }}>
-          <VideoInfo video={(displayVideo ?? video) as Video} />
+          <VideoInfo
+            video={(displayVideo ?? video) as Video}
+            actionEventsPayload={actionEventsPayload}
+          />
         </Grid>
       </Grid>
     </>

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import math
 from datetime import timedelta, timezone
 from typing import Any
 
@@ -187,8 +189,140 @@ def build_ml_runtime_status() -> tuple[dict[str, Any], int]:
         },
         "processor": {
             "inference_backend": app_config.get("processor.inference_backend"),
+            "classifier_inference_backend": app_config.get(
+                "processor.classifier_inference_backend"
+            ),
             "detector_weight_contract": app_config.get("processor.detector_weight_contract"),
             "binary_imgsz": app_config.get("processor.binary_imgsz"),
             "frame_processing_warn_ms": app_config.get("processor.frame_processing_warn_ms"),
         },
+    }, 200
+
+
+def _cosine(a: list[float], b: list[float]) -> float:
+    if len(a) != len(b) or not a:
+        return -1.0
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(y * y for y in b))
+    if na <= 0.0 or nb <= 0.0:
+        return -1.0
+    return dot / (na * nb)
+
+
+def _parse_embedding(raw: Any) -> list[float] | None:
+    if raw is None:
+        return None
+    try:
+        vals = json.loads(raw) if isinstance(raw, str) else raw
+    except Exception:
+        return None
+    if not isinstance(vals, list):
+        return None
+    try:
+        out = [float(v) for v in vals]
+    except Exception:
+        return None
+    return out if out else None
+
+
+def build_video_reid_match_payload(session, video_id: int) -> tuple[dict[str, Any], int]:
+    """Minimal per-track Re-ID matches for product UI hints."""
+    video = session.get(Video, int(video_id))
+    if not video:
+        return {"error": "Video not found"}, 404
+
+    has_reid = bool(
+        session.execute(
+            text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")
+        ).scalar()
+    )
+    if not has_reid:
+        return {
+            "schema": "video_reid_match@v1",
+            "available": False,
+            "video_id": int(video_id),
+            "matches": [],
+            "message": "reid_embedding_table_missing",
+        }, 200
+
+    rows = (
+        session.query(VideoSpecies)
+        .options(joinedload(VideoSpecies.species))
+        .filter(VideoSpecies.video_id == int(video_id))
+        .filter(VideoSpecies.source == "video")
+        .all()
+    )
+    if not rows:
+        return {
+            "schema": "video_reid_match@v1",
+            "available": True,
+            "video_id": int(video_id),
+            "matches": [],
+        }, 200
+
+    out: list[dict[str, Any]] = []
+    for det in rows:
+        anchor_raw = (
+            session.execute(
+                text(
+                    "SELECT embedding_json FROM reid_embedding "
+                    "WHERE video_species_id = :vsid ORDER BY id DESC LIMIT 1"
+                ),
+                {"vsid": det.id},
+            )
+            .mappings()
+            .first()
+        )
+        if not anchor_raw:
+            continue
+        anchor = _parse_embedding(anchor_raw.get("embedding_json"))
+        if not anchor:
+            continue
+
+        cands = (
+            session.execute(
+                text(
+                    "SELECT video_species_id, video_id, track_id, species_name, individual_label, embedding_json "
+                    "FROM reid_embedding "
+                    "WHERE species_id = :sid AND video_species_id != :vsid AND video_id != :vid "
+                    "ORDER BY id DESC LIMIT 200"
+                ),
+                {"sid": det.species_id, "vsid": det.id, "vid": int(video_id)},
+            )
+            .mappings()
+            .all()
+        )
+        best = None
+        best_score = -1.0
+        for c in cands:
+            emb = _parse_embedding(c.get("embedding_json"))
+            if not emb:
+                continue
+            score = _cosine(anchor, emb)
+            if score > best_score:
+                best_score = score
+                best = c
+        if not best:
+            continue
+        out.append(
+            {
+                "video_species_id": det.id,
+                "track_id": det.track_id,
+                "species_name": det.species.name if det.species else None,
+                "individual_nickname": det.individual_nickname,
+                "candidate_video_species_id": best.get("video_species_id"),
+                "candidate_video_id": best.get("video_id"),
+                "candidate_track_id": best.get("track_id"),
+                "candidate_species_name": best.get("species_name"),
+                "candidate_nickname": best.get("individual_label"),
+                "similarity": round(float(best_score), 4),
+            }
+        )
+
+    return {
+        "schema": "video_reid_match@v1",
+        "available": True,
+        "video_id": int(video_id),
+        "matches": out,
     }, 200

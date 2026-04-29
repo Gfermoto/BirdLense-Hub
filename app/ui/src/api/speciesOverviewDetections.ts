@@ -259,6 +259,20 @@ export const updateDetectionSpecies = async (
   return response.data;
 };
 
+export const updateDetectionNickname = async (
+  detectionId: number,
+  individualNickname: string | null,
+): Promise<{ message: string; detection_id: number; individual_nickname: string | null }> => {
+  const response = await axios.patch(
+    `${BASE_API_URL}/detections/${detectionId}`,
+    {
+      individual_nickname: individualNickname,
+    },
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
 /** Confirm detection: mark as verified (manually_corrected), remove from Unknowns. */
 export const confirmDetection = async (
   detectionId: number,

@@ -24,6 +24,60 @@ export const fetchVideoDetectionFrames = async (id: string) => {
   };
 };
 
+export type VideoActionEvent = {
+  label: string;
+  source: string;
+  time_offset: number;
+  time: string;
+  confidence: number;
+  evidence?: Record<string, unknown>;
+};
+
+export type VideoActionEventsPayload = {
+  schema: string;
+  video_id: number;
+  available: boolean;
+  message?: string;
+  events: VideoActionEvent[];
+};
+
+export const fetchVideoActionEvents = async (
+  id: string,
+): Promise<VideoActionEventsPayload> => {
+  const response = await axios.get(`${BASE_API_URL}/videos/${id}/action-events`);
+  return response.data;
+};
+
+export type VideoReidMatchItem = {
+  video_species_id: number;
+  track_id?: number | null;
+  species_name?: string | null;
+  individual_nickname?: string | null;
+  candidate_video_species_id?: number | null;
+  candidate_video_id?: number | null;
+  candidate_track_id?: number | null;
+  candidate_species_name?: string | null;
+  candidate_nickname?: string | null;
+  similarity: number;
+};
+
+export type VideoReidMatchPayload = {
+  schema: string;
+  available: boolean;
+  video_id: number;
+  message?: string;
+  matches: VideoReidMatchItem[];
+};
+
+export const fetchVideoReidMatch = async (
+  id: string,
+): Promise<VideoReidMatchPayload> => {
+  const response = await axios.get(`${BASE_API_URL}/videos/${id}/reid-match`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 /** Prev/next video IDs for the selected day scope. */
 export type VideoNeighbors = {
   day_scope: 'utc' | 'local';
