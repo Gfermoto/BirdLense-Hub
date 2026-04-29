@@ -140,6 +140,9 @@ jobs:
       - name: System routes smoke (activity, logs, metrics history)
         run: python -m pytest web/tests/test_system_routes_smoke.py -q
 
+      - name: Settings UI coverage guard regression
+        run: python -m pytest web/tests/test_settings_ui_coverage_guard.py -q
+
   ui-build:
     runs-on: ubuntu-latest
     defaults:

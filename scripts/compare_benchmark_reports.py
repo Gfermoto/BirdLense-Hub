@@ -231,6 +231,86 @@ def compare_reports(
     return ok, errs
 
 
+def species_recall_deltas(
+    baseline: dict[str, Any],
+    current: dict[str, Any],
+    *,
+    match_by_basename: bool,
+) -> list[dict[str, Any]]:
+    """Aggregate per-species recall deltas using label_eval gold/predicted lists."""
+    base_rows = baseline.get('videos')
+    cur_rows = current.get('videos')
+    if not isinstance(base_rows, list) or not isinstance(cur_rows, list):
+        return []
+
+    base_by_path = {str(r.get('video')): r for r in base_rows if isinstance(r, dict) and r.get('video')}
+    base_bn = _basename_index(base_rows) if match_by_basename else {}
+
+    def _get_base(vp: str) -> dict[str, Any] | None:
+        if vp in base_by_path:
+            return base_by_path[vp]
+        if match_by_basename:
+            bn = os.path.basename(vp)
+            alt = base_bn.get(bn)
+            if alt and alt in base_by_path:
+                return base_by_path[alt]
+        return None
+
+    stats: dict[str, dict[str, float]] = {}
+    for cur in cur_rows:
+        if not isinstance(cur, dict):
+            continue
+        vp = cur.get('video')
+        if not vp:
+            continue
+        b_row = _get_base(str(vp))
+        if b_row is None:
+            continue
+        ble = b_row.get('label_eval')
+        cle = cur.get('label_eval')
+        if not isinstance(ble, dict) or not isinstance(cle, dict):
+            continue
+        if ble.get('skipped') or cle.get('skipped'):
+            continue
+        gold = ble.get('gold_species')
+        if not isinstance(gold, list):
+            continue
+        b_pred = set(str(x) for x in (ble.get('predicted_species_unique') or []) if str(x))
+        c_pred = set(str(x) for x in (cle.get('predicted_species_unique') or []) if str(x))
+        for raw_species in gold:
+            species = str(raw_species).strip()
+            if not species:
+                continue
+            row = stats.setdefault(
+                species,
+                {'gold_count': 0.0, 'baseline_hits': 0.0, 'current_hits': 0.0},
+            )
+            row['gold_count'] += 1.0
+            if species in b_pred:
+                row['baseline_hits'] += 1.0
+            if species in c_pred:
+                row['current_hits'] += 1.0
+
+    out: list[dict[str, Any]] = []
+    for species, row in stats.items():
+        gold_count = float(row['gold_count'])
+        if gold_count <= 0:
+            continue
+        baseline_recall = float(row['baseline_hits']) / gold_count
+        current_recall = float(row['current_hits']) / gold_count
+        out.append(
+            {
+                'species': species,
+                'gold_samples': int(gold_count),
+                'baseline_recall': round(baseline_recall, 6),
+                'current_recall': round(current_recall, 6),
+                'delta_recall': round(current_recall - baseline_recall, 6),
+            },
+        )
+    out.sort(key=lambda x: (abs(float(x['delta_recall'])), x['species']), reverse=True)
+    return out
+
+
 def main() -> int:
     """CLI entry."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -294,6 +374,11 @@ def main() -> int:
         'baseline_report_format': base.get('report_format'),
         'current_report_format': cur.get('report_format'),
         'psi': psi_metrics,
+        'species_recall_deltas': species_recall_deltas(
+            base,
+            cur,
+            match_by_basename=bool(args.match_by_basename),
+        ),
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0 if ok else 1

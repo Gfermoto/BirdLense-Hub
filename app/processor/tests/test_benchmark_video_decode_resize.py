@@ -32,6 +32,8 @@ class TestBenchmarkVideoDecodeResize(unittest.TestCase):
         self.assertEqual(data["schema"], "video_decode_resize_benchmark@v1")
         self.assertEqual(data["backend"], "opencv")
         self.assertEqual(data["resize"], [640, 640])
+        self.assertIn("cpu_process_pct", data)
+        self.assertIn("platform", data)
 
     def test_ffmpeg_vaapi_cmd_rawvideo(self):
         cmd = self.mod._ffmpeg_vaapi_cmd("clip.mp4", 640, 640, "/dev/dri/renderD128")

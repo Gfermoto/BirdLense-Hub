@@ -20,6 +20,7 @@
 - [ ] I read **SECURITY.md** and did not commit secrets, real hosts, or personal paths.
 - [ ] Docs updated if behavior or config changed (`docs/`, OpenAPI if API changed).
 - [ ] CI / local checks run where relevant (tests, `mkdocs build` for doc-only PRs).
+- [ ] If processor benchmark is relevant: include one `species_recall_deltas` line from `compare_benchmark_reports.py` (prefer a rare species).
 
 ## External / second review (recommended for `main`)
 

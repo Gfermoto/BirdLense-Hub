@@ -20,6 +20,24 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG_PATH = ROOT / "app" / "app_config" / "default_config.yaml"
 SETTINGS_UI_DIR = ROOT / "app" / "ui" / "src" / "pages" / "Settings"
 
+LIBRARY_UI_EVIDENCE = {
+    "storage.recordings_mirror.": {
+        "ui_file": ROOT / "app" / "ui" / "src" / "pages" / "System" / "RecordingsNasMirrorCard.tsx",
+        "api_file": ROOT / "app" / "web" / "routes" / "ui_system_storage_routes.py",
+        "api_required": ["/api/ui/storage/recordings-mirror/test"],
+    },
+    "retention.": {
+        "ui_file": ROOT / "app" / "ui" / "src" / "pages" / "System" / "Retention" / "RetentionPolicy.tsx",
+        "api_file": ROOT / "app" / "web" / "routes" / "ui_system_db_routes.py",
+        "api_required": ["/api/ui/system/retention"],
+    },
+    "video.": {
+        "ui_file": ROOT / "app" / "ui" / "src" / "pages" / "Library" / "FileReplayCard.tsx",
+        "api_file": ROOT / "app" / "web" / "routes" / "ui_system_file_test_routes.py",
+        "api_required": ["/api/ui/system/file-test/status", "video.source"],
+    },
+}
+
 
 # Intentionally hidden from Settings UI.
 # Keep this list short and explicit; every key must have
@@ -207,16 +225,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Hub upload size cap for Library file replay; tunable in YAML.",
         "next_step": "Optional expose in Library advanced later.",
     },
-    "video.pre_record_seconds": {
-        "category": "planned-ui",
-        "reason": "Advanced recording behavior tuning.",
-        "next_step": "Evaluate control placement in Video advanced section.",
-    },
-    "video.auto_reconnect": {
-        "category": "planned-ui",
-        "reason": "Advanced stream behavior tuning.",
-        "next_step": "Evaluate control placement in Video advanced section.",
-    },
     "retention.days": {
         "category": "library-ui",
         "reason": "Retention knobs are shown and run from Library → Database maintenance (RetentionPolicy), not Settings forms.",
@@ -332,11 +340,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "library-ui",
         "reason": "Expert destructive option on NAS mirror card.",
         "next_step": "Keep expert-only on Library/System card.",
-    },
-    "ebird.protocol": {
-        "category": "planned-ui",
-        "reason": "Protocol is currently fixed in product flow.",
-        "next_step": "Expose when multi-protocol export flow is finalized.",
     },
     "species.catalog_allowlist_file": {
         "category": "yaml-only",
@@ -476,6 +479,40 @@ def _validate_allowlist() -> list[str]:
     return errors
 
 
+def _validate_library_ui_coverage() -> list[str]:
+    errors: list[str] = []
+    ui_cache: dict[Path, str] = {}
+    api_cache: dict[Path, str] = {}
+    for key, meta in ALLOWED_NON_UI_KEYS.items():
+        if meta.get("category") != "library-ui":
+            continue
+        spec = None
+        for prefix, candidate in LIBRARY_UI_EVIDENCE.items():
+            if key.startswith(prefix):
+                spec = (prefix, candidate)
+                break
+        if spec is None:
+            errors.append(f"{key}: library-ui key has no evidence mapping by prefix")
+            continue
+        prefix, candidate = spec
+        ui_file = candidate["ui_file"]
+        api_file = candidate["api_file"]
+        ui_text = ui_cache.setdefault(ui_file, ui_file.read_text(encoding="utf-8"))
+        api_text = api_cache.setdefault(api_file, api_file.read_text(encoding="utf-8"))
+
+        leaf = key[len(prefix) :]
+        if leaf not in ui_text:
+            errors.append(
+                f"{key}: not found in UI evidence file {ui_file.relative_to(ROOT)}",
+            )
+        for token in candidate.get("api_required", []):
+            if token not in api_text:
+                errors.append(
+                    f"{key}: API evidence token '{token}' not found in {api_file.relative_to(ROOT)}",
+                )
+    return errors
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -493,6 +530,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Do not fail when missing keys exist.",
     )
+    parser.add_argument(
+        "--allow-planned-ui",
+        action="store_true",
+        help="Allow planned-ui entries in allowlist (default strict mode rejects them).",
+    )
     return parser.parse_args()
 
 
@@ -506,11 +548,23 @@ def main() -> int:
         if not args.no_strict:
             return 1
 
+    library_ui_errors = _validate_library_ui_coverage()
+    if library_ui_errors:
+        print("Settings UI coverage check FAILED: library-ui evidence is incomplete.")
+        for err in library_ui_errors:
+            print(f"  - {err}")
+        if not args.no_strict:
+            return 1
+
     cfg = yaml.safe_load(DEFAULT_CONFIG_PATH.read_text(encoding="utf-8"))
     config_keys = {k for k in _collect_terminal_keys(cfg) if k}
     form_fields = _load_form_fields()
     report = _build_report(config_keys, form_fields)
     missing = report["missing_keys"]
+    planned_ui_count = report["summary"].get("allowlist_by_category", {}).get(
+        "planned-ui",
+        0,
+    )
     md = _to_markdown(report)
 
     if args.report_path:
@@ -532,6 +586,15 @@ def main() -> int:
             print(f"  - {key}")
         print("\nEither add form fields under app/ui/src/pages/Settings/ or add explicit allowlist entries.")
         if not args.no_strict:
+            return 1
+
+    if planned_ui_count:
+        print(
+            "Settings UI coverage check FAILED: "
+            f"{planned_ui_count} allowlisted keys still marked as planned-ui.",
+        )
+        print("Move those keys to Settings UI or re-categorize with explicit rationale.")
+        if not args.allow_planned_ui and not args.no_strict:
             return 1
 
     print(

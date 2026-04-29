@@ -21,6 +21,24 @@ python3 scripts/benchmark_video_decode_resize.py --video путь/к/клипу.
 python3 scripts/benchmark_video_decode_resize.py --video путь/к/клипу.mp4 --backend ffmpeg_vaapi --frames 300
 ```
 
-JSON в stdout: ``video_decode_resize_benchmark@v1`` (`backend`, `fps`, `ms_per_frame`, `resize`).
+JSON в stdout: ``video_decode_resize_benchmark@v1``; кроме `backend`, `fps`,
+`ms_per_frame`, `resize` теперь есть `cpu_process_pct`, `host`, `platform` и
+абсолютный `video`.
 
-Таблицу результатов заполняйте вручную в [CV_ML_DECODE.md](./CV_ML_DECODE.md) (англ.) или здесь — и фиксируйте платформу (bare Intel / Docker / WSL2).
+Таблицу результатов заполняйте из JSON скрипта (bare Intel / Docker / WSL2):
+
+| Дата | Хост | Платформа | Backend | Frames | FPS | ms/frame | CPU% (процесс) | `/dev/dri` | Примечание |
+|------|------|-----------|---------|--------|-----|----------|----------------|------------|------------|
+| _из JSON_ |  |  | opencv |  |  |  |  | n/a | baseline |
+| _из JSON_ |  |  | ffmpeg_vaapi |  |  |  |  | yes/no | VA-API путь |
+
+## Матрица support (WSL2/headless)
+
+| Окружение | `opencv` | `ffmpeg_vaapi` | Комментарий |
+|-----------|----------|----------------|-------------|
+| Bare-metal Linux + Intel iGPU + `/dev/dri/renderD*` | Поддерживается | Поддерживается | Основной target для проверки VA-API |
+| Headless Linux без `/dev/dri` | Поддерживается | Не поддерживается | Только CPU decode |
+| WSL2 (типичный сетап) | Поддерживается | Обычно не поддерживается | VA-API считать экспериментом до успешного preflight |
+
+Для каждой строки замеров явно фиксируйте фактический decode path
+(`opencv` fallback или `ffmpeg_vaapi`).

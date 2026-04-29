@@ -12,19 +12,22 @@ supplements the prep contract in [CV_ML_PREP.md](CV_ML_PREP.md).
 
 ## Task status (GitHub issues)
 
-Legend: **Done** = shipped on branch `ML` in the repo (code/docs/scripts). **In progress** = active work now (operator training, measurements on your hardware, or deploy validation). **Planned** = next phase / not started.
+Legend: **Repo-ready** = code/docs/scripts are shipped on branch `ML`. **Waiting for weights** = do not expand the issue with new product features; the remaining gate is new `.pt` / OpenVINO artifacts, metrics, and hub validation. **Planned** = explicitly out of the current package.
+
+**2026-04-29 closure rule:** epic [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367), child issues [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)–[#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375), [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383), and [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) are considered complete for repo-scope. Do not add Grafana, ORT/TensorRT, a product Re-ID gallery, or a separate action-recognition UI to this package. The package now waits only for new weights/exports and short operator validation on the hub.
 
 | Issue | Status | Notes |
 |-------|--------|--------|
-| [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Epic | **In progress** | Repo Phase‑1 delivered; **your** new weights + optional merge `ML`→`main` when validated on hub. |
-| [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Train & ship detector | **In progress** | Runtime contract + dataset merge helpers **done** in repo; **training detector weights** (Colab) — operator. |
-| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Done** (Phase‑1 repo) / **In progress** (product) | Manifest schema + template + **`decision_trace_to_pool_manifest.py`** + SQLite **`export_pool_from_sqlite.py`** + docs **done**; UI/API **pool preview** shipped; scheduled retrain — later. |
-| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Classifier roadmap | **In progress** / **Planned** | Fine-tune in Colab ([TRAINING](./TRAINING.md)) — operator; **entropy / margin + `classifier_needs_review` in decision_trace** — repo (config thresholds); **fusion training CSV + fusion-trace UI steps** ship those fields; Unknowns review queue + AL preview use those fields. Optional **DINO/DINOv2** backbone — [REID_ROADMAP](./REID_ROADMAP.md); [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383). |
-| [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Multi-backend inference | **Done** / **Planned** | torch + OpenVINO + cache **done**; ONNX Runtime / TensorRT — **planned** (`NotImplementedError`). |
-| [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Benchmarking | **Done** / **Planned** | Scripts + CI + docker smoke + optional **PSI drift gate** **done**; Grafana dashboard — **planned**. |
-| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Video decode | **In progress** | Benchmark script + FFmpeg VA-API option + `video.capture_backend` path **done**; UI/API **ML runtime status** shipped; **filling decode matrix** on your platforms — in progress. |
-| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **In progress** / **Planned** | Design doc + DINO scope; [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) — offline embed/cosine/export scripts + SQLite sidecar import **shipped**; UI/API **sidecar summary** shipped; gallery / similar-crop UI — planned. |
-| [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Done** (research) / **Planned** (prod) | Toy simulation + threat-model doc **done**; opt-in prod channel — **planned**. |
+| [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Epic | **Waiting for weights** | Repo Phase‑1 delivered; close after new weights and `ML` validation on the hub. |
+| [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Train & ship detector | **Waiting for weights** | Runtime contract + dataset helpers **done**; training/calibration/OV export are one package with the new weights. |
+| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Repo-ready** | Manifest/schema/export/UI/API pool preview **done**; retrain automation does not block this package. |
+| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Classifier roadmap | **Waiting for weights** | Entropy/margin, `classifier_needs_review`, fusion CSV export, fusion-trace UI, Unknowns queue, and AL preview are ready; finetune metrics arrive with the new weights. |
+| [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Multi-backend inference | **Repo-ready** | torch + OpenVINO + cache **done**; ORT/TensorRT stay outside this package. |
+| [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Benchmarking | **Repo-ready** | Scripts + CI + docker smoke + PSI drift gate **done**; final benchmark table updates after new weights. |
+| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Video decode | **Repo-ready** | Benchmark script + FFmpeg VA-API path + `video.capture_backend` + UI/API runtime status are ready; platform matrix belongs to operator validation. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **Repo-ready** | Docs + DINOv2 offline embed/cosine/export + SQLite sidecar import + UI/API sidecar summary are ready; product gallery is outside this package. |
+| [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Repo-ready** | Toy simulation + threat-model doc are ready; production channel is outside this package. |
+| [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) Action recognition | **Waiting for weights/data** | Weightless weak-label API `arrival` / `departure` / `possible_feeding` is ready; trained action head waits for labeled data/weights. |
 
 *Refresh this table when a milestone closes or scope shifts.*
 

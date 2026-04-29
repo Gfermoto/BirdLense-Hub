@@ -12,19 +12,22 @@
 
 ## Статус задач (GitHub)
 
-Условные обозначения: **Готово** — уже в репозитории (ветка `ML`). **В работе** — идёт сейчас (обучение весов, замеры на вашем железе, проверка деплоя). **Запланировано** — следующая фаза / не начато.
+Условные обозначения: **Готово в репо** — код/доки/скрипты на ветке `ML` готовы. **Ожидает веса** — задача не должна разрастаться новыми продукт-фичами; оставшийся gate — новые `.pt` / OpenVINO-артефакты, метрики и проверка на хабе. **Запланировано** — явно вынесено за текущий срез.
+
+**Правило закрытия на 2026-04-29:** эпик [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367), подзадачи [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)–[#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375), [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) и [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) считаются дожатыми по repo-scope. Дальше не добавляем Grafana, ORT/TensorRT, продуктовую Re-ID галерею или отдельный action-recognition UI в этот пакет; они остаются будущими задачами. Текущий пакет ждёт только новые веса/экспорты и короткую операторскую валидацию на хабе.
 
 | Issue | Статус | Комментарий |
 |-------|--------|----------------|
-| [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Эпик | **В работе** | Phase‑1 в репо сделана; **ваши** новые веса и при необходимости merge `ML`→`main` после проверки на хабе. |
-| [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Детектор train/ship | **В работе** | Контракт и скрипты датасета **готовы** в репо; **обучение детектора** (Colab) — оператор. |
-| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Готово** (репо фаза 1) / **В работе** (продукт) | Схема манифеста + шаблон + **`decision_trace_to_pool_manifest.py`** + SQLite **`export_pool_from_sqlite.py`** + доки **готовы**; UI/API **pool preview** готов; расписание retrain — позже. |
-| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Классификатор | **В работе** / **Запланировано** | Дообучение в Colab ([TRAINING.ru.md](./TRAINING.ru.md)) — оператор; **энтропия/margin и `classifier_needs_review`** — трасса, CSV fusion export, fusion-trace UI, Unknowns review queue и AL preview; **DINO/DINOv2** — [REID_ROADMAP.ru.md](./REID_ROADMAP.ru.md); [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383). |
-| [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Инференс-бэкенды | **Готово** / **Запланировано** | torch + OpenVINO + кэш **готовы**; ONNX Runtime / TensorRT — **запланировано**. |
-| [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Бенчмарки | **Готово** / **Запланировано** | Скрипты + CI + docker-smoke + **PSI drift gate** **готовы**; Grafana — **запланировано**. |
-| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Декод видео | **В работе** | Скрипт замеров + FFmpeg VA-API backend + `video.capture_backend` **готовы**; UI/API **ML runtime status** готов; **заполнение матрицы платформ** у вас — в работе. |
-| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **В работе** / **Запланировано** | Доки + DINO; офлайн embed/cosine/export + SQLite sidecar import **готовы**; UI/API **sidecar summary** готов; галерея / similar-crop UI — **запланировано**. Один backbone на виды + Re-ID — см. REID. |
-| [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Готово** (исслед.) / **Запланировано** (прод) | Игрушечная симуляция + threat model **готовы**; прод-канал — **запланировано**. |
+| [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Эпик | **Ожидает веса** | Phase‑1 в репо сделана; закрытие после новых весов и проверки `ML` на хабе. |
+| [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Детектор train/ship | **Ожидает веса** | Контракт и скрипты датасета **готовы**; обучение/калибровка/OV-экспорт — один пакет с новыми весами. |
+| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Готово в репо** | Manifest/schema/export/UI/API pool preview **готовы**; retrain automation не блокирует текущий пакет. |
+| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Классификатор | **Ожидает веса** | Энтропия/margin, `classifier_needs_review`, CSV fusion export, fusion-trace UI, Unknowns queue и AL preview готовы; finetune-метрики придут с новыми весами. |
+| [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Инференс-бэкенды | **Готово в репо** | torch + OpenVINO + кэш **готовы**; ORT/TensorRT не входят в текущий пакет. |
+| [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Бенчмарки | **Готово в репо** | Скрипты + CI + docker-smoke + PSI drift gate **готовы**; итоговая таблица обновляется после новых весов. |
+| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Декод видео | **Готово в репо** | Скрипт замеров + FFmpeg VA-API backend + `video.capture_backend` + UI/API runtime status готовы; матрица платформ — часть операторской валидации. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **Готово в репо** | Доки + DINOv2 offline embed/cosine/export + SQLite sidecar import + UI/API sidecar summary готовы; продуктовая галерея вынесена за текущий пакет. |
+| [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Готово в репо** | Игрушечная симуляция + threat model готовы; prod-channel не входит в текущий пакет. |
+| [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) Action recognition | **Ожидает веса/данные** | Weightless weak-label API `arrival` / `departure` / `possible_feeding` готов; обучаемый action head ждёт размеченные данные/веса. |
 
 *Обновляйте таблицу при закрытии вех или смене фокуса.*
 

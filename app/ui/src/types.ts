@@ -299,6 +299,8 @@ export interface Settings {
   };
   video?: {
     source?: 'go2rtc' | 'file' | string;
+    pre_record_seconds?: number;
+    auto_reconnect?: boolean;
     file_path?: string;
     file_dir?: string;
     file_loop?: boolean;
