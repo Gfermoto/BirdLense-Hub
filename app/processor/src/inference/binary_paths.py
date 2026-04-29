@@ -43,14 +43,15 @@ def resolve_binary_detector_weight_path(
     Вернуть ``(абсолютный_путь, inference_backend)``.
 
     Для ``openvino`` без конфига/env путь может быть ``''``.
+    Для ``auto``: предпочесть OpenVINO при наличии валидного IR и runtime, иначе torch.
     """
-    from inference.selector import resolve_inference_backend
+    from inference.selector import openvino_runtime_available, resolve_inference_backend
 
     root = processor_root if processor_root is not None else processor_package_root()
-    backend = resolve_inference_backend(app_config)
+    requested_backend = resolve_inference_backend(app_config)
     env_ov = os.environ.get("BIRDLENSE_BINARY_OPENVINO_PATH") or ""
     binary_env_ov = env_ov.strip()
-    if backend == "openvino":
+    if requested_backend in ("openvino", "auto"):
         if binary_env_ov:
             if os.path.isabs(binary_env_ov):
                 p = binary_env_ov
@@ -63,11 +64,14 @@ def resolve_binary_detector_weight_path(
                 p = resolve_relative_to_processor_root(rel_ov_s, root)
             else:
                 p = ""
-        return (p, backend)
+        if requested_backend == "openvino":
+            return (p, "openvino")
+        if p and detector_weights_available(p) and openvino_runtime_available():
+            return (p, "openvino")
     default_bin = "models/detection/weights/best.pt"
     rel = app_config.get("processor.models.binary", default_bin)
     p = resolve_relative_to_processor_root(str(rel).strip(), root)
-    return (p, backend)
+    return (p, "torch")
 
 
 def openvino_bundle_fingerprint(path: str | None) -> str | None:

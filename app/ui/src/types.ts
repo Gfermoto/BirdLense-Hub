@@ -258,7 +258,7 @@ export interface Settings {
     key_frame_limit?: number;
     keep_recording_when_no_detections?: boolean;
     detection_strategy?: string;
-    inference_backend?: 'torch' | 'openvino' | 'onnxruntime' | string;
+    inference_backend?: 'auto' | 'torch' | 'openvino' | 'onnxruntime' | string;
     detector_weight_contract?: 'off' | 'warn' | 'enforce' | string;
     models?: { binary?: string; binary_openvino?: string; classifier?: string };
     classifier_uncertainty_entropy_ge?: number | null;

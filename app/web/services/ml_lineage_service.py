@@ -49,9 +49,10 @@ def current_model_lineage_snapshot() -> dict:
     }
     processor_root = os.path.join(repo_root_path(), "app", "processor")
     backend = resolve_inference_backend(app_config)
-    if backend == "openvino":
-        det_path, _ = resolve_binary_detector_weight_path(app_config, processor_root)
+    if backend in ("openvino", "auto"):
+        det_path, resolved_backend = resolve_binary_detector_weight_path(app_config, processor_root)
     else:
+        resolved_backend = "torch"
         binary_rel = (
             app_config.get("processor.models.binary")
             or app_config.get("processor.detector_model_path")
@@ -76,7 +77,7 @@ def current_model_lineage_snapshot() -> dict:
     resolved = {}
     for name, path in artifacts.items():
         digest = None
-        if name == "detector" and backend == "openvino":
+        if name == "detector" and resolved_backend == "openvino":
             digest = openvino_bundle_fingerprint(path)
         else:
             digest = sha256_file(path)
@@ -84,7 +85,7 @@ def current_model_lineage_snapshot() -> dict:
             "configured_path": path,
             "exists": bool(path and os.path.exists(path)),
             "sha256": digest,
-            **({"detector_backend": backend} if name == "detector" else {}),
+            **({"detector_backend": resolved_backend} if name == "detector" else {}),
         }
     return {
         "config_fingerprint": config_fingerprint(relevant_config),

@@ -56,6 +56,11 @@ class TestInferenceSelector(unittest.TestCase):
 
         assert_backend_supported("openvino")
 
+    def test_assert_auto_supported(self):
+        from inference.selector import assert_backend_supported
+
+        assert_backend_supported("auto")
+
     def test_assert_planned_backend_raises(self):
         from inference.selector import assert_backend_supported
 
