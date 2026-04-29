@@ -34,6 +34,10 @@ Nothing here replaces **your** labeled images, GPU time, or rollout decisions.
 3. Run `make validate-weights`, smoke-test on hub, then `make deploy`.
 4. After classifier fine-tune including rodents, refresh allowlist / `class_names.txt` ([TRAINING](./TRAINING.md)).
 
+Detector training artifacts for this flow are published as zips at
+[gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)
+(`merged_balanced` for Stage A, `merged` full for Stage B fine-tune).
+
 ---
 
 ## Suggested order when you have accumulated data

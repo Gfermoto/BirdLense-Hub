@@ -74,6 +74,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | CV / ML roadmap phases | [CV_ML_ROADMAP_PHASES.md](./CV_ML_ROADMAP_PHASES.md) · [RU](./CV_ML_ROADMAP_PHASES.ru.md) |
 | ML operator handoff | [ML_OPERATOR_HANDOFF.md](./ML_OPERATOR_HANDOFF.md) · [RU](./ML_OPERATOR_HANDOFF.ru.md) |
 | Datasets | [DATASETS.md](./DATASETS.md) · [RU](./DATASETS.ru.md) |
+| Detector dataset artifacts (HF) | [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) |
 | Video decode baseline (#373) | [CV_ML_DECODE.md](./CV_ML_DECODE.md) · [RU](./CV_ML_DECODE.ru.md) |
 | Active learning (#369) | [ACTIVE_LEARNING.md](./ACTIVE_LEARNING.md) · [RU](./ACTIVE_LEARNING.ru.md) |
 | Re-ID roadmap (#374) | [REID_ROADMAP.md](./REID_ROADMAP.md) · [RU](./REID_ROADMAP.ru.md) |

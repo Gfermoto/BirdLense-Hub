@@ -1,6 +1,8 @@
 # Обучение EU-модели в Google Colab
 
-**Детектор (YOLO detection) в Colab:** [ML_DETECTOR_COLAB.ru.md](./ML_DETECTOR_COLAB.ru.md). **Итог по ML в репозитории и ваши шаги:** [ML_OPERATOR_HANDOFF.ru.md](./ML_OPERATOR_HANDOFF.ru.md).
+**Детектор (YOLO detection) в Colab:** [ML_DETECTOR_COLAB.ru.md](./ML_DETECTOR_COLAB.ru.md).  
+ZIP-архивы датасета детектора опубликованы в [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) (balanced + full, Stage A -> Stage B).  
+**Итог по ML в репозитории и ваши шаги:** [ML_OPERATOR_HANDOFF.ru.md](./ML_OPERATOR_HANDOFF.ru.md).
 
 [English](./TRAINING.md)
 

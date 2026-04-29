@@ -158,6 +158,7 @@ Workflow [.github/workflows/docs-pages.yml](https://github.com/Gfermoto/BirdLens
 | Доступ и роли | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) |
 | Карта сайта | [SITE_MAP.md](./SITE_MAP.md) |
 | Обучение (Colab) | [TRAINING.md](./TRAINING.md) |
+| Артефакты датасета детектора (HF) | [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) |
 | Датасеты | [DATASETS.md](./DATASETS.md) |
 | Версионирование | [VERSIONING.md](./VERSIONING.md) |
 | Roadmap | [ROADMAP.md](./ROADMAP.md) |

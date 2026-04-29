@@ -86,6 +86,7 @@ Pick what matches you — you can read the rest as reference.
 | CV / ML roadmap phases | [CV_ML_ROADMAP_PHASES](./CV_ML_ROADMAP_PHASES.md) | [RU](./CV_ML_ROADMAP_PHASES.ru.md) |
 | ML handoff (repo vs your training) | [ML_OPERATOR_HANDOFF](./ML_OPERATOR_HANDOFF.md) | [RU](./ML_OPERATOR_HANDOFF.ru.md) |
 | Datasets & scripts | [DATASETS](./DATASETS.md) | [RU](./DATASETS.ru.md) |
+| Detector dataset (HF, zips) | [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) | [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) |
 | Detector training (Colab) | [ML_DETECTOR_COLAB](./ML_DETECTOR_COLAB.md) | [RU](./ML_DETECTOR_COLAB.ru.md) |
 | Video decode baseline (#373) | [CV_ML_DECODE](./CV_ML_DECODE.md) | [RU](./CV_ML_DECODE.ru.md) |
 | Active learning (#369) | [ACTIVE_LEARNING](./ACTIVE_LEARNING.md) | [RU](./ACTIVE_LEARNING.ru.md) |
