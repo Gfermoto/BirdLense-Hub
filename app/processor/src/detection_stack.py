@@ -54,7 +54,15 @@ def build_detection_stack(
         resolve_binary_detector_weight_path,
         resolve_relative_to_processor_root,
     )
-    from inference.selector import assert_backend_supported, resolve_inference_backend
+    from inference.classifier_paths import (
+        classifier_weights_available,
+        resolve_classifier_weight_path,
+    )
+    from inference.selector import (
+        assert_backend_supported,
+        resolve_classifier_inference_backend,
+        resolve_inference_backend,
+    )
     from ebird_regional_confidence import (
         merge_species_confidence_overrides_with_ebird_top,
     )
@@ -84,6 +92,8 @@ def build_detection_stack(
 
     _requested_backend = resolve_inference_backend(app_config)
     assert_backend_supported(_requested_backend)
+    _requested_classifier_backend = resolve_classifier_inference_backend(app_config)
+    assert_backend_supported(_requested_classifier_backend)
 
     binary_path, _inf_backend = resolve_binary_detector_weight_path(app_config, processor_root)
     if _requested_backend == "openvino" and not (binary_path or "").strip():
@@ -93,13 +103,16 @@ def build_detection_stack(
             "(export: yolo export ... format=openvino).",
         )
 
-    classifier_path = resolve_relative_to_processor_root(
-        app_config.get(
-            "processor.models.classifier",
-            "models/classification/weights/best.pt",
-        ),
+    classifier_path, _cls_backend = resolve_classifier_weight_path(
+        app_config,
         processor_root,
     )
+    if _requested_classifier_backend == "openvino" and not (classifier_path or "").strip():
+        raise FileNotFoundError(
+            "OpenVINO classifier path missing: set processor.models.classifier_openvino "
+            "or environment variable BIRDLENSE_CLASSIFIER_OPENVINO_PATH "
+            "(export: yolo export ... format=openvino).",
+        )
 
     if not detector_weights_available(binary_path):
         raise FileNotFoundError(
@@ -108,10 +121,12 @@ def build_detection_stack(
             "from yolo export format=openvino (processor.models.binary_openvino or "
             "BIRDLENSE_BINARY_OPENVINO_PATH).",
         )
-    if not os.path.isfile(classifier_path):
+    if not classifier_weights_available(classifier_path):
         raise FileNotFoundError(
-            f"YOLO classifier weights missing: {classifier_path}. "
-            "Set processor.models.classifier or run scripts/fetch-processor-weights.sh",
+            f"YOLO classifier weights missing or invalid path: {classifier_path}. "
+            "For torch set processor.models.classifier (.pt); for OpenVINO use a directory "
+            "or .xml from yolo export format=openvino (processor.models.classifier_openvino "
+            "or BIRDLENSE_CLASSIFIER_OPENVINO_PATH).",
         )
 
     regional_species = regional_species_override
@@ -163,25 +178,51 @@ def build_detection_stack(
             binary_imgsz=app_config.get("processor.binary_imgsz", 320),
             weight_contract_mode=_weight_contract,
             inference_backend=_inf_backend,
+            classifier_inference_backend=_cls_backend,
         )
     except Exception:
-        if not (_requested_backend == "auto" and _inf_backend == "openvino"):
+        can_fallback_detector = _requested_backend == "auto" and _inf_backend == "openvino"
+        can_fallback_classifier = _requested_classifier_backend == "auto" and _cls_backend == "openvino"
+        if not (can_fallback_detector or can_fallback_classifier):
             raise
-        torch_binary_path = resolve_relative_to_processor_root(
-            str(
-                app_config.get("processor.models.binary", "models/detection/weights/best.pt"),
-            ).strip(),
-            processor_root,
-        )
-        if not detector_weights_available(torch_binary_path):
-            raise
+
+        if can_fallback_detector:
+            torch_binary_path = resolve_relative_to_processor_root(
+                str(
+                    app_config.get(
+                        "processor.models.binary",
+                        "models/detection/weights/best.pt",
+                    ),
+                ).strip(),
+                processor_root,
+            )
+            if not detector_weights_available(torch_binary_path):
+                raise
+            binary_path = torch_binary_path
+            _inf_backend = "torch"
+        if can_fallback_classifier:
+            torch_classifier_path = resolve_relative_to_processor_root(
+                str(
+                    app_config.get(
+                        "processor.models.classifier",
+                        "models/classification/weights/best.pt",
+                    ),
+                ).strip(),
+                processor_root,
+            )
+            if not os.path.isfile(torch_classifier_path):
+                raise
+            classifier_path = torch_classifier_path
+            _cls_backend = "torch"
         logger.exception(
-            "Inference auto backend fallback: OpenVINO failed for %s, falling back to torch (%s)",
+            "Inference auto backend fallback: detector=(%s,%s)->%s classifier=(%s,%s)->%s",
             binary_path,
-            torch_binary_path,
+            _requested_backend,
+            _inf_backend,
+            classifier_path,
+            _requested_classifier_backend,
+            _cls_backend,
         )
-        binary_path = torch_binary_path
-        _inf_backend = "torch"
         detection_strategy = TwoStageStrategy(
             binary_model_path=binary_path,
             classifier_model_path=classifier_path,
@@ -196,12 +237,15 @@ def build_detection_stack(
             binary_imgsz=app_config.get("processor.binary_imgsz", 320),
             weight_contract_mode=_weight_contract,
             inference_backend=_inf_backend,
+            classifier_inference_backend=_cls_backend,
         )
     logger.info(
-        "Inference startup: backend=%s device=%s binary_path=%s",
+        "Inference startup: detector_backend=%s classifier_backend=%s device=%s binary_path=%s classifier_path=%s",
         _inf_backend,
+        _cls_backend,
         _inference_device_label(detection_strategy.binary_model),
         binary_path,
+        classifier_path,
     )
     if _requested_backend == "auto":
         logger.info("Inference backend auto resolved to %s", _inf_backend)
@@ -226,6 +270,8 @@ def build_detection_stack(
         processor_root,
         backend=_inf_backend,
         binary_model_path=binary_path,
+        classifier_backend=_cls_backend,
+        classifier_model_path=classifier_path,
         extra=extra_cache,
     )
 

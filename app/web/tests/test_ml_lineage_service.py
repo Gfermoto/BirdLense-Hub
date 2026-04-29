@@ -25,6 +25,8 @@ def test_model_lineage_resolves_processor_models_binary_classifier(monkeypatch, 
     orig = app_config.get
 
     def get_override(key, default=None):
+        if key == "processor.classifier_inference_backend":
+            return "torch"
         if key == "processor.models.binary":
             return "models/detection/weights/test-binary.pt"
         if key == "processor.models.classifier":
@@ -101,3 +103,34 @@ def test_model_lineage_auto_backend_resolves_to_openvino_when_available(monkeypa
     snap = current_model_lineage_snapshot()
     det = snap["artifacts"]["detector"]
     assert det["detector_backend"] == "openvino"
+
+
+def test_model_lineage_openvino_classifier_resolves_classifier_openvino(monkeypatch, tmp_path):
+    from services import artifact_paths_service as aps
+    from services.ml_lineage_service import current_model_lineage_snapshot
+
+    det = tmp_path / "app" / "processor" / "models" / "detection" / "weights"
+    det.mkdir(parents=True)
+    (det / "d.pt").write_bytes(b"bin")
+    cls_ov = tmp_path / "app" / "processor" / "cls_ov"
+    cls_ov.mkdir(parents=True)
+    (cls_ov / "best.xml").write_text("<net />", encoding="utf-8")
+
+    monkeypatch.setattr(aps, "repo_root_path", lambda: str(tmp_path))
+    monkeypatch.setenv("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", "openvino")
+    monkeypatch.setenv("BIRDLENSE_CLASSIFIER_OPENVINO_PATH", str(cls_ov))
+
+    orig = app_config.get
+
+    def get_override(key, default=None):
+        if key == "processor.models.binary":
+            return "models/detection/weights/d.pt"
+        return orig(key, default)
+
+    monkeypatch.setattr(app_config, "get", get_override)
+    snap = current_model_lineage_snapshot()
+    cls = snap["artifacts"]["classifier"]
+    assert cls["classifier_backend"] == "openvino"
+    assert cls["exists"] is True
+    assert cls["sha256"]
+    assert Path(cls["configured_path"]) == cls_ov

@@ -94,6 +94,9 @@ nav:
       - "CV / ML prep contract": CV_ML_PREP.md
       - "CV / ML roadmap phases": CV_ML_ROADMAP_PHASES.md
       - "ML operator handoff (repo vs training)": ML_OPERATOR_HANDOFF.md
+      - "DINOv2 production pipeline RFC": ML_DINOV2_PRODUCTION_PIPELINE.md
+      - "Re-ID productization plan": ML_REID_PRODUCTIZATION.md
+      - "Action recognition plan": ML_ACTION_RECOGNITION_PLAN.md
       - Datasets: DATASETS.md
       - "Video decode baseline (#373)": CV_ML_DECODE.md
       - "Active learning (#369)": ACTIVE_LEARNING.md
@@ -164,6 +167,9 @@ nav:
       - "Контракт подготовки CV / ML": CV_ML_PREP.ru.md
       - "Фазы roadmap CV / ML": CV_ML_ROADMAP_PHASES.ru.md
       - "ML: репозиторий и ваши шаги": ML_OPERATOR_HANDOFF.ru.md
+      - "RFC DINOv2 production pipeline": ML_DINOV2_PRODUCTION_PIPELINE.ru.md
+      - "План productization Re-ID": ML_REID_PRODUCTIZATION.ru.md
+      - "План action recognition": ML_ACTION_RECOGNITION_PLAN.ru.md
       - Датасеты: DATASETS.ru.md
       - "Декод видео — замеры (#373)": CV_ML_DECODE.ru.md
       - "Active learning (#369)": ACTIVE_LEARNING.ru.md

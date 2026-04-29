@@ -1,3 +1,3 @@
 0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1  app/yolo11n.pt
-9e99b6d1b0b7697f671a728bfa887f2f45d574ec932e8a745855e9818aadd46e  app/processor/models/classification/weights/best.pt
+e853dde365fbd49553091bd972257dc4cc1c88a87724867421113bd4eb859547  app/processor/models/classification/weights/best.pt
 d58813c4282627cbe2f77e4f10ca33aa945956cf4e5824fa681877c42dcd71a2  app/processor/models/detection/nabirds_yolo11n_binary.zip

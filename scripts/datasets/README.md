@@ -54,6 +54,29 @@ From repo root: **`make dataset-merge-three-class`** (expects those folders unde
 Published detector archives (ready for Colab Stage A -> Stage B) are in:
 **[gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)**.
 
+### Dataset quality gates (#394)
+
+After `merge_datasets_three_class.py`, export a profile and run hard checks:
+
+```bash
+python3 scripts/datasets/export_detector_dataset_profile.py \
+  --dataset-root scripts/datasets/binary \
+  --out /tmp/detector_profile.json
+
+make dataset-verify-quality-gates PROFILE=/tmp/detector_profile.json
+```
+
+Verifier script: `scripts/datasets/verify_detector_dataset_quality.py`.
+It enforces image/label parity, min train/val counts per class, source diversity,
+train imbalance ratio, and background share bounds.
+
+Hard-negatives manifest checks (schema + duplicates + optional file existence):
+
+```bash
+make dataset-verify-hard-negatives \
+  MANIFEST=scripts/datasets/example_hard_negatives_manifest.json
+```
+
 ## bootstrap_detector_yolo.py
 
 Creates **`binary/birds`**, **`binary/rodent`**, **`binary/background`** and downloads **starter** subsets via **FiftyOne**: COCO 2017 (`bird`), Open Images V6 (`Squirrel`), COCO scenes **without** `bird` for background (empty labels). Large blobs are gitignored — see [DETECTOR_DATA_LAYOUT.md](./DETECTOR_DATA_LAYOUT.md) and [binary/README.md](./binary/README.md).

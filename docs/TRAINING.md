@@ -45,6 +45,29 @@ make validate-weights \
   OUTPUT=/tmp/processor-weight-validation.json
 ```
 
+Release-train registry entry (offline/shadow/canary bookkeeping, #393):
+
+```bash
+make ml-build-registry-entry \
+  NAME=detector-20260429 \
+  STAGE=offline \
+  SOURCE_ISSUE=#368 \
+  VALIDATION_REPORT=/tmp/processor-weight-validation.json \
+  BENCHMARK_REPORT=/tmp/benchmark-report.json \
+  DATASET_QUALITY_REPORT=/tmp/dataset_quality_report.json \
+  HARD_NEGATIVES_REPORT=/tmp/hard_negatives_report.json \
+  DETECTOR_PACKAGE_URL=https://huggingface.co/gfermoto/BirdLense_Detector/blob/main/weights-20260429T125011Z-3-001.zip \
+  OUTPUT=/tmp/model_registry_entry.json
+
+make ml-verify-registry-entry \
+  ENTRY=/tmp/model_registry_entry.json \
+  MIN_STAGE=offline \
+  REQUIRE_BENCHMARK=1 \
+  REQUIRE_DATASET_READY=1 \
+  REQUIRE_DATASET_QUALITY=1 \
+  REQUIRE_HARD_NEGATIVES=1
+```
+
 Rollback stays simple: in UI `System -> Processor weights`, reset the custom binary/classifier slot (or both) to return to bundled defaults.
 
 For runtime benchmarking on a fixed regression set before rollout:
@@ -85,6 +108,31 @@ The output now includes `species_recall_deltas` (per-species recall vs baseline)
 
 ```text
 species=Robin baseline_recall=0.50 current_recall=0.75 delta_recall=+0.25 gold_samples=4
+```
+
+For #391 season/camera/domain robustness gates, attach a context map
+(`by_basename`) and verify minimum recall per slice:
+
+```bash
+make ml-verify-benchmark-slices \
+  REPORT=/path/to/pr_report.json \
+  SLICE_MAP=/path/to/slice_map.json \
+  MIN_GOLD_SAMPLES=5 \
+  MIN_RECALL=0.70
+```
+
+For #394 detector data-engine quality checks, gate dataset profile before Stage A:
+
+```bash
+python3 scripts/datasets/export_detector_dataset_profile.py \
+  --dataset-root scripts/datasets/binary \
+  --out /tmp/detector_profile.json
+
+make dataset-verify-quality-gates \
+  PROFILE=/tmp/detector_profile.json
+
+make dataset-verify-hard-negatives \
+  MANIFEST=/path/to/hard_negatives_manifest.json
 ```
 
 **CI:** fast checks for scripts/report helpers are in the main CI workflow (`benchmark-track-regen --help`, pytest helpers, **`verify_benchmark_report_schema.py --help`**). Full smoke run is in **`benchmark-regen-integration.yml`** (Docker + weights + report write + schema verify).  

@@ -62,11 +62,12 @@ def effective_binary_path() -> str:
 
 
 def effective_classifier_path() -> str:
-    raw = app_config.get(
-        "processor.models.classifier",
-        "models/classification/weights/best.pt",
-    )
-    return _resolve_model_path(str(raw).strip())
+    from inference.classifier_paths import resolve_classifier_weight_path
+
+    return resolve_classifier_weight_path(
+        app_config,
+        _processor_root(),
+    )[0]
 
 
 def effective_allowlist_path() -> str | None:

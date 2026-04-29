@@ -35,9 +35,11 @@ _CONFIG_DIGEST_KEYS = (
     "processor.min_confidence_to_notify",
     "processor.classifier_fallback_bird",
     "processor.inference_backend",
+    "processor.classifier_inference_backend",
     "processor.models.binary",
     "processor.models.binary_openvino",
     "processor.models.classifier",
+    "processor.models.classifier_openvino",
     "detection.merge_window_seconds",
     "detection.dedup_window_seconds",
     "detection.min_confidence_to_store",
@@ -136,6 +138,40 @@ def _binary_detector_record(app_config) -> dict[str, Any]:
     return rec
 
 
+def _classifier_record(app_config) -> dict[str, Any]:
+    """Classifier snapshot: torch checkpoint or OpenVINO IR."""
+    from inference.binary_paths import (
+        openvino_bundle_fingerprint,
+        processor_package_root,
+    )
+    from inference.classifier_paths import resolve_classifier_weight_path
+
+    root = processor_package_root()
+    path, backend = resolve_classifier_weight_path(app_config, root)
+    rec: dict[str, Any] = {
+        "inference_backend": backend,
+        "path": path or None,
+    }
+    if backend != "openvino":
+        merged = _model_record(app_config.get("processor.models.classifier"))
+        merged["inference_backend"] = backend
+        return merged
+
+    rec["exists"] = bool(path and os.path.exists(path))
+    rec["bundle_sha256"] = openvino_bundle_fingerprint(path)
+    if path and os.path.isfile(path):
+        stat = os.stat(path)
+        rec["size_bytes"] = int(stat.st_size)
+        rec["mtime_epoch_seconds"] = float(stat.st_mtime)
+    elif path and os.path.isdir(path):
+        try:
+            xmls = sorted(f for f in os.listdir(path) if f.endswith(".xml"))
+        except OSError:
+            xmls = []
+        rec["xml_files"] = xmls
+    return rec
+
+
 def resolve_processor_version() -> tuple[str, str]:
     """Return the processor version string and where it came from."""
     for key in (
@@ -165,7 +201,7 @@ def build_pipeline_fingerprint(app_config) -> dict[str, Any]:
         "version_source": version_source,
         "config_digest": config_digest,
         "binary_model": _binary_detector_record(app_config),
-        "classifier_model": _model_record(app_config.get("processor.models.classifier")),
+        "classifier_model": _classifier_record(app_config),
         "fusion": {
             "enabled": bool(app_config.get("detection.use_learned_fusion") or False),
             "alpha": float(app_config.get("detection.fusion_alpha") or 0.6),

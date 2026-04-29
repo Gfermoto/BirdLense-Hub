@@ -11,22 +11,52 @@ _PLANNED = frozenset({"onnxruntime", "tensorrt"})
 _BACKEND_ALIASES = {"onnx": "onnxruntime"}
 
 
+def _resolve_backend(
+    app_config: Mapping[str, Any] | None,
+    *,
+    env_key: str,
+    config_key: str,
+    default: str = "torch",
+) -> str:
+    """Common backend resolver: env -> config -> default."""
+    raw = (os.environ.get(env_key) or "").strip().lower()
+    if raw:
+        backend = raw
+    elif app_config is not None:
+        cfg = app_config.get(config_key)
+        backend = str(cfg).strip().lower() if cfg is not None else default
+    else:
+        backend = default
+    if not backend:
+        backend = default
+    return _BACKEND_ALIASES.get(backend, backend)
+
+
 def resolve_inference_backend(app_config: Mapping[str, Any] | None = None) -> str:
     """
     Приоритет: ``BIRDLENSE_INFERENCE_BACKEND``, затем ``processor.inference_backend``, иначе ``torch``.
     """
-    raw = (os.environ.get("BIRDLENSE_INFERENCE_BACKEND") or "").strip().lower()
-    if raw:
-        backend = raw
-    elif app_config is not None:
-        cfg = app_config.get("processor.inference_backend")
-        backend = str(cfg).strip().lower() if cfg is not None else "torch"
-    else:
-        backend = "torch"
-    if not backend:
-        backend = "torch"
-    backend = _BACKEND_ALIASES.get(backend, backend)
-    return backend
+    return _resolve_backend(
+        app_config,
+        env_key="BIRDLENSE_INFERENCE_BACKEND",
+        config_key="processor.inference_backend",
+    )
+
+
+def resolve_classifier_inference_backend(
+    app_config: Mapping[str, Any] | None = None,
+) -> str:
+    """
+    Отдельный backend для классификатора.
+
+    Приоритет: ``BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND``, затем
+    ``processor.classifier_inference_backend``, иначе ``torch``.
+    """
+    return _resolve_backend(
+        app_config,
+        env_key="BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND",
+        config_key="processor.classifier_inference_backend",
+    )
 
 
 def assert_backend_supported(backend: str) -> None:

@@ -28,6 +28,12 @@ Reproducible **YOLO detection** layout with classes **Bird**, **Rodent**, **Back
   (`detector_merged_balanced_20260429.zip`, `detector_merged_full_20260429.zip`).
 - **Train/val policy:** follow Ultralytics defaults unless you fix a seed; treat **minimum images per class** as a training constraint — enforce via Hub export (`min_images_per_class`) or document your floor before shipping weights.
 - **Hard negatives manifest** (optional bookkeeping for curated mines): JSON Schema `scripts/datasets/schemas/hard_negatives_manifest_v1.schema.json`, example `scripts/datasets/example_hard_negatives_manifest.json`. Pass `--manifest-out path.json` on merge to record paths and counts.
+- **Quality gates (#394):** export profile + verify gates before training:
+  `python3 scripts/datasets/export_detector_dataset_profile.py --dataset-root scripts/datasets/binary --out /tmp/detector_profile.json`
+  then `make dataset-verify-quality-gates PROFILE=/tmp/detector_profile.json`.
+- **Hard-negatives integrity gate (#394):**
+  `make dataset-verify-hard-negatives MANIFEST=/path/to/hard_negatives_manifest.json`
+  (optional strict mode: `DATASET_ROOT=scripts/datasets REQUIRE_EXISTING_FILES=1`).
 
 Recommended detector training flow for these artifacts:
 - **Stage A (stability):** train on `merged_balanced`
