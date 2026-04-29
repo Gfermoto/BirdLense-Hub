@@ -120,9 +120,13 @@ def build_detection_stack(
         "priority",
     )
 
-    _weight_contract = str(
-        app_config.get("processor.detector_weight_contract") or "warn",
-    ).strip().lower()
+    _weight_contract = (
+        str(
+            app_config.get("processor.detector_weight_contract") or "warn",
+        )
+        .strip()
+        .lower()
+    )
 
     detection_strategy = TwoStageStrategy(
         binary_model_path=binary_path,

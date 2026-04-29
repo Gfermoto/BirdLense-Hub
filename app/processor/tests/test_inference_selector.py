@@ -62,6 +62,21 @@ class TestInferenceSelector(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             assert_backend_supported("onnxruntime")
 
+    def test_onnx_alias_resolves_to_onnxruntime(self):
+        from inference.selector import assert_backend_supported, resolve_inference_backend
+
+        old = os.environ.pop("BIRDLENSE_INFERENCE_BACKEND", None)
+        try:
+            os.environ["BIRDLENSE_INFERENCE_BACKEND"] = "onnx"
+            self.assertEqual(resolve_inference_backend({}), "onnxruntime")
+        finally:
+            if old is None:
+                os.environ.pop("BIRDLENSE_INFERENCE_BACKEND", None)
+            else:
+                os.environ["BIRDLENSE_INFERENCE_BACKEND"] = old
+        with self.assertRaises(NotImplementedError):
+            assert_backend_supported("onnx")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -82,6 +82,26 @@ docker logs birdlense --tail 200 2>&1
 
 ---
 
+## Detector weight contract: scope vs model class names {#detector-weight-contract-mismatch}
+
+**Symptom (logs):** `Detector weight contract: ... miss scoped labels` — `processor.detector_scope` lists a label the current binary weights do not provide (e.g. only `Bird` in the model while scope includes `Rodent`).
+
+**Not a crash** when `processor.detector_weight_contract` is `warn` (default). In `enforce` mode startup fails until weights and scope align.
+
+**What to do:** (1) Set `processor.detector_scope` to match `model.names` / your training manifest. (2) Or deploy weights that include every scoped label, then restart the processor. (3) Do not put `Background` in scope — see [CV_ML_PREP.md](./CV_ML_PREP.md).
+
+**Related:** [CV_ML_ROADMAP_PHASES.md](./CV_ML_ROADMAP_PHASES.md) (#368).
+
+---
+
+## Processor: slow frame warnings at high resolution {#processor-slow-frame-warnings}
+
+**Symptom:** many lines `Slow frame processing: …ms >= …ms`; low FPS in summaries — common at **2.7K+** with heavy YOLO.
+
+**Note:** `processor.frame_processing_warn_ms` (default **450**) only reduces **log noise**; it does not speed up inference. For **latency**, tune `processor.binary_imgsz`, profiles, or resources — see [PROCESSOR_PERFORMANCE.md](./PROCESSOR_PERFORMANCE.md) and [RUNBOOKS.md](./RUNBOOKS.md). The System config-audit hint (`configAuditRuntimeSlowFrames`) explains the same trade-off.
+
+---
+
 ## Slow web UI / API responses
 
 **Common cause:** one container runs the **processor** (decode, detection, recording) and **gunicorn** (API). Under load the CPU is busy with frames and models, so UI requests wait in the gthread queue.

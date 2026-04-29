@@ -258,7 +258,11 @@ export interface Settings {
     key_frame_limit?: number;
     keep_recording_when_no_detections?: boolean;
     detection_strategy?: string;
-    models?: { binary?: string; classifier?: string };
+    inference_backend?: 'torch' | 'openvino' | 'onnxruntime' | string;
+    detector_weight_contract?: 'off' | 'warn' | 'enforce' | string;
+    models?: { binary?: string; binary_openvino?: string; classifier?: string };
+    classifier_uncertainty_entropy_ge?: number | null;
+    classifier_uncertainty_margin_le?: number | null;
     save_images?: boolean;
     birdnet_mqtt_prior_window_hours?: number;
     birdnet_mqtt_bias_window_seconds?: number;
@@ -306,6 +310,8 @@ export interface Settings {
     go2rtc_password?: string;
     /** cpu | intel — VA-API vs CPU для записи (intel = уже H.264). */
     encoding?: string;
+    /** auto | opencv | ffmpeg_vaapi — live capture path for motion/detection. */
+    capture_backend?: 'auto' | 'opencv' | 'ffmpeg_vaapi' | string;
     /** h264 | copy — перекодировать RTSP в H.264 для браузера или копировать веб-кодек как есть. */
     record_stream_codec?: 'h264' | 'copy' | string;
     video_width?: number;

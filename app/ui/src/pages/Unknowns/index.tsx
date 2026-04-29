@@ -65,6 +65,8 @@ function reviewReasonLabel(t: (key: string) => string, reason?: string) {
       return t('unknowns.reviewReasonLowConfidence');
     case 'generic_bird':
       return t('unknowns.reviewReasonGenericBird');
+    case 'classifier_uncertainty':
+      return t('unknowns.reviewReasonClassifierUncertainty');
     default:
       return reason || '';
   }

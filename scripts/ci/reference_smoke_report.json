@@ -6,7 +6,9 @@
     {
       "video": "smoke_clip.mp4",
       "raw_track_count": 0,
-      "fused_track_count": 0
+      "fused_track_count": 0,
+      "classifier_needs_review_count_raw": 0,
+      "classifier_needs_review_count_fused": 0
     }
   ]
 }

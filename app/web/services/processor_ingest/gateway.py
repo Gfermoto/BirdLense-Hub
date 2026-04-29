@@ -48,6 +48,10 @@ def processor_detection_payload(raw: dict) -> dict:
         "trust_band",
         "detector_confidence",
         "classifier_confidence",
+        "classifier_entropy",
+        "classifier_top1_top2_margin",
+        "classifier_needs_review",
+        "review_reason",
     }
     return {k: raw[k] for k in allowed if k in raw}
 

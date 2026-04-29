@@ -580,5 +580,21 @@ class TestTwoStageBirdSkipClassifier(unittest.TestCase):
         self.assertIsNone(results[0].classifier_confidence)
 
 
+class TestEntropyMargin(unittest.TestCase):
+    def test_entropy_and_margin_pure_numpy(self):
+        from detection_strategy import entropy_and_margin_from_prob_vector
+
+        p = np.ones(100, dtype=np.float64) / 100.0
+        ent, margin = entropy_and_margin_from_prob_vector(p)
+        self.assertGreater(ent, 4.5)
+        self.assertAlmostEqual(margin, 0.0, places=5)
+
+        peak = np.zeros(50)
+        peak[0] = 1.0
+        ent2, margin2 = entropy_and_margin_from_prob_vector(peak)
+        self.assertAlmostEqual(ent2, 0.0, places=5)
+        self.assertAlmostEqual(margin2, 1.0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -12,6 +12,28 @@ logger = logging.getLogger(__name__)
 DEFAULT_MIN_CONFIDENCE = 0.30
 
 
+def _parse_optional_threshold(raw):
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _classifier_needs_review_flag(entropy, margin, entropy_ge, margin_le):
+    """True если энтропия/ margin выходят за пороги из конфига (#370, AL)."""
+    if entropy_ge is None and margin_le is None:
+        return False
+    hi = False
+    lo = False
+    if entropy_ge is not None and entropy is not None:
+        hi = float(entropy) >= float(entropy_ge)
+    if margin_le is not None and margin is not None:
+        lo = float(margin) <= float(margin_le)
+    return bool(hi or lo)
+
+
 def _is_rodent_detector_label(detector_label: str) -> bool:
     """Канон в пайплайне — ``Rodent``; ``squirrel`` только для старых событий/логов."""
     d = str(detector_label or "").strip().lower()
@@ -349,6 +371,10 @@ class DecisionMaker:
         vote_share = counts[best_name] / len(classifier_events)
         avg_classifier_conf = sum(float(ev.get("confidence") or 0.0) for ev in relevant) / len(relevant)
         avg_combined_conf = sum(float(ev.get("combined_confidence") or 0.0) for ev in relevant) / len(relevant)
+        ent_vals = [float(ev["entropy"]) for ev in relevant if ev.get("entropy") is not None]
+        margin_vals = [float(ev["top1_top2_margin"]) for ev in relevant if ev.get("top1_top2_margin") is not None]
+        avg_entropy = sum(ent_vals) / len(ent_vals) if ent_vals else None
+        avg_top1_top2_margin = sum(margin_vals) / len(margin_vals) if margin_vals else None
         return {
             "species_name": best_name,
             "vote_share": vote_share,
@@ -356,11 +382,17 @@ class DecisionMaker:
             "avg_classifier_confidence": avg_classifier_conf,
             "avg_combined_confidence": avg_combined_conf,
             "combined_confidence": vote_share * avg_combined_conf,
+            "avg_entropy": avg_entropy,
+            "avg_top1_top2_margin": avg_top1_top2_margin,
         }
 
     def get_decisions(self, tracks):
+        from app_config.app_config import app_config
+
         decisions = []
         store_floor = float(self.min_confidence_to_store)
+        entropy_ge = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_entropy_ge"))
+        margin_le = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_margin_le"))
         for track_id, track in tracks.items():
             detector_events = track.get("detector_events") or []
             if not detector_events:
@@ -566,6 +598,10 @@ class DecisionMaker:
                 classifier_vote_share=(classifier_candidate["vote_share"] if classifier_candidate is not None else 0.0),
             )
 
+            clf_entropy = classifier_candidate.get("avg_entropy") if classifier_candidate is not None else None
+            clf_margin = classifier_candidate.get("avg_top1_top2_margin") if classifier_candidate is not None else None
+            clf_needs_review = _classifier_needs_review_flag(clf_entropy, clf_margin, entropy_ge, margin_le)
+
             decisions.append(
                 apply_runtime_contract(
                     {
@@ -605,6 +641,9 @@ class DecisionMaker:
                         "classifier_vote_share": (
                             classifier_candidate["vote_share"] if classifier_candidate is not None else 0.0
                         ),
+                        "classifier_entropy": clf_entropy,
+                        "classifier_top1_top2_margin": clf_margin,
+                        "classifier_needs_review": clf_needs_review,
                         "decision_kind": decision_kind,
                         "reject_reason_code": reject_reason_code,
                         "evidence_state": evidence_state,

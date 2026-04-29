@@ -7823,6 +7823,14 @@ export interface components {
             source?: string;
             detection_provider?: string | null;
             image_url?: string | null;
+            /** @enum {string|null} */
+            review_state?: "pending" | "reviewed" | "not_applicable" | null;
+            /** @enum {string|null} */
+            review_reason?: "low_confidence" | "generic_bird" | "classifier_uncertainty" | null;
+            review_source?: string | null;
+            classifier_entropy?: number | null;
+            classifier_top1_top2_margin?: number | null;
+            classifier_needs_review?: boolean;
         };
         SpeciesSummary: {
             id?: number;

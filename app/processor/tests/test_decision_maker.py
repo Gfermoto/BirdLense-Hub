@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import unittest
+from unittest.mock import patch
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_path = os.path.abspath(os.path.join(current_dir, '../src'))
@@ -36,14 +37,23 @@ def _make_track(
         'key_frames': key_frames or [],
         'frames': frames or [],
     }
-    for idx, (name, cls_conf, det_conf) in enumerate(classifier_events):
-        track['classifier_events'].append({
+    for idx, row in enumerate(classifier_events):
+        if isinstance(row, dict):
+            track["classifier_events"].append(dict(row))
+            continue
+        name, cls_conf, det_conf = row[0], row[1], row[2]
+        ev = {
             'species_name': name,
             'confidence': cls_conf,
             'detector_confidence': det_conf,
             'combined_confidence': det_conf * cls_conf,
             't': idx * 0.1,
-        })
+        }
+        if len(row) > 3:
+            ev['entropy'] = row[3]
+        if len(row) > 4:
+            ev['top1_top2_margin'] = row[4]
+        track['classifier_events'].append(ev)
     return track
 
 
@@ -413,6 +423,30 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertFalse(decisions[0]['visit_eligible'])
         self.assertEqual(decisions[0]['decision_kind'], 'review_only_generic')
         self.assertEqual(decisions[0]['outcome_bucket'], 'review_only')
+
+    @patch("app_config.app_config.app_config")
+    def test_classifier_entropy_margin_and_needs_review(self, mock_cfg):
+        def fake_get(k, default=None):
+            if k == "processor.classifier_uncertainty_entropy_ge":
+                return 1.5
+            if k == "processor.classifier_uncertainty_margin_le":
+                return 0.05
+            return default
+
+        mock_cfg.get.side_effect = fake_get
+        dm = DecisionMaker(min_track_duration=0)
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.9] * 10,
+                classifier_events=[
+                    ("Cardinal", 0.9, 0.9, 2.0, 0.02),
+                ],
+            ),
+        }
+        d = dm.get_decisions(tracks)[0]
+        self.assertAlmostEqual(d["classifier_entropy"], 2.0)
+        self.assertAlmostEqual(d["classifier_top1_top2_margin"], 0.02)
+        self.assertTrue(d["classifier_needs_review"])
 
 if __name__ == '__main__':
     unittest.main()

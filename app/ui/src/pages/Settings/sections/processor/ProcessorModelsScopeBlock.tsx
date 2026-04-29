@@ -1,11 +1,15 @@
 import { Trans, useTranslation } from 'react-i18next';
 import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import Grid from '@mui/material/Grid2';
+import FormControl from '@mui/material/FormControl';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
@@ -50,6 +54,76 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
           </Typography>
         </Alert>
         <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <form.Field name="processor.inference_backend">
+              {(field) => (
+                <FormControl fullWidth>
+                  <InputLabel id="processor-inference-backend-label">
+                    {t('settings.processorInferenceBackend')}
+                  </InputLabel>
+                  <Select
+                    labelId="processor-inference-backend-label"
+                    value={(field.state.value ?? 'torch').toLowerCase()}
+                    label={t('settings.processorInferenceBackend')}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                  >
+                    <MenuItem value="torch">
+                      {t('settings.processorInferenceBackendTorch')}
+                    </MenuItem>
+                    <MenuItem value="openvino">
+                      {t('settings.processorInferenceBackendOpenvino')}
+                    </MenuItem>
+                  </Select>
+                  <FormHelperText>
+                    {t('settings.processorInferenceBackendHint')}
+                  </FormHelperText>
+                </FormControl>
+              )}
+            </form.Field>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <form.Field name="processor.detector_weight_contract">
+              {(field) => (
+                <FormControl fullWidth>
+                  <InputLabel id="processor-detector-contract-label">
+                    {t('settings.processorDetectorWeightContract')}
+                  </InputLabel>
+                  <Select
+                    labelId="processor-detector-contract-label"
+                    value={(field.state.value ?? 'warn').toLowerCase()}
+                    label={t('settings.processorDetectorWeightContract')}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                  >
+                    <MenuItem value="off">
+                      {t('settings.processorDetectorWeightContractOff')}
+                    </MenuItem>
+                    <MenuItem value="warn">
+                      {t('settings.processorDetectorWeightContractWarn')}
+                    </MenuItem>
+                    <MenuItem value="enforce">
+                      {t('settings.processorDetectorWeightContractEnforce')}
+                    </MenuItem>
+                  </Select>
+                  <FormHelperText>
+                    {t('settings.processorDetectorWeightContractHint')}
+                  </FormHelperText>
+                </FormControl>
+              )}
+            </form.Field>
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <form.Field name="processor.models.binary_openvino">
+              {(field) => (
+                <TextField
+                  fullWidth
+                  value={field.state.value ?? ''}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  label={t('settings.processorModelBinaryOpenvinoPath')}
+                  helperText={t('settings.processorModelBinaryOpenvinoPathHint')}
+                />
+              )}
+            </form.Field>
+          </Grid>
           <Grid size={{ xs: 12 }}>
             <form.Field name="processor.detection_strategy">
               {(field) => {
@@ -142,6 +216,47 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                   />
                 );
               }}
+            </form.Field>
+          </Grid>
+          <Typography variant="subtitle2" sx={{ width: '100%', px: 1, mt: 1 }}>
+            {t('settings.processorClassifierUncertaintyHeading')}
+          </Typography>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <form.Field name="processor.classifier_uncertainty_entropy_ge">
+              {(field) => (
+                <TextField
+                  fullWidth
+                  type="number"
+                  inputProps={{ min: 0, step: 0.05 }}
+                  value={field.state.value ?? ''}
+                  onChange={(e) =>
+                    field.handleChange(
+                      e.target.value === '' ? null : Number(e.target.value),
+                    )
+                  }
+                  label={t('settings.processorClassifierEntropyGe')}
+                  helperText={t('settings.processorClassifierEntropyGeHint')}
+                />
+              )}
+            </form.Field>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <form.Field name="processor.classifier_uncertainty_margin_le">
+              {(field) => (
+                <TextField
+                  fullWidth
+                  type="number"
+                  inputProps={{ min: 0, max: 1, step: 0.01 }}
+                  value={field.state.value ?? ''}
+                  onChange={(e) =>
+                    field.handleChange(
+                      e.target.value === '' ? null : Number(e.target.value),
+                    )
+                  }
+                  label={t('settings.processorClassifierMarginLe')}
+                  helperText={t('settings.processorClassifierMarginLeHint')}
+                />
+              )}
             </form.Field>
           </Grid>
           <Grid size={{ xs: 12 }}>

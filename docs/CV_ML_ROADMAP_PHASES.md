@@ -18,12 +18,12 @@ Legend: **Done** = shipped on branch `ML` in the repo (code/docs/scripts). **In 
 |-------|--------|--------|
 | [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Epic | **In progress** | Repo Phase‑1 delivered; **your** new weights + optional merge `ML`→`main` when validated on hub. |
 | [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Train & ship detector | **In progress** | Runtime contract + dataset merge helpers **done** in repo; **training detector weights** (Colab) — operator. |
-| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Done** (Phase‑1 repo) / **Planned** (product) | Manifest schema + template + docs **done**; review queue / scheduled retrain — later. |
-| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Classifier roadmap | **In progress** / **Planned** | Fine-tune in Colab ([TRAINING](./TRAINING.md)) — operator; uncertainty → DB/UI — **planned**. Optional **DINO/DINOv2** backbone for species + AL embeddings — [REID_ROADMAP](./REID_ROADMAP.md) (section *Species classification — same backbone*); prototype [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383). |
+| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Done** (Phase‑1 repo) / **Planned** (product) | Manifest schema + template + **`decision_trace_to_pool_manifest.py`** + SQLite **`export_pool_from_sqlite.py`** + docs **done**; scheduled retrain — later. |
+| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Classifier roadmap | **In progress** / **Planned** | Fine-tune in Colab ([TRAINING](./TRAINING.md)) — operator; **entropy / margin + `classifier_needs_review` in decision_trace** — repo (config thresholds); **fusion training CSV + fusion-trace UI steps** ship those fields; dedicated review-queue UI — **planned**. Optional **DINO/DINOv2** backbone — [REID_ROADMAP](./REID_ROADMAP.md); [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383). |
 | [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Multi-backend inference | **Done** / **Planned** | torch + OpenVINO + cache **done**; ONNX Runtime / TensorRT — **planned** (`NotImplementedError`). |
-| [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Benchmarking | **Done** / **Planned** | Scripts + CI + docker smoke **done**; drift / PSI / Grafana — **planned**. |
-| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Video decode | **In progress** | Benchmark script + doc template **done**; **filling decode matrix** on your platforms — in progress. |
-| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **In progress** / **Planned** | Design doc + DINO scope ([REID_ROADMAP](./REID_ROADMAP.md)); sub-issue [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) — offline **`embed_dinov2_crop.py`** + **`embed_cosine_report.py`** + **`export_crops_from_sqlite.py`** shipped; hub gallery / wiring — **planned**. Same backbone may serve species + Re-ID — see REID doc. |
+| [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Benchmarking | **Done** / **Planned** | Scripts + CI + docker smoke + optional **PSI drift gate** **done**; Grafana dashboard — **planned**. |
+| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Video decode | **In progress** | Benchmark script + FFmpeg VA-API option + `video.capture_backend` path **done**; **filling decode matrix** on your platforms — in progress. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **In progress** / **Planned** | Design doc + DINO scope; [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) — offline embed/cosine/export scripts + SQLite sidecar import **shipped**; hub gallery / UI — **planned**. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Done** (research) / **Planned** (prod) | Toy simulation + threat-model doc **done**; opt-in prod channel — **planned**. |
 
 *Refresh this table when a milestone closes or scope shifts.*
@@ -82,15 +82,15 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 | [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) | torch/OpenVINO + cache + optional **`BIRDLENSE_INFERENCE_AUTO_BENCHMARK`** → `cold_start_predict_ms`. ONNX/TensorRT remain `NotImplementedError`. |
 | [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) | Benchmark scripts + CI + reference JSON (drift/Grafana still future). |
 | [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) | Decode/resize script + docs table. |
-| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) | Pool manifest schema + template emitter + docs. |
-| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) | Design doc + offline [`embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py) + [`embed_cosine_report.py`](../scripts/reid/embed_cosine_report.py) + [`export_crops_from_sqlite.py`](../scripts/reid/export_crops_from_sqlite.py); embeddings DB/UI later. |
-| [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) | Sub-issue of [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374): [`embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py) + [`embed_cosine_report.py`](../scripts/reid/embed_cosine_report.py) + [`export_crops_from_sqlite.py`](../scripts/reid/export_crops_from_sqlite.py); hub gallery / prod — later. |
+| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) | Pool manifest schema + template emitter + `decision_trace`/SQLite exporters + docs. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) | Design doc + offline [`embed_dinov2_crop.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/embed_dinov2_crop.py) + [`embed_cosine_report.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/embed_cosine_report.py) + [`export_crops_from_sqlite.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/export_crops_from_sqlite.py) + SQLite [`import_embeddings_sqlite.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/import_embeddings_sqlite.py); UI later. |
+| [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) | Sub-issue of [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374): [`embed_dinov2_crop.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/embed_dinov2_crop.py) + [`embed_cosine_report.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/embed_cosine_report.py) + [`export_crops_from_sqlite.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/export_crops_from_sqlite.py); hub gallery / prod — later. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) | FedAvg toy simulation + threat-model doc. |
-| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) | Documented hook points; full product uncertainty flags still roadmap. |
+| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) | `decision_trace` fields + fusion export CSV columns + fusion-trace UI steps; dedicated review-queue UI still roadmap. |
 
 ### Epic [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) — 3-class detector **dataset** (Phase 1 entrypoint)
 
-- Local layout: **`scripts/datasets/binary/birds`**, **`binary/rodent`**, **`binary/background`** — see [binary/README.md](../scripts/datasets/binary/README.md).
+- Local layout: **`scripts/datasets/binary/birds`**, **`binary/rodent`**, **`binary/background`** — see [binary/README.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/datasets/binary/README.md).
 - **`scripts/datasets/merge_datasets_three_class.py`** + **`make dataset-merge-three-class`** → `Bird` / `Rodent` / `Background` `dataset.yaml` under `scripts/datasets/binary/merged/` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) trains/rolls up separately).
 - Optional **`hard_negatives_manifest@v1`** schema + merge **`--manifest-out`**; see [DATASETS.md](DATASETS.md).
 
@@ -103,6 +103,7 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 | `processor.inference_backend` | `torch` (default) \| `openvino` (binary detector IR). ONNX/TensorRT: [#371]. |
 | `processor.models.binary_openvino` | Path to OpenVINO export dir or `.xml` when `inference_backend` is `openvino`. |
 | `processor.detector_weight_contract` | `off` \| `warn` \| `enforce` — detector class names vs `processor.detector_scope` ([#368]). |
+| `video.capture_backend` | `auto` (default) \| `opencv` \| `ffmpeg_vaapi` — live inference frame capture path; `auto` uses FFmpeg VA-API only with `video.encoding: intel` and working `/dev/dri`. |
 | Env `BIRDLENSE_INFERENCE_BACKEND` | Overrides `processor.inference_backend`. |
 | Env `BIRDLENSE_BINARY_OPENVINO_PATH` | Optional override for OpenVINO binary weights path. |
 | Env `BIRDLENSE_INFERENCE_AUTO_BENCHMARK` | Optional one-shot binary `predict` timing → `inference_backend_cache.json` ([#371]). |

@@ -6,16 +6,28 @@ Encoding: cpu (copy) or intel (VA-API on any Intel integrated GPU, including Cel
 
 import logging
 import os
+import re
 import subprocess
 import threading
 import time
 import cv2
+import numpy as np
 
 from .streaming_server import start_streaming_server
 
 logger = logging.getLogger(__name__)
 
 VAAPI_DEVICE = "/dev/dri/renderD128"
+
+
+def _set_runtime_gauge(name: str, value) -> None:
+    """Best-effort runtime diagnostics hook."""
+    try:
+        from processor_runtime_stats import set_gauge
+
+        set_gauge(name, value)
+    except Exception:
+        pass
 
 
 def _ffmpeg_stderr_log_level(line: str) -> int:
@@ -30,6 +42,58 @@ def _ffmpeg_stderr_log_level(line: str) -> int:
     if s.startswith("frame=") and "fps=" in s:
         return logging.DEBUG
     return logging.INFO
+
+
+# FFmpeg печатает Input #0, rtsp, from 'rtsp://user:pass@host/...' — не логировать креды (#384).
+_RTSP_URL_AUTH_RE = re.compile(
+    r"(?P<proto>rtsp://)(?P<user>[^/@?#]+):(?P<pass>[^@]+)@",
+    re.IGNORECASE,
+)
+
+
+def _sanitize_ffmpeg_stderr_line(line: str) -> str:
+    """Redact user:password in rtsp:// URLs before logging (FFmpeg stderr echoes full Input URL)."""
+    if "rtsp://" not in line and "RTSP://" not in line:
+        return line
+    return _RTSP_URL_AUTH_RE.sub(r"\1***:***@", line)
+
+
+def _normalize_capture_backend(value: str | None) -> str:
+    """Normalize live frame capture backend."""
+    backend = (value or "auto").strip().lower()
+    if backend in ("auto", "opencv", "ffmpeg_vaapi"):
+        return backend
+    return "auto"
+
+
+def _ffmpeg_vaapi_capture_cmd(stream_url: str, lores_size: tuple[int, int]) -> list[str]:
+    """FFmpeg rawvideo command for VA-API live inference capture."""
+    width, height = int(lores_size[0]), int(lores_size[1])
+    vf = f"scale_vaapi=w={width}:h={height},hwdownload,format=nv12,format=bgr24"
+    return [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "warning",
+        "-rtsp_transport",
+        "tcp",
+        "-hwaccel",
+        "vaapi",
+        "-hwaccel_device",
+        VAAPI_DEVICE,
+        "-hwaccel_output_format",
+        "vaapi",
+        "-i",
+        stream_url,
+        "-an",
+        "-vf",
+        vf,
+        "-pix_fmt",
+        "bgr24",
+        "-f",
+        "rawvideo",
+        "pipe:1",
+    ]
 
 
 # Reconnect backoff: 1, 2, 4, 8, 16, max 30 sec
@@ -78,6 +142,7 @@ class Go2RTCStreamSource:
         mjpeg_port=8082,
         encoding_mode="cpu",
         record_stream_codec="h264",
+        capture_backend="auto",
     ):
         self.logger = logging.getLogger(__name__)
         self.stream_url = stream_url
@@ -89,9 +154,13 @@ class Go2RTCStreamSource:
             self._encoding_mode = "cpu"
         rsc = (record_stream_codec or "h264").strip().lower()
         self._record_stream_codec = rsc if rsc in ("h264", "copy") else "h264"
+        self._capture_backend = _normalize_capture_backend(capture_backend)
+        self._capture_backend_used = "opencv"
+        _set_runtime_gauge("video_capture_backend_config", self._capture_backend)
 
         self._cap = None
         self._out = None
+        self._capture_process = None
         self._ffmpeg_process = None
         self._streaming_output = None
         self._streaming_thread = None
@@ -112,6 +181,8 @@ class Go2RTCStreamSource:
     def _connect(self) -> bool:
         """Open RTSP connection. Returns True if successful."""
         self._disconnect()
+        if self._should_use_ffmpeg_vaapi_capture() and self._connect_ffmpeg_vaapi_capture():
+            return True
         # Не логировать поля из URL (в т.ч. учётка в stream_url) — CodeQL sensitive logging
         self.logger.info("Connecting to video stream (OpenCV)")
         # OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp set in Dockerfile
@@ -125,8 +196,40 @@ class Go2RTCStreamSource:
         if fps and fps > 0:
             self._source_fps = fps
         self._cap = cap
+        self._capture_backend_used = "opencv"
+        _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
         self.logger.info(f"Connected. FPS: {self._source_fps}")
+        return True
+
+    def _should_use_ffmpeg_vaapi_capture(self) -> bool:
+        """Whether live inference capture should try FFmpeg VA-API."""
+        if self._capture_backend == "ffmpeg_vaapi":
+            return True
+        return self._capture_backend == "auto" and self._encoding_mode == "intel"
+
+    def _connect_ffmpeg_vaapi_capture(self) -> bool:
+        """Open FFmpeg rawvideo pipe for live inference frames."""
+        if not self._use_intel_vaapi():
+            if self._capture_backend == "ffmpeg_vaapi":
+                self.logger.warning("FFmpeg VA-API capture requested but VA-API is unavailable; falling back to OpenCV")
+            return False
+        cmd = _ffmpeg_vaapi_capture_cmd(self.stream_url, self.lores_size)
+        try:
+            self._capture_process = subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+        except (FileNotFoundError, OSError) as e:
+            self.logger.warning("Failed to start FFmpeg VA-API capture: %s", e)
+            self._capture_process = None
+            return False
+        self._capture_backend_used = "ffmpeg_vaapi"
+        _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
+        self._reconnect_delay = INITIAL_RECONNECT_DELAY
+        self.logger.info("Connected. Capture backend: FFmpeg VA-API")
         return True
 
     def _disconnect(self):
@@ -134,6 +237,17 @@ class Go2RTCStreamSource:
         if self._cap:
             self._cap.release()
             self._cap = None
+        if self._capture_process:
+            try:
+                self._capture_process.terminate()
+                self._capture_process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self._capture_process.kill()
+                self._capture_process.wait(timeout=2)
+            except Exception:
+                pass
+            self._capture_process = None
+        self._capture_backend_used = "opencv"
 
     def _reconnect_if_needed(self) -> bool:
         """Attempt reconnect with backoff. Returns True if connected."""
@@ -149,11 +263,32 @@ class Go2RTCStreamSource:
 
     def _read_frame(self):
         """Read one frame. Returns (frame_bgr, success)."""
+        if self._capture_backend_used == "ffmpeg_vaapi":
+            return self._read_ffmpeg_vaapi_frame()
         if not self._cap or not self._cap.isOpened():
             return None, False
         ret, frame = self._cap.read()
         if not ret or frame is None:
             return None, False
+        return frame, True
+
+    def _read_ffmpeg_vaapi_frame(self):
+        """Read one BGR lores frame from FFmpeg rawvideo stdout."""
+        proc = self._capture_process
+        if not proc or proc.poll() is not None or not proc.stdout:
+            return None, False
+        width, height = int(self.lores_size[0]), int(self.lores_size[1])
+        need = width * height * 3
+        chunks = []
+        remaining = need
+        while remaining > 0:
+            chunk = proc.stdout.read(remaining)
+            if not chunk:
+                return None, False
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        data = b"".join(chunks)
+        frame = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 3))
         return frame, True
 
     def _update_streaming_output(self, frame):
@@ -339,8 +474,9 @@ class Go2RTCStreamSource:
                     err = self._ffmpeg_process.stderr.read()
                     if err:
                         for line in err.decode("utf-8", errors="replace").strip().splitlines():
-                            lvl = _ffmpeg_stderr_log_level(line)
-                            self.logger.log(lvl, "FFmpeg: %s", line)
+                            safe = _sanitize_ffmpeg_stderr_line(line)
+                            lvl = _ffmpeg_stderr_log_level(safe)
+                            self.logger.log(lvl, "FFmpeg: %s", safe)
                 except Exception:
                     pass
             self._ffmpeg_process = None
@@ -359,7 +495,10 @@ class Go2RTCStreamSource:
             return None
         self._frame_count += 1
         self._last_frame_time = time.time()
-        frame_lores = cv2.resize(frame, self.lores_size)
+        if self._capture_backend_used == "ffmpeg_vaapi":
+            frame_lores = frame
+        else:
+            frame_lores = cv2.resize(frame, self.lores_size)
         self._update_streaming_output(frame)
         return frame_lores
 
