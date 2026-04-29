@@ -10,13 +10,7 @@ def normalize_detector_label(name: str) -> str:
     Совместимо с ``TwoStageStrategy._normalize_detector_label`` (исторически):
     Bird / Rodent / Background / прочее (Title Case).
     """
-    raw = (
-        str(name or "")
-        .replace("_OR_", "/")
-        .replace("_", " ")
-        .replace("-", " ")
-        .strip()
-    )
+    raw = str(name or "").replace("_OR_", "/").replace("_", " ").replace("-", " ").strip()
     key = " ".join(raw.lower().split())
     if not key:
         return "Unknown"

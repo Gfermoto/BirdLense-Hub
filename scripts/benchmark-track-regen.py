@@ -130,6 +130,8 @@ def main() -> int:
             app_config=app_config,
         )
         kind_iter = (str(track.get('decision_kind') or 'unknown') for track in fused)
+        clf_review_raw = sum(1 for track in raw if bool(track.get('classifier_needs_review')))
+        clf_review_fused = sum(1 for track in fused if bool(track.get('classifier_needs_review')))
         row = {
             'video': video_path,
             'raw_track_count': len(raw),
@@ -141,6 +143,8 @@ def main() -> int:
             'fallback_count': sum(
                 (1 for track in fused if bool(track.get('fallback_used'))),
             ),
+            'classifier_needs_review_count_raw': clf_review_raw,
+            'classifier_needs_review_count_fused': clf_review_fused,
         }
         if gold_map is not None:
             ev = eval_video_against_gold(gold_map, video_path, fused)

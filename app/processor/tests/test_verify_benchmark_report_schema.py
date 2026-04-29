@@ -51,6 +51,24 @@ class TestVerifyBenchmarkReportSchema(unittest.TestCase):
         ok, errs = self.mod.validate_report({'videos': []})
         self.assertFalse(ok)
 
+    def test_classifier_review_counts_optional_numeric(self):
+        """Опциональные счётчики classifier_needs_review_* (#372)."""
+        data = {
+            'report_format': 'benchmark_track_regen@v1',
+            'videos': [
+                {
+                    'video': '/x/a.mp4',
+                    'raw_track_count': 1,
+                    'fused_track_count': 0,
+                    'classifier_needs_review_count_raw': 2,
+                    'classifier_needs_review_count_fused': 1,
+                },
+            ],
+        }
+        ok, errs = self.mod.validate_report(data)
+        self.assertTrue(ok, errs)
+        self.assertEqual(errs, [])
+
 
 if __name__ == '__main__':
     unittest.main()

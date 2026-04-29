@@ -28,7 +28,12 @@ def validate_report(data: dict[str, Any]) -> tuple[bool, list[str]]:
             continue
         if 'video' not in row:
             errs.append(f'videos[{i}] missing video')
-        for key in ('raw_track_count', 'fused_track_count'):
+        for key in (
+            'raw_track_count',
+            'fused_track_count',
+            'classifier_needs_review_count_raw',
+            'classifier_needs_review_count_fused',
+        ):
             if key in row and not isinstance(row[key], (int, float)):
                 errs.append(f'videos[{i}].{key} must be numeric')
         le = row.get('label_eval')

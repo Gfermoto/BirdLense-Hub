@@ -18,12 +18,12 @@
 |-------|--------|----------------|
 | [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Эпик | **В работе** | Phase‑1 в репо сделана; **ваши** новые веса и при необходимости merge `ML`→`main` после проверки на хабе. |
 | [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Детектор train/ship | **В работе** | Контракт и скрипты датасета **готовы** в репо; **обучение детектора** (Colab) — оператор. |
-| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Готово** (репо фаза 1) / **Запланировано** (продукт) | Схема манифеста + шаблон + доки **готовы**; очередь ревью / расписание — позже. |
-| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Классификатор | **В работе** / **Запланировано** | Дообучение в Colab ([TRAINING.ru.md](./TRAINING.ru.md)) — оператор; uncertainty в UI/БД — **запланировано**. Опционально backbone **DINO/DINOv2** для видов и AL — [REID_ROADMAP.ru.md](./REID_ROADMAP.ru.md) (раздел *Классификация видов — тот же backbone*); прототип [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383). |
+| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Готово** (репо фаза 1) / **Запланировано** (продукт) | Схема манифеста + шаблон + **`decision_trace_to_pool_manifest.py`** + SQLite **`export_pool_from_sqlite.py`** + доки **готовы**; расписание retrain — позже. |
+| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Классификатор | **В работе** / **Запланировано** | Дообучение в Colab ([TRAINING.ru.md](./TRAINING.ru.md)) — оператор; **энтропия/margin и `classifier_needs_review`** — трасса, CSV fusion export, fusion-trace UI и Unknowns review queue; **DINO/DINOv2** — [REID_ROADMAP.ru.md](./REID_ROADMAP.ru.md); [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383). |
 | [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Инференс-бэкенды | **Готово** / **Запланировано** | torch + OpenVINO + кэш **готовы**; ONNX Runtime / TensorRT — **запланировано**. |
-| [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Бенчмарки | **Готово** / **Запланировано** | Скрипты + CI + docker-smoke **готовы**; drift / Grafana — **запланировано**. |
-| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Декод видео | **В работе** | Скрипт замеров + шаблон таблицы **готовы**; **заполнение матрицы платформ** у вас — в работе. |
-| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **В работе** / **Запланировано** | Доки + DINO ([REID_ROADMAP.ru.md](./REID_ROADMAP.ru.md)); офлайн [`embed_dinov2_crop.py`](../scripts/reid/embed_dinov2_crop.py) + [`embed_cosine_report.py`](../scripts/reid/embed_cosine_report.py) + [`export_crops_from_sqlite.py`](../scripts/reid/export_crops_from_sqlite.py); подзадача [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) — галерея в проде **запланировано**. Один backbone на виды + Re-ID — см. REID. |
+| [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Бенчмарки | **Готово** / **Запланировано** | Скрипты + CI + docker-smoke + **PSI drift gate** **готовы**; Grafana — **запланировано**. |
+| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Декод видео | **В работе** | Скрипт замеров + FFmpeg VA-API backend + `video.capture_backend` **готовы**; **заполнение матрицы платформ** у вас — в работе. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **В работе** / **Запланировано** | Доки + DINO; офлайн embed/cosine/export + SQLite sidecar import **готовы**; галерея/UI — **запланировано**. Один backbone на виды + Re-ID — см. REID. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Готово** (исслед.) / **Запланировано** (прод) | Игрушечная симуляция + threat model **готовы**; прод-канал — **запланировано**. |
 
 *Обновляйте таблицу при закрытии вех или смене фокуса.*
@@ -74,13 +74,14 @@
 
 ### Сводка по подзадачам (ветка ML)
 
-См. таблицу в [CV_ML_ROADMAP_PHASES.md](CV_ML_ROADMAP_PHASES.md) (англ.) — что уже есть в репозитории по [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)–[#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375).
+См. таблицу в [CV_ML_ROADMAP_PHASES.md](CV_ML_ROADMAP_PHASES.md) (англ.) — что уже есть в репозитории по [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)–[#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375). По [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370): поля в трассе, CSV fusion export и шаги fusion-trace в UI; отдельная очередь ревью — позже.
 
 ### Эпик [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) — датасет 3-классового детектора (фаза 1)
 
-- Локальная раскладка: ``scripts/datasets/binary/birds``, ``binary/rodent``, ``binary/background`` — см. [binary/README.md](../scripts/datasets/binary/README.md).
+- Локальная раскладка: ``scripts/datasets/binary/birds``, ``binary/rodent``, ``binary/background`` — см. [binary/README.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/datasets/binary/README.md).
 - ``merge_datasets_three_class.py`` + ``make dataset-merge-three-class`` → ``dataset.yaml`` Bird/Rodent/Background в ``scripts/datasets/binary/merged/``; обучение/релиз — [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368).
 - Схема манифеста hard negatives и ``--manifest-out`` — см. [DATASETS.ru.md](DATASETS.ru.md).
+- `video.capture_backend: auto|opencv|ffmpeg_vaapi` — путь захвата кадров для live inference; в `auto` VA-API включается только вместе с `video.encoding: intel` и рабочим `/dev/dri`, иначе OpenCV.
 
 ---
 

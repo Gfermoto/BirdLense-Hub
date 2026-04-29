@@ -206,6 +206,10 @@ processor:
     binary_openvino: ""
     # EU-классификатор (~491 вид): скачивать как best.pt с Hugging Face gfermoto/birdlense-birds-eu
     classifier: "models/classification/weights/best.pt"
+  # Неопределённость YOLO-cls (#370): энтропия (наты) и margin top1−top2 по полному вектору probs.
+  # null — не выставлять classifier_needs_review в decision rows; задайте пороги для AL/аналитики.
+  classifier_uncertainty_entropy_ge: null
+  classifier_uncertainty_margin_le: null
 
 # Video source: go2rtc | file
 video:
@@ -227,6 +231,9 @@ video:
   go2rtc_password: ""
   # Кодирование записи: cpu | intel (встроенная видеокарта Intel — VA-API)
   encoding: cpu
+  # Захват кадров для motion/detection: auto | opencv | ffmpeg_vaapi.
+  # auto: при encoding=intel пробует FFmpeg VA-API, иначе OpenCV; при ошибке fallback на OpenCV.
+  capture_backend: auto
   # Запись с RTSP: h264 — перекодировать в H.264 (воспроизведение в браузере, меньше сюрпризов с HEVC).
   # copy — без перекодирования (ниже CPU; если поток HEVC, в Chrome может быть «Не удалось загрузить видео»).
   record_stream_codec: h264

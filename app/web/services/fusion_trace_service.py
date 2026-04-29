@@ -131,6 +131,9 @@ def build_track_step_rows(track: dict[str, Any]) -> list[dict[str, Any]]:
             ("classifier_event_count", track.get("classifier_event_count")),
             ("classifier_vote_share", _fmt_num(track.get("classifier_vote_share"))),
             ("classifier_threshold", _fmt_num(track.get("classifier_threshold"))),
+            ("classifier_entropy", _fmt_num(track.get("classifier_entropy"))),
+            ("classifier_top1_top2_margin", _fmt_num(track.get("classifier_top1_top2_margin"))),
+            ("classifier_needs_review", track.get("classifier_needs_review")),
         ],
     )
     block(

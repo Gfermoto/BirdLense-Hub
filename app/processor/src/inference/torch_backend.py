@@ -22,9 +22,17 @@ def load_yolo_detector(model_path: str, *, backend: str = "torch") -> Any:
     - ``torch``: ``.pt`` чекпоинт (дефолт).
     - ``openvino``: путь к каталогу экспорта OpenVINO или к ``.xml`` (тот же API ``track()`` в Ultralytics).
     """
+    b = (backend or "torch").strip().lower()
+    if b == "onnxruntime":
+        # Селектор по умолчанию всё ещё блокирует onnx в assert_backend_supported (#371).
+        # Когда будем подключать ORT: yolo export format=onnx + onnxruntime.InferenceSession
+        # или API Ultralytics для ONNX — расширить ветку здесь.
+        raise NotImplementedError(
+            "ONNX Runtime for binary detector is not implemented yet (#371). "
+            "Use torch or openvino, or export OpenVINO IR (yolo export format=openvino).",
+        )
     from ultralytics import YOLO
 
-    b = (backend or "torch").strip().lower()
     if b == "torch":
         return YOLO(model_path, task="detect")
     if b == "openvino":

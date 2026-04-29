@@ -34,6 +34,12 @@ PYTHONPATH=app DATA_DIR=app/data \
 
 python3 scripts/reid/embed_dinov2_crop.py --glob '/tmp/reid_crops/*.jpg' -o /tmp/embed.jsonl
 python3 scripts/reid/embed_cosine_report.py --jsonl /tmp/embed.jsonl --topk 5 -o /tmp/report.md
+python3 scripts/reid/import_embeddings_sqlite.py --db app/data/db/birdlense.db --jsonl /tmp/embed.jsonl --manifest /tmp/reid_manifest.jsonl
 ```
+
+`import_embeddings_sqlite.py` creates/updates sidecar table `reid_embedding`
+(`video_species_id`, `video_id`, `species_id`, `track_id`, `crop_path`,
+`model`, `dim`, `embedding_json`). Это не включает Re-ID в продуктовый UI, но
+фиксирует локальное хранение эмбеддингов для следующего API/UI этапа #374.
 
 См. также [REID_ROADMAP.md](../../docs/REID_ROADMAP.md).

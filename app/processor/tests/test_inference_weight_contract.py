@@ -32,6 +32,9 @@ class TestWeightContract(unittest.TestCase):
                 log,
             )
         self.assertTrue(any("Rodent" in x for x in cm.output))
+        self.assertTrue(
+            any("TROUBLESHOOTING.md#detector-weight-contract-mismatch" in x for x in cm.output)
+        )
 
     def test_validate_off_skips_checks(self):
         from inference.weight_contract import validate_detector_weight_contract
@@ -48,13 +51,14 @@ class TestWeightContract(unittest.TestCase):
         from inference.weight_contract import validate_detector_weight_contract
 
         log = logging.getLogger("test_validate_enforce_raises")
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValueError) as ctx:
             validate_detector_weight_contract(
                 {0: "Bird"},
                 {"Bird", "Rodent"},
                 "enforce",
                 log,
             )
+        self.assertIn("TROUBLESHOOTING.md#detector-weight-contract-mismatch", str(ctx.exception))
 
     def test_background_in_scope_raises_enforce(self):
         from inference.weight_contract import validate_detector_weight_contract

@@ -4451,6 +4451,25 @@ components:
         image_url:
           type: string
           nullable: true
+        review_state:
+          type: string
+          nullable: true
+          enum: [pending, reviewed, not_applicable]
+        review_reason:
+          type: string
+          nullable: true
+          enum: [low_confidence, generic_bird, classifier_uncertainty]
+        review_source:
+          type: string
+          nullable: true
+        classifier_entropy:
+          type: number
+          nullable: true
+        classifier_top1_top2_margin:
+          type: number
+          nullable: true
+        classifier_needs_review:
+          type: boolean
     SpeciesSummary:
       type: object
       properties:

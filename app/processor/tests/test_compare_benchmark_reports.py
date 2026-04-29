@@ -99,3 +99,43 @@ class TestCompareBenchmarkReports(unittest.TestCase):
             base, cur, tolerance=0.0, match_by_basename=True,
         )
         self.assertTrue(ok)
+
+    def test_collect_metric_values_from_nested_path(self):
+        """Сбор значений для PSI из videos[*].field и nested paths."""
+        report = {
+            'videos': [
+                {'video': 'a.mp4', 'confidence_hist': [0.1, 0.2]},
+                {'video': 'b.mp4', 'label_eval': {'entropy': 0.7}},
+            ],
+        }
+        self.assertEqual(
+            self.mod.collect_metric_values(report, 'confidence_hist'),
+            [0.1, 0.2],
+        )
+        self.assertEqual(
+            self.mod.collect_metric_values(report, 'label_eval.entropy'),
+            [0.7],
+        )
+
+    def test_psi_drift_can_fail(self):
+        """PSI drift gate ловит сдвиг распределения."""
+        base = {
+            'videos': [
+                {'video': 'a.mp4', 'classifier_entropy_values': [0.1, 0.1, 0.2, 0.2]},
+            ],
+        }
+        cur = {
+            'videos': [
+                {'video': 'a.mp4', 'classifier_entropy_values': [0.8, 0.8, 0.9, 0.9]},
+            ],
+        }
+        ok, errs = self.mod.compare_reports(
+            base,
+            cur,
+            tolerance=0.0,
+            match_by_basename=False,
+            psi_fields=['classifier_entropy_values'],
+            psi_threshold=0.1,
+        )
+        self.assertFalse(ok)
+        self.assertTrue(any('psi_drift' in e for e in errs))

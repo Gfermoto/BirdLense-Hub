@@ -7,7 +7,7 @@ from typing import AbstractSet, Any
 
 from detector_labels import normalize_detector_label
 
-_CONTRACT_MODES = frozenset({'off', 'warn', 'enforce'})
+_CONTRACT_MODES = frozenset({"off", "warn", "enforce"})
 
 
 def coerce_detector_names(names: Any) -> dict[int, str]:
@@ -44,10 +44,10 @@ def validate_detector_weight_contract(
     Legacy двухклассовые веса могут не содержать Rodent — при ``enforce`` упадёт;
     до миграции весов используйте ``warn`` (дефолт).
     """
-    m = (mode or 'warn').strip().lower()
+    m = (mode or "warn").strip().lower()
     if m not in _CONTRACT_MODES:
-        m = 'warn'
-    if m == 'off':
+        m = "warn"
+    if m == "off":
         return
 
     nd = coerce_detector_names(names)
@@ -55,22 +55,23 @@ def validate_detector_weight_contract(
     missing = sorted(detector_scope - normalized_set)
 
     messages: list[str] = []
-    if detector_scope & {'Background'}:
+    if detector_scope & {"Background"}:
         messages.append(
-            'processor.detector_scope must not include Background '
-            '(hard-negative; see docs/CV_ML_PREP.md).',
+            "processor.detector_scope must not include Background (hard-negative; see docs/CV_ML_PREP.md).",
         )
     if missing:
         scope_s = sorted(detector_scope)
         norm_s = sorted(normalized_set)
         messages.append(
-            'Detector names after normalization miss scoped labels '
-            f'{missing} (detector_scope={scope_s}; model has {norm_s}).',
+            "Detector names after normalization miss scoped labels "
+            f"{missing} (detector_scope={scope_s}; model has {norm_s}).",
         )
 
     if not messages:
         return
-    text = ' '.join(messages)
-    if m == 'enforce':
-        raise ValueError(f'Detector weight contract: {text}')
-    logger.warning('Detector weight contract: %s', text)
+    text = " ".join(messages) + (
+        " (see docs/TROUBLESHOOTING.md#detector-weight-contract-mismatch)."
+    )
+    if m == "enforce":
+        raise ValueError(f"Detector weight contract: {text}")
+    logger.warning("Detector weight contract: %s", text)

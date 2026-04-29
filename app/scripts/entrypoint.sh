@@ -11,6 +11,7 @@ set -e
 # SECTION 1 — Root bootstrap: volume ownership, DRM groups, drop to birdlense
 # =============================================================================
 if [ "$(id -u)" = "0" ]; then
+  mkdir -p /app/data/.ultralytics
   chown -R birdlense:birdlense /app/data /app/app_config 2>/dev/null || true
   if [ -d /dev/dri ]; then
     for dev in /dev/dri/renderD128 /dev/dri/card0; do
@@ -62,7 +63,8 @@ mkdir -p /tmp/nginx-client-body /tmp/nginx-proxy /tmp/nginx-fastcgi /tmp/nginx-u
 # SECTION 4 — Gunicorn (FastAPI on 127.0.0.1:8000)
 # =============================================================================
 GUNICORN_THREADS="${GUNICORN_THREADS:-16}"
-cd /app/web && PYTHONPATH=/app gunicorn -w 1 -k gthread --threads "$GUNICORN_THREADS" --timeout 0 -b 127.0.0.1:8000 app:app &
+# processor/src — пакет inference (ml_lineage_service, processor_*); см. docs/RUNTIME_COUPLING.md
+cd /app/web && PYTHONPATH=/app:/app/web:/app/processor/src gunicorn -w 1 -k gthread --threads "$GUNICORN_THREADS" --timeout 0 -b 127.0.0.1:8000 app:app &
 
 # =============================================================================
 # SECTION 4b — Nginx раньше ожидания API (порт :8080 сразу на хосте; до готовности upstream — 502, не «молча»)

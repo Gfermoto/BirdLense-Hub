@@ -15,7 +15,7 @@ Schema: `scripts/active_learning/pool_entry_v1.schema.json`.
 
 ## Uncertainty signals
 
-Use **existing** two-stage outputs: classifier **entropy** or **top1−top2 margin** from YOLO-cls `probs` (hook point: `TwoStageStrategy._classify_crop` in `detection_strategy.py`). Thresholds stay operator-tuned; document them here when frozen.
+Use **existing** two-stage outputs: classifier **entropy** or **top1−top2 margin** from YOLO-cls `probs` (computed in `TwoStageStrategy._classify_crop`, `processor/src/detection_strategy.py`). Values aggregate over classifier events per track and appear on runtime decisions as `classifier_entropy`, `classifier_top1_top2_margin`, and optional `classifier_needs_review` when `processor.classifier_uncertainty_entropy_ge` / `processor.classifier_uncertainty_margin_le` are set in config (`default_config.yaml`). Thresholds stay operator-tuned; document them here when frozen.
 
 ## Relation to detector dataset
 
@@ -28,3 +28,13 @@ python3 scripts/active_learning/emit_pool_template.py --out /tmp/manifest.jsonl
 ```
 
 writes one valid template line for tooling tests.
+
+## Trace → manifest
+
+After exporting a `decision_trace` JSON (e.g. from ActivityLog or saved processor payload), build pool JSONL lines:
+
+```bash
+python3 scripts/active_learning/decision_trace_to_pool_manifest.py exported_trace.json --needs-review-only > pool.jsonl
+```
+
+Crop paths are placeholders under `_pending/` until you export real image files into `active_learning_pool/` (see schema).
