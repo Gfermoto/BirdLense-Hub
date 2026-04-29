@@ -25,6 +25,8 @@ def test_model_lineage_resolves_processor_models_binary_classifier(monkeypatch, 
     orig = app_config.get
 
     def get_override(key, default=None):
+        if key == "processor.inference_backend":
+            return "torch"
         if key == "processor.classifier_inference_backend":
             return "torch"
         if key == "processor.models.binary":
