@@ -265,9 +265,7 @@ def apply_detection_nickname_patch(
 
     try:
         has_reid = bool(
-            session.execute(
-                text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")
-            ).scalar()
+            session.execute(text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")).scalar()
         )
         if has_reid:
             session.execute(

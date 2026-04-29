@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -108,6 +108,33 @@ dataset-validate-yolo-labels:
 	@test -n "$${LABELS_DIR:-}" || (echo "Set LABELS_DIR=path/to/labels" >&2; exit 1)
 	@python3 scripts/datasets/validate_yolo_labels.py "$${LABELS_DIR}" --class-count "$${CLASS_COUNT:-3}"
 
+# Verify detector dataset quality gates from exported profile JSON (#394).
+# Example:
+#   python3 scripts/datasets/export_detector_dataset_profile.py --dataset-root scripts/datasets/binary --out /tmp/detector_profile.json
+#   make dataset-verify-quality-gates PROFILE=/tmp/detector_profile.json
+dataset-verify-quality-gates:
+	@test -n "$${PROFILE:-}" || (echo "Set PROFILE=path/to/detector_profile.json" >&2; exit 1)
+	@python3 scripts/datasets/verify_detector_dataset_quality.py \
+		--profile "$${PROFILE}" \
+		$$(test -n "$${MIN_TRAIN:-}" && printf -- '--min-train "%s" ' "$${MIN_TRAIN}") \
+		$$(test -n "$${MIN_VAL:-}" && printf -- '--min-val "%s" ' "$${MIN_VAL}") \
+		$$(test -n "$${MAX_TRAIN_IMBALANCE_RATIO:-}" && printf -- '--max-train-imbalance-ratio "%s" ' "$${MAX_TRAIN_IMBALANCE_RATIO}") \
+		$$(test -n "$${MIN_SOURCE_TAGS:-}" && printf -- '--min-source-tags "%s" ' "$${MIN_SOURCE_TAGS}") \
+		$$(test -n "$${MAX_UNKNOWN_TAG_SHARE:-}" && printf -- '--max-unknown-tag-share "%s" ' "$${MAX_UNKNOWN_TAG_SHARE}") \
+		$$(test -n "$${MIN_BACKGROUND_SHARE_TRAIN:-}" && printf -- '--min-background-share-train "%s" ' "$${MIN_BACKGROUND_SHARE_TRAIN}") \
+		$$(test -n "$${MAX_BACKGROUND_SHARE_TRAIN:-}" && printf -- '--max-background-share-train "%s" ' "$${MAX_BACKGROUND_SHARE_TRAIN}")
+
+# Verify hard negatives manifest schema and optional file existence (#394).
+# Example:
+#   make dataset-verify-hard-negatives MANIFEST=scripts/datasets/example_hard_negatives_manifest.json
+#   make dataset-verify-hard-negatives MANIFEST=manifest.json DATASET_ROOT=scripts/datasets REQUIRE_EXISTING_FILES=1
+dataset-verify-hard-negatives:
+	@test -n "$${MANIFEST:-}" || (echo "Set MANIFEST=path/to/hard_negatives_manifest.json" >&2; exit 1)
+	@python3 scripts/datasets/verify_hard_negatives_manifest.py \
+		--manifest "$${MANIFEST}" \
+		$$(test -n "$${DATASET_ROOT:-}" && printf -- '--dataset-root "%s" ' "$${DATASET_ROOT}") \
+		$$(test "$${REQUIRE_EXISTING_FILES:-0}" = "1" && printf -- '--require-existing-files')
+
 # Экспорт decision_trace JSON → JSONL манифеста AL (см. scripts/active_learning/README.md). Пример: INPUT=trace.json make active-learning-trace-to-pool
 active-learning-trace-to-pool:
 	@test -n "$${INPUT:-}" || (echo "Set INPUT=path/to/decision_trace.json" >&2; exit 1)
@@ -144,3 +171,59 @@ validate-weights:
 		$$(test -n "$${DATASET_INFO:-}" && printf -- '--dataset-info "%s" ' "$${DATASET_INFO}") \
 		$$(test -n "$${FUSION_MODEL:-}" && printf -- '--fusion-model "%s" ' "$${FUSION_MODEL}") \
 		$$(test -n "$${OUTPUT:-}" && printf -- '--output "%s" ' "$${OUTPUT}")
+
+# Build model registry candidate entry for release-train workflow (#393).
+# Example:
+#   make ml-build-registry-entry \
+#     NAME=detector-20260429 STAGE=offline \
+#     VALIDATION_REPORT=/tmp/processor-weight-validation.json \
+#     BENCHMARK_REPORT=/tmp/benchmark-report.json \
+#     DATASET_QUALITY_REPORT=/tmp/dataset_quality_report.json \
+#     HARD_NEGATIVES_REPORT=/tmp/hard_negatives_report.json \
+#     DETECTOR_PACKAGE_URL=https://.../weights.zip \
+#     OUTPUT=/tmp/model_registry_entry.json
+ml-build-registry-entry:
+	@test -n "$${NAME:-}" || (echo "Set NAME=model-candidate-id" >&2; exit 1)
+	@test -n "$${VALIDATION_REPORT:-}" || (echo "Set VALIDATION_REPORT=path/to/validate-report.json" >&2; exit 1)
+	@test -n "$${OUTPUT:-}" || (echo "Set OUTPUT=path/to/model_registry_entry.json" >&2; exit 1)
+	@python3 scripts/build_model_registry_entry.py \
+		--name "$${NAME}" \
+		--stage "$${STAGE:-offline}" \
+		--source-issue "$${SOURCE_ISSUE:-}" \
+		--validation-report "$${VALIDATION_REPORT}" \
+		$$(test -n "$${BENCHMARK_REPORT:-}" && printf -- '--benchmark-report "%s" ' "$${BENCHMARK_REPORT}") \
+		$$(test -n "$${DATASET_QUALITY_REPORT:-}" && printf -- '--dataset-quality-report "%s" ' "$${DATASET_QUALITY_REPORT}") \
+		$$(test -n "$${HARD_NEGATIVES_REPORT:-}" && printf -- '--hard-negatives-report "%s" ' "$${HARD_NEGATIVES_REPORT}") \
+		$$(test -n "$${DETECTOR_PACKAGE_URL:-}" && printf -- '--detector-package-url "%s" ' "$${DETECTOR_PACKAGE_URL}") \
+		$$(test -n "$${CLASSIFIER_PACKAGE_URL:-}" && printf -- '--classifier-package-url "%s" ' "$${CLASSIFIER_PACKAGE_URL}") \
+		$$(test -n "$${NOTES:-}" && printf -- '--notes "%s" ' "$${NOTES}") \
+		--output "$${OUTPUT}"
+
+# Verify model registry candidate against release gates (#393).
+# Example:
+#   make ml-verify-registry-entry ENTRY=/tmp/model_registry_entry.json \
+#     MIN_STAGE=offline REQUIRE_BENCHMARK=1 REQUIRE_DATASET_READY=1 \
+#     REQUIRE_DATASET_QUALITY=1 REQUIRE_HARD_NEGATIVES=1
+ml-verify-registry-entry:
+	@test -n "$${ENTRY:-}" || (echo "Set ENTRY=path/to/model_registry_entry.json" >&2; exit 1)
+	@python3 scripts/verify_model_registry_entry.py \
+		--entry "$${ENTRY}" \
+		--min-stage "$${MIN_STAGE:-offline}" \
+		$$(test "$${REQUIRE_BENCHMARK:-0}" = "1" && printf -- '--require-benchmark') \
+		$$(test "$${REQUIRE_DATASET_READY:-0}" = "1" && printf -- '--require-dataset-ready') \
+		$$(test "$${REQUIRE_DATASET_QUALITY:-0}" = "1" && printf -- '--require-dataset-quality') \
+		$$(test "$${REQUIRE_HARD_NEGATIVES:-0}" = "1" && printf -- '--require-hard-negatives')
+
+# Verify benchmark quality by context slices (season/camera/domain) (#391).
+# Requires:
+# - REPORT: benchmark-track-regen JSON
+# - SLICE_MAP: JSON {"by_basename": {"clip.mp4": {"season":"...", "camera":"...", "domain":"..."}}}
+ml-verify-benchmark-slices:
+	@test -n "$${REPORT:-}" || (echo "Set REPORT=path/to/benchmark_report.json" >&2; exit 1)
+	@test -n "$${SLICE_MAP:-}" || (echo "Set SLICE_MAP=path/to/slice_map.json" >&2; exit 1)
+	@python3 scripts/verify_benchmark_slice_gates.py \
+		--report "$${REPORT}" \
+		--slice-map "$${SLICE_MAP}" \
+		--min-gold-samples "$${MIN_GOLD_SAMPLES:-5}" \
+		--min-recall "$${MIN_RECALL:-0.70}" \
+		$$(test -n "$${GROUP_BY:-}" && printf -- '--group-by %s ' "$${GROUP_BY}")

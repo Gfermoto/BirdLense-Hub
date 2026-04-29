@@ -41,8 +41,14 @@ def load_yolo_detector(model_path: str, *, backend: str = "torch") -> Any:
     raise ValueError(f"Unknown detector backend: {backend!r}")
 
 
-def load_yolo_classifier(model_path: str) -> Any:
-    """Классификатор видов пока только torch ``.pt`` (Phase 2 MVP)."""
+def load_yolo_classifier(model_path: str, *, backend: str = "torch") -> Any:
+    """Load species classifier from torch checkpoint or OpenVINO IR."""
     from ultralytics import YOLO
 
-    return YOLO(model_path, task="classify")
+    b = (backend or "torch").strip().lower()
+    if b == "torch":
+        return YOLO(model_path, task="classify")
+    if b == "openvino":
+        _ensure_openvino_pkg()
+        return YOLO(model_path, task="classify")
+    raise ValueError(f"Unknown classifier backend: {backend!r}")

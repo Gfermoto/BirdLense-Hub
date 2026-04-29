@@ -23,6 +23,8 @@ def write_inference_backend_cache(
     *,
     backend: str,
     binary_model_path: str,
+    classifier_backend: str | None = None,
+    classifier_model_path: str | None = None,
     extra: Mapping[str, Any] | None = None,
 ) -> None:
     """Записать JSON о последнем успешном старте (best-effort, не критично для прод)."""
@@ -30,9 +32,14 @@ def write_inference_backend_cache(
     os.makedirs(os.path.dirname(path), exist_ok=True)
     payload: dict[str, Any] = {
         "backend": backend,
+        "detector_backend": backend,
         "binary_model_path": binary_model_path,
         "resolved_at_unix": time.time(),
     }
+    if classifier_backend:
+        payload["classifier_backend"] = classifier_backend
+    if classifier_model_path:
+        payload["classifier_model_path"] = classifier_model_path
     if extra:
         payload.update(dict(extra))
     try:

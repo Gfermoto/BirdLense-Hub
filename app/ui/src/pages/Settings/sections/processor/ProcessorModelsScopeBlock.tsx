@@ -85,6 +85,36 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
             </form.Field>
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
+            <form.Field name="processor.classifier_inference_backend">
+              {(field) => (
+                <FormControl fullWidth>
+                  <InputLabel id="processor-classifier-inference-backend-label">
+                    {t('settings.processorClassifierInferenceBackend')}
+                  </InputLabel>
+                  <Select
+                    labelId="processor-classifier-inference-backend-label"
+                    value={(field.state.value ?? 'torch').toLowerCase()}
+                    label={t('settings.processorClassifierInferenceBackend')}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                  >
+                    <MenuItem value="auto">
+                      {t('settings.processorInferenceBackendAuto')}
+                    </MenuItem>
+                    <MenuItem value="torch">
+                      {t('settings.processorInferenceBackendTorch')}
+                    </MenuItem>
+                    <MenuItem value="openvino">
+                      {t('settings.processorInferenceBackendOpenvino')}
+                    </MenuItem>
+                  </Select>
+                  <FormHelperText>
+                    {t('settings.processorClassifierInferenceBackendHint')}
+                  </FormHelperText>
+                </FormControl>
+              )}
+            </form.Field>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <form.Field name="processor.detector_weight_contract">
               {(field) => (
                 <FormControl fullWidth>
@@ -115,17 +145,9 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
             </form.Field>
           </Grid>
           <Grid size={{ xs: 12 }}>
-            <form.Field name="processor.models.binary_openvino">
-              {(field) => (
-                <TextField
-                  fullWidth
-                  value={field.state.value ?? ''}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  label={t('settings.processorModelBinaryOpenvinoPath')}
-                  helperText={t('settings.processorModelBinaryOpenvinoPathHint')}
-                />
-              )}
-            </form.Field>
+            <Alert severity="info" variant="outlined">
+              {t('settings.processorOpenvinoPathsManagedHint')}
+            </Alert>
           </Grid>
           <Grid size={{ xs: 12 }}>
             <form.Field name="processor.detection_strategy">

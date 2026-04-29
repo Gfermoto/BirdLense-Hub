@@ -87,6 +87,16 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Model path is environment/deployment-specific.",
         "next_step": "Upload/reset via System → Processor weights (#276); not in Settings form.",
     },
+    "processor.models.binary_openvino": {
+        "category": "ops-only",
+        "reason": "OpenVINO detector bundle path is deployment-specific and managed server-side.",
+        "next_step": "Keep hidden from Settings form; surface only backend selector in UI.",
+    },
+    "processor.models.classifier_openvino": {
+        "category": "ops-only",
+        "reason": "OpenVINO classifier bundle path is deployment-specific and managed server-side.",
+        "next_step": "Keep hidden from Settings form; surface only backend selector in UI.",
+    },
     "processor.regional_species": {
         "category": "planned-ui",
         "reason": "Advanced ML tuning; currently config-level only.",

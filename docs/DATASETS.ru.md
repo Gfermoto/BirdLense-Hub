@@ -28,6 +28,12 @@ Background / hard-negative классы детектора — только dete
 - Опубликованные архивы: [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)  
   (`detector_merged_balanced_20260429.zip`, `detector_merged_full_20260429.zip`).
 - Манифест hard negatives (учёт курируемых негативов): схема `scripts/datasets/schemas/hard_negatives_manifest_v1.schema.json`, пример `example_hard_negatives_manifest.json`; при слиянии можно передать `--manifest-out`.
+- Quality gates (#394): перед обучением делайте экспорт профиля и проверку:
+  `python3 scripts/datasets/export_detector_dataset_profile.py --dataset-root scripts/datasets/binary --out /tmp/detector_profile.json`,
+  затем `make dataset-verify-quality-gates PROFILE=/tmp/detector_profile.json`.
+- Проверка целостности hard-negatives манифеста (#394):
+  `make dataset-verify-hard-negatives MANIFEST=/path/to/hard_negatives_manifest.json`
+  (строгий режим: `DATASET_ROOT=scripts/datasets REQUIRE_EXISTING_FILES=1`).
 
 Рекомендованный путь обучения детектора:
 - **Stage A (устойчивость):** train на `merged_balanced`

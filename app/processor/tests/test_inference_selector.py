@@ -46,6 +46,30 @@ class TestInferenceSelector(unittest.TestCase):
             if old is not None:
                 os.environ["BIRDLENSE_INFERENCE_BACKEND"] = old
 
+    def test_resolve_classifier_backend_defaults_torch(self):
+        from inference.selector import resolve_classifier_inference_backend
+
+        self.assertEqual(resolve_classifier_inference_backend(None), "torch")
+        self.assertEqual(resolve_classifier_inference_backend({}), "torch")
+
+    def test_resolve_classifier_backend_env_overrides_config(self):
+        from inference.selector import resolve_classifier_inference_backend
+
+        old = os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", None)
+        try:
+            os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND"] = "OPENVINO"
+            self.assertEqual(
+                resolve_classifier_inference_backend(
+                    {"processor.classifier_inference_backend": "torch"},
+                ),
+                "openvino",
+            )
+        finally:
+            if old is None:
+                os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", None)
+            else:
+                os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND"] = old
+
     def test_assert_torch_supported(self):
         from inference.selector import assert_backend_supported
 

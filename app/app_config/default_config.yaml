@@ -192,7 +192,10 @@ processor:
   keep_recording_when_no_detections: false
   detection_strategy: "two_stage"
   # CV/ML epic (#367, #371): движок инференса. Phase 1: ultralytics/torch. Env BIRDLENSE_INFERENCE_BACKEND имеет приоритет.
-  inference_backend: torch
+  inference_backend: auto
+  # Отдельный backend классификатора видов: torch | openvino | auto.
+  # Env BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND имеет приоритет.
+  classifier_inference_backend: auto
   # Контракт имён классов бинарного детектора при загрузке весов (#368): off | warn | enforce
   detector_weight_contract: warn
   models:
@@ -206,6 +209,9 @@ processor:
     binary_openvino: ""
     # EU-классификатор (~491 вид): скачивать как best.pt с Hugging Face gfermoto/birdlense-birds-eu
     classifier: "models/classification/weights/best.pt"
+    # OpenVINO IR для классификатора (processor.classifier_inference_backend=openvino):
+    # каталог экспорта или путь к .xml.
+    classifier_openvino: "models/classification/weights/best_openvino_model"
   # Неопределённость YOLO-cls (#370): энтропия (наты) и margin top1−top2 по полному вектору probs.
   # null — не выставлять classifier_needs_review в decision rows; задайте пороги для AL/аналитики.
   classifier_uncertainty_entropy_ge: null

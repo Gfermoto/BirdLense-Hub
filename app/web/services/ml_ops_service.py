@@ -189,9 +189,7 @@ def build_ml_runtime_status() -> tuple[dict[str, Any], int]:
         },
         "processor": {
             "inference_backend": app_config.get("processor.inference_backend"),
-            "classifier_inference_backend": app_config.get(
-                "processor.classifier_inference_backend"
-            ),
+            "classifier_inference_backend": app_config.get("processor.classifier_inference_backend"),
             "detector_weight_contract": app_config.get("processor.detector_weight_contract"),
             "binary_imgsz": app_config.get("processor.binary_imgsz"),
             "frame_processing_warn_ms": app_config.get("processor.frame_processing_warn_ms"),
@@ -233,9 +231,7 @@ def build_video_reid_match_payload(session, video_id: int) -> tuple[dict[str, An
         return {"error": "Video not found"}, 404
 
     has_reid = bool(
-        session.execute(
-            text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")
-        ).scalar()
+        session.execute(text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")).scalar()
     )
     if not has_reid:
         return {
@@ -266,8 +262,7 @@ def build_video_reid_match_payload(session, video_id: int) -> tuple[dict[str, An
         anchor_raw = (
             session.execute(
                 text(
-                    "SELECT embedding_json FROM reid_embedding "
-                    "WHERE video_species_id = :vsid ORDER BY id DESC LIMIT 1"
+                    "SELECT embedding_json FROM reid_embedding WHERE video_species_id = :vsid ORDER BY id DESC LIMIT 1"
                 ),
                 {"vsid": det.id},
             )

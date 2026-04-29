@@ -30,7 +30,7 @@ export function MlRuntimeCard() {
   return (
     <SystemCardShell
       title="ML runtime"
-      description="Weightless CV/ML rollout status: video capture, inference backend, detector contract and slow-frame threshold."
+      description="Weightless CV/ML rollout status: video capture, detector/classifier backends, detector contract and slow-frame threshold."
       statusLabel={valueOrDash(data.video.capture_backend_config)}
       statusTone="info"
     >
@@ -40,7 +40,10 @@ export function MlRuntimeCard() {
           label={`capture: ${valueOrDash(data.video.capture_backend_config)}`}
         />
         <Chip
-          label={`backend: ${valueOrDash(data.processor.inference_backend)}`}
+          label={`detector backend: ${valueOrDash(data.processor.inference_backend)}`}
+        />
+        <Chip
+          label={`classifier backend: ${valueOrDash(data.processor.classifier_inference_backend)}`}
         />
         <Chip
           label={`contract: ${valueOrDash(

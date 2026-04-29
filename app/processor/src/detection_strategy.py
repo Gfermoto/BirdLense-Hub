@@ -264,10 +264,12 @@ class TwoStageStrategy(DetectionStrategy):
         *,
         weight_contract_mode: str = "warn",
         inference_backend: str = "torch",
+        classifier_inference_backend: str = "torch",
     ):
         super().__init__(min_center_dist, min_box_size_px, blur_threshold, max_blur_checks)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.inference_backend = (inference_backend or "torch").strip().lower()
+        self.classifier_inference_backend = (classifier_inference_backend or "torch").strip().lower()
         self.weight_contract_mode = (weight_contract_mode or "warn").strip().lower()
         self.regional_species = regional_species
         self.max_classifications_per_frame = max(1, int(max_classifications_per_frame or 1))
@@ -277,21 +279,30 @@ class TwoStageStrategy(DetectionStrategy):
         self.detector_scope = {normalize_detector_label(name) for name in raw_scope if str(name or "").strip()}
 
         self.logger.info(
-            "TwoStageStrategy: inference_backend=%s detector_weight_contract=%s detector_scope=%s",
+            "TwoStageStrategy: detector_backend=%s classifier_backend=%s detector_weight_contract=%s detector_scope=%s",
             self.inference_backend,
+            self.classifier_inference_backend,
             self.weight_contract_mode,
             sorted(self.detector_scope),
         )
 
-        if self.inference_backend in ("torch", "openvino"):
+        if self.inference_backend in ("torch", "openvino") and self.classifier_inference_backend in (
+            "torch",
+            "openvino",
+        ):
             self.binary_model = load_yolo_detector(
                 binary_model_path,
                 backend=self.inference_backend,
             )
-            self.classifier_model = load_yolo_classifier(classifier_model_path)
+            self.classifier_model = load_yolo_classifier(
+                classifier_model_path,
+                backend=self.classifier_inference_backend,
+            )
         else:
             raise NotImplementedError(
-                f"inference_backend={self.inference_backend!r} is not implemented (#371).",
+                "inference backend is not implemented (#371): "
+                f"detector={self.inference_backend!r}, "
+                f"classifier={self.classifier_inference_backend!r}.",
             )
 
         validate_detector_weight_contract(

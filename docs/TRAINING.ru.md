@@ -28,6 +28,61 @@ ZIP-архивы датасета детектора опубликованы в
 
 ---
 
+## Контур release train (rollout-кандидат)
+
+Рекомендуемый локальный gate перед загрузкой:
+
+```bash
+make validate-weights \
+  BINARY=app/processor/models/detection/weights/best.pt \
+  CLASSIFIER=app/processor/models/classification/weights/best.pt \
+  CLASS_NAMES=/path/to/classes.txt \
+  DATASET_INFO=/path/to/dataset_info.json \
+  OUTPUT=/tmp/processor-weight-validation.json
+```
+
+Запись кандидата в реестр rollout-поезда (offline/shadow/canary, #393):
+
+```bash
+make ml-build-registry-entry \
+  NAME=detector-20260429 \
+  STAGE=offline \
+  SOURCE_ISSUE=#368 \
+  VALIDATION_REPORT=/tmp/processor-weight-validation.json \
+  BENCHMARK_REPORT=/tmp/benchmark-report.json \
+  DATASET_QUALITY_REPORT=/tmp/dataset_quality_report.json \
+  HARD_NEGATIVES_REPORT=/tmp/hard_negatives_report.json \
+  DETECTOR_PACKAGE_URL=https://huggingface.co/gfermoto/BirdLense_Detector/blob/main/weights-20260429T125011Z-3-001.zip \
+  OUTPUT=/tmp/model_registry_entry.json
+
+make ml-verify-registry-entry \
+  ENTRY=/tmp/model_registry_entry.json \
+  MIN_STAGE=offline \
+  REQUIRE_BENCHMARK=1 \
+  REQUIRE_DATASET_READY=1 \
+  REQUIRE_DATASET_QUALITY=1 \
+  REQUIRE_HARD_NEGATIVES=1
+```
+
+Для data-engine quality gates детекторного датасета (#394) перед Stage A:
+
+```bash
+python3 scripts/datasets/export_detector_dataset_profile.py \
+  --dataset-root scripts/datasets/binary \
+  --out /tmp/detector_profile.json
+
+make dataset-verify-quality-gates \
+  PROFILE=/tmp/detector_profile.json
+
+make dataset-verify-hard-negatives \
+  MANIFEST=/path/to/hard_negatives_manifest.json
+```
+
+Откат простой: в UI `System -> Processor weights` сбросьте кастомный
+бинарник/классификатор (или оба), чтобы вернуться к bundled-моделям.
+
+---
+
 ## Что понадобится
 
 - Аккаунт Google (Gmail)
