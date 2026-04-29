@@ -64,6 +64,27 @@ export const fetchObservability = async (): Promise<ObservabilityPayload> => {
   return response.data;
 };
 
+export type MlRuntimeStatus = {
+  schema: string;
+  video: {
+    encoding?: string;
+    capture_backend_config?: string;
+  };
+  processor: {
+    inference_backend?: string;
+    detector_weight_contract?: string;
+    binary_imgsz?: number;
+    frame_processing_warn_ms?: number;
+  };
+};
+
+export const fetchMlRuntimeStatus = async (): Promise<MlRuntimeStatus> => {
+  const response = await axios.get(`${BASE_API_URL}/system/ml-runtime`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 export const trackSiteVisitor = async (browserId: string): Promise<void> => {
   await axios.post(`${BASE_API_URL}/system/visitors/track`, {
     browser_id: browserId,

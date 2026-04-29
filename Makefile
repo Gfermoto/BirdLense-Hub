@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -101,6 +101,12 @@ dataset-merge-three-class:
 # Переопределение лимитов: make bootstrap-detector-data ARGS='--birds-train 50 --birds-val 20'
 bootstrap-detector-data:
 	@cd scripts/datasets && python3 bootstrap_detector_yolo.py $(ARGS)
+
+# Validate YOLO labels before Colab training. Example:
+# LABELS_DIR=scripts/datasets/binary/merged/labels/train CLASS_COUNT=3 make dataset-validate-yolo-labels
+dataset-validate-yolo-labels:
+	@test -n "$${LABELS_DIR:-}" || (echo "Set LABELS_DIR=path/to/labels" >&2; exit 1)
+	@python3 scripts/datasets/validate_yolo_labels.py "$${LABELS_DIR}" --class-count "$${CLASS_COUNT:-3}"
 
 # Экспорт decision_trace JSON → JSONL манифеста AL (см. scripts/active_learning/README.md). Пример: INPUT=trace.json make active-learning-trace-to-pool
 active-learning-trace-to-pool:

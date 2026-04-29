@@ -559,6 +559,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /videos/{video_id}/action-events:
+    get:
+      summary: Weak action events for a recording
+      description: |
+        Weightless behavior hints for #379. Uses existing tracks and optional feeder
+        weight delta to emit `arrival`, `departure`, and `possible_feeding`.
+      parameters:
+        - in: path
+          name: video_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Weak action-event payload
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "404":
+          description: Video not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /birdfood:
     get:
       summary: List all bird food
@@ -1080,6 +1106,74 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ConfigAuditResponse"
+        "401":
+          description: Settings password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/active-learning/pool-preview:
+    get:
+      summary: Active-learning pool preview
+      description: Review/uncertainty candidates for active-learning export (#369).
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+      responses:
+        "200":
+          description: Pool preview payload
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/reid/summary:
+    get:
+      summary: Re-ID sidecar summary
+      description: Read-only summary of offline `reid_embedding` sidecar table (#374).
+      responses:
+        "200":
+          description: Sidecar table summary
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/ml-runtime:
+    get:
+      summary: ML/video runtime config status
+      description: Operator-facing snapshot of ML/video runtime config (#373/#372).
+      responses:
+        "200":
+          description: Runtime status payload
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
         "401":
           description: Settings password required
           content:

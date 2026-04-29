@@ -69,9 +69,7 @@ def validate_detector_weight_contract(
 
     if not messages:
         return
-    text = " ".join(messages) + (
-        " (see docs/TROUBLESHOOTING.md#detector-weight-contract-mismatch)."
-    )
+    text = " ".join(messages) + (" (see docs/TROUBLESHOOTING.md#detector-weight-contract-mismatch).")
     if m == "enforce":
         raise ValueError(f"Detector weight contract: {text}")
     logger.warning("Detector weight contract: %s", text)
