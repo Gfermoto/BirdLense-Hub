@@ -23,6 +23,7 @@ def register_routes(app):
     from routes.ui_overview_timeline_routes import (
         register_ui_overview_timeline_routes,
     )
+    from routes.ui_ml_ops_routes import register_ui_ml_ops_routes
     from routes.ui_settings_routes import register_ui_settings_routes
     from routes.ui_species_catalog_routes import (
         register_ui_species_catalog_routes,
@@ -37,6 +38,7 @@ def register_routes(app):
     register_ui_birdfood_routes(app)
     register_ui_video_routes(app)
     register_ui_overview_timeline_routes(app)
+    register_ui_ml_ops_routes(app)
     register_ui_corrections_dataset_routes(app)
     register_ui_species_catalog_routes(app)
     register_ui_settings_routes(app)

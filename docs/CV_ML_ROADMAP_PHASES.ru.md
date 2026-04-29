@@ -18,12 +18,12 @@
 |-------|--------|----------------|
 | [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Эпик | **В работе** | Phase‑1 в репо сделана; **ваши** новые веса и при необходимости merge `ML`→`main` после проверки на хабе. |
 | [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Детектор train/ship | **В работе** | Контракт и скрипты датасета **готовы** в репо; **обучение детектора** (Colab) — оператор. |
-| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Готово** (репо фаза 1) / **Запланировано** (продукт) | Схема манифеста + шаблон + **`decision_trace_to_pool_manifest.py`** + SQLite **`export_pool_from_sqlite.py`** + доки **готовы**; расписание retrain — позже. |
-| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Классификатор | **В работе** / **Запланировано** | Дообучение в Colab ([TRAINING.ru.md](./TRAINING.ru.md)) — оператор; **энтропия/margin и `classifier_needs_review`** — трасса, CSV fusion export, fusion-trace UI и Unknowns review queue; **DINO/DINOv2** — [REID_ROADMAP.ru.md](./REID_ROADMAP.ru.md); [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383). |
+| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Готово** (репо фаза 1) / **В работе** (продукт) | Схема манифеста + шаблон + **`decision_trace_to_pool_manifest.py`** + SQLite **`export_pool_from_sqlite.py`** + доки **готовы**; UI/API **pool preview** готов; расписание retrain — позже. |
+| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Классификатор | **В работе** / **Запланировано** | Дообучение в Colab ([TRAINING.ru.md](./TRAINING.ru.md)) — оператор; **энтропия/margin и `classifier_needs_review`** — трасса, CSV fusion export, fusion-trace UI, Unknowns review queue и AL preview; **DINO/DINOv2** — [REID_ROADMAP.ru.md](./REID_ROADMAP.ru.md); [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383). |
 | [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Инференс-бэкенды | **Готово** / **Запланировано** | torch + OpenVINO + кэш **готовы**; ONNX Runtime / TensorRT — **запланировано**. |
 | [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Бенчмарки | **Готово** / **Запланировано** | Скрипты + CI + docker-smoke + **PSI drift gate** **готовы**; Grafana — **запланировано**. |
-| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Декод видео | **В работе** | Скрипт замеров + FFmpeg VA-API backend + `video.capture_backend` **готовы**; **заполнение матрицы платформ** у вас — в работе. |
-| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **В работе** / **Запланировано** | Доки + DINO; офлайн embed/cosine/export + SQLite sidecar import **готовы**; галерея/UI — **запланировано**. Один backbone на виды + Re-ID — см. REID. |
+| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Декод видео | **В работе** | Скрипт замеров + FFmpeg VA-API backend + `video.capture_backend` **готовы**; UI/API **ML runtime status** готов; **заполнение матрицы платформ** у вас — в работе. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **В работе** / **Запланировано** | Доки + DINO; офлайн embed/cosine/export + SQLite sidecar import **готовы**; UI/API **sidecar summary** готов; галерея / similar-crop UI — **запланировано**. Один backbone на виды + Re-ID — см. REID. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Готово** (исслед.) / **Запланировано** (прод) | Игрушечная симуляция + threat model **готовы**; прод-канал — **запланировано**. |
 
 *Обновляйте таблицу при закрытии вех или смене фокуса.*
@@ -80,8 +80,21 @@
 
 - Локальная раскладка: ``scripts/datasets/binary/birds``, ``binary/rodent``, ``binary/background`` — см. [binary/README.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/datasets/binary/README.md).
 - ``merge_datasets_three_class.py`` + ``make dataset-merge-three-class`` → ``dataset.yaml`` Bird/Rodent/Background в ``scripts/datasets/binary/merged/``; обучение/релиз — [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368).
+- ``validate_yolo_labels.py`` + ``make dataset-validate-yolo-labels`` — быстрая проверка class id и bbox до Colab.
 - Схема манифеста hard negatives и ``--manifest-out`` — см. [DATASETS.ru.md](DATASETS.ru.md).
 - `video.capture_backend: auto|opencv|ffmpeg_vaapi` — путь захвата кадров для live inference; в `auto` VA-API включается только вместе с `video.encoding: intel` и рабочим `/dev/dri`, иначе OpenCV.
+
+## API оператора без новых весов
+
+Эти endpoints не требуют новых `.pt` / OpenVINO весов и нужны для разметки,
+ревью и диагностики выката:
+
+| Endpoint | Назначение |
+|----------|------------|
+| `GET /api/ui/videos/{video_id}/action-events` | Слабые метки поведения (#379): `arrival`, `departure`, `possible_feeding` из треков и изменения веса кормушки. |
+| `GET /api/ui/system/active-learning/pool-preview` | Кандидаты из review/uncertainty для active-learning pool (#369). |
+| `GET /api/ui/system/reid/summary` | Read-only статус sidecar-таблицы `reid_embedding` (#374). |
+| `GET /api/ui/system/ml-runtime` | Снимок ML/video runtime config (#373/#372). |
 
 ---
 

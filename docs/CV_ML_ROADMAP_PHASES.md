@@ -18,12 +18,12 @@ Legend: **Done** = shipped on branch `ML` in the repo (code/docs/scripts). **In 
 |-------|--------|--------|
 | [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Epic | **In progress** | Repo Phase‑1 delivered; **your** new weights + optional merge `ML`→`main` when validated on hub. |
 | [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Train & ship detector | **In progress** | Runtime contract + dataset merge helpers **done** in repo; **training detector weights** (Colab) — operator. |
-| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Done** (Phase‑1 repo) / **Planned** (product) | Manifest schema + template + **`decision_trace_to_pool_manifest.py`** + SQLite **`export_pool_from_sqlite.py`** + docs **done**; scheduled retrain — later. |
-| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Classifier roadmap | **In progress** / **Planned** | Fine-tune in Colab ([TRAINING](./TRAINING.md)) — operator; **entropy / margin + `classifier_needs_review` in decision_trace** — repo (config thresholds); **fusion training CSV + fusion-trace UI steps** ship those fields; dedicated review-queue UI — **planned**. Optional **DINO/DINOv2** backbone — [REID_ROADMAP](./REID_ROADMAP.md); [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383). |
+| [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Done** (Phase‑1 repo) / **In progress** (product) | Manifest schema + template + **`decision_trace_to_pool_manifest.py`** + SQLite **`export_pool_from_sqlite.py`** + docs **done**; UI/API **pool preview** shipped; scheduled retrain — later. |
+| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Classifier roadmap | **In progress** / **Planned** | Fine-tune in Colab ([TRAINING](./TRAINING.md)) — operator; **entropy / margin + `classifier_needs_review` in decision_trace** — repo (config thresholds); **fusion training CSV + fusion-trace UI steps** ship those fields; Unknowns review queue + AL preview use those fields. Optional **DINO/DINOv2** backbone — [REID_ROADMAP](./REID_ROADMAP.md); [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383). |
 | [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Multi-backend inference | **Done** / **Planned** | torch + OpenVINO + cache **done**; ONNX Runtime / TensorRT — **planned** (`NotImplementedError`). |
 | [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Benchmarking | **Done** / **Planned** | Scripts + CI + docker smoke + optional **PSI drift gate** **done**; Grafana dashboard — **planned**. |
-| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Video decode | **In progress** | Benchmark script + FFmpeg VA-API option + `video.capture_backend` path **done**; **filling decode matrix** on your platforms — in progress. |
-| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **In progress** / **Planned** | Design doc + DINO scope; [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) — offline embed/cosine/export scripts + SQLite sidecar import **shipped**; hub gallery / UI — **planned**. |
+| [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Video decode | **In progress** | Benchmark script + FFmpeg VA-API option + `video.capture_backend` path **done**; UI/API **ML runtime status** shipped; **filling decode matrix** on your platforms — in progress. |
+| [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **In progress** / **Planned** | Design doc + DINO scope; [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) — offline embed/cosine/export scripts + SQLite sidecar import **shipped**; UI/API **sidecar summary** shipped; gallery / similar-crop UI — planned. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Done** (research) / **Planned** (prod) | Toy simulation + threat-model doc **done**; opt-in prod channel — **planned**. |
 
 *Refresh this table when a milestone closes or scope shifts.*
@@ -87,6 +87,8 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 | [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383) | Sub-issue of [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374): [`embed_dinov2_crop.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/embed_dinov2_crop.py) + [`embed_cosine_report.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/embed_cosine_report.py) + [`export_crops_from_sqlite.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/export_crops_from_sqlite.py); hub gallery / prod — later. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) | FedAvg toy simulation + threat-model doc. |
 | [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) | `decision_trace` fields + fusion export CSV columns + fusion-trace UI steps; dedicated review-queue UI still roadmap. |
+| [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) | Weightless weak-label action events API: arrival / departure from tracks, possible feeding from feeder weight delta. |
+| [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) dataset guard | `scripts/datasets/validate_yolo_labels.py` + `make dataset-validate-yolo-labels` for pre-Colab label sanity checks. |
 
 ### Epic [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) — 3-class detector **dataset** (Phase 1 entrypoint)
 
@@ -107,6 +109,20 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 | Env `BIRDLENSE_INFERENCE_BACKEND` | Overrides `processor.inference_backend`. |
 | Env `BIRDLENSE_BINARY_OPENVINO_PATH` | Optional override for OpenVINO binary weights path. |
 | Env `BIRDLENSE_INFERENCE_AUTO_BENCHMARK` | Optional one-shot binary `predict` timing → `inference_backend_cache.json` ([#371]). |
+
+---
+
+## Weightless operator APIs
+
+These endpoints do not require new model weights and are meant for review, labeling,
+and rollout diagnostics:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/ui/videos/{video_id}/action-events` | Weak behavior labels (#379): `arrival`, `departure`, and `possible_feeding` from existing tracks + feeder weight delta. |
+| `GET /api/ui/system/active-learning/pool-preview` | Review/uncertainty candidates for active-learning pool export (#369). |
+| `GET /api/ui/system/reid/summary` | Read-only status of offline `reid_embedding` sidecar table (#374). |
+| `GET /api/ui/system/ml-runtime` | Operator snapshot of ML/video runtime config (#373/#372). |
 
 ---
 
