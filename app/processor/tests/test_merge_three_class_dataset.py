@@ -9,7 +9,10 @@ from pathlib import Path
 
 import pytest
 
-_REPO = Path(__file__).resolve().parents[3]
+_REPO = next(
+    (p for p in (Path(__file__).resolve().parents[3], Path('/workspace')) if (p / 'scripts').exists()),
+    Path(__file__).resolve().parents[3],
+)
 _SCRIPT = _REPO / "scripts" / "datasets" / "merge_datasets_three_class.py"
 
 

@@ -8,7 +8,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+_REPO_ROOT = next(
+    (p for p in (Path(__file__).resolve().parents[3], Path('/workspace')) if (p / 'scripts').exists()),
+    Path(__file__).resolve().parents[3],
+)
 
 
 def _load_benchmark_labels_module():

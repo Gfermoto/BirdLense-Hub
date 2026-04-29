@@ -7,7 +7,10 @@ from pathlib import Path
 
 
 def _load_module():
-    root = Path(__file__).resolve().parents[3]
+    root = next(
+        (p for p in (Path(__file__).resolve().parents[3], Path('/workspace')) if (p / 'scripts').exists()),
+        Path(__file__).resolve().parents[3],
+    )
     path = root / "scripts" / "datasets" / "validate_yolo_labels.py"
     spec = importlib.util.spec_from_file_location("validate_yolo_labels", path)
     mod = importlib.util.module_from_spec(spec)
