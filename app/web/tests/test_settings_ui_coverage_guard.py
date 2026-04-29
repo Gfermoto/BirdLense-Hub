@@ -7,7 +7,11 @@ import runpy
 from pathlib import Path
 
 
-SCRIPT_PATH = Path(__file__).resolve().parents[3] / "scripts" / "check-settings-ui-coverage.py"
+_REPO_ROOT = next(
+    (p for p in (Path(__file__).resolve().parents[3], Path('/workspace')) if (p / 'scripts').exists()),
+    Path(__file__).resolve().parents[3],
+)
+SCRIPT_PATH = _REPO_ROOT / 'scripts' / 'check-settings-ui-coverage.py'
 
 
 def _load_checker_globals() -> dict:
@@ -18,23 +22,23 @@ def _load_checker_globals() -> dict:
 def test_library_ui_guard_accepts_current_mapping():
     """Current allowlist must satisfy library-ui evidence guard."""
     g = _load_checker_globals()
-    errors = g["_validate_library_ui_coverage"]()
+    errors = g['_validate_library_ui_coverage']()
     assert errors == []
 
 
 def test_library_ui_guard_rejects_unmapped_key():
     """Guard must fail if a library-ui key is not represented in UI/API evidence."""
     g = _load_checker_globals()
-    allowlist = g["ALLOWED_NON_UI_KEYS"]
+    allowlist = g['ALLOWED_NON_UI_KEYS']
     original = copy.deepcopy(allowlist)
     try:
-        allowlist["video.__definitely_missing_ui_leaf__"] = {
-            "category": "library-ui",
-            "reason": "test",
-            "next_step": "test",
+        allowlist['video.__definitely_missing_ui_leaf__'] = {
+            'category': 'library-ui',
+            'reason': 'test',
+            'next_step': 'test',
         }
-        errors = g["_validate_library_ui_coverage"]()
-        assert any("video.__definitely_missing_ui_leaf__" in err for err in errors), errors
+        errors = g['_validate_library_ui_coverage']()
+        assert any('video.__definitely_missing_ui_leaf__' in err for err in errors), errors
     finally:
         allowlist.clear()
         allowlist.update(original)
