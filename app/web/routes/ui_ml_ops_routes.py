@@ -12,6 +12,7 @@ from routes.http_guards import (
 from services.ml_ops_service import (
     build_active_learning_pool_preview,
     build_ml_runtime_status,
+    build_video_reid_match_payload,
     build_reid_summary,
     build_video_action_events_payload,
 )
@@ -23,6 +24,11 @@ def register_ui_ml_ops_routes(app):
     @app.route("/api/ui/videos/<int:video_id>/action-events", methods=["GET"])
     def video_action_events(video_id: int):
         return build_video_action_events_payload(db.session, video_id)
+
+    @app.route("/api/ui/videos/<int:video_id>/reid-match", methods=["GET"])
+    @require_ui_contributor_or_admin
+    def video_reid_match(video_id: int):
+        return build_video_reid_match_payload(db.session, video_id)
 
     @app.route("/api/ui/system/active-learning/pool-preview", methods=["GET"])
     @require_ui_contributor_or_admin

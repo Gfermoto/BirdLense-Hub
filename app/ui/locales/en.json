@@ -670,6 +670,8 @@
     "processorInferenceBackendTorch": "Torch / Ultralytics",
     "processorInferenceBackendOpenvino": "OpenVINO IR",
     "processorInferenceBackendHint": "Auto prefers OpenVINO when IR path and runtime are available, otherwise falls back to Torch. OpenVINO uses processor.models.binary_openvino or BIRDLENSE_BINARY_OPENVINO_PATH. ONNX Runtime stays YAML-only until implemented.",
+    "processorClassifierInferenceBackend": "Classifier inference backend",
+    "processorClassifierInferenceBackendHint": "Separate backend for species classifier. Auto prefers OpenVINO classifier IR when available, otherwise uses Torch checkpoint.",
     "processorDetectorWeightContract": "Detector class contract",
     "processorDetectorWeightContractOff": "Off",
     "processorDetectorWeightContractWarn": "Warn",
@@ -677,6 +679,8 @@
     "processorDetectorWeightContractHint": "Checks model class names against detector_scope; enforce fails fast on mismatch.",
     "processorModelBinaryOpenvinoPath": "OpenVINO binary detector path",
     "processorModelBinaryOpenvinoPathHint": "Directory or .xml export from YOLO/OpenVINO. Leave empty unless inference backend is OpenVINO.",
+    "processorModelClassifierOpenvinoPath": "OpenVINO classifier path",
+    "processorModelClassifierOpenvinoPathHint": "Directory or .xml export from YOLO/OpenVINO for species classifier. Used when classifier backend is OpenVINO/Auto.",
     "processorDetectionStrategy": "Detection strategy",
     "processorDetectionStrategyValue": {
       "two_stage": "Two-stage: detector + classifier",
@@ -899,7 +903,8 @@
     "savedRestart": "Settings saved. Processor will restart within ~60 seconds.",
     "restartFailed": "Failed to restart processor",
     "savedRestarting": "Settings saved. Processor is restarting.",
-    "saveError": "Failed to save settings. Check your connection or try again."
+    "saveError": "Failed to save settings. Check your connection or try again.",
+    "processorOpenvinoPathsManagedHint": "OpenVINO paths are hidden in UI and managed by service mode/server config. In settings, users only select detector and classifier backends."
   },
   "live": {
     "title": "Live — all cameras",
@@ -1306,7 +1311,20 @@
     "noNextRecording": "No later recording",
     "neighborsDayHint": "Local calendar day; can continue past midnight. Prev/next steps through all clips for that calendar day.",
     "localDayLabel": "Local day",
-    "serviceToolsTitle": "Service tools for this recording"
+    "serviceToolsTitle": "Service tools for this recording",
+    "nicknameField": "Bird nickname",
+    "nicknameFieldPlaceholder": "e.g. Sparrow Joe",
+    "nicknameLabel": "Nickname",
+    "nicknameSaved": "Nickname saved",
+    "possibleSameBird": "Possibly the same bird",
+    "similarityPercent": "Similarity: {{value}}%",
+    "relatedVideo": "Related video",
+    "actionEventsTitle": "Action timeline",
+    "actionLabel": {
+      "arrival": "Arrival",
+      "departure": "Departure",
+      "possible_feeding": "Possible feeding"
+    }
   },
   "feed": {
     "feederControl": "Feeder Control",

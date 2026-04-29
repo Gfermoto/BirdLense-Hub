@@ -665,6 +665,8 @@
     "processorInferenceBackendTorch": "Torch / Ultralytics",
     "processorInferenceBackendOpenvino": "OpenVINO IR",
     "processorInferenceBackendHint": "Auto prefers OpenVINO when IR path and runtime are available, otherwise falls back to Torch. OpenVINO uses processor.models.binary_openvino or BIRDLENSE_BINARY_OPENVINO_PATH. ONNX Runtime stays YAML-only until implemented.",
+    "processorClassifierInferenceBackend": "Classifier inference backend",
+    "processorClassifierInferenceBackendHint": "Separate backend for species classifier. Auto prefers OpenVINO classifier IR when available, otherwise uses Torch checkpoint.",
     "processorDetectorWeightContract": "Detector class contract",
     "processorDetectorWeightContractOff": "Off",
     "processorDetectorWeightContractWarn": "Warn",
@@ -672,6 +674,8 @@
     "processorDetectorWeightContractHint": "Checks model class names against detector_scope; enforce fails fast on mismatch.",
     "processorModelBinaryOpenvinoPath": "OpenVINO binary detector path",
     "processorModelBinaryOpenvinoPathHint": "Directory or .xml export from YOLO/OpenVINO. Leave empty unless inference backend is OpenVINO.",
+    "processorModelClassifierOpenvinoPath": "OpenVINO classifier path",
+    "processorModelClassifierOpenvinoPathHint": "Directory or .xml export from YOLO/OpenVINO for species classifier. Used when classifier backend is OpenVINO/Auto.",
     "processorDetectionStrategy": "Detection strategy",
     "processorDetectionStrategyValue": {
       "two_stage": "两阶段：检测器 + 分类器",
@@ -889,7 +893,8 @@
     "savedRestart": "设置已保存。处理器将在约 60 秒内重新启动。",
     "restartFailed": "无法重新启动处理器",
     "savedRestarting": "设置已保存。处理器正在重新启动。",
-    "saveError": "无法保存设置。检查您的连接或重试。"
+    "saveError": "无法保存设置。检查您的连接或重试。",
+    "processorOpenvinoPathsManagedHint": "OpenVINO 路径在 UI 中已隐藏，由服务模式/服务器配置管理。设置里用户只选择 detector 与 classifier 的 backend。"
   },
   "live": {
     "title": "直播 — 所有摄像机",
@@ -1295,7 +1300,20 @@
     "noNextRecording": "以后不再录音",
     "neighborsDayHint": "当地日历日；可以继续到午夜之后。上一个/下一个步骤浏览该日历日的所有剪辑。",
     "localDayLabel": "当地时间",
-    "serviceToolsTitle": "此记录的服务工具"
+    "serviceToolsTitle": "此记录的服务工具",
+    "nicknameField": "鸟类昵称",
+    "nicknameFieldPlaceholder": "例如：小灰",
+    "nicknameLabel": "昵称",
+    "nicknameSaved": "昵称已保存",
+    "possibleSameBird": "可能是同一只鸟",
+    "similarityPercent": "相似度：{{value}}%",
+    "relatedVideo": "相关视频",
+    "actionEventsTitle": "行为时间线",
+    "actionLabel": {
+      "arrival": "到达",
+      "departure": "离开",
+      "possible_feeding": "可能在进食"
+    }
   },
   "feed": {
     "feederControl": "送料器控制",

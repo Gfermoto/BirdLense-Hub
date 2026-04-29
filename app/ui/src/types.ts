@@ -54,6 +54,7 @@ export interface VideoSpecies {
   confidence: number;
   source: string;
   detection_provider?: string;
+  individual_nickname?: string | null;
   /** Relative path or full URL — use resolveImageUrl() */
   image_url?: string;
   frames?: TrackFrame[];
@@ -259,8 +260,19 @@ export interface Settings {
     keep_recording_when_no_detections?: boolean;
     detection_strategy?: string;
     inference_backend?: 'auto' | 'torch' | 'openvino' | 'onnxruntime' | string;
+    classifier_inference_backend?:
+      | 'auto'
+      | 'torch'
+      | 'openvino'
+      | 'onnxruntime'
+      | string;
     detector_weight_contract?: 'off' | 'warn' | 'enforce' | string;
-    models?: { binary?: string; binary_openvino?: string; classifier?: string };
+    models?: {
+      binary?: string;
+      binary_openvino?: string;
+      classifier?: string;
+      classifier_openvino?: string;
+    };
     classifier_uncertainty_entropy_ge?: number | null;
     classifier_uncertainty_margin_le?: number | null;
     save_images?: boolean;

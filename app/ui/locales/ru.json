@@ -670,6 +670,8 @@
     "processorInferenceBackendTorch": "Torch / Ultralytics",
     "processorInferenceBackendOpenvino": "OpenVINO IR",
     "processorInferenceBackendHint": "Auto использует OpenVINO при наличии IR-пути и runtime, иначе уходит на Torch. OpenVINO берёт processor.models.binary_openvino или BIRDLENSE_BINARY_OPENVINO_PATH. ONNX Runtime остаётся YAML-only до реализации.",
+    "processorClassifierInferenceBackend": "Бэкенд инференса классификатора",
+    "processorClassifierInferenceBackendHint": "Отдельный бэкенд для классификатора видов. Auto предпочитает OpenVINO IR классификатора при наличии, иначе использует Torch-чекпоинт.",
     "processorDetectorWeightContract": "Контракт классов детектора",
     "processorDetectorWeightContractOff": "Выкл.",
     "processorDetectorWeightContractWarn": "Предупреждать",
@@ -677,6 +679,8 @@
     "processorDetectorWeightContractHint": "Сверяет имена классов модели с detector_scope; strict/enforce падает сразу при рассинхроне.",
     "processorModelBinaryOpenvinoPath": "Путь OpenVINO бинарного детектора",
     "processorModelBinaryOpenvinoPathHint": "Каталог или .xml экспорт YOLO/OpenVINO. Оставьте пустым, если бэкенд не OpenVINO.",
+    "processorModelClassifierOpenvinoPath": "Путь OpenVINO классификатора",
+    "processorModelClassifierOpenvinoPathHint": "Каталог или .xml экспорт YOLO/OpenVINO для классификатора видов. Используется при classifier backend=OpenVINO/Auto.",
     "processorDetectionStrategy": "Стратегия детекции",
     "processorDetectionStrategyValue": {
       "two_stage": "Два шага: детектор + классификатор",
@@ -899,7 +903,8 @@
     "savedRestart": "Настройки сохранены. Процессор перезапустится в течение ~60 секунд.",
     "restartFailed": "Не удалось перезапустить процессор",
     "savedRestarting": "Настройки сохранены. Процессор перезапускается.",
-    "saveError": "Не удалось сохранить настройки. Проверьте соединение или попробуйте ещё раз."
+    "saveError": "Не удалось сохранить настройки. Проверьте соединение или попробуйте ещё раз.",
+    "processorOpenvinoPathsManagedHint": "Пути OpenVINO скрыты в UI и управляются сервисным режимом/конфигом сервера. Пользователь в интерфейсе выбирает только backend для детектора и классификатора."
   },
   "live": {
     "title": "Live — все камеры",
@@ -1306,7 +1311,20 @@
     "noNextRecording": "Нет более поздней записи",
     "neighborsDayHint": "Локальный календарный день; возможен переход через полночь. Листание — все ролики за эту дату в архиве.",
     "localDayLabel": "Локальный день",
-    "serviceToolsTitle": "Сервисные инструменты для этой записи"
+    "serviceToolsTitle": "Сервисные инструменты для этой записи",
+    "nicknameField": "Кличка птицы",
+    "nicknameFieldPlaceholder": "например, Синичка Соня",
+    "nicknameLabel": "Кличка",
+    "nicknameSaved": "Кличка сохранена",
+    "possibleSameBird": "Возможно, это та же птица",
+    "similarityPercent": "Сходство: {{value}}%",
+    "relatedVideo": "Связанное видео",
+    "actionEventsTitle": "Таймлайн действий",
+    "actionLabel": {
+      "arrival": "Прилёт",
+      "departure": "Улёт",
+      "possible_feeding": "Возможное кормление"
+    }
   },
   "feed": {
     "feederControl": "Управление кормушкой",
