@@ -12,10 +12,25 @@ from datetime import datetime, timedelta, timezone
 
 import cv2
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SCRIPTS_DIR = os.path.join(ROOT, 'scripts')
-APP_ROOT = os.path.join(ROOT, 'app')
-PROCESSOR_SRC = os.path.join(ROOT, 'app', 'processor', 'src')
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.dirname(_SCRIPT_DIR)
+
+
+def _resolve_app_paths() -> tuple[str, str]:
+    """Checkout: <repo>/app; hub container: flat /app (processor, web, app_config)."""
+    hub = '/app'
+    if (
+        os.path.isdir(os.path.join(hub, 'processor', 'src'))
+        and os.path.isdir(os.path.join(hub, 'app_config'))
+        and os.path.isfile(os.path.join(hub, 'web', 'app.py'))
+    ):
+        return hub, os.path.join(hub, 'processor', 'src')
+    app_root = os.path.join(_REPO_ROOT, 'app')
+    return app_root, os.path.join(app_root, 'processor', 'src')
+
+
+APP_ROOT, PROCESSOR_SRC = _resolve_app_paths()
+SCRIPTS_DIR = _SCRIPT_DIR
 if APP_ROOT not in sys.path:
     sys.path.insert(0, APP_ROOT)
 if PROCESSOR_SRC not in sys.path:
@@ -64,6 +79,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        '--inference-device',
+        default='',
+        help=(
+            'Sets BIRDLENSE_INFERENCE_DEVICE for this run '
+            '(e.g. intel:gpu for OpenVINO on Intel iGPU). Empty = env/config.'
+        ),
+    )
+    parser.add_argument(
         '--labels-json',
         default='',
         help=(
@@ -81,6 +104,9 @@ def main() -> int:
     if args.inference_backend:
         be = args.inference_backend.strip().lower()
         os.environ['BIRDLENSE_INFERENCE_BACKEND'] = be
+
+    if args.inference_device:
+        os.environ['BIRDLENSE_INFERENCE_DEVICE'] = args.inference_device.strip()
 
     labels_sidecar_path = (args.labels_json or '').strip()
     gold_map: dict[str, list[str]] | None = None
