@@ -17,6 +17,7 @@ import argparse
 import glob as glob_mod
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -64,7 +65,9 @@ def main() -> int:
         help="Имя модели в hub facebookresearch/dinov2 (dinov2_vits14, dinov2_vitb14, …)",
     )
     ap.add_argument("--output", "-o", help="Писать JSON Lines в файл (иначе stdout)")
-    ap.add_argument("--device", default=None, help="cuda | cpu (по умолчанию: cuda если доступен)")
+    ap.add_argument(
+        "--device", default=None, help="cuda | cpu (по умолчанию: cuda если доступен)"
+    )
     args = ap.parse_args()
 
     if not args.image and not args.glob_pat:
@@ -94,7 +97,9 @@ def main() -> int:
         print("Нет файлов по заданным путям.", file=sys.stderr)
         return 2
 
-    device_s = args.device or ("cuda" if __import__("torch").cuda.is_available() else "cpu")
+    device_s = args.device or (
+        "cuda" if __import__("torch").cuda.is_available() else "cpu"
+    )
     device = torch.device(device_s)
 
     print(f"Loading {args.model} from torch.hub on {device_s} …", file=sys.stderr)
@@ -112,6 +117,48 @@ def main() -> int:
         ]
     )
 
+    # RFC (#389): embedding contract metadata for safe downstream imports/queries.
+    try:
+        from app.web.services.reid_contract import (
+            EMBEDDING_SCHEMA_V1,
+            stable_sha16_from_bytes,
+            stable_sha16_from_state_dict,
+        )
+    except Exception:
+        # scripts may run without web package on PYTHONPATH — keep minimal inline fallbacks
+        EMBEDDING_SCHEMA_V1 = "embedding_schema@v1"
+
+        def stable_sha16_from_bytes(data: bytes) -> str:  # type: ignore
+            import hashlib
+
+            return hashlib.sha256(data).hexdigest()[:16]
+
+        def stable_sha16_from_state_dict(state_dict: dict[str, Any]) -> str:  # type: ignore
+            import hashlib
+
+            h = hashlib.sha256()
+            for k in sorted(state_dict.keys()):
+                h.update(str(k).encode("utf-8"))
+                h.update(b":")
+                v = state_dict[k]
+                try:
+                    import torch as _torch
+
+                    if _torch.is_tensor(v):
+                        vv = v.detach().cpu().contiguous().view(-1)[:4096]
+                        h.update(vv.numpy().tobytes())
+                        h.update(str(tuple(v.shape)).encode("utf-8"))
+                        h.update(str(v.dtype).encode("utf-8"))
+                        continue
+                except Exception:
+                    pass
+                h.update(str(type(v)).encode("utf-8"))
+                h.update(b";")
+            return h.hexdigest()[:16]
+
+    embedding_model_id = f"torchhub:facebookresearch/dinov2:{args.model}"
+    model_sha16 = stable_sha16_from_state_dict(dict(model.state_dict()))
+
     out_lines: list[str] = []
 
     with torch.inference_mode():
@@ -119,17 +166,31 @@ def main() -> int:
             if not p.is_file():
                 print(f"Skip missing: {p}", file=sys.stderr)
                 continue
+            crop_bytes = p.read_bytes()
+            crop_fp = stable_sha16_from_bytes(crop_bytes)
             img = Image.open(p).convert("RGB")
             batch = tfm(img).unsqueeze(0).to(device)
             feats = model.forward_features(batch)
             vec = _pick_cls_embedding(feats)
             vec = F.normalize(vec.float(), dim=-1).squeeze(0)
             emb = vec.cpu().numpy().astype("float64")
+            created_at = (
+                datetime.now(timezone.utc)
+                .replace(microsecond=0)
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
             row = {
                 "path": str(p.resolve()),
                 "model": args.model,
                 "dim": int(emb.shape[0]),
                 "embedding": emb.tolist(),
+                # Contract fields (#389)
+                "embedding_schema": EMBEDDING_SCHEMA_V1,
+                "embedding_model_id": embedding_model_id,
+                "embedding_model_sha16": model_sha16,
+                "crop_fingerprint_sha16": crop_fp,
+                "created_at_utc": created_at,
             }
             out_lines.append(json.dumps(row, ensure_ascii=False))
 

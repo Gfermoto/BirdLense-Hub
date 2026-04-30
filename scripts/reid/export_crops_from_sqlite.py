@@ -111,7 +111,9 @@ def main() -> int:
         default=Path("app/data/db/birdlense.db"),
         help="Путь к birdlense.db (от корня репо)",
     )
-    ap.add_argument("--output-dir", "-o", type=Path, required=True, help="Куда писать JPEG кропы")
+    ap.add_argument(
+        "--output-dir", "-o", type=Path, required=True, help="Куда писать JPEG кропы"
+    )
     ap.add_argument("--limit", type=int, default=200, help="Макс. строк video_species")
     ap.add_argument("--species-id", type=int, default=None, help="Фильтр по species_id")
     ap.add_argument(
@@ -133,6 +135,7 @@ def main() -> int:
     q = """
         SELECT vs.id AS vs_id, vs.frames AS frames, vs.start_time AS start_time, vs.end_time AS end_time,
                vs.track_id AS track_id, vs.species_id AS species_id,
+               vs.individual_nickname AS individual_nickname,
                v.video_path AS video_path, v.id AS video_id, s.name AS species_name
         FROM video_species vs
         JOIN video v ON v.id = vs.video_id
@@ -201,15 +204,21 @@ def main() -> int:
             "track_id": row["track_id"],
             "species_name": row["species_name"],
             "species_id": row["species_id"],
+            "individual_nickname": row["individual_nickname"],
             "video_path": video_path,
             "offset_sec": offset,
         }
         manifest_lines.append(json.dumps(meta, ensure_ascii=False))
 
-    print(f"Saved {saved} crops → {args.output_dir} (skipped {skipped})", file=sys.stderr)
+    print(
+        f"Saved {saved} crops → {args.output_dir} (skipped {skipped})", file=sys.stderr
+    )
 
     if args.manifest:
-        args.manifest.write_text("\n".join(manifest_lines) + ("\n" if manifest_lines else ""), encoding="utf-8")
+        args.manifest.write_text(
+            "\n".join(manifest_lines) + ("\n" if manifest_lines else ""),
+            encoding="utf-8",
+        )
         print(f"Manifest → {args.manifest}", file=sys.stderr)
 
     return 0

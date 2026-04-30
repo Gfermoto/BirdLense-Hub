@@ -45,6 +45,11 @@ class TestReidImportEmbeddingsSqlite(unittest.TestCase):
                         "model": "dinov2_vits14",
                         "dim": 3,
                         "embedding": [0.1, 0.2, 0.3],
+                        "embedding_schema": "embedding_schema@v1",
+                        "embedding_model_id": "torchhub:facebookresearch/dinov2:dinov2_vits14",
+                        "embedding_model_sha16": "abcdabcdabcdabcd",
+                        "crop_fingerprint_sha16": "ffffffffffffffff",
+                        "created_at_utc": "2026-04-29T12:00:00Z",
                     },
                 )
                 + "\n",
@@ -59,6 +64,7 @@ class TestReidImportEmbeddingsSqlite(unittest.TestCase):
                         "species_id": 33,
                         "track_id": 44,
                         "species_name": "Robin",
+                        "individual_nickname": "Polly",
                     },
                 )
                 + "\n",
@@ -73,11 +79,29 @@ class TestReidImportEmbeddingsSqlite(unittest.TestCase):
             self.assertEqual(rc, 0)
             conn = sqlite3.connect(db)
             row = conn.execute(
-                "SELECT video_species_id, video_id, species_id, track_id, model, dim, species_name "
+                "SELECT video_species_id, video_id, species_id, track_id, model, dim, species_name, individual_label, "
+                "embedding_schema, embedding_model_id, embedding_model_sha16, crop_fingerprint_sha16, jsonl_created_at_utc "
                 "FROM reid_embedding",
             ).fetchone()
             conn.close()
-            self.assertEqual(row, (11, 22, 33, 44, "dinov2_vits14", 3, "Robin"))
+            self.assertEqual(
+                row,
+                (
+                    11,
+                    22,
+                    33,
+                    44,
+                    "dinov2_vits14",
+                    3,
+                    "Robin",
+                    "Polly",
+                    "embedding_schema@v1",
+                    "torchhub:facebookresearch/dinov2:dinov2_vits14",
+                    "abcdabcdabcdabcd",
+                    "ffffffffffffffff",
+                    "2026-04-29T12:00:00Z",
+                ),
+            )
 
 
 if __name__ == "__main__":

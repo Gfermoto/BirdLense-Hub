@@ -92,7 +92,10 @@ def test_reid_summary_handles_missing_sidecar_table(client):
         sess["access_role"] = "contributor"
     r = client.get("/api/ui/system/reid/summary")
     assert r.status_code == 200
-    assert r.get_json()["available"] is False
+    body = r.get_json()
+    assert body["available"] is False
+    assert body["schema"] == "reid_summary@v2"
+    assert body["contract"]["status"] == "missing_table"
 
 
 def test_ml_runtime_reports_config_state(client):
@@ -112,7 +115,7 @@ def test_video_reid_match_handles_missing_table(client):
     assert r.status_code in (200, 404)
     if r.status_code == 200:
         body = r.get_json()
-        assert body["schema"] == "video_reid_match@v1"
+        assert body["schema"] == "video_reid_match@v2"
         assert body["available"] is False
 
 
@@ -172,6 +175,11 @@ def test_video_reid_match_returns_candidate(app, client):
                     embedding_json TEXT NOT NULL,
                     species_name TEXT,
                     individual_label TEXT,
+                    embedding_schema TEXT,
+                    embedding_model_id TEXT,
+                    embedding_model_sha16 TEXT,
+                    crop_fingerprint_sha16 TEXT,
+                    jsonl_created_at_utc TEXT,
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """
@@ -180,8 +188,9 @@ def test_video_reid_match_returns_candidate(app, client):
         db.session.execute(
             text(
                 "INSERT INTO reid_embedding "
-                "(video_species_id, video_id, species_id, track_id, crop_path, model, dim, embedding_json, species_name, individual_label) "
-                "VALUES (:vsid,:vid,:sid,:tid,:crop,:model,:dim,:emb,:name,:label)"
+                "(video_species_id, video_id, species_id, track_id, crop_path, model, dim, embedding_json, species_name, individual_label, "
+                "embedding_schema, embedding_model_id, embedding_model_sha16, crop_fingerprint_sha16, jsonl_created_at_utc) "
+                "VALUES (:vsid,:vid,:sid,:tid,:crop,:model,:dim,:emb,:name,:label,:schema,:mid,:msha,:cfp,:cat)"
             ),
             [
                 {
@@ -195,6 +204,11 @@ def test_video_reid_match_returns_candidate(app, client):
                     "emb": json.dumps([1.0, 0.0, 0.0, 0.0]),
                     "name": species.name,
                     "label": d1.individual_nickname,
+                    "schema": "embedding_schema@v1",
+                    "mid": "torchhub:facebookresearch/dinov2:dinov2_vits14",
+                    "msha": "abcdabcdabcdabcd",
+                    "cfp": "1111111111111111",
+                    "cat": "2026-04-29T12:00:00Z",
                 },
                 {
                     "vsid": d2.id,
@@ -207,6 +221,11 @@ def test_video_reid_match_returns_candidate(app, client):
                     "emb": json.dumps([0.99, 0.01, 0.0, 0.0]),
                     "name": species.name,
                     "label": d2.individual_nickname,
+                    "schema": "embedding_schema@v1",
+                    "mid": "torchhub:facebookresearch/dinov2:dinov2_vits14",
+                    "msha": "abcdabcdabcdabcd",
+                    "cfp": "2222222222222222",
+                    "cat": "2026-04-29T12:05:00Z",
                 },
             ],
         )

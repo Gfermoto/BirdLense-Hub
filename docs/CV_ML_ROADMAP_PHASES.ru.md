@@ -29,8 +29,8 @@
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Готово в репо** | Игрушечная симуляция + threat model готовы; prod-channel не входит в текущий пакет. |
 | [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) Action recognition | **Закрыто (planning scope)** | Research-контур декомпозирован в [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) и профильные документы; обучение head — отдельная execution-волна. |
 | [#388](https://github.com/Gfermoto/BirdLense-Hub/issues/388) CV/ML v2 Epic | **Закрыто (planning scope)** | v2-направления декомпозированы и формализованы, execution-гейты закреплены в дочерних задачах и документах. |
-| [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389) DINOv2 production pipeline | **Закрыто** | RFC + `embedding_schema@v1` + rollout/failover: [ML_DINOV2_PRODUCTION_PIPELINE.ru.md](ML_DINOV2_PRODUCTION_PIPELINE.ru.md). |
-| [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390) Re-ID productization | **Закрыто** | Decision policy, safety-ограничения и метрики: [ML_REID_PRODUCTIZATION.ru.md](ML_REID_PRODUCTIZATION.ru.md). |
+| [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389) DINOv2 production pipeline | **В работе** | RFC: [ML_DINOV2_PRODUCTION_PIPELINE.ru.md](ML_DINOV2_PRODUCTION_PIPELINE.ru.md). **Уже в репо:** поля контракта в JSONL + колонки SQLite + миграция на импорте + сводка для оператора (`reid_summary@v2.contract`). **Не сделано:** nearline worker + realtime pilot + дашборд rollout-метрик. |
+| [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390) Re-ID productization | **В работе** | RFC: [ML_REID_PRODUCTIZATION.ru.md](ML_REID_PRODUCTIZATION.ru.md). **Уже в репо:** policy knobs в YAML (`processor.reid_*`) + осторожные UI hints (`video_reid_match@v2`) + shadow/kill-switch. **Не сделано:** review-queue UX, merge workflow, инструментирование precision/false-merge + A/B harness. |
 | [#391](https://github.com/Gfermoto/BirdLense-Hub/issues/391) Benchmark robustness gates | **Закрыто** | Slice-gate скрипты/тесты/интеграция (`verify_benchmark_slice_gates.py`, Makefile, docs) внедрены. |
 | [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) Action dataset/labeling protocol | **Закрыто** | Спецификация датасета, разметка, baseline-план и compute budget: [ML_ACTION_RECOGNITION_PLAN.ru.md](ML_ACTION_RECOGNITION_PLAN.ru.md). |
 | [#393](https://github.com/Gfermoto/BirdLense-Hub/issues/393) ML release train | **Закрыто** | Реестр моделей + release gates (`build/verify_model_registry_entry.py`, тесты, docs, Makefile) внедрены. |
@@ -81,8 +81,8 @@
 - [#370] точки расширения в ``_classify_crop``; продуктовые флаги — позже.
 - [#374] [REID_ROADMAP.ru.md](REID_ROADMAP.ru.md) — **DINO / DINOv2**: Re-ID эмбеддинги и опционально **виды** / AL; на хабе целесообразен **один** backbone на два выхода при интеграции · [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383).
 - [#375] ``simulate_fedavg.py`` + [FEDERATED_LEARNING.ru.md](FEDERATED_LEARNING.ru.md).
-- [#389] DINOv2 production RFC + schema/failover: [ML_DINOV2_PRODUCTION_PIPELINE.ru.md](ML_DINOV2_PRODUCTION_PIPELINE.ru.md).
-- [#390] Re-ID decision policy + safety/metrics: [ML_REID_PRODUCTIZATION.ru.md](ML_REID_PRODUCTIZATION.ru.md).
+- [#389] DINOv2 production path: RFC [ML_DINOV2_PRODUCTION_PIPELINE.ru.md](ML_DINOV2_PRODUCTION_PIPELINE.ru.md) + **offline enforcement контракта** (поля JSONL → колонки SQLite → миграция на импорте → `reid_summary@v2.contract`); nearline/realtime worker всё ещё вне репо.
+- [#390] Re-ID safety: RFC [ML_REID_PRODUCTIZATION.ru.md](ML_REID_PRODUCTIZATION.ru.md) + **YAML policy** (`processor.reid_*`) + **`video_reid_match@v2`** hints в UI; review-queue / merge / измеряемые гейты — дальше.
 - [#392] Action dataset/labeling/training protocol: [ML_ACTION_RECOGNITION_PLAN.ru.md](ML_ACTION_RECOGNITION_PLAN.ru.md).
 
 ### Сводка по подзадачам (ветка ML)
