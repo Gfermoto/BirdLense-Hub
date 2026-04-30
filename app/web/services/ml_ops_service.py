@@ -14,6 +14,9 @@ from app_config.app_config import app_config
 from models import Video, VideoSpecies
 from util import ensure_utc
 
+from services.reid_contract import EMBEDDING_SCHEMA_V1, embedding_age_hours
+from services.reid_policy_service import load_reid_policy_config, policy_snapshot, evaluate_reid_candidate
+
 
 def build_video_action_events_payload(session, video_id: int) -> tuple[dict[str, Any], int]:
     """Weak behavior labels from existing tracks and feeder-weight evidence (#379)."""
@@ -151,31 +154,190 @@ def build_reid_summary(session) -> tuple[dict[str, Any], int]:
         exists = None
     if not exists:
         return {
-            "schema": "reid_summary@v1",
+            "schema": "reid_summary@v2",
             "available": False,
             "embedding_count": 0,
             "recent": [],
+            "contract": {
+                "expected_schema": EMBEDDING_SCHEMA_V1,
+                "schema_mix_ok": True,
+                "schema_counts": {},
+                "model_id_counts": {},
+                "dim_counts": {},
+                "model_sha16_counts": {},
+                "missing_contract_rows": 0,
+                "max_embedding_age_hours": None,
+                "status": "missing_table",
+            },
         }, 200
 
     count = int(session.execute(text("SELECT COUNT(*) FROM reid_embedding")).scalar() or 0)
     try:
+        info_rows = session.execute(text("PRAGMA table_info(reid_embedding)")).fetchall()
+        col_names = {str(r[1]) for r in info_rows}
+    except Exception:
+        col_names = set()
+
+    select_cols = [
+        "id",
+        "video_id",
+        "video_species_id",
+        "species_id",
+        "track_id",
+    ]
+    optional_cols = [
+        "embedding_schema",
+        "embedding_model_id",
+        "embedding_model_sha16",
+        "dim",
+        "jsonl_created_at_utc",
+        "created_at",
+    ]
+    for c in optional_cols:
+        if c in col_names:
+            select_cols.append(c)
+
+    try:
         rows = (
             session.execute(
-                text(
-                    "SELECT id, video_id, video_species_id, species_id, track_id "
-                    "FROM reid_embedding ORDER BY id DESC LIMIT 20"
-                )
+                text(f"SELECT {', '.join(select_cols)} FROM reid_embedding ORDER BY id DESC LIMIT 20"),
             )
             .mappings()
             .all()
         )
     except Exception:
         rows = []
+    contract: dict[str, Any] = {
+        "expected_schema": EMBEDDING_SCHEMA_V1,
+        "schema_mix_ok": True,
+        "schema_counts": {},
+        "model_id_counts": {},
+        "dim_counts": {},
+        "model_sha16_counts": {},
+        "missing_contract_rows": 0,
+        "max_embedding_age_hours": None,
+        "status": "ok",
+    }
+    required_for_contract = {
+        "embedding_schema",
+        "embedding_model_id",
+        "embedding_model_sha16",
+        "crop_fingerprint_sha16",
+        "jsonl_created_at_utc",
+    }
+    if not required_for_contract.issubset(col_names):
+        contract["status"] = "legacy_table"
+        contract["issues"] = ["reid_embedding_missing_contract_columns"]
+        contract["schema_mix_ok"] = False
+    else:
+        try:
+            schema_rows = (
+                session.execute(
+                    text(
+                        "SELECT embedding_schema AS embedding_schema, COUNT(*) AS c "
+                        "FROM reid_embedding GROUP BY embedding_schema"
+                    )
+                )
+                .mappings()
+                .all()
+            )
+            contract["schema_counts"] = {str(r["embedding_schema"] or ""): int(r["c"]) for r in schema_rows}
+
+            model_rows = (
+                session.execute(
+                    text(
+                        "SELECT embedding_model_id AS embedding_model_id, COUNT(*) AS c "
+                        "FROM reid_embedding GROUP BY embedding_model_id"
+                    )
+                )
+                .mappings()
+                .all()
+            )
+            contract["model_id_counts"] = {str(r["embedding_model_id"] or ""): int(r["c"]) for r in model_rows}
+
+            dim_rows = (
+                session.execute(text("SELECT dim AS dim, COUNT(*) AS c FROM reid_embedding GROUP BY dim"))
+                .mappings()
+                .all()
+            )
+            contract["dim_counts"] = {str(int(r["dim"])): int(r["c"]) for r in dim_rows}
+
+            sha_rows = (
+                session.execute(
+                    text(
+                        "SELECT embedding_model_sha16 AS embedding_model_sha16, COUNT(*) AS c "
+                        "FROM reid_embedding GROUP BY embedding_model_sha16"
+                    )
+                )
+                .mappings()
+                .all()
+            )
+            contract["model_sha16_counts"] = {str(r["embedding_model_sha16"] or ""): int(r["c"]) for r in sha_rows}
+
+            missing = int(
+                session.execute(
+                    text(
+                        "SELECT COUNT(*) FROM reid_embedding WHERE embedding_schema IS NULL "
+                        "OR trim(embedding_schema) = '' OR embedding_model_id IS NULL "
+                        "OR trim(embedding_model_id) = '' OR embedding_model_sha16 IS NULL "
+                        "OR trim(embedding_model_sha16) = '' OR crop_fingerprint_sha16 IS NULL "
+                        "OR trim(crop_fingerprint_sha16) = '' OR jsonl_created_at_utc IS NULL "
+                        "OR trim(jsonl_created_at_utc) = ''"
+                    )
+                ).scalar()
+                or 0
+            )
+            contract["missing_contract_rows"] = missing
+
+            freshness_rows = (
+                session.execute(
+                    text(
+                        "SELECT jsonl_created_at_utc AS ts FROM reid_embedding "
+                        "WHERE jsonl_created_at_utc IS NOT NULL AND trim(jsonl_created_at_utc) != '' "
+                        "ORDER BY id DESC LIMIT 5000"
+                    )
+                )
+                .mappings()
+                .all()
+            )
+            ages = [embedding_age_hours(str(r["ts"])) for r in freshness_rows]
+            ages = [a for a in ages if a is not None]
+            contract["max_embedding_age_hours"] = max(ages) if ages else None
+
+            distinct_schema_keys = {k for k in contract["schema_counts"].keys() if k}
+            non_empty_models = {k for k in contract["model_id_counts"].keys() if k}
+            distinct_dims = {int(k) for k in contract["dim_counts"].keys() if str(k).isdigit()}
+            issues: list[str] = []
+            if missing > 0:
+                issues.append("incomplete_contract_metadata")
+            if len(distinct_schema_keys) > 1:
+                issues.append("mixed_embedding_schema")
+                contract["schema_mix_ok"] = False
+            if len(non_empty_models) > 1:
+                issues.append("mixed_embedding_model_id")
+                contract["schema_mix_ok"] = False
+            if len(distinct_dims) > 1:
+                issues.append("mixed_embedding_dim")
+                contract["schema_mix_ok"] = False
+            stale_hours = app_config.get("processor.reid_max_embedding_age_hours")
+            try:
+                stale_hours_f = float(stale_hours) if stale_hours is not None else None
+            except Exception:
+                stale_hours_f = None
+            if stale_hours_f is not None and contract["max_embedding_age_hours"] is not None:
+                if float(contract["max_embedding_age_hours"]) > stale_hours_f:
+                    issues.append("stale_embeddings")
+            if issues:
+                contract["status"] = "degraded"
+                contract["issues"] = issues
+        except Exception:
+            contract["status"] = "unknown"
     return {
-        "schema": "reid_summary@v1",
+        "schema": "reid_summary@v2",
         "available": True,
         "embedding_count": count,
         "recent": [dict(r) for r in rows],
+        "contract": contract,
     }, 200
 
 
@@ -230,17 +392,29 @@ def build_video_reid_match_payload(session, video_id: int) -> tuple[dict[str, An
     if not video:
         return {"error": "Video not found"}, 404
 
+    policy_cfg = load_reid_policy_config()
+    base_payload: dict[str, Any] = {
+        "schema": "video_reid_match@v2",
+        "policy": policy_snapshot(),
+        "video_id": int(video_id),
+    }
+
     has_reid = bool(
         session.execute(text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")).scalar()
     )
     if not has_reid:
         return {
-            "schema": "video_reid_match@v1",
+            **base_payload,
             "available": False,
-            "video_id": int(video_id),
             "matches": [],
             "message": "reid_embedding_table_missing",
         }, 200
+
+    try:
+        info_rows = session.execute(text("PRAGMA table_info(reid_embedding)")).fetchall()
+        reid_cols = {str(r[1]) for r in info_rows}
+    except Exception:
+        reid_cols = set()
 
     rows = (
         session.query(VideoSpecies)
@@ -251,27 +425,64 @@ def build_video_reid_match_payload(session, video_id: int) -> tuple[dict[str, An
     )
     if not rows:
         return {
-            "schema": "video_reid_match@v1",
+            **base_payload,
             "available": True,
-            "video_id": int(video_id),
             "matches": [],
         }, 200
 
-    out: list[dict[str, Any]] = []
-    for det in rows:
-        anchor_raw = (
+    needs_contract_cols = {
+        "embedding_schema",
+        "embedding_model_id",
+        "embedding_model_sha16",
+        "crop_fingerprint_sha16",
+        "jsonl_created_at_utc",
+    }
+    contract_ready = needs_contract_cols.issubset(reid_cols)
+
+    emb_cols = ["embedding_json"]
+    for c in (
+        "embedding_schema",
+        "embedding_model_id",
+        "embedding_model_sha16",
+        "crop_fingerprint_sha16",
+        "jsonl_created_at_utc",
+        "dim",
+    ):
+        if c in reid_cols:
+            emb_cols.append(c)
+
+    def _fetch_emb_row(vsid: int) -> dict[str, Any] | None:
+        row = (
             session.execute(
                 text(
-                    "SELECT embedding_json FROM reid_embedding WHERE video_species_id = :vsid ORDER BY id DESC LIMIT 1"
+                    f"SELECT {', '.join(emb_cols)} FROM reid_embedding "
+                    "WHERE video_species_id = :vsid ORDER BY id DESC LIMIT 1"
                 ),
-                {"vsid": det.id},
+                {"vsid": int(vsid)},
             )
             .mappings()
             .first()
         )
-        if not anchor_raw:
+        return dict(row) if row else None
+
+    video_ids_needed: set[int] = {int(video_id)}
+    for det in rows:
+        video_ids_needed.add(int(det.video_id))
+
+    starts: dict[int, Any] = {}
+    paths: dict[int, str | None] = {}
+    if video_ids_needed:
+        q = session.query(Video.id, Video.start_time, Video.video_path).filter(Video.id.in_(sorted(video_ids_needed)))
+        for vid, st, vp in q.all():
+            starts[int(vid)] = st
+            paths[int(vid)] = vp
+
+    out: list[dict[str, Any]] = []
+    for det in rows:
+        anchor_row = _fetch_emb_row(int(det.id))
+        if not anchor_row:
             continue
-        anchor = _parse_embedding(anchor_raw.get("embedding_json"))
+        anchor = _parse_embedding(anchor_row.get("embedding_json"))
         if not anchor:
             continue
 
@@ -279,7 +490,13 @@ def build_video_reid_match_payload(session, video_id: int) -> tuple[dict[str, An
             session.execute(
                 text(
                     "SELECT video_species_id, video_id, track_id, species_name, individual_label, embedding_json "
-                    "FROM reid_embedding "
+                    + (
+                        ", embedding_schema, embedding_model_id, embedding_model_sha16, "
+                        "crop_fingerprint_sha16, jsonl_created_at_utc, dim "
+                        if contract_ready
+                        else ""
+                    )
+                    + " FROM reid_embedding "
                     "WHERE species_id = :sid AND video_species_id != :vsid AND video_id != :vid "
                     "ORDER BY id DESC LIMIT 200"
                 ),
@@ -290,6 +507,7 @@ def build_video_reid_match_payload(session, video_id: int) -> tuple[dict[str, An
         )
         best = None
         best_score = -1.0
+        best_full = None
         for c in cands:
             emb = _parse_embedding(c.get("embedding_json"))
             if not emb:
@@ -298,13 +516,58 @@ def build_video_reid_match_payload(session, video_id: int) -> tuple[dict[str, An
             if score > best_score:
                 best_score = score
                 best = c
-        if not best:
+                best_full = dict(c)
+        if not best or best_full is None:
             continue
+
+        species_name = det.species.name if det.species else None
+        cand_vid = int(best.get("video_id") or 0)
+        hours_apart = None
+        try:
+            a0 = starts.get(int(video_id))
+            a1 = starts.get(cand_vid)
+            if a0 is not None and a1 is not None:
+                hours_apart = abs((ensure_utc(a1) - ensure_utc(a0)).total_seconds()) / 3600.0
+        except Exception:
+            hours_apart = None
+
+        if not contract_ready:
+            continue
+
+        dec = evaluate_reid_candidate(
+            cfg=policy_cfg,
+            species_name=species_name,
+            similarity=float(best_score),
+            anchor_video_path=paths.get(int(video_id)),
+            candidate_video_path=paths.get(cand_vid),
+            anchor_created_at=str(anchor_row.get("jsonl_created_at_utc") or ""),
+            candidate_created_at=str(best_full.get("jsonl_created_at_utc") or ""),
+            anchor_schema=str(anchor_row.get("embedding_schema") or ""),
+            cand_schema=str(best_full.get("embedding_schema") or ""),
+            anchor_model_id=str(anchor_row.get("embedding_model_id") or ""),
+            cand_model_id=str(best_full.get("embedding_model_id") or ""),
+            anchor_dim=int(anchor_row["dim"]) if anchor_row.get("dim") is not None else None,
+            cand_dim=int(best_full["dim"]) if best_full.get("dim") is not None else None,
+            anchor_model_sha16=str(anchor_row.get("embedding_model_sha16") or ""),
+            cand_model_sha16=str(best_full.get("embedding_model_sha16") or ""),
+            anchor_crop_fp=str(anchor_row.get("crop_fingerprint_sha16") or ""),
+            cand_crop_fp=str(best_full.get("crop_fingerprint_sha16") or ""),
+            hours_apart=hours_apart,
+        )
+        if dec.decision != "suggest_same_individual":
+            continue
+
+        cross_camera = False
+        ap = paths.get(int(video_id))
+        bp = paths.get(cand_vid)
+        if ap and bp:
+            cross_camera = str(ap).replace("\\", "/").rsplit("/", 1)[0] != str(bp).replace("\\", "/").rsplit("/", 1)[0]
+
         out.append(
             {
                 "video_species_id": det.id,
                 "track_id": det.track_id,
-                "species_name": det.species.name if det.species else None,
+                "species_name": species_name,
                 "individual_nickname": det.individual_nickname,
                 "candidate_video_species_id": best.get("video_species_id"),
                 "candidate_video_id": best.get("video_id"),
@@ -312,12 +575,18 @@ def build_video_reid_match_payload(session, video_id: int) -> tuple[dict[str, An
                 "candidate_species_name": best.get("species_name"),
                 "candidate_nickname": best.get("individual_label"),
                 "similarity": round(float(best_score), 4),
+                "decision": "suggest_same_individual",
+                "policy_decision": dec.decision,
+                "policy_reasons": dec.reasons,
+                "effective_threshold": dec.effective_threshold,
+                "cross_camera": cross_camera,
+                "hours_apart": hours_apart,
             }
         )
 
     return {
-        "schema": "video_reid_match@v1",
+        **base_payload,
         "available": True,
-        "video_id": int(video_id),
         "matches": out,
+        "contract_ready": bool(contract_ready),
     }, 200

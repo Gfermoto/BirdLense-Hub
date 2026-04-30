@@ -29,8 +29,8 @@ Legend: **Repo-ready** = code/docs/scripts are shipped on branch `ML`. **Waiting
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Repo-ready** | Toy simulation + threat-model doc are ready; production channel is outside this package. |
 | [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) Action recognition | **Closed (planning scope)** | Research baseline and dataset/labeling plan moved to [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) and docs; production model training remains a future execution wave. |
 | [#388](https://github.com/Gfermoto/BirdLense-Hub/issues/388) CV/ML v2 Epic | **Closed (planning scope)** | v2 subtracks were decomposed and specified; implementation gates tracked by concrete child issues/docs. |
-| [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389) DINOv2 production pipeline | **Closed** | RFC + `embedding_schema@v1` + rollout/failover plan: [ML_DINOV2_PRODUCTION_PIPELINE.md](ML_DINOV2_PRODUCTION_PIPELINE.md). |
-| [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390) Re-ID productization | **Closed** | Decision policy, quality metrics, and shadow/A-B rollout plan: [ML_REID_PRODUCTIZATION.md](ML_REID_PRODUCTIZATION.md). |
+| [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389) DINOv2 production pipeline | **In progress** | RFC: [ML_DINOV2_PRODUCTION_PIPELINE.md](ML_DINOV2_PRODUCTION_PIPELINE.md). **Implemented in-repo:** JSONL contract fields + SQLite columns + import migration + operator summary (`reid_summary@v2.contract`). **Not done:** nearline worker + realtime pilot + automated rollout metrics dashboard. |
+| [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390) Re-ID productization | **In progress** | RFC: [ML_REID_PRODUCTIZATION.md](ML_REID_PRODUCTIZATION.md). **Implemented in-repo:** YAML policy knobs (`processor.reid_*`) + guarded UI hints (`video_reid_match@v2`) + shadow/kill switches. **Not done:** review-queue UX, merge workflow, precision/false-merge instrumentation + A/B harness. |
 | [#391](https://github.com/Gfermoto/BirdLense-Hub/issues/391) Benchmark robustness gates | **Closed** | Slice-gate tooling/tests shipped (`verify_benchmark_slice_gates.py`, tests, Makefile/docs integration). |
 | [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) Action dataset/labeling protocol | **Closed** | Dataset spec, labeling guideline, baseline plan, and compute budget: [ML_ACTION_RECOGNITION_PLAN.md](ML_ACTION_RECOGNITION_PLAN.md). |
 | [#393](https://github.com/Gfermoto/BirdLense-Hub/issues/393) ML release train | **Closed** | Model registry + release verification gates shipped (`build/verify_model_registry_entry.py`, tests, docs, Makefile targets). |
@@ -83,8 +83,8 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 - [#370] Classifier uncertainty product wiring (entropy/margin → DB/UI) — hook documented at `_classify_crop`; rollout TBD.
 - [#374] [REID_ROADMAP.md](REID_ROADMAP.md) — **DINO / DINOv2**: planned for **Re-ID embeddings** and optional **species** fine-tune / AL; **one backbone** on-hub can feed both heads when integrated · [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383).
 - [#375] Runnable **`scripts/federated/simulate_fedavg.py`** + [FEDERATED_LEARNING.md](FEDERATED_LEARNING.md) (**not production**).
-- [#389] DINOv2 production RFC + schema/failover: [ML_DINOV2_PRODUCTION_PIPELINE.md](ML_DINOV2_PRODUCTION_PIPELINE.md).
-- [#390] Re-ID decision policy + safety/metrics: [ML_REID_PRODUCTIZATION.md](ML_REID_PRODUCTIZATION.md).
+- [#389] DINOv2 production path: RFC [ML_DINOV2_PRODUCTION_PIPELINE.md](ML_DINOV2_PRODUCTION_PIPELINE.md) + **offline contract enforcement** (JSONL fields → SQLite columns → import migrations → `reid_summary@v2.contract`); nearline/realtime worker still open.
+- [#390] Re-ID product safety: RFC [ML_REID_PRODUCTIZATION.md](ML_REID_PRODUCTIZATION.md) + **config-driven gates** (`processor.reid_*`) + **`video_reid_match@v2`** UI hints; review-queue / merges / measured gates still open.
 - [#392] Action dataset/labeling/training protocol: [ML_ACTION_RECOGNITION_PLAN.md](ML_ACTION_RECOGNITION_PLAN.md).
 
 ### Child issues — what landed in the repo (ML branch snapshot)

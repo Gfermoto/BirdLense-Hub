@@ -41,7 +41,7 @@
 1. Экспорт crop-ов из SQLite (`scripts/reid/export_crops_from_sqlite.py`).
 2. Расчёт эмбеддингов (`scripts/reid/embed_dinov2_crop.py`).
 3. Опциональный sanity-отчёт (`scripts/reid/embed_cosine_report.py`).
-4. Импорт sidecar-эмбеддингов (`scripts/reid/import_embeddings_sqlite.py`).
+4. Импорт sidecar-эмбеддингов (`scripts/reid/import_embeddings_sqlite.py`) — **требует** полный метадатасет `embedding_schema@v1` в JSONL; «голые» строки без контракта будут пропущены.
 5. Read-only экспозиция статуса через API/UI (`/api/ui/system/reid/summary`).
 
 ## Failover

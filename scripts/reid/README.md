@@ -6,6 +6,8 @@ Offline helpers — **не** в Docker-процессоре по умолчан�
 
 Эмбеддинг одного или нескольких **кропов** (jpeg/png) через **DINOv2** из `torch.hub` (Facebook Research). Выход: L2-нормированный вектор (JSON Lines на stdout).
 
+Каждая строка JSONL также содержит контрактные поля для прод-пайплайна (**`embedding_schema@v1`**, `embedding_model_id`, `embedding_model_sha16`, `crop_fingerprint_sha16`, `created_at_utc`) — см. `docs/ML_DINOV2_PRODUCTION_PIPELINE.md`.
+
 **Зависимости:** `torch`, `torchvision`, `Pillow` (отдельный venv или машина с GPU/CPU для экспериментов).
 
 ```bash
@@ -39,7 +41,7 @@ python3 scripts/reid/import_embeddings_sqlite.py --db app/data/db/birdlense.db -
 
 `import_embeddings_sqlite.py` creates/updates sidecar table `reid_embedding`
 (`video_species_id`, `video_id`, `species_id`, `track_id`, `crop_path`,
-`model`, `dim`, `embedding_json`). Это не включает Re-ID в продуктовый UI, но
+`model`, `dim`, `embedding_json`, плюс контрактные колонки из JSONL). Это не включает Re-ID в продуктовый UI, но
 фиксирует локальное хранение эмбеддингов для следующего API/UI этапа #374.
 
 См. также [REID_ROADMAP.md](../../docs/REID_ROADMAP.md).

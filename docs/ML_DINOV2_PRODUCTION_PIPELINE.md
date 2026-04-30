@@ -41,7 +41,7 @@ Compatibility rule:
 1. Export crops from SQLite (`scripts/reid/export_crops_from_sqlite.py`).
 2. Compute embeddings (`scripts/reid/embed_dinov2_crop.py`).
 3. Optional sanity report (`scripts/reid/embed_cosine_report.py`).
-4. Import sidecar embeddings (`scripts/reid/import_embeddings_sqlite.py`).
+4. Import sidecar embeddings (`scripts/reid/import_embeddings_sqlite.py`) — **requires** full `embedding_schema@v1` metadata in JSONL; legacy embedding-only JSONL is skipped.
 5. Read-only product exposure via API/UI summary (`/api/ui/system/reid/summary`).
 
 ## Failover
