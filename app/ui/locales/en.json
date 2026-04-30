@@ -1317,6 +1317,7 @@
     "nicknameLabel": "Nickname",
     "nicknameSaved": "Nickname saved",
     "possibleSameBird": "Possibly the same bird",
+    "reidCrossCameraHint": "stricter cross-camera gate",
     "similarityPercent": "Similarity: {{value}}%",
     "relatedVideo": "Related video",
     "actionEventsTitle": "Action timeline",

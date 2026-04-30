@@ -1306,6 +1306,7 @@
     "nicknameLabel": "昵称",
     "nicknameSaved": "昵称已保存",
     "possibleSameBird": "可能是同一只鸟",
+    "reidCrossCameraHint": "跨相机/目录更严格",
     "similarityPercent": "相似度：{{value}}%",
     "relatedVideo": "相关视频",
     "actionEventsTitle": "行为时间线",

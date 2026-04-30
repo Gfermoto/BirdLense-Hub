@@ -5113,6 +5113,36 @@ components:
               type: boolean
             track_regen_parallel_auto_with_manual:
               type: boolean
+            reid_embedding_pipeline_mode:
+              type: string
+              description: Offline/nearline/realtime embedding pipeline mode label for operators (#389); realtime requires explicit pilot.
+            reid_suggestions_enabled:
+              type: boolean
+              description: Enable cosine-based similarity hints for contributors/admins when embedding contract metadata exists (#390).
+            reid_kill_switch:
+              type: boolean
+              description: Emergency disable for similarity hints without deleting embeddings (#390).
+            reid_shadow_mode:
+              type: boolean
+              description: Evaluate policy server-side but suppress user-facing similarity hints (#390).
+            reid_default_similarity_threshold:
+              type: number
+              description: Default cosine similarity threshold for suggest_same_individual (#390).
+            reid_different_similarity_threshold:
+              type: number
+              description: Cosine similarity below this value is treated as inconclusive (#390).
+            reid_cross_camera_threshold_boost:
+              type: number
+              description: Extra threshold boost when candidate recordings likely come from different folders/cameras (#390).
+            reid_max_embedding_age_hours:
+              type: number
+              nullable: true
+              description: Suppress hints when embedding timestamps exceed this age (hours); null disables (#389/#390).
+            reid_species_similarity_thresholds:
+              type: object
+              additionalProperties:
+                type: number
+              description: Optional per-species cosine thresholds keyed by species display name (#390).
         secrets:
           type: object
           properties:

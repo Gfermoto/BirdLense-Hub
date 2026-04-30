@@ -1317,6 +1317,7 @@
     "nicknameLabel": "Кличка",
     "nicknameSaved": "Кличка сохранена",
     "possibleSameBird": "Возможно, это та же птица",
+    "reidCrossCameraHint": "строже для другой камеры/папки записи",
     "similarityPercent": "Сходство: {{value}}%",
     "relatedVideo": "Связанное видео",
     "actionEventsTitle": "Таймлайн действий",
