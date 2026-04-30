@@ -17,7 +17,10 @@ def normalize_detector_label(name: str) -> str:
     # До проверки «bird» — иначе подстрока «bird» в «background» даёт ложный Bird (#367).
     if key == "background":
         return "Background"
-    if any(token in key for token in ("squirrel", "chipmunk", "rodent", "грызун")):
+    # Temporary compatibility bridge: COCO fallback weights expose ``cat`` but not
+    # dedicated rodent/squirrel classes. Treat it as Rodent until custom 3-class
+    # Bird/Rodent/Background weights are promoted.
+    if any(token in key for token in ("squirrel", "chipmunk", "rodent", "грызун", "cat")):
         return "Rodent"
     if any(token in key for token in ("bird", "avian")):
         return "Bird"

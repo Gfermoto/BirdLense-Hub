@@ -91,6 +91,7 @@ class TestDetectorLabels(unittest.TestCase):
 
         self.assertEqual(normalize_detector_label("bird"), "Bird")
         self.assertEqual(normalize_detector_label("Squirrel"), "Rodent")
+        self.assertEqual(normalize_detector_label("cat"), "Rodent")
         self.assertEqual(normalize_detector_label("Background"), "Background")
         self.assertEqual(normalize_detector_label("background"), "Background")
 
