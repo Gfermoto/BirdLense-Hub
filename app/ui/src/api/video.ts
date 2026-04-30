@@ -59,6 +59,12 @@ export type VideoReidMatchItem = {
   candidate_species_name?: string | null;
   candidate_nickname?: string | null;
   similarity: number;
+  decision?: string;
+  policy_decision?: string;
+  policy_reasons?: string[];
+  effective_threshold?: number | null;
+  cross_camera?: boolean;
+  hours_apart?: number | null;
 };
 
 export type VideoReidMatchPayload = {
@@ -66,6 +72,8 @@ export type VideoReidMatchPayload = {
   available: boolean;
   video_id: number;
   message?: string;
+  policy?: Record<string, unknown>;
+  contract_ready?: boolean;
   matches: VideoReidMatchItem[];
 };
 

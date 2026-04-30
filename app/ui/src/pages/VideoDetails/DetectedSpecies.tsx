@@ -34,7 +34,7 @@ import {
   updateDetectionNickname,
   updateDetectionSpecies,
 } from '../../api/speciesOverviewDetections';
-import { mergeVideoSpecies } from '../../api/video';
+import { mergeVideoSpecies, type VideoReidMatchItem } from '../../api/video';
 import { queryKeys } from '../../api/queryKeys';
 import { invalidateLocalSpeciesEditCaches } from '../../api/invalidateLocalSpeciesCaches';
 
@@ -115,14 +115,7 @@ const INaturalistButton = ({
 interface DetectedSpeciesProps {
   species: VideoSpecies[];
   videoId?: string | number;
-  reidMatchByDetectionId?: Record<
-    number,
-    {
-      similarity: number;
-      candidate_video_id?: number | null;
-      candidate_nickname?: string | null;
-    }
-  >;
+  reidMatchByDetectionId?: Record<number, VideoReidMatchItem>;
 }
 
 export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
@@ -434,7 +427,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                       .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
                     if (!bestDet?.id) return null;
                     const match = reidMatchByDetectionId[bestDet.id];
-                    if (!match || match.similarity < 0.5) return null;
+                    if (!match || match.decision !== 'suggest_same_individual') return null;
                     return (
                       <Box sx={{ mt: 1 }}>
                         <Alert severity="info" variant="outlined" sx={{ py: 0.5 }}>
@@ -445,6 +438,10 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                             {t('video.similarityPercent', {
                               value: Math.round(match.similarity * 100),
                             })}
+                            {typeof match.effective_threshold === 'number'
+                              ? ` • τ≈${Math.round(match.effective_threshold * 100)}%`
+                              : ''}
+                            {match.cross_camera ? ` • ${t('video.reidCrossCameraHint')}` : ''}
                             {match.candidate_nickname
                               ? ` • ${t('video.nicknameLabel')}: ${match.candidate_nickname}`
                               : ''}

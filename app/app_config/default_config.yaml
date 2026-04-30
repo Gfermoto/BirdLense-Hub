@@ -212,6 +212,25 @@ processor:
   # null — не выставлять classifier_needs_review в decision rows; задайте пороги для AL/аналитики.
   classifier_uncertainty_entropy_ge: null
   classifier_uncertainty_margin_le: null
+  # --- Re-ID / DINOv2 sidecar (SQLite table `reid_embedding`, offline/nearline jobs) (#389/#390)
+  # Pipeline mode is informational for operators (realtime belongs to processor only after explicit pilot).
+  reid_embedding_pipeline_mode: offline_batch
+  # Product-facing similarity suggestions on video pages (requires contract metadata in `reid_embedding`).
+  reid_suggestions_enabled: true
+  # Hard stop for suggestions without deleting embeddings (emergency).
+  reid_kill_switch: false
+  # Shadow mode keeps ranking/policy alive server-side but disables UI suggestions via API filtering.
+  reid_shadow_mode: false
+  # Default cosine similarity gate for `suggest_same_individual` (per-species overrides below).
+  reid_default_similarity_threshold: 0.86
+  # Below this cosine similarity we treat match as inconclusive (never "same bird").
+  reid_different_similarity_threshold: 0.35
+  # Extra threshold boost when candidate recording path differs (proxy for different camera/session folder).
+  reid_cross_camera_threshold_boost: 0.04
+  # If embeddings are older than N hours, suppress suggestions (null = disable freshness gate).
+  reid_max_embedding_age_hours: 8760
+  # Optional per-species thresholds (species display name keys).
+  reid_species_similarity_thresholds: {}
 
 # Video source: go2rtc | file
 video:

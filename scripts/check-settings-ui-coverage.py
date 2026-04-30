@@ -207,6 +207,52 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Track regeneration parallelism when mixing auto and manual scope; heavy ops.",
         "next_step": "Expose under System/track regen advanced if users need it without YAML.",
     },
+    # Re-ID / DINOv2 sidecar policy (#389/#390) — operator YAML until review UX ships.
+    "processor.reid_embedding_pipeline_mode": {
+        "category": "ops-only",
+        "reason": "Embedding generation runs out-of-band; mode is informational + policy input.",
+        "next_step": "Expose as read-only status + pilot toggle after nearline worker (#389).",
+    },
+    "processor.reid_suggestions_enabled": {
+        "category": "ops-only",
+        "reason": "Safety switch for similarity hints; needs ops discipline.",
+        "next_step": "Move to System → ML after UX review queue lands (#390).",
+    },
+    "processor.reid_kill_switch": {
+        "category": "ops-only",
+        "reason": "Emergency disable for suggestions without dropping embeddings.",
+        "next_step": "Same as reid_suggestions_enabled.",
+    },
+    "processor.reid_shadow_mode": {
+        "category": "ops-only",
+        "reason": "Production shadow evaluation without user-facing hints.",
+        "next_step": "Pair with metrics dashboard before UI surfacing.",
+    },
+    "processor.reid_default_similarity_threshold": {
+        "category": "ops-only",
+        "reason": "Cosine gate depends on embedding contract + species; unsafe as casual slider.",
+        "next_step": "Preset tables + per-site calibration workflow (#390).",
+    },
+    "processor.reid_different_similarity_threshold": {
+        "category": "ops-only",
+        "reason": "Lower bound for inconclusive decisions; tightly coupled to embeddings noise.",
+        "next_step": "Same as reid_default_similarity_threshold.",
+    },
+    "processor.reid_cross_camera_threshold_boost": {
+        "category": "ops-only",
+        "reason": "Risk control for cross-folder/camera collisions using video_path heuristics.",
+        "next_step": "Replace heuristic with explicit camera_id once available end-to-end.",
+    },
+    "processor.reid_max_embedding_age_hours": {
+        "category": "ops-only",
+        "reason": "Staleness gate for offline refresh cadence.",
+        "next_step": "Automate refresh jobs + show stale age in System card (#389).",
+    },
+    "processor.reid_species_similarity_thresholds": {
+        "category": "ops-only",
+        "reason": "Per-species thresholds are expert tuning; YAML map is the current mechanism.",
+        "next_step": "Import/export UI once evaluation harness exists (#390).",
+    },
     # Merge internals (partially in UI: see Processor → Frigate fusion).
     "detection.source_priority": {
         "category": "advanced",
