@@ -12,6 +12,11 @@ set -e
 # =============================================================================
 if [ "$(id -u)" = "0" ]; then
   mkdir -p /app/data/.ultralytics
+  # Битый symlink app_config/app_config -> /app/app_config ломает import app_config.app_config
+  # (Python берёт каталог вместо app_config.py). Удаляем только если это symlink.
+  if [ -L /app/app_config/app_config ]; then
+    rm -f /app/app_config/app_config
+  fi
   chown -R birdlense:birdlense /app/data /app/app_config 2>/dev/null || true
   if [ -d /dev/dri ]; then
     for dev in /dev/dri/renderD128 /dev/dri/card0; do
