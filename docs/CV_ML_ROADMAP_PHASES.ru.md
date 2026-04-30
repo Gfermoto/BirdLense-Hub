@@ -21,8 +21,8 @@
 | [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Эпик | **Закрыто** | Repo Phase‑1 завершена, пакет детектор-весов опубликован, рантайм на хабе проверен. |
 | [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Детектор train/ship | **Закрыто** | Контракт/скрипты/новые веса и OpenVINO-экспорт проверены на хабе. |
 | [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Готово в репо** | Manifest/schema/export/UI/API pool preview **готовы**; retrain automation не блокирует текущий пакет. |
-| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Классификатор | **Закрыто** | Веса классификатора обновлены, отдельный выбор backend (`torch/openvino/auto`) внедрён, `auto` проверен на хабе. |
-| [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Инференс-бэкенды | **Готово в репо** | torch + OpenVINO + кэш **готовы**; ORT/TensorRT не входят в текущий пакет. |
+| [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Классификатор | **Закрыто** | Веса классификатора обновлены, отдельный выбор backend (`torch/openvino/auto`) внедрён. После prod-crash 2026-04-30 безопасный дефолт — `torch`; `auto/openvino` только после явного smoke. |
+| [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371) Инференс-бэкенды | **Готово в репо** | torch + OpenVINO + кэш **готовы**; после прод-регрессии дефолтный runtime — `torch`; ORT/TensorRT не входят в текущий пакет. |
 | [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372) Бенчмарки | **Готово в репо** | Скрипты + CI + docker-smoke + PSI drift gate **готовы**; итоговая таблица обновляется после новых весов. |
 | [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Декод видео | **Готово в репо** | Скрипт замеров + FFmpeg VA-API backend + `video.capture_backend` + UI/API runtime status готовы; матрица платформ — часть операторской валидации. |
 | [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **Готово в репо** | Доки + DINOv2 offline embed/cosine/export + SQLite sidecar import + UI/API sidecar summary готовы; продуктовая галерея вынесена за текущий пакет. |

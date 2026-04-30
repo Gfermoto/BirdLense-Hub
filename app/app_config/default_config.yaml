@@ -189,11 +189,12 @@ processor:
   # video.source=file: оставить папку сессии с записанным mp4 при 0 детекций (без create_video / кропов из пайплайна)
   keep_recording_when_no_detections: false
   detection_strategy: "two_stage"
-  # CV/ML epic (#367, #371): движок инференса. Phase 1: ultralytics/torch. Env BIRDLENSE_INFERENCE_BACKEND имеет приоритет.
-  inference_backend: auto
+  # CV/ML epic (#367, #371): движок инференса. Production-safe default: torch.
+  # OpenVINO/auto включайте только после smoke на текущих весах и кадрах; env BIRDLENSE_INFERENCE_BACKEND имеет приоритет.
+  inference_backend: torch
   # Отдельный backend классификатора видов: torch | openvino | auto.
   # Env BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND имеет приоритет.
-  classifier_inference_backend: auto
+  classifier_inference_backend: torch
   # Контракт имён классов бинарного детектора при загрузке весов (#368): off | warn | enforce
   detector_weight_contract: warn
   models:
