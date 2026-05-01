@@ -9,6 +9,6 @@ requests==2.33.0
 paramiko>=3.4,<4
 
 # numpy 2.x — совместим с opencv, librosa, ultralytics
-numpy>=2.0,<3
+numpy>=2.4.4,<3
 librosa==0.11.0
 matplotlib==3.8.4
