@@ -215,7 +215,7 @@ processor:
     binary: "models/detection/weights/best.pt"
     # OpenVINO IR (processor.inference_backend=openvino): каталог экспорта или путь к .xml.
     # Экспорт: yolo export model=... format=openvino. Пусто — задайте BIRDLENSE_BINARY_OPENVINO_PATH.
-    binary_openvino: ""
+    binary_openvino: "models/detection/weights/best_openvino_model"
     # EU-классификатор (~491 вид): скачивать как best.pt с Hugging Face gfermoto/birdlense-birds-eu
     classifier: "models/classification/weights/best.pt"
     # OpenVINO IR для классификатора (processor.classifier_inference_backend=openvino):
