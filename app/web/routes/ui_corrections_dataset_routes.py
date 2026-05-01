@@ -15,6 +15,7 @@ from services.detection_crop_api_service import get_detection_crop_jpeg_and_file
 from services.detection_species_correction_service import (
     apply_detection_nickname_patch,
     apply_detection_species_patch,
+    delete_detection_with_feedback,
     run_confirm_detection,
 )
 
@@ -151,4 +152,21 @@ def register_ui_corrections_dataset_routes(app):
             ):
                 code = 400
             return err, code
+        return ok, 200
+
+    @app.route("/api/ui/detections/<int:detection_id>", methods=["DELETE"])
+    def delete_detection(detection_id):
+        if not contributor_or_admin_access():
+            return {"error": "Password required"}, 403
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
+        err, ok = delete_detection_with_feedback(
+            db.session,
+            app.logger,
+            detection_id,
+            data,
+        )
+        if err:
+            return err, 404
         return ok, 200

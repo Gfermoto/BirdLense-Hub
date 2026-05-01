@@ -18,7 +18,7 @@
 
 | Issue | Статус | Комментарий |
 |-------|--------|----------------|
-| [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Эпик | **Закрыто** | Repo Phase‑1 завершена, пакет детектор-весов опубликован, рантайм на хабе проверен. |
+| [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Эпик | **Закрыто (repo-scope), продуктовая execution-волна завершена** | Продуктовые задачи [#396](https://github.com/Gfermoto/BirdLense-Hub/issues/396) и [#397](https://github.com/Gfermoto/BirdLense-Hub/issues/397) закрыты; planning/policy задачи [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389), [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390), [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) формализованы исполняемыми docs/gates. |
 | [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Детектор train/ship | **Закрыто** | Контракт/скрипты/новые веса и OpenVINO-экспорт проверены на хабе. |
 | [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Готово в репо** | Manifest/schema/export/UI/API pool preview **готовы**; retrain automation не блокирует текущий пакет. |
 | [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Классификатор | **Закрыто** | Веса классификатора обновлены, отдельный выбор backend (`torch/openvino/auto`) внедрён. После prod-crash 2026-04-30 безопасный дефолт — `torch`; `auto/openvino` только после явного smoke. |
@@ -29,12 +29,15 @@
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Готово в репо** | Игрушечная симуляция + threat model готовы; prod-channel не входит в текущий пакет. |
 | [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) Action recognition | **Закрыто (planning scope)** | Research-контур декомпозирован в [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) и профильные документы; обучение head — отдельная execution-волна. |
 | [#388](https://github.com/Gfermoto/BirdLense-Hub/issues/388) CV/ML v2 Epic | **Закрыто (planning scope)** | v2-направления декомпозированы и формализованы, execution-гейты закреплены в дочерних задачах и документах. |
-| [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389) DINOv2 production pipeline | **В работе** | RFC: [ML_DINOV2_PRODUCTION_PIPELINE.ru.md](ML_DINOV2_PRODUCTION_PIPELINE.ru.md). **Уже в репо:** поля контракта в JSONL + колонки SQLite + миграция на импорте + сводка для оператора (`reid_summary@v2.contract`). **Не сделано:** nearline worker + realtime pilot + дашборд rollout-метрик. |
-| [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390) Re-ID productization | **В работе** | RFC: [ML_REID_PRODUCTIZATION.ru.md](ML_REID_PRODUCTIZATION.ru.md). **Уже в репо:** policy knobs в YAML (`processor.reid_*`) + осторожные UI hints (`video_reid_match@v2`) + shadow/kill-switch. **Не сделано:** review-queue UX, merge workflow, инструментирование precision/false-merge + A/B harness. |
+| [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389) DINOv2 production pipeline | **Закрыто (planning+gate scope)** | RFC + контракт `embedding_schema@v1` + phased rollout с измеряемыми gate-метриками поставлены (`ML_DINOV2_PRODUCTION_PIPELINE.md`, `verify_reid_production_gates.py`). |
+| [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390) Re-ID productization | **Закрыто (policy+validation scope)** | Decision policy + safety controls + quality-метрики + shadow/A-B план документированы и привязаны к исполняемому gate `ml-verify-reid-gates`. |
 | [#391](https://github.com/Gfermoto/BirdLense-Hub/issues/391) Benchmark robustness gates | **Закрыто** | Slice-gate скрипты/тесты/интеграция (`verify_benchmark_slice_gates.py`, Makefile, docs) внедрены. |
-| [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) Action dataset/labeling protocol | **Закрыто** | Спецификация датасета, разметка, baseline-план и compute budget: [ML_ACTION_RECOGNITION_PLAN.ru.md](ML_ACTION_RECOGNITION_PLAN.ru.md). |
+| [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) Action dataset/labeling protocol | **Закрыто (planning+protocol scope)** | Dataset spec + labeling guideline + baseline plan/budget + quality bar зафиксированы; протокольные проверки исполняемы (`verify_action_labeling_gates.py`, `ml-verify-action-labeling`). |
 | [#393](https://github.com/Gfermoto/BirdLense-Hub/issues/393) ML release train | **Закрыто** | Реестр моделей + release gates (`build/verify_model_registry_entry.py`, тесты, docs, Makefile) внедрены. |
 | [#394](https://github.com/Gfermoto/BirdLense-Hub/issues/394) Data engine quality gates | **Закрыто** | Dataset quality + hard-negatives integrity gates (`verify_detector_dataset_quality.py`, `verify_hard_negatives_manifest.py`, тесты/docs) внедрены. |
+| [#395](https://github.com/Gfermoto/BirdLense-Hub/issues/395) Classifier OpenVINO migration | **Закрыто** | Миграция классификатора на OpenVINO закрыта. |
+| [#396](https://github.com/Gfermoto/BirdLense-Hub/issues/396) Product-slice v1 | **Закрыто** | Полный product-срез (nickname + Re-ID hints + action timeline) доставлен и подтверждён smoke/DoD. |
+| [#397](https://github.com/Gfermoto/BirdLense-Hub/issues/397) Feedback learning loop | **Закрыто** | Feedback events + export API/script + status-contract наблюдаемости реализованы и проверены. |
 
 *Обновляйте таблицу при закрытии вех или смене фокуса.*
 
@@ -81,9 +84,9 @@
 - [#370] точки расширения в ``_classify_crop``; продуктовые флаги — позже.
 - [#374] [REID_ROADMAP.ru.md](REID_ROADMAP.ru.md) — **DINO / DINOv2**: Re-ID эмбеддинги и опционально **виды** / AL; на хабе целесообразен **один** backbone на два выхода при интеграции · [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383).
 - [#375] ``simulate_fedavg.py`` + [FEDERATED_LEARNING.ru.md](FEDERATED_LEARNING.ru.md).
-- [#389] DINOv2 production path: RFC [ML_DINOV2_PRODUCTION_PIPELINE.ru.md](ML_DINOV2_PRODUCTION_PIPELINE.ru.md) + **offline enforcement контракта** (поля JSONL → колонки SQLite → миграция на импорте → `reid_summary@v2.contract`); nearline/realtime worker всё ещё вне репо.
-- [#390] Re-ID safety: RFC [ML_REID_PRODUCTIZATION.ru.md](ML_REID_PRODUCTIZATION.ru.md) + **YAML policy** (`processor.reid_*`) + **`video_reid_match@v2`** hints в UI; review-queue / merge / измеряемые гейты — дальше.
-- [#392] Action dataset/labeling/training protocol: [ML_ACTION_RECOGNITION_PLAN.ru.md](ML_ACTION_RECOGNITION_PLAN.ru.md).
+- [#389] DINOv2 production path (planning scope закрыт): RFC [ML_DINOV2_PRODUCTION_PIPELINE.ru.md](ML_DINOV2_PRODUCTION_PIPELINE.ru.md) + **offline enforcement контракта** (поля JSONL → колонки SQLite → миграция на импорте → `reid_summary@v2.contract`) + phased rollout gates.
+- [#390] Re-ID safety (policy scope закрыт): RFC [ML_REID_PRODUCTIZATION.ru.md](ML_REID_PRODUCTIZATION.ru.md) + **YAML policy** (`processor.reid_*`) + **`video_reid_match@v2`** hints + shadow/A-B validation plan.
+- [#392] Action dataset/labeling/training protocol (planning scope закрыт): [ML_ACTION_RECOGNITION_PLAN.ru.md](ML_ACTION_RECOGNITION_PLAN.ru.md) + исполняемые protocol-gates.
 
 ### Сводка по подзадачам (ветка ML)
 
@@ -107,8 +110,11 @@
 | Endpoint | Назначение |
 |----------|------------|
 | `GET /api/ui/videos/{video_id}/action-events` | Слабые метки поведения (#379): `arrival`, `departure`, `possible_feeding` из треков и изменения веса кормушки. |
+| `GET /api/ui/videos/{video_id}/reid-match` | Product hints Re-ID (`video_reid_match@v2`) с policy-gate и candidate match без merge-операций. |
 | `GET /api/ui/system/active-learning/pool-preview` | Кандидаты из review/uncertainty для active-learning pool (#369). |
 | `GET /api/ui/system/reid/summary` | Read-only статус sidecar-таблицы `reid_embedding` (#374). |
+| `GET /api/ui/system/feedback-loop/status` | Статус feedback-loop (#397): объём событий и состояние последнего экспорта. |
+| `POST /api/ui/system/feedback-loop/export` | Экспорт feedback dataset (`feedback_learning_export@v1`) для retrain-пакета; поддерживает `dry_run`. |
 | `GET /api/ui/system/ml-runtime` | Снимок ML/video runtime config (#373/#372). |
 
 ---

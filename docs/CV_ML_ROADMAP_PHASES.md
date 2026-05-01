@@ -18,7 +18,7 @@ Legend: **Repo-ready** = code/docs/scripts are shipped on branch `ML`. **Waiting
 
 | Issue | Status | Notes |
 |-------|--------|--------|
-| [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Epic | **Closed** | Repo Phase‑1 delivered, detector package published, and hub runtime validated. |
+| [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Epic | **Closed (repo-scope), product execution wave finalized** | Product execution issues [#396](https://github.com/Gfermoto/BirdLense-Hub/issues/396) and [#397](https://github.com/Gfermoto/BirdLense-Hub/issues/397) are closed; planning/policy wave issues [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389), [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390), [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) are now formalized with shipped docs/gates. |
 | [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Train & ship detector | **Closed** | Runtime contract + dataset helpers + new detector weights/OpenVINO export validated on hub. |
 | [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Repo-ready** | Manifest/schema/export/UI/API pool preview **done**; retrain automation does not block this package. |
 | [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Classifier roadmap | **Closed** | Classifier weights refreshed and separate backend switching shipped (`torch/openvino/auto`). After the 2026-04-30 OpenVINO runtime crash, production-safe default is `torch`; `auto/openvino` require explicit smoke validation. |
@@ -29,12 +29,15 @@ Legend: **Repo-ready** = code/docs/scripts are shipped on branch `ML`. **Waiting
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Repo-ready** | Toy simulation + threat-model doc are ready; production channel is outside this package. |
 | [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) Action recognition | **Closed (planning scope)** | Research baseline and dataset/labeling plan moved to [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) and docs; production model training remains a future execution wave. |
 | [#388](https://github.com/Gfermoto/BirdLense-Hub/issues/388) CV/ML v2 Epic | **Closed (planning scope)** | v2 subtracks were decomposed and specified; implementation gates tracked by concrete child issues/docs. |
-| [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389) DINOv2 production pipeline | **In progress** | RFC: [ML_DINOV2_PRODUCTION_PIPELINE.md](ML_DINOV2_PRODUCTION_PIPELINE.md). **Implemented in-repo:** JSONL contract fields + SQLite columns + import migration + operator summary (`reid_summary@v2.contract`). **Not done:** nearline worker + realtime pilot + automated rollout metrics dashboard. |
-| [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390) Re-ID productization | **In progress** | RFC: [ML_REID_PRODUCTIZATION.md](ML_REID_PRODUCTIZATION.md). **Implemented in-repo:** YAML policy knobs (`processor.reid_*`) + guarded UI hints (`video_reid_match@v2`) + shadow/kill switches. **Not done:** review-queue UX, merge workflow, precision/false-merge instrumentation + A/B harness. |
+| [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389) DINOv2 production pipeline | **Closed (planning+gate scope)** | RFC + `embedding_schema@v1` contract + phased rollout with measurable gates are shipped (`ML_DINOV2_PRODUCTION_PIPELINE.md`, `verify_reid_production_gates.py`). |
+| [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390) Re-ID productization | **Closed (policy+validation scope)** | Decision policy + safety controls + quality metrics + shadow/A-B rollout plan are documented and wired to executable gate target `ml-verify-reid-gates`. |
 | [#391](https://github.com/Gfermoto/BirdLense-Hub/issues/391) Benchmark robustness gates | **Closed** | Slice-gate tooling/tests shipped (`verify_benchmark_slice_gates.py`, tests, Makefile/docs integration). |
-| [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) Action dataset/labeling protocol | **Closed** | Dataset spec, labeling guideline, baseline plan, and compute budget: [ML_ACTION_RECOGNITION_PLAN.md](ML_ACTION_RECOGNITION_PLAN.md). |
+| [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) Action dataset/labeling protocol | **Closed (planning+protocol scope)** | Dataset spec + labeling guideline + baseline plan/budget + quality bar are documented; protocol checks are executable (`verify_action_labeling_gates.py`, `ml-verify-action-labeling`). |
 | [#393](https://github.com/Gfermoto/BirdLense-Hub/issues/393) ML release train | **Closed** | Model registry + release verification gates shipped (`build/verify_model_registry_entry.py`, tests, docs, Makefile targets). |
 | [#394](https://github.com/Gfermoto/BirdLense-Hub/issues/394) Data engine quality gates | **Closed** | Dataset quality + hard-negatives integrity gates shipped (`verify_detector_dataset_quality.py`, `verify_hard_negatives_manifest.py`, tests/docs). |
+| [#395](https://github.com/Gfermoto/BirdLense-Hub/issues/395) Classifier OpenVINO migration | **Closed** | Classifier OpenVINO migration is complete. |
+| [#396](https://github.com/Gfermoto/BirdLense-Hub/issues/396) Product-slice v1 | **Closed** | End-to-end nickname/Re-ID hints/action timeline delivered with smoke evidence and issue DoD confirmation. |
+| [#397](https://github.com/Gfermoto/BirdLense-Hub/issues/397) Feedback learning loop | **Closed** | Feedback events + export API/script + status observability contract delivered and verified. |
 
 *Refresh this table when a milestone closes or scope shifts.*
 
@@ -83,9 +86,9 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 - [#370] Classifier uncertainty product wiring (entropy/margin → DB/UI) — hook documented at `_classify_crop`; rollout TBD.
 - [#374] [REID_ROADMAP.md](REID_ROADMAP.md) — **DINO / DINOv2**: planned for **Re-ID embeddings** and optional **species** fine-tune / AL; **one backbone** on-hub can feed both heads when integrated · [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383).
 - [#375] Runnable **`scripts/federated/simulate_fedavg.py`** + [FEDERATED_LEARNING.md](FEDERATED_LEARNING.md) (**not production**).
-- [#389] DINOv2 production path: RFC [ML_DINOV2_PRODUCTION_PIPELINE.md](ML_DINOV2_PRODUCTION_PIPELINE.md) + **offline contract enforcement** (JSONL fields → SQLite columns → import migrations → `reid_summary@v2.contract`); nearline/realtime worker still open.
-- [#390] Re-ID product safety: RFC [ML_REID_PRODUCTIZATION.md](ML_REID_PRODUCTIZATION.md) + **config-driven gates** (`processor.reid_*`) + **`video_reid_match@v2`** UI hints; review-queue / merges / measured gates still open.
-- [#392] Action dataset/labeling/training protocol: [ML_ACTION_RECOGNITION_PLAN.md](ML_ACTION_RECOGNITION_PLAN.md).
+- [#389] DINOv2 production path (planning scope closed): RFC [ML_DINOV2_PRODUCTION_PIPELINE.md](ML_DINOV2_PRODUCTION_PIPELINE.md) + **offline contract enforcement** (JSONL fields → SQLite columns → import migrations → `reid_summary@v2.contract`) + phased rollout gates.
+- [#390] Re-ID product safety (policy scope closed): RFC [ML_REID_PRODUCTIZATION.md](ML_REID_PRODUCTIZATION.md) + **config-driven gates** (`processor.reid_*`) + **`video_reid_match@v2`** UI hints + shadow/A-B validation plan.
+- [#392] Action dataset/labeling/training protocol (planning scope closed): [ML_ACTION_RECOGNITION_PLAN.md](ML_ACTION_RECOGNITION_PLAN.md) + executable protocol gates.
 
 ### Child issues — what landed in the repo (ML branch snapshot)
 
@@ -135,8 +138,11 @@ and rollout diagnostics:
 | Endpoint | Purpose |
 |----------|---------|
 | `GET /api/ui/videos/{video_id}/action-events` | Weak behavior labels (#379): `arrival`, `departure`, and `possible_feeding` from existing tracks + feeder weight delta. |
+| `GET /api/ui/videos/{video_id}/reid-match` | Product Re-ID hints (`video_reid_match@v2`) with policy gates and candidate match payload (no merge action). |
 | `GET /api/ui/system/active-learning/pool-preview` | Review/uncertainty candidates for active-learning pool export (#369). |
 | `GET /api/ui/system/reid/summary` | Read-only status of offline `reid_embedding` sidecar table (#374). |
+| `GET /api/ui/system/feedback-loop/status` | Feedback loop status (#397): event volume and latest export snapshot. |
+| `POST /api/ui/system/feedback-loop/export` | Export feedback dataset (`feedback_learning_export@v1`) for retrain packages; supports `dry_run`. |
 | `GET /api/ui/system/ml-runtime` | Operator snapshot of ML/video runtime config (#373/#372). |
 
 ---

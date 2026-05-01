@@ -232,6 +232,43 @@ class ActivityLog(db.Model):
     __table_args__ = (Index("ix_activitylog_type_created_at", "type", desc("created_at")),)
 
 
+class DetectionFeedbackEvent(db.Model):
+    """Operator correction/delete signals for feedback-learning loop (#397)."""
+
+    __tablename__ = "detection_feedback_event"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    action: Mapped[str] = mapped_column(String(32), nullable=False)  # relabel | delete_as_background
+    trigger_source: Mapped[str | None] = mapped_column(String(32), nullable=True)  # video | unknowns | ...
+    apply_scope: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    video_species_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("video_species.id"), nullable=True)
+    video_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("video.id"), nullable=True)
+    track_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    from_species_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("species.id"), nullable=True)
+    to_species_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("species.id"), nullable=True)
+    from_species_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    to_species_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    detection_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    frames_json: Mapped[str | None] = mapped_column(String, nullable=True)
+    crop_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    camera: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    __table_args__ = (
+        Index("ix_feedback_event_created_at", desc("created_at")),
+        Index("ix_feedback_event_action_created_at", "action", desc("created_at")),
+        Index("ix_feedback_event_video_species_id", "video_species_id"),
+        Index("ix_feedback_event_video_track", "video_id", "track_id"),
+    )
+
+
 class SiteVisitor(db.Model):
     """Anonymous browser/day presence record for lightweight site visitor metrics."""
 

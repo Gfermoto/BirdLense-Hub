@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices ml-verify-reid-gates ml-verify-action-labeling
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -227,3 +227,30 @@ ml-verify-benchmark-slices:
 		--min-gold-samples "$${MIN_GOLD_SAMPLES:-5}" \
 		--min-recall "$${MIN_RECALL:-0.70}" \
 		$$(test -n "$${GROUP_BY:-}" && printf -- '--group-by %s ' "$${GROUP_BY}")
+
+# Verify Re-ID production gates (#389/#390) using API payload snapshots.
+# Example:
+#   make ml-verify-reid-gates REID_SUMMARY=/tmp/reid_summary.json REID_MATCH=/tmp/reid_match.json REQUIRE_CONTRACT_OK=1 MIN_SUGGESTION_COUNT=1
+ml-verify-reid-gates:
+	@test -n "$${REID_SUMMARY:-}" || (echo "Set REID_SUMMARY=path/to/reid_summary.json" >&2; exit 1)
+	@python3 scripts/verify_reid_production_gates.py \
+		--reid-summary "$${REID_SUMMARY}" \
+		$$(test -n "$${REID_MATCH:-}" && printf -- '--reid-match %s ' "$${REID_MATCH}") \
+		--min-embeddings "$${MIN_EMBEDDINGS:-1}" \
+		--max-missing-contract-rows "$${MAX_MISSING_CONTRACT_ROWS:-0}" \
+		$$(test "$${REQUIRE_CONTRACT_OK:-0}" = "1" && printf -- '--require-contract-ok') \
+		$$(test -n "$${MAX_STALE_HOURS:-}" && printf -- '--max-stale-hours %s ' "$${MAX_STALE_HOURS}") \
+		--min-suggestion-count "$${MIN_SUGGESTION_COUNT:-0}"
+
+# Verify action-labeling protocol gates (#392) for API payload and/or dataset JSONL.
+# Example:
+#   make ml-verify-action-labeling ACTION_EVENTS=/tmp/action_events.json ACTION_DATASET=/tmp/action_dataset.jsonl
+ml-verify-action-labeling:
+	@{ test -n "$${ACTION_EVENTS:-}" || test -n "$${ACTION_DATASET:-}"; } || (echo "Set ACTION_EVENTS=... and/or ACTION_DATASET=..." >&2; exit 1)
+	@python3 scripts/verify_action_labeling_gates.py \
+		$$(test -n "$${ACTION_EVENTS:-}" && printf -- '--action-events %s ' "$${ACTION_EVENTS}") \
+		$$(test -n "$${ACTION_DATASET:-}" && printf -- '--dataset-jsonl %s ' "$${ACTION_DATASET}") \
+		--min-events "$${MIN_EVENTS:-1}" \
+		--min-dataset-rows "$${MIN_DATASET_ROWS:-1}" \
+		--min-segment-ms "$${MIN_SEGMENT_MS:-300}" \
+		$$(test "$${ALLOW_EXTENDED_LABELS:-0}" = "1" && printf -- '--allow-extended-labels')

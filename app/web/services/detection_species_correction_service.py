@@ -19,6 +19,10 @@ from services.dataset_export_service import (
     move_crop_on_species_correction,
 )
 from services.http_response_cache import bust_response_caches
+from services.feedback_loop_service import (
+    delete_dataset_crops_for_track,
+    record_feedback_event,
+)
 from services.visit_processor import VisitProcessor
 from util import ensure_utc
 
@@ -228,6 +232,26 @@ def apply_detection_species_patch(
         from_species_id=old_species_id,
         to_species_id=species.id,
     )
+    try:
+        # #397 MVP: persist relabel/background-delete feedback signal from operator action.
+        record_feedback_event(
+            session,
+            video_species_id=detection_id,
+            video_id=log_video_id,
+            track_id=log_track_id,
+            from_species_id=old_species_id,
+            to_species_id=species.id,
+            from_species_name=old_species_name,
+            to_species_name=species.name,
+            trigger_source=source,
+            apply_scope=apply_scope,
+            reason=reason,
+            detection_provider=getattr(vs, "detection_provider", None),
+            confidence=getattr(vs, "confidence", None),
+            frames_json=getattr(vs, "frames", None),
+        )
+    except Exception:
+        _log.exception("Failed to persist detection feedback event for #%s", detection_id)
     return None, {
         "message": "Species updated" + (f" ({updated_count} videos)" if updated_count > 1 else ""),
         "species_id": species_id,
@@ -281,4 +305,115 @@ def apply_detection_nickname_patch(
         "message": "Nickname updated",
         "detection_id": vs.id,
         "individual_nickname": nickname,
+    }
+
+
+def delete_detection_with_feedback(
+    session,
+    app_logger,
+    detection_id: int,
+    data: dict,
+) -> tuple[dict | None, dict | None]:
+    """Delete one detection row and emit feedback-loop/audit events (#397)."""
+    source = normalize_correction_source(data.get("source"))
+    reason = (data.get("reason") or "").strip() or None
+
+    vs = session.get(VideoSpecies, detection_id)
+    if not vs:
+        return {"error": "Detection not found"}, None
+
+    old_species_id = vs.species_id
+    old_species_name = vs.species.name if vs.species else None
+    video_id = vs.video_id
+    track_id = vs.track_id
+    species_visit_id = vs.species_visit_id
+    detection_provider = vs.detection_provider
+    confidence = vs.confidence
+    frames_json = vs.frames
+
+    visit = vs.species_visit
+    session.delete(vs)
+    session.flush()
+
+    if visit:
+        remaining = list(visit.video_species)
+        if not remaining:
+            session.delete(visit)
+        else:
+            starts = []
+            ends = []
+            for item in remaining:
+                if not item.video or item.start_time is None or item.end_time is None:
+                    continue
+                base = ensure_utc(item.video.start_time)
+                starts.append(base + timedelta(seconds=float(item.start_time)))
+                ends.append(base + timedelta(seconds=float(item.end_time)))
+            if starts and ends:
+                visit.start_time = min(starts)
+                visit.end_time = max(ends)
+            visit.max_simultaneous = max(1, int(getattr(visit, "max_simultaneous", 1) or 1))
+
+    session.commit()
+    bust_response_caches()
+
+    try:
+        data_dir = str(app_config.get("directories.data") or "data")
+        removed_crops = delete_dataset_crops_for_track(
+            data_dir=data_dir,
+            video_id=int(video_id),
+            track_id=track_id,
+        )
+    except Exception:
+        removed_crops = 0
+        _log.exception("Failed to delete dataset crops for detection #%s", detection_id)
+
+    write_correction_activity(
+        session,
+        action="delete_detection",
+        source=source,
+        detection_id=detection_id,
+        from_species_name=old_species_name,
+        to_species_name="Background",
+        updated_count=1,
+        apply_scope="single_track",
+        reason=reason,
+        video_id=video_id,
+        track_id=track_id,
+        species_visit_id=species_visit_id,
+        from_species_id=old_species_id,
+        to_species_id=None,
+    )
+    try:
+        record_feedback_event(
+            session,
+            video_species_id=detection_id,
+            video_id=video_id,
+            track_id=track_id,
+            from_species_id=old_species_id,
+            to_species_id=None,
+            from_species_name=old_species_name,
+            to_species_name="Background",
+            trigger_source=source,
+            apply_scope="single_track",
+            reason=reason,
+            detection_provider=detection_provider,
+            confidence=confidence,
+            frames_json=frames_json,
+        )
+    except Exception:
+        _log.exception("Failed to persist delete feedback event for #%s", detection_id)
+
+    app_logger.info(
+        "Detection deleted by operator: id=%s video_id=%s track_id=%s crops_removed=%s",
+        detection_id,
+        video_id,
+        track_id,
+        removed_crops,
+    )
+    return None, {
+        "message": "Detection deleted",
+        "detection_id": detection_id,
+        "video_id": video_id,
+        "track_id": track_id,
+        "removed_dataset_crops": int(removed_crops),
     }

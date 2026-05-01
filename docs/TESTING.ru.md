@@ -52,6 +52,17 @@
 | Только документация MkDocs | из корня: `.venv-docs/bin/mkdocs build --strict` |
 | Перед пушем «как в CI» | `make ci-local` (+ **`make ci-local-docker`**, если трогали runtime / нужен smoke) |
 
+### Сценарный CV/ML прогон (A -> B)
+
+Для единого прогона CV/ML сценариев используйте:
+
+```bash
+./scripts/run-cv-ml-scenarios.sh
+```
+
+Скрипт запускает локальный A-этап (synthetic + web checks) и печатает B-handoff команды для хаба.  
+Подробный сценарий: [CV_ML_SCENARIOS.ru.md](./CV_ML_SCENARIOS.ru.md).
+
 **E2E / селекторы:** для smoke и хрупких состояний (пилюли навигации, пустые состояния, **гейт пароля настроек** / оверлеи с `aria-hidden`) предпочитайте стабильные **`data-testid`** и `getByTestId`; текст/роль — только если однозначно в обеих темах и локалях.
 
 ### Unit-тесты (processor)

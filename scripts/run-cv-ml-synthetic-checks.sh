@@ -28,6 +28,8 @@ cd "${APP_DIR}"
   processor/tests/test_recording_mqtt_window.py \
   processor/tests/test_detection_fusion.py \
   processor/tests/test_reid_import_embeddings_sqlite.py \
+  processor/tests/test_verify_reid_production_gates.py \
+  processor/tests/test_verify_action_labeling_gates.py \
   web/tests/test_system_file_test_api.py \
   web/tests/test_ml_ops_api.py \
   web/tests/test_detection_quality_baseline_service.py
