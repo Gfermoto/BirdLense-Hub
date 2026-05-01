@@ -144,6 +144,10 @@ DoD E3:
 - action output появляется в `video_action_events@v1`/API payload без crash-loop;
 - зафиксированы kill-switch и rollback шаги.
 
+Команда:
+
+- `make ml-run-action-e3-shadow ACTION_E3_REPORT=/tmp/action_e3_shadow.json ACTION_WINDOW_HOURS=24 ACTION_VIDEO_LIMIT=300`
+
 ### Фаза E4 — guarded rollout (#379)
 
 - включить ограниченный rollout (camera/domain slice);

@@ -356,6 +356,19 @@ ml-run-action-e2:
 		--quality-min-f1 "$${ACTION_QUALITY_MIN_F1:-0.70}" \
 		--quality-max-delay-p95-sec "$${ACTION_QUALITY_MAX_DELAY_P95_SEC:-1.5}"
 
+# Run E3 shadow report for action/Re-ID runtime + proxy outcomes.
+# Example:
+#   make ml-run-action-e3-shadow ACTION_E3_REPORT=/tmp/action_e3_shadow.json ACTION_WINDOW_HOURS=24 ACTION_VIDEO_LIMIT=300
+ml-run-action-e3-shadow:
+	@test -n "$${ACTION_E3_REPORT:-}" || (echo "Set ACTION_E3_REPORT=path/to/output_report.json" >&2; exit 1)
+	@python3 scripts/action/run_action_e3_shadow_report.py \
+		--output-json "$${ACTION_E3_REPORT}" \
+		--window-hours "$${ACTION_WINDOW_HOURS:-24}" \
+		--video-limit "$${ACTION_VIDEO_LIMIT:-300}" \
+		--min-action-available-ratio "$${ACTION_MIN_ACTION_AVAILABLE_RATIO:-0.95}" \
+		--min-reid-available-ratio "$${ACTION_MIN_REID_AVAILABLE_RATIO:-0.90}" \
+		--max-reid-reject-proxy-ratio "$${ACTION_MAX_REID_REJECT_PROXY_RATIO:-0.50}"
+
 # Benchmark action-model candidates on shared ground-truth JSONL.
 # Example:
 #   make ml-benchmark-action-candidates ACTION_GT=/tmp/gt.jsonl ACTION_PRED=/tmp/pred.jsonl ACTION_BENCHMARK_REPORT=/tmp/report.json
