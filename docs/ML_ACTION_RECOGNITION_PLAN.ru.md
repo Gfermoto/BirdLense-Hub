@@ -113,6 +113,7 @@ DoD E1:
 Команды:
 
 - `make ml-export-action-seed ACTION_DB=app/data/db/birdlense.db ACTION_SEED_JSONL=/tmp/action_seed.jsonl ACTION_SEED_MANIFEST=/tmp/action_seed_manifest.json`
+- `make ml-prepare-action-calibration ACTION_SEED_JSONL=/tmp/action_seed.jsonl ACTION_CALIB_DIR=/tmp/action_calibration`
 - `make ml-verify-action-agreement ACTION_ANN_A=/tmp/annotator_a.jsonl ACTION_ANN_B=/tmp/annotator_b.jsonl ACTION_MIN_KAPPA=0.75 ACTION_AGREEMENT_REPORT=/tmp/action_kappa.json`
 
 ### Фаза E2 — model candidate benchmark (#379)
