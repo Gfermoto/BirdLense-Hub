@@ -110,6 +110,11 @@ DoD E1:
 - Cohen kappa >= 0.75 на калибровочном срезе или оформлен remediation-план;
 - в issue есть отчёт о class imbalance и список hard cases.
 
+Команды:
+
+- `make ml-export-action-seed ACTION_DB=app/data/db/birdlense.db ACTION_SEED_JSONL=/tmp/action_seed.jsonl ACTION_SEED_MANIFEST=/tmp/action_seed_manifest.json`
+- `make ml-verify-action-agreement ACTION_ANN_A=/tmp/annotator_a.jsonl ACTION_ANN_B=/tmp/annotator_b.jsonl ACTION_MIN_KAPPA=0.75 ACTION_AGREEMENT_REPORT=/tmp/action_kappa.json`
+
 ### Фаза E2 — model candidate benchmark (#379)
 
 - выбрать минимум 2 кандидата (лёгкий temporal head + clip-model baseline);
@@ -121,6 +126,10 @@ DoD E2:
 - есть сравнительная таблица метрик (F1, boundary delay p95, FP/hour, latency);
 - выбран один production-candidate и один fallback;
 - в issue #379 приложены артефакты eval и commit со скриптом benchmark.
+
+Команда:
+
+- `make ml-benchmark-action-candidates ACTION_GT=/tmp/action_gt.jsonl ACTION_PRED=/tmp/action_predictions.jsonl ACTION_BENCHMARK_REPORT=/tmp/action_benchmark_report.json`
 
 ### Фаза E3 — hub integration shadow (#379)
 

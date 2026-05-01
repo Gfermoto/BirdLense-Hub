@@ -271,3 +271,46 @@ ml-verify-action-labeling-fixtures:
 		--min-dataset-rows 1 \
 		--min-segment-ms 300 >/dev/null 2>&1 && \
 		(echo "Expected invalid fixtures to fail, but command succeeded" >&2; exit 1) || true
+
+# Export weak-labeled action seed dataset rows for #392 E1.
+# Example:
+#   make ml-export-action-seed ACTION_DB=app/data/db/birdlense.db ACTION_SEED_JSONL=/tmp/action_seed.jsonl ACTION_SEED_MANIFEST=/tmp/action_seed_manifest.json
+ml-export-action-seed:
+	@test -n "$${ACTION_DB:-}" || (echo "Set ACTION_DB=path/to/birdlense.db" >&2; exit 1)
+	@test -n "$${ACTION_SEED_JSONL:-}" || (echo "Set ACTION_SEED_JSONL=path/to/action_seed.jsonl" >&2; exit 1)
+	@python3 scripts/action/export_action_seed_dataset.py \
+		--db-path "$${ACTION_DB}" \
+		--output-jsonl "$${ACTION_SEED_JSONL}" \
+		$$(test -n "$${ACTION_SEED_MANIFEST:-}" && printf -- '--manifest-json %s ' "$${ACTION_SEED_MANIFEST}") \
+		--limit-videos "$${ACTION_LIMIT_VIDEOS:-400}" \
+		--boundary-ms "$${ACTION_BOUNDARY_MS:-300}" \
+		--min-track-duration-ms "$${ACTION_MIN_TRACK_DURATION_MS:-300}" \
+		--min-tracks "$${ACTION_MIN_TRACKS:-1}" \
+		--min-weight-delta-kg "$${ACTION_MIN_WEIGHT_DELTA_KG:-0.001}" \
+		$$(test "$${ACTION_REQUIRE_WEIGHT_DELTA:-0}" = "1" && printf -- '--require-weight-delta') \
+		--annotator-id "$${ACTION_ANNOTATOR_ID:-bootstrap_weak_label}" \
+		$$(test -n "$${ACTION_VIDEO_IDS:-}" && printf -- '--video-ids %s ' "$${ACTION_VIDEO_IDS}")
+
+# Compute Cohen's kappa for two annotator JSONL files.
+# Example:
+#   make ml-verify-action-agreement ACTION_ANN_A=/tmp/a.jsonl ACTION_ANN_B=/tmp/b.jsonl ACTION_MIN_KAPPA=0.75 ACTION_AGREEMENT_REPORT=/tmp/kappa.json
+ml-verify-action-agreement:
+	@test -n "$${ACTION_ANN_A:-}" || (echo "Set ACTION_ANN_A=path/to/annotator_a.jsonl" >&2; exit 1)
+	@test -n "$${ACTION_ANN_B:-}" || (echo "Set ACTION_ANN_B=path/to/annotator_b.jsonl" >&2; exit 1)
+	@python3 scripts/action/compute_action_agreement.py \
+		--annotator-a-jsonl "$${ACTION_ANN_A}" \
+		--annotator-b-jsonl "$${ACTION_ANN_B}" \
+		$$(test -n "$${ACTION_MIN_KAPPA:-}" && printf -- '--min-kappa %s ' "$${ACTION_MIN_KAPPA}") \
+		$$(test -n "$${ACTION_AGREEMENT_REPORT:-}" && printf -- '--output-json %s ' "$${ACTION_AGREEMENT_REPORT}")
+
+# Benchmark action-model candidates on shared ground-truth JSONL.
+# Example:
+#   make ml-benchmark-action-candidates ACTION_GT=/tmp/gt.jsonl ACTION_PRED=/tmp/pred.jsonl ACTION_BENCHMARK_REPORT=/tmp/report.json
+ml-benchmark-action-candidates:
+	@test -n "$${ACTION_GT:-}" || (echo "Set ACTION_GT=path/to/ground_truth.jsonl" >&2; exit 1)
+	@test -n "$${ACTION_PRED:-}" || (echo "Set ACTION_PRED=path/to/predictions.jsonl" >&2; exit 1)
+	@python3 scripts/action/benchmark_action_candidates.py \
+		--ground-truth-jsonl "$${ACTION_GT}" \
+		--predictions-jsonl "$${ACTION_PRED}" \
+		--tolerance-sec "$${ACTION_TOLERANCE_SEC:-1.5}" \
+		$$(test -n "$${ACTION_BENCHMARK_REPORT:-}" && printf -- '--output-json %s ' "$${ACTION_BENCHMARK_REPORT}")
