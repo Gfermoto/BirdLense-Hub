@@ -254,3 +254,20 @@ ml-verify-action-labeling:
 		--min-dataset-rows "$${MIN_DATASET_ROWS:-1}" \
 		--min-segment-ms "$${MIN_SEGMENT_MS:-300}" \
 		$$(test "$${ALLOW_EXTENDED_LABELS:-0}" = "1" && printf -- '--allow-extended-labels')
+
+# Run positive and negative fixture checks for action-labeling gates (#392).
+# Positive fixture must pass, negative fixture must fail.
+ml-verify-action-labeling-fixtures:
+	@python3 scripts/verify_action_labeling_gates.py \
+		--action-events scripts/fixtures/action_labeling/action_events.valid.json \
+		--dataset-jsonl scripts/fixtures/action_labeling/action_dataset.valid.jsonl \
+		--min-events 1 \
+		--min-dataset-rows 1 \
+		--min-segment-ms 300
+	@python3 scripts/verify_action_labeling_gates.py \
+		--action-events scripts/fixtures/action_labeling/action_events.invalid.json \
+		--dataset-jsonl scripts/fixtures/action_labeling/action_dataset.invalid.jsonl \
+		--min-events 1 \
+		--min-dataset-rows 1 \
+		--min-segment-ms 300 >/dev/null 2>&1 && \
+		(echo "Expected invalid fixtures to fail, but command succeeded" >&2; exit 1) || true
