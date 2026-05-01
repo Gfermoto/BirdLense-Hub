@@ -634,7 +634,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                               })
                             }
                           >
-                            {t('common.save')}
+                            {t('video.nicknameSaveButton', { defaultValue: t('common.save') })}
                           </Button>
                           <Button
                             size="small"
@@ -646,7 +646,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                               }))
                             }
                           >
-                            {t('common.cancel')}
+                            {t('video.nicknameCancelButton', { defaultValue: t('common.cancel') })}
                           </Button>
                         </Box>
                       </Stack>

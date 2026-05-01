@@ -1315,6 +1315,8 @@
     "nicknameField": "Bird nickname",
     "nicknameFieldPlaceholder": "e.g. Sparrow Joe",
     "nicknameLabel": "Nickname",
+    "nicknameSaveButton": "Save nickname",
+    "nicknameCancelButton": "Cancel",
     "nicknameSaved": "Nickname saved",
     "possibleSameBird": "Possibly the same bird",
     "reidCrossCameraHint": "stricter cross-camera gate",

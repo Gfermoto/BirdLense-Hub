@@ -1315,6 +1315,8 @@
     "nicknameField": "Кличка птицы",
     "nicknameFieldPlaceholder": "например, Синичка Соня",
     "nicknameLabel": "Кличка",
+    "nicknameSaveButton": "Сохранить кличку",
+    "nicknameCancelButton": "Отменить",
     "nicknameSaved": "Кличка сохранена",
     "possibleSameBird": "Возможно, это та же птица",
     "reidCrossCameraHint": "строже для другой камеры/папки записи",
