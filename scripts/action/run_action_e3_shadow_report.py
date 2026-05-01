@@ -100,6 +100,8 @@ def main() -> int:
         reid_suggest_total = 0
         reid_with_candidate_nickname = 0
         reid_outcomes = Counter()
+        reid_pending_items: list[dict[str, Any]] = []
+        reid_rejected_items: list[dict[str, Any]] = []
         reid_errors: list[dict[str, Any]] = []
 
         video_ids = [int(v.id) for v in videos]
@@ -153,13 +155,43 @@ def main() -> int:
                 current_nickname = nickname_by_id.get(int(det_id)) if det_id is not None else None
                 if not candidate_nickname:
                     reid_outcomes['pending_no_candidate_nickname'] += 1
+                    reid_pending_items.append(
+                        {
+                            'video_id': int(v.id),
+                            'video_species_id': int(det_id) if det_id is not None else None,
+                            'candidate_video_id': m.get('candidate_video_id'),
+                            'candidate_video_species_id': m.get('candidate_video_species_id'),
+                            'similarity': m.get('similarity'),
+                        }
+                    )
                     continue
                 if not current_nickname:
                     reid_outcomes['pending_no_operator_nickname'] += 1
+                    reid_pending_items.append(
+                        {
+                            'video_id': int(v.id),
+                            'video_species_id': int(det_id) if det_id is not None else None,
+                            'candidate_video_id': m.get('candidate_video_id'),
+                            'candidate_video_species_id': m.get('candidate_video_species_id'),
+                            'candidate_nickname': candidate_nickname,
+                            'similarity': m.get('similarity'),
+                        }
+                    )
                 elif current_nickname.casefold() == candidate_nickname.casefold():
                     reid_outcomes['accepted_proxy'] += 1
                 else:
                     reid_outcomes['rejected_proxy'] += 1
+                    reid_rejected_items.append(
+                        {
+                            'video_id': int(v.id),
+                            'video_species_id': int(det_id) if det_id is not None else None,
+                            'candidate_video_id': m.get('candidate_video_id'),
+                            'candidate_video_species_id': m.get('candidate_video_species_id'),
+                            'current_nickname': current_nickname,
+                            'candidate_nickname': candidate_nickname,
+                            'similarity': m.get('similarity'),
+                        }
+                    )
 
         reid_summary_payload, reid_summary_code = build_reid_summary(db.session)
 
@@ -226,6 +258,8 @@ def main() -> int:
             'suggest_same_total': reid_suggest_total,
             'with_candidate_nickname': reid_with_candidate_nickname,
             'outcomes_proxy': dict(reid_outcomes),
+            'pending_items': reid_pending_items[:200],
+            'rejected_items': reid_rejected_items[:200],
             'reject_proxy_ratio': round(reid_reject_proxy_ratio, 6),
             'errors': reid_errors,
             'summary_http': int(reid_summary_code),
