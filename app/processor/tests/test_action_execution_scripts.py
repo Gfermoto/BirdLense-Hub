@@ -1,4 +1,5 @@
 """Tests for action execution scripts (#379/#392)."""
+# flake8: noqa
 
 from __future__ import annotations
 
@@ -44,6 +45,10 @@ class TestActionExecutionScripts(unittest.TestCase):
         cls.bench_mod = _load_module(
             "scripts/action/benchmark_action_candidates.py",
             "benchmark_action_candidates",
+        )
+        cls.calib_mod = _load_module(
+            "scripts/action/prepare_action_calibration_pack.py",
+            "prepare_action_calibration_pack",
         )
 
     def test_export_action_seed_dataset(self):
@@ -166,6 +171,55 @@ class TestActionExecutionScripts(unittest.TestCase):
         self.assertEqual(models["m1"]["tp"], 2)
         self.assertEqual(models["m1"]["fp"], 1)
         self.assertEqual(models["m2"]["tp"], 0)
+
+    def test_prepare_action_calibration_pack(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            seed = base / "seed.jsonl"
+            outdir = base / "calib"
+            rows = []
+            for vid in range(1, 6):
+                rows.append(
+                    {
+                        "segment_uid": f"v{vid}:arrival",
+                        "video_id": vid,
+                        "track_id": 1,
+                        "camera_id": "cam-1",
+                        "action_label": "arrival",
+                        "t_start_ms": 0,
+                        "t_end_ms": 300,
+                        "created_at_utc": "2026-05-01T00:00:00Z",
+                    }
+                )
+                rows.append(
+                    {
+                        "segment_uid": f"v{vid}:departure",
+                        "video_id": vid,
+                        "track_id": 1,
+                        "camera_id": "cam-1",
+                        "action_label": "departure",
+                        "t_start_ms": 700,
+                        "t_end_ms": 1000,
+                        "created_at_utc": "2026-05-01T00:00:00Z",
+                    }
+                )
+            seed.write_text(
+                "\n".join(json.dumps(r) for r in rows) + "\n",
+                encoding="utf-8",
+            )
+            summary = self.calib_mod.prepare_pack(
+                seed_jsonl=seed,
+                output_dir=outdir,
+                max_videos=3,
+                max_segments_per_video=2,
+                annotator_a="a",
+                annotator_b="b",
+            )
+            self.assertEqual(summary["subset_videos"], 3)
+            self.assertEqual(summary["subset_rows"], 6)
+            self.assertTrue((outdir / "action_calibration_subset.jsonl").exists())
+            self.assertTrue((outdir / "action_calibration_annotator_a.jsonl").exists())
+            self.assertTrue((outdir / "action_calibration_annotator_b.jsonl").exists())
 
 
 if __name__ == "__main__":

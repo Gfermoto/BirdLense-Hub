@@ -303,6 +303,20 @@ ml-verify-action-agreement:
 		$$(test -n "$${ACTION_MIN_KAPPA:-}" && printf -- '--min-kappa %s ' "$${ACTION_MIN_KAPPA}") \
 		$$(test -n "$${ACTION_AGREEMENT_REPORT:-}" && printf -- '--output-json %s ' "$${ACTION_AGREEMENT_REPORT}")
 
+# Build calibration subset and annotator templates from seed JSONL.
+# Example:
+#   make ml-prepare-action-calibration ACTION_SEED_JSONL=/tmp/action_seed.jsonl ACTION_CALIB_DIR=/tmp/action_calibration
+ml-prepare-action-calibration:
+	@test -n "$${ACTION_SEED_JSONL:-}" || (echo "Set ACTION_SEED_JSONL=path/to/action_seed.jsonl" >&2; exit 1)
+	@test -n "$${ACTION_CALIB_DIR:-}" || (echo "Set ACTION_CALIB_DIR=path/to/output_dir" >&2; exit 1)
+	@python3 scripts/action/prepare_action_calibration_pack.py \
+		--seed-jsonl "$${ACTION_SEED_JSONL}" \
+		--output-dir "$${ACTION_CALIB_DIR}" \
+		--max-videos "$${ACTION_CALIB_MAX_VIDEOS:-60}" \
+		--max-segments-per-video "$${ACTION_CALIB_SEGMENTS_PER_VIDEO:-2}" \
+		--annotator-a "$${ACTION_CALIB_ANNOTATOR_A:-annotator_a}" \
+		--annotator-b "$${ACTION_CALIB_ANNOTATOR_B:-annotator_b}"
+
 # Benchmark action-model candidates on shared ground-truth JSONL.
 # Example:
 #   make ml-benchmark-action-candidates ACTION_GT=/tmp/gt.jsonl ACTION_PRED=/tmp/pred.jsonl ACTION_BENCHMARK_REPORT=/tmp/report.json
