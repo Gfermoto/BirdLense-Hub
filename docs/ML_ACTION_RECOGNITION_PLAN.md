@@ -110,6 +110,11 @@ DoD E1:
 - Cohen kappa >= 0.75 on calibration slice, or a remediation plan is documented;
 - issue contains class-imbalance report and hard-case list.
 
+Commands:
+
+- `make ml-export-action-seed ACTION_DB=app/data/db/birdlense.db ACTION_SEED_JSONL=/tmp/action_seed.jsonl ACTION_SEED_MANIFEST=/tmp/action_seed_manifest.json`
+- `make ml-verify-action-agreement ACTION_ANN_A=/tmp/annotator_a.jsonl ACTION_ANN_B=/tmp/annotator_b.jsonl ACTION_MIN_KAPPA=0.75 ACTION_AGREEMENT_REPORT=/tmp/action_kappa.json`
+
 ### Phase E2 — model candidate benchmark (#379)
 
 - evaluate at least 2 candidates (light temporal head + clip-model baseline);
@@ -121,6 +126,10 @@ DoD E2:
 - comparison table exists (F1, boundary delay p95, FP/hour, latency);
 - one production candidate and one fallback are selected;
 - issue #379 contains eval artifacts and benchmark script commit.
+
+Command:
+
+- `make ml-benchmark-action-candidates ACTION_GT=/tmp/action_gt.jsonl ACTION_PRED=/tmp/action_predictions.jsonl ACTION_BENCHMARK_REPORT=/tmp/action_benchmark_report.json`
 
 ### Phase E3 — hub integration shadow (#379)
 
