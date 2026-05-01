@@ -1,0 +1,20 @@
+{
+  "schema": "video_action_events@v1",
+  "available": true,
+  "events": [
+    {
+      "label": "arrival",
+      "source": "weak_label",
+      "time_offset": 1.0,
+      "time": "2026-05-01T00:00:01Z",
+      "confidence": 0.65
+    },
+    {
+      "label": "departure",
+      "source": "weak_label",
+      "time_offset": 3.4,
+      "time": "2026-05-01T00:00:03Z",
+      "confidence": 0.59
+    }
+  ]
+}

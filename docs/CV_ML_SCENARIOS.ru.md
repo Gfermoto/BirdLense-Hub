@@ -51,7 +51,8 @@
 2. **Re-ID gates** по snapshot payload  
    `make ml-verify-reid-gates ...`
 3. **Action labeling gates**  
-   `make ml-verify-action-labeling ...`
+   `make ml-verify-action-labeling ...`  
+   (быстрый детерминированный smoke по фикстурам: `make ml-verify-action-labeling-fixtures`)
 4. **Feedback loop export dry-run**  
    `POST /api/ui/system/feedback-loop/export` с `dry_run=true`
 5. **NAS mirror connectivity**  
