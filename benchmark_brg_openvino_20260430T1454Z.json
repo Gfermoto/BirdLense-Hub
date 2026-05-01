@@ -1,0 +1,36 @@
+{
+  "report_format": "benchmark_track_regen@v1",
+  "inference_backend": "openvino",
+  "videos": [
+    {
+      "video": "/app/data/recordings/2026/04/07/185837/video.mp4",
+      "raw_track_count": 0,
+      "fused_track_count": 0,
+      "species": [],
+      "decision_kind_counts": {},
+      "fallback_count": 0,
+      "classifier_needs_review_count_raw": 0,
+      "classifier_needs_review_count_fused": 0
+    },
+    {
+      "video": "/app/data/recordings/2026/04/09/045024/video.mp4",
+      "raw_track_count": 0,
+      "fused_track_count": 0,
+      "species": [],
+      "decision_kind_counts": {},
+      "fallback_count": 0,
+      "classifier_needs_review_count_raw": 0,
+      "classifier_needs_review_count_fused": 0
+    },
+    {
+      "video": "/app/data/recordings/2026/04/10/212918/video.mp4",
+      "raw_track_count": 0,
+      "fused_track_count": 0,
+      "species": [],
+      "decision_kind_counts": {},
+      "fallback_count": 0,
+      "classifier_needs_review_count_raw": 0,
+      "classifier_needs_review_count_fused": 0
+    }
+  ]
+}

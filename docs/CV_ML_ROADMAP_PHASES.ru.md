@@ -96,7 +96,7 @@
 - Опубликованные ZIP для операторского обучения: [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) (`detector_merged_balanced_20260429.zip`, `detector_merged_full_20260429.zip`), рекомендованный путь Stage A -> Stage B в [ML_DETECTOR_COLAB.ru.md](ML_DETECTOR_COLAB.ru.md).
 - Опубликованный пакет весов детектора (YOLO + OpenVINO): [weights-20260429T125011Z-3-001.zip](https://huggingface.co/gfermoto/BirdLense_Detector/blob/main/weights-20260429T125011Z-3-001.zip).
 - ``validate_yolo_labels.py`` + ``make dataset-validate-yolo-labels`` — быстрая проверка class id и bbox до Colab.
-- Схема манифеста hard negatives и ``--manifest-out`` — см. [DATASETS.ru.md](DATASETS.ru.md).
+- Схема манифеста hard negatives и ``--manifest-out`` — см. [DATASETS.ru.md](./DATASETS.ru.md); **куда что пишется на диске** (`binary/merged` vs **`brg/`** vs имена ZIP на HF vs локальный `BirdLense_detector_brg_*.zip`) — начало [DATASETS.ru.md](./DATASETS.ru.md) (**Актуальные пути**).
 - `video.capture_backend: auto|opencv|ffmpeg_vaapi` — путь захвата кадров для live inference; в `auto` VA-API включается только вместе с `video.encoding: intel` и рабочим `/dev/dri`, иначе OpenCV.
 
 ## API оператора без новых весов

@@ -11,10 +11,12 @@ GENERIC_BIRD_NAME = "Bird"
 ARBITRATION_SCORE_GAP = 0.12
 ARBITRATION_MIN_SUPPORTS = 2
 ARBITRATION_CONFLICT_OVERLAP_SEC = 3.0
-ARBITRATION_GENERIC_ABSORB_OVERLAP_SEC = 0.1
+ARBITRATION_GENERIC_ABSORB_OVERLAP_SEC = 1.0
 ARBITRATION_WEAK_CONFLICT_MAX_SCORE = 0.62
-ARBITRATION_FRIGATE_STANDALONE_ABSORB_MIN_CONF = 0.72
-ARBITRATION_FRIGATE_STANDALONE_ABSORB_MIN_RATIO = 0.85
+ARBITRATION_FRIGATE_STANDALONE_ABSORB_MIN_CONF = 0.82
+ARBITRATION_FRIGATE_STANDALONE_ABSORB_MIN_RATIO = 0.95
+ARBITRATION_VISUAL_ANCHOR_SCORE = 0.62
+ARBITRATION_VISUAL_ANCHOR_CONF = 0.46
 
 
 def _safe_float(value, default: float = 0.0) -> float:
@@ -92,6 +94,23 @@ def _support_count(row: dict) -> int:
     if "frigate" in providers or str(row.get("decision_reason") or "").strip().lower() == "promoted_by_frigate":
         supports += 1
     return supports
+
+
+def _has_visual_anchor(row: dict) -> bool:
+    lineage = {
+        str(provider).strip().lower()
+        for provider in (row.get("contributing_providers") or [])
+        if str(provider).strip()
+    }
+    provider = str(row.get("detection_provider") or "").strip().lower()
+    if provider and provider != "arbitration":
+        lineage.add(provider)
+    if "yolo" in lineage:
+        return True
+    try:
+        return int(row.get("track_id") or 0) > 0
+    except (TypeError, ValueError):
+        return False
 
 
 def _arbitration_score(row: dict) -> float:
@@ -251,6 +270,20 @@ def apply_hypothesis_arbitration(detections: list[dict]) -> list[dict]:
 
         if winner_supports >= ARBITRATION_MIN_SUPPORTS and score_gap >= ARBITRATION_SCORE_GAP:
             _tag_row(winner, "species_won_by_multi_source_consensus")
+            winner["visit_eligible"] = True
+            winner["notification_eligible"] = bool(winner.get("notification_eligible", True))
+            _sync_outcome_bucket(winner)
+            for idx in group:
+                replacements[idx] = winner if rows[idx] is winner else None
+            continue
+
+        if (
+            _has_visual_anchor(winner)
+            and winner_score >= ARBITRATION_VISUAL_ANCHOR_SCORE
+            and _safe_float(winner.get("confidence")) >= ARBITRATION_VISUAL_ANCHOR_CONF
+            and score_gap >= (ARBITRATION_SCORE_GAP * 0.5)
+        ):
+            _tag_row(winner, "species_kept_by_visual_anchor")
             winner["visit_eligible"] = True
             winner["notification_eligible"] = bool(winner.get("notification_eligible", True))
             _sync_outcome_bucket(winner)

@@ -15,12 +15,12 @@ if _src_path not in sys.path:
 class TestBinaryPaths(unittest.TestCase):
     """Резолв путей и отпечаток OpenVINO."""
 
-    def test_torch_default_path(self):
+    def test_openvino_default_path(self):
         from inference.binary_paths import resolve_binary_detector_weight_path
 
         path, backend = resolve_binary_detector_weight_path({}, '/tmp/processor')
-        self.assertEqual(backend, 'torch')
-        self.assertTrue(path.endswith('best.pt'))
+        self.assertEqual(backend, 'openvino')
+        self.assertEqual(path, '')
 
     def test_openvino_empty_when_unconfigured(self):
         from inference.binary_paths import resolve_binary_detector_weight_path
@@ -87,6 +87,33 @@ class TestBinaryPaths(unittest.TestCase):
                 )
         self.assertEqual(backend, "torch")
         self.assertTrue(path.endswith("best.pt"))
+
+    def test_openvino_expected_input_size_from_metadata(self):
+        from inference.binary_paths import openvino_expected_input_size
+
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "best.xml"), "w", encoding="utf-8") as f:
+                f.write("<net />")
+            with open(os.path.join(d, "metadata.yaml"), "w", encoding="utf-8") as f:
+                f.write("imgsz:\n- 960\n- 960\n")
+            self.assertEqual(openvino_expected_input_size(d), 960)
+
+    def test_openvino_expected_input_size_from_xml_shape(self):
+        from inference.binary_paths import openvino_expected_input_size
+
+        xml = """
+<net>
+  <input>
+    <port id="0">
+      <dim>1</dim><dim>3</dim><dim>640</dim><dim>640</dim>
+    </port>
+  </input>
+</net>
+""".strip()
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "best.xml"), "w", encoding="utf-8") as f:
+                f.write(xml)
+            self.assertEqual(openvino_expected_input_size(d), 640)
 
 
 if __name__ == '__main__':

@@ -28,6 +28,8 @@ scripts/datasets/binary/birds/
 scripts/datasets/binary/rodent/
 scripts/datasets/binary/background/
 scripts/datasets/binary/merged/
+# Слитый трёхклассовый датасет (merge_datasets_three_class.py --output-dir brg)
+scripts/datasets/brg/
 # старые пути (миграция с прежней схемы)
 scripts/datasets/birds_binary_yolo/
 scripts/datasets/rodent_yolo/

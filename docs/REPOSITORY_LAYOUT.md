@@ -20,7 +20,7 @@ Where things live in the BirdLense Hub monorepo. **Release version** is the root
 | **`wiki-source/`** | Seeds / automation for GitHub Wiki (see [WIKI_AUTOMATION](./WIKI_AUTOMATION.md)). |
 | **`screenshots/`** | Images for docs and articles. |
 | **`docs/article/`** | Drafts for external posts (e.g. Habr); not part of the running product. |
-| **`datasets/`** | Optional local checkout of dataset repos (gitignored at repo root — see `.gitignore`). Use [DATASETS](./DATASETS.md) and `scripts/datasets/`. |
+| **`datasets/`** | Local dataset artifacts (gitignored): classifier merges (e.g. **`merged_cls`**), **`BirdLense_detector_brg_*.zip`** from `pack_brg_for_gdrive.py`, Roboflow zips, etc. **vs** `scripts/datasets/binary/` — [DATASETS](./DATASETS.md) (**Canonical paths**). |
 
 ---
 

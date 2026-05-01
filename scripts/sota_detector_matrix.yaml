@@ -1,0 +1,20 @@
+schema: detector_sota_matrix@v1
+dataset_yaml: app/processor/models/detection/datasets/detector_dataset.yaml
+defaults:
+  imgsz: 960
+  epochs: 80
+  patience: 20
+  batch: 16
+  seed: 42
+  optimizer: AdamW
+  cos_lr: true
+  close_mosaic: 10
+  warmup_epochs: 3
+  project: runs/detect-sota
+experiments:
+  - id: yolo11n_bird_rodent
+    model: yolo11n.pt
+    notes: Baseline SOTA track for Bird/Rodent binary detector.
+  - id: yolov8n_bird_rodent
+    model: yolov8n.pt
+    notes: Competitive lightweight baseline for edge CPU deployment.

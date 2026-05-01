@@ -228,6 +228,7 @@ class DetectionStrategy(ABC):
         min_confidence: float,
         *,
         min_center_dist: float | None = None,
+        max_box_area_norm: float | None = None,
     ) -> bool:
         """Центр не у краёв, confidence >= min."""
         x1, y1, x2, y2 = bbox
@@ -243,6 +244,14 @@ class DetectionStrategy(ABC):
             return False
         if conf < min_confidence:
             return False
+
+        if max_box_area_norm is not None:
+            try:
+                area = max(0.0, float(x2) - float(x1)) * max(0.0, float(y2) - float(y1))
+                if area > float(max_box_area_norm):
+                    return False
+            except (TypeError, ValueError):
+                return False
 
         return True
 
@@ -265,11 +274,19 @@ class TwoStageStrategy(DetectionStrategy):
         weight_contract_mode: str = "warn",
         inference_backend: str = "torch",
         classifier_inference_backend: str = "torch",
+        binary_inference_device: str | None = None,
+        classifier_inference_device: str | None = None,
     ):
         super().__init__(min_center_dist, min_box_size_px, blur_threshold, max_blur_checks)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.inference_backend = (inference_backend or "torch").strip().lower()
         self.classifier_inference_backend = (classifier_inference_backend or "torch").strip().lower()
+        _dev = (binary_inference_device or "").strip()
+        self._binary_track_device: str | None = _dev or None
+        _cls_dev = (classifier_inference_device or "").strip()
+        self._classifier_predict_device: str | None = (
+            _cls_dev if self.classifier_inference_backend == "openvino" and _cls_dev else None
+        )
         self.weight_contract_mode = (weight_contract_mode or "warn").strip().lower()
         self.regional_species = regional_species
         self.max_classifications_per_frame = max(1, int(max_classifications_per_frame or 1))
@@ -333,10 +350,14 @@ class TwoStageStrategy(DetectionStrategy):
             self.logger.info("Enabled classes: %s", enabled_classes)
 
         # Warmup
-        self.binary_model.track(
-            np.zeros((320, 320, 3), dtype=np.uint8), tracker="bytetrack.yaml", persist=True, verbose=False
-        )
-        self.classifier_model(np.zeros((224, 224, 3), dtype=np.uint8), verbose=False)
+        _warm: dict = {"tracker": "bytetrack.yaml", "persist": True, "verbose": False}
+        if self._binary_track_device:
+            _warm["device"] = self._binary_track_device
+        self.binary_model.track(np.zeros((320, 320, 3), dtype=np.uint8), **_warm)
+        _cls_warm: dict = {"verbose": False}
+        if self._classifier_predict_device:
+            _cls_warm["device"] = self._classifier_predict_device
+        self.classifier_model(np.zeros((224, 224, 3), dtype=np.uint8), **_cls_warm)
 
     def _normalize_class_name(self, name: str) -> str:
         """Blue_Jay → Blue Jay, Winter_OR_juvenile → Winter/juvenile."""
@@ -347,7 +368,10 @@ class TwoStageStrategy(DetectionStrategy):
 
     def _classify_crop(self, crop: np.ndarray) -> ClassifierOutput:
         """Классификация кропа: вид, top1 conf, энтропия и top1−top2 margin по полному вектору probs."""
-        result_cls = self.classifier_model(crop, verbose=False)
+        _cls_kwargs: dict = {"verbose": False}
+        if self._classifier_predict_device:
+            _cls_kwargs["device"] = self._classifier_predict_device
+        result_cls = self.classifier_model(crop, **_cls_kwargs)
 
         if not result_cls or not result_cls[0].probs:
             return ClassifierOutput(None, 0.0, 0.0, 0.0)
@@ -418,6 +442,9 @@ class TwoStageStrategy(DetectionStrategy):
         min_center_dist = float(
             runtime_cfg.resolve_strategy_field("processor.min_center_dist", self, "min_center_dist", 0.1) or 0.1
         )
+        max_box_area_norm = float(
+            runtime_cfg.resolve_strategy_field("processor.max_box_area_norm", self, "max_box_area_norm", 1.0) or 1.0
+        )
         min_box_size_px = int(
             runtime_cfg.resolve_strategy_field("processor.min_box_size_px", self, "min_box_size_px", 64) or 64
         )
@@ -431,15 +458,16 @@ class TwoStageStrategy(DetectionStrategy):
             or 1
         )
         track_conf = binary_track_ultralytics_conf_floor(min_confidence, runtime_cfg)
-        results = _track_maybe_retry(
-            self.binary_model,
-            frame,
-            persist=True,
-            conf=track_conf,
-            verbose=False,
-            imgsz=imgsz,
-            tracker=tracker_config,
-        )
+        _tkw: dict = {
+            "persist": True,
+            "conf": track_conf,
+            "verbose": False,
+            "imgsz": imgsz,
+            "tracker": tracker_config,
+        }
+        if self._binary_track_device:
+            _tkw["device"] = self._binary_track_device
+        results = _track_maybe_retry(self.binary_model, frame, **_tkw)
 
         if not results or len(results[0].boxes) == 0:
             return []
@@ -470,6 +498,7 @@ class TwoStageStrategy(DetectionStrategy):
                 conf,
                 eff_min,
                 min_center_dist=min_center_dist,
+                max_box_area_norm=max_box_area_norm,
             ):
                 continue
             if self.detector_scope and detector_label not in self.detector_scope:

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
+import xml.etree.ElementTree as ET
 from typing import Any, Mapping
 
 
@@ -109,6 +111,31 @@ def openvino_bundle_fingerprint(path: str | None) -> str | None:
     return h.hexdigest()
 
 
+def openvino_expected_input_size(path: str | None) -> int | None:
+    """
+    Try to read expected square input size for OpenVINO YOLO export.
+
+    Priority:
+    1) metadata.yaml (`imgsz`)
+    2) model XML first 4D input shape ([N,C,H,W])
+    """
+    if not path:
+        return None
+    if os.path.isdir(path):
+        meta = os.path.join(path, "metadata.yaml")
+        xml = _first_xml_in_dir(path)
+    elif os.path.isfile(path) and path.endswith(".xml"):
+        meta = os.path.join(os.path.dirname(path), "metadata.yaml")
+        xml = path
+    else:
+        return None
+
+    from_meta = _parse_imgsz_from_metadata(meta)
+    if from_meta is not None:
+        return from_meta
+    return _parse_input_hw_from_xml(xml)
+
+
 def _sha256_file_path(path: str) -> str | None:
     if not os.path.isfile(path):
         return None
@@ -123,3 +150,70 @@ def _sha256_file_path(path: str) -> str | None:
     except OSError:
         return None
     return h.hexdigest()
+
+
+def _first_xml_in_dir(path: str) -> str | None:
+    try:
+        names = sorted(fn for fn in os.listdir(path) if fn.endswith(".xml"))
+    except OSError:
+        return None
+    if not names:
+        return None
+    return os.path.join(path, names[0])
+
+
+def _parse_imgsz_from_metadata(path: str) -> int | None:
+    if not path or not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            txt = f.read()
+    except OSError:
+        return None
+    # Typical Ultralytics export:
+    # imgsz:
+    # - 960
+    # - 960
+    m = re.search(r"(?m)^imgsz:\s*\n\s*-\s*(\d+)\s*\n\s*-\s*(\d+)\s*$", txt)
+    if m:
+        try:
+            h = int(m.group(1))
+            w = int(m.group(2))
+            if h == w and h > 0:
+                return h
+        except (TypeError, ValueError):
+            pass
+    # Fallback inline form: imgsz: [640, 640]
+    m2 = re.search(r"imgsz:\s*\[\s*(\d+)\s*,\s*(\d+)\s*\]", txt)
+    if m2:
+        try:
+            h = int(m2.group(1))
+            w = int(m2.group(2))
+            if h == w and h > 0:
+                return h
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+def _parse_input_hw_from_xml(path: str | None) -> int | None:
+    if not path or not os.path.isfile(path):
+        return None
+    try:
+        root = ET.parse(path).getroot()
+    except (ET.ParseError, OSError):
+        return None
+    dims: list[int] = []
+    for dim in root.findall(".//input//dim"):
+        raw = (dim.text or "").strip()
+        if raw.isdigit():
+            dims.append(int(raw))
+        if len(dims) >= 4:
+            break
+    if len(dims) < 4:
+        return None
+    h = int(dims[-2])
+    w = int(dims[-1])
+    if h > 0 and h == w:
+        return h
+    return None

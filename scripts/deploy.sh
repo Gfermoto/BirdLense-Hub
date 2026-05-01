@@ -158,6 +158,18 @@ ssh ${SSH_OPTS} "${HOST}" "set -e; cd '${REMOTE_DIR}/app' && bash scripts/docker
     sysctl -p /etc/sysctl.d/99-birdlense-perf.conf || true; \
   fi"
 
+# 1.8c Жёсткий режим: боевой хаб с OpenVINO GPU — на сервере должны быть renderD* и сгенерирован override.
+_raw_req="${BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU:-}"
+if [[ "${_raw_req}" =~ ^(1|true|yes|on)$ ]]; then
+  echo "1.8c BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=${_raw_req} — проверка docker-compose.override.yml на сервере..."
+  if ! ssh ${SSH_OPTS} "${HOST}" "test -f '${REMOTE_DIR}/app/docker-compose.override.yml'"; then
+    echo "Ошибка: на хосте нет /dev/dri/renderD* или override не создан — OpenVINO GPU в контейнере недоступен."
+    echo "  Проверьте Intel iGPU на сервере, драйверы и перезапуск деплоя. Для VPS без GPU не задавайте BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU."
+    exit 1
+  fi
+  echo "  OK: ${REMOTE_DIR}/app/docker-compose.override.yml есть"
+fi
+
 # 2. Сборка и запуск (повтор при сбое — Docker pull, сеть)
 echo "2. Сборка и запуск..."
 BUILD_RETRIES="${BUILD_RETRIES:-2}"

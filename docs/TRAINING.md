@@ -1,6 +1,6 @@
 # Training the EU classifier in Google Colab
 
-Step-by-step: bird **classification** on a free **T4 GPU**. Dataset layout and scripts: [DATASETS](./DATASETS.md).
+Step-by-step: bird **classification** on a free **T4 GPU**. Dataset layout and scripts: [DATASETS](./DATASETS.md). **Classifier trees** you build locally usually live under repo-root **`datasets/`** (gitignored), e.g. **`datasets/merged_cls`**. **Detector** merge output vs **`brg/`** vs Hugging Face archives — **Canonical paths** at the top of [DATASETS](./DATASETS.md).
 
 **Detector (YOLO detection)** in Colab — separate guide: [ML_DETECTOR_COLAB](./ML_DETECTOR_COLAB.md) · [RU](./ML_DETECTOR_COLAB.ru.md).  
 Detector dataset zips are published at [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) (balanced + full, Stage A -> Stage B).  
@@ -78,12 +78,24 @@ python3 scripts/benchmark-track-regen.py \
   --video /path/to/video2.mp4
 ```
 
-To compare inference backends on the same clips (sets `BIRDLENSE_INFERENCE_BACKEND` for the process; JSON output includes `inference_backend`):
+To compare inference backends on the same clips (sets `BIRDLENSE_INFERENCE_BACKEND` for the process; JSON output includes `inference_backend`). For OpenVINO on Intel GPU also pass `--inference-device intel:gpu` (or set `BIRDLENSE_INFERENCE_DEVICE`):
 
 ```bash
 python3 scripts/benchmark-track-regen.py \
   --inference-backend openvino \
+  --inference-device intel:gpu \
   --video /path/to/video1.mp4
+```
+
+To compare **bounding boxes** between two detector checkpoints on the same archive clips (mean/median IoU on frames where both see a bird-class box; does not run the full Hub pipeline):
+
+```bash
+python3 scripts/compare_detector_bboxes.py \
+  --video /path/to/a.mp4 --video /path/to/b.mp4 \
+  --model-a /path/to/old_binary.pt \
+  --model-b /path/to/brg_best.pt \
+  --bird-class-ids-a 0 --bird-class-ids-b 0 \
+  --imgsz 640 --conf 0.2 --frame-step 3
 ```
 
 Optional **gold labels sidecar** (species-level check vs fused pipeline output, [#372](https://github.com/Gfermoto/BirdLense-Hub/issues/372)): JSON with `schema_version` `1` and `gold_by_basename` mapping **video basename** → list of expected species names (same spelling as classifier output). The benchmark prints `label_eval` per video (missing/extra vs gold, `gold_species_recall`) and top-level `labels_sidecar` metadata when `--labels-json` is set. Schema reference: docstring in `scripts/benchmark_regen_labels.py`.

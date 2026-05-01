@@ -11,11 +11,11 @@ if _src_path not in sys.path:
 
 
 class TestInferenceSelector(unittest.TestCase):
-    def test_resolve_defaults_torch(self):
+    def test_resolve_defaults_openvino(self):
         from inference.selector import resolve_inference_backend
 
-        self.assertEqual(resolve_inference_backend(None), "torch")
-        self.assertEqual(resolve_inference_backend({}), "torch")
+        self.assertEqual(resolve_inference_backend(None), "openvino")
+        self.assertEqual(resolve_inference_backend({}), "openvino")
 
     def test_resolve_env_overrides_config(self):
         from inference.selector import resolve_inference_backend
@@ -46,11 +46,80 @@ class TestInferenceSelector(unittest.TestCase):
             if old is not None:
                 os.environ["BIRDLENSE_INFERENCE_BACKEND"] = old
 
-    def test_resolve_classifier_backend_defaults_torch(self):
+    def test_resolve_inference_device_defaults_none(self):
+        from inference.selector import resolve_inference_device
+
+        old = os.environ.pop("BIRDLENSE_INFERENCE_DEVICE", None)
+        try:
+            self.assertIsNone(resolve_inference_device(None))
+            self.assertIsNone(resolve_inference_device({}))
+            self.assertIsNone(resolve_inference_device({"processor.inference_device": ""}))
+        finally:
+            if old is not None:
+                os.environ["BIRDLENSE_INFERENCE_DEVICE"] = old
+
+    def test_resolve_inference_device_env(self):
+        from inference.selector import resolve_inference_device
+
+        old = os.environ.pop("BIRDLENSE_INFERENCE_DEVICE", None)
+        try:
+            os.environ["BIRDLENSE_INFERENCE_DEVICE"] = " intel:gpu "
+            self.assertEqual(resolve_inference_device({"processor.inference_device": "cpu"}), "intel:gpu")
+        finally:
+            if old is None:
+                os.environ.pop("BIRDLENSE_INFERENCE_DEVICE", None)
+            else:
+                os.environ["BIRDLENSE_INFERENCE_DEVICE"] = old
+
+    def test_resolve_classifier_backend_defaults_openvino(self):
         from inference.selector import resolve_classifier_inference_backend
 
-        self.assertEqual(resolve_classifier_inference_backend(None), "torch")
-        self.assertEqual(resolve_classifier_inference_backend({}), "torch")
+        self.assertEqual(resolve_classifier_inference_backend(None), "openvino")
+        self.assertEqual(resolve_classifier_inference_backend({}), "openvino")
+
+    def test_resolve_classifier_device_defaults_from_detector_device(self):
+        from inference.selector import resolve_classifier_inference_device
+
+        old_cls = os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE", None)
+        old_det = os.environ.pop("BIRDLENSE_INFERENCE_DEVICE", None)
+        try:
+            self.assertIsNone(resolve_classifier_inference_device(None))
+            self.assertEqual(
+                resolve_classifier_inference_device({"processor.inference_device": "intel:gpu"}),
+                "intel:gpu",
+            )
+        finally:
+            if old_cls is not None:
+                os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE"] = old_cls
+            if old_det is not None:
+                os.environ["BIRDLENSE_INFERENCE_DEVICE"] = old_det
+
+    def test_resolve_classifier_device_env_overrides_detector(self):
+        from inference.selector import resolve_classifier_inference_device
+
+        old_cls = os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE", None)
+        old_det = os.environ.pop("BIRDLENSE_INFERENCE_DEVICE", None)
+        try:
+            os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE"] = "intel:gpu"
+            os.environ["BIRDLENSE_INFERENCE_DEVICE"] = "intel:cpu"
+            self.assertEqual(
+                resolve_classifier_inference_device(
+                    {
+                        "processor.classifier_inference_device": "intel:npu",
+                        "processor.inference_device": "intel:cpu",
+                    }
+                ),
+                "intel:gpu",
+            )
+        finally:
+            if old_cls is None:
+                os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE", None)
+            else:
+                os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE"] = old_cls
+            if old_det is None:
+                os.environ.pop("BIRDLENSE_INFERENCE_DEVICE", None)
+            else:
+                os.environ["BIRDLENSE_INFERENCE_DEVICE"] = old_det
 
     def test_resolve_classifier_backend_env_overrides_config(self):
         from inference.selector import resolve_classifier_inference_backend

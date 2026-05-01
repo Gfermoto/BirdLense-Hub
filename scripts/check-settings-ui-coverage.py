@@ -253,6 +253,26 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Per-species thresholds are expert tuning; YAML map is the current mechanism.",
         "next_step": "Import/export UI once evaluation harness exists (#390).",
     },
+    "processor.max_box_area_norm": {
+        "category": "ops-only",
+        "reason": "Detector anti-collapse guardrail for near full-frame boxes.",
+        "next_step": "Potential expert UI field with diagnostics preview after validation.",
+    },
+    "processor.generic_rodent_min_frames": {
+        "category": "ops-only",
+        "reason": "Rodent fallback quality gate; sensitive anti-noise tuning.",
+        "next_step": "Keep YAML-only until rodent false-positive profile stabilizes.",
+    },
+    "processor.generic_rodent_max_area_frac": {
+        "category": "ops-only",
+        "reason": "Reject rodent fallbacks that look like full-frame detector artifacts.",
+        "next_step": "Consider expert UI once rollout baselines are collected.",
+    },
+    "processor.generic_rodent_min_best_frame_score": {
+        "category": "ops-only",
+        "reason": "Rodent fallback visual-quality gate tied to best-frame sharpness.",
+        "next_step": "Keep YAML-only pending multi-camera calibration.",
+    },
     # Merge internals (partially in UI: see Processor → Frigate fusion).
     "detection.source_priority": {
         "category": "advanced",

@@ -9,7 +9,7 @@ This page closes the **repository-side** ML Phase‑1 track as documented in [CV
 ## What is already finished **in the repo** (branch `ML`)
 
 - Inference stack: torch / OpenVINO binary detector paths, weight contract, benchmarks, CI smoke, docs.
-- Dataset **merge** helpers for a **3-class** detector layout (`Bird` / `Rodent` / `Background`): [DATASETS](./DATASETS.md) § three-class.
+- Dataset **merge** helpers for a **3-class** detector layout (`Bird` / `Rodent` / `Background`): [DATASETS](./DATASETS.md) — **Canonical paths** (Makefile → `binary/merged`, optional `brg/` + zip) and § three-class.
 - Operator docs for decode benchmarks, active-learning manifest stubs, Re-ID / federated **roadmaps** (not product features by themselves).
 - Offline **DINOv2 crop embeddings** CLI: [`embed_dinov2_crop.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/embed_dinov2_crop.py), [`embed_cosine_report.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/embed_cosine_report.py), [`export_crops_from_sqlite.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/export_crops_from_sqlite.py), [`README`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/reid/README.md) — outside Docker ([#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383)).
 
@@ -46,7 +46,7 @@ Published detector weights package (YOLO + OpenVINO):
 
 1. **Decide target:** refresh **classifier only**, or also a new **detector** (2-class vs 3-class — see [CV_ML_PREP](./CV_ML_PREP.md)).
 2. **Classifier path:** export train-ready ZIP from Hub → merge scripts per [DATASETS](./DATASETS.md) → [TRAINING](./TRAINING.md) Colab cells.
-3. **Detector path:** build `dataset.yaml` (e.g. `make dataset-merge-three-class` after preparing folders) → zip → [ML_DETECTOR_COLAB](./ML_DETECTOR_COLAB.md).
+3. **Detector path:** `binary/*` → `make dataset-merge-three-class` → **`scripts/datasets/binary/merged/`**; optional **`scripts/datasets/brg/`** + `pack_brg_for_gdrive.py` → **`datasets/BirdLense_detector_brg_*.zip`**, or use HF zips — [DATASETS](./DATASETS.md) (**Canonical paths**), then [ML_DETECTOR_COLAB](./ML_DETECTOR_COLAB.md).
 4. **Rollout:** copy `best.pt` (and OpenVINO export if used), run validation, deploy, benchmark clips if needed.
 
 ---

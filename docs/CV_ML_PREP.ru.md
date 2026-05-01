@@ -106,7 +106,7 @@ detection_stack factory
 | Ключ / env overlay | Назначение | Начальное значение |
 |--------------------|------------|--------------------|
 | `processor.inference_backend` / `BIRDLENSE_INFERENCE_BACKEND` | выбор backend | `torch` (также `openvino` для IR бинарника) |
-| `processor.inference_device` / `BIRDLENSE_INFERENCE_DEVICE` | device hint (`cpu`, `cuda`, `auto`, `openvino:CPU`) | `auto` |
+| `processor.inference_device` / `BIRDLENSE_INFERENCE_DEVICE` | пробрасывается в Ultralytics `track`/`predict` у **бинарного** детектора | пусто (дефолт пакета); OpenVINO на Intel GPU: `intel:gpu` (см. доку Ultralytics OpenVINO: `intel:cpu`, `intel:npu`) |
 | `processor.inference_precision` / `BIRDLENSE_INFERENCE_PRECISION` | precision hint (`fp32`, `fp16`, `int8`, `auto`) | `auto` |
 | `processor.models.binary` | путь к Torch `.pt` бинарного детектора | существующий путь |
 | `processor.models.binary_openvino` | каталог или `.xml` OpenVINO при backend `openvino` | пусто, пока не задано |
@@ -121,7 +121,7 @@ detection_stack factory
 
 ## 3. Данные и воспроизводимость
 
-Train-ready export path в `docs/DATASETS.md` — канонический baseline для Phase 1:
+Train-ready export path в `docs/DATASETS.md` — канонический baseline для Phase 1 (Library → классификатор). **Локальная сборка детектора** (`binary/merged` vs **`brg/`** vs имена ZIP на HF и `BirdLense_detector_brg_*.zip`) — таблица **Актуальные пути** в начале того же файла.
 
 - использовать `ready_for_train=1` для автоматического `train/val` split;
 - использовать `strict_quality=1` для rollout-кандидатов;

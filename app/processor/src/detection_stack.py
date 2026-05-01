@@ -51,6 +51,7 @@ def build_detection_stack(
     from inference.backend_cache import write_inference_backend_cache
     from inference.binary_paths import (
         detector_weights_available,
+        openvino_expected_input_size,
         resolve_binary_detector_weight_path,
         resolve_relative_to_processor_root,
     )
@@ -61,7 +62,9 @@ def build_detection_stack(
     from inference.selector import (
         assert_backend_supported,
         resolve_classifier_inference_backend,
+        resolve_classifier_inference_device,
         resolve_inference_backend,
+        resolve_inference_device,
     )
     from ebird_regional_confidence import (
         merge_species_confidence_overrides_with_ebird_top,
@@ -114,6 +117,57 @@ def build_detection_stack(
             "(export: yolo export ... format=openvino).",
         )
 
+    if _inf_backend == "openvino":
+        expected_ov_imgsz = openvino_expected_input_size(binary_path)
+        configured_imgsz_values: set[int] = set()
+        for key in (
+            "processor.binary_imgsz",
+            "processor.adaptive_profiles.night.overrides.binary_imgsz",
+        ):
+            raw = app_config.get(key)
+            if raw is None:
+                continue
+            try:
+                configured_imgsz_values.add(int(raw))
+            except (TypeError, ValueError):
+                continue
+        if not configured_imgsz_values:
+            try:
+                configured_imgsz_values.add(int(app_config.get("processor.binary_imgsz", 320) or 320))
+            except (TypeError, ValueError):
+                configured_imgsz_values.add(320)
+
+        if expected_ov_imgsz and any(v != expected_ov_imgsz for v in configured_imgsz_values):
+            mismatch = ",".join(str(v) for v in sorted(configured_imgsz_values))
+            mismatch_msg = (
+                "OpenVINO detector input-size mismatch: model expects "
+                f"{expected_ov_imgsz}, configured binary_imgsz values={mismatch}. "
+                "Align processor.binary_imgsz (+ adaptive profile overrides) with model export imgsz."
+            )
+            can_auto_fallback = _requested_backend == "auto"
+            if can_auto_fallback:
+                torch_binary_path = resolve_relative_to_processor_root(
+                    str(
+                        app_config.get(
+                            "processor.models.binary",
+                            "models/detection/weights/best.pt",
+                        ),
+                    ).strip(),
+                    processor_root,
+                )
+                if detector_weights_available(torch_binary_path):
+                    logger.error(
+                        "%s Auto fallback detector backend: openvino -> torch (%s)",
+                        mismatch_msg,
+                        torch_binary_path,
+                    )
+                    binary_path = torch_binary_path
+                    _inf_backend = "torch"
+                else:
+                    raise RuntimeError(mismatch_msg)
+            else:
+                raise RuntimeError(mismatch_msg)
+
     if not detector_weights_available(binary_path):
         raise FileNotFoundError(
             f"YOLO binary detector weights missing or invalid path: {binary_path}. "
@@ -162,6 +216,8 @@ def build_detection_stack(
         .strip()
         .lower()
     )
+    _binary_inference_device = resolve_inference_device(app_config)
+    _classifier_inference_device = resolve_classifier_inference_device(app_config)
 
     try:
         detection_strategy = TwoStageStrategy(
@@ -179,6 +235,8 @@ def build_detection_stack(
             weight_contract_mode=_weight_contract,
             inference_backend=_inf_backend,
             classifier_inference_backend=_cls_backend,
+            binary_inference_device=_binary_inference_device,
+            classifier_inference_device=_classifier_inference_device,
         )
     except Exception:
         can_fallback_detector = _requested_backend == "auto" and _inf_backend == "openvino"
@@ -238,12 +296,17 @@ def build_detection_stack(
             weight_contract_mode=_weight_contract,
             inference_backend=_inf_backend,
             classifier_inference_backend=_cls_backend,
+            binary_inference_device=_binary_inference_device,
+            classifier_inference_device=_classifier_inference_device,
         )
     logger.info(
-        "Inference startup: detector_backend=%s classifier_backend=%s device=%s binary_path=%s classifier_path=%s",
+        "Inference startup: detector_backend=%s classifier_backend=%s ultralytics_device_label=%s "
+        "binary_inference_device_kw=%s classifier_inference_device_kw=%s binary_path=%s classifier_path=%s",
         _inf_backend,
         _cls_backend,
         _inference_device_label(detection_strategy.binary_model),
+        _binary_inference_device or "(default)",
+        _classifier_inference_device or "(default)",
         binary_path,
         classifier_path,
     )
@@ -262,6 +325,7 @@ def build_detection_stack(
         _ms = measure_binary_detector_predict_ms(
             detection_strategy.binary_model,
             imgsz=max(320, _isz),
+            device=_binary_inference_device,
         )
         if _ms is not None:
             extra_cache = {"cold_start_predict_ms": round(float(_ms), 3)}
@@ -339,6 +403,9 @@ def build_detection_stack(
         generic_bird_min_frames=app_config.get("processor.generic_bird_min_frames", 3),
         generic_bird_min_area_frac=app_config.get("processor.generic_bird_min_area_frac", 0.01),
         generic_bird_min_best_frame_score=app_config.get("processor.generic_bird_min_best_frame_score", 6.5),
+        generic_rodent_min_frames=app_config.get("processor.generic_rodent_min_frames", 1),
+        generic_rodent_max_area_frac=app_config.get("processor.generic_rodent_max_area_frac", 1.0),
+        generic_rodent_min_best_frame_score=app_config.get("processor.generic_rodent_min_best_frame_score", 0.0),
     )
     decision_maker.pipeline_policy = dict(policy_snapshot)
     return frame_processor, decision_maker, merged_overrides

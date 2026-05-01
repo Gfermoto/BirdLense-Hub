@@ -131,7 +131,7 @@ See [INSTALL.md](./INSTALL.md) — “Deploy to server (`make deploy`)” and th
 
 ## Scenario 11: Research and model fine-tuning
 
-See [TRAINING.md](./TRAINING.md), [DATASETS.md](./DATASETS.md). Scripts: `scripts/datasets/`, merge → Colab.
+See [TRAINING.md](./TRAINING.md), [DATASETS.md](./DATASETS.md) (**Canonical paths** for merge vs `brg/` vs zip names). Scripts: `scripts/datasets/`, merge → Colab.
 
 ---
 
