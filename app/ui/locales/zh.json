@@ -1304,6 +1304,8 @@
     "nicknameField": "鸟类昵称",
     "nicknameFieldPlaceholder": "例如：小灰",
     "nicknameLabel": "昵称",
+    "nicknameSaveButton": "保存昵称",
+    "nicknameCancelButton": "取消",
     "nicknameSaved": "昵称已保存",
     "possibleSameBird": "可能是同一只鸟",
     "reidCrossCameraHint": "跨相机/目录更严格",

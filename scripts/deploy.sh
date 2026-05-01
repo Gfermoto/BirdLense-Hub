@@ -41,11 +41,28 @@ fi
 # 0.9. Сборка UI локально (обход ETIMEDOUT npm на сервере)
 echo "0.9. Сборка UI локально..."
 cd "$(dirname "$0")/.."
+node_major=""
+if command -v node >/dev/null 2>&1; then
+  node_major="$(node -p 'parseInt(process.versions.node.split(".")[0], 10)' 2>/dev/null || true)"
+fi
+if [[ -z "${node_major}" || "${node_major}" -lt 22 ]]; then
+  NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [ -s "${NVM_DIR}/nvm.sh" ]; then
+    # shellcheck disable=SC1090
+    . "${NVM_DIR}/nvm.sh"
+    if [ -f "app/ui/.nvmrc" ]; then
+      nvm use >/dev/null 2>&1 || nvm install >/dev/null 2>&1 || true
+    else
+      nvm use 22 >/dev/null 2>&1 || nvm install 22 >/dev/null 2>&1 || true
+    fi
+  fi
+fi
 command -v node >/dev/null 2>&1 || { echo "Ошибка: node не найден. Нужен Node.js 22+ для локальной сборки UI (см. app/ui/package.json engines)."; exit 1; }
 command -v npm >/dev/null 2>&1 || { echo "Ошибка: npm не найден. Нужен npm 10+ для локальной сборки UI."; exit 1; }
 node_major="$(node -p 'parseInt(process.versions.node.split(".")[0], 10)')"
 if [[ "${node_major}" -lt 22 ]]; then
-  echo "Ошибка: нужен Node.js 22+ для локальной сборки UI. Сейчас: $(node -v). Выполните: cd app/ui && nvm use" >&2
+  echo "Ошибка: нужен Node.js 22+ для локальной сборки UI. Сейчас: $(node -v)." >&2
+  echo "Подсказка: проверьте app/ui/.nvmrc и выполните: cd app/ui && nvm use" >&2
   exit 1
 fi
 (cd app/ui && npm ci --no-audit --no-fund && npm run build) || { echo "Ошибка: npm ci / npm run build не удались"; exit 1; }
