@@ -369,6 +369,23 @@ ml-run-action-e3-shadow:
 		--min-reid-available-ratio "$${ACTION_MIN_REID_AVAILABLE_RATIO:-0.90}" \
 		--max-reid-reject-proxy-ratio "$${ACTION_MAX_REID_REJECT_PROXY_RATIO:-0.50}"
 
+# Sweep E3 shadow report over multiple time windows and select best evidence window.
+# Example:
+#   make ml-run-action-e3-sweep ACTION_E3_DIR=/tmp/action_e3_sweep ACTION_E3_SWEEP_REPORT=/tmp/action_e3_sweep.json ACTION_E3_WINDOWS=24,48,72,120,168,336
+ml-run-action-e3-sweep:
+	@test -n "$${ACTION_E3_DIR:-}" || (echo "Set ACTION_E3_DIR=path/to/sweep_output_dir" >&2; exit 1)
+	@test -n "$${ACTION_E3_SWEEP_REPORT:-}" || (echo "Set ACTION_E3_SWEEP_REPORT=path/to/final_report.json" >&2; exit 1)
+	@python3 scripts/action/run_action_e3_shadow_sweep.py \
+		--runner-path scripts/action/run_action_e3_shadow_report.py \
+		--output-dir "$${ACTION_E3_DIR}" \
+		--windows "$${ACTION_E3_WINDOWS:-24,48,72,120,168,336}" \
+		--video-limit "$${ACTION_VIDEO_LIMIT:-1200}" \
+		--min-action-available-ratio "$${ACTION_MIN_ACTION_AVAILABLE_RATIO:-0.95}" \
+		--min-reid-available-ratio "$${ACTION_MIN_REID_AVAILABLE_RATIO:-0.90}" \
+		--max-reid-reject-proxy-ratio "$${ACTION_MAX_REID_REJECT_PROXY_RATIO:-0.50}" \
+		$$(test "$${ACTION_REQUIRE_SUGGESTIONS:-0}" = "1" && printf -- '--require-suggestions ') \
+		--output-json "$${ACTION_E3_SWEEP_REPORT}"
+
 # Benchmark action-model candidates on shared ground-truth JSONL.
 # Example:
 #   make ml-benchmark-action-candidates ACTION_GT=/tmp/gt.jsonl ACTION_PRED=/tmp/pred.jsonl ACTION_BENCHMARK_REPORT=/tmp/report.json

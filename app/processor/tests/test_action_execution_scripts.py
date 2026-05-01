@@ -62,6 +62,10 @@ class TestActionExecutionScripts(unittest.TestCase):
             "scripts/action/run_action_e3_shadow_report.py",
             "run_action_e3_shadow_report",
         )
+        cls.e3s_mod = _load_module(
+            "scripts/action/run_action_e3_shadow_sweep.py",
+            "run_action_e3_shadow_sweep",
+        )
 
     def test_export_action_seed_dataset(self):
         with tempfile.TemporaryDirectory() as td:
@@ -342,6 +346,17 @@ class TestActionExecutionScripts(unittest.TestCase):
         self.assertEqual(self.e3_mod._parse_activity_data(None), {})
         self.assertEqual(self.e3_mod._parse_activity_data("bad-json"), {})
         self.assertEqual(self.e3_mod._parse_activity_data('{"action":"confirm_species"}')["action"], "confirm_species")
+
+    def test_e3_sweep_best_window(self):
+        results = [
+            {"runner_ok": True, "data_available": True, "window_hours": 24, "suggest_same_total": 0, "matches_total": 0, "videos_evaluated": 100},
+            {"runner_ok": True, "data_available": True, "window_hours": 120, "suggest_same_total": 11, "matches_total": 11, "videos_evaluated": 360},
+            {"runner_ok": True, "data_available": True, "window_hours": 168, "suggest_same_total": 9, "matches_total": 9, "videos_evaluated": 380},
+        ]
+        best = self.e3s_mod._best_window(results)
+        self.assertIsNotNone(best)
+        assert best is not None
+        self.assertEqual(best["window_hours"], 120)
 
 
 if __name__ == "__main__":
