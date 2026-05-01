@@ -56,7 +56,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    root = Path(__file__).resolve().parents[2]
+    root_env = os.environ.get('BIRDLENSE_ROOT', '').strip()
+    if root_env:
+        root = Path(root_env).resolve()
+    else:
+        p = Path(__file__).resolve()
+        root = p.parents[2] if len(p.parents) >= 3 else Path.cwd().resolve()
     _bootstrap_imports(root)
 
     from app import create_app
