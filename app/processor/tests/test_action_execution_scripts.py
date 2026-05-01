@@ -58,6 +58,10 @@ class TestActionExecutionScripts(unittest.TestCase):
             "scripts/action/run_action_e2_pipeline.py",
             "run_action_e2_pipeline",
         )
+        cls.e3_mod = _load_module(
+            "scripts/action/run_action_e3_shadow_report.py",
+            "run_action_e3_shadow_report",
+        )
 
     def test_export_action_seed_dataset(self):
         with tempfile.TemporaryDirectory() as td:
@@ -333,6 +337,11 @@ class TestActionExecutionScripts(unittest.TestCase):
             self.assertEqual(rc, 0)
             report = json.loads(out.read_text(encoding="utf-8"))
             self.assertEqual(report["recommendation"]["best_model_id"], "m1")
+
+    def test_e3_activity_data_parse(self):
+        self.assertEqual(self.e3_mod._parse_activity_data(None), {})
+        self.assertEqual(self.e3_mod._parse_activity_data("bad-json"), {})
+        self.assertEqual(self.e3_mod._parse_activity_data('{"action":"confirm_species"}')["action"], "confirm_species")
 
 
 if __name__ == "__main__":
