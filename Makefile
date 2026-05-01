@@ -341,6 +341,21 @@ ml-run-action-e1:
 		$$(test -n "$${ACTION_ANN_B:-}" && printf -- '--agreement-ann-b %s ' "$${ACTION_ANN_B}") \
 		--min-kappa "$${ACTION_MIN_KAPPA:-0.75}"
 
+# Run consolidated E2 benchmark/recommendation report.
+# Example:
+#   make ml-run-action-e2 ACTION_GT=/tmp/action_gt.jsonl ACTION_PRED=/tmp/action_pred.jsonl ACTION_E2_REPORT=/tmp/action_e2_report.json
+ml-run-action-e2:
+	@test -n "$${ACTION_GT:-}" || (echo "Set ACTION_GT=path/to/ground_truth.jsonl" >&2; exit 1)
+	@test -n "$${ACTION_PRED:-}" || (echo "Set ACTION_PRED=path/to/predictions.jsonl" >&2; exit 1)
+	@test -n "$${ACTION_E2_REPORT:-}" || (echo "Set ACTION_E2_REPORT=path/to/output_report.json" >&2; exit 1)
+	@python3 scripts/action/run_action_e2_pipeline.py \
+		--ground-truth-jsonl "$${ACTION_GT}" \
+		--predictions-jsonl "$${ACTION_PRED}" \
+		--output-json "$${ACTION_E2_REPORT}" \
+		--tolerance-sec "$${ACTION_TOLERANCE_SEC:-1.5}" \
+		--quality-min-f1 "$${ACTION_QUALITY_MIN_F1:-0.70}" \
+		--quality-max-delay-p95-sec "$${ACTION_QUALITY_MAX_DELAY_P95_SEC:-1.5}"
+
 # Benchmark action-model candidates on shared ground-truth JSONL.
 # Example:
 #   make ml-benchmark-action-candidates ACTION_GT=/tmp/gt.jsonl ACTION_PRED=/tmp/pred.jsonl ACTION_BENCHMARK_REPORT=/tmp/report.json

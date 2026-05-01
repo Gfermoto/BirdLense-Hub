@@ -54,6 +54,10 @@ class TestActionExecutionScripts(unittest.TestCase):
             "scripts/action/run_action_e1_pipeline.py",
             "run_action_e1_pipeline",
         )
+        cls.e2_mod = _load_module(
+            "scripts/action/run_action_e2_pipeline.py",
+            "run_action_e2_pipeline",
+        )
 
     def test_export_action_seed_dataset(self):
         with tempfile.TemporaryDirectory() as td:
@@ -288,6 +292,47 @@ class TestActionExecutionScripts(unittest.TestCase):
             report = json.loads((outdir / "action_e1_report.json").read_text(encoding="utf-8"))
             self.assertTrue(report["dod"]["seed_manifest_present"])
             self.assertTrue(report["dod"]["kappa_measured"])
+
+    def test_run_action_e2_pipeline(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            gt = base / "gt.jsonl"
+            pred = base / "pred.jsonl"
+            out = base / "e2_report.json"
+            gt_rows = [
+                {"video_id": 1, "action_label": "arrival", "time_offset": 1.0},
+                {"video_id": 1, "action_label": "departure", "time_offset": 5.0},
+            ]
+            pred_rows = [
+                {"video_id": 1, "label": "arrival", "time_offset": 1.0, "model_id": "m1"},
+                {"video_id": 1, "label": "departure", "time_offset": 5.0, "model_id": "m1"},
+                {"video_id": 1, "label": "arrival", "time_offset": 3.5, "model_id": "m2"},
+            ]
+            gt.write_text(
+                "\n".join(json.dumps(r) for r in gt_rows) + "\n",
+                encoding="utf-8",
+            )
+            pred.write_text(
+                "\n".join(json.dumps(r) for r in pred_rows) + "\n",
+                encoding="utf-8",
+            )
+            prev = sys.argv
+            try:
+                sys.argv = [
+                    "run_action_e2_pipeline.py",
+                    "--ground-truth-jsonl",
+                    str(gt),
+                    "--predictions-jsonl",
+                    str(pred),
+                    "--output-json",
+                    str(out),
+                ]
+                rc = self.e2_mod.main()
+            finally:
+                sys.argv = prev
+            self.assertEqual(rc, 0)
+            report = json.loads(out.read_text(encoding="utf-8"))
+            self.assertEqual(report["recommendation"]["best_model_id"], "m1")
 
 
 if __name__ == "__main__":
