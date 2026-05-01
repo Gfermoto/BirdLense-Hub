@@ -317,6 +317,30 @@ ml-prepare-action-calibration:
 		--annotator-a "$${ACTION_CALIB_ANNOTATOR_A:-annotator_a}" \
 		--annotator-b "$${ACTION_CALIB_ANNOTATOR_B:-annotator_b}"
 
+# Run full E1 artifact pipeline (seed + calibration + agreement report).
+# Example:
+#   make ml-run-action-e1 ACTION_DB=app/data/db/birdlense.db ACTION_E1_DIR=/tmp/action_e1
+ml-run-action-e1:
+	@test -n "$${ACTION_DB:-}" || (echo "Set ACTION_DB=path/to/birdlense.db" >&2; exit 1)
+	@test -n "$${ACTION_E1_DIR:-}" || (echo "Set ACTION_E1_DIR=path/to/output_dir" >&2; exit 1)
+	@python3 scripts/action/run_action_e1_pipeline.py \
+		--db-path "$${ACTION_DB}" \
+		--output-dir "$${ACTION_E1_DIR}" \
+		--limit-videos "$${ACTION_LIMIT_VIDEOS:-400}" \
+		--boundary-ms "$${ACTION_BOUNDARY_MS:-300}" \
+		--min-track-duration-ms "$${ACTION_MIN_TRACK_DURATION_MS:-300}" \
+		--min-tracks "$${ACTION_MIN_TRACKS:-1}" \
+		--min-weight-delta-kg "$${ACTION_MIN_WEIGHT_DELTA_KG:-0.001}" \
+		$$(test "$${ACTION_REQUIRE_WEIGHT_DELTA:-0}" = "1" && printf -- '--require-weight-delta') \
+		--annotator-id "$${ACTION_ANNOTATOR_ID:-bootstrap_weak_label}" \
+		--calib-max-videos "$${ACTION_CALIB_MAX_VIDEOS:-60}" \
+		--calib-segments-per-video "$${ACTION_CALIB_SEGMENTS_PER_VIDEO:-2}" \
+		--calib-annotator-a "$${ACTION_CALIB_ANNOTATOR_A:-annotator_a}" \
+		--calib-annotator-b "$${ACTION_CALIB_ANNOTATOR_B:-annotator_b}" \
+		$$(test -n "$${ACTION_ANN_A:-}" && printf -- '--agreement-ann-a %s ' "$${ACTION_ANN_A}") \
+		$$(test -n "$${ACTION_ANN_B:-}" && printf -- '--agreement-ann-b %s ' "$${ACTION_ANN_B}") \
+		--min-kappa "$${ACTION_MIN_KAPPA:-0.75}"
+
 # Benchmark action-model candidates on shared ground-truth JSONL.
 # Example:
 #   make ml-benchmark-action-candidates ACTION_GT=/tmp/gt.jsonl ACTION_PRED=/tmp/pred.jsonl ACTION_BENCHMARK_REPORT=/tmp/report.json

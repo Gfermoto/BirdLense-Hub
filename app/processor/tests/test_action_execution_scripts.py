@@ -50,6 +50,10 @@ class TestActionExecutionScripts(unittest.TestCase):
             "scripts/action/prepare_action_calibration_pack.py",
             "prepare_action_calibration_pack",
         )
+        cls.e1_mod = _load_module(
+            "scripts/action/run_action_e1_pipeline.py",
+            "run_action_e1_pipeline",
+        )
 
     def test_export_action_seed_dataset(self):
         with tempfile.TemporaryDirectory() as td:
@@ -220,6 +224,70 @@ class TestActionExecutionScripts(unittest.TestCase):
             self.assertTrue((outdir / "action_calibration_subset.jsonl").exists())
             self.assertTrue((outdir / "action_calibration_annotator_a.jsonl").exists())
             self.assertTrue((outdir / "action_calibration_annotator_b.jsonl").exists())
+
+    def test_run_action_e1_pipeline(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            db_path = base / "birdlense.db"
+            outdir = base / "e1"
+
+            conn = sqlite3.connect(str(db_path))
+            conn.execute(
+                """
+                CREATE TABLE video (
+                    id INTEGER PRIMARY KEY,
+                    scales_weight_delta_kg REAL,
+                    video_path TEXT
+                )
+                """
+            )
+            conn.execute(
+                """
+                CREATE TABLE video_species (
+                    id INTEGER PRIMARY KEY,
+                    video_id INTEGER,
+                    track_id INTEGER,
+                    start_time REAL,
+                    end_time REAL
+                )
+                """
+            )
+            conn.execute(
+                "INSERT INTO video (id, scales_weight_delta_kg, video_path) VALUES (1, 0.0, 'cam-a/clip-1.mp4')"
+            )
+            conn.execute(
+                "INSERT INTO video_species (id, video_id, track_id, start_time, end_time) VALUES (1, 1, 10, 1.0, 2.0)"
+            )
+            conn.execute(
+                "INSERT INTO video_species (id, video_id, track_id, start_time, end_time) VALUES (2, 1, 10, 2.5, 4.0)"
+            )
+            conn.commit()
+            conn.close()
+
+            root = Path(__file__).resolve().parents[3]
+            e1_path = root / "scripts" / "action" / "run_action_e1_pipeline.py"
+            prev = sys.argv
+            try:
+                sys.argv = [
+                    "run_action_e1_pipeline.py",
+                    "--db-path",
+                    str(db_path),
+                    "--output-dir",
+                    str(outdir),
+                    "--limit-videos",
+                    "20",
+                    "--calib-max-videos",
+                    "10",
+                    "--calib-segments-per-video",
+                    "2",
+                ]
+                rc = self.e1_mod.main()
+            finally:
+                sys.argv = prev
+            self.assertEqual(rc, 0)
+            report = json.loads((outdir / "action_e1_report.json").read_text(encoding="utf-8"))
+            self.assertTrue(report["dod"]["seed_manifest_present"])
+            self.assertTrue(report["dod"]["kappa_measured"])
 
 
 if __name__ == "__main__":
