@@ -1,5 +1,7 @@
 # Dataset Scripts
 
+**Paths:** merge по умолчанию → `scripts/datasets/binary/merged/` (`make dataset-merge-three-class`). Папка `scripts/datasets/brg/` — для упаковки в ZIP под Drive (`pack_brg_for_gdrive.py` → `datasets/BirdLense_detector_brg_<UTC>.zip`). Подробная таблица: [docs/DATASETS.md](../../docs/DATASETS.md) (блок canonical paths / актуальные пути).
+
 Scripts for preparing bird detection training datasets. Uses [NABirds](https://dl.allaboutbirds.org/nabirds) as the base dataset.
 
 ## EU birds: birds-525 + iNaturalist (формат Scientific (Common))
@@ -75,6 +77,35 @@ Hard-negatives manifest checks (schema + duplicates + optional file existence):
 ```bash
 make dataset-verify-hard-negatives \
   MANIFEST=scripts/datasets/example_hard_negatives_manifest.json
+```
+
+## pack_brg_for_gdrive.py
+
+Собрать **`brg/`** в один ZIP под облако (Google Drive и т.д.): `dataset.yaml`, все сплиты, внутри архива `brg/README_UPLOAD.txt` с командой train. Выход: **`datasets/BirdLense_detector_brg_<UTC>.zip`** (корневой `datasets/` в `.gitignore`).
+
+Стартовые веса **`bl_best.pt`** и состав датасета **`brg`**: [docs/DATASETS.md](../../docs/DATASETS.md) / [DATASETS.ru.md](../../docs/DATASETS.ru.md); Colab: [docs/ML_DETECTOR_COLAB.md](../../docs/ML_DETECTOR_COLAB.md).
+
+```bash
+python3 scripts/datasets/pack_brg_for_gdrive.py
+python3 scripts/datasets/pack_brg_for_gdrive.py --out /tmp/brg.zip
+```
+
+## import_hub_background_folder.py
+
+Локальные кадры фона (например снимки с прод-камеры без животных) → **`binary/background`**: пустые YOLO-лейблы, префикс `hubbg_`, предпочтение полным кадрам вместо `*_thumb*`.
+
+```bash
+cd scripts/datasets
+python3 import_hub_background_folder.py --source detector/Background
+```
+
+## import_roboflow_bird_feeder_birds.py
+
+Импорт ZIP экспорта Roboflow YOLO (например **Bird-Feeder** с Universe) в **`binary/birds`**: все виды птиц в разметке сводятся в **один класс** `0` (bbox сохраняются), префикс имён `rfbf_`, сплит `valid/` → `val/`. Лицензия набора — проверьте на странице проекта (v6: CC BY 4.0).
+
+```bash
+cd scripts/datasets
+python3 import_roboflow_bird_feeder_birds.py --zip ../../datasets/Bird-Feeder.v6i.yolov11.zip
 ```
 
 ## bootstrap_detector_yolo.py

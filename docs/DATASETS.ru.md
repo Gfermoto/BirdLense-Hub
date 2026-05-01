@@ -8,6 +8,22 @@
 
 ---
 
+## Актуальные пути (репозиторий сейчас)
+
+Длинные списки команд не дублировать — см. **`scripts/datasets/README.md`**.
+
+| Что | Путь / команда |
+|-----|----------------|
+| Входы детектора (YOLO-каталоги) | `scripts/datasets/binary/birds/`, `binary/rodent/`, `binary/background/` |
+| **Выход слияния по умолчанию** (Makefile) | `scripts/datasets/binary/merged/` — `make dataset-merge-three-class` |
+| Опциональная папка **под ZIP / Colab** | `scripts/datasets/brg/` — тот же формат, что и `merged/`; заполнить **копией из `binary/merged/`** после обогащения/dedupe **или** запуск `merge_datasets_three_class.py` с **`--output-dir brg`** (Makefile всегда пишет в `binary/merged/`) |
+| Упаковка `brg/` в архив | `python3 scripts/datasets/pack_brg_for_gdrive.py` → **`datasets/BirdLense_detector_brg_<UTC>.zip`** в корне репо (`datasets/` в `.gitignore`) |
+| Раскладка на диске | `scripts/datasets/DETECTOR_DATA_LAYOUT.md`, `scripts/datasets/binary/README.md` |
+| ZIP на Hugging Face | Другие имена файлов (`detector_merged_*` и т.д.) — [BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main); это **не** то же имя, что локальный `BirdLense_detector_brg_*.zip` |
+| Классификатор (merged локально) | Часто `datasets/merged_cls/` в корне — в `.gitignore`; см. [TRAINING](./TRAINING.ru.md) |
+
+---
+
 ## Ворота подготовки CV / ML (#377)
 
 Перед стартом эпика CV / ML держите контракт detector/classifier из
@@ -21,10 +37,10 @@ Background / hard-negative классы детектора — только dete
 
 ## Трёхклассовый детектор — эпик [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367), фаза 1
 
-Сборка YOLO-детекции **Bird / Rodent / Background** (согласовано с `detector_labels.normalize_detector_label`). Нужны три подпапки в **`scripts/datasets/binary/`** — **`birds/`**, **`rodent/`**, **`background/`** (после `merge_datasets_binary.py`, `convert_oidv4_rodent_to_yolo.py` и вашего фона).
+Сборка YOLO-детекции **Bird / Rodent / Background** (согласовано с `detector_labels.normalize_detector_label`). Нужны три подпапки в **`scripts/datasets/binary/`** — **`birds/`**, **`rodent/`**, **`background/`** (bootstrap, Roboflow, OIDv4, фон с камеры — см. **`scripts/datasets/README.md`**).
 
 - Точка входа: **`make dataset-merge-three-class`** или `python3 scripts/datasets/merge_datasets_three_class.py --help`.
-- Выход: `scripts/datasets/binary/merged/dataset.yaml` и объединённые сплиты.
+- Выход по умолчанию: `scripts/datasets/binary/merged/dataset.yaml` и сплиты. Папка **`scripts/datasets/brg/`** — только для упаковки под Drive (см. блок **Актуальные пути** выше).
 - Опубликованные архивы: [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)  
   (`detector_merged_balanced_20260429.zip`, `detector_merged_full_20260429.zip`).
 - Манифест hard negatives (учёт курируемых негативов): схема `scripts/datasets/schemas/hard_negatives_manifest_v1.schema.json`, пример `example_hard_negatives_manifest.json`; при слиянии можно передать `--manifest-out`.
@@ -40,6 +56,31 @@ Background / hard-negative классы детектора — только dete
 - **Stage B (разнообразие):** fine-tune с весов Stage A на `merged` (full)
 
 Дальнейшие шаги эпика — в [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) / [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368).
+
+### Датасет `brg` и ZIP для Colab / Drive — происхождение и обогащение
+
+**Стартовые веса для дообучения в Colab:** положите на Drive **`bl_best.pt`** — актуальный чекпоинт **YOLO11n detection** с хаба (или копию из `app/processor/models/detection/weights/`). От него идёт fine-tune по инструкции [ML_DETECTOR_COLAB.ru.md](./ML_DETECTOR_COLAB.ru.md) (два этапа с `freeze`, затем экспорт OpenVINO). Альтернатива «с нуля» на том же архитектуре: **`YOLO("yolo11n.pt")`** из Ultralytics (автоскачивание), без отдельного файла на Drive.
+
+**Откуда взяты птицы и «мыши» (грызуны) в `brg`:**
+
+- **Bird:** две линии данных: (1) **COCO 2017**, один класс птицы (`bird`), выгрузка через **`bootstrap_detector_yolo.py`** (FiftyOne); (2) обогащение bbox птиц из **Roboflow Universe** — экспорт в формате **YOLOv11**, импорт **`import_roboflow_bird_feeder_birds.py`** (все исходные классы в разметке сводятся в один класс bird). В использованной сборке ZIP брали с **[Bird-Feeder](https://universe.roboflow.com/meproject-pcsly/bird-feeder-hhjks/dataset/6)** (пример файла: `Bird-Feeder.v6i.yolov11.zip`; в метаданных экспорта — **CC BY 4.0**). Тот же скрипт подходит для любого аналогичного Roboflow ZIP после проверки лицензии на странице проекта; пример другого публичного набора про птиц: **[birds-yolo](https://universe.roboflow.com/birds-detection-2fyqw/birds-yolo)**.
+
+- **Rodent:** в этом пайплайне **не** из Roboflow. Боксы грызунов и близких видов — из **Open Images V6** через FiftyOne и **`bootstrap_detector_yolo.py`**; по умолчанию классы **`Squirrel`, `Mouse`, `Rat`, `Hamster`** (список задаётся **`--rodent-classes`**). Отдельно можно подмешать экспорт **OIDv4 Toolkit** в раскладку `binary/rodent/` — **`convert_oidv4_rodent_to_yolo.py`** (см. [scripts/datasets/README.md](../scripts/datasets/README.md)).
+
+- **Background:** кадры COCO без птицы и пустые лейблы (bootstrap) плюс кадры из папки оператора (**`import_hub_background_folder.py`**, см. этап 4 в таблице).
+
+**Этапы сборки слитого `brg` (Bird / Rodent / Background):**
+
+| Этап | Источник / действие |
+|------|---------------------|
+| 1 | Локальное дерево **`scripts/datasets/binary/`**: птицы из **COCO 2017** (класс bird), грызуны из **Open Images V6** (классы вроде Squirrel/Mouse/Rat/Hamster), фон — кадры COCO **без** птицы с пустыми YOLO-лейблами. Наполнение: **`bootstrap_detector_yolo.py`** (FiftyOne). |
+| 2 | Слияние в три класса Hub: **`merge_datasets_three_class.py`**. При **`make dataset-merge-three-class`** результат в **`scripts/datasets/binary/merged/`**. Дерево **`brg/`** для ZIP — копия после следующих шагов или **`--output-dir brg`** при ручном вызове скрипта. |
+| 3 | **Обогащение птицами «у кормушки»:** ZIP экспорта Roboflow **YOLOv11** (проект Bird-Feeder на Universe, версия v6 и др.; в метаданных экспорта — **CC BY 4.0**). Импорт в `binary/birds`: **`import_roboflow_bird_feeder_birds.py`** — все исходные виды в разметке сводятся в **один класс** bird (id 0). Пример карточки набора: [Bird-Feeder на Roboflow Universe](https://universe.roboflow.com/meproject-pcsly/bird-feeder-hhjks/dataset/6). |
+| 4 | **Обогащение фоном реального домена:** кадры из папки оператора (например **`scripts/datasets/detector/Background`**) → **`import_hub_background_folder.py`** в `binary/background` (пустые `.txt`). |
+| 5 | **Дедупликация** одинаковых изображений по SHA256 внутри сплита: **`dedupe_yolo_images.py`**. |
+| 6 | **Упаковка для Google Drive:** **`pack_brg_for_gdrive.py`** → архив вида **`BirdLense_detector_brg_<UTC>.zip`**. |
+
+Colab под этот ZIP и **`bl_best.pt`**: [ML_DETECTOR_COLAB.ru.md](./ML_DETECTOR_COLAB.ru.md). Скрипты и команды: [scripts/datasets/README.md](../scripts/datasets/README.md).
 
 ---
 
@@ -96,7 +137,7 @@ make validate-weights DATASET_INFO=/path/to/dataset_info.json CLASS_NAMES=/path/
 
 | Компонент | Версия | Дообучено на |
 |-----------|--------|--------------|
-| **Детектор** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel (данные обучения; в рантайме бинарник **птица / грызун** → метка хаба **Rodent**) |
+| **Детектор** | YOLO11n | У шипнутых весов часто указывают линейку NABirds + COCO birds + OID rodent/squirrel; в хабе грызуноподобные боксы → **Rodent**. **Новые сборки** — три класса **Bird / Rodent / Background** (эпик [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) выше), не только эта строка таблицы. |
 | **Классификатор EU** | YOLO11n-cls | birds-525 + iNaturalist (~491 вид) — активна в `best.pt` |
 | **Классификатор US** | YOLO11n-cls | NABirds (~400 видов) — резерв в `best_US.pt` |
 
@@ -120,6 +161,8 @@ make validate-weights DATASET_INFO=/path/to/dataset_info.json CLASS_NAMES=/path/
 
 ## 3. Скрипты (`scripts/datasets/`)
 
+Полный перечень и детекторный пайплайн — **`scripts/datasets/README.md`**. Ниже — краткий индекс.
+
 ### EU-классификатор (birds-525 + iNaturalist)
 
 | Скрипт | Назначение |
@@ -130,13 +173,15 @@ make validate-weights DATASET_INFO=/path/to/dataset_info.json CLASS_NAMES=/path/
 | `merge_classification_datasets.py` | Объединить датасеты |
 | `download_and_merge_all.sh` | Полный пайплайн → merged_cls |
 
-### Детектор (legacy)
+### Детектор — старые / вспомогательные скрипты
+
+Для части источников всё ещё полезно; **основной трёхклассовый путь** — `bootstrap_detector_yolo.py` + импорты + **`merge_datasets_three_class.py`** (см. README).
 
 | Скрипт | Назначение |
 |--------|------------|
 | `convert_nabirds_to_yolo.py` | NABirds → YOLO |
 | `download_coco_birds.py` | COCO birds — для binary |
-| `merge_datasets_binary.py` | NABirds + COCO → binary |
+| `merge_datasets_binary.py` | NABirds + COCO → один класс «птица» (вход в старые сценарии) |
 
 ### Модели (`app/processor/models/`)
 
@@ -160,7 +205,7 @@ make validate-weights DATASET_INFO=/path/to/dataset_info.json CLASS_NAMES=/path/
 | **[34data/birds-525-species](https://huggingface.co/datasets/34data/birds-525-species)** | 525 | Hugging Face |
 | **iNaturalist Europe** | Тысячи | [API](https://api.inaturalist.org/v1/docs/), `place_id=96372` |
 
-Шипнутый детектор обучен на **NABirds + COCO birds + OIDv4 squirrel** (имя класса в датасете Open Images); в рантайме хаб нормализует выход в **Rodent**. Шипнутый EU-классификатор — на **birds-525 + iNaturalist Europe (~490/491 видов)**.
+Шипнутый детектор часто описывают как обученный на **NABirds + COCO birds + OIDv4 squirrel** (имена классов Open Images); хаб нормализует «грызуноподобное» в **Rodent**. Эта формулировка может быть старше рецепта **Bird / Rodent / Background** (§ эпик #367 выше). Шипнутый EU-классификатор — на **birds-525 + iNaturalist Europe (~490/491 видов)**.
 
 ### Северная Америка (не дают улучшения по EU)
 

@@ -40,6 +40,7 @@ make deploy
 
 1. Синхронизирует код (исключая **`datasets/`**, **`app/data/`** целиком (как в CI), **`app/.env`**, **`.tools/`** (локальный CodeQL), venv и `site/` — данные на сервере не перезаписываются rsync)
 2. На сервере: `make stop` → `make build` → `make start`
+3. Intel iGPU на том же хосте: при `/dev/dri/renderD*` генерируется `app/docker-compose.override.yml` (DRI, `group_add`, `LIBVA_DRIVER_NAME=iHD`). В образе OpenCL ICD для OpenVINO на GPU. Опционально `BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=1` — упасть, если override не создался.
 
 ## Данные на сервере (не теряются)
 
@@ -85,3 +86,16 @@ Host birdlense-vps
 - `app/data/` — записи и БД
 - `app/app_config/user_config.yaml` — настройки
 - Старые контейнеры — удаляются перед деплоем по логике `deploy.sh`
+
+## BRG веса + OpenVINO на Intel GPU (площадка)
+
+1. Локально: положить `best.pt` и каталог `best_openvino_model/` под `app/processor/models/detection/weights/` (как после распаковки zip). Резерв старого набора — отдельная папка на сервере или `weights_backup_*`.
+2. `make deploy` подтягивает код и артефакты в образ; rsync **не** удаляет защищённые `*.pt` на сервере без замены с вашей стороны — при смене файлов локально они **обновятся** при синхронизации.
+3. На сервере в **`user_config.yaml`** (деплой его не затирает):  
+   `processor.models.binary_openvino: models/detection/weights/best_openvino_model`,  
+   `processor.inference_backend: openvino` (или `auto` после smoke),  
+   `processor.inference_device: intel:gpu`,  
+   `processor.binary_imgsz: 640` под экспорт.
+4. Либо то же через **`app/.env`**: `BIRDLENSE_INFERENCE_DEVICE=intel:gpu`, при необходимости `BIRDLENSE_BINARY_OPENVINO_PATH=...`.
+5. Intel iGPU: деплой уже вызывает `docker-compose-intel-override-gen.sh` при наличии `renderD*`; нужны драйверы и рабочий `/dev/dri` в контейнере.
+6. Сравнение рамок со старым бинарником офлайн: `scripts/compare_detector_bboxes.py` (два `.pt`, те же ролики); полный пайплайн с треками: `scripts/benchmark-track-regen.py` с `--inference-backend` / `--inference-device`.

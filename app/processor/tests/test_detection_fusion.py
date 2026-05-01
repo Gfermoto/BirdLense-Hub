@@ -931,6 +931,43 @@ def test_arbitration_downgrades_strong_unresolved_conflict_to_review_only():
     assert out[0]['outcome_bucket'] == 'review_only'
 
 
+def test_arbitration_keeps_visually_anchored_species_when_gap_is_small():
+    rows = [
+        {
+            **_base_detection('Great Tit'),
+            'track_id': 1,
+            'accepted': True,
+            'visit_eligible': True,
+            'confidence': 0.67,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_detector_generic',
+            'start_time': 0.0,
+            'end_time': 6.0,
+            'detection_provider': 'yolo',
+            'contributing_providers': ['yolo'],
+            'classifier_confidence': 0.20,
+        },
+        {
+            **_base_detection('Blue Tit'),
+            'track_id': -2,
+            'accepted': True,
+            'visit_eligible': True,
+            'confidence': 0.53,
+            'decision_kind': 'frigate_standalone',
+            'decision_reason': 'frigate_standalone',
+            'start_time': 0.2,
+            'end_time': 6.2,
+            'detection_provider': 'frigate',
+            'contributing_providers': ['frigate'],
+            'classifier_confidence': None,
+        },
+    ]
+    out = apply_hypothesis_arbitration(rows)
+    assert len(out) == 1
+    assert out[0]['species_name'] == 'Great Tit'
+    assert out[0]['decision_reason'] == 'species_kept_by_visual_anchor'
+
+
 def test_arbitration_absorbs_generic_bird_into_strong_frigate_species():
     rows = [
         {
@@ -951,7 +988,7 @@ def test_arbitration_absorbs_generic_bird_into_strong_frigate_species():
             'track_id': -1,
             'species_name': 'Eurasian Jay',
             'species': 'Eurasian Jay',
-            'confidence': 0.79,
+            'confidence': 0.84,
             'start_time': 0.0,
             'end_time': 48.2,
             'detection_provider': 'frigate',
@@ -1027,7 +1064,7 @@ def test_build_fused_video_detections_absorbs_generic_bird_into_frigate_species(
         {
             'source': 'frigate',
             'species': 'Eurasian Jay',
-            'confidence': 0.79296875,
+            'confidence': 0.86296875,
             'timestamp': start.isoformat(),
         },
         {

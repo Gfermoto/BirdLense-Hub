@@ -1,4 +1,4 @@
-"""Выбор backend инференса: torch (дефолт), OpenVINO; ONNX Runtime — позже (#371)."""
+"""Выбор backend инференса: OpenVINO (дефолт), torch; ONNX Runtime — позже (#371)."""
 
 from __future__ import annotations
 
@@ -34,13 +34,31 @@ def _resolve_backend(
 
 def resolve_inference_backend(app_config: Mapping[str, Any] | None = None) -> str:
     """
-    Приоритет: ``BIRDLENSE_INFERENCE_BACKEND``, затем ``processor.inference_backend``, иначе ``torch``.
+    Приоритет: ``BIRDLENSE_INFERENCE_BACKEND``, затем ``processor.inference_backend``, иначе ``openvino``.
     """
     return _resolve_backend(
         app_config,
         env_key="BIRDLENSE_INFERENCE_BACKEND",
         config_key="processor.inference_backend",
+        default="openvino",
     )
+
+
+def resolve_inference_device(app_config: Mapping[str, Any] | None = None) -> str | None:
+    """
+    Устройство для вызовов Ultralytics ``track`` / ``predict`` у бинарного детектора.
+
+    Приоритет: ``BIRDLENSE_INFERENCE_DEVICE``, затем ``processor.inference_device``.
+    Пустая строка → ``None`` (поведение Ultralytics по умолчанию).
+
+    Примеры для OpenVINO на Intel: ``intel:gpu``, ``intel:cpu``, ``intel:npu``
+    (см. документацию Ultralytics OpenVINO).
+    """
+    raw = (os.environ.get("BIRDLENSE_INFERENCE_DEVICE") or "").strip()
+    if not raw and app_config is not None:
+        cfg = app_config.get("processor.inference_device")
+        raw = str(cfg).strip() if cfg is not None else ""
+    return raw or None
 
 
 def resolve_classifier_inference_backend(
@@ -50,13 +68,33 @@ def resolve_classifier_inference_backend(
     Отдельный backend для классификатора.
 
     Приоритет: ``BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND``, затем
-    ``processor.classifier_inference_backend``, иначе ``torch``.
+    ``processor.classifier_inference_backend``, иначе ``openvino``.
     """
     return _resolve_backend(
         app_config,
         env_key="BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND",
         config_key="processor.classifier_inference_backend",
+        default="openvino",
     )
+
+
+def resolve_classifier_inference_device(
+    app_config: Mapping[str, Any] | None = None,
+) -> str | None:
+    """
+    Device for species classifier inference.
+
+    Priority: ``BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE``, then
+    ``processor.classifier_inference_device``, then detector device
+    resolver (``resolve_inference_device``).
+    """
+    raw = (os.environ.get("BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE") or "").strip()
+    if not raw and app_config is not None:
+        cfg = app_config.get("processor.classifier_inference_device")
+        raw = str(cfg).strip() if cfg is not None else ""
+    if raw:
+        return raw
+    return resolve_inference_device(app_config)
 
 
 def assert_backend_supported(backend: str) -> None:

@@ -105,7 +105,7 @@ Draft config names reserved for the epic:
 | Key / env overlay | Purpose | Initial value |
 |-------------------|---------|---------------|
 | `processor.inference_backend` / `BIRDLENSE_INFERENCE_BACKEND` | backend selector | `torch` (also `openvino` for binary IR) |
-| `processor.inference_device` / `BIRDLENSE_INFERENCE_DEVICE` | device hint (`cpu`, `cuda`, `auto`, `openvino:CPU`) | `auto` |
+| `processor.inference_device` / `BIRDLENSE_INFERENCE_DEVICE` | passed to Ultralytics `track`/`predict` for the **binary** detector | empty (default); OpenVINO on Intel GPU: `intel:gpu` (also `intel:cpu`, `intel:npu` per Ultralytics docs) |
 | `processor.inference_precision` / `BIRDLENSE_INFERENCE_PRECISION` | precision hint (`fp32`, `fp16`, `int8`, `auto`) | `auto` |
 | `processor.models.binary` | Torch `.pt` binary detector path | existing path |
 | `processor.models.binary_openvino` | OpenVINO export dir or `.xml` when backend is `openvino` | empty until configured |
@@ -121,7 +121,7 @@ artifacts are added, prefer backend-specific optional keys under
 ## 3. Data and reproducibility
 
 The train-ready export path in `docs/DATASETS.md` is the canonical baseline for
-Phase 1:
+Phase 1 (Library → classifier). **On-disk detector prep** (`scripts/datasets/binary/merged` vs **`brg/`** vs HF/local zip filenames) is summarized in the **Canonical paths** table at the top of the same file.
 
 - use `ready_for_train=1` for automatic `train/val` split;
 - use `strict_quality=1` for rollout candidates;

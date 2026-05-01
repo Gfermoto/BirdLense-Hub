@@ -22,6 +22,8 @@ services:
       context: ..
       dockerfile: app/Dockerfile
     container_name: birdlense
+    # YOLO/OpenCV в процессоре: дефолтный 64 MB /dev/shm даёт лишние warning и реже — артефакты.
+    shm_size: "2gb"
     depends_on:
       redis:
         condition: service_healthy

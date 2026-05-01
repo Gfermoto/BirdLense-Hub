@@ -9,7 +9,12 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-def measure_binary_detector_predict_ms(model: Any, *, imgsz: int = 320) -> float | None:
+def measure_binary_detector_predict_ms(
+    model: Any,
+    *,
+    imgsz: int = 320,
+    device: str | None = None,
+) -> float | None:
     """
     Один холодный ``predict`` на нулевом кадре (640×640 RGB).
 
@@ -27,7 +32,10 @@ def measure_binary_detector_predict_ms(model: Any, *, imgsz: int = 320) -> float
         return None
     t0 = time.perf_counter()
     try:
-        model.predict(img, verbose=False, imgsz=int(imgsz))
+        pred_kw: dict[str, Any] = {"verbose": False, "imgsz": int(imgsz)}
+        if device:
+            pred_kw["device"] = device
+        model.predict(img, **pred_kw)
     except Exception as e:
         logger.debug("auto_benchmark predict failed: %s", e)
         return None

@@ -131,7 +131,7 @@
 
 ## Сценарий 11: Исследование и дообучение модели
 
-См. [TRAINING.md](./TRAINING.md), [DATASETS.md](./DATASETS.md). Скрипты: `scripts/datasets/`, merge → Colab.
+См. [TRAINING.ru.md](./TRAINING.ru.md), [DATASETS.ru.md](./DATASETS.ru.md) (**Актуальные пути**: merge, `brg/`, имена архивов). Скрипты: `scripts/datasets/`, merge → Colab.
 
 ---
 

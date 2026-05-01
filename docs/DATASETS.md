@@ -6,6 +6,22 @@ Formats, scripts, sources, and training hardware. **End-to-end training:** [TRAI
 
 ---
 
+## Canonical paths (current repo)
+
+Do not duplicate long command lists here — **`scripts/datasets/README.md`** is the command reference.
+
+| What | Path / command |
+|------|----------------|
+| Detector inputs (YOLO folders) | `scripts/datasets/binary/birds/`, `binary/rodent/`, `binary/background/` |
+| **Default merge output** (Makefile) | `scripts/datasets/binary/merged/` — `make dataset-merge-three-class` |
+| Optional **shipping** folder for Drive/Colab ZIP | `scripts/datasets/brg/` — same layout as `merged/`; fill by **copy/sync from `binary/merged/`** after enrichment/dedupe, **or** run `merge_datasets_three_class.py` with `--output-dir brg` (Makefile always targets `binary/merged/`) |
+| Pack `brg/` → zip | `python3 scripts/datasets/pack_brg_for_gdrive.py` → **`datasets/BirdLense_detector_brg_<UTC>.zip`** at repo root (`datasets/` is gitignored) |
+| Disk layout detail | `scripts/datasets/DETECTOR_DATA_LAYOUT.md`, `scripts/datasets/binary/README.md` |
+| Hugging Face detector zips | Different filenames (`detector_merged_*`, etc.) — [BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main); not the same as local `BirdLense_detector_brg_*.zip` |
+| Classifier merged dirs (local) | Often repo-root `datasets/merged_cls/` etc. — gitignored; see [TRAINING](./TRAINING.md) |
+
+---
+
 ## CV / ML prep gate (#377)
 
 Before starting the CV / ML roadmap epic, keep the detector/classifier contract
@@ -19,11 +35,11 @@ that scope.
 
 ## Three-class detector dataset — epic [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Phase 1
 
-Reproducible **YOLO detection** layout with classes **Bird**, **Rodent**, **Background** (aligned with `normalize_detector_label` in `app/processor/src/detector_labels.py`). Prerequisite folders under `scripts/datasets/binary/` — **`birds/`**, **`rodent/`**, **`background/`** (after `merge_datasets_binary.py`, `convert_oidv4_rodent_to_yolo.py`, and your curated background split with `train|val/images` and optional `labels/`):
+Reproducible **YOLO detection** layout with classes **Bird**, **Rodent**, **Background** (aligned with `normalize_detector_label` in `app/processor/src/detector_labels.py`). Prerequisite folders under `scripts/datasets/binary/` — **`birds/`**, **`rodent/`**, **`background/`** (bootstrap, Roboflow import, OIDv4 rodent convert, hub background — see **`scripts/datasets/README.md`**).
 
 - **Entrypoint:** `make dataset-merge-three-class` from the repo root, or  
   `python3 scripts/datasets/merge_datasets_three_class.py --help`
-- **Output:** `scripts/datasets/binary/merged/dataset.yaml` + merged `train`/`val`/`test` splits.
+- **Output (default):** `scripts/datasets/binary/merged/dataset.yaml` + merged `train`/`val`/`test` splits. Use **`scripts/datasets/brg/`** only as the folder you pack for Drive (see **Canonical paths** above).
 - **Published artifacts (zip):** [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)  
   (`detector_merged_balanced_20260429.zip`, `detector_merged_full_20260429.zip`).
 - **Train/val policy:** follow Ultralytics defaults unless you fix a seed; treat **minimum images per class** as a training constraint — enforce via Hub export (`min_images_per_class`) or document your floor before shipping weights.
@@ -40,6 +56,31 @@ Recommended detector training flow for these artifacts:
 - **Stage B (diversity):** fine-tune from Stage A checkpoint on `merged` (full)
 
 Phase 2 items from the epic (MineUp, dual mining, COCO export) remain future work; track under [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) / [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368).
+
+### `brg` dataset and Drive ZIP — provenance and enrichment
+
+**Starter weights for Colab fine-tuning:** put **`bl_best.pt`** on Drive — your current **YOLO11n detection** checkpoint from the Hub (or a copy from `app/processor/models/detection/weights/`). Fine-tune from that file per [ML_DETECTOR_COLAB.md](./ML_DETECTOR_COLAB.md) (two-stage `freeze` train, then OpenVINO export). Alternative “from scratch” on the same architecture: **`YOLO("yolo11n.pt")`** from Ultralytics (auto-download), no extra weights file on Drive.
+
+**Where birds and rodents (`Rodent`, including mice) come from in `brg`:**
+
+- **Bird:** two streams: (1) **COCO 2017** bird class via **`bootstrap_detector_yolo.py`** (FiftyOne); (2) Roboflow **YOLOv11** exports imported with **`import_roboflow_bird_feeder_birds.py`** (all label classes collapsed to a single bird class). The build referenced here used **[Bird-Feeder on Universe](https://universe.roboflow.com/meproject-pcsly/bird-feeder-hhjks/dataset/6)** (example zip: `Bird-Feeder.v6i.yolov11.zip`; export metadata — **CC BY 4.0**). The same importer works for other Roboflow bird datasets after you verify the project license; example public set: **[birds-yolo](https://universe.roboflow.com/birds-detection-2fyqw/birds-yolo)**.
+
+- **Rodent:** **not** from Roboflow in this pipeline. Rodent boxes come from **Open Images V6** via FiftyOne + **`bootstrap_detector_yolo.py`**; default classes **`Squirrel`, `Mouse`, `Rat`, `Hamster`** (CLI flag `--rodent-classes`). Optionally add **OIDv4 Toolkit** exports under `binary/rodent/` with **`convert_oidv4_rodent_to_yolo.py`** — see [scripts/datasets/README.md](../scripts/datasets/README.md).
+
+- **Background:** COCO scenes without bird + empty labels (bootstrap), plus operator frames via **`import_hub_background_folder.py`** (step 4 below).
+
+**Pipeline steps for the merged `brg` split (Bird / Rodent / Background):**
+
+| Step | Source / action |
+|------|-----------------|
+| 1 | Local **`scripts/datasets/binary/`**: birds from **COCO 2017** (bird class), rodents from **Open Images V6** (e.g. Squirrel/Mouse/Rat/Hamster), background — COCO frames **without** bird and empty YOLO labels. Fill via **`bootstrap_detector_yolo.py`** (FiftyOne). |
+| 2 | Merge to three Hub classes: **`merge_datasets_three_class.py`**. With **`make dataset-merge-three-class`** → **`scripts/datasets/binary/merged/`**. For a Drive-ready tree named **`brg/`**, copy/sync from `merged/` after later steps or pass **`--output-dir brg`** when invoking the script manually. |
+| 3 | **Bird feeder domain:** Roboflow **YOLOv11** export (Bird-Feeder project on Universe; export metadata — **CC BY 4.0**). Import into `binary/birds`: **`import_roboflow_bird_feeder_birds.py`** collapses all species labels to a **single bird** class (id 0). Example dataset page: [Bird-Feeder on Roboflow Universe](https://universe.roboflow.com/meproject-pcsly/bird-feeder-hhjks/dataset/6). |
+| 4 | **Real-domain background:** frames from an operator folder (e.g. **`scripts/datasets/detector/Background`**) via **`import_hub_background_folder.py`** into `binary/background` (empty `.txt` labels). |
+| 5 | **Dedup** near-duplicate images (SHA256 per split): **`dedupe_yolo_images.py`**. |
+| 6 | **Drive packaging:** **`pack_brg_for_gdrive.py`** → **`BirdLense_detector_brg_<UTC>.zip`**. |
+
+Colab flow for this ZIP + **`bl_best.pt`**: [ML_DETECTOR_COLAB.md](./ML_DETECTOR_COLAB.md). Scripts: [scripts/datasets/README.md](../scripts/datasets/README.md).
 
 ---
 
@@ -95,7 +136,7 @@ This removes the mandatory intermediate `scripts/datasets/export_birdlense_to_yo
 
 | Component | Version | Trained on |
 |-----------|---------|------------|
-| **Detector** | YOLO11n | NABirds + COCO birds + OIDv4 squirrel (training data; runtime binary is **bird / rodent** → hub label **Rodent**) |
+| **Detector** | YOLO11n | Shipped lineage often described as NABirds + COCO birds + OID rodent/squirrel; hub maps rodent-like boxes to **Rodent**. **New rebuilds:** three-class **Bird / Rodent / Background** — same section as epic [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) above, not this table row alone. |
 | **EU classifier** | YOLO11n-cls | birds-525 + iNaturalist (~491 species) — active `best.pt` |
 | **US classifier** | YOLO11n-cls | NABirds (~400 species) — `best_US.pt` |
 
@@ -119,6 +160,8 @@ Shared convention for merge, Frigate, BirdNET, YOLO:
 
 ## 3. Scripts (`scripts/datasets/`)
 
+Full list and detector workflow: **`scripts/datasets/README.md`**. Below — quick index only.
+
 ### EU classifier (birds-525 + iNaturalist)
 
 | Script | Role |
@@ -129,13 +172,15 @@ Shared convention for merge, Frigate, BirdNET, YOLO:
 | `merge_classification_datasets.py` | Merge splits |
 | `download_and_merge_all.sh` | Full pipeline → `merged_cls` |
 
-### Detector (legacy)
+### Detector — older / auxiliary scripts
+
+Still useful for some sources; **primary three-class path** is `bootstrap_detector_yolo.py` + imports + **`merge_datasets_three_class.py`** (see README).
 
 | Script | Role |
 |--------|------|
 | `convert_nabirds_to_yolo.py` | NABirds → YOLO |
 | `download_coco_birds.py` | COCO birds for binary |
-| `merge_datasets_binary.py` | NABirds + COCO → binary |
+| `merge_datasets_binary.py` | NABirds + COCO → single “bird” class (input to older flows) |
 
 ### Weights (`app/processor/models/`)
 
@@ -159,7 +204,7 @@ Everything else in `app/processor/models/` is training/export output, not runtim
 | **34data/birds-525-species** | 525 | [Hugging Face](https://huggingface.co/datasets/34data/birds-525-species) |
 | **iNaturalist Europe** | many | [API](https://api.inaturalist.org/v1/docs/), e.g. `place_id=96372` |
 
-The shipped detector is trained on **NABirds + COCO birds + OIDv4 squirrel** (Open Images rodent class name in the dataset); the hub normalizes the binary head to **Rodent**. The shipped EU classifier is trained on **birds-525 + iNaturalist Europe (~490/491 species)**.
+The shipped detector is commonly described as trained on **NABirds + COCO birds + OIDv4 squirrel** (Open Images naming); the hub normalizes rodent-like heads to **Rodent**. That narrative may pre-date the **Bird / Rodent / Background** rebuild recipe (§ epic #367 above). The shipped EU classifier is trained on **birds-525 + iNaturalist Europe (~490/491 species)**.
 
 ### North America (weak signal for EU accuracy)
 

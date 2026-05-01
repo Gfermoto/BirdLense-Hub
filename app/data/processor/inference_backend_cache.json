@@ -1,0 +1,8 @@
+{
+  "backend": "torch",
+  "detector_backend": "torch",
+  "binary_model_path": "/workspace/app/processor/models/detection/weights/best.pt",
+  "resolved_at_unix": 1777563390.308306,
+  "classifier_backend": "torch",
+  "classifier_model_path": "/workspace/app/processor/models/classification/weights/best.pt"
+}

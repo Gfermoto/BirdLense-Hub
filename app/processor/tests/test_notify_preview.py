@@ -2,6 +2,7 @@
 
 import os
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -122,6 +123,8 @@ class TestDetectionStackWeights(unittest.TestCase):
         class _Cfg:
             def get(self, key, default=None):
                 mapping = {
+                    'processor.inference_backend': 'torch',
+                    'processor.classifier_inference_backend': 'torch',
                     'processor.models.binary': '/tmp/missing_binary.pt',
                     'processor.models.classifier': '/tmp/ok_classifier.pt',
                     'processor.detection_strategy': 'two_stage',
@@ -147,6 +150,48 @@ class TestDetectionStackWeights(unittest.TestCase):
         err = str(ctx.exception).lower()
         self.assertIn('binary', err)
         self.assertIn('missing_binary', err)
+
+    def test_build_detection_stack_openvino_size_mismatch_raises_clear_error(self):
+        import detection_stack as detection_stack_mod  # noqa: E402
+
+        with tempfile.TemporaryDirectory() as d:
+            ov_dir = os.path.join(d, 'ov')
+            os.makedirs(ov_dir, exist_ok=True)
+            with open(os.path.join(ov_dir, 'best.xml'), 'w', encoding='utf-8') as f:
+                f.write('<net />')
+            with open(os.path.join(ov_dir, 'metadata.yaml'), 'w', encoding='utf-8') as f:
+                f.write('imgsz:\n- 960\n- 960\n')
+            cls_pt = os.path.join(d, 'classifier.pt')
+            with open(cls_pt, 'wb') as f:
+                f.write(b'pt')
+
+            class _Cfg:
+                def get(self, key, default=None):
+                    mapping = {
+                        'processor.inference_backend': 'openvino',
+                        'processor.classifier_inference_backend': 'torch',
+                        'processor.models.binary_openvino': ov_dir,
+                        'processor.models.classifier': cls_pt,
+                        'processor.binary_imgsz': 640,
+                        'processor.detection_strategy': 'two_stage',
+                        'processor.regional_species': [],
+                        'processor.track_regen_ignore_regional_species': True,
+                        'processor.tracker': 'bytetrack.yaml',
+                        'processor.max_record_seconds': 60,
+                        'processor.max_inactive_seconds': 10,
+                        'processor.min_track_duration': 1,
+                        'processor.min_confidence_to_process': 0.1,
+                        'processor.post_record_seconds': 0,
+                        'detection.min_confidence_to_store': 0.3,
+                        'processor.classifier_fallback_bird': True,
+                    }
+                    return mapping.get(key, default)
+
+            with self.assertRaises(RuntimeError) as ctx:
+                detection_stack_mod.build_detection_stack(_Cfg())
+            err = str(ctx.exception)
+            self.assertIn('input-size mismatch', err)
+            self.assertIn('model expects 960', err)
 
 
 if __name__ == '__main__':

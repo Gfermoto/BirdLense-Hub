@@ -249,6 +249,31 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(results[0]['decision_reason'], 'fallback_rodent')
         self.assertEqual(results[0]['detector_label'], 'Rodent')
 
+    def test_detector_only_rodent_rejected_when_bbox_is_too_large(self):
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_store=0.20,
+            generic_rodent_min_frames=2,
+            generic_rodent_max_area_frac=0.60,
+        )
+        tracks = {
+            1: _make_track(
+                detector_label='Rodent',
+                detector_confidences=[0.52, 0.55, 0.50],
+                classifier_events=[],
+                frames=[
+                    {'t': 0.1, 'bbox': [0.0, 0.0, 0.98, 0.98]},
+                    {'t': 0.2, 'bbox': [0.01, 0.01, 0.97, 0.97]},
+                ],
+            )
+        }
+        self.assertEqual(dm.get_results(tracks), [])
+        decisions = dm.get_decisions(tracks)
+        self.assertEqual(len(decisions), 1)
+        self.assertFalse(decisions[0]['accepted'])
+        self.assertEqual(decisions[0]['decision_reason'], 'rejected_weak_generic_rodent')
+        self.assertEqual(decisions[0]['reject_reason_code'], 'insufficient_frames')
+
     def test_species_confidence_overrides_match_scientific_common_labels(self):
         dm = DecisionMaker(
             min_track_duration=0,

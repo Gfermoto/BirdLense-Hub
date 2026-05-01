@@ -16,6 +16,11 @@
 Загрузка идёт **порциями** (``--chunk-size``): файлы появляются в ``binary/`` после каждой порции,
 а не только после скачивания тысяч кадров сразу.
 
+Если тот же COCO/OID кадр попадается в другой порции, имя файла на диске уже занято —
+раньше создавались ``*_1.jpg``, ``*_2.jpg`` (ложные дубликаты в датасете). Теперь такой
+кадр **пропускается**, счётчик цели не увеличивается; при необходимости увеличьте лимиты
+или число итераций (seed).
+
 **Cursor / VS Code:** каталоги ``binary/birds`` и т.д. могут быть скрыты в дереве из‑за
 ``.gitignore`` — смотрите ``ls binary/birds/train/images`` в терминале или включите показ
 исключённых файлов.
@@ -46,6 +51,9 @@ import os
 import shutil
 import sys
 from pathlib import Path
+
+# Защита от бесконечного цикла, если цель по уникальным кадрам недостижима (мало уникальных имён в zoo).
+_MAX_BOOTSTRAP_SEED_ITERATIONS = 10_000
 
 
 def _binary(root: Path) -> Path:
@@ -79,20 +87,17 @@ def _write_yolo_label(path: Path, class_id: int, detections) -> None:
     path.write_text("".join(lines), encoding="utf-8")
 
 
-def _unique_copy(src: Path, dst_dir: Path) -> Path:
-    """Избегаем коллизий имён между сплитами/источниками."""
-    name = src.name
-    dst = dst_dir / name
-    if not dst.exists():
-        shutil.copy2(src, dst)
-        return dst
-    stem, suf = Path(name).stem, Path(name).suffix
-    for i in range(1, 10_000):
-        alt = dst_dir / f"{stem}_{i}{suf}"
-        if not alt.exists():
-            shutil.copy2(src, alt)
-            return alt
-    raise OSError("too many name collisions")
+def _copy_once(src: Path, dst_dir: Path) -> Path | None:
+    """Копирует ``src`` как ``dst_dir / src.name``, если такого файла ещё нет.
+
+    Если имя уже занято (тот же датасетный кадр из другой порции bootstrap) — возвращает
+    ``None``, не создавая ``stem_1``, ``stem_2``.
+    """
+    dst = dst_dir / src.name
+    if dst.exists():
+        return None
+    shutil.copy2(src, dst)
+    return dst
 
 
 def _bootstrap_birds(root: Path, train_max: int, val_max: int, *, chunk_size: int) -> None:
@@ -108,6 +113,12 @@ def _bootstrap_birds(root: Path, train_max: int, val_max: int, *, chunk_size: in
         total = 0
         seed = 0
         while total < lim:
+            if seed >= _MAX_BOOTSTRAP_SEED_ITERATIONS:
+                print(
+                    f"[birds] стоп: {seed} итераций seed, собрано {total}/{lim} для {split_name} — "
+                    "увеличьте лимиты zoo или ослабьте фильтры",
+                )
+                break
             take = min(chunk_size, lim - total)
             print(f"[birds] COCO 2017 {split_name} bird — chunk size={take}, seed={seed}, have {total}/{lim}")
             ds = foz.load_zoo_dataset(
@@ -120,11 +131,15 @@ def _bootstrap_birds(root: Path, train_max: int, val_max: int, *, chunk_size: in
                 seed=seed,
             )
             n_chunk = 0
+            candidates = 0
             for sample in ds:
                 birds = [d for d in _detections(sample) if d.label == "bird"]
                 if not birds:
                     continue
-                dst_img = _unique_copy(Path(sample.filepath), images_dir)
+                candidates += 1
+                dst_img = _copy_once(Path(sample.filepath), images_dir)
+                if dst_img is None:
+                    continue
                 stem = dst_img.stem
                 _write_yolo_label(labels_dir / f"{stem}.txt", 0, birds)
                 n_chunk += 1
@@ -134,8 +149,14 @@ def _bootstrap_birds(root: Path, train_max: int, val_max: int, *, chunk_size: in
             fo.delete_dataset(ds.name)
             seed += 1
             if n_chunk == 0:
-                print(f"[birds] предупреждение: пустой chunk для {split_name}, прерываем сплит")
-                break
+                if candidates == 0:
+                    print(f"[birds] предупреждение: в chunk нет кадров с bird для {split_name}, прерываем сплит")
+                    break
+                print(
+                    f"[birds] chunk seed={seed - 1}: кадры с bird были, но все уже в {tag}/ — "
+                    f"следующий seed (собрано {total}/{lim})",
+                )
+                continue
         print(f"[birds] → {tag}/: {total} images")
 
 
@@ -160,6 +181,12 @@ def _bootstrap_rodents_validation_only(
     seed = 0
     total_need = train_max + val_max
     while got_train + got_val < total_need:
+        if seed >= _MAX_BOOTSTRAP_SEED_ITERATIONS:
+            print(
+                f"[rodent] validation-only стоп: {seed} итераций seed, "
+                f"train {got_train}/{train_max}, val {got_val}/{val_max}",
+            )
+            break
         take = min(chunk_size, total_need - got_train - got_val)
         print(
             f"[rodent] Open Images V6 validation-only {','.join(rodent_classes)} — chunk size={take}, "
@@ -176,28 +203,40 @@ def _bootstrap_rodents_validation_only(
             seed=seed,
         )
         n_chunk = 0
+        candidates = 0
         for sample in ds:
             rods = [d for d in _detections(sample) if d.label in rodent_classes]
             if not rods:
                 continue
+            candidates += 1
             if got_train < train_max:
-                dst_img = _unique_copy(Path(sample.filepath), images_train)
+                dst_img = _copy_once(Path(sample.filepath), images_train)
+                if dst_img is None:
+                    continue
                 stem = dst_img.stem
                 _write_yolo_label(labels_train / f"{stem}.txt", 0, rods)
                 got_train += 1
+                n_chunk += 1
             elif got_val < val_max:
-                dst_img = _unique_copy(Path(sample.filepath), images_val)
+                dst_img = _copy_once(Path(sample.filepath), images_val)
+                if dst_img is None:
+                    continue
                 stem = dst_img.stem
                 _write_yolo_label(labels_val / f"{stem}.txt", 0, rods)
                 got_val += 1
-            n_chunk += 1
+                n_chunk += 1
             if got_train >= train_max and got_val >= val_max:
                 break
         fo.delete_dataset(ds.name)
         seed += 1
         if n_chunk == 0:
-            print("[rodent] предупреждение: пустой chunk (validation-only), прерываем")
-            break
+            if candidates == 0:
+                print("[rodent] предупреждение: пустой chunk (validation-only), прерываем")
+                break
+            print(
+                f"[rodent] validation-only: chunk seed={seed - 1} только дубликаты имён — следующий seed "
+                f"(train {got_train}/{train_max}, val {got_val}/{val_max})",
+            )
     print(f"[rodent] → train/: {got_train} images (validation split)")
     print(f"[rodent] → val/: {got_val} images (validation split)")
 
@@ -233,6 +272,11 @@ def _bootstrap_rodents(
         total = 0
         seed = 0
         while total < lim:
+            if seed >= _MAX_BOOTSTRAP_SEED_ITERATIONS:
+                print(
+                    f"[rodent] стоп: {seed} итераций seed, собрано {total}/{lim} для {split_name}",
+                )
+                break
             take = min(chunk_size, lim - total)
             print(
                 f"[rodent] Open Images V6 {split_name} {','.join(rodent_classes)} — "
@@ -249,11 +293,15 @@ def _bootstrap_rodents(
                 seed=seed,
             )
             n_chunk = 0
+            candidates = 0
             for sample in ds:
                 rods = [d for d in _detections(sample) if d.label in rodent_classes]
                 if not rods:
                     continue
-                dst_img = _unique_copy(Path(sample.filepath), images_dir)
+                candidates += 1
+                dst_img = _copy_once(Path(sample.filepath), images_dir)
+                if dst_img is None:
+                    continue
                 stem = dst_img.stem
                 _write_yolo_label(labels_dir / f"{stem}.txt", 0, rods)
                 n_chunk += 1
@@ -263,8 +311,14 @@ def _bootstrap_rodents(
             fo.delete_dataset(ds.name)
             seed += 1
             if n_chunk == 0:
-                print(f"[rodent] предупреждение: пустой chunk для {split_name}, прерываем сплит")
-                break
+                if candidates == 0:
+                    print(f"[rodent] предупреждение: пустой chunk для {split_name}, прерываем сплит")
+                    break
+                print(
+                    f"[rodent] chunk seed={seed - 1}: только дубликаты имён — следующий seed "
+                    f"(собрано {total}/{lim})",
+                )
+                continue
         print(f"[rodent] → {tag}/: {total} images")
 
 
@@ -316,7 +370,9 @@ def _collect_no_bird_background(
             has_bird = any(d.label == "bird" for d in _detections(sample))
             if has_bird:
                 continue
-            dst_img = _unique_copy(Path(sample.filepath), images_dir)
+            dst_img = _copy_once(Path(sample.filepath), images_dir)
+            if dst_img is None:
+                continue
             stem = dst_img.stem
             (labels_dir / f"{stem}.txt").write_text("", encoding="utf-8")
             n += 1
