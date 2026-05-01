@@ -78,3 +78,70 @@ Stage C:
 - event-based F1 >= 0.70 on validation slices
 - boundary delay p95 <= 1.5 s
 - false positives per hour <= agreed threshold from operator baseline
+
+## Execution backlog (issue-driven)
+
+Status mapping:
+
+- [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392): protocol/dataset/metrics.
+- [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379): model selection, training, integration, rollout.
+
+### Phase E0 — protocol freeze (#392)
+
+- freeze taxonomy/guideline without ambiguity in docs;
+- run `make ml-verify-action-labeling` on snapshot payload in local/CI flow;
+- verify gate fails on intentionally broken payload (negative smoke).
+
+DoD E0:
+
+- `make ml-verify-action-labeling ACTION_EVENTS=<fixture>` passes on valid fixture;
+- negative fixture deterministically fails;
+- issue #392 includes command logs and fixture commit link.
+
+### Phase E1 — dataset bootstrap (#392 -> #379)
+
+- collect a seed set of action segments following current protocol;
+- run calibration with double annotation;
+- capture inter-annotator agreement and disagreement queue.
+
+DoD E1:
+
+- seed manifest is published (volume, classes, distribution);
+- Cohen kappa >= 0.75 on calibration slice, or a remediation plan is documented;
+- issue contains class-imbalance report and hard-case list.
+
+### Phase E2 — model candidate benchmark (#379)
+
+- evaluate at least 2 candidates (light temporal head + clip-model baseline);
+- train/evaluate on identical splits;
+- record quality/latency/VRAM trade-offs.
+
+DoD E2:
+
+- comparison table exists (F1, boundary delay p95, FP/hour, latency);
+- one production candidate and one fallback are selected;
+- issue #379 contains eval artifacts and benchmark script commit.
+
+### Phase E3 — hub integration shadow (#379)
+
+- integrate inference path without blocking species pipeline;
+- keep weak-label fallback when action model is unavailable;
+- add observability for action events and failures.
+
+DoD E3:
+
+- hub smoke confirms no species-flow regression;
+- action output appears in `video_action_events@v1`/API payload without crash loops;
+- kill-switch and rollback steps are documented.
+
+### Phase E4 — guarded rollout (#379)
+
+- enable limited rollout (camera/domain slice);
+- gather post-deploy metrics in two consecutive windows;
+- decide expand vs rollback.
+
+DoD E4:
+
+- quality bar in this document is met in two independent windows;
+- detector/classifier throughput is not degraded;
+- issue #379 includes final go/no-go report.
