@@ -11,11 +11,14 @@ from routes.http_guards import (
 )
 from services.ml_ops_service import (
     build_active_learning_pool_preview,
+    build_feedback_loop_export_payload,
+    build_feedback_loop_status_payload,
     build_ml_runtime_status,
     build_video_reid_match_payload,
     build_reid_summary,
     build_video_action_events_payload,
 )
+from services.api_json_validation import parse_request_json_object_allow_empty
 
 
 def register_ui_ml_ops_routes(app):
@@ -42,6 +45,19 @@ def register_ui_ml_ops_routes(app):
     @require_ui_contributor_or_admin
     def reid_summary():
         return build_reid_summary(db.session)
+
+    @app.route("/api/ui/system/feedback-loop/status", methods=["GET"])
+    @require_ui_contributor_or_admin
+    def feedback_loop_status():
+        return build_feedback_loop_status_payload(db.session)
+
+    @app.route("/api/ui/system/feedback-loop/export", methods=["POST"])
+    @require_ui_contributor_or_admin
+    def feedback_loop_export():
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
+        return build_feedback_loop_export_payload(data)
 
     @app.route("/api/ui/system/ml-runtime", methods=["GET"])
     @require_ui_settings_unauthorized

@@ -90,6 +90,7 @@
 | Декод видео (#373) | [CV_ML_DECODE](./CV_ML_DECODE.md) | [RU](./CV_ML_DECODE.ru.md) |
 | Active learning (#369) | [ACTIVE_LEARNING](./ACTIVE_LEARNING.md) | [RU](./ACTIVE_LEARNING.ru.md) |
 | Re-ID (#374) | [REID_ROADMAP](./REID_ROADMAP.md) | [RU](./REID_ROADMAP.ru.md) |
+| CV/ML сценарный прогон (A->B) | — | [CV_ML_SCENARIOS.ru.md](./CV_ML_SCENARIOS.ru.md) |
 | Федеративное обучение (#375) | [FEDERATED_LEARNING](./FEDERATED_LEARNING.md) | [RU](./FEDERATED_LEARNING.ru.md) |
 | Версионирование | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
 | Roadmap | [ROADMAP](./ROADMAP.md) | [RU](./ROADMAP.ru.md) |

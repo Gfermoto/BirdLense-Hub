@@ -77,7 +77,30 @@ def effective_allowlist_path() -> str | None:
 
 
 def _stat_slot(path: str | None) -> dict[str, Any] | None:
-    if not path or not os.path.isfile(path):
+    if not path:
+        return None
+    if os.path.isdir(path):
+        from inference.binary_paths import openvino_bundle_fingerprint
+
+        try:
+            st = os.stat(path)
+        except OSError:
+            return None
+        total = 0
+        try:
+            for fn in os.listdir(path):
+                fp = os.path.join(path, fn)
+                if os.path.isfile(fp):
+                    total += os.path.getsize(fp)
+        except OSError:
+            pass
+        return {
+            "path": path,
+            "bytes": total if total > 0 else None,
+            "mtime_unix": int(st.st_mtime),
+            "fingerprint_sha256_16": (openvino_bundle_fingerprint(path) or "")[:16] or None,
+        }
+    if not os.path.isfile(path):
         return None
     try:
         st = os.stat(path)

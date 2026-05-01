@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import text
@@ -16,6 +17,10 @@ from util import ensure_utc
 
 from services.reid_contract import EMBEDDING_SCHEMA_V1, embedding_age_hours
 from services.reid_policy_service import load_reid_policy_config, policy_snapshot, evaluate_reid_candidate
+from services.feedback_loop_service import (
+    build_feedback_loop_status as _build_feedback_loop_status,
+    export_feedback_learning_dataset as _export_feedback_learning_dataset,
+)
 
 
 def build_video_action_events_payload(session, video_id: int) -> tuple[dict[str, Any], int]:
@@ -357,6 +362,65 @@ def build_ml_runtime_status() -> tuple[dict[str, Any], int]:
             "frame_processing_warn_ms": app_config.get("processor.frame_processing_warn_ms"),
         },
     }, 200
+
+
+def build_feedback_loop_status_payload(session) -> tuple[dict[str, Any], int]:
+    """Operator status for feedback-learning loop exports (#397)."""
+    data_dir = str(app_config.get("directories.data") or "data")
+    return _build_feedback_loop_status(session, data_dir=data_dir), 200
+
+
+def build_feedback_loop_export_payload(payload: dict[str, Any] | None) -> tuple[dict[str, Any], int]:
+    """Run feedback-learning export and return artifact summary (#397)."""
+    data_dir = str(app_config.get("directories.data") or "data")
+    p = payload or {}
+    try:
+        since_hours = int(p.get("since_hours", 24))
+    except Exception:
+        return {"error": "since_hours must be an integer"}, 400
+    try:
+        limit = int(p.get("limit", 5000))
+    except Exception:
+        return {"error": "limit must be an integer"}, 400
+    dry_run = bool(p.get("dry_run", False))
+    export_tag = (p.get("export_tag") or "").strip() if isinstance(p.get("export_tag"), str) else ""
+    if since_hours <= 0:
+        return {"error": "since_hours must be > 0"}, 400
+    if limit <= 0:
+        return {"error": "limit must be > 0"}, 400
+
+    try:
+        out = _export_feedback_learning_dataset(
+            db_path=f"{data_dir}/db/birdlense.db",
+            data_dir=data_dir,
+            output_dir=f"{data_dir}/feedback_exports",
+            since_hours=since_hours,
+            limit=limit,
+            dry_run=dry_run,
+            export_tag=export_tag or None,
+        )
+        return out, 200
+    except Exception as exc:
+        latest_status = Path(f"{data_dir}/feedback_exports/latest_status.json")
+        latest_status.parent.mkdir(parents=True, exist_ok=True)
+        latest_status.write_text(
+            json.dumps(
+                {
+                    "schema": "feedback_learning_latest_status@v1",
+                    "status": "error",
+                    "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+                    "error": str(exc),
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        return {
+            "schema": "feedback_learning_export@v1",
+            "status": "error",
+            "error": str(exc),
+        }, 500
 
 
 def _cosine(a: list[float], b: list[float]) -> float:

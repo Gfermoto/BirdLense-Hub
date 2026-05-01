@@ -275,3 +275,70 @@ def test_detection_patch_updates_nickname(app, client):
     )
     assert r.status_code == 200
     assert r.get_json()["individual_nickname"] == "Пух"
+
+
+def test_feedback_loop_export_dry_run_endpoint(app, client, tmp_path, monkeypatch):
+    from app_config.app_config import app_config
+    import sqlite3
+
+    with app.app_context():
+        prev_data_dir = app_config.get("directories.data")
+        app_config.set("directories.data", str(tmp_path))
+        (tmp_path / "db").mkdir(parents=True, exist_ok=True)
+        db_path = tmp_path / "db" / "birdlense.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS detection_feedback_event (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT,
+                action TEXT,
+                trigger_source TEXT,
+                apply_scope TEXT,
+                reason TEXT,
+                video_species_id INTEGER,
+                video_id INTEGER,
+                track_id INTEGER,
+                from_species_id INTEGER,
+                to_species_id INTEGER,
+                from_species_name TEXT,
+                to_species_name TEXT,
+                detection_provider TEXT,
+                confidence REAL,
+                frames_json TEXT,
+                crop_path TEXT,
+                camera TEXT
+            )
+            """
+        )
+        conn.commit()
+        conn.close()
+
+    with client.session_transaction() as sess:
+        sess["access_role"] = "contributor"
+    r = client.post(
+        "/api/ui/system/feedback-loop/export",
+        json={
+            "dry_run": True,
+            "since_hours": 24,
+            "limit": 10,
+            "export_tag": "api_dry_run",
+        },
+    )
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["schema"] == "feedback_learning_export@v1"
+    assert body["dry_run"] is True
+    assert body["export_tag"] == "api_dry_run"
+    assert "events_total" in body
+    assert "export_root" in body
+    with app.app_context():
+        app_config.set("directories.data", prev_data_dir)
+
+
+def test_feedback_loop_export_rejects_invalid_args(client):
+    with client.session_transaction() as sess:
+        sess["access_role"] = "contributor"
+    r = client.post("/api/ui/system/feedback-loop/export", json={"since_hours": 0})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "since_hours must be > 0"
