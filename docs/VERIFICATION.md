@@ -4,6 +4,28 @@ Short log of automated checks. Full cycle: [CONTRIBUTING.md](https://github.com/
 
 Shared install/deploy smoke contract: `make verify` (or `scripts/verify-stack.sh --base-url ...`) checks `/api/ui/health`, `/api/ui/readiness`, and `/api/ui/status`.
 
+## 2026-05-02 — Wave 1 / #402 detector-first baseline
+
+Minimum package for [#403](https://github.com/Gfermoto/BirdLense-Hub/issues/403) and [#411](https://github.com/Gfermoto/BirdLense-Hub/issues/411): a dedicated continuity artifact from SQLite and a baseline protocol gate over benchmark JSON.
+
+1. Generate continuity artifact from the live DB:
+
+```bash
+python3 scripts/ml_detector_continuity_report.py --db app/data/db/birdlense.db --days 14 --out /tmp/detector_continuity_report.v1.json
+```
+
+2. Build baseline protocol (`benchmark_track_regen@v1` baseline vs candidate):
+
+```bash
+python3 scripts/ml_baseline_protocol.py \
+  --baseline-report /tmp/baseline_report.json \
+  --candidate-report /tmp/candidate_report.json \
+  --continuity-report /tmp/detector_continuity_report.v1.json \
+  --out /tmp/ml_baseline_protocol.v1.json
+```
+
+3. Gate passes when `ml_baseline_protocol@v1` has `ok=true` and `detector_continuity_report@v1` has both `track_gate_ok=true` and `crop_gate_ok=true`.
+
 ## 2026-04-28 — documentation sync (roadmap, security, CV/ML index)
 
 | Check | Result |
