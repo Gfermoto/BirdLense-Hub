@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-eval-dataset
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -135,6 +135,19 @@ ml-export-decision-traces:
 	@test -n "$${OUT:-}" || (echo "Set OUT=output/dir and DB=app/data/db/birdlense.db (or your path)" >&2; exit 1)
 	@test -n "$${DB:-}" || (echo "Set DB=path/to/birdlense.db" >&2; exit 1)
 	@python3 scripts/export_decision_traces_sqlite.py --db "$${DB}" --out-dir "$${OUT}"
+
+# Build versioned eval dataset manifest for ML migration (#404).
+# Example:
+# VIDEOS_ROOT=app/data/recordings LABELS_JSON=/tmp/gold.json OUT=app/data/eval_datasets make ml-build-eval-dataset
+ml-build-eval-dataset:
+	@test -n "$${VIDEOS_ROOT:-}" || (echo "Set VIDEOS_ROOT=path/to/eval/videos" >&2; exit 1)
+	@test -n "$${OUT:-}" || (echo "Set OUT=output/dir (e.g. app/data/eval_datasets)" >&2; exit 1)
+	@python3 scripts/ml_build_eval_dataset.py \
+		--videos-root "$${VIDEOS_ROOT}" \
+		$$(test -n "$${LABELS_JSON:-}" && printf -- '--labels-json "%s" ' "$${LABELS_JSON}") \
+		$$(test -n "$${DATASET_ID:-}" && printf -- '--dataset-id "%s" ' "$${DATASET_ID}") \
+		--out-dir "$${OUT}" \
+		$${ARGS:-}
 
 validate-weights:
 	@python3 scripts/validate-processor-weights.py \

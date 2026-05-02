@@ -24,6 +24,20 @@ python3 scripts/ml_baseline_protocol.py \
 
 3. Gate считается пройденным, если в `ml_baseline_protocol@v1` поле `ok=true` и в `detector_continuity_report@v1` `track_gate_ok=true`, `crop_gate_ok=true`.
 
+## 2026-05-02 — Wave 2 / #404 versioned eval dataset
+
+Чтобы offline benchmark-gates (`#407`) были воспроизводимыми, фиксируйте eval-набор как версионированный артефакт:
+
+```bash
+python3 scripts/ml_build_eval_dataset.py \
+  --videos-root app/data/recordings \
+  --labels-json /tmp/gold_labels.json \
+  --out-dir app/data/eval_datasets
+```
+
+Выход: `app/data/eval_datasets/<dataset_id>/manifest.json` (+ `gold_labels.json`, если передан labels JSON).  
+`manifest.json` содержит `sha256` каждого ролика, размер, mtime и покрытие labels (`labels_coverage`), чтобы сравнения baseline/candidate использовали один и тот же frozen набор.
+
 ## 2026-04-28 — синхронизация документации (roadmap, security, индекс CV/ML)
 
 | Проверка | Результат |
