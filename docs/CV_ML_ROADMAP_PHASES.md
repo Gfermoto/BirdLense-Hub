@@ -18,7 +18,7 @@ Legend: **Repo-ready** = code/docs/scripts are shipped on branch `ML`. **Waiting
 
 | Issue | Status | Notes |
 |-------|--------|--------|
-| [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Epic | **Open (execution tracking)** | Repo-scope baseline is delivered; remaining open execution issues after audit are [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379), [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389), [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392). |
+| [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Epic | **Open (execution tracking)** | Repo-scope baseline is delivered; remaining open execution issues after audit are [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379), [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392). |
 | [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Train & ship detector | **Closed** | Runtime contract + dataset helpers + new detector weights/OpenVINO export validated on hub. |
 | [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Repo-ready** | Manifest/schema/export/UI/API pool preview **done**; retrain automation does not block this package. |
 | [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Classifier roadmap | **Closed** | Classifier weights refreshed and separate backend switching shipped (`torch/openvino/auto`). After the 2026-04-30 OpenVINO runtime crash, production-safe default is `torch`; `auto/openvino` require explicit smoke validation. |
@@ -29,7 +29,7 @@ Legend: **Repo-ready** = code/docs/scripts are shipped on branch `ML`. **Waiting
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Repo-ready** | Toy simulation + threat-model doc are ready; production channel is outside this package. |
 | [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) Action recognition | **Open (execution wave)** | Planning/research context exists, but issue is active again for real model selection/integration and production-grade action recognition rollout. |
 | [#388](https://github.com/Gfermoto/BirdLense-Hub/issues/388) CV/ML v2 Epic | **Closed (planning scope)** | v2 subtracks were decomposed and specified; implementation gates tracked by concrete child issues/docs. |
-| [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389) DINOv2 production pipeline | **Open (execution pending)** | RFC/contracts/gates are shipped, but issue remains open until execution-level acceptance criteria from the issue body are fully implemented and verified. |
+| [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389) DINOv2 production pipeline | **Closed (execution completed)** | Added executable `run_reid_execution_report.py` + Make target; hub evidence confirms nearline snapshots, import success/failure metrics, failover gates (schema/stale), and kill-switch/shadow rollback behavior. |
 | [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390) Re-ID productization | **Closed (execution completed)** | Shadow sweep tooling and hub evidence are shipped: non-zero suggestion windows, proxy outcomes (`accepted_proxy`), pending queue resolved for the tracked pair, and runtime gates stable. |
 | [#391](https://github.com/Gfermoto/BirdLense-Hub/issues/391) Benchmark robustness gates | **Closed** | Slice-gate tooling/tests shipped (`verify_benchmark_slice_gates.py`, tests, Makefile/docs integration). |
 | [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) Action dataset/labeling protocol | **Open (execution pending)** | Protocol/spec/gates exist, but issue remains open until execution-level dataset ops/training loop and quality-bar validation are completed. |
@@ -86,7 +86,7 @@ GitHub priorities differ slightly from “hardware decode before everything”:
 - [#370] Classifier uncertainty product wiring (entropy/margin → DB/UI) — hook documented at `_classify_crop`; rollout TBD.
 - [#374] [REID_ROADMAP.md](REID_ROADMAP.md) — **DINO / DINOv2**: planned for **Re-ID embeddings** and optional **species** fine-tune / AL; **one backbone** on-hub can feed both heads when integrated · [#383](https://github.com/Gfermoto/BirdLense-Hub/issues/383).
 - [#375] Runnable **`scripts/federated/simulate_fedavg.py`** + [FEDERATED_LEARNING.md](FEDERATED_LEARNING.md) (**not production**).
-- [#389] DINOv2 production path: RFC [ML_DINOV2_PRODUCTION_PIPELINE.md](ML_DINOV2_PRODUCTION_PIPELINE.md) + **offline contract enforcement** (JSONL fields → SQLite columns → import migrations → `reid_summary@v2.contract`) + phased rollout gates; execution DoD is still open.
+- [#389] DINOv2 production path: RFC [ML_DINOV2_PRODUCTION_PIPELINE.md](ML_DINOV2_PRODUCTION_PIPELINE.md) + **offline contract enforcement** (JSONL fields → SQLite columns → import migrations → `reid_summary@v2.contract`) + execution runner `scripts/reid/run_reid_execution_report.py`; issue closed with hub evidence.
 - [#390] Re-ID product safety: RFC [ML_REID_PRODUCTIZATION.md](ML_REID_PRODUCTIZATION.md) + **config-driven gates** (`processor.reid_*`) + **`video_reid_match@v2`** UI hints + E3 sweep execution evidence; issue is closed with hub-validated outcomes.
 - [#392] Action dataset/labeling/training protocol: [ML_ACTION_RECOGNITION_PLAN.md](ML_ACTION_RECOGNITION_PLAN.md) + executable protocol gates; training execution DoD is still open.
 
