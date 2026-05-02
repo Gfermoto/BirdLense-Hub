@@ -2,6 +2,28 @@
 
 Краткий журнал автоматических проверок перед возвратом к roadmap. Полный цикл — см. [CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md), [TESTING.ru.md](./TESTING.ru.md).
 
+## 2026-05-02 — Wave 1 / #402 detector-first baseline
+
+Минимальный пакет для задач [#403](https://github.com/Gfermoto/BirdLense-Hub/issues/403) и [#411](https://github.com/Gfermoto/BirdLense-Hub/issues/411): отдельный отчёт continuity из SQLite и baseline protocol gate над benchmark JSON.
+
+1. Снять continuity-артефакт на реальной БД:
+
+```bash
+python3 scripts/ml_detector_continuity_report.py --db app/data/db/birdlense.db --days 14 --out /tmp/detector_continuity_report.v1.json
+```
+
+2. Собрать baseline protocol (`benchmark_track_regen@v1` baseline vs candidate):
+
+```bash
+python3 scripts/ml_baseline_protocol.py \
+  --baseline-report /tmp/baseline_report.json \
+  --candidate-report /tmp/candidate_report.json \
+  --continuity-report /tmp/detector_continuity_report.v1.json \
+  --out /tmp/ml_baseline_protocol.v1.json
+```
+
+3. Gate считается пройденным, если в `ml_baseline_protocol@v1` поле `ok=true` и в `detector_continuity_report@v1` `track_gate_ok=true`, `crop_gate_ok=true`.
+
 ## 2026-04-28 — синхронизация документации (roadmap, security, индекс CV/ML)
 
 | Проверка | Результат |
