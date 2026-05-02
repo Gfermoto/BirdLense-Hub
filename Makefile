@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-eval-dataset ml-offline-benchmark-gate
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-eval-dataset ml-offline-benchmark-gate ml-detector-shortlist
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -160,6 +160,18 @@ ml-offline-benchmark-gate:
 		--baseline-report "$${BASELINE}" \
 		--candidate-report "$${CANDIDATE}" \
 		$$(test -n "$${CONTINUITY:-}" && printf -- '--continuity-report "%s" ' "$${CONTINUITY}") \
+		--out "$${OUT}" \
+		$${ARGS:-}
+
+# Build detector candidate shortlist and compliance/bird-only verdict (#405).
+# Example:
+# CONTINUITY=/tmp/detector_continuity_report.v1.json OFFLINE_GATE=/tmp/offline_gate.json OUT=/tmp/detector_shortlist.v1.json make ml-detector-shortlist
+ml-detector-shortlist:
+	@test -n "$${OUT:-}" || (echo "Set OUT=path/to/detector_shortlist_report.json" >&2; exit 1)
+	@python3 scripts/ml_detector_shortlist.py \
+		$$(test -n "$${CONTINUITY:-}" && printf -- '--continuity-report "%s" ' "$${CONTINUITY}") \
+		$$(test -n "$${OFFLINE_GATE:-}" && printf -- '--offline-gate-report "%s" ' "$${OFFLINE_GATE}") \
+		$$(test -n "$${SHORTLIST_SIZE:-}" && printf -- '--shortlist-size "%s" ' "$${SHORTLIST_SIZE}") \
 		--out "$${OUT}" \
 		$${ARGS:-}
 

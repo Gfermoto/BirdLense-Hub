@@ -59,6 +59,23 @@ The script combines:
 
 Final verdict is `offline_benchmark_gate@v1` field `ok`.
 
+## 2026-05-02 — Wave 4 / #405 detector shortlist + license/compliance
+
+Generate shortlist artifact for detector candidates:
+
+```bash
+python3 scripts/ml_detector_shortlist.py \
+  --continuity-report /tmp/detector_continuity_report.v1.json \
+  --offline-gate-report /tmp/offline_benchmark_gate.v1.json \
+  --out /tmp/detector_shortlist_report.v1.json
+```
+
+Artifact `detector_shortlist_report@v1` includes:
+- candidates table (quality/latency/openvino/license/risk),
+- shortlist (2-3 candidates, excluding `license.status=blocked`),
+- `compliance_verdict`,
+- dedicated `bird_only_verdict` (`viable` / `not_viable`).
+
 ## 2026-04-28 — documentation sync (roadmap, security, CV/ML index)
 
 | Check | Result |
