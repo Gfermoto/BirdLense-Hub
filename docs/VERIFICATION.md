@@ -40,6 +40,25 @@ python3 scripts/ml_build_eval_dataset.py \
 Output: `app/data/eval_datasets/<dataset_id>/manifest.json` (+ `gold_labels.json` when labels are provided).  
 `manifest.json` stores per-clip `sha256`, size, mtime, and label coverage (`labels_coverage`) so baseline/candidate comparisons run on the same frozen set.
 
+## 2026-05-02 — Wave 3 / #407 offline benchmark gate
+
+Unified detector-first gate runner:
+
+```bash
+python3 scripts/ml_offline_benchmark_gate.py \
+  --baseline-report /tmp/baseline_report.json \
+  --candidate-report /tmp/candidate_report.json \
+  --continuity-report /tmp/detector_continuity_report.v1.json \
+  --out /tmp/offline_benchmark_gate.v1.json
+```
+
+The script combines:
+- `compare_benchmark_reports` (recall regression checks),
+- `ml_baseline_protocol@v1` (quality + continuity),
+- `label_eval` sample-size gate.
+
+Final verdict is `offline_benchmark_gate@v1` field `ok`.
+
 ## 2026-04-28 — documentation sync (roadmap, security, CV/ML index)
 
 | Check | Result |
