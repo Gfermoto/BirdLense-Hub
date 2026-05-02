@@ -26,6 +26,20 @@ python3 scripts/ml_baseline_protocol.py \
 
 3. Gate passes when `ml_baseline_protocol@v1` has `ok=true` and `detector_continuity_report@v1` has both `track_gate_ok=true` and `crop_gate_ok=true`.
 
+## 2026-05-02 — Wave 2 / #404 versioned eval dataset
+
+To keep offline benchmark gates (`#407`) reproducible, freeze the eval set as a versioned artifact:
+
+```bash
+python3 scripts/ml_build_eval_dataset.py \
+  --videos-root app/data/recordings \
+  --labels-json /tmp/gold_labels.json \
+  --out-dir app/data/eval_datasets
+```
+
+Output: `app/data/eval_datasets/<dataset_id>/manifest.json` (+ `gold_labels.json` when labels are provided).  
+`manifest.json` stores per-clip `sha256`, size, mtime, and label coverage (`labels_coverage`) so baseline/candidate comparisons run on the same frozen set.
+
 ## 2026-04-28 — documentation sync (roadmap, security, CV/ML index)
 
 | Check | Result |
