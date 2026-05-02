@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-eval-dataset
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-eval-dataset ml-offline-benchmark-gate
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -147,6 +147,20 @@ ml-build-eval-dataset:
 		$$(test -n "$${LABELS_JSON:-}" && printf -- '--labels-json "%s" ' "$${LABELS_JSON}") \
 		$$(test -n "$${DATASET_ID:-}" && printf -- '--dataset-id "%s" ' "$${DATASET_ID}") \
 		--out-dir "$${OUT}" \
+		$${ARGS:-}
+
+# Run offline detector-first gate for candidate vs baseline (#407).
+# Example:
+# BASELINE=/tmp/base.json CANDIDATE=/tmp/candidate.json CONTINUITY=/tmp/detector_continuity_report.v1.json OUT=/tmp/offline_gate.json make ml-offline-benchmark-gate
+ml-offline-benchmark-gate:
+	@test -n "$${BASELINE:-}" || (echo "Set BASELINE=path/to/baseline_report.json" >&2; exit 1)
+	@test -n "$${CANDIDATE:-}" || (echo "Set CANDIDATE=path/to/candidate_report.json" >&2; exit 1)
+	@test -n "$${OUT:-}" || (echo "Set OUT=path/to/offline_gate_report.json" >&2; exit 1)
+	@python3 scripts/ml_offline_benchmark_gate.py \
+		--baseline-report "$${BASELINE}" \
+		--candidate-report "$${CANDIDATE}" \
+		$$(test -n "$${CONTINUITY:-}" && printf -- '--continuity-report "%s" ' "$${CONTINUITY}") \
+		--out "$${OUT}" \
 		$${ARGS:-}
 
 validate-weights:

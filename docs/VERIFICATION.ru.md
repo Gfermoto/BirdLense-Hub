@@ -38,6 +38,25 @@ python3 scripts/ml_build_eval_dataset.py \
 Выход: `app/data/eval_datasets/<dataset_id>/manifest.json` (+ `gold_labels.json`, если передан labels JSON).  
 `manifest.json` содержит `sha256` каждого ролика, размер, mtime и покрытие labels (`labels_coverage`), чтобы сравнения baseline/candidate использовали один и тот же frozen набор.
 
+## 2026-05-02 — Wave 3 / #407 offline benchmark gate
+
+Единый gate-раннер для detector-first миграции:
+
+```bash
+python3 scripts/ml_offline_benchmark_gate.py \
+  --baseline-report /tmp/baseline_report.json \
+  --candidate-report /tmp/candidate_report.json \
+  --continuity-report /tmp/detector_continuity_report.v1.json \
+  --out /tmp/offline_benchmark_gate.v1.json
+```
+
+Скрипт объединяет:
+- `compare_benchmark_reports` (регрессии recall),
+- `ml_baseline_protocol@v1` (quality + continuity),
+- проверку достаточности выборки `label_eval`.
+
+Финальный verdict — `offline_benchmark_gate@v1` поле `ok`.
+
 ## 2026-04-28 — синхронизация документации (roadmap, security, индекс CV/ML)
 
 | Проверка | Результат |
