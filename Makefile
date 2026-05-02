@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices ml-verify-reid-gates ml-verify-action-labeling
+.PHONY: install install-pull deploy build start stop logs verify restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices ml-verify-reid-gates ml-run-reid-execution-report ml-verify-action-labeling
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -240,6 +240,20 @@ ml-verify-reid-gates:
 		--max-missing-contract-rows "$${MAX_MISSING_CONTRACT_ROWS:-0}" \
 		$$(test "$${REQUIRE_CONTRACT_OK:-0}" = "1" && printf -- '--require-contract-ok') \
 		$$(test -n "$${MAX_STALE_HOURS:-}" && printf -- '--max-stale-hours %s ' "$${MAX_STALE_HOURS}") \
+		--min-suggestion-count "$${MIN_SUGGESTION_COUNT:-0}"
+
+# Run execution-level Re-ID report for #389 (nearline shadow + failover + rollback checks).
+# Example:
+#   make ml-run-reid-execution-report REID_EXEC_REPORT=/tmp/reid_exec_report.json REID_WINDOW_HOURS=168 REID_VIDEO_LIMIT=300
+ml-run-reid-execution-report:
+	@test -n "$${REID_EXEC_REPORT:-}" || (echo "Set REID_EXEC_REPORT=path/to/reid_execution_report.json" >&2; exit 1)
+	@python3 scripts/reid/run_reid_execution_report.py \
+		--output-json "$${REID_EXEC_REPORT}" \
+		--window-hours "$${REID_WINDOW_HOURS:-168}" \
+		--video-limit "$${REID_VIDEO_LIMIT:-300}" \
+		--min-embeddings "$${MIN_EMBEDDINGS:-1}" \
+		--max-missing-contract-rows "$${MAX_MISSING_CONTRACT_ROWS:-0}" \
+		--max-stale-hours "$${MAX_STALE_HOURS:-8760}" \
 		--min-suggestion-count "$${MIN_SUGGESTION_COUNT:-0}"
 
 # Verify action-labeling protocol gates (#392) for API payload and/or dataset JSONL.
