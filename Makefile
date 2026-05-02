@@ -370,6 +370,19 @@ ml-run-action-e2:
 		--quality-min-f1 "$${ACTION_QUALITY_MIN_F1:-0.70}" \
 		--quality-max-delay-p95-sec "$${ACTION_QUALITY_MAX_DELAY_P95_SEC:-1.5}"
 
+# Build E4 guarded rollout go/no-go report from E2+E3 artifacts.
+# Example:
+#   make ml-run-action-e4 ACTION_E2_REPORT=/tmp/action_e2_report.json ACTION_E3_SWEEP_REPORT=/tmp/action_e3_sweep.json ACTION_E4_REPORT=/tmp/action_e4_report.json
+ml-run-action-e4:
+	@test -n "$${ACTION_E2_REPORT:-}" || (echo "Set ACTION_E2_REPORT=path/to/action_e2_report.json" >&2; exit 1)
+	@test -n "$${ACTION_E3_SWEEP_REPORT:-}" || (echo "Set ACTION_E3_SWEEP_REPORT=path/to/action_e3_sweep.json" >&2; exit 1)
+	@test -n "$${ACTION_E4_REPORT:-}" || (echo "Set ACTION_E4_REPORT=path/to/action_e4_report.json" >&2; exit 1)
+	@python3 scripts/action/run_action_e4_guarded_rollout_report.py \
+		--e2-report "$${ACTION_E2_REPORT}" \
+		--e3-sweep-report "$${ACTION_E3_SWEEP_REPORT}" \
+		--required-windows "$${ACTION_E4_REQUIRED_WINDOWS:-120,168}" \
+		--output-json "$${ACTION_E4_REPORT}"
+
 # Run E3 shadow report for action/Re-ID runtime + proxy outcomes.
 # Example:
 #   make ml-run-action-e3-shadow ACTION_E3_REPORT=/tmp/action_e3_shadow.json ACTION_WINDOW_HOURS=24 ACTION_VIDEO_LIMIT=300

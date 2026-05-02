@@ -18,7 +18,7 @@
 
 | Issue | Статус | Комментарий |
 |-------|--------|----------------|
-| [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Эпик | **Открыто (execution tracking)** | Repo-scope база доставлена; после аудита открытыми execution-задачами остаются [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379), [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392). |
+| [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367) Эпик | **Закрыто (execution completed)** | Все execution-волны эпика закрыты артефактами: E0/E1 для [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392), E2/E3/E4 для [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379), Re-ID execution для [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389) и [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390). |
 | [#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368) Детектор train/ship | **Закрыто** | Контракт/скрипты/новые веса и OpenVINO-экспорт проверены на хабе. |
 | [#369](https://github.com/Gfermoto/BirdLense-Hub/issues/369) Active learning | **Готово в репо** | Manifest/schema/export/UI/API pool preview **готовы**; retrain automation не блокирует текущий пакет. |
 | [#370](https://github.com/Gfermoto/BirdLense-Hub/issues/370) Классификатор | **Закрыто** | Веса классификатора обновлены, отдельный выбор backend (`torch/openvino/auto`) внедрён. После prod-crash 2026-04-30 безопасный дефолт — `torch`; `auto/openvino` только после явного smoke. |
@@ -27,12 +27,12 @@
 | [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Декод видео | **Готово в репо** | Скрипт замеров + FFmpeg VA-API backend + `video.capture_backend` + UI/API runtime status готовы; матрица платформ — часть операторской валидации. |
 | [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **Готово в репо** | Доки + DINOv2 offline embed/cosine/export + SQLite sidecar import + UI/API sidecar summary готовы; продуктовая галерея вынесена за текущий пакет. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Готово в репо** | Игрушечная симуляция + threat model готовы; prod-channel не входит в текущий пакет. |
-| [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) Action recognition | **Открыто (execution-волна)** | Planning/research база есть, но issue снова активен для реального подбора/интеграции модели распознавания действий и прод-валидации. |
+| [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) Action recognition | **Закрыто (execution completed)** | E2 benchmark (`run_action_e2_pipeline.py`), E3 hub shadow sweep (`run_action_e3_shadow_sweep.py`) и E4 guarded rollout report (`run_action_e4_guarded_rollout_report.py`) выполнены и подтверждены артефактами. |
 | [#388](https://github.com/Gfermoto/BirdLense-Hub/issues/388) CV/ML v2 Epic | **Закрыто (planning scope)** | v2-направления декомпозированы и формализованы, execution-гейты закреплены в дочерних задачах и документах. |
 | [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389) DINOv2 production pipeline | **Закрыто (execution completed)** | Добавлен исполняемый `run_reid_execution_report.py` + Make target; на хабе подтверждены nearline snapshots, import success/failure metrics, failover-гейты (schema/stale) и kill-switch/shadow rollback. |
 | [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390) Re-ID productization | **Закрыто (execution completed)** | Shadow sweep tooling и хабовые evidence доставлены: non-zero окна suggestions, proxy outcomes (`accepted_proxy`), pending-очередь закрыта по отслеживаемой паре, runtime-gates стабильны. |
 | [#391](https://github.com/Gfermoto/BirdLense-Hub/issues/391) Benchmark robustness gates | **Закрыто** | Slice-gate скрипты/тесты/интеграция (`verify_benchmark_slice_gates.py`, Makefile, docs) внедрены. |
-| [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) Action dataset/labeling protocol | **Открыто (execution pending)** | Protocol/spec/gates зафиксированы, но issue остаётся открытым до выполнения dataset ops/training loop и валидации quality bar. |
+| [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) Action dataset/labeling protocol | **Закрыто (execution completed)** | E0+E1 закрыты воспроизводимыми пайплайнами и свежими артефактами: fixture-gates, `run_action_e1_pipeline.py`, real-data seed/calibration/kappa report. |
 | [#393](https://github.com/Gfermoto/BirdLense-Hub/issues/393) ML release train | **Закрыто** | Реестр моделей + release gates (`build/verify_model_registry_entry.py`, тесты, docs, Makefile) внедрены. |
 | [#394](https://github.com/Gfermoto/BirdLense-Hub/issues/394) Data engine quality gates | **Закрыто** | Dataset quality + hard-negatives integrity gates (`verify_detector_dataset_quality.py`, `verify_hard_negatives_manifest.py`, тесты/docs) внедрены. |
 | [#395](https://github.com/Gfermoto/BirdLense-Hub/issues/395) Classifier OpenVINO migration | **Закрыто** | Миграция классификатора на OpenVINO закрыта. |
@@ -86,7 +86,7 @@
 - [#375] ``simulate_fedavg.py`` + [FEDERATED_LEARNING.ru.md](FEDERATED_LEARNING.ru.md).
 - [#389] DINOv2 production path: RFC [ML_DINOV2_PRODUCTION_PIPELINE.ru.md](ML_DINOV2_PRODUCTION_PIPELINE.ru.md) + **offline enforcement контракта** (поля JSONL → колонки SQLite → миграция на импорте → `reid_summary@v2.contract`) + execution-runner `scripts/reid/run_reid_execution_report.py`; issue закрыт по hub evidence.
 - [#390] Re-ID safety: RFC [ML_REID_PRODUCTIZATION.ru.md](ML_REID_PRODUCTIZATION.ru.md) + **YAML policy** (`processor.reid_*`) + **`video_reid_match@v2`** hints + E3 sweep execution evidence; issue закрыт по результатам валидации на хабе.
-- [#392] Action dataset/labeling/training protocol: [ML_ACTION_RECOGNITION_PLAN.ru.md](ML_ACTION_RECOGNITION_PLAN.ru.md) + исполняемые protocol-gates; training execution DoD ещё открыт.
+- [#392] Action dataset/labeling/training protocol: [ML_ACTION_RECOGNITION_PLAN.ru.md](ML_ACTION_RECOGNITION_PLAN.ru.md) + исполняемые protocol-gates и E1 pipeline-артефакты; issue закрыт по E0/E1 DoD.
 
 ### Сводка по подзадачам (ветка ML)
 
