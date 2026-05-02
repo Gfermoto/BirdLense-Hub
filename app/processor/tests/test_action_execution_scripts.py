@@ -66,6 +66,10 @@ class TestActionExecutionScripts(unittest.TestCase):
             "scripts/action/run_action_e3_shadow_sweep.py",
             "run_action_e3_shadow_sweep",
         )
+        cls.e4_mod = _load_module(
+            "scripts/action/run_action_e4_guarded_rollout_report.py",
+            "run_action_e4_guarded_rollout_report",
+        )
 
     def test_export_action_seed_dataset(self):
         with tempfile.TemporaryDirectory() as td:
@@ -357,6 +361,105 @@ class TestActionExecutionScripts(unittest.TestCase):
         self.assertIsNotNone(best)
         assert best is not None
         self.assertEqual(best["window_hours"], 120)
+
+    def test_run_action_e4_guarded_rollout_report_go(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            e2 = base / "e2.json"
+            e3 = base / "e3.json"
+            out = base / "e4.json"
+            e2.write_text(
+                json.dumps(
+                    {
+                        "schema": "action_e2_pipeline_report@v1",
+                        "ok": True,
+                        "passes_quality_bar": True,
+                        "recommendation": {"best_model_id": "m1", "fallback_model_id": "m2"},
+                        "quality_bar": {"min_f1": 0.7},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            e3.write_text(
+                json.dumps(
+                    {
+                        "schema": "action_e3_shadow_sweep@v1",
+                        "ok": True,
+                        "results": [
+                            {"window_hours": 120, "ok": True, "data_available": True, "suggest_same_total": 5},
+                            {"window_hours": 168, "ok": True, "data_available": True, "suggest_same_total": 6},
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            prev = sys.argv
+            try:
+                sys.argv = [
+                    "run_action_e4_guarded_rollout_report.py",
+                    "--e2-report",
+                    str(e2),
+                    "--e3-sweep-report",
+                    str(e3),
+                    "--required-windows",
+                    "120,168",
+                    "--output-json",
+                    str(out),
+                ]
+                rc = self.e4_mod.main()
+            finally:
+                sys.argv = prev
+            self.assertEqual(rc, 0)
+            rep = json.loads(out.read_text(encoding="utf-8"))
+            self.assertTrue(rep["ok"])
+            self.assertEqual(rep["decision"], "go")
+
+    def test_run_action_e4_guarded_rollout_report_no_go_when_window_missing(self):
+        with tempfile.TemporaryDirectory() as td:
+            base = Path(td)
+            e2 = base / "e2.json"
+            e3 = base / "e3.json"
+            out = base / "e4.json"
+            e2.write_text(
+                json.dumps({"schema": "action_e2_pipeline_report@v1", "ok": True, "passes_quality_bar": True}) + "\n",
+                encoding="utf-8",
+            )
+            e3.write_text(
+                json.dumps(
+                    {
+                        "schema": "action_e3_shadow_sweep@v1",
+                        "ok": True,
+                        "results": [
+                            {"window_hours": 120, "ok": True, "data_available": True, "suggest_same_total": 3}
+                        ],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            prev = sys.argv
+            try:
+                sys.argv = [
+                    "run_action_e4_guarded_rollout_report.py",
+                    "--e2-report",
+                    str(e2),
+                    "--e3-sweep-report",
+                    str(e3),
+                    "--required-windows",
+                    "120,168",
+                    "--output-json",
+                    str(out),
+                ]
+                rc = self.e4_mod.main()
+            finally:
+                sys.argv = prev
+            self.assertEqual(rc, 1)
+            rep = json.loads(out.read_text(encoding="utf-8"))
+            self.assertFalse(rep["ok"])
+            self.assertEqual(rep["decision"], "no_go")
+            self.assertIn(168, rep["checks"]["missing_windows"])
 
 
 if __name__ == "__main__":
