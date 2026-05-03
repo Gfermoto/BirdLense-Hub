@@ -82,6 +82,46 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
             </form.Field>
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
+            <form.Field name="processor.classifier_inference_backend">
+              {(field) => (
+                <FormControl fullWidth>
+                  <InputLabel id="processor-classifier-inference-backend-label">
+                    {t('settings.processorClassifierInferenceBackend')}
+                  </InputLabel>
+                  <Select
+                    labelId="processor-classifier-inference-backend-label"
+                    value={(field.state.value ?? 'torch').toLowerCase()}
+                    label={t('settings.processorClassifierInferenceBackend')}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                  >
+                    <MenuItem value="torch">
+                      {t('settings.processorInferenceBackendTorch')}
+                    </MenuItem>
+                    <MenuItem value="openvino">
+                      {t('settings.processorInferenceBackendOpenvino')}
+                    </MenuItem>
+                  </Select>
+                  <FormHelperText>
+                    {t('settings.processorClassifierInferenceBackendHint')}
+                  </FormHelperText>
+                </FormControl>
+              )}
+            </form.Field>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <form.Field name="processor.inference_device">
+              {(field) => (
+                <TextField
+                  fullWidth
+                  value={field.state.value ?? ''}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  label={t('settings.processorInferenceDevice')}
+                  helperText={t('settings.processorInferenceDeviceHint')}
+                />
+              )}
+            </form.Field>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <form.Field name="processor.detector_weight_contract">
               {(field) => (
                 <FormControl fullWidth>
@@ -111,6 +151,19 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
               )}
             </form.Field>
           </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <form.Field name="processor.classifier_inference_device">
+              {(field) => (
+                <TextField
+                  fullWidth
+                  value={field.state.value ?? ''}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  label={t('settings.processorClassifierInferenceDevice')}
+                  helperText={t('settings.processorClassifierInferenceDeviceHint')}
+                />
+              )}
+            </form.Field>
+          </Grid>
           <Grid size={{ xs: 12 }}>
             <form.Field name="processor.models.binary_openvino">
               {(field) => (
@@ -120,6 +173,21 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                   onChange={(e) => field.handleChange(e.target.value)}
                   label={t('settings.processorModelBinaryOpenvinoPath')}
                   helperText={t('settings.processorModelBinaryOpenvinoPathHint')}
+                />
+              )}
+            </form.Field>
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <form.Field name="processor.models.classifier_openvino">
+              {(field) => (
+                <TextField
+                  fullWidth
+                  value={field.state.value ?? ''}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  label={t('settings.processorModelClassifierOpenvinoPath')}
+                  helperText={t(
+                    'settings.processorModelClassifierOpenvinoPathHint',
+                  )}
                 />
               )}
             </form.Field>
