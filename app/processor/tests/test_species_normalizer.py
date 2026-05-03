@@ -284,3 +284,35 @@ class TestMergeDetections(unittest.TestCase):
         result = merge_detections(yolo, [], self.video_start, self.video_end, source_priority=['yolo', 'frigate'])
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['species_name'], 'Blue Tit')
+
+    def test_equal_rank_conflict_can_be_preserved_for_late_arbitration(self):
+        yolo = [
+            {
+                'species_name': 'Great Tit',
+                'confidence': 0.62,
+                'classifier_confidence': 0.59,
+                'start_time': 1,
+                'end_time': 8,
+                'detection_provider': 'yolo',
+                'decision_kind': 'accepted_species',
+            },
+            {
+                'species_name': 'Blue Tit',
+                'confidence': 0.61,
+                'classifier_confidence': 0.58,
+                'start_time': 2,
+                'end_time': 9,
+                'detection_provider': 'yolo',
+                'decision_kind': 'accepted_species',
+            },
+        ]
+        result = merge_detections(
+            yolo,
+            [],
+            self.video_start,
+            self.video_end,
+            source_priority=['yolo', 'frigate'],
+            preserve_equal_rank_conflicts_for_arbitration=True,
+        )
+        self.assertEqual(len(result), 2)
+        self.assertEqual({row['species_name'] for row in result}, {'Great Tit', 'Blue Tit'})

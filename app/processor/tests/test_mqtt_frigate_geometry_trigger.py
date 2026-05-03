@@ -201,6 +201,51 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         self.assertEqual(len(calls), 0)
         self.assertEqual(len(agg._events), 1)
 
+    def test_camera_specific_min_trigger_score_overrides_global(self):
+        calls = []
+
+        def cb(cam, species):
+            calls.append((cam, species))
+
+        agg = ma.MQTTEventAggregator.__new__(ma.MQTTEventAggregator)
+        agg._lock = threading.Lock()
+        agg._events = deque()
+        agg.frigate_topic = 'frigate/events'
+        agg._frigate_label_exclude = set()
+        agg._on_frigate_motion = (
+            set(),
+            {'bird'},
+            cb,
+        )
+        payload = json.dumps(
+            {
+                'after': {
+                    'camera': 'BirdBox',
+                    'label': 'bird',
+                    'top_score': 0.57,
+                    'box': [0, 0, 1, 1],
+                }
+            }
+        ).encode()
+        msg = MagicMock()
+        msg.topic = 'frigate/events'
+        msg.payload = payload
+
+        def cfg_get(key, default=None):
+            if key == 'motion.frigate_trigger_on_tracked_object':
+                return True
+            if key == 'motion.frigate_min_trigger_score':
+                return 0.5
+            if key == 'motion.frigate_min_trigger_score_by_camera':
+                return {'birdbox': 0.62}
+            return default
+
+        with patch.object(ma.app_config, 'get', side_effect=cfg_get):
+            agg._on_message(None, None, msg)
+
+        self.assertEqual(len(calls), 0)
+        self.assertEqual(len(agg._events), 1)
+
     def test_excluded_cat_still_triggers_recording_queued_with_merge_suppressed(self):
         """Excluded labels: motion fires; event is stored for Frigate standalone, not for YOLO merge."""
         calls = []

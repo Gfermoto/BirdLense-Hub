@@ -666,6 +666,18 @@ class MQTTEventAggregator:
                         )
                     except (TypeError, ValueError):
                         min_trigger_score = 0.0
+                    per_camera_thresholds = app_config.get("motion.frigate_min_trigger_score_by_camera") or {}
+                    if isinstance(per_camera_thresholds, dict):
+                        camera_key = str(camera or "").strip().lower()
+                        for key, value in per_camera_thresholds.items():
+                            if str(key or "").strip().lower() != camera_key:
+                                continue
+                            try:
+                                cam_score = float(value)
+                            except (TypeError, ValueError):
+                                break
+                            min_trigger_score = max(min_trigger_score, cam_score)
+                            break
                     cam_lower = {str(c).strip().lower() for c in cam_f if str(c).strip()}
                     # Пустой camera_filter = любая камера (как пустой label_filter).
                     cam_ok = (not cam_lower) or (str(camera or "").strip().lower() in cam_lower)

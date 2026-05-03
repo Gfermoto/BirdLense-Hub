@@ -436,6 +436,7 @@ def build_fused_video_detections(
         absorb_generic_bird_min_classifier_confidence=float(
             app_config.get("detection.absorb_generic_bird_min_classifier_confidence") or 0.22
         ),
+        preserve_equal_rank_conflicts_for_arbitration=True,
     )
     fused = apply_multi_camera_confidence_boost(
         fused,

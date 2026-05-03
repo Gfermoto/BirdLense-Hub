@@ -177,8 +177,13 @@ for attempt in $(seq 1 ${BUILD_RETRIES}); do
   sleep 10
 done
 if [[ $build_ok -eq 0 ]]; then
-  echo "Ошибка: сборка/запуск не удались после ${BUILD_RETRIES} попыток"
-  exit 1
+  echo "Предупреждение: сборка/запуск завершились с ошибкой SSH после ${BUILD_RETRIES} попыток; проверяю факт запуска..."
+  if ssh ${SSH_OPTS} "${HOST}" "docker ps --filter name=^birdlense$ --format '{{.Status}}' | grep -q '^Up '"; then
+    echo "  Контейнер birdlense запущен — продолжаю в режиме пост-проверки."
+  else
+    echo "Ошибка: сборка/запуск не удались после ${BUILD_RETRIES} попыток"
+    exit 1
+  fi
 fi
 
 # 3. Проверка после деплоя

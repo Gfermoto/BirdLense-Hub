@@ -3,7 +3,7 @@
 import datetime
 import uuid
 from typing import List
-from sqlalchemy import String, Integer, Float, DateTime, Table, ForeignKey, Column, Index, desc, JSON
+from sqlalchemy import String, Integer, Float, DateTime, Table, ForeignKey, Column, Index, desc, JSON, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from flask_sqlalchemy import SQLAlchemy
@@ -220,7 +220,13 @@ class Video(db.Model):
         Index("ix_video_start_time", "start_time"),
         Index("ix_video_end_time", "end_time"),
         Index("ix_video_deleted_at", "deleted_at"),
-        Index("ix_video_idempotency_key", "idempotency_key", unique=True),
+        Index(
+            "ux_video_idempotency_active",
+            "idempotency_key",
+            unique=True,
+            sqlite_where=text("deleted_at IS NULL"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
     )
 
 

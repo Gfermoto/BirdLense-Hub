@@ -308,6 +308,9 @@ motion:
   # Мин. top_score Frigate для старта записи по событию events. 0 = как раньше, без порога.
   # Позволяет отсечь слабые/шумовые события до запуска клипа.
   frigate_min_trigger_score: 0.50
+  # Camera-specific override для порога триггера (ключ = id камеры в lower-case).
+  # Пример: {birdbox: 0.62}
+  frigate_min_trigger_score_by_camera: {}
   mqtt_topic: ""  # e.g. stat/bird_pir/STATE for Tasmota PIR
   esphome_url: ""
   esphome_sensor_id: ""  # binary_sensor id in ESPHome (YAML: id: bird_pir)
@@ -386,6 +389,13 @@ detection:
   use_learned_fusion: false
   fusion_model_path: ""  # optional path to serialized PyTorch model for fusion scorer
   fusion_alpha: 0.6      # blend weight for learned score (alpha * learned + (1-alpha) * base)
+  # Fusion A/B KPI defaults (used by scripts/ml_fusion_ab_report.py / ml_fusion_ab_hub.sh).
+  # Не влияют на runtime inference; только на quality gates и отчётность.
+  fusion_ab_min_yolo_share: 0.30
+  fusion_ab_min_yolo_share_bird_only: 0.30
+  fusion_ab_min_yolo_share_bird_only_warn: 0.15
+  fusion_ab_min_yolo_track_found_rate_warn: 0.40
+  fusion_ab_min_decision_trace_rows_warn: 20
   # Варианты -> каноническое (Common name). Слияние в один вид для проекта.
   species_mapping:
     "Garrulus glandarius (Eurasian Jay)": "Eurasian Jay"
