@@ -28,7 +28,7 @@ def _column_names(insp, table: str) -> set[str]:
 
 def _iso_utc_naive(value) -> str:
     if value is None:
-        return ''
+        return ""
     if isinstance(value, str):
         return value
     if getattr(value, "tzinfo", None) is not None:

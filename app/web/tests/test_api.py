@@ -2798,18 +2798,18 @@ class TestMigrationCalendar:
         assert r.status_code == 400
 
     def test_migration_calendar_rejects_bad_metric(self, client):
-        r = client.get('/api/ui/migration-calendar', query_string={'metric': 'events'})
+        r = client.get("/api/ui/migration-calendar", query_string={"metric": "events"})
         assert r.status_code == 400
-        assert 'metric' in (r.json or {}).get('error', '')
+        assert "metric" in (r.json or {}).get("error", "")
 
     def test_migration_calendar_default_metric_is_encounters(self, app, client, monkeypatch):
         from models import db, Species, SpeciesVisit
         import services.migration_calendar_service as mc_service
 
-        monkeypatch.setattr(mc_service, 'species_ids_to_exclude_from_bird_catalog', lambda _s: set())
+        monkeypatch.setattr(mc_service, "species_ids_to_exclude_from_bird_catalog", lambda _s: set())
 
         with app.app_context():
-            species = Species(name='Default metric species')
+            species = Species(name="Default metric species")
             db.session.add(species)
             db.session.flush()
             db.session.add(
@@ -2822,25 +2822,25 @@ class TestMigrationCalendar:
             )
             db.session.commit()
 
-        r = client.get('/api/ui/migration-calendar', query_string={'catalog': 'observed'})
+        r = client.get("/api/ui/migration-calendar", query_string={"catalog": "observed"})
         assert r.status_code == 200
-        assert r.json.get('metric_used') == 'encounters'
+        assert r.json.get("metric_used") == "encounters"
 
-        for row in r.json.get('species', []):
-            if row.get('name') == 'Default metric species':
-                assert int(row.get('total') or 0) == 1
+        for row in r.json.get("species", []):
+            if row.get("name") == "Default metric species":
+                assert int(row.get("total") or 0) == 1
                 break
         else:
-            raise AssertionError('Default metric species not found')
+            raise AssertionError("Default metric species not found")
 
     def test_migration_calendar_metric_switch(self, app, client, monkeypatch):
         from models import db, Species, SpeciesVisit
         import services.migration_calendar_service as mc_service
 
-        monkeypatch.setattr(mc_service, 'species_ids_to_exclude_from_bird_catalog', lambda _s: set())
+        monkeypatch.setattr(mc_service, "species_ids_to_exclude_from_bird_catalog", lambda _s: set())
 
         with app.app_context():
-            species = Species(name='Metric switch species')
+            species = Species(name="Metric switch species")
             db.session.add(species)
             db.session.flush()
             db.session.add(
@@ -2854,22 +2854,22 @@ class TestMigrationCalendar:
             db.session.commit()
 
         r_visits = client.get(
-            '/api/ui/migration-calendar',
-            query_string={'metric': 'visits', 'catalog': 'observed'},
+            "/api/ui/migration-calendar",
+            query_string={"metric": "visits", "catalog": "observed"},
         )
         r_max = client.get(
-            '/api/ui/migration-calendar',
-            query_string={'metric': 'max_simultaneous', 'catalog': 'observed'},
+            "/api/ui/migration-calendar",
+            query_string={"metric": "max_simultaneous", "catalog": "observed"},
         )
         assert r_visits.status_code == 200
         assert r_max.status_code == 200
-        assert r_visits.json.get('metric_used') == 'visits'
-        assert r_max.json.get('metric_used') == 'max_simultaneous'
+        assert r_visits.json.get("metric_used") == "visits"
+        assert r_max.json.get("metric_used") == "max_simultaneous"
 
         def _find_total(payload):
-            for row in payload.get('species', []):
-                if row.get('name') == 'Metric switch species':
-                    return int(row.get('total') or 0)
+            for row in payload.get("species", []):
+                if row.get("name") == "Metric switch species":
+                    return int(row.get("total") or 0)
             return 0
 
         assert _find_total(r_visits.json) == 1
@@ -2879,10 +2879,10 @@ class TestMigrationCalendar:
         from models import db, Species, SpeciesVisit
         import services.migration_calendar_service as mc_service
 
-        monkeypatch.setattr(mc_service, 'species_ids_to_exclude_from_bird_catalog', lambda _s: set())
+        monkeypatch.setattr(mc_service, "species_ids_to_exclude_from_bird_catalog", lambda _s: set())
 
         with app.app_context():
-            species = Species(name='Compare metric species')
+            species = Species(name="Compare metric species")
             db.session.add(species)
             db.session.flush()
             db.session.add(
@@ -2895,21 +2895,21 @@ class TestMigrationCalendar:
             )
             db.session.commit()
 
-        r = client.get('/api/ui/migration-calendar/compare', query_string={'catalog': 'observed'})
+        r = client.get("/api/ui/migration-calendar/compare", query_string={"catalog": "observed"})
         assert r.status_code == 200
-        totals = (r.json or {}).get('totals') or {}
-        assert int(totals.get('encounters') or 0) >= 1
-        assert int(totals.get('max_simultaneous') or 0) >= 4
-        assert int(totals.get('delta') or 0) >= 3
+        totals = (r.json or {}).get("totals") or {}
+        assert int(totals.get("encounters") or 0) >= 1
+        assert int(totals.get("max_simultaneous") or 0) >= 4
+        assert int(totals.get("delta") or 0) >= 3
         target = None
-        for row in (r.json or {}).get('species', []):
-            if row.get('name') == 'Compare metric species':
+        for row in (r.json or {}).get("species", []):
+            if row.get("name") == "Compare metric species":
                 target = row
                 break
         assert target is not None
-        assert int(target.get('encounters_total') or 0) == 1
-        assert int(target.get('max_simultaneous_total') or 0) == 4
-        assert int(target.get('delta') or 0) == 3
+        assert int(target.get("encounters_total") or 0) == 1
+        assert int(target.get("max_simultaneous_total") or 0) == 4
+        assert int(target.get("delta") or 0) == 3
 
 
 class TestUnknowns:

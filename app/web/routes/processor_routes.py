@@ -157,19 +157,11 @@ def _build_payload_hash_for_existing_video(video_id: int) -> str:
 
 def _find_existing_video_for_idempotent_ingest(*, processor_version: str, pv, clip_key: str):
     """Return existing Video for identical clip key (path/time/version)."""
-    existing_by_key = (
-        Video.query.filter_by(idempotency_key=clip_key, deleted_at=None)
-        .order_by(Video.id.desc())
-        .first()
-    )
+    existing_by_key = Video.query.filter_by(idempotency_key=clip_key, deleted_at=None).order_by(Video.id.desc()).first()
     if existing_by_key is not None:
         return existing_by_key
     # Legacy fallback for rows created before idempotency_key migration.
-    existing = (
-        Video.query.filter_by(video_path=pv.video_path, deleted_at=None)
-        .order_by(Video.id.desc())
-        .first()
-    )
+    existing = Video.query.filter_by(video_path=pv.video_path, deleted_at=None).order_by(Video.id.desc()).first()
     if not existing:
         return None
     same_version = str(existing.processor_version or "") == str(processor_version or "")
@@ -280,9 +272,7 @@ def register_routes(app):
         except IntegrityError:
             db.session.rollback()
             raced_video = (
-                Video.query.filter_by(idempotency_key=clip_key, deleted_at=None)
-                .order_by(Video.id.desc())
-                .first()
+                Video.query.filter_by(idempotency_key=clip_key, deleted_at=None).order_by(Video.id.desc()).first()
             )
             if raced_video is not None:
                 existing_payload_hash = str(raced_video.ingest_payload_hash or "").strip()

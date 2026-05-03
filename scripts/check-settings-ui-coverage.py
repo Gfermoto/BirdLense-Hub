@@ -183,6 +183,116 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Fusion model artifact is managed by product workflow or support tools, not typed as a path in Settings.",
         "next_step": "Expose only via recognition improvement workflow / service mode.",
     },
+    "detection.fusion_ab_min_yolo_share": {
+        "category": "advanced",
+        "reason": "Quality-gate KPI threshold for fusion diagnostics; tuned by operators during validation waves.",
+        "next_step": "Optional Advanced diagnostics panel once KPI presets UX is designed.",
+    },
+    "detection.fusion_ab_min_yolo_share_bird_only": {
+        "category": "advanced",
+        "reason": "Bird-only KPI threshold for fusion diagnostics; not a day-to-day user setting.",
+        "next_step": "Keep config-level until fusion diagnostics moves to dedicated ops UI.",
+    },
+    "detection.fusion_ab_min_yolo_share_bird_only_warn": {
+        "category": "advanced",
+        "reason": "Soft warning threshold for bird-only fusion KPI in synthetic hub checks.",
+        "next_step": "Keep with CI/ops thresholds or expose as preset in diagnostics tooling.",
+    },
+    "detection.fusion_ab_min_yolo_track_found_rate_warn": {
+        "category": "advanced",
+        "reason": "Warning floor for YOLO track-found rate in fusion A/B reports; used for ops monitoring.",
+        "next_step": "Expose only with full diagnostics context and metric explanation.",
+    },
+    "detection.fusion_ab_min_decision_trace_rows_warn": {
+        "category": "advanced",
+        "reason": "Minimum decision-trace sample size for statistically meaningful fusion KPI warnings.",
+        "next_step": "Keep config-level while report remains ops-facing.",
+    },
+    "processor.classifier_vote_share_power": {
+        "category": "advanced",
+        "reason": "Vote-share exponent controlling classifier arbitration sensitivity in ML pipeline internals.",
+        "next_step": "Expose only after calibrated presets and guardrails are defined.",
+    },
+    "processor.inference_device": {
+        "category": "ops-only",
+        "reason": "Runtime device selection depends on host hardware and deployment constraints.",
+        "next_step": "Keep YAML/system-managed unless hardware profile selector is added.",
+    },
+    "processor.openvino.model_cache_enabled": {
+        "category": "ops-only",
+        "reason": "OpenVINO runtime cache behavior is host/runtime optimization, not end-user settings.",
+        "next_step": "Expose only in expert diagnostics mode with restart guidance.",
+    },
+    "processor.openvino.num_requests": {
+        "category": "ops-only",
+        "reason": "OpenVINO parallel inference requests are hardware/performance tuning knobs.",
+        "next_step": "Keep config-level until benchmark-backed presets exist.",
+    },
+    "processor.openvino.profile": {
+        "category": "ops-only",
+        "reason": "OpenVINO profile switch is an optimization preset for deployment engineers.",
+        "next_step": "Potentially map to simplified performance profiles later.",
+    },
+    "processor.reid.device": {
+        "category": "ops-only",
+        "reason": "ReID execution device is hardware-specific and deployment-tuned.",
+        "next_step": "Expose only via System diagnostics if needed.",
+    },
+    "processor.reid.flag_low_similarity_for_review": {
+        "category": "advanced",
+        "reason": "Review workflow sensitivity setting for low-similarity ReID matches.",
+        "next_step": "Add when ReID reviewer UX includes explicit confidence controls.",
+    },
+    "processor.reid.hub_cache_dir": {
+        "category": "ops-only",
+        "reason": "Filesystem path for model cache is environment-specific.",
+        "next_step": "Keep YAML-only.",
+    },
+    "processor.reid.hub_repo_local_path": {
+        "category": "ops-only",
+        "reason": "Optional local HF repo mirror path is deployment-specific.",
+        "next_step": "Keep YAML-only.",
+    },
+    "processor.reid.max_detections_per_recording": {
+        "category": "advanced",
+        "reason": "ReID compute cap per recording for performance control; not needed in basic Settings UI.",
+        "next_step": "Consider exposing in expert mode with compute-cost warning.",
+    },
+    "processor.reid.min_best_frame_score": {
+        "category": "advanced",
+        "reason": "Frame-quality threshold for ReID embedding extraction is ML internals tuning.",
+        "next_step": "Expose only with visual guidance in ReID diagnostics UX.",
+    },
+    "processor.reid.model": {
+        "category": "ops-only",
+        "reason": "ReID model selection ties to deployment artifacts and compatibility.",
+        "next_step": "Manage via system model tooling, not general settings.",
+    },
+    "processor.reid.nickname_similarity_threshold": {
+        "category": "advanced",
+        "reason": "Similarity threshold affecting nickname assignment confidence in ReID workflow.",
+        "next_step": "Expose when nickname assignment UX adds threshold preview/help.",
+    },
+    "processor.reid.preload_on_start": {
+        "category": "ops-only",
+        "reason": "Startup preload impacts boot time/memory and is deployment-specific.",
+        "next_step": "Keep config-level or map to performance profile presets.",
+    },
+    "processor.reid.runtime_enabled": {
+        "category": "advanced",
+        "reason": "Master switch for ReID runtime pipeline; advanced feature toggle.",
+        "next_step": "Expose only with clear operator guidance once ReID UX matures.",
+    },
+    "processor.tracker_profiles.day": {
+        "category": "advanced",
+        "reason": "Nested tracker profile object for daytime tuning is expert-level and high-risk for misconfiguration.",
+        "next_step": "Expose through dedicated tracker profile editor with validation.",
+    },
+    "processor.tracker_profiles.night": {
+        "category": "advanced",
+        "reason": "Nested tracker profile object for low-light tuning is expert-level and high-risk for misconfiguration.",
+        "next_step": "Expose through dedicated tracker profile editor with validation.",
+    },
     # Ops/security-sensitive/infra-generated values.
     "web_push.enabled": {
         "category": "backend-managed",

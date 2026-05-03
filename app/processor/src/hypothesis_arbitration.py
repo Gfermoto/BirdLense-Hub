@@ -201,16 +201,14 @@ def _absorb_generic_bird(rows: list[dict]) -> list[dict]:
                 _row_tie_break_key(kept[winner_idx]) if winner_idx is not None else _row_tie_break_key(row)
             )
             if _can_absorb_frigate_standalone_generic(row, other) and (
-                other_score > winner_score
-                or (other_score == winner_score and other_tie_break > winner_tie_break)
+                other_score > winner_score or (other_score == winner_score and other_tie_break > winner_tie_break)
             ):
                 winner_idx = other_index
                 winner_score = other_score
                 winner_reason = "absorbed_generic_into_frigate_species"
                 continue
             if _support_count(other) >= ARBITRATION_MIN_SUPPORTS and (
-                other_score > winner_score
-                or (other_score == winner_score and other_tie_break > winner_tie_break)
+                other_score > winner_score or (other_score == winner_score and other_tie_break > winner_tie_break)
             ):
                 winner_idx = other_index
                 winner_score = other_score

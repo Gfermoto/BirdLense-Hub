@@ -389,10 +389,7 @@ class DecisionMaker:
             "event_count": len(classifier_events),
             "avg_classifier_confidence": avg_classifier_conf,
             "avg_combined_confidence": avg_combined_conf,
-            "combined_confidence": (
-                (vote_share ** self.classifier_vote_share_power)
-                * avg_combined_conf
-            ),
+            "combined_confidence": ((vote_share**self.classifier_vote_share_power) * avg_combined_conf),
             "avg_entropy": avg_entropy,
             "avg_top1_top2_margin": avg_top1_top2_margin,
         }
