@@ -72,6 +72,9 @@ export type MlRuntimeStatus = {
   };
   processor: {
     inference_backend?: string;
+    inference_device?: string;
+    classifier_inference_backend?: string;
+    classifier_inference_device?: string;
     detector_weight_contract?: string;
     binary_imgsz?: number;
     frame_processing_warn_ms?: number;

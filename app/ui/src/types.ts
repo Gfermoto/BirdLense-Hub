@@ -271,8 +271,16 @@ export interface Settings {
     keep_recording_when_no_detections?: boolean;
     detection_strategy?: string;
     inference_backend?: 'torch' | 'openvino' | 'onnxruntime' | string;
+    inference_device?: string;
+    classifier_inference_backend?: 'torch' | 'openvino' | 'onnxruntime' | string;
+    classifier_inference_device?: string;
     detector_weight_contract?: 'off' | 'warn' | 'enforce' | string;
-    models?: { binary?: string; binary_openvino?: string; classifier?: string };
+    models?: {
+      binary?: string;
+      binary_openvino?: string;
+      classifier?: string;
+      classifier_openvino?: string;
+    };
     classifier_uncertainty_entropy_ge?: number | null;
     classifier_uncertainty_margin_le?: number | null;
     save_images?: boolean;

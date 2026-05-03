@@ -182,3 +182,6 @@ def test_ml_runtime_reports_config_state(client):
     assert body["schema"] == "ml_runtime_status@v1"
     assert "capture_backend_config" in body["video"]
     assert "inference_backend" in body["processor"]
+    assert "inference_device" in body["processor"]
+    assert "classifier_inference_backend" in body["processor"]
+    assert "classifier_inference_device" in body["processor"]
