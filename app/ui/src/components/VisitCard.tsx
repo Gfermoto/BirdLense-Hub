@@ -78,6 +78,7 @@ const DetectionItem = ({
   return (
     <Box>
       <CardActionArea
+        component="div"
         onClick={onClick}
         sx={{
           p: 1.5,
