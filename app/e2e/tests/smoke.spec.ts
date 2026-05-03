@@ -62,10 +62,10 @@ test.describe('Smoke tests', () => {
     await page.getByTestId('nav-pill-timeline').click();
     await expect(page).toHaveURL(/\/timeline/);
 
-    await page.goto('/settings');
+    await gotoReady(page, '/settings');
     await expect(page).toHaveURL(/\/settings/);
 
-    await page.goto('/live');
+    await gotoReady(page, '/live');
     await expect(page).toHaveURL(/\/live/);
   });
 

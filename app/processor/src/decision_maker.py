@@ -40,6 +40,11 @@ def _is_rodent_detector_label(detector_label: str) -> bool:
     return d in {"rodent", "squirrel"}
 
 
+def _is_supported_detector_label(detector_label: str) -> bool:
+    d = str(detector_label or "").strip().lower()
+    return d in {"bird", "rodent", "squirrel"}
+
+
 def _normalized_species_keys(species_name):
     raw = str(species_name or "").strip()
     if not raw:
@@ -455,6 +460,26 @@ class DecisionMaker:
             if _is_rodent_detector_label(detector_label):
                 detector_label = "Rodent"
             detector_conf = float(detector_candidate["max_confidence"] or 0.0)
+            if not _is_supported_detector_label(detector_label):
+                decisions.append(
+                    apply_runtime_contract(
+                        {
+                            "track_id": track_id,
+                            "accepted": False,
+                            "outcome_bucket": "rejected",
+                            "decision_reason": "rejected_unsupported_detector_label",
+                            "decision_kind": "rejected",
+                            "trust_band": "red",
+                            "start_time": track["start_time"],
+                            "end_time": track["end_time"],
+                            "confidence": detector_conf,
+                            "detection_provider": "yolo",
+                            "detector_label": detector_label,
+                            "detector_confidence": detector_conf,
+                        }
+                    )
+                )
+                continue
 
             classifier_events = track.get("classifier_events") or []
             classifier_candidate = self._pick_classifier_candidate(classifier_events)

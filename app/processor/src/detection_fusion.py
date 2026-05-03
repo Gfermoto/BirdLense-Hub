@@ -28,6 +28,16 @@ def _safe_float(value, default: float = 0.0) -> float:
         return default
 
 
+def _is_human_like_frigate_event(ev: dict) -> bool:
+    labels = {
+        str(ev.get("species") or "").strip().lower(),
+        str(ev.get("label") or "").strip().lower(),
+        str(ev.get("sub_label") or "").strip().lower(),
+    }
+    labels.discard("")
+    return "person" in labels or "human" in labels
+
+
 def _aggregate_birdnet_scores(
     mqtt_events: Iterable[dict],
     *,
@@ -182,6 +192,8 @@ def _frigate_standalone_prepared_rows(
     best: dict[str, dict] = {}
     for ev in events:
         if str((ev or {}).get("source") or "").strip().lower() != "frigate":
+            continue
+        if _is_human_like_frigate_event(ev):
             continue
         raw = ev.get("species") or ev.get("sub_label") or ev.get("label") or ""
         species = normalize(str(raw), species_mapping)

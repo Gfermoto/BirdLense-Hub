@@ -488,6 +488,102 @@ class TestMlFusionAbReport(unittest.TestCase):
             except OSError:
                 pass
 
+    def test_frigate_hotspots_ignore_person_like_labels(self):
+        """Frigate hotspots should not be dominated by person/dog/cat traffic."""
+        from ml_fusion_ab_report import build_fusion_ab_report_from_db
+
+        db_path = _mk_db()
+        now = datetime.now(timezone.utc)
+        t1 = now.isoformat()
+        t2 = (now + timedelta(seconds=20)).isoformat()
+        try:
+            conn = sqlite3.connect(db_path)
+            conn.executescript(
+                """
+                CREATE TABLE birdnet_fifo_event (
+                  id INTEGER PRIMARY KEY,
+                  ts_epoch REAL NOT NULL,
+                  payload TEXT NOT NULL
+                );
+                """
+            )
+            conn.execute(
+                """
+                INSERT INTO species (id, name) VALUES (1, 'Great Tit')
+                """
+            )
+            conn.execute(
+                """
+                INSERT INTO video
+                  (id, video_path, processor_version, start_time, end_time, deleted_at)
+                VALUES (1, '/hotspots.mp4', 'v1', ?, ?, NULL)
+                """,
+                (t1, t2),
+            )
+            conn.execute(
+                """
+                INSERT INTO video_species
+                  (id, video_id, species_id, start_time, end_time, confidence, source, detection_provider, track_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (1, 1, 1, 0.0, 2.0, 0.74, 'video', 'frigate', 10, now.isoformat()),
+            )
+            events = [
+                (
+                    1,
+                    now.timestamp(),
+                    '{"source":"frigate","camera":"cam-a","label":"bird","species":"great tit"}',
+                ),
+                (
+                    2,
+                    now.timestamp(),
+                    '{"source":"frigate","camera":"cam-a","label":"person","species":"person"}',
+                ),
+                (
+                    3,
+                    now.timestamp(),
+                    '{"source":"frigate","camera":"cam-b","label":"dog","species":"dog"}',
+                ),
+            ]
+            conn.executemany(
+                'INSERT INTO birdnet_fifo_event (id, ts_epoch, payload) VALUES (?, ?, ?)',
+                events,
+            )
+            conn.commit()
+            conn.close()
+
+            out = build_fusion_ab_report_from_db(
+                db_path=db_path,
+                days=14,
+                min_yolo_share=0.0,
+                min_yolo_share_bird_only=0.0,
+                min_yolo_share_bird_only_warn=0.0,
+                min_yolo_track_found_rate_warn=0.40,
+                min_decision_trace_rows_warn=20,
+                max_duplicate_video_groups=0,
+                max_duplicate_detection_groups=0,
+                max_generic_overlap_ratio=1.0,
+                max_calendar_delta_ratio=5.0,
+                calendar_compare_totals={
+                    'encounters': 1,
+                    'max_simultaneous': 1,
+                    'delta': 0,
+                },
+            )
+            hotspots = out['metrics']['frigate_hotspots']
+            labels = {row['label'] for row in hotspots['by_label']}
+            self.assertIn('bird', labels)
+            self.assertNotIn('person', labels)
+            self.assertNotIn('dog', labels)
+            self.assertGreaterEqual(len(hotspots['by_camera']), 1)
+            self.assertEqual(hotspots['by_camera'][0]['camera'], 'cam-a')
+            self.assertEqual(hotspots['by_camera'][0]['count'], 1)
+        finally:
+            try:
+                os.unlink(db_path)
+            except OSError:
+                pass
+
     def test_yolo_track_found_rate_and_camera_breakdown_are_reported(self):
         """Decision trace runtime_signals produce yolo_track stats and warning."""
         from ml_fusion_ab_report import build_fusion_ab_report_from_db

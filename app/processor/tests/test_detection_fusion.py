@@ -1059,7 +1059,7 @@ def test_arbitration_absorbs_generic_bird_into_strong_frigate_species():
     assert 'absorbed_generic_into_frigate_species' in out[0].get('_fusion_used', '')
 
 
-def test_arbitration_keeps_generic_bird_when_frigate_species_is_weak():
+def test_arbitration_drops_generic_bird_when_any_specific_species_exists():
     rows = [
         {
             **_base_detection('Bird'),
@@ -1091,8 +1091,8 @@ def test_arbitration_keeps_generic_bird_when_frigate_species_is_weak():
 
     out = apply_hypothesis_arbitration(rows)
 
-    assert len(out) == 2
-    assert sorted(row['species_name'] for row in out) == ['Bird', 'Eurasian Jay']
+    assert len(out) == 1
+    assert out[0]['species_name'] == 'Eurasian Jay'
 
 
 def test_build_fused_video_detections_absorbs_generic_bird_into_frigate_species():
@@ -1139,6 +1139,42 @@ def test_build_fused_video_detections_absorbs_generic_bird_into_frigate_species(
     assert out[0]['species_name'] == 'Eurasian Jay'
     assert out[0]['decision_reason'] == 'frigate_standalone'
     assert out[0]['detection_provider'] == 'frigate'
+
+
+def test_frigate_standalone_skips_person_like_events():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.36,
+        'detection.frigate_standalone_when_no_yolo': True,
+        'detection.frigate_standalone_min_score': 0.4,
+        'processor.multi_camera_groups': [],
+    })
+    mqtt_events = [
+        {
+            'source': 'frigate',
+            'species': 'unknown',
+            'label': 'person',
+            'sub_label': '',
+            'confidence': 0.92,
+            'timestamp': (start + timedelta(seconds=2)).isoformat(),
+        }
+    ]
+
+    out = build_fused_video_detections(
+        [],
+        mqtt_events,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+
+    assert out == []
 
 
 def test_build_fused_video_detections_keeps_fragmented_generic_bird_visits_separate():

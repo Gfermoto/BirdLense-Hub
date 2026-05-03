@@ -266,6 +266,24 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(results[0]['decision_reason'], 'fallback_rodent')
         self.assertEqual(results[0]['detector_label'], 'Rodent')
 
+    def test_unsupported_detector_label_is_rejected(self):
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_store=0.20,
+        )
+        tracks = {
+            1: _make_track(
+                detector_label='Person',
+                detector_confidences=[0.88, 0.86, 0.9],
+                classifier_events=[],
+            )
+        }
+        decisions = dm.get_decisions(tracks)
+        self.assertEqual(len(decisions), 1)
+        self.assertFalse(decisions[0]['accepted'])
+        self.assertEqual(decisions[0]['decision_reason'], 'rejected_unsupported_detector_label')
+        self.assertEqual(decisions[0]['decision_kind'], 'rejected')
+
     def test_species_confidence_overrides_match_scientific_common_labels(self):
         dm = DecisionMaker(
             min_track_duration=0,
