@@ -362,7 +362,9 @@ class TwoStageStrategy(DetectionStrategy):
                     self.active_inference_device,
                     e,
                 )
-                if not self._try_fallback_device(np.zeros((320, 320, 3), dtype=np.uint8), warmup_track_kwargs, reason="warmup_exception"):
+                if not self._try_fallback_device(
+                    np.zeros((320, 320, 3), dtype=np.uint8), warmup_track_kwargs, reason="warmup_exception"
+                ):
                     warmup_track_kwargs.pop("device", None)
                     self.binary_model.track(np.zeros((320, 320, 3), dtype=np.uint8), **warmup_track_kwargs)
             else:

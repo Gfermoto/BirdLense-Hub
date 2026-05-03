@@ -139,9 +139,7 @@ def register_ui_corrections_dataset_routes(app):
                 data,
             )
         else:
-            return {
-                "error": "species_id or individual_nickname is required"
-            }, 400
+            return {"error": "species_id or individual_nickname is required"}, 400
         if err:
             code = 404
             if err.get("error") in (
