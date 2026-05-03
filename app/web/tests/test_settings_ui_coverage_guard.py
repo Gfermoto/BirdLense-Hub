@@ -7,7 +7,21 @@ import runpy
 from pathlib import Path
 
 
-SCRIPT_PATH = Path(__file__).resolve().parents[3] / "scripts" / "check-settings-ui-coverage.py"
+def _resolve_script_path() -> Path:
+    """Resolve checker script path in host and docker test layouts."""
+    candidates = [
+        Path(__file__).resolve().parents[3] / "scripts" / "check-settings-ui-coverage.py",
+        Path("/workspace/scripts/check-settings-ui-coverage.py"),
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(
+        "check-settings-ui-coverage.py was not found in known locations",
+    )
+
+
+SCRIPT_PATH = _resolve_script_path()
 
 
 def _load_checker_globals() -> dict:

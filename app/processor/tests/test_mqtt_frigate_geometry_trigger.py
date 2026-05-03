@@ -95,6 +95,8 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
 
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0][0], 'BirdBox')
+        self.assertEqual(len(agg._events), 1)
+        self.assertTrue(agg._events[0].get('_frigate_merge_suppressed'))
 
 
 

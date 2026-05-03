@@ -27,6 +27,17 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
         return float(default)
 
 
+_HOTSPOT_EXCLUDED_LABELS = {'person', 'human', 'dog', 'cat'}
+
+
+def _hotspot_label(value: Any) -> str:
+    return str(value or '').strip().lower()
+
+
+def _is_hotspot_label_excluded(value: Any) -> bool:
+    return _hotspot_label(value) in _HOTSPOT_EXCLUDED_LABELS
+
+
 def _fetch_calendar_compare_totals(
     base_url: str,
     timeout_seconds: float = 8.0,
@@ -231,6 +242,13 @@ def _query_frigate_hotspots(
             FROM birdnet_fifo_event
             WHERE ts_epoch >= ?
               AND lower(COALESCE(json_extract(payload, '$.source'), '')) = 'frigate'
+              AND lower(
+                COALESCE(
+                  json_extract(payload, '$.label'),
+                  json_extract(payload, '$.species'),
+                  'unknown'
+                )
+              ) NOT IN ('person', 'human', 'dog', 'cat')
             GROUP BY lower(COALESCE(json_extract(payload, '$.camera'), 'unknown'))
             ORDER BY cnt DESC
             LIMIT ?
@@ -251,6 +269,13 @@ def _query_frigate_hotspots(
             FROM birdnet_fifo_event
             WHERE ts_epoch >= ?
               AND lower(COALESCE(json_extract(payload, '$.source'), '')) = 'frigate'
+              AND lower(
+                COALESCE(
+                  json_extract(payload, '$.label'),
+                  json_extract(payload, '$.species'),
+                  'unknown'
+                )
+              ) NOT IN ('person', 'human', 'dog', 'cat')
             GROUP BY lower(
               COALESCE(
                 json_extract(payload, '$.label'),
@@ -278,6 +303,13 @@ def _query_frigate_hotspots(
             FROM birdnet_fifo_event
             WHERE ts_epoch >= ?
               AND lower(COALESCE(json_extract(payload, '$.source'), '')) = 'frigate'
+              AND lower(
+                COALESCE(
+                  json_extract(payload, '$.label'),
+                  json_extract(payload, '$.species'),
+                  'unknown'
+                )
+              ) NOT IN ('person', 'human', 'dog', 'cat')
             GROUP BY
               lower(COALESCE(json_extract(payload, '$.camera'), 'unknown')),
               lower(
@@ -362,6 +394,8 @@ def _query_frigate_hotspots_from_decision_trace(
             if provider != 'frigate':
                 continue
             label = str(track.get('species_name') or track.get('label') or 'unknown').strip().lower() or 'unknown'
+            if _is_hotspot_label_excluded(label):
+                continue
             by_camera[camera] = by_camera.get(camera, 0) + 1
             by_label[label] = by_label.get(label, 0) + 1
             key = (camera, label)

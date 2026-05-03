@@ -15,7 +15,9 @@ PORT="${DEPLOY_SSH_PORT:-22}"
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
 REMOTE_TMP="${REMOTE_TMP:-/tmp/bl_metrics}"
 DB_PATH="${DB_PATH:-${REMOTE_DIR}/app/data/db/birdlense.db}"
-BASE_URL="${DEPLOY_URL:-}"
+# Run API compare from the hub host itself. Public domain may be unreachable
+# from inside some VPS networking setups, so localhost is the safe default.
+BASE_URL="${BASE_URL:-${DEPLOY_INTERNAL_URL:-http://127.0.0.1:8085}}"
 API_KEY="${BIRDLENSE_UI_API_KEY:-}"
 MCP_TOKEN_VAL="${MCP_TOKEN:-}"
 

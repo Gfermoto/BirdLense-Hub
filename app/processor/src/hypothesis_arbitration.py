@@ -218,6 +218,21 @@ def _absorb_generic_bird(rows: list[dict]) -> list[dict]:
     return [row for idx, row in enumerate(kept) if idx not in to_drop]
 
 
+def _drop_clip_level_generic_bird_when_species_present(rows: list[dict]) -> list[dict]:
+    """Clip-level product rule: if specific bird exists, hide generic Bird rows."""
+    if not rows:
+        return rows
+    has_specific = any(_is_specific_bird(row) for row in rows)
+    if not has_specific:
+        return rows
+    out: list[dict] = []
+    for row in rows:
+        if _is_generic_bird(row):
+            continue
+        out.append(row)
+    return out
+
+
 def _connected_conflict_groups(rows: list[dict]) -> list[list[int]]:
     edges: dict[int, set[int]] = {idx: set() for idx in range(len(rows))}
     for left_idx, left in enumerate(rows):
@@ -257,6 +272,7 @@ def apply_hypothesis_arbitration(detections: list[dict]) -> list[dict]:
         return [_sync_outcome_bucket(row) for row in list(detections or [])]
 
     rows = _absorb_generic_bird(list(detections))
+    rows = _drop_clip_level_generic_bird_when_species_present(rows)
     groups = _connected_conflict_groups(rows)
     if not groups:
         return [_sync_outcome_bucket(row) for row in rows]

@@ -691,6 +691,9 @@ class MQTTEventAggregator:
                     if not lbl_ok and relaxed and has_geometry:
                         lbl_ok = True
                         accepted_by = "geometry_fallback"
+                        # Geometry fallback keeps recording responsiveness, but such
+                        # events must not influence species merge/promotion.
+                        ev["_frigate_merge_suppressed"] = True
                         if skip_merge_queue:
                             logger.info(
                                 "Frigate trigger: geometry fallback (excluded label, recording only) "
