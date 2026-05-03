@@ -102,6 +102,25 @@ def _arbitration_score(row: dict) -> float:
     )
 
 
+def _row_tie_break_key(row: dict) -> tuple:
+    species_key = _canonical_species_key(row)
+    track_id_raw = row.get("track_id")
+    try:
+        track_id = int(track_id_raw)
+    except (TypeError, ValueError):
+        track_id = -1
+    return (species_key, track_id)
+
+
+def _rank_key(row: dict) -> tuple:
+    return (
+        _arbitration_score(row),
+        _support_count(row),
+        _safe_float(row.get("confidence")),
+        _row_tie_break_key(row),
+    )
+
+
 def _tag_row(row: dict, reason: str) -> None:
     previous_reason = row.get("decision_reason")
     if previous_reason and previous_reason != reason and "decision_reason_before_arbitration" not in row:
@@ -138,7 +157,7 @@ def _build_generic_review_row(
     *,
     reason: str = "downgraded_to_generic_due_to_conflict",
 ) -> dict:
-    leader = max(rows, key=_arbitration_score)
+    leader = max(rows, key=_rank_key)
     start_time = min(_safe_float(row.get("start_time")) for row in rows)
     end_time = max(_safe_float(row.get("end_time")) for row in rows)
     review_row = dict(leader)
@@ -177,12 +196,22 @@ def _absorb_generic_bird(rows: list[dict]) -> list[dict]:
             if _overlap_seconds(row, other) < ARBITRATION_GENERIC_ABSORB_OVERLAP_SEC:
                 continue
             other_score = _arbitration_score(other)
-            if _can_absorb_frigate_standalone_generic(row, other) and other_score > winner_score:
+            other_tie_break = _row_tie_break_key(other)
+            winner_tie_break = (
+                _row_tie_break_key(kept[winner_idx]) if winner_idx is not None else _row_tie_break_key(row)
+            )
+            if _can_absorb_frigate_standalone_generic(row, other) and (
+                other_score > winner_score
+                or (other_score == winner_score and other_tie_break > winner_tie_break)
+            ):
                 winner_idx = other_index
                 winner_score = other_score
                 winner_reason = "absorbed_generic_into_frigate_species"
                 continue
-            if _support_count(other) >= ARBITRATION_MIN_SUPPORTS and other_score > winner_score:
+            if _support_count(other) >= ARBITRATION_MIN_SUPPORTS and (
+                other_score > winner_score
+                or (other_score == winner_score and other_tie_break > winner_tie_break)
+            ):
                 winner_idx = other_index
                 winner_score = other_score
         if winner_idx is not None:
@@ -239,7 +268,7 @@ def apply_hypothesis_arbitration(detections: list[dict]) -> list[dict]:
         candidates = [rows[idx] for idx in group]
         ranked = sorted(
             candidates,
-            key=lambda row: (_arbitration_score(row), _support_count(row), _safe_float(row.get("confidence"))),
+            key=_rank_key,
             reverse=True,
         )
         winner = ranked[0]

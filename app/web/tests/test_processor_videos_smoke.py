@@ -284,6 +284,72 @@ def test_processor_videos_same_clip_key_but_payload_changed_returns_409(
         assert db.session.query(VideoSpecies).count() == 1
 
 
+def test_processor_videos_same_clip_conflict_detected_when_legacy_hash_missing(
+    app,
+    client,
+    proc_headers,
+    monkeypatch,
+    tmp_path,
+):
+    from app_config.app_config import app_config
+    from routes import processor_routes
+    from models import Video, VideoSpecies, db
+    import services.visit_processor as vp_mod
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
+    monkeypatch.setitem(
+        app_config.config.setdefault("detection", {}),
+        "min_confidence_to_store",
+        0.05,
+    )
+    monkeypatch.setitem(app_config.config.setdefault("webhook", {}), "url", "")
+
+    token = str(id(app))[-6:].zfill(6)
+    body = _base_video_payload(token)
+    _touch_video_file(body["video_path"], data_root=str(tmp_path / "data"))
+    body["species"] = [
+        {
+            "species_name": f"Pytest LegacyHash A {token}",
+            "confidence": 0.95,
+            "start_time": 0,
+            "end_time": 2,
+            "source": "video",
+            "frames": [],
+        }
+    ]
+    r1 = client.post("/api/processor/videos", json=body, headers=proc_headers)
+    assert r1.status_code == 201, r1.get_data(as_text=True)
+    video_id = r1.get_json()["video_id"]
+
+    with app.app_context():
+        video = db.session.get(Video, video_id)
+        assert video is not None
+        video.ingest_payload_hash = None
+        db.session.commit()
+
+    changed = dict(body)
+    changed["species"] = [
+        {
+            "species_name": f"Pytest LegacyHash B {token}",
+            "confidence": 0.95,
+            "start_time": 0,
+            "end_time": 2,
+            "source": "video",
+            "frames": [],
+        }
+    ]
+    r2 = client.post("/api/processor/videos", json=changed, headers=proc_headers)
+    assert r2.status_code == 409, r2.get_data(as_text=True)
+    payload2 = r2.get_json() or {}
+    assert payload2.get("error") == "Idempotency conflict for existing clip key"
+
+    with app.app_context():
+        assert db.session.query(Video).count() == 1
+        assert db.session.query(VideoSpecies).count() == 1
+
+
 def test_processor_videos_hot_path_skips_species_metadata_enrichment(app, client, proc_headers, monkeypatch, tmp_path):
     from app_config.app_config import app_config
     from routes import processor_routes

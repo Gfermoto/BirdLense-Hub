@@ -13,7 +13,7 @@ from datetime import timezone
 from flask import request
 from sqlalchemy.exc import IntegrityError
 
-from models import db, BirdFood, Video, Species
+from models import db, BirdFood, Video, VideoSpecies, Species
 from util import fetch_weather, notify, filter_feeder_species
 from services.visit_processor import VisitProcessor
 from app_config.app_config import app_config
@@ -63,6 +63,16 @@ def _build_clip_idempotency_key(*, processor_version: str, pv) -> str:
 
 
 def _build_species_payload_hash(*, species_list: list[dict]) -> str:
+    def _canonical_frames(value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except (TypeError, ValueError):
+                return value
+        return value
+
     normalized_rows = []
     for row in species_list or []:
         normalized_rows.append(
@@ -77,6 +87,13 @@ def _build_species_payload_hash(*, species_list: list[dict]) -> str:
                 "visit_eligible": bool(row.get("visit_eligible", True)),
                 "notification_eligible": bool(row.get("notification_eligible", True)),
                 "decision_kind": str(row.get("decision_kind") or "").strip(),
+                "classifier_confidence": float(row.get("classifier_confidence") or 0.0),
+                "classifier_entropy": float(row.get("classifier_entropy") or 0.0),
+                "classifier_top1_top2_margin": float(row.get("classifier_top1_top2_margin") or 0.0),
+                "classifier_needs_review": bool(row.get("classifier_needs_review", False)),
+                "review_reason": str(row.get("review_reason") or "").strip(),
+                "individual_nickname": str(row.get("individual_nickname") or "").strip(),
+                "frames": _canonical_frames(row.get("frames")),
             }
         )
     normalized_rows.sort(
@@ -91,19 +108,68 @@ def _build_species_payload_hash(*, species_list: list[dict]) -> str:
             item["visit_eligible"],
             item["notification_eligible"],
             item["decision_kind"],
+            item["classifier_confidence"],
+            item["classifier_entropy"],
+            item["classifier_top1_top2_margin"],
+            item["classifier_needs_review"],
+            item["review_reason"],
+            item["individual_nickname"],
+            json.dumps(item["frames"], ensure_ascii=False, sort_keys=True, separators=(",", ":")),
         )
     )
     payload = json.dumps(normalized_rows, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def _build_payload_hash_for_existing_video(video_id: int) -> str:
+    rows = (
+        db.session.query(VideoSpecies, Species)
+        .join(Species, Species.id == VideoSpecies.species_id)
+        .filter(VideoSpecies.video_id == int(video_id))
+        .order_by(VideoSpecies.id.asc())
+        .all()
+    )
+    species_rows: list[dict] = []
+    for detection, species in rows:
+        species_rows.append(
+            {
+                "species_name": str(species.name or "").strip(),
+                "source": str(detection.source or "").strip(),
+                "detection_provider": str(detection.detection_provider or "").strip(),
+                "track_id": detection.track_id,
+                "start_time": float(detection.start_time or 0.0),
+                "end_time": float(detection.end_time or 0.0),
+                "confidence": float(detection.confidence or 0.0),
+                "visit_eligible": bool(detection.species_visit_id is not None),
+                "notification_eligible": bool(detection.species_visit_id is not None),
+                "decision_kind": "",
+                "classifier_confidence": 0.0,
+                "classifier_entropy": float(detection.classifier_entropy or 0.0),
+                "classifier_top1_top2_margin": float(detection.classifier_top1_top2_margin or 0.0),
+                "classifier_needs_review": bool(detection.classifier_needs_review),
+                "review_reason": str(detection.review_reason or "").strip(),
+                "individual_nickname": str(detection.individual_nickname or "").strip(),
+                "frames": detection.frames,
+            }
+        )
+    return _build_species_payload_hash(species_list=species_rows)
+
+
 def _find_existing_video_for_idempotent_ingest(*, processor_version: str, pv, clip_key: str):
     """Return existing Video for identical clip key (path/time/version)."""
-    existing_by_key = Video.query.filter_by(idempotency_key=clip_key).order_by(Video.id.desc()).first()
+    existing_by_key = (
+        Video.query.filter_by(idempotency_key=clip_key, deleted_at=None)
+        .order_by(Video.id.desc())
+        .first()
+    )
     if existing_by_key is not None:
         return existing_by_key
     # Legacy fallback for rows created before idempotency_key migration.
-    existing = Video.query.filter_by(video_path=pv.video_path).order_by(Video.id.desc()).first()
+    existing = (
+        Video.query.filter_by(video_path=pv.video_path, deleted_at=None)
+        .order_by(Video.id.desc())
+        .first()
+    )
     if not existing:
         return None
     same_version = str(existing.processor_version or "") == str(processor_version or "")
@@ -153,7 +219,11 @@ def register_routes(app):
         )
         if existing_video is not None:
             existing_payload_hash = str(existing_video.ingest_payload_hash or "").strip()
-            if existing_payload_hash and existing_payload_hash != payload_hash:
+            if not existing_payload_hash:
+                existing_payload_hash = _build_payload_hash_for_existing_video(existing_video.id)
+                existing_video.ingest_payload_hash = existing_payload_hash
+                db.session.commit()
+            if existing_payload_hash != payload_hash:
                 return {"error": "Idempotency conflict for existing clip key", "video_id": existing_video.id}, 409
             return {
                 "message": "Video already ingested.",
@@ -209,10 +279,18 @@ def register_routes(app):
 
         except IntegrityError:
             db.session.rollback()
-            raced_video = Video.query.filter_by(idempotency_key=clip_key).order_by(Video.id.desc()).first()
+            raced_video = (
+                Video.query.filter_by(idempotency_key=clip_key, deleted_at=None)
+                .order_by(Video.id.desc())
+                .first()
+            )
             if raced_video is not None:
                 existing_payload_hash = str(raced_video.ingest_payload_hash or "").strip()
-                if existing_payload_hash and existing_payload_hash != payload_hash:
+                if not existing_payload_hash:
+                    existing_payload_hash = _build_payload_hash_for_existing_video(raced_video.id)
+                    raced_video.ingest_payload_hash = existing_payload_hash
+                    db.session.commit()
+                if existing_payload_hash != payload_hash:
                     return {"error": "Idempotency conflict for existing clip key", "video_id": raced_video.id}, 409
                 return {
                     "message": "Video already ingested.",

@@ -980,6 +980,46 @@ def test_arbitration_downgrades_strong_unresolved_conflict_to_review_only():
     assert out[0]['outcome_bucket'] == 'review_only'
 
 
+def test_arbitration_tie_break_is_deterministic_for_equal_scores():
+    base_a = {
+        **_base_detection('Blue Tit'),
+        'track_id': 22,
+        'accepted': True,
+        'visit_eligible': True,
+        'confidence': 0.63,
+        'decision_kind': 'accepted_generic',
+        'decision_reason': 'fallback_detector_generic',
+        'start_time': 0.0,
+        'end_time': 6.0,
+        'classifier_confidence': 0.0,
+        'audio_evidence': 'none',
+        '_multi_camera_support': False,
+        '_birdnet_prior': 0.0,
+    }
+    base_b = {
+        **_base_detection('Great Tit'),
+        'track_id': 11,
+        'accepted': True,
+        'visit_eligible': True,
+        'confidence': 0.63,
+        'decision_kind': 'accepted_generic',
+        'decision_reason': 'fallback_detector_generic',
+        'start_time': 0.0,
+        'end_time': 6.0,
+        'classifier_confidence': 0.0,
+        'audio_evidence': 'none',
+        '_multi_camera_support': False,
+        '_birdnet_prior': 0.0,
+    }
+
+    out1 = apply_hypothesis_arbitration([dict(base_a), dict(base_b)])
+    out2 = apply_hypothesis_arbitration([dict(base_b), dict(base_a)])
+
+    assert len(out1) == 1 and len(out2) == 1
+    assert out1[0]['species_name'] == out2[0]['species_name']
+    assert out1[0]['decision_reason'] == out2[0]['decision_reason']
+
+
 def test_arbitration_absorbs_generic_bird_into_strong_frigate_species():
     rows = [
         {

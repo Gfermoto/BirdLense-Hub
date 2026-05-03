@@ -196,6 +196,7 @@ def merge_detections(
     absorb_generic_bird=True,
     absorb_generic_bird_overlap_min_sec=0.1,
     absorb_generic_bird_min_classifier_confidence=0.22,
+    preserve_equal_rank_conflicts_for_arbitration=False,
 ):
     """
     Merge YOLO detections with MQTT (Frigate/BirdNET) events.
@@ -494,6 +495,14 @@ def merge_detections(
                         continue
                     rank_b = _provider_rank(b.get("detection_provider"))
                     if rank_a == rank_b:
+                        if (
+                            preserve_equal_rank_conflicts_for_arbitration
+                            and not _is_generic_bird_key(key_a)
+                            and not _is_generic_bird_key(key_b)
+                        ):
+                            # Keep equal-rank specific conflicts for downstream
+                            # arbitration after evidence enrichment.
+                            continue
                         score_a = _conflict_score(a)
                         score_b = _conflict_score(b)
                         if score_a == score_b:
