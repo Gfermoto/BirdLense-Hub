@@ -17,6 +17,7 @@ app/data/diagnostics/
 data/diagnostics/
 app/processor/data/
 app/data/processor.log*
+data/processor.log
 app.log
 .DS_Store
 /datasets
@@ -162,3 +163,4 @@ app/web/instance/
 /.unknown_rows.json
 /.video*.json
 /.weird_*.json
+/ok=true,

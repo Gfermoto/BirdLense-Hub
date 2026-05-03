@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 
@@ -15,7 +16,34 @@ def _ensure_openvino_pkg() -> None:
         ) from e
 
 
-def load_yolo_detector(model_path: str, *, backend: str = "torch") -> Any:
+def _apply_openvino_runtime_tuning(*, profile: str, num_requests: int, model_cache_enabled: bool) -> None:
+    """
+    Export OpenVINO runtime hints via env vars before model creation.
+
+    This keeps tuning centralized for both live processor and offline scripts.
+    """
+    prof = (profile or "latency").strip().lower()
+    if prof not in {"latency", "throughput"}:
+        prof = "latency"
+    os.environ["OV_PERFORMANCE_HINT"] = prof.upper()
+    if int(num_requests or 0) > 0:
+        os.environ["OV_NUM_REQUESTS"] = str(int(num_requests))
+    else:
+        os.environ.pop("OV_NUM_REQUESTS", None)
+    if model_cache_enabled:
+        os.environ["OV_ENABLE_MODEL_CACHING"] = "1"
+        cache_dir = os.environ.get("OV_CACHE_DIR") or os.path.join("data", "processor", "ov_cache")
+        os.environ["OV_CACHE_DIR"] = cache_dir
+
+
+def load_yolo_detector(
+    model_path: str,
+    *,
+    backend: str = "torch",
+    openvino_profile: str = "latency",
+    openvino_num_requests: int = 0,
+    openvino_model_cache_enabled: bool = True,
+) -> Any:
     """
     Загрузить бинарный детектор.
 
@@ -37,6 +65,11 @@ def load_yolo_detector(model_path: str, *, backend: str = "torch") -> Any:
         return YOLO(model_path, task="detect")
     if b == "openvino":
         _ensure_openvino_pkg()
+        _apply_openvino_runtime_tuning(
+            profile=openvino_profile,
+            num_requests=openvino_num_requests,
+            model_cache_enabled=bool(openvino_model_cache_enabled),
+        )
         return YOLO(model_path, task="detect")
     raise ValueError(f"Unknown detector backend: {backend!r}")
 

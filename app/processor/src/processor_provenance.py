@@ -34,6 +34,7 @@ _CONFIG_DIGEST_KEYS = (
     "processor.min_confidence_to_process",
     "processor.min_confidence_to_notify",
     "processor.classifier_fallback_bird",
+    "processor.classifier_vote_share_power",
     "processor.inference_backend",
     "processor.models.binary",
     "processor.models.binary_openvino",

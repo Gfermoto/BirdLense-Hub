@@ -250,3 +250,35 @@ def test_visit_eligible_false_creates_detection_without_visit(app):
         assert SpeciesVisit.query.count() == 0
         row = VideoSpecies.query.filter_by(video_id=video.id).one()
         assert row.species_visit_id is None
+
+
+def test_process_detections_drops_duplicate_rows(app):
+    """Duplicate ingest rows should not create duplicate VideoSpecies entries."""
+    with app.app_context():
+        species = Species(name="Dedup Finch")
+        video = Video(
+            processor_version="test",
+            start_time=datetime(2026, 4, 7, 12, 0, 0),
+            end_time=datetime(2026, 4, 7, 12, 0, 10),
+            video_path="data/recordings/2026/04/07/120010/video.mp4",
+        )
+        db.session.add_all([species, video])
+        db.session.commit()
+
+        vp = VisitProcessor(db, app.logger, visit_timeout=60)
+        detection = {
+            "species_name": species.name,
+            "start_time": 1.0,
+            "end_time": 2.5,
+            "confidence": 0.62,
+            "source": "video",
+            "visit_eligible": True,
+            "track_id": 11,
+            "frames": [],
+            "detection_provider": "yolo",
+        }
+        vp.process_detections(video, [dict(detection), dict(detection)])
+        db.session.commit()
+
+        assert VideoSpecies.query.filter_by(video_id=video.id).count() == 1
+        assert SpeciesVisit.query.count() == 1

@@ -36,7 +36,18 @@ export interface SpeciesVisit {
     confidence: number;
     source: 'video' | 'audio';
     detection_provider?: string;
+    individual_nickname?: string | null;
   }[];
+  individual_nickname?: string | null;
+  behavior_events?: Array<{
+    label: string;
+    confidence?: number;
+    evidence?: {
+      species_name?: string | null;
+      reason?: string;
+      [key: string]: unknown;
+    };
+  }>;
 }
 
 export interface TrackFrame {
@@ -48,6 +59,7 @@ export interface VideoSpecies {
   id?: number;
   species_id: number;
   species_name: string;
+  individual_nickname?: string | null;
   track_id?: number;
   start_time: number;
   end_time: number;

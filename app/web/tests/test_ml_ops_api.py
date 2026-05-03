@@ -43,6 +43,89 @@ def test_video_action_events_weak_labels_from_tracks_and_weight(app, client):
     assert body["events"][1]["evidence"]["scales_weight_delta_kg"] == -0.003
 
 
+def test_video_details_keeps_individual_nickname(app, client):
+    from models import Species, Video, VideoSpecies, db
+
+    with app.app_context():
+        species = Species(name="Blue Tit")
+        video = Video(
+            processor_version="t",
+            start_time=datetime(2026, 4, 29, 12, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 4, 29, 12, 1, 0, tzinfo=timezone.utc),
+            video_path="data/recordings/nickname/video.mp4",
+        )
+        db.session.add_all([species, video])
+        db.session.flush()
+        db.session.add(
+            VideoSpecies(
+                video_id=video.id,
+                species_id=species.id,
+                start_time=1.0,
+                end_time=8.0,
+                confidence=0.86,
+                source="video",
+                detection_provider="yolo",
+                track_id=7,
+                individual_nickname="Bluey",
+            )
+        )
+        db.session.commit()
+        vid = video.id
+
+    r = client.get(f"/api/ui/videos/{vid}")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["species"][0]["individual_nickname"] == "Bluey"
+
+
+def test_patch_detection_sets_individual_nickname(app, client):
+    from models import Species, Video, VideoSpecies, db
+
+    with app.app_context():
+        species = Species(name="Sparrow")
+        video = Video(
+            processor_version="t",
+            start_time=datetime(2026, 4, 29, 12, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 4, 29, 12, 1, 0, tzinfo=timezone.utc),
+            video_path="data/recordings/nickname/patch.mp4",
+        )
+        db.session.add_all([species, video])
+        db.session.flush()
+        det = VideoSpecies(
+            video_id=video.id,
+            species_id=species.id,
+            start_time=2.0,
+            end_time=7.0,
+            confidence=0.72,
+            source="video",
+            detection_provider="yolo",
+            track_id=21,
+        )
+        db.session.add(det)
+        db.session.commit()
+        detection_id = det.id
+        video_id = video.id
+
+    with client.session_transaction() as sess:
+        sess["access_role"] = "contributor"
+    patch_resp = client.patch(
+        f"/api/ui/detections/{detection_id}",
+        json={
+            "individual_nickname": "Маруся",
+            "source": "video",
+            "apply_scope": "single_track",
+        },
+    )
+    assert patch_resp.status_code == 200
+    patch_body = patch_resp.get_json()
+    assert patch_body["individual_nickname"] == "Маруся"
+
+    details_resp = client.get(f"/api/ui/videos/{video_id}")
+    assert details_resp.status_code == 200
+    body = details_resp.get_json()
+    assert body["species"][0]["individual_nickname"] == "Маруся"
+
+
 def test_active_learning_pool_preview_lists_uncertain_items(app, client):
     from models import Species, Video, VideoSpecies, db
 

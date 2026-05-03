@@ -45,6 +45,34 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
             "rtsp://nohost/path",
         )
 
+    def test_capture_fallback_reason_matrix(self):
+        from sources.go2rtc_stream_source import _capture_fallback_reason
+
+        self.assertEqual(
+            _capture_fallback_reason(
+                requested_backend="opencv",
+                encoding_mode="cpu",
+                vaapi_available=False,
+            ),
+            "requested_opencv",
+        )
+        self.assertEqual(
+            _capture_fallback_reason(
+                requested_backend="ffmpeg_vaapi",
+                encoding_mode="intel",
+                vaapi_available=False,
+            ),
+            "vaapi_unavailable",
+        )
+        self.assertEqual(
+            _capture_fallback_reason(
+                requested_backend="auto",
+                encoding_mode="cpu",
+                vaapi_available=True,
+            ),
+            "auto_prefers_opencv_for_non_intel_encoding",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

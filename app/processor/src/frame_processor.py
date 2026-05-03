@@ -54,6 +54,21 @@ class FrameProcessor:
         self.logger.info("FrameProcessor initialized.")
         self.reset()
 
+    def _resolve_tracker_for_profile(self, profile_name: str | None) -> str:
+        """Pick tracker config by runtime profile (day/night), fallback to processor.tracker."""
+        base = str(self.tracker or "bytetrack.yaml").strip() or "bytetrack.yaml"
+        profile = str(profile_name or "").strip().lower()
+        if not profile:
+            return base
+        profiles = app_config.get("processor.tracker_profiles") or {}
+        if not isinstance(profiles, dict):
+            return base
+        val = profiles.get(profile)
+        if val is None:
+            return base
+        out = str(val).strip()
+        return out or base
+
     def _update_key_frames(self, track: dict, crop, frame_time, bbox, frame_score):
         key_frames = track.setdefault("key_frames", [])
         entry = {
@@ -141,16 +156,19 @@ class FrameProcessor:
             )
         except (TypeError, ValueError):
             min_conf = 0.22
+        tracker_cfg = self._resolve_tracker_for_profile(self.last_run_stats.get("runtime_profile"))
+        self.last_run_stats["tracker_used"] = tracker_cfg
+        set_gauge("tracker_config_used", tracker_cfg)
         self.last_run_stats["yolo_ran"] = True
         try:
             results = self.strategy.detect(
                 img,
-                self.tracker,
+                tracker_cfg,
                 min_confidence=min_conf,
                 profile_overrides=profile_overrides,
             )
         except TypeError:
-            results = self.strategy.detect(img, self.tracker, min_confidence=min_conf)
+            results = self.strategy.detect(img, tracker_cfg, min_confidence=min_conf)
         detect_ms = (time.time() - st) * 1000.0
         observe_timing("frame_processor_detect", detect_ms)
         try:

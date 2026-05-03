@@ -19,6 +19,7 @@ def _species_row(vs) -> dict:
         "source": vs.source,
         "track_id": vs.track_id,
         "image_url": vs.species.image_url,
+        "individual_nickname": getattr(vs, "individual_nickname", None),
     }
     if vs.detection_provider:
         data["detection_provider"] = vs.detection_provider

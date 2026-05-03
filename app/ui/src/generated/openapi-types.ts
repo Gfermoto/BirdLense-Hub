@@ -7931,12 +7931,16 @@ export interface components {
                 wind_speed?: number;
             };
             species?: {
+                id?: number;
                 species_id?: number;
                 species_name?: string;
+                track_id?: number | null;
                 start_time?: number;
                 end_time?: number;
                 confidence?: number;
                 source?: string;
+                detection_provider?: string | null;
+                individual_nickname?: string | null;
                 image_url?: string;
             }[];
             food?: components["schemas"]["BirdFood"][];
@@ -7997,6 +8001,18 @@ export interface components {
             /** Format: date-time */
             end_time?: string;
             max_simultaneous?: number;
+            total_recording_seconds?: number;
+            video_duration_seconds?: number | null;
+            /** @enum {string} */
+            timeline_kind?: "visit" | "unlinked_video";
+            individual_nickname?: string | null;
+            behavior_events?: {
+                label?: string;
+                confidence?: number;
+                evidence?: {
+                    [key: string]: unknown;
+                };
+            }[];
             weather?: {
                 temp?: number | null;
                 clouds?: number | null;
@@ -8015,6 +8031,7 @@ export interface components {
                 parent_id?: number;
             };
             detections?: {
+                id?: number;
                 video_id?: number;
                 /** Format: date-time */
                 start_time?: string;
@@ -8022,6 +8039,8 @@ export interface components {
                 end_time?: string;
                 confidence?: number;
                 source?: string;
+                detection_provider?: string | null;
+                individual_nickname?: string | null;
             }[];
         };
         UnknownDetection: {

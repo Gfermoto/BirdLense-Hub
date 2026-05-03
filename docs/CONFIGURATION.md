@@ -76,7 +76,10 @@ Examples are **secret-free**; copy into `app/app_config/user_config.yaml` and ad
 | `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA` | `1` — background metadata/image repair on startup; default off |
 | `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — skip Telegram “App is UP!” on startup; default on |
 | `BIRDLENSE_INFERENCE_BACKEND` | Overrides `processor.inference_backend` (`torch`, `openvino`, …) — see [CV_ML_ROADMAP_PHASES](./CV_ML_ROADMAP_PHASES.md) |
+| `BIRDLENSE_INFERENCE_DEVICE` | Overrides `processor.inference_device` (`auto`, `cpu`, `cuda`, `intel:gpu`, …) |
 | `BIRDLENSE_BINARY_OPENVINO_PATH` | Optional path to OpenVINO IR (directory or `.xml`) for the binary detector; highest precedence over YAML when set |
+| `BIRDLENSE_OPENVINO_PROFILE` | OpenVINO performance profile (`latency` or `throughput`) |
+| `BIRDLENSE_OPENVINO_NUM_REQUESTS` | OpenVINO async requests (`0` = runtime auto) |
 | `BIRDLENSE_INFERENCE_AUTO_BENCHMARK` | `1` / `true` / `yes` / `on` — after the detection stack loads, run one blank-frame `predict` on the binary detector and record **`cold_start_predict_ms`** in `data/processor/inference_backend_cache.json` ([#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)) |
 | `BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC` | System page resource sampler interval (seconds); default `30`; allowed 10–600 — see [§ System page metrics history](#system-page-metrics-history) |
 | `BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS` | Keep `system_resource_sample` rows up to this age (hours); default `72`; allowed 6–720 |

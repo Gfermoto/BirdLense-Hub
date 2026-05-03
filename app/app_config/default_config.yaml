@@ -22,6 +22,11 @@ general:
 # переопределяют вложенные значения на всех уровнях; отсутствующие ключи берутся из default.
 processor:
   tracker: "bytetrack.yaml"
+  tracker_profiles:
+    # Базовый профиль днём: дефолтный ByteTrack из Ultralytics.
+    day: "bytetrack.yaml"
+    # Ночной профиль: более мягкие пороги low-score association для continuity.
+    night: "models/tracker/bytetrack_night.yaml"
   max_record_seconds: 60
   # video.source=file: нижняя граница max_record_seconds (сек). Большое значение при playlist+split по файлам — не резать длинный клип по таймеру.
   file_max_record_floor_seconds: 86400
@@ -168,16 +173,18 @@ processor:
   # Размер кадра для binary YOLO detector (imgsz). Для мелких птиц лучше 640.
   binary_imgsz: 640
   # Small boxes on feeder scenes are often debris or motion noise.
-  min_box_size_px: 56
+  min_box_size_px: 48
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
-  generic_bird_min_detector_conf: 0.42
+  generic_bird_min_detector_conf: 0.38
   generic_bird_min_frames: 2
   generic_bird_min_area_frac: 0.008
-  generic_bird_min_best_frame_score: 6.0
+  generic_bird_min_best_frame_score: 5.5
   key_frame_limit: 3
   # Если классификатор ниже порога, но detector подтвердил target — сохранить generic detector label.
   # Bird fallback может быть затем promoted Frigate, если есть уверенный sub_label/label в окне ролика.
   classifier_fallback_bird: true
+  # Penalty exponent for weak classifier majority. <1.0 gives species a bit more weight.
+  classifier_vote_share_power: 0.55
   # Устарело: single_stage / NCNN не используются в runtime и track regen (оставлено для совместимости чтения конфига).
   single_stage_coco_animals_only_auto: true
   included_bird_families:
@@ -193,6 +200,16 @@ processor:
   detection_strategy: "two_stage"
   # CV/ML epic (#367, #371): движок инференса. Phase 1: ultralytics/torch. Env BIRDLENSE_INFERENCE_BACKEND имеет приоритет.
   inference_backend: torch
+  # Device hint для backend (env BIRDLENSE_INFERENCE_DEVICE имеет приоритет):
+  # torch: auto|cpu|cuda|cuda:0 ; openvino: auto|cpu|gpu|intel:gpu.
+  inference_device: auto
+  openvino:
+    # Runtime profile for OpenVINO: latency | throughput
+    profile: latency
+    # Async requests (0 = runtime auto)
+    num_requests: 0
+    # Keep model cache enabled by default to reduce cold starts.
+    model_cache_enabled: true
   # Контракт имён классов бинарного детектора при загрузке весов (#368): off | warn | enforce
   detector_weight_contract: warn
   models:
@@ -210,6 +227,26 @@ processor:
   # null — не выставлять classifier_needs_review в decision rows; задайте пороги для AL/аналитики.
   classifier_uncertainty_entropy_ge: null
   classifier_uncertainty_margin_le: null
+  reid:
+    # Runtime DINOv2 enrichment for per-detection embeddings + automatic nickname reuse.
+    runtime_enabled: true
+    # Preload model at processor startup to avoid first-recording spike.
+    preload_on_start: true
+    model: dinov2_vits14
+    # auto -> cuda if available, else cpu
+    device: auto
+    # Optional torch.hub cache location; useful for offline runtime.
+    hub_cache_dir: ""
+    # Optional local clone of facebookresearch/dinov2; when set, runtime loads with source=local.
+    hub_repo_local_path: ""
+    # Safety cap for hot path latency.
+    max_detections_per_recording: 6
+    # Optional gate: skip weak key-frames for Re-ID embedding.
+    min_best_frame_score: 5.5
+    # Minimum cosine similarity to auto-assign nickname from historical Re-ID library.
+    nickname_similarity_threshold: 0.9
+    # When candidates exist but no confident match, mark detection for manual review.
+    flag_low_similarity_for_review: true
 
 # Video source: go2rtc | file
 video:
@@ -336,7 +373,7 @@ detection:
   # при событии Frigate (одна строка «Bird» иначе блокировала синтез в merge).
   frigate_standalone_when_no_accepted_species: true
   # Мин. top_score Frigate для обычных лейблов (птица и т.д.). Ниже — мягче, больше записей в БД.
-  frigate_standalone_min_score: 0.48
+  frigate_standalone_min_score: 0.62
   # Если score в MQTT = 0 (часто snapshot), подставить для standalone; 0 = не подставлять.
   frigate_standalone_missing_score_fallback: 0.72
   # Лейблы из motion.frigate_label_exclude (cat/dog): только БД, без merge в YOLO и без Telegram.

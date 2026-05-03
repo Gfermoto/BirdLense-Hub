@@ -105,3 +105,39 @@ def light_gate_allows_frame(
     if b is None or c is None:
         return False
     return b >= min_brightness and c >= min_contrast
+
+
+def resolve_openvino_tuning(
+    app_config,
+    *,
+    profile_overrides: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Resolve OpenVINO tuning with optional profile-time overrides.
+
+    Keys:
+    - profile: latency|throughput
+    - num_requests: 0(auto) or >=1
+    - model_cache_enabled: bool
+    """
+    overrides = dict(profile_overrides or {})
+    profile = str(overrides.get("openvino_profile") or app_config.get("processor.openvino.profile") or "latency")
+    profile = profile.strip().lower()
+    if profile not in {"latency", "throughput"}:
+        profile = "latency"
+    raw_nr = overrides.get("openvino_num_requests")
+    if raw_nr is None:
+        raw_nr = app_config.get("processor.openvino.num_requests")
+    try:
+        num_requests = max(0, int(raw_nr or 0))
+    except (TypeError, ValueError):
+        num_requests = 0
+    raw_cache = overrides.get("openvino_model_cache_enabled")
+    if raw_cache is None:
+        raw_cache = app_config.get("processor.openvino.model_cache_enabled", True)
+    model_cache_enabled = bool(raw_cache)
+    return {
+        "profile": profile,
+        "num_requests": num_requests,
+        "model_cache_enabled": model_cache_enabled,
+    }

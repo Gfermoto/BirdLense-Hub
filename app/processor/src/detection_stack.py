@@ -54,7 +54,16 @@ def build_detection_stack(
         resolve_binary_detector_weight_path,
         resolve_relative_to_processor_root,
     )
-    from inference.selector import assert_backend_supported, resolve_inference_backend
+    from inference.selector import (
+        assert_backend_supported,
+        resolve_inference_backend,
+        resolve_inference_device,
+        resolve_openvino_device_policy,
+        resolve_openvino_num_requests,
+        resolve_openvino_profile,
+    )
+    from processor_runtime_profile import resolve_openvino_tuning
+    from processor_runtime_stats import set_gauge
     from ebird_regional_confidence import (
         merge_species_confidence_overrides_with_ebird_top,
     )
@@ -84,6 +93,19 @@ def build_detection_stack(
 
     _inf_backend = resolve_inference_backend(app_config)
     assert_backend_supported(_inf_backend)
+    _inf_device = resolve_inference_device(app_config)
+    ov_tuning = resolve_openvino_tuning(app_config)
+    if _inf_backend == "openvino":
+        # Explicit env/config values keep top precedence, runtime profile fills defaults.
+        env_profile = (os.environ.get("BIRDLENSE_OPENVINO_PROFILE") or "").strip().lower()
+        if not env_profile:
+            ov_tuning["profile"] = resolve_openvino_profile(app_config)
+        env_nr = (os.environ.get("BIRDLENSE_OPENVINO_NUM_REQUESTS") or "").strip()
+        if not env_nr:
+            ov_tuning["num_requests"] = resolve_openvino_num_requests(app_config)
+        ov_device_chain = resolve_openvino_device_policy(_inf_device)
+    else:
+        ov_device_chain = [_inf_device]
 
     binary_path, _ = resolve_binary_detector_weight_path(app_config, processor_root)
     if _inf_backend == "openvino" and not (binary_path or "").strip():
@@ -162,10 +184,22 @@ def build_detection_stack(
         binary_imgsz=app_config.get("processor.binary_imgsz", 320),
         weight_contract_mode=_weight_contract,
         inference_backend=_inf_backend,
+        inference_device=_inf_device,
+        inference_fallback_devices=ov_device_chain,
+        openvino_profile=str(ov_tuning.get("profile") or "latency"),
+        openvino_num_requests=int(ov_tuning.get("num_requests") or 0),
+        openvino_model_cache_enabled=bool(ov_tuning.get("model_cache_enabled", True)),
     )
+    set_gauge("inference.backend", _inf_backend)
+    set_gauge("inference.configured_device", _inf_device)
+    set_gauge("inference.openvino.device_chain", ",".join(str(x) for x in ov_device_chain if str(x).strip()))
+    if _inf_backend == "openvino":
+        set_gauge("inference.openvino.profile", str(ov_tuning.get("profile") or "latency"))
+        set_gauge("inference.openvino.num_requests", int(ov_tuning.get("num_requests") or 0))
     logger.info(
-        "Inference startup: backend=%s device=%s binary_path=%s",
+        "Inference startup: backend=%s configured_device=%s resolved_device=%s binary_path=%s",
         _inf_backend,
+        _inf_device,
         _inference_device_label(detection_strategy.binary_model),
         binary_path,
     )
@@ -190,7 +224,13 @@ def build_detection_stack(
         processor_root,
         backend=_inf_backend,
         binary_model_path=binary_path,
-        extra=extra_cache,
+        extra={
+            "inference_device": _inf_device,
+            "inference_fallback_devices": ov_device_chain,
+            "openvino_profile": (ov_tuning.get("profile") if _inf_backend == "openvino" else None),
+            "openvino_num_requests": (ov_tuning.get("num_requests") if _inf_backend == "openvino" else None),
+            **(extra_cache or {}),
+        },
     )
 
     tracker = app_config.get("processor.tracker") or "bytetrack.yaml"
@@ -257,6 +297,10 @@ def build_detection_stack(
         generic_bird_min_frames=app_config.get("processor.generic_bird_min_frames", 3),
         generic_bird_min_area_frac=app_config.get("processor.generic_bird_min_area_frac", 0.01),
         generic_bird_min_best_frame_score=app_config.get("processor.generic_bird_min_best_frame_score", 6.5),
+        classifier_vote_share_power=app_config.get(
+            "processor.classifier_vote_share_power",
+            1.0,
+        ),
     )
     decision_maker.pipeline_policy = dict(policy_snapshot)
     return frame_processor, decision_maker, merged_overrides

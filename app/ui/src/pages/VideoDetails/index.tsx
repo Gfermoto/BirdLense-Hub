@@ -12,10 +12,12 @@ import {
 } from '../../api/speciesOverviewDetections';
 import {
   fetchVideo,
+  fetchVideoActionEvents,
   fetchVideoDetectionFrames,
   fetchVideoNeighbors,
   regenerateSpectrogramForSingleVideo,
   regenerateTracksForSingleVideo,
+  type VideoActionEvent,
 } from '../../api/video';
 import { queryKeys } from '../../api/queryKeys';
 import Box from '@mui/material/Box';
@@ -189,6 +191,13 @@ export const VideoDetails = () => {
     queryFn: () => fetchVideoDetectionFrames(params.id as string),
     enabled: Boolean(params.id),
   });
+
+  const { data: actionEventsPayload } = useQuery({
+    queryKey: queryKeys.video.actionEvents(String(params.id)),
+    queryFn: () => fetchVideoActionEvents(Number(params.id)),
+    enabled: Boolean(params.id),
+  });
+  const actionEvents: VideoActionEvent[] = actionEventsPayload?.events ?? [];
 
   const displayVideo = useMemo((): Video | undefined => {
     if (!video) return undefined;
@@ -679,6 +688,7 @@ export const VideoDetails = () => {
           <DetectedSpecies
             species={(displayVideo ?? (video as Video)).species}
             videoId={(video as Video).id}
+            actionEvents={actionEvents}
           />
         </Grid>
         {/* Video Info Column */}

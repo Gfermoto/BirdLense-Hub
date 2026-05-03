@@ -233,3 +233,73 @@ def apply_detection_species_patch(
         "updated_count": updated_count,
         "apply_scope": apply_scope,
     }
+
+
+def apply_detection_nickname_patch(
+    session,
+    detection_id: int,
+    data: dict,
+) -> tuple[dict | None, dict | None]:
+    """Patch individual nickname for one detection or correction scope."""
+    source = normalize_correction_source(data.get("source"))
+    raw_scope = data.get("apply_scope")
+    if raw_scope is None or (isinstance(raw_scope, str) and not raw_scope.strip()):
+        apply_scope = "legacy_fanout" if source == "video" else "single_track"
+    else:
+        apply_scope = normalize_apply_scope(raw_scope, default="single_track")
+    reason = (data.get("reason") or "").strip() or None
+
+    if "individual_nickname" not in data:
+        return {"error": "individual_nickname is required"}, None
+    raw_nickname = data.get("individual_nickname")
+    nickname = str(raw_nickname or "").strip()
+    if len(nickname) > 64:
+        return {"error": "individual_nickname is too long (max 64)"}, None
+    nickname_or_none = nickname or None
+
+    vs = session.get(VideoSpecies, detection_id)
+    if not vs:
+        return {"error": "Detection not found"}, None
+
+    if apply_scope == "single_track":
+        to_update = [vs]
+    elif apply_scope == "whole_visit" and vs.species_visit:
+        to_update = list(vs.species_visit.video_species)
+    else:
+        to_update_set = set()
+        for row in vs.video.video_species:
+            if row.species_id == vs.species_id:
+                to_update_set.add(row)
+        if vs.species_visit:
+            for row in vs.species_visit.video_species:
+                to_update_set.add(row)
+        to_update = list(to_update_set)
+
+    for row in to_update:
+        row.individual_nickname = nickname_or_none
+    session.commit()
+    bust_response_caches()
+
+    updated_count = len(to_update)
+    write_correction_activity(
+        session,
+        action="set_nickname",
+        source=source,
+        detection_id=detection_id,
+        from_species_name=vs.species.name,
+        to_species_name=vs.species.name,
+        updated_count=updated_count,
+        apply_scope=apply_scope,
+        reason=reason,
+        video_id=vs.video_id,
+        track_id=vs.track_id,
+        species_visit_id=vs.species_visit_id,
+        from_species_id=vs.species_id,
+        to_species_id=vs.species_id,
+    )
+    return None, {
+        "message": "Nickname updated",
+        "updated_count": updated_count,
+        "apply_scope": apply_scope,
+        "individual_nickname": nickname_or_none,
+    }

@@ -70,6 +70,22 @@ def _canonical_merge_key(species_name: str) -> str:
     return _extract_common_for_merge(species_name or "") or (species_name or "").lower()
 
 
+def _is_generic_bird_key(key: str) -> bool:
+    return str(key or "").strip().lower() == "bird"
+
+
+def _conflict_score(det: dict) -> tuple:
+    decision_kind = str(det.get("decision_kind") or "").strip().lower()
+    accepted_species = 1 if decision_kind == "accepted_species" else 0
+    classifier_conf = float(det.get("classifier_confidence") or 0.0)
+    confidence = float(det.get("confidence") or 0.0)
+    duration = max(0.0, float(det.get("end_time") or 0.0) - float(det.get("start_time") or 0.0))
+    provider_count = len(set(det.get("contributing_providers") or []))
+    name = str(det.get("species_name") or det.get("species") or "")
+    # Deterministic tie-breaker: stronger evidence first, lexical fallback for stability.
+    return (accepted_species, classifier_conf, confidence, duration, provider_count, name)
+
+
 def _collapse_overlapping_generic_bird_detection(
     result_list: list,
     *,
@@ -468,8 +484,30 @@ def merge_detections(
                 sb, eb = b.get("start_time", 0), b.get("end_time", 0)
                 overlap = min(ea, eb) - max(sa, sb)
                 if overlap >= conflict_overlap_sec:
+                    # Product rule: when generic Bird overlaps specific species,
+                    # prefer species even if source priority differs.
+                    if _is_generic_bird_key(key_a) and not _is_generic_bird_key(key_b):
+                        to_remove.add(i)
+                        break
+                    if _is_generic_bird_key(key_b) and not _is_generic_bird_key(key_a):
+                        to_remove.add(j)
+                        continue
                     rank_b = _provider_rank(b.get("detection_provider"))
                     if rank_a == rank_b:
+                        score_a = _conflict_score(a)
+                        score_b = _conflict_score(b)
+                        if score_a == score_b:
+                            # Stable lexical fallback when scores are identical.
+                            if str(a.get("species_name") or "") <= str(b.get("species_name") or ""):
+                                to_remove.add(j)
+                            else:
+                                to_remove.add(i)
+                                break
+                        elif score_a > score_b:
+                            to_remove.add(j)
+                        else:
+                            to_remove.add(i)
+                            break
                         continue
                     if rank_a < rank_b:
                         to_remove.add(j)
