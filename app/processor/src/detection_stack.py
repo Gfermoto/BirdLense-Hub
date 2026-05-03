@@ -56,6 +56,8 @@ def build_detection_stack(
     )
     from inference.selector import (
         assert_backend_supported,
+        resolve_classifier_inference_backend,
+        resolve_classifier_inference_device,
         resolve_inference_backend,
         resolve_inference_device,
         resolve_openvino_device_policy,
@@ -94,6 +96,9 @@ def build_detection_stack(
     _inf_backend = resolve_inference_backend(app_config)
     assert_backend_supported(_inf_backend)
     _inf_device = resolve_inference_device(app_config)
+    _cls_backend = resolve_classifier_inference_backend(app_config)
+    assert_backend_supported(_cls_backend)
+    _cls_device = resolve_classifier_inference_device(app_config)
     ov_tuning = resolve_openvino_tuning(app_config)
     if _inf_backend == "openvino":
         # Explicit env/config values keep top precedence, runtime profile fills defaults.
@@ -106,6 +111,10 @@ def build_detection_stack(
         ov_device_chain = resolve_openvino_device_policy(_inf_device)
     else:
         ov_device_chain = [_inf_device]
+    if _cls_backend == "openvino":
+        cls_ov_device_chain = resolve_openvino_device_policy(_cls_device)
+    else:
+        cls_ov_device_chain = [_cls_device]
 
     binary_path, _ = resolve_binary_detector_weight_path(app_config, processor_root)
     if _inf_backend == "openvino" and not (binary_path or "").strip():
@@ -115,13 +124,25 @@ def build_detection_stack(
             "(export: yolo export ... format=openvino).",
         )
 
-    classifier_path = resolve_relative_to_processor_root(
-        app_config.get(
-            "processor.models.classifier",
-            "models/classification/weights/best.pt",
-        ),
-        processor_root,
-    )
+    if _cls_backend == "openvino":
+        cls_env = str(os.environ.get("BIRDLENSE_CLASSIFIER_OPENVINO_PATH") or "").strip()
+        if cls_env:
+            classifier_path = (
+                cls_env if os.path.isabs(cls_env) else resolve_relative_to_processor_root(cls_env, processor_root)
+            )
+        else:
+            cls_cfg = str(app_config.get("processor.models.classifier_openvino") or "").strip()
+            classifier_path = (
+                resolve_relative_to_processor_root(cls_cfg, processor_root) if cls_cfg else ""
+            )
+    else:
+        classifier_path = resolve_relative_to_processor_root(
+            app_config.get(
+                "processor.models.classifier",
+                "models/classification/weights/best.pt",
+            ),
+            processor_root,
+        )
 
     if not detector_weights_available(binary_path):
         raise FileNotFoundError(
@@ -130,10 +151,12 @@ def build_detection_stack(
             "from yolo export format=openvino (processor.models.binary_openvino or "
             "BIRDLENSE_BINARY_OPENVINO_PATH).",
         )
-    if not os.path.isfile(classifier_path):
+    if not detector_weights_available(classifier_path):
         raise FileNotFoundError(
-            f"YOLO classifier weights missing: {classifier_path}. "
-            "Set processor.models.classifier or run scripts/fetch-processor-weights.sh",
+            f"YOLO classifier weights missing or invalid path: {classifier_path}. "
+            "For torch set processor.models.classifier (.pt). For OpenVINO set "
+            "processor.models.classifier_openvino (dir or .xml) or "
+            "BIRDLENSE_CLASSIFIER_OPENVINO_PATH.",
         )
 
     regional_species = regional_species_override
@@ -189,19 +212,35 @@ def build_detection_stack(
         openvino_profile=str(ov_tuning.get("profile") or "latency"),
         openvino_num_requests=int(ov_tuning.get("num_requests") or 0),
         openvino_model_cache_enabled=bool(ov_tuning.get("model_cache_enabled", True)),
+        classifier_inference_backend=_cls_backend,
+        classifier_inference_device=_cls_device,
+        classifier_inference_fallback_devices=cls_ov_device_chain,
+        classifier_openvino_profile=str(ov_tuning.get("profile") or "latency"),
+        classifier_openvino_num_requests=int(ov_tuning.get("num_requests") or 0),
+        classifier_openvino_model_cache_enabled=bool(ov_tuning.get("model_cache_enabled", True)),
     )
     set_gauge("inference.backend", _inf_backend)
     set_gauge("inference.configured_device", _inf_device)
+    set_gauge("inference.classifier.backend", _cls_backend)
+    set_gauge("inference.classifier.configured_device", _cls_device)
     set_gauge("inference.openvino.device_chain", ",".join(str(x) for x in ov_device_chain if str(x).strip()))
     if _inf_backend == "openvino":
         set_gauge("inference.openvino.profile", str(ov_tuning.get("profile") or "latency"))
         set_gauge("inference.openvino.num_requests", int(ov_tuning.get("num_requests") or 0))
+    if _cls_backend == "openvino":
+        set_gauge(
+            "inference.classifier.openvino.device_chain",
+            ",".join(str(x) for x in cls_ov_device_chain if str(x).strip()),
+        )
     logger.info(
-        "Inference startup: backend=%s configured_device=%s resolved_device=%s binary_path=%s",
+        "Inference startup: det_backend=%s det_device=%s det_resolved=%s cls_backend=%s cls_device=%s binary_path=%s classifier_path=%s",
         _inf_backend,
         _inf_device,
         _inference_device_label(detection_strategy.binary_model),
+        _cls_backend,
+        _cls_device,
         binary_path,
+        classifier_path,
     )
 
     extra_cache: Optional[Dict[str, Any]] = None

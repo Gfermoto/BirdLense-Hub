@@ -29,6 +29,26 @@ def resolve_inference_backend(app_config: Mapping[str, Any] | None = None) -> st
     return backend
 
 
+def resolve_classifier_inference_backend(app_config: Mapping[str, Any] | None = None) -> str:
+    """
+    Приоритет:
+    1) ``BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND``
+    2) ``processor.classifier_inference_backend``
+    3) общий ``resolve_inference_backend(...)``
+    """
+    raw = (os.environ.get("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND") or "").strip().lower()
+    if raw:
+        backend = raw
+    elif app_config is not None:
+        cfg = app_config.get("processor.classifier_inference_backend")
+        backend = str(cfg).strip().lower() if cfg is not None else ""
+    else:
+        backend = ""
+    if not backend:
+        return resolve_inference_backend(app_config)
+    return _BACKEND_ALIASES.get(backend, backend)
+
+
 def assert_backend_supported(backend: str) -> None:
     """Проверить, что backend реализован или запланирован с понятной ошибкой."""
     b = _BACKEND_ALIASES.get((backend or "torch").strip().lower(), (backend or "torch").strip().lower())
@@ -59,6 +79,26 @@ def resolve_inference_device(app_config: Mapping[str, Any] | None = None) -> str
         device = "auto"
     if not device:
         return "auto"
+    return device
+
+
+def resolve_classifier_inference_device(app_config: Mapping[str, Any] | None = None) -> str:
+    """
+    Приоритет:
+    1) ``BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE``
+    2) ``processor.classifier_inference_device``
+    3) общий ``resolve_inference_device(...)``
+    """
+    raw = (os.environ.get("BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE") or "").strip()
+    if raw:
+        device = raw
+    elif app_config is not None:
+        cfg = app_config.get("processor.classifier_inference_device")
+        device = str(cfg).strip() if cfg is not None else ""
+    else:
+        device = ""
+    if not device:
+        return resolve_inference_device(app_config)
     return device
 
 

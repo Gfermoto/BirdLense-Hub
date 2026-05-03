@@ -203,6 +203,9 @@ processor:
   # Device hint для backend (env BIRDLENSE_INFERENCE_DEVICE имеет приоритет):
   # torch: auto|cpu|cuda|cuda:0 ; openvino: auto|cpu|gpu|intel:gpu.
   inference_device: auto
+  # Optional classifier-specific backend/device overrides. Empty -> inherit from inference_backend/device.
+  classifier_inference_backend: ""
+  classifier_inference_device: ""
   openvino:
     # Runtime profile for OpenVINO: latency | throughput
     profile: latency
@@ -223,6 +226,9 @@ processor:
     binary_openvino: ""
     # EU-классификатор (~491 вид): скачивать как best.pt с Hugging Face gfermoto/birdlense-birds-eu
     classifier: "models/classification/weights/best.pt"
+    # OpenVINO IR for classifier (optional): dir or .xml from
+    # yolo export model=<classifier.pt> format=openvino task=classify.
+    classifier_openvino: ""
   # Неопределённость YOLO-cls (#370): энтропия (наты) и margin top1−top2 по полному вектору probs.
   # null — не выставлять classifier_needs_review в decision rows; задайте пороги для AL/аналитики.
   classifier_uncertainty_entropy_ge: null

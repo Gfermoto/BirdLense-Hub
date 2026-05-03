@@ -213,6 +213,16 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Vote-share exponent controlling classifier arbitration sensitivity in ML pipeline internals.",
         "next_step": "Expose only after calibrated presets and guardrails are defined.",
     },
+    "processor.classifier_inference_backend": {
+        "category": "ops-only",
+        "reason": "Classifier backend selection depends on deployment artifacts (.pt vs OpenVINO IR) and host runtime.",
+        "next_step": "Expose only via expert diagnostics with model availability checks.",
+    },
+    "processor.classifier_inference_device": {
+        "category": "ops-only",
+        "reason": "Classifier device routing is hardware-specific tuning and may require fallback policies.",
+        "next_step": "Keep config-level unless hardware profile UX is introduced.",
+    },
     "processor.inference_device": {
         "category": "ops-only",
         "reason": "Runtime device selection depends on host hardware and deployment constraints.",
@@ -232,6 +242,11 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "ops-only",
         "reason": "OpenVINO profile switch is an optimization preset for deployment engineers.",
         "next_step": "Potentially map to simplified performance profiles later.",
+    },
+    "processor.models.classifier_openvino": {
+        "category": "ops-only",
+        "reason": "Classifier OpenVINO artifact path is deployment-specific filesystem state.",
+        "next_step": "Surface through model-management workflow instead of free-text Settings input.",
     },
     "processor.reid.device": {
         "category": "ops-only",

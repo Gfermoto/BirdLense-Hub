@@ -74,8 +74,36 @@ def load_yolo_detector(
     raise ValueError(f"Unknown detector backend: {backend!r}")
 
 
-def load_yolo_classifier(model_path: str) -> Any:
-    """Классификатор видов пока только torch ``.pt`` (Phase 2 MVP)."""
+def load_yolo_classifier(
+    model_path: str,
+    *,
+    backend: str = "torch",
+    openvino_profile: str = "latency",
+    openvino_num_requests: int = 0,
+    openvino_model_cache_enabled: bool = True,
+) -> Any:
+    """
+    Загрузить классификатор видов.
+
+    - ``torch``: ``.pt`` чекпоинт.
+    - ``openvino``: путь к каталогу OpenVINO экспорта классификатора или к ``.xml``.
+    """
+    b = (backend or "torch").strip().lower()
+    if b == "onnxruntime":
+        raise NotImplementedError(
+            "ONNX Runtime for classifier is not implemented yet (#371). "
+            "Use torch or openvino classifier artifacts.",
+        )
     from ultralytics import YOLO
 
-    return YOLO(model_path, task="classify")
+    if b == "torch":
+        return YOLO(model_path, task="classify")
+    if b == "openvino":
+        _ensure_openvino_pkg()
+        _apply_openvino_runtime_tuning(
+            profile=openvino_profile,
+            num_requests=openvino_num_requests,
+            model_cache_enabled=bool(openvino_model_cache_enabled),
+        )
+        return YOLO(model_path, task="classify")
+    raise ValueError(f"Unknown classifier backend: {backend!r}")
