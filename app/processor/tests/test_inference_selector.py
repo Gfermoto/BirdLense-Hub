@@ -104,6 +104,54 @@ class TestInferenceSelector(unittest.TestCase):
             else:
                 os.environ["BIRDLENSE_INFERENCE_DEVICE"] = old
 
+    def test_resolve_classifier_backend_defaults_to_main_backend(self):
+        from inference.selector import (
+            resolve_classifier_inference_backend,
+            resolve_inference_backend,
+        )
+
+        old = os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", None)
+        try:
+            cfg = {"processor.inference_backend": "openvino"}
+            self.assertEqual(resolve_inference_backend(cfg), "openvino")
+            self.assertEqual(resolve_classifier_inference_backend(cfg), "openvino")
+        finally:
+            if old is not None:
+                os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND"] = old
+
+    def test_resolve_classifier_backend_env_overrides(self):
+        from inference.selector import resolve_classifier_inference_backend
+
+        old = os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", None)
+        try:
+            os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND"] = "openvino"
+            self.assertEqual(
+                resolve_classifier_inference_backend(
+                    {"processor.classifier_inference_backend": "torch"},
+                ),
+                "openvino",
+            )
+        finally:
+            if old is None:
+                os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", None)
+            else:
+                os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND"] = old
+
+    def test_resolve_classifier_device_defaults_to_main_device(self):
+        from inference.selector import (
+            resolve_classifier_inference_device,
+            resolve_inference_device,
+        )
+
+        old = os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE", None)
+        try:
+            cfg = {"processor.inference_device": "intel:gpu"}
+            self.assertEqual(resolve_inference_device(cfg), "intel:gpu")
+            self.assertEqual(resolve_classifier_inference_device(cfg), "intel:gpu")
+        finally:
+            if old is not None:
+                os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE"] = old
+
     def test_openvino_device_policy_auto_prefers_gpu_then_cpu(self):
         from inference.selector import resolve_openvino_device_policy
 

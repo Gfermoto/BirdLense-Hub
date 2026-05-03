@@ -270,6 +270,12 @@ class TwoStageStrategy(DetectionStrategy):
         openvino_profile: str = "latency",
         openvino_num_requests: int = 0,
         openvino_model_cache_enabled: bool = True,
+        classifier_inference_backend: Optional[str] = None,
+        classifier_inference_device: Optional[str] = None,
+        classifier_inference_fallback_devices: Optional[List[str]] = None,
+        classifier_openvino_profile: Optional[str] = None,
+        classifier_openvino_num_requests: Optional[int] = None,
+        classifier_openvino_model_cache_enabled: Optional[bool] = None,
     ):
         super().__init__(min_center_dist, min_box_size_px, blur_threshold, max_blur_checks)
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -279,12 +285,45 @@ class TwoStageStrategy(DetectionStrategy):
             str(x).strip() for x in (inference_fallback_devices or [self.inference_device]) if str(x).strip()
         ] or [self.inference_device]
         self.active_inference_device = self.inference_fallback_devices[0]
+        self.classifier_inference_backend = (
+            str(classifier_inference_backend or self.inference_backend).strip().lower() or self.inference_backend
+        )
+        self.classifier_inference_device = (
+            str(classifier_inference_device or self.inference_device).strip() or self.inference_device
+        )
+        self.classifier_inference_fallback_devices = [
+            str(x).strip()
+            for x in (
+                classifier_inference_fallback_devices or [self.classifier_inference_device]
+            )
+            if str(x).strip()
+        ] or [self.classifier_inference_device]
+        self.active_classifier_inference_device = self.classifier_inference_fallback_devices[0]
         self.openvino_profile = str(openvino_profile or "latency").strip().lower()
         try:
             self.openvino_num_requests = max(0, int(openvino_num_requests or 0))
         except (TypeError, ValueError):
             self.openvino_num_requests = 0
         self.openvino_model_cache_enabled = bool(openvino_model_cache_enabled)
+        self.classifier_openvino_profile = str(
+            classifier_openvino_profile or self.openvino_profile,
+        ).strip().lower()
+        try:
+            self.classifier_openvino_num_requests = max(
+                0,
+                int(
+                    self.openvino_num_requests
+                    if classifier_openvino_num_requests is None
+                    else classifier_openvino_num_requests
+                ),
+            )
+        except (TypeError, ValueError):
+            self.classifier_openvino_num_requests = self.openvino_num_requests
+        self.classifier_openvino_model_cache_enabled = bool(
+            self.openvino_model_cache_enabled
+            if classifier_openvino_model_cache_enabled is None
+            else classifier_openvino_model_cache_enabled,
+        )
         self.weight_contract_mode = (weight_contract_mode or "warn").strip().lower()
         self.regional_species = regional_species
         self.max_classifications_per_frame = max(1, int(max_classifications_per_frame or 1))
@@ -294,10 +333,12 @@ class TwoStageStrategy(DetectionStrategy):
         self.detector_scope = {normalize_detector_label(name) for name in raw_scope if str(name or "").strip()}
 
         self.logger.info(
-            "TwoStageStrategy: inference_backend=%s inference_device=%s fallback_devices=%s ov_profile=%s ov_num_requests=%s detector_weight_contract=%s detector_scope=%s",
+            "TwoStageStrategy: det_backend=%s det_device=%s det_fallback=%s cls_backend=%s cls_device=%s ov_profile=%s ov_num_requests=%s detector_weight_contract=%s detector_scope=%s",
             self.inference_backend,
             self.inference_device,
             self.inference_fallback_devices,
+            self.classifier_inference_backend,
+            self.classifier_inference_device,
             self.openvino_profile,
             self.openvino_num_requests,
             self.weight_contract_mode,
@@ -312,7 +353,13 @@ class TwoStageStrategy(DetectionStrategy):
                 openvino_num_requests=self.openvino_num_requests,
                 openvino_model_cache_enabled=self.openvino_model_cache_enabled,
             )
-            self.classifier_model = load_yolo_classifier(classifier_model_path)
+            self.classifier_model = load_yolo_classifier(
+                classifier_model_path,
+                backend=self.classifier_inference_backend,
+                openvino_profile=self.classifier_openvino_profile,
+                openvino_num_requests=self.classifier_openvino_num_requests,
+                openvino_model_cache_enabled=self.classifier_openvino_model_cache_enabled,
+            )
         else:
             raise NotImplementedError(
                 f"inference_backend={self.inference_backend!r} is not implemented (#371).",
@@ -370,7 +417,14 @@ class TwoStageStrategy(DetectionStrategy):
             else:
                 raise
         set_gauge("inference.active_device", self.active_inference_device)
-        self.classifier_model(np.zeros((224, 224, 3), dtype=np.uint8), verbose=False)
+        classifier_warmup_kwargs = {"verbose": False}
+        if self.active_classifier_inference_device:
+            classifier_warmup_kwargs["device"] = self.active_classifier_inference_device
+        try:
+            self.classifier_model(np.zeros((224, 224, 3), dtype=np.uint8), **classifier_warmup_kwargs)
+        except Exception:
+            classifier_warmup_kwargs.pop("device", None)
+            self.classifier_model(np.zeros((224, 224, 3), dtype=np.uint8), **classifier_warmup_kwargs)
 
     def _try_fallback_device(self, frame: np.ndarray, base_kwargs: Mapping[str, Any], *, reason: str) -> bool:
         current = str(self.active_inference_device or "").strip()
@@ -408,7 +462,10 @@ class TwoStageStrategy(DetectionStrategy):
 
     def _classify_crop(self, crop: np.ndarray) -> ClassifierOutput:
         """Классификация кропа: вид, top1 conf, энтропия и top1−top2 margin по полному вектору probs."""
-        result_cls = self.classifier_model(crop, verbose=False)
+        kwargs = {"verbose": False}
+        if self.active_classifier_inference_device:
+            kwargs["device"] = self.active_classifier_inference_device
+        result_cls = self.classifier_model(crop, **kwargs)
 
         if not result_cls or not result_cls[0].probs:
             return ClassifierOutput(None, 0.0, 0.0, 0.0)
@@ -479,6 +536,10 @@ class TwoStageStrategy(DetectionStrategy):
         if not hasattr(self, "inference_fallback_devices"):
             base_dev = str(self.active_inference_device or "").strip()
             self.inference_fallback_devices = [base_dev] if base_dev else []
+        if not hasattr(self, "active_classifier_inference_device"):
+            self.active_classifier_inference_device = str(
+                getattr(self, "classifier_inference_device", "") or "",
+            ).strip()
         self._frame_index += 1
         imgsz = int(runtime_cfg.resolve_strategy_field("processor.binary_imgsz", self, "binary_imgsz", 320) or 320)
         min_center_dist = float(
