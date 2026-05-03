@@ -7,12 +7,13 @@ SLEEP_SEC="${SLEEP_SEC:-2}"
 TIMEOUT_SEC="${TIMEOUT_SEC:-15}"
 CHECK_CAMERAS="${CHECK_CAMERAS:-0}"
 CHECK_DOMAIN_HEALTH="${CHECK_DOMAIN_HEALTH:-0}"
+STRICT_QUALITY="${STRICT_QUALITY:-0}"
 UI_API_KEY="${BIRDLENSE_UI_API_KEY:-${UI_API_KEY:-}}"
 MCP_TOKEN="${MCP_TOKEN:-}"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/verify-stack.sh [--base-url URL] [--attempts N] [--sleep SEC] [--check-cameras] [--check-domain-health]
+Usage: scripts/verify-stack.sh [--base-url URL] [--attempts N] [--sleep SEC] [--check-cameras] [--check-domain-health] [--strict-quality]
 
 Verifies the shared install/deploy contract:
 1. /api/ui/health responds with {"status":"ok"}
@@ -25,6 +26,7 @@ Optional:
                             On strict hubs set BIRDLENSE_UI_API_KEY (or UI_API_KEY) for
                             X-Birdlense-Api-Key, or MCP_TOKEN for Authorization: Bearer (same as MCP);
                             otherwise those endpoints may 403.
+  --strict-quality       Requires --check-domain-health and fails if strict_quality_ready is false.
 EOF
 }
 
@@ -47,6 +49,11 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --check-domain-health)
+      CHECK_DOMAIN_HEALTH=1
+      shift
+      ;;
+    --strict-quality)
+      STRICT_QUALITY=1
       CHECK_DOMAIN_HEALTH=1
       shift
       ;;
@@ -179,6 +186,12 @@ if [[ "${CHECK_DOMAIN_HEALTH}" == "1" ]]; then
   if ! printf '%s' "${domain_body}" | normalize_json | grep -q '"domain_contract_version"'; then
     echo "domain-health: FAIL ${domain_body}" >&2
     exit 1
+  fi
+  if [[ "${STRICT_QUALITY}" == "1" ]]; then
+    if ! printf '%s' "${domain_body}" | normalize_json | grep -q '"strict_quality_ready":true'; then
+      echo "domain-health: FAIL strict quality gate ${domain_body}" >&2
+      exit 1
+    fi
   fi
   echo "domain-health: OK $(printf '%s' "${domain_body}" | head -c 220)..."
 

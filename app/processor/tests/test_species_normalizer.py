@@ -21,8 +21,7 @@ class TestMergeDetections(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['species_name'], 'Bird')
 
-    def test_bird_can_coexist_with_other_species(self):
-        """Без поля classifier / accepted_species второй ряд не считается «уверенным видом»."""
+    def test_generic_bird_conflict_prefers_specific_species(self):
         yolo = [
             {'species_name': 'Bird', 'confidence': 0.9, 'start_time': 0, 'end_time': 5},
             {
@@ -34,8 +33,8 @@ class TestMergeDetections(unittest.TestCase):
         ]
         result = merge_detections(yolo, [], self.video_start, self.video_end)
         names = [d['species_name'] for d in result]
-        self.assertIn('Bird', names)
         self.assertIn('Northern Cardinal', names)
+        self.assertNotIn('Bird', names)
 
     def test_generic_bird_absorbed_when_overlapping_classified_jay(self):
         yolo = [
@@ -151,6 +150,28 @@ class TestMergeDetections(unittest.TestCase):
         self.assertEqual(result[0]['species_name'], 'Great Tit')
         self.assertEqual(result[0]['decision_reason'], 'promoted_by_frigate')
 
+    def test_conflict_prefers_specific_species_over_generic_bird(self):
+        yolo = [{
+            'species_name': 'Bird',
+            'confidence': 0.85,
+            'start_time': 0,
+            'end_time': 10,
+            'detection_provider': 'yolo',
+            'decision_reason': 'fallback_bird',
+            'detector_label': 'Bird',
+        }]
+        mqtt = [{
+            'species': 'Great Tit',
+            'label': 'bird',
+            'source': 'frigate',
+            'confidence': 0.9,
+            'timestamp': (self.video_start + timedelta(seconds=2)).isoformat(),
+        }]
+        result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['species_name'], 'Great Tit')
+        self.assertEqual(result[0]['decision_reason'], 'promoted_by_frigate')
+
     def test_frigate_event_outside_video_window_is_skipped(self):
         yolo = [{
             'species_name': 'Bird',
@@ -238,3 +259,28 @@ class TestMergeDetections(unittest.TestCase):
         result = merge_detections(yolo, mqtt, self.video_start, self.video_end)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['species_name'], 'Rodent')
+
+    def test_equal_rank_conflict_prefers_higher_scored_species(self):
+        yolo = [
+            {
+                'species_name': 'Great Tit',
+                'confidence': 0.52,
+                'classifier_confidence': 0.49,
+                'start_time': 1,
+                'end_time': 8,
+                'detection_provider': 'yolo',
+                'decision_kind': 'accepted_species',
+            },
+            {
+                'species_name': 'Blue Tit',
+                'confidence': 0.73,
+                'classifier_confidence': 0.69,
+                'start_time': 2,
+                'end_time': 9,
+                'detection_provider': 'yolo',
+                'decision_kind': 'accepted_species',
+            },
+        ]
+        result = merge_detections(yolo, [], self.video_start, self.video_end, source_priority=['yolo', 'frigate'])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['species_name'], 'Blue Tit')

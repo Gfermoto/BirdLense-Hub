@@ -405,8 +405,12 @@ def build_fused_video_detections(
         )
         if synthetic:
             extra = prepare_track_results_for_fusion(synthetic, app_config)
-            if not prepared or _prepared_is_single_generic_bird_track(prepared):
+            if not prepared:
                 prepared = extra
+            else:
+                # Keep YOLO evidence and add Frigate synthetic candidates; downstream
+                # arbitration/conflict rules decide final winner.
+                prepared.extend(extra)
             logger.info(
                 "Fusion: Frigate standalone — %s synthetic row(s); "
                 "yolo_prepared_rows_before=%s (merge uses %s non-suppressed Frigate events)",

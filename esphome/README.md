@@ -73,6 +73,19 @@ esphome upload esphome/bird-feeder-scale.yaml
 - **BirdLense:** триггер записи можно взять из HA через MQTT binary или напрямую `triggers.motion_sensor` с `source: mqtt` / `source: esphome` — см. `app/app_config/default_config.yaml` и `app/processor/src/motion_detectors/factory.py`. Сейчас в конфиге один канал motion; объединение **радар ИЛИ PIR** удобнее сделать в ESPHome template + один MQTT topic или в HA automation (в YAML есть комментарий в конце файла).
 - **Карта в HA:** пример `custom:plotly-graph` — `esphome/home-assistant/ld2450-plotly-graph.card.yaml` (подставьте реальные `entity_id` из Developer Tools → States).
 
+### Выбранный сценарий PIR + радар для площадки (issue #376)
+
+Для BirdLense-Hub принят **вариант 1**:
+
+- в ESPHome/HA собираем `radar_has_target OR pir_gpio`,
+- публикуем состояние в **один** MQTT topic (например, `birdlense/motion/ld2450_or_pir`),
+- в хабе указываем `triggers.motion_sensor.source: mqtt` и этот же `mqtt_topic`.
+
+Почему так:
+
+- в хабе сейчас один канал `motion_sensor`, без мульти-топиков,
+- OR на стороне ESPHome/HA даёт простой и предсказуемый контракт для `factory.py`.
+
 ```bash
 esphome compile esphome/ld2450-native-zones.yaml
 esphome upload esphome/ld2450-native-zones.yaml

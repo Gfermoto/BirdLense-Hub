@@ -20,6 +20,7 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
+import TextField from '@mui/material/TextField';
 import { Link as RouterLink } from 'react-router-dom';
 import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
@@ -29,9 +30,11 @@ import { getApiErrorMessage, resolveImageUrl } from '../../api/api';
 import { downloadDetectionCropForINaturalist } from '../../api/dataset';
 import {
   fetchBirdDirectory,
+  updateDetectionNickname,
   updateDetectionSpecies,
 } from '../../api/speciesOverviewDetections';
 import { mergeVideoSpecies } from '../../api/video';
+import type { VideoActionEvent } from '../../api/video';
 import { queryKeys } from '../../api/queryKeys';
 import { invalidateLocalSpeciesEditCaches } from '../../api/invalidateLocalSpeciesCaches';
 
@@ -42,6 +45,7 @@ interface GroupedSpecies {
   detections: VideoSpecies[];
   confidenceRange: string;
   totalDuration: number;
+  nickname: string | null;
 }
 
 const INaturalistButton = ({
@@ -112,11 +116,24 @@ const INaturalistButton = ({
 interface DetectedSpeciesProps {
   species: VideoSpecies[];
   videoId?: string | number;
+  actionEvents?: VideoActionEvent[];
+}
+
+function normalizeActionLabel(
+  t: (key: string) => string,
+  label: string | undefined,
+): string {
+  const key = String(label || '').trim().toLowerCase();
+  if (key === 'arrival') return t('video.actionArrival');
+  if (key === 'departure') return t('video.actionDeparture');
+  if (key === 'possible_feeding') return t('video.actionPossibleFeeding');
+  return label || '—';
 }
 
 export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   species = [],
   videoId,
+  actionEvents = [],
 }) => {
   const { t } = useTranslation();
   const safeSpecies = species ?? [];
@@ -161,11 +178,35 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
     },
   });
 
+  const nicknameMutation = useMutation({
+    mutationFn: ({
+      detectionId,
+      nickname,
+    }: {
+      detectionId: number;
+      nickname: string | null;
+    }) =>
+      updateDetectionNickname(
+        detectionId,
+        nickname,
+        'video',
+        'legacy_fanout',
+      ),
+    onSuccess: () => {
+      invalidateLocalSpeciesEditCaches(queryClient, videoId);
+      setCorrectSuccess(t('video.nicknameSaved'));
+    },
+  });
+
   const [editingGroupKey, setEditingGroupKey] = useState<string | null>(null);
   const [selectedSpeciesId, setSelectedSpeciesId] = useState<number | ''>('');
   const [mergeSpeciesId, setMergeSpeciesId] = useState<number | ''>('');
   const [correctError, setCorrectError] = useState<string | null>(null);
   const [correctSuccess, setCorrectSuccess] = useState<string | null>(null);
+  const [editingNicknameGroupKey, setEditingNicknameGroupKey] = useState<
+    string | null
+  >(null);
+  const [nicknameDraft, setNicknameDraft] = useState('');
 
   const handleCorrectGroup = async (group: GroupedSpecies) => {
     if (selectedSpeciesId === '') return;
@@ -204,6 +245,28 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
     }
   };
 
+  const handleSaveNickname = async (group: GroupedSpecies) => {
+    const bestDet = group.detections
+      .filter((d) => d.source === 'video' && d.id)
+      .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
+    if (!bestDet?.id) {
+      setCorrectError(t('video.correctNoDetectionId'));
+      return;
+    }
+    setCorrectError(null);
+    try {
+      const cleaned = nicknameDraft.trim();
+      await nicknameMutation.mutateAsync({
+        detectionId: bestDet.id,
+        nickname: cleaned.length > 0 ? cleaned : null,
+      });
+      setEditingNicknameGroupKey(null);
+      setNicknameDraft('');
+    } catch (err) {
+      setCorrectError(getApiErrorMessage(err, t('errors.loadSightings')));
+    }
+  };
+
   // Group species by species_id and calculate stats
   const groupedSpecies = safeSpecies
     .filter((s) => s.source === 'video')
@@ -217,11 +280,15 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
           detections: [],
           confidenceRange: '',
           totalDuration: 0,
+          nickname: null,
         };
         groups.push(group);
       }
       group.detections.push(sp);
       group.totalDuration += Math.max(0, sp.end_time - sp.start_time);
+      if (!group.nickname && sp.individual_nickname) {
+        group.nickname = String(sp.individual_nickname).trim() || null;
+      }
       return groups;
     }, []);
 
@@ -357,6 +424,11 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   <Typography variant="subtitle1" noWrap>
                     {group.species_name}
                   </Typography>
+                  {group.nickname ? (
+                    <Typography variant="body2" color="text.secondary">
+                      {t('video.nickname')}: {group.nickname}
+                    </Typography>
+                  ) : null}
                   <Typography variant="body2" color="text.secondary">
                     {group.detections.length}{' '}
                     {group.detections.length > 1
@@ -390,6 +462,32 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     {t('video.confidence')}: {group.confidenceRange}
                   </Typography>
+                  {(() => {
+                    const events = actionEvents.filter((event) => {
+                      const label = String(event.label || '').toLowerCase();
+                      if (label === 'possible_feeding') return true;
+                      const evidenceSpecies = String(
+                        event.evidence?.species_name || '',
+                      ).trim();
+                      return (
+                        evidenceSpecies.length > 0 &&
+                        evidenceSpecies === group.species_name
+                      );
+                    });
+                    if (!events.length) return null;
+                    const labels = [
+                      ...new Set(
+                        events.map((event) =>
+                          normalizeActionLabel(t, event.label),
+                        ),
+                      ),
+                    ];
+                    return (
+                      <Typography variant="body2" color="text.secondary">
+                        {t('video.behavior')}: {labels.join(', ')}
+                      </Typography>
+                    );
+                  })()}
                 </CardContent>
                 <CardActions
                   sx={{
@@ -447,6 +545,28 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                             disabled={!canEdit}
                           >
                             {t('unknowns.correctSpecies')}
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    )}
+                    {editingNicknameGroupKey !== String(group.species_id) && (
+                      <Tooltip
+                        title={canEdit ? t('video.editNickname') : ''}
+                      >
+                        <span>
+                          <Button
+                            size="small"
+                            onClick={() => {
+                              setEditingNicknameGroupKey(
+                                String(group.species_id),
+                              );
+                              setNicknameDraft(
+                                group.nickname ? String(group.nickname) : '',
+                              );
+                            }}
+                            disabled={!canEdit}
+                          >
+                            {t('video.editNickname')}
                           </Button>
                         </span>
                       </Tooltip>
@@ -522,6 +642,49 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                           onClick={() => {
                             setEditingGroupKey(null);
                             setSelectedSpeciesId('');
+                          }}
+                        >
+                          {t('common.cancel')}
+                        </Button>
+                      </Stack>
+                    </Stack>
+                  )}
+                  {editingNicknameGroupKey === String(group.species_id) && (
+                    <Stack
+                      spacing={1}
+                      sx={{ width: '100%', minWidth: 0, mt: 0.5 }}
+                    >
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label={t('video.nickname')}
+                        value={nicknameDraft}
+                        disabled={!canEdit}
+                        inputProps={{ maxLength: 64 }}
+                        onChange={(e) => setNicknameDraft(e.target.value)}
+                      />
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                        sx={{ width: '100%' }}
+                      >
+                        <Button
+                          size="small"
+                          variant="contained"
+                          disabled={nicknameMutation.isPending || !canEdit}
+                          onClick={() => handleSaveNickname(group)}
+                        >
+                          {nicknameMutation.isPending
+                            ? '...'
+                            : t('unknowns.apply')}
+                        </Button>
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            setEditingNicknameGroupKey(null);
+                            setNicknameDraft('');
                           }}
                         >
                           {t('common.cancel')}

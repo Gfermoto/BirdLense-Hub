@@ -7,14 +7,32 @@ import argparse
 import json
 import sqlite3
 from collections import Counter
+from datetime import datetime, timedelta, timezone
 
 
-def _load_latest_traces(db_path: str) -> tuple[dict[int, dict], dict[int, dict]]:
+def _load_latest_traces(
+    db_path: str,
+    *,
+    days: int | None = None,
+) -> tuple[dict[int, dict], dict[int, dict]]:
     conn = sqlite3.connect(db_path)
     try:
-        rows = conn.execute(
-            "SELECT data FROM activity_log WHERE type = 'decision_trace' ORDER BY id ASC",
-        ).fetchall()
+        if days is not None and int(days) > 0:
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=int(days))).isoformat()
+            rows = conn.execute(
+                """
+                SELECT data
+                FROM activity_log
+                WHERE type = 'decision_trace'
+                  AND COALESCE(created_at, '') >= ?
+                ORDER BY id ASC
+                """,
+                (cutoff,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT data FROM activity_log WHERE type = 'decision_trace' ORDER BY id ASC",
+            ).fetchall()
     finally:
         conn.close()
     latest_live: dict[int, dict] = {}
@@ -88,10 +106,14 @@ def main() -> int:
         default='app/data/db/birdlense.db',
         help='SQLite database path with activity_log',
     )
+    parser.add_argument('--days', type=int, default=0, help='Only traces for the last N days (0 = all).')
     parser.add_argument('--dataset-info', help='Optional dataset_info.json for export quality metrics')
     args = parser.parse_args()
 
-    latest_live, latest_regen = _load_latest_traces(args.db)
+    latest_live, latest_regen = _load_latest_traces(
+        args.db,
+        days=(int(args.days) if int(args.days or 0) > 0 else None),
+    )
     live_tracks = list(_iter_persisted_tracks(latest_live))
     yolo_tracks = [
         track for track in live_tracks if str(track.get('primary_provider') or '') == 'yolo'

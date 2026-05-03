@@ -13,6 +13,7 @@ from services.dataset_export_service import build_dataset_zip, clean_dataset
 from services.api_json_validation import parse_request_json_object_allow_empty
 from services.detection_crop_api_service import get_detection_crop_jpeg_and_filename
 from services.detection_species_correction_service import (
+    apply_detection_nickname_patch,
     apply_detection_species_patch,
     run_confirm_detection,
 )
@@ -123,18 +124,31 @@ def register_ui_corrections_dataset_routes(app):
         data, v_err = parse_request_json_object_allow_empty(request)
         if v_err is not None:
             return v_err, 400
-        err, ok = apply_detection_species_patch(
-            db.session,
-            app.logger,
-            detection_id,
-            data,
-            app_obj_for_thread=app_obj,
-        )
+        if "species_id" in data and data.get("species_id") is not None:
+            err, ok = apply_detection_species_patch(
+                db.session,
+                app.logger,
+                detection_id,
+                data,
+                app_obj_for_thread=app_obj,
+            )
+        elif "individual_nickname" in data:
+            err, ok = apply_detection_nickname_patch(
+                db.session,
+                detection_id,
+                data,
+            )
+        else:
+            return {
+                "error": "species_id or individual_nickname is required"
+            }, 400
         if err:
             code = 404
             if err.get("error") in (
                 "species_id is required",
                 "species_id must be an integer",
+                "individual_nickname is required",
+                "individual_nickname is too long (max 64)",
             ):
                 code = 400
             return err, code

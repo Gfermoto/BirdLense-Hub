@@ -21,10 +21,17 @@ import MonitorWeightIcon from '@mui/icons-material/MonitorWeight';
 import Tooltip from '@mui/material/Tooltip';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { downloadDetectionCropForINaturalist } from '../api/dataset';
+import { getApiErrorMessage } from '../api/api';
+import { invalidateLocalSpeciesEditCaches } from '../api/invalidateLocalSpeciesCaches';
+import { updateDetectionNickname } from '../api/speciesOverviewDetections';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { formatDuration } from '../utils/timeUtils';
 import { formatLocalDateTime, formatLocalTime } from '../util';
@@ -186,9 +193,48 @@ export const VisitCard = memo(function VisitCard({
 }: VisitCardProps) {
   const { t } = useTranslation();
   const { canEdit } = useProtectedArea();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
   const [expanded, setExpanded] = useState(false);
+  const [editingNickname, setEditingNickname] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const nickname =
+    (visit.individual_nickname && String(visit.individual_nickname).trim()) || '';
+  const firstVideoDetectionId = (visit.detections ?? []).find(
+    (d) => d.source === 'video' && d.id,
+  )?.id;
+  const firstVideoId = (visit.detections ?? []).find((d) => d.video_id)?.video_id;
+  const nicknameMutation = useMutation({
+    mutationFn: (value: string | null) =>
+      updateDetectionNickname(
+        Number(firstVideoDetectionId),
+        value,
+        'video',
+        'legacy_fanout',
+      ),
+    onSuccess: () => {
+      invalidateLocalSpeciesEditCaches(queryClient, firstVideoId);
+      setSaveSuccess(t('video.nicknameSaved'));
+    },
+  });
+  const behaviorLabels = [
+    ...new Set(
+      (visit.behavior_events ?? [])
+        .map((e) => String(e.label || '').trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
+  const behaviorText = behaviorLabels
+    .map((label) => {
+      if (label === 'arrival') return t('video.actionArrival');
+      if (label === 'departure') return t('video.actionDeparture');
+      if (label === 'possible_feeding') return t('video.actionPossibleFeeding');
+      return label;
+    })
+    .join(', ');
 
   const startDateTime = new Date(visit.start_time);
   const isToday = new Date().toDateString() === startDateTime.toDateString();
@@ -200,6 +246,18 @@ export const VisitCard = memo(function VisitCard({
       });
     }
     return formatLocalDateTime(startDateTime);
+  };
+
+  const onNicknameSave = async () => {
+    if (!firstVideoDetectionId || !canEdit) return;
+    setSaveError(null);
+    try {
+      const cleaned = nicknameDraft.trim();
+      await nicknameMutation.mutateAsync(cleaned.length ? cleaned : null);
+      setEditingNickname(false);
+    } catch (err) {
+      setSaveError(getApiErrorMessage(err, t('errors.loadSightings')));
+    }
   };
 
   return (
@@ -224,6 +282,52 @@ export const VisitCard = memo(function VisitCard({
                 >
                   {visit.species.name}
                 </Typography>
+                {(nickname || behaviorText) && (
+                  <Typography variant="body2" color="text.secondary">
+                    {nickname ? `${t('video.nickname')}: ${nickname}` : ''}
+                    {nickname && behaviorText ? ' • ' : ''}
+                    {behaviorText ? `${t('video.behavior')}: ${behaviorText}` : ''}
+                  </Typography>
+                )}
+                {firstVideoDetectionId && canEdit && (
+                  <Box mt={0.5}>
+                    {!editingNickname ? (
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setEditingNickname(true);
+                          setNicknameDraft(nickname);
+                        }}
+                      >
+                        {t('video.editNickname')}
+                      </Button>
+                    ) : (
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <TextField
+                          size="small"
+                          label={t('video.nickname')}
+                          value={nicknameDraft}
+                          inputProps={{ maxLength: 64 }}
+                          onChange={(e) => setNicknameDraft(e.target.value)}
+                        />
+                        <Button
+                          size="small"
+                          variant="contained"
+                          disabled={nicknameMutation.isPending}
+                          onClick={onNicknameSave}
+                        >
+                          {t('unknowns.apply')}
+                        </Button>
+                        <Button
+                          size="small"
+                          onClick={() => setEditingNickname(false)}
+                        >
+                          {t('common.cancel')}
+                        </Button>
+                      </Stack>
+                    )}
+                  </Box>
+                )}
                 {showDateTime && (
                   <Typography
                     variant="body2"
@@ -369,6 +473,36 @@ export const VisitCard = memo(function VisitCard({
           </Box>
         </Collapse>
       </CardContent>
+      <Snackbar
+        open={!!saveError}
+        autoHideDuration={6000}
+        onClose={() => setSaveError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity="error"
+          variant="filled"
+          elevation={6}
+          onClose={() => setSaveError(null)}
+        >
+          {saveError}
+        </Alert>
+      </Snackbar>
+      <Snackbar
+        open={!!saveSuccess}
+        autoHideDuration={3000}
+        onClose={() => setSaveSuccess(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity="success"
+          variant="filled"
+          elevation={6}
+          onClose={() => setSaveSuccess(null)}
+        >
+          {saveSuccess}
+        </Alert>
+      </Snackbar>
     </Card>
   );
 });

@@ -5,9 +5,13 @@
 """
 
 import os
+import hashlib
+import json
 import threading
+from datetime import timezone
 
 from flask import request
+from sqlalchemy.exc import IntegrityError
 
 from models import db, BirdFood, Video, Species
 from util import fetch_weather, notify, filter_feeder_species
@@ -31,6 +35,83 @@ from recording_layout_paths import RECORDING_VIDEO_PATH_RE
 
 # Path traversal protection (см. recording_layout_paths + SECURITY.md).
 VIDEO_PATH_RE = RECORDING_VIDEO_PATH_RE
+
+
+def _as_utc_naive(dt):
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt
+    return dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def _iso_utc_naive(dt) -> str:
+    value = _as_utc_naive(dt)
+    return value.isoformat() if value is not None else ""
+
+
+def _build_clip_idempotency_key(*, processor_version: str, pv) -> str:
+    seed = "|".join(
+        [
+            str(processor_version or "").strip(),
+            str(pv.video_path or "").strip(),
+            _iso_utc_naive(pv.start_time),
+            _iso_utc_naive(pv.end_time),
+        ]
+    )
+    return hashlib.sha256(seed.encode("utf-8")).hexdigest()
+
+
+def _build_species_payload_hash(*, species_list: list[dict]) -> str:
+    normalized_rows = []
+    for row in species_list or []:
+        normalized_rows.append(
+            {
+                "species_name": str(row.get("species_name") or "").strip(),
+                "source": str(row.get("source") or "").strip(),
+                "detection_provider": str(row.get("detection_provider") or "").strip(),
+                "track_id": row.get("track_id"),
+                "start_time": float(row.get("start_time") or 0.0),
+                "end_time": float(row.get("end_time") or 0.0),
+                "confidence": float(row.get("confidence") or 0.0),
+                "visit_eligible": bool(row.get("visit_eligible", True)),
+                "notification_eligible": bool(row.get("notification_eligible", True)),
+                "decision_kind": str(row.get("decision_kind") or "").strip(),
+            }
+        )
+    normalized_rows.sort(
+        key=lambda item: (
+            item["species_name"],
+            item["source"],
+            item["detection_provider"],
+            item["track_id"] if item["track_id"] is not None else -1,
+            item["start_time"],
+            item["end_time"],
+            item["confidence"],
+            item["visit_eligible"],
+            item["notification_eligible"],
+            item["decision_kind"],
+        )
+    )
+    payload = json.dumps(normalized_rows, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _find_existing_video_for_idempotent_ingest(*, processor_version: str, pv, clip_key: str):
+    """Return existing Video for identical clip key (path/time/version)."""
+    existing_by_key = Video.query.filter_by(idempotency_key=clip_key).order_by(Video.id.desc()).first()
+    if existing_by_key is not None:
+        return existing_by_key
+    # Legacy fallback for rows created before idempotency_key migration.
+    existing = Video.query.filter_by(video_path=pv.video_path).order_by(Video.id.desc()).first()
+    if not existing:
+        return None
+    same_version = str(existing.processor_version or "") == str(processor_version or "")
+    same_start = _as_utc_naive(existing.start_time) == _as_utc_naive(pv.start_time)
+    same_end = _as_utc_naive(existing.end_time) == _as_utc_naive(pv.end_time)
+    if same_version and same_start and same_end:
+        return existing
+    return None
 
 
 def _check_processor_secret():
@@ -60,6 +141,25 @@ def register_routes(app):
         if prep[0] is False:
             return prep[1], prep[2]
         pv = prep[1]
+        clip_key = _build_clip_idempotency_key(
+            processor_version=data["processor_version"],
+            pv=pv,
+        )
+        payload_hash = _build_species_payload_hash(species_list=pv.species_list)
+        existing_video = _find_existing_video_for_idempotent_ingest(
+            processor_version=data["processor_version"],
+            pv=pv,
+            clip_key=clip_key,
+        )
+        if existing_video is not None:
+            existing_payload_hash = str(existing_video.ingest_payload_hash or "").strip()
+            if existing_payload_hash and existing_payload_hash != payload_hash:
+                return {"error": "Idempotency conflict for existing clip key", "video_id": existing_video.id}, 409
+            return {
+                "message": "Video already ingested.",
+                "video_id": existing_video.id,
+                "duplicate": True,
+            }, 200
 
         try:
             video = Video(
@@ -67,6 +167,8 @@ def register_routes(app):
                 start_time=pv.start_time,
                 end_time=pv.end_time,
                 video_path=pv.video_path,
+                idempotency_key=clip_key,
+                ingest_payload_hash=payload_hash,
                 spectrogram_path=pv.spectrogram_path,
                 **fetch_weather(),
             )
@@ -105,6 +207,19 @@ def register_routes(app):
 
             return {"message": "Video and associated data inserted successfully.", "video_id": video.id}, 201
 
+        except IntegrityError:
+            db.session.rollback()
+            raced_video = Video.query.filter_by(idempotency_key=clip_key).order_by(Video.id.desc()).first()
+            if raced_video is not None:
+                existing_payload_hash = str(raced_video.ingest_payload_hash or "").strip()
+                if existing_payload_hash and existing_payload_hash != payload_hash:
+                    return {"error": "Idempotency conflict for existing clip key", "video_id": raced_video.id}, 409
+                return {
+                    "message": "Video already ingested.",
+                    "video_id": raced_video.id,
+                    "duplicate": True,
+                }, 200
+            return {"error": "Failed to process video"}, 500
         except Exception as e:
             db.session.rollback()
             app.logger.error(f"Error processing video: {str(e)}")

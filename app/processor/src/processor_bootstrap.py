@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
@@ -23,8 +24,29 @@ from mqtt_runtime import (
 )
 from processor_support import check_restart_flag
 from recording_session import MotionRecordingSession
+from reid_runtime import prewarm_runtime_reid_model
 
 logger = logging.getLogger(__name__)
+
+
+def _start_runtime_reid_prewarm_async() -> None:
+    """Warm up runtime ReID model in background without blocking motion loop startup."""
+
+    def _run() -> None:
+        try:
+            prewarmed = prewarm_runtime_reid_model()
+            if prewarmed:
+                logger.info("Runtime ReID prewarm: ok")
+            else:
+                logger.info("Runtime ReID prewarm: skipped_or_failed")
+        except Exception as exc:
+            logger.warning("Runtime ReID prewarm failed: %s", exc)
+
+    threading.Thread(
+        target=_run,
+        name="runtime-reid-prewarm",
+        daemon=True,
+    ).start()
 
 
 @dataclass(frozen=True)
@@ -111,6 +133,7 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
         save_images=bool(app_config.get("processor.save_images")),
         warn_two_stage_fallback=False,
     )
+    _start_runtime_reid_prewarm_async()
     regional_species = app_config.get("processor.regional_species") or []
     if regional_species:
         api.set_active_species(regional_species)

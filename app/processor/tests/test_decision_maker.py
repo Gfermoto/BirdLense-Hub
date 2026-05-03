@@ -98,6 +98,23 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(results[0]['species_name'], 'Cardinal')
         self.assertAlmostEqual(results[0]['confidence'], 0.486)
 
+    def test_classifier_vote_share_power_softens_majority_penalty(self):
+        dm = DecisionMaker(min_track_duration=0, classifier_vote_share_power=0.5)
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.9] * 10,
+                classifier_events=(
+                    [('Cardinal', 0.9, 0.9)] * 6
+                    + [('Blue Jay', 0.8, 0.9)] * 4
+                ),
+            )
+        }
+        results = dm.get_results(tracks)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['species_name'], 'Cardinal')
+        self.assertGreater(results[0]['confidence'], 0.486)
+        self.assertAlmostEqual(results[0]['confidence'], 0.6274233, places=5)
+
     def test_species_confidence_overrides(self):
         dm = DecisionMaker(
             min_track_duration=0,

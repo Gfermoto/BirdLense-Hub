@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
@@ -72,6 +73,14 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        '--inference-device',
+        default='',
+        help=(
+            'Sets BIRDLENSE_INFERENCE_DEVICE for this run '
+            '(e.g. auto, cpu, cuda, intel:gpu). Empty = env/config.'
+        ),
+    )
+    parser.add_argument(
         '--write-report',
         default='',
         help='Also write the same JSON as stdout to this file (UTF-8).',
@@ -81,6 +90,8 @@ def main() -> int:
     if args.inference_backend:
         be = args.inference_backend.strip().lower()
         os.environ['BIRDLENSE_INFERENCE_BACKEND'] = be
+    if args.inference_device:
+        os.environ['BIRDLENSE_INFERENCE_DEVICE'] = args.inference_device.strip()
 
     labels_sidecar_path = (args.labels_json or '').strip()
     gold_map: dict[str, list[str]] | None = None
@@ -98,13 +109,17 @@ def main() -> int:
 
     from app_config.app_config import app_config  # noqa: E402
     from detection_fusion import build_fused_video_detections  # noqa: E402
-    from inference.selector import resolve_inference_backend  # noqa: E402
+    from inference.selector import (  # noqa: E402
+        resolve_inference_backend,
+        resolve_inference_device,
+    )
     from track_regenerator import (  # noqa: E402
         build_detection_pipeline,
         process_video_for_tracks,
     )
 
     resolved_backend = resolve_inference_backend(app_config)
+    resolved_device = resolve_inference_device(app_config)
 
     frame_processor, decision_maker = build_detection_pipeline(
         app_config,
@@ -114,6 +129,7 @@ def main() -> int:
     results: list[dict] = []
     for video_path in args.video:
         start, end = _video_window(video_path)
+        t0 = time.monotonic()
         raw = process_video_for_tracks(
             video_path,
             lores_size=(args.lores_px, args.lores_px),
@@ -122,6 +138,7 @@ def main() -> int:
             frame_step=args.frame_step,
             max_runtime_sec=args.max_runtime_sec,
         )
+        elapsed_s = max(0.0, time.monotonic() - t0)
         fused = build_fused_video_detections(
             raw,
             [],
@@ -145,6 +162,7 @@ def main() -> int:
             ),
             'classifier_needs_review_count_raw': clf_review_raw,
             'classifier_needs_review_count_fused': clf_review_fused,
+            'runtime_seconds': round(elapsed_s, 4),
         }
         if gold_map is not None:
             ev = eval_video_against_gold(gold_map, video_path, fused)
@@ -160,6 +178,7 @@ def main() -> int:
     out_obj: dict = {
         'report_format': 'benchmark_track_regen@v1',
         'inference_backend': resolved_backend,
+        'inference_device': resolved_device,
         'videos': results,
     }
     if gold_map is not None:

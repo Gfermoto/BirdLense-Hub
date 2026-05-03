@@ -47,6 +47,41 @@ def _large_gap_seconds() -> int:
     return max(300, visit_timeout * 4)
 
 
+def _duplicate_video_groups_count() -> int:
+    return int(
+        db.session.query(Video.video_path, Video.start_time, Video.end_time, Video.processor_version)
+        .filter(Video.deleted_at.is_(None))
+        .group_by(Video.video_path, Video.start_time, Video.end_time, Video.processor_version)
+        .having(db.func.count(Video.id) > 1)
+        .count()
+    )
+
+
+def _duplicate_detection_groups_count() -> int:
+    return int(
+        db.session.query(
+            VideoSpecies.video_id,
+            VideoSpecies.species_id,
+            VideoSpecies.start_time,
+            VideoSpecies.end_time,
+            VideoSpecies.source,
+            VideoSpecies.detection_provider,
+            VideoSpecies.track_id,
+        )
+        .group_by(
+            VideoSpecies.video_id,
+            VideoSpecies.species_id,
+            VideoSpecies.start_time,
+            VideoSpecies.end_time,
+            VideoSpecies.source,
+            VideoSpecies.detection_provider,
+            VideoSpecies.track_id,
+        )
+        .having(db.func.count(VideoSpecies.id) > 1)
+        .count()
+    )
+
+
 def _duplicate_clip_candidates(*, recent_hours: int = 24, limit: int = 12) -> list[dict[str, Any]]:
     cutoff = _utc_now() - timedelta(hours=max(1, int(recent_hours or 24)))
     rows = (
@@ -202,6 +237,8 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
             )
             .count()
         )
+        duplicate_video_groups = _duplicate_video_groups_count()
+        duplicate_detection_groups = _duplicate_detection_groups_count()
 
         payload: dict[str, Any] = {
             "domain_contract_version": contract,
@@ -221,6 +258,8 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "review_only_video_detections": int(review_only_count or 0),
                 "unresolved_species_names": SpeciesUnresolvedName.query.count(),
                 "duplicate_clip_candidates_24h": len(duplicate_clip_candidates),
+                "duplicate_video_groups": duplicate_video_groups,
+                "duplicate_detection_groups": duplicate_detection_groups,
             },
             "samples": {
                 "duplicate_clip_candidates": duplicate_clip_candidates[:12],
@@ -228,6 +267,18 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "recent_review_only_video_detections": _recent_review_only_detections(),
             },
             "contracts": contracts_block,
+            "strict_quality": {
+                "duplicate_video_groups_ok": duplicate_video_groups == 0,
+                "duplicate_detection_groups_ok": duplicate_detection_groups == 0,
+                "duplicate_clip_candidates_ok": len(duplicate_clip_candidates) == 0,
+                "visit_species_mismatches_ok": len(species_sync_actions) == 0,
+                "strict_quality_ready": (
+                    duplicate_video_groups == 0
+                    and duplicate_detection_groups == 0
+                    and len(duplicate_clip_candidates) == 0
+                    and len(species_sync_actions) == 0
+                ),
+            },
         }
         return payload, 200
     except Exception as exc:
@@ -246,6 +297,8 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "review_only_video_detections": None,
                 "unresolved_species_names": None,
                 "duplicate_clip_candidates_24h": None,
+                "duplicate_video_groups": None,
+                "duplicate_detection_groups": None,
             },
             "samples": {
                 "duplicate_clip_candidates": [],
@@ -253,4 +306,11 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "recent_review_only_video_detections": [],
             },
             "contracts": contracts_block,
+            "strict_quality": {
+                "duplicate_video_groups_ok": False,
+                "duplicate_detection_groups_ok": False,
+                "duplicate_clip_candidates_ok": False,
+                "visit_species_mismatches_ok": False,
+                "strict_quality_ready": False,
+            },
         }, 200

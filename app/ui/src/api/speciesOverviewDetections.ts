@@ -259,6 +259,29 @@ export const updateDetectionSpecies = async (
   return response.data;
 };
 
+export const updateDetectionNickname = async (
+  detectionId: number,
+  nickname: string | null,
+  source?: 'unknowns' | 'video',
+  applyScope?: 'single_track' | 'whole_visit' | 'legacy_fanout',
+): Promise<{
+  message: string;
+  updated_count: number;
+  apply_scope: 'single_track' | 'whole_visit' | 'legacy_fanout';
+  individual_nickname: string | null;
+}> => {
+  const response = await axios.patch(
+    `${BASE_API_URL}/detections/${detectionId}`,
+    {
+      individual_nickname: nickname,
+      source,
+      ...(applyScope ? { apply_scope: applyScope } : {}),
+    },
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
 /** Confirm detection: mark as verified (manually_corrected), remove from Unknowns. */
 export const confirmDetection = async (
   detectionId: number,

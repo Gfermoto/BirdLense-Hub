@@ -16,6 +16,7 @@ FROM ultralytics/ultralytics:8.4.21
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg nginx curl unzip gosu \
     intel-media-va-driver-non-free vainfo intel-gpu-tools \
+    ocl-icd-libopencl1 intel-opencl-icd clinfo \
     libbrotli1 \
     && apt-get clean && rm -rf /var/cache/apt /var/lib/apt/lists/*
 # Brotli: в Ubuntu 22.04 нет пакета libnginx-mod-http-brotli — собираем ngx_brotli как динамический модуль к версии nginx из образа
@@ -79,9 +80,6 @@ RUN mkdir -p processor/models/detection/weights processor/models/classification/
        fi
 RUN pip install --no-cache-dir -r web/requirements.txt \
     && pip install --no-cache-dir -r processor/requirements.txt
-
-# Опционально: OpenVINO для processor.inference_backend=openvino (размер образа; не в базовой сборке):
-#   RUN pip install --no-cache-dir 'openvino>=2024.0'
 
 # UI + nginx (template, подставляется при старте)
 COPY --from=ui /ui/dist /usr/share/nginx/html

@@ -614,6 +614,7 @@ class MQTTEventAggregator:
 
     def _on_message(self, client, userdata, msg):
         ev = None
+        queue_frigate_event = True
         if msg.topic == self.frigate_topic:
             try:
                 fdata = json.loads(msg.payload.decode())
@@ -716,6 +717,7 @@ class MQTTEventAggregator:
                         except Exception as e:
                             logger.debug("Frigate motion callback: %s", e)
                     else:
+                        queue_frigate_event = bool(cam_ok and lbl_ok)
                         reasons = []
                         if not cam_ok:
                             reasons.append("camera_filter_miss")
@@ -788,6 +790,7 @@ class MQTTEventAggregator:
                         except Exception as e:
                             logger.debug("Frigate motion callback: %s", e)
                     else:
+                        queue_frigate_event = False
                         reasons = []
                         if not cam_ok:
                             reasons.append("camera_filter_miss")
@@ -874,6 +877,14 @@ class MQTTEventAggregator:
                 )
             return
         if ev:
+            if str(ev.get("source") or "").strip().lower() == "frigate" and not queue_frigate_event:
+                logger.debug(
+                    "Frigate event dropped from queue: camera=%s label=%s sub_label=%s",
+                    ev.get("camera", ""),
+                    ev.get("label", ""),
+                    ev.get("sub_label", ""),
+                )
+                return
             self._validate_normalized_event(ev)
             with self._lock:
                 self._events.append(ev)

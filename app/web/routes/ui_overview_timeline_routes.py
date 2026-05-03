@@ -76,11 +76,13 @@ def register_ui_overview_timeline_routes(app):
         start_date = request.args.get("start_date", type=str)
         end_date = request.args.get("end_date", type=str)
         catalog = (request.args.get("catalog") or "observed").strip().lower()
+        metric = (request.args.get('metric') or 'encounters').strip().lower()
         evidence = "all"
         param_err = validate_migration_calendar_params(
             catalog,
             start_date,
             end_date,
+            metric=metric,
         )
         if param_err:
             return {"error": param_err}, 400
@@ -91,6 +93,7 @@ def register_ui_overview_timeline_routes(app):
             end_date,
             catalog,
             evidence,
+            metric=metric,
         )
         hit, mcached = cache_get(mck)
         if hit:
@@ -103,10 +106,114 @@ def register_ui_overview_timeline_routes(app):
             end_date=end_date,
             catalog=catalog,
             evidence=evidence,
+            metric=metric,
             app_config_get=app_config.get,
         )
         cache_set(mck, data, CACHE_MIGRATION_SEC)
         return data, 200
+
+    @app.route("/api/ui/migration-calendar/compare", methods=["GET"])
+    def get_migration_calendar_compare_route():
+        """Compare encounters (visits) vs max_simultaneous totals per species."""
+        start_year = request.args.get("start_year", type=int)
+        end_year = request.args.get("end_year", type=int)
+        start_date = request.args.get("start_date", type=str)
+        end_date = request.args.get("end_date", type=str)
+        catalog = (request.args.get("catalog") or "observed").strip().lower()
+        evidence = "all"
+        param_err = validate_migration_calendar_params(
+            catalog,
+            start_date,
+            end_date,
+            metric='encounters',
+        )
+        if param_err:
+            return {"error": param_err}, 400
+
+        compare_cache_key = (
+            "migration_cal_compare:v1:"
+            f"{start_year}:{end_year}:{start_date}:{end_date}:{catalog}:{evidence}"
+        )
+        hit, cached = cache_get(compare_cache_key)
+        if hit:
+            return cached, 200
+
+        encounters = get_migration_calendar(
+            db.session,
+            start_year=start_year,
+            end_year=end_year,
+            start_date=start_date,
+            end_date=end_date,
+            catalog=catalog,
+            evidence=evidence,
+            metric='encounters',
+            app_config_get=app_config.get,
+        )
+        max_sim = get_migration_calendar(
+            db.session,
+            start_year=start_year,
+            end_year=end_year,
+            start_date=start_date,
+            end_date=end_date,
+            catalog=catalog,
+            evidence=evidence,
+            metric='max_simultaneous',
+            app_config_get=app_config.get,
+        )
+        by_name = {}
+        for row in encounters.get('species', []):
+            name = str(row.get('name') or '').strip()
+            if not name:
+                continue
+            by_name[name] = {
+                'id': row.get('id'),
+                'name': name,
+                'image_url': row.get('image_url'),
+                'encounters_total': int(row.get('total') or 0),
+                'max_simultaneous_total': 0,
+            }
+        for row in max_sim.get('species', []):
+            name = str(row.get('name') or '').strip()
+            if not name:
+                continue
+            current = by_name.setdefault(
+                name,
+                {
+                    'id': row.get('id'),
+                    'name': name,
+                    'image_url': row.get('image_url'),
+                    'encounters_total': 0,
+                    'max_simultaneous_total': 0,
+                },
+            )
+            current['max_simultaneous_total'] = int(row.get('total') or 0)
+            if current.get('id') is None:
+                current['id'] = row.get('id')
+            if not current.get('image_url'):
+                current['image_url'] = row.get('image_url')
+
+        species_rows = []
+        for item in by_name.values():
+            item['delta'] = item['max_simultaneous_total'] - item['encounters_total']
+            species_rows.append(item)
+        species_rows.sort(
+            key=lambda s: (
+                -abs(int(s.get('delta') or 0)),
+                -(int(s.get('max_simultaneous_total') or 0)),
+                (s.get('name') or '').lower(),
+            ),
+        )
+        payload = {
+            'catalog': catalog,
+            'species': species_rows,
+            'totals': {
+                'encounters': sum(int(x.get('encounters_total') or 0) for x in species_rows),
+                'max_simultaneous': sum(int(x.get('max_simultaneous_total') or 0) for x in species_rows),
+            },
+        }
+        payload['totals']['delta'] = payload['totals']['max_simultaneous'] - payload['totals']['encounters']
+        cache_set(compare_cache_key, payload, CACHE_MIGRATION_SEC)
+        return payload, 200
 
     @app.route("/api/ui/timeline", methods=["GET"])
     def get_video_species():

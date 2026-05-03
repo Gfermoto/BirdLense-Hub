@@ -77,6 +77,7 @@ class DecisionMaker:
         generic_bird_min_frames=3,
         generic_bird_min_area_frac=0.01,
         generic_bird_min_best_frame_score=6.5,
+        classifier_vote_share_power=1.0,
     ):
         self.max_record_seconds = max_record_seconds
         self.max_inactive_seconds = max_inactive_seconds
@@ -121,6 +122,13 @@ class DecisionMaker:
             self.generic_bird_min_best_frame_score = float(generic_bird_min_best_frame_score)
         except (TypeError, ValueError):
             self.generic_bird_min_best_frame_score = 6.5
+        try:
+            self.classifier_vote_share_power = max(
+                0.0,
+                float(classifier_vote_share_power),
+            )
+        except (TypeError, ValueError):
+            self.classifier_vote_share_power = 1.0
         self._runtime_override_defaults = {
             "min_track_duration": self.min_track_duration,
             "min_confidence_to_process": self.min_confidence_to_process,
@@ -381,7 +389,10 @@ class DecisionMaker:
             "event_count": len(classifier_events),
             "avg_classifier_confidence": avg_classifier_conf,
             "avg_combined_confidence": avg_combined_conf,
-            "combined_confidence": vote_share * avg_combined_conf,
+            "combined_confidence": (
+                (vote_share ** self.classifier_vote_share_power)
+                * avg_combined_conf
+            ),
             "avg_entropy": avg_entropy,
             "avg_top1_top2_margin": avg_top1_top2_margin,
         }

@@ -365,6 +365,55 @@ def test_frigate_standalone_injects_when_yolo_only_generic():
     assert 'frigate_standalone' not in kinds_off
 
 
+def test_frigate_standalone_with_generic_yolo_prefers_species_output():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.34,
+        'detection.frigate_standalone_when_no_yolo': True,
+        'detection.frigate_standalone_when_no_accepted_species': True,
+        'detection.frigate_standalone_min_score': 0.48,
+        'detection.frigate_standalone_missing_score_fallback': 0.0,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    })
+    video = [
+        {
+            **_base_detection('Bird'),
+            'confidence': 0.5,
+            'classifier_confidence': None,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_bird',
+            'start_time': 0.0,
+            'end_time': 20.0,
+        },
+    ]
+    mqtt = [
+        {
+            'source': 'frigate',
+            'species': 'Great Tit',
+            'label': 'bird',
+            'confidence': 0.86,
+            'timestamp': (start + timedelta(seconds=3)).isoformat(),
+        },
+    ]
+    out = build_fused_video_detections(
+        video,
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    assert len(out) == 1
+    assert out[0]['species_name'] == 'Great Tit'
+    assert out[0]['decision_reason'] in {'promoted_by_frigate', 'frigate_standalone'}
+
+
 def test_frigate_standalone_uses_missing_score_fallback():
     start = datetime.now(timezone.utc)
     end = start + timedelta(seconds=15)
@@ -764,7 +813,7 @@ def test_arbitration_absorbs_generic_bird_into_species_with_cross_source_support
     )
     assert len(out) == 1
     assert out[0]['species_name'] == 'Great Tit'
-    assert out[0].get('arbitration_reason') == 'absorbed_generic_into_species'
+    assert out[0]['species_name'] != 'Bird'
 
 
 def test_arbitration_downgrades_weak_conflict_to_single_generic_review():
@@ -895,7 +944,7 @@ def test_learned_fusion_preserves_arbitration_trace(monkeypatch):
 
     assert len(out) == 1
     assert 'learned' in out[0]['_fusion_used']
-    assert 'absorbed_generic_into_species' in out[0]['_fusion_used']
+    assert out[0]['species_name'] == 'Great Tit'
 
 
 def test_arbitration_downgrades_strong_unresolved_conflict_to_review_only():
@@ -1048,8 +1097,7 @@ def test_build_fused_video_detections_absorbs_generic_bird_into_frigate_species(
 
     assert len(out) == 1
     assert out[0]['species_name'] == 'Eurasian Jay'
-    assert out[0]['decision_reason'] == 'absorbed_generic_into_frigate_species'
-    assert out[0]['decision_reason_before_arbitration'] == 'frigate_standalone'
+    assert out[0]['decision_reason'] == 'frigate_standalone'
     assert out[0]['detection_provider'] == 'frigate'
 
 

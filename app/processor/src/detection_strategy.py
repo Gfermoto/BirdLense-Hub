@@ -9,6 +9,7 @@ from detector_labels import normalize_detector_label
 from inference.torch_backend import load_yolo_classifier, load_yolo_detector
 from inference.weight_contract import validate_detector_weight_contract
 from processor_runtime_profile import RuntimeProfileConfigOverlay
+from processor_runtime_stats import inc_counter, set_gauge
 
 logger = logging.getLogger(__name__)
 
@@ -264,10 +265,26 @@ class TwoStageStrategy(DetectionStrategy):
         *,
         weight_contract_mode: str = "warn",
         inference_backend: str = "torch",
+        inference_device: str = "auto",
+        inference_fallback_devices: Optional[List[str]] = None,
+        openvino_profile: str = "latency",
+        openvino_num_requests: int = 0,
+        openvino_model_cache_enabled: bool = True,
     ):
         super().__init__(min_center_dist, min_box_size_px, blur_threshold, max_blur_checks)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.inference_backend = (inference_backend or "torch").strip().lower()
+        self.inference_device = str(inference_device or "auto").strip()
+        self.inference_fallback_devices = [
+            str(x).strip() for x in (inference_fallback_devices or [self.inference_device]) if str(x).strip()
+        ] or [self.inference_device]
+        self.active_inference_device = self.inference_fallback_devices[0]
+        self.openvino_profile = str(openvino_profile or "latency").strip().lower()
+        try:
+            self.openvino_num_requests = max(0, int(openvino_num_requests or 0))
+        except (TypeError, ValueError):
+            self.openvino_num_requests = 0
+        self.openvino_model_cache_enabled = bool(openvino_model_cache_enabled)
         self.weight_contract_mode = (weight_contract_mode or "warn").strip().lower()
         self.regional_species = regional_species
         self.max_classifications_per_frame = max(1, int(max_classifications_per_frame or 1))
@@ -277,8 +294,12 @@ class TwoStageStrategy(DetectionStrategy):
         self.detector_scope = {normalize_detector_label(name) for name in raw_scope if str(name or "").strip()}
 
         self.logger.info(
-            "TwoStageStrategy: inference_backend=%s detector_weight_contract=%s detector_scope=%s",
+            "TwoStageStrategy: inference_backend=%s inference_device=%s fallback_devices=%s ov_profile=%s ov_num_requests=%s detector_weight_contract=%s detector_scope=%s",
             self.inference_backend,
+            self.inference_device,
+            self.inference_fallback_devices,
+            self.openvino_profile,
+            self.openvino_num_requests,
             self.weight_contract_mode,
             sorted(self.detector_scope),
         )
@@ -287,6 +308,9 @@ class TwoStageStrategy(DetectionStrategy):
             self.binary_model = load_yolo_detector(
                 binary_model_path,
                 backend=self.inference_backend,
+                openvino_profile=self.openvino_profile,
+                openvino_num_requests=self.openvino_num_requests,
+                openvino_model_cache_enabled=self.openvino_model_cache_enabled,
             )
             self.classifier_model = load_yolo_classifier(classifier_model_path)
         else:
@@ -322,10 +346,56 @@ class TwoStageStrategy(DetectionStrategy):
             self.logger.info("Enabled classes: %s", enabled_classes)
 
         # Warmup
-        self.binary_model.track(
-            np.zeros((320, 320, 3), dtype=np.uint8), tracker="bytetrack.yaml", persist=True, verbose=False
-        )
+        warmup_track_kwargs = {
+            "tracker": "bytetrack.yaml",
+            "persist": True,
+            "verbose": False,
+        }
+        if self.active_inference_device:
+            warmup_track_kwargs["device"] = self.active_inference_device
+        try:
+            self.binary_model.track(np.zeros((320, 320, 3), dtype=np.uint8), **warmup_track_kwargs)
+        except Exception as e:
+            if "device" in warmup_track_kwargs:
+                self.logger.warning(
+                    "Detector warmup with device=%s failed (%s); probing fallback devices.",
+                    self.active_inference_device,
+                    e,
+                )
+                if not self._try_fallback_device(np.zeros((320, 320, 3), dtype=np.uint8), warmup_track_kwargs, reason="warmup_exception"):
+                    warmup_track_kwargs.pop("device", None)
+                    self.binary_model.track(np.zeros((320, 320, 3), dtype=np.uint8), **warmup_track_kwargs)
+            else:
+                raise
+        set_gauge("inference.active_device", self.active_inference_device)
         self.classifier_model(np.zeros((224, 224, 3), dtype=np.uint8), verbose=False)
+
+    def _try_fallback_device(self, frame: np.ndarray, base_kwargs: Mapping[str, Any], *, reason: str) -> bool:
+        current = str(self.active_inference_device or "").strip()
+        for candidate in self.inference_fallback_devices:
+            dev = str(candidate or "").strip()
+            if not dev or dev == current:
+                continue
+            kwargs = dict(base_kwargs)
+            kwargs["device"] = dev
+            try:
+                self.binary_model.track(frame, **kwargs)
+            except Exception as e:
+                self.logger.warning("Fallback device probe failed device=%s reason=%s err=%s", dev, reason, e)
+                continue
+            prev = self.active_inference_device
+            self.active_inference_device = dev
+            set_gauge("inference.active_device", self.active_inference_device)
+            set_gauge("inference.backend_switch_reason", reason)
+            inc_counter("inference_backend_switch_total", 1)
+            self.logger.warning(
+                "Switched inference device from %s to %s due to %s",
+                prev,
+                self.active_inference_device,
+                reason,
+            )
+            return True
+        return False
 
     def _normalize_class_name(self, name: str) -> str:
         """Blue_Jay → Blue Jay, Winter_OR_juvenile → Winter/juvenile."""
@@ -402,6 +472,11 @@ class TwoStageStrategy(DetectionStrategy):
             self._track_stats = {}
         if not hasattr(self, "classification_scheduler"):
             self.classification_scheduler = "priority"
+        if not hasattr(self, "active_inference_device"):
+            self.active_inference_device = str(getattr(self, "inference_device", "") or "").strip()
+        if not hasattr(self, "inference_fallback_devices"):
+            base_dev = str(self.active_inference_device or "").strip()
+            self.inference_fallback_devices = [base_dev] if base_dev else []
         self._frame_index += 1
         imgsz = int(runtime_cfg.resolve_strategy_field("processor.binary_imgsz", self, "binary_imgsz", 320) or 320)
         min_center_dist = float(
@@ -420,15 +495,49 @@ class TwoStageStrategy(DetectionStrategy):
             or 1
         )
         track_conf = binary_track_ultralytics_conf_floor(min_confidence, runtime_cfg)
-        results = _track_maybe_retry(
-            self.binary_model,
-            frame,
-            persist=True,
-            conf=track_conf,
-            verbose=False,
-            imgsz=imgsz,
-            tracker=tracker_config,
-        )
+        track_kwargs = {
+            "persist": True,
+            "conf": track_conf,
+            "verbose": False,
+            "imgsz": imgsz,
+            "tracker": tracker_config,
+        }
+        if self.active_inference_device:
+            track_kwargs["device"] = self.active_inference_device
+        set_gauge("inference.queue_depth", 0)
+        set_gauge("inference.in_flight", 1)
+        try:
+            results = _track_maybe_retry(
+                self.binary_model,
+                frame,
+                **track_kwargs,
+            )
+        except Exception as e:
+            if "device" in track_kwargs:
+                self.logger.warning(
+                    "Detector track() failed with device=%s (%s); retrying with runtime default device.",
+                    self.active_inference_device,
+                    e,
+                )
+                switched = self._try_fallback_device(frame, track_kwargs, reason="track_exception")
+                if switched:
+                    track_kwargs["device"] = self.active_inference_device
+                    results = _track_maybe_retry(
+                        self.binary_model,
+                        frame,
+                        **track_kwargs,
+                    )
+                else:
+                    track_kwargs.pop("device", None)
+                    results = _track_maybe_retry(
+                        self.binary_model,
+                        frame,
+                        **track_kwargs,
+                    )
+            else:
+                raise
+        finally:
+            set_gauge("inference.in_flight", 0)
 
         if not results or len(results[0].boxes) == 0:
             return []
@@ -436,6 +545,8 @@ class TwoStageStrategy(DetectionStrategy):
         boxes = results[0].boxes
         # Without stable ByteTrack IDs, per-frame indexes create fake tracks.
         if boxes.id is None:
+            inc_counter("track_id_missing_total", 1)
+            set_gauge("track_last_guardrail_reason", "boxes.id_is_none_after_retry")
             return []
         track_ids = boxes.id.int().cpu().tolist()
         class_indexes = boxes.cls.int().cpu().tolist()
