@@ -24,7 +24,7 @@ def test_migration_calendar_cache_key_stable():
     from services.migration_calendar_request_service import migration_calendar_cache_key
 
     k = migration_calendar_cache_key(2024, 2025, None, None, "dataset", "all")
-    assert k == "migration_cal:v3:2024:2025:None:None:dataset:all"
+    assert k == "migration_cal:v5:2024:2025:None:None:dataset:all:encounters"
 
 
 def test_validate_timeline_export_format():

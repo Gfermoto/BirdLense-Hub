@@ -21,6 +21,8 @@ def test_model_lineage_resolves_processor_models_binary_classifier(monkeypatch, 
     (clf / "test-classifier.pt").write_bytes(b"cls")
 
     monkeypatch.setattr(aps, "repo_root_path", lambda: str(tmp_path))
+    # Stabilize against host env forcing OpenVINO backend.
+    monkeypatch.delenv("BIRDLENSE_INFERENCE_BACKEND", raising=False)
 
     orig = app_config.get
 
