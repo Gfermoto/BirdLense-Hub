@@ -337,11 +337,7 @@ def normalize_species_to_canonical(name: str, mapping: dict | None = None) -> st
     if direct:
         return direct
     norm_key = _norm_species_canonical_lookup_key(name)
-    by_norm = {
-        _norm_species_canonical_lookup_key(k): v
-        for k, v in mapping.items()
-        if str(k or "").strip()
-    }
+    by_norm = {_norm_species_canonical_lookup_key(k): v for k, v in mapping.items() if str(k or "").strip()}
     return by_norm.get(norm_key, name)
 
 

@@ -91,8 +91,7 @@ def load_yolo_classifier(
     b = (backend or "torch").strip().lower()
     if b == "onnxruntime":
         raise NotImplementedError(
-            "ONNX Runtime for classifier is not implemented yet (#371). "
-            "Use torch or openvino classifier artifacts.",
+            "ONNX Runtime for classifier is not implemented yet (#371). Use torch or openvino classifier artifacts.",
         )
     from ultralytics import YOLO
 

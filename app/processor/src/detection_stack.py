@@ -132,9 +132,7 @@ def build_detection_stack(
             )
         else:
             cls_cfg = str(app_config.get("processor.models.classifier_openvino") or "").strip()
-            classifier_path = (
-                resolve_relative_to_processor_root(cls_cfg, processor_root) if cls_cfg else ""
-            )
+            classifier_path = resolve_relative_to_processor_root(cls_cfg, processor_root) if cls_cfg else ""
     else:
         classifier_path = resolve_relative_to_processor_root(
             app_config.get(
