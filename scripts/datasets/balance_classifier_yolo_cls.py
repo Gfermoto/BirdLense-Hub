@@ -1,23 +1,27 @@
 #!/usr/bin/env python3
 # flake8: noqa
 """
-Свести YOLO classification dataset к обучаемому профилю (агрессивная усечка охвата видов):
+Свести YOLO classification dataset к обучаемому профилю (обрезка «толстых» классов, опционально — редких).
 
-НЕ использовать для цели «максимум европейских птиц» — см. EU_CLASSIFIER.md и
-download_birds_eu_merged.py (баланс за счёт новых данных, не выкидывания классов).
+Для ~491 EU-класса: малый --min-images, умеренный --max-ratio и --anchor-percentile 5 — см. EU_CLASSIFIER.md.
 
 1) Удалить классы с суммарным числом изображений < --min-images (по всем сплитам).
-2) Ограничить верх: после шага 1 пусть m = min(count). Для каждого класса оставить не более
-   m * --max-ratio изображений (равномерное случайное subsample, seed фиксирован).
+2) Ограничить верх: база m — min(count) или, при --anchor-percentile P, max(min, percentile(counts, P)),
+   чтобы один «сломанный» редкий класс не задавал потолок всему датасету. Потолок класса:
+   max(m, int(m * --max-ratio)); лишнее — случайное subsample (--seed).
 3) Перераспределить каждый класс по train/val/test с долями --train-frac, --val-frac, --test-frac
    (остаток в train; гарантировать по возможности ≥1 в val и ≥1 в test при n≥3).
 
 После этого имеет смысл прогнать refine_classifier_yolo_cls.py --dedupe-global-only.
 
-Пример:
+Примеры:
   python3 scripts/datasets/balance_classifier_yolo_cls.py \\
-    --root datasets/new/classifier/yolo_cls \\
+    --root datasets/new/classifier/yolo_cls_eu_merged \\
     --min-images 40 --max-ratio 3
+  # почти полный охват + ровнее распределение:
+  python3 scripts/datasets/balance_classifier_yolo_cls.py \\
+    --root datasets/new/classifier/yolo_cls_eu_merged \\
+    --min-images 12 --max-ratio 6 --anchor-percentile 5 --seed 42
 """
 
 from __future__ import annotations
@@ -28,6 +32,8 @@ import random
 import shutil
 import tempfile
 from pathlib import Path
+
+import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -114,6 +120,7 @@ def balance_dataset(
     train_frac: float,
     val_frac: float,
     test_frac: float,
+    anchor_percentile: float | None,
 ) -> dict:
     rng = random.Random(seed)
     root = root.resolve()
@@ -134,7 +141,15 @@ def balance_dataset(
         }
 
     totals_kept = {c: len(_pool_class(root, c)) for c in kept}
-    m = min(totals_kept.values())
+    counts_arr = np.array(list(totals_kept.values()), dtype=np.float64)
+    min_c = int(counts_arr.min())
+    if anchor_percentile is not None:
+        if not 0 <= anchor_percentile <= 100:
+            raise ValueError("anchor_percentile must be in [0, 100]")
+        p = float(np.percentile(counts_arr, anchor_percentile))
+        m = max(min_c, int(round(p)))
+    else:
+        m = min_c
     cap = max(m, int(m * max_ratio))
 
     placed = 0
@@ -183,7 +198,7 @@ def balance_dataset(
     vals = sorted(totals_final.values())
     ratio = round(vals[-1] / max(1, vals[0]), 4) if vals else 0.0
 
-    return {
+    out = {
         "kept_classes": len(totals_final),
         "dropped_classes": len(dropped),
         "min_per_class": vals[0] if vals else 0,
@@ -191,7 +206,10 @@ def balance_dataset(
         "imbalance_max_over_min": ratio,
         "capped_classes": capped_classes,
         "images_placed": placed,
+        "anchor_m_used": m,
+        "cap_per_class": cap,
     }
+    return out
 
 
 def main() -> int:
@@ -203,6 +221,13 @@ def main() -> int:
     ap.add_argument("--train-frac", type=float, default=0.70)
     ap.add_argument("--val-frac", type=float, default=0.20)
     ap.add_argument("--test-frac", type=float, default=0.10)
+    ap.add_argument(
+        "--anchor-percentile",
+        type=float,
+        default=None,
+        metavar="P",
+        help="Если задано (напр. 5), база m = max(min_count, percentile(counts, P)); иначе m = min_count",
+    )
     ap.add_argument("--report-json", type=Path, default=None)
     args = ap.parse_args()
 
@@ -218,6 +243,7 @@ def main() -> int:
         args.train_frac,
         args.val_frac,
         args.test_frac,
+        args.anchor_percentile,
     )
     stats["root"] = str(args.root.resolve())
     print(json.dumps({"ok": "error" not in stats, **stats}, ensure_ascii=False, indent=2))

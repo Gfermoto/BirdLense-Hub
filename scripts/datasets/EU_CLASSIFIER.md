@@ -3,7 +3,7 @@
 ## Принцип
 
 - **Максимум охвата европейских видов**, баланс за счёт **добавления** данных (iNat EU, готовый EU-merge на HF), а не выкидывания классов.
-- Скрипт **`balance_classifier_yolo_cls.py`** с жёстким `--min-images` / `--max-ratio` **не использовать** для этой цели — он специально режет редкие виды ради ровного лосса.
+- **`balance_classifier_yolo_cls.py`** с дефолтами `--min-images 40` и узким `--max-ratio` режет много видов — так **не** добиваются ~491 класса. Для баланса при почти полном охвате см. раздел **«Баланс при полном охвате»** ниже.
 
 ## Базовый слой (рекомендуется)
 
@@ -55,9 +55,36 @@ python3 scripts/datasets/refine_classifier_yolo_cls.py \
 
 При необходимости добавить третий вход (другой открытый датасет) тем же `merge_classification_datasets.py`.
 
+## Баланс при полном охвате (~491 класс)
+
+Имена остаются в **`Scientific_(Common)`** (папки), если перед балансом выполнен **`refine_classifier_yolo_cls.py --normalize`** — как в прежнем пайплайне.
+
+Порядок:
+
+1. HF (+ опционально iNat) → `merge_classification_datasets.py` → **`refine ... --dedupe --normalize --test-split`**
+2. **`balance_classifier_yolo_cls.py`** — подрезает только «толстые» классы относительно типичного минимума; редкие классы с малым числом кадров сохраняются целиком до потолка:
+   - **`--min-images 12`** — отсечь только совсем пустые/сломанные классы (подберите 8–20 под ваш merge; чем меньше, тем ближе к 491).
+   - **`--max-ratio 6`** — верхняя граница ≈ в 6 раз выше базы `m` (при необходимости 5–10).
+   - **`--anchor-percentile 5`** — база `m = max(min_count, P5 по классам)`, чтобы один класс с 1–2 фото не задавал жёсткий потолок всем остальным.
+
+Пример:
+
+```bash
+python3 scripts/datasets/balance_classifier_yolo_cls.py \
+  --root datasets/new/classifier/yolo_cls_eu_merged \
+  --min-images 12 --max-ratio 6 --anchor-percentile 5 --seed 42 \
+  --report-json datasets/new/classifier/balance_report.json
+```
+
+3. Затем снова убрать дубликаты по файлам: **`refine_classifier_yolo_cls.py --dedupe-global-only --skip-rebalance`** (или без `--skip-rebalance`, если хотите пересобрать train/val пропорции).
+
+Включить этот шаг из скрипта: **`CLASSIFIER_BALANCE=1 bash scripts/datasets/build_eu_classifier_yolo.sh ...`**
+
+Качество: до баланса имеет смысл **добавить iNat EU** (research-grade, больший `--max-obs`), чтобы поднять пол у редких видов — тогда балансировка меньше режет полезные данные.
+
 ## Обучение при дисбалансе классов
 
-Не резать классы: **веса классов / focal loss / subsampling батча** в конфиге Ultralytics (отдельная настройка тренировки, не датасетный «кромсатель»).
+Даже после баланса полезны **веса классов / focal / семплинг** в Ultralytics. Датасетный баланс и loss-трюки не исключают друг друга.
 
 ## Примечание по составу EU-merge на HF
 
