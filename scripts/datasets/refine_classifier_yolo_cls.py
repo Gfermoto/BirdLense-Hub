@@ -365,7 +365,12 @@ def main() -> int:
     ap.add_argument(
         "--dedupe-global-only",
         action="store_true",
-        help="Глобальный дедуп train/val/test, ребаланс train/val, очистка пустых папок",
+        help="Глобальный дедуп train/val/test; по умолчанию затем ребаланс train/val",
+    )
+    ap.add_argument(
+        "--skip-rebalance",
+        action="store_true",
+        help="С --dedupe-global-only: не вызывать rebalance_splits (сплиты уже зафиксированы)",
     )
     args = ap.parse_args()
 
@@ -377,7 +382,8 @@ def main() -> int:
     steps = []
     if args.dedupe_global_only:
         stats.update(dedupe_global_across_splits(root, args.max_hash_bytes))
-        stats.update(rebalance_splits(root, args.val_ratio))
+        if not args.skip_rebalance:
+            stats.update(rebalance_splits(root, args.val_ratio))
         stats["empty_class_dirs_removed_after_rebalance"] = cleanup_empty_class_dirs(root)
         print(json.dumps({"ok": True, **stats}, ensure_ascii=False, indent=2))
         return 0
