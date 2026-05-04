@@ -451,6 +451,31 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Path to classifier class list is deployment/repo layout; not configured in Settings.",
         "next_step": "Keep in user_config.yaml or defaults.",
     },
+    "triggers.frigate.min_trigger_score": {
+        "category": "advanced",
+        "reason": "Frigate MQTT top-score gate before recorder starts; expert YAML tuning.",
+        "next_step": "Optional numeric field next to triggers.frigate.enabled in Capture & Feeder.",
+    },
+    "mqtt.frigate_topic": {
+        "category": "legacy",
+        "reason": "Superseded by triggers.frigate.topic; migrate_legacy_trigger_topics copies into triggers on save/load.",
+        "next_step": "Keep MQTT mirror for old configs.",
+    },
+    "mqtt.birdnet_topic": {
+        "category": "legacy",
+        "reason": "Superseded by integrations.birdnet.mqtt_topic via migrate_legacy_trigger_topics.",
+        "next_step": "Keep MQTT mirror for old configs.",
+    },
+    "ebird.protocol": {
+        "category": "yaml-only",
+        "reason": "eBird export protocol seldom changed from defaults; config-level.",
+        "next_step": "Expose under eBird section if editors need toggles.",
+    },
+    "general.require_auth_for_video_stream": {
+        "category": "access-control",
+        "reason": "Video stream Viewer vs Contributor gate; keyed in typed Settings snapshot but toggled elsewhere / YAML-focused.",
+        "next_step": "Wire to General accordion when UX revisits ACCESS_CONTROL knobs.",
+    },
 }
 
 # Legacy terminal keys that are still config-level (not yet exposed in Settings UI).
