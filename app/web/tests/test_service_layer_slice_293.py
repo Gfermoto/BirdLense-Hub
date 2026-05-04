@@ -24,7 +24,7 @@ def test_migration_calendar_cache_key_stable():
     from services.migration_calendar_request_service import migration_calendar_cache_key
 
     k = migration_calendar_cache_key(2024, 2025, None, None, "dataset", "all")
-    assert k == "migration_cal:v3:2024:2025:None:None:dataset:all"
+    assert k == "migration_cal:v5:2024:2025:None:None:dataset:all:encounters"
 
 
 def test_validate_timeline_export_format():
@@ -334,11 +334,9 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
     def _get(key, default=None):
         mapping = {
             "notifications": {"telegram_proxy_type": "http", "send_photo": True},
-            "motion.source": "opencv",
-            "mqtt.broker": "",
-            "motion.check_every_n_frames": 2,
-            "motion.opencv_diff_threshold": 22,
-            "motion.opencv_min_contour_area": 320,
+            "triggers.opencv.check_every_n_frames": 2,
+            "triggers.opencv.diff_threshold": 22,
+            "triggers.opencv.min_contour_area": 320,
             "processor.light_gate_enabled": True,
             "processor.light_gate_min_brightness": 25,
             "processor.light_gate_min_contrast": 20,
@@ -364,8 +362,8 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
     assert payload["recall_tuning"]["check_every_n_frames"] == 2
     rw = payload["recall_warnings"]
     assert rw
-    assert any("motion.opencv_diff_threshold=22" in w and "hub default" in w for w in rw)
-    assert any("motion.opencv_min_contour_area=320" in w and "240" in w for w in rw)
+    assert any("triggers.opencv.diff_threshold=22" in w and "hub default" in w for w in rw)
+    assert any("triggers.opencv.min_contour_area=320" in w and "240" in w for w in rw)
     assert "scales_mqtt" in payload
     assert payload["scales_mqtt"]["enabled"] is False
     assert payload["scales_warnings"] == []
@@ -395,11 +393,10 @@ def test_build_system_config_audit_payload_processor_runtime_hints(monkeypatch, 
     def _get(key, default=None):
         mapping = {
             "notifications": {"telegram_proxy_type": "none", "send_photo": False},
-            "motion.source": "opencv",
             "mqtt.broker": "",
-            "motion.check_every_n_frames": 1,
-            "motion.opencv_diff_threshold": 18,
-            "motion.opencv_min_contour_area": 240,
+            "triggers.opencv.check_every_n_frames": 1,
+            "triggers.opencv.diff_threshold": 18,
+            "triggers.opencv.min_contour_area": 240,
             "processor.light_gate_enabled": True,
             "processor.light_gate_min_brightness": 25,
             "processor.light_gate_min_contrast": 20,
@@ -443,11 +440,10 @@ def test_build_system_config_audit_payload_classifier_needs_review_counter_hint(
     def _get(key, default=None):
         mapping = {
             "notifications": {"telegram_proxy_type": "none", "send_photo": False},
-            "motion.source": "opencv",
             "mqtt.broker": "",
-            "motion.check_every_n_frames": 1,
-            "motion.opencv_diff_threshold": 18,
-            "motion.opencv_min_contour_area": 240,
+            "triggers.opencv.check_every_n_frames": 1,
+            "triggers.opencv.diff_threshold": 18,
+            "triggers.opencv.min_contour_area": 240,
             "processor.light_gate_enabled": True,
             "processor.light_gate_min_brightness": 25,
             "processor.light_gate_min_contrast": 20,
@@ -483,11 +479,12 @@ def test_recall_frigate_standalone_false_emits_fusion_hint(monkeypatch, tmp_path
     def _get(key, default=None):
         m = {
             "notifications": {"telegram_proxy_type": "none", "send_photo": False},
-            "motion.source": "frigate",
+            "triggers.opencv.enabled": True,
+            "triggers.frigate.enabled": True,
             "mqtt.broker": "mqtt://localhost",
-            "motion.check_every_n_frames": 1,
-            "motion.opencv_diff_threshold": 18,
-            "motion.opencv_min_contour_area": 240,
+            "triggers.opencv.check_every_n_frames": 1,
+            "triggers.opencv.diff_threshold": 18,
+            "triggers.opencv.min_contour_area": 240,
             "processor.light_gate_enabled": True,
             "processor.light_gate_min_brightness": 25,
             "processor.light_gate_min_contrast": 20,
@@ -519,8 +516,7 @@ def test_recall_frigate_blocking_goes_to_config_warnings_not_recall_hints(monkey
 
     nested = {
         "mqtt": {"broker": ""},
-        "motion": {"source": "opencv"},
-        "triggers": {"frigate": {"enabled": True}},
+        "triggers": {"opencv": {"enabled": True}, "frigate": {"enabled": True}},
     }
 
     def _get(key, default=None):
@@ -561,10 +557,9 @@ def test_scales_mqtt_audit_warns_broker_and_prefix(monkeypatch, tmp_path):
             "integrations.scales.mqtt_topic": "",
             "mqtt.broker": "",
             "notifications": {"telegram_proxy_type": "none", "send_photo": False},
-            "motion.source": "opencv",
-            "motion.check_every_n_frames": 1,
-            "motion.opencv_diff_threshold": 18,
-            "motion.opencv_min_contour_area": 240,
+            "triggers.opencv.check_every_n_frames": 1,
+            "triggers.opencv.diff_threshold": 18,
+            "triggers.opencv.min_contour_area": 240,
             "processor.light_gate_enabled": True,
             "processor.light_gate_min_brightness": 20,
             "processor.light_gate_min_contrast": 15,
@@ -613,10 +608,9 @@ def test_scales_mqtt_audit_no_warn_explicit_empty_topics_when_prefix_set(tmp_pat
             "integrations.scales.mqtt_command_topic": "",
             "mqtt.broker": "192.168.1.10",
             "notifications": {"telegram_proxy_type": "none", "send_photo": False},
-            "motion.source": "opencv",
-            "motion.check_every_n_frames": 1,
-            "motion.opencv_diff_threshold": 18,
-            "motion.opencv_min_contour_area": 240,
+            "triggers.opencv.check_every_n_frames": 1,
+            "triggers.opencv.diff_threshold": 18,
+            "triggers.opencv.min_contour_area": 240,
             "processor.light_gate_enabled": True,
             "processor.light_gate_min_brightness": 20,
             "processor.light_gate_min_contrast": 15,
@@ -658,10 +652,9 @@ def test_scales_mqtt_audit_detects_explicit_empty_prefix(tmp_path):
             "integrations.scales.mqtt_topic": "",
             "mqtt.broker": "192.168.1.10",
             "notifications": {"telegram_proxy_type": "none", "send_photo": False},
-            "motion.source": "opencv",
-            "motion.check_every_n_frames": 1,
-            "motion.opencv_diff_threshold": 18,
-            "motion.opencv_min_contour_area": 240,
+            "triggers.opencv.check_every_n_frames": 1,
+            "triggers.opencv.diff_threshold": 18,
+            "triggers.opencv.min_contour_area": 240,
             "processor.light_gate_enabled": True,
             "processor.light_gate_min_brightness": 20,
             "processor.light_gate_min_contrast": 15,

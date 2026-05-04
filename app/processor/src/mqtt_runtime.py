@@ -72,24 +72,24 @@ def _frigate_camera_filter_list(
     return frigate_camera_allow_ids(cameras, cfg)
 
 
-def _frigate_label_set(motion_key: str, mqtt_key: str, default: list) -> set:
+def _frigate_label_set(triggers_key: str, mqtt_key: str, default: list) -> set:
     """Resolve label set. Empty list ``[]`` is explicit (wildcard: match any label), not falsy.
 
-    Precedence: ``motion.*`` if the key is present in merged config (including ``[]``),
+    Precedence: ``triggers.frigate.*`` if the key resolves in merged config (including ``[]``),
     else ``mqtt.*``, else ``default``.
     """
-    return frigate_label_resolve_set(motion_key, mqtt_key, default, app_config)
+    return frigate_label_resolve_set(triggers_key, mqtt_key, default, app_config)
 
 
 def frigate_filters_for_cameras(cameras: list) -> tuple[Any, set, set]:
     camera_filter = _frigate_camera_filter_list(cameras)
     label_filter = _frigate_label_set(
-        "motion.frigate_label_filter",
+        "triggers.frigate.label_filter",
         "mqtt.frigate_label_filter",
         ["bird", "Bird"],
     )
     label_exclude = _frigate_label_set(
-        "motion.frigate_label_exclude",
+        "triggers.frigate.label_exclude",
         "mqtt.frigate_label_exclude",
         ["cat", "dog"],
     )

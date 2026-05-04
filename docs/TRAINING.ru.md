@@ -633,4 +633,21 @@ if os.path.exists(best):
 
 ---
 
+## Action-модель: MVP shortlist + recipe (#406)
+
+После стабилизации detector rollout (Wave 2) зафиксируйте shortlist action-моделей и recipe:
+
+```bash
+python3 scripts/ml_action_model_shortlist.py \
+  --min-dataset-clips 800 \
+  --out /tmp/action_model_shortlist.v1.json
+```
+
+Артефакт `action_model_shortlist@v1` должен содержать:
+- ранжированный список кандидатов и выбранный `mvp_model`,
+- зафиксированный MVP recipe (`epochs=40`, `lr=3e-4`, `weighted_random_sampler`, focal CE),
+- риски domain shift (освещение, угол камеры, дисбаланс) и план mitigation.
+
+---
+
 См. также: [DATASETS](./DATASETS.ru.md).

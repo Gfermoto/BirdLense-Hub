@@ -203,6 +203,13 @@ export function CaptureFeederSection({ form }: Props) {
                           >
                             {t('settings.frigateMotionIntro')}
                           </Alert>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mb: 2 }}
+                          >
+                            {t('settings.frigateMinScoreYamlHint')}
+                          </Typography>
                           <Grid container spacing={2}>
                             <Grid size={{ xs: 12 }}>
                               <form.Field name="triggers.frigate.topic">
@@ -223,7 +230,7 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_camera_filter">
+                              <form.Field name="triggers.frigate.camera_filter">
                                 {(field) => (
                                   <TextField
                                     fullWidth
@@ -243,7 +250,7 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_label_filter">
+                              <form.Field name="triggers.frigate.label_filter">
                                 {(field) => (
                                   <TextField
                                     fullWidth
@@ -263,7 +270,7 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_label_exclude">
+                              <form.Field name="triggers.frigate.label_exclude">
                                 {(field) => (
                                   <TextField
                                     fullWidth
@@ -283,7 +290,7 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_trigger_on_tracked_object">
+                              <form.Field name="triggers.frigate.trigger_on_tracked_object">
                                 {(field) => (
                                   <FormControl fullWidth>
                                     <FormControlLabel

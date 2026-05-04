@@ -69,6 +69,31 @@ _DECISION_TRACE_FIELDS = (
 _DECISION_TRACE_LIMIT = 40
 
 
+def _policy_snapshot(app_config) -> dict[str, Any]:
+    def _flt(key: str, default: float) -> float:
+        try:
+            return float(app_config.get(key, default))
+        except (TypeError, ValueError):
+            return float(default)
+
+    def _int(key: str, default: int) -> int:
+        try:
+            return int(app_config.get(key, default))
+        except (TypeError, ValueError):
+            return int(default)
+
+    return {
+        "min_track_duration": _flt("processor.min_track_duration", 1.0),
+        "min_confidence_to_process": _flt("processor.min_confidence_to_process", 0.3),
+        "min_confidence_to_store": _flt("detection.min_confidence_to_store", 0.05),
+        "classifier_fallback_bird": bool(app_config.get("processor.classifier_fallback_bird", True)),
+        "generic_bird_min_detector_conf": _flt("processor.generic_bird_min_detector_conf", 0.45),
+        "generic_bird_min_frames": _int("processor.generic_bird_min_frames", 3),
+        "generic_bird_min_area_frac": _flt("processor.generic_bird_min_area_frac", 0.01),
+        "generic_bird_min_best_frame_score": _flt("processor.generic_bird_min_best_frame_score", 6.5),
+    }
+
+
 def decision_trace_row(item: dict, *, persisted_to_clip: bool) -> dict:
     """Build a compact serialized row for one persisted/rejected track."""
     row = {}
@@ -167,6 +192,7 @@ def build_decision_trace_payload(
             "clip_duration_seconds": round(clip_duration_seconds, 3),
             "runtime_signals": dict((recording_context or {}).get("runtime_signals") or {}),
             "regen_profile": (recording_context or {}).get("regen_profile"),
+            "policy_snapshot": _policy_snapshot(app_config),
         },
         "scales_evidence": {
             "enabled": bool(app_config.get("integrations.scales.enabled")),

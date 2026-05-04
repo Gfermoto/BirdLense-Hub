@@ -1,8 +1,9 @@
 """ORM-модели BirdLense: видео, детекции, визиты, каталог видов и вспомогательные сущности."""
 
 import datetime
+import uuid
 from typing import List
-from sqlalchemy import String, Integer, Float, DateTime, Table, ForeignKey, Column, Index, desc, JSON
+from sqlalchemy import String, Integer, Float, DateTime, Table, ForeignKey, Column, Index, desc, JSON, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from flask_sqlalchemy import SQLAlchemy
@@ -34,6 +35,7 @@ class VideoSpecies(db.Model):
     source: Mapped[str] = mapped_column(String, nullable=False)  # video or audio
     detection_provider: Mapped[str] = mapped_column(String, nullable=True)  # yolo, frigate, birdnet_mqtt, legacy
     track_id: Mapped[int] = mapped_column(Integer, nullable=True)  # ByteTrack ID for stable identification
+    individual_nickname: Mapped[str] = mapped_column(String(64), nullable=True)
     # JSON: [{t: 0.1, bbox: [x1,y1,x2,y2]}, ...] for track visualization
     frames: Mapped[str] = mapped_column(String, nullable=True)
     classifier_entropy: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -186,6 +188,12 @@ class Video(db.Model):
     start_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     video_path: Mapped[str] = mapped_column(nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(
+        String(96),
+        nullable=False,
+        default=lambda: uuid.uuid4().hex,
+    )
+    ingest_payload_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     spectrogram_path: Mapped[str] = mapped_column(String, nullable=True)  # spectrogram image
     favorite: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -213,6 +221,13 @@ class Video(db.Model):
         Index("ix_video_start_time", "start_time"),
         Index("ix_video_end_time", "end_time"),
         Index("ix_video_deleted_at", "deleted_at"),
+        Index(
+            "ux_video_idempotency_active",
+            "idempotency_key",
+            unique=True,
+            sqlite_where=text("deleted_at IS NULL"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
     )
 
 

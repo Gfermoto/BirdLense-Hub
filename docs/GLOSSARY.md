@@ -54,7 +54,7 @@ Short definitions of terms used across [CONFIGURATION](./CONFIGURATION.md), [API
 
 | Term | Meaning |
 |------|---------|
-| **Motion source** | What starts a recording segment: OpenCV on stream, Frigate MQTT events, plain MQTT binary sensor, or ESPHome. Config: `motion.source`. |
+| **Motion / triggers** | What starts a recording segment (OpenCV, Frigate MQTT, MQTT/ESPHome binary sensor, feeder scales motion). Effective config lives under **`triggers.*`**; legacy **`motion:`** in old YAML is merged into **`triggers`** at load (`app/app_config/trigger_config.py`). |
 | **Trigger** | Event that begins or extends recording; processor runs YOLO after a valid trigger (depending on mode). |
 
 ---

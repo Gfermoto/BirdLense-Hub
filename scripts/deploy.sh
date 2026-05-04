@@ -113,7 +113,7 @@ if [ -z "${PROCESSOR_SECRET:-}" ]; then
   PROCESSOR_SECRET=$(openssl rand -hex 16)
   echo "1.5 PROCESSOR_SECRET сгенерирован. Добавьте в deploy.local.sh: export PROCESSOR_SECRET='${PROCESSOR_SECRET}'"
 fi
-if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SECRET_KEY:-}" ] || [ -n "${BIRDLENSE_ENV:-}" ] || [ -n "${BIRDLENSE_STRICT_API_AUTH:-}" ] || [ -n "${BIRDLENSE_UI_API_KEY:-}" ]; then
+if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SECRET_KEY:-}" ] || [ -n "${BIRDLENSE_ENV:-}" ] || [ -n "${BIRDLENSE_STRICT_API_AUTH:-}" ] || [ -n "${BIRDLENSE_UI_API_KEY:-}" ] || [ -n "${BIRDLENSE_REID_HUB_CACHE_DIR:-}" ]; then
   echo "1.5 Запись секретов в app/.env на сервере (точечная подмена ключей; остальные строки .env сохраняются)..."
   # shellcheck disable=SC2090
   ssh ${SSH_OPTS} "${HOST}" \
@@ -125,6 +125,7 @@ if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SE
     "BIRDLENSE_ENV=${BIRDLENSE_ENV:-}" \
     "BIRDLENSE_STRICT_API_AUTH=${BIRDLENSE_STRICT_API_AUTH:-}" \
     "BIRDLENSE_UI_API_KEY=${BIRDLENSE_UI_API_KEY:-}" \
+    "BIRDLENSE_REID_HUB_CACHE_DIR=${BIRDLENSE_REID_HUB_CACHE_DIR:-}" \
     bash -s <<'ENDSSH_MERGE_ENV'
 set -euo pipefail
 F="${REMOTE_DIR}/app/.env"
@@ -148,6 +149,7 @@ _merge_env_kv FLASK_SECRET_KEY "${FLASK_SECRET_KEY:-}"
 _merge_env_kv BIRDLENSE_ENV "${BIRDLENSE_ENV:-}"
 _merge_env_kv BIRDLENSE_STRICT_API_AUTH "${BIRDLENSE_STRICT_API_AUTH:-}"
 _merge_env_kv BIRDLENSE_UI_API_KEY "${BIRDLENSE_UI_API_KEY:-}"
+_merge_env_kv BIRDLENSE_REID_HUB_CACHE_DIR "${BIRDLENSE_REID_HUB_CACHE_DIR:-}"
 if [ -f "$F" ]; then
   grep -v -E '^PROCESSOR_SECRET=' "$F" >"${F}.new" || true
   mv "${F}.new" "$F"
@@ -158,6 +160,11 @@ fi
 
 # 1.6 Идемпотентные значения в app/.env для production (только если строки ещё не заданы).
 # TRUSTED_PROXY=1 — rate limit и логика IP за nginx; CLEANUP — убрать legacy-плейсхолдеры импорта при старте.
+# ReID hub cache: фиксируем persistent path в app/data, чтобы torch.hub не грузил DINO заново после каждого деплоя.
+echo "1.6b ReID runtime hub cache defaults..."
+ssh ${SSH_OPTS} "${HOST}" "F=\"${REMOTE_DIR}/app/.env\"; touch \"\$F\"; \
+  mkdir -p \"${REMOTE_DIR}/app/data/reid_hub_cache\"; \
+  grep -qE '^BIRDLENSE_REID_HUB_CACHE_DIR=' \"\$F\" || echo 'BIRDLENSE_REID_HUB_CACHE_DIR=/app/data/reid_hub_cache' >> \"\$F\""
 if [ "${BIRDLENSE_ENV:-}" = "production" ] && [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
   echo "1.6 Production .env defaults (append if missing)..."
   ssh ${SSH_OPTS} "${HOST}" "F=\"${REMOTE_DIR}/app/.env\"; touch \"\$F\"; \
@@ -200,8 +207,13 @@ for attempt in $(seq 1 ${BUILD_RETRIES}); do
   sleep 10
 done
 if [[ $build_ok -eq 0 ]]; then
-  echo "Ошибка: сборка/запуск не удались после ${BUILD_RETRIES} попыток"
-  exit 1
+  echo "Предупреждение: сборка/запуск завершились с ошибкой SSH после ${BUILD_RETRIES} попыток; проверяю факт запуска..."
+  if ssh ${SSH_OPTS} "${HOST}" "docker ps --filter name=^birdlense$ --format '{{.Status}}' | grep -q '^Up '"; then
+    echo "  Контейнер birdlense запущен — продолжаю в режиме пост-проверки."
+  else
+    echo "Ошибка: сборка/запуск не удались после ${BUILD_RETRIES} попыток"
+    exit 1
+  fi
 fi
 
 # 3. Проверка после деплоя

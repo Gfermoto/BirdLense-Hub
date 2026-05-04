@@ -57,6 +57,7 @@ def get_migration_calendar(
     *,
     catalog: str = "observed",
     evidence: str = "all",
+    metric: str = "encounters",
     app_config_get=None,
 ) -> dict:
     """
@@ -71,6 +72,10 @@ def get_migration_calendar(
     evidence: legacy field, ignored for catalog output.
     """
     catalog = (catalog or "observed").strip().lower()
+    requested_metric = (metric or "encounters").strip().lower()
+    if requested_metric not in {"encounters", "visits", "max_simultaneous"}:
+        requested_metric = "encounters"
+    selected_metric = "visits" if requested_metric in {"encounters", "visits"} else "max_simultaneous"
     if catalog == "active":
         catalog = "observed"
     elif catalog == "full":
@@ -114,7 +119,8 @@ def get_migration_calendar(
             Species.name,
             Species.image_url,
             month_expr.label("month"),
-            func.sum(SpeciesVisit.max_simultaneous).label("count"),
+            func.count(SpeciesVisit.id).label("visit_count"),
+            func.sum(SpeciesVisit.max_simultaneous).label("max_simultaneous_count"),
         )
         .join(SpeciesVisit, SpeciesVisit.species_id == Species.id)
         .filter(
@@ -126,18 +132,21 @@ def get_migration_calendar(
 
     # Build species -> [12 monthly counts] (month is '01'..'12')
     species_data = {}
-    for sid, name, image_url, month_str, count in rows:
+    for sid, name, image_url, month_str, visit_count, max_simultaneous_count in rows:
         if sid not in species_data:
             species_data[sid] = {
                 "id": sid,
                 "name": name,
                 "image_url": image_url,
                 "monthly_counts": [0] * 12,
+                "monthly_visit_counts": [0] * 12,
+                "monthly_max_simultaneous_counts": [0] * 12,
             }
         try:
             m = int(month_str)
             if 1 <= m <= 12:
-                species_data[sid]["monthly_counts"][m - 1] = int(count or 0)
+                species_data[sid]["monthly_visit_counts"][m - 1] = int(visit_count or 0)
+                species_data[sid]["monthly_max_simultaneous_counts"][m - 1] = int(max_simultaneous_count or 0)
         except (ValueError, TypeError):
             pass
 
@@ -168,6 +177,8 @@ def get_migration_calendar(
                             "name": sname,
                             "image_url": simg,
                             "monthly_counts": [0] * 12,
+                            "monthly_visit_counts": [0] * 12,
+                            "monthly_max_simultaneous_counts": [0] * 12,
                         }
                 else:
                     # Keep in full EU view even if DB row is missing.
@@ -179,6 +190,8 @@ def get_migration_calendar(
                             "name": aname,
                             "image_url": None,
                             "monthly_counts": [0] * 12,
+                            "monthly_visit_counts": [0] * 12,
+                            "monthly_max_simultaneous_counts": [0] * 12,
                         },
                     )
         else:
@@ -191,6 +204,8 @@ def get_migration_calendar(
                         "name": sname,
                         "image_url": simg,
                         "monthly_counts": [0] * 12,
+                        "monthly_visit_counts": [0] * 12,
+                        "monthly_max_simultaneous_counts": [0] * 12,
                     },
                 )
 
@@ -209,6 +224,8 @@ def get_migration_calendar(
                         "name": sname,
                         "image_url": simg,
                         "monthly_counts": [0] * 12,
+                        "monthly_visit_counts": [0] * 12,
+                        "monthly_max_simultaneous_counts": [0] * 12,
                     }
             else:
                 # Keep unmatched folders visible: local dataset may include classes
@@ -221,12 +238,20 @@ def get_migration_calendar(
                         "name": _folder_display_name(folder),
                         "image_url": None,
                         "monthly_counts": [0] * 12,
+                        "monthly_visit_counts": [0] * 12,
+                        "monthly_max_simultaneous_counts": [0] * 12,
                     },
                 )
 
     if suspect_ids:
         species_data = {k: v for k, v in species_data.items() if not isinstance(k, int) or k not in suspect_ids}
 
+    for payload in species_data.values():
+        payload["monthly_counts"] = (
+            payload["monthly_max_simultaneous_counts"]
+            if selected_metric == "max_simultaneous"
+            else payload["monthly_visit_counts"]
+        )
     species_list = [{**v, "total": sum(v["monthly_counts"])} for v in species_data.values()]
     if catalog == "observed":
         species_list = [s for s in species_list if s["total"] > 0]
@@ -234,6 +259,7 @@ def get_migration_calendar(
 
     return {
         "catalog": catalog,
+        "metric_used": requested_metric,
         "species": species_list,
         "month_labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
     }

@@ -4,62 +4,37 @@
 
 ## Цель
 
-Вынести конфигурацию триггеров из настроек обработки и заменить текущую единую модель `motion.source` на **независимо включаемые** модули триггеров.
+Разделить конфигурацию триггеров и настроек обработки: **каноническая модель** — независимо включаемые блоки **`triggers.*`**, без единого переключателя **`motion.source`**.
+
+## Статус (май 2026)
+
+- **`default_config.yaml`** задаёт только **`triggers.*`** для OpenCV / Frigate / датчика / весового триггера; оборудование весов остаётся в **`integrations.scales.*`**.
+- Устаревший блок **`motion:`** в `user_config.yaml` при загрузке переносится в **`triggers`** и удаляется (`migrate_legacy_motion_block`); после merge default+user срабатывает **`fold_legacy_motion_out_of_merged_config`** (`app/app_config/trigger_config.py`).
+- **`get_effective_trigger_config`** читает только **`triggers.*`**. Для топика Frigate сохранён fallback через **`migrate_legacy_trigger_topics`** (**`mqtt.frigate_topic`** → **`triggers.frigate.topic`**). Чтобы Frigate участвовал в записи, нужно **`triggers.frigate.enabled: true`** (одного брокера MQTT недостаточно).
 
 ## Продуктовый результат
 
-- Пользователь может включать любую комбинацию источников триггеров чекбоксами.
-- У каждого включённого триггера отображаются **только его** настройки.
-- Настройки триггеров отвечают на вопрос: «**что** запускает анализ клипа?»
-- Настройки процессора/детекции остаются отдельно и отвечают: «**как** анализируется клип?»
+- Пользователь включает комбинации триггеров чекбоксами (**Настройки → Захват и кормушка**).
+- У каждого включённого блока только свои поля.
+- Вопрос триггеров: «**что** запускает анализ клипа?». Вопрос процессора: «**как** анализируется клип?».
 
 ## Источники триггеров в объёме работ
 
-- Движение OpenCV
+- OpenCV motion
 - Frigate (MQTT)
-- Датчик движения по MQTT
-- Датчик движения по ESPHome
-- Весы кормушки по MQTT
-- Весы кормушки по ESPHome
+- Датчик по MQTT или ESPHome (`triggers.motion_sensor`)
+- Весовой триггер (`triggers.scales` + `integrations.scales`)
 
 ## Вне объёма
 
-- Нет редизайна архива или пайплайна обработки клипов вне оркестрации триггеров.
-- Нет попытки свести все интеграции к одной универсальной схеме сверх конфигурации триггеров.
-- Нет тихого удаления legacy-ключей YAML без миграции.
+- Редизайн архива/клип-пайплайна не входит сюда.
+- Нельзя удалять ключи пользователя без миграции: legacy **`motion:`** сворачивается при загрузке.
 
 ## Целевой UX
 
-Блок настроек верхнего уровня:
+См. чекбоксы OpenCV / Frigate / MQTT motion / ESP motion / scales в блоке «Захват и кормушка».
 
-- `Triggers` (Триггеры)
-  - переключатель `OpenCV motion`
-  - переключатель `Frigate`
-  - переключатель `MQTT motion sensor`
-  - переключатель `ESPHome motion sensor`
-  - переключатель `MQTT feeder scales`
-  - переключатель `ESPHome feeder scales`
-
-Для каждого включённого источника:
-
-- показывать только поля, специфичные для источника;
-- общие поясняющие тексты держать короткими;
-- продвинутые пороги помечать отдельно.
-
-## Целевая форма конфига
-
-Текущая модель:
-
-```yaml
-motion:
-  source: opencv | frigate | mqtt | esphome
-  ...
-integrations:
-  scales:
-    motion_trigger_enabled: false
-```
-
-Целевое направление:
+## Каноническая форма конфига (в поставке)
 
 ```yaml
 triggers:
@@ -67,41 +42,46 @@ triggers:
     enabled: true
     check_every_n_frames: 1
     diff_threshold: 18
-    min_contour_area: 500
+    min_contour_area: 240
   frigate:
-    enabled: true
+    enabled: false
+    topic: "frigate/events"
     camera_filter: []
     label_filter: []
     label_exclude: []
     trigger_on_tracked_object: true
-  mqtt_motion:
+    min_trigger_score: 0.50
+    min_trigger_score_by_camera: {}
+  motion_sensor:
     enabled: false
-    topic: stat/bird_pir/STATE
-  esphome_motion:
+    source: mqtt  # mqtt | esphome
+    mqtt_topic: ""
+    esphome_url: ""
+    esphome_sensor_id: ""
+  scales:
     enabled: false
-    url: http://device.local
-    sensor_id: bird_pir
-  mqtt_scales:
+    source: mqtt
+    motion_trigger_min_delta_kg: 0.02
+    motion_trigger_debounce_seconds: 1.5
+integrations:
+  scales:
     enabled: false
-    topic_prefix: birdlense/scale
-    min_delta_kg: 0.02
-    debounce_seconds: 1.5
-  esphome_scales:
-    enabled: false
-    url: http://device.local
-    weight_sensor_id: weight_live_internal
-    bird_present_sensor_id: bird_present
-    tare_button_id: manual_tare
+    source: mqtt
+    motion_trigger_enabled: false  # legacy — по-прежнему влияет на эффективный триггер весов
 ```
 
-Legacy-ключи `motion.*` и `integrations.scales.motion_trigger_*` при загрузке нужно мигрировать вперёд.
+Старые установки могли сохранять верхний уровень **`motion:`**; при следующей загрузке он разворачивается в **`triggers`** и исчезает из merged-снимка.
 
-## Рефакторинг рuntime
+## Правила миграции (реализовано)
 
-Основные файлы:
+- Пары полей см. **`_fold_motion_fields_into_triggers`** / **`migrate_legacy_motion_block`** (`trigger_config.py`).
+- По **`motion.source`** при сворачивании выставляются соответствующие **`enabled`** (opencv/frigate/motion_sensor).
+
+## Основные файлы
 
 - `app/app_config/default_config.yaml`
 - `app/app_config/app_config.py`
+- `app/app_config/trigger_config.py`
 - `app/processor/src/motion_runtime.py`
 - `app/processor/src/motion_detectors/factory.py`
 - `app/processor/src/motion_detectors/or_motion.py`
@@ -110,37 +90,16 @@ Legacy-ключи `motion.*` и `integrations.scales.motion_trigger_*` при з
 - `app/ui/src/types.ts`
 - `app/ui/src/pages/Settings/sections/*`
 
-Необходимые изменения в runtime:
+## Поведение runtime (после рефакторинга)
 
-1. Заменить ветвление «один источник» на сборку списка триггеров.
-2. Собирать `OrMotionDetector` из N включённых модулей триггеров вместо `primary + additional`.
-3. Отвязать подписку Frigate от условия «должен быть основным триггером».
-4. Отвязать триггер движения по весам от предположения «основной источник — MQTT».
-5. Сохранять provenance, чтобы у финализированных клипов по-прежнему было видно, что запустило обработку.
+1. **`OrMotionDetector`** собирается из активных источников, которые возвращает **`get_effective_trigger_config`** (OpenCV, Frigate aggregator, MQTT/ESPHome датчик, веса).
+2. Frigate зависит от **`triggers.frigate.enabled`** и **`mqtt.broker`**, без **`motion.source`**.
+3. В provenance сохраняется сводка **`get_active_trigger_names`**.
 
-## Правила миграции
+## Проверка
 
-- `motion.source=opencv` → `triggers.opencv.enabled=true`
-- `motion.source=frigate` → `triggers.frigate.enabled=true`
-- `motion.source=mqtt` → `triggers.mqtt_motion.enabled=true`
-- `motion.source=esphome` → `triggers.esphome_motion.enabled=true`
-- `integrations.scales.motion_trigger_enabled=true` при источнике MQTT → `triggers.mqtt_scales.enabled=true`
-- `integrations.scales.motion_trigger_enabled=true` при источнике ESPHome → `triggers.esphome_scales.enabled=true`
+- Автотесты: **`app/web/tests/test_legacy_config_migration.py`**, **`test_service_layer_slice_293.py`**, **`processor/tests/test_mqtt_frigate_filters.py`**. Тесты aggregator с MQTT требуют **`paho-mqtt`**.
 
-Миграция сначала **аддитивная**, с чтением legacy в одной переходной фазе.
+## Историческая справка
 
-## План тестов
-
-- юнит-тесты миграции конфига;
-- юнит-тесты фабрики триггеров со смешанными включёнными источниками;
-- юнит-тесты поведения OR-детектора при нескольких активных входах;
-- интеграционные тесты для комбинаций MQTT + Frigate + весы;
-- тесты UI настроек: чекбоксы и условные поля.
-
-## Порядок поставки
-
-1. Новая схема конфига + совместимость миграции.
-2. Рефакторинг сборки триггеров в runtime.
-3. Обновление типов UI / контракта API.
-4. Замена UI настроек на редактор композируемых триггеров.
-5. Удаление legacy-путей UI после стабилизации миграции.
+Черновые имена (**`mqtt_motion`**, **`esphome_scales`**) заменены схемой **`triggers.motion_sensor`** (`source: mqtt | esphome`) и блоком **`integrations.scales`** + **`triggers.scales`** для параметров весового триггера.

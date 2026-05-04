@@ -4,6 +4,17 @@
 
 Scripts for preparing bird detection training datasets. Uses [NABirds](https://dl.allaboutbirds.org/nabirds) as the base dataset.
 
+## EU classifier (приоритет: максимум европейских видов)
+
+Пайплайн **без вырезания классов** для баланса — см. **[EU_CLASSIFIER.md](./EU_CLASSIFIER.md)**.
+
+- **download_birds_eu_merged.py** — скачать [`gfermoto/birds-eu-merged`](https://huggingface.co/datasets/gfermoto/birds-eu-merged) (~490 видов, Scientific (Common))
+- **build_eu_classifier_yolo.sh** — скелет сборки (HF + опционально iNat + merge + refine)
+- **polish_eu_classifier.sh** — добор EXTRA-слоёв к готовому `yolo_cls_eu_merged` (`--restrict-to-primary-input`, сохранение `test/`)
+- **report_classifier_class_counts.py** — классы с малым числом изображений → список на добор (см. раздел «Дополнительные открытые источники» в `EU_CLASSIFIER.md`)
+
+Дополнительный объём: увеличивайте `--max-obs` в **download_inaturalist.py** (`--taxon-id`, `--no-place-filter` для одного вида) и мержите вторым входом в **merge_classification_datasets.py**.
+
 ## EU birds: birds-525 + iNaturalist (формат Scientific (Common))
 
 - **download_hf_birds.py** — Hugging Face (birds-525) → YOLO cls, `--format scientific_common`
@@ -11,11 +22,24 @@ Scripts for preparing bird detection training datasets. Uses [NABirds](https://d
 - **export_birdlense_to_yolo.py** — BirdLense `app/data/dataset/train` → YOLO cls `train/val` split
 - **species_format.py** — утилиты: format, parse, маппинг inat_bird_labels
 - **merge_classification_datasets.py** — объединить датасеты
+- **refine_classifier_yolo_cls.py** — дедуп между сплитами, опционально нормализация имён папок, выделение `test/`, глобальный дедуп (`--dedupe-global-only`, при необходимости `--skip-rebalance`)
+- **backfill_classifier_open.py** — добор редких классов с iNaturalist в staging (без урезания остальных); см. **`EU_CLASSIFIER.md`**
+- **balance_classifier_yolo_cls.py** — опциональное **урезание** датасета (subsampling); основной путь баланса — добор, не этот скрипт
 - **download_and_merge_all.sh** — полный пайплайн
 - **dump_classifier_allowlist.py** — имена классов из `best.pt` → `class_names.txt` для `species.catalog_allowlist_file` в Hub ([CONFIGURATION](../../docs/CONFIGURATION.md))
 - **../validate-processor-weights.py** — финальная проверка rollout-кандидата (`best.pt` + `class_names.txt` + `dataset_info.json`)
 
 Формат имён: `Scientific_name (Common Name)` — совпадает с Frigate. См. [docs/DATASETS.md](../docs/DATASETS.md).
+
+## Детектор (Bird / Rodent / Background)
+
+Сборка данных: **`bootstrap_detector_yolo.py`** → **`make dataset-merge-three-class`** → `binary/merged/`.
+
+Усиление качества (второй домен птиц OID **Bird**, hard-negative фон person/dog/cat): **[DETECTOR_DATASET_QUALITY.md](./DETECTOR_DATASET_QUALITY.md)**.
+
+Быстрый большой прогон: **`build_detector_dataset_large.sh`** (числа править внутри).
+
+Тот же объём **волнами**: **`build_detector_dataset_waves.sh`** (см. `DETECTOR_DATASET_QUALITY.md`).
 
 ## convert_nabirds_to_yolo.py
 
@@ -110,7 +134,7 @@ python3 import_roboflow_bird_feeder_birds.py --zip ../../datasets/Bird-Feeder.v6
 
 ## bootstrap_detector_yolo.py
 
-Creates **`binary/birds`**, **`binary/rodent`**, **`binary/background`** and downloads **starter** subsets via **FiftyOne**: COCO 2017 (`bird`), Open Images V6 (`Squirrel`), COCO scenes **without** `bird` for background (empty labels). Large blobs are gitignored — see [DETECTOR_DATA_LAYOUT.md](./DETECTOR_DATA_LAYOUT.md) and [binary/README.md](./binary/README.md).
+Creates **`binary/birds`**, **`binary/rodent`**, **`binary/background`** and downloads **starter** subsets via **FiftyOne**: COCO 2017 (`bird`), Open Images V6 (`Squirrel`), COCO scenes **without** `bird` for background (empty labels). Large blobs are gitignored — see [DETECTOR_DATASET_QUALITY.md](./DETECTOR_DATASET_QUALITY.md) (структура `binary/`) and [binary/README.md](./binary/README.md).
 
 Requires: `pip install fiftyone pyyaml`
 

@@ -76,7 +76,10 @@ Examples are **secret-free**; copy into `app/app_config/user_config.yaml` and ad
 | `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA` | `1` — background metadata/image repair on startup; default off |
 | `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — skip Telegram “App is UP!” on startup; default on |
 | `BIRDLENSE_INFERENCE_BACKEND` | Overrides `processor.inference_backend` (`torch`, `openvino`, …) — see [CV_ML_ROADMAP_PHASES](./CV_ML_ROADMAP_PHASES.md) |
+| `BIRDLENSE_INFERENCE_DEVICE` | Overrides `processor.inference_device` (`auto`, `cpu`, `cuda`, `intel:gpu`, …) |
 | `BIRDLENSE_BINARY_OPENVINO_PATH` | Optional path to OpenVINO IR (directory or `.xml`) for the binary detector; highest precedence over YAML when set |
+| `BIRDLENSE_OPENVINO_PROFILE` | OpenVINO performance profile (`latency` or `throughput`) |
+| `BIRDLENSE_OPENVINO_NUM_REQUESTS` | OpenVINO async requests (`0` = runtime auto) |
 | `BIRDLENSE_INFERENCE_AUTO_BENCHMARK` | `1` / `true` / `yes` / `on` — after the detection stack loads, run one blank-frame `predict` on the binary detector and record **`cold_start_predict_ms`** in `data/processor/inference_backend_cache.json` ([#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)) |
 | `BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC` | System page resource sampler interval (seconds); default `30`; allowed 10–600 — see [§ System page metrics history](#system-page-metrics-history) |
 | `BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS` | Keep `system_resource_sample` rows up to this age (hours); default `72`; allowed 6–720 |
@@ -281,7 +284,7 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 - Frigate is a helper source: it can promote a generic detector fallback or add a confidence boost when it agrees with the video track.
 - BirdNET is confidence-only for video. It can bias thresholds before the classifier decision but does not create a final video label.
 
-**Recall-first feeder profile:** when you care more about not missing small birds than minimizing false positives, prefer Frigate MQTT as the trigger when available, keep `motion.check_every_n_frames=1`, and use `processor.binary_imgsz=640`, `processor.min_center_dist=0.03-0.05`, `processor.min_box_size_px<=64`. In low light, relax the light gate instead of disabling detection entirely.
+**Recall-first feeder profile:** when you care more about not missing small birds than minimizing false positives, enable Frigate as a trigger (**`triggers.frigate.enabled`**) when MQTT is available, keep **`triggers.opencv.check_every_n_frames=1`** (optional OpenCV alongside), and use `processor.binary_imgsz=640`, `processor.min_center_dist=0.03-0.05`, `processor.min_box_size_px<=64`. In low light, relax the light gate instead of disabling detection entirely.
 
 **Canonical names:** Common name (Eurasian Jay), not scientific. `species_mapping` maps variants. `species_canonical_mapping.txt` for “Merge duplicates” (System → Recordings). Format: `variant|canonical`.
 
@@ -339,7 +342,7 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 | `integrations.scales.min_delta_kg_for_estimate` | Minimum delta (kg) for both the **window span** (max−min) and the **spike** between consecutive time-ordered MQTT samples. Default **0.008** (~8 g). |
 | `integrations.scales.estimate_require_consecutive_spike` | **true** (default): persist an estimate only if some **adjacent** sample pair in the clip has \|Δ\| ≥ `min_delta_kg_for_estimate` (reduces slow drift when the platform reads near zero after tare). **false**: legacy span-only check. The stored value remains **max−min** over the window. |
 | `integrations.scales.history_max_lines` | Max lines for the sample log (head trimmed); default **10000**. |
-| `integrations.scales.motion_trigger_enabled` | **false** by default. **true** — a sharp weight change on the scale MQTT topic **starts the same recording + YOLO pipeline** as a Frigate trigger (**OR** with Frigate and optional OpenCV). Frigate/BirdNET events in the clip window are still merged via `merge_detections`. Requires `mqtt.broker`, `mqtt`, and a weight topic (**`mqtt_topic`** or **`{mqtt_topic_prefix}/weight`**). Not wired when `motion.source: pir` (separate code path). |
+| `integrations.scales.motion_trigger_enabled` | **false** by default. **true** — a sharp weight change on the scale MQTT topic **starts the same recording + YOLO pipeline** as other enabled triggers (**OR** with Frigate and optional OpenCV when those toggles are on). Frigate/BirdNET events in the clip window are still merged via `merge_detections`. Requires `mqtt.broker`, MQTT-capable scales source, and a weight topic (**`mqtt_topic`** or **`{mqtt_topic_prefix}/weight`**). Prefer **`triggers.scales.enabled`** in new configs; hub still falls back from `integrations.scales.motion_trigger_*` when building effective triggers. |
 | `integrations.scales.motion_trigger_min_delta_kg` | Minimum absolute weight change (kg) between **two consecutive** MQTT samples to fire the trigger. Default **0.02**. |
 | `integrations.scales.motion_trigger_debounce_seconds` | Minimum seconds between recording starts triggered by scales. Default **1.5**. |
 

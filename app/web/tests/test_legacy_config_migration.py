@@ -151,10 +151,19 @@ def test_migrate_legacy_trigger_topics_copies_into_new_domains():
     assert user["integrations"]["birdnet"]["mqtt_topic"] == "custom/birdnet"
 
 
-def test_grouped_trigger_helpers_fall_back_to_legacy_keys():
+def test_grouped_trigger_helpers_read_triggers_flat():
     cfg = {
         "mqtt": {"broker": "mqtt.local", "frigate_topic": "frigate/events"},
-        "motion": {"source": "esphome", "esphome_url": "http://esp", "esphome_sensor_id": "pir"},
+        "triggers": {
+            "opencv": {"enabled": True},
+            "frigate": {"enabled": True},
+            "motion_sensor": {
+                "enabled": True,
+                "source": "esphome",
+                "esphome_url": "http://esp",
+                "esphome_sensor_id": "pir",
+            },
+        },
         "integrations": {"scales": {"motion_trigger_enabled": True, "source": "mqtt"}},
     }
 
@@ -169,11 +178,30 @@ def test_grouped_trigger_helpers_fall_back_to_legacy_keys():
     assert get_frigate_topic(_get) == "frigate/events"
     assert get_birdnet_topic(_get) == "birdnet"
     assert get_active_trigger_names(_get, mqtt_broker="mqtt.local") == [
+        "opencv",
         "frigate",
         "motion_sensor",
         "scales",
     ]
-    assert get_legacy_motion_source_label(_get, mqtt_broker="mqtt.local") == "frigate,motion_sensor,scales"
+    assert get_legacy_motion_source_label(_get, mqtt_broker="mqtt.local") == ("opencv,frigate,motion_sensor,scales")
+
+
+def test_migrate_legacy_motion_block_moves_into_triggers():
+    from app_config.trigger_config import migrate_legacy_motion_block
+
+    user = {
+        "motion": {
+            "source": "esphome",
+            "esphome_url": "http://esp",
+            "esphome_sensor_id": "pir",
+            "frigate_label_filter": ["bird"],
+        }
+    }
+    assert migrate_legacy_motion_block(user) is True
+    assert "motion" not in user
+    assert user["triggers"]["motion_sensor"]["enabled"] is True
+    assert user["triggers"]["motion_sensor"]["source"] == "esphome"
+    assert user["triggers"]["frigate"]["label_filter"] == ["bird"]
 
 
 def test_migrate_processor_classifier_best_eu_relative_path():

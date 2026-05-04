@@ -363,7 +363,8 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                     'integrations.scales.weight_estimate_enabled': True,
                     'integrations.scales.min_delta_kg_for_estimate': 0.012,
                     'integrations.scales.estimate_require_consecutive_spike': True,
-                    'motion.source': 'frigate',
+                    'triggers.frigate.enabled': True,
+                    'triggers.opencv.enabled': True,
                     'video.source': 'go2rtc',
                     'processor.models.binary': binary_path,
                     'processor.models.classifier': classifier_path,
@@ -451,6 +452,11 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             0.023,
         )
         self.assertEqual(trace_payload['scales_evidence']['sample_count'], 4)
+        self.assertIn('policy_snapshot', trace_payload['recording_context'])
+        self.assertEqual(trace_payload['recording_context']['policy_snapshot']['min_track_duration'], 1.0)
+        self.assertEqual(trace_payload['recording_context']['policy_snapshot']['min_confidence_to_process'], 0.3)
+        self.assertEqual(trace_payload['recording_context']['policy_snapshot']['min_confidence_to_store'], 0.05)
+        self.assertEqual(trace_payload['recording_context']['policy_snapshot']['classifier_fallback_bird'], True)
 
 
 if __name__ == '__main__':

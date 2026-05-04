@@ -133,7 +133,7 @@ BirdLense держит три разные временные сущности:
 | **YOLO** | Процессор шлёт в heartbeat `last_yolo_ok_at`; ok если в пределах 5 мин |
 | **Processor** | Последний heartbeat в ActivityLog (каждые 60 сек) |
 
-При `motion.source=frigate` показывается `mqtt` (триггер идёт через MQTT).
+При включённом **`triggers.frigate.enabled`** в тайле **MQTT** отражается путь Frigate по MQTT (`frigate/events` и смежные топики).
 
 ---
 

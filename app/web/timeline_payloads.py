@@ -10,6 +10,62 @@ from time_util import ensure_utc
 from services.feeder_scale import video_scales_estimate_payload
 
 
+def _weak_behavior_events_from_rows(rows, video) -> list[dict]:
+    """Build lightweight behavior hints from ordered track rows."""
+    ordered = sorted(
+        list(rows or []),
+        key=lambda x: ((x.start_time or 0.0), (x.id or 0)),
+    )
+    if not ordered:
+        return []
+    first = ordered[0]
+    last = ordered[-1]
+    events = [
+        {
+            "label": "arrival",
+            "confidence": 0.55,
+            "evidence": {
+                "reason": "first_track_start",
+                "track_id": first.track_id,
+                "species_name": getattr(first.species, "name", None),
+            },
+        },
+        {
+            "label": "departure",
+            "confidence": 0.50,
+            "evidence": {
+                "reason": "last_track_end",
+                "track_id": last.track_id,
+                "species_name": getattr(last.species, "name", None),
+            },
+        },
+    ]
+    if video is not None:
+        weight_delta = getattr(video, "scales_weight_delta_kg", None)
+        if weight_delta is not None and abs(float(weight_delta)) > 0:
+            events.insert(
+                1,
+                {
+                    "label": "possible_feeding",
+                    "confidence": 0.50,
+                    "evidence": {
+                        "reason": "feeder_weight_delta",
+                        "scales_weight_delta_kg": float(weight_delta),
+                        "track_count": len(ordered),
+                    },
+                },
+            )
+    return events
+
+
+def _weak_behavior_events_for_visit(visit, video) -> list[dict]:
+    """Build lightweight behavior hints for visit cards."""
+    return _weak_behavior_events_from_rows(
+        getattr(visit, "video_species", []),
+        video,
+    )
+
+
 def get_primary_video_for_visit(visit) -> object | None:
     """Deterministically pick the earliest video for a SpeciesVisit."""
     return get_primary_video_for_visit_in_window(visit)
@@ -59,10 +115,15 @@ def format_visit_for_timeline(visit) -> dict:
         video_duration_seconds = max(0, round((v1 - v0).total_seconds()))
     detections = []
     total_recording_seconds = 0.0
+    nickname = None
     for vs in sorted(visit.video_species, key=lambda x: x.created_at, reverse=True):
         video_start = ensure_utc(vs.video.start_time)
         seg_dur = max(0, vs.end_time - vs.start_time) if vs.end_time > vs.start_time else 0
         total_recording_seconds += seg_dur
+        if not nickname and getattr(vs, "individual_nickname", None):
+            nn = str(vs.individual_nickname).strip()
+            if nn:
+                nickname = nn
         det = {
             "id": vs.id,
             "video_id": vs.video_id,
@@ -71,9 +132,12 @@ def format_visit_for_timeline(visit) -> dict:
             "confidence": vs.confidence,
             "source": vs.source,
         }
+        if getattr(vs, "individual_nickname", None):
+            det["individual_nickname"] = vs.individual_nickname
         if vs.detection_provider:
             det["detection_provider"] = vs.detection_provider
         detections.append(det)
+    behavior_events = _weak_behavior_events_for_visit(visit, video)
     return {
         "id": visit.id,
         "start_time": ensure_utc(visit.start_time).isoformat(),
@@ -95,6 +159,8 @@ def format_visit_for_timeline(visit) -> dict:
             "parent_id": visit.species.parent_id,
         },
         "detections": detections,
+        "individual_nickname": nickname,
+        "behavior_events": behavior_events,
         "timeline_kind": "visit",
     }
 
@@ -107,10 +173,15 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
     detections = []
     total_recording_seconds = 0.0
     vss = sorted(video.video_species, key=lambda x: x.created_at, reverse=True)
+    nickname = None
     for vs in vss:
         video_start = ensure_utc(vs.video.start_time)
         seg_dur = max(0, vs.end_time - vs.start_time) if vs.end_time > vs.start_time else 0
         total_recording_seconds += seg_dur
+        if not nickname and getattr(vs, "individual_nickname", None):
+            nn = str(vs.individual_nickname).strip()
+            if nn:
+                nickname = nn
         det = {
             "id": vs.id,
             "video_id": vs.video_id,
@@ -119,6 +190,8 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
             "confidence": vs.confidence,
             "source": vs.source,
         }
+        if getattr(vs, "individual_nickname", None):
+            det["individual_nickname"] = vs.individual_nickname
         if vs.detection_provider:
             det["detection_provider"] = vs.detection_provider
         detections.append(det)
@@ -160,5 +233,7 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
         "scales": video_scales_estimate_payload(video),
         "species": species_block,
         "detections": detections,
+        "individual_nickname": nickname,
+        "behavior_events": _weak_behavior_events_from_rows(vss, video),
         "timeline_kind": "unlinked_video",
     }

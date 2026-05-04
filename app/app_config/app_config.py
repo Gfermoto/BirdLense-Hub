@@ -6,7 +6,11 @@ import shutil
 import yaml
 
 from app_config.secret_env import apply_secret_env_overrides
-from app_config.trigger_config import copy_legacy_topic_if_missing
+from app_config.trigger_config import (
+    copy_legacy_topic_if_missing,
+    fold_legacy_motion_out_of_merged_config,
+    migrate_legacy_motion_block,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -308,9 +312,19 @@ class AppConfig:
                     logger.warning(
                         'Could not persist classifier path migration: %s', e
                     )
+            if migrate_legacy_motion_block(user_config):
+                try:
+                    self._persist_raw_user_config(user_config)
+                    logger.info(
+                        'Migrated legacy motion.* block into triggers.* in %s',
+                        self.user_config_file,
+                    )
+                except OSError as e:
+                    logger.warning('Could not persist motion→triggers migration: %s', e)
 
         # Merge configs (user_config overrides default_config)
         merged = self.merge_dicts(default_config, user_config)
+        fold_legacy_motion_out_of_merged_config(merged)
         self._enforce_confidence_floors(merged)
         self._cleanup_legacy_processor_keys(merged)
         apply_secret_env_overrides(merged)
@@ -556,6 +570,7 @@ class AppConfig:
         except yaml.YAMLError as e:
             return ['default_config YAML error: %s' % e]
         merged = self.merge_dicts(default_config, user_dict)
+        fold_legacy_motion_out_of_merged_config(merged)
         return validate_merged_config(merged)
 
     def _persist_raw_user_config(self, data: dict) -> None:
