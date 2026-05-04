@@ -205,7 +205,9 @@ def build_reid_summary(session) -> tuple[dict[str, Any], int]:
     try:
         rows = (
             session.execute(
-                text(f"SELECT {', '.join(select_cols)} FROM reid_embedding ORDER BY id DESC LIMIT 20"),
+                text(
+                    f"SELECT {', '.join(select_cols)} FROM reid_embedding ORDER BY id DESC LIMIT 20"  # nosec B608
+                ),
             )
             .mappings()
             .all()
@@ -519,7 +521,7 @@ def build_video_reid_match_payload(session, video_id: int) -> tuple[dict[str, An
         row = (
             session.execute(
                 text(
-                    f"SELECT {', '.join(emb_cols)} FROM reid_embedding "
+                    f"SELECT {', '.join(emb_cols)} FROM reid_embedding "  # nosec B608
                     "WHERE video_species_id = :vsid ORDER BY id DESC LIMIT 1"
                 ),
                 {"vsid": int(vsid)},
@@ -553,7 +555,7 @@ def build_video_reid_match_payload(session, video_id: int) -> tuple[dict[str, An
         cands = (
             session.execute(
                 text(
-                    "SELECT video_species_id, video_id, track_id, species_name, individual_label, embedding_json "
+                    "SELECT video_species_id, video_id, track_id, species_name, individual_label, embedding_json "  # nosec B608
                     + (
                         ", embedding_schema, embedding_model_id, embedding_model_sha16, "
                         "crop_fingerprint_sha16, jsonl_created_at_utc, dim "

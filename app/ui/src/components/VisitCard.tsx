@@ -210,12 +210,7 @@ export const VisitCard = memo(function VisitCard({
   const firstVideoId = (visit.detections ?? []).find((d) => d.video_id)?.video_id;
   const nicknameMutation = useMutation({
     mutationFn: (value: string | null) =>
-      updateDetectionNickname(
-        Number(firstVideoDetectionId),
-        value,
-        'video',
-        'legacy_fanout',
-      ),
+      updateDetectionNickname(Number(firstVideoDetectionId), value),
     onSuccess: () => {
       invalidateLocalSpeciesEditCaches(queryClient, firstVideoId);
       setSaveSuccess(t('video.nicknameSaved'));

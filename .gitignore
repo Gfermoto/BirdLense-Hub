@@ -15,6 +15,7 @@ app/data/processor/
 app/data/notify_temp
 # Снимки runtime процессора (локально / в volume; не коммитить)
 app/data/diagnostics/
+app/data/feedback_exports/
 data/diagnostics/
 app/processor/data/
 app/data/processor.log*

@@ -230,7 +230,7 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="triggers.frigate.camera_filter">
+                              <form.Field name="motion.frigate_camera_filter">
                                 {(field) => (
                                   <TextField
                                     fullWidth
@@ -250,7 +250,7 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="triggers.frigate.label_filter">
+                              <form.Field name="motion.frigate_label_filter">
                                 {(field) => (
                                   <TextField
                                     fullWidth
@@ -270,7 +270,7 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="triggers.frigate.label_exclude">
+                              <form.Field name="motion.frigate_label_exclude">
                                 {(field) => (
                                   <TextField
                                     fullWidth
@@ -290,7 +290,7 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="triggers.frigate.trigger_on_tracked_object">
+                              <form.Field name="motion.frigate_trigger_on_tracked_object">
                                 {(field) => (
                                   <FormControl fullWidth>
                                     <FormControlLabel

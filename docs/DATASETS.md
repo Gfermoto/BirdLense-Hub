@@ -65,7 +65,7 @@ Phase 2 items from the epic (MineUp, dual mining, COCO export) remain future wor
 
 - **Bird:** two streams: (1) **COCO 2017** bird class via **`bootstrap_detector_yolo.py`** (FiftyOne); (2) Roboflow **YOLOv11** exports imported with **`import_roboflow_bird_feeder_birds.py`** (all label classes collapsed to a single bird class). The build referenced here used **[Bird-Feeder on Universe](https://universe.roboflow.com/meproject-pcsly/bird-feeder-hhjks/dataset/6)** (example zip: `Bird-Feeder.v6i.yolov11.zip`; export metadata — **CC BY 4.0**). The same importer works for other Roboflow bird datasets after you verify the project license; example public set: **[birds-yolo](https://universe.roboflow.com/birds-detection-2fyqw/birds-yolo)**.
 
-- **Rodent:** **not** from Roboflow in this pipeline. Rodent boxes come from **Open Images V6** via FiftyOne + **`bootstrap_detector_yolo.py`**; default classes **`Squirrel`, `Mouse`, `Rat`, `Hamster`** (CLI flag `--rodent-classes`). Optionally add **OIDv4 Toolkit** exports under `binary/rodent/` with **`convert_oidv4_rodent_to_yolo.py`** — see [scripts/datasets/README.md](../scripts/datasets/README.md).
+- **Rodent:** **not** from Roboflow in this pipeline. Rodent boxes come from **Open Images V6** via FiftyOne + **`bootstrap_detector_yolo.py`**; default classes **`Squirrel`, `Mouse`, `Rat`, `Hamster`** (CLI flag `--rodent-classes`). Optionally add **OIDv4 Toolkit** exports under `binary/rodent/` with **`convert_oidv4_rodent_to_yolo.py`** — see **`scripts/datasets/README.md`**.
 
 - **Background:** COCO scenes without bird + empty labels (bootstrap), plus operator frames via **`import_hub_background_folder.py`** (step 4 below).
 
@@ -80,7 +80,7 @@ Phase 2 items from the epic (MineUp, dual mining, COCO export) remain future wor
 | 5 | **Dedup** near-duplicate images (SHA256 per split): **`dedupe_yolo_images.py`**. |
 | 6 | **Drive packaging:** **`pack_brg_for_gdrive.py`** → **`BirdLense_detector_brg_<UTC>.zip`**. |
 
-Colab flow for this ZIP + **`bl_best.pt`**: [ML_DETECTOR_COLAB.md](./ML_DETECTOR_COLAB.md). Scripts: [scripts/datasets/README.md](../scripts/datasets/README.md).
+Colab flow for this ZIP + **`bl_best.pt`**: [ML_DETECTOR_COLAB.md](./ML_DETECTOR_COLAB.md). Scripts: **`scripts/datasets/README.md`**.
 
 ---
 

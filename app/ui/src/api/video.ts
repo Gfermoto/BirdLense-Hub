@@ -26,11 +26,15 @@ export const fetchVideoDetectionFrames = async (id: string) => {
 
 export type VideoActionEvent = {
   label: string;
-  source: string;
-  time_offset: number;
-  time: string;
-  confidence: number;
-  evidence?: Record<string, unknown>;
+  source?: string;
+  time_offset?: number;
+  time?: string;
+  confidence?: number;
+  evidence?: {
+    species_name?: string | null;
+    reason?: string;
+    [key: string]: unknown;
+  };
 };
 
 export type VideoActionEventsPayload = {
@@ -131,27 +135,6 @@ export type FusionTracePayload = {
   tracks?: FusionTraceTrack[];
 };
 
-export type VideoActionEvent = {
-  label: string;
-  source?: string;
-  time_offset?: number;
-  time?: string;
-  confidence?: number;
-  evidence?: {
-    species_name?: string | null;
-    reason?: string;
-    [key: string]: unknown;
-  };
-};
-
-export type VideoActionEventsPayload = {
-  schema: string;
-  video_id: number;
-  available: boolean;
-  message?: string;
-  events: VideoActionEvent[];
-};
-
 export const fetchVideoFusionTrace = async (
   id: number,
 ): Promise<FusionTracePayload> => {
@@ -161,13 +144,6 @@ export const fetchVideoFusionTrace = async (
       withCredentials: true,
     },
   );
-  return response.data;
-};
-
-export const fetchVideoActionEvents = async (
-  id: number,
-): Promise<VideoActionEventsPayload> => {
-  const response = await axios.get(`${BASE_API_URL}/videos/${id}/action-events`);
   return response.data;
 };
 

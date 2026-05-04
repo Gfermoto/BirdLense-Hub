@@ -98,9 +98,7 @@ def _support_count(row: dict) -> int:
 
 def _has_visual_anchor(row: dict) -> bool:
     lineage = {
-        str(provider).strip().lower()
-        for provider in (row.get("contributing_providers") or [])
-        if str(provider).strip()
+        str(provider).strip().lower() for provider in (row.get("contributing_providers") or []) if str(provider).strip()
     }
     provider = str(row.get("detection_provider") or "").strip().lower()
     if provider and provider != "arbitration":

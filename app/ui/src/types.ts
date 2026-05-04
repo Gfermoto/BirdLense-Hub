@@ -37,6 +37,10 @@ export interface SpeciesVisit {
     source: 'video' | 'audio';
     detection_provider?: string;
   }[];
+  /** Re-ID nickname from backend visit payload when present (#390 UI). */
+  individual_nickname?: string | null;
+  /** Discrete action cues for this visit (arrival / etc.). */
+  behavior_events?: { label?: string }[];
 }
 
 export interface TrackFrame {
@@ -266,6 +270,8 @@ export interface Settings {
       | 'openvino'
       | 'onnxruntime'
       | string;
+    inference_device?: string;
+    classifier_inference_device?: string;
     detector_weight_contract?: 'off' | 'warn' | 'enforce' | string;
     models?: {
       binary?: string;
