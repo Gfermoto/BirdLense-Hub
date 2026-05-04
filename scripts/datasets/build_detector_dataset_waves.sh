@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Тот же объём, что build_detector_dataset_large.sh, но порциями (волнами).
+# Меньше пик памяти/сети; между волнами пауза — можно Ctrl+C и продолжить позже.
+#
+#   bash scripts/datasets/build_detector_dataset_waves.sh
+#   WAVE_PAUSE=10 bash scripts/datasets/build_detector_dataset_waves.sh
+#   RUN_MERGE=1 bash scripts/datasets/build_detector_dataset_waves.sh
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$SCRIPT_DIR"
+
+PAUSE="${WAVE_PAUSE:-5}"
+CHUNK="${CHUNK_SIZE:-35}"
+BGCH="${BG_SCAN_CHUNK:-500}"
+
+say() { echo ""; echo ">>> $*"; echo ""; }
+
+pause() {
+  echo "(пауза ${PAUSE}s; Ctrl+C — стоп между волнами)"
+  sleep "$PAUSE"
+}
+
+run_py() {
+  python3 bootstrap_detector_yolo.py "$@"
+}
+
+# --- A: COCO bird → ~2500 train / 700 val ---
+say "Фаза A: COCO bird (5×500 train + 140 val)"
+for i in 1 2 3 4 5; do
+  say "A$i/5"
+  run_py \
+    --birds-train 500 --birds-val 140 \
+    --skip-birds-oid --skip-rodents --skip-background \
+    --chunk-size "$CHUNK"
+  pause
+done
+
+# --- B: OID Bird validation-only; при oid-train=0 всё уходит в val-папку ---
+say "Фаза B: Open Images Bird (5×500, validation-only → val/)"
+for i in 1 2 3 4 5; do
+  say "B$i/5"
+  run_py \
+    --birds-train 0 --birds-val 0 \
+    --birds-oid-train 0 --birds-oid-val 500 \
+    --birds-oid-validation-only \
+    --skip-birds-coco --skip-rodents --skip-background \
+    --chunk-size "$CHUNK"
+  pause
+done
+
+# --- C: Rodent → ~3500 / 900 ---
+say "Фаза C: Rodent (5×700 train + 180 val)"
+for i in 1 2 3 4 5; do
+  say "C$i/5"
+  run_py \
+    --skip-birds --skip-background \
+    --rodent-train 700 --rodent-val 180 \
+    --chunk-size "$CHUNK"
+  pause
+done
+
+# --- D: фон простой → ~4500 / 1200 ---
+say "Фаза D: background soft (5×900 train + 240 val)"
+for i in 1 2 3 4 5; do
+  say "D$i/5"
+  run_py \
+    --skip-birds --skip-rodents \
+    --skip-background-hard \
+    --background-train 900 --background-val 240 \
+    --background-hard-train 0 --background-hard-val 0 \
+    --chunk-size "$CHUNK" \
+    --bg-scan-chunk "$BGCH"
+  pause
+done
+
+# --- E: hard-negative → 1800 / 500 ---
+say "Фаза E: background hard (4×450 train + 125 val)"
+for i in 1 2 3 4; do
+  say "E$i/4"
+  run_py \
+    --skip-birds --skip-rodents \
+    --skip-background-soft \
+    --background-train 0 --background-val 0 \
+    --background-hard-train 450 --background-hard-val 125 \
+    --chunk-size "$CHUNK" \
+    --bg-scan-chunk "$BGCH"
+  pause
+done
+
+say "Готово → scripts/datasets/binary/{birds,rodent,background}/"
+if [[ "${RUN_MERGE:-}" == "1" ]]; then
+  say "RUN_MERGE=1 → make dataset-merge-three-class"
+  cd "$REPO_ROOT"
+  make dataset-merge-three-class
+fi

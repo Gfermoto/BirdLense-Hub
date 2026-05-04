@@ -51,6 +51,18 @@ bash scripts/datasets/build_detector_dataset_large.sh
 
 (редактируй числа под свой диск).
 
+## Волны (меньше пиков памяти и сети)
+
+Один скрипт дробит те же итоговые квоты на микроволны и делает паузу между ними:
+
+```bash
+bash scripts/datasets/build_detector_dataset_waves.sh
+WAVE_PAUSE=15 CHUNK_SIZE=30 bash scripts/datasets/build_detector_dataset_waves.sh
+RUN_MERGE=1 bash scripts/datasets/build_detector_dataset_waves.sh   # в конце merge
+```
+
+Точечные флаги bootstrap (для своих сценариев): `--skip-birds-coco`, `--skip-birds-oid`, `--skip-background-soft`, `--skip-background-hard`.
+
 ## Дальше
 
 - Обучение: `docs/ML_DETECTOR_COLAB.md` (или свой пайплайн).

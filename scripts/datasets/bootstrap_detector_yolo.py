@@ -630,9 +630,29 @@ def main() -> int:
         default=600,
         help="Размер порции при сканировании COCO для фона (без единого огромного prefetch)",
     )
-    ap.add_argument("--skip-birds", action="store_true")
+    ap.add_argument("--skip-birds", action="store_true", help="Пропустить весь блок птиц (COCO + OID)")
+    ap.add_argument(
+        "--skip-birds-coco",
+        action="store_true",
+        help="Только COCO bird; OID-птицы остаются (если не --skip-birds)",
+    )
+    ap.add_argument(
+        "--skip-birds-oid",
+        action="store_true",
+        help="Только Open Images Bird; COCO остаётся (если не --skip-birds)",
+    )
     ap.add_argument("--skip-rodents", action="store_true")
-    ap.add_argument("--skip-background", action="store_true")
+    ap.add_argument("--skip-background", action="store_true", help="Весь фон: soft + hard")
+    ap.add_argument(
+        "--skip-background-soft",
+        action="store_true",
+        help="Не собирать «простой» фон (COCO без bird); hard может остаться",
+    )
+    ap.add_argument(
+        "--skip-background-hard",
+        action="store_true",
+        help="Не собирать hard-negative фон (person/dog/cat)",
+    )
     ap.add_argument(
         "--rodent-validation-only",
         action="store_true",
@@ -658,14 +678,16 @@ def main() -> int:
         return 2
 
     if not args.skip_birds:
-        _bootstrap_birds(root, args.birds_train, args.birds_val, chunk_size=ch)
-        _bootstrap_birds_open_images(
-            root,
-            args.birds_oid_train,
-            args.birds_oid_val,
-            chunk_size=ch,
-            validation_only=args.birds_oid_validation_only,
-        )
+        if not args.skip_birds_coco:
+            _bootstrap_birds(root, args.birds_train, args.birds_val, chunk_size=ch)
+        if not args.skip_birds_oid:
+            _bootstrap_birds_open_images(
+                root,
+                args.birds_oid_train,
+                args.birds_oid_val,
+                chunk_size=ch,
+                validation_only=args.birds_oid_validation_only,
+            )
     if not args.skip_rodents:
         _bootstrap_rodents(
             root,
@@ -676,26 +698,31 @@ def main() -> int:
             validation_only=args.rodent_validation_only,
         )
     if not args.skip_background:
-        _collect_no_bird_background(
-            root,
-            coco_split="train",
-            pool=args.background_train_pool,
-            target=args.background_train,
-            out_tag="train",
-            scan_chunk=bg_ch,
-        )
-        _collect_no_bird_background(
-            root,
-            coco_split="validation",
-            pool=args.background_val_pool,
-            target=args.background_val,
-            out_tag="val",
-            scan_chunk=bg_ch,
-        )
+        if not args.skip_background_soft:
+            _collect_no_bird_background(
+                root,
+                coco_split="train",
+                pool=args.background_train_pool,
+                target=args.background_train,
+                out_tag="train",
+                scan_chunk=bg_ch,
+            )
+            _collect_no_bird_background(
+                root,
+                coco_split="validation",
+                pool=args.background_val_pool,
+                target=args.background_val,
+                out_tag="val",
+                scan_chunk=bg_ch,
+            )
         hard_labels = frozenset(
             x.strip().lower() for x in args.background_hard_labels.split(",") if x.strip()
         )
-        if args.background_hard_train > 0 and hard_labels:
+        if (
+            not args.skip_background_hard
+            and args.background_hard_train > 0
+            and hard_labels
+        ):
             _collect_hard_negative_background(
                 root,
                 coco_split="train",
@@ -705,7 +732,11 @@ def main() -> int:
                 scan_chunk=bg_ch,
                 trigger_labels=hard_labels,
             )
-        if args.background_hard_val > 0 and hard_labels:
+        if (
+            not args.skip_background_hard
+            and args.background_hard_val > 0
+            and hard_labels
+        ):
             _collect_hard_negative_background(
                 root,
                 coco_split="validation",
