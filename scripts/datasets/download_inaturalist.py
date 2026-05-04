@@ -8,6 +8,8 @@
 Использование:
     pip install requests tqdm Pillow
     python download_inaturalist.py --output inaturalist_europe_cls --max-obs 5000
+    python download_inaturalist.py --taxon-id <ID_вида> --no-place-filter --max-obs 500 \\
+        --output inaturalist_one_species   # ID в URL страницы вида на inaturalist.org
 """
 
 import argparse
@@ -26,15 +28,23 @@ API = "https://api.inaturalist.org/v1/observations"
 RATE_LIMIT = 1.1  # сек между запросами (60/мин)
 
 
-def fetch_observations(page: int = 1, per_page: int = 200) -> dict:
-    """Запросить наблюдения птиц в Европе."""
-    r = requests.get(API, params={
-        'taxon_id': AVES_TAXON_ID,
-        'place_id': EUROPE_PLACE_ID,
+def fetch_observations(
+    page: int = 1,
+    per_page: int = 200,
+    *,
+    taxon_id: int,
+    place_id: int | None,
+) -> dict:
+    """Research-grade наблюдения; place_id=None — без фильтра региона (глобально)."""
+    params: dict = {
+        'taxon_id': taxon_id,
         'quality_grade': 'research',
         'per_page': per_page,
         'page': page,
-    }, timeout=30)
+    }
+    if place_id is not None:
+        params['place_id'] = place_id
+    r = requests.get(API, params=params, timeout=30)
     r.raise_for_status()
     return r.json()
 
@@ -49,7 +59,22 @@ def main():
     parser.add_argument('--photo-size', default='medium',
                         choices=['thumb', 'small', 'medium', 'large'],
                         help='Photo size from API')
+    parser.add_argument(
+        '--taxon-id',
+        type=int,
+        default=None,
+        metavar='ID',
+        help='Таксон вида на iNaturalist (со страницы вида). По умолчанию все птицы (Aves) в Европе.',
+    )
+    parser.add_argument(
+        '--no-place-filter',
+        action='store_true',
+        help='Не передавать place_id (добор по всему миру для узкого taxon-id).',
+    )
     args = parser.parse_args()
+
+    taxon = args.taxon_id if args.taxon_id is not None else AVES_TAXON_ID
+    place = None if args.no_place_filter else EUROPE_PLACE_ID
 
     output = Path(args.output).resolve()
     (output / 'train').mkdir(parents=True, exist_ok=True)
@@ -67,7 +92,7 @@ def main():
 
     while obs_count < args.max_obs:
         time.sleep(RATE_LIMIT)
-        data = fetch_observations(page=page, per_page=per_page)
+        data = fetch_observations(page=page, per_page=per_page, taxon_id=taxon, place_id=place)
         results = data.get('results', [])
         if not results:
             break
