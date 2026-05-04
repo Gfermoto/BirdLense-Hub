@@ -30,6 +30,10 @@ PAUSE="${WAVE_PAUSE:-5}"
 CHUNK="${CHUNK_SIZE:-35}"
 BGCH="${BG_SCAN_CHUNK:-500}"
 PHASE_BEGIN="${DETECTOR_PHASE_BEGIN:-1}"
+# Больше pool / chunk — чаще находим кадры без bird (медленнее на батч, меньше «нулевых» волн).
+EXTRA_BG_POOL=()
+[[ -n "${DETECTOR_BG_TRAIN_POOL:-}" ]] && EXTRA_BG_POOL+=(--background-train-pool "${DETECTOR_BG_TRAIN_POOL}")
+[[ -n "${DETECTOR_BG_VAL_POOL:-}" ]] && EXTRA_BG_POOL+=(--background-val-pool "${DETECTOR_BG_VAL_POOL}")
 
 say() { echo ""; echo ">>> $*"; echo ""; }
 
@@ -99,6 +103,7 @@ for i in 1 2 3 4 5; do
     --skip-background-hard \
     --background-train 900 --background-val 240 \
     --background-hard-train 0 --background-hard-val 0 \
+    "${EXTRA_BG_POOL[@]}" \
     --chunk-size "$CHUNK" \
     --bg-scan-chunk "$BGCH"
   pause
@@ -116,6 +121,7 @@ for i in 1 2 3 4; do
     --skip-background-soft \
     --background-train 0 --background-val 0 \
     --background-hard-train 450 --background-hard-val 125 \
+    "${EXTRA_BG_POOL[@]}" \
     --chunk-size "$CHUNK" \
     --bg-scan-chunk "$BGCH"
   pause
