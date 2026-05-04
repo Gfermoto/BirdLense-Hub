@@ -56,6 +56,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import cv2
+import yaml
 from openvino import Core
 from ultralytics import YOLO
 
@@ -81,9 +82,25 @@ gpu_present = any(str(d).upper().startswith('GPU') for d in devices)
 
 steady = []
 model_error = None
+resolved_model_path = '/app/processor/models/detection/weights/best_openvino_model'
+try:
+    cfg = yaml.safe_load(Path('/app/app_config/user_config.yaml').read_text(encoding='utf-8')) or {}
+    raw = (
+        ((cfg.get('processor') or {}).get('models') or {}).get('binary_openvino')
+        or ''
+    )
+    raw = str(raw).strip()
+    if raw:
+        cand = Path(raw)
+        if not cand.is_absolute():
+            cand = Path('/app/processor') / cand
+        resolved_model_path = str(cand)
+except Exception:
+    pass
+
 if frame is not None and gpu_present:
     try:
-        model = YOLO('/app/processor/models/detection/weights/best_openvino_model')
+        model = YOLO(resolved_model_path)
         model.predict(frame, device='intel:gpu', conf=0.15, imgsz=640, verbose=False)
         for _ in range(5):
             t0 = time.perf_counter()
@@ -108,6 +125,7 @@ out = {
     'steady_latency_ms': [round(float(v), 3) for v in steady],
     'steady_mean_ms': round(sum(steady) / len(steady), 3) if steady else None,
     'steady_p95_ms': round(p95(steady), 3) if steady else None,
+    'model_path': resolved_model_path,
     'model_error': model_error,
 }
 out_path = Path('${REMOTE_TMP}/openvino_gpu_smoke.v1.json')
