@@ -1,5 +1,27 @@
 # Детектор Bird / Rodent / Background — сборка «не говно»
 
+## Локальная структура `binary/`
+
+Каталог **`scripts/datasets/binary/`**: подпапки **`birds/`**, **`rodent/`**, **`background/`**. Крупные файлы в `.gitignore`.
+
+```
+binary/
+  birds/, rodent/, background/   # train|val/images + labels/
+  merged/                         # после make dataset-merge-three-class
+```
+
+Формат `labels/*.txt`: YOLO (`class xc yc w h`); у фона допускаются **пустые** файлы.
+
+| Подпапка | Типичный источник (bootstrap) | Один логический класс в labels до merge |
+|----------|-------------------------------|----------------------------------------|
+| `birds/` | COCO `bird`, опционально OID Bird | id `0` |
+| `rodent/` | Open Images V6 и т.д. | id `0` → после merge = **Rodent** |
+| `background/` | COCO без детекции `bird` | пустые `.txt` |
+
+Автозаполнение: `cd scripts/datasets && python3 bootstrap_detector_yolo.py`. Старые плоские каталоги можно передать в `merge_datasets_three_class.py` через `--birds-dir` / `--rodent-dir` / `--background-dir`. Краткая шпаргалка: [binary/README.md](./binary/README.md).
+
+---
+
 ## Проблема одного источника птиц
 
 Только **COCO `bird`** даёт узкий домен (часто крупный план, не ваши кормушки/камеры). Для recall на реальных сценах нужен **второй домен** боксов птиц.

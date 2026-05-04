@@ -9,8 +9,7 @@ Scripts for preparing bird detection training datasets. Uses [NABirds](https://d
 - **download_birds_eu_merged.py** — скачать [`gfermoto/birds-eu-merged`](https://huggingface.co/datasets/gfermoto/birds-eu-merged) (~490 видов, Scientific (Common))
 - **build_eu_classifier_yolo.sh** — скелет сборки (HF + опционально iNat + merge + refine)
 - **polish_eu_classifier.sh** — добор EXTRA-слоёв к готовому `yolo_cls_eu_merged` (`--restrict-to-primary-input`, сохранение `test/`)
-- **[CLASSIFIER_EXTRA_SOURCES.md](./CLASSIFIER_EXTRA_SOURCES.md)** — откуда ещё брать размеченные фото (HF/Kaggle/iNat точечно и др.)
-- **report_classifier_class_counts.py** — классы с малым числом изображений → список на добор
+- **report_classifier_class_counts.py** — классы с малым числом изображений → список на добор (см. раздел «Дополнительные открытые источники» в `EU_CLASSIFIER.md`)
 
 Дополнительный объём: увеличивайте `--max-obs` в **download_inaturalist.py** (`--taxon-id`, `--no-place-filter` для одного вида) и мержите вторым входом в **merge_classification_datasets.py**.
 
@@ -78,7 +77,7 @@ From repo root: **`make dataset-merge-three-class`** (expects those folders unde
 
 ## bootstrap_detector_yolo.py
 
-Creates **`binary/birds`**, **`binary/rodent`**, **`binary/background`** and downloads **starter** subsets via **FiftyOne**: COCO 2017 (`bird`), Open Images V6 (`Squirrel`), COCO scenes **without** `bird` for background (empty labels). Large blobs are gitignored — see [DETECTOR_DATA_LAYOUT.md](./DETECTOR_DATA_LAYOUT.md) and [binary/README.md](./binary/README.md).
+Creates **`binary/birds`**, **`binary/rodent`**, **`binary/background`** and downloads **starter** subsets via **FiftyOne**: COCO 2017 (`bird`), Open Images V6 (`Squirrel`), COCO scenes **without** `bird` for background (empty labels). Large blobs are gitignored — see [DETECTOR_DATASET_QUALITY.md](./DETECTOR_DATASET_QUALITY.md) (структура `binary/`) and [binary/README.md](./binary/README.md).
 
 Requires: `pip install fiftyone pyyaml`
 

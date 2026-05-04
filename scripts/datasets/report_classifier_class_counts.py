@@ -2,7 +2,7 @@
 """
 Сводка: сколько изображений на класс в layout YOLO classification (train/val/test).
 
-Помогает найти классы для добора из внешних датасетов (см. CLASSIFIER_EXTRA_SOURCES.md).
+Помогает найти классы для добора из внешних датасетов (см. EU_CLASSIFIER.md, раздел про открытые источники).
 
   python3 scripts/datasets/report_classifier_class_counts.py \\
     --root datasets/new/classifier/yolo_cls_eu_merged \\
