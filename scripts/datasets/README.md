@@ -2,6 +2,15 @@
 
 Scripts for preparing bird detection training datasets. Uses [NABirds](https://dl.allaboutbirds.org/nabirds) as the base dataset.
 
+## EU classifier (приоритет: максимум европейских видов)
+
+Пайплайн **без вырезания классов** для баланса — см. **[EU_CLASSIFIER.md](./EU_CLASSIFIER.md)**.
+
+- **download_birds_eu_merged.py** — скачать [`gfermoto/birds-eu-merged`](https://huggingface.co/datasets/gfermoto/birds-eu-merged) (~490 видов, Scientific (Common))
+- **build_eu_classifier_yolo.sh** — скелет сборки (HF + опционально iNat + merge + refine)
+
+Дополнительный объём: увеличивайте `--max-obs` в **download_inaturalist.py** и мержите вторым входом в **merge_classification_datasets.py**.
+
 ## EU birds: birds-525 + iNaturalist (формат Scientific (Common))
 
 - **download_hf_birds.py** — Hugging Face (birds-525) → YOLO cls, `--format scientific_common`
