@@ -4,7 +4,7 @@
 
 | Подпапка | Назначение |
 |----------|------------|
-| **`birds/`** | Один класс «птица» (YOLO `train|val/images` + `labels`). |
+| **`birds/`** | Один класс «птица» — **COCO bird** и при желании **Open Images Bird** (`bootstrap_detector_yolo.py --birds-oid-*`). |
 | **`rodent/`** | Один класс «грызун» (исторически белка/OID → метка Hub **Rodent**). |
 | **`background/`** | Фон: пустые `.txt` или боксы класса Background. |
 
