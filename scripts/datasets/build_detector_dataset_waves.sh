@@ -2,6 +2,9 @@
 # Тот же объём, что build_detector_dataset_large.sh, но порциями (волнами).
 # Меньше пик памяти/сети; между волнами пауза — можно Ctrl+C и продолжить позже.
 #
+# Скачивание пишет в datasets/new/detector/binary/ (см. DETECTOR_ETL_ROOT / --root).
+# После всех фаз: из корня репозитория «make dataset-merge-three-class» → datasets/new/detector/yolo/
+#
 #   bash scripts/datasets/build_detector_dataset_waves.sh
 #   WAVE_PAUSE=10 bash scripts/datasets/build_detector_dataset_waves.sh
 #   RUN_MERGE=1 bash scripts/datasets/build_detector_dataset_waves.sh

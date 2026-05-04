@@ -200,7 +200,7 @@ def _parse_input_hw_from_xml(path: str | None) -> int | None:
     if not path or not os.path.isfile(path):
         return None
     try:
-        root = ET.parse(path).getroot()
+        root = ET.parse(path).getroot()  # nosec B314 trusted local OpenVINO IR xml
     except (ET.ParseError, OSError):
         return None
     dims: list[int] = []

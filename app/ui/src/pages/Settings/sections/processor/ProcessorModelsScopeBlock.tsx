@@ -115,6 +115,34 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
             </form.Field>
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>
+            <form.Field name="processor.inference_device">
+              {(field) => (
+                <TextField
+                  fullWidth
+                  label={t('settings.processorInferenceDevice')}
+                  value={field.state.value ?? ''}
+                  onChange={(e) => field.handleChange(e.target.value || undefined)}
+                  helperText={t('settings.processorInferenceDeviceHint')}
+                  placeholder="intel:gpu"
+                />
+              )}
+            </form.Field>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <form.Field name="processor.classifier_inference_device">
+              {(field) => (
+                <TextField
+                  fullWidth
+                  label={t('settings.processorClassifierInferenceDevice')}
+                  value={field.state.value ?? ''}
+                  onChange={(e) => field.handleChange(e.target.value || undefined)}
+                  helperText={t('settings.processorClassifierInferenceDeviceHint')}
+                  placeholder=""
+                />
+              )}
+            </form.Field>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <form.Field name="processor.detector_weight_contract">
               {(field) => (
                 <FormControl fullWidth>

@@ -65,7 +65,7 @@ Background / hard-negative классы детектора — только dete
 
 - **Bird:** две линии данных: (1) **COCO 2017**, один класс птицы (`bird`), выгрузка через **`bootstrap_detector_yolo.py`** (FiftyOne); (2) обогащение bbox птиц из **Roboflow Universe** — экспорт в формате **YOLOv11**, импорт **`import_roboflow_bird_feeder_birds.py`** (все исходные классы в разметке сводятся в один класс bird). В использованной сборке ZIP брали с **[Bird-Feeder](https://universe.roboflow.com/meproject-pcsly/bird-feeder-hhjks/dataset/6)** (пример файла: `Bird-Feeder.v6i.yolov11.zip`; в метаданных экспорта — **CC BY 4.0**). Тот же скрипт подходит для любого аналогичного Roboflow ZIP после проверки лицензии на странице проекта; пример другого публичного набора про птиц: **[birds-yolo](https://universe.roboflow.com/birds-detection-2fyqw/birds-yolo)**.
 
-- **Rodent:** в этом пайплайне **не** из Roboflow. Боксы грызунов и близких видов — из **Open Images V6** через FiftyOne и **`bootstrap_detector_yolo.py`**; по умолчанию классы **`Squirrel`, `Mouse`, `Rat`, `Hamster`** (список задаётся **`--rodent-classes`**). Отдельно можно подмешать экспорт **OIDv4 Toolkit** в раскладку `binary/rodent/` — **`convert_oidv4_rodent_to_yolo.py`** (см. [scripts/datasets/README.md](../scripts/datasets/README.md)).
+- **Rodent:** в этом пайплайне **не** из Roboflow. Боксы грызунов и близких видов — из **Open Images V6** через FiftyOne и **`bootstrap_detector_yolo.py`**; по умолчанию классы **`Squirrel`, `Mouse`, `Rat`, `Hamster`** (список задаётся **`--rodent-classes`**). Отдельно можно подмешать экспорт **OIDv4 Toolkit** в раскладку `binary/rodent/` — **`convert_oidv4_rodent_to_yolo.py`** (см. **`scripts/datasets/README.md`**).
 
 - **Background:** кадры COCO без птицы и пустые лейблы (bootstrap) плюс кадры из папки оператора (**`import_hub_background_folder.py`**, см. этап 4 в таблице).
 
@@ -80,7 +80,7 @@ Background / hard-negative классы детектора — только dete
 | 5 | **Дедупликация** одинаковых изображений по SHA256 внутри сплита: **`dedupe_yolo_images.py`**. |
 | 6 | **Упаковка для Google Drive:** **`pack_brg_for_gdrive.py`** → архив вида **`BirdLense_detector_brg_<UTC>.zip`**. |
 
-Colab под этот ZIP и **`bl_best.pt`**: [ML_DETECTOR_COLAB.ru.md](./ML_DETECTOR_COLAB.ru.md). Скрипты и команды: [scripts/datasets/README.md](../scripts/datasets/README.md).
+Colab под этот ZIP и **`bl_best.pt`**: [ML_DETECTOR_COLAB.ru.md](./ML_DETECTOR_COLAB.ru.md). Скрипты и команды: **`scripts/datasets/README.md`**.
 
 ---
 

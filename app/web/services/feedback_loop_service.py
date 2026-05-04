@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import sqlite3
 from datetime import datetime, timedelta, timezone
@@ -64,9 +63,7 @@ def record_feedback_event(
 def build_feedback_loop_status(session, *, data_dir: str = "app/data") -> dict[str, Any]:
     total = int(session.query(func.count(DetectionFeedbackEvent.id)).scalar() or 0)
     relabel = int(
-        session.query(func.count(DetectionFeedbackEvent.id))
-        .filter(DetectionFeedbackEvent.action == "relabel")
-        .scalar()
+        session.query(func.count(DetectionFeedbackEvent.id)).filter(DetectionFeedbackEvent.action == "relabel").scalar()
         or 0
     )
     bg = int(
@@ -130,9 +127,7 @@ def export_feedback_learning_dataset(
     con.row_factory = sqlite3.Row
     try:
         has_table = bool(
-            con.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='detection_feedback_event'"
-            ).fetchone()
+            con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='detection_feedback_event'").fetchone()
         )
         if not has_table:
             out_missing = {

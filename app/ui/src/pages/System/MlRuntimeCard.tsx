@@ -53,17 +53,10 @@ export function MlRuntimeCard() {
         <Chip
           label={`classifier backend: ${valueOrDash(runtime.data.processor.classifier_inference_backend)}`}
         />
-        <Chip
-          label={`device: ${valueOrDash(data.processor.inference_device)}`}
-        />
-        <Chip
-          label={`classifier backend: ${valueOrDash(
-            data.processor.classifier_inference_backend,
-          )}`}
-        />
+        <Chip label={`device: ${valueOrDash(runtime.data.processor.inference_device)}`} />
         <Chip
           label={`classifier device: ${valueOrDash(
-            data.processor.classifier_inference_device,
+            runtime.data.processor.classifier_inference_device,
           )}`}
         />
         <Chip
