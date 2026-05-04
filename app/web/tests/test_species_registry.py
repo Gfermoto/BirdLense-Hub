@@ -343,6 +343,30 @@ def test_update_species_info_from_wiki_applies_manual_great_tit_override(app, mo
         assert "inaturalist-open-data.s3.amazonaws.com/photos/340613122/medium.jpg" in (sp.image_url or "")
 
 
+def test_update_species_info_from_wiki_applies_manual_eurasian_blue_tit_override(app, monkeypatch):
+    import species_metadata as sm
+
+    with app.app_context():
+        sp = Species(
+            name="Eurasian Blue Tit",
+            description="",
+            image_url="",
+            metadata_source=None,
+            metadata_source_url=None,
+        )
+        db.session.add(sp)
+        db.session.commit()
+
+        monkeypatch.setattr(sm, "get_wikipedia_image_and_description", lambda *_a, **_k: (None, None))
+        monkeypatch.setattr(sm, "get_inaturalist_image_and_description", lambda *_a, **_k: (None, None, None))
+
+        ok = sm.update_species_info_from_wiki(sp)
+        db.session.commit()
+        db.session.refresh(sp)
+        assert ok is True
+        assert "inaturalist-open-data.s3.amazonaws.com/photos/41677354/medium.jpeg" in (sp.image_url or "")
+
+
 def test_wikipedia_extract_rejects_human_hair_article():
     import species_metadata as sm
 

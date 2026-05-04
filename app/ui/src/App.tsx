@@ -186,6 +186,21 @@ const theme = createTheme({
         },
       },
     },
+    /** Avoid a11y tools flagging switches/checkboxes as read-only when they are editable. */
+    MuiSwitch: {
+      defaultProps: {
+        slotProps: {
+          input: { readOnly: false },
+        },
+      },
+    },
+    MuiCheckbox: {
+      defaultProps: {
+        slotProps: {
+          input: { readOnly: false },
+        },
+      },
+    },
     MuiInputLabel: {
       styleOverrides: {
         root: {

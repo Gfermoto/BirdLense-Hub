@@ -25,7 +25,8 @@
     "speciesHint": "物种目录与出现频率。",
     "foodHint": "喂食器、投喂与称重——控制与状态。",
     "liveViewHint": "摄像头实时画面；延迟取决于网络与编码。",
-    "logoutHint": "结束可访问站点设置与后台工具的会话。"
+    "logoutHint": "结束可访问站点设置与后台工具的会话。",
+    "brandHome": "BirdLense Hub ML — 首页"
   },
   "library": {
     "activity": "记录活动",
@@ -196,16 +197,16 @@
     "advanced": "高级设置",
     "advancedDesc": "YOLO（鸟类检测）用于处理器-processor.models 配置中的模型。这里只记录params和filters。",
     "modeOverview": "概览",
-    "modeWorkspace": "服务",
+    "modeWorkspace": "工作区",
     "modeAria": "设置页面模式",
-    "simpleModeHint": "显示常用设置。「服务」模式可展开处理器与物种目录的高级项。",
+    "simpleModeHint": "显示常用设置。切换到「工作区」可展开处理器与物种目录相关的高级项。",
     "accordionGeneral": "常规",
     "accordionGeneralDesc": "Hub 系统级设置、天气、MCP、性能与备份控制。",
     "accordionConnection": "连接",
     "accordionConnectionDesc": "MQTT、Go2RTC、摄像头——系统基础。",
     "accordionConnections": "连接",
     "accordionConnectionsDesc": "Hub 的外部连接：MQTT、Home Assistant、Go2RTC、摄像头和录像传输。",
-    "accordionMotion": "运动检测",
+    "accordionMotion": "采集触发条件",
     "accordionMotionDesc": "任一启用的触发器都会启动同一条「片段会话」：从相机连续取帧，YOLO 在帧上跑检测，结果写入访问记录；视频文件是会话的一部分，而不是「只录像不检测」。默认触发是相机运动 (OpenCV)。Frigate (MQTT)、独立 MQTT/ESPHome 传感器、以及（若启用）重量跳变可并行参与。Frigate+MQTT 时 OpenCV 可并行作兜底。BirdNET 参与声音侧合并与通知阈值，不负责启动会话。",
     "accordionFeed": "喂食器",
     "accordionFeedDesc": "通过 MQTT 或 ESPHome 控制喂食器继电器。",
@@ -299,6 +300,7 @@
     "frigateLabelExclude": "排除护卫舰标签",
     "frigateLabelExcludeHint": "要忽略的标签（鼠标被误识别为猫/狗）。以逗号分隔。",
     "frigateMotionIntro": "Frigate MQTT 事件（见「连接」）启动片段会话（取帧 + 检测）并参与与 YOLO 的融合。下方：过滤器与几何回退。",
+    "frigateMinScoreYamlHint": "专家项：Frigate 的最高分门槛（triggers.frigate.min_trigger_score）仅可在 YAML 中调整；请到「常规」用 YAML 导出/导入修改。",
     "frigateRoutingTitle": "护卫舰路由（MQTT）",
     "frigateRoutingDesc": "空摄像机列表 = 仅在视频下配置的摄像机（与未设置相同）。空标签列表 = 任何标签（噪音较大）。排除的标签不会合并为护卫舰物种，但几何后备记录可能仍会开始。",
     "frigateCameraFilter": "仅护卫舰摄像机（ID）",
@@ -1455,8 +1457,9 @@
   },
   "system": {
     "pageDescription": "状态摘要、目录与诊断。扩展模式用于日志、维护与少见操作。",
+    "pageModeToggleHint": "你从侧栏「服务」入口进入本页。此处两个标签只切换信息密度：「概览」为默认摘要；「工作区」显示诊断、自动化、日志与模型工具。",
     "modeOverview": "概览",
-    "modeWorkspace": "服务",
+    "modeWorkspace": "工作区",
     "modeAria": "系统页面模式",
     "storage": "存储",
     "sections": {

@@ -203,6 +203,13 @@ export function CaptureFeederSection({ form }: Props) {
                           >
                             {t('settings.frigateMotionIntro')}
                           </Alert>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mb: 2 }}
+                          >
+                            {t('settings.frigateMinScoreYamlHint')}
+                          </Typography>
                           <Grid container spacing={2}>
                             <Grid size={{ xs: 12 }}>
                               <form.Field name="triggers.frigate.topic">

@@ -45,7 +45,7 @@ binary/
 |-------|-------|-----|-------------|
 | COCO bird | 2 000–4 000 | 500–900 | База |
 | OID Bird | 0 или 2 000+ | 500–2 500 | Если train OID тяжёл — только `--birds-oid-validation-only` и большая `--birds-oid-val` |
-| Rodent (OID) | 3 000–6 000 | 700–1 500 | Полный train OID, если тянет машина; иначе validation-only |
+| Rodent (OID) | 3 000–6 000 | 700–1 500 | Полный train OID, если тянет машина; иначе validation-only. Имена классов только из OID **boxable** (напр. ``Squirrel``, ``Mouse``, ``Hamster``); отдельного ``Rat`` в списке нет — см. `--rodent-classes` / валидацию в ``bootstrap_detector_yolo.py`` |
 | Фон «простой» | 4 000–8 000 | 1 000–2 000 | Без птицы |
 | Фон hard | 1 500–3 000 | 400–800 | Люди/кошки/собаки, без птицы |
 
