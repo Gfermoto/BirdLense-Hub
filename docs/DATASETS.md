@@ -107,23 +107,13 @@ Shared convention for merge, Frigate, BirdNET, YOLO:
 
 ## 3. Scripts (`scripts/datasets/`)
 
-### EU classifier (birds-525 + iNaturalist)
+Canonical index: **[scripts/datasets/README.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/datasets/README.md)**. EU classifier workflow: **[EU_CLASSIFIER.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/datasets/EU_CLASSIFIER.md)**. Detector (three-class binary layout, bootstrap, quality): **[DETECTOR_DATASET_QUALITY.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/datasets/DETECTOR_DATASET_QUALITY.md)**.
 
-| Script | Role |
-|--------|------|
-| `export_birdlense_to_yolo.py` | BirdLense local crops (`app/data/dataset/train`) → YOLO cls `train/val` |
-| `download_hf_birds.py` | Hugging Face → YOLO cls (`--format scientific_common`) |
-| `download_inaturalist.py` | iNaturalist Europe → YOLO cls |
-| `merge_classification_datasets.py` | Merge splits |
-| `download_and_merge_all.sh` | Full pipeline → `merged_cls` |
-
-### Detector (legacy)
-
-| Script | Role |
-|--------|------|
-| `convert_nabirds_to_yolo.py` | NABirds → YOLO |
-| `download_coco_birds.py` | COCO birds for binary |
-| `merge_datasets_binary.py` | NABirds + COCO → binary |
+| Area | Key entrypoints |
+|------|-----------------|
+| EU classifier | `download_birds_eu_merged.py`, `download_inaturalist.py`, `merge_classification_datasets.py`, `refine_classifier_yolo_cls.py`, `polish_eu_classifier.sh` |
+| Detector | `bootstrap_detector_yolo.py`, `merge_datasets_three_class.py` → **`make dataset-merge-three-class`** |
+| Legacy / NABirds | `convert_nabirds_to_yolo.py`, `download_coco_birds.py`, `merge_datasets_binary.py`, `download_and_merge_all.sh` (full birds-525+iNat pipeline without HF EU base — see README in `scripts/datasets/`) |
 
 ### Weights (`app/processor/models/`)
 
@@ -173,12 +163,16 @@ The shipped detector is trained on **NABirds + COCO birds + OIDv4 squirrel** (Op
 
 ## 6. Pipeline: collect → train
 
+**EU classifier (recommended):** `download_birds_eu_merged.py` → optional extra layers → `merge_classification_datasets.py` → `refine_classifier_yolo_cls.py` — see [EU_CLASSIFIER.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/datasets/EU_CLASSIFIER.md).
+
+**From scratch (birds-525 + iNaturalist):** same merge/refine scripts without the HF EU base — see [scripts/datasets/README.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/scripts/datasets/README.md).
+
 ```
-BirdLense recordings → export_birdlense_to_yolo.py → YOLO dataset
-                                        ↓
-birds-525 + iNaturalist → merge_classification_datasets.py → merged_cls
-                                              ↓
-                              TRAINING.md (Colab) → best.pt
+BirdLense recordings → export_birdlense_to_yolo.py → локальный слой YOLO cls (опционально в merge)
+                              ↓
+                    merged_cls / yolo_cls_eu_merged
+                              ↓
+                    TRAINING.md (Colab) → best.pt
 ```
 
 ---

@@ -131,14 +131,14 @@
 
 ## Сценарий 11: Исследование и дообучение модели
 
-См. [TRAINING.md](./TRAINING.md), [DATASETS.md](./DATASETS.md). Скрипты: `scripts/datasets/`, merge → Colab.
+См. [TRAINING.ru.md](./TRAINING.ru.md), [DATASETS.ru.md](./DATASETS.ru.md). Скрипты: `scripts/datasets/`, merge → Colab.
 
 ---
 
 ## Troubleshooting
 
-**Frigate обнаружил птицу, но BirdLense не записал:** см. [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) — пропущенные события, чеклист причин.
+**Frigate обнаружил птицу, но BirdLense не записал:** см. [TROUBLESHOOTING.ru.md](./TROUBLESHOOTING.ru.md) — пропущенные события, чеклист причин.
 
 ---
 
-См. также: [OVERVIEW](./OVERVIEW.ru.md) · [INSTALL](./INSTALL.ru.md) · [CONFIGURATION](./CONFIGURATION.ru.md) · [GLOSSARY](./GLOSSARY.ru.md) · [ARCHITECTURE](./ARCHITECTURE.md).
+См. также: [OVERVIEW](./OVERVIEW.ru.md) · [INSTALL](./INSTALL.ru.md) · [CONFIGURATION](./CONFIGURATION.ru.md) · [GLOSSARY](./GLOSSARY.ru.md) · [ARCHITECTURE](./ARCHITECTURE.ru.md).

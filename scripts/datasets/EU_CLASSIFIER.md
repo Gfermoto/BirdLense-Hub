@@ -54,7 +54,19 @@ python3 scripts/datasets/backfill_classifier_open.py \
 
 `--place-mode europe` — только Европа; `global` — больше наблюдений для очень редких видов.
 
-Дополнительные открытые источники и ручной добор: **[CLASSIFIER_EXTRA_SOURCES.md](./CLASSIFIER_EXTRA_SOURCES.md)**.
+## Дополнительные открытые источники (сводка)
+
+| Источник | Скрипт | Заметки |
+|----------|--------|---------|
+| EU-merge на HF | `download_birds_eu_merged.py` | База ~491 класса |
+| iNaturalist Europe, research-grade | `download_inaturalist.py` | `--max-obs`; для одного вида — `--taxon-id`, `--no-place-filter` |
+| birds-525 (HF) | `download_hf_birds.py --format scientific_common` | Другой `--dataset`, если зеркало на HF (лицензия/структура) |
+
+Примеры массового и точечного iNat — выше («Массовый добор», «Точечный добор»).
+
+**Вне репозитория** (отдельный ETL): BirdCLEF/LifeCLEF, CUB-200, NABirds (US), Macaulay Library, GBIF/Observation.org — проверять лицензию и фильтры по таксону; для EU чаще достаточно iNat + HF.
+
+Порядок: `report_classifier_class_counts.py` → backfill или отдельные слои → `merge_classification_datasets.py` → `refine_classifier_yolo_cls.py` (`--dedupe --normalize --test-split`).
 
 ## Слить слои
 

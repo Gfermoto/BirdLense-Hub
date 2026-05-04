@@ -12,4 +12,4 @@
 
 Сами изображения и разметка в подпапках **не коммитятся** (см. `.gitignore`). Из‑за этого **дерево файлов в Cursor / VS Code может не показывать** `birds/`, `rodent/`, `background/` — проверьте в терминале: `ls birds/train/images | head`.
 
-Подробнее: [DETECTOR_DATA_LAYOUT.md](../DETECTOR_DATA_LAYOUT.md).
+Подробнее: структура каталогов, bootstrap и качество — [DETECTOR_DATASET_QUALITY.md](../DETECTOR_DATASET_QUALITY.md).
