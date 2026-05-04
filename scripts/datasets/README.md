@@ -34,6 +34,8 @@ Scripts for preparing bird detection training datasets. Uses [NABirds](https://d
 
 Быстрый большой прогон: **`build_detector_dataset_large.sh`** (числа править внутри).
 
+Тот же объём **волнами**: **`build_detector_dataset_waves.sh`** (см. `DETECTOR_DATASET_QUALITY.md`).
+
 ## convert_nabirds_to_yolo.py
 
 Converts raw NABirds dataset to [Ultralytics YOLO format](https://docs.ultralytics.com/datasets/) used for training.
