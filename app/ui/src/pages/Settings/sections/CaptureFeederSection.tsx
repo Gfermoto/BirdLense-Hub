@@ -18,7 +18,6 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ServiceBlock } from '../shared/ServiceBlock';
-import { MotionLegacyMirrorBlock } from './MotionLegacyMirrorBlock';
 import { ScalesIntegrationFields } from '../shared/scalesIntegrationFields';
 import { FeederRelayFields } from '../shared/feederRelayFields';
 import type { Settings } from '../../../types';
@@ -224,7 +223,7 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_camera_filter">
+                              <form.Field name="triggers.frigate.camera_filter">
                                 {(field) => (
                                   <TextField
                                     fullWidth
@@ -244,7 +243,7 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_label_filter">
+                              <form.Field name="triggers.frigate.label_filter">
                                 {(field) => (
                                   <TextField
                                     fullWidth
@@ -264,7 +263,7 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_label_exclude">
+                              <form.Field name="triggers.frigate.label_exclude">
                                 {(field) => (
                                   <TextField
                                     fullWidth
@@ -284,7 +283,7 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_trigger_on_tracked_object">
+                              <form.Field name="triggers.frigate.trigger_on_tracked_object">
                                 {(field) => (
                                   <FormControl fullWidth>
                                     <FormControlLabel
@@ -443,10 +442,6 @@ export function CaptureFeederSection({ form }: Props) {
                     }
                   </form.Subscribe>
                 </ServiceBlock>
-              </Grid>
-
-              <Grid size={{ xs: 12 }}>
-                <MotionLegacyMirrorBlock form={form} />
               </Grid>
 
               <Grid size={{ xs: 12 }}>

@@ -29,9 +29,10 @@ import {
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
+  simpleMode?: boolean;
 };
 
-export function IntegrationsSection({ form }: Props) {
+export function IntegrationsSection({ form, simpleMode = true }: Props) {
   const { t } = useTranslation();
   const [ebirdSuggestLoading, setEbirdSuggestLoading] = useState(false);
   const [ebirdSuggestError, setEbirdSuggestError] = useState<string | null>(
@@ -364,7 +365,7 @@ export function IntegrationsSection({ form }: Props) {
             </Grid>
           </ServiceBlock>
 
-          <SpeciesCatalogSettingsBlock form={form} />
+          {!simpleMode ? <SpeciesCatalogSettingsBlock form={form} /> : null}
         </Box>
       </AccordionDetails>
     </Accordion>

@@ -135,7 +135,7 @@ High-level layout of the single-container app, data paths, and integrations. For
 | **YOLO** | Processor heartbeat field `last_yolo_ok_at` (fresh within ~5 min) |
 | **Processor** | Heartbeat rows in ActivityLog (~60 s) |
 
-When `motion.source` is `frigate`, the **MQTT** tile reflects the Frigate/MQTT path.
+When **`triggers.frigate.enabled`** is true (Frigate MQTT path), the **MQTT** tile reflects Frigate/events traffic.
 
 ---
 

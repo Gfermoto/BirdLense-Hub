@@ -16,6 +16,7 @@ import {
 import { Settings as SettingsType } from '../../types';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
+import { PageModeToggle, type PageMode } from '../../components/PageModeToggle';
 import { PageHeader } from '../../components/PageHeader';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -26,6 +27,7 @@ export const Settings: React.FC = () => {
   useDocumentTitle(t('nav.settings'));
   const queryClient = useQueryClient();
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [mode, setMode] = useState<PageMode>('simple');
   const [restartMessage, setRestartMessage] = useState<{
     type: 'success' | 'error';
     textKey: string;
@@ -106,6 +108,15 @@ export const Settings: React.FC = () => {
           <PageHeader
             title={t('settings.updateTitle')}
             description={`${t('settings.pageDescription')} ${t('settings.restartInfo')}`}
+            actions={
+              <PageModeToggle
+                value={mode}
+                onChange={setMode}
+                simpleLabel={t('settings.modeOverview')}
+                advancedLabel={t('settings.modeWorkspace')}
+                ariaLabel={t('settings.modeAria')}
+              />
+            }
             titleVariant="h3"
           />
           <Alert severity="info" variant="outlined" sx={{ mb: 0 }}>
@@ -128,6 +139,7 @@ export const Settings: React.FC = () => {
             onSubmit={updateMutation.mutate}
             yamlSafeExportEnabled={canEdit}
             yamlAdminBackupEnabled={isAdmin}
+            simpleMode={mode === 'simple'}
           />
           <Snackbar
             open={showSuccessAlert}

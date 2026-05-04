@@ -659,14 +659,14 @@ class MQTTEventAggregator:
                         trigger_score = float(ev.get("confidence") or 0.0)
                     except (TypeError, ValueError):
                         trigger_score = 0.0
-                    raw_min_trigger_score = app_config.get("motion.frigate_min_trigger_score")
+                    raw_min_trigger_score = app_config.get("triggers.frigate.min_trigger_score")
                     try:
                         min_trigger_score = (
                             0.0 if isinstance(raw_min_trigger_score, bool) else float(raw_min_trigger_score or 0.0)
                         )
                     except (TypeError, ValueError):
                         min_trigger_score = 0.0
-                    per_camera_thresholds = app_config.get("motion.frigate_min_trigger_score_by_camera") or {}
+                    per_camera_thresholds = app_config.get("triggers.frigate.min_trigger_score_by_camera") or {}
                     if isinstance(per_camera_thresholds, dict):
                         camera_key = str(camera or "").strip().lower()
                         for key, value in per_camera_thresholds.items():
@@ -685,7 +685,7 @@ class MQTTEventAggregator:
                     lbl_f_lower = {s.lower() for s in lbl_f}
                     # Empty label filter means wildcard (accept any label).
                     lbl_ok = (not lbl_f_lower) or bool(lbl_f_lower & labels_lower)
-                    relaxed = bool(app_config.get("motion.frigate_trigger_on_tracked_object", True))
+                    relaxed = bool(app_config.get("triggers.frigate.trigger_on_tracked_object", True))
                     has_geometry = _frigate_after_has_tracked_geometry(after if isinstance(after, dict) else {})
                     accepted_by = "label_filter"
                     if not lbl_ok and relaxed and has_geometry:
