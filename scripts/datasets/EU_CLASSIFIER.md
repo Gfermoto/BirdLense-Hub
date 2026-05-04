@@ -66,7 +66,6 @@ python3 scripts/datasets/merge_classification_datasets.py \
            datasets/new/classifier/raw/inat_europe_bulk \
            datasets/new/classifier/raw/inat_backfill \
   --output datasets/new/classifier/yolo_cls_eu_merged \
-  --symlink \
   --val-ratio 0.2
 ```
 

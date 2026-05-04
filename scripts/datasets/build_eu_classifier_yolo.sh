@@ -15,11 +15,10 @@ echo "==> Optional: bulk iNaturalist EU (раскомментируйте и з�
 #   --max-obs 40000 \
 #   --photo-size medium
 
-echo "==> Merge (только HF base; добавьте второй input если скачали iNat)"
+echo "==> Merge (копии файлов; --symlink ломает объём при refine/rebalance)"
 "${PY}" scripts/datasets/merge_classification_datasets.py \
   --inputs "${ROOT}/yolo_cls_eu_hf" \
   --output "${ROOT}/yolo_cls_eu_merged" \
-  --symlink \
   --val-ratio 0.2
 
 echo "==> Refine: dedupe + normalize + test (имена Scientific_(Common) как в Hub)"
