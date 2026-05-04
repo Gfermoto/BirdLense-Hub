@@ -252,3 +252,12 @@ class TestAllowlistScientificForDisplayName:
         )
         _load_allowlist_names_cached.cache_clear()
         assert allowlist_scientific_name_for_display_name("Eurasian Magpie", lambda *_a, **_k: None) == "Pica pica"
+
+
+def test_normalize_species_to_canonical_handles_case_variants():
+    from web.species_metadata import normalize_species_to_canonical
+
+    mapping = {
+        "Pica pica (Eurasian Magpie)": "Eurasian Magpie",
+    }
+    assert normalize_species_to_canonical("Pica Pica (eurasian Magpie)", mapping) == "Eurasian Magpie"

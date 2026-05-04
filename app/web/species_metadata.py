@@ -108,6 +108,8 @@ _manual_image_overrides = {
     # en.wikipedia без pageimage / iNat не матчит видовой ранг по common-name binomial из статьи
     "samatran thrush": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Zoothera_mollissima.jpg/330px-Zoothera_mollissima.jpg",
     "stripped manakin": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Machaeropterus_regulus_-_Stripped_manakin_%28male%29.jpg/330px-Machaeropterus_regulus_-_Stripped_manakin_%28male%29.jpg",
+    # Wikipedia pageimage for Great Tit can resolve to a dead bird photo; pin to stable live bird image.
+    "great tit": "https://inaturalist-open-data.s3.amazonaws.com/photos/340613122/medium.jpg",
 }
 
 
@@ -311,8 +313,18 @@ def load_species_canonical_mapping():
             if not line or line.startswith("#") or "|" not in line:
                 continue
             variant, canonical = line.split("|", 1)
-            result[variant.strip()] = canonical.strip()
+            canonical_name = canonical.strip()
+            variant_name = variant.strip()
+            result[variant_name] = canonical_name
+            result[_norm_species_canonical_lookup_key(variant_name)] = canonical_name
     return result
+
+
+def _norm_species_canonical_lookup_key(name: str) -> str:
+    s = str(name or "").strip().lower()
+    s = s.replace("_", " ").replace("-", " ")
+    s = re.sub(r"\s+", " ", s)
+    return s
 
 
 def normalize_species_to_canonical(name: str, mapping: dict | None = None) -> str:
@@ -321,7 +333,16 @@ def normalize_species_to_canonical(name: str, mapping: dict | None = None) -> st
     mapping: variant -> canonical. Если None — загружается из seed.
     """
     mapping = mapping or load_species_canonical_mapping()
-    return mapping.get(name, name)
+    direct = mapping.get(name)
+    if direct:
+        return direct
+    norm_key = _norm_species_canonical_lookup_key(name)
+    by_norm = {
+        _norm_species_canonical_lookup_key(k): v
+        for k, v in mapping.items()
+        if str(k or "").strip()
+    }
+    return by_norm.get(norm_key, name)
 
 
 _hierarchy_parent_map = None

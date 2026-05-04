@@ -40,6 +40,7 @@ Streptopelia decaocto (Eurasian Collared-Dove)|Eurasian Collared-Dove
 Eurasian Collared-Dove|Eurasian Collared-Dove
 
 Pica pica (Eurasian Magpie)|Eurasian Magpie
+Pica Pica (eurasian Magpie)|Eurasian Magpie
 Pica pica|Eurasian Magpie
 Magpie|Eurasian Magpie
 Common Magpie|Eurasian Magpie
