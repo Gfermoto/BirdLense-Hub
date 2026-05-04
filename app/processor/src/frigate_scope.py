@@ -36,16 +36,16 @@ def frigate_camera_allow_ids(cameras: list, config: Any) -> list:
     Сначала ``triggers.frigate.camera_filter``,
     затем ``mqtt.frigate_camera_filter``.
     """
-    raw = _get_from_config(config, 'triggers.frigate.camera_filter')
+    raw = _get_from_config(config, "triggers.frigate.camera_filter")
     if raw is None:
-        raw = _get_from_config(config, 'mqtt.frigate_camera_filter')
+        raw = _get_from_config(config, "mqtt.frigate_camera_filter")
     if raw is None:
-        return [c['id'] for c in cameras]
+        return [c["id"] for c in cameras]
     if isinstance(raw, str):
         s = raw.strip()
-        return [s] if s else [c['id'] for c in cameras]
+        return [s] if s else [c["id"] for c in cameras]
     if isinstance(raw, (list, tuple)):
         if not raw:
-            return [c['id'] for c in cameras]
+            return [c["id"] for c in cameras]
         return list(raw)
-    return [c['id'] for c in cameras]
+    return [c["id"] for c in cameras]

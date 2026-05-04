@@ -183,9 +183,7 @@ def test_grouped_trigger_helpers_read_triggers_flat():
         "motion_sensor",
         "scales",
     ]
-    assert get_legacy_motion_source_label(_get, mqtt_broker="mqtt.local") == (
-        "opencv,frigate,motion_sensor,scales"
-    )
+    assert get_legacy_motion_source_label(_get, mqtt_broker="mqtt.local") == ("opencv,frigate,motion_sensor,scales")
 
 
 def test_migrate_legacy_motion_block_moves_into_triggers():

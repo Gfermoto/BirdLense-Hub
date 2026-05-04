@@ -293,9 +293,7 @@ class TwoStageStrategy(DetectionStrategy):
         )
         self.classifier_inference_fallback_devices = [
             str(x).strip()
-            for x in (
-                classifier_inference_fallback_devices or [self.classifier_inference_device]
-            )
+            for x in (classifier_inference_fallback_devices or [self.classifier_inference_device])
             if str(x).strip()
         ] or [self.classifier_inference_device]
         self.active_classifier_inference_device = self.classifier_inference_fallback_devices[0]
@@ -305,9 +303,13 @@ class TwoStageStrategy(DetectionStrategy):
         except (TypeError, ValueError):
             self.openvino_num_requests = 0
         self.openvino_model_cache_enabled = bool(openvino_model_cache_enabled)
-        self.classifier_openvino_profile = str(
-            classifier_openvino_profile or self.openvino_profile,
-        ).strip().lower()
+        self.classifier_openvino_profile = (
+            str(
+                classifier_openvino_profile or self.openvino_profile,
+            )
+            .strip()
+            .lower()
+        )
         try:
             self.classifier_openvino_num_requests = max(
                 0,
