@@ -165,6 +165,7 @@ dataset-merge-three-class:
 
 # Скачать стартовые подмножества COCO + Open Images в три каталога (нужен pip install fiftyone).
 # Переопределение лимитов: make bootstrap-detector-data ARGS='--birds-train 50 --birds-val 20'
+# Большой детектор: scripts/datasets/DETECTOR_DATASET_QUALITY.md и build_detector_dataset_large.sh
 bootstrap-detector-data:
 	@cd scripts/datasets && python3 bootstrap_detector_yolo.py $(ARGS)
 

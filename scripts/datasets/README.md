@@ -26,6 +26,14 @@ Scripts for preparing bird detection training datasets. Uses [NABirds](https://d
 
 Формат имён: `Scientific_name (Common Name)` — совпадает с Frigate. См. [docs/DATASETS.md](../docs/DATASETS.md).
 
+## Детектор (Bird / Rodent / Background)
+
+Сборка данных: **`bootstrap_detector_yolo.py`** → **`make dataset-merge-three-class`** → `binary/merged/`.
+
+Усиление качества (второй домен птиц OID **Bird**, hard-negative фон person/dog/cat): **[DETECTOR_DATASET_QUALITY.md](./DETECTOR_DATASET_QUALITY.md)**.
+
+Быстрый большой прогон: **`build_detector_dataset_large.sh`** (числа править внутри).
+
 ## convert_nabirds_to_yolo.py
 
 Converts raw NABirds dataset to [Ultralytics YOLO format](https://docs.ultralytics.com/datasets/) used for training.

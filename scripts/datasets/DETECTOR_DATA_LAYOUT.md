@@ -48,6 +48,8 @@ cd scripts/datasets
 python3 bootstrap_detector_yolo.py
 ```
 
+Качество детектора: второй источник птиц (Open Images **Bird**), hard-negative фон (люди/питомцы без птицы) — см. **[DETECTOR_DATASET_QUALITY.md](./DETECTOR_DATASET_QUALITY.md)** и `build_detector_dataset_large.sh`.
+
 См. также [binary/README.md](./binary/README.md).
 
 ## Раньше были плоские имена (`birds_binary_yolo/` …)
