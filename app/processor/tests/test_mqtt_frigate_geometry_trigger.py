@@ -86,7 +86,7 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         msg.payload = payload
 
         def cfg_get(key, default=None):
-            if key == 'motion.frigate_trigger_on_tracked_object':
+            if key == 'triggers.frigate.trigger_on_tracked_object':
                 return True
             return default
 
@@ -191,9 +191,9 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         msg.payload = payload
 
         def cfg_get(key, default=None):
-            if key == 'motion.frigate_trigger_on_tracked_object':
+            if key == 'triggers.frigate.trigger_on_tracked_object':
                 return True
-            if key == 'motion.frigate_min_trigger_score':
+            if key == 'triggers.frigate.min_trigger_score':
                 return 0.5
             return default
 
@@ -234,11 +234,11 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         msg.payload = payload
 
         def cfg_get(key, default=None):
-            if key == 'motion.frigate_trigger_on_tracked_object':
+            if key == 'triggers.frigate.trigger_on_tracked_object':
                 return True
-            if key == 'motion.frigate_min_trigger_score':
+            if key == 'triggers.frigate.min_trigger_score':
                 return 0.5
-            if key == 'motion.frigate_min_trigger_score_by_camera':
+            if key == 'triggers.frigate.min_trigger_score_by_camera':
                 return {'birdbox': 0.62}
             return default
 
@@ -279,7 +279,7 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         msg.payload = payload
 
         def cfg_get(key, default=None):
-            if key == 'motion.frigate_trigger_on_tracked_object':
+            if key == 'triggers.frigate.trigger_on_tracked_object':
                 return True
             return default
 

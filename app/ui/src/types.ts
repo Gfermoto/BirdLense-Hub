@@ -404,21 +404,6 @@ export interface Settings {
     esphome_switch_id?: string;
     esphome_type?: 'switch' | 'button';
   };
-  motion?: {
-    source?: 'opencv' | 'frigate' | 'mqtt' | 'esphome';
-    check_every_n_frames?: number;
-    opencv_diff_threshold?: number;
-    opencv_min_contour_area?: number;
-    frigate_min_trigger_score?: number;
-    frigate_camera_filter?: string[];
-    frigate_label_filter?: string[];
-    frigate_label_exclude?: string[];
-    /** Если метка не в фильтре, но у объекта в MQTT есть box — всё равно старт записи */
-    frigate_trigger_on_tracked_object?: boolean;
-    mqtt_topic?: string;
-    esphome_url?: string;
-    esphome_sensor_id?: string;
-  };
   triggers?: {
     opencv?: {
       enabled?: boolean;
@@ -429,6 +414,12 @@ export interface Settings {
     frigate?: {
       enabled?: boolean;
       topic?: string;
+      camera_filter?: string[];
+      label_filter?: string[];
+      label_exclude?: string[];
+      trigger_on_tracked_object?: boolean;
+      min_trigger_score?: number;
+      min_trigger_score_by_camera?: Record<string, number>;
     };
     motion_sensor?: {
       enabled?: boolean;

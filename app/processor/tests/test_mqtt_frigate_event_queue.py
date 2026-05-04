@@ -48,7 +48,7 @@ class TestFrigateEventQueue(unittest.TestCase):
         msg.payload = payload
 
         def cfg_get(key, default=None):
-            if key == "motion.frigate_trigger_on_tracked_object":
+            if key == "triggers.frigate.trigger_on_tracked_object":
                 return True
             return default
 

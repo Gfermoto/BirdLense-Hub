@@ -292,36 +292,7 @@ video:
   video_width: 1280
   video_height: 720
 
-# Legacy motion fields. New UI/runtime prefer grouped `triggers.*`, but these keys stay as
-# backward-compatible fallback for old user_config.yaml and transition logic.
-# Motion trigger: opencv | frigate | mqtt | esphome
-# opencv - analyze every frame; frigate - Frigate MQTT events; mqtt - binary sensor topic; esphome - ESPHome binary sensor
-motion:
-  source: opencv
-  # Проверять движение раз в N кадров (1 = каждый кадр, 3 = каждый 3-й). Снижает нагрузку на CPU при высоком FPS.
-  check_every_n_frames: 1
-  # OpenCV (параллельно Frigate или как основной источник): чувствительность к мелкому движению (птица вдали).
-  opencv_diff_threshold: 18
-  opencv_min_contour_area: 240
-  frigate_camera_filter: []  # from cameras list; frigate/events
-  # bird/animal — базовые модели; jay/corvid — частые кастомные/семейные метки Frigate+YOLO.
-  # Пустой filter = любая метка (шумнее); геометрия в after/snapshot всё равно подхватывается при frigate_trigger_on_tracked_object.
-  frigate_label_filter: ["bird", "Bird", "jay", "Jay", "corvid", "Corvid", "squirrel", "Squirrel", "animal", "Animal"]
-  # Не подмешивать в merge как вид; запись по Frigate всё равно может стартовать по box/region.
-  frigate_label_exclude: ["cat", "dog"]
-  # Если label не попал в filter, но в after есть box/region — всё равно старт записи (Frigate уже трекает объект).
-  frigate_trigger_on_tracked_object: true
-  # Мин. top_score Frigate для старта записи по событию events. 0 = как раньше, без порога.
-  # Позволяет отсечь слабые/шумовые события до запуска клипа.
-  frigate_min_trigger_score: 0.50
-  # Camera-specific override для порога триггера (ключ = id камеры в lower-case).
-  # Пример: {birdbox: 0.62}
-  frigate_min_trigger_score_by_camera: {}
-  mqtt_topic: ""  # e.g. stat/bird_pir/STATE for Tasmota PIR
-  esphome_url: ""
-  esphome_sensor_id: ""  # binary_sensor id in ESPHome (YAML: id: bird_pir)
-
-# Grouped trigger model: user can enable any combination of sources.
+# Группировка триггеров (единственный источник; старый блок motion: подмешивается при загрузке см. trigger_config).
 triggers:
   opencv:
     enabled: true
@@ -331,6 +302,12 @@ triggers:
   frigate:
     enabled: false
     topic: "frigate/events"
+    camera_filter: [] # id камер из video.cameras или пусто = все локальные камеры
+    label_filter: ["bird", "Bird", "jay", "Jay", "corvid", "Corvid", "squirrel", "Squirrel", "animal", "Animal"]
+    label_exclude: ["cat", "dog"]
+    trigger_on_tracked_object: true
+    min_trigger_score: 0.50
+    min_trigger_score_by_camera: {}
   motion_sensor:
     enabled: false
     source: mqtt  # mqtt | esphome
@@ -377,7 +354,7 @@ detection:
   # создать финальную детекцию по Frigate (клип не удаляется «пустым»). Ручная разметка в UI при ложняках.
   frigate_standalone_when_no_yolo: true
   # Не отключать standalone ради «чистого» YOLO — иначе пустые клипы. Качество Frigate:
-  # motion.frigate_min_trigger_score, frigate_standalone_min_score; проверка весов/CUDA: scripts/verify-eu-model.sh
+  # triggers.frigate.min_trigger_score, frigate_standalone_min_score; проверка весов/CUDA: scripts/verify-eu-model.sh
   # Если ровно один accepted_generic «Bird» от YOLO — подменить на Frigate standalone
   # при событии Frigate (одна строка «Bird» иначе блокировала синтез в merge).
   frigate_standalone_when_no_accepted_species: true
@@ -385,7 +362,7 @@ detection:
   frigate_standalone_min_score: 0.62
   # Если score в MQTT = 0 (часто snapshot), подставить для standalone; 0 = не подставлять.
   frigate_standalone_missing_score_fallback: 0.72
-  # Лейблы из motion.frigate_label_exclude (cat/dog): только БД, без merge в YOLO и без Telegram.
+  # Лейблы из triggers.frigate.label_exclude (cat/dog): только БД, без merge в YOLO и без Telegram.
   frigate_standalone_excluded_min_score: 0.0
   frigate_standalone_excluded_missing_score_fallback: 0.58
   # false — standalone-визиты в БД без фото в Telegram (min_confidence_to_notify всё равно для остальных).

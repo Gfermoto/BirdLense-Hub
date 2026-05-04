@@ -137,7 +137,7 @@ curl -s http://YOUR_GO2RTC_HOST:1984/api/streams
 
 | # | Cause | What to verify |
 |---|--------|----------------|
-| 1 | `motion.source` still `opencv` | `user_config.yaml` → `motion.source` must be `frigate` (or appropriate MQTT path) |
+| 1 | Frigate-триггер выключен | `user_config.yaml` → включите **`triggers.frigate.enabled: true`** и настройте **`mqtt.broker`** (и при необходимости OpenCV-параллель **`triggers.opencv.enabled`**) |
 | 2 | Frigate camera not in `video.cameras` | `id` must match Frigate camera name |
 | 3 | `frigate_label_filter` empty | Default `["bird","Bird"]`; empty list drops all events |
 | 4 | MQTT unavailable for a long time (broker/network) | Logs `MQTT aggregator disconnected` / `MQTT aggregator connected`; reconnect uses backoff (`mqtt.reconnect_min_delay` → `mqtt.reconnect_max_delay`) |

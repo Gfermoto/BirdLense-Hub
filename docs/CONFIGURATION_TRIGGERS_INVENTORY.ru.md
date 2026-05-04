@@ -8,7 +8,7 @@
 
 | Тема | Ключи / где в UI | Заметки |
 |------|------------------|---------|
-| Источник движения | `motion.source`; блоки в **Настройки → Захват и кормушка** | Процессор читает итоговый merge; сверяйте audit и YAML export. |
+| Триггеры записи | **`triggers.*`** (opencv, frigate, motion_sensor, scales); блоки в **Настройки → Захват и кормушка** | Legacy **`motion:`** при открытии конфига переносится в **`triggers`**; см. аудит конфига и YAML export. |
 | Frigate без YOLO | `detection.frigate_standalone_when_no_yolo` | Режим standalone при осознанном отключении YOLO + Frigate/MQTT. Симптомы в логах — см. [RUNBOOKS](./RUNBOOKS.ru.md) и **System → config audit**. |
 | Bool из YAML | строка `"false"` vs boolean `false` | Смотрите тип в экспорте; бэкенд нормализует через helpers вида `_bool_config`. |
 

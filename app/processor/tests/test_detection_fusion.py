@@ -541,7 +541,7 @@ def test_frigate_standalone_drops_wrong_camera_when_hub_scoped():
     end = start + timedelta(seconds=20)
     cfg = DummyConfig({
         'video.cameras': [{'id': 'feeder', 'stream_name': 'feeder'}],
-        'motion.frigate_camera_filter': [],
+        'triggers.frigate.camera_filter': [],
         'detection.merge_window_seconds': 5,
         'detection.dedup_window_seconds': 45,
         'detection.one_per_species': True,
@@ -579,7 +579,7 @@ def test_frigate_standalone_keeps_matching_camera_when_hub_scoped():
     end = start + timedelta(seconds=20)
     cfg = DummyConfig({
         'video.cameras': [{'id': 'feeder', 'stream_name': 'feeder'}],
-        'motion.frigate_camera_filter': [],
+        'triggers.frigate.camera_filter': [],
         'detection.merge_window_seconds': 5,
         'detection.dedup_window_seconds': 45,
         'detection.one_per_species': True,
