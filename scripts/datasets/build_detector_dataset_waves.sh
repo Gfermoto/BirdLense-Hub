@@ -12,6 +12,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$SCRIPT_DIR"
 
+if [[ -z "${PYTHON:-}" && -x "$REPO_ROOT/.venv/bin/python" ]]; then
+  PYTHON="$REPO_ROOT/.venv/bin/python"
+elif [[ -z "${PYTHON:-}" ]]; then
+  PYTHON="python3"
+fi
+
 PAUSE="${WAVE_PAUSE:-5}"
 CHUNK="${CHUNK_SIZE:-35}"
 BGCH="${BG_SCAN_CHUNK:-500}"
@@ -24,7 +30,7 @@ pause() {
 }
 
 run_py() {
-  python3 bootstrap_detector_yolo.py "$@"
+  "$PYTHON" bootstrap_detector_yolo.py "$@"
 }
 
 # --- A: COCO bird → ~2500 train / 700 val ---
