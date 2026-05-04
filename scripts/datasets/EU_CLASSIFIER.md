@@ -88,6 +88,17 @@ python3 scripts/datasets/refine_classifier_yolo_cls.py \
 
 Цикл «мало фото → backfill staging → merge (+ новый input) → refine» можно повторять, пока счётчики не устраивают.
 
+### Полировка (добор слоя к уже готовому merged)
+
+Скрипт **`scripts/datasets/polish_eu_classifier.sh`**: бэкап `yolo_cls_eu_merged` → timestamped `*_prev_*`, merge с `--restrict-to-primary-input` (новые классы не появляются), полный refine. Пример после окончания `download_inaturalist.py` в `raw/inat_europe_bulk`:
+
+```bash
+EXTRA="datasets/new/classifier/raw/inat_europe_bulk" \\
+  bash scripts/datasets/polish_eu_classifier.sh datasets/new/classifier
+```
+
+`merge_classification_datasets.py` сохраняет **`test/`**, если он есть у входов.
+
 ## Обучение при остаточном дисбалансе
 
 На этапе обучения всё ещё полезны **веса классов / focal / семплинг батча** в Ultralytics — это не замена добору, а дополнение.

@@ -8,6 +8,7 @@ Scripts for preparing bird detection training datasets. Uses [NABirds](https://d
 
 - **download_birds_eu_merged.py** — скачать [`gfermoto/birds-eu-merged`](https://huggingface.co/datasets/gfermoto/birds-eu-merged) (~490 видов, Scientific (Common))
 - **build_eu_classifier_yolo.sh** — скелет сборки (HF + опционально iNat + merge + refine)
+- **polish_eu_classifier.sh** — добор EXTRA-слоёв к готовому `yolo_cls_eu_merged` (`--restrict-to-primary-input`, сохранение `test/`)
 - **[CLASSIFIER_EXTRA_SOURCES.md](./CLASSIFIER_EXTRA_SOURCES.md)** — откуда ещё брать размеченные фото (HF/Kaggle/iNat точечно и др.)
 - **report_classifier_class_counts.py** — классы с малым числом изображений → список на добор
 
