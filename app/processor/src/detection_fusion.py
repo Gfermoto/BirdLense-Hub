@@ -28,6 +28,16 @@ def _safe_float(value, default: float = 0.0) -> float:
         return default
 
 
+def _is_human_like_frigate_event(ev: dict) -> bool:
+    labels = {
+        str(ev.get("species") or "").strip().lower(),
+        str(ev.get("label") or "").strip().lower(),
+        str(ev.get("sub_label") or "").strip().lower(),
+    }
+    labels.discard("")
+    return "person" in labels or "human" in labels
+
+
 def _aggregate_birdnet_scores(
     mqtt_events: Iterable[dict],
     *,
@@ -182,6 +192,8 @@ def _frigate_standalone_prepared_rows(
     best: dict[str, dict] = {}
     for ev in events:
         if str((ev or {}).get("source") or "").strip().lower() != "frigate":
+            continue
+        if _is_human_like_frigate_event(ev):
             continue
         raw = ev.get("species") or ev.get("sub_label") or ev.get("label") or ""
         species = normalize(str(raw), species_mapping)
@@ -405,8 +417,12 @@ def build_fused_video_detections(
         )
         if synthetic:
             extra = prepare_track_results_for_fusion(synthetic, app_config)
-            if not prepared or _prepared_is_single_generic_bird_track(prepared):
+            if not prepared:
                 prepared = extra
+            else:
+                # Keep YOLO evidence and add Frigate synthetic candidates; downstream
+                # arbitration/conflict rules decide final winner.
+                prepared.extend(extra)
             logger.info(
                 "Fusion: Frigate standalone — %s synthetic row(s); "
                 "yolo_prepared_rows_before=%s (merge uses %s non-suppressed Frigate events)",
@@ -432,6 +448,7 @@ def build_fused_video_detections(
         absorb_generic_bird_min_classifier_confidence=float(
             app_config.get("detection.absorb_generic_bird_min_classifier_confidence") or 0.22
         ),
+        preserve_equal_rank_conflicts_for_arbitration=True,
     )
     fused = apply_multi_camera_confidence_boost(
         fused,

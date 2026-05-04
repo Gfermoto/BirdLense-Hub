@@ -212,6 +212,7 @@ export function Navigation() {
           <Box
             component={Link}
             to="/"
+            aria-label={t('nav.brandHome')}
             sx={{
               display: { xs: 'none', md: 'flex' },
               alignItems: 'center',
@@ -231,7 +232,7 @@ export function Navigation() {
               aria-hidden
               sx={{ mr: 1.5, height: 40, width: 40, borderRadius: 1 }}
             />
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            <Typography component="span" variant="h6" sx={{ fontWeight: 700 }}>
               <ProductName />
             </Typography>
           </Box>
@@ -378,6 +379,7 @@ export function Navigation() {
             <Box
               component={Link}
               to="/"
+              aria-label={t('nav.brandHome')}
               sx={{
                 flex: 1,
                 minWidth: 0,
@@ -401,7 +403,7 @@ export function Navigation() {
                   flexShrink: 0,
                 }}
               />
-              <Typography variant="h6" noWrap>
+              <Typography component="span" variant="h6" noWrap>
                 <ProductName />
               </Typography>
             </Box>

@@ -56,7 +56,7 @@
 
 | Термин | Значение |
 |--------|----------|
-| **Источник движения** | Что запускает запись: OpenCV на потоке, события Frigate по MQTT, binary MQTT, ESPHome. `motion.source`. |
+| **Триггеры записи** | Что запускает сегмент записи (OpenCV, Frigate MQTT, MQTT/ESPHome датчик, весовой триггер). Канон: **`triggers.*`** в merged-конфиге; при загрузке старый блок **`motion:`** сворачивается в **`triggers`** (`trigger_config.fold_legacy_motion_out_of_merged_config` / `migrate_legacy_motion_block`). |
 | **Триггер** | Событие начала/продолжения записи; YOLO запускается после валидного триггера (в зависимости от режима). |
 | **Trigger-time** | Время, когда motion source инициировал сессию записи. |
 

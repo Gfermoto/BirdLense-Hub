@@ -30,6 +30,16 @@ def _set_runtime_gauge(name: str, value) -> None:
         pass
 
 
+def _inc_runtime_counter(name: str, delta: int = 1) -> None:
+    """Best-effort runtime diagnostics counter hook."""
+    try:
+        from processor_runtime_stats import inc_counter
+
+        inc_counter(name, int(delta))
+    except Exception:
+        pass
+
+
 def _ffmpeg_stderr_log_level(line: str) -> int:
     """Шумные строки прогресса/аудио — DEBUG, итоги и ошибки — INFO."""
     s = line.strip()
@@ -64,6 +74,26 @@ def _normalize_capture_backend(value: str | None) -> str:
     if backend in ("auto", "opencv", "ffmpeg_vaapi"):
         return backend
     return "auto"
+
+
+def _capture_fallback_reason(
+    *,
+    requested_backend: str,
+    encoding_mode: str,
+    vaapi_available: bool,
+) -> str:
+    """Classify fallback reason for capture backend telemetry."""
+    rb = _normalize_capture_backend(requested_backend)
+    enc = (encoding_mode or "cpu").strip().lower()
+    if rb == "opencv":
+        return "requested_opencv"
+    if rb == "ffmpeg_vaapi" and not vaapi_available:
+        return "vaapi_unavailable"
+    if rb == "auto" and enc != "intel":
+        return "auto_prefers_opencv_for_non_intel_encoding"
+    if rb == "auto" and not vaapi_available:
+        return "auto_vaapi_probe_failed"
+    return "fallback_to_opencv"
 
 
 def _ffmpeg_vaapi_capture_cmd(stream_url: str, lores_size: tuple[int, int]) -> list[str]:
@@ -157,6 +187,7 @@ class Go2RTCStreamSource:
         self._capture_backend = _normalize_capture_backend(capture_backend)
         self._capture_backend_used = "opencv"
         _set_runtime_gauge("video_capture_backend_config", self._capture_backend)
+        _set_runtime_gauge("video_capture_backend_fallback_reason", "not_set")
 
         self._cap = None
         self._out = None
@@ -183,6 +214,14 @@ class Go2RTCStreamSource:
         self._disconnect()
         if self._should_use_ffmpeg_vaapi_capture() and self._connect_ffmpeg_vaapi_capture():
             return True
+        if self._should_use_ffmpeg_vaapi_capture():
+            reason = _capture_fallback_reason(
+                requested_backend=self._capture_backend,
+                encoding_mode=self._encoding_mode,
+                vaapi_available=self._vaapi_available,
+            )
+            _set_runtime_gauge("video_capture_backend_fallback_reason", reason)
+            _inc_runtime_counter("video_capture_backend_fallback_total", 1)
         # Не логировать поля из URL (в т.ч. учётка в stream_url) — CodeQL sensitive logging
         self.logger.info("Connecting to video stream (OpenCV)")
         # OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp set in Dockerfile
@@ -256,6 +295,7 @@ class Go2RTCStreamSource:
         while True:
             # Ожидаемое поведение при кратковременных обрывах RTSP; не WARNING — иначе шум в логах/алертах.
             self.logger.info("Reconnecting in %ss...", self._reconnect_delay)
+            _inc_runtime_counter("video_capture_reconnect_total", 1)
             time.sleep(self._reconnect_delay)
             if self._connect():
                 return True

@@ -1,10 +1,15 @@
 import Box from '@mui/material/Box';
 import type { SxProps, Theme } from '@mui/material/styles';
 
+/**
+ * Decorative product wordmark only. Provide the accessible name on the enclosing
+ * control (e.g. home Link `aria-label`); avoids duplicate headings + “BirdLense HubML” in SR trees.
+ */
 export function ProductName({ sx }: { sx?: SxProps<Theme> }) {
   return (
     <Box
       component="span"
+      aria-hidden
       sx={{
         display: 'inline-flex',
         alignItems: 'baseline',
@@ -12,7 +17,6 @@ export function ProductName({ sx }: { sx?: SxProps<Theme> }) {
         whiteSpace: 'nowrap',
         ...sx,
       }}
-      aria-label="BirdLense Hub ML"
     >
       <Box component="span">BirdLense Hub</Box>
       <Box

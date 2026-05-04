@@ -336,7 +336,7 @@ docker exec birdlense python /app/processor/src/main.py "/app/$VIDEO" --fake-mot
 mosquitto_pub -h BROKER -p 1883 -t "frigate/events" -m '{"after":{"camera":"birdbox","label":"bird","sub_label":"Bird","top_score":0.95,"frame_time":'$(date +%s)'}}'
 ```
 
-Подставьте `BROKER` (IP брокера) и `birdbox` — имя камеры из `video.cameras[].id` или `motion.frigate_camera_filter`. Если фильтр пуст — подойдёт любая камера.
+Подставьте `BROKER` (IP брокера) и `birdbox` — имя камеры из `video.cameras[].id` или фильтр **`triggers.frigate.camera_filter`**. Если фильтр пуст — подойдёт любая камера из списка хаба.
 
 После публикации в логах должно появиться `Frigate trigger: camera=... label=bird sub_label=Bird -> recording`, и начнётся запись.
 
@@ -354,7 +354,7 @@ mosquitto_pub -h BROKER -p 1883 -t "birdnet" -m '{"Common_Name":"Northern Cardin
 curl -s http://YOUR_HOST:8085/api/ui/status
 ```
 
-При `motion.source: frigate` поле `mqtt` должно быть `ok`. Если `not_used` — MQTT не используется для motion.
+При включённом **`triggers.frigate.enabled`** поле **`mqtt`** в статусе обычно **`ok`** (если задан **`mqtt.broker`**). Если `not_used` — MQTT не участвует в триггерной цепочке.
 
 ### 4. Утром (если ночью не было птиц)
 
@@ -378,7 +378,7 @@ curl -s http://YOUR_HOST:8085/api/ui/status
 
 ### 6. Минимальный чеклист перед сном
 
-1. `curl http://YOUR_HOST:8085/api/ui/status` → `processor: ok`, `mqtt: ok` (если motion.source: frigate)
+1. `curl http://YOUR_HOST:8085/api/ui/status` → `processor: ok`, `mqtt: ok` (если используете Frigate по MQTT и **`triggers.frigate.enabled`**)
 2. **PROCESSOR_SECRET:** `ssh YOUR_SSH_HOST "grep PROCESSOR_SECRET YOUR_REMOTE_DIR/app/.env"` → hex-значение, не `${PROCESSOR_SECRET}`. **DEPLOY_URL** в deploy.local.sh — URL сервера (не localhost), иначе health check FAIL.
 3. System → Логи процессора → последние 50 строк без ошибок, нет 403
 4. `./scripts/test-deploy-recognition.sh` → новая запись в UI (проверка YOLO)

@@ -76,7 +76,10 @@
 | `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA` | `1` — фоновой repair метаданных (картинки) при старте; по умолчанию выкл. |
 | `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — не слать Telegram «App is UP!» при старте; по умолчанию включено |
 | `BIRDLENSE_INFERENCE_BACKEND` | Переопределяет `processor.inference_backend` (`torch`, `openvino`, …) — см. [CV_ML_ROADMAP_PHASES.ru.md](./CV_ML_ROADMAP_PHASES.ru.md) |
+| `BIRDLENSE_INFERENCE_DEVICE` | Переопределяет `processor.inference_device` (`auto`, `cpu`, `cuda`, `intel:gpu`, …) |
 | `BIRDLENSE_BINARY_OPENVINO_PATH` | Опциональный путь к IR OpenVINO (каталог или `.xml`) для бинарника; при непустом значении важнее YAML |
+| `BIRDLENSE_OPENVINO_PROFILE` | Профиль производительности OpenVINO (`latency` или `throughput`) |
+| `BIRDLENSE_OPENVINO_NUM_REQUESTS` | Количество async requests для OpenVINO (`0` = авто-режим runtime) |
 | `BIRDLENSE_INFERENCE_AUTO_BENCHMARK` | `1` / `true` / `yes` / `on` — после загрузки стека один `predict` бинарника на пустом кадре; в **`cold_start_predict_ms`** в `data/processor/inference_backend_cache.json` ([#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)) |
 | `BIRDLENSE_SYSTEM_METRICS_INTERVAL_SEC` | Интервал сэмплера метрик «Система» (секунды); по умолчанию `30`; допустимо 10–600 — см. [§ История метрик на странице «Система»](#system-page-metrics-history) |
 | `BIRDLENSE_SYSTEM_METRICS_RETENTION_HOURS` | Хранить строки `system_resource_sample` не старше (часы); по умолчанию `72`; допустимо 6–720 |
@@ -281,7 +284,7 @@
 - Frigate — helper source: может продвинуть generic detector fallback или добавить confidence boost.
 - BirdNET — confidence-only для видео: bias порогов до решения классификатора, без создания final video label.
 
-**Профиль для максимального recall:** если важнее не пропустить мелких птиц, чем минимизировать ложные срабатывания, при наличии Frigate лучше использовать MQTT-триггер Frigate, оставить `motion.check_every_n_frames=1` и поднять `processor.binary_imgsz` до `640`, `processor.min_center_dist` опустить до `0.03-0.05`, `processor.min_box_size_px` держать `<=64`. В сумерках лучше ослаблять light gate, а не выключать детектор целиком.
+**Профиль для максимального recall:** если важнее не пропустить мелких птиц, при наличии брокера MQTT включите Frigate-триггер (**`triggers.frigate.enabled`**), держите **`triggers.opencv.check_every_n_frames=1`** (если OpenCV включён параллельно), поднимите `processor.binary_imgsz` до `640`, `processor.min_center_dist` опустите до `0.03-0.05`, `processor.min_box_size_px` держите `<=64`. В сумерках лучше ослаблять light gate, а не выключать детектор целиком.
 
 **Канонические имена:** Common name (Eurasian Jay), не Scientific. `species_mapping` — маппинг вариантов. `species_canonical_mapping.txt` — для «Объединить дубликаты» (System → Записи). Формат: `variant|canonical`.
 
@@ -339,7 +342,7 @@
 | `integrations.scales.min_delta_kg_for_estimate` | Минимальная дельта (кг): и для **размаха** max−min по окну, и для **скачка** между соседними по времени MQTT-точками (см. ниже). По умолчанию **0.008** (~8 г). |
 | `integrations.scales.estimate_require_consecutive_spike` | **true** (по умолчанию): оценка на ролик сохраняется только если за интервал записи есть хотя бы одна пара **подряд идущих** (по времени) показаний с \|Δ\| ≥ `min_delta_kg_for_estimate`. Так отсекается в основном **медленный дрейф** при почти нулевой платформе после тары. **false** — прежняя логика только по max−min (для отладки). Сохраняемое значение по-прежнему **размах** max−min за клип. |
 | `integrations.scales.history_max_lines` | Ограничение размера журнала показаний (обрезка с начала), по умолчанию **10000**. |
-| `integrations.scales.motion_trigger_enabled` | **false** по умолчанию. **true** — резкое изменение веса на MQTT-топике весов **запускает ту же запись и конвейер YOLO**, что и событие Frigate (логика **ИЛИ**: Frigate **или** весы **или** локальный OpenCV, если включён). За окно записи по-прежнему подмешиваются события Frigate/BirdNET (`merge_detections`). Нужны `mqtt.broker`, режим `mqtt` и топик веса (**`mqtt_topic`** или **`{mqtt_topic_prefix}/weight`**). Не используется при `motion.source: pir` (отдельная ветка без `OrMotionDetector`). |
+| `integrations.scales.motion_trigger_enabled` | **false** по умолчанию. **true** — резкое изменение веса на MQTT-топике весов **запускает тот же конвейер записи + YOLO**, что и другие включённые триггеры (**ИЛИ** с Frigate и опционально OpenCV). За окно записи подмешиваются события Frigate/BirdNET (`merge_detections`). Нужны `mqtt.broker`, источник весов с MQTT и топик (**`mqtt_topic`** или **`{mqtt_topic_prefix}/weight`**). В новых конфигах предпочтительнее **`triggers.scales.enabled`**; хаб по-прежнему учитывает legacy `integrations.scales.motion_trigger_*` при сборке эффективных триггеров. |
 | `integrations.scales.motion_trigger_min_delta_kg` | Минимум \|Δмассы\| между **двумя последовательными** MQTT-сообщениями (в кг), чтобы считать это триггером. По умолчанию **0.02** (20 г). |
 | `integrations.scales.motion_trigger_debounce_seconds` | Минимум секунд между двумя стартами записи по весам (анти-дребезг). По умолчанию **1.5**. |
 

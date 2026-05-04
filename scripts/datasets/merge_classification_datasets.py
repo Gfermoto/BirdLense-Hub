@@ -5,7 +5,7 @@
 Формат входа: каждый датасет — папка с train/ и/или val/,
 внутри — подпапки по классам: train/Class_Name/img.jpg
 
-Формат выхода: merged/train/Class_Name/, merged/val/Class_Name/
+Формат выхода: merged/train/, merged/val/, опционально merged/test/ (если у входов есть test/).
 Стратифицированный split 80/20 если val отсутствует.
 
 Использование:
@@ -92,6 +92,11 @@ def main():
                         help='Val split ratio if val/ missing (default 0.2)')
     parser.add_argument('--symlink', action='store_true',
                         help='Use symlinks instead of copy (saves disk, may fail on Windows)')
+    parser.add_argument(
+        '--restrict-to-primary-input',
+        action='store_true',
+        help='Учитывать только классы, присутствующие в первом --inputs (train/val); добор не создаёт новых классов.',
+    )
     args = parser.parse_args()
 
     input_dirs = [Path(p).resolve() for p in args.inputs]
@@ -103,20 +108,28 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     train_out = output / 'train'
     val_out = output / 'val'
+    test_out = output / 'test'
     # Очистить выход — иначе остаются старые папки, YOLO падает (requires N classes)
-    for d in (train_out, val_out):
+    for d in (train_out, val_out, test_out):
         if d.exists():
             for sub in d.iterdir():
                 if sub.is_dir():
                     shutil.rmtree(sub)
-        d.mkdir(exist_ok=True)
+        d.mkdir(parents=True, exist_ok=True)
 
     # Собрать все изображения по классам (нормализация в canonical = Common name)
     train_by_class = collect_images_by_class(input_dirs, 'train', mapping=_CANONICAL_MAPPING)
     val_by_class = collect_images_by_class(input_dirs, 'val', mapping=_CANONICAL_MAPPING)
+    test_by_class = collect_images_by_class(input_dirs, 'test', mapping=_CANONICAL_MAPPING)
 
     # Объединить классы из train и val
     all_classes = set(train_by_class) | set(val_by_class)
+    if args.restrict_to_primary_input and input_dirs:
+        primary = input_dirs[0]
+        pk = set(collect_images_by_class([primary], 'train', mapping=_CANONICAL_MAPPING).keys()) | set(
+            collect_images_by_class([primary], 'val', mapping=_CANONICAL_MAPPING).keys()
+        )
+        all_classes = all_classes & pk
     if not all_classes:
         raise SystemExit('No images found in input directories')
 
@@ -128,6 +141,7 @@ def main():
             shutil.copy2(src, dst)
     total_train, total_val = 0, 0
     kept_classes = 0
+    kept_class_names: list[str] = []
 
     for class_name in sorted(all_classes):
         train_imgs = train_by_class.get(class_name, [])
@@ -151,6 +165,7 @@ def main():
             continue
 
         kept_classes += 1
+        kept_class_names.append(class_name)
         (train_out / class_name).mkdir(exist_ok=True)
         (val_out / class_name).mkdir(exist_ok=True)
 
@@ -174,10 +189,33 @@ def main():
                 do_copy(p, dst)
             total_val += 1
 
+    kept_set = set(kept_class_names)
+    total_test = 0
+    if test_by_class:
+        for class_name in sorted(test_by_class.keys()):
+            if class_name not in kept_set:
+                continue
+            imgs = test_by_class[class_name]
+            if not imgs:
+                continue
+            (test_out / class_name).mkdir(parents=True, exist_ok=True)
+            used_t: set[str] = set()
+            for p in imgs:
+                dst = test_out / class_name / p.name
+                if p.name in used_t:
+                    dst = test_out / class_name / f"{p.stem}_{id(p)}{p.suffix}"
+                used_t.add(dst.name)
+                if not dst.exists():
+                    do_copy(p, dst)
+                total_test += 1
+
     skipped = len(all_classes) - kept_classes
     if skipped:
         print(f'Skipped {skipped} classes (no images in both train and val)')
-    print(f'Merged {kept_classes} classes: {total_train} train, {total_val} val')
+    msg = f'Merged {kept_classes} classes: {total_train} train, {total_val} val'
+    if total_test:
+        msg += f', {total_test} test'
+    print(msg)
     print(f'Output: {output}')
 
 

@@ -4350,10 +4350,15 @@ components:
           items:
             type: object
             properties:
+              id:
+                type: integer
               species_id:
                 type: integer
               species_name:
                 type: string
+              track_id:
+                type: integer
+                nullable: true
               start_time:
                 type: number
               end_time:
@@ -4362,6 +4367,12 @@ components:
                 type: number
               source:
                 type: string
+              detection_provider:
+                type: string
+                nullable: true
+              individual_nickname:
+                type: string
+                nullable: true
               image_url:
                 type: string
         food:
@@ -4468,6 +4479,29 @@ components:
           format: date-time
         max_simultaneous:
           type: integer
+        total_recording_seconds:
+          type: integer
+        video_duration_seconds:
+          type: integer
+          nullable: true
+        timeline_kind:
+          type: string
+          enum: [visit, unlinked_video]
+        individual_nickname:
+          type: string
+          nullable: true
+        behavior_events:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              confidence:
+                type: number
+              evidence:
+                type: object
+                additionalProperties: true
         weather:
           type: object
           nullable: true
@@ -4506,6 +4540,8 @@ components:
           items:
             type: object
             properties:
+              id:
+                type: integer
               video_id:
                 type: integer
               start_time:
@@ -4518,6 +4554,12 @@ components:
                 type: number
               source:
                 type: string
+              detection_provider:
+                type: string
+                nullable: true
+              individual_nickname:
+                type: string
+                nullable: true
     UnknownDetection:
       type: object
       properties:

@@ -218,7 +218,7 @@ jobs:
       - name: MkDocs build (strict)
         run: mkdocs build --strict
 
-  # Те же тесты, что локально: processor (unittest) + web (pytest) в образе birdlense.
+  # Те же тесты, что локально: processor (pytest, not heavy) + web (pytest) в образе birdlense.
   # Требует места на диске раннера (база Ultralytics). Required в ruleset **Protect** (main).
   docker-tests:
     name: docker-tests
@@ -283,6 +283,20 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
           BASE_URL="${BASE}" npx playwright test tests/smoke.spec.ts
+        working-directory: app
+
+      - name: Strict quality verify (domain-health gate)
+        env:
+          BIRDLENSE_PORT: "8085"
+        run: |
+          set -euo pipefail
+          docker compose up -d
+          cleanup() { docker compose down; }
+          trap cleanup EXIT
+          BASE="http://127.0.0.1:${BIRDLENSE_PORT}"
+          bash ../scripts/wait-hub-http.sh "$BASE"
+          cd ..
+          make verify-strict-quality BASE_URL="${BASE}"
         working-directory: app
 
       - name: Catalog cards audit (local stack)

@@ -12,7 +12,12 @@ from app_config.trigger_config import get_active_trigger_names
 _MODEL_DIGEST_CACHE: dict[tuple[str, int, int], str] = {}
 
 _CONFIG_DIGEST_KEYS = (
-    "motion.source",
+    "triggers.frigate.camera_filter",
+    "triggers.frigate.label_filter",
+    "triggers.frigate.label_exclude",
+    "triggers.frigate.trigger_on_tracked_object",
+    "triggers.frigate.min_trigger_score",
+    "triggers.frigate.min_trigger_score_by_camera",
     "triggers.opencv.enabled",
     "triggers.opencv.check_every_n_frames",
     "triggers.opencv.diff_threshold",
@@ -34,6 +39,7 @@ _CONFIG_DIGEST_KEYS = (
     "processor.min_confidence_to_process",
     "processor.min_confidence_to_notify",
     "processor.classifier_fallback_bird",
+    "processor.classifier_vote_share_power",
     "processor.inference_backend",
     "processor.classifier_inference_backend",
     "processor.models.binary",

@@ -3,7 +3,14 @@
 [Русский](./SETTINGS_TRIGGERS_PHASE2.ru.md)
 
 ## Goal
-Separate trigger configuration from processing configuration and replace the current single `motion.source` model with independently enabled trigger modules.
+
+Separate trigger configuration from processing configuration using **one composable schema**. The obsolete single-switch **`motion.source`** layout is superseded by independently enabled **`triggers.*`** blocks.
+
+## Status (May 2026)
+
+- **`default_config.yaml`** defines **`triggers.*`** only for motion/OpenCV/Frigate/sensors/scales trigger toggles (feeder scales hardware remains under **`integrations.scales.*`**).
+- Legacy **`motion:`** in `user_config.yaml` is rewritten into **`triggers`** when the Hub loads (`migrate_legacy_motion_block`). After merging default + user, **`fold_legacy_motion_out_of_merged_config`** folds any stray **`motion:`** (`app/app_config/trigger_config.py`).
+- **`get_effective_trigger_config`** reads **`triggers.*`** only. The Frigate MQTT topic also honours **`mqtt.frigate_topic`** (migrated into **`triggers.frigate.topic`**). **`triggers.frigate.enabled`** must be **true** to use Frigate as a trigger (the broker alone does not auto-enable Frigate).
 
 ## Product Outcome
 - User can enable any combination of trigger sources with checkboxes.
@@ -24,7 +31,46 @@ Separate trigger configuration from processing configuration and replace the cur
 - No attempt to merge all integrations into one generic schema beyond trigger configuration.
 - No silent removal of legacy YAML keys without migration.
 
+## Canonical config shape (shipped)
+
+```yaml
+triggers:
+  opencv:
+    enabled: true
+    check_every_n_frames: 1
+    diff_threshold: 18
+    min_contour_area: 240
+  frigate:
+    enabled: false
+    topic: "frigate/events"
+    camera_filter: []
+    label_filter: []
+    label_exclude: []
+    trigger_on_tracked_object: true
+    min_trigger_score: 0.50
+    min_trigger_score_by_camera: {}
+  motion_sensor:
+    enabled: false
+    source: mqtt  # mqtt | esphome
+    mqtt_topic: ""
+    esphome_url: ""
+    esphome_sensor_id: ""
+  scales:
+    enabled: false
+    source: mqtt
+    motion_trigger_min_delta_kg: 0.02
+    motion_trigger_debounce_seconds: 1.5
+integrations:
+  scales:
+    enabled: false
+    source: mqtt
+    motion_trigger_enabled: false  # legacy; effective trigger still respects triggers.scales + this flag
+```
+
+Old installs could still persist a top-level **`motion:`** block; on load those keys populate **`triggers`** and **`motion`** is dropped from the merged snapshot after fold.
+
 ## Target UX
+
 Top-level settings block:
 
 - `Triggers`
@@ -40,60 +86,19 @@ For every enabled source:
 - keep shared explanatory copy short
 - mark advanced thresholds separately
 
-## Target Config Shape
-Current model:
+## Migration rules (implemented)
 
-```yaml
-motion:
-  source: opencv | frigate | mqtt | esphome
-  ...
-integrations:
-  scales:
-    motion_trigger_enabled: false
-```
+- Any remaining top-level **`motion:`** block after default+user merge is folded into **`triggers.*`** and removed from the merged tree (`fold_legacy_motion_out_of_merged_config`).
+- Persisted user files are rewritten when **`migrate_legacy_motion_block`** runs (`app_config.py` loader).
+- Field map (examples): **`frigate_*`** → **`triggers.frigate.*`**, **`opencv_*` intervals / thresholds** → **`triggers.opencv.*`**, **`mqtt_topic` / `esphome_*` for PIR** → **`triggers.motion_sensor.*`**.
+- During fold, **`motion.source`** still forces the implied trigger flags (`opencv`, `frigate`, `mqtt`, `esphome` paths) so old configs remain usable until the user saves a clean file.
+- **`integrations.scales.motion_trigger_enabled`** continues to influence **`triggers.scales.enabled`** defaults inside **`get_effective_trigger_config`**.
 
-Target direction:
-
-```yaml
-triggers:
-  opencv:
-    enabled: true
-    check_every_n_frames: 1
-    diff_threshold: 18
-    min_contour_area: 500
-  frigate:
-    enabled: true
-    camera_filter: []
-    label_filter: []
-    label_exclude: []
-    trigger_on_tracked_object: true
-  mqtt_motion:
-    enabled: false
-    topic: stat/bird_pir/STATE
-  esphome_motion:
-    enabled: false
-    url: http://device.local
-    sensor_id: bird_pir
-  mqtt_scales:
-    enabled: false
-    topic_prefix: birdlense/scale
-    min_delta_kg: 0.02
-    debounce_seconds: 1.5
-  esphome_scales:
-    enabled: false
-    url: http://device.local
-    weight_sensor_id: weight_live_internal
-    bird_present_sensor_id: bird_present
-    tare_button_id: manual_tare
-```
-
-Legacy `motion.*` and `integrations.scales.motion_trigger_*` keys should be migrated forward on load.
-
-## Runtime Refactor
-Primary files:
+## Primary files (touchpoints)
 
 - `app/app_config/default_config.yaml`
 - `app/app_config/app_config.py`
+- `app/app_config/trigger_config.py`
 - `app/processor/src/motion_runtime.py`
 - `app/processor/src/motion_detectors/factory.py`
 - `app/processor/src/motion_detectors/or_motion.py`
@@ -102,34 +107,17 @@ Primary files:
 - `app/ui/src/types.ts`
 - `app/ui/src/pages/Settings/sections/*`
 
-Required runtime changes:
 
-1. Replace single-source branching with trigger list assembly.
-2. Build `OrMotionDetector` from N enabled trigger modules instead of `primary + additional`.
-3. Decouple Frigate subscription from "must be primary trigger".
-4. Decouple scale motion trigger from MQTT-primary assumption.
-5. Preserve provenance so finalized clips still record what triggered processing.
+## Runtime behaviour (post-refactor)
 
-## Migration Rules
-- `motion.source=opencv` -> `triggers.opencv.enabled=true`
-- `motion.source=frigate` -> `triggers.frigate.enabled=true`
-- `motion.source=mqtt` -> `triggers.mqtt_motion.enabled=true`
-- `motion.source=esphome` -> `triggers.esphome_motion.enabled=true`
-- `integrations.scales.motion_trigger_enabled=true` with MQTT source -> `triggers.mqtt_scales.enabled=true`
-- `integrations.scales.motion_trigger_enabled=true` with ESPHome source -> `triggers.esphome_scales.enabled=true`
+1. `OrMotionDetector` composes whatever trigger modules **`get_effective_trigger_config`** exposes (OpenCV detector, MQTT Frigate path, MQTT/ESPHome motion sensors, scale-weight pending callbacks).
+2. Frigate ingestion depends solely on **`triggers.frigate.enabled`** plus **`mqtt.broker`** wiring — **`motion.source` is gone from defaults**.
+3. Provenance persists active trigger summaries via **`get_active_trigger_names`**.
 
-Migration should be additive first, with legacy read-compat during one transition phase.
+## Verification
 
-## Test Plan
-- unit tests for config migration
-- unit tests for trigger factory with mixed enabled sources
-- unit tests for OR detector behavior with multiple active inputs
-- integration tests for MQTT + Frigate + scales combinations
-- settings UI tests for checkbox rendering and conditional fields
+- Regression coverage: **`app/web/tests/test_legacy_config_migration.py`**, **`app/web/tests/test_service_layer_slice_293.py`**, **`app/processor/tests/test_mqtt_frigate_filters.py`**. Full Frigate aggregator tests (**`test_mqtt_frigate_geometry_trigger.py`**, **`test_mqtt_frigate_event_queue.py`**) expect **`paho-mqtt`** in the processor toolchain.
 
-## Delivery Order
-1. Add new config schema + migration compatibility.
-2. Refactor runtime trigger assembly.
-3. Update UI types/API contract.
-4. Replace settings UI with composable trigger editor.
-5. Remove legacy UI paths once migration is stable.
+## Historical note
+
+Older drafts referenced placeholder keys such as **`mqtt_motion`** / **`esphome_scales`**. The shipped schema uses **`triggers.motion_sensor`** (with **`source: mqtt`** or **`esphome`**) and keeps feeder hardware under **`integrations.scales.*`** with **`triggers.scales`** for motion-weight gating parameters.

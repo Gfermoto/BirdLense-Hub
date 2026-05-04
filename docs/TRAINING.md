@@ -167,6 +167,21 @@ python3 scripts/report-yolo-product-metrics.py \
   --dataset-info /path/to/dataset_info.json
 ```
 
+## Action-model MVP recipe (#406)
+
+After detector stabilization (Wave 2 complete), lock the action-model shortlist and recipe artifact:
+
+```bash
+python3 scripts/ml_action_model_shortlist.py \
+  --min-dataset-clips 800 \
+  --out /tmp/action_model_shortlist.v1.json
+```
+
+Expected output `action_model_shortlist@v1`:
+- ranked candidates with a selected `mvp_model`,
+- fixed MVP recipe (`epochs=40`, `lr=3e-4`, `weighted_random_sampler`, focal CE),
+- domain-shift risks (lighting, camera angle, imbalance) and mitigation notes.
+
 ---
 
 ## Prerequisites

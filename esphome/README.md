@@ -74,6 +74,19 @@ esphome upload esphome/bird-feeder-scale.yaml
 - **Выбранный сценарий PIR+радар для площадки (issue #376): Вариант 1.** Делайте OR на стороне ESPHome (`template binary_sensor`: `radar_has_target OR pir_gpio`) и публикуйте единый state в один MQTT topic (например `birdlense/motion`). В хабе указывайте этот же топик в `triggers.motion_sensor.mqtt_topic`.
 - **Карта в HA:** пример `custom:plotly-graph` — `esphome/home-assistant/ld2450-plotly-graph.card.yaml` (подставьте реальные `entity_id` из Developer Tools → States).
 
+### Выбранный сценарий PIR + радар для площадки (issue #376)
+
+Для BirdLense-Hub принят **вариант 1**:
+
+- в ESPHome/HA собираем `radar_has_target OR pir_gpio`,
+- публикуем состояние в **один** MQTT topic (например, `birdlense/motion/ld2450_or_pir`),
+- в хабе указываем `triggers.motion_sensor.source: mqtt` и этот же `mqtt_topic`.
+
+Почему так:
+
+- в хабе сейчас один канал `motion_sensor`, без мульти-топиков,
+- OR на стороне ESPHome/HA даёт простой и предсказуемый контракт для `factory.py`.
+
 ```bash
 esphome compile esphome/ld2450-native-zones.yaml
 esphome upload esphome/ld2450-native-zones.yaml

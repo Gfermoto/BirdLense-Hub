@@ -69,14 +69,14 @@ deploy:
 # processor/src в PYTHONPATH — импорты вроде birdnet_fifo_persist без sys.path в каждом тесте.
 test:
 	docker compose run --rm -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense \
-		bash -c 'export PYTHONPATH=/app:/app/web:/app/processor/src && python -m unittest discover processor/tests -v \
-		&& python -m pytest processor/tests/test_detection_fusion.py -q --tb=short'
+		bash -c 'cd /workspace/app && export PYTHONPATH=/workspace/app:/workspace/app/web:/workspace/app/processor/src:/workspace/scripts SKIP_HEAVY_PROCESSOR_TESTS=1 && \
+		python -m pytest processor/tests/ -q --tb=short -m "not heavy"'
 
 # Тот же образ, но без интеграции TwoStageStrategy с реальными .pt (меньше RAM; #282).
 # Один прогон pytest по processor/tests (включая unittest.TestCase); ``-m "not heavy"`` оставляет немаркированные тесты.
 test-processor-light:
 	docker compose run --rm -e SKIP_HEAVY_PROCESSOR_TESTS=1 -v $$(pwd):/app -v $$(pwd)/..:/workspace birdlense \
-		bash -c 'export PYTHONPATH=/app:/app/web:/app/processor/src SKIP_HEAVY_PROCESSOR_TESTS=1 && \
+		bash -c 'cd /workspace/app && export PYTHONPATH=/workspace/app:/workspace/app/web:/workspace/app/processor/src:/workspace/scripts SKIP_HEAVY_PROCESSOR_TESTS=1 && \
 		python -m pytest processor/tests/ -q --tb=short -m "not heavy"'
 
 # По умолчанию -q: 400+ тестов с -v раздувают лог CI (обрыв/лимит раннера). Для отладки: TEST_WEB_VERBOSE=1 make test-web

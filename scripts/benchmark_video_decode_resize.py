@@ -48,13 +48,16 @@ def _run_opencv(args, cv2) -> int:
         return 2
 
     n = 0
+    per_frame_ms: list[float] = []
     t0 = time.perf_counter()
     cpu0 = time.process_time()
     while True:
+        tf0 = time.perf_counter()
         ok, frame = cap.read()
         if not ok:
             break
         cv2.resize(frame, (args.width, args.height), interpolation=cv2.INTER_LINEAR)
+        per_frame_ms.append(max(0.0, (time.perf_counter() - tf0) * 1000.0))
         n += 1
         if args.frames and n >= args.frames:
             break
@@ -76,6 +79,8 @@ def _run_opencv(args, cv2) -> int:
             ms_per_frame,
             args.width,
             args.height,
+            p95_frame_delay_ms=_quantile(per_frame_ms, 0.95),
+            drop_rate=_drop_rate(decoded_frames=n, requested_frames=args.frames),
             cpu_process_pct=cpu_process_pct,
             video_path=args.video,
         ),
@@ -123,15 +128,18 @@ def _run_ffmpeg_vaapi(args) -> int:
         return 2
     frame_bytes = int(args.width) * int(args.height) * 3
     n = 0
+    per_frame_ms: list[float] = []
     t0 = time.perf_counter()
     cpu0 = time.process_time()
     assert proc.stdout is not None
     while True:
+        tf0 = time.perf_counter()
         data = proc.stdout.read(frame_bytes)
         if not data:
             break
         if len(data) != frame_bytes:
             break
+        per_frame_ms.append(max(0.0, (time.perf_counter() - tf0) * 1000.0))
         n += 1
         if args.frames and n >= args.frames:
             proc.terminate()
@@ -160,6 +168,8 @@ def _run_ffmpeg_vaapi(args) -> int:
             ms_per_frame,
             args.width,
             args.height,
+            p95_frame_delay_ms=_quantile(per_frame_ms, 0.95),
+            drop_rate=_drop_rate(decoded_frames=n, requested_frames=args.frames),
             cpu_process_pct=cpu_process_pct,
             video_path=args.video,
         ),
@@ -176,6 +186,8 @@ def json_summary(
     width: int,
     height: int,
     *,
+    p95_frame_delay_ms: float | None = None,
+    drop_rate: float | None = None,
     cpu_process_pct: float | None = None,
     video_path: str | None = None,
 ) -> str:
@@ -189,6 +201,10 @@ def json_summary(
             "elapsed_sec": round(elapsed, 4),
             "fps": round(fps, 2),
             "ms_per_frame": round(ms_per_frame, 3),
+            "p95_frame_delay_ms": (
+                None if p95_frame_delay_ms is None else round(float(p95_frame_delay_ms), 3)
+            ),
+            "drop_rate": (None if drop_rate is None else round(float(drop_rate), 6)),
             "cpu_process_pct": None if cpu_process_pct is None else round(float(cpu_process_pct), 3),
             "resize": [width, height],
             "host": platform.node() or None,
@@ -197,6 +213,24 @@ def json_summary(
         },
         ensure_ascii=False,
     )
+
+
+def _quantile(values: list[float], q: float) -> float:
+    if not values:
+        return 0.0
+    vals = sorted(float(v) for v in values)
+    idx = max(0, min(len(vals) - 1, int(round((len(vals) - 1) * float(q)))))
+    return float(vals[idx])
+
+
+def _drop_rate(*, decoded_frames: int, requested_frames: int) -> float:
+    req = int(requested_frames or 0)
+    if req <= 0:
+        return 0.0
+    dec = max(0, int(decoded_frames or 0))
+    if dec >= req:
+        return 0.0
+    return float(req - dec) / float(req)
 
 
 if __name__ == "__main__":

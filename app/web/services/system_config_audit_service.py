@@ -49,7 +49,7 @@ IGNORED_CONFIG_AUDIT_KEYS = frozenset(
     }
 )
 
-# Совпадает с `motion.*` в `default_config.yaml` и fallback в `trigger_config.py`.
+# Совпадает с `triggers.opencv.*` в `default_config.yaml`.
 RECOMMENDED_OPENCV_DIFF_THRESHOLD = 18
 RECOMMENDED_OPENCV_MIN_CONTOUR_AREA = 240
 
@@ -92,13 +92,13 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
     mqtt_broker = (app_config_get("mqtt.broker") or "").strip()
     active_triggers = get_active_trigger_names(app_config_get, mqtt_broker=mqtt_broker)
     motion_source = format_motion_source_summary(active_triggers)
-    check_every_n_frames = max(1, _safe_int(app_config_get("motion.check_every_n_frames", 1), 1))
+    check_every_n_frames = max(1, _safe_int(app_config_get("triggers.opencv.check_every_n_frames", 1), 1))
     opencv_diff_threshold = max(
         5,
         min(
             80,
             _safe_int(
-                app_config_get("motion.opencv_diff_threshold", RECOMMENDED_OPENCV_DIFF_THRESHOLD),
+                app_config_get("triggers.opencv.diff_threshold", RECOMMENDED_OPENCV_DIFF_THRESHOLD),
                 RECOMMENDED_OPENCV_DIFF_THRESHOLD,
             ),
         ),
@@ -108,7 +108,7 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
         min(
             20000,
             _safe_int(
-                app_config_get("motion.opencv_min_contour_area", RECOMMENDED_OPENCV_MIN_CONTOUR_AREA),
+                app_config_get("triggers.opencv.min_contour_area", RECOMMENDED_OPENCV_MIN_CONTOUR_AREA),
                 RECOMMENDED_OPENCV_MIN_CONTOUR_AREA,
             ),
         ),
@@ -140,17 +140,17 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
         hints.append("fusion.FRIGATE_STANDALONE_OFF")
     if check_every_n_frames > 1:
         hints.append(
-            f"motion.check_every_n_frames={check_every_n_frames} skips frames and can miss brief motion; "
+            f"triggers.opencv.check_every_n_frames={check_every_n_frames} skips frames and can miss brief motion; "
             "1 is the highest-recall setting."
         )
     if opencv_diff_threshold > RECOMMENDED_OPENCV_DIFF_THRESHOLD:
         hints.append(
-            f"motion.opencv_diff_threshold={opencv_diff_threshold} is above the hub default "
+            f"triggers.opencv.diff_threshold={opencv_diff_threshold} is above the hub default "
             f"({RECOMMENDED_OPENCV_DIFF_THRESHOLD}); higher values react to fewer pixel changes (less motion recall)."
         )
     if opencv_min_contour_area > RECOMMENDED_OPENCV_MIN_CONTOUR_AREA:
         hints.append(
-            f"motion.opencv_min_contour_area={opencv_min_contour_area} is above the hub default "
+            f"triggers.opencv.min_contour_area={opencv_min_contour_area} is above the hub default "
             f"({RECOMMENDED_OPENCV_MIN_CONTOUR_AREA}); higher values drop smaller motion blobs (e.g. distant birds)."
         )
     if light_gate_enabled and (light_gate_min_brightness > 20 or light_gate_min_contrast > 15):

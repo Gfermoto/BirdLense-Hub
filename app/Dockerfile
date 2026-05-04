@@ -18,7 +18,7 @@ FROM ultralytics/ultralytics:8.4.21
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg nginx curl unzip gosu \
     intel-media-va-driver-non-free vainfo intel-gpu-tools \
-    ocl-icd-libopencl1 intel-opencl-icd \
+    ocl-icd-libopencl1 intel-opencl-icd clinfo \
     libbrotli1 \
     && apt-get clean && rm -rf /var/cache/apt /var/lib/apt/lists/*
 # Brotli: в Ubuntu 22.04 нет пакета libnginx-mod-http-brotli — собираем ngx_brotli как динамический модуль к версии nginx из образа

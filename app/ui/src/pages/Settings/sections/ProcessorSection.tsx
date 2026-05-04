@@ -26,6 +26,7 @@ import { ProcessorTrackRegenBlock } from './processor/ProcessorTrackRegenBlock';
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
+  simpleMode?: boolean;
 };
 
 function SectionHeading({
@@ -54,7 +55,7 @@ function SectionHeading({
   );
 }
 
-export function ProcessorSection({ form }: Props) {
+export function ProcessorSection({ form, simpleMode = true }: Props) {
   const { t } = useTranslation();
   const location = useLocation();
   const expandProcessor =
@@ -116,21 +117,25 @@ export function ProcessorSection({ form }: Props) {
 
           <Divider sx={{ my: 2 }} />
 
-          <SectionHeading>
-            {t('settings.processorSectionHeadingQuality')}
-          </SectionHeading>
-          <ProcessorConfidenceAdvancedBlock form={form} />
-          <ProcessorFalsePositiveGuardrailsBlock form={form} />
+          {!simpleMode ? (
+            <>
+              <SectionHeading>
+                {t('settings.processorSectionHeadingQuality')}
+              </SectionHeading>
+              <ProcessorConfidenceAdvancedBlock form={form} />
+              <ProcessorFalsePositiveGuardrailsBlock form={form} />
 
-          <Divider sx={{ my: 2 }} />
+              <Divider sx={{ my: 2 }} />
 
-          <SectionHeading>
-            {t('settings.processorSectionHeadingData')}
-          </SectionHeading>
-          <ProcessorSpectrogramDatasetBlock form={form} />
-          <ProcessorModelsScopeBlock form={form} />
-          <ProcessorTrackRegenBlock form={form} />
-          <ProcessorFrigateFusionBlock form={form} />
+              <SectionHeading>
+                {t('settings.processorSectionHeadingData')}
+              </SectionHeading>
+              <ProcessorSpectrogramDatasetBlock form={form} />
+              <ProcessorModelsScopeBlock form={form} />
+              <ProcessorTrackRegenBlock form={form} />
+              <ProcessorFrigateFusionBlock form={form} />
+            </>
+          ) : null}
         </Box>
       </AccordionDetails>
     </Accordion>

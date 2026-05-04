@@ -52,6 +52,12 @@ def processor_detection_payload(raw: dict) -> dict:
         "classifier_top1_top2_margin",
         "classifier_needs_review",
         "review_reason",
+        "individual_nickname",
+        "reid_model",
+        "reid_dim",
+        "reid_embedding",
+        "reid_crop_key",
+        "reid_similarity",
     }
     return {k: raw[k] for k in allowed if k in raw}
 

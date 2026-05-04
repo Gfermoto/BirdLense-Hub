@@ -10,12 +10,15 @@ backups-recovered/
 app/data/recordings
 app/data/dataset/
 app/data/cache/
+app/data/.ultralytics/
+app/data/processor/
 app/data/notify_temp
 # Снимки runtime процессора (локально / в volume; не коммитить)
 app/data/diagnostics/
 data/diagnostics/
 app/processor/data/
 app/data/processor.log*
+data/processor.log
 app.log
 .DS_Store
 # Windows NTFS ADS artifacts from downloaded/copied files
@@ -23,6 +26,7 @@ app.log
 **/*:Zone.Identifier.*
 /datasets
 scripts/datasets/.cache/
+scripts/datasets/brg/
 # Локальная выгрузка YOLO для трёхклассового детектора (bootstrap_detector_yolo.py)
 scripts/datasets/binary/birds/
 scripts/datasets/binary/rodent/
@@ -165,3 +169,4 @@ app/web/instance/
 /.unknown_rows.json
 /.video*.json
 /.weird_*.json
+/ok=true,

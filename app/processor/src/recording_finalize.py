@@ -30,6 +30,7 @@ from recording_session_cleanup import remove_session_dir
 from recording_video_response import response_video_id
 from recordings_remote_mirror import schedule_recordings_session_mirror
 from recording_spectrogram import maybe_generate_recording_spectrogram
+from reid_runtime import enrich_runtime_reid_detections
 from spectrogram import generate_spectrogram
 
 # Пустые сессии без детекций — частое событие; не засоряем лог (раз в интервал — WARNING, иначе DEBUG).
@@ -143,6 +144,15 @@ def finalize_motion_recording(
             persisted_detections=video_detections,
         )
     )
+    if video_detections:
+        try:
+            video_detections = enrich_runtime_reid_detections(
+                video_detections,
+                video_path=video_path_for_api,
+            )
+        except Exception as exc:
+            inc_counter("reid_runtime_enrich_fail_total")
+            logging.warning("Runtime ReID enrich failed; keep fused detections: %s", exc)
 
     fusion_fs = sum(1 for d in video_detections if d.get("frigate_standalone"))
     fusion_yolo = 0

@@ -614,6 +614,7 @@ class MQTTEventAggregator:
 
     def _on_message(self, client, userdata, msg):
         ev = None
+        queue_frigate_event = True
         if msg.topic == self.frigate_topic:
             try:
                 fdata = json.loads(msg.payload.decode())
@@ -658,13 +659,25 @@ class MQTTEventAggregator:
                         trigger_score = float(ev.get("confidence") or 0.0)
                     except (TypeError, ValueError):
                         trigger_score = 0.0
-                    raw_min_trigger_score = app_config.get("motion.frigate_min_trigger_score")
+                    raw_min_trigger_score = app_config.get("triggers.frigate.min_trigger_score")
                     try:
                         min_trigger_score = (
                             0.0 if isinstance(raw_min_trigger_score, bool) else float(raw_min_trigger_score or 0.0)
                         )
                     except (TypeError, ValueError):
                         min_trigger_score = 0.0
+                    per_camera_thresholds = app_config.get("triggers.frigate.min_trigger_score_by_camera") or {}
+                    if isinstance(per_camera_thresholds, dict):
+                        camera_key = str(camera or "").strip().lower()
+                        for key, value in per_camera_thresholds.items():
+                            if str(key or "").strip().lower() != camera_key:
+                                continue
+                            try:
+                                cam_score = float(value)
+                            except (TypeError, ValueError):
+                                break
+                            min_trigger_score = max(min_trigger_score, cam_score)
+                            break
                     cam_lower = {str(c).strip().lower() for c in cam_f if str(c).strip()}
                     # Пустой camera_filter = любая камера (как пустой label_filter).
                     cam_ok = (not cam_lower) or (str(camera or "").strip().lower() in cam_lower)
@@ -672,12 +685,15 @@ class MQTTEventAggregator:
                     lbl_f_lower = {s.lower() for s in lbl_f}
                     # Empty label filter means wildcard (accept any label).
                     lbl_ok = (not lbl_f_lower) or bool(lbl_f_lower & labels_lower)
-                    relaxed = bool(app_config.get("motion.frigate_trigger_on_tracked_object", True))
+                    relaxed = bool(app_config.get("triggers.frigate.trigger_on_tracked_object", True))
                     has_geometry = _frigate_after_has_tracked_geometry(after if isinstance(after, dict) else {})
                     accepted_by = "label_filter"
                     if not lbl_ok and relaxed and has_geometry:
                         lbl_ok = True
                         accepted_by = "geometry_fallback"
+                        # Geometry fallback keeps recording responsiveness, but such
+                        # events must not influence species merge/promotion.
+                        ev["_frigate_merge_suppressed"] = True
                         if skip_merge_queue:
                             logger.info(
                                 "Frigate trigger: geometry fallback (excluded label, recording only) "
@@ -716,6 +732,7 @@ class MQTTEventAggregator:
                         except Exception as e:
                             logger.debug("Frigate motion callback: %s", e)
                     else:
+                        queue_frigate_event = bool(cam_ok and lbl_ok)
                         reasons = []
                         if not cam_ok:
                             reasons.append("camera_filter_miss")
@@ -788,6 +805,7 @@ class MQTTEventAggregator:
                         except Exception as e:
                             logger.debug("Frigate motion callback: %s", e)
                     else:
+                        queue_frigate_event = False
                         reasons = []
                         if not cam_ok:
                             reasons.append("camera_filter_miss")
@@ -874,6 +892,14 @@ class MQTTEventAggregator:
                 )
             return
         if ev:
+            if str(ev.get("source") or "").strip().lower() == "frigate" and not queue_frigate_event:
+                logger.debug(
+                    "Frigate event dropped from queue: camera=%s label=%s sub_label=%s",
+                    ev.get("camera", ""),
+                    ev.get("label", ""),
+                    ev.get("sub_label", ""),
+                )
+                return
             self._validate_normalized_event(ev)
             with self._lock:
                 self._events.append(ev)

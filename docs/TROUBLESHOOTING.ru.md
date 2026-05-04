@@ -129,14 +129,14 @@ docker logs birdlense --tail 200 2>&1
 
 | # | Причина | Как проверить |
 |---|---------|---------------|
-| 1 | `motion.source: opencv` (дефолт) | `user_config.yaml` → `motion.source` должен быть `frigate` или `mqtt` |
+| 1 | Frigate не включаётся автоматически только из broker | **`user_config.yaml`**: включите **`triggers.frigate.enabled: true`** и задайте **`mqtt.broker`**, топик задаётся в **`triggers.frigate.topic`** (или legacy **`mqtt.frigate_topic`**, который мигрирует при сохранении) |
 | 2 | Камера Frigate не в `video.cameras` | `id` в cameras должен совпадать с именем камеры во Frigate |
 | 3 | `frigate_label_filter` пустой | Дефолт `["bird","Bird"]`; пустой список отбрасывает все события |
 | 4 | MQTT долго недоступен (брокер/сеть) | Логи `MQTT aggregator disconnected` / `MQTT aggregator connected`; reconnect идёт с backoff (`mqtt.reconnect_min_delay` → `mqtt.reconnect_max_delay`) |
 | 5 | `frigate_topic` не совпадает с Frigate | Frigate `mqtt.topic_prefix` → топик `PREFIX/events` |
 | 6 | MQTT QoS 0 — потеря при reconnect | Нестабильная сеть |
 
-**Порядок проверки:** motion.source → video.cameras (id камеры) → логи `Frigate trigger` / `Frigate event skipped` → `GET /api/ui/status` (mqtt: ok).
+**Порядок проверки:** **`triggers.frigate.enabled`**, **`mqtt.broker`**, `video.cameras` (id камеры) → логи `Frigate trigger` / `Frigate event skipped` → `GET /api/ui/status` (mqtt: ok).
 
 ### BirdNET: звук есть, FIFO заполняется, но видео «не слышит» / нет audio evidence
 
