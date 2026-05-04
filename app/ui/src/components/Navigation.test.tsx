@@ -60,7 +60,10 @@ describe('Navigation', () => {
   it('shows species and recordings entry points for editable users', async () => {
     const { container } = renderNav();
 
-    await screen.findByRole('link', { name: /home/i });
+    const homeLinks = await screen.findAllByRole('link', {
+      name: /birdlense hub ml/i,
+    });
+    expect(homeLinks.length).toBeGreaterThanOrEqual(1);
     const speciesLink = container.querySelector('a[href="/species"]');
     const timelineLink = container.querySelector('a[href="/timeline"]');
 

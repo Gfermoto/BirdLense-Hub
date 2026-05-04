@@ -114,7 +114,16 @@ test.describe('Smoke tests', () => {
 
   test('Timeline page loads', async ({ page }) => {
     await gotoReady(page, '/timeline');
-    await expect(page.getByText(/Timeline|Записи|时间线|时间轴|选择|Select/i).first()).toBeVisible({
+    await waitMainSpinnerGone(page);
+    // EN: чип режима «Timeline» или intro; nav.timeline = «Recordings»; при ошибке API — заголовок «Recordings».
+    // RU/ZH: см. locales `nav.timeline`, `timeline.intro`, `timeline.modeTimeline`.
+    await expect(
+      page
+        .getByText(
+          /Timeline|Recordings|Записи|记录|时间线|时间轴|选择|Select|Pick a day|Выберите день|选择有录像/i,
+        )
+        .first(),
+    ).toBeVisible({
       timeout: 15000,
     });
   });
@@ -169,7 +178,14 @@ test.describe('Smoke tests', () => {
     // /unknowns → /timeline?review=1. На хабе без пароля canEdit=true — review=1 остаётся (это ок).
     // С паролем гость получает replace без review=1 (см. TimelinePage useEffect).
     await expect(page).toHaveURL(/\/timeline/);
-    await expect(page.getByText(/Timeline|Записи|时间线|时间轴|选择|Select/i).first()).toBeVisible({
+    await waitMainSpinnerGone(page);
+    await expect(
+      page
+        .getByText(
+          /Timeline|Recordings|Записи|记录|时间线|时间轴|选择|Select|Pick a day|Выберите день|选择有录像/i,
+        )
+        .first(),
+    ).toBeVisible({
       timeout: 15000,
     });
   });

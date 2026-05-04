@@ -110,6 +110,10 @@ _manual_image_overrides = {
     "stripped manakin": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Machaeropterus_regulus_-_Stripped_manakin_%28male%29.jpg/330px-Machaeropterus_regulus_-_Stripped_manakin_%28male%29.jpg",
     # Wikipedia pageimage for Great Tit can resolve to a dead bird photo; pin to stable live bird image.
     "great tit": "https://inaturalist-open-data.s3.amazonaws.com/photos/340613122/medium.jpg",
+    # Same class of failure for Eurasian Blue Tit — page preview / lead image occasionally a dead specimen.
+    "eurasian blue tit": "https://inaturalist-open-data.s3.amazonaws.com/photos/41677354/medium.jpeg",
+    "blue tit": "https://inaturalist-open-data.s3.amazonaws.com/photos/41677354/medium.jpeg",
+    "cyanistes caeruleus (eurasian blue tit)": "https://inaturalist-open-data.s3.amazonaws.com/photos/41677354/medium.jpeg",
 }
 
 

@@ -25,7 +25,8 @@
     "speciesHint": "Species directory and how often each species is seen.",
     "foodHint": "Feeder, dispense, and scales — control and status.",
     "liveViewHint": "Live camera streams; latency depends on network and codec.",
-    "logoutHint": "End the session with access to station settings and admin tools."
+    "logoutHint": "End the session with access to station settings and admin tools.",
+    "brandHome": "BirdLense Hub ML — Home"
   },
   "library": {
     "activity": "Recording Activity",
@@ -196,16 +197,16 @@
     "advanced": "Advanced settings",
     "advancedDesc": "YOLO (bird detection) is used in processor — models in processor.models config. Here only recording params and filters.",
     "modeOverview": "Overview",
-    "modeWorkspace": "Service",
+    "modeWorkspace": "Workspace",
     "modeAria": "Settings page mode",
-    "simpleModeHint": "Showing core settings. Use “Service” for advanced processor tuning and species catalog tools.",
+    "simpleModeHint": "Showing core settings. Switch to “Workspace” for advanced processor tuning and species catalog tools.",
     "accordionGeneral": "General",
     "accordionGeneralDesc": "System-level hub settings, weather, MCP, performance, and backup controls.",
     "accordionConnection": "Connection",
     "accordionConnectionDesc": "MQTT, Go2RTC, cameras — system foundation.",
     "accordionConnections": "Connections",
     "accordionConnectionsDesc": "All hub integrations used for connectivity: MQTT, Home Assistant, Go2RTC, cameras, and recording transport.",
-    "accordionMotion": "Motion Detection",
+    "accordionMotion": "Capture triggers",
     "accordionMotionDesc": "Any enabled trigger starts the same clip session: frames are captured from the camera, the detector (YOLO) runs on them, results land in the visit record; the video file is part of that session—not “recording only”. Default trigger is camera motion (OpenCV). Frigate (MQTT), a standalone MQTT or ESPHome sensor, and a weight spike (if enabled) can run in parallel. With Frigate+MQTT, OpenCV can stay on as a safety net. BirdNET contributes to audio merge and notification thresholds, not the session start itself.",
     "accordionFeed": "Feeder",
     "accordionFeedDesc": "Feed relay control over MQTT or ESPHome.",
@@ -299,6 +300,7 @@
     "frigateLabelExclude": "Exclude Frigate labels",
     "frigateLabelExcludeHint": "Labels to ignore (mouse misidentified as cat/dog). Comma-separated.",
     "frigateMotionIntro": "Frigate MQTT events (see Connections) start a clip session (frame capture + detector) and take part in YOLO fusion. Below: filters and geometry fallback.",
+    "frigateMinScoreYamlHint": "Expert tuning: minimum Frigate top score before triggering (config key triggers.frigate.min_trigger_score) is YAML-only — use YAML export/import in General if you adjust it.",
     "frigateRoutingTitle": "Frigate routing (MQTT)",
     "frigateRoutingDesc": "Empty camera list = only cameras configured under Video (same as unset). Empty label list = any label (noisier). Excluded labels are not merged as Frigate species, but with geometry fallback recording may still start.",
     "frigateCameraFilter": "Frigate cameras only (IDs)",
@@ -1473,8 +1475,9 @@
   },
   "system": {
     "pageDescription": "Health summary, catalog, and diagnostics. Advanced mode is for logs, maintenance, and rare operations.",
+    "pageModeToggleHint": "You opened this from the hub «Service» entry. Tabs switch layout only: Overview (compact digest) or Workspace (diagnostics, automation, logs, and model tools).",
     "modeOverview": "Overview",
-    "modeWorkspace": "Service",
+    "modeWorkspace": "Workspace",
     "modeAria": "System page mode",
     "storage": "Storage",
     "sections": {

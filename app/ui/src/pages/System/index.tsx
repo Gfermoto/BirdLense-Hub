@@ -15,6 +15,7 @@ import { SystemReadinessCard } from './SystemReadinessCard';
 import { SystemHero } from './SystemHero';
 import { RecognitionImprovementCard } from './RecognitionImprovementCard';
 import Box from '@mui/material/Box';
+import Alert from '@mui/material/Alert';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { PageModeToggle, type PageMode } from '../../components/PageModeToggle';
 import { PageSection } from '../../components/PageSection';
@@ -78,6 +79,10 @@ export const System: React.FC = () => {
           }
           titleVariant="h3"
         />
+
+        <Alert severity="info" variant="outlined" sx={{ mt: -2 }}>
+          {t('system.pageModeToggleHint')}
+        </Alert>
 
         <SystemHero advanced={isAdvanced} />
 

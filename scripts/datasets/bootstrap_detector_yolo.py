@@ -4,7 +4,8 @@
 
   binary/birds/      — COCO 2017, только класс ``bird`` → один класс в YOLO (id 0).
   binary/rodent/     — Open Images V6, несколько классов грызунов (по умолчанию
-                       ``Squirrel,Mouse,Rat,Hamster``) → один класс (id 0); после merge → Rodent.
+                       ``Squirrel,Mouse,Hamster``; в OID **boxable** нет отдельного ``Rat``) →
+                       один класс (id 0); после merge → Rodent.
   binary/background/ — COCO train/val: кадры **без** ``bird``, пустые ``.txt``.
 
 Зависимости::
@@ -51,7 +52,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 import shutil
 import sys
 from pathlib import Path
@@ -68,6 +68,32 @@ def _ensure_layout(root: Path) -> None:
         for split in ("train", "val"):
             (base / sub / split / "images").mkdir(parents=True, exist_ok=True)
             (base / sub / split / "labels").mkdir(parents=True, exist_ok=True)
+
+
+def _rodent_classes_oid_boxable(requested: list[str]) -> tuple[list[str], list[str]]:
+    """
+    Имена классов для ``foz.load_zoo_dataset(..., classes=...)`` должны совпадать с OID boxable.
+
+    Частый промах: ``Rat`` — ``oi.get_classes()`` может включать имя, а zoo-loader
+    для ``open-images-v6`` всё равно пишет ``Ignoring invalid classes``; такие имена
+    отбрасываем здесь же.
+    """
+    import fiftyone.utils.openimages as oi
+
+    allowed = frozenset(oi.get_classes())
+    # Строже, чем get_classes(): иначе тишина в stderr от zoo и шум при каждом chunk.
+    _oid_v6_zoo_rejects = frozenset({"Rat"})
+    keep: list[str] = []
+    drop: list[str] = []
+    for c in requested:
+        if c in _oid_v6_zoo_rejects:
+            drop.append(c)
+            continue
+        if c in allowed:
+            keep.append(c)
+        else:
+            drop.append(c)
+    return keep, drop
 
 
 def _detections(sample) -> list:
@@ -593,8 +619,8 @@ def main() -> int:
     ap.add_argument(
         "--rodent-classes",
         type=str,
-        default="Squirrel,Mouse,Rat,Hamster",
-        help="Open Images классы для Rodent (через запятую)",
+        default="Squirrel,Mouse,Hamster",
+        help="Open Images **boxable** классы для Rodent (через запятую); «Rat» в OID boxable нет",
     )
     ap.add_argument("--background-train", type=int, default=280)
     ap.add_argument("--background-val", type=int, default=120)
@@ -676,6 +702,27 @@ def main() -> int:
     if not rodent_classes:
         print("--rodent-classes не должен быть пустым", file=sys.stderr)
         return 2
+
+    if not args.skip_rodents:
+        resolved, bad = _rodent_classes_oid_boxable(rodent_classes)
+        if bad:
+            print(
+                "[rodent] игнорируются не‑boxable имена Open Images (в т.ч. опечатки): "
+                + ", ".join(bad),
+                file=sys.stderr,
+            )
+            print(
+                "[rodent] см. доступные имена: "
+                "`python -c \"import fiftyone.utils.openimages as oi; print(sorted(oi.get_classes()))\"`",
+                file=sys.stderr,
+            )
+        rodent_classes = resolved
+        if not rodent_classes:
+            print(
+                "--rodent-classes после проверки OID boxable пуст; задайте валидные имена.",
+                file=sys.stderr,
+            )
+            return 2
 
     if not args.skip_birds:
         if not args.skip_birds_coco:
