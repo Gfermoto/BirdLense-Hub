@@ -55,6 +55,8 @@ python3 scripts/datasets/refine_classifier_yolo_cls.py \
 
 При необходимости добавить третий вход (другой открытый датасет) тем же `merge_classification_datasets.py`.
 
+Курируемый список источников и точечный добор по виду (iNat `--taxon-id`): **[CLASSIFIER_EXTRA_SOURCES.md](./CLASSIFIER_EXTRA_SOURCES.md)**. Статистика «где мало фото»: **`report_classifier_class_counts.py`**.
+
 ## Баланс при полном охвате (~491 класс)
 
 Имена остаются в **`Scientific_(Common)`** (папки), если перед балансом выполнен **`refine_classifier_yolo_cls.py --normalize`** — как в прежнем пайплайне.
