@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 # flake8: noqa
 """
-Свести YOLO classification dataset к обучаемому профилю (обрезка «толстых» классов, опционально — редких).
+Свести YOLO classification dataset subsampling'ом (урезание числа файлов на класс).
 
-Для ~491 EU-класса: малый --min-images, умеренный --max-ratio и --anchor-percentile 5 — см. EU_CLASSIFIER.md.
+Основная политика BirdLense для EU-классификатора — баланс через **добор** открытых данных
+(`backfill_classifier_open.py`, bulk iNat, birds-525), см. EU_CLASSIFIER.md. Этот скрипт —
+опционально, если нужно уменьшить диск/время обучения ценой потери примеров.
+
+Для ~491 классов без агрессивной потери видов: малый --min-images, --max-ratio и --anchor-percentile — см. доку скрипта и git-историю EU_CLASSIFIER.
 
 1) Удалить классы с суммарным числом изображений < --min-images (по всем сплитам).
 2) Ограничить верх: база m — min(count) или, при --anchor-percentile P, max(min, percentile(counts, P)),

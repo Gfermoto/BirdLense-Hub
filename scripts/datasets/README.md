@@ -21,7 +21,8 @@ Scripts for preparing bird detection training datasets. Uses [NABirds](https://d
 - **species_format.py** — утилиты: format, parse, маппинг inat_bird_labels
 - **merge_classification_datasets.py** — объединить датасеты
 - **refine_classifier_yolo_cls.py** — дедуп между сплитами, опционально нормализация имён папок, выделение `test/`, глобальный дедуп (`--dedupe-global-only`, при необходимости `--skip-rebalance`)
-- **balance_classifier_yolo_cls.py** — подрезка «толстых» классов и пересбор **train/val/test**; для ~491 EU см. **`EU_CLASSIFIER.md`** (`--anchor-percentile`, `CLASSIFIER_BALANCE=1` в `build_eu_classifier_yolo.sh`)
+- **backfill_classifier_open.py** — добор редких классов с iNaturalist в staging (без урезания остальных); см. **`EU_CLASSIFIER.md`**
+- **balance_classifier_yolo_cls.py** — опциональное **урезание** датасета (subsampling); основной путь баланса — добор, не этот скрипт
 - **download_and_merge_all.sh** — полный пайплайн
 - **dump_classifier_allowlist.py** — имена классов из `best.pt` → `class_names.txt` для `species.catalog_allowlist_file` в Hub ([CONFIGURATION](../../docs/CONFIGURATION.md))
 - **../validate-processor-weights.py** — финальная проверка rollout-кандидата (`best.pt` + `class_names.txt` + `dataset_info.json`)

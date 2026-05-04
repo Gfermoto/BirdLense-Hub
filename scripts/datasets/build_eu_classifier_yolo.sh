@@ -28,16 +28,8 @@ echo "==> Refine: dedupe + normalize + test (имена Scientific_(Common) ка
   --cache-dir "${ROOT}/.cache" \
   --dedupe --normalize --test-split
 
-if [[ "${CLASSIFIER_BALANCE:-}" == "1" ]]; then
-  echo "==> Balance (CLASSIFIER_BALANCE=1): min=${BALANCE_MIN_IMAGES:-12} ratio=${BALANCE_MAX_RATIO:-6} anchor_p=${BALANCE_ANCHOR_PCT:-5}"
-  "${PY}" scripts/datasets/balance_classifier_yolo_cls.py \
-    --root "${ROOT}/yolo_cls_eu_merged" \
-    --min-images "${BALANCE_MIN_IMAGES:-12}" \
-    --max-ratio "${BALANCE_MAX_RATIO:-6}" \
-    --anchor-percentile "${BALANCE_ANCHOR_PCT:-5}" \
-    --seed "${BALANCE_SEED:-42}" \
-    --report-json "${ROOT}/balance_report.json"
-fi
+# Добор редких классов без урезания «толстых»: см. backfill_classifier_open.py и EU_CLASSIFIER.md.
+# Урезание датасета (subsampling): только если нужно вручную — scripts/datasets/balance_classifier_yolo_cls.py (не в этом скрипте).
 
 "${PY}" scripts/datasets/refine_classifier_yolo_cls.py \
   --root "${ROOT}/yolo_cls_eu_merged" \

@@ -2,8 +2,8 @@
 
 ## Принцип
 
-- **Максимум охвата европейских видов**, баланс за счёт **добавления** данных (iNat EU, готовый EU-merge на HF), а не выкидывания классов.
-- **`balance_classifier_yolo_cls.py`** с дефолтами `--min-images 40` и узким `--max-ratio` режет много видов — так **не** добиваются ~491 класса. Для баланса при почти полном охвате см. раздел **«Баланс при полном охвате»** ниже.
+- **Максимум охвата** (~491 класс EU-merge), **ровнее распределение только за счёт добора** открытых размеченных данных (iNaturalist research-grade, HF birds-525-слой и т.д.), **не за счёт выкидывания** изображений из «жирных» классов.
+- **`balance_classifier_yolo_cls.py`** — опциональное **урезание** (subsampling); для политики «баланс через добор» **не используйте** его как основной инструмент.
 
 ## Базовый слой (рекомендуется)
 
@@ -16,31 +16,65 @@ python3 scripts/datasets/download_birds_eu_merged.py \
 
 Источник: [`gfermoto/birds-eu-merged`](https://huggingface.co/datasets/gfermoto/birds-eu-merged) (BirdLense Hub).
 
-## Добавить объём (EU, research-grade)
-
-Увеличить `--max-obs` (десятки тысяч наблюдений — долго, уважать rate limit API):
+## Массовый добор (EU)
 
 ```bash
 python3 scripts/datasets/download_inaturalist.py \
   --output datasets/new/classifier/raw/inat_europe_bulk \
-  --max-obs 40000 \
+  --max-obs 60000 \
   --photo-size medium
 ```
 
-`download_inaturalist.py` уже фильтрует **Europe** (`place_id=96372`) и **Aves**.
+`download_inaturalist.py` по умолчанию: **Europe** (`place_id=96372`), **Aves**, research-grade.
 
-## Слить без дублирования файлов
+## Точечный добор редких классов (iNat, без урезания)
+
+После первого merge + refine посмотреть «дыры»:
+
+```bash
+python3 scripts/datasets/report_classifier_class_counts.py \
+  --root datasets/new/classifier/yolo_cls_eu_merged \
+  --below 80 \
+  --csv datasets/new/classifier/rare_before.csv
+```
+
+Собрать слой только добора (поднимает классы до `--target`, обращаясь к API по виду):
+
+```bash
+python3 scripts/datasets/backfill_classifier_open.py \
+  --root datasets/new/classifier/yolo_cls_eu_merged \
+  --staging datasets/new/classifier/raw/inat_backfill \
+  --target 120 \
+  --place-mode global \
+  --report-json datasets/new/classifier/backfill_report.json
+
+# проверка без скачивания:
+# ... --dry-run
+```
+
+`--place-mode europe` — только Европа; `global` — больше наблюдений для очень редких видов.
+
+Дополнительные открытые источники и ручной добор: **[CLASSIFIER_EXTRA_SOURCES.md](./CLASSIFIER_EXTRA_SOURCES.md)**.
+
+## Слить слои
+
+Каждый новый сырой каталог — ещё один `--inputs`:
 
 ```bash
 python3 scripts/datasets/merge_classification_datasets.py \
   --inputs datasets/new/classifier/yolo_cls_eu_hf \
            datasets/new/classifier/raw/inat_europe_bulk \
+           datasets/new/classifier/raw/inat_backfill \
   --output datasets/new/classifier/yolo_cls_eu_merged \
   --symlink \
   --val-ratio 0.2
 ```
 
-Дальше — утечки и имена (без жёсткого «баланс-реза»):
+После изменения состава inputs выходную папку лучше брать **новым именем** (`..._merged_v2`), чтобы не перепутать кэши.
+
+## Имена и качество разметки
+
+Утечки между сплитами и **`Scientific_(Common)`** как в Hub:
 
 ```bash
 python3 scripts/datasets/refine_classifier_yolo_cls.py \
@@ -53,41 +87,12 @@ python3 scripts/datasets/refine_classifier_yolo_cls.py \
   --dedupe-global-only --skip-rebalance
 ```
 
-При необходимости добавить третий вход (другой открытый датасет) тем же `merge_classification_datasets.py`.
+Цикл «мало фото → backfill staging → merge (+ новый input) → refine» можно повторять, пока счётчики не устраивают.
 
-Курируемый список источников и точечный добор по виду (iNat `--taxon-id`): **[CLASSIFIER_EXTRA_SOURCES.md](./CLASSIFIER_EXTRA_SOURCES.md)**. Статистика «где мало фото»: **`report_classifier_class_counts.py`**.
+## Обучение при остаточном дисбалансе
 
-## Баланс при полном охвате (~491 класс)
-
-Имена остаются в **`Scientific_(Common)`** (папки), если перед балансом выполнен **`refine_classifier_yolo_cls.py --normalize`** — как в прежнем пайплайне.
-
-Порядок:
-
-1. HF (+ опционально iNat) → `merge_classification_datasets.py` → **`refine ... --dedupe --normalize --test-split`**
-2. **`balance_classifier_yolo_cls.py`** — подрезает только «толстые» классы относительно типичного минимума; редкие классы с малым числом кадров сохраняются целиком до потолка:
-   - **`--min-images 12`** — отсечь только совсем пустые/сломанные классы (подберите 8–20 под ваш merge; чем меньше, тем ближе к 491).
-   - **`--max-ratio 6`** — верхняя граница ≈ в 6 раз выше базы `m` (при необходимости 5–10).
-   - **`--anchor-percentile 5`** — база `m = max(min_count, P5 по классам)`, чтобы один класс с 1–2 фото не задавал жёсткий потолок всем остальным.
-
-Пример:
-
-```bash
-python3 scripts/datasets/balance_classifier_yolo_cls.py \
-  --root datasets/new/classifier/yolo_cls_eu_merged \
-  --min-images 12 --max-ratio 6 --anchor-percentile 5 --seed 42 \
-  --report-json datasets/new/classifier/balance_report.json
-```
-
-3. Затем снова убрать дубликаты по файлам: **`refine_classifier_yolo_cls.py --dedupe-global-only --skip-rebalance`** (или без `--skip-rebalance`, если хотите пересобрать train/val пропорции).
-
-Включить этот шаг из скрипта: **`CLASSIFIER_BALANCE=1 bash scripts/datasets/build_eu_classifier_yolo.sh ...`**
-
-Качество: до баланса имеет смысл **добавить iNat EU** (research-grade, больший `--max-obs`), чтобы поднять пол у редких видов — тогда балансировка меньше режет полезные данные.
-
-## Обучение при дисбалансе классов
-
-Даже после баланса полезны **веса классов / focal / семплинг** в Ultralytics. Датасетный баланс и loss-трюки не исключают друг друга.
+На этапе обучения всё ещё полезны **веса классов / focal / семплинг батча** в Ultralytics — это не замена добору, а дополнение.
 
 ## Примечание по составу EU-merge на HF
 
-В архив могут попадать отдельные виды из глобального birds-525 вне Европы; основная масса — EU + совместимые метки. Ужесточение «только Европа» — отдельным таксономическим фильтром по списку видов (BirdLife / ручной allowlist), если понадобится.
+В архив могут попадать отдельные виды из глобального birds-525 вне Европы; основная масса — EU + совместимые метки. Ужесточение «только Европа» — отдельным таксономическим фильтром по списку видов, если понадобится.

@@ -1,8 +1,8 @@
 # Добор размеченных данных для классификатора (редкие классы)
 
-Если по виду мало кадров после HF EU-merge, можно **добавить** данные из других открытых источников и снова прогнать `merge_classification_datasets.py` → `refine_classifier_yolo_cls.py`. Имена сведёт `--normalize` к **`Scientific_(Common)`**, как в текущем Hub.
+Если по виду мало кадров после HF EU-merge, **добавляйте** данные из открытых источников и снова `merge_classification_datasets.py` → `refine_classifier_yolo_cls.py`. Имена сведёт `--normalize` к **`Scientific_(Common)`**.
 
-**Лицензии:** перед публикацией весов или датасета сверяйте CC-BY-NC / коммерческое использование у каждого источника.
+Автоматизированный добор по списку редких классов: **`backfill_classifier_open.py`** (iNaturalist). Дальше staging вторым/третьим `--inputs` у merge.
 
 ---
 
@@ -50,9 +50,9 @@ python3 scripts/datasets/download_hf_birds.py \
 
 ## 3. Рабочий порядок
 
-1. Снять статистику по классам: **`report_classifier_class_counts.py`**.
-2. Для «дырявых» классов: точечный **`download_inaturalist.py --taxon-id …`** или ещё один общий bulk-слой (525 / второй HF слой).
-3. **`merge_classification_datasets.py --inputs …`** — добавить новую папку третьим/четвёртым входом.
-4. **`refine_classifier_yolo_cls.py --dedupe --normalize --test-split`**, затем при необходимости balance и `--dedupe-global-only` (см. `EU_CLASSIFIER.md`).
+1. **`report_classifier_class_counts.py`** — кто ниже порога.
+2. **`backfill_classifier_open.py`** — массовый точечный добор с iNat в staging **или** отдельные вызовы **`download_inaturalist.py --taxon-id`** / слой birds-525.
+3. **`merge_classification_datasets.py --inputs …`** — добавить staging очередным входом (без урезания уже имеющихся классов).
+4. **`refine_classifier_yolo_cls.py`** (`--dedupe --normalize --test-split`, затем `--dedupe-global-only`).
 
-Ручные подборки с Wikimedia Commons / наблюдений под конкретный вид возможны, но дороже по времени; iNaturalist обычно быстрее для однотипных фото птицы.
+Ручные подборки возможны; iNat обычно быстрее для однотипных фото птицы.
