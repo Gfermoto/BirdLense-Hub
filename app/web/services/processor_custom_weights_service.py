@@ -175,7 +175,7 @@ def get_status() -> dict[str, Any]:
     """Сводка для UI: эффективные пути, встроенные дефолты, признак «наш» custom-файл."""
     from inference.selector import resolve_inference_backend
 
-    def_bin = _resolve_model_path("models/detection/weights/best.pt")
+    def_bin = _resolve_model_path("models/detection/weights/yolo11n.pt")
     def_cls = _resolve_model_path("models/classification/weights/best.pt")
     eb = effective_binary_path()
     ec = effective_classifier_path()

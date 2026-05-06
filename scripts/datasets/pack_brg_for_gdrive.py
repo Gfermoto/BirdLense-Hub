@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-"""Упаковать ``scripts/datasets/brg`` в ZIP под загрузку на Google Drive / облако.
+"""Упаковать дерево YOLO детектора в ZIP под Google Drive / облако.
 
 В архиве только то, что нужно для обучения YOLO detect: ``dataset.yaml``, сплиты
 ``train|val|test`` с ``images/`` и ``labels/``. Служебные JSON (dedupe, merge manifest)
 не включаются. Файлы ``*:Zone.Identifier`` пропускаются.
 
-Выход по умолчанию: ``datasets/BirdLense_detector_brg_YYYYMMDD_HHMMSS.zip`` в корне репозитория
-(каталог ``datasets/`` в ``.gitignore``).
+Выход по умолчанию:
+``datasets/new/detector/BirdLense_detector_brg_YYYYMMDD_HHMMSS.zip`` (рядом с ``binary/``, ``yolo/``).
+
+Источник по умолчанию: ``datasets/new/detector/yolo``, иначе legacy ``scripts/datasets/brg``.
 
 Пример::
 
     python3 scripts/datasets/pack_brg_for_gdrive.py
     python3 scripts/datasets/pack_brg_for_gdrive.py --out /tmp/brg.zip
+    python3 scripts/datasets/pack_brg_for_gdrive.py \\
+        --brg-dir datasets/new/detector/yolo
 """
 
 from __future__ import annotations
@@ -59,6 +63,17 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def _default_brg_dir(repo: Path) -> Path:
+    yolo = repo / "datasets" / "new" / "detector" / "yolo"
+    if yolo.is_dir() and (yolo / "dataset.yaml").is_file():
+        return yolo
+    return repo / "scripts" / "datasets" / "brg"
+
+
+def _default_out_dir(repo: Path) -> Path:
+    return repo / "datasets" / "new" / "detector"
+
+
 def _should_skip(path: Path) -> bool:
     name = path.name
     if name.endswith(":Zone.Identifier") or "Zone.Identifier" in name:
@@ -77,18 +92,24 @@ def main() -> int:
         "--brg-dir",
         type=Path,
         default=None,
-        help="Каталог brg (по умолчанию: <repo>/scripts/datasets/brg)",
+        help=(
+            "Дерево YOLO перед zip (по умолчанию: datasets/new/detector/yolo "
+            "или scripts/datasets/brg)"
+        ),
     )
     ap.add_argument(
         "--out",
         type=Path,
         default=None,
-        help="Путь к .zip (по умолчанию datasets/BirdLense_detector_brg_<UTC>.zip)",
+        help=(
+            "Путь к .zip (по умолчанию: "
+            "datasets/new/detector/BirdLense_detector_brg_<UTC>.zip)"
+        ),
     )
     args = ap.parse_args()
 
     repo = _repo_root()
-    brg = (args.brg_dir or (repo / "scripts" / "datasets" / "brg")).resolve()
+    brg = (args.brg_dir or _default_brg_dir(repo)).resolve()
     if not brg.is_dir():
         print(f"brg not found: {brg}", file=sys.stderr)
         return 2
@@ -97,7 +118,7 @@ def main() -> int:
         print(f"missing dataset.yaml: {yaml_path}", file=sys.stderr)
         return 2
 
-    out_dir = repo / "datasets"
+    out_dir = _default_out_dir(repo)
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%SZ")
     out_zip = (args.out or (out_dir / f"BirdLense_detector_brg_{stamp}.zip")).resolve()

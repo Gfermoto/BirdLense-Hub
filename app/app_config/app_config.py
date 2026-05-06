@@ -14,12 +14,15 @@ from app_config.trigger_config import (
 
 logger = logging.getLogger(__name__)
 
+# Минимумы ниже считаются «сломанными» пост-миграциями из старых джобов YAML.
+# Слишком жёсткие полы (1.0s / 0.30 confidence) режут ByteTrack-треки, которые реально есть.
+# detection.min_confidence_to_store должно быть <= processor.min_confidence_to_process для согласованного fusion.
 CONFIDENCE_FLOORS = {
-    'detection.min_confidence_to_store': 0.30,
-    'processor.min_confidence_to_process': 0.30,
-    'processor.min_confidence_to_notify': 0.30,
+    'detection.min_confidence_to_store': 0.22,
+    'processor.min_confidence_to_process': 0.24,
+    'processor.min_confidence_to_notify': 0.28,
     'processor.min_confidence_binary': 0.22,
-    'processor.min_track_duration': 1.0,
+    'processor.min_track_duration': 0.35,
     'processor.min_box_size_px': 64,
 }
 

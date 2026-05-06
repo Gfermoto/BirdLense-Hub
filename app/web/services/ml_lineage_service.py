@@ -68,7 +68,7 @@ def current_model_lineage_snapshot() -> dict:
             app_config.get("processor.models.binary")
             or app_config.get("processor.detector_model_path")
             or app_config.get("detection.detector_model_path")
-            or "models/detection/weights/best.pt"
+            or "models/detection/weights/yolo11n.pt"
         )
         det_path = resolve_artifact_path(binary_rel)
     if classifier_backend in ("openvino", "auto"):

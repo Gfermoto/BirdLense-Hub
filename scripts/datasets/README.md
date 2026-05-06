@@ -1,6 +1,6 @@
 # Dataset Scripts
 
-**Paths:** merge по умолчанию → `scripts/datasets/binary/merged/` (`make dataset-merge-three-class`). Папка `scripts/datasets/brg/` — для упаковки в ZIP под Drive (`pack_brg_for_gdrive.py` → `datasets/BirdLense_detector_brg_<UTC>.zip`). Подробная таблица: [docs/DATASETS.md](../../docs/DATASETS.md) (блок canonical paths / актуальные пути).
+**Paths:** merge по умолчанию → **`datasets/new/detector/yolo/`** (`make dataset-merge-three-class`). Упаковка под Drive: `pack_brg_for_gdrive.py` → **`datasets/new/detector/BirdLense_detector_brg_<UTC>.zip`** (по умолчанию из `datasets/new/detector/yolo/`). Legacy-папка `scripts/datasets/brg/` опционально. Источники под **`datasets/new/`**: [docs/DATASETS.ru.md](../../docs/DATASETS.ru.md) / [DATASETS.md](../../docs/DATASETS.md).
 
 Scripts for preparing bird detection training datasets. Uses [NABirds](https://dl.allaboutbirds.org/nabirds) as the base dataset.
 
@@ -33,7 +33,9 @@ Scripts for preparing bird detection training datasets. Uses [NABirds](https://d
 
 ## Детектор (Bird / Rodent / Background)
 
-Сборка данных: **`bootstrap_detector_yolo.py`** → **`make dataset-merge-three-class`** → `binary/merged/`.
+Сборка данных: **`bootstrap_detector_yolo.py`** (`--root datasets/new/detector`) → **`make dataset-merge-three-class`** → **`datasets/new/detector/yolo/`**.
+
+**Один вход целиком (ТЗ Hub):** **`make dataset-build-detector-tz`** — волны A–E, verify binary, merge, dedupe, проверка `yolo/*/labels`.
 
 Усиление качества (второй домен птиц OID **Bird**, hard-negative фон person/dog/cat): **[DETECTOR_DATASET_QUALITY.md](./DETECTOR_DATASET_QUALITY.md)**.
 
@@ -67,15 +69,24 @@ Downloads COCO 2017 dataset filtered to only include images containing birds. Us
 
 Requires: `pip install fiftyone pycocotools`
 
+## convert_cub_to_yolo.py
+
+Imports **Caltech-UCSD Birds-200-2011** (`bounding_boxes.txt` + official split) into **`binary/birds/`** as YOLO class `0` with filenames prefixed `cub_`. Does **not** download the tarball — unpack locally and pass `--cub-root`. From repo root:
+
+```bash
+make dataset-import-cub CUB_ROOT=/path/to/CUB_200_2011
+make dataset-merge-three-class
+```
+
 ## merge_datasets_binary.py
 
 Merges the cleaned NABirds dataset (`nabirds_yolo_cleaned/`) with COCO birds (`coco_birds_yolo/`) and collapses all species into a single "bird" class (class 0). Creates a binary detection dataset for training a general bird detector without species classification.
 
 ## merge_datasets_three_class.py ([epic #367](https://github.com/Gfermoto/BirdLense-Hub/issues/367))
 
-Merges **`binary/birds/`** + **`binary/rodent/`** + **`binary/background/`** into **`binary/merged/`** with YOLO class ids **0 = Bird**, **1 = Rodent**, **2 = Background** and `dataset.yaml` names matching the Hub (`Bird` / `Rodent` / `Background`). Background images may use **empty** label files (image-level negatives).
+Merges **`binary/birds/`** + **`binary/rodent/`** + **`binary/background/`** into выходной каталог (по умолчанию **`datasets/new/detector/yolo/`**) с YOLO class ids **0 = Bird**, **1 = Rodent**, **2 = Background** и `dataset.yaml` в терминах Hub (`Bird` / `Rodent` / `Background`). Background images may use **empty** label files (image-level negatives).
 
-From repo root: **`make dataset-merge-three-class`** (expects those folders under `scripts/datasets/`). Options: `--manifest-out` for a merge audit JSON; see [DATASETS.md](../docs/DATASETS.md). Hard-negative manifest schema: `schemas/hard_negatives_manifest_v1.schema.json`.
+From repo root: **`make dataset-merge-three-class`** читает **`datasets/new/detector/binary/{birds,rodent,background}/`** и пишет **`datasets/new/detector/yolo/`** (см. `Makefile`). Иначе задайте пути вручную в **`merge_datasets_three_class.py`**. Options: `--manifest-out` for a merge audit JSON; see [DATASETS.md](../docs/DATASETS.md). Hard-negative manifest schema: `schemas/hard_negatives_manifest_v1.schema.json`.
 
 Published detector archives (ready for Colab Stage A -> Stage B) are in:
 **[gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)**.
@@ -86,7 +97,7 @@ After `merge_datasets_three_class.py`, export a profile and run hard checks:
 
 ```bash
 python3 scripts/datasets/export_detector_dataset_profile.py \
-  --dataset-root scripts/datasets/binary \
+  --dataset-root datasets/new/detector \
   --out /tmp/detector_profile.json
 
 make dataset-verify-quality-gates PROFILE=/tmp/detector_profile.json
@@ -105,7 +116,7 @@ make dataset-verify-hard-negatives \
 
 ## pack_brg_for_gdrive.py
 
-Собрать **`brg/`** в один ZIP под облако (Google Drive и т.д.): `dataset.yaml`, все сплиты, внутри архива `brg/README_UPLOAD.txt` с командой train. Выход: **`datasets/BirdLense_detector_brg_<UTC>.zip`** (корневой `datasets/` в `.gitignore`).
+Собрать **`brg/`** в один ZIP под облако (Google Drive и т.д.): `dataset.yaml`, все сплиты, внутри архива `brg/README_UPLOAD.txt` с командой train. Выход: **`datasets/new/detector/BirdLense_detector_brg_<UTC>.zip`**.
 
 Стартовые веса **`bl_best.pt`** и состав датасета **`brg`**: [docs/DATASETS.md](../../docs/DATASETS.md) / [DATASETS.ru.md](../../docs/DATASETS.ru.md); Colab: [docs/ML_DETECTOR_COLAB.md](../../docs/ML_DETECTOR_COLAB.md).
 
@@ -125,12 +136,29 @@ python3 import_hub_background_folder.py --source detector/Background
 
 ## import_roboflow_bird_feeder_birds.py
 
-Импорт ZIP экспорта Roboflow YOLO (например **Bird-Feeder** с Universe) в **`binary/birds`**: все виды птиц в разметке сводятся в **один класс** `0` (bbox сохраняются), префикс имён `rfbf_`, сплит `valid/` → `val/`. Лицензия набора — проверьте на странице проекта (v6: CC BY 4.0).
+Импорт ZIP экспорта Roboflow **YOLOv11** (например **[Bird-Feeder, dataset v3](https://universe.roboflow.com/meproject-pcsly/bird-feeder-hhjks/dataset/3/download/yolov11)**) в **`datasets/new/detector/binary/birds`**: все виды в разметке → **один класс** `0`, префикс `rfbf_`, `valid/` или `val/` → `val/`. Опционально `--from-url` (если сервер отдаёт 403 — скачайте ZIP в браузере). Лицензия — на карточке проекта.
 
 ```bash
-cd scripts/datasets
-python3 import_roboflow_bird_feeder_birds.py --zip ../../datasets/Bird-Feeder.v6i.yolov11.zip
+make dataset-import-roboflow-bird-feeder ROBOFLOW_ZIP=/path/to/export.zip
 ```
+
+Или:
+
+```bash
+python3 scripts/datasets/import_roboflow_bird_feeder_birds.py \
+  --root "$(pwd)/datasets/new/detector" \
+  --zip ~/Downloads/bird-feeder-hhjks-3.yolov11.zip
+```
+
+Скачивание через **Roboflow Python API** (ключ только в переменной окружения, не в коде и не в git):
+
+```bash
+pip install roboflow
+export ROBOFLOW_API_KEY='…'   # при утечке ключа — отозвать в app.roboflow.com и выпустить новый
+make dataset-download-roboflow-bird-feeder
+```
+
+Или: `python3 scripts/datasets/download_roboflow_bird_feeder.py --root "$(pwd)/datasets/new/detector"` (`--skip-import` — только выгрузка в `datasets/downloads/roboflow_bird-feeder-hhjks_v3/`).
 
 ## bootstrap_detector_yolo.py
 

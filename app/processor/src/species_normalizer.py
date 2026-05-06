@@ -10,6 +10,30 @@ import re
 logger = logging.getLogger(__name__)
 
 
+def _is_frigate_standalone_row(row: dict) -> bool:
+    provider = str(row.get("detection_provider") or "").strip().lower()
+    kind = str(row.get("decision_kind") or "").strip().lower()
+    return provider == "frigate" and kind in {"frigate_standalone", "frigate_standalone_excluded"}
+
+
+def _merge_absorb_trace_reason(generic_row: dict, species_row: dict) -> str:
+    """Совпадает по смыслу с hypothesis_arbitration (без циклического импорта)."""
+    if _is_frigate_standalone_row(generic_row) and _is_frigate_standalone_row(species_row):
+        return "absorbed_generic_into_frigate_species"
+    return "absorbed_generic_into_species"
+
+
+def _apply_arbitration_trace_for_merge(row: dict, reason: str) -> None:
+    """Как hypothesis_arbitration._tag_row — для provenance после merge conflict."""
+    previous_reason = row.get("decision_reason")
+    if previous_reason and previous_reason != reason and "decision_reason_before_arbitration" not in row:
+        row["decision_reason_before_arbitration"] = previous_reason
+    row["decision_reason"] = reason
+    row["arbitration_reason"] = reason
+    tag = str(row.get("_fusion_used") or "").strip()
+    row["_fusion_used"] = f"{tag}+{reason}" if tag else reason
+
+
 def _extract_common_for_merge(s: str) -> str:
     """
     Извлечь common name для сравнения при слиянии.
@@ -488,9 +512,15 @@ def merge_detections(
                     # Product rule: when generic Bird overlaps specific species,
                     # prefer species even if source priority differs.
                     if _is_generic_bird_key(key_a) and not _is_generic_bird_key(key_b):
+                        _apply_arbitration_trace_for_merge(
+                            b, _merge_absorb_trace_reason(a, b)
+                        )
                         to_remove.add(i)
                         break
                     if _is_generic_bird_key(key_b) and not _is_generic_bird_key(key_a):
+                        _apply_arbitration_trace_for_merge(
+                            a, _merge_absorb_trace_reason(b, a)
+                        )
                         to_remove.add(j)
                         continue
                     rank_b = _provider_rank(b.get("detection_provider"))

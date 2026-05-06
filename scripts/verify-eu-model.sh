@@ -1,7 +1,7 @@
 #!/bin/bash
 # Проверка EU-модели (YOLO 11, birds-525 + iNaturalist) на сервере.
 # Классификатор: classification/weights/best.pt (HF gfermoto/birdlense-birds-eu).
-# Бинарник: detection/weights/best.pt из zip форка github.com/AleksandrRogachev94/BirdLense
+# Бинарник по умолчанию: detection/weights/yolo11n.pt (COCO, в рантайме только cls 14 bird).
 #
 # Запуск: ./scripts/verify-eu-model.sh
 # Требует: deploy.local.sh с DEPLOY_HOST и DEPLOY_REMOTE_DIR
@@ -25,7 +25,7 @@ echo "=== Проверка EU-модели на ${HOST} ==="
 echo ""
 
 echo "1. Файлы весов (classification best.pt + binary detection):"
-ssh ${SSH_OPTS} "${HOST}" "ls -la ${REMOTE_DIR}/app/processor/models/classification/weights/best*.pt ${REMOTE_DIR}/app/processor/models/detection/weights/best*.pt 2>/dev/null || true"
+ssh ${SSH_OPTS} "${HOST}" "ls -la ${REMOTE_DIR}/app/processor/models/classification/weights/best*.pt ${REMOTE_DIR}/app/processor/models/detection/weights/yolo11n.pt 2>/dev/null || true"
 echo ""
 
 echo "1b. CUDA в контейнере (если пусто — только CPU):"
@@ -49,13 +49,14 @@ print(f'   EU-виды (примеры): {found[:5]}')
 \""
 echo ""
 
-echo "2b. Бинарный детектор (должно быть мало классов, обычно 2):"
+echo "2b. Бинарный детектор (дефолт: COCO yolo11n, 80 классов; в конфиге allowlist только bird=14):"
 ssh ${SSH_OPTS} "${HOST}" "docker exec birdlense python3 -c \"
 from ultralytics import YOLO
-m = YOLO('/app/processor/models/detection/weights/best.pt', task='detect')
+m = YOLO('/app/processor/models/detection/weights/yolo11n.pt', task='detect')
 print('   Классов:', len(m.names))
-print('   names:', dict(list(m.names.items())[:6]), '...' if len(m.names) > 6 else '')
-\" 2>/dev/null || echo '   ОШИБКА: не удалось загрузить binary best.pt'"
+print('   cls14=', m.names.get(14))
+print('   names sample:', dict(list(m.names.items())[:4]), '...')
+\" 2>/dev/null || echo '   ОШИБКА: не удалось загрузить yolo11n.pt'"
 echo ""
 
 echo "3. Тест классификатора (случайный кадр):"
@@ -86,7 +87,7 @@ n = len(c.names)
 print('   classifier_classes:', n)
 if n < 50:
     print('   WARNING: ожидались сотни классов (EU ~491). Сейчас мало классов — виды будут «ломаться».')
-d = YOLO('/app/processor/models/detection/weights/best.pt', task='detect')
+d = YOLO('/app/processor/models/detection/weights/yolo11n.pt', task='detect')
 print('   binary_classes:', len(d.names))
 \" 2>/dev/null || true"
 echo "EU-модель в норме: classifier_classes ~491, в списке EU-виды, cuda_available=True (если есть GPU)."

@@ -46,7 +46,7 @@ Published detector weights package (YOLO + OpenVINO):
 
 1. **Decide target:** refresh **classifier only**, or also a new **detector** (2-class vs 3-class — see [CV_ML_PREP](./CV_ML_PREP.md)).
 2. **Classifier path:** export train-ready ZIP from Hub → merge scripts per [DATASETS](./DATASETS.md) → [TRAINING](./TRAINING.md) Colab cells.
-3. **Detector path:** `binary/*` → `make dataset-merge-three-class` → **`scripts/datasets/binary/merged/`**; optional **`scripts/datasets/brg/`** + `pack_brg_for_gdrive.py` → **`datasets/BirdLense_detector_brg_*.zip`**, or use HF zips — [DATASETS](./DATASETS.md) (**Canonical paths**), then [ML_DETECTOR_COLAB](./ML_DETECTOR_COLAB.md).
+3. **Detector path:** `binary/*` → `make dataset-merge-three-class` → **`datasets/new/detector/yolo/`**; optional `pack_brg_for_gdrive.py` → **`datasets/new/detector/BirdLense_detector_brg_*.zip`**, or use HF zips — [DATASETS](./DATASETS.md) (**Canonical paths**), then [ML_DETECTOR_COLAB](./ML_DETECTOR_COLAB.md).
 4. **Rollout:** copy `best.pt` (and OpenVINO export if used), run validation, deploy, benchmark clips if needed.
 
 ---

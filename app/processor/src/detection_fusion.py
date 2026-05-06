@@ -370,6 +370,7 @@ def build_fused_video_detections(
     start_time,
     end_time,
     app_config,
+    fusion_min_confidence_to_store: float | None = None,
 ) -> list[dict]:
     """Apply shared production fusion rules to video detections.
 
@@ -501,5 +502,18 @@ def build_fused_video_detections(
             d["_fusion_score"] = fused_score
     fused = _clamp_fusion_confidence_inflation(fused)
     fused = apply_runtime_contract_rows(fused)
-    min_conf_store = float(app_config.get("detection.min_confidence_to_store") or 0.05)
-    return [d for d in fused if float(d.get("confidence") or 0.0) >= min_conf_store]
+    if fusion_min_confidence_to_store is not None:
+        try:
+            min_conf_store = float(fusion_min_confidence_to_store)
+        except (TypeError, ValueError):
+            min_conf_store = float(app_config.get("detection.min_confidence_to_store") or 0.05)
+    else:
+        min_conf_store = float(app_config.get("detection.min_confidence_to_store") or 0.05)
+    out = [d for d in fused if float(d.get("confidence") or 0.0) >= min_conf_store]
+    if len(out) < len(fused):
+        logger.info(
+            "Fusion: dropped %s row(s) below min_confidence_to_store=%s",
+            len(fused) - len(out),
+            min_conf_store,
+        )
+    return out

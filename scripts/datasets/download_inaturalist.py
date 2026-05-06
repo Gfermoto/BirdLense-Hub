@@ -20,6 +20,7 @@ import time
 from pathlib import Path
 
 import requests
+from requests.exceptions import RequestException
 from tqdm import tqdm
 
 from species_format import format_scientific_common
@@ -37,6 +38,8 @@ def fetch_observations(
     *,
     query_taxon_id: int,
     place_id: int | None,
+    timeout: tuple[float, float] = (45.0, 180.0),
+    max_retries: int = 6,
 ) -> dict:
     """Research-grade наблюдения; place_id=None — без фильтра региона (глобально)."""
     params: dict = {
@@ -47,9 +50,19 @@ def fetch_observations(
     }
     if place_id is not None:
         params["place_id"] = place_id
-    r = requests.get(API, params=params, timeout=30)
-    r.raise_for_status()
-    return r.json()
+    delay = 4.0
+    for attempt in range(max_retries):
+        try:
+            r = requests.get(API, params=params, timeout=timeout)
+            r.raise_for_status()
+            return r.json()
+        except (RequestException, TimeoutError, OSError) as e:
+            if attempt + 1 >= max_retries:
+                raise RuntimeError(
+                    f"iNat API page={page} failed after {max_retries} attempts: {e}"
+                ) from e
+            time.sleep(delay)
+            delay = min(delay * 1.6, 90.0)
 
 
 def download_inaturalist_cls_layer(
@@ -118,15 +131,16 @@ def download_inaturalist_cls_layer(
                         break
                 if not url or ("inaturalist" not in url and "amazonaws" not in url):
                     continue
+                fname = f"{obs['id']}_{i}.jpg"
+                out_path = out_dir / fname
+                if out_path.exists():
+                    continue
                 try:
                     time.sleep(rate_limit * 0.5)
-                    r = requests.get(url, timeout=15)
+                    r = requests.get(url, timeout=(20.0, 90.0))
                     r.raise_for_status()
-                    fname = f"{obs['id']}_{i}.jpg"
-                    out_path = out_dir / fname
-                    if not out_path.exists():
-                        out_path.write_bytes(r.content)
-                        img_count += 1
+                    out_path.write_bytes(r.content)
+                    img_count += 1
                 except Exception:
                     pass
 

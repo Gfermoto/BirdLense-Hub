@@ -54,6 +54,16 @@ class FrameProcessor:
         self.logger.info("FrameProcessor initialized.")
         self.reset()
 
+    def _frame_light_metrics(self, img):
+        """Яркость/контраст + флаг light detector (для gate и для adaptive profile)."""
+        if hasattr(self.light_detector, "measure"):
+            metrics = dict(self.light_detector.measure(img) or {})
+        else:
+            metrics = {}
+        if "has_sufficient_light" not in metrics:
+            metrics["has_sufficient_light"] = self.light_detector.has_sufficient_light(img)
+        return metrics
+
     def _resolve_tracker_for_profile(self, profile_name: str | None) -> str:
         """Pick tracker config by runtime profile (day/night), fallback to processor.tracker."""
         base = str(self.tracker or "bytetrack.yaml").strip() or "bytetrack.yaml"
@@ -87,6 +97,8 @@ class FrameProcessor:
 
         skip_light_gate: для offline track regen по mp4 — не отсекать ночные кадры до YOLO
         (Frigate уже записал клип; иначе весь ролик может пройти без detect()).
+        Adaptive profile (ночные overrides min_box_size_px, min_center_dist и т.д.) считается
+        всегда; при skip только отключена проверка light_gate_allows_frame.
         """
         self.last_run_stats = {
             "yolo_ran": False,
@@ -105,27 +117,23 @@ class FrameProcessor:
         else:
             frame_time = round(float(frame_time), 2)
 
+        metrics = self._frame_light_metrics(img)
+        profile_name, profile_overrides = resolve_runtime_profile(
+            app_config,
+            brightness=metrics.get("brightness"),
+            contrast=metrics.get("contrast"),
+        )
+        self.last_run_stats["runtime_profile"] = profile_name
+        self.last_run_stats["profile_overrides"] = dict(profile_overrides or {})
+        self.last_run_stats["light_brightness"] = metrics.get("brightness")
+        self.last_run_stats["light_contrast"] = metrics.get("contrast")
+        set_gauge("last_runtime_profile", profile_name or "none")
+        if metrics.get("brightness") is not None:
+            set_gauge("light_brightness", round(float(metrics["brightness"]), 3))
+        if metrics.get("contrast") is not None:
+            set_gauge("light_contrast", round(float(metrics["contrast"]), 3))
+
         if not skip_light_gate:
-            if hasattr(self.light_detector, "measure"):
-                metrics = dict(self.light_detector.measure(img) or {})
-            else:
-                metrics = {}
-            if "has_sufficient_light" not in metrics:
-                metrics["has_sufficient_light"] = self.light_detector.has_sufficient_light(img)
-            profile_name, profile_overrides = resolve_runtime_profile(
-                app_config,
-                brightness=metrics.get("brightness"),
-                contrast=metrics.get("contrast"),
-            )
-            self.last_run_stats["runtime_profile"] = profile_name
-            self.last_run_stats["profile_overrides"] = dict(profile_overrides or {})
-            self.last_run_stats["light_brightness"] = metrics.get("brightness")
-            self.last_run_stats["light_contrast"] = metrics.get("contrast")
-            set_gauge("last_runtime_profile", profile_name or "none")
-            if metrics.get("brightness") is not None:
-                set_gauge("light_brightness", round(float(metrics["brightness"]), 3))
-            if metrics.get("contrast") is not None:
-                set_gauge("light_contrast", round(float(metrics["contrast"]), 3))
             now_m = time.monotonic()
             if now_m < self._low_light_cooldown_until:
                 # Не крутить CPU в tight-loop пока действует cooldown (#237 review).
@@ -144,10 +152,6 @@ class FrameProcessor:
                 time.sleep(0.02)
                 self.last_run_stats["light_gate_blocked"] = True
                 return False
-        else:
-            profile_overrides = {}
-            self.last_run_stats["runtime_profile"] = None
-            self.last_run_stats["profile_overrides"] = {}
 
         st = time.time()
         try:

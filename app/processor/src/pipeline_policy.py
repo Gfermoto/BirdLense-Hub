@@ -44,7 +44,7 @@ def build_pipeline_policy_snapshot(
         "track_regen_match_live_pipeline": bool(for_track_regen and match_live_regen),
         "track_regen_ignore_regional_species": bool(for_track_regen and ignore_regional),
         "min_center_dist": min_center_dist,
-        "binary_imgsz": int(app_config.get("processor.binary_imgsz", 320) or 320),
+        "binary_imgsz": int(app_config.get("processor.binary_imgsz", 640) or 640),
         "detector_scope": list(app_config.get("processor.detector_scope") or ["Bird", "Rodent"]),
         "max_classifications_per_frame": int(
             app_config.get("processor.max_classifications_per_frame", 2) or 2,

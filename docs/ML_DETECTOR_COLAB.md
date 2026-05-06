@@ -4,19 +4,23 @@
 
 Classifier walkthrough: [TRAINING](./TRAINING.md). This page is **detection** only (`dataset.yaml`). **`brg/`** paths, merges, zip packaging — [DATASETS.md](./DATASETS.md).
 
+**Default (recommended):** fine-tune from the **latest production Hub weights** — the same **`best.pt`** you ship today (YOLO11n **detect**, **Bird / Rodent / Background**). On Drive upload it as **`bl_best.pt`** so it stays separate from **`best.pt`** produced by Ultralytics runs.
+
+**Do not use as the Part A starting point:** COCO-pretrained **`yolo11n.pt`** (80 classes) — Hub contract breaks. Cold start without a checkpoint: see **A1.c** at the end of Part **A**.
+
 ---
 
 ## Contents
 
 | Part | What |
 |------|------|
-| **A** | Main path: **`brg` zip + `bl_best.pt`**, two-stage train (`freeze` → full), OpenVINO **640** — **end-to-end including Hub handoff** |
+| **A** | Main path: **`brg` zip + production `best.pt` on Drive as `bl_best.pt`**, two-stage train (`freeze` → full), OpenVINO **640** — through Hub deploy |
 | **B** | Optional legacy **binary** HF pipeline (balanced → full, **`yolo11n.pt`**, **960**) |
 | **C** | Class contract, pre-production checks |
 
 ---
 
-# Part A — Main path (`brg` + `bl_best.pt`)
+# Part A — Main path (`brg` + production weights)
 
 ## A0. Before you open Colab (local + Drive)
 
@@ -27,9 +31,18 @@ Classifier walkthrough: [TRAINING](./TRAINING.md). This page is **detection** on
    python3 scripts/datasets/pack_brg_for_gdrive.py
    ```
 
-   Output: **`datasets/BirdLense_detector_brg_<UTC>.zip`** (`datasets/` is gitignored).
+   Output: **`datasets/new/detector/BirdLense_detector_brg_<UTC>.zip`** (same directory as `binary/` and `yolo/`).
 
-2. **Checkpoint for fine-tuning:** copy your Hub **YOLO11n** detector **`best.pt`** and upload to Drive as **`bl_best.pt`** so it is not confused with new runs.
+2. **Starting checkpoint (default = best Hub weights):** use the **`best.pt`** that **actually powers** binary detection on the Hub (or the same artefact from your processor tree, e.g. **`app/processor/models/detection/weights/best.pt`**, if that is what you deploy).
+
+   Upload it to Drive as **`bl_best.pt`** (`BASE_WEIGHTS`) so you do not confuse it with **`best.pt`** from a new run.
+
+   Pre-flight checks:
+
+   | Expectation | Why |
+   |---------------|-----|
+   | **`detect`**, **YOLO11n** compatible with your prod export chain | avoids load/export mismatches |
+   | **3** classes, order **Bird → Rodent → Background** aligned with `dataset.yaml` | matches [Part C](#part-c--class-contract--checks) and Hub config |
 
 3. **Upload to Google Drive** into one folder (recommended):
 
@@ -38,9 +51,9 @@ Classifier walkthrough: [TRAINING](./TRAINING.md). This page is **detection** on
    Minimum files:
 
    - `BirdLense_detector_brg_<your_UTC>.zip`
-   - `bl_best.pt`
+   - `bl_best.pt` (**required for the default path**)
 
-4. Leave enough Drive space for Ultralytics runs (often multi‑GB). **`project=RUNS`** below writes under **`.../BirdLense_Detector/yolo_detector_runs/`**.
+4. Leave enough Drive space for Ultralytics runs (**multi‑GB**). **`project=RUNS`** below writes under **`.../BirdLense_Detector/yolo_detector_runs/`**.
 
 ---
 
@@ -49,9 +62,28 @@ Classifier walkthrough: [TRAINING](./TRAINING.md). This page is **detection** on
 1. Open **[Google Colab](https://colab.research.google.com/)**.
 2. **File → New notebook** (or upload a `.ipynb`).
 3. Enable GPU: **Runtime → Change runtime type → T4 GPU** (or better) → **Save**.
-4. Use **one code cell after another**. For each cell: **Shift+Enter** or the **▶ Run** button on the left. **Run cells top to bottom** (otherwise `os`, `DRIVE_ROOT`, `DATA_YAML` will be missing).
+4. Use **one code cell after another**. **Run cells top to bottom**.
 
 After **`drive.mount`**, complete the browser OAuth for Drive access.
+
+### A1.b — Disconnects and `resume`
+
+If the session drops **after** stage 1 or 2 starts, avoid re-running **`model.train(...)`** with the **same `name`** for a duplicate run — use **`resume=True`** from **`last.pt`**, **or** change **`name`** for a fresh run.
+
+```python
+from ultralytics import YOLO
+
+LAST = "/content/drive/MyDrive/BirdLense_Detector/yolo_detector_runs/brg_ft_stage1_freeze10/weights/last.pt"
+YOLO(LAST).train(resume=True)  # only `resume=True` — Ultralytics requirement
+```
+
+Use the analogous **`last.pt`** path if stage 2 was interrupted.
+
+---
+
+## A1.c — No production `best.pt` (rare cold start for Part A)
+
+Only when **no** three-class Hub checkpoint exists. **`YOLO("yolo11n.pt")`** can build a three-class head from your **`dataset.yaml`**, but convergence is weaker than warm-starting from a trained BRG detector. Still use **`imgsz=640`**, two stages, and the Part **C** class contract. Prefer **`pip install ultralytics>=8.3.203`** for reproducible **`resume`** (see [TRAINING](./TRAINING.md)).
 
 ---
 
@@ -62,7 +94,8 @@ After **`drive.mount`**, complete the browser OAuth for Drive access.
 **Run:** once per session.
 
 ```python
-!pip install -q ultralytics pyyaml
+# Stable resume: ultralytics>=8.3.203 (see TRAINING.md)
+!pip install -q "ultralytics>=8.3.203" pyyaml
 ```
 
 ### Cell 2 — mount Google Drive
@@ -76,20 +109,42 @@ drive.mount("/content/drive")
 
 ### Cell 3 — paths and file checks
 
-**Run:** set **`ZIP_NAME`** to your Drive zip filename.
+**Important:** the filename **`BirdLense_detector_brg_20260430_134305Z.zip`** was only a **placeholder** in older docs — it will not exist on your Drive until you upload your own zip.
+
+- Either set the **exact** zip name you uploaded, **or**
+- Use **auto-detect** below: newest **`BirdLense_detector_brg_*.zip`** by modification time under **`DRIVE_ROOT`**.
+
+**`BASE_WEIGHTS`** = Hub **`best.pt`** uploaded as **`bl_best.pt`**.
 
 ```python
 import os
+from pathlib import Path
 
 DRIVE_ROOT = "/content/drive/MyDrive/BirdLense_Detector"
-ZIP_NAME = "BirdLense_detector_brg_20260430_134305Z.zip"  # <-- yours
-ZIP_PATH = os.path.join(DRIVE_ROOT, ZIP_NAME)
-WEIGHTS = os.path.join(DRIVE_ROOT, "bl_best.pt")
+assert os.path.isdir(DRIVE_ROOT), f"Missing folder (check path + Drive mounted): {DRIVE_ROOT}"
+
+# --- Option A (recommended): newest BRG zip in folder ---
+cands = list(Path(DRIVE_ROOT).glob("BirdLense_detector_brg_*.zip"))
+if not cands:
+    raise FileNotFoundError(
+        f"No BirdLense_detector_brg_*.zip in {DRIVE_ROOT}. "
+        "Upload the zip from pack_brg_for_gdrive.py or set ZIP_PATH manually (option B)."
+    )
+ZIP_PATH = str(max(cands, key=lambda p: p.stat().st_mtime))
+print("ZIP (auto):", ZIP_PATH)
+
+# --- Option B: uncomment and set exact Drive filename ---
+# ZIP_PATH = os.path.join(DRIVE_ROOT, "BirdLense_detector_brg_20260505_120000Z.zip")
+
+BASE_WEIGHTS = os.path.join(DRIVE_ROOT, "bl_best.pt")
+WEIGHTS = BASE_WEIGHTS
 
 assert os.path.isfile(ZIP_PATH), f"Missing zip: {ZIP_PATH}"
-assert os.path.isfile(WEIGHTS), f"Missing weights: {WEIGHTS}"
-print("OK:", ZIP_PATH, WEIGHTS)
+assert os.path.isfile(BASE_WEIGHTS), f"Missing base weights: {BASE_WEIGHTS}"
+print("OK:", ZIP_PATH, BASE_WEIGHTS)
 ```
+
+If **`BirdLense_Detector`** is wrong, fix **`DRIVE_ROOT`** (Shared drives / different folder name).
 
 ### Cell 4 — unzip dataset
 
@@ -123,13 +178,20 @@ with open(DATA_YAML, "w", encoding="utf-8") as f:
     yaml.safe_dump(cfg, f, sort_keys=False, allow_unicode=True)
 
 print(cfg)
+
+names = cfg.get("names") or {}
+keys = sorted(names, key=lambda k: int(k))
+ordered = [names[k] for k in keys]
+assert ordered == ["Bird", "Rodent", "Background"], ordered
 ```
 
-Confirm **`names`**: Bird, Rodent, Background.
+If this assert fails, fix **`dataset.yaml`**, rebuild the zip, unzip again — do **not** train yet.
 
 ### Cell 6 — stage 1: frozen backbone (`freeze=10`)
 
-**Run:** long (tens of minutes+). If the session disconnects, remount Drive and continue from the next cell if the run folder already exists.
+**Run:** **`YOLO(WEIGHTS)` loads `BASE_WEIGHTS`** (production checkpoint).
+
+After a disconnect — see **A1.b** above (**`resume=True`** from **`last.pt`**); do not re-invoke **`model.train`** with the same **`name`** if you intend to continue the **same** run.
 
 ```python
 from ultralytics import YOLO
@@ -186,16 +248,16 @@ export_model = YOLO(BEST_FINAL)
 export_model.export(format="openvino", imgsz=640)
 ```
 
-OpenVINO output appears **next to** the weights run (Ultralytics prints the folder — often a **`*_openvino`** subfolder). You need **`.xml`**, **`.bin`**, **`metadata.yaml`**.
+Ultralytics 8.x prints the **exact** IR folder in the export log — often **`.../weights/best_openvino_model/`** next to **`best.pt`** (**`best.xml`**, **`best.bin`**, **`metadata.yaml`**). **`metadata.yaml`** should list **3** classes aligned with training.
 
 ### A3. After Colab — deploy to Hub
 
-1. On **Drive**: **`BirdLense_Detector/yolo_detector_runs/brg_ft_stage2_full/weights/best.pt`** — download as the new detector.
-2. Copy the **OpenVINO** folder from that run; set **`processor.binary_imgsz: 640`** and processor paths ([CONFIGURATION](./CONFIGURATION.md)).
+1. **`.../brg_ft_stage2_full/weights/best.pt`** on Drive — new torch detector for Hub / your next **`bl_best.pt`** baseline.
+2. Copy the exported OpenVINO directory (often **`best_openvino_model`**) intact — typical Hub/processor layout **`models/detection/weights/best_openvino_model`** under the processor package; **`processor.binary_imgsz: 640`** ([CONFIGURATION](./CONFIGURATION.md)).
 
 ### Shortcut (single run instead of cells 6–7)
 
-One long train from **`bl_best.pt`**:
+One long train starting from **`BASE_WEIGHTS`** (**`WEIGHTS`** / **`bl_best.pt`**):
 
 ```python
 model = YOLO(WEIGHTS)

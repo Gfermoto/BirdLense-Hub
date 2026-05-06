@@ -4,9 +4,12 @@ Runs YOLO+ByteTrack on each frame and returns detections with frames.
 """
 
 import logging
+import math
 import os
 import time
 import cv2
+
+from yolo_geometry import letterbox_bgr_to_wh
 
 logger = logging.getLogger(__name__)
 
@@ -89,10 +92,14 @@ def process_video_for_tracks(
     decision_maker=None,
     frame_step: int = 1,
     max_runtime_sec: int | None = None,
+    progress_hook=None,
+    progress_hook_interval: int = 20,
 ):
     """
     Run YOLO+ByteTrack on video file. Returns list of detections with frames.
     Each detection: {species_name, start_time, end_time, confidence, track_id, frames, ...}
+
+    progress_hook: вызывается из UI-воркера; meta: phase, yolo_frames_done, yolo_frames_total (оценка).
     """
     from app_config.app_config import app_config
     from species_normalizer import normalize
@@ -116,7 +123,20 @@ def process_video_for_tracks(
         return []
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    frame_total_guess = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    try:
+        fcg = float(frame_total_guess)
+        yolo_runs_est = int(math.ceil(fcg / float(frame_step))) if fcg > 1.5 else None
+    except (TypeError, ValueError):
+        yolo_runs_est = None
+    if yolo_runs_est is not None:
+        yolo_runs_est = max(1, yolo_runs_est)
     frame_count = 0
+    runs_done = 0
+    try:
+        _hi = max(1, int(progress_hook_interval or 20))
+    except (TypeError, ValueError):
+        _hi = 20
     started = time.monotonic()
     try:
         while True:
@@ -129,13 +149,28 @@ def process_video_for_tracks(
                 if not ret:
                     break
                 frame_time_sec = frame_count / fps
-                frame_resized = cv2.resize(frame, lores_size)
+                # Не stretch в lores_size: иначе на 16:9 клипах YOLO+ByteTrack почти пустой (см. yolo_geometry).
+                frame_resized = letterbox_bgr_to_wh(frame, (int(lores_size[0]), int(lores_size[1])))
                 has_detections = frame_processor.run(
                     frame_resized,
                     frame_time=frame_time_sec,
                     skip_light_gate=True,
                 )
                 decision_maker.update_has_detections(has_detections)
+                runs_done += 1
+                if progress_hook is not None and (
+                    runs_done == 1 or runs_done % _hi == 0 or (yolo_runs_est is not None and runs_done >= yolo_runs_est)
+                ):
+                    try:
+                        progress_hook(
+                            {
+                                "phase": "yolo_infer",
+                                "yolo_frames_done": runs_done,
+                                "yolo_frames_total": yolo_runs_est,
+                            }
+                        )
+                    except Exception:
+                        logger.debug("Track regen progress_hook failed", exc_info=True)
             else:
                 ret = cap.grab()
                 if not ret:

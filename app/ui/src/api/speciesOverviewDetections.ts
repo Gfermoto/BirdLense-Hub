@@ -37,6 +37,9 @@ export interface TrackRegenProgress {
   current_video_id?: number | null;
   active_request_video_id?: number | null;
   phase?: string | null;
+  /** Оценка числа YOLO-проходов (декодированных кадров / frame_step) для прогресс-бара. */
+  yolo_frames_done?: number | null;
+  yolo_frames_total?: number | null;
   regen_params?: Record<string, unknown>;
 }
 

@@ -113,3 +113,46 @@ def assert_backend_supported(backend: str) -> None:
 def openvino_runtime_available() -> bool:
     """Проверить, установлен ли runtime OpenVINO (для auto-fallback)."""
     return importlib.util.find_spec("openvino") is not None
+
+
+def resolve_openvino_device_policy(device: str) -> list[str]:
+    """
+    Развернуть политику устройств OpenVINO для прогрева/ретраев (Ultralytics OpenVINO).
+
+    ``auto`` → сначала iGPU, затем CPU; ``cpu`` и ``intel:cpu`` → только CPU.
+    """
+    d = (device or "auto").strip().lower()
+    if d == "auto":
+        return ["intel:gpu", "intel:cpu"]
+    if d in ("cpu", "intel:cpu"):
+        return ["intel:cpu"]
+    return [d]
+
+
+def resolve_openvino_profile(app_config: Mapping[str, Any] | None = None) -> str:
+    """latency / throughput; env ``BIRDLENSE_OPENVINO_PROFILE`` перекрывает конфиг."""
+    raw = (os.environ.get("BIRDLENSE_OPENVINO_PROFILE") or "").strip().lower()
+    if raw in ("latency", "throughput"):
+        return raw
+    if app_config is not None:
+        cfg = app_config.get("processor.openvino.profile")
+        if cfg is not None:
+            v = str(cfg).strip().lower()
+            if v in ("latency", "throughput"):
+                return v
+    return "latency"
+
+
+def resolve_openvino_num_requests(app_config: Mapping[str, Any] | None = None) -> int:
+    """Число infer-запросов; env ``BIRDLENSE_OPENVINO_NUM_REQUESTS`` перекрывает конфиг."""
+    raw = (os.environ.get("BIRDLENSE_OPENVINO_NUM_REQUESTS") or "").strip()
+    if raw.isdigit():
+        return max(1, int(raw))
+    if app_config is not None:
+        cfg = app_config.get("processor.openvino.num_requests")
+        if cfg is not None:
+            try:
+                return max(1, int(cfg))
+            except (TypeError, ValueError):
+                pass
+    return 1

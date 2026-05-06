@@ -4,7 +4,7 @@
 
 | Подпапка | Назначение |
 |----------|------------|
-| **`birds/`** | Один класс «птица» — **COCO bird** и при желании **Open Images Bird** (`bootstrap_detector_yolo.py --birds-oid-*`). |
+| **`birds/`** | **COCO bird**, **Open Images Bird** (`bootstrap_detector_yolo.py`), **CUB-200-2011** (`make dataset-import-cub`), **Roboflow YOLOv11** кормушка ([Bird-Feeder v3](https://universe.roboflow.com/meproject-pcsly/bird-feeder-hhjks/dataset/3/download/yolov11): `make dataset-import-roboflow-bird-feeder`). |
 | **`rodent/`** | Один класс «грызун» (исторически белка/OID → метка Hub **Rodent**). |
 | **`background/`** | Фон: пустые `.txt` или боксы класса Background. |
 

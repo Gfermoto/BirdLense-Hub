@@ -26,27 +26,15 @@ class TestTorchBackend(unittest.TestCase):
         fake_ultra = types.ModuleType("ultralytics")
         with (
             patch("inference.torch_backend._ensure_openvino_pkg") as ensure_ov,
-            patch("inference.torch_backend._apply_openvino_runtime_tuning") as tune_ov,
             patch.dict(sys.modules, {"ultralytics": fake_ultra}),
             patch.object(fake_ultra, "YOLO", create=True) as yolo_cls,
         ):
             model = object()
             yolo_cls.return_value = model
-            out = load_yolo_classifier(
-                "classifier_openvino_model",
-                backend="openvino",
-                openvino_profile="throughput",
-                openvino_num_requests=2,
-                openvino_model_cache_enabled=True,
-            )
+            out = load_yolo_classifier("classifier_openvino_model", backend="openvino")
 
         self.assertIs(out, model)
         ensure_ov.assert_called_once()
-        tune_ov.assert_called_once_with(
-            profile="throughput",
-            num_requests=2,
-            model_cache_enabled=True,
-        )
         yolo_cls.assert_called_once_with("classifier_openvino_model", task="classify")
 
 

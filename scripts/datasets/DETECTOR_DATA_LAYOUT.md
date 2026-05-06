@@ -45,7 +45,7 @@ make dataset-merge-three-class
 
 **`scripts/datasets/brg/`** — не отдельная «магическая» стадия Makefile: это обычно **снимок того же YOLO-дерева**, который вы отдаёте в Colab/Drive. Типично: после merge в `binary/merged/` делаете импорты/dedupe и **копируете** результат в `brg/`, либо один раз вызываете `merge_datasets_three_class.py` с `--output-dir brg` вместо путей Makefile.
 
-Упаковка: `python3 scripts/datasets/pack_brg_for_gdrive.py` → **`datasets/BirdLense_detector_brg_<UTC>.zip`** в корне репозитория (`datasets/` в `.gitignore`). Имена архивов на [Hugging Face BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector) другие — не смешивать с локальным шаблоном имени.
+Упаковка: `python3 scripts/datasets/pack_brg_for_gdrive.py` → **`datasets/new/detector/BirdLense_detector_brg_<UTC>.zip`** (рядом с `binary/` и `yolo/`). На [Hugging Face BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector) имена архивов другие — не смешивать.
 
 ## Автозаполнение из интернета
 

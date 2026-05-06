@@ -20,7 +20,7 @@
 | **`wiki-source/`** | Заготовки / автоматизация для GitHub Wiki — см. [WIKI_AUTOMATION.ru](./WIKI_AUTOMATION.ru.md). |
 | **`screenshots/`** | Картинки для доков и статей. |
 | **`docs/article/`** | Черновики внешних публикаций (например Хабр); не часть рантайма. |
-| **`datasets/`** | Локальные артефакты датасетов (в `.gitignore`): merge классификатора (напр. **`merged_cls`**), **`BirdLense_detector_brg_*.zip`** из `pack_brg_for_gdrive.py`, ZIP Roboflow и т.д. Отличие от `scripts/datasets/binary/` — [DATASETS.ru.md](./DATASETS.ru.md) (**Актуальные пути**). |
+| **`datasets/`** | Локальные артефакты датасетов (в `.gitignore`): merge классификатора (напр. **`merged_cls`**), **`BirdLense_detector_brg_*.zip`** (`pack_brg_for_gdrive.py`, по умолчанию **`datasets/new/detector/`**), ZIP Roboflow и т.д. Отличие от старого **`scripts/datasets/binary/`** — [DATASETS.ru.md](./DATASETS.ru.md) (**Актуальные пути**). |
 
 ---
 
