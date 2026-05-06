@@ -133,9 +133,9 @@ def build_detection_stack(
                 continue
         if not configured_imgsz_values:
             try:
-                configured_imgsz_values.add(int(app_config.get("processor.binary_imgsz", 320) or 320))
+                configured_imgsz_values.add(int(app_config.get("processor.binary_imgsz", 640) or 640))
             except (TypeError, ValueError):
-                configured_imgsz_values.add(320)
+                configured_imgsz_values.add(640)
 
         if expected_ov_imgsz and any(v != expected_ov_imgsz for v in configured_imgsz_values):
             mismatch = ",".join(str(v) for v in sorted(configured_imgsz_values))
@@ -150,16 +150,18 @@ def build_detection_stack(
                     str(
                         app_config.get(
                             "processor.models.binary",
-                            "models/detection/weights/best.pt",
+                            "models/detection/weights/yolo11n.pt",
                         ),
                     ).strip(),
                     processor_root,
                 )
                 if detector_weights_available(torch_binary_path):
                     logger.error(
-                        "%s Auto fallback detector backend: openvino -> torch (%s)",
+                        "%s Auto fallback detector backend: openvino -> torch (%s). "
+                        "Runtime uses .pt, not IR — quality/latency differ; fix binary_imgsz to %s for OpenVINO.",
                         mismatch_msg,
                         torch_binary_path,
+                        expected_ov_imgsz,
                     )
                     binary_path = torch_binary_path
                     _inf_backend = "torch"
@@ -204,6 +206,17 @@ def build_detection_stack(
     max_blur_checks = app_config.get("processor.max_blur_checks", 3)
     blur_threshold = app_config.get("processor.blur_threshold", 100.0)
     min_box_size_px = app_config.get("processor.min_box_size_px", 64)
+    try:
+        min_box_size_px = int(min_box_size_px)
+    except (TypeError, ValueError):
+        min_box_size_px = 64
+    if for_track_regen:
+        raw_mb = app_config.get("processor.track_regen_min_box_size_px")
+        if raw_mb is not None:
+            try:
+                min_box_size_px = max(8, int(raw_mb))
+            except (TypeError, ValueError):
+                pass
     classification_scheduler = app_config.get(
         "processor.classification_scheduler",
         "priority",
@@ -231,7 +244,7 @@ def build_detection_stack(
             max_blur_checks=max_blur_checks,
             max_classifications_per_frame=max_classifications_per_frame,
             classification_scheduler=classification_scheduler,
-            binary_imgsz=app_config.get("processor.binary_imgsz", 320),
+            binary_imgsz=app_config.get("processor.binary_imgsz", 640),
             weight_contract_mode=_weight_contract,
             inference_backend=_inf_backend,
             classifier_inference_backend=_cls_backend,
@@ -249,7 +262,7 @@ def build_detection_stack(
                 str(
                     app_config.get(
                         "processor.models.binary",
-                        "models/detection/weights/best.pt",
+                        "models/detection/weights/yolo11n.pt",
                     ),
                 ).strip(),
                 processor_root,
@@ -292,7 +305,7 @@ def build_detection_stack(
             max_blur_checks=max_blur_checks,
             max_classifications_per_frame=max_classifications_per_frame,
             classification_scheduler=classification_scheduler,
-            binary_imgsz=app_config.get("processor.binary_imgsz", 320),
+            binary_imgsz=app_config.get("processor.binary_imgsz", 640),
             weight_contract_mode=_weight_contract,
             inference_backend=_inf_backend,
             classifier_inference_backend=_cls_backend,
@@ -301,7 +314,8 @@ def build_detection_stack(
         )
     logger.info(
         "Inference startup: detector_backend=%s classifier_backend=%s ultralytics_device_label=%s "
-        "binary_inference_device_kw=%s classifier_inference_device_kw=%s binary_path=%s classifier_path=%s",
+        "binary_inference_device_kw=%s classifier_inference_device_kw=%s binary_path=%s classifier_path=%s "
+        "binary_imgsz=%s",
         _inf_backend,
         _cls_backend,
         _inference_device_label(detection_strategy.binary_model),
@@ -309,6 +323,7 @@ def build_detection_stack(
         _classifier_inference_device or "(default)",
         binary_path,
         classifier_path,
+        getattr(detection_strategy, "binary_imgsz", None),
     )
     if _requested_backend == "auto":
         logger.info("Inference backend auto resolved to %s", _inf_backend)
@@ -319,9 +334,9 @@ def build_detection_stack(
         from inference.auto_benchmark import measure_binary_detector_predict_ms
 
         try:
-            _isz = int(app_config.get("processor.binary_imgsz", 320) or 320)
+            _isz = int(app_config.get("processor.binary_imgsz", 640) or 640)
         except (TypeError, ValueError):
-            _isz = 320
+            _isz = 640
         _ms = measure_binary_detector_predict_ms(
             detection_strategy.binary_model,
             imgsz=max(320, _isz),
@@ -390,14 +405,55 @@ def build_detection_stack(
             max_record_seconds,
             max_inactive_seconds,
         )
+    try:
+        min_track_duration_val = float(app_config.get("processor.min_track_duration", 1.0))
+    except (TypeError, ValueError):
+        min_track_duration_val = 1.0
+    min_conf_proc_val = app_config.get("processor.min_confidence_to_process")
+    dm_detector_store_val = min_confidence_to_store
+    if for_track_regen:
+        v = app_config.get("processor.track_regen_min_track_duration")
+        if v is not None:
+            try:
+                min_track_duration_val = float(v)
+            except (TypeError, ValueError):
+                pass
+        v = app_config.get("processor.track_regen_min_confidence_to_process")
+        if v is not None:
+            try:
+                min_conf_proc_val = float(v)
+            except (TypeError, ValueError):
+                pass
+        v = app_config.get("processor.track_regen_decision_detector_store_floor")
+        if v is not None:
+            try:
+                dm_detector_store_val = float(v)
+            except (TypeError, ValueError):
+                pass
+        if any(
+            app_config.get(k) is not None
+            for k in (
+                "processor.track_regen_min_track_duration",
+                "processor.track_regen_min_confidence_to_process",
+                "processor.track_regen_decision_detector_store_floor",
+            )
+        ):
+            logger.info(
+                "track_regen DecisionMaker thresholds: min_track_duration=%s "
+                "min_confidence_to_process=%s detector_store_floor=%s",
+                min_track_duration_val,
+                min_conf_proc_val,
+                dm_detector_store_val,
+            )
+
     decision_maker = DecisionMaker(
         max_record_seconds=max_record_seconds,
         max_inactive_seconds=max_inactive_seconds,
-        min_track_duration=app_config.get("processor.min_track_duration", 1.0),
-        min_confidence_to_process=app_config.get("processor.min_confidence_to_process"),
+        min_track_duration=min_track_duration_val,
+        min_confidence_to_process=min_conf_proc_val,
         species_confidence_overrides=merged_overrides,
         post_record_seconds=app_config.get("processor.post_record_seconds", 0),
-        min_confidence_to_store=min_confidence_to_store,
+        min_confidence_to_store=dm_detector_store_val,
         classifier_fallback_bird=fallback_bird,
         generic_bird_min_detector_conf=app_config.get("processor.generic_bird_min_detector_conf"),
         generic_bird_min_frames=app_config.get("processor.generic_bird_min_frames", 3),
