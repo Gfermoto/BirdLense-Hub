@@ -5141,6 +5141,13 @@ components:
               type: string
             track_regen_lores_px:
               type: integer
+            track_regen_iou_id_fallback:
+              type: boolean
+              description: When Ultralytics ByteTrack yields no box ids during offline regen, stitch frames via IoU (processor internal).
+            track_regen_iou_match_threshold:
+              type: number
+              nullable: true
+              description: IoU threshold for matching boxes between frames in regen id fallback; null uses internal default (0.22).
             track_regen_video_timeout_sec:
               type: number
             track_regen_precise_timeout_sec:

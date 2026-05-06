@@ -43,6 +43,9 @@ processor:
   track_regen_detection_strategy: two_stage
   # Размер кадра для batch-перегенерации треков (px). Держите ≥ inference_lores_px — иначе YOLO на архиве слабее чем в live.
   track_regen_lores_px: 640
+  # Offline regen: при boxes.id=None — склейка кадров по IoU; ниже порог терпимее к дрожащим bbox (меньше «рваных» track_id).
+  track_regen_iou_id_fallback: true
+  track_regen_iou_match_threshold: 0.22
   # Таймаут на одно видео при batch-перегенерации треков (сек): защита от «зависшего» файла.
   track_regen_video_timeout_sec: 300
   # Отдельный таймаут для точного fallback-прохода: не даём одному ролику блокировать весь recovery.
