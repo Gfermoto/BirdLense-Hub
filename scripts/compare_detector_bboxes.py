@@ -8,6 +8,25 @@
 
 Пример (в контейнере birdlense или venv с ultralytics):
 
+  # Разные чекпоинты на одном ролике (COCO yolo11n class 14 = bird; BRG 3-class class 0 = Bird):
+  docker compose run --rm -v "$(pwd)/..:/workspace" birdlense \\
+    python3 /workspace/scripts/compare_detector_bboxes.py \\
+    --video /workspace/tmp/exp_video.mp4 \\
+    --model-a /workspace/app/processor/models/detection/weights/yolo11n.pt \\
+    --model-b /workspace/app/processor/models/detection/weights/best.pt \\
+    --bird-class-ids-a 14 --bird-class-ids-b 0 \\
+    --imgsz 640 --conf 0.25 --frame-step 2 --device cpu
+
+  # Чистая проверка parity PyTorch ↔ OpenVINO одного BRG-веса (оба «птица» = класс 0):
+  # сначала: scripts/train_detector_brg.py --export-openvino-only app/processor/.../best.pt --imgsz 640
+  docker compose run --rm -v "$(pwd)/..:/workspace" birdlense \\
+    python3 /workspace/scripts/compare_detector_bboxes.py \\
+    --video /workspace/tmp/exp_video.mp4 \\
+    --model-a /workspace/app/processor/models/detection/weights/best.pt \\
+    --model-b /workspace/app/processor/models/detection/weights/best_openvino_model \\
+    --bird-class-ids-a 0 --bird-class-ids-b 0 \\
+    --imgsz 640 --conf 0.25 --frame-step 2 --device cpu
+
   python3 scripts/compare_detector_bboxes.py \\
     --video /app/data/recordings/2026/04/07/185837/video.mp4 \\
     --model-a /app/processor/models/detection/weights_backup_before_brg_20260430T144708Z/best.pt \\
