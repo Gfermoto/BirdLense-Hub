@@ -1,23 +1,37 @@
 #!/usr/bin/env python3
-"""Импорт Roboflow YOLO (Bird-Feeder и аналоги) в ``binary/birds`` как один класс bird.
+"""Импорт Roboflow YOLO / YOLOv11 (Bird-Feeder и аналоги) в ``binary/birds`` или ``binary/rodent``
+как один класс (id ``0`` в файлах; при merge три класса грызунам всё равно ставится Rodent).
 
 В архиве несколько видов птиц (разные class id в ``*.txt``) — все строки переписываются
 в класс ``0`` с сохранением bbox (YOLO normalized).
 
-Roboflow обычно кладёт сплит ``valid/`` — он копируется в ``binary/birds/val/``.
-Опционально ``test/`` → ``binary/birds/test/`` (чтобы ``merge_datasets_three_class`` видел test).
+Roboflow кладёт сплит ``valid/`` или ``val/`` — в ``binary/<subdir>/val/`` (птицы или грызуны).
+Опционально ``test/`` → ``binary/<subdir>/test/`` (чтобы ``merge_datasets_three_class`` видел test).
+
+После ``zipfile.extractall`` часто появляется вложенная папка (имя проекта) —
+скрипт сам ищет каталог, где лежит ``train/images``.
 
 Имена файлов получают префикс (по умолчанию ``rfbf_``), чтобы не перезаписать кадры из COCO.
 
-Лицензия датасета v6 в карточке Roboflow: CC BY 4.0 — проверьте условия атрибуции перед публикацией весов.
+**Bird-Feeder (YOLOv11), версия датасета 3:** скачайте ZIP со страницы экспорта
+https://universe.roboflow.com/meproject-pcsly/bird-feeder-hhjks/dataset/3/download/yolov11
+(в браузере; при необходимости авторизация Roboflow). Лицензия — на карточке проекта (часто CC BY 4.0).
 
 Пример::
 
-    cd scripts/datasets
     python3 import_roboflow_bird_feeder_birds.py \\
-        --zip ../../datasets/Bird-Feeder.v6i.yolov11.zip
+        --root ../../datasets/new/detector \\
+        --zip ~/Downloads/bird-feeder-hhjks-3.yolov11.zip
 
-Затем из корня репозитория: ``make dataset-merge-three-class`` или свой ``--output-dir``.
+Из корня репозитория::
+
+    make dataset-import-roboflow-bird-feeder ROBOFLOW_ZIP=/path/to/export.zip
+
+Скачать и импортировать через API (``ROBOFLOW_API_KEY``): ``download_roboflow_bird_feeder.py``
+или ``make dataset-download-roboflow-bird-feeder``. Уже распакованное дерево:
+``--extracted-dir /path/to/yolov11-export``.
+
+Затем: ``make dataset-merge-three-class``.
 """
 
 from __future__ import annotations
@@ -28,6 +42,19 @@ import sys
 import tempfile
 import zipfile
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import Request, urlopen
+
+
+def find_roboflow_yolo_export_root(extracted: Path) -> Path:
+    """Находит корень дерева ``train/images`` после распаковки ZIP."""
+    if (extracted / "train" / "images").is_dir():
+        return extracted
+    if extracted.is_dir():
+        for child in sorted(extracted.iterdir()):
+            if child.is_dir() and (child / "train" / "images").is_dir():
+                return child
+    return extracted
 
 
 def _remap_lines_to_class_zero(raw: str) -> str:
@@ -84,7 +111,7 @@ def _import_split(
     for lf in sorted(lbl_dir.glob("*.txt")):
         stem = lf.stem
         img = None
-        for ext in (".jpg", ".jpeg", ".png", ".webp", ".JPG", ".JPEG", ".PNG"):
+        for ext in (".jpg", ".jpeg", ".png", ".webp", ".JPG", ".JPEG", ".PNG", ".WEBP"):
             cand = img_dir / f"{stem}{ext}"
             if cand.is_file():
                 img = cand
@@ -106,69 +133,184 @@ def _import_split(
     return copied, skipped
 
 
+def _download_zip(url: str, dest: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    req = Request(url, headers={"User-Agent": "BirdLense-import/1"})
+    with urlopen(req, timeout=600) as resp, dest.open("wb") as out:
+        shutil.copyfileobj(resp, out)
+
+
+def run_import_from_extracted_base(
+    extracted_base: Path,
+    birds_root: Path,
+    prefix: str,
+    *,
+    dry_run: bool,
+    no_test: bool,
+    allow_train_only: bool = False,
+) -> int:
+    """Импорт из уже распакованного дерева YOLO (корень или вложенная папка проекта)."""
+    extracted = find_roboflow_yolo_export_root(extracted_base.resolve())
+
+    mapping: list[tuple[str, str]] = [("train", "train")]
+
+    val_rf = None
+    if (extracted / "valid" / "images").is_dir():
+        val_rf = "valid"
+    elif (extracted / "val" / "images").is_dir():
+        val_rf = "val"
+    if val_rf is not None:
+        mapping.append((val_rf, "val"))
+
+    if not no_test and (extracted / "test" / "images").is_dir():
+        mapping.append(("test", "test"))
+
+    if len(mapping) == 1:
+        if not (
+            allow_train_only
+            and mapping[0][0] == "train"
+            and (extracted / "train" / "images").is_dir()
+        ):
+            print(
+                "Не найдены сплиты valid/ или val/ с images/. "
+                "Экспорт только train — добавьте --allow-train-only или включите val в Roboflow.",
+                file=sys.stderr,
+            )
+            return 2
+
+    total_copied = 0
+    total_skip = 0
+    for rf_split, out_split in mapping:
+        c, s = _import_split(
+            extracted,
+            rf_split,
+            out_split,
+            birds_root,
+            prefix,
+            dry_run=dry_run,
+        )
+        print(f"[{rf_split} → {out_split}] copied={c} skipped={s}")
+        total_copied += c
+        total_skip += s
+
+    action = "Would copy" if dry_run else "Copied"
+    print(
+        f"{action} {total_copied} images (single class id 0); skipped {total_skip}. "
+        f"Destination: {birds_root}",
+    )
+    if not dry_run:
+        print("Next: make dataset-merge-three-class")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument(
+    src = ap.add_mutually_exclusive_group(required=True)
+    src.add_argument(
         "--zip",
         type=Path,
-        required=True,
-        help="Путь к ZIP экспорту Roboflow YOLOv11",
+        help="Локальный ZIP экспорта Roboflow YOLOv11",
+    )
+    src.add_argument(
+        "--from-url",
+        type=str,
+        metavar="URL",
+        help="Скачать ZIP по ссылке (если 403 — скачайте вручную и передайте --zip)",
+    )
+    src.add_argument(
+        "--extracted-dir",
+        type=Path,
+        metavar="DIR",
+        help="Уже распакованный YOLOv11 (train/images …); без ZIP",
+    )
+    ap.add_argument(
+        "--root",
+        type=Path,
+        default=Path(__file__).resolve().parent.parent.parent / "datasets" / "new" / "detector",
+        help="Корень ETL (каталог с binary/birds или binary/rodent); как у convert_cub_to_yolo / bootstrap --root",
     )
     ap.add_argument(
         "--datasets-root",
         type=Path,
-        default=Path(__file__).resolve().parent,
-        help="Каталог, где лежит scripts/datasets (родитель binary/)",
+        default=None,
+        help="Устарело: родитель каталога binary/ (например scripts/datasets). "
+        "Если задан, переопределяет вывод вместо --root.",
+    )
+    ap.add_argument(
+        "--binary-subdir",
+        type=str,
+        choices=("birds", "rodent"),
+        default="birds",
+        help="Подкаталог под --root: binary/birds (по умолчанию) или binary/rodent",
     )
     ap.add_argument(
         "--prefix",
         type=str,
         default="rfbf_",
-        help="Префикс имён файлов в binary/birds",
+        help="Префикс имён файлов в binary/<subdir>",
     )
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument(
+        "--allow-train-only",
+        action="store_true",
+        help="Экспорт Roboflow только train/ (нет val/valid) — не ошибка",
+    )
+    ap.add_argument(
         "--no-test",
         action="store_true",
-        help="Не импортировать сплит test в binary/birds/test",
+        help="Не импортировать сплит test в binary/<subdir>/test",
     )
     args = ap.parse_args()
-    zpath = args.zip.resolve()
-    if not zpath.is_file():
-        print(f"ZIP not found: {zpath}", file=sys.stderr)
-        return 2
 
-    birds_root = args.datasets_root.resolve() / "binary" / "birds"
+    sub = args.binary_subdir
+    if args.datasets_root is not None:
+        birds_root = args.datasets_root.resolve() / "binary" / sub
+    else:
+        birds_root = args.root.resolve() / "binary" / sub
 
-    total_copied = 0
-    total_skip = 0
-    mapping = [("train", "train"), ("valid", "val")]
-    if not args.no_test:
-        mapping.append(("test", "test"))
+    prefix = (args.prefix or "rfbf_").strip() or "rfbf_"
+
+    if args.extracted_dir is not None:
+        return run_import_from_extracted_base(
+            args.extracted_dir,
+            birds_root,
+            prefix,
+            dry_run=args.dry_run,
+            no_test=args.no_test,
+            allow_train_only=args.allow_train_only,
+        )
 
     with tempfile.TemporaryDirectory(prefix="roboflow_bf_") as tmp:
         tmp_path = Path(tmp)
+        extract_dir = tmp_path / "extracted"
+        extract_dir.mkdir(parents=True)
+
+        if args.from_url:
+            zpath = tmp_path / "roboflow_export.zip"
+            try:
+                print(f"Downloading {args.from_url!r} …", flush=True)
+                _download_zip(args.from_url, zpath)
+            except URLError as e:
+                print(f"Download failed: {e}", file=sys.stderr)
+                return 2
+        else:
+            assert args.zip is not None
+            zpath = args.zip.resolve()
+            if not zpath.is_file():
+                print(f"ZIP not found: {zpath}", file=sys.stderr)
+                return 2
+
         with zipfile.ZipFile(zpath, "r") as zf:
-            zf.extractall(tmp_path)
+            zf.extractall(extract_dir)
 
-        for rf_split, out_split in mapping:
-            c, s = _import_split(
-                tmp_path,
-                rf_split,
-                out_split,
-                birds_root,
-                args.prefix.strip() or "rfbf_",
-                dry_run=args.dry_run,
-            )
-            print(f"[{rf_split} → birds/{out_split}] copied={c} skipped={s}")
-            total_copied += c
-            total_skip += s
-
-    action = "Would copy" if args.dry_run else "Copied"
-    print(f"{action} {total_copied} bird images (class 0); skipped {total_skip}. Destination: {birds_root}")
-    if not args.dry_run:
-        print("Next: from repo root → make dataset-merge-three-class (or merge_datasets_three_class.py --output-dir brg)")
-    return 0
+        return run_import_from_extracted_base(
+            extract_dir,
+            birds_root,
+            prefix,
+            dry_run=args.dry_run,
+            no_test=args.no_test,
+            allow_train_only=args.allow_train_only,
+        )
 
 
 if __name__ == "__main__":

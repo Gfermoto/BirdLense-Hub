@@ -70,7 +70,7 @@ chmod 644 app/processor/models/classification/weights/best.pt
 rm -f app/processor/models/classification/weights/best_EU.pt
 
 echo "Files:"
-ls -la app/processor/models/detection/weights/best.pt app/processor/models/classification/weights/best.pt
+ls -la app/processor/models/detection/weights/yolo11n.pt app/processor/models/classification/weights/best.pt
 
 echo "Docker rebuild (no cache for birdlense)..."
 cd app

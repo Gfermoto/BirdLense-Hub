@@ -4,19 +4,23 @@
 
 Классификатор — [TRAINING.ru.md](./TRAINING.ru.md). Здесь только **детекция** (`dataset.yaml`). Пути к **`brg/`**, merge, упаковка ZIP — [DATASETS.ru.md](./DATASETS.ru.md).
 
+**Режим по умолчанию (рекомендуется):** дообучение **от последних боевых весов хаба** — тот же **`best.pt`**, который сейчас в проде (то же дерево классов Bird / Rodent / Background и тот же **YOLO11n-detect**, что ожидает процессор). На Drive этот файл кладём как **`bl_best.pt`**, чтобы он не смешался с **`best.pt`** из новых ранов Ultralytics.
+
+**Не использовать здесь как старт части A:** готовые веса **COCO** (`yolo11n.pt` и т.п.) — **80 классов**, контракт с хабом и постобработкой ломается. Холодный старт без чекпоинта см. блок в конце части **A**.
+
 ---
 
 ## Оглавление
 
 | Часть | О чём |
 |--------|--------|
-| **A** | Основной сценарий: **`brg` ZIP + `bl_best.pt`**, два этапа обучения (`freeze` → full), OpenVINO **640** — **от нуля до выгрузки на хаб** |
+| **A** | Основной сценарий: **`brg` ZIP**, старт **`bl_best.pt`** (копия боевого **`best.pt`** с хаба), два этапа (`freeze` → full), OpenVINO **640** — до выгрузки на хаб |
 | **B** | Дополнительно: старый **binary** пайплайн с Hugging Face (balanced → full, **`yolo11n.pt`**, **960**) |
 | **C** | Контракт классов, проверка перед продом |
 
 ---
 
-# Часть A — Основной сценарий (`brg` + `bl_best.pt`)
+# Часть A — Основной сценарий (`brg` + боевые веса)
 
 ## A0. До открытия Colab (локально и на Drive)
 
@@ -27,9 +31,18 @@
    python3 scripts/datasets/pack_brg_for_gdrive.py
    ```
 
-   В корне появится **`datasets/BirdLense_detector_brg_<UTC>.zip`** (каталог `datasets/` в `.gitignore`).
+   Рядом с `binary/` и `yolo/` появится **`datasets/new/detector/BirdLense_detector_brg_<UTC>.zip`**.
 
-2. **Взять чекпоинт для дообучения:** скопируйте с машины, где лежат веса хаба, файл вида **`best.pt`** (активный детектор **YOLO11n**) и назовите на Drive **`bl_best.pt`** — так проще не перепутать с результатами нового рана.
+2. **Стартовый чекпоинт (по умолчанию — лучший с хаба):** возьмите **`best.pt`**, который **сейчас реально используется** как бинарный детектор на хабе (или локальная копия из сборки процессора, например **`app/processor/models/detection/weights/best.pt`** — если это тот же артефакт, что выкладываете в прод).
+
+   Переименуйте при загрузке на Drive в **`bl_best.pt`** (`BASE_WEIGHTS` / «базовые боевые веса»), чтобы не перезаписать **`best.pt`** из нового обучения.
+
+   Проверьте по возможности перед Colab:
+
+   | Ожидание | Зачем |
+   |-----------|--------|
+   | задача **detect**, архитектура **YOLO11n** совместима с экспортом в прод | иначе `load`/`export` могут упасть |
+   | ровно **3** класса, порядок **Bird → Rodent → Background** как в `dataset.yaml` | совпадает с [частью C](#часть-c--контракт-и-проверка) и конфигом хаба |
 
 3. **Загрузите на Google Drive** в одну папку (рекомендуемый путь):
 
@@ -38,9 +51,9 @@
    Там должны быть минимум:
 
    - `BirdLense_detector_brg_<ваш_UTC>.zip`
-   - `bl_best.pt`
+   - `bl_best.pt` (**обязательно в режиме по умолчанию**)
 
-4. Убедитесь, что хватает места под раны Ultralytics на Drive (~несколько GB): ниже **`project=RUNS`** пишет в **`.../BirdLense_Detector/yolo_detector_runs/`**.
+4. Убедитесь, что хватает места под раны Ultralytics на Drive (**несколько GB** и больше): **`project=RUNS`** ниже пишет в **`.../BirdLense_Detector/yolo_detector_runs/`**.
 
 ---
 
@@ -53,6 +66,27 @@
 
 После ячейки с **`drive.mount`** браузер попросит разрешить доступ к Drive — пройдите авторизацию.
 
+### A1.b — Обрыв сессии и `resume`
+
+Если Colab отключился **после** старта этапа 1 или 2, не начинайте заново ту же команду **`model.train(...)`** с тем же `name`: либо укажите **`resume=True`** с **`last.pt`**, либо смените **`name`** у нового рана.
+
+Пример после монтирования Drive (подставьте свой путь к **`last.pt`** из папки рана):
+
+```python
+from ultralytics import YOLO
+
+LAST = "/content/drive/MyDrive/BirdLense_Detector/yolo_detector_runs/brg_ft_stage1_freeze10/weights/last.pt"
+YOLO(LAST).train(resume=True)  # без прочих аргументов — так требует Ultralytics
+```
+
+Для второго этапа — аналогично, если обрыв был на **`brg_ft_stage2_full`**.
+
+---
+
+## A1.c — Если нет боевого `best.pt` (редкий холодный старт части A)
+
+Имеет смысл только когда **нет** сохранённого трёхклассового чекпоинта Hub. Тогда можно стартовать с **`YOLO("yolo11n.pt")`**: Ultralytics создаст голову под **3 класса** по вашему `dataset.yaml`, но качество первых эпох будет хуже, чем при дообучении от уже натренированного BRG-детектора. После этого всё равно соблюдайте **`imgsz=640`**, два этапа и контракт классов из части **C**. Для воспроизводимости версий: **`!pip install -q ultralytics>=8.3.203`** (см. [TRAINING.ru.md](./TRAINING.ru.md) про `resume` / GradScaler).
+
 ---
 
 ## A2. Ячейки блокнота (скопировать по порядку)
@@ -62,7 +96,8 @@
 **Запуск:** один раз в начале сессии.
 
 ```python
-!pip install -q ultralytics pyyaml
+# Для стабильного resume в новых сессиях Colab — не ниже 8.3.203 (см. TRAINING.ru.md)
+!pip install -q "ultralytics>=8.3.203" pyyaml
 ```
 
 ### Ячейка 2 — подключить Google Drive
@@ -76,20 +111,42 @@ drive.mount("/content/drive")
 
 ### Ячейка 3 — пути и проверка файлов
 
-**Запуск:** поправьте **`ZIP_NAME`** под имя вашего архива на Drive.
+**Важно:** строка **`BirdLense_detector_brg_20260430_134305Z.zip`** в старых версиях инструкции была **только примером** — такого файла у вас на Drive нет, пока вы сами не положите ZIP.
+
+- Либо укажите **точное имя** своего архива (как вы назвали файл при загрузке на Drive).
+- Либо оставьте **авто-поиск** ниже: берётся **самый свежий по дате изменения** файл **`BirdLense_detector_brg_*.zip`** в **`DRIVE_ROOT`**.
+
+**`BASE_WEIGHTS`** — **боевой `best.pt` с хаба** на Drive как **`bl_best.pt`**.
 
 ```python
 import os
+from pathlib import Path
 
 DRIVE_ROOT = "/content/drive/MyDrive/BirdLense_Detector"
-ZIP_NAME = "BirdLense_detector_brg_20260430_134305Z.zip"  # <-- ваш файл
-ZIP_PATH = os.path.join(DRIVE_ROOT, ZIP_NAME)
-WEIGHTS = os.path.join(DRIVE_ROOT, "bl_best.pt")
+assert os.path.isdir(DRIVE_ROOT), f"Нет папки (проверьте путь и что Drive смонтирован): {DRIVE_ROOT}"
+
+# --- Вариант A (рекомендуется): последний по времени BRG-zip в папке ---
+cands = list(Path(DRIVE_ROOT).glob("BirdLense_detector_brg_*.zip"))
+if not cands:
+    raise FileNotFoundError(
+        f"В {DRIVE_ROOT} нет BirdLense_detector_brg_*.zip. "
+        "Загрузите архив с локальной машины (pack_brg_for_gdrive.py) или задайте ZIP вручную (вариант B)."
+    )
+ZIP_PATH = str(max(cands, key=lambda p: p.stat().st_mtime))
+print("ZIP (авто):", ZIP_PATH)
+
+# --- Вариант B: вручную раскомментируйте и подставьте имя с Drive ---
+# ZIP_PATH = os.path.join(DRIVE_ROOT, "BirdLense_detector_brg_20260505_120000Z.zip")
+
+BASE_WEIGHTS = os.path.join(DRIVE_ROOT, "bl_best.pt")
+WEIGHTS = BASE_WEIGHTS
 
 assert os.path.isfile(ZIP_PATH), f"Нет архива: {ZIP_PATH}"
-assert os.path.isfile(WEIGHTS), f"Нет весов: {WEIGHTS}"
-print("OK:", ZIP_PATH, WEIGHTS)
+assert os.path.isfile(BASE_WEIGHTS), f"Нет базовых весов: {BASE_WEIGHTS}"
+print("OK:", ZIP_PATH, BASE_WEIGHTS)
 ```
+
+Если не видите папку **`BirdLense_Detector`**: проверьте **реальный путь** в Drive (иногда **`Shared drives/...`** или другое имя) — поправьте **`DRIVE_ROOT`**.
 
 ### Ячейка 4 — распаковать датасет
 
@@ -123,13 +180,21 @@ with open(DATA_YAML, "w", encoding="utf-8") as f:
     yaml.safe_dump(cfg, f, sort_keys=False, allow_unicode=True)
 
 print(cfg)
+
+# Согласованность с боевым детектором (порядок id 0,1,2):
+names = cfg.get("names") or {}
+keys = sorted(names, key=lambda k: int(k))
+ordered = [names[k] for k in keys]
+assert ordered == ["Bird", "Rodent", "Background"], ordered
 ```
 
-В выводе проверьте **`names`**: Bird, Rodent, Background.
+Если assert падает — не запускайте обучение: поправьте **`dataset.yaml`** в архиве и пересоберите ZIP.
 
 ### Ячейка 6 — этап 1: заморозка backbone (`freeze=10`)
 
-**Запуск:** долго (десятки минут и больше). Не закрывайте вкладку; при обрыве сессии можно снова смонтировать Drive и продолжить со следующей ячейки, если папка рана уже создана.
+**Запуск:** долго (десятки минут и больше). Стартуем **`YOLO(WEIGHTS)`** от **`BASE_WEIGHTS`** (= боевой чекпоинт).
+
+При обрыве Colab — см. выше раздел **A1.b** (**`resume=True`** из **`last.pt`**); не запускайте повторно **`model.train`** с тем же **`name`**, если хотите именно продолжить ту же задачу.
 
 ```python
 from ultralytics import YOLO
@@ -186,16 +251,18 @@ export_model = YOLO(BEST_FINAL)
 export_model.export(format="openvino", imgsz=640)
 ```
 
-Экспорт появится **рядом** с каталогом весов (типично подпапка с суффиксом **`_openvino`** в том же run — смотрите вывод Ultralytics). Нужны **`.xml`**, **`.bin`**, **`metadata.yaml`**.
+Ultralytics 8.x печатает в конце **точный путь** к каталогу IR; обычно это **`.../weights/best_openvino_model/`** рядом с **`best.pt`** (файлы **`best.xml`**, **`best.bin`**, **`metadata.yaml`**). Если имя отличается — ориентируйтесь на вывод строки **`OpenVINO: export success`**.
+
+В **`metadata.yaml`** после экспорта должно быть **3 класса** в том же порядке, что в датасете.
 
 ### A3. После Colab — что забрать на хаб
 
-1. На **Google Drive** в **`BirdLense_Detector/yolo_detector_runs/brg_ft_stage2_full/weights/best.pt`** — скачайте как новый детектор.
-2. Папку **OpenVINO** из того же рана — в конфиге хаба выставьте **`processor.binary_imgsz: 640`** и пути к бинарнику ([CONFIGURATION.ru.md](./CONFIGURATION.ru.md)).
+1. **`.../brg_ft_stage2_full/weights/best.pt`** на Drive — новый торч‑детектор для хаба / замена **`bl_best.pt`** при следующей итерации.
+2. Каталог **OpenVINO** из вывода экспорта (часто **`best_openvino_model`**) целиком — в приложении типичный путь **`models/detection/weights/best_openvino_model`** относительно корня процессора; **`processor.binary_imgsz: 640`** ([CONFIGURATION.ru.md](./CONFIGURATION.ru.md)).
 
 ### Упрощение (один прогон вместо ячеек 6–7)
 
-Одна длинная тренировка от **`bl_best.pt`**:
+Одна длинная тренировка с **`BASE_WEIGHTS`** (тот же **`WEIGHTS`** / **`bl_best.pt`**):
 
 ```python
 model = YOLO(WEIGHTS)

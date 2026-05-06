@@ -13,6 +13,8 @@ import time
 import cv2
 import numpy as np
 
+from yolo_geometry import letterbox_bgr_to_wh
+
 from .streaming_server import start_streaming_server
 
 logger = logging.getLogger(__name__)
@@ -538,7 +540,10 @@ class Go2RTCStreamSource:
         if self._capture_backend_used == "ffmpeg_vaapi":
             frame_lores = frame
         else:
-            frame_lores = cv2.resize(frame, self.lores_size)
+            frame_lores = letterbox_bgr_to_wh(
+                frame,
+                (int(self.lores_size[0]), int(self.lores_size[1])),
+            )
         self._update_streaming_output(frame)
         return frame_lores
 

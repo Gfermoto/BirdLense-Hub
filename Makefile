@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify verify-strict-quality restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices ml-verify-reid-gates ml-run-reid-execution-report ml-verify-action-labeling ml-build-eval-dataset ml-build-behavior-dataset ml-build-behavior-train-report ml-offline-benchmark-gate ml-detector-shortlist ml-openvino-async-profile ml-decode-path-benchmark ml-track-continuity-eval ml-int8-candidate-eval ml-shadow-rollout-report ml-canary-rollback-report ml-full-rollout-watch-report ml-action-model-shortlist ml-proof ml-proof-local ml-proof-hub ml-fusion-ab-local ml-fusion-ab-hub dedupe-videos-local
+.PHONY: install install-pull deploy build start stop logs verify verify-strict-quality restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-dedupe-detector-yolo dataset-report-detector-yolo dataset-dedupe-detector-binary dataset-import-cub dataset-import-roboflow-bird-feeder dataset-download-roboflow-bird-feeder dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data bootstrap-rodents-until-verify bootstrap-bird-coco-only report-detector-bird-sources dataset-rebalance-bird-binary dataset-bootstrap-rodent-oid-fast dataset-import-roboflow-rodent dataset-fetch-lila-california-rodents-sample dataset-build-birds-rodents-quick dataset-build-detector-tz detector-etl-verify-birds-rodents detector-etl-progress detector-etl-progress-watch detector-etl-restart detector-etl-supervise detector-etl-supervise-bg active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices ml-verify-reid-gates ml-run-reid-execution-report ml-verify-action-labeling ml-build-eval-dataset ml-build-behavior-dataset ml-build-behavior-train-report ml-offline-benchmark-gate ml-detector-shortlist ml-openvino-async-profile ml-decode-path-benchmark ml-track-continuity-eval ml-int8-candidate-eval ml-shadow-rollout-report ml-canary-rollback-report ml-full-rollout-watch-report ml-action-model-shortlist ml-proof ml-proof-local ml-proof-hub ml-fusion-ab-local ml-fusion-ab-hub dedupe-videos-local
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -164,6 +164,26 @@ dataset-merge-three-class:
 	  --background-dir "$(CURDIR)/datasets/new/detector/binary/background" \
 	  --output-dir "$(CURDIR)/datasets/new/detector/yolo"
 
+# Дедуп merged yolo/: по умолчанию только ВНУТРИ b_/r_/g_ (не трогать птицу из-за того же файла как фон).
+# Опасный межклассовый режим: ARGS='--detector-merge-scope global' (осознанно).
+# Восстановление yolo без повторной качки: make dataset-merge-three-class (из binary/).
+dataset-dedupe-detector-yolo:
+	@python3 scripts/datasets/dedupe_yolo_images.py \
+	  --root "$(CURDIR)/datasets/new/detector/yolo" \
+	  --detector-merge \
+	  $(ARGS)
+
+# Только отчёт по составу merged yolo/ (без изменений на диске).
+dataset-report-detector-yolo:
+	@python3 scripts/datasets/report_detector_yolo_dataset.py \
+	  --root "$(CURDIR)/datasets/new/detector/yolo"
+
+# Дедуп binary/…/images: только внутри одной папки класса (например rodent/train/images), без кросс-класса.
+dataset-dedupe-detector-binary:
+	@python3 scripts/datasets/dedupe_detector_binary_layout.py \
+	  --root "$(CURDIR)/datasets/new/detector" \
+	  $(ARGS)
+
 # Скачать стартовые подмножества COCO + Open Images в три каталога (нужен pip install fiftyone).
 # Переопределение лимитов: make bootstrap-detector-data ARGS='--birds-train 50 --birds-val 20'
 # Большой детектор: scripts/datasets/DETECTOR_DATASET_QUALITY.md и build_detector_dataset_large.sh
@@ -172,6 +192,114 @@ bootstrap-detector-data:
 	  --root "$(CURDIR)/datasets/new/detector" \
 	  $(ARGS)
 
+# Плохая сеть: повторные zoo-load в bootstrap + циклический добор rodent до detector-etl-verify.
+# Env: MAX_ROUNDS SLEEP_SEC CHUNK_SIZE BIRDLENSE_BOOTSTRAP_ZOO_RETRIES BIRDLENSE_BOOTSTRAP_CHUNK_MAX
+bootstrap-rodents-until-verify:
+	@DETECTOR_ETL_ROOT="$(CURDIR)/datasets/new/detector" \
+	  BIRDLENSE_PYTHON="$(CURDIR)/.venv/bin/python" \
+	  bash "$(CURDIR)/scripts/datasets/bootstrap_rodents_until_verify.sh"
+
+# Добор только COCO bird (12-digit stem); CUB/Roboflow не удаляются. Квоты из env.
+# Пример: BIRD_COCO_TRAIN=5000 BIRD_COCO_VAL=1000 make bootstrap-bird-coco-only
+BIRD_COCO_TRAIN ?= 4500
+BIRD_COCO_VAL ?= 1000
+bootstrap-bird-coco-only:
+	@"$${BIRDLENSE_PYTHON:-$(CURDIR)/.venv/bin/python}" \
+	  "$(CURDIR)/scripts/datasets/bootstrap_detector_yolo.py" \
+	  --root "$(CURDIR)/datasets/new/detector" \
+	  --skip-rodents --skip-background --skip-birds-oid \
+	  --birds-train "$(BIRD_COCO_TRAIN)" \
+	  --birds-val "$(BIRD_COCO_VAL)"
+
+report-detector-bird-sources:
+	@python3 "$(CURDIR)/scripts/datasets/report_detector_bird_sources.py" \
+	  --root "$(CURDIR)/datasets/new/detector"
+
+# Урезать перекос CUB/Roboflow → целевая доля COCO+OID + ровнее train/val/test. По умолчанию dry-run; запись: ARGS='--execute'
+dataset-rebalance-bird-binary:
+	@python3 "$(CURDIR)/scripts/datasets/rebalance_detector_bird_binary.py" \
+	  --root "$(CURDIR)/datasets/new/detector" \
+	  $(ARGS)
+
+# Быстро: волны COCO Bird + OID Bird + Rodent (OID), без фона; merge + verify. Опционально LILA — см. скрипт.
+dataset-build-birds-rodents-quick:
+	@bash "$(CURDIR)/scripts/datasets/build_detector_birds_rodents_quick.sh"
+
+# Полный ТЗ-пайплайн: волны A–E → verify binary → merge → dedupe yolo → validate labels.
+dataset-build-detector-tz:
+	@bash "$(CURDIR)/scripts/datasets/build_detector_dataset_tz.sh"
+
+# Подмешать CUB-200-2011 в binary/birds (нужен распакованный датасет). Пример:
+#   make dataset-import-cub CUB_ROOT=~/data/CUB_200_2011
+dataset-import-cub:
+	@test -n "$(CUB_ROOT)" || (echo "Set CUB_ROOT=/path/to/CUB_200_2011 ( unpacked images/ + *.txt )" >&2; exit 1)
+	@python3 scripts/datasets/convert_cub_to_yolo.py \
+	  --root "$(CURDIR)/datasets/new/detector" \
+	  --cub-root "$(CUB_ROOT)"
+
+# ZIP экспорта Roboflow YOLOv11 (Bird-Feeder и др.) → datasets/new/detector/binary/birds.
+# Скачать v3: https://universe.roboflow.com/meproject-pcsly/bird-feeder-hhjks/dataset/3/download/yolov11
+#   make dataset-import-roboflow-bird-feeder ROBOFLOW_ZIP=~/Downloads/....zip
+dataset-import-roboflow-bird-feeder:
+	@test -n "$(ROBOFLOW_ZIP)" || (echo "Set ROBOFLOW_ZIP=/path/to/Roboflow-YOLOv11-export.zip" >&2; exit 1)
+	@python3 scripts/datasets/import_roboflow_bird_feeder_birds.py \
+	  --root "$(CURDIR)/datasets/new/detector" \
+	  --zip "$(ROBOFLOW_ZIP)"
+
+# Open Images validation-only → binary/rodent (быстро; обычно RGB днём). Переменные: RODENT_OID_TRAIN, RODENT_OID_VAL, RODENT_CHUNK, RODENT_CLASSES, DETECTOR_ETL_ROOT, BIRDLENSE_PYTHON.
+dataset-bootstrap-rodent-oid-fast:
+	@bash "$(CURDIR)/scripts/datasets/bootstrap_rodent_oid_fast.sh"
+
+# Roboflow YOLOv11 → binary/rodent (IR/thermal/nocturnal — качайте экспорт на Universe и укажите ZIP).
+dataset-import-roboflow-rodent:
+	@test -n "$(ROBOFLOW_ZIP)" || (echo "Set ROBOFLOW_ZIP=/path/to/rodent-YOLOv11.zip" >&2; exit 1)
+	@python3 scripts/datasets/import_roboflow_bird_feeder_birds.py \
+	  --root "$(CURDIR)/datasets/new/detector" \
+	  --zip "$(ROBOFLOW_ZIP)" \
+	  --binary-subdir rodent \
+	  --prefix "$(RODENT_RF_PREFIX)"
+
+RODENT_RF_PREFIX ?= rfir_
+
+# LILA California Small Animals (подвыборка по грызуну‑подобным категориям) → binary/rodent. Нужна сеть. ARGS: --max-images 3000 --metadata-zip ...
+dataset-fetch-lila-california-rodents-sample:
+	@python3 "$(CURDIR)/scripts/datasets/fetch_lila_california_rodents_sample.py" \
+	  --root "$(CURDIR)/datasets/new/detector" \
+	  $(ARGS)
+
+# Скачать Bird-Feeder v3 через Roboflow API и импортировать в binary/birds (pip install roboflow).
+# export ROBOFLOW_API_KEY='…'   — ключ не хранить в репозитории; при утечке отозвать в Roboflow.
+dataset-download-roboflow-bird-feeder:
+	@test -n "$${ROBOFLOW_API_KEY:-}" || (echo "Set ROBOFLOW_API_KEY (see scripts/datasets/download_roboflow_bird_feeder.py)" >&2; exit 1)
+	@python3 scripts/datasets/download_roboflow_bird_feeder.py \
+	  --root "$(CURDIR)/datasets/new/detector"
+
+# Порог JPEG train/val птицы+грызуны (план large волн A+B+C). Exit 1 при недостаче — для CI или ручной догонки.
+# Пример: DETECTOR_LOG_SCAN=1 make detector-etl-verify-birds-rodents
+detector-etl-verify-birds-rodents:
+	@DETECTOR_ETL_ROOT="$(CURDIR)/datasets/new/detector" bash "$(CURDIR)/scripts/datasets/verify_detector_binary_inventory.sh"
+
+# Счётчики JPEG под binary/, кэш COCO, процессы bootstrap, хвост datasets/logs/detector_waves.log.
+# Непрерывно: DETECTOR_WATCH_INTERVAL=12 make detector-etl-progress-watch
+detector-etl-progress:
+	@DETECTOR_ETL_ROOT="$(CURDIR)/datasets/new/detector" DETECTOR_WAVES_LOG="$(CURDIR)/datasets/logs/detector_waves.log" bash "$(CURDIR)/scripts/datasets/detector_etl_progress.sh"
+
+detector-etl-progress-watch:
+	@DETECTOR_ETL_ROOT="$(CURDIR)/datasets/new/detector" DETECTOR_WAVES_LOG="$(CURDIR)/datasets/logs/detector_waves.log" WATCH_INTERVAL="$${DETECTOR_WATCH_INTERVAL:-15}" bash "$(CURDIR)/scripts/datasets/detector_etl_progress.sh" watch
+
+# Остановить bootstrap/waves и снова поднять волны (по умолчанию D+E, см. скрипт).
+detector-etl-restart:
+	@bash "$(CURDIR)/scripts/datasets/restart_detector_dataset_waves.sh"
+
+# Держать волны до конца или перезапускать при падении (см. detector_etl_supervisor.sh).
+detector-etl-supervise:
+	@bash "$(CURDIR)/scripts/datasets/detector_etl_supervisor.sh"
+
+detector-etl-supervise-bg:
+	@cd "$(CURDIR)" && mkdir -p datasets/logs && \
+	  POLL_SEC="$${POLL_SEC:-120}" nohup bash scripts/datasets/detector_etl_supervisor.sh >>datasets/logs/detector_etl_supervisor.log 2>&1 & \
+	  echo $$! > datasets/logs/detector_etl_supervisor.pid && \
+	  echo "supervisor PID $$(cat datasets/logs/detector_etl_supervisor.pid) → datasets/logs/detector_etl_supervisor.log"
 # Validate YOLO labels before Colab training. Example:
 # LABELS_DIR=datasets/new/detector/yolo/train/labels CLASS_COUNT=3 make dataset-validate-yolo-labels
 dataset-validate-yolo-labels:
@@ -416,7 +544,7 @@ ml-action-model-shortlist:
 
 validate-weights:
 	@python3 scripts/validate-processor-weights.py \
-		--binary "$${BINARY:-app/processor/models/detection/weights/best.pt}" \
+		--binary "$${BINARY:-app/processor/models/detection/weights/yolo11n.pt}" \
 		--classifier "$${CLASSIFIER:-app/processor/models/classification/weights/best.pt}" \
 		--class-names "$${CLASS_NAMES:-app/processor/models/classification/weights/class_names.txt}" \
 		$$(test -n "$${DATASET_INFO:-}" && printf -- '--dataset-info "%s" ' "$${DATASET_INFO}") \

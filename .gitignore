@@ -51,6 +51,7 @@ app/.pytest_cache/
 .venv/
 # make ci-local / scripts/ci-full-local.sh
 .venv-ci/
+.venv-yolo-fetch/
 .venv-docs/
 # Local model weight (do not commit large model blobs)
 app/yolo11n.pt

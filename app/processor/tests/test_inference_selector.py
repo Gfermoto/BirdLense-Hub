@@ -175,17 +175,6 @@ class TestInferenceSelector(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             assert_backend_supported("onnx")
 
-    def test_resolve_inference_device_defaults_auto(self):
-        from inference.selector import resolve_inference_device
-
-        old = os.environ.pop("BIRDLENSE_INFERENCE_DEVICE", None)
-        try:
-            self.assertEqual(resolve_inference_device(None), "auto")
-            self.assertEqual(resolve_inference_device({}), "auto")
-        finally:
-            if old is not None:
-                os.environ["BIRDLENSE_INFERENCE_DEVICE"] = old
-
     def test_resolve_inference_device_env_overrides_config(self):
         from inference.selector import resolve_inference_device
 

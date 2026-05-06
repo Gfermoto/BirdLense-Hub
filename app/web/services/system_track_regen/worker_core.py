@@ -295,6 +295,11 @@ def run_regenerate_tracks_worker(
             if precise_params:
                 regen_params["precise_fallback"] = precise_params
             precise_pipeline = None
+            try:
+                _trff = app_config.get("processor.track_regen_fusion_min_confidence_to_store")
+                track_regen_fusion_floor = float(_trff) if _trff is not None else None
+            except (TypeError, ValueError):
+                track_regen_fusion_floor = None
             species_scope = set(species_ids_f) if species_ids_f else None
             scope_catalog_species: list[Species] = []
             scope_names_lc: set[str] = set()
@@ -371,10 +376,19 @@ def run_regenerate_tracks_worker(
 
             for video in videos:
                 species_name_to_id_cache.clear()
+
+                def _regen_progress(meta: dict):
+                    try:
+                        job_state._regenerate_tracks_status["progress"].update(meta)
+                    except Exception:
+                        pass
+
                 job_state._regenerate_tracks_status["progress"].update(
                     current_video=video.video_path or None,
                     current_video_id=video.id,
                     phase="yolo_decode",
+                    yolo_frames_done=0,
+                    yolo_frames_total=None,
                 )
                 if not video.video_path:
                     skipped += 1
@@ -418,6 +432,8 @@ def run_regenerate_tracks_worker(
                         "decision_maker": decision_maker,
                         "frame_step": frame_step,
                         "max_runtime_sec": max_runtime_sec,
+                        "progress_hook": _regen_progress,
+                        "progress_hook_interval": 15,
                     }
 
                     def _precise_kwargs():
@@ -442,6 +458,8 @@ def run_regenerate_tracks_worker(
                             "decision_maker": precise_decision_maker,
                             "frame_step": precise_frame_step,
                             "max_runtime_sec": precise_max_runtime_sec,
+                            "progress_hook": _regen_progress,
+                            "progress_hook_interval": 15,
                         }
 
                     track_detections, precise_used = _run_track_regen_with_precise_fallback(
@@ -456,6 +474,7 @@ def run_regenerate_tracks_worker(
                         start_time=video.start_time,
                         end_time=video.end_time,
                         app_config=app_config,
+                        fusion_min_confidence_to_store=track_regen_fusion_floor,
                     )
                     if not detections and track_detections and precise_enabled and not precise_used:
                         precise_kwargs = _precise_kwargs()
@@ -471,6 +490,7 @@ def run_regenerate_tracks_worker(
                                 start_time=video.start_time,
                                 end_time=video.end_time,
                                 app_config=app_config,
+                                fusion_min_confidence_to_store=track_regen_fusion_floor,
                             )
                             flask_app.logger.info(
                                 "Track regen: post-fusion precise pass (video_id=%s path=%s)",
@@ -480,6 +500,15 @@ def run_regenerate_tracks_worker(
                     if regen_species_scope_lc:
                         detections = [_remap_detection_to_local_scope(d, regen_species_scope_lc) for d in detections]
                     if not detections:
+                        flask_app.logger.warning(
+                            "Track regen: fused empty (video_id=%s path=%s precise_used=%s "
+                            "raw_track_rows=%s regen_fusion_floor=%s)",
+                            video.id,
+                            video.video_path,
+                            precise_used,
+                            len(track_detections or []),
+                            track_regen_fusion_floor,
+                        )
                         reason = "no_detections_after_precise_pass" if precise_used else "no_detections_fast_run"
                         skipped += 1
                         precise_candidates.append(

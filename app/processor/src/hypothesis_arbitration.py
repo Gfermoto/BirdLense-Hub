@@ -236,7 +236,11 @@ def _absorb_generic_bird(rows: list[dict]) -> list[dict]:
 
 
 def _drop_clip_level_generic_bird_when_species_present(rows: list[dict]) -> list[dict]:
-    """Clip-level product rule: if specific bird exists, hide generic Bird rows."""
+    """Clip-level: при наличии вида прячем generic ``Bird`` (дубли кадра).
+
+    Исключение: пара Frigate standalone (generic Bird + вид) с overlap, но вид
+    слишком слабый для absorption — оставляем обе гипотезы.
+    """
     if not rows:
         return rows
     has_specific = any(_is_specific_bird(row) for row in rows)
@@ -244,10 +248,28 @@ def _drop_clip_level_generic_bird_when_species_present(rows: list[dict]) -> list
         return rows
     out: list[dict] = []
     for row in rows:
-        if _is_generic_bird(row):
+        if not _is_generic_bird(row):
+            out.append(row)
             continue
-        out.append(row)
+        if _keep_frigate_standalone_generic_over_weak_species(row, rows):
+            out.append(row)
+            continue
     return out
+
+
+def _keep_frigate_standalone_generic_over_weak_species(g: dict, rows: list[dict]) -> bool:
+    if not _is_frigate_standalone_row(g):
+        return False
+    for other in rows:
+        if other is g or not _is_specific_bird(other):
+            continue
+        if not _is_frigate_standalone_row(other):
+            continue
+        if _overlap_seconds(g, other) < ARBITRATION_GENERIC_ABSORB_OVERLAP_SEC:
+            continue
+        if not _can_absorb_frigate_standalone_generic(g, other):
+            return True
+    return False
 
 
 def _connected_conflict_groups(rows: list[dict]) -> list[list[int]]:

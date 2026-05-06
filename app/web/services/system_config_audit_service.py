@@ -122,7 +122,7 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
         0,
         min(255, _safe_int(app_config_get("processor.light_gate_min_contrast", 20), 20)),
     )
-    binary_imgsz = max(320, _safe_int(app_config_get("processor.binary_imgsz", 512), 512))
+    binary_imgsz = max(320, _safe_int(app_config_get("processor.binary_imgsz", 640), 640))
     min_center_dist = max(0.0, min(1.0, _safe_float(app_config_get("processor.min_center_dist", 0.06), 0.06)))
     min_box_size_px = max(1, _safe_int(app_config_get("processor.min_box_size_px", 72), 72))
 

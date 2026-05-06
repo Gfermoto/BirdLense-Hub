@@ -45,7 +45,7 @@
 
 1. **Цель:** обновить только **классификатор** или ещё **детектор** (2 vs 3 класса — [CV_ML_PREP.ru.md](./CV_ML_PREP.ru.md)).
 2. **Классификатор:** train-ready ZIP из Hub → скрипты merge по [DATASETS.ru.md](./DATASETS.ru.md) → ячейки [TRAINING.ru.md](./TRAINING.ru.md).
-3. **Детектор:** `binary/*` → `make dataset-merge-three-class` → **`scripts/datasets/binary/merged/`**; при необходимости **`scripts/datasets/brg/`** + `pack_brg_for_gdrive.py` → **`datasets/BirdLense_detector_brg_*.zip`** или архивы с HF — **Актуальные пути** в [DATASETS.ru.md](./DATASETS.ru.md), затем [ML_DETECTOR_COLAB.ru.md](./ML_DETECTOR_COLAB.ru.md).
+3. **Детектор:** `binary/*` → `make dataset-merge-three-class` → **`datasets/new/detector/yolo/`**; при необходимости `pack_brg_for_gdrive.py` → **`datasets/new/detector/BirdLense_detector_brg_*.zip`** или архивы с HF — **Актуальные пути** в [DATASETS.ru.md](./DATASETS.ru.md), затем [ML_DETECTOR_COLAB.ru.md](./ML_DETECTOR_COLAB.ru.md).
 4. **Выкат:** скопировать `best.pt` (и OpenVINO при необходимости), валидация, деплой, бенчмарки по клипам.
 
 ---

@@ -9,7 +9,15 @@ import json
 import os
 import sys
 import zipfile
+from pathlib import Path
 from typing import Any
+
+
+def _default_dataset_info_path() -> str | None:
+    """Репозиторный stub без экспорта из хаба (см. datasets/new/detector/)."""
+    root = Path(__file__).resolve().parent.parent
+    p = root / "datasets/new/detector/dataset_info_validate_stub.json"
+    return str(p) if p.is_file() else None
 
 
 def _sha256(path: str) -> str:
@@ -264,6 +272,10 @@ def main() -> int:
     )
     parser.add_argument('--output', help='Write the JSON report to a file')
     args = parser.parse_args()
+    if getattr(args, "dataset_info", None) is None:
+        fallback = _default_dataset_info_path()
+        if fallback:
+            args.dataset_info = fallback
 
     report = build_report(args)
     body = json.dumps(report, ensure_ascii=False, indent=2)

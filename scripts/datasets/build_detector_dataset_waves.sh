@@ -9,6 +9,9 @@
 #   WAVE_PAUSE=10 bash scripts/datasets/build_detector_dataset_waves.sh
 #   RUN_MERGE=1 bash scripts/datasets/build_detector_dataset_waves.sh
 #
+# Только птицы + грызуны (без фона D/E), фон добить позже:
+#   DETECTOR_PHASE_END=3 bash scripts/datasets/build_detector_dataset_waves.sh
+#
 # Продолжить после прерывания (пропуск ранних фаз):
 #   DETECTOR_PHASE_BEGIN=4 bash scripts/datasets/build_detector_dataset_waves.sh   # только D+E
 # Нумерация: 1=A, 2=B, 3=C, 4=D, 5=E.
@@ -31,8 +34,19 @@ fi
 
 PAUSE="${WAVE_PAUSE:-5}"
 CHUNK="${CHUNK_SIZE:-35}"
+# Крупнее chunk для фаз птиц/грызунов — реже порции только из уже скопированных имён (_copy_once).
+CHUNK_PHASE_A="${CHUNK_PHASE_A:-280}"
+CHUNK_PHASE_B="${CHUNK_PHASE_B:-220}"
+CHUNK_PHASE_C="${CHUNK_PHASE_C:-180}"
 BGCH="${BG_SCAN_CHUNK:-500}"
 PHASE_BEGIN="${DETECTOR_PHASE_BEGIN:-1}"
+# 1…5 = A…E; по умолчанию все фазы. Пример: DETECTOR_PHASE_END=3 — остановиться после rodent (C), без фона.
+PHASE_END="${DETECTOR_PHASE_END:-5}"
+if ! [[ "$PHASE_END" =~ ^[1-5]$ ]] || (( PHASE_END < PHASE_BEGIN )); then
+  echo "Invalid DETECTOR_PHASE_BEGIN/END: begin=$PHASE_BEGIN end=$PHASE_END (need 1..5, end>=begin)" >&2
+  exit 1
+fi
+DETECTOR_ETL_ROOT="${DETECTOR_ETL_ROOT:-$REPO_ROOT/datasets/new/detector}"
 # Больше pool / chunk — чаще находим кадры без bird (медленнее на батч, меньше «нулевых» волн).
 EXTRA_BG_POOL=()
 [[ -n "${DETECTOR_BG_TRAIN_POOL:-}" ]] && EXTRA_BG_POOL+=(--background-train-pool "${DETECTOR_BG_TRAIN_POOL}")
@@ -46,10 +60,10 @@ pause() {
 }
 
 run_py() {
-  "$PYTHON" bootstrap_detector_yolo.py "$@"
+  "$PYTHON" bootstrap_detector_yolo.py --root "$DETECTOR_ETL_ROOT" "$@"
 }
 
-if (( PHASE_BEGIN <= 1 )); then
+if (( PHASE_BEGIN <= 1 && PHASE_END >= 1 )); then
 # --- A: COCO bird → ~2500 train / 700 val ---
 say "Фаза A: COCO bird (5×500 train + 140 val)"
 for i in 1 2 3 4 5; do
@@ -59,12 +73,12 @@ for i in 1 2 3 4 5; do
     --skip-birds-oid \
     --skip-rodents \
     --skip-background \
-    --chunk-size "$CHUNK"
+    --chunk-size "$CHUNK_PHASE_A"
   pause
 done
 fi
 
-if (( PHASE_BEGIN <= 2 )); then
+if (( PHASE_BEGIN <= 2 && PHASE_END >= 2 )); then
 # --- B: OID Bird validation-only; при oid-train=0 всё уходит в val-папку ---
 say "Фаза B: Open Images Bird (5×500, validation-only → val/)"
 for i in 1 2 3 4 5; do
@@ -76,12 +90,12 @@ for i in 1 2 3 4 5; do
     --skip-birds-coco \
     --skip-rodents \
     --skip-background \
-    --chunk-size "$CHUNK"
+    --chunk-size "$CHUNK_PHASE_B"
   pause
 done
 fi
 
-if (( PHASE_BEGIN <= 3 )); then
+if (( PHASE_BEGIN <= 3 && PHASE_END >= 3 )); then
 # --- C: Rodent → ~3500 / 900 ---
 say "Фаза C: Rodent (5×700 train + 180 val)"
 for i in 1 2 3 4 5; do
@@ -90,12 +104,12 @@ for i in 1 2 3 4 5; do
     --skip-birds \
     --skip-background \
     --rodent-train 700 --rodent-val 180 \
-    --chunk-size "$CHUNK"
+    --chunk-size "$CHUNK_PHASE_C"
   pause
 done
 fi
 
-if (( PHASE_BEGIN <= 4 )); then
+if (( PHASE_BEGIN <= 4 && PHASE_END >= 4 )); then
 # --- D: фон простой → ~4500 / 1200 ---
 say "Фаза D: background soft (5×900 train + 240 val)"
 for i in 1 2 3 4 5; do
@@ -113,7 +127,7 @@ for i in 1 2 3 4 5; do
 done
 fi
 
-if (( PHASE_BEGIN <= 5 )); then
+if (( PHASE_BEGIN <= 5 && PHASE_END >= 5 )); then
 # --- E: hard-negative → 1800 / 500 ---
 say "Фаза E: background hard (4×450 train + 125 val)"
 for i in 1 2 3 4; do
@@ -131,9 +145,17 @@ for i in 1 2 3 4; do
 done
 fi
 
-say "Готово → scripts/datasets/binary/{birds,rodent,background}/"
+say "Готово → datasets/new/detector/binary/{birds,rodent,background}/"
 if [[ "${RUN_MERGE:-}" == "1" ]]; then
   say "RUN_MERGE=1 → make dataset-merge-three-class"
   cd "$REPO_ROOT"
   make dataset-merge-three-class
+fi
+
+# Полный ETL (включая фон E) — маркер для watchdog. Частичный прогон — без .detector_etl_done.
+if (( PHASE_END >= 5 )); then
+  touch "$REPO_ROOT/datasets/logs/.detector_etl_done"
+  echo "ETL_WAVES_FINISHED ok $(date -Is) (phases 1–5)"
+else
+  echo "ETL_WAVES_PARTIAL phases ${PHASE_BEGIN}-${PHASE_END} ok $(date -Is) — без фона? задай DETECTOR_PHASE_END=5 и продолжи с PHASE_BEGIN"
 fi

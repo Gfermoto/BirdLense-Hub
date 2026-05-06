@@ -165,12 +165,18 @@ def main() -> int:
             max_runtime_sec=args.max_runtime_sec,
         )
         elapsed_s = max(0.0, time.monotonic() - t0)
+        try:
+            _fl = app_config.get("processor.track_regen_fusion_min_confidence_to_store")
+            _fusion_floor = float(_fl) if _fl is not None else None
+        except (TypeError, ValueError):
+            _fusion_floor = None
         fused = build_fused_video_detections(
             raw,
             [],
             start_time=start,
             end_time=end,
             app_config=app_config,
+            fusion_min_confidence_to_store=_fusion_floor,
         )
         kind_iter = (str(track.get('decision_kind') or 'unknown') for track in fused)
         clf_review_raw = sum(1 for track in raw if bool(track.get('classifier_needs_review')))

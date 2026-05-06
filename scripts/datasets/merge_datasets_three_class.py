@@ -234,13 +234,14 @@ def main() -> int:
         CLASS_RODENT: "Rodent",
         CLASS_BACKGROUND: "Background",
     }
-    yolo_yaml = {
-        "path": str(out_root),
+    # Ultralytics без ключа path: корень = каталог с yaml (переносимый ZIP/Drive).
+    yolo_yaml: dict[str, Any] = {
         "train": "train/images",
         "val": "val/images",
-        "test": "test/images" if (out_root / "test" / "images").is_dir() else "",
         "names": names,
     }
+    if (out_root / "test" / "images").is_dir():
+        yolo_yaml["test"] = "test/images"
     yaml_path = out_root / "dataset.yaml"
     yaml_path.write_text(
         yaml.dump(yolo_yaml, default_flow_style=False, allow_unicode=True),

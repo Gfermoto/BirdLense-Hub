@@ -70,7 +70,7 @@ def resolve_binary_detector_weight_path(
             return (p, "openvino")
         if p and detector_weights_available(p) and openvino_runtime_available():
             return (p, "openvino")
-    default_bin = "models/detection/weights/best.pt"
+    default_bin = "models/detection/weights/yolo11n.pt"
     rel = app_config.get("processor.models.binary", default_bin)
     p = resolve_relative_to_processor_root(str(rel).strip(), root)
     return (p, "torch")
