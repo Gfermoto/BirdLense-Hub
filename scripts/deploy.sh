@@ -83,6 +83,8 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/app_config/user_config.yaml --excl
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --exclude=.venv-ci --exclude=site"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.venv --exclude=.venv-datasets"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv"
+# Временный venv для yolo/openvino экспорта (не на сервер; `.venv` без суффикса выше уже исключён)
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-yolo-fetch"
 # Локальная песочница проверки не должна попадать на сервер.
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.sandbox"
 # Кэши линтера/тестов (часто root после docker compose run) — иначе rsync code 23 Permission denied
@@ -213,6 +215,16 @@ if [[ $build_ok -eq 0 ]]; then
   else
     echo "Ошибка: сборка/запуск не удались после ${BUILD_RETRIES} попыток"
     exit 1
+  fi
+fi
+
+# 2.1 user_config на сервере: ключи regen (rsync exclude user_config.yaml).
+if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
+  echo "2.1 Идемпотентный merge regen в user_config (если отсутствует track_regen_min_box_size_px)..."
+  if ssh ${SSH_OPTS} "${HOST}" "docker exec birdlense python3 /app/scripts/merge_user_config_regen_defaults.py"; then
+    echo "  OK"
+  else
+    echo "  Предупреждение: скрипт merge user_config regen не выполнен (старый образ или контейнер недоступен)."
   fi
 fi
 
