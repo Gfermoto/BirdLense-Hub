@@ -8330,6 +8330,10 @@ export interface components {
                 track_regen_frame_step?: number;
                 track_regen_detection_strategy?: string;
                 track_regen_lores_px?: number;
+                /** @description When Ultralytics ByteTrack yields no box ids during offline regen, stitch frames via IoU (processor internal). */
+                track_regen_iou_id_fallback?: boolean;
+                /** @description IoU threshold for matching boxes between frames in regen id fallback; null uses internal default (0.22). */
+                track_regen_iou_match_threshold?: number | null;
                 track_regen_video_timeout_sec?: number;
                 track_regen_precise_timeout_sec?: number;
                 track_regen_precise_detection_strategy?: string;
