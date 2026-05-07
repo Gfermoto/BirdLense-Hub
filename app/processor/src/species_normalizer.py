@@ -512,15 +512,11 @@ def merge_detections(
                     # Product rule: when generic Bird overlaps specific species,
                     # prefer species even if source priority differs.
                     if _is_generic_bird_key(key_a) and not _is_generic_bird_key(key_b):
-                        _apply_arbitration_trace_for_merge(
-                            b, _merge_absorb_trace_reason(a, b)
-                        )
+                        _apply_arbitration_trace_for_merge(b, _merge_absorb_trace_reason(a, b))
                         to_remove.add(i)
                         break
                     if _is_generic_bird_key(key_b) and not _is_generic_bird_key(key_a):
-                        _apply_arbitration_trace_for_merge(
-                            a, _merge_absorb_trace_reason(b, a)
-                        )
+                        _apply_arbitration_trace_for_merge(a, _merge_absorb_trace_reason(b, a))
                         to_remove.add(j)
                         continue
                     rank_b = _provider_rank(b.get("detection_provider"))
