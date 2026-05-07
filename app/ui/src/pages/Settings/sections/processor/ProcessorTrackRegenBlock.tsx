@@ -71,6 +71,43 @@ export function ProcessorTrackRegenBlock({ form }: Props) {
             )}
           </form.Field>
         </Grid>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="processor.track_regen_iou_id_fallback">
+            {(field) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={field.state.value !== false}
+                    onChange={(e) => field.handleChange(e.target.checked)}
+                  />
+                }
+                label={t('settings.processorTrackRegenIouIdFallback')}
+              />
+            )}
+          </form.Field>
+          <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+            {t('settings.processorTrackRegenIouIdFallbackHint')}
+          </FormHelperText>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="processor.track_regen_iou_match_threshold">
+            {(field) => (
+              <TextField
+                fullWidth
+                type="number"
+                inputProps={{ min: 0.05, max: 0.95, step: 0.01 }}
+                value={field.state.value ?? 0.22}
+                onChange={(e) =>
+                  field.handleChange(Number(e.target.value) || 0.22)
+                }
+                label={t('settings.processorTrackRegenIouMatchThreshold')}
+                helperText={t(
+                  'settings.processorTrackRegenIouMatchThresholdHint',
+                )}
+              />
+            )}
+          </form.Field>
+        </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="processor.track_regen_video_timeout_sec">
             {(field) => (
