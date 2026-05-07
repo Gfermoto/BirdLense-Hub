@@ -261,8 +261,9 @@ def _load_species_candidates(species_name: str) -> list[tuple[np.ndarray, str]]:
         "ORDER BY re.id DESC LIMIT 800"
     )
     out: list[tuple[np.ndarray, str]] = []
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=30.0)
     try:
+        conn.execute("PRAGMA busy_timeout=30000")
         rows = conn.execute(sql, (species_name,)).fetchall()
     except sqlite3.Error:
         rows = []

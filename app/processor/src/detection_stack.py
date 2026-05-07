@@ -358,6 +358,7 @@ def build_detection_stack(
     }
     assert_ctor_kwargs(FrameProcessor.__init__, _fp_kw, label="FrameProcessor")
     frame_processor = FrameProcessor(**_fp_kw)
+    frame_processor.strategy._for_track_regen = bool(for_track_regen)
     _pp_kw = {
         "for_track_regen": for_track_regen,
         "strategy_override": strategy_override,

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import logging
 import math
-from typing import Any, List, Mapping, Optional, Tuple
+from typing import Any, List, Mapping, Optional, Sequence, Tuple
 from dataclasses import dataclass
 import numpy as np
 import cv2
@@ -152,6 +152,61 @@ def _track_maybe_retry(model, frame: np.ndarray, **kwargs):
     if results[0].boxes.id is None:
         results = model.track(frame, **kwargs)
     return results
+
+
+def _bbox_iou_xyxy(a: np.ndarray, b: np.ndarray) -> float:
+    """IoU двух bbox в координатах xyxy (абсолютные или нормализованные — размерность одна и та же)."""
+    ax1, ay1, ax2, ay2 = (float(v) for v in np.asarray(a).reshape(4))
+    bx1, by1, bx2, by2 = (float(v) for v in np.asarray(b).reshape(4))
+    ix1, iy1 = max(ax1, bx1), max(ay1, by1)
+    ix2, iy2 = min(ax2, bx2), min(ay2, by2)
+    iw, ih = max(0.0, ix2 - ix1), max(0.0, iy2 - iy1)
+    inter = iw * ih
+    area_a = max(0.0, ax2 - ax1) * max(0.0, ay2 - ay1)
+    area_b = max(0.0, bx2 - bx1) * max(0.0, by2 - by1)
+    union = area_a + area_b - inter
+    return float(inter / union) if union > 0 else 0.0
+
+
+def _greedy_match_iou_track_ids(
+    prev: np.ndarray,
+    prev_ids: Sequence[int],
+    curr: np.ndarray,
+    *,
+    iou_thr: float = 0.25,
+    next_id: int,
+) -> tuple[list[int], int]:
+    """
+    Сопоставить текущие боксы с предыдущим кадром по greedy IoU; при низком пересечении выдать новые id.
+
+    Используется только в офлайне track-regen (#201), когда ByteTrack временно отдаёт ``boxes.id is None``.
+    """
+    prev = np.asarray(prev, dtype=np.float64).reshape(-1, 4)
+    curr_arr = np.asarray(curr, dtype=np.float64).reshape(-1, 4)
+    pids = [int(x) for x in prev_ids]
+    nid = int(next_id)
+    thr = float(iou_thr)
+    if prev.shape[0] == 0 or len(pids) != prev.shape[0]:
+        out = list(range(nid, nid + curr_arr.shape[0]))
+        return out, nid + curr_arr.shape[0]
+    out_ids: list[int] = []
+    used_prev = set()
+    for ci in range(curr_arr.shape[0]):
+        best_j: int | None = None
+        best_iou = -1.0
+        for j in range(prev.shape[0]):
+            if j in used_prev:
+                continue
+            iou_val = _bbox_iou_xyxy(prev[j], curr_arr[ci])
+            if iou_val >= thr and iou_val > best_iou:
+                best_j, best_iou = j, iou_val
+        if best_j is not None:
+            used_prev.add(best_j)
+            out_ids.append(pids[best_j])
+        else:
+            out_ids.append(nid)
+            nid += 1
+    return out_ids, nid
 
 
 @dataclass
@@ -366,11 +421,27 @@ class TwoStageStrategy(DetectionStrategy):
     def _normalize_detector_label(self, name: str) -> str:
         return normalize_detector_label(name)
 
+    def _binary_class_allowlist(self, runtime_cfg: Mapping[str, Any]) -> set[int] | None:
+        """Классы бинарного детектора, которые разрешено передавать в predict/track (пустой конфиг → без фильтра)."""
+        raw = runtime_cfg.get("processor.binary_predict_class_allowlist")
+        if raw is None or (isinstance(raw, (list, tuple, set)) and len(raw) == 0):
+            return None
+        if not isinstance(raw, (list, tuple, set)):
+            return None
+        out: set[int] = set()
+        for item in raw:
+            try:
+                out.add(int(item))
+            except (TypeError, ValueError):
+                continue
+        return out if out else None
+
     def _classify_crop(self, crop: np.ndarray) -> ClassifierOutput:
         """Классификация кропа: вид, top1 conf, энтропия и top1−top2 margin по полному вектору probs."""
         _cls_kwargs: dict = {"verbose": False}
-        if self._classifier_predict_device:
-            _cls_kwargs["device"] = self._classifier_predict_device
+        _cls_dev = getattr(self, "_classifier_predict_device", None)
+        if _cls_dev:
+            _cls_kwargs["device"] = _cls_dev
         result_cls = self.classifier_model(crop, **_cls_kwargs)
 
         if not result_cls or not result_cls[0].probs:
@@ -458,6 +529,8 @@ class TwoStageStrategy(DetectionStrategy):
             or 1
         )
         track_conf = binary_track_ultralytics_conf_floor(min_confidence, runtime_cfg)
+        track_regen_ctx = bool(getattr(self, "_for_track_regen", False))
+        iou_fb = bool(runtime_cfg.get("processor.track_regen_iou_id_fallback", False))
         _tkw: dict = {
             "persist": True,
             "conf": track_conf,
@@ -465,22 +538,66 @@ class TwoStageStrategy(DetectionStrategy):
             "imgsz": imgsz,
             "tracker": tracker_config,
         }
-        if self._binary_track_device:
-            _tkw["device"] = self._binary_track_device
-        results = _track_maybe_retry(self.binary_model, frame, **_tkw)
+        _bdev = getattr(self, "_binary_track_device", None)
+        if _bdev:
+            _tkw["device"] = _bdev
+        results = (
+            self.binary_model.track(frame, **_tkw)
+            if track_regen_ctx and iou_fb
+            else _track_maybe_retry(self.binary_model, frame, **_tkw)
+        )
 
         if not results or len(results[0].boxes) == 0:
             return []
 
         boxes = results[0].boxes
+
+        def _tensor_to_numpy(tensor_like):
+            """Ultralytics torch tensor или unittest fake с ``.numpy()``."""
+            prox = tensor_like.cpu() if hasattr(tensor_like, "cpu") else tensor_like
+            if hasattr(prox, "numpy"):
+                return np.asarray(prox.numpy(), dtype=np.float64)
+            return np.asarray(prox, dtype=np.float64)
+
         # Without stable ByteTrack IDs, per-frame indexes create fake tracks.
+        # В live-камере и тестах без track-regen — пустой кадр; в офлайне — IoU-синтез id (#201).
         if boxes.id is None:
-            return []
-        track_ids = boxes.id.int().cpu().tolist()
+            if not (track_regen_ctx and iou_fb):
+                return []
+            iou_thr_raw = runtime_cfg.get("processor.track_regen_iou_match_threshold")
+            try:
+                iou_thr = float(iou_thr_raw) if iou_thr_raw is not None else 0.22
+            except (TypeError, ValueError):
+                iou_thr = 0.22
+            try:
+                curr_xyxy = np.reshape(_tensor_to_numpy(boxes.xyxy), (-1, 4))
+            except Exception:
+                return []
+            prev_boxes = getattr(self, "_regen_iou_prev_boxes", None)
+            prev_ids = getattr(self, "_regen_iou_prev_ids", None)
+            nid_seed = int(getattr(self, "_regen_iou_next_id", 1))
+            if prev_boxes is None or prev_ids is None:
+                synth = list(range(nid_seed, nid_seed + len(curr_xyxy)))
+                nid_next = nid_seed + len(curr_xyxy)
+            else:
+                synth, nid_next = _greedy_match_iou_track_ids(
+                    prev_boxes,
+                    prev_ids,
+                    curr_xyxy,
+                    iou_thr=iou_thr,
+                    next_id=nid_seed,
+                )
+            self._regen_iou_prev_boxes = curr_xyxy.copy()
+            self._regen_iou_prev_ids = list(synth)
+            self._regen_iou_next_id = int(nid_next)
+            track_ids = synth
+        else:
+            track_ids = boxes.id.int().cpu().tolist()
+
         class_indexes = boxes.cls.int().cpu().tolist()
         confidences = boxes.conf.cpu().tolist()
-        xyxyn = boxes.xyxyn.cpu().numpy()  # normalized for output
-        xyxy = boxes.xyxy.cpu().numpy()  # absolute for cropping
+        xyxyn = _tensor_to_numpy(boxes.xyxyn)
+        xyxy = _tensor_to_numpy(boxes.xyxy)
 
         h, w, _ = frame.shape
 
@@ -634,5 +751,8 @@ class TwoStageStrategy(DetectionStrategy):
         self._classification_index = 0
         self._frame_index = 0
         self._track_stats = {}
+        self._regen_iou_prev_boxes = None
+        self._regen_iou_prev_ids = None
+        self._regen_iou_next_id = 1
         if hasattr(self.binary_model.predictor, "trackers"):
             self.binary_model.predictor.trackers[0].reset()
