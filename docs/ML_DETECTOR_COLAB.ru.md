@@ -1,169 +1,91 @@
-# Обучение детектора (YOLO) в Google Colab
+# Обучение BRG-детектора в Google Colab
 
-[English](./ML_DETECTOR_COLAB.md)
-
-Классификатор — [TRAINING.ru.md](./TRAINING.ru.md). Здесь только **детекция** (`dataset.yaml`). Пути к **`brg/`**, merge, упаковка ZIP — [DATASETS.ru.md](./DATASETS.ru.md).
-
-**Режим по умолчанию (рекомендуется):** дообучение **от последних боевых весов хаба** — тот же **`best.pt`**, который сейчас в проде (то же дерево классов Bird / Rodent / Background и тот же **YOLO11n-detect**, что ожидает процессор). На Drive этот файл кладём как **`bl_best.pt`**, чтобы он не смешался с **`best.pt`** из новых ранов Ultralytics.
-
-**Не использовать здесь как старт части A:** готовые веса **COCO** (`yolo11n.pt` и т.п.) — **80 классов**, контракт с хабом и постобработкой ломается. Холодный старт без чекпоинта см. блок в конце части **A**.
+Три класса: **Bird / Rodent / Background**, **`imgsz=640`**, экспорт OpenVINO под хаб.  
+Ссылки: классификатор — [TRAINING.ru.md](./TRAINING.ru.md), датасет — [DATASETS.ru.md](./DATASETS.ru.md), прочее — [ML_DETECTOR_COLAB.md](./ML_DETECTOR_COLAB.md).
 
 ---
 
-## Оглавление
+## Как читать документ
 
-| Часть | О чём |
-|--------|--------|
-| **A** | Основной сценарий: **`brg` ZIP**, старт **`bl_best.pt`** (копия боевого **`best.pt`** с хаба), два этапа (`freeze` → full), OpenVINO **640** — до выгрузки на хаб |
-| **B** | Дополнительно: старый **binary** пайплайн с Hugging Face (balanced → full, **`yolo11n.pt`**, **960**) |
-| **C** | Контракт классов, проверка перед продом |
+| Ситуация | Раздел |
+|----------|--------|
+| Первый раз учишь с нуля | **Сценарий 1** (ниже) |
+| Обрыв **во время** ячейки 6 или 7 | **Сценарий 2** (таблица → вариант **А**, **Б** или **В**) |
+| Этап 1 уже добит, этап 2 не запускал | **Сценарий 2, вариант Б** |
+| Есть финальный `best.pt`, нужен только IR | **Ячейка 8** (сценарий 1) |
 
----
+**На Google Диске** папка **`Мой диск/3step_detector/`**:
 
-# Часть A — Основной сценарий (`brg` + боевые веса)
+- **`BirdLense_detector_brg.zip`** — при необходимости переименовать (если в имени была дата сборки).
+- **`nabirds_yolo11n_binary.zip`** — стартовый **`.pt`** (часто один класс `bird`; голову под три класса пересоберёт `train` по `dataset.yaml`).
 
-## A0. До открытия Colab (локально и на Drive)
-
-1. **Собрать архив датасета** (если ещё нет на Drive):
-
-   ```bash
-   cd /path/to/BirdLense
-   python3 scripts/datasets/pack_brg_for_gdrive.py
-   ```
-
-   Рядом с `binary/` и `yolo/` появится **`datasets/new/detector/BirdLense_detector_brg_<UTC>.zip`**.
-
-2. **Стартовый чекпоинт (по умолчанию — лучший с хаба):** возьмите **`best.pt`**, который **сейчас реально используется** как бинарный детектор на хабе (или локальная копия из сборки процессора, например **`app/processor/models/detection/weights/best.pt`** — если это тот же артефакт, что выкладываете в прод).
-
-   Переименуйте при загрузке на Drive в **`bl_best.pt`** (`BASE_WEIGHTS` / «базовые боевые веса»), чтобы не перезаписать **`best.pt`** из нового обучения.
-
-   Проверьте по возможности перед Colab:
-
-   | Ожидание | Зачем |
-   |-----------|--------|
-   | задача **detect**, архитектура **YOLO11n** совместима с экспортом в прод | иначе `load`/`export` могут упасть |
-   | ровно **3** класса, порядок **Bird → Rodent → Background** как в `dataset.yaml` | совпадает с [частью C](#часть-c--контракт-и-проверка) и конфигом хаба |
-
-3. **Загрузите на Google Drive** в одну папку (рекомендуемый путь):
-
-   `Мой диск → BirdLense_Detector`
-
-   Там должны быть минимум:
-
-   - `BirdLense_detector_brg_<ваш_UTC>.zip`
-   - `bl_best.pt` (**обязательно в режиме по умолчанию**)
-
-4. Убедитесь, что хватает места под раны Ultralytics на Drive (**несколько GB** и больше): **`project=RUNS`** ниже пишет в **`.../BirdLense_Detector/yolo_detector_runs/`**.
+В Colab: среда **GPU (T4 и лучше)**.
 
 ---
 
-## A1. Где и как запускать Colab
+## Сценарий 1 — первый запуск
 
-1. Откройте **[Google Colab](https://colab.research.google.com/)**.
-2. **Файл → Новый блокнот** (или загрузите свой `.ipynb`).
-3. Включите GPU: **Среда выполнения → Сменить среду выполнения → T4 GPU** (или лучше) → **Сохранить**.
-4. Дальше в блокноте идут **отдельные ячейки**. Для каждой: выделите ячейку → **Shift+Enter** или кнопка **▶ Выполнить** слева от ячейки. **Ячейки выполняйте по порядку сверху вниз** (иначе не будет переменных `os`, `DRIVE_ROOT`, `DATA_YAML`).
-
-После ячейки с **`drive.mount`** браузер попросит разрешить доступ к Drive — пройдите авторизацию.
-
-### A1.b — Обрыв сессии и `resume`
-
-Если Colab отключился **после** старта этапа 1 или 2, не начинайте заново ту же команду **`model.train(...)`** с тем же `name`: либо укажите **`resume=True`** с **`last.pt`**, либо смените **`name`** у нового рана.
-
-Пример после монтирования Drive (подставьте свой путь к **`last.pt`** из папки рана):
-
-```python
-from ultralytics import YOLO
-
-LAST = "/content/drive/MyDrive/BirdLense_Detector/yolo_detector_runs/brg_ft_stage1_freeze10/weights/last.pt"
-YOLO(LAST).train(resume=True)  # без прочих аргументов — так требует Ultralytics
-```
-
-Для второго этапа — аналогично, если обрыв был на **`brg_ft_stage2_full`**.
-
----
-
-## A1.c — Если нет боевого `best.pt` (редкий холодный старт части A)
-
-Имеет смысл только когда **нет** сохранённого трёхклассового чекпоинта Hub. Тогда можно стартовать с **`YOLO("yolo11n.pt")`**: Ultralytics создаст голову под **3 класса** по вашему `dataset.yaml`, но качество первых эпох будет хуже, чем при дообучении от уже натренированного BRG-детектора. После этого всё равно соблюдайте **`imgsz=640`**, два этапа и контракт классов из части **C**. Для воспроизводимости версий: **`!pip install -q ultralytics>=8.3.203`** (см. [TRAINING.ru.md](./TRAINING.ru.md) про `resume` / GradScaler).
-
----
-
-## A2. Ячейки блокнота (скопировать по порядку)
+Выполняй **ячейки 1 → 8** подряд.
 
 ### Ячейка 1 — зависимости
 
-**Запуск:** один раз в начале сессии.
-
 ```python
-# Для стабильного resume в новых сессиях Colab — не ниже 8.3.203 (см. TRAINING.ru.md)
 !pip install -q "ultralytics>=8.3.203" pyyaml
 ```
 
-### Ячейка 2 — подключить Google Drive
-
-**Запуск:** один раз; подтвердите доступ в браузере.
+### Ячейка 2 — Диск
 
 ```python
 from google.colab import drive
 drive.mount("/content/drive")
 ```
 
-### Ячейка 3 — пути и проверка файлов
+### Ячейка 3 — веса + датасет на `/content`
 
-**Важно:** строка **`BirdLense_detector_brg_20260430_134305Z.zip`** в старых версиях инструкции была **только примером** — такого файла у вас на Drive нет, пока вы сами не положите ZIP.
-
-- Либо укажите **точное имя** своего архива (как вы назвали файл при загрузке на Drive).
-- Либо оставьте **авто-поиск** ниже: берётся **самый свежий по дате изменения** файл **`BirdLense_detector_brg_*.zip`** в **`DRIVE_ROOT`**.
-
-**`BASE_WEIGHTS`** — **боевой `best.pt` с хаба** на Drive как **`bl_best.pt`**.
+Путь к папке на Диске при Shared Drive поменяй в **`DRIVE_ROOT`**.
 
 ```python
 import os
+import shutil
 from pathlib import Path
 
-DRIVE_ROOT = "/content/drive/MyDrive/BirdLense_Detector"
-assert os.path.isdir(DRIVE_ROOT), f"Нет папки (проверьте путь и что Drive смонтирован): {DRIVE_ROOT}"
+DRIVE_ROOT = "/content/drive/MyDrive/3step_detector"
+ZIP_DATA = os.path.join(DRIVE_ROOT, "BirdLense_detector_brg.zip")
+ZIP_WEIGHTS = os.path.join(DRIVE_ROOT, "nabirds_yolo11n_binary.zip")
 
-# --- Вариант A (рекомендуется): последний по времени BRG-zip в папке ---
-cands = list(Path(DRIVE_ROOT).glob("BirdLense_detector_brg_*.zip"))
-if not cands:
-    raise FileNotFoundError(
-        f"В {DRIVE_ROOT} нет BirdLense_detector_brg_*.zip. "
-        "Загрузите архив с локальной машины (pack_brg_for_gdrive.py) или задайте ZIP вручную (вариант B)."
-    )
-ZIP_PATH = str(max(cands, key=lambda p: p.stat().st_mtime))
-print("ZIP (авто):", ZIP_PATH)
+assert os.path.isfile(ZIP_DATA), ZIP_DATA
+assert os.path.isfile(ZIP_WEIGHTS), ZIP_WEIGHTS
 
-# --- Вариант B: вручную раскомментируйте и подставьте имя с Drive ---
-# ZIP_PATH = os.path.join(DRIVE_ROOT, "BirdLense_detector_brg_20260505_120000Z.zip")
+WT_EXTRACT = "/content/nabirds_binary_weights_unzip"
+if os.path.exists(WT_EXTRACT):
+    shutil.rmtree(WT_EXTRACT)
+os.makedirs(WT_EXTRACT, exist_ok=True)
+!unzip -q "{ZIP_WEIGHTS}" -d "{WT_EXTRACT}"
 
-BASE_WEIGHTS = os.path.join(DRIVE_ROOT, "bl_best.pt")
-WEIGHTS = BASE_WEIGHTS
-
-assert os.path.isfile(ZIP_PATH), f"Нет архива: {ZIP_PATH}"
-assert os.path.isfile(BASE_WEIGHTS), f"Нет базовых весов: {BASE_WEIGHTS}"
-print("OK:", ZIP_PATH, BASE_WEIGHTS)
-```
-
-Если не видите папку **`BirdLense_Detector`**: проверьте **реальный путь** в Drive (иногда **`Shared drives/...`** или другое имя) — поправьте **`DRIVE_ROOT`**.
-
-### Ячейка 4 — распаковать датасет
-
-```python
-import shutil
+root = Path(WT_EXTRACT)
+best_cands = list(root.rglob("best.pt"))
+all_pt = list(root.rglob("*.pt"))
+if best_cands:
+    WEIGHTS = str(sorted(best_cands, key=lambda p: len(str(p)))[0])
+elif len(all_pt) == 1:
+    WEIGHTS = str(all_pt[0])
+else:
+    raise FileNotFoundError("Нет однозначного .pt: " + ", ".join(str(p) for p in all_pt[:30]))
 
 EXTRACT = "/content/brg_dataset"
 if os.path.exists(EXTRACT):
     shutil.rmtree(EXTRACT)
 os.makedirs(EXTRACT, exist_ok=True)
+!unzip -q "{ZIP_DATA}" -d "{EXTRACT}"
 
-!unzip -q "{ZIP_PATH}" -d "{EXTRACT}"
+RUNS = os.path.join(DRIVE_ROOT, "yolo_detector_runs")
+os.makedirs(RUNS, exist_ok=True)
+
+print("WEIGHTS:", WEIGHTS)
+print("RUNS:", RUNS)
 ```
 
-Ожидается файл **`/content/brg_dataset/brg/dataset.yaml`**. Если структура другая — в следующей ячейке задайте **`DATA_YAML`** вручную.
-
-### Ячейка 5 — поправить `path` в `dataset.yaml` под Colab
+### Ячейка 4 — `dataset.yaml`
 
 ```python
 import yaml
@@ -173,34 +95,45 @@ assert os.path.isfile(DATA_YAML), DATA_YAML
 
 with open(DATA_YAML, "r", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
-
 cfg["path"] = "/content/brg_dataset/brg"
-
 with open(DATA_YAML, "w", encoding="utf-8") as f:
     yaml.safe_dump(cfg, f, sort_keys=False, allow_unicode=True)
 
-print(cfg)
-
-# Согласованность с боевым детектором (порядок id 0,1,2):
 names = cfg.get("names") or {}
-keys = sorted(names, key=lambda k: int(k))
-ordered = [names[k] for k in keys]
+ordered = [names[k] for k in sorted(names, key=lambda k: int(k))]
 assert ordered == ["Bird", "Rodent", "Background"], ordered
+print("DATA_YAML:", DATA_YAML)
 ```
 
-Если assert падает — не запускайте обучение: поправьте **`dataset.yaml`** в архиве и пересоберите ZIP.
+### Ячейка 5 — чекпоинт только `detect`
 
-### Ячейка 6 — этап 1: заморозка backbone (`freeze=10`)
+Имена классов в **`WEIGHTS`** могут не совпадать с BRG (например один `bird`) — это нормально.
 
-**Запуск:** долго (десятки минут и больше). Стартуем **`YOLO(WEIGHTS)`** от **`BASE_WEIGHTS`** (= боевой чекпоинт).
+```python
+import yaml
+from ultralytics import YOLO
 
-При обрыве Colab — см. выше раздел **A1.b** (**`resume=True`** из **`last.pt`**); не запускайте повторно **`model.train`** с тем же **`name`**, если хотите именно продолжить ту же задачу.
+m = YOLO(WEIGHTS)
+assert str(getattr(m, "task", None) or "").lower() == "detect", m.task
+
+nm = m.names if m.names is not None else {}
+ckpt_labels = [nm[k] for k in sorted(nm.keys(), key=lambda x: int(x))] if isinstance(nm, dict) else list(nm)
+
+with open(DATA_YAML, "r", encoding="utf-8") as f:
+    data_names = yaml.safe_load(f).get("names") or {}
+wanted = [data_names[k] for k in sorted(data_names, key=lambda k: int(k))]
+
+print("Чекпоинт:", ckpt_labels, "| датасет:", wanted)
+if ckpt_labels != wanted:
+    print("(ok) train пересоберёт голову под датасет.")
+```
+
+### Ячейка 6 — этап 1 (freeze)
+
+Долго. Не хватает VRAM — уменьши **`batch`**.
 
 ```python
 from ultralytics import YOLO
-
-RUNS = os.path.join(DRIVE_ROOT, "yolo_detector_runs")
-os.makedirs(RUNS, exist_ok=True)
 
 model = YOLO(WEIGHTS)
 model.train(
@@ -216,16 +149,16 @@ model.train(
 )
 ```
 
-При нехватке VRAM уменьшите **`batch`** (например **8**). При необходимости меняйте **`freeze`** (**5** … **10**).
-
-### Ячейка 7 — этап 2: вся сеть, меньший `lr0`
+### Ячейка 7 — этап 2 (full)
 
 ```python
+from ultralytics import YOLO
+import os
+
 STAGE1_BEST = os.path.join(RUNS, "brg_ft_stage1_freeze10", "weights", "best.pt")
 assert os.path.isfile(STAGE1_BEST), STAGE1_BEST
 
-model2 = YOLO(STAGE1_BEST)
-model2.train(
+YOLO(STAGE1_BEST).train(
     data=DATA_YAML,
     epochs=60,
     imgsz=640,
@@ -238,185 +171,170 @@ model2.train(
 )
 ```
 
-Параметр **`freeze` здесь не указываем** — учатся все слои.
-
-### Ячейка 8 — итоговый `best.pt` и экспорт OpenVINO **640×640**
+### Ячейка 8 — OpenVINO 640
 
 ```python
+from ultralytics import YOLO
+import os
+
 BEST_FINAL = os.path.join(RUNS, "brg_ft_stage2_full", "weights", "best.pt")
 assert os.path.isfile(BEST_FINAL), BEST_FINAL
-print("YOLO best:", BEST_FINAL)
-
-export_model = YOLO(BEST_FINAL)
-export_model.export(format="openvino", imgsz=640)
+YOLO(BEST_FINAL).export(format="openvino", imgsz=640)
 ```
 
-Ultralytics 8.x печатает в конце **точный путь** к каталогу IR; обычно это **`.../weights/best_openvino_model/`** рядом с **`best.pt`** (файлы **`best.xml`**, **`best.bin`**, **`metadata.yaml`**). Если имя отличается — ориентируйтесь на вывод строки **`OpenVINO: export success`**.
-
-В **`metadata.yaml`** после экспорта должно быть **3 класса** в том же порядке, что в датасете.
-
-### A3. После Colab — что забрать на хаб
-
-1. **`.../brg_ft_stage2_full/weights/best.pt`** на Drive — новый торч‑детектор для хаба / замена **`bl_best.pt`** при следующей итерации.
-2. Каталог **OpenVINO** из вывода экспорта (часто **`best_openvino_model`**) целиком — в приложении типичный путь **`models/detection/weights/best_openvino_model`** относительно корня процессора; **`processor.binary_imgsz: 640`** ([CONFIGURATION.ru.md](./CONFIGURATION.ru.md)).
-
-### Упрощение (один прогон вместо ячеек 6–7)
-
-Одна длинная тренировка с **`BASE_WEIGHTS`** (тот же **`WEIGHTS`** / **`bl_best.pt`**):
-
-```python
-model = YOLO(WEIGHTS)
-model.train(
-    data=DATA_YAML,
-    epochs=80,
-    imgsz=640,
-    batch=16,
-    freeze=10,
-    patience=30,
-    cache="disk",
-    project=RUNS,
-    name="brg_ft_single_freeze10",
-)
-```
-
-Затем в ячейке экспорта подставьте **`.../brg_ft_single_freeze10/weights/best.pt`**.
+Путь к каталогу IR — в конце лога экспорта.
 
 ---
 
-# Часть B — Дополнительно: binary balanced → full (Hugging Face)
+## Сценарий 2 — Colab закрылся или сессия оборвалась во время обучения
 
-Отдельный сценарий для архивов **`detector_merged_balanced_*.zip`** и **`detector_merged_full_*.zip`** из [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main). Здесь **`imgsz=960`** и старт **`YOLO("yolo11n.pt")`** (Ultralytics подтянет веса сам). **Не смешивайте** с частью A без понимания разницы путей и размера входа.
+### Зачем отдельный сценарий
 
-**Где запускать:** тот же Colab, можно вторым блокнотом или ниже по тем же правилам (GPU → ячейки по порядку).
+- Папка **`/content`** в Colab после перезапуска **пустая** — распакованный датасет нужно **положить заново** (ниже «Общие шаги»).
+- Прогресс обучения (**`last.pt`**, **`best.pt`**) Ultralytics пишет на **Google Диск** в **`3step_detector/yolo_detector_runs/`** — он **не пропадает**.
+- **Продолжить тот же тренировочный прогон** можно только так:  
+  `YOLO("<путь>/last.pt").train(resume=True)` — **без** `data=`, `epochs=` и других аргументов.
 
-### B1. Подготовка Drive
+### Выбери один вариант
 
-Загрузите оба ZIP в **`MyDrive/BirdLense_Detector/`** и запомните имена файлов.
+Ответь, на чём ты остановился:
 
-### B2. Ячейки
+| Ситуация | Вариант |
+|---------|---------|
+| Обучение **ещё не начинал** (не дошёл до ячейки 6) | Не этот раздел. Открой **Сценарий 1**: с ячейки **3**, если `/content` пустой — с ячейки **1**. |
+| Ячейка **6** была **запущена**, но Colab выгнал **до конца** всех эпох либо ты прервал посередине | **А — resume этапа 1** |
+| Ячейка **6 уже полностью отработала** в прошлый раз (видел финиш train), но ячейку **7 не запускал** или ноутбук закрыли | **Б — только этап 2** |
+| Ячейка **7** была **запущена**, но сессия оборвалась **до конца** эпох | **В — resume этапа 2** |
 
-**Ячейка B-a — зависимости и Drive** (как в части A: `pip`, `drive.mount`).
+### Общие шаги О1–О3 (сначала всегда их, если выбрал А, Б или В)
 
-**Ячейка B-b — константы**
+**О1** — то же, что **ячейка 1** в сценарии 1 (`pip`).
+
+**О2** — то же, что **ячейка 2** в сценарии 1 (`drive.mount`).
+
+**О3** — одна ячейка: снова распаковать **`BirdLense_detector_brg.zip`** и поправить **`path`** в `dataset.yaml`. Стартовые веса из **`nabirds…zip`** не нужны (для А и В берётся **`last.pt`** с Диска; для Б — **`best.pt`** этапа 1 с Диска).
+
+**Важно:** Python-блок сразу ниже — это **только О3**. **О1** и **О2** — это **две предыдущие** отдельные ячейки (как в сценарии 1); их сюда не вставляй.
 
 ```python
 import os
 import shutil
 import yaml
 
-DRIVE_ROOT = "/content/drive/MyDrive/BirdLense_Detector"
-ZIP_BALANCED = "detector_merged_balanced_20260429.zip"  # ваше имя
-ZIP_FULL = "detector_merged_full_20260429.zip"
-```
+DRIVE_ROOT = "/content/drive/MyDrive/3step_detector"
+ZIP_DATA = os.path.join(DRIVE_ROOT, "BirdLense_detector_brg.zip")
+RUNS = os.path.join(DRIVE_ROOT, "yolo_detector_runs")
 
-**Ячейка B-c — Stage A: распаковать balanced**
+assert os.path.isfile(ZIP_DATA), ZIP_DATA
 
-```python
-EXTRACT_A = "/content/data_stage_a"
-if os.path.exists(EXTRACT_A):
-    shutil.rmtree(EXTRACT_A)
-os.makedirs(EXTRACT_A, exist_ok=True)
-!unzip -q "{DRIVE_ROOT}/{ZIP_BALANCED}" -d "{EXTRACT_A}"
-```
+EXTRACT = "/content/brg_dataset"
+if os.path.exists(EXTRACT):
+    shutil.rmtree(EXTRACT)
+os.makedirs(EXTRACT, exist_ok=True)
+!unzip -q "{ZIP_DATA}" -d "{EXTRACT}"
 
-**Ячейка B-d — Stage A: `dataset.yaml`**
-
-```python
-DATA_YAML_A = "/content/data_stage_a/binary/merged_balanced/dataset.yaml"
-assert os.path.isfile(DATA_YAML_A), DATA_YAML_A
-with open(DATA_YAML_A, "r", encoding="utf-8") as f:
+DATA_YAML = "/content/brg_dataset/brg/dataset.yaml"
+assert os.path.isfile(DATA_YAML), DATA_YAML
+with open(DATA_YAML, "r", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
-cfg["path"] = "/content/data_stage_a/binary/merged_balanced"
-with open(DATA_YAML_A, "w", encoding="utf-8") as f:
+cfg["path"] = "/content/brg_dataset/brg"
+with open(DATA_YAML, "w", encoding="utf-8") as f:
     yaml.safe_dump(cfg, f, sort_keys=False, allow_unicode=True)
-print(cfg)
+
+names = cfg.get("names") or {}
+assert [names[k] for k in sorted(names, key=lambda k: int(k))] == ["Bird", "Rodent", "Background"]
+print("DATA_YAML:", DATA_YAML)
+print("RUNS (папка чекпоинтов на Диске):", RUNS)
 ```
 
-**Ячейка B-e — Stage A: train**
+### Вариант А — продолжить **недоконченный** этап 1
+
+После **О1 → О2 → О3** выполни **только** эту ячейку:
+
+```python
+import os
+from ultralytics import YOLO
+
+DRIVE_ROOT = "/content/drive/MyDrive/3step_detector"
+LAST = os.path.join(DRIVE_ROOT, "yolo_detector_runs", "brg_ft_stage1_freeze10", "weights", "last.pt")
+
+assert os.path.isfile(LAST), LAST
+YOLO(LAST).train(resume=True)
+```
+
+Когда этап 1 **дойдёт до конца**, запускай **Вариант Б** (перед этапом 2 снова **О1–О3**, если откроешь новую сессию).
+
+### Вариант Б — этап 1 уже закончен, нужен **чистый старт этапа 2**
+
+На Диске должен существовать файл  
+`…/brg_ft_stage1_freeze10/weights/best.pt`.  
+**`resume` не используем** — это новый run с именем `brg_ft_stage2_full`.
+
+После **О1 → О2 → О3** выполни:
 
 ```python
 from ultralytics import YOLO
+import os
 
-model_a = YOLO("yolo11n.pt")
-model_a.train(
-    data=DATA_YAML_A,
-    epochs=80,
-    imgsz=960,
+DRIVE_ROOT = "/content/drive/MyDrive/3step_detector"
+RUNS = os.path.join(DRIVE_ROOT, "yolo_detector_runs")
+DATA_YAML = "/content/brg_dataset/brg/dataset.yaml"
+
+STAGE1_BEST = os.path.join(RUNS, "brg_ft_stage1_freeze10", "weights", "best.pt")
+assert os.path.isfile(STAGE1_BEST), STAGE1_BEST
+
+YOLO(STAGE1_BEST).train(
+    data=DATA_YAML,
+    epochs=60,
+    imgsz=640,
     batch=16,
-    patience=20,
-    project=f"{DRIVE_ROOT}/yolo_detector_runs",
-    name="stage_a_balanced",
+    lr0=0.001,
+    patience=25,
+    cache="disk",
+    project=RUNS,
+    name="brg_ft_stage2_full",
 )
 ```
 
-**Ячейка B-f — путь к best Stage A**
+Дальше — **ячейка 8** из сценария 1 (OpenVINO), когда этап 2 закончится.
+
+### Вариант В — продолжить **недоконченный** этап 2
+
+После **О1 → О2 → О3** выполни **только** эту ячейку:
 
 ```python
-BEST_A = f"{DRIVE_ROOT}/yolo_detector_runs/stage_a_balanced/weights/best.pt"
-print(BEST_A)
+import os
+from ultralytics import YOLO
+
+DRIVE_ROOT = "/content/drive/MyDrive/3step_detector"
+LAST = os.path.join(DRIVE_ROOT, "yolo_detector_runs", "brg_ft_stage2_full", "weights", "last.pt")
+
+assert os.path.isfile(LAST), LAST
+YOLO(LAST).train(resume=True)
 ```
 
-**Ячейка B-g — Stage B: распаковать full**
+После успешного окончания — **ячейка 8** из сценария 1.
 
-```python
-EXTRACT_B = "/content/data_stage_b"
-if os.path.exists(EXTRACT_B):
-    shutil.rmtree(EXTRACT_B)
-os.makedirs(EXTRACT_B, exist_ok=True)
-!unzip -q "{DRIVE_ROOT}/{ZIP_FULL}" -d "{EXTRACT_B}"
-```
+### Чего не делать
 
-**Ячейка B-h — Stage B: `dataset.yaml`**
-
-```python
-DATA_YAML_B = "/content/data_stage_b/binary/merged/dataset.yaml"
-assert os.path.isfile(DATA_YAML_B), DATA_YAML_B
-with open(DATA_YAML_B, "r", encoding="utf-8") as f:
-    cfg = yaml.safe_load(f)
-cfg["path"] = "/content/data_stage_b/binary/merged"
-with open(DATA_YAML_B, "w", encoding="utf-8") as f:
-    yaml.safe_dump(cfg, f, sort_keys=False, allow_unicode=True)
-print(cfg)
-```
-
-**Ячейка B-i — Stage B: fine-tune**
-
-```python
-model_b = YOLO(BEST_A)
-model_b.train(
-    data=DATA_YAML_B,
-    epochs=40,
-    imgsz=960,
-    batch=16,
-    lr0=0.003,
-    patience=15,
-    project=f"{DRIVE_ROOT}/yolo_detector_runs",
-    name="stage_b_full_ft",
-)
-```
-
-**Ячейка B-j — OpenVINO (размер должен совпадать с обучением)**
-
-```python
-BEST_B = f"{DRIVE_ROOT}/yolo_detector_runs/stage_b_full_ft/weights/best.pt"
-export_model = YOLO(BEST_B)
-export_model.export(format="openvino", imgsz=960)
-```
-
-На хабе **`processor.binary_imgsz`** должен быть **960** для этого экспорта.
-
-Готовый пакет **`weights-*-001.zip`** с HF можно положить на хаб без этого пайплайна — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md).
+- Не запускай повторно **ячейку 6** целиком, если хочешь **продолжить** тот же этап 1 — только **Вариант А**.
+- Не запускай **ячейку 7** второй раз «с нуля», если этап 2 уже **частично** шёл — только **Вариант В** с `last.pt` этапа 2.
 
 ---
 
-# Часть C — Контракт и проверка
+## После Colab
 
-Имена классов для трёхклассового детектора на хабе: **Bird**, **Rodent**, **Background**; **`processor.detector_scope`** без Background — [CV_ML_PREP.ru.md](./CV_ML_PREP.ru.md).
-
-Локально перед продом:
+1. На Диске: `yolo_detector_runs/brg_ft_stage2_full/weights/best.pt` и каталог OpenVINO из экспорта.
+2. Локально:
 
 ```bash
-make validate-weights BINARY=/path/to/best.pt ...
+make validate-weights BINARY=/path/to/best.pt
 ```
 
-Регрессия по клипам: `scripts/benchmark-track-regen.py` — [TRAINING.ru.md](./TRAINING.ru.md).
+Контракт: [CV_ML_PREP.ru.md](./CV_ML_PREP.ru.md), пути: [CONFIGURATION.ru.md](./CONFIGURATION.ru.md).
+
+---
+
+## Если в zip весов нет подходящего `.pt`
+
+Старт: `YOLO("yolo11n.pt")` вместо `YOLO(WEIGHTS)` в **ячейке 6**, те же `data` / `imgsz` / этапы — хуже, чем со своим чекпоинтом.
