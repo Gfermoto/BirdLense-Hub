@@ -105,6 +105,11 @@ def process_processor_notify_detections(
             db.session.commit()
         except Exception:
             db.session.rollback()
+            logger.warning(
+                "notify_preview ActivityLog commit failed (no preview context, species=%s)",
+                detection,
+                exc_info=True,
+            )
         return {"message": f"Successfully received notification of {detection}", "skipped": True}, 200
 
     if detection not in excluded:
@@ -151,6 +156,11 @@ def process_processor_notify_detections(
             db.session.commit()
         except Exception:
             db.session.rollback()
+            logger.warning(
+                "notify_preview ActivityLog commit failed after notify (species=%s)",
+                detection,
+                exc_info=True,
+            )
 
     return {"message": f"Successfully received notification of {detection}"}, 200
 
