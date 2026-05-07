@@ -646,7 +646,10 @@ def build_dataset_zip(
                     tr_part, va_part, te_part = new_tr, new_va, new_te
                 except Exception:
                     # If grouping fails for any reason, fallback to original parts.
-                    pass
+                    logger.debug(
+                        "dataset split group rebuild failed; using ungrouped parts",
+                        exc_info=True,
+                    )
                 # Final safeguard: ensure val/test get at least one example when requested.
                 try:
 
@@ -904,8 +907,13 @@ def build_dataset_zip(
                                 try:
                                     if os.path.isfile(src):
                                         zf2.write(src, f"{split}/{cls}/{os.path.basename(fname)}")
-                                except OSError:
-                                    pass
+                                except OSError as e:
+                                    logger.debug(
+                                        "strict_quality zip write skip src=%s: %s",
+                                        src,
+                                        e,
+                                        exc_info=True,
+                                    )
                         # recompute export_entries and quality for manifest
                         repaired_entries = []
                         for s, lst in (("train", new_tr), ("val", new_va), ("test", new_te)):
