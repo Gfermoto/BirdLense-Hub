@@ -692,7 +692,6 @@ def run_regenerate_tracks_worker(
                             ).delete(synchronize_session=False)
                         visit_processor.process_detections(video, scoped_detections)
                         persisted_detections_for_trace = list(scoped_detections)
-                        generated += 1
                         if len(target_video_ids) == 1 and video.id == target_video_ids[0]:
                             single_video_regen_summary = _summarize_track_regen_detections(
                                 scoped_detections,
@@ -702,12 +701,12 @@ def run_regenerate_tracks_worker(
                         VideoSpecies.query.filter_by(video_id=video.id).delete()
                         visit_processor.process_detections(video, detections)
                         persisted_detections_for_trace = list(detections)
-                        generated += 1
                         if len(target_video_ids) == 1 and video.id == target_video_ids[0]:
                             single_video_regen_summary = _summarize_track_regen_detections(
                                 detections,
                             )
                             single_video_regen_summary.update(single_video_summary_extra)
+                    generated += 1
                     decision_trace = build_decision_trace_payload(
                         app_config=app_config,
                         start_time=video.start_time,
