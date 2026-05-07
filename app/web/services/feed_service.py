@@ -132,7 +132,8 @@ def check_esphome_reachable():
     try:
         r = requests.get(url.rstrip("/"), timeout=3)
         return "ok" if r.status_code < 500 else "error"
-    except Exception:
+    except requests.RequestException:
+        logger.debug("ESPHome reachability check failed url=%s", url, exc_info=True)
         return "error"
 
 
