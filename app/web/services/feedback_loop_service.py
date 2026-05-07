@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 import sqlite3
 from datetime import datetime, timedelta, timezone
@@ -13,6 +14,9 @@ from typing import Any
 from sqlalchemy import func
 
 from models import DetectionFeedbackEvent
+
+
+logger = logging.getLogger(__name__)
 
 
 _BACKGROUND_LABELS = {"background", "unknown", "none", "null"}
@@ -83,6 +87,11 @@ def build_feedback_loop_status(session, *, data_dir: str = "app/data") -> dict[s
         try:
             export_status = json.loads(status_path.read_text(encoding="utf-8"))
         except Exception:
+            logger.debug(
+                "Invalid feedback export status JSON: %s",
+                status_path,
+                exc_info=True,
+            )
             export_status = {"status": "invalid_json", "path": str(status_path)}
 
     return {
