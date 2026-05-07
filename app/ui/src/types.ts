@@ -299,6 +299,8 @@ export interface Settings {
     track_regen_frame_step?: number;
     track_regen_detection_strategy?: string;
     track_regen_lores_px?: number;
+    track_regen_iou_id_fallback?: boolean;
+    track_regen_iou_match_threshold?: number | null;
     track_regen_video_timeout_sec?: number;
     track_regen_precise_timeout_sec?: number;
     track_regen_precise_detection_strategy?: string;
