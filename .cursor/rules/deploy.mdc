@@ -21,9 +21,9 @@ alwaysApply: true
 
 **SSH:** например **`203.0.113.10`** ([TEST-NET-3](https://datatracker.ietf.org/doc/html/rfc5737), подставьте свой VPS), порт **`2222`** — задать `DEPLOY_SSH_PORT=2222` в `deploy.local.sh`.
 
-**Веб-UI:** например **`https://hub.example.com/`** или `http://203.0.113.10:8085/` — **`DEPLOY_URL`** для health после деплоя и для ориентира в браузере.
+**Веб-UI:** **`http://185.218.111.196:8085/`** — **`DEPLOY_URL`** для health после деплоя и для ориентира в браузере (при смене хоста/домена подставьте свой URL).
 
-**MCP:** тот же базовый URL, что и UI, путь **`/mcp`**.
+**MCP:** `http://185.218.111.196:8085/mcp` (Bearer — `MCP_TOKEN` / настройки MCP в UI).
 
 ---
 
