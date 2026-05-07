@@ -133,5 +133,6 @@ def crop_filename(species_name: str, start_time_str: str) -> str:
         date_part = dt.strftime("%Y-%m-%d")
         time_part = dt.strftime("%H%M%S")
         return f"{safe_name}_{date_part}_{time_part}.jpg"
-    except Exception:
+    except (TypeError, ValueError) as exc:
+        logger.debug("crop_filename iso parse failed: %s", exc, exc_info=True)
         return f"{safe_name}.jpg"

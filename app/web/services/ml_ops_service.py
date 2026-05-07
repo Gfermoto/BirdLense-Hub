@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -21,6 +22,8 @@ from services.feedback_loop_service import (
     build_feedback_loop_status as _build_feedback_loop_status,
     export_feedback_learning_dataset as _export_feedback_learning_dataset,
 )
+
+_log = logging.getLogger(__name__)
 
 
 def build_video_action_events_payload(session, video_id: int) -> tuple[dict[str, Any], int]:
@@ -156,6 +159,7 @@ def build_reid_summary(session) -> tuple[dict[str, Any], int]:
             text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")
         ).scalar()
     except Exception:
+        _log.debug("reid_embedding sqlite_master probe failed", exc_info=True)
         exists = None
     if not exists:
         return {
@@ -181,6 +185,7 @@ def build_reid_summary(session) -> tuple[dict[str, Any], int]:
         info_rows = session.execute(text("PRAGMA table_info(reid_embedding)")).fetchall()
         col_names = {str(r[1]) for r in info_rows}
     except Exception:
+        _log.debug("reid_embedding PRAGMA table_info failed", exc_info=True)
         col_names = set()
 
     select_cols = [
@@ -213,6 +218,7 @@ def build_reid_summary(session) -> tuple[dict[str, Any], int]:
             .all()
         )
     except Exception:
+        _log.debug("reid_embedding recent sample query failed", exc_info=True)
         rows = []
     contract: dict[str, Any] = {
         "expected_schema": EMBEDDING_SCHEMA_V1,
@@ -329,7 +335,7 @@ def build_reid_summary(session) -> tuple[dict[str, Any], int]:
             stale_hours = app_config.get("processor.reid_max_embedding_age_hours")
             try:
                 stale_hours_f = float(stale_hours) if stale_hours is not None else None
-            except Exception:
+            except (TypeError, ValueError):
                 stale_hours_f = None
             if stale_hours_f is not None and contract["max_embedding_age_hours"] is not None:
                 if float(contract["max_embedding_age_hours"]) > stale_hours_f:
@@ -338,6 +344,7 @@ def build_reid_summary(session) -> tuple[dict[str, Any], int]:
                 contract["status"] = "degraded"
                 contract["issues"] = issues
         except Exception:
+            _log.debug("reid_embedding contract aggregation failed", exc_info=True)
             contract["status"] = "unknown"
     return {
         "schema": "reid_summary@v2",
@@ -378,11 +385,11 @@ def build_feedback_loop_export_payload(payload: dict[str, Any] | None) -> tuple[
     p = payload or {}
     try:
         since_hours = int(p.get("since_hours", 24))
-    except Exception:
+    except (TypeError, ValueError):
         return {"error": "since_hours must be an integer"}, 400
     try:
         limit = int(p.get("limit", 5000))
-    except Exception:
+    except (TypeError, ValueError):
         return {"error": "limit must be an integer"}, 400
     dry_run = bool(p.get("dry_run", False))
     export_tag = (p.get("export_tag") or "").strip() if isinstance(p.get("export_tag"), str) else ""
@@ -403,6 +410,7 @@ def build_feedback_loop_export_payload(payload: dict[str, Any] | None) -> tuple[
         )
         return out, 200
     except Exception as exc:
+        _log.exception("feedback learning export failed")
         latest_status = Path(f"{data_dir}/feedback_exports/latest_status.json")
         latest_status.parent.mkdir(parents=True, exist_ok=True)
         latest_status.write_text(
@@ -441,13 +449,13 @@ def _parse_embedding(raw: Any) -> list[float] | None:
         return None
     try:
         vals = json.loads(raw) if isinstance(raw, str) else raw
-    except Exception:
+    except (json.JSONDecodeError, TypeError, ValueError):
         return None
     if not isinstance(vals, list):
         return None
     try:
         out = [float(v) for v in vals]
-    except Exception:
+    except (TypeError, ValueError):
         return None
     return out if out else None
 
@@ -480,6 +488,7 @@ def build_video_reid_match_payload(session, video_id: int) -> tuple[dict[str, An
         info_rows = session.execute(text("PRAGMA table_info(reid_embedding)")).fetchall()
         reid_cols = {str(r[1]) for r in info_rows}
     except Exception:
+        _log.debug("video_reid_match PRAGMA table_info failed", exc_info=True)
         reid_cols = set()
 
     rows = (
@@ -595,6 +604,7 @@ def build_video_reid_match_payload(session, video_id: int) -> tuple[dict[str, An
             if a0 is not None and a1 is not None:
                 hours_apart = abs((ensure_utc(a1) - ensure_utc(a0)).total_seconds()) / 3600.0
         except Exception:
+            _log.debug("reid hours_apart from video starts failed", exc_info=True)
             hours_apart = None
 
         if not contract_ready:

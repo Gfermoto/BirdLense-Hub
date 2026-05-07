@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 import sys
 from collections.abc import Mapping
 from datetime import datetime, timezone
@@ -17,6 +18,8 @@ from sqlalchemy.orm import joinedload
 
 from data_paths import data_dir
 from models import ActivityLog, VideoSpecies, db
+
+_log = logging.getLogger(__name__)
 
 
 def repo_root() -> Path:
@@ -409,7 +412,12 @@ def run_fusion_export_job() -> dict:
                         extra = json.loads(raw_extra)
                     else:
                         extra = dict(raw_extra)
-                except Exception:
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    _log.debug(
+                        "VideoSpecies.extra JSON/normalize failed id=%s",
+                        getattr(r, "id", None),
+                        exc_info=True,
+                    )
                     extra = {}
             det_c = extra.get("detector_confidence") or getattr(r, "confidence", 0.0)
             clf_c = extra.get("classifier_confidence") or getattr(r, "confidence", 0.0)
