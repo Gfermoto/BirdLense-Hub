@@ -11,6 +11,8 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
+from shared.ctor_kwarg_guard import assert_ctor_kwargs
+
 logger = logging.getLogger(__name__)
 
 
@@ -232,25 +234,34 @@ def build_detection_stack(
     _binary_inference_device = resolve_inference_device(app_config)
     _classifier_inference_device = resolve_classifier_inference_device(app_config)
 
+    def _two_stage_kwargs() -> Dict[str, Any]:
+        try:
+            _imgsz = int(app_config.get("processor.binary_imgsz", 640) or 640)
+        except (TypeError, ValueError):
+            _imgsz = 640
+        return {
+            "binary_model_path": binary_path,
+            "classifier_model_path": classifier_path,
+            "regional_species": regional_species,
+            "detector_scope": detector_scope,
+            "min_center_dist": min_center_dist,
+            "min_box_size_px": min_box_size_px,
+            "blur_threshold": blur_threshold,
+            "max_blur_checks": max_blur_checks,
+            "max_classifications_per_frame": max_classifications_per_frame,
+            "classification_scheduler": classification_scheduler,
+            "binary_imgsz": _imgsz,
+            "weight_contract_mode": _weight_contract,
+            "inference_backend": _inf_backend,
+            "classifier_inference_backend": _cls_backend,
+            "binary_inference_device": _binary_inference_device,
+            "classifier_inference_device": _classifier_inference_device,
+        }
+
     try:
-        detection_strategy = TwoStageStrategy(
-            binary_model_path=binary_path,
-            classifier_model_path=classifier_path,
-            regional_species=regional_species,
-            detector_scope=detector_scope,
-            min_center_dist=min_center_dist,
-            min_box_size_px=min_box_size_px,
-            blur_threshold=blur_threshold,
-            max_blur_checks=max_blur_checks,
-            max_classifications_per_frame=max_classifications_per_frame,
-            classification_scheduler=classification_scheduler,
-            binary_imgsz=app_config.get("processor.binary_imgsz", 640),
-            weight_contract_mode=_weight_contract,
-            inference_backend=_inf_backend,
-            classifier_inference_backend=_cls_backend,
-            binary_inference_device=_binary_inference_device,
-            classifier_inference_device=_classifier_inference_device,
-        )
+        _ts_kw = _two_stage_kwargs()
+        assert_ctor_kwargs(TwoStageStrategy.__init__, _ts_kw, label="TwoStageStrategy")
+        detection_strategy = TwoStageStrategy(**_ts_kw)
     except Exception:
         can_fallback_detector = _requested_backend == "auto" and _inf_backend == "openvino"
         can_fallback_classifier = _requested_classifier_backend == "auto" and _cls_backend == "openvino"
@@ -294,24 +305,9 @@ def build_detection_stack(
             _requested_classifier_backend,
             _cls_backend,
         )
-        detection_strategy = TwoStageStrategy(
-            binary_model_path=binary_path,
-            classifier_model_path=classifier_path,
-            regional_species=regional_species,
-            detector_scope=detector_scope,
-            min_center_dist=min_center_dist,
-            min_box_size_px=min_box_size_px,
-            blur_threshold=blur_threshold,
-            max_blur_checks=max_blur_checks,
-            max_classifications_per_frame=max_classifications_per_frame,
-            classification_scheduler=classification_scheduler,
-            binary_imgsz=app_config.get("processor.binary_imgsz", 640),
-            weight_contract_mode=_weight_contract,
-            inference_backend=_inf_backend,
-            classifier_inference_backend=_cls_backend,
-            binary_inference_device=_binary_inference_device,
-            classifier_inference_device=_classifier_inference_device,
-        )
+        _ts_kw_fb = _two_stage_kwargs()
+        assert_ctor_kwargs(TwoStageStrategy.__init__, _ts_kw_fb, label="TwoStageStrategy(fallback)")
+        detection_strategy = TwoStageStrategy(**_ts_kw_fb)
     logger.info(
         "Inference startup: detector_backend=%s classifier_backend=%s ultralytics_device_label=%s "
         "binary_inference_device_kw=%s classifier_inference_device_kw=%s binary_path=%s classifier_path=%s "
@@ -355,18 +351,21 @@ def build_detection_stack(
     )
 
     tracker = app_config.get("processor.tracker") or "bytetrack.yaml"
-    frame_processor = FrameProcessor(
-        detection_strategy=detection_strategy,
-        tracker=tracker,
-        save_images=save_images,
-    )
-    policy_snapshot = build_pipeline_policy_snapshot(
-        app_config,
-        for_track_regen=for_track_regen,
-        strategy_override=strategy_override,
-        regional_species_override=regional_species_override,
-        min_center_dist_override=min_center_dist_override,
-    )
+    _fp_kw = {
+        "detection_strategy": detection_strategy,
+        "tracker": tracker,
+        "save_images": save_images,
+    }
+    assert_ctor_kwargs(FrameProcessor.__init__, _fp_kw, label="FrameProcessor")
+    frame_processor = FrameProcessor(**_fp_kw)
+    _pp_kw = {
+        "for_track_regen": for_track_regen,
+        "strategy_override": strategy_override,
+        "regional_species_override": regional_species_override,
+        "min_center_dist_override": min_center_dist_override,
+    }
+    assert_ctor_kwargs(build_pipeline_policy_snapshot, _pp_kw, label="build_pipeline_policy_snapshot")
+    policy_snapshot = build_pipeline_policy_snapshot(app_config, **_pp_kw)
     frame_processor.pipeline_policy = dict(policy_snapshot)
     merged_overrides = merge_species_confidence_overrides_with_ebird_top(app_config)
     min_store = app_config.get("detection.min_confidence_to_store")
@@ -446,22 +445,28 @@ def build_detection_stack(
                 dm_detector_store_val,
             )
 
-    decision_maker = DecisionMaker(
-        max_record_seconds=max_record_seconds,
-        max_inactive_seconds=max_inactive_seconds,
-        min_track_duration=min_track_duration_val,
-        min_confidence_to_process=min_conf_proc_val,
-        species_confidence_overrides=merged_overrides,
-        post_record_seconds=app_config.get("processor.post_record_seconds", 0),
-        min_confidence_to_store=dm_detector_store_val,
-        classifier_fallback_bird=fallback_bird,
-        generic_bird_min_detector_conf=app_config.get("processor.generic_bird_min_detector_conf"),
-        generic_bird_min_frames=app_config.get("processor.generic_bird_min_frames", 3),
-        generic_bird_min_area_frac=app_config.get("processor.generic_bird_min_area_frac", 0.01),
-        generic_bird_min_best_frame_score=app_config.get("processor.generic_bird_min_best_frame_score", 6.5),
-        generic_rodent_min_frames=app_config.get("processor.generic_rodent_min_frames", 1),
-        generic_rodent_max_area_frac=app_config.get("processor.generic_rodent_max_area_frac", 1.0),
-        generic_rodent_min_best_frame_score=app_config.get("processor.generic_rodent_min_best_frame_score", 0.0),
-    )
+    _dm_kw = {
+        "max_record_seconds": max_record_seconds,
+        "max_inactive_seconds": max_inactive_seconds,
+        "min_track_duration": min_track_duration_val,
+        "min_confidence_to_process": min_conf_proc_val,
+        "species_confidence_overrides": merged_overrides,
+        "post_record_seconds": app_config.get("processor.post_record_seconds", 0),
+        "min_confidence_to_store": dm_detector_store_val,
+        "classifier_fallback_bird": fallback_bird,
+        "generic_bird_min_detector_conf": app_config.get("processor.generic_bird_min_detector_conf"),
+        "generic_bird_min_frames": app_config.get("processor.generic_bird_min_frames", 3),
+        "generic_bird_min_area_frac": app_config.get("processor.generic_bird_min_area_frac", 0.01),
+        "generic_bird_min_best_frame_score": app_config.get(
+            "processor.generic_bird_min_best_frame_score", 6.5
+        ),
+        "generic_rodent_min_frames": app_config.get("processor.generic_rodent_min_frames", 1),
+        "generic_rodent_max_area_frac": app_config.get("processor.generic_rodent_max_area_frac", 1.0),
+        "generic_rodent_min_best_frame_score": app_config.get(
+            "processor.generic_rodent_min_best_frame_score", 0.0
+        ),
+    }
+    assert_ctor_kwargs(DecisionMaker.__init__, _dm_kw, label="DecisionMaker")
+    decision_maker = DecisionMaker(**_dm_kw)
     decision_maker.pipeline_policy = dict(policy_snapshot)
     return frame_processor, decision_maker, merged_overrides

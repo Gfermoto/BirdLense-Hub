@@ -26,6 +26,7 @@ from services.track_regen_service import (
     summarize_track_regen_detections as _summarize_track_regen_detections,
 )
 from services.visit_processor import VisitProcessor
+from shared.ctor_kwarg_guard import assert_ctor_kwargs
 from sqlalchemy import or_, select
 
 
@@ -245,12 +246,13 @@ def run_regenerate_tracks_worker(
             )
 
             visit_timeout = int(app_config.get("detection.dedup_window_seconds") or 60)
-            visit_processor = VisitProcessor(
-                db,
-                flask_app.logger,
-                visit_timeout=visit_timeout,
-                update_species_metadata=False,
+            _vp_kw = {"visit_timeout": visit_timeout, "update_species_metadata": False}
+            assert_ctor_kwargs(
+                VisitProcessor.__init__,
+                _vp_kw,
+                label="track_regen VisitProcessor",
             )
+            visit_processor = VisitProcessor(db, flask_app.logger, **_vp_kw)
             species_identity = SpeciesIdentityService(db, flask_app.logger)
             frame_processor, decision_maker = build_detection_pipeline(
                 app_config,
@@ -479,6 +481,11 @@ def run_regenerate_tracks_worker(
                     if not detections and track_detections and precise_enabled and not precise_used:
                         precise_kwargs = _precise_kwargs()
                         if precise_kwargs:
+                            assert_ctor_kwargs(
+                                process_video_for_tracks,
+                                precise_kwargs,
+                                label="track_regen post-fusion precise_kwargs",
+                            )
                             track_detections = process_video_for_tracks(
                                 full_video,
                                 **precise_kwargs,

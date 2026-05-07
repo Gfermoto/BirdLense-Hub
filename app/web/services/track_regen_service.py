@@ -9,6 +9,7 @@ from __future__ import annotations
 from app_config.app_config import app_config
 from models import Species, Video, VideoSpecies, db
 from services.species_registry_service import resolve_species_name
+from shared.ctor_kwarg_guard import assert_ctor_kwargs
 
 
 def run_track_regen_with_precise_fallback(
@@ -18,6 +19,11 @@ def run_track_regen_with_precise_fallback(
     precise_kwargs_factory=None,
 ):
     """Быстрый regen; при 0 детекций — второй (точный) проход."""
+    assert_ctor_kwargs(
+        process_video_for_tracks,
+        fast_kwargs,
+        label="run_track_regen fast_kwargs",
+    )
     detections = process_video_for_tracks(video_path, **fast_kwargs)
     precise_used = False
     if detections or precise_kwargs_factory is None:
@@ -26,6 +32,11 @@ def run_track_regen_with_precise_fallback(
     if not precise_kwargs:
         return detections, precise_used
     precise_used = True
+    assert_ctor_kwargs(
+        process_video_for_tracks,
+        precise_kwargs,
+        label="run_track_regen precise_kwargs",
+    )
     return process_video_for_tracks(video_path, **precise_kwargs), precise_used
 
 
@@ -71,7 +82,10 @@ def remap_detection_to_local_scope(
 
 
 def summarize_track_regen_detections(detections: list[dict]) -> dict:
-    """Сводка для UI после regen одного ролика (в т.ч. tracks_overlay_expected по списку детекций)."""
+    """Сводка для UI после regen одного ролика.
+
+    В т.ч. ``tracks_overlay_expected`` по списку детекций.
+    """
     reasons: dict[str, int] = {}
     with_frames = 0
     for d in detections:

@@ -164,15 +164,12 @@ class FrameProcessor:
         self.last_run_stats["tracker_used"] = tracker_cfg
         set_gauge("tracker_config_used", tracker_cfg)
         self.last_run_stats["yolo_ran"] = True
-        try:
-            results = self.strategy.detect(
-                img,
-                tracker_cfg,
-                min_confidence=min_conf,
-                profile_overrides=profile_overrides,
-            )
-        except TypeError:
-            results = self.strategy.detect(img, tracker_cfg, min_confidence=min_conf)
+        results = self.strategy.detect(
+            img,
+            tracker_cfg,
+            min_confidence=min_conf,
+            profile_overrides=profile_overrides,
+        )
         detect_ms = (time.time() - st) * 1000.0
         observe_timing("frame_processor_detect", detect_ms)
         try:

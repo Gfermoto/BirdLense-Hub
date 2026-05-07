@@ -255,6 +255,21 @@ class TestTrackRegenFallback:
         assert detections == [{"species_name": "Great Tit"}]
         assert calls == [("/tmp/test.mp4", 6)]
 
+    def test_fast_kwargs_rejects_unknown_for_explicit_signature_process(self):
+        """Лишний ключ в ``fast_kwargs`` — TypeError до входа в процессор."""
+        from services.track_regen_service import run_track_regen_with_precise_fallback
+
+        def strict_process(video_path: str, frame_step: int = 1):  # noqa: ARG001
+            raise AssertionError("process should not be invoked")
+
+        with pytest.raises(TypeError, match="bogus"):
+            run_track_regen_with_precise_fallback(
+                "/tmp/test.mp4",
+                strict_process,
+                {"frame_step": 6, "bogus": True},
+                None,
+            )
+
     def test_manual_conflict_filter_drops_unknown_same_track(self):
         from types import SimpleNamespace
         from services.system_track_regen_worker import manual_conflict_with_detection
