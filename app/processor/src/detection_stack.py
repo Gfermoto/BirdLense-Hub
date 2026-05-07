@@ -457,14 +457,10 @@ def build_detection_stack(
         "generic_bird_min_detector_conf": app_config.get("processor.generic_bird_min_detector_conf"),
         "generic_bird_min_frames": app_config.get("processor.generic_bird_min_frames", 3),
         "generic_bird_min_area_frac": app_config.get("processor.generic_bird_min_area_frac", 0.01),
-        "generic_bird_min_best_frame_score": app_config.get(
-            "processor.generic_bird_min_best_frame_score", 6.5
-        ),
+        "generic_bird_min_best_frame_score": app_config.get("processor.generic_bird_min_best_frame_score", 6.5),
         "generic_rodent_min_frames": app_config.get("processor.generic_rodent_min_frames", 1),
         "generic_rodent_max_area_frac": app_config.get("processor.generic_rodent_max_area_frac", 1.0),
-        "generic_rodent_min_best_frame_score": app_config.get(
-            "processor.generic_rodent_min_best_frame_score", 0.0
-        ),
+        "generic_rodent_min_best_frame_score": app_config.get("processor.generic_rodent_min_best_frame_score", 0.0),
     }
     assert_ctor_kwargs(DecisionMaker.__init__, _dm_kw, label="DecisionMaker")
     decision_maker = DecisionMaker(**_dm_kw)
