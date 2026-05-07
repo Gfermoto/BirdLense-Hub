@@ -26,9 +26,8 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 # unset DEPLOY_SSH_PORT
 # export DEPLOY_HOST="root@203.0.113.10"
 # export DEPLOY_SSH_PORT="2222"
-# export DEPLOY_URL="https://hub.example.com"
-# или по IP: export DEPLOY_URL="http://203.0.113.10:8085"
-# CORS: https://hub.example.com
+# export DEPLOY_URL="http://185.218.111.196:8085"
+# CORS на сервере (app/.env): например CORS_ORIGINS=http://185.218.111.196:8085
 
 # Куда rsync заливает код на сервере (по умолчанию в deploy.sh: /root/BirdLense)
 # export DEPLOY_REMOTE_DIR="/root/BirdLense"
