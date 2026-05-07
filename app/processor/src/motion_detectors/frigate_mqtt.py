@@ -215,7 +215,7 @@ class FrigateMQTTMotionDetector:
                     try:
                         self._client.disconnect()
                     except Exception:
-                        pass
+                        logger.debug("Frigate MQTT disconnect cleanup failed", exc_info=True)
                     self._client = None
             if self._stopped:
                 break

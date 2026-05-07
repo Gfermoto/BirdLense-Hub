@@ -177,7 +177,7 @@ def _upload_session_impl(session_dir: str) -> None:
                 try:
                     sftp.close()
                 except Exception:
-                    pass
+                    logger.debug("recordings_mirror: sftp.close failed", exc_info=True)
             client.close()
             inc_counter("recordings_mirror_uploads_success_total")
             logger.info(
@@ -209,7 +209,7 @@ def _upload_session_impl(session_dir: str) -> None:
             try:
                 client.close()
             except Exception:
-                pass
+                logger.debug("recordings_mirror: ssh client close after failure", exc_info=True)
             if attempt + 1 < retries:
                 time.sleep(backoff * (2**attempt))
 

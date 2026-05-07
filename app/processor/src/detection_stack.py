@@ -25,14 +25,14 @@ def _inference_device_label(binary_model: Any) -> str:
         if device:
             return str(device)
     except Exception:
-        pass
+        logger.debug("inference device via predictor.args failed", exc_info=True)
     try:
         model = getattr(binary_model, "model", None)
         dev = getattr(model, "device", None)
         if dev:
             return str(dev)
     except Exception:
-        pass
+        logger.debug("inference device via model.device failed", exc_info=True)
     return "unknown"
 
 

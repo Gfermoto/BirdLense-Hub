@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import logging
 from typing import Any
+
+_log = logging.getLogger(__name__)
 
 EMBEDDING_SCHEMA_V1 = "embedding_schema@v1"
 
@@ -22,7 +25,8 @@ def parse_iso_utc(ts: str | None) -> datetime | None:
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc)
-    except Exception:
+    except (ValueError, TypeError, OSError) as exc:
+        _log.debug("parse_iso_utc failed for %r: %s", raw[:120], exc)
         return None
 
 
