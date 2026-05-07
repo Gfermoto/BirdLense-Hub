@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import yaml
 
@@ -16,6 +17,8 @@ from app_config.trigger_config import (
 
 # Совпадает с `integrations.scales.mqtt_topic_prefix` в default_config и примером `esphome/bird-feeder-scale.yaml`.
 DOCUMENTED_SCALES_MQTT_PREFIX = "birdlense/scale"
+
+_log = logging.getLogger(__name__)
 
 DEPRECATED_USER_CONFIG_KEYS = (
     "gallery.enabled",
@@ -291,7 +294,8 @@ def load_yaml_mapping(path: str) -> dict:
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
             return data if isinstance(data, dict) else {}
-    except Exception:
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
+        _log.debug("load_yaml_mapping failed path=%r: %s", path, exc, exc_info=True)
         return {}
 
 

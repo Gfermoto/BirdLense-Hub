@@ -349,6 +349,11 @@ def enrich_species_metadata(limit: int = 100, dry_run: bool = True) -> dict:
                 updated += 1
         except Exception:
             failed += 1
+            _log.debug(
+                "batch enrich_species_card_metadata failed species_id=%s",
+                getattr(sp, "id", None),
+                exc_info=True,
+            )
 
     if dry_run:
         db.session.rollback()
@@ -394,6 +399,11 @@ def repair_recently_reset_species_metadata(
                 repaired += 1
         except Exception:
             failed += 1
+            _log.debug(
+                "repair_recently_reset enrich failed species_id=%s",
+                getattr(sp, "id", None),
+                exc_info=True,
+            )
 
     if dry_run:
         db.session.rollback()
@@ -685,6 +695,11 @@ def ensure_allowlist_species_materialized(
                 if enrich_species_card_metadata(sp):
                     metadata_updated += 1
             except Exception:
+                _log.debug(
+                    "fill_metadata enrich failed species_id=%s",
+                    getattr(sp, "id", None),
+                    exc_info=True,
+                )
                 continue
 
     missing_after = sum(1 for sp in touched if not sp.image_url or not sp.description)
@@ -902,6 +917,11 @@ def repair_catalog_cards(
                     blocked = resp.status_code >= 400
                     resp.close()
                 except Exception:
+                    _log.debug(
+                        "wikipedia image reachability check failed species=%r",
+                        sp.name,
+                        exc_info=True,
+                    )
                     blocked = True
 
             if blocked:
