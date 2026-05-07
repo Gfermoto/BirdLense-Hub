@@ -147,7 +147,7 @@ def register_ui_system_db_routes(app):
             safe["last_freed_bytes"] = m.get("retention_last_freed_bytes", 0)
             safe["last_mode"] = m.get("retention_mode", "cascade")
         except Exception:
-            pass
+            app.logger.debug("retention last_run metrics unavailable", exc_info=True)
         return safe, 200
 
     @app.route("/api/ui/system/retention", methods=["PUT"])
