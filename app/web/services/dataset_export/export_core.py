@@ -494,7 +494,7 @@ def build_dataset_zip(
                         if parts:
                             try:
                                 vids.add(int(parts[0]))
-                            except Exception:
+                            except (ValueError, TypeError, IndexError):
                                 pass
                     if len(vids) == 1:
                         # safe to split within group
@@ -677,7 +677,10 @@ def build_dataset_zip(
                             # fallback: move a single item if grouping couldn't move a whole group
                             te_part.append(tr_part.pop())
                 except Exception:
-                    pass
+                    logger.debug(
+                        "dataset split group rebalance fallback failed",
+                        exc_info=True,
+                    )
                 # Final unconditional fallback: ensure val/test get at least one example
                 if val_ratio and not va_part:
                     if tr_part:
@@ -843,7 +846,10 @@ def build_dataset_zip(
                 new_export.extend(splits[preferred])
             export_entries = [tuple(x) for x in new_export]
         except Exception:
-            pass
+            logger.debug(
+                "dataset export grouping repair for split leakage failed",
+                exc_info=True,
+            )
         quality = _quality_report_from_entries(export_entries, video_meta=video_meta)
         # If strict_quality requested and grouping leakage detected, attempt final repair:
         if strict_quality:
@@ -911,7 +917,10 @@ def build_dataset_zip(
                         buf2.seek(0)
                         buf = buf2
                 except Exception:
-                    pass
+                    logger.debug(
+                        "dataset export strict_quality zip repair failed",
+                        exc_info=True,
+                    )
         quality["slices"] = _slice_report_from_entries(export_entries, video_meta)
         info["quality"] = quality
         info["manifest"] = {

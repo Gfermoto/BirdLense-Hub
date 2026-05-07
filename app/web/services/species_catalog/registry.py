@@ -493,6 +493,11 @@ def enrich_species_metadata_with_status(
                 except Exception:
                     db.session.rollback()
                     failed += 1
+                    _log.debug(
+                        "metadata enrich per-species commit failed (species_id=%s)",
+                        getattr(sp, "id", None),
+                        exc_info=True,
+                    )
             # Throttle external API calls to reduce 429 bursts.
             time.sleep(0.6)
 
@@ -708,7 +713,7 @@ def _invalidate_species_catalog_http_caches() -> None:
         bust_response_caches()
         bust_feeder_species_filter_cache()
     except Exception:
-        pass
+        _log.debug("species catalog HTTP cache bust failed", exc_info=True)
 
 
 def realign_species_images_from_allowlist_science(
