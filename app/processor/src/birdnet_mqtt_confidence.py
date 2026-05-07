@@ -23,7 +23,7 @@ def merge_birdnet_mqtt_bias_into_overrides(
     out = dict(base_overrides)
     try:
         enabled = bool(app_config.get("processor.birdnet_mqtt_auto_confidence", False))
-    except Exception:
+    except (TypeError, ValueError):
         enabled = False
     if not enabled or mqtt_aggregator is None:
         return out

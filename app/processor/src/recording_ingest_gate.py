@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+logger = logging.getLogger(__name__)
+
 
 def log_missing_video_gate(
     api: Any,
@@ -27,4 +29,4 @@ def log_missing_video_gate(
             },
         )
     except Exception:
-        logging.exception("ingest_gate activity_log failed")
+        logger.exception("ingest_gate activity_log failed")

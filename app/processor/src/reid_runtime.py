@@ -59,7 +59,8 @@ def _resolve_reid_device() -> str:
         return cfg
     try:
         import torch
-    except Exception:
+    except ImportError:
+        _LOG.debug("reid: torch unavailable, device=cpu")
         return "cpu"
     return "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -216,6 +217,7 @@ def _to_embedding(crop: Any, *, state: dict[str, Any]) -> np.ndarray | None:
         import torch
         import torch.nn.functional as F
     except Exception:
+        _LOG.debug("reid: cv2/torch import failed for embedding", exc_info=True)
         return None
 
     rgb = arr[:, :, ::-1]
