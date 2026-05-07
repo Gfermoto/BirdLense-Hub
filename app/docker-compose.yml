@@ -5,6 +5,8 @@
 # Вручную: см. docker-compose.intel.example.yml.
 
 services:
+  # Если в docker logs redis: «Memory overcommit must be enabled» — на Docker-хосте (не в контейнере):
+  # bash scripts/host-enable-vm-overcommit-memory.sh
   redis:
     image: redis:7-alpine
     container_name: birdlense-redis

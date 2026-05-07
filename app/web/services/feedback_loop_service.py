@@ -132,7 +132,8 @@ def export_feedback_learning_dataset(
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     since = now - timedelta(hours=max(int(since_hours), 1))
-    con = sqlite3.connect(db_path)
+    con = sqlite3.connect(db_path, timeout=30.0)
+    con.execute("PRAGMA busy_timeout=30000")
     con.row_factory = sqlite3.Row
     try:
         has_table = bool(
