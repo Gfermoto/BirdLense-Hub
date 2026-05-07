@@ -229,8 +229,8 @@ def _upload_worker(session_dir: str) -> None:
     finally:
         try:
             sem.release()
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.debug("recordings_mirror: semaphore release skipped: %s", e, exc_info=True)
 
 
 def schedule_recordings_session_mirror(session_dir: str) -> None:

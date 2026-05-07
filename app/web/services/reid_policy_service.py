@@ -39,7 +39,7 @@ def _as_float(val: Any, default: float) -> float:
         if val is None:
             return default
         return float(val)
-    except Exception:
+    except (TypeError, ValueError):
         return default
 
 
@@ -56,7 +56,7 @@ def load_reid_policy_config() -> dict[str, Any]:
     max_age = app_config.get("processor.reid_max_embedding_age_hours")
     try:
         max_age_f = float(max_age) if max_age is not None else None
-    except Exception:
+    except (TypeError, ValueError):
         max_age_f = None
 
     species_map = app_config.get("processor.reid_species_similarity_thresholds") or {}
@@ -105,7 +105,7 @@ def species_threshold(species_name: str | None, cfg: dict[str, Any]) -> float:
         return base
     try:
         return float(over)
-    except Exception:
+    except (TypeError, ValueError):
         return base
 
 
