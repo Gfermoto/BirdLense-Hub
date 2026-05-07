@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import logging
 import secrets
 import socket
 from datetime import datetime, timedelta, timezone
@@ -13,6 +14,8 @@ import requests
 
 from models import ActivityLog, db
 
+logger = logging.getLogger(__name__)
+
 
 def log_ingest_activity(type_name: str, payload: dict) -> None:
     """Persist ActivityLog row; rollback on failure."""
@@ -21,10 +24,15 @@ def log_ingest_activity(type_name: str, payload: dict) -> None:
         db.session.commit()
     except Exception:
         db.session.rollback()
+        logger.warning(
+            "ActivityLog ingest failed (type=%s); DB rolled back.",
+            type_name,
+            exc_info=True,
+        )
 
 
 def processor_detection_payload(raw: dict) -> dict:
-    """Strip unknown keys but keep explicit eligibility flags for VisitProcessor."""
+    """Strip unknown keys; keep explicit eligibility flags for VisitProcessor."""
     if not isinstance(raw, dict):
         return {}
     allowed = {
