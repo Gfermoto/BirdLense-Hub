@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 import os
+
+_log = logging.getLogger(__name__)
 
 
 def _is_playable_video_file(path: str) -> bool:
@@ -22,4 +25,9 @@ def _is_playable_video_file(path: str) -> bool:
         finally:
             cap.release()
     except Exception:
+        _log.debug(
+            "_is_playable_video_file failed path=%s",
+            path,
+            exc_info=True,
+        )
         return False

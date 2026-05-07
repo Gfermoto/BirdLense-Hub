@@ -29,6 +29,7 @@ def measure_binary_detector_predict_ms(
     try:
         img = np.zeros((640, 640, 3), dtype=np.uint8)
     except Exception:
+        logger.debug("auto_benchmark: zero image alloc failed", exc_info=True)
         return None
     t0 = time.perf_counter()
     try:

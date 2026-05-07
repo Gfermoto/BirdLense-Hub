@@ -76,7 +76,7 @@ def _aggregate_birdnet_scores(
                 if parsed.tzinfo is None:
                     parsed = parsed.replace(tzinfo=timezone.utc)
                 age_hours = max(0.0, (end_dt - parsed).total_seconds() / 3600.0)
-            except Exception:
+            except (TypeError, ValueError, OSError):
                 age_hours = 0.0
                 bucket["timestamp_parse_failed"] = True
         weighted = conf * (0.5 ** (age_hours / half_life_hours))
@@ -185,7 +185,8 @@ def _frigate_standalone_prepared_rows(
     species_mapping = _species_mapping(app_config)
     try:
         video_duration = (end_time - start_time).total_seconds() if end_time and start_time else 0.0
-    except Exception:
+    except (TypeError, AttributeError):
+        logger.debug("frigate standalone: video_duration from start/end failed", exc_info=True)
         video_duration = 0.0
     video_duration = max(0.0, float(video_duration))
 
@@ -468,7 +469,7 @@ def build_fused_video_detections(
     # with the existing rule-based confidence.
     try:
         use_learned = bool(app_config.get("detection.use_learned_fusion") or False)
-    except Exception:
+    except (TypeError, ValueError):
         use_learned = False
     if use_learned:
         alpha = float(app_config.get("detection.fusion_alpha") or 0.6)
@@ -491,6 +492,11 @@ def build_fused_video_detections(
                 fused_score = float(scorer.score(features) or 0.0)
                 d["_fusion_scorer_status"] = "ok"
             except Exception:
+                logger.debug(
+                    "learned FusionScorer.score failed (features_keys=%s)",
+                    sorted(features.keys()),
+                    exc_info=True,
+                )
                 fused_score = 0.0
                 d["_fusion_scorer_status"] = "error"
             # blend learned score with existing confidence to be conservative by default

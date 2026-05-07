@@ -9,9 +9,12 @@ from __future__ import annotations
 
 from typing import Mapping, Optional
 
+import logging
 import math
 
 import numpy as np
+
+_logger = logging.getLogger(__name__)
 
 try:
     import torch
@@ -20,6 +23,7 @@ try:
     _TORCH_AVAILABLE = True
 except Exception:
     _TORCH_AVAILABLE = False
+    _logger.debug("fusion_model: torch unavailable, using numpy scorer", exc_info=True)
 if _TORCH_AVAILABLE:
 
     class _TorchMLP(nn.Module):
@@ -71,6 +75,7 @@ class FusionScorer:
                 self._use_torch = True
             except Exception:
                 self._use_torch = False
+                _logger.debug("fusion_model: failed to load torch weights %s", model_path, exc_info=True)
         if not self._use_torch:
             # deterministic fallback weights (tuned heuristically)
             # higher weight to classifier confidence, moderate to detector and birdnet
@@ -84,7 +89,7 @@ class FusionScorer:
             v = features.get(k, 0.0)
             try:
                 vals.append(float(v))
-            except Exception:
+            except (TypeError, ValueError):
                 vals.append(0.0)
         return vals
 
@@ -99,6 +104,7 @@ class FusionScorer:
                     prob = torch.sigmoid(logit / (self.temperature + 1e-12))
                 return float(prob.cpu().item())
             except Exception:
+                _logger.debug("fusion_model: torch forward failed, numpy fallback", exc_info=True)
                 # fallback deterministic
                 pass
         # numpy fallback
@@ -110,6 +116,7 @@ class FusionScorer:
             p = 1.0 / (1.0 + math.exp(-z))
             return float(min(max(p, 0.0), 1.0))
         except Exception:
+            _logger.debug("fusion_model: numpy score failed", exc_info=True)
             return 0.0
 
 
