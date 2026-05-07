@@ -16,10 +16,8 @@ app/data/notify_temp
 # Снимки runtime процессора (локально / в volume; не коммитить)
 app/data/diagnostics/
 app/data/feedback_exports/
-data/diagnostics/
 app/processor/data/
 app/data/processor.log*
-data/processor.log
 app.log
 .DS_Store
 # Windows NTFS ADS artifacts from downloaded/copied files
@@ -172,3 +170,7 @@ app/web/instance/
 /.video*.json
 /.weird_*.json
 /ok=true,
+
+# Локальный scratch и копии диагностики у корня репо (не путать с app/data/)
+/tmp/
+/data/
