@@ -143,7 +143,7 @@ def cache_get(key: str) -> tuple[bool, Any]:
                 return False, None
             return True, _deserialize(raw)
         except Exception:
-            _log.debug("cache_get redis failed key=%s", key, exc_info=True)
+            _log.debug("cache_get redis failed (key_len=%s)", len(key), exc_info=True)
             return False, None
 
     with _lock:
@@ -167,7 +167,7 @@ def cache_set(key: str, value: Any, ttl_seconds: float) -> None:
             r.setex(_full_key(key), ttl, _serialize(value))
             return
         except Exception:
-            _log.debug("cache_set redis failed key=%s", key, exc_info=True)
+            _log.debug("cache_set redis failed (key_len=%s)", len(key), exc_info=True)
     # In testing environments we avoid populating the in-memory cache to reduce
     # cross-test interference (tests set FLASK_TESTING=1 in conftest).
     if (os.environ.get("FLASK_TESTING") or "").strip().lower() in ("1", "true", "yes"):
@@ -183,7 +183,7 @@ def cache_delete(key: str) -> None:
         try:
             r.delete(_full_key(key))
         except Exception:
-            _log.debug("cache_delete redis failed key=%s", key, exc_info=True)
+            _log.debug("cache_delete redis failed (key_len=%s)", len(key), exc_info=True)
     with _lock:
         _store.pop(key, None)
 
@@ -197,7 +197,11 @@ def cache_delete_prefix(prefix: str) -> None:
             for k in r.scan_iter(match=pattern, count=200):
                 r.delete(k)
         except Exception:
-            _log.debug("cache_delete_prefix redis failed prefix=%s", prefix, exc_info=True)
+            _log.debug(
+                "cache_delete_prefix redis failed (prefix_len=%s)",
+                len(prefix),
+                exc_info=True,
+            )
     with _lock:
         keys = [k for k in _store if k.startswith(prefix)]
         for k in keys:
