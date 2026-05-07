@@ -48,8 +48,8 @@ def _setup_logging():
         )
         fh.setFormatter(logging.Formatter(fmt))
         root.addHandler(fh)
-    except OSError:
-        pass
+    except OSError as e:
+        _log.warning("processor file logging disabled (%s): %s", log_path, e)
 
 
 _setup_logging()
@@ -76,8 +76,8 @@ def check_restart_flag():
     if os.path.exists(flag_path):
         try:
             os.remove(flag_path)
-        except OSError:
-            pass
+        except OSError as e:
+            _log.debug("restart flag removal failed path=%s: %s", flag_path, e, exc_info=True)
         logging.info("Restart flag found, exiting for restart")
         raise SystemExit(0)
 

@@ -88,8 +88,13 @@ class VideoFileSource:
         if self._record_output and self._recorded_frames == 0:
             try:
                 os.remove(self._record_output)
-            except OSError:
-                pass
+            except OSError as e:
+                self.logger.debug(
+                    "empty recording unlink failed path=%s: %s",
+                    self._record_output,
+                    e,
+                    exc_info=True,
+                )
         self._record_output = None
 
     def _ensure_h264(self, output_path: str) -> None:
@@ -342,8 +347,13 @@ class VideoPlaylistSource:
         if self._record_output and self._recorded_frames == 0:
             try:
                 os.remove(self._record_output)
-            except OSError:
-                pass
+            except OSError as e:
+                self.logger.debug(
+                    "empty recording unlink failed path=%s: %s",
+                    self._record_output,
+                    e,
+                    exc_info=True,
+                )
         self._record_output = None
 
     def _ensure_h264(self, output_path: str) -> None:

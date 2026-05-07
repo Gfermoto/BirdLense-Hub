@@ -55,8 +55,8 @@ def atomic_write_json(path: str, data: dict) -> None:
         if os.path.exists(tmp):
             try:
                 os.remove(tmp)
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug("file_test_control: tmp json cleanup %s: %s", tmp, e, exc_info=True)
 
 
 def _effective_loop(loop_override: bool | None) -> bool:

@@ -180,8 +180,8 @@ def write_birdnet_fifo_snapshot(
         except OSError:
             try:
                 os.unlink(tmp)
-            except OSError:
-                pass
+            except OSError as ue:
+                logger.debug("BirdNET FIFO snapshot: tmp unlink failed %s: %s", tmp, ue, exc_info=True)
             raise
     except OSError as e:
         logger.warning("BirdNET FIFO snapshot: write failed %s: %s", target, e)
