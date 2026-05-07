@@ -67,7 +67,7 @@ def build_component_status_payload(session) -> dict:
                 json.loads(last_heartbeat.data) if isinstance(last_heartbeat.data, str) else last_heartbeat.data
             )
         except (TypeError, ValueError):
-            pass
+            logger.debug("heartbeat data JSON parse failed", exc_info=True)
     mqtt_status = check_mqtt_connected()
     esphome_status = check_esphome_reachable()
     feed_source = app_config.get("feed.source", "mqtt")

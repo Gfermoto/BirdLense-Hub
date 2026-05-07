@@ -89,6 +89,7 @@ def send_web_push(message: str, link: str = "live", tag: Optional[str] = None) -
     try:
         pub, priv = _ensure_vapid_keys()
     except Exception:
+        logger.debug("Web Push: VAPID keys unavailable in send_web_push", exc_info=True)
         return 0
     base_url = (app_config.get("notifications.base_url") or "").strip().rstrip("/")
     url = f"{base_url}/{link}" if base_url else None

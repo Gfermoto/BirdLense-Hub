@@ -138,6 +138,7 @@ def _video_metadata_for_ids(video_ids: set[int]) -> dict[int, dict]:
         # No DB/app context available (e.g. unit tests that call this function
         # without creating an app). Return empty metadata to allow file-only
         # dataset generation.
+        logger.debug("video metadata query skipped (no app/DB context)", exc_info=True)
         return {}
     out: dict[int, dict] = {}
     for video_id, start_time, video_path in rows:
