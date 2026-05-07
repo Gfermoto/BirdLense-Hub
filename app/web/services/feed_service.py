@@ -47,7 +47,8 @@ def get_last_dispense():
             return None
         data = json.loads(path.read_text(encoding="utf-8"))
         return data.get("last_dispense_at")
-    except (OSError, json.JSONDecodeError, KeyError):
+    except (OSError, json.JSONDecodeError, KeyError) as exc:
+        logger.debug("get_last_dispense unreadable: %s", exc)
         return None
 
 

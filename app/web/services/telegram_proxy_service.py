@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from statistics import median
 from urllib.request import urlopen
@@ -9,6 +10,8 @@ from urllib.request import urlopen
 import requests
 
 from app_config.app_config import app_config
+
+logger = logging.getLogger(__name__)
 
 PROXY_LIST_URLS = (
     "https://raw.githubusercontent.com/proxygenerator1/ProxyGenerator/main/MostStable/socks5.txt",
@@ -38,8 +41,9 @@ def _probe_proxy(
         )
         elapsed = time.monotonic() - t0
         return response.status_code in (401, 404), elapsed, str(response.status_code)
-    except Exception:
+    except Exception as exc:
         elapsed = time.monotonic() - t0
+        logger.debug("telegram proxy probe failed for %s: %s", proxy, exc)
         return False, elapsed, "ERR"
 
 

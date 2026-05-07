@@ -968,7 +968,7 @@ class MQTTEventAggregator:
                     try:
                         self._client.disconnect()
                     except Exception:
-                        pass
+                        logger.debug("MQTT aggregator disconnect cleanup failed", exc_info=True)
                     self._client = None
             if self._stopped:
                 break

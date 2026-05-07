@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 _done = False
+_logger = logging.getLogger(__name__)
 
 
 def configure_opencv_ffmpeg_logging() -> None:
@@ -30,4 +32,4 @@ def configure_opencv_ffmpeg_logging() -> None:
                 level = getattr(log_mod, "LOG_LEVEL_SILENT", 0)
             log_mod.setLogLevel(level)
     except Exception:
-        pass
+        _logger.debug("OpenCV/ffmpeg log level init failed", exc_info=True)

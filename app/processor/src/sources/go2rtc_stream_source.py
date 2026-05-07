@@ -29,7 +29,7 @@ def _set_runtime_gauge(name: str, value) -> None:
 
         set_gauge(name, value)
     except Exception:
-        pass
+        logger.debug("runtime set_gauge %s failed", name, exc_info=True)
 
 
 def _inc_runtime_counter(name: str, delta: int = 1) -> None:
@@ -39,7 +39,7 @@ def _inc_runtime_counter(name: str, delta: int = 1) -> None:
 
         inc_counter(name, int(delta))
     except Exception:
-        pass
+        logger.debug("runtime inc_counter %s failed", name, exc_info=True)
 
 
 def _ffmpeg_stderr_log_level(line: str) -> int:
@@ -286,7 +286,7 @@ class Go2RTCStreamSource:
                 self._capture_process.kill()
                 self._capture_process.wait(timeout=2)
             except Exception:
-                pass
+                logger.debug("ffmpeg capture process shutdown cleanup failed", exc_info=True)
             self._capture_process = None
         self._capture_backend_used = "opencv"
 
@@ -484,7 +484,7 @@ class Go2RTCStreamSource:
             else:
                 set_last_encoding_used("cpu")
         except Exception:
-            pass
+            self.logger.debug("encoding_status recording path failed", exc_info=True)
         self.logger.info(
             "Starting FFmpeg recording to %s (%s)",
             output,
@@ -520,7 +520,7 @@ class Go2RTCStreamSource:
                             lvl = _ffmpeg_stderr_log_level(safe)
                             self.logger.log(lvl, "FFmpeg: %s", safe)
                 except Exception:
-                    pass
+                    self.logger.debug("FFmpeg stderr drain failed", exc_info=True)
             self._ffmpeg_process = None
         self.logger.info("Recording stopped")
 

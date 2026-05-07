@@ -104,7 +104,11 @@ class MotionRecordingSession:
                 ):
                     return True
             except Exception:
-                pass
+                logger.debug(
+                    "recording_session: motion_detector frigate probe failed camera=%s",
+                    camera_id,
+                    exc_info=True,
+                )
 
         aggregator_recent = getattr(self.mqtt_aggregator, "has_recent_frigate_activity", None)
         if callable(aggregator_recent):
@@ -122,6 +126,11 @@ class MotionRecordingSession:
                     )
                 )
             except Exception:
+                logger.debug(
+                    "recording_session: mqtt_aggregator frigate probe failed cameras=%s",
+                    camera_ids,
+                    exc_info=True,
+                )
                 return False
         return False
 
