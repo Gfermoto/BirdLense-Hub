@@ -96,14 +96,6 @@ def main() -> int:
         ),
     )
     parser.add_argument(
-        '--inference-device',
-        default='',
-        help=(
-            'Sets BIRDLENSE_INFERENCE_DEVICE for this run '
-            '(e.g. auto, cpu, cuda, intel:gpu). Empty = env/config.'
-        ),
-    )
-    parser.add_argument(
         '--write-report',
         default='',
         help='Also write the same JSON as stdout to this file (UTF-8).',
@@ -113,9 +105,6 @@ def main() -> int:
     if args.inference_backend:
         be = args.inference_backend.strip().lower()
         os.environ['BIRDLENSE_INFERENCE_BACKEND'] = be
-    if args.inference_device:
-        os.environ['BIRDLENSE_INFERENCE_DEVICE'] = args.inference_device.strip()
-
     if args.inference_device:
         os.environ['BIRDLENSE_INFERENCE_DEVICE'] = args.inference_device.strip()
 
