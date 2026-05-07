@@ -3,12 +3,15 @@ Regenerate ByteTrack tracks for an existing video file.
 Runs YOLO+ByteTrack on each frame and returns detections with frames.
 """
 
+from __future__ import annotations
+
 import logging
 import math
 import os
 import time
 import cv2
 
+from shared.ctor_kwarg_guard import assert_ctor_kwargs
 from yolo_geometry import letterbox_bgr_to_wh
 
 logger = logging.getLogger(__name__)
@@ -73,15 +76,20 @@ def build_detection_pipeline(
     """Собрать frame_processor и decision_maker (см. ``build_detection_stack``)."""
     from detection_stack import build_detection_stack
 
-    fp, dm, _ = build_detection_stack(
-        app_config,
-        strategy_override=strategy_override,
-        for_track_regen=for_track_regen,
-        regional_species_override=regional_species_override,
-        min_center_dist_override=min_center_dist_override,
-        save_images=False,
-        warn_two_stage_fallback=False,
+    stack_kw = {
+        "strategy_override": strategy_override,
+        "for_track_regen": for_track_regen,
+        "regional_species_override": regional_species_override,
+        "min_center_dist_override": min_center_dist_override,
+        "save_images": False,
+        "warn_two_stage_fallback": False,
+    }
+    assert_ctor_kwargs(
+        build_detection_stack,
+        stack_kw,
+        label="build_detection_pipeline→build_detection_stack",
     )
+    fp, dm, _ = build_detection_stack(app_config, **stack_kw)
     return fp, dm
 
 
