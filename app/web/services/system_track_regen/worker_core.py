@@ -383,7 +383,10 @@ def run_regenerate_tracks_worker(
                     try:
                         job_state._regenerate_tracks_status["progress"].update(meta)
                     except Exception:
-                        pass
+                        flask_app.logger.debug(
+                            "track regen progress update failed",
+                            exc_info=True,
+                        )
 
                 job_state._regenerate_tracks_status["progress"].update(
                     current_video=video.video_path or None,

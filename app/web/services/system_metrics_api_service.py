@@ -96,7 +96,7 @@ def build_metrics_summary_dict(flask_app: Flask) -> dict[str, Any]:
         payload["retention_last_freed_bytes"] = m.get("retention_last_freed_bytes", 0)
         payload["retention_mode"] = m.get("retention_mode", "cascade")
     except Exception:
-        pass  # best effort
+        _log.debug("retention metrics unavailable for system status", exc_info=True)
     if sys_m["gpu_percent"] is not None:
         payload["gpu_usage_percent"] = float(sys_m["gpu_percent"])
     return payload
