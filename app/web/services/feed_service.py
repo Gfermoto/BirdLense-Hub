@@ -68,7 +68,7 @@ def _get_mqtt_client():
         try:
             _mqtt_client.disconnect()
         except Exception:
-            pass
+            logger.debug("MQTT feed client disconnect cleanup failed", exc_info=True)
         _mqtt_client = None
     broker = os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker")
     if not broker:
@@ -117,6 +117,7 @@ def check_mqtt_connected():
             time.sleep(0.05)
         return "error" if not client.is_connected() else "ok"
     except Exception:
+        logger.debug("check_mqtt_connected poll failed", exc_info=True)
         return "error"
 
 
@@ -226,4 +227,4 @@ def mqtt_publish_once(
             client.loop_stop()
             client.disconnect()
         except Exception:
-            pass
+            logger.debug("mqtt_publish_once client cleanup failed", exc_info=True)
