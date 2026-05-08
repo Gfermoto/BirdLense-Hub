@@ -29,6 +29,7 @@ os.environ.pop("ESPHOME_FEEDER_URL", None)
 os.environ.pop("OPENWEATHER_API_KEY", None)
 os.environ.pop("HA_TOKEN", None)
 os.environ.pop("HA_URL", None)
+os.environ.setdefault("BIRDLENSE_RATELIMIT_DISABLED", "1")
 
 # Add project root to path (app/ on host, or /app in Docker)
 _app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
