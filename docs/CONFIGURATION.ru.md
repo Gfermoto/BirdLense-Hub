@@ -72,6 +72,7 @@
 | `BIRDLENSE_STRICT_API_AUTH` | `1` / `true` — при **production** закрыть анонимный доступ к `/api/ui/*` (сессия, `BIRDLENSE_UI_API_KEY` или MCP Bearer); см. [SECURITY.ru.md](./SECURITY.ru.md) |
 | `BIRDLENSE_UI_API_KEY` | Секрет для UI API в strict-режиме: **`X-Birdlense-Api-Key`** или **`Authorization: Bearer`** (то же значение). Пусто — только сессия и MCP |
 | `BIRDLENSE_PORT` | Порт nginx (по умолчанию 8085) |
+| `BIRDLENSE_HIDE_DIRECT_RECORDINGS` | `1` / `true` / `yes` / `on` — не добавлять nginx `location` для `/data/recordings/`; анонимный **`GET /data/recordings/...`** → **403**; воспроизведение — **`/api/ui/videos/:id/stream`**. По умолчанию: прямой alias (см. [SECURITY.ru.md §3](./SECURITY.ru.md)). |
 | `GUNICORN_THREADS` | Число потоков воркера Gunicorn (`gthread`; по умолчанию **16**; `app/scripts/entrypoint.sh`) |
 | `CORS_LOCAL_DEV_ORIGINS` | Локальные/dev origins CORS (через запятую): Vite, `birdlense.local`, порт хаба. Дефолт — как раньше в коде; пустая строка — не добавлять этот набор |
 | `CORS_DEFAULT_ORIGINS` | Базовые origins CORS (через запятую), если нужны не-localhost адреса по умолчанию |

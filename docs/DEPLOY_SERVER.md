@@ -106,4 +106,6 @@ Standard deploy keeps:
 
 ## 8) Direct recording URLs (`/data/recordings/`)
 
-By default nginx serves files under `/data/` without extra HTTP auth. To reduce risk of predictable `video.mp4` URLs, see [SECURITY.md §3](./SECURITY.md) and the network-restriction example: `app/nginx/examples/recordings_allowlist.conf.snippet`.
+By default nginx serves **`/data/recordings/`** as static files without extra HTTP auth. For public exposure, set **`BIRDLENSE_HIDE_DIRECT_RECORDINGS=1`** in `app/.env` so the hub omits that `location` and anonymous **`GET /data/recordings/...`** returns **403**; the UI still plays clips via **`/api/ui/videos/:id/stream`**.
+
+Other mitigations (IP allowlist, reverse-proxy-only) — see [SECURITY.md §3](./SECURITY.md) and `app/nginx/examples/recordings_allowlist.conf.snippet`.

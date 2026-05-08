@@ -28,11 +28,8 @@ server {
   if ($request_uri ~* "\.\.") { return 403; }
 
   # #339: не отдаём весь DATA_DIR — иначе скачиваем SQLite (db/), датасет, кэш без auth.
-  location ^~ /data/recordings/ {
-    alias /app/data/recordings/;
-    autoindex off;
-    add_header Accept-Ranges bytes;
-  }
+  # Прямая раздача recordings (по умолчанию вкл.); откл.: BIRDLENSE_HIDE_DIRECT_RECORDINGS=1 → placeholder пустой, /data/recordings/* → 403.
+  __RECORDINGS_LOCATION_BLOCK__
   location ^~ /data/images/ {
     alias /app/data/images/;
     autoindex off;

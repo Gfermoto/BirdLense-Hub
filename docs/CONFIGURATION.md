@@ -72,6 +72,7 @@ Older installs may still have a top-level **`motion:`** block in `user_config.ya
 | `BIRDLENSE_STRICT_API_AUTH` | `1` / `true` — in **production**, require auth for `/api/ui/*` (session after `verify-password`, `BIRDLENSE_UI_API_KEY`, or MCP Bearer); see [SECURITY](./SECURITY.md) |
 | `BIRDLENSE_UI_API_KEY` | Secret for UI API in strict mode: header **`X-Birdlense-Api-Key`** or **`Authorization: Bearer`** (same value). Empty → session and MCP only |
 | `BIRDLENSE_PORT` | Nginx port (default 8085) |
+| `BIRDLENSE_HIDE_DIRECT_RECORDINGS` | `1` / `true` / `yes` / `on` — omit nginx `location` for `/data/recordings/` so anonymous **`GET /data/recordings/...`** falls through to **403**; playback remains **`/api/ui/videos/:id/stream`**. Default: direct static alias (see [SECURITY.md §3](./SECURITY.md)). |
 | `GUNICORN_THREADS` | Gunicorn `gthread` worker thread count (default **16**; `app/scripts/entrypoint.sh`) |
 | `CORS_LOCAL_DEV_ORIGINS` | Local/dev CORS origins (comma-separated): Vite, `birdlense.local`, hub port. Default matches former in-code list; set empty to omit |
 | `CORS_DEFAULT_ORIGINS` | Baseline CORS origins (comma-separated) for non-localhost defaults |
