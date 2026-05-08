@@ -21,6 +21,12 @@ export DEPLOY_HOST="root@192.168.1.11"
 export DEPLOY_URL="http://192.168.1.11:8085"
 ```
 
+### IP:port first; domain and reverse proxy later
+
+Use the hub at **`http://<host>:<port>`** (default nginx port inside the container is **8080**; on the host map it with **`BIRDLENSE_PORT`**, often **8085**). Set **`DEPLOY_URL`** and, if the browser shows CORS errors, **`CORS_ORIGINS`** in **`app/.env`** on the server to **exactly that URL** (scheme + host + port).
+
+You do **not** need a separate reverse proxy in front of the stack or a DNS name for a working deployment: the container already exposes HTTP on the chosen port. When you later add a **domain + TLS** (and optionally reverse proxy), switch **`DEPLOY_URL`**, **`CORS_ORIGINS`**, and any webhook/public URLs; if TLS terminates at a trusted proxy, set **`TRUSTED_PROXY=1`** — see [CONFIGURATION](./CONFIGURATION.md).
+
 ### 1.5 Pre-flight: production environment (VPS / public URL)
 
 For **`BIRDLENSE_ENV=production`**, validate **`app/.env`** on the server (or locally before rsync) against [AGENTS.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/AGENTS.md) production gates — long **`FLASK_SECRET_KEY`** / **`PROCESSOR_SECRET`**, **`BIRDLENSE_STRICT_API_AUTH=1`**, optional MCP token when exposing `/mcp`:

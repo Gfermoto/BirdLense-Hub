@@ -246,3 +246,4 @@ echo "Записи и БД не трогаем; user_config.yaml не синхр
 echo ""
 echo "Если API недоступен из браузера: добавьте на сервере в app/.env:"
 echo "  CORS_ORIGINS=${DEPLOY_URL}"
+echo "(Сейчас без внешнего reverse proxy: тот же origin, что и UI — http://IP:порт; домен/HTTPS позже — обновите URL.)"
