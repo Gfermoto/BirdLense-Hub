@@ -274,7 +274,8 @@ jobs:
         run: |
           set -euo pipefail
           docker compose up -d
-          cleanup() { docker compose down; }
+          # После cd e2e / cd .. trap иначе вызывает compose не из app/ → «no configuration file provided».
+          cleanup() { (cd "${GITHUB_WORKSPACE}/app" && docker compose down); }
           trap cleanup EXIT
           BASE="http://127.0.0.1:${BIRDLENSE_PORT}"
           # Nginx на хосте появляется только после ожидания Gunicorn в entrypoint (до ~400 с); 60×2 с мало → curl 56.
@@ -291,7 +292,7 @@ jobs:
         run: |
           set -euo pipefail
           docker compose up -d
-          cleanup() { docker compose down; }
+          cleanup() { (cd "${GITHUB_WORKSPACE}/app" && docker compose down); }
           trap cleanup EXIT
           BASE="http://127.0.0.1:${BIRDLENSE_PORT}"
           bash ../scripts/wait-hub-http.sh "$BASE"
@@ -305,7 +306,7 @@ jobs:
         run: |
           set -euo pipefail
           docker compose up -d
-          cleanup() { docker compose down; }
+          cleanup() { (cd "${GITHUB_WORKSPACE}/app" && docker compose down); }
           trap cleanup EXIT
           BASE="http://127.0.0.1:${BIRDLENSE_PORT}"
           bash ../scripts/wait-hub-http.sh "$BASE"
