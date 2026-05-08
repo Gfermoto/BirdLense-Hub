@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from app_config.scales_config import normalize_scales_source, scales_source_uses_mqtt
+
+logger = logging.getLogger(__name__)
 
 TRIGGER_SOURCE_MQTT = "mqtt"
 TRIGGER_SOURCE_ESPHOME = "esphome"
@@ -132,6 +135,12 @@ def migrate_legacy_motion_block(user_config: dict[str, Any]) -> bool:
     motion = user_config.get("motion")
     if not isinstance(motion, dict) or not motion:
         return False
+    logger.warning(
+        "Deprecated: top-level 'motion:' in user_config.yaml — use grouped "
+        "'triggers.opencv', 'triggers.frigate', 'triggers.motion_sensor', "
+        "'triggers.scales' (see docs/CONFIGURATION.md). Migrating into triggers.* "
+        "and removing 'motion'.",
+    )
     triggers = user_config.setdefault("triggers", {})
     _fold_motion_fields_into_triggers(motion, triggers)
     _apply_legacy_motion_source_flags(motion.get("source"), triggers)

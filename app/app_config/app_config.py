@@ -359,7 +359,7 @@ class AppConfig:
                 try:
                     self._persist_raw_user_config(user_config)
                     logger.info(
-                        'Migrated legacy motion.* block into triggers.* in %s',
+                        'Persisted motion→triggers migration to %s',
                         self.user_config_file,
                     )
                 except OSError as e:
