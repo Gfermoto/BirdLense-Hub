@@ -21,7 +21,7 @@
 
 **Связанные документы:** [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) · [EN](./ACCESS_CONTROL.md) (уровни паролей), [API](./API.ru.md) · [EN](./API.md) (HTTP), [GLOSSARY](./GLOSSARY.ru.md) · [EN](./GLOSSARY.md) (термины). **Файл env:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (шаблон для установки). **Контракт:** [OpenAPI](./project/openapi.md).
 
-**По странице:** [Переменные окружения](#environment-variables) · [Стартовые профили](#starter-profiles) · [Processor](#processor) · [Video](#video) · [Retention](#retention) · [Prometheus / Grafana](#prometheus--grafana) · [Метрики System](#system-page-metrics-history) · [Secrets](#secrets) · [См. также](#see-also)
+**По странице:** [Переменные окружения](#environment-variables) · [Стартовые профили](#starter-profiles) · [Профиль minimal без MQTT](#minimal-profile-no-mqtt) · [Processor](#processor) · [Video](#video) · [Retention](#retention) · [Prometheus / Grafana](#prometheus--grafana) · [Метрики System](#system-page-metrics-history) · [Secrets](#secrets) · [См. также](#see-also)
 
 ---
 
@@ -31,11 +31,19 @@
 
 | Файл | Типичное применение |
 |------|---------------------|
-| [`minimal.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/minimal.yaml) | Простой LAN: Go2RTC + OpenCV motion; MQTT broker пустой |
+| [`minimal.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/minimal.yaml) | Go2RTC + OpenCV motion; **без MQTT-брокера**; YOLO/ByteTrack по потоку камеры |
 | [`frigate-only.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/frigate-only.yaml) | Только Frigate по MQTT, без топика BirdNET |
 | [`full.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/full.yaml) | Ориентир «как в бою»: несколько камер, Frigate + BirdNET, погода HA, кормушка — `HA_TOKEN`, `MQTT_BROKER` и т.д. в `.env` или YAML локально |
 
 **Бой vs офлайн-тест по файлам:** в проде обычно `video.source: go2rtc`. Для **прогона mp4 из папки** — `video.source: file`, `file_dir` / `file_path`, при необходимости `processor.file_max_record_floor_seconds` (см. строку *(поведение)* в **Video**). `processor.keep_recording_when_no_detections: true` имеет смысл **только** в режиме **file**, если нужно оставлять сессии с **нулём** детекций (кропы, QA). Для **живого Go2RTC** этот флаг **игнорируется** — пустые сессии по-прежнему удаляются, чтобы не забивать диск. При **плейлисте из папки** (`file_path` пуст) на странице **Библиотека** доступна карточка **офлайн-прогона с диска**: список/upload/удаление в `file_dir`, старт/стоп и loop **без перезапуска контейнера** — процессор читает `data/file_test_control/desired.json`, прогресс в `status.json` ([#270](https://github.com/Gfermoto/BirdLense-Hub/issues/270)).
+
+### Профиль minimal без MQTT-брокера {#minimal-profile-no-mqtt}
+
+События Frigate, BirdNET по MQTT и бинарные PIR **требуют** брокер. Если брокер **недоступен**, ещё **не установлен** или нужны **только** Go2RTC + OpenCV + локальный YOLO:
+
+1. Возьмите за основу **[`app/configs/minimal.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/minimal.yaml)** (скопируйте или смержите в `user_config.yaml`).
+2. Держите **`mqtt.broker`** пустым и **не задавайте `MQTT_BROKER`** в **`app/.env`** (если другой функции брокер не нужен). Процессор **не** стартует MQTT-агрегатор без брокера — в **Status** может быть `mqtt: error`, пока не появится брокер; **запись и YOLO** идут по цепочке с камеры.
+3. В образце явно задан блок **`triggers.*`**: включён OpenCV, выключены Frigate / motion_sensor / scales.
 
 ---
 
