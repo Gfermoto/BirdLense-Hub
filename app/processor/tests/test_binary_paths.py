@@ -19,8 +19,8 @@ class TestBinaryPaths(unittest.TestCase):
         from inference.binary_paths import resolve_binary_detector_weight_path
 
         path, backend = resolve_binary_detector_weight_path({}, '/tmp/processor')
-        self.assertEqual(backend, 'openvino')
-        self.assertEqual(path, '')
+        self.assertEqual(backend, 'torch')
+        self.assertTrue(path.endswith('yolo11n.pt'))
 
     def test_openvino_empty_when_unconfigured(self):
         from inference.binary_paths import resolve_binary_detector_weight_path
@@ -29,8 +29,8 @@ class TestBinaryPaths(unittest.TestCase):
         try:
             os.environ['BIRDLENSE_INFERENCE_BACKEND'] = 'openvino'
             path, backend = resolve_binary_detector_weight_path({}, '/tmp/processor')
-            self.assertEqual(backend, 'openvino')
-            self.assertEqual(path, '')
+            self.assertEqual(backend, 'torch')
+            self.assertTrue(path.endswith('yolo11n.pt'))
         finally:
             if old is None:
                 os.environ.pop('BIRDLENSE_INFERENCE_BACKEND', None)

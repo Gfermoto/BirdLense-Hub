@@ -67,7 +67,8 @@ def resolve_binary_detector_weight_path(
             else:
                 p = ""
         if requested_backend == "openvino":
-            return (p, "openvino")
+            if p and detector_weights_available(p):
+                return (p, "openvino")
         if p and detector_weights_available(p) and openvino_runtime_available():
             return (p, "openvino")
     default_bin = "models/detection/weights/yolo11n.pt"
