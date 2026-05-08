@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app_config.scales_config import normalize_scales_source
+from app_config.scales_config import normalize_scales_source, scales_source_uses_mqtt
 
 TRIGGER_SOURCE_MQTT = "mqtt"
 TRIGGER_SOURCE_ESPHOME = "esphome"
@@ -330,6 +330,39 @@ def format_trigger_display_line(active_names: list[str]) -> str:
     if not active_names:
         return ""
     return " + ".join(active_names)
+
+
+def effective_active_trigger_names_for_mqtt_status(
+    configured_active: list[str],
+    trigger_cfg: dict[str, dict[str, Any]],
+    *,
+    mqtt_display: str,
+) -> list[str]:
+    """Подпись в UI/readiness: без живого MQTT Frigate и MQTT-зависимые триггеры не участвуют.
+
+    Совпадает с поведением ``build_motion_detector``: при недоступном брокере остаётся
+    OpenCV (и ESPHome-датчик при прямом URL). См. ``motion_detectors/factory.py``.
+    """
+    if str(mqtt_display or "").strip().lower() == "ok":
+        return list(configured_active)
+    out: list[str] = []
+    for name in configured_active:
+        if name == "frigate":
+            continue
+        if name == "motion_sensor":
+            src = str(
+                (trigger_cfg.get("motion_sensor") or {}).get("source") or TRIGGER_SOURCE_MQTT,
+            ).strip().lower()
+            if src == TRIGGER_SOURCE_MQTT:
+                continue
+        if name == "scales":
+            sc_src = (trigger_cfg.get("scales") or {}).get("source")
+            if scales_source_uses_mqtt(sc_src):
+                continue
+        out.append(name)
+    if not out:
+        return ["opencv"]
+    return out
 
 
 def format_motion_source_summary(active_names: list[str]) -> str:

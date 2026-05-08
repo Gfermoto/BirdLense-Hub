@@ -21,7 +21,11 @@ general:
 # Важно: user_config.yaml мержится с дефолтами рекурсивно (merge_dicts): заданные ключи
 # переопределяют вложенные значения на всех уровнях; отсутствующие ключи берутся из default.
 processor:
-  tracker: "bytetrack.yaml"
+  # ByteTrack YAML: имя из Ultralytics («bytetrack.yaml») или путь models/tracker/… под app/processor
+  tracker: "models/tracker/bytetrack_birdlense.yaml"
+  # Профиль ночи (processor.adaptive_profiles): отдельный трекер — строже IoU, короче buffer
+  tracker_profiles:
+    night: "models/tracker/bytetrack_birdlense_night.yaml"
   max_record_seconds: 60
   # video.source=file: нижняя граница max_record_seconds (сек). Большое значение при playlist+split по файлам — не резать длинный клип по таймеру.
   file_max_record_floor_seconds: 86400
@@ -69,16 +73,16 @@ processor:
   # VideoSpecies с frames/оверлеем; виды потом можно поправить. false — прежнее «без конфликтов».
   track_regen_parallel_auto_with_manual: false
   # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
-  min_confidence_binary: 0.28  # Детектор «птица/не птица»; ниже — больше ложных bbox
+  min_confidence_binary: 0.26  # Детектор «птица/не птица»; после track жёстче per-label (bird ниже)
   # Раздельные пороги после YOLO track (движок получает min(...); фильтр по метке в Python).
-  # Выше — меньше ложных bbox, ниже — YOLO чаще ловит мелкую/далёкую птицу (0.40 типичный компромисс).
-  min_confidence_binary_bird: 0.34
+  # Слишком высокий bird — много пропусков на кормушке; 0.28–0.32 обычный диапазон.
+  min_confidence_binary_bird: 0.28
   min_confidence_binary_rodent: 0.24
   # Устаревший алиас (читается, если min_confidence_binary_rodent не задан):
   # min_confidence_binary_squirrel: 0.24
   # Доля площади кадра (0..1): Bird с bbox ≤ порога — без видового классификатора. 0 = выкл. (рекомендуется для видов на кормушке).
   bird_skip_classifier_max_area_frac: 0
-  min_confidence_to_process: 0.30  # Классификатор (combined); запись/БД
+  min_confidence_to_process: 0.29  # Классификатор (combined); запись/БД
   # Отдельный порог для Telegram: только уверенные визиты (может быть > min_confidence_to_process).
   min_confidence_to_notify: 0.46
   # Перед YOLO: отсечь совсем тёмные кадры. ИК/сумерки: слишком жёсткие пороги = YOLO почти не работает.
@@ -98,9 +102,9 @@ processor:
         light_gate_min_contrast: 6
         # Смягчить бинарный Bird-порог и small-object фильтры на ночных клипах.
         min_confidence_binary: 0.24
-        min_confidence_binary_bird: 0.34
+        min_confidence_binary_bird: 0.28
         min_track_duration: 0.7
-        min_confidence_to_process: 0.34
+        min_confidence_to_process: 0.30
         min_box_size_px: 40
         min_center_dist: 0.03
         max_classifications_per_frame: 4
@@ -362,8 +366,8 @@ detection:
   source_priority: ["yolo", "frigate"]
   # При первом совпадении YOLO track и Frigate species в окне ролика — разово +bonus к confidence (потолок 1.0)
   cross_source_confidence_bonus: 0.02
-  # Ниже порога детекция отбрасывается после fusion; держите чуть ниже processor.min_confidence_to_process
-  min_confidence_to_store: 0.34
+  # Ниже порога детекция отбрасывается после fusion; должно быть ≤ processor.min_confidence_to_process
+  min_confidence_to_store: 0.28
   # Если YOLO/ByteTrack не дали ни одного принятого трека, но в окне записи есть Frigate MQTT —
   # создать финальную детекцию по Frigate (клип не удаляется «пустым»). Ручная разметка в UI при ложняках.
   frigate_standalone_when_no_yolo: true

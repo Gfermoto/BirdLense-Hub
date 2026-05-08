@@ -23,7 +23,8 @@ CONFIDENCE_FLOORS = {
     'processor.min_confidence_to_notify': 0.28,
     'processor.min_confidence_binary': 0.22,
     'processor.min_track_duration': 0.35,
-    'processor.min_box_size_px': 64,
+    # Не держать выше default_config (48): иначе «безопасный пол» режет мелкий объект на lores.
+    'processor.min_box_size_px': 40,
 }
 
 # Ключи с секретами — маскируются в API, не перезаписываются при сохранении placeholder
@@ -98,6 +99,45 @@ def validate_merged_config(merged: dict) -> list[str]:
                 'top-level key %r must be a mapping or null, got %s'
                 % (key, type(val).__name__),
             )
+    return issues
+
+
+def _semantic_float_or_issue(
+    merged: dict, path: str, label: str, issues: list[str],
+) -> float | None:
+    """Разобрать float по dotted path; при невалидном типе — сообщение в issues."""
+    raw = AppConfig._get_nested(merged, path)
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        issues.append('%s (%s) must be numeric, got %r' % (label, path, raw))
+        return None
+
+
+def validate_merged_config_semantics(merged: dict) -> list[str]:
+    """Семантические инварианты merged-конфига (после floors/cleanup как при старте).
+
+    Сейчас: detection.min_confidence_to_store ≤ processor.min_confidence_to_process.
+    """
+    issues: list[str] = []
+    if not isinstance(merged, dict):
+        return issues
+    store = _semantic_float_or_issue(
+        merged, 'detection.min_confidence_to_store',
+        'detection.min_confidence_to_store', issues,
+    )
+    proc = _semantic_float_or_issue(
+        merged, 'processor.min_confidence_to_process',
+        'processor.min_confidence_to_process', issues,
+    )
+    if store is not None and proc is not None and store > proc + 1e-9:
+        issues.append(
+            'detection.min_confidence_to_store (%s) must be <= '
+            'processor.min_confidence_to_process (%s) for consistent fusion'
+            % (store, proc),
+        )
     return issues
 
 
@@ -332,6 +372,7 @@ class AppConfig:
         self._cleanup_legacy_processor_keys(merged)
         apply_secret_env_overrides(merged)
         config_issues = validate_merged_config(merged)
+        config_issues.extend(validate_merged_config_semantics(merged))
         for msg in config_issues:
             logger.error('Config structure validation: %s', msg)
         strict = (os.environ.get('BIRDLENSE_STRICT_CONFIG') or '').strip().lower() in (
@@ -566,7 +607,7 @@ class AppConfig:
         return out
 
     def validate_user_config_tree(self, user_dict: dict) -> list[str]:
-        """Проверка user-снимка после merge с default (типы верхнего уровня)."""
+        """Проверка user-снимка после merge с default (типы + семантика, как при load)."""
         try:
             with open(self.default_config_file, 'r', encoding='utf-8') as file:
                 default_config = yaml.safe_load(file) or {}
@@ -574,7 +615,11 @@ class AppConfig:
             return ['default_config YAML error: %s' % e]
         merged = self.merge_dicts(default_config, user_dict)
         fold_legacy_motion_out_of_merged_config(merged)
-        return validate_merged_config(merged)
+        self._enforce_confidence_floors(merged)
+        self._cleanup_legacy_processor_keys(merged)
+        issues = validate_merged_config(merged)
+        issues.extend(validate_merged_config_semantics(merged))
+        return issues
 
     def _persist_raw_user_config(self, data: dict) -> None:
         """Записать сырой user YAML (для миграции ключей без полного self.config)."""

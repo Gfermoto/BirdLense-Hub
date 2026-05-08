@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import time
@@ -302,3 +303,34 @@ def finalize_motion_recording(
             schedule_recordings_session_mirror(output_path_physical)
     except Exception as e:
         logging.debug("recordings mirror schedule skipped: %s", e)
+
+    try:
+        rs: dict[str, Any] = {}
+        if isinstance(recording_context, dict):
+            raw_rs = recording_context.get("runtime_signals")
+            if isinstance(raw_rs, dict):
+                rs = raw_rs
+        duration_s: float | None
+        try:
+            duration_s = max(0.0, (end_time - start_time).total_seconds())
+        except Exception:
+            duration_s = None
+        session_summary = {
+            "event": "recording_session_summary",
+            "duration_s": round(duration_s, 3) if duration_s is not None else None,
+            "frames_seen": int(rs.get("frames_seen") or 0),
+            "yolo_frames_ran": int(rs.get("yolo_frames_ran") or 0),
+            "low_light_blocked_frames": int(rs.get("low_light_blocked_frames") or 0),
+            "bytetrack_rows": yolo_tracks_count,
+            "post_fusion_persisted": len(video_detections),
+            "rejected_decision_rows": len(rejected_decisions),
+            "mqtt_events_in_window": len(mqtt_events),
+            "video_file_ok": bool(video_file_ok),
+            "runtime_profile": rs.get("runtime_profile"),
+        }
+        logging.info(
+            "recording_session_summary %s",
+            json.dumps(session_summary, default=str, separators=(",", ":")),
+        )
+    except Exception:
+        logging.debug("recording_session_summary skipped", exc_info=True)

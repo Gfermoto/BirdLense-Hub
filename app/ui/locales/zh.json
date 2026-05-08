@@ -1966,6 +1966,7 @@
     "motionHint_opencv": "触发：相机运动（OpenCV）。不需要护卫舰。 BirdNET 不开始录制。",
     "motionHint_mqtt": "触发器：MQTT 传感器（配置 MQTT 时可能与 Frigate 并行）。 BirdNET 不是记录触发器。",
     "motionHint_esphome": "触发器：ESPHome（配置 MQTT 时可以并行 Frigate）。 BirdNET 不是记录触发器。",
+    "motionNoteMqttDown": "MQTT 不可用：Frigate 等依赖 MQTT 的触发器未生效；仍以处理器实际运行为准（多为 OpenCV）。请在 设置 → 连接 中恢复代理。",
     "processorOk": "处理器运行",
     "processorUnknown": "最近没有处理器心跳",
     "processorOffline": "处理器离线",

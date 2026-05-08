@@ -9,10 +9,11 @@ from datetime import datetime, timedelta, timezone
 
 from app_config.app_config import app_config
 from app_config.trigger_config import (
+    effective_active_trigger_names_for_mqtt_status,
+    format_motion_source_summary,
     format_trigger_display_line,
     get_active_trigger_names,
     get_effective_trigger_config,
-    get_legacy_motion_source_label,
 )
 from models import ActivityLog
 from services.feed_service import check_esphome_reachable, check_mqtt_connected
@@ -113,6 +114,13 @@ def build_component_status_payload(session) -> dict:
         mqtt_status_web=mqtt_status,
         heartbeat_data=heartbeat_data,
     )
+    active_triggers_eff = effective_active_trigger_names_for_mqtt_status(
+        active_triggers,
+        trigger_cfg,
+        mqtt_display=mqtt_display,
+    )
+    motion_source_eff = format_motion_source_summary(active_triggers_eff)
+
     esphome_display = esphome_status if feed_source == "esphome" else "not_used"
     birdnet_url = (app_config.get("general.birdnet_url") or "").strip()
     if any(
@@ -123,7 +131,7 @@ def build_component_status_payload(session) -> dict:
         esphome_display = esphome_status
     elif feed_source != "esphome":
         esphome_display = "not_used"
-    trigger_display = format_trigger_display_line(active_triggers)
+    trigger_display = format_trigger_display_line(active_triggers_eff)
     video_display = check_video_reachable()
     yolo_display = parse_yolo_status_from_heartbeat(heartbeat_data) if processor_ok else "unknown"
     return {
@@ -133,8 +141,8 @@ def build_component_status_payload(session) -> dict:
         "mqtt": mqtt_display,
         "esphome": esphome_display,
         "yolo": yolo_display,
-        "motion_source": get_legacy_motion_source_label(app_config, mqtt_broker=mqtt_broker),
+        "motion_source": motion_source_eff,
         "trigger_display": trigger_display,
-        "active_triggers": active_triggers,
+        "active_triggers": active_triggers_eff,
         "birdnet_url": birdnet_url or None,
     }

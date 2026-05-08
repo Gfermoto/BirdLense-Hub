@@ -2027,6 +2027,7 @@
     "motionHint_opencv": "Trigger: camera motion (OpenCV). Frigate not required. BirdNET does not start recording.",
     "motionHint_mqtt": "Trigger: MQTT sensor (and may parallel Frigate when MQTT is configured). BirdNET is not a record trigger.",
     "motionHint_esphome": "Trigger: ESPHome (and may parallel Frigate when MQTT is configured). BirdNET is not a record trigger.",
+    "motionNoteMqttDown": "MQTT unreachable: Frigate and other MQTT-backed triggers are inactive; what the processor runs remains (often OpenCV). Fix the broker under Settings → Connections.",
     "processorOk": "Processor running",
     "processorUnknown": "No recent processor heartbeat",
     "processorOffline": "Processor offline",
