@@ -65,3 +65,43 @@ def test_mqtt_ui_no_broker_feed_mqtt_uses_web():
         )
         == 'not_configured'
     )
+
+
+def test_effective_triggers_drop_mqtt_only_when_channel_not_ok():
+    from app_config.trigger_config import effective_active_trigger_names_for_mqtt_status
+
+    cfg = {
+        "opencv": {"enabled": True},
+        "frigate": {"enabled": True},
+        "motion_sensor": {"enabled": True, "source": "mqtt"},
+        "scales": {"enabled": True, "source": "mqtt"},
+    }
+    configured = ["opencv", "frigate", "motion_sensor", "scales"]
+    assert effective_active_trigger_names_for_mqtt_status(
+        configured,
+        cfg,
+        mqtt_display="error",
+    ) == ["opencv"]
+
+    assert effective_active_trigger_names_for_mqtt_status(
+        configured,
+        cfg,
+        mqtt_display="ok",
+    ) == configured
+
+
+def test_effective_triggers_keep_esphome_motion_when_mqtt_down():
+    from app_config.trigger_config import effective_active_trigger_names_for_mqtt_status
+
+    cfg = {
+        "opencv": {"enabled": True},
+        "frigate": {"enabled": True},
+        "motion_sensor": {"enabled": True, "source": "esphome"},
+        "scales": {"enabled": False},
+    }
+    configured = ["opencv", "frigate", "motion_sensor"]
+    assert effective_active_trigger_names_for_mqtt_status(
+        configured,
+        cfg,
+        mqtt_display="error",
+    ) == ["opencv", "motion_sensor"]

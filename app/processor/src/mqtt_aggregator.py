@@ -136,6 +136,7 @@ class MQTTEventAggregator:
         self._connected = False
         self._last_connected_at = None  # for heartbeat: ok if connected or recently was
         self._stopped = False
+        self._last_connect_fail_log_monotonic = 0.0
         self._on_frigate_motion = on_frigate_motion  # (camera_filter, label_filter, callback)
         self._frigate_label_exclude = set(frigate_label_exclude or [])
         self.ha_discovery = ha_discovery
@@ -419,6 +420,7 @@ class MQTTEventAggregator:
         if reason_code == 0:
             self._connected = True
             self._last_connected_at = time.time()
+            self._last_connect_fail_log_monotonic = 0.0
             set_gauge("mqtt_connected", 1)
             logger.info("MQTT aggregator connected")
             if self.ha_discovery:
@@ -961,7 +963,16 @@ class MQTTEventAggregator:
                         logger.debug("MQTT loop rc=%s, leaving inner loop", rc)
                         break
             except Exception as e:
-                logger.error("MQTT aggregator error: %s, reconnecting in %ds", e, retry_delay)
+                now_m = time.monotonic()
+                interval = 90.0
+                if now_m - self._last_connect_fail_log_monotonic >= interval:
+                    self._last_connect_fail_log_monotonic = now_m
+                    logger.warning(
+                        "MQTT aggregator error: %s, reconnecting in %ds (log at most every %.0fs)",
+                        e,
+                        retry_delay,
+                        interval,
+                    )
             finally:
                 self._connected = False
                 if self._client:

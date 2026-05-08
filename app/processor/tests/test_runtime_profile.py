@@ -10,6 +10,7 @@ src_path = os.path.abspath(os.path.join(current_dir, "../src"))
 sys.path.insert(0, src_path)
 
 from frame_processor import FrameProcessor  # noqa: E402
+from tracker_paths import resolve_tracker_config_path  # noqa: E402
 
 
 class _DummyStrategy:
@@ -109,7 +110,7 @@ class TestRuntimeProfile(unittest.TestCase):
         self.assertAlmostEqual(strategy.calls[0]["min_confidence"], 0.18)
         self.assertEqual(
             strategy.calls[0]["tracker_config"],
-            "models/tracker/bytetrack_night.yaml",
+            resolve_tracker_config_path("models/tracker/bytetrack_night.yaml"),
         )
         self.assertEqual(strategy.calls[0]["profile_overrides"]["min_box_size_px"], 32)
         self.assertEqual(fp.last_run_stats["runtime_profile"], "night")

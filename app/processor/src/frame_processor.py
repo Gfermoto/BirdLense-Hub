@@ -7,6 +7,7 @@ from interfaces import DetectionStrategyProtocol
 from app_config.app_config import app_config
 from processor_runtime_profile import light_gate_allows_frame, resolve_runtime_profile
 from processor_runtime_stats import inc_counter, observe_timing, set_gauge
+from tracker_paths import resolve_tracker_config_path
 
 
 class _LightGateDisabled:
@@ -33,7 +34,8 @@ class FrameProcessor:
         tracker="bytetrack.yaml",
     ):
         self.save_images = save_images
-        self.tracker = tracker
+        self.tracker_raw = tracker
+        self.tracker = resolve_tracker_config_path(tracker)
         self.logger = logging.getLogger(__name__)
         if bool(app_config.get("processor.light_gate_enabled", True)):
             mb = int(app_config.get("processor.light_gate_min_brightness") or 25)
@@ -51,7 +53,11 @@ class FrameProcessor:
         except (TypeError, ValueError):
             self.key_frame_limit = 3
 
-        self.logger.info("FrameProcessor initialized.")
+        self.logger.info(
+            "FrameProcessor initialized (tracker=%s -> %s).",
+            self.tracker_raw,
+            self.tracker,
+        )
         self.reset()
 
     def _frame_light_metrics(self, img):
@@ -77,7 +83,7 @@ class FrameProcessor:
         if val is None:
             return base
         out = str(val).strip()
-        return out or base
+        return resolve_tracker_config_path(out or base)
 
     def _update_key_frames(self, track: dict, crop, frame_time, bbox, frame_score):
         key_frames = track.setdefault("key_frames", [])

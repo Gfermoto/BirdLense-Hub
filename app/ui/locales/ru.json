@@ -2037,6 +2037,7 @@
     "motionHint_opencv": "Триггер: движение с камеры (OpenCV). Frigate не требуется. BirdNET не стартует запись.",
     "motionHint_mqtt": "Триггер: MQTT-датчик (и при настроенном MQTT может параллелить Frigate). BirdNET не стартует запись.",
     "motionHint_esphome": "Триггер: ESPHome (и при настроенном MQTT может параллелить Frigate). BirdNET не стартует запись.",
+    "motionNoteMqttDown": "MQTT недоступен: Frigate и другие MQTT‑триггеры не участвуют; остаётся то, что видит процессор (часто OpenCV). Брокер — в Настройки → Подключения.",
     "processorOk": "Процессор работает",
     "processorUnknown": "Нет свежего heartbeat процессора",
     "processorOffline": "Процессор офлайн",

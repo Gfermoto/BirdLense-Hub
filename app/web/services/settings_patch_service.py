@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import copy
 
-from app_config.app_config import app_config, validate_merged_config
+from app_config.app_config import (
+    AppConfig,
+    app_config,
+    validate_merged_config,
+    validate_merged_config_semantics,
+)
 from services.cache import cache_delete_prefix, reset_redis_client
 from services.ui_password_service import hash_password_fields_in_updates
 from services.http_response_cache import bust_response_caches
@@ -49,9 +54,16 @@ def normalize_settings_patch_updates(
 
 
 def validate_settings_patch_updates(normalized_updates: dict) -> None:
-    """Reject PATCH payloads that would corrupt merged config shape."""
+    """Reject PATCH payloads that would corrupt merged config shape or break semantics."""
     candidate = app_config.merge_dicts(app_config.config, normalized_updates)
-    issues = validate_merged_config(candidate)
+    folded = copy.deepcopy(candidate)
+    from app_config.trigger_config import fold_legacy_motion_out_of_merged_config
+
+    fold_legacy_motion_out_of_merged_config(folded)
+    app_config._enforce_confidence_floors(folded)
+    AppConfig._cleanup_legacy_processor_keys(folded)
+    issues = validate_merged_config(folded)
+    issues.extend(validate_merged_config_semantics(folded))
     if issues:
         raise SettingsPatchValidationError(issues)
 
