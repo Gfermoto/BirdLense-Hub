@@ -315,12 +315,16 @@ def finalize_motion_recording(
             duration_s = max(0.0, (end_time - start_time).total_seconds())
         except Exception:
             duration_s = None
+        ctx: dict[str, Any] = recording_context if isinstance(recording_context, dict) else {}
         session_summary = {
             "event": "recording_session_summary",
             "duration_s": round(duration_s, 3) if duration_s is not None else None,
+            "triggered_camera": ctx.get("triggered_camera"),
             "frames_seen": int(rs.get("frames_seen") or 0),
             "yolo_frames_ran": int(rs.get("yolo_frames_ran") or 0),
+            "yolo_frames_with_tracks": int(rs.get("yolo_frames_with_tracks") or 0),
             "low_light_blocked_frames": int(rs.get("low_light_blocked_frames") or 0),
+            "session_extended_by_frigate_only": int(rs.get("session_extended_by_frigate_only") or 0),
             "bytetrack_rows": yolo_tracks_count,
             "post_fusion_persisted": len(video_detections),
             "rejected_decision_rows": len(rejected_decisions),
