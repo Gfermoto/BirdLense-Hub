@@ -23,7 +23,7 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 
 ### 1.5 Pre-flight: production environment (VPS / public URL)
 
-For **`BIRDLENSE_ENV=production`**, validate **`app/.env`** on the server (or locally before rsync) against [AGENTS.md](../AGENTS.md) production gates — long **`FLASK_SECRET_KEY`** / **`PROCESSOR_SECRET`**, **`BIRDLENSE_STRICT_API_AUTH=1`**, optional MCP token when exposing `/mcp`:
+For **`BIRDLENSE_ENV=production`**, validate **`app/.env`** on the server (or locally before rsync) against [AGENTS.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/AGENTS.md) production gates — long **`FLASK_SECRET_KEY`** / **`PROCESSOR_SECRET`**, **`BIRDLENSE_STRICT_API_AUTH=1`**, optional MCP token when exposing `/mcp`:
 
 ```bash
 ./scripts/verify-prod-env.sh --env-file app/.env
