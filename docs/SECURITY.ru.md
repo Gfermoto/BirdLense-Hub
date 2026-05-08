@@ -65,7 +65,7 @@
 
 | Риск | Описание | Рекомендация |
 |------|----------|--------------|
-| **Высокий** | Нет rate limiting. | Flask-Limiter или аналог. |
+| ~~**Высокий**~~ **Частично снято** | Не хватало общего rate limiting API. | **Flask-Limiter** на чувствительных UI-маршрутах (`PATCH /api/ui/settings`, импорт YAML, тест notify, restart processor); ключ — тот же IP, что у `verify-password` / `TRUSTED_PROXY`. Env: `BIRDLENSE_RATELIMIT_DISABLED`, `BIRDLENSE_RATELIMIT_STORAGE_URI`. При необходимости — расширять по маршрутам. |
 | **Средний** | CORS: `supports_credentials: True`; allowlist из `CORS_LOCAL_DEV_ORIGINS` (дефолт — локальная разработка), `CORS_DEFAULT_ORIGINS`, `CORS_ORIGINS`. | Документировать для внешнего доступа; пустой `CORS_LOCAL_DEV_ORIGINS` — без встроенного локального набора. |
 | **Средний** | Валидация входных данных частичная. | Схемы и лимиты для мутирующих эндпоинтов. |
 | ~~**Средний**~~ **Исправлено** | `X-Real-IP` / `X-Forwarded-For` учитывались без trusted proxy. | Заголовки используются только при `TRUSTED_PROXY=1`; иначе rate-limit берёт `remote_addr`. |

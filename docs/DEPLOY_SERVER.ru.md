@@ -21,6 +21,19 @@ export DEPLOY_HOST="root@192.168.1.11"
 export DEPLOY_URL="http://192.168.1.11:8085"
 ```
 
+### 1.5 Pre-flight: окружение production (VPS / публичный URL)
+
+При **`BIRDLENSE_ENV=production`** проверьте **`app/.env`** на сервере (или локально до rsync) на соответствие production gates в [AGENTS.md](../AGENTS.md) — длина **`FLASK_SECRET_KEY`** / **`PROCESSOR_SECRET`**, **`BIRDLENSE_STRICT_API_AUTH=1`**, при необходимости токен MCP для `/mcp`:
+
+```bash
+./scripts/verify-prod-env.sh --env-file app/.env
+# или: ENV_FILE=/путь/к/.env make verify-prod-env
+```
+
+Если **`BIRDLENSE_ENV`** ещё не `production`, задайте **`VERIFY_PROD_ENV=1`** для тех же проверок. Для обязательного MCP: **`./scripts/verify-prod-env.sh --require-mcp-token`**.
+
+Для **UI с другого origin** (другой хост/порт, чем API) задайте **`CORS_ORIGINS`** / **`CORS_DEFAULT_ORIGINS`** / **`CORS_LOCAL_DEV_ORIGINS`** — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md).
+
 ## 2) Деплой
 
 Из корня репозитория:
