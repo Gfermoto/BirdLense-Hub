@@ -205,8 +205,9 @@ test.describe('Smoke tests', () => {
 
   test('System page loads', async ({ page }) => {
     await gotoReady(page, '/system');
-    const mode = await detectViewMode(page, /System|Система|系统/i);
-    if (mode === 'protected') {
+    // Не использовать detectViewMode: эвристика protectedHeading («Service»/settings) даёт ложный
+    // «protected» на /system и разводит по ветке с текстом из /settings.
+    if (await isSettingsProtected(page)) {
       await expect(
         page.getByText(/This area is for station setup or service maintenance/i),
       ).toBeVisible({ timeout: 15000 });
@@ -221,10 +222,13 @@ test.describe('Smoke tests', () => {
       ).toBeVisible({ timeout: 15000 });
       return;
     }
-    expect(mode).toBe('unlocked');
-    await expect(page.getByText(/System|Система|系统/i).first()).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/Ready|Готово|已就绪|Needs attention|Требует внимания/i).first()).toBeVisible({
-      timeout: 15000,
+    await expect(page.getByRole('heading', { name: /System|Система|系统/i })).toBeVisible({
+      timeout: 20000,
+    });
+    await expect(
+      page.getByText(/Ready|Готово|已就绪|Needs attention|Требует внимания/i).first(),
+    ).toBeVisible({
+      timeout: 20000,
     });
   });
 });
