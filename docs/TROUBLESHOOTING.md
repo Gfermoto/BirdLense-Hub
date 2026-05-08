@@ -98,7 +98,7 @@ docker logs birdlense --tail 200 2>&1
 
 **Diagnose weak detections / empty DB rows:** after each clip finalize, processor logs one structured line:
 
-`recording_session_summary {…}` (JSON) — `frames_seen`, `yolo_frames_ran`, `low_light_blocked_frames`, `bytetrack_rows`, `post_fusion_persisted`, `mqtt_events_in_window`, `video_file_ok`, `runtime_profile`.
+`recording_session_summary {…}` (JSON) — `duration_s`, `triggered_camera`, `frames_seen`, `yolo_frames_ran`, `yolo_frames_with_tracks`, `low_light_blocked_frames`, `session_extended_by_frigate_only`, `bytetrack_rows`, `post_fusion_persisted`, `mqtt_events_in_window`, `video_file_ok`, `runtime_profile` (funnel: frames → YOLO runs → tracks → fusion).
 
 **Example:** `docker logs birdlense 2>&1 | grep recording_session_summary | tail`
 
