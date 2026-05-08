@@ -205,6 +205,7 @@ test.describe('Smoke tests', () => {
 
   test('System page loads', async ({ page }) => {
     await gotoReady(page, '/system');
+    await waitMainSpinnerGone(page);
     const mode = await detectViewMode(page, /System|Система|系统/i);
     if (mode === 'protected') {
       await expect(
