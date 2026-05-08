@@ -31,6 +31,8 @@ alwaysApply: true
 
 **После изменений в коде** — по запросу: `make deploy` из корня репозитория. Не запускать автоматически при открытии проекта.
 
+До деплоя: **`make verify`** (контракт по **`DEPLOY_URL`**), опционально **`make preflight-deploy`** (= проверка локальной копии **`app/.env`** + живой хаб). Перед **`make deploy`** можно задать в **`deploy.local.sh`** **`RUN_VERIFY_PROD_BEFORE_DEPLOY=1`**, чтобы **`deploy.sh`** сначала вызвал **`verify-prod-env`**.
+
 ## Команда деплоя
 
 ```bash
