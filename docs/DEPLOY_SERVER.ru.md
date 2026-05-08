@@ -27,6 +27,8 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 
 Отдельный **reverse proxy** перед стеком и **DNS-имя** для работы **не обязательны**: контейнер сам отвечает по HTTP на выбранном порту. Когда появятся **домен и TLS** (и при желании внешний прокси), поменяйте **`DEPLOY_URL`**, **`CORS_ORIGINS`** и публичные URL в интеграциях; если TLS обрывает доверенный прокси — **`TRUSTED_PROXY=1`**, см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md).
 
+**Рабочая линия (VPS по IP, без домена):** один и тот же URL в локальном **`DEPLOY_URL`** и в **`CORS_ORIGINS`** на сервере **`app/.env`**, например **`http://185.218.111.196:8085`**. Опционально A1 перед **`make deploy`**: скопируйте **`app/.env`** с сервера, в **`deploy.local.sh`** задайте **`RUN_VERIFY_PROD_BEFORE_DEPLOY=1`** (и **`VERIFY_PROD_ENV_FILE`**, если копия не **`app/.env`**) — **`scripts/deploy.sh`** сначала вызовет **`verify-prod-env`**, см. **`scripts/deploy.local.sh.example`**.
+
 ### 1.5 Pre-flight: окружение production (VPS / публичный URL)
 
 При **`BIRDLENSE_ENV=production`** проверьте **`app/.env`** на сервере (или локально до rsync) на соответствие production gates в [AGENTS.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/AGENTS.md) — длина **`FLASK_SECRET_KEY`** / **`PROCESSOR_SECRET`**, **`BIRDLENSE_STRICT_API_AUTH=1`**, при необходимости токен MCP для `/mcp`:

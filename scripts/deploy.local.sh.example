@@ -31,6 +31,10 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 # export DEPLOY_SSH_PORT="2222"
 # export DEPLOY_URL="http://185.218.111.196:8085"
 # CORS на сервере (app/.env): например CORS_ORIGINS=http://185.218.111.196:8085
+#
+# Опционально A1: перед rsync прогнать verify-prod-env по локальной копии server app/.env:
+# export RUN_VERIFY_PROD_BEFORE_DEPLOY=1
+# export VERIFY_PROD_ENV_FILE=/path/to/copy-of-server.env   # по умолчанию: app/.env в корне репо
 
 # Куда rsync заливает код на сервере (по умолчанию в deploy.sh: /root/BirdLense)
 # export DEPLOY_REMOTE_DIR="/root/BirdLense"

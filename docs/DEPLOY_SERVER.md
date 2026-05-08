@@ -27,6 +27,8 @@ Use the hub at **`http://<host>:<port>`** (default nginx port inside the contain
 
 You do **not** need a separate reverse proxy in front of the stack or a DNS name for a working deployment: the container already exposes HTTP on the chosen port. When you later add a **domain + TLS** (and optionally reverse proxy), switch **`DEPLOY_URL`**, **`CORS_ORIGINS`**, and any webhook/public URLs; if TLS terminates at a trusted proxy, set **`TRUSTED_PROXY=1`** — see [CONFIGURATION](./CONFIGURATION.md).
 
+**Operational baseline (VPS by IP, no domain yet):** use the same URL in **`DEPLOY_URL`** (local `deploy.local.sh`) and in server **`app/.env`** as **`CORS_ORIGINS`**, e.g. **`http://185.218.111.196:8085`**. Optional A1 gate before **`make deploy`**: copy server **`app/.env`** to your laptop, then in **`deploy.local.sh`** set **`RUN_VERIFY_PROD_BEFORE_DEPLOY=1`** (and **`VERIFY_PROD_ENV_FILE`** if the copy is not **`app/.env`**) so **`scripts/deploy.sh`** runs **`verify-prod-env`** first — see **`scripts/deploy.local.sh.example`**.
+
 ### 1.5 Pre-flight: production environment (VPS / public URL)
 
 For **`BIRDLENSE_ENV=production`**, validate **`app/.env`** on the server (or locally before rsync) against [AGENTS.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/AGENTS.md) production gates — long **`FLASK_SECRET_KEY`** / **`PROCESSOR_SECRET`**, **`BIRDLENSE_STRICT_API_AUTH=1`**, optional MCP token when exposing `/mcp`:

@@ -10,6 +10,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 [ -f "${SCRIPT_DIR}/deploy.local.sh" ] && . "${SCRIPT_DIR}/deploy.local.sh"
 
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 HOST="${DEPLOY_HOST:-birdlense}"
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
 DEPLOY_URL="${DEPLOY_URL:-http://localhost:8085}"
@@ -24,6 +25,22 @@ SSH_OPTS="${_PORT_OPT} -o ServerAliveInterval=30 -o ServerAliveCountMax=60"
 echo "=== Деплой BirdLense Hub на ${HOST} ==="
 if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]] && [[ "${DEPLOY_URL}" == *"localhost"* ]]; then
   echo "ВНИМАНИЕ: DEPLOY_URL=${DEPLOY_URL} — health check будет с локальной машины. Для удалённого сервера задайте DEPLOY_URL в deploy.local.sh (например http://YOUR_HOST:8085)"
+fi
+
+# 0.4 Опционально (A1 roadmap): прогон verify-prod-env по локальной копии server .env до rsync.
+# В deploy.local.sh: RUN_VERIFY_PROD_BEFORE_DEPLOY=1 и при необходимости VERIFY_PROD_ENV_FILE=/path/to/.env
+if [[ "${RUN_VERIFY_PROD_BEFORE_DEPLOY:-}" =~ ^(1|true|yes)$ ]]; then
+  _vf="${VERIFY_PROD_ENV_FILE:-${REPO_ROOT}/app/.env}"
+  if [[ ! -f "$_vf" ]]; then
+    echo "Ошибка: RUN_VERIFY_PROD_BEFORE_DEPLOY=1, но файл не найден: $_vf" >&2
+    echo "Подсказка: скопируйте app/.env с сервера или задайте VERIFY_PROD_ENV_FILE, либо отключите RUN_VERIFY_PROD_BEFORE_DEPLOY." >&2
+    exit 1
+  fi
+  echo "0.4 verify-prod-env перед деплоем — $_vf"
+  (cd "$REPO_ROOT" && VERIFY_PROD_ENV=1 ./scripts/verify-prod-env.sh --env-file "$_vf") || {
+    echo "Ошибка: verify-prod-env не прошёл. Исправьте секреты или снимите RUN_VERIFY_PROD_BEFORE_DEPLOY." >&2
+    exit 1
+  }
 fi
 
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
