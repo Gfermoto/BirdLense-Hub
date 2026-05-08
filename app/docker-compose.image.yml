@@ -31,6 +31,7 @@ services:
       - MCP_TOKEN=${MCP_TOKEN:-}
       - BIRDLENSE_STRICT_API_AUTH=${BIRDLENSE_STRICT_API_AUTH:-}
       - BIRDLENSE_UI_API_KEY=${BIRDLENSE_UI_API_KEY:-}
+      - BIRDLENSE_HIDE_DIRECT_RECORDINGS=${BIRDLENSE_HIDE_DIRECT_RECORDINGS:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/ui/health"]

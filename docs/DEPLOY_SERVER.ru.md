@@ -99,4 +99,6 @@ curl -sS http://<server>:8085/api/ui/status
 
 ## 8) Прямые URL к записям (`/data/recordings/`)
 
-По умолчанию nginx отдаёт файлы под `/data/` без отдельной HTTP-auth. Для снижения риска утечки предсказуемых URL к `video.mp4` см. [SECURITY.ru.md §3](./SECURITY.ru.md) и пример ограничения по сети: `app/nginx/examples/recordings_allowlist.conf.snippet`.
+По умолчанию nginx отдаёт **`/data/recordings/`** как статику без отдельной HTTP-auth. Для публичного доступа задайте **`BIRDLENSE_HIDE_DIRECT_RECORDINGS=1`** в `app/.env` — хаб не добавит этот `location`, анонимный **`GET /data/recordings/...`** → **403**; в UI клипы идут через **`/api/ui/videos/:id/stream`**.
+
+Иные варианты (allowlist по IP, только reverse-proxy) — [SECURITY.ru.md §3](./SECURITY.ru.md) и `app/nginx/examples/recordings_allowlist.conf.snippet`.

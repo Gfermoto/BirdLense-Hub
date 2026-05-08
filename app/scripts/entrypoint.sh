@@ -47,11 +47,25 @@ fi
 export BROTLI_BLOCK
 python3 -c '
 import os
-t=open("/etc/nginx/conf.d/default.conf.template").read()
-t=t.replace("__GO2RTC_UPSTREAM__", __import__("sys").argv[1])
-t=t.replace("__BIRDLENSE_PORT__", __import__("sys").argv[2])
-t=t.replace("__BROTLI_BLOCK__", os.environ.get("BROTLI_BLOCK", ""))
-open("/etc/nginx/conf.d/default.conf","w").write(t)
+hide = os.environ.get("BIRDLENSE_HIDE_DIRECT_RECORDINGS", "").strip().lower() in (
+    "1", "true", "yes", "on",
+)
+recordings_block = (
+    ""
+    if hide
+    else """  location ^~ /data/recordings/ {
+    alias /app/data/recordings/;
+    autoindex off;
+    add_header Accept-Ranges bytes;
+  }
+"""
+)
+t = open("/etc/nginx/conf.d/default.conf.template").read()
+t = t.replace("__GO2RTC_UPSTREAM__", __import__("sys").argv[1])
+t = t.replace("__BIRDLENSE_PORT__", __import__("sys").argv[2])
+t = t.replace("__BROTLI_BLOCK__", os.environ.get("BROTLI_BLOCK", ""))
+t = t.replace("__RECORDINGS_LOCATION_BLOCK__", recordings_block)
+open("/etc/nginx/conf.d/default.conf", "w").write(t)
 ' "$GO2RTC_UPSTREAM" "$BIRDLENSE_PORT"
 
 # =============================================================================

@@ -53,9 +53,9 @@
 |------|--------------|----------------|
 | ~~**Critical**~~ **Fixed** | `location /data/` with `alias /app/data/` — request `/data/../.env` could read `/app/.env`. | Added check `if ($request_uri ~* "\.\.") { return 403; }` in all nginx configs. |
 | ~~**Critical**~~ **Fixed** | Same broad `/data/` alias exposed the whole volume: e.g. **`/data/db/birdlense.db`**, dataset crops, cache — no HTTP auth. | **Allowlist** in nginx: only `/data/recordings/`, `/data/images/`, `/data/file_test/`; any other `/data/*` → **403** ([#339](https://github.com/Gfermoto/BirdLense-Hub/issues/339)). |
-| **High** | `/data/recordings/` accessible without authentication. Path `YYYY/MM/DD/HHMMSS/video.mp4` is predictable. | Add access check via API with auth or restrict by IP. |
+| **High** | `/data/recordings/` accessible without authentication. Path `YYYY/MM/DD/HHMMSS/video.mp4` is predictable. | Add access check via API with auth or restrict by IP. **`BIRDLENSE_HIDE_DIRECT_RECORDINGS=1`** removes the nginx static alias so `/data/recordings/*` falls through to **403**; use **`/api/ui/videos/:id/stream`** for playback ([CONFIGURATION.md](./CONFIGURATION.md)). |
 
-**Mitigations (pick one for production exposure):** (1) **IP allowlist** — more specific `location ^~ /data/recordings/` with `allow`/`deny` (see `app/nginx/examples/recordings_allowlist.conf.snippet` and [DEPLOY_SERVER.md §8](./DEPLOY_SERVER.md)); (2) **no direct nginx media** — reverse proxy only passes `/api/…` and authenticated stream routes; (3) **`auth_request`** to the Hub session endpoint — advanced, not shipped by default.
+**Mitigations (pick one for production exposure):** (1) **`BIRDLENSE_HIDE_DIRECT_RECORDINGS=1`** — simplest for public/VPS; (2) **IP allowlist** — more specific `location ^~ /data/recordings/` with `allow`/`deny` (see `app/nginx/examples/recordings_allowlist.conf.snippet` and [DEPLOY_SERVER.md §8](./DEPLOY_SERVER.md)); (3) **no direct nginx media** — reverse proxy only passes `/api/…` and authenticated stream routes; (4) **`auth_request`** to the Hub session endpoint — advanced, not shipped by default.
 
 **Tests:** `curl -I "http://YOUR_HOST:8085/data/../.env"` — if vulnerable, returns 200. **`curl -I "http://YOUR_HOST:8085/data/db/birdlense.db"`** — must be **403** (not `application/octet-stream`).
 
