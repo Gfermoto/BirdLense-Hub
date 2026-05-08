@@ -21,7 +21,7 @@ Defaults: `app/app_config/default_config.yaml`. User config is merged on top.
 
 **Related:** [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [RU](./ACCESS_CONTROL.ru.md) (password tiers), [API](./API.md) · [RU](./API.ru.md) (HTTP surface), [GLOSSARY](./GLOSSARY.md) · [RU](./GLOSSARY.ru.md) (terms). **Env file:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (copy for your install). **Contract:** [OpenAPI YAML](./project/openapi.md).
 
-**On this page:** [Environment variables](#environment-variables) · [Starter profiles](#starter-profiles) · [Minimal profile (no MQTT)](#minimal-profile-no-mqtt) · [Processor](#processor) · [Video](#video) · [Retention](#retention) · [Prometheus / Grafana](#prometheus--grafana) · [System page metrics](#system-page-metrics-history) · [Secrets](#secrets) · [See also](#see-also)
+**On this page:** [Environment variables](#environment-variables) · [Starter profiles](#starter-profiles) · [Minimal profile (no MQTT)](#minimal-profile-no-mqtt) · [Legacy `motion:` (deprecated)](#legacy-motion-block) · [Processor](#processor) · [Video](#video) · [Retention](#retention) · [Prometheus / Grafana](#prometheus--grafana) · [System page metrics](#system-page-metrics-history) · [Secrets](#secrets) · [See also](#see-also)
 
 ---
 
@@ -44,6 +44,10 @@ Frigate events, BirdNET-over-MQTT fusion, and binary PIR topics **require** a br
 1. Start from **[`app/configs/minimal.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/configs/minimal.yaml)** (copy or merge into `user_config.yaml`).
 2. Keep **`mqtt.broker`** empty and **omit `MQTT_BROKER`** in **`app/.env`** (unless another feature needs it). The processor **does not** start the MQTT aggregator when the broker is unset — **Status** may show `mqtt: error` until you add a broker; **recording and YOLO** still run from the camera pipeline.
 3. The sample **`triggers.*`** block matches runtime: OpenCV on, Frigate / motion_sensor / scales off.
+
+### Legacy top-level `motion:` (deprecated) {#legacy-motion-block}
+
+Older installs may still have a top-level **`motion:`** block in `user_config.yaml`. The hub **migrates** it into **`triggers.*`**, persists the file when possible, and logs a **WARNING** during that migration. Prefer **`triggers`** only in new YAML.
 
 ---
 
