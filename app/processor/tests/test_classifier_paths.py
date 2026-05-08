@@ -32,8 +32,8 @@ class TestClassifierPaths(unittest.TestCase):
         try:
             os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND"] = "openvino"
             path, backend = resolve_classifier_weight_path({}, "/tmp/processor")
-            self.assertEqual(backend, "openvino")
-            self.assertEqual(path, "")
+            self.assertEqual(backend, "torch")
+            self.assertTrue(path.endswith("best.pt"))
         finally:
             if old is None:
                 os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", None)

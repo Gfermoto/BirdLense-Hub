@@ -37,7 +37,9 @@ def resolve_classifier_weight_path(
     )
 
     requested_backend = resolve_classifier_inference_backend(app_config)
-    env_ov = (os.environ.get("BIRDLENSE_CLASSIFIER_OPENVINO_PATH") or "").strip()
+    env_ov = (
+        os.environ.get("BIRDLENSE_CLASSIFIER_OPENVINO_PATH") or ""
+    ).strip()
     if requested_backend in ("openvino", "auto"):
         if env_ov:
             if os.path.isabs(env_ov):
@@ -48,12 +50,20 @@ def resolve_classifier_weight_path(
             cfg_ov = app_config.get("processor.models.classifier_openvino")
             cfg_ov_s = str(cfg_ov).strip() if cfg_ov is not None else ""
             if cfg_ov_s:
-                p = resolve_relative_to_processor_root(cfg_ov_s, processor_root)
+                p = resolve_relative_to_processor_root(
+                    cfg_ov_s,
+                    processor_root,
+                )
             else:
                 p = ""
         if requested_backend == "openvino":
-            return (p, "openvino")
-        if p and classifier_weights_available(p) and openvino_runtime_available():
+            if p and classifier_weights_available(p):
+                return (p, "openvino")
+        if (
+            p
+            and classifier_weights_available(p)
+            and openvino_runtime_available()
+        ):
             return (p, "openvino")
 
     default_cls = "models/classification/weights/best.pt"

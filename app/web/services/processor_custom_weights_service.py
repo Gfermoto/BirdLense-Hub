@@ -53,12 +53,28 @@ def _resolve_model_path(rel_or_abs: str) -> str:
 
 
 def effective_binary_path() -> str:
-    """Эффективный путь бинарника (torch ``.pt`` или OpenVINO каталог/``xml``, #371)."""
+    """Путь для UI статуса/отпечатка: приоритет OpenVINO IR при наличии, иначе ``processor.models.binary``.
+
+    Если ``inference_backend=openvino``, но IR не задан, резолвер даёт ``''``, хотя оператор уже
+    загрузил ``binary.pt`` (ключ ``processor.models.binary``). Processor по-прежнему требует IR
+    на старте; здесь нужен человекочитаемый слот метаданных и fingerprint загруженного .pt (#276).
+    """
     root = _processor_root()
-    from inference.binary_paths import resolve_binary_detector_weight_path
+    from inference.binary_paths import (
+        resolve_binary_detector_weight_path,
+        resolve_relative_to_processor_root,
+    )
 
     path, _backend = resolve_binary_detector_weight_path(app_config, root)
-    return path
+    path_stripped = str(path or "").strip()
+    if path_stripped:
+        return path_stripped
+    default_bin = "models/detection/weights/yolo11n.pt"
+    raw = app_config.get("processor.models.binary", default_bin)
+    rel = str(raw).strip() if raw is not None else default_bin
+    if not rel:
+        rel = default_bin
+    return resolve_relative_to_processor_root(rel, root)
 
 
 def effective_classifier_path() -> str:
