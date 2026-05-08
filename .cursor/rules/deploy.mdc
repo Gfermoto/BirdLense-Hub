@@ -7,7 +7,9 @@ alwaysApply: true
 
 ## Два режима (переключайте `deploy.local.sh`)
 
-Часть времени хаб в **домашней/LAN-сети**, часть — заходите **удалённо через VPS/HTTPS**. В **`scripts/deploy.local.sh`** должен быть активен **ровно один** набор `DEPLOY_HOST` / `DEPLOY_SSH_PORT` / `DEPLOY_URL` под текущую ситуацию (шаблон: **`deploy.local.sh.example`**).
+Часть времени хаб в **домашней/LAN-сети**, часть — **удалённо** (VPS). В **`scripts/deploy.local.sh`** должен быть активен **ровно один** набор `DEPLOY_HOST` / `DEPLOY_SSH_PORT` / `DEPLOY_URL` под текущую ситуацию (шаблон: **`deploy.local.sh.example`**).
+
+**Пока без домена:** нормально работать по **`http://IP:порт`** — задайте **`DEPLOY_URL`** и при необходимости **`CORS_ORIGINS`** на сервере тем же URL. Отдельный reverse proxy перед контейнером и HTTPS **не обязательны**; домен и прокси можно добавить позже и обновить URL/`TRUSTED_PROXY`.
 
 ### На площадке (LAN)
 
@@ -21,7 +23,7 @@ alwaysApply: true
 
 **SSH:** например **`203.0.113.10`** ([TEST-NET-3](https://datatracker.ietf.org/doc/html/rfc5737), подставьте свой VPS), порт **`2222`** — задать `DEPLOY_SSH_PORT=2222` в `deploy.local.sh`.
 
-**Веб-UI:** **`http://185.218.111.196:8085/`** — **`DEPLOY_URL`** для health после деплоя и для ориентира в браузере (при смене хоста/домена подставьте свой URL).
+**Веб-UI:** **`http://185.218.111.196:8085/`** — **`DEPLOY_URL`** для health после деплоя и в браузере (сейчас достаточно IP:порт без домена; при появлении hostname подставьте свой URL).
 
 **MCP:** `http://185.218.111.196:8085/mcp` (Bearer — `MCP_TOKEN` / настройки MCP в UI).
 

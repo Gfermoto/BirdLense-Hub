@@ -21,6 +21,12 @@ export DEPLOY_HOST="root@192.168.1.11"
 export DEPLOY_URL="http://192.168.1.11:8085"
 ```
 
+### Сначала IP:порт; домен и reverse proxy — позже
+
+Заходите на хаб по **`http://<хост>:<порт>`** (в контейнере nginx слушает **8080**, на хосте проброс через **`BIRDLENSE_PORT`**, часто **8085**). **`DEPLOY_URL`**, а при ошибках CORS в браузере — **`CORS_ORIGINS`** в **`app/.env`** на сервере, задайте **ровно этим же URL** (схема + хост + порт).
+
+Отдельный **reverse proxy** перед стеком и **DNS-имя** для работы **не обязательны**: контейнер сам отвечает по HTTP на выбранном порту. Когда появятся **домен и TLS** (и при желании внешний прокси), поменяйте **`DEPLOY_URL`**, **`CORS_ORIGINS`** и публичные URL в интеграциях; если TLS обрывает доверенный прокси — **`TRUSTED_PROXY=1`**, см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md).
+
 ### 1.5 Pre-flight: окружение production (VPS / публичный URL)
 
 При **`BIRDLENSE_ENV=production`** проверьте **`app/.env`** на сервере (или локально до rsync) на соответствие production gates в [AGENTS.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/AGENTS.md) — длина **`FLASK_SECRET_KEY`** / **`PROCESSOR_SECRET`**, **`BIRDLENSE_STRICT_API_AUTH=1`**, при необходимости токен MCP для `/mcp`:
