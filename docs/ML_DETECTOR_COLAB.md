@@ -17,7 +17,7 @@ Classifier walkthrough: [TRAINING](./TRAINING.md). This page is **detection** on
 
 **Steps:** (1) Local merge/pack → upload dataset zip; (2) upload **`nabirds_yolo11n_binary.zip`**; (3) Colab GPU + deps + **`drive.mount`**; (4) Unzip dataset → set absolute **`path`** in **`brg/dataset.yaml`** → assert **`Bird`, `Rodent`, `Background`**; (5) Unzip weights → **`WEIGHTS`** → checkpoint validation cell; (6) Stage 1 **`freeze=10`**; (7) Stage 2 **`lr0=0.001`**; (8) OpenVINO **`imgsz=640`**; (9) **`make validate-weights`** and optional track regression → deploy.
 
-**Risks:** The archive must yield a **`detect`** **`.pt`** with **3** BRG names ([Part C](#part-c--class-contract--checks)). Raw COCO **`yolo11n.pt`** (80 classes) is not a drop-in Hub baseline. **A1.c** only if no three-class checkpoint exists.
+**Risks:** The archive must yield a **`detect`** **`.pt`** with **3** BRG names ([Part C](#part-c-contract-and-validation)). Raw COCO **`yolo11n.pt`** (80 classes) is not a drop-in Hub baseline. **A1.c** only if no three-class checkpoint exists.
 
 **Optional:** place **`bl_best.pt`** (current Hub detector) in **`3step_detector`** and set **`USE_HUB_BASE = True`** in cell 3 to skip the weights zip.
 
