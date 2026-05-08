@@ -89,6 +89,16 @@ docker logs birdlense --tail 200 2>&1
 
 ---
 
+## Запись: JSON-сводка сессии в логах {#recording-session-summary-json}
+
+**Слабые детекции / пустые строки в БД:** после финализации клипа в логах processor одна структурированная строка:
+
+`recording_session_summary {…}` (JSON) — `frames_seen`, `yolo_frames_ran`, `low_light_blocked_frames`, `bytetrack_rows`, `post_fusion_persisted`, `mqtt_events_in_window`, `video_file_ok`, `runtime_profile`.
+
+**Пример:** `docker logs birdlense 2>&1 | grep recording_session_summary | tail`
+
+---
+
 ## Processor: шум «Slow frame processing» на большом разрешении {#processor-slow-frame-warnings}
 
 **Симптом:** много строк `Slow frame processing: …ms >= …ms`, низкий эффективный FPS — типично для **2.7K+** и тяжёлого YOLO.

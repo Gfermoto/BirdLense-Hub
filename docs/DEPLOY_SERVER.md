@@ -21,6 +21,19 @@ export DEPLOY_HOST="root@192.168.1.11"
 export DEPLOY_URL="http://192.168.1.11:8085"
 ```
 
+### 1.5 Pre-flight: production environment (VPS / public URL)
+
+For **`BIRDLENSE_ENV=production`**, validate **`app/.env`** on the server (or locally before rsync) against [AGENTS.md](../AGENTS.md) production gates — long **`FLASK_SECRET_KEY`** / **`PROCESSOR_SECRET`**, **`BIRDLENSE_STRICT_API_AUTH=1`**, optional MCP token when exposing `/mcp`:
+
+```bash
+./scripts/verify-prod-env.sh --env-file app/.env
+# or: ENV_FILE=/path/to/.env make verify-prod-env
+```
+
+Set **`VERIFY_PROD_ENV=1`** if you need the same checks while `BIRDLENSE_ENV` is not yet `production`. Use **`./scripts/verify-prod-env.sh --require-mcp-token`** when MCP must be gated.
+
+For **browser access from another origin** (UI on a different host/port than the API), set **`CORS_ORIGINS`** / **`CORS_DEFAULT_ORIGINS`** / **`CORS_LOCAL_DEV_ORIGINS`** — see [CONFIGURATION](./CONFIGURATION.md).
+
 ## 2) Deploy
 
 From repository root:

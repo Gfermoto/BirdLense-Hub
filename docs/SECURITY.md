@@ -65,7 +65,7 @@
 
 | Risk | Description | Recommendation |
 |------|--------------|----------------|
-| **High** | No rate limiting. | Add Flask-Limiter or similar. |
+| ~~**High**~~ **Partially mitigated** | Broad API rate limiting was missing. | **Flask-Limiter** on sensitive UI routes (`PATCH /api/ui/settings`, YAML import, notify test, restart processor); per-IP key matches `verify-password` / `TRUSTED_PROXY`. Env: `BIRDLENSE_RATELIMIT_DISABLED`, `BIRDLENSE_RATELIMIT_STORAGE_URI`. Further limits can be added per-route. |
 | **Medium** | CORS: `supports_credentials: True`; allowlist from `CORS_LOCAL_DEV_ORIGINS` (default local dev), `CORS_DEFAULT_ORIGINS`, `CORS_ORIGINS`. | Document CORS for external access; set `CORS_LOCAL_DEV_ORIGINS` empty to drop built-in local origins. |
 | **Medium** | Input validation is partial. | Extend validation (schemas, sizes) for mutating endpoints. |
 | ~~**Medium**~~ **Fixed** | `X-Real-IP` / `X-Forwarded-For` were trusted without a trusted proxy boundary. | Proxy headers are used only when `TRUSTED_PROXY=1`; otherwise rate limiting uses `remote_addr`. |
