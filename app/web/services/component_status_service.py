@@ -22,6 +22,38 @@ from util import ensure_utc
 logger = logging.getLogger(__name__)
 
 
+def mqtt_display_for_ui(
+    *,
+    mqtt_broker: str,
+    feed_source: str,
+    mqtt_status_web: str,
+    heartbeat_data: dict | None,
+) -> str:
+    """Статус MQTT для шапки Hub: не считать канал «ок», если клиент веба к брокеру падает.
+
+    Раньше при ``mqtt_broker`` и живом процессоре брался только ``heartbeat.mqtt_connected``.
+    В процессоре ``is_mqtt_ok_for_heartbeat`` держит до 120 с grace после обрыва и может
+    давать True, пока брокер уже мёртв; при этом ``check_mqtt_connected()`` на Flask
+    отражает текущую TCP-сессию. Для UI берём худший сигнал: явный error/False → error.
+    """
+    if mqtt_broker.strip():
+        hb: bool | None = None
+        if isinstance(heartbeat_data, dict) and "mqtt_connected" in heartbeat_data:
+            hb = bool(heartbeat_data.get("mqtt_connected"))
+        if mqtt_status_web == "error":
+            return "error"
+        if hb is False:
+            return "error"
+        if mqtt_status_web == "ok" and hb is not False:
+            return "ok"
+        if hb is True:
+            return "ok"
+        return mqtt_status_web
+    if feed_source == "mqtt":
+        return mqtt_status_web
+    return "not_used"
+
+
 def _fallback_component_status_payload() -> dict[str, str | None]:
     """Минимальный payload, если основная сборка упала (деплой/verify не должны валить воркер)."""
     return {
@@ -74,15 +106,13 @@ def build_component_status_payload(session) -> dict:
     mqtt_broker = os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker")
     trigger_cfg = get_effective_trigger_config(app_config, mqtt_broker=mqtt_broker)
     active_triggers = get_active_trigger_names(app_config, mqtt_broker=mqtt_broker)
-    if mqtt_broker:
-        if processor_ok and isinstance(heartbeat_data, dict) and "mqtt_connected" in heartbeat_data:
-            mqtt_display = "ok" if heartbeat_data.get("mqtt_connected") else "error"
-        else:
-            mqtt_display = mqtt_status
-    elif feed_source == "mqtt":
-        mqtt_display = mqtt_status
-    else:
-        mqtt_display = "not_used"
+    broker_s = str(mqtt_broker or "").strip()
+    mqtt_display = mqtt_display_for_ui(
+        mqtt_broker=broker_s,
+        feed_source=str(feed_source or "mqtt"),
+        mqtt_status_web=mqtt_status,
+        heartbeat_data=heartbeat_data,
+    )
     esphome_display = esphome_status if feed_source == "esphome" else "not_used"
     birdnet_url = (app_config.get("general.birdnet_url") or "").strip()
     if any(
