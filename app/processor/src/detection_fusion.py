@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Iterable
+from typing import Any, Iterable
 from datetime import datetime, timezone
 
 from decision_outcome import compute_outcome_bucket
@@ -347,8 +347,18 @@ def _frigate_events_camera_scoped(
     return out
 
 
-def _clamp_fusion_confidence_inflation(detections: list[dict]) -> list[dict]:
-    """Prevent Frigate/BirdNET/learned fusion from rescuing weak non-species tracks."""
+def _clamp_fusion_confidence_inflation(detections: list[dict], app_config: Any) -> list[dict]:
+    """Prevent Frigate/BirdNET/learned fusion from rescuing weak non-species tracks.
+
+    По умолчанию итоговый confidence не поднимается выше pre-fusion. Необязательный
+    ``detection.fusion_non_species_confidence_slack`` разрешает небольшой «хвост»
+    для cross_source_bonus (до base + slack).
+    """
+    try:
+        slack = float((app_config or {}).get("detection.fusion_non_species_confidence_slack") or 0.0)
+    except (TypeError, ValueError):
+        slack = 0.0
+    slack = max(0.0, min(0.25, slack))
     for d in detections:
         kind = str(d.get("decision_kind") or "").strip().lower()
         if kind == "accepted_species":
@@ -358,8 +368,9 @@ def _clamp_fusion_confidence_inflation(detections: list[dict]) -> list[dict]:
             cur = float(d.get("confidence") or 0.0)
         except (TypeError, ValueError):
             continue
-        if cur > base:
-            d["confidence"] = float(base)
+        cap = base + slack
+        if cur > cap:
+            d["confidence"] = float(cap)
             d["_fusion_clamped"] = True
     return detections
 
@@ -506,7 +517,7 @@ def build_fused_video_detections(
             prev_fusion_used = str(d.get("_fusion_used") or "").strip()
             d["_fusion_used"] = f"learned+{prev_fusion_used}" if prev_fusion_used else "learned"
             d["_fusion_score"] = fused_score
-    fused = _clamp_fusion_confidence_inflation(fused)
+    fused = _clamp_fusion_confidence_inflation(fused, app_config)
     fused = apply_runtime_contract_rows(fused)
     if fusion_min_confidence_to_store is not None:
         try:

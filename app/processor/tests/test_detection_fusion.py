@@ -1141,3 +1141,45 @@ def test_build_fused_video_detections_keeps_fragmented_generic_bird_visits_separ
         (1, 1.0, 3.0),
         (2, 31.0, 39.0),
     ]
+
+
+def test_fusion_clamp_non_species_respects_slack():
+    rows = [
+        {
+            'decision_kind': 'accepted_generic',
+            '_pre_fusion_confidence': 0.40,
+            'confidence': 0.50,
+        }
+    ]
+    cfg = DummyConfig({'detection.fusion_non_species_confidence_slack': 0.02})
+    out = detection_fusion_mod._clamp_fusion_confidence_inflation(rows, cfg)
+    assert abs(out[0]['confidence'] - 0.42) < 1e-9
+    assert out[0].get('_fusion_clamped') is True
+
+
+def test_fusion_clamp_non_species_zero_slack_legacy():
+    rows = [
+        {
+            'decision_kind': 'accepted_generic',
+            '_pre_fusion_confidence': 0.40,
+            'confidence': 0.50,
+        }
+    ]
+    cfg = DummyConfig({'detection.fusion_non_species_confidence_slack': 0.0})
+    out = detection_fusion_mod._clamp_fusion_confidence_inflation(rows, cfg)
+    assert abs(out[0]['confidence'] - 0.40) < 1e-9
+
+
+def test_fusion_clamp_skips_accepted_species():
+    rows = [
+        {
+            'decision_kind': 'accepted_species',
+            '_pre_fusion_confidence': 0.40,
+            'confidence': 0.90,
+        }
+    ]
+    out = detection_fusion_mod._clamp_fusion_confidence_inflation(
+        rows,
+        DummyConfig({'detection.fusion_non_species_confidence_slack': 0.0}),
+    )
+    assert abs(out[0]['confidence'] - 0.90) < 1e-9

@@ -1,9 +1,14 @@
-# Soft YOLO/decision thresholds (2026-02) — deep-merge в user_config через apply_user_config_patch.py
+# YOLO / ByteTrack / fusion tuning — deep-merge в user_config через apply_user_config_patch.py
 # См. scripts/server-apply-user-config-patch.sh
-# Геометрия дня выровнена с night overrides — меньше отсева мелких боксов (DINO/Re-ID кропы).
 detection:
   min_confidence_to_store: 0.22
+  fusion_non_species_confidence_slack: 0.02
 processor:
+  inference_lores_px: 704
+  track_regen_lores_px: 704
+  binary_imgsz: 704
+  binary_track_iou: 0.72
+  binary_track_max_det: 384
   min_box_size_px: 40
   min_center_dist: 0.03
   max_classifications_per_frame: 4
@@ -20,3 +25,4 @@ processor:
         min_confidence_binary_bird: 0.26
         min_confidence_to_process: 0.24
         min_track_duration: 0.65
+        binary_imgsz: 704
