@@ -5074,6 +5074,12 @@ components:
               type: integer
             binary_imgsz:
               type: integer
+            binary_track_iou:
+              type: number
+              description: Optional NMS IoU for Ultralytics YOLO.track() on the binary detector (omit from JSON to use engine default)
+            binary_track_max_det:
+              type: integer
+              description: Optional max detections per frame for binary YOLO.track()
             classification_scheduler:
               type: string
             max_classifications_per_frame:

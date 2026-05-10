@@ -21,6 +21,31 @@ def _rodent_binary_threshold_raw(app_config: Mapping[str, Any]) -> Any:
     return app_config.get("processor.min_confidence_binary_squirrel")
 
 
+def build_binary_track_ultralytics_extras(runtime_cfg: Mapping[str, Any]) -> dict[str, float | int]:
+    """Доп. аргументы для ``YOLO.track()`` / NMS: ``iou``, ``max_det``.
+
+    Пустые/null в конфиге — ключ не передаём (поведение Ultralytics по умолчанию).
+    """
+    extras: dict[str, float | int] = {}
+    raw_iou = runtime_cfg.get("processor.binary_track_iou")
+    if raw_iou is not None and raw_iou != "":
+        try:
+            v = float(raw_iou)
+            if 0.05 <= v <= 0.95:
+                extras["iou"] = v
+        except (TypeError, ValueError):
+            pass
+    raw_md = runtime_cfg.get("processor.binary_track_max_det")
+    if raw_md is not None and raw_md != "":
+        try:
+            v = int(raw_md)
+            if 1 <= v <= 1000:
+                extras["max_det"] = v
+        except (TypeError, ValueError):
+            pass
+    return extras
+
+
 def binary_track_ultralytics_conf_floor(base_min: float, app_config: Mapping[str, Any]) -> float:
     """
     Минимальный ``conf`` для YOLO ``track()``, чтобы кандидаты не отсекались до per-label фильтра.
@@ -538,6 +563,7 @@ class TwoStageStrategy(DetectionStrategy):
             "imgsz": imgsz,
             "tracker": tracker_config,
         }
+        _tkw.update(build_binary_track_ultralytics_extras(runtime_cfg))
         _bdev = getattr(self, "_binary_track_device", None)
         if _bdev:
             _tkw["device"] = _bdev

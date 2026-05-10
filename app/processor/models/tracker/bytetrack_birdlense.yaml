@@ -1,0 +1,11 @@
+# Дневной сценарий (нормальный свет): тот же трекер, что и без adaptive «night».
+# Чуть ниже пороги high/new и чуть мягче match vs legacy 0.34/0.89 — больше стабильных ID
+# при средних conf; max_det/NMS задаются в processor.binary_track_* (Ultralytics track()).
+# upstream: ultralytics/cfg/trackers/bytetrack.yaml (8.4.x)
+tracker_type: bytetrack
+track_high_thresh: 0.325
+track_low_thresh: 0.06
+new_track_thresh: 0.325
+track_buffer: 21
+match_thresh: 0.88
+fuse_score: true

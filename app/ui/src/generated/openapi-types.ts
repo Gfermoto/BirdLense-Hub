@@ -8296,6 +8296,10 @@ export interface components {
                 frame_processing_warn_ms?: number;
                 inference_lores_px?: number;
                 binary_imgsz?: number;
+                /** @description Optional NMS IoU for Ultralytics YOLO.track() on the binary detector (omit from JSON to use engine default) */
+                binary_track_iou?: number;
+                /** @description Optional max detections per frame for binary YOLO.track() */
+                binary_track_max_det?: number;
                 classification_scheduler?: string;
                 max_classifications_per_frame?: number;
                 max_blur_checks?: number;

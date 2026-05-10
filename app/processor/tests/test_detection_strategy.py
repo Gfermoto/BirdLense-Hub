@@ -38,11 +38,13 @@ try:
         _regional_class_ids,
         binary_track_ultralytics_conf_floor,
         bird_skip_classifier_area_limit,
+        build_binary_track_ultralytics_extras,
         per_label_binary_conf_threshold,
         should_skip_bird_species_classifier,
     )
 except ImportError:
     TwoStageStrategy = None  # type: ignore
+    build_binary_track_ultralytics_extras = None  # type: ignore
     _regional_class_ids = None  # type: ignore
     binary_track_ultralytics_conf_floor = None  # type: ignore
     bird_skip_classifier_area_limit = None  # type: ignore
@@ -667,6 +669,32 @@ class TestBinaryConfHelpers(unittest.TestCase):
         self.assertFalse(should_skip_bird_species_classifier("Bird", 0.05, cfg))
         self.assertFalse(should_skip_bird_species_classifier("Rodent", 0.01, cfg))
         self.assertIsNone(bird_skip_classifier_area_limit({}))
+
+
+class TestBuildBinaryTrackUltralyticsExtras(unittest.TestCase):
+    def test_extras_include_iou_and_max_det_when_valid(self):
+        if build_binary_track_ultralytics_extras is None:
+            self.skipTest("detection_strategy import failed")
+        cfg = {
+            "processor.binary_track_iou": 0.72,
+            "processor.binary_track_max_det": 384,
+        }
+        self.assertEqual(
+            build_binary_track_ultralytics_extras(cfg),
+            {"iou": 0.72, "max_det": 384},
+        )
+
+    def test_extras_skip_invalid_or_out_of_range(self):
+        if build_binary_track_ultralytics_extras is None:
+            self.skipTest("detection_strategy import failed")
+        self.assertEqual(
+            build_binary_track_ultralytics_extras({"processor.binary_track_iou": 0.01}),
+            {},
+        )
+        self.assertEqual(
+            build_binary_track_ultralytics_extras({"processor.binary_track_max_det": 5000}),
+            {},
+        )
 
 
 class TestTwoStageBirdSkipClassifier(unittest.TestCase):

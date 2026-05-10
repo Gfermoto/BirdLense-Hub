@@ -110,12 +110,18 @@ app/ui/coverage/
 # Артефакты (curl -c, debug)
 **/-X
 
-# Обученные модели (веса и артефакты обучения)
-app/processor/models/
-# Исключение: текстовые allowlist-файлы — часть конфигурации, не весов
+# Обученные модели (веса): игнор под models/, кроме явных текстов/YAML.
+# Примечание: app/processor/models/ целиком ломает negation для подкаталогов — используем models/*.
+app/processor/models/*
+!app/processor/models/classification/
+app/processor/models/classification/*
+!app/processor/models/classification/weights/
+app/processor/models/classification/weights/*
 !app/processor/models/classification/weights/class_names.txt
-# Краткая памятка по бинарному детектору (не веса)
+!app/processor/models/detection/
+app/processor/models/detection/*
 !app/processor/models/detection/README.md
+!app/processor/models/tracker/
 
 # Сгенерированная документация (make docs)
 docs/api/
