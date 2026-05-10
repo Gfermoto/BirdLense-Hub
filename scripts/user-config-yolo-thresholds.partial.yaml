@@ -1,0 +1,18 @@
+# Soft YOLO/decision thresholds (2026-02) — deep-merge в user_config через apply_user_config_patch.py
+# См. scripts/server-apply-user-config-patch.sh
+detection:
+  min_confidence_to_store: 0.22
+processor:
+  min_confidence_binary: 0.24
+  min_confidence_binary_bird: 0.26
+  min_confidence_to_process: 0.24
+  min_track_duration: 0.75
+  generic_bird_min_detector_conf: 0.36
+  generic_bird_min_best_frame_score: 5.5
+  adaptive_profiles:
+    night:
+      overrides:
+        min_confidence_binary: 0.22
+        min_confidence_binary_bird: 0.26
+        min_confidence_to_process: 0.24
+        min_track_duration: 0.65
