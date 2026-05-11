@@ -468,7 +468,7 @@ class TestTrackIdMissingBehavior(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertEqual(results[0].boxes.id.tolist(), [7])
 
-    def test_two_stage_returns_empty_when_ids_stay_none(self):
+    def test_two_stage_live_iou_fallback_keeps_detection_when_ids_stay_none(self):
         if TwoStageStrategy is None:
             self.skipTest("TwoStageStrategy not available (import failed).")
         frame = np.zeros((400, 400, 3), dtype=np.uint8)
@@ -482,7 +482,7 @@ class TestTrackIdMissingBehavior(unittest.TestCase):
                 "names": {14: "bird"},
             },
         )()
-        strategy.classifier_model = _FakeClassifierModel({0: "X"}, {10: [1.0]})
+        strategy.classifier_model = _FakeClassifierModel({0: "X"}, {0: [1.0]})
         strategy.classes = None
         strategy.regional_species = None
         strategy.logger = logging.getLogger("test")
@@ -496,7 +496,8 @@ class TestTrackIdMissingBehavior(unittest.TestCase):
         strategy.is_blurry = lambda crop: (False, 250.0)
 
         results = strategy.detect(frame, "bytetrack.yaml", 0.1)
-        self.assertEqual(results, [])
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].track_id, 1)
 
 
 class TestGreedyIoUTrackIds(unittest.TestCase):
