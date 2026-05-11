@@ -21,6 +21,9 @@ def test_domain_health_includes_strict_quality_block(client):
     assert "duplicate_detection_groups_ok" in strict
     assert "duplicate_video_groups" in (payload.get("metrics") or {})
     assert "duplicate_detection_groups" in (payload.get("metrics") or {})
+    samples = payload.get("samples") or {}
+    assert "binary_backend_counts_24h" in samples
+    assert "inference_device_counts_24h" in samples
 
 
 def test_domain_health_flags_duplicate_detection_groups(app, client):

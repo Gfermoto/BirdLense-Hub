@@ -458,6 +458,316 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
         self.assertEqual(trace_payload['recording_context']['policy_snapshot']['min_confidence_to_store'], 0.05)
         self.assertEqual(trace_payload['recording_context']['policy_snapshot']['classifier_fallback_bird'], True)
 
+    def test_restores_yolo_anchor_when_fusion_drops_all_yolo_rows(self):
+        api = MagicMock()
+        api.create_video.return_value = {'video_id': 101}
+        motion_detector = MagicMock()
+        mqtt_aggregator = None
+        frame_processor = MagicMock(tracks={1: {'start_time': 0.0, 'end_time': 2.0}})
+        decision_maker = MagicMock()
+        frame = np.zeros((32, 32, 3), dtype=np.uint8)
+        decision_maker.get_decisions.return_value = [{
+            'track_id': 1,
+            'accepted': True,
+            'species_name': 'Great Tit',
+            'start_time': 0.0,
+            'end_time': 2.0,
+            'confidence': 0.77,
+            'frames': [{'t': 0.0, 'bbox': [0.0, 0.0, 1.0, 1.0]}],
+            'best_frame': frame,
+            'decision_reason': 'accepted_species',
+            'decision_kind': 'accepted_species',
+            'visit_eligible': True,
+            'notification_eligible': True,
+            'detection_provider': 'yolo',
+            'source': 'video',
+        }]
+        fused_rows = [{
+            'track_id': -1,
+            'accepted': True,
+            'species_name': 'Great Tit',
+            'start_time': 0.0,
+            'end_time': 2.0,
+            'confidence': 0.8,
+            'frames': [{'t': 0.2, 'bbox': [0.1, 0.1, 0.9, 0.9]}],
+            'decision_reason': 'frigate_standalone',
+            'decision_kind': 'frigate_standalone',
+            'visit_eligible': True,
+            'notification_eligible': True,
+            'detection_provider': 'frigate',
+            'source': 'video',
+        }]
+
+        def fake_cfg_get(key, default=None):
+            mapping = {
+                'detection.merge_window_seconds': 5,
+                'processor.min_track_duration': 1,
+                'processor.generate_spectrogram_always': False,
+                'processor.save_dataset_crops': False,
+                'integrations.scales.enabled': False,
+                'processor.min_confidence_to_notify': 0.3,
+                'processor.min_confidence_to_process': 0.3,
+                'detection.min_confidence_to_store': 0.05,
+                'processor.dataset_min_confidence': 0.5,
+                'detection.yolo_core_anchor_enabled': True,
+                'detection.persist_video_detections_require_frames': True,
+            }
+            return mapping.get(key, default)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = os.path.join(tmp, 'session')
+            os.makedirs(out_dir, exist_ok=True)
+            video_path = os.path.join(out_dir, 'clip.mp4')
+            vw = cv2.VideoWriter(
+                video_path,
+                cv2.VideoWriter_fourcc(*'mp4v'),
+                2.0,
+                (32, 32),
+            )
+            vw.write(frame)
+            vw.release()
+            with patch.object(
+                recording_finalize_mod.app_config,
+                'get',
+                side_effect=fake_cfg_get,
+            ), patch(
+                'recording_finalize.build_fused_video_detections',
+                return_value=fused_rows,
+            ), patch(
+                'recording_finalize.generate_spectrogram',
+                return_value=False,
+            ), patch(
+                'recording_finalize._is_playable_video_file',
+                return_value=True,
+            ):
+                finalize_motion_recording(
+                    api,
+                    motion_detector,
+                    mqtt_aggregator,
+                    frame_processor,
+                    decision_maker,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    output_path_physical=out_dir,
+                    output_path_logical='data/recordings/2026/05/11/194500',
+                    video_output=video_path,
+                    video_path_for_api='data/recordings/2026/05/11/194500/video.mp4',
+                    scales_topic_arg=None,
+                    data_dir=tmp,
+                )
+
+        persisted = api.create_video.call_args.args[0]
+        providers = {str(item.get('detection_provider') or '').lower() for item in persisted}
+        self.assertIn('yolo', providers)
+        anchor_rows = [item for item in persisted if item.get('yolo_core_anchor_forced')]
+        self.assertEqual(len(anchor_rows), 1)
+
+    def test_drops_video_rows_without_frames_before_api_create(self):
+        api = MagicMock()
+        api.create_video.return_value = {'video_id': 102}
+        motion_detector = MagicMock()
+        mqtt_aggregator = None
+        frame_processor = MagicMock(tracks={1: {'start_time': 0.0, 'end_time': 2.0}})
+        decision_maker = MagicMock()
+        frame = np.zeros((32, 32, 3), dtype=np.uint8)
+        decision_maker.get_decisions.return_value = [{
+            'track_id': 1,
+            'accepted': True,
+            'species_name': 'Robin',
+            'start_time': 0.0,
+            'end_time': 2.0,
+            'confidence': 0.71,
+            'frames': [{'t': 0.0, 'bbox': [0.0, 0.0, 1.0, 1.0]}],
+            'best_frame': frame,
+            'decision_reason': 'accepted_species',
+            'decision_kind': 'accepted_species',
+            'visit_eligible': True,
+            'notification_eligible': True,
+            'detection_provider': 'yolo',
+            'source': 'video',
+        }]
+        fused_rows = [
+            {
+                'track_id': -1,
+                'accepted': True,
+                'species_name': 'Robin',
+                'start_time': 0.0,
+                'end_time': 2.0,
+                'confidence': 0.8,
+                'frames': [],
+                'decision_reason': 'frigate_standalone',
+                'decision_kind': 'frigate_standalone',
+                'visit_eligible': True,
+                'notification_eligible': True,
+                'detection_provider': 'frigate',
+                'source': 'video',
+            },
+            {
+                'track_id': -2,
+                'accepted': True,
+                'species_name': 'Robin',
+                'start_time': 0.0,
+                'end_time': 2.0,
+                'confidence': 0.79,
+                'frames': [{'t': 0.3, 'bbox': [0.1, 0.1, 0.8, 0.8]}],
+                'decision_reason': 'frigate_standalone',
+                'decision_kind': 'frigate_standalone',
+                'visit_eligible': True,
+                'notification_eligible': True,
+                'detection_provider': 'frigate',
+                'source': 'video',
+            },
+        ]
+
+        def fake_cfg_get(key, default=None):
+            mapping = {
+                'detection.merge_window_seconds': 5,
+                'processor.min_track_duration': 1,
+                'processor.generate_spectrogram_always': False,
+                'processor.save_dataset_crops': False,
+                'integrations.scales.enabled': False,
+                'processor.min_confidence_to_notify': 0.3,
+                'processor.min_confidence_to_process': 0.3,
+                'detection.min_confidence_to_store': 0.05,
+                'processor.dataset_min_confidence': 0.5,
+                'detection.yolo_core_anchor_enabled': True,
+                'detection.persist_video_detections_require_frames': True,
+            }
+            return mapping.get(key, default)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = os.path.join(tmp, 'session')
+            os.makedirs(out_dir, exist_ok=True)
+            video_path = os.path.join(out_dir, 'clip.mp4')
+            vw = cv2.VideoWriter(
+                video_path,
+                cv2.VideoWriter_fourcc(*'mp4v'),
+                2.0,
+                (32, 32),
+            )
+            vw.write(frame)
+            vw.release()
+            with patch.object(
+                recording_finalize_mod.app_config,
+                'get',
+                side_effect=fake_cfg_get,
+            ), patch(
+                'recording_finalize.build_fused_video_detections',
+                return_value=fused_rows,
+            ), patch(
+                'recording_finalize.generate_spectrogram',
+                return_value=False,
+            ), patch(
+                'recording_finalize._is_playable_video_file',
+                return_value=True,
+            ):
+                finalize_motion_recording(
+                    api,
+                    motion_detector,
+                    mqtt_aggregator,
+                    frame_processor,
+                    decision_maker,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    output_path_physical=out_dir,
+                    output_path_logical='data/recordings/2026/05/11/194600',
+                    video_output=video_path,
+                    video_path_for_api='data/recordings/2026/05/11/194600/video.mp4',
+                    scales_topic_arg=None,
+                    data_dir=tmp,
+                )
+
+        persisted = api.create_video.call_args.args[0]
+        self.assertGreater(len(persisted), 0)
+        for item in persisted:
+            self.assertTrue(item.get('frames'))
+
+    def test_salvages_weak_yolo_track_as_review_only_when_fused_empty(self):
+        api = MagicMock()
+        api.create_video.return_value = {'video_id': 103}
+        motion_detector = MagicMock()
+        mqtt_aggregator = None
+        frame = np.zeros((32, 32, 3), dtype=np.uint8)
+        frame_processor = MagicMock(
+            tracks={
+                11: {
+                    'start_time': 0.0,
+                    'end_time': 3.2,
+                    'frames': [{'t': 0.0, 'bbox': [0.0, 0.0, 1.0, 1.0]}],
+                    'detector_events': [{'label': 'Bird', 'confidence': 0.19}],
+                    'best_frame': frame,
+                    'best_frame_score': 7.2,
+                }
+            }
+        )
+        decision_maker = MagicMock()
+        decision_maker.get_decisions.return_value = []
+
+        def fake_cfg_get(key, default=None):
+            mapping = {
+                'detection.merge_window_seconds': 5,
+                'processor.min_track_duration': 1,
+                'processor.generate_spectrogram_always': False,
+                'processor.save_dataset_crops': False,
+                'integrations.scales.enabled': False,
+                'processor.min_confidence_to_notify': 0.3,
+                'processor.min_confidence_to_process': 0.3,
+                'detection.min_confidence_to_store': 0.22,
+                'processor.dataset_min_confidence': 0.5,
+                'detection.yolo_core_anchor_enabled': True,
+                'detection.persist_video_detections_require_frames': True,
+                'detection.yolo_weak_track_salvage_enabled': True,
+                'detection.yolo_weak_track_salvage_min_confidence': 0.1,
+            }
+            return mapping.get(key, default)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = os.path.join(tmp, 'session')
+            os.makedirs(out_dir, exist_ok=True)
+            video_path = os.path.join(out_dir, 'clip.mp4')
+            vw = cv2.VideoWriter(
+                video_path,
+                cv2.VideoWriter_fourcc(*'mp4v'),
+                2.0,
+                (32, 32),
+            )
+            vw.write(frame)
+            vw.release()
+            with patch.object(
+                recording_finalize_mod.app_config,
+                'get',
+                side_effect=fake_cfg_get,
+            ), patch(
+                'recording_finalize.build_fused_video_detections',
+                return_value=[],
+            ), patch(
+                'recording_finalize.generate_spectrogram',
+                return_value=False,
+            ), patch(
+                'recording_finalize._is_playable_video_file',
+                return_value=True,
+            ):
+                finalize_motion_recording(
+                    api,
+                    motion_detector,
+                    mqtt_aggregator,
+                    frame_processor,
+                    decision_maker,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    output_path_physical=out_dir,
+                    output_path_logical='data/recordings/2026/05/11/210500',
+                    video_output=video_path,
+                    video_path_for_api='data/recordings/2026/05/11/210500/video.mp4',
+                    scales_topic_arg=None,
+                    data_dir=tmp,
+                )
+
+        persisted = api.create_video.call_args.args[0]
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0].get('decision_kind'), 'review_only_generic')
+        self.assertTrue(persisted[0].get('yolo_weak_track_salvage'))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -40,8 +40,9 @@ processor:
   # Свежее подтверждение Frigate держит клип «живым» ещё N сек, даже если YOLO на паре кадров молчит.
   # Помогает не обрывать ролик, пока объект ещё реально в кадре.
   frigate_activity_hold_seconds: 6
-  # Мин. длительность трека ByteTrack (сек). Короткие визиты (грызун) — 0.9–1.0; при шуме/«эхо» поднимите.
-  min_track_duration: 0.95
+  # Мин. длительность трека ByteTrack (сек). Для feeder-сцен с быстрыми посадками держим ниже,
+  # чтобы не терять валидные короткие треки; шум гасится decision/fusion-порогами ниже.
+  min_track_duration: 0.25
   # Только офлайн-перегенерация треков: ниже live, иначе короткие визиты и рваные track_id → rejected_short_track и пустые overlays в UI.
   track_regen_min_track_duration: 0.05
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
@@ -113,10 +114,10 @@ processor:
         light_gate_min_contrast: 6
         # Смягчить бинарный Bird-порог и small-object фильтры на ночных клипах.
         min_confidence_binary: 0.24
-        min_confidence_binary_bird: 0.28
-        min_track_duration: 0.7
+        min_confidence_binary_bird: 0.24
+        min_track_duration: 0.45
         min_confidence_to_process: 0.30
-        min_box_size_px: 40
+        min_box_size_px: 32
         min_center_dist: 0.03
         max_classifications_per_frame: 4
         binary_imgsz: 640
@@ -192,9 +193,25 @@ processor:
   # Потолок детекций на кадр (по умолчанию у YOLO часто 300).
   binary_track_max_det: 384
   # Small boxes on feeder scenes are often debris or motion noise.
-  min_box_size_px: 40
+  min_box_size_px: 32
+  # Универсальный fallback для всех камер/доменов: если после базовых фильтров валидных боксов нет,
+  # дать второй шанс мелким объектам с мягкими геометрическими/уверенностными порогами.
+  auto_small_object_relax_enabled: true
+  auto_small_object_relax_min_box_size_px: 18
+  auto_small_object_relax_min_center_dist: 0.01
+  auto_small_object_relax_conf_delta: 0.06
+  auto_small_object_relax_max_candidates: 3
+  # Если долго нет треков подряд, временно ослабить binary confidence floor.
+  # Универсальный механизм для любых камер/доменов без ручных per-camera правил.
+  auto_unstick_enabled: true
+  auto_unstick_no_track_frames: 180
+  auto_unstick_min_confidence_binary: 0.12
   # Guardrail against detector collapse into near full-frame boxes.
   max_box_area_norm: 0.85
+  # Точечные per-camera override'ы для дальних/крупноплановых камер.
+  # Ключ = video.cameras[].id. Поддерживаются те же processor-* поля, что и в adaptive profile overrides
+  # (например min_box_size_px, min_confidence_binary_bird, min_confidence_to_process, min_track_duration).
+  camera_overrides: {}
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
   generic_bird_min_detector_conf: 0.42
   generic_bird_min_frames: 2
@@ -386,13 +403,13 @@ detection:
   source_priority: ["yolo", "frigate"]
   # При первом совпадении YOLO track и Frigate species в окне ролика — разово +bonus к confidence (потолок 1.0)
   cross_source_confidence_bonus: 0.02
-  # Ниже порога детекция отбрасывается после fusion; должно быть ≤ processor.min_confidence_to_process
-  min_confidence_to_store: 0.28
-  # Если YOLO/ByteTrack не дали ни одного принятого трека, но в окне записи есть Frigate MQTT —
-  # создать финальную детекцию по Frigate (клип не удаляется «пустым»). Ручная разметка в UI при ложняках.
-  frigate_standalone_when_no_yolo: true
-  # Не отключать standalone ради «чистого» YOLO — иначе пустые клипы. Качество Frigate:
-  # motion.frigate_min_trigger_score, frigate_standalone_min_score; проверка весов/CUDA: scripts/verify-eu-model.sh
+  # Ниже порога детекция отбрасывается после fusion; должно быть ≤ processor.min_confidence_to_process.
+  # Держим мягче, чтобы YOLO-треки не пропадали до записи в БД/overlay.
+  min_confidence_to_store: 0.22
+  # Frigate — fallback/подстраховка, не primary: по умолчанию не создаём финальную детекцию
+  # только по MQTT без YOLO-трека.
+  frigate_standalone_when_no_yolo: false
+  # При включении standalone мониторьте баланс провайдеров: fusion_provider_yolo должен оставаться доминирующим.
   # Если ровно один accepted_generic «Bird» от YOLO — НЕ подменять на Frigate standalone по умолчанию.
   # Иначе Frigate начинает доминировать как primary provider даже при наличии визуального YOLO-трека.
   frigate_standalone_when_no_accepted_species: false
@@ -406,6 +423,10 @@ detection:
   frigate_standalone_excluded_missing_score_fallback: 0.58
   # false — standalone-визиты в БД без фото в Telegram (min_confidence_to_notify всё равно для остальных).
   frigate_standalone_notify: true
+  # Если у YOLO есть треки, но после Decision/Fusion всё отклонено — сохранить лучший трек как review_only,
+  # чтобы не терять геометрию/overlay на длинных клипах со слабой уверенностью.
+  yolo_weak_track_salvage_enabled: true
+  yolo_weak_track_salvage_min_confidence: 0.10
   # Learned fusion: optional learned scorer to blend multimodal signals and produce
   # a calibrated confidence. Disabled by default for safety.
   use_learned_fusion: false

@@ -546,6 +546,37 @@ class TwoStageStrategy(DetectionStrategy):
         min_box_size_px = int(
             runtime_cfg.resolve_strategy_field("processor.min_box_size_px", self, "min_box_size_px", 64) or 64
         )
+        auto_small_object_relax_enabled = bool(runtime_cfg.get("processor.auto_small_object_relax_enabled", True))
+        try:
+            auto_small_object_relax_min_box_size_px = int(
+                runtime_cfg.get("processor.auto_small_object_relax_min_box_size_px") or min_box_size_px
+            )
+        except (TypeError, ValueError):
+            auto_small_object_relax_min_box_size_px = int(min_box_size_px)
+        auto_small_object_relax_min_box_size_px = max(1, auto_small_object_relax_min_box_size_px)
+        try:
+            auto_small_object_relax_min_center_dist = float(
+                runtime_cfg.get("processor.auto_small_object_relax_min_center_dist")
+                if runtime_cfg.get("processor.auto_small_object_relax_min_center_dist") is not None
+                else min_center_dist
+            )
+        except (TypeError, ValueError):
+            auto_small_object_relax_min_center_dist = float(min_center_dist)
+        auto_small_object_relax_min_center_dist = max(0.0, min(0.45, auto_small_object_relax_min_center_dist))
+        try:
+            auto_small_object_relax_conf_delta = float(
+                runtime_cfg.get("processor.auto_small_object_relax_conf_delta") or 0.0
+            )
+        except (TypeError, ValueError):
+            auto_small_object_relax_conf_delta = 0.0
+        auto_small_object_relax_conf_delta = max(0.0, min(0.25, auto_small_object_relax_conf_delta))
+        try:
+            auto_small_object_relax_max_candidates = int(
+                runtime_cfg.get("processor.auto_small_object_relax_max_candidates") or 2
+            )
+        except (TypeError, ValueError):
+            auto_small_object_relax_max_candidates = 2
+        auto_small_object_relax_max_candidates = max(1, min(8, auto_small_object_relax_max_candidates))
         classification_budget_limit = int(
             runtime_cfg.resolve_strategy_field(
                 "processor.max_classifications_per_frame",
@@ -638,48 +669,91 @@ class TwoStageStrategy(DetectionStrategy):
 
         h, w, _ = frame.shape
 
-        valid_boxes = []
-        for track_id, class_idx, conf, bbox_norm, bbox_abs in zip(track_ids, class_indexes, confidences, xyxyn, xyxy):
-            detector_name = self.binary_model.names[class_idx]
-            detector_label = self._normalize_detector_label(detector_name)
-            eff_min = per_label_binary_conf_threshold(
-                detector_label,
-                min_confidence,
-                runtime_cfg,
+        def _collect_valid_boxes(
+            *,
+            min_box_px: int,
+            min_center: float,
+            conf_delta: float = 0.0,
+            relaxed_small_object: bool = False,
+        ) -> list[dict]:
+            out: list[dict] = []
+            for track_id, class_idx, conf, bbox_norm, bbox_abs in zip(track_ids, class_indexes, confidences, xyxyn, xyxy):
+                detector_name = self.binary_model.names[class_idx]
+                detector_label = self._normalize_detector_label(detector_name)
+                eff_min = per_label_binary_conf_threshold(
+                    detector_label,
+                    min_confidence,
+                    runtime_cfg,
+                )
+                eff_min = max(0.0, float(eff_min) - float(conf_delta))
+                if not self.is_valid_detection(
+                    bbox_norm,
+                    conf,
+                    eff_min,
+                    min_center_dist=min_center,
+                    max_box_area_norm=max_box_area_norm,
+                ):
+                    continue
+                if self.detector_scope and detector_label not in self.detector_scope:
+                    continue
+
+                x1, y1, x2, y2 = map(int, bbox_abs)
+                x1, y1 = max(0, x1), max(0, y1)
+                x2, y2 = min(w, x2), min(h, y2)
+
+                if x2 <= x1 or y2 <= y1:
+                    continue
+                box_w = x2 - x1
+                box_h = y2 - y1
+                if box_w < min_box_px or box_h < min_box_px:
+                    continue
+
+                out.append(
+                    {
+                        "track_id": track_id,
+                        "detector_label": detector_label,
+                        "conf": conf,
+                        "bbox_norm": bbox_norm,
+                        "crop_coords": (x1, y1, x2, y2),
+                        "box_area_norm": max(0.0, float(bbox_norm[2] - bbox_norm[0]))
+                        * max(0.0, float(bbox_norm[3] - bbox_norm[1])),
+                        "relaxed_small_object": bool(relaxed_small_object),
+                    }
+                )
+            return out
+
+        valid_boxes = _collect_valid_boxes(
+            min_box_px=min_box_size_px,
+            min_center=min_center_dist,
+            conf_delta=0.0,
+            relaxed_small_object=False,
+        )
+        if not valid_boxes and auto_small_object_relax_enabled:
+            valid_boxes = _collect_valid_boxes(
+                min_box_px=auto_small_object_relax_min_box_size_px,
+                min_center=auto_small_object_relax_min_center_dist,
+                conf_delta=auto_small_object_relax_conf_delta,
+                relaxed_small_object=True,
             )
-            if not self.is_valid_detection(
-                bbox_norm,
-                conf,
-                eff_min,
-                min_center_dist=min_center_dist,
-                max_box_area_norm=max_box_area_norm,
-            ):
-                continue
-            if self.detector_scope and detector_label not in self.detector_scope:
-                continue
-
-            x1, y1, x2, y2 = map(int, bbox_abs)
-            x1, y1 = max(0, x1), max(0, y1)
-            x2, y2 = min(w, x2), min(h, y2)
-
-            if x2 <= x1 or y2 <= y1:
-                continue
-            box_w = x2 - x1
-            box_h = y2 - y1
-            if box_w < min_box_size_px or box_h < min_box_size_px:
-                continue
-
-            valid_boxes.append(
-                {
-                    "track_id": track_id,
-                    "detector_label": detector_label,
-                    "conf": conf,
-                    "bbox_norm": bbox_norm,
-                    "crop_coords": (x1, y1, x2, y2),
-                    "box_area_norm": max(0.0, float(bbox_norm[2] - bbox_norm[0]))
-                    * max(0.0, float(bbox_norm[3] - bbox_norm[1])),
-                }
-            )
+            if valid_boxes:
+                valid_boxes.sort(
+                    key=lambda box: (
+                        float(box.get("conf") or 0.0),
+                        float(box.get("box_area_norm") or 0.0),
+                    ),
+                    reverse=True,
+                )
+                valid_boxes = valid_boxes[:auto_small_object_relax_max_candidates]
+                logger.info(
+                    "Small-object auto-relax accepted %s box(es): min_box %s->%s, min_center_dist %.3f->%.3f, "
+                    "conf_delta=%.3f",
+                    len(valid_boxes),
+                    min_box_size_px,
+                    auto_small_object_relax_min_box_size_px,
+                    min_center_dist,
+                    auto_small_object_relax_min_center_dist,
+                    auto_small_object_relax_conf_delta,
+                )
 
         if not valid_boxes:
             return []

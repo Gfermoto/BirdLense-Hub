@@ -22,6 +22,15 @@ from recording_finalize import finalize_motion_recording
 logger = logging.getLogger(__name__)
 
 
+def _camera_processor_overrides(camera_id: str | None) -> dict:
+    """Per-camera processor override block from config (e.g. distant Forest tuning)."""
+    cam = str(camera_id or "").strip()
+    if not cam:
+        return {}
+    raw = app_config.get(f"processor.camera_overrides.{cam}")
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
 class MotionRecordingSession:
     """Явные зависимости одного цикла «motion → запись → finalize» (тонкий orchestrator в main)."""
 
@@ -176,6 +185,9 @@ class MotionRecordingSession:
             }
             runtime_profile_counts: Counter[str] = Counter()
             runtime_profile_overrides: dict[str, dict] = {}
+            camera_overrides = _camera_processor_overrides(camera_id)
+            if camera_overrides:
+                self.decision_maker.apply_runtime_overrides(camera_overrides)
             frame_n = 0
             while True:
                 if self.file_test_runtime and self.file_test_runtime.abort_session:
@@ -199,7 +211,11 @@ class MotionRecordingSession:
                 processor_status["last_video_ok_at"] = datetime.now(timezone.utc).isoformat()
                 frame_time = getattr(self.media_source, "get_frame_time", lambda: None)()
                 with self.fps_tracker:
-                    has_detections = self.frame_processor.run(frame, frame_time=frame_time)
+                    has_detections = self.frame_processor.run(
+                        frame,
+                        frame_time=frame_time,
+                        camera_overrides=camera_overrides,
+                    )
                 run_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
                 if run_stats.get("yolo_ran"):
                     runtime_signals["yolo_frames_ran"] += 1
@@ -247,7 +263,9 @@ class MotionRecordingSession:
             if runtime_profile_counts:
                 dominant_runtime_profile = runtime_profile_counts.most_common(1)[0][0]
                 dominant_runtime_overrides = dict(runtime_profile_overrides.get(dominant_runtime_profile) or {})
-                self.decision_maker.apply_runtime_overrides(dominant_runtime_overrides)
+                merged_runtime_overrides = dict(dominant_runtime_overrides)
+                merged_runtime_overrides.update(camera_overrides)
+                self.decision_maker.apply_runtime_overrides(merged_runtime_overrides)
             session_duration_ms = max(0.0, (end_time - start_time).total_seconds() * 1000.0)
             observe_timing("recording_session_duration", session_duration_ms)
             set_gauge("last_session_frames_seen", runtime_signals["frames_seen"])

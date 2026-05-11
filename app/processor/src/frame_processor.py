@@ -97,7 +97,14 @@ class FrameProcessor:
         key_frames.sort(key=lambda item: item["score"], reverse=True)
         del key_frames[self.key_frame_limit :]
 
-    def run(self, img, frame_time=None, *, skip_light_gate: bool = False):
+    def run(
+        self,
+        img,
+        frame_time=None,
+        *,
+        skip_light_gate: bool = False,
+        camera_overrides: dict | None = None,
+    ):
         """
         Process frame. frame_time: optional seconds (for video file); else uses elapsed real time.
 
@@ -129,8 +136,26 @@ class FrameProcessor:
             brightness=metrics.get("brightness"),
             contrast=metrics.get("contrast"),
         )
+        profile_overrides = dict(profile_overrides or {})
+        # Camera-specific tuning (e.g. distant camera with smaller birds) overlays
+        # profile values and applies even outside night profile.
+        if isinstance(camera_overrides, dict) and camera_overrides:
+            profile_overrides.update(camera_overrides)
+        if getattr(self.strategy, "_for_track_regen", False):
+            raw_mc = app_config.get("processor.track_regen_min_confidence_binary")
+            if raw_mc is not None:
+                try:
+                    profile_overrides["min_confidence_binary"] = float(raw_mc)
+                except (TypeError, ValueError):
+                    pass
+            raw_bird = app_config.get("processor.track_regen_min_confidence_binary_bird")
+            if raw_bird is not None:
+                try:
+                    profile_overrides["min_confidence_binary_bird"] = float(raw_bird)
+                except (TypeError, ValueError):
+                    pass
         self.last_run_stats["runtime_profile"] = profile_name
-        self.last_run_stats["profile_overrides"] = dict(profile_overrides or {})
+        self.last_run_stats["profile_overrides"] = dict(profile_overrides)
         self.last_run_stats["light_brightness"] = metrics.get("brightness")
         self.last_run_stats["light_contrast"] = metrics.get("contrast")
         set_gauge("last_runtime_profile", profile_name or "none")
@@ -166,7 +191,29 @@ class FrameProcessor:
             )
         except (TypeError, ValueError):
             min_conf = 0.22
+        auto_unstick_enabled = bool(app_config.get("processor.auto_unstick_enabled", True))
+        try:
+            auto_unstick_no_track_frames = int(app_config.get("processor.auto_unstick_no_track_frames") or 180)
+        except (TypeError, ValueError):
+            auto_unstick_no_track_frames = 180
+        try:
+            auto_unstick_min_conf = float(app_config.get("processor.auto_unstick_min_confidence_binary") or 0.12)
+        except (TypeError, ValueError):
+            auto_unstick_min_conf = 0.12
+        if (
+            auto_unstick_enabled
+            and auto_unstick_no_track_frames > 0
+            and self._consecutive_no_track_frames >= auto_unstick_no_track_frames
+        ):
+            min_conf = min(min_conf, auto_unstick_min_conf)
+            self.last_run_stats["auto_unstick_active"] = True
+        else:
+            self.last_run_stats["auto_unstick_active"] = False
         tracker_cfg = self._resolve_tracker_for_profile(self.last_run_stats.get("runtime_profile"))
+        if isinstance(camera_overrides, dict):
+            tracker_override = str(camera_overrides.get("tracker") or "").strip()
+            if tracker_override:
+                tracker_cfg = resolve_tracker_config_path(tracker_override)
         self.last_run_stats["tracker_used"] = tracker_cfg
         set_gauge("tracker_config_used", tracker_cfg)
         self.last_run_stats["yolo_ran"] = True
@@ -187,6 +234,10 @@ class FrameProcessor:
             self.logger.warning("Slow frame processing: %.1fms >= %.1fms", detect_ms, warn_ms)
         self.last_run_stats["result_count"] = len(results or [])
         self.last_run_stats["yolo_track_found"] = bool(results)
+        if self.last_run_stats["yolo_track_found"]:
+            self._consecutive_no_track_frames = 0
+        else:
+            self._consecutive_no_track_frames += 1
 
         if self.save_images and results:
             debug_img = img.copy()
@@ -306,3 +357,4 @@ class FrameProcessor:
             "light_gate_blocked": False,
             "result_count": 0,
         }
+        self._consecutive_no_track_frames = 0
