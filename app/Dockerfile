@@ -61,6 +61,8 @@ COPY scripts/export_fusion_training_data.py ./scripts/
 COPY scripts/train_fusion.py ./scripts/
 COPY scripts/diag_video_detect.py ./scripts/
 COPY scripts/diag_coco_bird_frames.py ./scripts/
+COPY scripts/benchmark-track-regen.py ./scripts/
+COPY scripts/benchmark_regen_labels.py ./scripts/
 # SHA256 EU-классификатора — синхронизировать с CHECKSUMS (.../classification/weights/best.pt) и fetch-processor-weights.sh.
 ARG CLASSIFIER_SHA256=9e99b6d1b0b7697f671a728bfa887f2f45d574ec932e8a745855e9818aadd46e
 # Детектор по умолчанию: Ultralytics ``yolo11n.pt`` (COCO); в конфиге ``binary_predict_class_allowlist: [14]`` только bird.
