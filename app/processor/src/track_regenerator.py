@@ -10,6 +10,7 @@ import math
 import os
 import time
 import threading
+from contextlib import contextmanager
 import cv2
 
 from shared.ctor_kwarg_guard import assert_ctor_kwargs
@@ -17,6 +18,34 @@ from yolo_geometry import letterbox_bgr_to_wh
 
 logger = logging.getLogger(__name__)
 _TRACK_REGEN_INFER_LOCK = threading.RLock()
+
+
+@contextmanager
+def _track_regen_interprocess_lock(enabled: bool):
+    """Optional cross-process lock to prevent concurrent heavy regen OOM on small hosts."""
+    if not enabled:
+        yield
+        return
+    lock_path = "/tmp/birdlense_track_regen.lock"
+    lock_fd = None
+    try:
+        import fcntl
+
+        lock_fd = open(lock_path, "w", encoding="utf-8")
+        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
+        yield
+    finally:
+        if lock_fd is not None:
+            try:
+                import fcntl
+
+                fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+            except Exception:
+                logger.debug("Track regen: interprocess unlock failed", exc_info=True)
+            try:
+                lock_fd.close()
+            except Exception:
+                logger.debug("Track regen: lock file close failed", exc_info=True)
 
 
 def _track_detection_preference(detection: dict) -> tuple[int, int, float]:
@@ -77,6 +106,7 @@ def build_detection_pipeline(
 ):
     """Собрать frame_processor и decision_maker (см. ``build_detection_stack``)."""
     from detection_stack import build_detection_stack
+    interprocess_serialize = bool(app_config.get("processor.track_regen_serialize_inference_interprocess", True))
 
     stack_kw = {
         "strategy_override": strategy_override,
@@ -91,7 +121,8 @@ def build_detection_pipeline(
         stack_kw,
         label="build_detection_pipeline→build_detection_stack",
     )
-    fp, dm, _ = build_detection_stack(app_config, **stack_kw)
+    with _track_regen_interprocess_lock(interprocess_serialize):
+        fp, dm, _ = build_detection_stack(app_config, **stack_kw)
     return fp, dm
 
 
@@ -127,6 +158,7 @@ def process_video_for_tracks(
     decision_maker.reset()
     frame_step = max(1, int(frame_step or 1))
     serialize_infer = bool(app_config.get("processor.track_regen_serialize_inference", True))
+    interprocess_serialize = bool(app_config.get("processor.track_regen_serialize_inference_interprocess", True))
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -150,51 +182,52 @@ def process_video_for_tracks(
         _hi = 20
     started = time.monotonic()
     try:
-        while True:
-            if max_runtime_sec and (time.monotonic() - started) > max_runtime_sec:
-                raise TimeoutError(f"Track regeneration timeout ({max_runtime_sec}s) for {video_path}")
-            # Только decode+retrieve на обрабатываемых кадрах; между ними — grab()
-            # без полного декодирования (иначе frame_step почти не ускоряет батч).
-            if frame_count % frame_step == 0:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                frame_time_sec = frame_count / fps
-                # Не stretch в lores_size: иначе на 16:9 клипах YOLO+ByteTrack почти пустой (см. yolo_geometry).
-                frame_resized = letterbox_bgr_to_wh(frame, (int(lores_size[0]), int(lores_size[1])))
-                if serialize_infer:
-                    with _TRACK_REGEN_INFER_LOCK:
+        with _track_regen_interprocess_lock(interprocess_serialize):
+            while True:
+                if max_runtime_sec and (time.monotonic() - started) > max_runtime_sec:
+                    raise TimeoutError(f"Track regeneration timeout ({max_runtime_sec}s) for {video_path}")
+                # Только decode+retrieve на обрабатываемых кадрах; между ними — grab()
+                # без полного декодирования (иначе frame_step почти не ускоряет батч).
+                if frame_count % frame_step == 0:
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
+                    frame_time_sec = frame_count / fps
+                    # Не stretch в lores_size: иначе на 16:9 клипах YOLO+ByteTrack почти пустой (см. yolo_geometry).
+                    frame_resized = letterbox_bgr_to_wh(frame, (int(lores_size[0]), int(lores_size[1])))
+                    if serialize_infer:
+                        with _TRACK_REGEN_INFER_LOCK:
+                            has_detections = frame_processor.run(
+                                frame_resized,
+                                frame_time=frame_time_sec,
+                                skip_light_gate=True,
+                            )
+                    else:
                         has_detections = frame_processor.run(
                             frame_resized,
                             frame_time=frame_time_sec,
                             skip_light_gate=True,
                         )
+                    decision_maker.update_has_detections(has_detections)
+                    runs_done += 1
+                    if progress_hook is not None and (
+                        runs_done == 1 or runs_done % _hi == 0 or (yolo_runs_est is not None and runs_done >= yolo_runs_est)
+                    ):
+                        try:
+                            progress_hook(
+                                {
+                                    "phase": "yolo_infer",
+                                    "yolo_frames_done": runs_done,
+                                    "yolo_frames_total": yolo_runs_est,
+                                }
+                            )
+                        except Exception:
+                            logger.debug("Track regen progress_hook failed", exc_info=True)
                 else:
-                    has_detections = frame_processor.run(
-                        frame_resized,
-                        frame_time=frame_time_sec,
-                        skip_light_gate=True,
-                    )
-                decision_maker.update_has_detections(has_detections)
-                runs_done += 1
-                if progress_hook is not None and (
-                    runs_done == 1 or runs_done % _hi == 0 or (yolo_runs_est is not None and runs_done >= yolo_runs_est)
-                ):
-                    try:
-                        progress_hook(
-                            {
-                                "phase": "yolo_infer",
-                                "yolo_frames_done": runs_done,
-                                "yolo_frames_total": yolo_runs_est,
-                            }
-                        )
-                    except Exception:
-                        logger.debug("Track regen progress_hook failed", exc_info=True)
-            else:
-                ret = cap.grab()
-                if not ret:
-                    break
-            frame_count += 1
+                    ret = cap.grab()
+                    if not ret:
+                        break
+                frame_count += 1
     finally:
         cap.release()
 
