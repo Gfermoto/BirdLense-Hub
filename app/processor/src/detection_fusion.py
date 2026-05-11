@@ -400,18 +400,23 @@ def build_fused_video_detections(
     merge_window = app_config.get("detection.merge_window_seconds", 5)
     dedup_window = app_config.get("detection.dedup_window_seconds", 45)
     one_per_species = app_config.get("detection.one_per_species", True)
-    source_priority = app_config.get("detection.source_priority") or [
+    source_priority_cfg = app_config.get("detection.source_priority") or [
         "yolo",
         "frigate",
     ]
+    source_priority = [str(x).strip().lower() for x in source_priority_cfg if str(x).strip()]
+    # Hard guard: YOLO stays primary even if config is edited incorrectly.
+    source_priority = [x for x in source_priority if x != "yolo"]
+    source_priority.insert(0, "yolo")
     cross_bonus = float(app_config.get("detection.cross_source_confidence_bonus") or 0)
     frigate_events = [
         ev for ev in (mqtt_events or []) if str((ev or {}).get("source") or "").strip().lower() == "frigate"
     ]
     frigate_events = _frigate_events_camera_scoped(frigate_events, app_config)
     frigate_events_for_merge = [ev for ev in frigate_events if not ev.get("_frigate_merge_suppressed")]
-    standalone_on = bool(app_config.get("detection.frigate_standalone_when_no_yolo", True))
-    standalone_no_species = bool(app_config.get("detection.frigate_standalone_when_no_accepted_species", True))
+    # Safe-by-default: Frigate stays fallback-only unless explicitly enabled in config.
+    standalone_on = bool(app_config.get("detection.frigate_standalone_when_no_yolo", False))
+    standalone_no_species = bool(app_config.get("detection.frigate_standalone_when_no_accepted_species", False))
     want_standalone = (
         standalone_on
         and bool(frigate_events)

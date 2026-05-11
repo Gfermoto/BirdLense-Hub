@@ -70,15 +70,21 @@ _DECISION_TRACE_LIMIT = 40
 
 
 def _policy_snapshot(app_config) -> dict[str, Any]:
+    def _get(key: str, default: Any) -> Any:
+        try:
+            return app_config.get(key, default)
+        except Exception:
+            return default
+
     def _flt(key: str, default: float) -> float:
         try:
-            return float(app_config.get(key, default))
+            return float(_get(key, default))
         except (TypeError, ValueError):
             return float(default)
 
     def _int(key: str, default: int) -> int:
         try:
-            return int(app_config.get(key, default))
+            return int(_get(key, default))
         except (TypeError, ValueError):
             return int(default)
 
@@ -86,11 +92,21 @@ def _policy_snapshot(app_config) -> dict[str, Any]:
         "min_track_duration": _flt("processor.min_track_duration", 1.0),
         "min_confidence_to_process": _flt("processor.min_confidence_to_process", 0.3),
         "min_confidence_to_store": _flt("detection.min_confidence_to_store", 0.05),
-        "classifier_fallback_bird": bool(app_config.get("processor.classifier_fallback_bird", True)),
+        "classifier_fallback_bird": bool(_get("processor.classifier_fallback_bird", True)),
         "generic_bird_min_detector_conf": _flt("processor.generic_bird_min_detector_conf", 0.45),
         "generic_bird_min_frames": _int("processor.generic_bird_min_frames", 3),
         "generic_bird_min_area_frac": _flt("processor.generic_bird_min_area_frac", 0.01),
         "generic_bird_min_best_frame_score": _flt("processor.generic_bird_min_best_frame_score", 6.5),
+        # Runtime backend snapshot for GPU/OpenVINO observability.
+        "inference_backend": str(_get("processor.inference_backend", "auto") or "auto"),
+        "classifier_inference_backend": str(
+            _get("processor.classifier_inference_backend", "auto") or "auto"
+        ),
+        "inference_device": str(_get("processor.inference_device", "auto") or "auto"),
+        "video_encoding": str(_get("video.encoding", "cpu") or "cpu"),
+        "video_capture_backend": str(_get("video.capture_backend", "auto") or "auto"),
+        "reid_runtime_enabled": bool(_get("processor.reid.runtime_enabled", True)),
+        "reid_device": str(_get("processor.reid.device", "auto") or "auto"),
     }
 
 

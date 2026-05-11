@@ -23,8 +23,9 @@ CONFIDENCE_FLOORS = {
     'processor.min_confidence_to_notify': 0.28,
     'processor.min_confidence_binary': 0.22,
     'processor.min_track_duration': 0.35,
-    # Не держать выше default_config (48): иначе «безопасный пол» режет мелкий объект на lores.
-    'processor.min_box_size_px': 40,
+    # Дальние камеры (Forest) дают мелкий bbox; пол 40 режет валидные птицы.
+    # Оставляем guard против мусора, но ниже для small-object сцен.
+    'processor.min_box_size_px': 24,
 }
 
 # Ключи с секретами — маскируются в API, не перезаписываются при сохранении placeholder

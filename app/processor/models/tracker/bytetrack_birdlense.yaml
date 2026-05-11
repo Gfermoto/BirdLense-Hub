@@ -4,10 +4,10 @@
 # max_det/NMS — processor.binary_track_* (Ultralytics track()).
 # upstream: ultralytics/cfg/trackers/bytetrack.yaml (8.4.x)
 tracker_type: bytetrack
-# Ниже min(track(conf)) из binary_track_ultralytics_conf_floor (~0.24 при дефолтных bird/rodent), но выше 0.18 — меньше ложных треков на текстуре кормушки.
-track_high_thresh: 0.21
-track_low_thresh: 0.06
-new_track_thresh: 0.21
-track_buffer: 21
-match_thresh: 0.88
+# Универсальный профиль: мягче старт трека, чтобы не терять дальний/мелкий объект.
+track_high_thresh: 0.12
+track_low_thresh: 0.05
+new_track_thresh: 0.12
+track_buffer: 32
+match_thresh: 0.82
 fuse_score: true

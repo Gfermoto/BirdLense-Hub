@@ -756,6 +756,72 @@ class TestTwoStageBirdSkipClassifier(unittest.TestCase):
         self.assertIsNone(results[0].classifier_confidence)
 
 
+class TestSmallObjectAutoRelax(unittest.TestCase):
+    def test_auto_small_object_relax_recovers_small_box(self):
+        if TwoStageStrategy is None:
+            self.skipTest("TwoStageStrategy import failed")
+        try:
+            import app_config.app_config as ac_mod
+        except ImportError:
+            self.skipTest("app_config not available on PYTHONPATH")
+
+        frame = np.zeros((120, 120, 3), dtype=np.uint8)
+        frame[10:26, 10:26] = 33
+        boxes = _FakeBoxes(
+            track_ids=[7],
+            class_indexes=[14],
+            confidences=[0.23],
+            boxes_norm=[[0.08, 0.08, 0.22, 0.22]],
+            boxes_abs=[[10, 10, 26, 26]],
+        )
+
+        strategy = TwoStageStrategy.__new__(TwoStageStrategy)
+        strategy.binary_model = type(
+            "FakeBinaryModel",
+            (),
+            {
+                "track": lambda *args, **kwargs: [_FakeDetectResult(boxes)],
+                "names": {14: "bird"},
+            },
+        )()
+        strategy.classifier_model = _FakeClassifierModel(
+            {0: "Great_Tit"},
+            {33: [1.0]},
+        )
+        strategy.classes = None
+        strategy.regional_species = None
+        strategy.logger = logging.getLogger("test_small_relax")
+        strategy.detector_scope = {"Bird", "Rodent"}
+        strategy.min_center_dist = 0.03
+        strategy.min_box_size_px = 40
+        strategy.blur_threshold = 0.0
+        strategy.max_blur_checks = 3
+        strategy.max_classifications_per_frame = 2
+        strategy._classification_index = 0
+        strategy.is_blurry = lambda crop: (False, 250.0)
+        strategy.classification_scheduler = "priority"
+        strategy.binary_imgsz = 640
+        strategy._for_track_regen = False
+
+        def _cfg_get(key, default=None):
+            mapping = {
+                "processor.auto_small_object_relax_enabled": True,
+                "processor.auto_small_object_relax_min_box_size_px": 12,
+                "processor.auto_small_object_relax_min_center_dist": 0.0,
+                "processor.auto_small_object_relax_conf_delta": 0.08,
+                "processor.auto_small_object_relax_max_candidates": 2,
+                "processor.min_confidence_binary_bird": 0.24,
+            }
+            return mapping.get(key, default)
+
+        mock_cfg = MagicMock(get=MagicMock(side_effect=_cfg_get))
+        with patch.object(ac_mod, "app_config", mock_cfg):
+            results = strategy.detect(frame, "bytetrack.yaml", 0.24)
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].track_id, 7)
+
+
 class TestEntropyMargin(unittest.TestCase):
     def test_entropy_and_margin_pure_numpy(self):
         from detection_strategy import entropy_and_margin_from_prob_vector

@@ -39,6 +39,79 @@ _NO_DETECTIONS_WARN_INTERVAL_S = 120.0
 _no_detections_warn_next_monotonic = 0.0
 
 
+def _build_weak_yolo_salvage_row(
+    tracks: dict[str, Any] | dict[int, Any],
+    *,
+    min_confidence: float = 0.10,
+) -> dict[str, Any] | None:
+    best_track = None
+    best_score = -1.0
+    for track_id, track in (tracks or {}).items():
+        frames = list(track.get("frames") or [])
+        if not frames:
+            continue
+        detector_events = list(track.get("detector_events") or [])
+        max_det_conf = max((float(ev.get("confidence") or 0.0) for ev in detector_events), default=0.0)
+        if max_det_conf < float(min_confidence):
+            continue
+        try:
+            duration = max(0.0, float(track.get("end_time") or 0.0) - float(track.get("start_time") or 0.0))
+        except (TypeError, ValueError):
+            duration = 0.0
+        score = float(len(frames)) + duration * 5.0 + max_det_conf * 3.0
+        if score > best_score:
+            best_score = score
+            best_track = (track_id, track, max_det_conf)
+    if not best_track:
+        return None
+    track_id, track, max_det_conf = best_track
+    detector_events = list(track.get("detector_events") or [])
+    detector_label = "Bird"
+    if detector_events:
+        detector_label = str(detector_events[-1].get("label") or detector_label).strip() or "Bird"
+    species_name = detector_label if detector_label in {"Bird", "Rodent"} else "Bird"
+    return {
+        "track_id": int(track_id) if str(track_id).lstrip("-").isdigit() else -9999,
+        "accepted": True,
+        "visit_eligible": False,
+        "notification_eligible": False,
+        "species_name": species_name,
+        "species": species_name,
+        "confidence": float(max_det_conf),
+        "start_time": float(track.get("start_time") or 0.0),
+        "end_time": float(track.get("end_time") or 0.0),
+        "detection_provider": "yolo",
+        "detector_confidence": float(max_det_conf),
+        "classifier_confidence": None,
+        "decision_reason": "review_only_weak_yolo_salvage",
+        "decision_kind": "review_only_generic",
+        "outcome_bucket": "review_only",
+        "source": "video",
+        "frames": list(track.get("frames") or []),
+        "best_frame": track.get("best_frame"),
+        "best_frame_score": float(track.get("best_frame_score") or 0.0),
+        "yolo_weak_track_salvage": True,
+    }
+
+
+def _best_yolo_anchor_row(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    yolo_rows = [
+        row
+        for row in (rows or [])
+        if str((row or {}).get("detection_provider") or "").strip().lower() == "yolo"
+    ]
+    if not yolo_rows:
+        return None
+    return max(
+        yolo_rows,
+        key=lambda row: (
+            float(row.get("confidence") or 0.0),
+            float(row.get("best_frame_score") or 0.0),
+            len(row.get("frames") or []),
+        ),
+    )
+
+
 def finalize_motion_recording(
     api: API,
     motion_detector: Any,
@@ -145,6 +218,65 @@ def finalize_motion_recording(
             persisted_detections=video_detections,
         )
     )
+    yolo_core_anchor_enabled = bool(app_config.get("detection.yolo_core_anchor_enabled", True))
+    if yolo_core_anchor_enabled:
+        pre_fusion_yolo_anchor = _best_yolo_anchor_row(accepted_pre_fusion)
+        has_fused_yolo = any(
+            str((row or {}).get("detection_provider") or "").strip().lower() == "yolo"
+            for row in video_detections
+        )
+        # Keep YOLO as pipeline core, but do not disable fallback: we only restore
+        # a single anchor row when YOLO had accepted rows and fusion dropped them all.
+        if yolo_tracks_count > 0 and pre_fusion_yolo_anchor and not has_fused_yolo:
+            anchor_row = dict(pre_fusion_yolo_anchor)
+            anchor_row["yolo_core_anchor_forced"] = True
+            if not str(anchor_row.get("decision_reason") or "").strip():
+                anchor_row["decision_reason"] = "yolo_core_anchor_forced"
+            if not str(anchor_row.get("decision_kind") or "").strip():
+                anchor_row["decision_kind"] = "accepted_species"
+            video_detections.append(anchor_row)
+            logging.warning(
+                "Finalize safeguard: restored one YOLO anchor row after fusion removed all YOLO rows "
+                "(tracks=%s, pre_fusion_accepted=%s).",
+                yolo_tracks_count,
+                len(accepted_pre_fusion),
+            )
+    require_frames_for_video_rows = bool(app_config.get("detection.persist_video_detections_require_frames", True))
+    if require_frames_for_video_rows and video_detections:
+        kept_rows: list[dict[str, Any]] = []
+        dropped_no_frames = 0
+        for row in video_detections:
+            if str((row or {}).get("source") or "").strip().lower() == "video" and not row.get("frames"):
+                dropped_no_frames += 1
+                continue
+            kept_rows.append(row)
+        if dropped_no_frames:
+            logging.warning(
+                "Finalize safeguard: dropped %s video row(s) without frames "
+                "(detection.persist_video_detections_require_frames=true).",
+                dropped_no_frames,
+            )
+        video_detections = kept_rows
+    if (
+        not video_detections
+        and yolo_tracks_count > 0
+        and bool(app_config.get("detection.yolo_weak_track_salvage_enabled", True))
+    ):
+        try:
+            salvage_min_conf = float(app_config.get("detection.yolo_weak_track_salvage_min_confidence") or 0.10)
+        except (TypeError, ValueError):
+            salvage_min_conf = 0.10
+        salvage = _build_weak_yolo_salvage_row(
+            frame_processor.tracks,
+            min_confidence=salvage_min_conf,
+        )
+        if salvage is not None:
+            video_detections = [salvage]
+            logging.warning(
+                "Finalize safeguard: recovered weak YOLO track as review-only (track_id=%s, conf=%.3f).",
+                salvage.get("track_id"),
+                float(salvage.get("confidence") or 0.0),
+            )
     if video_detections:
         try:
             video_detections = enrich_runtime_reid_detections(
@@ -178,6 +310,20 @@ def finalize_motion_recording(
         fusion_yolo,
         fusion_frigate,
     )
+    if yolo_tracks_count > 0 and len(video_detections) > 0 and fusion_yolo == 0:
+        logging.warning(
+            "Finalize risk: YOLO had %s track(s), but persisted rows are all non-YOLO providers. "
+            "Check fusion/source_priority and trigger settings.",
+            yolo_tracks_count,
+        )
+    persisted_without_frames = sum(
+        1 for d in video_detections if str((d or {}).get("source") or "").strip().lower() == "video" and not d.get("frames")
+    )
+    if persisted_without_frames:
+        logging.warning(
+            "Finalize risk: %s persisted video detection(s) have empty frames (overlay will be missing).",
+            persisted_without_frames,
+        )
 
     for i, d in enumerate(video_detections):
         n_frames = len(d.get("frames") or [])
