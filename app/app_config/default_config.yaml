@@ -51,6 +51,9 @@ processor:
   track_regen_frame_step: 6
   # Защитный mutex внутри процесса для OpenVINO track regen: снижает риск segfault при конкурентных regen-запросах.
   track_regen_serialize_inference: true
+  # Доп. межпроцессный lock (/tmp/birdlense_track_regen.lock): не даёт нескольким воркерам/CLI
+  # одновременно гонять тяжелый full-regen и выбивать контейнер по OOM (exit 137).
+  track_regen_serialize_inference_interprocess: true
   # Только офлайн-regen: мягче пороги YOLO track() и Bird после трека (не трогает live). Держите track(conf) выше track_high_thresh в bytetrack YAML (~0.20).
   # track_regen_min_confidence_binary: 0.21
   # track_regen_min_confidence_binary_bird: 0.22
