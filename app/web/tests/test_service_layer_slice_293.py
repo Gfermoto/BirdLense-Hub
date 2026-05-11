@@ -336,7 +336,7 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
             "notifications": {"telegram_proxy_type": "http", "send_photo": True},
             "triggers.opencv.check_every_n_frames": 2,
             "triggers.opencv.diff_threshold": 22,
-            "triggers.opencv.min_contour_area": 320,
+            "triggers.opencv.min_contour_area": 400,
             "processor.light_gate_enabled": True,
             "processor.light_gate_min_brightness": 25,
             "processor.light_gate_min_contrast": 20,
@@ -363,7 +363,7 @@ def test_build_system_config_audit_payload(monkeypatch, tmp_path):
     rw = payload["recall_warnings"]
     assert rw
     assert any("triggers.opencv.diff_threshold=22" in w and "hub default" in w for w in rw)
-    assert any("triggers.opencv.min_contour_area=320" in w and "240" in w for w in rw)
+    assert any("triggers.opencv.min_contour_area=400" in w and "320" in w for w in rw)
     assert "scales_mqtt" in payload
     assert payload["scales_mqtt"]["enabled"] is False
     assert payload["scales_warnings"] == []

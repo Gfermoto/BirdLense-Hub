@@ -232,8 +232,8 @@ def get_effective_trigger_config(
                 min(
                     20000,
                     _as_int(
-                        _get_from_config(config_or_get, "triggers.opencv.min_contour_area", 240),
-                        240,
+                        _get_from_config(config_or_get, "triggers.opencv.min_contour_area", 320),
+                        320,
                     ),
                 ),
             ),

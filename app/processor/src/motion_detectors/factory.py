@@ -67,7 +67,7 @@ def build_motion_detector(
         capture_fn=media_source.capture,
         check_every_n_frames=int(opencv_cfg.get("check_every_n_frames") or 1),
         threshold=int(opencv_cfg.get("diff_threshold") or 18),
-        min_contour_area=int(opencv_cfg.get("min_contour_area") or 240),
+        min_contour_area=int(opencv_cfg.get("min_contour_area") or 320),
     )
 
     detectors: list[tuple[str, object]] = []

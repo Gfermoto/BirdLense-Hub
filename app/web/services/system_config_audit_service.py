@@ -54,7 +54,7 @@ IGNORED_CONFIG_AUDIT_KEYS = frozenset(
 
 # Совпадает с `triggers.opencv.*` в `default_config.yaml`.
 RECOMMENDED_OPENCV_DIFF_THRESHOLD = 18
-RECOMMENDED_OPENCV_MIN_CONTOUR_AREA = 240
+RECOMMENDED_OPENCV_MIN_CONTOUR_AREA = 320
 
 
 def _safe_int(value, default: int) -> int:
