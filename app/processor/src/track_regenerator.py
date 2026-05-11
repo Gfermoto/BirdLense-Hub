@@ -9,12 +9,14 @@ import logging
 import math
 import os
 import time
+import threading
 import cv2
 
 from shared.ctor_kwarg_guard import assert_ctor_kwargs
 from yolo_geometry import letterbox_bgr_to_wh
 
 logger = logging.getLogger(__name__)
+_TRACK_REGEN_INFER_LOCK = threading.RLock()
 
 
 def _track_detection_preference(detection: dict) -> tuple[int, int, float]:
@@ -124,6 +126,7 @@ def process_video_for_tracks(
     frame_processor.reset()
     decision_maker.reset()
     frame_step = max(1, int(frame_step or 1))
+    serialize_infer = bool(app_config.get("processor.track_regen_serialize_inference", True))
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -159,11 +162,19 @@ def process_video_for_tracks(
                 frame_time_sec = frame_count / fps
                 # Не stretch в lores_size: иначе на 16:9 клипах YOLO+ByteTrack почти пустой (см. yolo_geometry).
                 frame_resized = letterbox_bgr_to_wh(frame, (int(lores_size[0]), int(lores_size[1])))
-                has_detections = frame_processor.run(
-                    frame_resized,
-                    frame_time=frame_time_sec,
-                    skip_light_gate=True,
-                )
+                if serialize_infer:
+                    with _TRACK_REGEN_INFER_LOCK:
+                        has_detections = frame_processor.run(
+                            frame_resized,
+                            frame_time=frame_time_sec,
+                            skip_light_gate=True,
+                        )
+                else:
+                    has_detections = frame_processor.run(
+                        frame_resized,
+                        frame_time=frame_time_sec,
+                        skip_light_gate=True,
+                    )
                 decision_maker.update_has_detections(has_detections)
                 runs_done += 1
                 if progress_hook is not None and (
