@@ -46,7 +46,7 @@ processor:
   # Отдельная стратегия детекции для batch-перегенерации треков (только two_stage: binary .pt + classifier .pt).
   track_regen_detection_strategy: two_stage
   # Размер кадра для batch-перегенерации треков (px). Держите ≥ inference_lores_px — иначе YOLO на архиве слабее чем в live.
-  track_regen_lores_px: 704
+  track_regen_lores_px: 640
   # Offline regen: при boxes.id=None — склейка кадров по IoU; ниже порог терпимее к дрожащим bbox (меньше «рваных» track_id).
   track_regen_iou_id_fallback: true
   track_regen_iou_match_threshold: 0.22
@@ -62,9 +62,9 @@ processor:
   # не сужать YOLO/классификатор по processor.regional_species
   # (иначе пропадают виды вне списка — типично EU-синицы при US-ориентированном регионе).
   track_regen_ignore_regional_species: true
-  # Letterbox квадрат для live/file (кратно 32 вверх до 960 в bootstrap). Синхрон с binary_imgsz даёт
-  # больше деталей для мелких птиц. Если CPU/GPU не справляются — верните 640.
-  inference_lores_px: 704
+  # Letterbox для live/file (кратно 32). Держите согласованным с processor.binary_imgsz.
+  # При OpenVINO: вход IR и binary_imgsz (+ night overrides) должны совпадать (bundled yolo11n_openvino — 640).
+  inference_lores_px: 640
   # Regen policy scope_strategy=match_live_pipeline:
   # тот же lores (inference_lores_px), каждый кадр,
   # без обнуления regional_species и без remap детекций по «локальному» scope (#263).
@@ -109,7 +109,7 @@ processor:
         min_box_size_px: 40
         min_center_dist: 0.03
         max_classifications_per_frame: 4
-        binary_imgsz: 704
+        binary_imgsz: 640
   # Предупреждение и счётчик slow_frame_processor_detect_total, если один detect() занимает дольше.
   frame_processing_warn_ms: 450
   # Offline track regen по mp4 обходит light gate (см. FrameProcessor.run skip_light_gate) — иначе ночные ролики без YOLO.
@@ -174,8 +174,9 @@ processor:
   # Центр bbox не ближе этого расстояния к краю кадра (норм. координаты 0..1).
   # Кормушка у кромки: 0.035–0.04; ещё ближе к краю — до 0.03.
   min_center_dist: 0.03
-  # Размер инференса бинарного YOLO (imgsz). 704 — компромисс мелкий объект / скорость (кратно 32).
-  binary_imgsz: 704
+  # Размер инференса бинарного YOLO (imgsz). Дефолт 640 = вход bundled OpenVINO (models/detection/README.md).
+  # Большее значение без переэкспорта IR при processor.inference_backend=openvino даёт падение процессора при старте.
+  binary_imgsz: 640
   # NMS в Ultralytics track(): выше — мягче подавление частично перекрывающихся боксов (плотная кормушка).
   binary_track_iou: 0.72
   # Потолок детекций на кадр (по умолчанию у YOLO часто 300).

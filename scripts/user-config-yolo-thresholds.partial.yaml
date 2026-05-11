@@ -4,9 +4,9 @@ detection:
   min_confidence_to_store: 0.22
   fusion_non_species_confidence_slack: 0.02
 processor:
-  inference_lores_px: 704
-  track_regen_lores_px: 704
-  binary_imgsz: 704
+  inference_lores_px: 640
+  track_regen_lores_px: 640
+  binary_imgsz: 640
   binary_track_iou: 0.72
   binary_track_max_det: 384
   min_box_size_px: 40
@@ -25,4 +25,4 @@ processor:
         min_confidence_binary_bird: 0.26
         min_confidence_to_process: 0.24
         min_track_duration: 0.65
-        binary_imgsz: 704
+        binary_imgsz: 640
