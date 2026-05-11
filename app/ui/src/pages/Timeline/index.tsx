@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { Timeline } from './Timeline';
 import { TimelineStats } from './TimelineStats';
@@ -127,6 +127,8 @@ export function TimelinePage() {
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [jumpPending, setJumpPending] = useState(false);
+  const jumpRequestSeqRef = useRef(0);
   const selectedDate = useMemo(() => {
     const paramDate = searchParams.get('date');
     const parsed = paramDate
@@ -227,13 +229,23 @@ export function TimelinePage() {
 
   const jumpToNearestRecordingDay = useCallback(
     async (direction: 'prev' | 'next') => {
+      if (jumpPending) return;
+      const requestSeq = ++jumpRequestSeqRef.current;
+      setJumpPending(true);
       const currentDate = selectedDate.format('YYYY-MM-DD');
-      const result = await fetchNearestRecordingDay(currentDate, direction);
-      if (result.found && result.date) {
-        updateSelectedDate(dayjs(result.date));
+      try {
+        const result = await fetchNearestRecordingDay(currentDate, direction);
+        if (jumpRequestSeqRef.current !== requestSeq) return;
+        if (result.found && result.date) {
+          updateSelectedDate(dayjs(result.date));
+        }
+      } finally {
+        if (jumpRequestSeqRef.current === requestSeq) {
+          setJumpPending(false);
+        }
       }
     },
-    [selectedDate, updateSelectedDate],
+    [jumpPending, selectedDate, updateSelectedDate],
   );
 
   const speciesList = useSpeciesList(visits);
@@ -359,6 +371,7 @@ export function TimelinePage() {
               <span>
                 <IconButton
                   aria-label={t('timeline.previousDay')}
+                  disabled={jumpPending}
                   onClick={() => void jumpToNearestRecordingDay('prev')}
                 >
                   <ChevronLeftIcon />
@@ -382,7 +395,7 @@ export function TimelinePage() {
               <span>
                 <IconButton
                   aria-label={t('timeline.nextDay')}
-                  disabled={!selectedDate.isBefore(observerToday, 'day')}
+                  disabled={jumpPending || !selectedDate.isBefore(observerToday, 'day')}
                   onClick={() => void jumpToNearestRecordingDay('next')}
                 >
                   <ChevronRightIcon />

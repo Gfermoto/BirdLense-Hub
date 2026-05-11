@@ -42,9 +42,17 @@ processor:
   frigate_activity_hold_seconds: 6
   # Мин. длительность трека ByteTrack (сек). Короткие визиты (грызун) — 0.9–1.0; при шуме/«эхо» поднимите.
   min_track_duration: 0.95
+  # Только офлайн-перегенерация треков: ниже live, иначе короткие визиты и рваные track_id → rejected_short_track и пустые overlays в UI.
+  track_regen_min_track_duration: 0.05
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
   # Между обрабатываемыми кадрами декодирование не делается (OpenCV grab), иначе ускорения почти нет.
+  # На слабом/прерывистом бинарнике шаг 4+ часто даёт пустой regen или короткий трек — для качества одного ролика ставьте 1–2.
   track_regen_frame_step: 6
+  # Защитный mutex внутри процесса для OpenVINO track regen: снижает риск segfault при конкурентных regen-запросах.
+  track_regen_serialize_inference: true
+  # Только офлайн-regen: мягче пороги YOLO track() и Bird после трека (не трогает live). Держите track(conf) выше track_high_thresh в bytetrack YAML (~0.20).
+  # track_regen_min_confidence_binary: 0.21
+  # track_regen_min_confidence_binary_bird: 0.22
   # Отдельная стратегия детекции для batch-перегенерации треков (только two_stage: binary .pt + classifier .pt).
   track_regen_detection_strategy: two_stage
   # Размер кадра для batch-перегенерации треков (px). Держите ≥ inference_lores_px — иначе YOLO на архиве слабее чем в live.
@@ -76,7 +84,7 @@ processor:
   # VideoSpecies с frames/оверлеем; виды потом можно поправить. false — прежнее «без конфликтов».
   track_regen_parallel_auto_with_manual: false
   # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
-  min_confidence_binary: 0.26  # Детектор «птица/не птица»; после track жёстче per-label (bird ниже)
+  min_confidence_binary: 0.24  # Детектор «птица/не птица»; после track жёстче per-label (bird ниже)
   # Раздельные пороги после YOLO track (движок получает min(...); фильтр по метке в Python).
   # Слишком высокий bird — много пропусков на кормушке; 0.28–0.32 обычный диапазон.
   min_confidence_binary_bird: 0.28
