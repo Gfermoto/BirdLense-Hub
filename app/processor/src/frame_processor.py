@@ -200,16 +200,64 @@ class FrameProcessor:
             auto_unstick_min_conf = float(app_config.get("processor.auto_unstick_min_confidence_binary") or 0.12)
         except (TypeError, ValueError):
             auto_unstick_min_conf = 0.12
+        try:
+            auto_unstick_min_conf_bird = float(
+                app_config.get("processor.auto_unstick_min_confidence_binary_bird") or auto_unstick_min_conf
+            )
+        except (TypeError, ValueError):
+            auto_unstick_min_conf_bird = auto_unstick_min_conf
+        try:
+            auto_unstick_min_box_px = int(app_config.get("processor.auto_unstick_min_box_size_px") or 12)
+        except (TypeError, ValueError):
+            auto_unstick_min_box_px = 12
+        try:
+            auto_unstick_min_center_dist = float(app_config.get("processor.auto_unstick_min_center_dist") or 0.0)
+        except (TypeError, ValueError):
+            auto_unstick_min_center_dist = 0.0
         if (
             auto_unstick_enabled
             and auto_unstick_no_track_frames > 0
             and self._consecutive_no_track_frames >= auto_unstick_no_track_frames
         ):
             min_conf = min(min_conf, auto_unstick_min_conf)
+            try:
+                curr_bird = profile_overrides.get("min_confidence_binary_bird")
+                if curr_bird is None:
+                    curr_bird = app_config.get("processor.min_confidence_binary_bird")
+                curr_bird_f = float(curr_bird) if curr_bird is not None else auto_unstick_min_conf_bird
+                profile_overrides["min_confidence_binary_bird"] = min(curr_bird_f, auto_unstick_min_conf_bird)
+            except (TypeError, ValueError):
+                profile_overrides["min_confidence_binary_bird"] = auto_unstick_min_conf_bird
+            try:
+                curr_box = profile_overrides.get("min_box_size_px")
+                if curr_box is None:
+                    curr_box = app_config.get("processor.min_box_size_px")
+                curr_box_i = int(curr_box) if curr_box is not None else auto_unstick_min_box_px
+                profile_overrides["min_box_size_px"] = min(curr_box_i, auto_unstick_min_box_px)
+            except (TypeError, ValueError):
+                profile_overrides["min_box_size_px"] = auto_unstick_min_box_px
+            try:
+                curr_center = profile_overrides.get("min_center_dist")
+                if curr_center is None:
+                    curr_center = app_config.get("processor.min_center_dist")
+                curr_center_f = float(curr_center) if curr_center is not None else auto_unstick_min_center_dist
+                profile_overrides["min_center_dist"] = min(curr_center_f, auto_unstick_min_center_dist)
+            except (TypeError, ValueError):
+                profile_overrides["min_center_dist"] = auto_unstick_min_center_dist
             self.last_run_stats["auto_unstick_active"] = True
         else:
             self.last_run_stats["auto_unstick_active"] = False
         tracker_cfg = self._resolve_tracker_for_profile(self.last_run_stats.get("runtime_profile"))
+        if self.last_run_stats.get("auto_unstick_active"):
+            # Universal fallback tracker profile for weak/small distant objects.
+            profile = str(self.last_run_stats.get("runtime_profile") or "").strip().lower()
+            if profile == "night":
+                unstick_tracker = str(app_config.get("processor.auto_unstick_tracker_night") or "").strip()
+            else:
+                unstick_tracker = str(app_config.get("processor.auto_unstick_tracker") or "").strip()
+            if unstick_tracker:
+                tracker_cfg = resolve_tracker_config_path(unstick_tracker)
+                self.last_run_stats["auto_unstick_tracker_used"] = tracker_cfg
         if isinstance(camera_overrides, dict):
             tracker_override = str(camera_overrides.get("tracker") or "").strip()
             if tracker_override:

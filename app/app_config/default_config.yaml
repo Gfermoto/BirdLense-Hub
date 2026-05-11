@@ -61,6 +61,12 @@ processor:
   # Offline regen: при boxes.id=None — склейка кадров по IoU; ниже порог терпимее к дрожащим bbox (меньше «рваных» track_id).
   track_regen_iou_id_fallback: true
   track_regen_iou_match_threshold: 0.22
+  # Live/file pipeline: если ByteTrack не отдал id, не терять бокс — присвоить временный id по IoU.
+  iou_id_fallback_live_enabled: true
+  iou_id_fallback_live_match_threshold: 0.20
+  # Если track() вернул 0 боксов, сделать predict() с мягким conf как аварийный fallback.
+  track_to_predict_fallback_enabled: true
+  track_to_predict_fallback_confidence: 0.001
   # Таймаут на одно видео при batch-перегенерации треков (сек): защита от «зависшего» файла.
   track_regen_video_timeout_sec: 300
   # Отдельный таймаут для точного fallback-прохода: не даём одному ролику блокировать весь recovery.
@@ -201,11 +207,20 @@ processor:
   auto_small_object_relax_min_center_dist: 0.01
   auto_small_object_relax_conf_delta: 0.06
   auto_small_object_relax_max_candidates: 3
+  # Если strict + small-object relax всё ещё пусто, сохранить 1 сверхслабый bird box как последний шанс.
+  ultra_weak_box_salvage_enabled: true
+  ultra_weak_box_salvage_min_confidence: 0.003
+  ultra_weak_box_salvage_max_candidates: 1
   # Если долго нет треков подряд, временно ослабить binary confidence floor.
   # Универсальный механизм для любых камер/доменов без ручных per-camera правил.
   auto_unstick_enabled: true
-  auto_unstick_no_track_frames: 180
-  auto_unstick_min_confidence_binary: 0.12
+  auto_unstick_no_track_frames: 20
+  auto_unstick_min_confidence_binary: 0.05
+  auto_unstick_min_confidence_binary_bird: 0.015
+  auto_unstick_min_box_size_px: 10
+  auto_unstick_min_center_dist: 0.0
+  auto_unstick_tracker: "bytetrack_birdlense_unstick.yaml"
+  auto_unstick_tracker_night: "bytetrack_birdlense_night_unstick.yaml"
   # Guardrail against detector collapse into near full-frame boxes.
   max_box_area_norm: 0.85
   # Точечные per-camera override'ы для дальних/крупноплановых камер.
@@ -426,7 +441,7 @@ detection:
   # Если у YOLO есть треки, но после Decision/Fusion всё отклонено — сохранить лучший трек как review_only,
   # чтобы не терять геометрию/overlay на длинных клипах со слабой уверенностью.
   yolo_weak_track_salvage_enabled: true
-  yolo_weak_track_salvage_min_confidence: 0.10
+  yolo_weak_track_salvage_min_confidence: 0.015
   # Learned fusion: optional learned scorer to blend multimodal signals and produce
   # a calibrated confidence. Disabled by default for safety.
   use_learned_fusion: false

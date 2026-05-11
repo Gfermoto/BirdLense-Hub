@@ -606,10 +606,36 @@ class TwoStageStrategy(DetectionStrategy):
             else _track_maybe_retry(self.binary_model, frame, **_tkw)
         )
 
-        if not results or len(results[0].boxes) == 0:
-            return []
+        boxes = None
+        if results and len(results[0].boxes) > 0:
+            boxes = results[0].boxes
+        else:
+            fallback_enabled = bool(runtime_cfg.get("processor.track_to_predict_fallback_enabled", True))
+            if not fallback_enabled:
+                return []
+            try:
+                fallback_conf = float(runtime_cfg.get("processor.track_to_predict_fallback_confidence") or 0.005)
+            except (TypeError, ValueError):
+                fallback_conf = 0.005
+            _pkw: dict[str, Any] = {
+                "verbose": False,
+                "imgsz": imgsz,
+                "conf": max(0.001, min(0.20, fallback_conf)),
+            }
+            if _bdev:
+                _pkw["device"] = _bdev
+            pred = self.binary_model.predict(frame, **_pkw)
+            if not pred or len(pred[0].boxes) == 0:
+                return []
+            boxes = pred[0].boxes
+            self._track_predict_fallback_hits = int(getattr(self, "_track_predict_fallback_hits", 0)) + 1
+            if self._track_predict_fallback_hits <= 3 or self._track_predict_fallback_hits % 60 == 0:
+                logger.warning(
+                    "Track->predict fallback recovered %s box(es) without ByteTrack ids. hits=%s",
+                    len(boxes),
+                    self._track_predict_fallback_hits,
+                )
 
-        boxes = results[0].boxes
         if boxes.id is None and len(boxes) > 0 and not (track_regen_ctx and iou_fb):
             logger.warning(
                 "ByteTrack: %s box(es) but no track ids after retry (live). "
@@ -630,20 +656,30 @@ class TwoStageStrategy(DetectionStrategy):
         # Without stable ByteTrack IDs, per-frame indexes create fake tracks.
         # В live-камере и тестах без track-regen — пустой кадр; в офлайне — IoU-синтез id (#201).
         if boxes.id is None:
-            if not (track_regen_ctx and iou_fb):
+            live_iou_fb = bool(runtime_cfg.get("processor.iou_id_fallback_live_enabled", True))
+            if not (track_regen_ctx and iou_fb) and not live_iou_fb:
                 return []
-            iou_thr_raw = runtime_cfg.get("processor.track_regen_iou_match_threshold")
+            iou_thr_raw = (
+                runtime_cfg.get("processor.track_regen_iou_match_threshold")
+                if track_regen_ctx
+                else runtime_cfg.get("processor.iou_id_fallback_live_match_threshold")
+            )
             try:
-                iou_thr = float(iou_thr_raw) if iou_thr_raw is not None else 0.22
+                iou_thr = float(iou_thr_raw) if iou_thr_raw is not None else (0.22 if track_regen_ctx else 0.20)
             except (TypeError, ValueError):
-                iou_thr = 0.22
+                iou_thr = 0.22 if track_regen_ctx else 0.20
             try:
                 curr_xyxy = np.reshape(_tensor_to_numpy(boxes.xyxy), (-1, 4))
             except Exception:
                 return []
-            prev_boxes = getattr(self, "_regen_iou_prev_boxes", None)
-            prev_ids = getattr(self, "_regen_iou_prev_ids", None)
-            nid_seed = int(getattr(self, "_regen_iou_next_id", 1))
+            if track_regen_ctx:
+                prev_boxes = getattr(self, "_regen_iou_prev_boxes", None)
+                prev_ids = getattr(self, "_regen_iou_prev_ids", None)
+                nid_seed = int(getattr(self, "_regen_iou_next_id", 1))
+            else:
+                prev_boxes = getattr(self, "_live_iou_prev_boxes", None)
+                prev_ids = getattr(self, "_live_iou_prev_ids", None)
+                nid_seed = int(getattr(self, "_live_iou_next_id", 1))
             if prev_boxes is None or prev_ids is None:
                 synth = list(range(nid_seed, nid_seed + len(curr_xyxy)))
                 nid_next = nid_seed + len(curr_xyxy)
@@ -655,9 +691,14 @@ class TwoStageStrategy(DetectionStrategy):
                     iou_thr=iou_thr,
                     next_id=nid_seed,
                 )
-            self._regen_iou_prev_boxes = curr_xyxy.copy()
-            self._regen_iou_prev_ids = list(synth)
-            self._regen_iou_next_id = int(nid_next)
+            if track_regen_ctx:
+                self._regen_iou_prev_boxes = curr_xyxy.copy()
+                self._regen_iou_prev_ids = list(synth)
+                self._regen_iou_next_id = int(nid_next)
+            else:
+                self._live_iou_prev_boxes = curr_xyxy.copy()
+                self._live_iou_prev_ids = list(synth)
+                self._live_iou_next_id = int(nid_next)
             track_ids = synth
         else:
             track_ids = boxes.id.int().cpu().tolist()
@@ -754,6 +795,63 @@ class TwoStageStrategy(DetectionStrategy):
                     auto_small_object_relax_min_center_dist,
                     auto_small_object_relax_conf_delta,
                 )
+        if not valid_boxes and bool(runtime_cfg.get("processor.ultra_weak_box_salvage_enabled", True)):
+            try:
+                ultra_min_conf = float(runtime_cfg.get("processor.ultra_weak_box_salvage_min_confidence") or 0.005)
+            except (TypeError, ValueError):
+                ultra_min_conf = 0.005
+            try:
+                ultra_max_candidates = int(runtime_cfg.get("processor.ultra_weak_box_salvage_max_candidates") or 1)
+            except (TypeError, ValueError):
+                ultra_max_candidates = 1
+            ultra_max_candidates = max(1, min(4, ultra_max_candidates))
+            weak_candidates: list[dict] = []
+            for track_id, class_idx, conf, bbox_norm, bbox_abs in zip(track_ids, class_indexes, confidences, xyxyn, xyxy):
+                detector_name = self.binary_model.names[class_idx]
+                detector_label = self._normalize_detector_label(detector_name)
+                if detector_label != "Bird":
+                    continue
+                if self.detector_scope and detector_label not in self.detector_scope:
+                    continue
+                conf_f = float(conf or 0.0)
+                if conf_f < ultra_min_conf:
+                    continue
+                x1, y1, x2, y2 = map(int, bbox_abs)
+                x1, y1 = max(0, x1), max(0, y1)
+                x2, y2 = min(w, x2), min(h, y2)
+                if x2 <= x1 or y2 <= y1:
+                    continue
+                area_norm = max(0.0, float(bbox_norm[2] - bbox_norm[0])) * max(0.0, float(bbox_norm[3] - bbox_norm[1]))
+                if area_norm > max_box_area_norm:
+                    continue
+                weak_candidates.append(
+                    {
+                        "track_id": track_id,
+                        "detector_label": detector_label,
+                        "conf": conf_f,
+                        "bbox_norm": bbox_norm,
+                        "crop_coords": (x1, y1, x2, y2),
+                        "box_area_norm": area_norm,
+                        "relaxed_small_object": True,
+                    }
+                )
+            if weak_candidates:
+                weak_candidates.sort(
+                    key=lambda box: (
+                        float(box.get("conf") or 0.0),
+                        float(box.get("box_area_norm") or 0.0),
+                    ),
+                    reverse=True,
+                )
+                valid_boxes = weak_candidates[:ultra_max_candidates]
+                self._ultra_weak_salvage_hits = int(getattr(self, "_ultra_weak_salvage_hits", 0)) + 1
+                if self._ultra_weak_salvage_hits <= 3 or self._ultra_weak_salvage_hits % 60 == 0:
+                    logger.warning(
+                        "Ultra-weak salvage accepted %s bird box(es) at conf >= %.3f. hits=%s",
+                        len(valid_boxes),
+                        ultra_min_conf,
+                        self._ultra_weak_salvage_hits,
+                    )
 
         if not valid_boxes:
             return []
@@ -865,5 +963,10 @@ class TwoStageStrategy(DetectionStrategy):
         self._regen_iou_prev_boxes = None
         self._regen_iou_prev_ids = None
         self._regen_iou_next_id = 1
+        self._live_iou_prev_boxes = None
+        self._live_iou_prev_ids = None
+        self._live_iou_next_id = 1
+        self._track_predict_fallback_hits = 0
+        self._ultra_weak_salvage_hits = 0
         if hasattr(self.binary_model.predictor, "trackers"):
             self.binary_model.predictor.trackers[0].reset()
