@@ -1,8 +1,8 @@
-# Ночной / низкая контрастность: слабее детектор — чуть ниже high/new, выше track_low для ассоциации.
+# Ночной / низкая контрастность: high/new ниже дневных порогов YOLO track(conf), иначе нет track id.
 tracker_type: bytetrack
-track_high_thresh: 0.31
+track_high_thresh: 0.18
 track_low_thresh: 0.06
-new_track_thresh: 0.31
+new_track_thresh: 0.18
 track_buffer: 20
 match_thresh: 0.87
 fuse_score: true

@@ -577,6 +577,15 @@ class TwoStageStrategy(DetectionStrategy):
             return []
 
         boxes = results[0].boxes
+        if boxes.id is None and len(boxes) > 0 and not (track_regen_ctx and iou_fb):
+            logger.warning(
+                "ByteTrack: %s box(es) but no track ids after retry (live). "
+                "Usually tracker track_high_thresh/new_track_thresh in %r exceed YOLO track(conf=%.3f). "
+                "Lower those thresholds in the tracker YAML or raise min_confidence_binary / per-label floors.",
+                len(boxes),
+                tracker_config,
+                float(track_conf),
+            )
 
         def _tensor_to_numpy(tensor_like):
             """Ultralytics torch tensor или unittest fake с ``.numpy()``."""
