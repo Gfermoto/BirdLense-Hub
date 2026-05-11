@@ -74,7 +74,8 @@ LAST = "/content/drive/MyDrive/3step_detector/yolo_detector_runs/brg_ft_stage1_f
 YOLO(LAST).train(resume=True)  # only `resume=True` — Ultralytics requirement
 ```
 
-Use the analogous **`last.pt`** path if stage 2 was interrupted.
+Use the analogous **`last.pt`** path if stage 2 was interrupted.  
+Before any `resume=True`, rerun cells that restore `/content` and validate `DATA_YAML` split paths (`train/val/test`) — otherwise Ultralytics fails early with missing `val/images`.
 
 ---
 
@@ -184,23 +185,45 @@ os.makedirs(EXTRACT, exist_ok=True)
 
 Expect **`/content/brg_dataset/brg/dataset.yaml`**. If layout differs, set **`DATA_YAML`** manually in the next cell.
 
-### Cell 5 — fix `path` in `dataset.yaml` for Colab
+### Cell 5 — fix `path` in `dataset.yaml` and validate splits
 
 ```python
 import yaml
+from pathlib import Path
 
-DATA_YAML = "/content/brg_dataset/brg/dataset.yaml"
-assert os.path.isfile(DATA_YAML), DATA_YAML
+EXTRACT = "/content/brg_dataset"
+
+yaml_candidates = sorted(Path(EXTRACT).rglob("dataset.yaml"))
+assert yaml_candidates, f"dataset.yaml not found under {EXTRACT}"
+
+picked = None
+for candidate in yaml_candidates:
+    base = candidate.parent
+    if all((base / split / "images").is_dir() for split in ("train", "val", "test")):
+        picked = candidate
+        break
+if picked is None:
+    picked = yaml_candidates[0]
+
+DATA_YAML = str(picked)
+DATA_ROOT = str(picked.parent)
+print("DATA_YAML:", DATA_YAML)
+print("DATA_ROOT:", DATA_ROOT)
 
 with open(DATA_YAML, "r", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
 
-cfg["path"] = "/content/brg_dataset/brg"
+cfg["path"] = DATA_ROOT
 
 with open(DATA_YAML, "w", encoding="utf-8") as f:
     yaml.safe_dump(cfg, f, sort_keys=False, allow_unicode=True)
 
-print(cfg)
+for split in ("train", "val", "test"):
+    img_dir = Path(DATA_ROOT) / split / "images"
+    lbl_dir = Path(DATA_ROOT) / split / "labels"
+    assert img_dir.is_dir(), f"Missing directory: {img_dir}"
+    assert lbl_dir.is_dir(), f"Missing directory: {lbl_dir}"
+    print(f"{split}: images={img_dir} labels={lbl_dir}")
 
 names = cfg.get("names") or {}
 keys = sorted(names, key=lambda k: int(k))

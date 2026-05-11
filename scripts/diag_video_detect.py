@@ -8,6 +8,8 @@
 
 По умолчанию torch: ``best.pt`` и ``last.pt`` в ``detection/weights`` (если есть).
 
+Подгонка кадра под YOLO — **letterbox** (как live/track_regen), не ``cv2.resize`` во весь квадрат.
+
 ``PYTHONPATH``: ``/app:/app/web:/app/processor/src``.
 """
 
@@ -42,6 +44,8 @@ def _bootstrap_paths() -> None:
 _bootstrap_paths()
 
 import cv2  # noqa: E402
+
+from yolo_geometry import letterbox_bgr_to_wh  # noqa: E402
 
 
 def _default_db_path() -> str:
@@ -93,7 +97,7 @@ def sparse_sweep_maxconf(
         if not ok:
             print(f"{prefix} frame {p}: read_failed")
             continue
-        img = cv2.resize(fr, (imgsz, imgsz))
+        img = letterbox_bgr_to_wh(fr, (imgsz, imgsz))
         pr = model.predict(img, conf=conf_th, imgsz=imgsz, verbose=False)
         bx = pr[0].boxes
         nb = len(bx) if bx is not None else 0
@@ -121,7 +125,7 @@ def torch_detail_on_frames(
         ok, fr = cap.read()
         if not ok:
             continue
-        img = cv2.resize(fr, (imgsz, imgsz))
+        img = letterbox_bgr_to_wh(fr, (imgsz, imgsz))
         for cth in (0.01, 0.001):
             pr = tm.predict(img, conf=cth, imgsz=imgsz, verbose=False)
             bx = pr[0].boxes

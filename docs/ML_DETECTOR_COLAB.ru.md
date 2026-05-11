@@ -85,24 +85,47 @@ print("WEIGHTS:", WEIGHTS)
 print("RUNS:", RUNS)
 ```
 
-### Ячейка 4 — `dataset.yaml`
+### Ячейка 4 — `dataset.yaml` + проверка split-ов
 
 ```python
 import yaml
+from pathlib import Path
 
-DATA_YAML = "/content/brg_dataset/brg/dataset.yaml"
-assert os.path.isfile(DATA_YAML), DATA_YAML
+EXTRACT = "/content/brg_dataset"
+
+yaml_cands = sorted(Path(EXTRACT).rglob("dataset.yaml"))
+assert yaml_cands, f"dataset.yaml не найден под {EXTRACT}"
+
+picked = None
+for c in yaml_cands:
+    base = c.parent
+    if all((base / split / "images").is_dir() for split in ("train", "val", "test")):
+        picked = c
+        break
+if picked is None:
+    picked = yaml_cands[0]
+
+DATA_YAML = str(picked)
+DATA_ROOT = str(picked.parent)
+print("DATA_YAML:", DATA_YAML)
+print("DATA_ROOT:", DATA_ROOT)
 
 with open(DATA_YAML, "r", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
-cfg["path"] = "/content/brg_dataset/brg"
+cfg["path"] = DATA_ROOT
 with open(DATA_YAML, "w", encoding="utf-8") as f:
     yaml.safe_dump(cfg, f, sort_keys=False, allow_unicode=True)
+
+for split in ("train", "val", "test"):
+    img_dir = Path(DATA_ROOT) / split / "images"
+    lbl_dir = Path(DATA_ROOT) / split / "labels"
+    assert img_dir.is_dir(), f"Нет каталога: {img_dir}"
+    assert lbl_dir.is_dir(), f"Нет каталога: {lbl_dir}"
+    print(f"{split}: images={img_dir} labels={lbl_dir}")
 
 names = cfg.get("names") or {}
 ordered = [names[k] for k in sorted(names, key=lambda k: int(k))]
 assert ordered == ["Bird", "Rodent", "Background"], ordered
-print("DATA_YAML:", DATA_YAML)
 ```
 
 ### Ячейка 5 — чекпоинт только `detect`
@@ -212,7 +235,7 @@ YOLO(BEST_FINAL).export(format="openvino", imgsz=640)
 
 **О2** — то же, что **ячейка 2** в сценарии 1 (`drive.mount`).
 
-**О3** — одна ячейка: снова распаковать **`BirdLense_detector_brg.zip`** и поправить **`path`** в `dataset.yaml`. Стартовые веса из **`nabirds…zip`** не нужны (для А и В берётся **`last.pt`** с Диска; для Б — **`best.pt`** этапа 1 с Диска).
+**О3** — одна ячейка: снова распаковать **`BirdLense_detector_brg.zip`**, авто-найти `dataset.yaml`, поправить `path` и проверить split-ы (`train/val/test`). Стартовые веса из **`nabirds…zip`** не нужны (для А и В берётся **`last.pt`** с Диска; для Б — **`best.pt`** этапа 1 с Диска).
 
 **Важно:** Python-блок сразу ниже — это **только О3**. **О1** и **О2** — это **две предыдущие** отдельные ячейки (как в сценарии 1); их сюда не вставляй.
 
@@ -220,6 +243,7 @@ YOLO(BEST_FINAL).export(format="openvino", imgsz=640)
 import os
 import shutil
 import yaml
+from pathlib import Path
 
 DRIVE_ROOT = "/content/drive/MyDrive/3step_detector"
 ZIP_DATA = os.path.join(DRIVE_ROOT, "BirdLense_detector_brg.zip")
@@ -233,17 +257,38 @@ if os.path.exists(EXTRACT):
 os.makedirs(EXTRACT, exist_ok=True)
 !unzip -q "{ZIP_DATA}" -d "{EXTRACT}"
 
-DATA_YAML = "/content/brg_dataset/brg/dataset.yaml"
-assert os.path.isfile(DATA_YAML), DATA_YAML
+yaml_cands = sorted(Path(EXTRACT).rglob("dataset.yaml"))
+assert yaml_cands, f"dataset.yaml не найден под {EXTRACT}"
+
+picked = None
+for c in yaml_cands:
+    base = c.parent
+    if all((base / split / "images").is_dir() for split in ("train", "val", "test")):
+        picked = c
+        break
+if picked is None:
+    picked = yaml_cands[0]
+
+DATA_YAML = str(picked)
+DATA_ROOT = str(picked.parent)
+
 with open(DATA_YAML, "r", encoding="utf-8") as f:
     cfg = yaml.safe_load(f)
-cfg["path"] = "/content/brg_dataset/brg"
+cfg["path"] = DATA_ROOT
 with open(DATA_YAML, "w", encoding="utf-8") as f:
     yaml.safe_dump(cfg, f, sort_keys=False, allow_unicode=True)
+
+for split in ("train", "val", "test"):
+    img_dir = Path(DATA_ROOT) / split / "images"
+    lbl_dir = Path(DATA_ROOT) / split / "labels"
+    assert img_dir.is_dir(), f"Нет каталога: {img_dir}"
+    assert lbl_dir.is_dir(), f"Нет каталога: {lbl_dir}"
+    print(f"{split}: images={img_dir} labels={lbl_dir}")
 
 names = cfg.get("names") or {}
 assert [names[k] for k in sorted(names, key=lambda k: int(k))] == ["Bird", "Rodent", "Background"]
 print("DATA_YAML:", DATA_YAML)
+print("DATA_ROOT:", DATA_ROOT)
 print("RUNS (папка чекпоинтов на Диске):", RUNS)
 ```
 
