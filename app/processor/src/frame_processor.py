@@ -71,7 +71,7 @@ class FrameProcessor:
         return metrics
 
     def _resolve_tracker_for_profile(self, profile_name: str | None) -> str:
-        """Pick tracker config by runtime profile (day/night), fallback to processor.tracker."""
+        """Pick tracker YAML: only ``night`` reads ``processor.tracker_profiles``; else ``processor.tracker``."""
         base = str(self.tracker or "bytetrack.yaml").strip() or "bytetrack.yaml"
         profile = str(profile_name or "").strip().lower()
         if not profile:

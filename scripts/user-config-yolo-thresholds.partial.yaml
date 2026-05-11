@@ -4,6 +4,8 @@ detection:
   min_confidence_to_store: 0.22
   fusion_non_species_confidence_slack: 0.02
 processor:
+  # Пауза между клипами — меньше «эхо» подряд при OpenCV+Frigate (см. default_config).
+  min_seconds_between_recordings: 12
   inference_lores_px: 640
   track_regen_lores_px: 640
   binary_imgsz: 640

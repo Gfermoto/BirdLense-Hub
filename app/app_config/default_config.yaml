@@ -23,7 +23,8 @@ general:
 processor:
   # ByteTrack YAML: имя из Ultralytics («bytetrack.yaml») или путь models/tracker/… под app/processor
   tracker: "models/tracker/bytetrack_birdlense.yaml"
-  # Профиль ночи (processor.adaptive_profiles): отдельный трекер — строже IoU, короче buffer
+  # Только ключ ``night`` читается runtime (resolve_runtime_profile). Днём всегда ``processor.tracker`` выше.
+  # Ключ ``day`` в YAML игнорируется — не добавляйте его в user_config ожидая смену трекера днём.
   tracker_profiles:
     night: "models/tracker/bytetrack_birdlense_night.yaml"
   max_record_seconds: 60
@@ -34,13 +35,13 @@ processor:
   post_record_seconds: 3
   # Мин. пауза после окончания записи до следующего старта (сек). 0 = выкл.
   # Уменьшает почти совпадающие по времени дубли-клипы при Frigate+OpenCV или объекте, всё ещё в кадре.
-  # Второй клип «эхо» с bbox на том же месте без птицы: поднимите (12–20) и/или ужесточите OpenCV и бинарные пороги.
-  min_seconds_between_recordings: 8
+  # Второй клип «эхо» с bbox на том же месте без птицы: поднимите паузу и/или ужесточите OpenCV и бинарные пороги.
+  min_seconds_between_recordings: 12
   # Свежее подтверждение Frigate держит клип «живым» ещё N сек, даже если YOLO на паре кадров молчит.
   # Помогает не обрывать ролик, пока объект ещё реально в кадре.
   frigate_activity_hold_seconds: 6
-  # Мин. длительность трека ByteTrack (сек). Короткие визиты (грызун) — 0.9–1.0; при шуме поднимите.
-  min_track_duration: 0.9
+  # Мин. длительность трека ByteTrack (сек). Короткие визиты (грызун) — 0.9–1.0; при шуме/«эхо» поднимите.
+  min_track_duration: 0.95
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
   # Между обрабатываемыми кадрами декодирование не делается (OpenCV grab), иначе ускорения почти нет.
   track_regen_frame_step: 6
@@ -308,7 +309,7 @@ motion:
   check_every_n_frames: 1
   # OpenCV (параллельно Frigate или как основной источник): чувствительность к мелкому движению (птица вдали).
   opencv_diff_threshold: 18
-  opencv_min_contour_area: 240
+  opencv_min_contour_area: 320
   frigate_camera_filter: []  # from cameras list; frigate/events
   # bird/animal — базовые модели; jay/corvid — частые кастомные/семейные метки Frigate+YOLO.
   # Пустой filter = любая метка (шумнее); геометрия в after/snapshot всё равно подхватывается при frigate_trigger_on_tracked_object.
@@ -330,7 +331,8 @@ triggers:
     enabled: true
     check_every_n_frames: 1
     diff_threshold: 18
-    min_contour_area: 240
+    # Выше — меньше ложных стартов записи (ветка, автоэкспозиция) при Frigate+OpenCV.
+    min_contour_area: 320
   frigate:
     enabled: false
     topic: "frigate/events"

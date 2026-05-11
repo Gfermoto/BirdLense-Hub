@@ -13,12 +13,12 @@ from processor_runtime_profile import RuntimeProfileConfigOverlay
 logger = logging.getLogger(__name__)
 
 
-def _rodent_binary_threshold_raw(app_config: Mapping[str, Any]) -> Any:
+def _rodent_binary_threshold_raw(config: Mapping[str, Any]) -> Any:
     """Новый ключ ``min_confidence_binary_rodent``; ``min_confidence_binary_squirrel`` — только совместимость со старым YAML."""
-    raw = app_config.get("processor.min_confidence_binary_rodent")
+    raw = config.get("processor.min_confidence_binary_rodent")
     if raw is not None:
         return raw
-    return app_config.get("processor.min_confidence_binary_squirrel")
+    return config.get("processor.min_confidence_binary_squirrel")
 
 
 def build_binary_track_ultralytics_extras(runtime_cfg: Mapping[str, Any]) -> dict[str, float | int]:
@@ -46,19 +46,21 @@ def build_binary_track_ultralytics_extras(runtime_cfg: Mapping[str, Any]) -> dic
     return extras
 
 
-def binary_track_ultralytics_conf_floor(base_min: float, app_config: Mapping[str, Any]) -> float:
+def binary_track_ultralytics_conf_floor(base_min: float, config: Mapping[str, Any]) -> float:
     """
     Минимальный ``conf`` для YOLO ``track()``, чтобы кандидаты не отсекались до per-label фильтра.
 
     Если заданы отдельные пороги Bird/Rodent, берётся min(...) с базовым — иначе жёсткий
     порог на птицу отбросил бы грызунов на этапе движка.
+
+    ``config`` — ``app_config`` или ``RuntimeProfileConfigOverlay`` (ночные overrides для ``processor.*``).
     """
     try:
         base = float(base_min)
     except (TypeError, ValueError):
         base = 0.22
-    b_raw = app_config.get("processor.min_confidence_binary_bird")
-    s_raw = _rodent_binary_threshold_raw(app_config)
+    b_raw = config.get("processor.min_confidence_binary_bird")
+    s_raw = _rodent_binary_threshold_raw(config)
     bird_m = float(b_raw) if b_raw is not None else base
     rod_m = float(s_raw) if s_raw is not None else base
     return min(base, bird_m, rod_m)
@@ -67,15 +69,15 @@ def binary_track_ultralytics_conf_floor(base_min: float, app_config: Mapping[str
 def per_label_binary_conf_threshold(
     detector_label: str,
     base_min: float,
-    app_config: Mapping[str, Any],
+    config: Mapping[str, Any],
 ) -> float:
     """Порог confidence бинарника после нормализации метки (Bird / Rodent)."""
     try:
         base = float(base_min)
     except (TypeError, ValueError):
         base = 0.22
-    b_raw = app_config.get("processor.min_confidence_binary_bird")
-    s_raw = _rodent_binary_threshold_raw(app_config)
+    b_raw = config.get("processor.min_confidence_binary_bird")
+    s_raw = _rodent_binary_threshold_raw(config)
     bird_m = float(b_raw) if b_raw is not None else base
     rod_m = float(s_raw) if s_raw is not None else base
     if detector_label == "Bird":
@@ -581,7 +583,7 @@ class TwoStageStrategy(DetectionStrategy):
             logger.warning(
                 "ByteTrack: %s box(es) but no track ids after retry (live). "
                 "Usually tracker track_high_thresh/new_track_thresh in %r exceed YOLO track(conf=%.3f). "
-                "Lower those thresholds in the tracker YAML or raise min_confidence_binary / per-label floors.",
+                "Keep high/new ~0.02 below that conf; raise min_confidence_binary floors if you tighten YAML.",
                 len(boxes),
                 tracker_config,
                 float(track_conf),
