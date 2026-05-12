@@ -562,7 +562,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
         anchor_rows = [item for item in persisted if item.get('yolo_core_anchor_forced')]
         self.assertEqual(len(anchor_rows), 1)
 
-    def test_drops_video_rows_without_frames_before_api_create(self):
+    def test_drops_frameless_frigate_standalone_when_yolo_frames_exist(self):
         api = MagicMock()
         api.create_video.return_value = {'video_id': 102}
         motion_detector = MagicMock()
@@ -615,6 +615,21 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                 'visit_eligible': True,
                 'notification_eligible': True,
                 'detection_provider': 'frigate',
+                'source': 'video',
+            },
+            {
+                'track_id': 33,
+                'accepted': True,
+                'species_name': 'Robin',
+                'start_time': 0.0,
+                'end_time': 2.0,
+                'confidence': 0.75,
+                'frames': [],
+                'decision_reason': 'accepted_species',
+                'decision_kind': 'accepted_species',
+                'visit_eligible': True,
+                'notification_eligible': True,
+                'detection_provider': 'yolo',
                 'source': 'video',
             },
         ]
@@ -679,8 +694,96 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
 
         persisted = api.create_video.call_args.args[0]
         self.assertGreater(len(persisted), 0)
-        for item in persisted:
-            self.assertTrue(item.get('frames'))
+        self.assertFalse(any(item.get('decision_kind') == 'frigate_standalone' and not item.get('frames') for item in persisted))
+        self.assertFalse(any(item.get('detection_provider') == 'yolo' and not item.get('frames') for item in persisted))
+
+    def test_keeps_frameless_frigate_standalone_when_no_yolo_frames_exist(self):
+        api = MagicMock()
+        api.create_video.return_value = {'video_id': 1021}
+        motion_detector = MagicMock()
+        mqtt_aggregator = None
+        frame_processor = MagicMock(tracks={})
+        decision_maker = MagicMock()
+        frame = np.zeros((32, 32, 3), dtype=np.uint8)
+        decision_maker.get_decisions.return_value = []
+        fused_rows = [
+            {
+                'track_id': -1,
+                'accepted': True,
+                'species_name': 'Robin',
+                'start_time': 0.0,
+                'end_time': 2.0,
+                'confidence': 0.8,
+                'frames': [],
+                'decision_reason': 'frigate_standalone',
+                'decision_kind': 'frigate_standalone',
+                'visit_eligible': True,
+                'notification_eligible': True,
+                'detection_provider': 'frigate',
+                'source': 'video',
+            },
+        ]
+
+        def fake_cfg_get(key, default=None):
+            mapping = {
+                'detection.merge_window_seconds': 5,
+                'processor.min_track_duration': 1,
+                'processor.generate_spectrogram_always': False,
+                'processor.save_dataset_crops': False,
+                'integrations.scales.enabled': False,
+                'processor.min_confidence_to_notify': 0.3,
+                'processor.min_confidence_to_process': 0.3,
+                'detection.min_confidence_to_store': 0.05,
+                'processor.dataset_min_confidence': 0.5,
+                'detection.yolo_core_anchor_enabled': True,
+                'detection.persist_video_detections_require_frames': True,
+            }
+            return mapping.get(key, default)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = os.path.join(tmp, 'session')
+            os.makedirs(out_dir, exist_ok=True)
+            video_path = os.path.join(out_dir, 'clip.mp4')
+            vw = cv2.VideoWriter(
+                video_path,
+                cv2.VideoWriter_fourcc(*'mp4v'),
+                2.0,
+                (32, 32),
+            )
+            vw.write(frame)
+            vw.release()
+            with patch.object(
+                recording_finalize_mod.app_config,
+                'get',
+                side_effect=fake_cfg_get,
+            ), patch(
+                'recording_finalize.build_fused_video_detections',
+                return_value=fused_rows,
+            ), patch(
+                'recording_finalize.generate_spectrogram',
+                return_value=False,
+            ), patch(
+                'recording_finalize._is_playable_video_file',
+                return_value=True,
+            ):
+                finalize_motion_recording(
+                    api,
+                    motion_detector,
+                    mqtt_aggregator,
+                    frame_processor,
+                    decision_maker,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    output_path_physical=out_dir,
+                    output_path_logical='data/recordings/2026/05/12/152600',
+                    video_output=video_path,
+                    video_path_for_api='data/recordings/2026/05/12/152600/video.mp4',
+                    scales_topic_arg=None,
+                    data_dir=tmp,
+                )
+
+        persisted = api.create_video.call_args.args[0]
+        self.assertTrue(any(item.get('decision_kind') == 'frigate_standalone' and not item.get('frames') for item in persisted))
 
     def test_salvages_weak_yolo_track_as_review_only_when_fused_empty(self):
         api = MagicMock()

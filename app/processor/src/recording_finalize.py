@@ -243,18 +243,59 @@ def finalize_motion_recording(
             )
     require_frames_for_video_rows = bool(app_config.get("detection.persist_video_detections_require_frames", True))
     if require_frames_for_video_rows and video_detections:
+        has_yolo_rows_with_frames_in_final = any(
+            str((row or {}).get("detection_provider") or "").strip().lower() == "yolo"
+            and bool((row or {}).get("frames"))
+            for row in video_detections
+        )
+        had_yolo_rows_with_frames_pre_fusion = any(
+            str((row or {}).get("detection_provider") or "").strip().lower() == "yolo"
+            and bool((row or {}).get("frames"))
+            for row in accepted_pre_fusion
+        )
+        has_yolo_rows_with_frames = (
+            has_yolo_rows_with_frames_in_final or had_yolo_rows_with_frames_pre_fusion
+        )
         kept_rows: list[dict[str, Any]] = []
         dropped_no_frames = 0
+        kept_no_frames_frigate = 0
+        dropped_no_frames_frigate_when_yolo = 0
         for row in video_detections:
-            if str((row or {}).get("source") or "").strip().lower() == "video" and not row.get("frames"):
+            row_source = str((row or {}).get("source") or "").strip().lower()
+            row_provider = str((row or {}).get("detection_provider") or "").strip().lower()
+            row_kind = str((row or {}).get("decision_kind") or "").strip().lower()
+            keep_without_frames = (
+                (bool((row or {}).get("frigate_standalone")) or row_kind in {
+                "frigate_standalone",
+                "frigate_standalone_excluded",
+                })
+                and not has_yolo_rows_with_frames
+            )
+            if row_source == "video" and not row.get("frames") and not keep_without_frames:
+                if row_provider == "frigate" and row_kind in {"frigate_standalone", "frigate_standalone_excluded"}:
+                    dropped_no_frames_frigate_when_yolo += 1
                 dropped_no_frames += 1
                 continue
+            if row_source == "video" and not row.get("frames") and keep_without_frames:
+                kept_no_frames_frigate += 1
             kept_rows.append(row)
         if dropped_no_frames:
             logging.warning(
                 "Finalize safeguard: dropped %s video row(s) without frames "
                 "(detection.persist_video_detections_require_frames=true).",
                 dropped_no_frames,
+            )
+        if kept_no_frames_frigate:
+            logging.info(
+                "Finalize safeguard: kept %s Frigate standalone video row(s) without frames "
+                "(event persistence fallback).",
+                kept_no_frames_frigate,
+            )
+        if dropped_no_frames_frigate_when_yolo:
+            logging.info(
+                "Finalize safeguard: dropped %s Frigate standalone row(s) without frames "
+                "because YOLO rows with frames are present (YOLO-priority).",
+                dropped_no_frames_frigate_when_yolo,
             )
         video_detections = kept_rows
     if (
