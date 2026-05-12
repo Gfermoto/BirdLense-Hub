@@ -9,19 +9,27 @@ def get_valid_cameras(cameras_config: list) -> list[dict]:
     """
     Возвращает список камер с непустым stream_name.
 
-    Каждая камера: {id, stream_name, name}.
+    Каждая камера: {id, stream_name, name, detect_stream_name?}.
+    ``detect_stream_name`` — второй поток Go2RTC для motion/YOLO (как detect в Frigate);
+    запись по-прежнему с ``stream_name`` (main).
     """
     if not cameras_config:
         return []
-    return [
-        {
-            'id': c.get('id') or c.get('stream_name', ''),
-            'stream_name': (c.get('stream_name') or c.get('id') or '').strip(),
-            'name': c.get('name') or c.get('id') or c.get('stream_name', ''),
+    out: list[dict] = []
+    for c in cameras_config:
+        sn = (c.get('stream_name') or '').strip()
+        if not sn:
+            continue
+        dsn = (c.get('detect_stream_name') or '').strip()
+        row = {
+            'id': c.get('id') or sn,
+            'stream_name': sn,
+            'name': c.get('name') or c.get('id') or sn,
         }
-        for c in cameras_config
-        if (c.get('stream_name') or '').strip()
-    ]
+        if dsn:
+            row['detect_stream_name'] = dsn
+        out.append(row)
+    return out
 
 
 def cameras_for_api(valid_cameras: list) -> list[dict]:
@@ -38,8 +46,12 @@ def cameras_for_api(valid_cameras: list) -> list[dict]:
 
 
 def cameras_for_processor(valid_cameras: list) -> list[dict]:
-    """Формат для processor: id, stream_name."""
-    return [
-        {'id': c['id'], 'stream_name': c['stream_name']}
-        for c in valid_cameras
-    ]
+    """Формат для processor: id, stream_name, optional detect_stream_name."""
+    rows: list[dict] = []
+    for c in valid_cameras:
+        row = {'id': c['id'], 'stream_name': c['stream_name']}
+        dsn = (c.get('detect_stream_name') or '').strip()
+        if dsn:
+            row['detect_stream_name'] = dsn
+        rows.append(row)
+    return rows

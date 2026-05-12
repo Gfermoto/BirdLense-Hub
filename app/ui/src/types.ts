@@ -327,7 +327,13 @@ export interface Settings {
     file_realtime_simulation?: boolean;
     go2rtc_url?: string;
     stream_name?: string;
-    cameras?: Array<{ id?: string; stream_name?: string; name?: string }>;
+    cameras?: Array<{
+      id?: string;
+      stream_name?: string;
+      /** Go2RTC stream for motion/YOLO (Frigate-style detect); optional. */
+      detect_stream_name?: string;
+      name?: string;
+    }>;
     go2rtc_username?: string;
     go2rtc_password?: string;
     /** cpu | intel — VA-API vs CPU для записи (intel = уже H.264). */

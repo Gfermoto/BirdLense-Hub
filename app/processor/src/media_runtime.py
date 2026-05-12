@@ -159,11 +159,22 @@ def setup_processor_media(
     def get_media_source(camera_id):
         if camera_id not in media_sources_cache:
             cam = next((c for c in cameras if c["id"] == camera_id), cameras[0])
-            stream_url = _build_stream_url(
+            record_url = _build_stream_url(
                 go2rtc_url,
                 cam["stream_name"],
                 username=app_config.get("video.go2rtc_username"),
                 password=app_config.get("video.go2rtc_password"),
+            )
+            detect_sn = (cam.get("detect_stream_name") or "").strip()
+            capture_url = (
+                _build_stream_url(
+                    go2rtc_url,
+                    detect_sn,
+                    username=app_config.get("video.go2rtc_username"),
+                    password=app_config.get("video.go2rtc_password"),
+                )
+                if detect_sn
+                else None
             )
             idx = next(
                 (i for i, c in enumerate(cameras) if c["id"] == camera_id),
@@ -179,7 +190,7 @@ def setup_processor_media(
             if capture_backend not in ("auto", "opencv", "ffmpeg_vaapi"):
                 capture_backend = "auto"
             media_sources_cache[camera_id] = Go2RTCStreamSource(
-                stream_url=stream_url,
+                stream_url=record_url,
                 main_size=main_size,
                 lores_size=lores_size,
                 auto_reconnect=app_config.get("video.auto_reconnect", True),
@@ -187,6 +198,7 @@ def setup_processor_media(
                 encoding_mode=encoding,
                 record_stream_codec=rcodec,
                 capture_backend=capture_backend,
+                capture_stream_url=capture_url,
             )
         return media_sources_cache[camera_id]
 
