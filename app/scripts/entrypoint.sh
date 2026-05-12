@@ -114,7 +114,57 @@ if python3 /app/scripts/check_mcp_enabled.py 2>/dev/null; then
 fi
 
 # =============================================================================
-# SECTION 8 — Processor supervisor loop
+# SECTION 8 — Optional daily Re-ID SSL scheduler (inside container only)
+# =============================================================================
+is_true() {
+  case "${1:-}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+if is_true "${BIRDLENSE_REID_SSL_DAILY_ENABLED:-0}"; then
+  REID_SSL_DB="${BIRDLENSE_REID_SSL_DB:-/app/data/db/birdlense.db}"
+  REID_SSL_WINDOW_HOURS="${BIRDLENSE_REID_SSL_WINDOW_HOURS:-24}"
+  REID_SSL_LIMIT="${BIRDLENSE_REID_SSL_LIMIT:-400}"
+  REID_SSL_CLUSTER_THRESHOLD="${BIRDLENSE_REID_SSL_CLUSTER_THRESHOLD:-0.88}"
+  REID_SSL_REPORT_JSON="${BIRDLENSE_REID_SSL_REPORT_JSON:-/app/data/reid_ssl_reports/latest.json}"
+  REID_SSL_INTERVAL_SEC="${BIRDLENSE_REID_SSL_INTERVAL_SEC:-86400}"
+  REID_SSL_START_DELAY_SEC="${BIRDLENSE_REID_SSL_START_DELAY_SEC:-300}"
+
+  run_reid_ssl_cycle_once() {
+    cmd=(
+      python3 /app/scripts/reid/run_daily_ssl_cycle.py
+      --db "${REID_SSL_DB}"
+      --window-hours "${REID_SSL_WINDOW_HOURS}"
+      --limit "${REID_SSL_LIMIT}"
+      --cluster-threshold "${REID_SSL_CLUSTER_THRESHOLD}"
+      --report-json "${REID_SSL_REPORT_JSON}"
+    )
+    if is_true "${BIRDLENSE_REID_SSL_UPDATE_VIDEO_NICKNAMES:-1}"; then
+      cmd+=(--update-video-nicknames)
+    fi
+    echo "[reid-ssl] start: ${cmd[*]}"
+    if command -v flock >/dev/null 2>&1; then
+      flock -n /tmp/birdlense-reid-ssl.lock "${cmd[@]}" || true
+    else
+      "${cmd[@]}" || true
+    fi
+    echo "[reid-ssl] done"
+  }
+
+  (
+    sleep "${REID_SSL_START_DELAY_SEC}"
+    while true; do
+      run_reid_ssl_cycle_once
+      sleep "${REID_SSL_INTERVAL_SEC}"
+    done
+  ) &
+  echo "[reid-ssl] scheduler enabled (interval=${REID_SSL_INTERVAL_SEC}s, start_delay=${REID_SSL_START_DELAY_SEC}s)"
+fi
+
+# =============================================================================
+# SECTION 9 — Processor supervisor loop
 # =============================================================================
 while true; do
   PYTHONPATH=/app:/app/web python3 /app/processor/src/main.py || true
