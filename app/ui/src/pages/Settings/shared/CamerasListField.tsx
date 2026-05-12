@@ -5,50 +5,86 @@ import Grid from '@mui/material/Grid2';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
-type CameraRow = { stream_name?: string; name?: string };
+type CameraRowUi = {
+  stream_name?: string;
+  detect_stream_name?: string;
+  name?: string;
+};
 
 export function CamerasListField({
   value,
   onChange,
 }: {
   value:
-    | Array<{ id?: string; stream_name?: string; name?: string }>
+    | Array<{
+        id?: string;
+        stream_name?: string;
+        detect_stream_name?: string;
+        name?: string;
+      }>
     | undefined;
   onChange: (
-    v: Array<{ id?: string; stream_name?: string; name?: string }>,
+    v: Array<{
+      id?: string;
+      stream_name?: string;
+      detect_stream_name?: string;
+      name?: string;
+    }>,
   ) => void;
 }) {
-  const rows: CameraRow[] =
+  const rows: CameraRowUi[] =
     Array.isArray(value) && value.length > 0
       ? value.map((c) => ({
           stream_name: c.stream_name ?? c.id ?? '',
+          detect_stream_name: c.detect_stream_name ?? '',
           name: c.name ?? c.id ?? c.stream_name ?? '',
         }))
-      : [{ stream_name: '', name: '' }];
+      : [{ stream_name: '', detect_stream_name: '', name: '' }];
 
-  const sync = (newRows: CameraRow[]) => {
-    const arr = newRows.map((r) => ({
-      id: (r.stream_name ?? '').trim() || undefined,
-      stream_name: (r.stream_name ?? '').trim(),
-      name: (r.name ?? '').trim() || (r.stream_name ?? '').trim(),
-    }));
+  const sync = (newRows: CameraRowUi[]) => {
+    const arr = newRows.map((r) => {
+      const stream_name = (r.stream_name ?? '').trim();
+      const name = (r.name ?? '').trim() || stream_name;
+      const id = stream_name || undefined;
+      const row: {
+        id?: string;
+        stream_name: string;
+        name: string;
+        detect_stream_name?: string;
+      } = {
+        id,
+        stream_name,
+        name,
+      };
+      const ds = (r.detect_stream_name ?? '').trim();
+      if (ds) {
+        row.detect_stream_name = ds;
+      }
+      return row;
+    });
     onChange(arr);
   };
 
-  const updateRow = (i: number, field: keyof CameraRow, val: string) => {
+  const updateRow = (i: number, field: keyof CameraRowUi, val: string) => {
     const next = [...rows];
-    if (!next[i]) next[i] = { stream_name: '', name: '' };
+    if (!next[i]) {
+      next[i] = { stream_name: '', detect_stream_name: '', name: '' };
+    }
     next[i] = { ...next[i], [field]: val };
     sync(next);
   };
 
   const addRow = () => {
-    sync([...rows, { stream_name: '', name: '' }]);
+    sync([...rows, { stream_name: '', detect_stream_name: '', name: '' }]);
   };
 
   const removeRow = (i: number) => {
     const next = rows.filter((_, idx) => idx !== i);
-    sync(next.length ? next : [{ stream_name: '', name: '' }]);
+    sync(
+      next.length
+        ? next
+        : [{ stream_name: '', detect_stream_name: '', name: '' }],
+    );
   };
 
   const { t } = useTranslation();
@@ -58,8 +94,14 @@ export function CamerasListField({
         {t('settings.streamNameHint')}
       </Typography>
       {rows.map((row, i) => (
-        <Grid container key={i} spacing={1} sx={{ mb: 1 }} alignItems="center">
-          <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid
+          container
+          key={i}
+          spacing={1}
+          sx={{ mb: 2 }}
+          alignItems="flex-start"
+        >
+          <Grid size={{ xs: 12, sm: 5 }}>
             <TextField
               fullWidth
               size="small"
@@ -79,7 +121,7 @@ export function CamerasListField({
               placeholder={t('settings.cameraPlaceholder')}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 1 }}>
+          <Grid size={{ xs: 12, sm: 2 }} sx={{ pt: { sm: 0.5 } }}>
             <Button
               size="small"
               color="error"
@@ -88,6 +130,19 @@ export function CamerasListField({
             >
               −
             </Button>
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              size="small"
+              value={row.detect_stream_name ?? ''}
+              onChange={(e) =>
+                updateRow(i, 'detect_stream_name', e.target.value)
+              }
+              label={t('settings.detectStreamName')}
+              placeholder={t('settings.detectStreamNamePlaceholder')}
+              helperText={t('settings.detectStreamNameHint')}
+            />
           </Grid>
         </Grid>
       ))}

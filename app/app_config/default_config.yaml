@@ -333,10 +333,16 @@ video:
   # Запись с RTSP: h264 — перекодировать в H.264 (воспроизведение в браузере, меньше сюрпризов с HEVC).
   # copy — без перекодирования (ниже CPU; если поток HEVC, в Chrome может быть «Не удалось загрузить видео»).
   record_stream_codec: h264
-  # Камеры — добавлять по одной. stream_name = имя потока в Go2RTC.
+  # Камеры — добавлять по одной. stream_name = имя потока в Go2RTC (main / запись, как Frigate record).
+  # detect_stream_name — второй поток Go2RTC для motion + YOLO (как Frigate detect: ниже разрешение и FPS).
+  # Разрешение detect задаётся в go2rtc/Frigate/camera (например 704×576), не в Hub; Hub только подключает второй URL и letterbox в processor.inference_lores_px.
   cameras: []
   # Пример после добавления:
   # cameras:
+  #   - id: Forest
+  #     stream_name: Forest_main
+  #     detect_stream_name: Forest_detect
+  #     name: "Лес"
   #   - id: BirdBox
   #     stream_name: BirdBox
   #     name: "Кормушка"

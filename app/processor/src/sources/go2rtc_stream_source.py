@@ -158,10 +158,10 @@ def _build_stream_url(
 class Go2RTCStreamSource:
     """
     Video source from Go2RTC (RTSP/HLS).
-    - capture() returns frames for detection (or None on error/reconnect)
-    - start_recording/stop_recording uses FFmpeg to record video+audio
+    - capture() returns frames for motion/YOLO (or None on error/reconnect), optionally from a **detect** RTSP
+    - start_recording/stop_recording uses FFmpeg on **stream_url** (main / record), Frigate-style
     - Auto-reconnect on stream failure
-    - Optional MJPEG streaming server for live view
+    - Optional MJPEG streaming server for live view (feeds from the same frames as capture())
     """
 
     def __init__(
@@ -175,9 +175,13 @@ class Go2RTCStreamSource:
         encoding_mode="cpu",
         record_stream_codec="h264",
         capture_backend="auto",
+        capture_stream_url: str | None = None,
     ):
         self.logger = logging.getLogger(__name__)
+        # Main/high stream: FFmpeg recording only.
         self.stream_url = stream_url
+        # Optional second RTSP (e.g. Go2RTC name for camera sub / Frigate detect) — lower res & FPS.
+        self._capture_stream_url = (capture_stream_url or "").strip() or stream_url
         self.main_size = main_size
         self.lores_size = lores_size
         self.auto_reconnect = auto_reconnect
@@ -206,6 +210,12 @@ class Go2RTCStreamSource:
         self._vaapi_checked = False
         self._vaapi_available = True
 
+        if self._capture_stream_url != self.stream_url:
+            self.logger.info(
+                "Go2RTC dual-stream: capture (motion/YOLO/MJPEG) ≠ record (main RTSP). "
+                "YOLO still gets letterbox to inference size after decode."
+            )
+
         self._connect()
 
         # Start MJPEG streaming server for live view
@@ -225,9 +235,9 @@ class Go2RTCStreamSource:
             _set_runtime_gauge("video_capture_backend_fallback_reason", reason)
             _inc_runtime_counter("video_capture_backend_fallback_total", 1)
         # Не логировать поля из URL (в т.ч. учётка в stream_url) — CodeQL sensitive logging
-        self.logger.info("Connecting to video stream (OpenCV)")
+        self.logger.info("Connecting to video stream (OpenCV, capture/detect)")
         # OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp set in Dockerfile
-        cap = cv2.VideoCapture(self.stream_url, cv2.CAP_FFMPEG)
+        cap = cv2.VideoCapture(self._capture_stream_url, cv2.CAP_FFMPEG)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         if not cap.isOpened():
             self.logger.error("Failed to open stream")
@@ -255,7 +265,7 @@ class Go2RTCStreamSource:
             if self._capture_backend == "ffmpeg_vaapi":
                 self.logger.warning("FFmpeg VA-API capture requested but VA-API is unavailable; falling back to OpenCV")
             return False
-        cmd = _ffmpeg_vaapi_capture_cmd(self.stream_url, self.lores_size)
+        cmd = _ffmpeg_vaapi_capture_cmd(self._capture_stream_url, self.lores_size)
         try:
             self._capture_process = subprocess.Popen(
                 cmd,
