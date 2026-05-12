@@ -424,6 +424,12 @@ detection:
   source_priority: ["yolo", "frigate"]
   # При первом совпадении YOLO track и Frigate species в окне ролика — разово +bonus к confidence (потолок 1.0)
   cross_source_confidence_bonus: 0.02
+  # Склейка соседних YOLO-фрагментов (ID switch) в один визит: одинаковый вид, малый gap и
+  # пространственная непрерывность (IoU/center distance).
+  track_fragment_merge_enabled: true
+  track_fragment_merge_gap_sec: 1.2
+  track_fragment_merge_min_iou: 0.08
+  track_fragment_merge_max_center_dist: 0.18
   # Ниже порога детекция отбрасывается после fusion; должно быть ≤ processor.min_confidence_to_process.
   # Держим мягче, чтобы YOLO-треки не пропадали до записи в БД/overlay.
   min_confidence_to_store: 0.22

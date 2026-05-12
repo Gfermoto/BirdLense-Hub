@@ -365,6 +365,57 @@ def test_frigate_standalone_injects_when_yolo_only_generic():
     assert 'frigate_standalone' not in kinds_off
 
 
+def test_frigate_standalone_injects_when_yolo_has_no_accepted_species():
+    """If YOLO returns only review/generic rows, Frigate standalone must still rescue clip."""
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.34,
+        'detection.frigate_standalone_when_no_yolo': True,
+        'detection.frigate_standalone_when_no_accepted_species': True,
+        'detection.frigate_standalone_min_score': 0.48,
+        'detection.frigate_standalone_missing_score_fallback': 0.0,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    })
+    video = [
+        {
+            **_base_detection('Great Tit'),
+            'confidence': 0.39,
+            'classifier_confidence': 0.17,
+            'decision_kind': 'review_only_generic',
+            'decision_reason': 'weak_generic_review',
+            'accepted': False,
+            'visit_eligible': False,
+            'start_time': 0.0,
+            'end_time': 18.0,
+        },
+    ]
+    mqtt = [
+        {
+            'source': 'frigate',
+            'species': 'Great Tit',
+            'label': 'Great Tit',
+            'confidence': 0.82,
+            'timestamp': (start + timedelta(seconds=2)).isoformat(),
+        },
+    ]
+
+    out = build_fused_video_detections(
+        video,
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    assert any(str(d.get('decision_kind') or '') == 'frigate_standalone' for d in out)
+
+
 def test_frigate_standalone_uses_missing_score_fallback():
     start = datetime.now(timezone.utc)
     end = start + timedelta(seconds=15)
@@ -1183,3 +1234,70 @@ def test_fusion_clamp_skips_accepted_species():
         DummyConfig({'detection.fusion_non_species_confidence_slack': 0.0}),
     )
     assert abs(out[0]['confidence'] - 0.90) < 1e-9
+
+
+def test_merge_adjacent_yolo_fragments_same_species_small_gap():
+    rows = [
+        {
+            'track_id': 10,
+            'species_name': 'Great Tit',
+            'confidence': 0.61,
+            'start_time': 0.0,
+            'end_time': 2.0,
+            'detection_provider': 'yolo',
+            'detector_confidence': 0.62,
+            'frames': [{'t': 1.9, 'bbox': [0.10, 0.10, 0.30, 0.30]}],
+        },
+        {
+            'track_id': 11,
+            'species_name': 'Great Tit',
+            'confidence': 0.64,
+            'start_time': 2.4,
+            'end_time': 4.0,
+            'detection_provider': 'yolo',
+            'detector_confidence': 0.66,
+            'frames': [{'t': 2.4, 'bbox': [0.11, 0.10, 0.31, 0.30]}],
+        },
+    ]
+    cfg = DummyConfig({
+        'detection.track_fragment_merge_enabled': True,
+        'detection.track_fragment_merge_gap_sec': 1.2,
+        'detection.track_fragment_merge_min_iou': 0.08,
+        'detection.track_fragment_merge_max_center_dist': 0.18,
+    })
+    out = detection_fusion_mod._merge_adjacent_yolo_fragments(rows, cfg)
+    assert len(out) == 1
+    assert out[0]['track_fragment_merged'] is True
+    assert out[0]['merged_track_ids'] == [10, 11]
+    assert float(out[0]['end_time']) == 4.0
+
+
+def test_merge_adjacent_yolo_fragments_keeps_distant_rows_separate():
+    rows = [
+        {
+            'track_id': 10,
+            'species_name': 'Great Tit',
+            'confidence': 0.61,
+            'start_time': 0.0,
+            'end_time': 2.0,
+            'detection_provider': 'yolo',
+            'frames': [{'t': 1.9, 'bbox': [0.10, 0.10, 0.30, 0.30]}],
+        },
+        {
+            'track_id': 11,
+            'species_name': 'Great Tit',
+            'confidence': 0.64,
+            'start_time': 2.4,
+            'end_time': 4.0,
+            'detection_provider': 'yolo',
+            'frames': [{'t': 2.4, 'bbox': [0.70, 0.70, 0.90, 0.90]}],
+        },
+    ]
+    cfg = DummyConfig({
+        'detection.track_fragment_merge_enabled': True,
+        'detection.track_fragment_merge_gap_sec': 1.2,
+        'detection.track_fragment_merge_min_iou': 0.08,
+        'detection.track_fragment_merge_max_center_dist': 0.18,
+    })
+    out = detection_fusion_mod._merge_adjacent_yolo_fragments(rows, cfg)
+    assert len(out) == 2

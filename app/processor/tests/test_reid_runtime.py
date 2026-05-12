@@ -120,6 +120,61 @@ class TestReidRuntime(unittest.TestCase):
         self.assertTrue(bool(row.get("classifier_needs_review")))
         self.assertEqual(row.get("review_reason"), "reid_no_match")
 
+    def test_apply_runtime_reid_generates_nickname_when_no_match(self):
+        from reid_runtime import apply_runtime_reid_metadata
+
+        detections = [
+            {
+                "species_name": "Great Tit",
+                "source": "video",
+                "start_time": 3.0,
+                "end_time": 4.0,
+                "best_frame_score": 8.5,
+                "best_frame": object(),
+            }
+        ]
+        out = apply_runtime_reid_metadata(
+            detections,
+            embed_crop=lambda _crop: np.asarray([0.1, 0.9], dtype=np.float32),
+            load_candidates=lambda _species: [],
+            model_name="dinov2_vits14",
+            similarity_threshold=0.95,
+            max_detections=3,
+            min_best_frame_score=0.0,
+            flag_low_similarity_for_review=True,
+            video_path="data/recordings/z/video.mp4",
+        )
+        nickname = str(out[0].get("individual_nickname") or "")
+        self.assertTrue(nickname.startswith("great_tit_"))
+        self.assertGreater(len(nickname), len("great_tit_"))
+
+    def test_apply_runtime_reid_keeps_manual_nickname(self):
+        from reid_runtime import apply_runtime_reid_metadata
+
+        detections = [
+            {
+                "species_name": "Great Tit",
+                "source": "video",
+                "start_time": 5.0,
+                "end_time": 6.0,
+                "best_frame_score": 9.0,
+                "best_frame": object(),
+                "individual_nickname": "Рыжик",
+            }
+        ]
+        out = apply_runtime_reid_metadata(
+            detections,
+            embed_crop=lambda _crop: np.asarray([0.5, 0.5], dtype=np.float32),
+            load_candidates=lambda _species: [],
+            model_name="dinov2_vits14",
+            similarity_threshold=0.95,
+            max_detections=3,
+            min_best_frame_score=0.0,
+            flag_low_similarity_for_review=True,
+            video_path="data/recordings/k/video.mp4",
+        )
+        self.assertEqual(out[0].get("individual_nickname"), "Рыжик")
+
     def test_prewarm_runtime_reid_model_uses_loader(self):
         import reid_runtime as mod
 
