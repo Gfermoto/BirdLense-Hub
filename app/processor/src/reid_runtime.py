@@ -324,7 +324,7 @@ def _to_embedding(crop: Any, *, state: dict[str, Any]) -> np.ndarray | None:
     if backend == "openvino":
         try:
             out_data = state["compiled_model"]({state["input_name"]: x4})
-            if isinstance(out_data, dict):
+            if hasattr(out_data, "values"):
                 out = np.asarray(next(iter(out_data.values())), dtype=np.float32)
             elif isinstance(out_data, (list, tuple)):
                 out = np.asarray(out_data[0], dtype=np.float32)
