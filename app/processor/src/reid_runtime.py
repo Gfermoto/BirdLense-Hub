@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
 import os
+import re
 import socket
 import sqlite3
 import threading
@@ -22,8 +24,15 @@ _MODEL_STATE: dict[str, Any] | None = None
 _MODEL_FAILED = False
 
 
+def _cfg_get(key: str, default: Any) -> Any:
+    try:
+        return app_config.get(key, default)
+    except Exception:
+        return default
+
+
 def _cfg_bool(key: str, default: bool) -> bool:
-    val = app_config.get(key, default)
+    val = _cfg_get(key, default)
     if isinstance(val, bool):
         return val
     return str(val).strip().lower() in ("1", "true", "yes", "on")
@@ -31,14 +40,14 @@ def _cfg_bool(key: str, default: bool) -> bool:
 
 def _cfg_int(key: str, default: int) -> int:
     try:
-        return int(app_config.get(key, default))
+        return int(_cfg_get(key, default))
     except (TypeError, ValueError):
         return int(default)
 
 
 def _cfg_float(key: str, default: float) -> float:
     try:
-        return float(app_config.get(key, default))
+        return float(_cfg_get(key, default))
     except (TypeError, ValueError):
         return float(default)
 
@@ -54,9 +63,14 @@ def _resolve_reid_device() -> str:
     env = (os.environ.get("BIRDLENSE_REID_DEVICE") or "").strip()
     if env:
         return env
-    cfg = str(app_config.get("processor.reid.device", "auto") or "auto").strip()
+    cfg = str(_cfg_get("processor.reid.device", "auto") or "auto").strip()
     if cfg and cfg.lower() != "auto":
         return cfg
+    inferred = (os.environ.get("BIRDLENSE_INFERENCE_DEVICE") or "").strip()
+    if not inferred:
+        inferred = str(_cfg_get("processor.inference_device", "") or "").strip()
+    if inferred.lower().startswith("intel:"):
+        return inferred
     try:
         import torch
     except ImportError:
@@ -65,11 +79,49 @@ def _resolve_reid_device() -> str:
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 
+def _resolve_reid_backend(device: str) -> str:
+    env = (os.environ.get("BIRDLENSE_REID_BACKEND") or "").strip().lower()
+    if env in ("torch", "openvino"):
+        return env
+    cfg = str(_cfg_get("processor.reid.inference_backend", "auto") or "auto").strip().lower()
+    if cfg in ("torch", "openvino"):
+        return cfg
+    # auto
+    if str(device or "").strip().lower().startswith("intel:"):
+        return "openvino"
+    return "torch"
+
+
+def _resolve_torch_device_name(device: str) -> str:
+    d = str(device or "").strip().lower()
+    if not d or d == "auto":
+        try:
+            import torch
+
+            return "cuda" if torch.cuda.is_available() else "cpu"
+        except Exception:
+            return "cpu"
+    if d.startswith("intel:"):
+        return "cpu"
+    return d
+
+
+def _resolve_openvino_device_name(device: str) -> str:
+    d = str(device or "").strip().lower()
+    if d in ("", "auto", "gpu", "intel:gpu"):
+        return "GPU"
+    if d in ("cpu", "intel:cpu"):
+        return "CPU"
+    if d in ("npu", "intel:npu"):
+        return "NPU"
+    return d.upper()
+
+
 def _hub_cache_dir() -> str:
     env = (os.environ.get("BIRDLENSE_REID_HUB_CACHE_DIR") or "").strip()
     if env:
         return env
-    cfg = str(app_config.get("processor.reid.hub_cache_dir", "") or "").strip()
+    cfg = str(_cfg_get("processor.reid.hub_cache_dir", "") or "").strip()
     return cfg
 
 
@@ -77,12 +129,12 @@ def _hub_repo_local_path() -> str:
     env = (os.environ.get("BIRDLENSE_REID_HUB_REPO_LOCAL_PATH") or "").strip()
     if env:
         return env
-    return str(app_config.get("processor.reid.hub_repo_local_path", "") or "").strip()
+    return str(_cfg_get("processor.reid.hub_repo_local_path", "") or "").strip()
 
 
 def _hub_download_timeout_seconds() -> float:
     try:
-        val = float(app_config.get("processor.reid.hub_download_timeout_seconds", 15.0))
+        val = float(_cfg_get("processor.reid.hub_download_timeout_seconds", 15.0))
     except (TypeError, ValueError):
         val = 15.0
     return max(1.0, val)
@@ -134,11 +186,13 @@ def _ensure_model_state() -> dict[str, Any] | None:
             return _MODEL_STATE
         if _MODEL_FAILED:
             return None
-        model_name = str(app_config.get("processor.reid.model", "dinov2_vits14") or "dinov2_vits14").strip()
-        device = _resolve_reid_device()
+        model_name = str(_cfg_get("processor.reid.model", "dinov2_vits14") or "dinov2_vits14").strip()
+        raw_device = _resolve_reid_device()
+        backend = _resolve_reid_backend(raw_device)
         started = time.time()
         try:
             import torch
+            import torch.nn.functional as F
 
             hub_cache = _hub_cache_dir()
             if hub_cache:
@@ -166,16 +220,55 @@ def _ensure_model_state() -> dict[str, Any] | None:
                     socket.setdefaulttimeout(prev_timeout)
                 set_gauge("reid.runtime.hub_source", "remote")
             model.eval()
-            model.to(torch.device(device))
-            _MODEL_STATE = {
-                "model_name": model_name,
-                "device": device,
-                "model": model,
-                "side": _infer_input_side(model),
-            }
+            side = _infer_input_side(model)
+            if backend == "openvino":
+                import openvino as ov
+
+                class _EmbeddingWrapper(torch.nn.Module):
+                    def __init__(self, base_model):
+                        super().__init__()
+                        self.base_model = base_model
+
+                    def forward(self, x):
+                        feats = self.base_model.forward_features(x)
+                        vec = _pick_cls_embedding(feats)
+                        return F.normalize(vec.float(), dim=-1)
+
+                wrapper = _EmbeddingWrapper(model.to(torch.device("cpu")).eval())
+                example = torch.zeros((1, 3, side, side), dtype=torch.float32)
+                ov_model = ov.convert_model(wrapper, example_input=example)
+                core = ov.Core()
+                ov_device = _resolve_openvino_device_name(raw_device)
+                try:
+                    compiled = core.compile_model(ov_model, ov_device)
+                    effective_device = ov_device
+                except Exception:
+                    compiled = core.compile_model(ov_model, "CPU")
+                    effective_device = "CPU"
+                _MODEL_STATE = {
+                    "model_name": model_name,
+                    "device": raw_device,
+                    "backend": "openvino",
+                    "effective_device": effective_device,
+                    "compiled_model": compiled,
+                    "input_name": compiled.inputs[0].any_name,
+                    "side": side,
+                }
+            else:
+                torch_device = _resolve_torch_device_name(raw_device)
+                model.to(torch.device(torch_device))
+                _MODEL_STATE = {
+                    "model_name": model_name,
+                    "device": torch_device,
+                    "backend": "torch",
+                    "effective_device": torch_device,
+                    "model": model,
+                    "side": side,
+                }
             observe_timing("reid_model_load", (time.time() - started) * 1000.0)
             set_gauge("reid.runtime.enabled", True)
-            set_gauge("reid.runtime.device", device)
+            set_gauge("reid.runtime.device", _MODEL_STATE.get("effective_device"))
+            set_gauge("reid.runtime.backend", _MODEL_STATE.get("backend"))
             set_gauge("reid.runtime.model", model_name)
             return _MODEL_STATE
         except Exception as exc:
@@ -214,8 +307,6 @@ def _to_embedding(crop: Any, *, state: dict[str, Any]) -> np.ndarray | None:
 
     try:
         import cv2
-        import torch
-        import torch.nn.functional as F
     except Exception:
         _LOG.debug("reid: cv2/torch import failed for embedding", exc_info=True)
         return None
@@ -228,16 +319,67 @@ def _to_embedding(crop: Any, *, state: dict[str, Any]) -> np.ndarray | None:
     std = np.array((0.229, 0.224, 0.225), dtype=np.float32)
     x = (x - mean) / std
     x = np.transpose(x, (2, 0, 1))
-    t = torch.from_numpy(x).unsqueeze(0).to(torch.device(state["device"]))
-
-    with torch.inference_mode():
-        feats = state["model"].forward_features(t)
-        vec = _pick_cls_embedding(feats)
-        vec = F.normalize(vec.float(), dim=-1).squeeze(0)
-    out = vec.detach().cpu().numpy().astype(np.float32)
+    x4 = np.expand_dims(x, axis=0).astype(np.float32)
+    backend = str(state.get("backend") or "torch").strip().lower()
+    if backend == "openvino":
+        try:
+            out_data = state["compiled_model"]({state["input_name"]: x4})
+            if isinstance(out_data, dict):
+                out = np.asarray(next(iter(out_data.values())), dtype=np.float32)
+            elif isinstance(out_data, (list, tuple)):
+                out = np.asarray(out_data[0], dtype=np.float32)
+            else:
+                out = np.asarray(out_data, dtype=np.float32)
+            out = np.squeeze(out).astype(np.float32)
+        except Exception:
+            _LOG.debug("reid: openvino embedding inference failed", exc_info=True)
+            return None
+    else:
+        try:
+            import torch
+            import torch.nn.functional as F
+        except Exception:
+            _LOG.debug("reid: torch import failed for embedding", exc_info=True)
+            return None
+        t = torch.from_numpy(x4).to(torch.device(state["device"]))
+        with torch.inference_mode():
+            feats = state["model"].forward_features(t)
+            vec = _pick_cls_embedding(feats)
+            vec = F.normalize(vec.float(), dim=-1).squeeze(0)
+        out = vec.detach().cpu().numpy().astype(np.float32)
     if out.ndim != 1 or out.shape[0] <= 0:
         return None
     return out
+
+
+def _nickname_species_token(species_name: str) -> str:
+    raw = str(species_name or "").strip().lower()
+    token = re.sub(r"[^a-z0-9]+", "_", raw).strip("_")
+    return token[:20] if token else "bird"
+
+
+def _embedding_fingerprint(embedding: np.ndarray) -> str:
+    q = np.round(np.asarray(embedding, dtype=np.float32), 3).astype(np.float32)
+    return hashlib.blake2s(q.tobytes(), digest_size=4).hexdigest()
+
+
+def _generate_auto_nickname(
+    *,
+    species_name: str,
+    embedding: np.ndarray,
+    existing_names: set[str],
+) -> str:
+    base = f"{_nickname_species_token(species_name)}_{_embedding_fingerprint(embedding)}"
+    if base not in existing_names:
+        existing_names.add(base)
+        return base
+    idx = 2
+    while True:
+        cand = f"{base}_{idx}"
+        if cand not in existing_names:
+            existing_names.add(cand)
+            return cand
+        idx += 1
 
 
 def _db_path() -> str:
@@ -328,6 +470,8 @@ def apply_runtime_reid_metadata(
     processed = 0
     auto_named = 0
     candidate_cache: dict[str, list[tuple[np.ndarray, str]]] = {}
+    known_names_cache: dict[str, set[str]] = {}
+    auto_generate_nickname = _cfg_bool("processor.reid.auto_generate_nickname_enabled", True)
     for det in detections:
         if processed >= max(0, int(max_detections)):
             break
@@ -353,6 +497,11 @@ def apply_runtime_reid_metadata(
         species_name = str(det.get("species_name") or "").strip()
         if species_name not in candidate_cache:
             candidate_cache[species_name] = load_candidates(species_name) if species_name else []
+            known_names_cache[species_name] = {
+                str(name).strip()
+                for _, name in candidate_cache[species_name]
+                if str(name).strip()
+            }
         match_name, score = _best_match_nickname(emb, candidate_cache[species_name])
 
         track_id = det.get("track_id")
@@ -365,6 +514,8 @@ def apply_runtime_reid_metadata(
         det["reid_crop_key"] = crop_key
         det["reid_similarity"] = round(float(score), 4)
 
+        has_existing_candidates = bool(candidate_cache[species_name])
+        is_low_similarity = has_existing_candidates and float(score) < float(similarity_threshold)
         if (
             match_name
             and float(score) >= float(similarity_threshold)
@@ -372,14 +523,21 @@ def apply_runtime_reid_metadata(
         ):
             det["individual_nickname"] = match_name
             auto_named += 1
-        elif (
+        if (
             flag_low_similarity_for_review
-            and candidate_cache[species_name]
-            and float(score) < float(similarity_threshold)
+            and is_low_similarity
         ):
             det["classifier_needs_review"] = True
             if not str(det.get("review_reason") or "").strip():
                 det["review_reason"] = "reid_no_match"
+        if auto_generate_nickname and not str(det.get("individual_nickname") or "").strip():
+            generated = _generate_auto_nickname(
+                species_name=species_name,
+                embedding=emb,
+                existing_names=known_names_cache.get(species_name, set()),
+            )
+            det["individual_nickname"] = generated
+            auto_named += 1
 
     inc_counter("reid_runtime_embeddings_total", processed)
     inc_counter("reid_runtime_auto_nickname_total", auto_named)

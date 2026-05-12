@@ -135,6 +135,7 @@ class MQTTEventAggregator:
         self._thread = None
         self._connected = False
         self._last_connected_at = None  # for heartbeat: ok if connected or recently was
+        self._last_connected_monotonic = 0.0
         self._stopped = False
         self._last_connect_fail_log_monotonic = 0.0
         self._on_frigate_motion = on_frigate_motion  # (camera_filter, label_filter, callback)
@@ -201,6 +202,11 @@ class MQTTEventAggregator:
         self._prev_scale_kg: float | None = None
         self._last_scale_motion_ts = 0.0
         self._feeder_scale_queue: queue.Queue | None = None
+        try:
+            _warmup = float(app_config.get("mqtt.frigate_snapshot_retain_warmup_seconds") or 3.0)
+        except (TypeError, ValueError):
+            _warmup = 3.0
+        self._frigate_snapshot_retain_warmup_seconds = max(0.0, min(_warmup, 15.0))
 
     def _ensure_feeder_scale_worker(self) -> None:
         if self._feeder_scale_queue is not None:
@@ -420,6 +426,7 @@ class MQTTEventAggregator:
         if reason_code == 0:
             self._connected = True
             self._last_connected_at = time.time()
+            self._last_connected_monotonic = time.monotonic()
             self._last_connect_fail_log_monotonic = 0.0
             set_gauge("mqtt_connected", 1)
             logger.info("MQTT aggregator connected")
@@ -762,9 +769,16 @@ class MQTTEventAggregator:
                         )
         elif mqtt.topic_matches_sub(getattr(self, "_frigate_snapshot_topic", ""), msg.topic):
             # Fallback when frigate/events is sparse/disabled: topic like
-            # frigate/<camera>/<label>/snapshot (ignore retained bootstrap payloads).
+            # frigate/<camera>/<label>/snapshot.
+            # NOTE: Frigate may publish snapshots as retained messages. We only ignore
+            # the initial retained burst right after (re)connect and accept retained
+            # updates later, otherwise fallback can stay permanently silent.
             if getattr(msg, "retain", False):
-                return
+                age = 0.0
+                if self._last_connected_monotonic > 0:
+                    age = max(0.0, time.monotonic() - self._last_connected_monotonic)
+                if age < self._frigate_snapshot_retain_warmup_seconds:
+                    return
             parsed = _parse_frigate_snapshot_topic(msg.topic)
             if parsed:
                 camera, label = parsed
