@@ -366,6 +366,21 @@ reid-import-embeddings:
 	@test -n "$${JSONL:-}" || (echo "Set JSONL=embeddings.jsonl" >&2; exit 1)
 	@python3 scripts/reid/import_embeddings_sqlite.py --db "$${DB}" --jsonl "$${JSONL}" $$(test -n "$${MANIFEST:-}" && printf -- '--manifest "%s" ' "$${MANIFEST}") $${ARGS:-}
 
+# Daily offline SSL/Re-ID cycle (extract -> embed -> recluster -> report).
+# Example:
+#   DB=app/data/db/birdlense.db REID_SSL_REPORT=app/data/reid_ssl_reports/latest.json make reid-ssl-daily
+reid-ssl-daily:
+	@test -n "$${DB:-}" || (echo "Set DB=path/to/birdlense.db" >&2; exit 1)
+	@test -n "$${REID_SSL_REPORT:-}" || (echo "Set REID_SSL_REPORT=path/to/report.json" >&2; exit 1)
+	@python3 scripts/reid/run_daily_ssl_cycle.py \
+		--db "$${DB}" \
+		--window-hours "$${REID_SSL_WINDOW_HOURS:-24}" \
+		--limit "$${REID_SSL_LIMIT:-400}" \
+		--cluster-threshold "$${REID_SSL_CLUSTER_THRESHOLD:-0.88}" \
+		$$(test "$${REID_SSL_UPDATE_VIDEO_NICKNAMES:-0}" = "1" && printf -- '--update-video-nicknames ') \
+		--report-json "$${REID_SSL_REPORT}" \
+		$${ARGS:-}
+
 # VA-API /dev/dri preflight (#373). Example: make ml-check-decode
 ml-check-decode:
 	@python3 scripts/check_video_decode_environment.py

@@ -44,4 +44,44 @@ python3 scripts/reid/import_embeddings_sqlite.py --db app/data/db/birdlense.db -
 `model`, `dim`, `embedding_json`, плюс контрактные колонки из JSONL). Это не включает Re-ID в продуктовый UI, но
 фиксирует локальное хранение эмбеддингов для следующего API/UI этапа #374.
 
+## `run_daily_ssl_cycle.py`
+
+Ежедневный оффлайн цикл для Re-ID/SSL без остановки прод-пайплайна:
+
+1. извлекает кропы из `video_species` за окно `--window-hours`,
+2. строит DINOv2 эмбеддинги через runtime backend (`reid_runtime`),
+3. обновляет `reid_embedding`,
+4. recluster по видам (cosine threshold),
+5. обновляет кандидаты (`individual_label`) и опционально авто-клички в `video_species`,
+6. пишет отчёт с метриками: `reid_consistency`, `nickname_churn`, `id_switches`.
+
+```bash
+# базовый запуск
+python3 scripts/reid/run_daily_ssl_cycle.py \
+  --db app/data/db/birdlense.db \
+  --window-hours 24 \
+  --limit 400 \
+  --cluster-threshold 0.88 \
+  --report-json app/data/reid_ssl_reports/latest.json
+
+# вариант с авто-обновлением пустых individual_nickname в video_species
+python3 scripts/reid/run_daily_ssl_cycle.py \
+  --db app/data/db/birdlense.db \
+  --window-hours 24 \
+  --limit 400 \
+  --cluster-threshold 0.88 \
+  --update-video-nicknames \
+  --report-json app/data/reid_ssl_reports/latest.json
+```
+
+Для Docker-дистрибутива (one-click install) планировщик можно держать **внутри контейнера**
+через переменные `.env` (entrypoint), без host cron:
+
+```bash
+BIRDLENSE_REID_SSL_DAILY_ENABLED=1
+BIRDLENSE_REID_SSL_INTERVAL_SEC=86400
+BIRDLENSE_REID_SSL_START_DELAY_SEC=300
+BIRDLENSE_REID_SSL_REPORT_JSON=/app/data/reid_ssl_reports/latest.json
+```
+
 См. также [REID_ROADMAP.md](../../docs/REID_ROADMAP.md).
