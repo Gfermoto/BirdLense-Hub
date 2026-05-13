@@ -95,6 +95,8 @@ class API:
         video_path,
         spectrogram_path,
         scales_weight_delta_kg=None,
+        behavior_label=None,
+        behavior_confidence=None,
     ):
         # Fields to exclude from API payload (non-serializable or internal)
         exclude_fields = {"best_frame"}
@@ -114,6 +116,13 @@ class API:
         }
         if scales_weight_delta_kg is not None:
             video_data["scales_weight_delta_kg"] = float(scales_weight_delta_kg)
+        if behavior_label is not None and str(behavior_label).strip():
+            video_data["behavior_label"] = str(behavior_label).strip()[:32]
+            if behavior_confidence is not None:
+                try:
+                    video_data["behavior_confidence"] = float(behavior_confidence)
+                except (TypeError, ValueError):
+                    pass
         response = self._send_request("POST", "videos", video_data)
         return response.json()
 

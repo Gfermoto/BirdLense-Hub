@@ -2,7 +2,7 @@
 
 [Русский](./ML_ACTION_RECOGNITION_PLAN.ru.md)
 
-Parent issue: [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392)
+Parent issue: [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) · runtime execution: [#416](https://github.com/Gfermoto/BirdLense-Hub/issues/416)
 Related: [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379)
 
 ## Label taxonomy v1

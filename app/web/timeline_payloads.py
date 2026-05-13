@@ -10,6 +10,28 @@ from time_util import ensure_utc
 from services.feeder_scale import video_scales_estimate_payload
 
 
+def _model_behavior_events_from_video(video) -> list[dict]:
+    """Runtime behavior baseline persisted on Video (#416)."""
+    if not video:
+        return []
+    lab = getattr(video, "behavior_label", None) or ""
+    lab = str(lab).strip()
+    if not lab:
+        return []
+    conf = getattr(video, "behavior_confidence", None)
+    try:
+        c = max(0.0, min(1.0, float(conf))) if conf is not None else 0.0
+    except (TypeError, ValueError):
+        c = 0.0
+    return [
+        {
+            "label": lab,
+            "confidence": round(c, 4),
+            "evidence": {"reason": "behavior_recognition_runtime"},
+        }
+    ]
+
+
 def _weak_behavior_events_from_rows(rows, video) -> list[dict]:
     """Build lightweight behavior hints from ordered track rows."""
     ordered = sorted(
@@ -137,7 +159,7 @@ def format_visit_for_timeline(visit) -> dict:
         if vs.detection_provider:
             det["detection_provider"] = vs.detection_provider
         detections.append(det)
-    behavior_events = _weak_behavior_events_for_visit(visit, video)
+    behavior_events = _model_behavior_events_from_video(video) + _weak_behavior_events_for_visit(visit, video)
     return {
         "id": visit.id,
         "start_time": ensure_utc(visit.start_time).isoformat(),
@@ -234,6 +256,6 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
         "species": species_block,
         "detections": detections,
         "individual_nickname": nickname,
-        "behavior_events": _weak_behavior_events_from_rows(vss, video),
+        "behavior_events": _model_behavior_events_from_video(video) + _weak_behavior_events_from_rows(vss, video),
         "timeline_kind": "unlinked_video",
     }

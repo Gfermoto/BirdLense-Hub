@@ -174,6 +174,48 @@ def test_processor_videos_success_201(app, client, proc_headers, monkeypatch, tm
         assert db.session.get(Video, vid) is not None
 
 
+def test_processor_videos_persists_behavior_label_optional(app, client, proc_headers, monkeypatch, tmp_path):
+    from app_config.app_config import app_config
+    from routes import processor_routes
+    from models import Video, db
+    import services.visit_processor as vp_mod
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
+    monkeypatch.setitem(
+        app_config.config.setdefault("detection", {}),
+        "min_confidence_to_store",
+        0.05,
+    )
+    monkeypatch.setitem(app_config.config.setdefault("webhook", {}), "url", "")
+
+    token = str(id(app))[-6:].zfill(6)
+    body = _base_video_payload(token)
+    _touch_video_file(body["video_path"], data_root=str(tmp_path / "data"))
+    body["species"] = [
+        {
+            "species_name": f"Pytest Behavior {token}",
+            "confidence": 0.95,
+            "start_time": 0,
+            "end_time": 2,
+            "source": "video",
+            "frames": [],
+        }
+    ]
+    body["behavior_label"] = "feeding"
+    body["behavior_confidence"] = 0.72
+
+    r = client.post("/api/processor/videos", json=body, headers=proc_headers)
+    assert r.status_code == 201, r.get_data(as_text=True)
+    vid = r.get_json()["video_id"]
+    with app.app_context():
+        v = db.session.get(Video, vid)
+        assert v is not None
+        assert v.behavior_label == "feeding"
+        assert abs(float(v.behavior_confidence or 0) - 0.72) < 1e-6
+
+
 def test_processor_videos_idempotent_same_payload_returns_existing(
     app,
     client,

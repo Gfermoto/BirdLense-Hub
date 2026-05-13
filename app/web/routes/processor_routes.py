@@ -244,6 +244,16 @@ def register_routes(app):
                     pass
             db.session.add(video)
 
+            raw_bl = data.get("behavior_label")
+            raw_bc = data.get("behavior_confidence")
+            if isinstance(raw_bl, str) and raw_bl.strip():
+                video.behavior_label = raw_bl.strip()[:32]
+            if raw_bc is not None:
+                try:
+                    video.behavior_confidence = float(raw_bc)
+                except (TypeError, ValueError):
+                    pass
+
             # Add active bird foods
             active_bird_foods = BirdFood.query.filter_by(active=True).all()
             video.food.extend(active_bird_foods)
