@@ -33,6 +33,7 @@ from recordings_remote_mirror import schedule_recordings_session_mirror
 from recording_spectrogram import maybe_generate_recording_spectrogram
 from reid_runtime import enrich_runtime_reid_detections
 from spectrogram import generate_spectrogram
+from behavior_baseline_runtime import maybe_predict_video_behavior
 
 # Пустые сессии без детекций — частое событие; не засоряем лог (раз в интервал — WARNING, иначе DEBUG).
 _NO_DETECTIONS_WARN_INTERVAL_S = 120.0
@@ -441,6 +442,32 @@ def finalize_motion_recording(
             end_time=end_time,
         )
         scales_evidence.update(scales_evidence_update)
+        try:
+            duration_behavior_s = max(0.0, (end_time - start_time).total_seconds())
+        except Exception:
+            duration_behavior_s = 0.0
+        proc_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        bl, bc = maybe_predict_video_behavior(
+            app_config,
+            video_detections,
+            duration_s=duration_behavior_s,
+            processor_cwd=proc_root,
+        )
+        br_cfg = app_config.get("processor.behavior_recognition") or {}
+        if not isinstance(br_cfg, dict):
+            br_cfg = {}
+        store_min = float(br_cfg.get("confidence_store_min") or 0.2)
+        rev_thr = float(br_cfg.get("confidence_review_threshold") or 0.45)
+        behavior_label_kw = None
+        behavior_conf_kw = None
+        if bl and float(bc) >= store_min:
+            behavior_label_kw = bl
+            behavior_conf_kw = float(bc)
+            if float(bc) < rev_thr and video_detections:
+                d0 = video_detections[0]
+                if isinstance(d0, dict) and not (d0.get("review_reason") or "").strip():
+                    d0["review_reason"] = "behavior_uncertainty"
+                    d0["classifier_needs_review"] = True
         resp = api.create_video(
             video_detections,
             audio_detections,
@@ -449,6 +476,8 @@ def finalize_motion_recording(
             video_path_for_api,
             spectrogram_path,
             scales_weight_delta_kg=scales_delta_kg,
+            behavior_label=behavior_label_kw,
+            behavior_confidence=behavior_conf_kw,
         )
         video_id = response_video_id(resp)
         if video_id is not None:

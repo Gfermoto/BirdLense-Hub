@@ -421,6 +421,23 @@ ml-build-behavior-dataset:
 		--out "$${OUT}" \
 		$${ARGS:-}
 
+# Train sklearn logistic baseline + export numpy weights for processor (#416 Wave 2).
+# Requires: pip install scikit-learn numpy
+# Example:
+# MANIFEST=/tmp/behavior_dataset_manifest.v1.json EXPORT=/tmp/behavior_export.json PRED=/tmp/behavior_predictions.json make ml-train-behavior-baseline
+ml-train-behavior-baseline:
+	@test -n "$${MANIFEST:-}" || (echo "Set MANIFEST=path/to/behavior_dataset_manifest.v1.json" >&2; exit 1)
+	@test -n "$${EXPORT:-}" || (echo "Set EXPORT=path/to/behavior_logistic_export.json" >&2; exit 1)
+	@test -n "$${PRED:-}" || (echo "Set PRED=path/to/behavior_predictions.json" >&2; exit 1)
+	@PY="$$(test -x app/.venv/bin/python && echo app/.venv/bin/python || command -v python3)"; \
+	"$$PY" scripts/ml_behavior_train_baseline.py \
+		--manifest "$${MANIFEST}" \
+		--export-out "$${EXPORT}" \
+		--predictions-out "$${PRED}" \
+		$$(test -n "$${MAX_ITER:-}" && printf -- '--max-iter "%s" ' "$${MAX_ITER}") \
+		$$(test -n "$${SEED:-}" && printf -- '--seed "%s" ' "$${SEED}") \
+		$${ARGS:-}
+
 # Build behavior training/eval report from predictions and manifest (Wave 2 / #416).
 # Example:
 # MANIFEST=/tmp/behavior_dataset_manifest.v1.json PREDICTIONS=/tmp/behavior_predictions.v1.json OUT=/tmp/behavior_train_report.v1.json make ml-build-behavior-train-report

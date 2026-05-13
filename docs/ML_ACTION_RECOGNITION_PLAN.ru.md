@@ -2,7 +2,7 @@
 
 [English](./ML_ACTION_RECOGNITION_PLAN.md)
 
-Родительская задача: [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392)
+Родительская задача: [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) · runtime: [#416](https://github.com/Gfermoto/BirdLense-Hub/issues/416)
 Связано: [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379)
 
 ## Таксономия меток v1

@@ -211,6 +211,9 @@ class Video(db.Model):
     weather_wind_speed: Mapped[int] = mapped_column(Float(precision=2), nullable=True)  # wind speed, meter/sec
     # Оценка изменения массы на весах за интервал записи (кг), issue #167
     scales_weight_delta_kg: Mapped[float | None] = mapped_column(Float(precision=6), nullable=True)
+    # Распознавание поведения: baseline из процессора (#416), nullable до первого включения.
+    behavior_label: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    behavior_confidence: Mapped[float | None] = mapped_column(Float(), nullable=True)
 
     # Relations
     video_species: Mapped[List["VideoSpecies"]] = relationship(back_populates="video")

@@ -306,6 +306,13 @@ processor:
   reid_max_embedding_age_hours: 8760
   # Optional per-species thresholds (species display name keys).
   reid_species_similarity_thresholds: {}
+  # Baseline поведения (#416): логистическая регрессия по 3 признакам (manifest meta ↔ runtime proxy).
+  # Веса: JSON из `scripts/ml_behavior_train_baseline.py` (schema behavior_logistic_export@v1).
+  behavior_recognition:
+    enabled: false
+    weights_path: ""
+    confidence_store_min: 0.2
+    confidence_review_threshold: 0.45
 
 # Video source: go2rtc | file
 video:
