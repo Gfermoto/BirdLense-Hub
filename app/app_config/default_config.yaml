@@ -310,7 +310,8 @@ processor:
   # Веса: JSON из `scripts/ml_behavior_train_baseline.py` (schema behavior_logistic_export@v1).
   behavior_recognition:
     enabled: false
-    weights_path: ""
+    # Относительно корня app/processor/; в образе лежит стартовый JSON (см. models/behavior/README.md).
+    weights_path: "models/behavior/behavior_logistic_export@v1.json"
     confidence_store_min: 0.2
     confidence_review_threshold: 0.45
 

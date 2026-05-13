@@ -122,6 +122,10 @@ app/processor/models/classification/weights/*
 app/processor/models/detection/*
 !app/processor/models/detection/README.md
 !app/processor/models/tracker/
+!app/processor/models/behavior/
+app/processor/models/behavior/*
+!app/processor/models/behavior/README.md
+!app/processor/models/behavior/behavior_logistic_export@v1.json
 
 # Сгенерированная документация (make docs)
 docs/api/
