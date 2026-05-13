@@ -438,6 +438,13 @@ ml-train-behavior-baseline:
 		$$(test -n "$${SEED:-}" && printf -- '--seed "%s" ' "$${SEED}") \
 		$${ARGS:-}
 
+# Демо-веса из синтетического манифеста в репо (нужен scikit-learn в python3).
+ml-train-behavior-synthetic-fixture:
+	@python3 scripts/ml_behavior_train_baseline.py \
+		--manifest scripts/fixtures/behavior/synthetic_train_manifest.v1.json \
+		--export-out app/processor/models/behavior/behavior_logistic_export@v1.json \
+		--predictions-out /tmp/behavior_predictions_synthetic.json
+
 # Build behavior training/eval report from predictions and manifest (Wave 2 / #416).
 # Example:
 # MANIFEST=/tmp/behavior_dataset_manifest.v1.json PREDICTIONS=/tmp/behavior_predictions.v1.json OUT=/tmp/behavior_train_report.v1.json make ml-build-behavior-train-report

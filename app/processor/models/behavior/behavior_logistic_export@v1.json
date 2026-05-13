@@ -1,27 +1,26 @@
 {
   "schema": "behavior_logistic_export@v1",
   "feature_mode": "manifest_meta_v1",
-  "generated_at": "2026-05-13T00:00:00+00:00",
+  "generated_at": "2026-05-13T13:47:07.552464+00:00",
   "labels": [
     "feeding",
     "flying"
   ],
   "coef": [
     [
-      1.0,
+      0.0,
       0.0,
       0.0
     ],
     [
-      -1.0,
-      0.0,
-      0.0
+      1.4133165606239062,
+      0.1152252003554423,
+      -0.006201552437113341
     ]
   ],
   "intercept": [
     0.0,
-    0.1
+    -5.969766349786933
   ],
-  "manifest_dataset_id": "birdlense_repo_starter_v1",
-  "note": "Starter weights for smoke / path check. Train your own with: make ml-build-behavior-dataset + make ml-train-behavior-baseline (see README in this folder)."
+  "manifest_dataset_id": "synthetic_fixture_v1"
 }
