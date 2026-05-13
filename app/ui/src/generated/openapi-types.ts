@@ -114,6 +114,20 @@ export interface paths {
                                 active_triggers?: ("opencv" | "frigate" | "motion_sensor" | "scales")[];
                                 birdnet_url?: string | null;
                             };
+                            /**
+                             * @description Environment checklist aligned with `scripts/verify-prod-env.sh` (strict UI/API auth + secrets).
+                             *     In `development` runtime, missing values are reported as `warn` so operators see gaps before switching to production.
+                             */
+                            security_gates: {
+                                /** @enum {string} */
+                                runtime: "development" | "production";
+                                items: {
+                                    /** @enum {string} */
+                                    id: "strict_api_auth" | "flask_secret_key" | "processor_secret";
+                                    /** @enum {string} */
+                                    status: "ok" | "warn" | "error";
+                                }[];
+                            };
                         };
                     };
                 };
@@ -163,6 +177,16 @@ export interface paths {
                                 trigger_display?: string;
                                 active_triggers?: ("opencv" | "frigate" | "motion_sensor" | "scales")[];
                                 birdnet_url?: string | null;
+                            };
+                            security_gates: {
+                                /** @enum {string} */
+                                runtime: "development" | "production";
+                                items: {
+                                    /** @enum {string} */
+                                    id: "strict_api_auth" | "flask_secret_key" | "processor_secret";
+                                    /** @enum {string} */
+                                    status: "ok" | "warn" | "error";
+                                }[];
                             };
                         };
                     };

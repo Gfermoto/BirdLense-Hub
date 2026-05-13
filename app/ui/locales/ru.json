@@ -1953,14 +1953,24 @@
     "readinessCheckedAt": "Последняя проверка: {{at}}",
     "readinessVerifyPass": "Общий verify-контракт проходит: health, readiness и status выглядят нормально.",
     "readinessVerifyFail": "Базовое приложение поднялось, но одна из readiness-проверок не прошла. Перед завершением деплоя проверьте пути, базу данных или логи.",
+    "readinessSecurityTitle": "Чеклист окружения для production",
+    "readinessSecurityRuntime": "Режим: {{runtime}}",
+    "readinessRuntime": {
+      "development": "разработка",
+      "production": "production"
+    },
     "readinessCheck": {
       "database": "БД",
       "dataDir": "data/",
       "configDir": "app_config/",
-      "web": "web"
+      "web": "web",
+      "strict_api_auth": "Строгая auth UI/API (BIRDLENSE_STRICT_API_AUTH)",
+      "flask_secret_key": "FLASK_SECRET_KEY (≥ 32 символов, без плейсхолдеров)",
+      "processor_secret": "PROCESSOR_SECRET (≥ 32 символов, без плейсхолдеров)"
     },
     "readinessState": {
       "ok": "ok",
+      "warn": "предупреждение",
       "error": "ошибка"
     },
     "observabilityPreviewTitle": "Источники превью в финальных уведомлениях",

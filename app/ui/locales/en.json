@@ -1943,14 +1943,24 @@
     "readinessCheckedAt": "Last checked: {{at}}",
     "readinessVerifyPass": "Shared verify contract passes: health, readiness, and status all look good.",
     "readinessVerifyFail": "Core app is up, but one of the readiness checks failed. Inspect paths, database, or logs before treating the deploy as complete.",
+    "readinessSecurityTitle": "Production environment checklist",
+    "readinessSecurityRuntime": "Detected runtime: {{runtime}}",
+    "readinessRuntime": {
+      "development": "development",
+      "production": "production"
+    },
     "readinessCheck": {
       "database": "DB",
       "dataDir": "data/",
       "configDir": "app_config/",
-      "web": "web"
+      "web": "web",
+      "strict_api_auth": "Strict UI/API auth (BIRDLENSE_STRICT_API_AUTH)",
+      "flask_secret_key": "FLASK_SECRET_KEY (length ≥ 32, no placeholders)",
+      "processor_secret": "PROCESSOR_SECRET (length ≥ 32, no placeholders)"
     },
     "readinessState": {
       "ok": "ok",
+      "warn": "warning",
       "error": "error"
     },
     "observabilityPreviewTitle": "Preview sources in final notifications",

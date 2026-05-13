@@ -55,7 +55,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [status, ready, checked_at, checks, components]
+                required: [status, ready, checked_at, checks, components, security_gates]
                 properties:
                   status:
                     type: string
@@ -130,13 +130,35 @@ paths:
                       birdnet_url:
                         type: string
                         nullable: true
+                  security_gates:
+                    type: object
+                    required: [runtime, items]
+                    description: |
+                      Environment checklist aligned with `scripts/verify-prod-env.sh` (strict UI/API auth + secrets).
+                      In `development` runtime, missing values are reported as `warn` so operators see gaps before switching to production.
+                    properties:
+                      runtime:
+                        type: string
+                        enum: [development, production]
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          required: [id, status]
+                          properties:
+                            id:
+                              type: string
+                              enum: [strict_api_auth, flask_secret_key, processor_secret]
+                            status:
+                              type: string
+                              enum: [ok, warn, error]
         "503":
           description: App is up but not fully ready for use
           content:
             application/json:
               schema:
                 type: object
-                required: [status, ready, checked_at, checks, components]
+                required: [status, ready, checked_at, checks, components, security_gates]
                 properties:
                   status:
                     type: string
@@ -212,6 +234,25 @@ paths:
                       birdnet_url:
                         type: string
                         nullable: true
+                  security_gates:
+                    type: object
+                    required: [runtime, items]
+                    properties:
+                      runtime:
+                        type: string
+                        enum: [development, production]
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          required: [id, status]
+                          properties:
+                            id:
+                              type: string
+                              enum: [strict_api_auth, flask_secret_key, processor_secret]
+                            status:
+                              type: string
+                              enum: [ok, warn, error]
   /status:
     get:
       summary: Component status

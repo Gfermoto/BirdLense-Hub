@@ -1270,6 +1270,14 @@ class TestHealth:
         assert data["checks"]["data_dir"]["status"] == "ok"
         assert data["checks"]["app_config_dir"]["status"] == "ok"
         assert data["components"]["web"] == "ok"
+        sg = data["security_gates"]
+        assert sg["runtime"] in ("development", "production")
+        assert len(sg["items"]) == 3
+        assert {x["id"] for x in sg["items"]} == {
+            "strict_api_auth",
+            "flask_secret_key",
+            "processor_secret",
+        }
 
     def test_readiness_returns_503_when_database_check_fails(self, client, monkeypatch):
         from models import db
