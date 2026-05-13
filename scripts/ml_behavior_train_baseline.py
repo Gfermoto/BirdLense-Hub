@@ -13,16 +13,16 @@ from __future__ import annotations
 import argparse
 import json
 import math
-from datetime import datetime, timezone
+import sys
 from pathlib import Path
 from typing import Any
 
-try:
-    from sklearn.linear_model import LogisticRegression
-except ImportError as e:  # pragma: no cover - optional dependency
-    raise SystemExit("Install scikit-learn: pip install scikit-learn") from e
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_APP = _REPO_ROOT / "app"
+if _APP.is_dir() and str(_APP) not in sys.path:
+    sys.path.insert(0, str(_APP))
 
-EXPORT_SCHEMA = "behavior_logistic_export@v1"
+from shared.behavior_logistic_train import EXPORT_SCHEMA, fit_behavior_logistic_export
 
 
 def _meta_features(row: dict[str, Any]) -> list[float]:
@@ -89,45 +89,17 @@ def train_and_export(
         y_list.append(id_to_label[dom_id])
         X_list.append(_meta_features(row))
 
-    if len(X_list) < 4:
-        raise ValueError(f"need at least 4 training rows, got {len(X_list)}")
+    export, clf = fit_behavior_logistic_export(
+        X_list,
+        y_list,
+        max_iter=max_iter,
+        seed=seed,
+        feature_mode="manifest_meta_v1",
+        extra={"manifest_dataset_id": manifest.get("dataset_id")},
+    )
+    classes = [str(c) for c in (export.get("labels") or [])]
 
     import numpy as np
-
-    X = np.array(X_list, dtype=np.float64)
-    y = np.array(y_list)
-
-    clf = LogisticRegression(
-        max_iter=int(max_iter),
-        random_state=int(seed),
-        solver="lbfgs",
-    )
-    clf.fit(X, y)
-
-    classes = [str(c) for c in clf.classes_]
-    n_features = int(X.shape[1])
-    raw_coef = np.asarray(clf.coef_, dtype=np.float64)
-    raw_inter = np.asarray(clf.intercept_, dtype=np.float64).reshape(-1)
-    if len(classes) == 2:
-        # sklearn OvR: shape (1, F); positive class is classes_[1]. Export two logits for softmax
-        # so runtime (n_classes, n_features) matches len(labels).
-        w = raw_coef.reshape(-1)
-        b = float(raw_inter[0]) if raw_inter.size else 0.0
-        coef = [[0.0] * n_features, w.tolist()]
-        intercept = [0.0, b]
-    else:
-        coef = raw_coef.tolist()
-        intercept = raw_inter.tolist()
-
-    export = {
-        "schema": EXPORT_SCHEMA,
-        "feature_mode": "manifest_meta_v1",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "labels": classes,
-        "coef": coef,
-        "intercept": intercept,
-        "manifest_dataset_id": manifest.get("dataset_id"),
-    }
 
     pred_rows: list[dict[str, Any]] = []
     for row in manifest.get("videos") or []:
