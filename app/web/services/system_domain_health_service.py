@@ -303,7 +303,9 @@ def _recent_runtime_backend_metrics(hours: int = 24, limit: int = 1000) -> dict[
         scanned += 1
         pf = payload.get("pipeline_fingerprint") or {}
         binary_backend = str(((pf.get("binary_model") or {}).get("inference_backend")) or "unknown").strip().lower()
-        classifier_backend = str(((pf.get("classifier_model") or {}).get("inference_backend")) or "unknown").strip().lower()
+        classifier_backend = (
+            str(((pf.get("classifier_model") or {}).get("inference_backend")) or "unknown").strip().lower()
+        )
         binary_backend_counts[binary_backend] += 1
         classifier_backend_counts[classifier_backend] += 1
         policy = (payload.get("recording_context") or {}).get("policy_snapshot") or {}

@@ -718,7 +718,9 @@ class TwoStageStrategy(DetectionStrategy):
             relaxed_small_object: bool = False,
         ) -> list[dict]:
             out: list[dict] = []
-            for track_id, class_idx, conf, bbox_norm, bbox_abs in zip(track_ids, class_indexes, confidences, xyxyn, xyxy):
+            for track_id, class_idx, conf, bbox_norm, bbox_abs in zip(
+                track_ids, class_indexes, confidences, xyxyn, xyxy
+            ):
                 detector_name = self.binary_model.names[class_idx]
                 detector_label = self._normalize_detector_label(detector_name)
                 eff_min = per_label_binary_conf_threshold(
@@ -806,7 +808,9 @@ class TwoStageStrategy(DetectionStrategy):
                 ultra_max_candidates = 1
             ultra_max_candidates = max(1, min(4, ultra_max_candidates))
             weak_candidates: list[dict] = []
-            for track_id, class_idx, conf, bbox_norm, bbox_abs in zip(track_ids, class_indexes, confidences, xyxyn, xyxy):
+            for track_id, class_idx, conf, bbox_norm, bbox_abs in zip(
+                track_ids, class_indexes, confidences, xyxyn, xyxy
+            ):
                 detector_name = self.binary_model.names[class_idx]
                 detector_label = self._normalize_detector_label(detector_name)
                 if detector_label != "Bird":

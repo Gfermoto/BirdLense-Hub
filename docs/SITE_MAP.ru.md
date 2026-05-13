@@ -30,6 +30,7 @@
 | Готовность к релизу | [RELEASE_READINESS.ru.md](./RELEASE_READINESS.ru.md) · [EN](./RELEASE_READINESS.md) |
 | Definition of Done (ворота релиза) | [DEFINITION_OF_DONE.ru.md](./DEFINITION_OF_DONE.ru.md) · [EN](./DEFINITION_OF_DONE.md) |
 | Карта настроек UI | [UI_SETTINGS_MAP.ru.md](./UI_SETTINGS_MAP.ru.md) · [EN](./UI_SETTINGS_MAP.md) |
+| Тон текстов UI (редактор) | [UI_COPY_STYLE.ru.md](./UI_COPY_STYLE.ru.md) · [EN](./UI_COPY_STYLE.md) |
 | Каноническая UX-карта | [UX_CANONICAL_MAP.ru.md](./UX_CANONICAL_MAP.ru.md) · [EN](./UX_CANONICAL_MAP.md) |
 | Производительность процессора | [PROCESSOR_PERFORMANCE.ru.md](./PROCESSOR_PERFORMANCE.ru.md) · [EN](./PROCESSOR_PERFORMANCE.md) |
 | Инвентаризация триггеров | [CONFIGURATION_TRIGGERS_INVENTORY.ru.md](./CONFIGURATION_TRIGGERS_INVENTORY.ru.md) · [EN](./CONFIGURATION_TRIGGERS_INVENTORY.md) |

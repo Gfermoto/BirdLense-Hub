@@ -388,6 +388,8 @@ triggers:
   frigate:
     enabled: false
     topic: "frigate/events"
+    # Мин. top_score события внешнего MQTT-детектора до старта клипа (0 = без порога).
+    min_trigger_score: 0.50
   motion_sensor:
     enabled: false
     source: mqtt  # mqtt | esphome

@@ -106,6 +106,7 @@ def build_detection_pipeline(
 ):
     """Собрать frame_processor и decision_maker (см. ``build_detection_stack``)."""
     from detection_stack import build_detection_stack
+
     interprocess_serialize = bool(app_config.get("processor.track_regen_serialize_inference_interprocess", True))
 
     stack_kw = {
@@ -211,7 +212,9 @@ def process_video_for_tracks(
                     decision_maker.update_has_detections(has_detections)
                     runs_done += 1
                     if progress_hook is not None and (
-                        runs_done == 1 or runs_done % _hi == 0 or (yolo_runs_est is not None and runs_done >= yolo_runs_est)
+                        runs_done == 1
+                        or runs_done % _hi == 0
+                        or (yolo_runs_est is not None and runs_done >= yolo_runs_est)
                     ):
                         try:
                             progress_hook(

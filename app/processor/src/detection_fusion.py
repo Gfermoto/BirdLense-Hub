@@ -564,10 +564,7 @@ def build_fused_video_detections(
     want_standalone = (
         standalone_on
         and bool(frigate_events)
-        and (
-            not prepared
-            or (standalone_no_species and not has_accepted_species)
-        )
+        and (not prepared or (standalone_no_species and not has_accepted_species))
     )
     if want_standalone:
         prepared_before = len(prepared)

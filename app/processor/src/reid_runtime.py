@@ -498,9 +498,7 @@ def apply_runtime_reid_metadata(
         if species_name not in candidate_cache:
             candidate_cache[species_name] = load_candidates(species_name) if species_name else []
             known_names_cache[species_name] = {
-                str(name).strip()
-                for _, name in candidate_cache[species_name]
-                if str(name).strip()
+                str(name).strip() for _, name in candidate_cache[species_name] if str(name).strip()
             }
         match_name, score = _best_match_nickname(emb, candidate_cache[species_name])
 
@@ -523,10 +521,7 @@ def apply_runtime_reid_metadata(
         ):
             det["individual_nickname"] = match_name
             auto_named += 1
-        if (
-            flag_low_similarity_for_review
-            and is_low_similarity
-        ):
+        if flag_low_similarity_for_review and is_low_similarity:
             det["classifier_needs_review"] = True
             if not str(det.get("review_reason") or "").strip():
                 det["review_reason"] = "reid_no_match"

@@ -63,6 +63,7 @@ nav:
       - "Release readiness": RELEASE_READINESS.md
       - "Definition of Done (short gate)": DEFINITION_OF_DONE.md
       - "UI settings map": UI_SETTINGS_MAP.md
+      - "UI copy tone (writers)": UI_COPY_STYLE.md
       - "UX canonical map (roles & journeys)": UX_CANONICAL_MAP.md
       - "Processor performance notes": PROCESSOR_PERFORMANCE.md
       - "Config triggers inventory": CONFIGURATION_TRIGGERS_INVENTORY.md
@@ -138,6 +139,7 @@ nav:
       - "Готовность к релизу": RELEASE_READINESS.ru.md
       - "Definition of Done (короткие ворота)": DEFINITION_OF_DONE.ru.md
       - "Карта настроек UI": UI_SETTINGS_MAP.ru.md
+      - "Тон текстов UI": UI_COPY_STYLE.ru.md
       - "Каноническая UX-карта": UX_CANONICAL_MAP.ru.md
       - "Производительность процессора": PROCESSOR_PERFORMANCE.ru.md
       - "Инвентаризация триггеров конфига": CONFIGURATION_TRIGGERS_INVENTORY.ru.md

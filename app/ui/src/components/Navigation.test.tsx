@@ -4,6 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Navigation } from './Navigation';
 
+const memoryRouterFuture = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+} as const;
+
 const protectedAreaState = vi.hoisted(() => ({
   requiresPassword: false,
   unlocked: true,
@@ -44,7 +49,7 @@ function renderNav() {
   });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
+      <MemoryRouter future={memoryRouterFuture}>
         <Navigation />
       </MemoryRouter>
     </QueryClientProvider>,

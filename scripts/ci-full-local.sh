@@ -102,8 +102,11 @@ ensure_venv_ci
 (
   cd "${ROOT}/app"
   env -u PIP_USER PYTHONNOUSERSITE=1 "${VENV_CI}/bin/bandit" -r web/ processor/src -c bandit.yaml -ll
+  # GHSA-r374-rxx8-8654 (paramiko): currently no fixed release in advisory feed.
+  # Keep runtime mitigation in code path (RejectPolicy by default) and track upstream advisory updates.
   env -u PIP_USER PYTHONNOUSERSITE=1 "${VENV_CI}/bin/pip-audit" -r web/requirements.txt -r processor/requirements.txt \
-    --ignore-vuln PYSEC-2022-42969
+    --ignore-vuln PYSEC-2022-42969 \
+    --ignore-vuln GHSA-r374-rxx8-8654
   env -u PIP_USER PYTHONNOUSERSITE=1 "${VENV_CI}/bin/ruff" check web/ processor/src/
   env -u PIP_USER PYTHONNOUSERSITE=1 "${VENV_CI}/bin/ruff" format web/ processor/src/ --check
   env -u PIP_USER PYTHONNOUSERSITE=1 PYTHONPATH="${PWD}:${PWD}/web" \
@@ -154,6 +157,8 @@ mkdir -p "${ROOT}/.artifacts"
 ensure_venv_docs
 (
   cd "${ROOT}"
+  # MkDocs clean step can fail on stale racey leftovers in site/ from interrupted runs.
+  rm -rf "${ROOT}/site"
   "${VENV_DOCS}/bin/python" scripts/check_site_map_meta_paths.py
   "${VENV_DOCS}/bin/mkdocs" build --strict
 )
@@ -229,7 +234,8 @@ log "Docker: build + processor unittest + web pytest + E2E smoke"
   else
     npx playwright install chromium
   fi
-  BASE_URL="${BASE}" npx playwright test tests/smoke.spec.ts
+  env -u NO_COLOR -u FORCE_COLOR NODE_NO_WARNINGS=1 \
+    BASE_URL="${BASE}" npx playwright test tests/smoke.spec.ts
   cd "${ROOT}"
   python3 scripts/audit_species_cards.py \
     --base-url "${BASE}" \

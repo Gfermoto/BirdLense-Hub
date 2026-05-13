@@ -515,7 +515,7 @@ export function TimelinePage() {
             </Menu>
           </Box>
 
-          <TimelineStats visits={filteredVisits ?? []} />
+          <TimelineStats visits={visits ?? []} />
           <Divider sx={{ marginBottom: 4 }} />
           <Timeline visits={filteredVisits ?? []} />
         </>

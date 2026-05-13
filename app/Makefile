@@ -143,7 +143,7 @@ test-report:
 	@echo "Отчёт: app/htmlcov/index.html"
 
 test-e2e:
-	cd e2e && npm ci && npx playwright install chromium && npm test
+	cd e2e && npm ci && npx playwright install chromium && env -u NO_COLOR -u FORCE_COLOR NODE_NO_WARNINGS=1 npm test
 # Локальный стек: BASE_URL=http://127.0.0.1:8085 make test-e2e
 # С паролем: E2E_SETTINGS_PASSWORD=xxx BASE_URL=http://YOUR_HOST:8085 make test-e2e
 

@@ -5,6 +5,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { SpeciesDirectoryPage } from './index';
 
+const memoryRouterFuture = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+} as const;
+
 const fetchBirdDirectory = vi.hoisted(() =>
   vi.fn().mockResolvedValue([
     {
@@ -47,7 +52,7 @@ function renderPage() {
   });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
+      <MemoryRouter future={memoryRouterFuture}>
         <SpeciesDirectoryPage />
       </MemoryRouter>
     </QueryClientProvider>,

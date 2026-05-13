@@ -314,10 +314,180 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Minimum decision-trace sample size for statistically meaningful fusion KPI warnings.",
         "next_step": "Keep config-level while report remains ops-facing.",
     },
+    "detection.fusion_non_species_confidence_slack": {
+        "category": "advanced",
+        "reason": "Fusion confidence tolerance for non-species tracks; expert merge tuning.",
+        "next_step": "Expose only with merge diagnostics presets.",
+    },
+    "detection.track_fragment_merge_enabled": {
+        "category": "advanced",
+        "reason": "Track-fragment merge behavior is low-level tracking tuning.",
+        "next_step": "Consider expert tracker panel with validation.",
+    },
+    "detection.track_fragment_merge_gap_sec": {
+        "category": "advanced",
+        "reason": "Track-fragment merge gap is low-level tracking tuning.",
+        "next_step": "Consider expert tracker panel with validation.",
+    },
+    "detection.track_fragment_merge_max_center_dist": {
+        "category": "advanced",
+        "reason": "Track-fragment merge distance threshold is low-level tracking tuning.",
+        "next_step": "Consider expert tracker panel with validation.",
+    },
+    "detection.track_fragment_merge_min_iou": {
+        "category": "advanced",
+        "reason": "Track-fragment merge IoU threshold is low-level tracking tuning.",
+        "next_step": "Consider expert tracker panel with validation.",
+    },
+    "detection.yolo_weak_track_salvage_enabled": {
+        "category": "advanced",
+        "reason": "Weak-track salvage is anti-regression fallback logic for hard scenes.",
+        "next_step": "Expose only with clear safety notes and presets.",
+    },
+    "detection.yolo_weak_track_salvage_min_confidence": {
+        "category": "advanced",
+        "reason": "Weak-track salvage confidence gate is expert-level tuning.",
+        "next_step": "Expose only with clear safety notes and presets.",
+    },
     "processor.classifier_vote_share_power": {
         "category": "advanced",
         "reason": "Vote-share exponent controlling classifier arbitration sensitivity in ML pipeline internals.",
         "next_step": "Expose only after calibrated presets and guardrails are defined.",
+    },
+    "processor.adaptive_profiles.night.overrides.binary_imgsz": {
+        "category": "ops-only",
+        "reason": "Night adaptive profile detector size override is deployment-specific performance tuning.",
+        "next_step": "Keep YAML-only until adaptive profile UX exists.",
+    },
+    "processor.auto_small_object_relax_conf_delta": {
+        "category": "advanced",
+        "reason": "Auto-relax delta for small objects is low-level detector rescue tuning.",
+        "next_step": "Expose in expert mode with diagnostics only.",
+    },
+    "processor.auto_small_object_relax_enabled": {
+        "category": "advanced",
+        "reason": "Auto-relax for small objects is low-level detector rescue tuning.",
+        "next_step": "Expose in expert mode with diagnostics only.",
+    },
+    "processor.auto_small_object_relax_max_candidates": {
+        "category": "advanced",
+        "reason": "Auto-relax candidate cap for small objects is low-level tuning.",
+        "next_step": "Expose in expert mode with diagnostics only.",
+    },
+    "processor.auto_small_object_relax_min_box_size_px": {
+        "category": "advanced",
+        "reason": "Auto-relax min box size for small objects is low-level tuning.",
+        "next_step": "Expose in expert mode with diagnostics only.",
+    },
+    "processor.auto_small_object_relax_min_center_dist": {
+        "category": "advanced",
+        "reason": "Auto-relax center distance for small objects is low-level tuning.",
+        "next_step": "Expose in expert mode with diagnostics only.",
+    },
+    "processor.auto_unstick_enabled": {
+        "category": "advanced",
+        "reason": "Auto-unstick logic controls tracker recovery behavior.",
+        "next_step": "Expose in expert mode with safeguards.",
+    },
+    "processor.auto_unstick_min_box_size_px": {
+        "category": "advanced",
+        "reason": "Auto-unstick min box size is low-level tracker recovery tuning.",
+        "next_step": "Expose in expert mode with safeguards.",
+    },
+    "processor.auto_unstick_min_center_dist": {
+        "category": "advanced",
+        "reason": "Auto-unstick center distance is low-level tracker recovery tuning.",
+        "next_step": "Expose in expert mode with safeguards.",
+    },
+    "processor.auto_unstick_min_confidence_binary": {
+        "category": "advanced",
+        "reason": "Auto-unstick confidence gate is low-level detector recovery tuning.",
+        "next_step": "Expose in expert mode with safeguards.",
+    },
+    "processor.auto_unstick_min_confidence_binary_bird": {
+        "category": "advanced",
+        "reason": "Bird-specific auto-unstick confidence gate is low-level detector recovery tuning.",
+        "next_step": "Expose in expert mode with safeguards.",
+    },
+    "processor.auto_unstick_no_track_frames": {
+        "category": "advanced",
+        "reason": "Auto-unstick no-track frame threshold is low-level tracker recovery tuning.",
+        "next_step": "Expose in expert mode with safeguards.",
+    },
+    "processor.auto_unstick_tracker": {
+        "category": "advanced",
+        "reason": "Auto-unstick day tracker profile is low-level recovery policy.",
+        "next_step": "Expose in expert mode with profile presets.",
+    },
+    "processor.auto_unstick_tracker_night": {
+        "category": "advanced",
+        "reason": "Auto-unstick night tracker profile is low-level recovery policy.",
+        "next_step": "Expose in expert mode with profile presets.",
+    },
+    "processor.binary_track_iou": {
+        "category": "advanced",
+        "reason": "Binary detector tracker IoU threshold is low-level tracking parameter.",
+        "next_step": "Expose in expert tracker section with validation.",
+    },
+    "processor.binary_track_max_det": {
+        "category": "advanced",
+        "reason": "Binary detector max detections per frame is low-level performance/safety tuning.",
+        "next_step": "Expose in expert tracker section with validation.",
+    },
+    "processor.iou_id_fallback_live_enabled": {
+        "category": "advanced",
+        "reason": "Live IoU ID fallback is low-level identity continuity logic.",
+        "next_step": "Expose in expert mode with explanatory diagnostics.",
+    },
+    "processor.iou_id_fallback_live_match_threshold": {
+        "category": "advanced",
+        "reason": "Live IoU ID fallback match threshold is low-level identity continuity tuning.",
+        "next_step": "Expose in expert mode with explanatory diagnostics.",
+    },
+    "processor.letterbox_resize_interpolation": {
+        "category": "ops-only",
+        "reason": "Letterbox interpolation method affects inference image preprocessing internals.",
+        "next_step": "Keep YAML-only unless benchmarking UI is introduced.",
+    },
+    "processor.track_regen_min_track_duration": {
+        "category": "advanced",
+        "reason": "Track regeneration minimum track duration is batch-regeneration tuning.",
+        "next_step": "Expose under System track regeneration advanced controls.",
+    },
+    "processor.track_regen_serialize_inference": {
+        "category": "advanced",
+        "reason": "Track regeneration inference serialization is batch performance tuning.",
+        "next_step": "Expose under System track regeneration advanced controls.",
+    },
+    "processor.track_regen_serialize_inference_interprocess": {
+        "category": "advanced",
+        "reason": "Interprocess serialization for regeneration inference is batch performance tuning.",
+        "next_step": "Expose under System track regeneration advanced controls.",
+    },
+    "processor.track_to_predict_fallback_confidence": {
+        "category": "advanced",
+        "reason": "Track-to-predict fallback confidence gate is low-level inference fallback tuning.",
+        "next_step": "Expose in expert mode with diagnostics.",
+    },
+    "processor.track_to_predict_fallback_enabled": {
+        "category": "advanced",
+        "reason": "Track-to-predict fallback switch is low-level inference fallback tuning.",
+        "next_step": "Expose in expert mode with diagnostics.",
+    },
+    "processor.ultra_weak_box_salvage_enabled": {
+        "category": "advanced",
+        "reason": "Ultra-weak box salvage is emergency detector recovery logic.",
+        "next_step": "Expose only in expert mode with warnings.",
+    },
+    "processor.ultra_weak_box_salvage_max_candidates": {
+        "category": "advanced",
+        "reason": "Ultra-weak salvage candidate cap is low-level recovery tuning.",
+        "next_step": "Expose only in expert mode with warnings.",
+    },
+    "processor.ultra_weak_box_salvage_min_confidence": {
+        "category": "advanced",
+        "reason": "Ultra-weak salvage confidence gate is low-level recovery tuning.",
+        "next_step": "Expose only in expert mode with warnings.",
     },
     "processor.openvino.model_cache_enabled": {
         "category": "ops-only",
@@ -556,11 +726,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "yaml-only",
         "reason": "Path to classifier class list is deployment/repo layout; not configured in Settings.",
         "next_step": "Keep in user_config.yaml or defaults.",
-    },
-    "triggers.frigate.min_trigger_score": {
-        "category": "advanced",
-        "reason": "Frigate MQTT top-score gate before recorder starts; expert YAML tuning.",
-        "next_step": "Optional numeric field next to triggers.frigate.enabled in Capture & Feeder.",
     },
     "mqtt.frigate_topic": {
         "category": "legacy",

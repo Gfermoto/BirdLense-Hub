@@ -7,6 +7,7 @@
 | Эпик | Issue |
 |------|--------|
 | DoD + карта UI | [#325](https://github.com/Gfermoto/BirdLense-Hub/issues/325) |
+| Настройки: UI оператора vs YAML (#421) | [#421](https://github.com/Gfermoto/BirdLense-Hub/issues/421) |
 | Доки и DX | [#326](https://github.com/Gfermoto/BirdLense-Hub/issues/326) |
 | Observability / runbook VPS | [#327](https://github.com/Gfermoto/BirdLense-Hub/issues/327) |
 | Производительность процессора | [#328](https://github.com/Gfermoto/BirdLense-Hub/issues/328) |

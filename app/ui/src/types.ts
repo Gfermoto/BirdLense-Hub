@@ -330,7 +330,7 @@ export interface Settings {
     cameras?: Array<{
       id?: string;
       stream_name?: string;
-      /** Go2RTC stream for motion/YOLO (Frigate-style detect); optional. */
+      /** Optional stream for motion/YOLO (can be direct low-res camera feed). */
       detect_stream_name?: string;
       name?: string;
     }>;
@@ -435,6 +435,8 @@ export interface Settings {
     frigate?: {
       enabled?: boolean;
       topic?: string;
+      /** Мин. score события MQTT до старта записи (внешний детектор). */
+      min_trigger_score?: number;
     };
     motion_sensor?: {
       enabled?: boolean;

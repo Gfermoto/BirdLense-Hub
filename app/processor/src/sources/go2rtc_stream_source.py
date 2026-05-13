@@ -101,12 +101,22 @@ def _capture_fallback_reason(
 def _ffmpeg_vaapi_capture_cmd(stream_url: str, lores_size: tuple[int, int]) -> list[str]:
     """FFmpeg rawvideo command for VA-API live inference capture."""
     width, height = int(lores_size[0]), int(lores_size[1])
-    vf = f"scale_vaapi=w={width}:h={height},hwdownload,format=nv12,format=bgr24"
+    # Preserve source aspect ratio and pad to inference canvas (letterbox),
+    # matching OpenCV capture path semantics.
+    vf = (
+        f"scale_vaapi=w={width}:h={height}:force_original_aspect_ratio=decrease,"
+        f"hwdownload,format=nv12,pad=w={width}:h={height}:x=(ow-iw)/2:y=(oh-ih)/2,"
+        "format=bgr24"
+    )
     return [
         "ffmpeg",
         "-hide_banner",
         "-loglevel",
         "warning",
+        "-fflags",
+        "+genpts",
+        "-use_wallclock_as_timestamps",
+        "1",
         "-rtsp_transport",
         "tcp",
         "-hwaccel",
@@ -128,9 +138,91 @@ def _ffmpeg_vaapi_capture_cmd(stream_url: str, lores_size: tuple[int, int]) -> l
     ]
 
 
+def _ffmpeg_record_cmd(
+    *,
+    stream_url: str,
+    output: str,
+    use_vaapi: bool,
+    record_stream_codec: str,
+) -> list[str]:
+    """Build FFmpeg recording command with robust timestamp/audio handling."""
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-fflags",
+        "+genpts+igndts",
+        "-use_wallclock_as_timestamps",
+        "1",
+        "-avoid_negative_ts",
+        "make_zero",
+        "-max_interleave_delta",
+        "0",
+    ]
+    if use_vaapi:
+        cmd += [
+            "-hwaccel",
+            "vaapi",
+            "-hwaccel_device",
+            VAAPI_DEVICE,
+            "-hwaccel_output_format",
+            "vaapi",
+        ]
+    cmd += [
+        "-rtsp_transport",
+        "tcp",
+        "-i",
+        stream_url,
+        "-map",
+        "0:v:0",
+        "-map",
+        "0:a:0?",
+    ]
+    if use_vaapi:
+        cmd += [
+            "-c:v",
+            "h264_vaapi",
+            "-b:v",
+            "2M",
+        ]
+    elif (record_stream_codec or "h264").strip().lower() == "h264":
+        cmd += [
+            "-analyzeduration",
+            "10M",
+            "-probesize",
+            "10M",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "23",
+            "-pix_fmt",
+            "yuv420p",
+        ]
+    else:
+        cmd += [
+            "-c:v",
+            "copy",
+        ]
+    cmd += [
+        "-af",
+        "aresample=async=1:first_pts=0",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
+        "-movflags",
+        "+faststart",
+        output,
+    ]
+    return cmd
+
+
 # Reconnect backoff: 1, 2, 4, 8, 16, max 30 sec
 MAX_RECONNECT_DELAY = 30
 INITIAL_RECONNECT_DELAY = 1
+FFMPEG_CAPTURE_FAILURE_THRESHOLD = 3
+FFMPEG_CAPTURE_COOLDOWN_SEC = 60
 
 
 def _build_stream_url(
@@ -209,6 +301,8 @@ class Go2RTCStreamSource:
         self._read_lock = threading.Lock()
         self._vaapi_checked = False
         self._vaapi_available = True
+        self._ffmpeg_capture_failures = 0
+        self._force_opencv_until_ts = 0.0
 
         if self._capture_stream_url != self.stream_url:
             self.logger.info(
@@ -255,6 +349,8 @@ class Go2RTCStreamSource:
 
     def _should_use_ffmpeg_vaapi_capture(self) -> bool:
         """Whether live inference capture should try FFmpeg VA-API."""
+        if time.time() < float(self._force_opencv_until_ts or 0.0):
+            return False
         if self._capture_backend == "ffmpeg_vaapi":
             return True
         return self._capture_backend == "auto" and self._encoding_mode == "intel"
@@ -328,6 +424,7 @@ class Go2RTCStreamSource:
         """Read one BGR lores frame from FFmpeg rawvideo stdout."""
         proc = self._capture_process
         if not proc or proc.poll() is not None or not proc.stdout:
+            self._ffmpeg_capture_failures += 1
             return None, False
         width, height = int(self.lores_size[0]), int(self.lores_size[1])
         need = width * height * 3
@@ -336,11 +433,13 @@ class Go2RTCStreamSource:
         while remaining > 0:
             chunk = proc.stdout.read(remaining)
             if not chunk:
+                self._ffmpeg_capture_failures += 1
                 return None, False
             chunks.append(chunk)
             remaining -= len(chunk)
         data = b"".join(chunks)
         frame = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 3))
+        self._ffmpeg_capture_failures = 0
         return frame, True
 
     def _update_streaming_output(self, frame):
@@ -414,76 +513,12 @@ class Go2RTCStreamSource:
         self._video_output = output
         os.makedirs(os.path.dirname(output), exist_ok=True)
         use_vaapi = self._use_intel_vaapi()
-        if use_vaapi:
-            cmd = [
-                "ffmpeg",
-                "-y",
-                "-hwaccel",
-                "vaapi",
-                "-hwaccel_device",
-                VAAPI_DEVICE,
-                "-hwaccel_output_format",
-                "vaapi",
-                "-rtsp_transport",
-                "tcp",
-                "-i",
-                self.stream_url,
-                "-c:v",
-                "h264_vaapi",
-                "-b:v",
-                "2M",
-                "-c:a",
-                "aac",
-                "-movflags",
-                "+faststart",
-                output,
-            ]
-        else:
-            # copy: быстрее, но если RTSP/Go2RTC отдаёт HEVC — Chrome/Firefox часто не играют <video>.
-            if self._record_stream_codec == "h264":
-                cmd = [
-                    "ffmpeg",
-                    "-y",
-                    "-rtsp_transport",
-                    "tcp",
-                    "-i",
-                    self.stream_url,
-                    "-analyzeduration",
-                    "10M",
-                    "-probesize",
-                    "10M",
-                    "-c:v",
-                    "libx264",
-                    "-preset",
-                    "veryfast",
-                    "-crf",
-                    "23",
-                    "-pix_fmt",
-                    "yuv420p",
-                    "-c:a",
-                    "aac",
-                    "-b:a",
-                    "128k",
-                    "-movflags",
-                    "+faststart",
-                    output,
-                ]
-            else:
-                cmd = [
-                    "ffmpeg",
-                    "-y",
-                    "-rtsp_transport",
-                    "tcp",
-                    "-i",
-                    self.stream_url,
-                    "-c:v",
-                    "copy",
-                    "-c:a",
-                    "aac",
-                    "-movflags",
-                    "+faststart",
-                    output,
-                ]
+        cmd = _ffmpeg_record_cmd(
+            stream_url=self.stream_url,
+            output=output,
+            use_vaapi=bool(use_vaapi),
+            record_stream_codec=self._record_stream_codec,
+        )
         try:
             from encoding_status import set_last_encoding_used
 
@@ -539,11 +574,25 @@ class Go2RTCStreamSource:
         Get next frame for processing.
         Returns BGR frame resized to lores_size, or None on error.
         """
-        with self._read_lock:
-            frame, ok = self._read_frame()
-        if not ok or frame is None:
-            if self._reconnect_if_needed():
-                return self.capture()
+        # One reconnect attempt per capture call: avoid recursive stack growth
+        # and keep motion loop responsive when stream stays unavailable.
+        for attempt in range(2):
+            with self._read_lock:
+                frame, ok = self._read_frame()
+            if ok and frame is not None:
+                break
+            if (
+                self._capture_backend_used == "ffmpeg_vaapi"
+                and self._ffmpeg_capture_failures >= FFMPEG_CAPTURE_FAILURE_THRESHOLD
+            ):
+                self._force_opencv_until_ts = time.time() + float(FFMPEG_CAPTURE_COOLDOWN_SEC)
+                self._ffmpeg_capture_failures = 0
+                self.logger.warning(
+                    "FFmpeg VA-API capture is unstable, forcing OpenCV fallback for %ss",
+                    FFMPEG_CAPTURE_COOLDOWN_SEC,
+                )
+            if attempt == 0 and self._reconnect_if_needed():
+                continue
             return None
         self._frame_count += 1
         self._last_frame_time = time.time()

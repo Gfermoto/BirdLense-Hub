@@ -6,6 +6,11 @@ import type { SpeciesVisit } from '../types';
 import { VisitCard } from './VisitCard';
 import '../i18n';
 
+const memoryRouterFuture = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+} as const;
+
 const protectedAreaState = vi.hoisted(() => ({
   canEdit: true,
 }));
@@ -46,7 +51,7 @@ describe('VisitCard', () => {
 
     render(
       <QueryClientProvider client={qc}>
-        <MemoryRouter>
+        <MemoryRouter future={memoryRouterFuture}>
           <VisitCard visit={visit} />
         </MemoryRouter>
       </QueryClientProvider>,

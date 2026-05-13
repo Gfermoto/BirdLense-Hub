@@ -30,6 +30,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Release readiness | [RELEASE_READINESS.md](./RELEASE_READINESS.md) · [RU](./RELEASE_READINESS.ru.md) |
 | Definition of Done (short gate) | [DEFINITION_OF_DONE.md](./DEFINITION_OF_DONE.md) · [RU](./DEFINITION_OF_DONE.ru.md) |
 | UI settings map | [UI_SETTINGS_MAP.md](./UI_SETTINGS_MAP.md) · [RU](./UI_SETTINGS_MAP.ru.md) |
+| UI copy tone (writers) | [UI_COPY_STYLE.md](./UI_COPY_STYLE.md) · [RU](./UI_COPY_STYLE.ru.md) |
 | UX canonical map (roles & journeys) | [UX_CANONICAL_MAP.md](./UX_CANONICAL_MAP.md) · [RU](./UX_CANONICAL_MAP.ru.md) |
 | Processor performance notes | [PROCESSOR_PERFORMANCE.md](./PROCESSOR_PERFORMANCE.md) · [RU](./PROCESSOR_PERFORMANCE.ru.md) |
 | Config triggers inventory | [CONFIGURATION_TRIGGERS_INVENTORY.md](./CONFIGURATION_TRIGGERS_INVENTORY.md) · [RU](./CONFIGURATION_TRIGGERS_INVENTORY.ru.md) |
