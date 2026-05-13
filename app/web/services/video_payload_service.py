@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from datetime import timezone
 
+from typing import Any
+
 from services.feeder_scale import video_scales_estimate_payload
 
 
@@ -28,7 +30,7 @@ def _species_row(vs) -> dict:
 
 def build_video_detail_dict(video) -> dict:
     """Ожидаются joinedload video_species→species и food."""
-    return {
+    out: dict[str, Any] = {
         "id": video.id,
         "created_at": video.created_at.astimezone(timezone.utc).isoformat(),
         "processor_version": video.processor_version,
@@ -50,6 +52,16 @@ def build_video_detail_dict(video) -> dict:
         "food": [{"id": bf.id, "name": bf.name, "image_url": bf.image_url} for bf in video.food],
         "scales": video_scales_estimate_payload(video),
     }
+    bl = getattr(video, "behavior_label", None)
+    if bl:
+        out["behavior_label"] = str(bl).strip()
+    bc = getattr(video, "behavior_confidence", None)
+    if bc is not None:
+        try:
+            out["behavior_confidence"] = round(float(bc), 6)
+        except (TypeError, ValueError):
+            pass
+    return out
 
 
 def build_video_detection_frames_dict(video) -> dict:

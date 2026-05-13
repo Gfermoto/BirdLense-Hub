@@ -446,8 +446,10 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Update recording (favorite)
-         * @description Set ``favorite`` so retention can skip this recording when ``retention.protect_favorites`` is enabled (cascade and files_only). Contributor or admin session required (same gate as DELETE / download).
+         * Update recording (favorite, behavior)
+         * @description Update ``favorite`` (retention may skip when ``retention.protect_favorites`` is on) and/or
+         *     manual **behavior** label for ML feedback (#416). At least one of ``favorite``, ``behavior_label``,
+         *     ``behavior_confidence`` must be present. Contributor or admin session required (same gate as DELETE / download).
          */
         patch: {
             parameters: {
@@ -461,7 +463,11 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        favorite: boolean;
+                        favorite?: boolean;
+                        /** @description Lowercased taxonomy label, or null/empty to clear behavior fields */
+                        behavior_label?: string | null;
+                        /** @description Manual confidence for ``behavior_label``; null clears */
+                        behavior_confidence?: number | null;
                     };
                 };
             };
@@ -7975,6 +7981,10 @@ export interface components {
                 /** @enum {string} */
                 display_unit?: "kg" | "g";
             } | null;
+            /** @description Runtime or manually set behavior taxonomy label (#416) */
+            behavior_label?: string | null;
+            /** @description Confidence for behavior_label (0..1) */
+            behavior_confidence?: number | null;
         };
         VideoNeighbors: {
             /** @enum {string} */

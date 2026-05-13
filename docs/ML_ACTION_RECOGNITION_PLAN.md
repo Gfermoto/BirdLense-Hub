@@ -159,3 +159,16 @@ DoD E4:
 - quality bar in this document is met in two independent windows;
 - detector/classifier throughput is not degraded;
 - issue #379 includes final go/no-go report.
+
+## Hub #416 — behavior baseline runtime (implemented)
+
+Checklist aligned with issue [#416](https://github.com/Gfermoto/BirdLense-Hub/issues/416):
+
+- **DB**: `video.behavior_label`, `video.behavior_confidence` (migration), ingest from processor finalize path.
+- **Processor**: `behavior_logistic_export@v1.json` load, softmax inference, **cap** on detections passed into meta-features (default 50) to bound work per clip.
+- **API**: `GET /api/ui/videos/:id` exposes `behavior_*`; `PATCH` allows contributor/admin to set or clear manual labels (OpenAPI + UI).
+- **Scripts** (optional ops):
+  - `scripts/ml_behavior_export_video_labels.py --db … --out ….jsonl` — dump operator-confirmed labels from SQLite for retraining feedback.
+  - `scripts/ml_behavior_runtime_profile.py --export … --out ….json` — micro-benchmark forward pass latency (numpy softmax path).
+
+Future waves (not required for #416 closure): OpenVINO/ONNX head, full operator loop → export, extended canary metrics.

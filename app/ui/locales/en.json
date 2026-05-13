@@ -1484,7 +1484,17 @@
     "scalesEstimateTitle": "Scales (estimate)",
     "scalesEstimateValue": "{{value}} {{unit}}",
     "scalesEstimateHint": "Change in scale readings during the clip when a video detection exists; wind, noise, or multiple birds affect accuracy.",
-    "visitSpeciesMismatch": "Some detections are linked to a visit of a different species — often after manual DB edits or track regeneration. The video labels show what is stored on this clip."
+    "visitSpeciesMismatch": "Some detections are linked to a visit of a different species — often after manual DB edits or track regeneration. The video labels show what is stored on this clip.",
+    "behaviorTitle": "Behavior (recognition)",
+    "behaviorNone": "No behavior label is stored for this clip yet.",
+    "behaviorEdit": "Edit behavior",
+    "behaviorDialogTitle": "Behavior label",
+    "behaviorLabelField": "Label",
+    "behaviorLabelHint": "Lowercase id (e.g. feeding, flying). Leave empty to clear stored behavior.",
+    "behaviorConfField": "Confidence (0–1)",
+    "behaviorConfHint": "Optional manual confidence. Cleared when the label is cleared.",
+    "behaviorSaving": "Saving…",
+    "behaviorSave": "Save"
   },
   "weather": {
     "title": "Weather",
