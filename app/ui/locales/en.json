@@ -651,6 +651,9 @@
     "processorSectionHeadingBehavior": "Behavior recognition (baseline)",
     "processorBehaviorTitle": "Behavior recognition",
     "processorBehaviorDesc": "Optional logistic baseline on recording finalize (#416). Requires a valid behavior_logistic_export JSON on disk; processor restart picks up config changes.",
+    "processorBehaviorBundledWeights": "The shipped image includes a demo weights file at models/behavior/behavior_logistic_export@v1.json (trained on synthetic data — not your cameras). Default config points there; check the path field below after upgrades.",
+    "processorBehaviorNoDatasetUi": "There is no UI to label a training dataset or run training: use CSVs on a PC and Makefile targets (see repo README). On a video page you can only edit the stored label for that recording.",
+    "processorBehaviorReadmeLink": "README.ru.md on GitHub (training section)",
     "processorBehaviorEnabled": "Enable behavior baseline",
     "processorBehaviorEnabledHint": "When on, the processor may set behavior_label on new videos if weights_path resolves and detections exist.",
     "processorBehaviorWeightsPath": "Weights file path",
@@ -1505,7 +1508,8 @@
     "behaviorConfField": "Confidence (0–1)",
     "behaviorConfHint": "Optional manual confidence. Cleared when the label is cleared.",
     "behaviorSaving": "Saving…",
-    "behaviorSave": "Save"
+    "behaviorSave": "Save",
+    "behaviorTrainingNotInUi": "Training a new model or building a dataset is not done here — only this clip’s stored label. Settings → Processor → behavior baseline; offline CSV + Makefile on GitHub."
   },
   "weather": {
     "title": "Weather",

@@ -33,6 +33,8 @@ Two components: **detector** (bird or rodent in frame) and **classifier** (bird 
 
 **Catalog hygiene:** align the Hub species list with your classifier using `species.catalog_allowlist_file` + optional `catalog_strict_ingest`, `scripts/datasets/dump_classifier_allowlist.py`, and `POST /api/ui/system/species-catalog/reconcile` — see [docs/CONFIGURATION.md](./docs/CONFIGURATION.md).
 
+**Optional behavior baseline (logistic JSON, #416):** a **demo** `behavior_logistic_export@v1.json` ships under `app/processor/models/behavior/` with default path `models/behavior/behavior_logistic_export@v1.json` (relative to `app/processor/`). There is **no in-Hub UI to label a training dataset or run training** — only Settings toggles/path/thresholds and per-clip manual label edit on the video page. Full training: CSV → `make ml-build-behavior-dataset` → `make ml-train-behavior-baseline` (see [README.ru.md](./README.ru.md) Russian section *Обучение baseline «поведения»*).
+
 <details>
 <summary>📷 Screenshots</summary>
 <br>
