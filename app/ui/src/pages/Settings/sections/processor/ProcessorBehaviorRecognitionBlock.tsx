@@ -8,6 +8,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
 import Alert from '@mui/material/Alert';
 import Link from '@mui/material/Link';
+import { Link as RouterLink } from 'react-router-dom';
 import { ServiceBlock } from '../../shared/ServiceBlock';
 import type { Settings } from '../../../../types';
 
@@ -31,6 +32,10 @@ export function ProcessorBehaviorRecognitionBlock({ form }: Props) {
       </Alert>
       <Alert severity="warning" variant="outlined" sx={{ mb: 2 }}>
         {t('settings.processorBehaviorNoDatasetUi')}{' '}
+        <Link component={RouterLink} to="/system#behavior-baseline-retrain">
+          {t('settings.processorBehaviorSystemRetrainLink')}
+        </Link>
+        {' · '}
         <Link href={BEHAVIOR_README_RU} target="_blank" rel="noopener noreferrer">
           {t('settings.processorBehaviorReadmeLink')}
         </Link>

@@ -14,6 +14,7 @@ import { ProcessorLogs } from './ProcessorLogs';
 import { SystemReadinessCard } from './SystemReadinessCard';
 import { SystemHero } from './SystemHero';
 import { RecognitionImprovementCard } from './RecognitionImprovementCard';
+import { BehaviorBaselineRetrainCard } from './BehaviorBaselineRetrainCard';
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
@@ -62,6 +63,15 @@ export const System: React.FC = () => {
     });
   }, [location.hash]);
 
+  React.useEffect(() => {
+    if (location.hash !== '#behavior-baseline-retrain') return;
+    const node = document.getElementById('behavior-baseline-retrain');
+    if (!node) return;
+    requestAnimationFrame(() => {
+      node.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+  }, [location.hash]);
+
   return (
     <ProtectedRoute title={t('nav.system')}>
       <Stack spacing={4} sx={{ ...systemStackSx, pb: 1 }}>
@@ -99,6 +109,12 @@ export const System: React.FC = () => {
                 sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}
               >
                 <RecognitionImprovementCard />
+              </Box>
+              <Box
+                id="behavior-baseline-retrain"
+                sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}
+              >
+                <BehaviorBaselineRetrainCard />
               </Box>
               <MlRuntimeCard />
               <ConfigAuditCard simple={!isAdvanced} />

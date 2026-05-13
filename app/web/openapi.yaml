@@ -3459,6 +3459,47 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Fusion export job status
+  /system/behavior-baseline/retrain:
+    post:
+      description: |
+        Admin (settings password session): retrain behavior logistic weights from ``Video.behavior_label``
+        on non-deleted recordings, using the same 3 meta-features as the processor runtime. Writes
+        ``processor/models/behavior/behavior_logistic_export@v1.json`` by default. Requires scikit-learn
+        in the web environment and at least four labeled videos with two distinct labels.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: true
+              type: object
+        required: false
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation error
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: scikit-learn missing
+      summary: Retrain behavior baseline from hub labels
   /system/merge-duplicate-species:
     post:
       description: 'Admin: merge catalog duplicates.'
