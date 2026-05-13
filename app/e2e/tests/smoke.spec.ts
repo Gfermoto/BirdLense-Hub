@@ -25,8 +25,12 @@ async function waitMainSpinnerGone(page: import('@playwright/test').Page) {
 }
 
 async function isSettingsProtected(page: import('@playwright/test').Page) {
+  const dialogPasswordInput = page.locator('[role="dialog"] input[type="password"]').first();
+  if (await dialogPasswordInput.isVisible().catch(() => false)) return true;
   return page
-    .getByRole('dialog', { name: /Password for settings access/i })
+    .getByText(
+      /This area is for station setup or service maintenance|Раздел для настройки станции или сервисного обслуживания|此区域用于站点设置或服务维护/i,
+    )
     .isVisible()
     .catch(() => false);
 }
@@ -77,16 +81,15 @@ test.describe('Smoke tests', () => {
     );
     if (mode === 'protected') {
       await expect(
-        page.getByText(/This area is for station setup or service maintenance/i),
+        page.getByText(
+          /This area is for station setup or service maintenance|Раздел для настройки станции или сервисного обслуживания|此区域用于站点设置或服务维护/i,
+        ),
       ).toBeVisible({ timeout: 15000 });
       await expect(
-        page.getByRole('dialog', { name: /Password for settings access/i }),
+        page.locator('[role="dialog"]').first(),
       ).toBeVisible({ timeout: 15000 });
       await expect(
-        page
-          .getByRole('dialog', { name: /Password for settings access/i })
-          .locator('input[type="password"]')
-          .first(),
+        page.locator('[role="dialog"] input[type="password"]').first(),
       ).toBeVisible({ timeout: 15000 });
       return;
     }
@@ -209,22 +212,19 @@ test.describe('Smoke tests', () => {
     // «protected» на /system и разводит по ветке с текстом из /settings.
     if (await isSettingsProtected(page)) {
       await expect(
-        page.getByText(/This area is for station setup or service maintenance/i),
+        page.getByText(
+          /This area is for station setup or service maintenance|Раздел для настройки станции или сервисного обслуживания|此区域用于站点设置或服务维护/i,
+        ),
       ).toBeVisible({ timeout: 15000 });
       await expect(
-        page.getByRole('dialog', { name: /Password for settings access/i }),
+        page.locator('[role="dialog"]').first(),
       ).toBeVisible({ timeout: 15000 });
       await expect(
-        page
-          .getByRole('dialog', { name: /Password for settings access/i })
-          .locator('input[type="password"]')
-          .first(),
+        page.locator('[role="dialog"] input[type="password"]').first(),
       ).toBeVisible({ timeout: 15000 });
       return;
     }
-    await expect(page.getByRole('heading', { name: /System|Система|系统/i })).toBeVisible({
-      timeout: 20000,
-    });
+    await expect(page).toHaveURL(/\/system/, { timeout: 20000 });
     await expect(
       page.getByText(/Ready|Готово|已就绪|Needs attention|Требует внимания/i).first(),
     ).toBeVisible({

@@ -96,9 +96,7 @@ def _build_weak_yolo_salvage_row(
 
 def _best_yolo_anchor_row(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
     yolo_rows = [
-        row
-        for row in (rows or [])
-        if str((row or {}).get("detection_provider") or "").strip().lower() == "yolo"
+        row for row in (rows or []) if str((row or {}).get("detection_provider") or "").strip().lower() == "yolo"
     ]
     if not yolo_rows:
         return None
@@ -222,8 +220,7 @@ def finalize_motion_recording(
     if yolo_core_anchor_enabled:
         pre_fusion_yolo_anchor = _best_yolo_anchor_row(accepted_pre_fusion)
         has_fused_yolo = any(
-            str((row or {}).get("detection_provider") or "").strip().lower() == "yolo"
-            for row in video_detections
+            str((row or {}).get("detection_provider") or "").strip().lower() == "yolo" for row in video_detections
         )
         # Keep YOLO as pipeline core, but do not disable fallback: we only restore
         # a single anchor row when YOLO had accepted rows and fusion dropped them all.
@@ -253,9 +250,7 @@ def finalize_motion_recording(
             and bool((row or {}).get("frames"))
             for row in accepted_pre_fusion
         )
-        has_yolo_rows_with_frames = (
-            has_yolo_rows_with_frames_in_final or had_yolo_rows_with_frames_pre_fusion
-        )
+        has_yolo_rows_with_frames = has_yolo_rows_with_frames_in_final or had_yolo_rows_with_frames_pre_fusion
         kept_rows: list[dict[str, Any]] = []
         dropped_no_frames = 0
         kept_no_frames_frigate = 0
@@ -265,12 +260,13 @@ def finalize_motion_recording(
             row_provider = str((row or {}).get("detection_provider") or "").strip().lower()
             row_kind = str((row or {}).get("decision_kind") or "").strip().lower()
             keep_without_frames = (
-                (bool((row or {}).get("frigate_standalone")) or row_kind in {
-                "frigate_standalone",
-                "frigate_standalone_excluded",
-                })
-                and not has_yolo_rows_with_frames
-            )
+                bool((row or {}).get("frigate_standalone"))
+                or row_kind
+                in {
+                    "frigate_standalone",
+                    "frigate_standalone_excluded",
+                }
+            ) and not has_yolo_rows_with_frames
             if row_source == "video" and not row.get("frames") and not keep_without_frames:
                 if row_provider == "frigate" and row_kind in {"frigate_standalone", "frigate_standalone_excluded"}:
                     dropped_no_frames_frigate_when_yolo += 1
@@ -358,7 +354,9 @@ def finalize_motion_recording(
             yolo_tracks_count,
         )
     persisted_without_frames = sum(
-        1 for d in video_detections if str((d or {}).get("source") or "").strip().lower() == "video" and not d.get("frames")
+        1
+        for d in video_detections
+        if str((d or {}).get("source") or "").strip().lower() == "video" and not d.get("frames")
     )
     if persisted_without_frames:
         logging.warning(

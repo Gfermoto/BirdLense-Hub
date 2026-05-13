@@ -49,6 +49,7 @@ See [TESTING](./TESTING.md) §1 (including **Test pyramid** / targeted runs) and
 
 - Run in **python-security** with both requirement files.
 - Known ignore: `PYSEC-2022-42969` (transitive `py` via dev/docs tooling); documented inline in the workflow.
+- Known ignore: `GHSA-r374-rxx8-8654` (`paramiko`) while the advisory feed has no fixed release; runtime mitigation remains strict host-key verification by default.
 
 ## npm audit
 

@@ -61,6 +61,27 @@ def _start_mjpeg_feeder_thread(media_sources_cache: dict) -> None:
     threading.Thread(target=_mjpeg_feeder, daemon=True).start()
 
 
+def _resolve_capture_stream_url(
+    *,
+    go2rtc_url: str,
+    detect_stream_name: str | None,
+    username: str | None = None,
+    password: str | None = None,
+) -> str | None:
+    """Resolve capture stream as direct URL or go2rtc stream name."""
+    detect_sn = (detect_stream_name or "").strip()
+    if not detect_sn:
+        return None
+    if "://" in detect_sn:
+        return detect_sn
+    return _build_stream_url(
+        go2rtc_url,
+        detect_sn,
+        username=username,
+        password=password,
+    )
+
+
 def setup_processor_media(
     args: Any,
     main_size: tuple,
@@ -165,16 +186,11 @@ def setup_processor_media(
                 username=app_config.get("video.go2rtc_username"),
                 password=app_config.get("video.go2rtc_password"),
             )
-            detect_sn = (cam.get("detect_stream_name") or "").strip()
-            capture_url = (
-                _build_stream_url(
-                    go2rtc_url,
-                    detect_sn,
-                    username=app_config.get("video.go2rtc_username"),
-                    password=app_config.get("video.go2rtc_password"),
-                )
-                if detect_sn
-                else None
+            capture_url = _resolve_capture_stream_url(
+                go2rtc_url=go2rtc_url,
+                detect_stream_name=cam.get("detect_stream_name"),
+                username=app_config.get("video.go2rtc_username"),
+                password=app_config.get("video.go2rtc_password"),
             )
             idx = next(
                 (i for i, c in enumerate(cameras) if c["id"] == camera_id),

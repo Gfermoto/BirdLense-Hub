@@ -27,3 +27,5 @@ Single-page map of **where** user, contributor, and admin tasks live in the Hub 
 ## Related GitHub tracking
 
 Planning epic: [BirdLense-Hub#325](https://github.com/Gfermoto/BirdLense-Hub/issues/325) (product DoD + UI map).
+
+Settings vs YAML (inventory + operator-first UI): [BirdLense-Hub#421](https://github.com/Gfermoto/BirdLense-Hub/issues/421) — machine inventory via `scripts/check-settings-ui-coverage.py`; UI copy tone: [UI copy style](./UI_COPY_STYLE.md) · [RU](./UI_COPY_STYLE.ru.md).

@@ -25,3 +25,5 @@
 - Инвентаризация триггеров / Frigate: [CONFIGURATION_TRIGGERS_INVENTORY](./CONFIGURATION_TRIGGERS_INVENTORY.ru.md).
 
 Трекинг: [BirdLense-Hub#325](https://github.com/Gfermoto/BirdLense-Hub/issues/325).
+
+Настройки и YAML (инвентаризация, операторский UI): [BirdLense-Hub#421](https://github.com/Gfermoto/BirdLense-Hub/issues/421) — проверка покрытия: `scripts/check-settings-ui-coverage.py`; тон текстов: [UI copy style](./UI_COPY_STYLE.ru.md) · [EN](./UI_COPY_STYLE.md).

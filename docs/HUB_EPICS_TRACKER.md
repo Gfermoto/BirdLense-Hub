@@ -7,6 +7,7 @@ This repo’s docs and CI implement the **BirdLense Hub** product-integrity plan
 | Epic | Issue |
 |------|--------|
 | DoD + UI settings map | [#325](https://github.com/Gfermoto/BirdLense-Hub/issues/325) |
+| Settings: operator UI vs YAML (#421) | [#421](https://github.com/Gfermoto/BirdLense-Hub/issues/421) |
 | Docs & DX (`make ci-local`, venv, PYTHONPATH) | [#326](https://github.com/Gfermoto/BirdLense-Hub/issues/326) |
 | Observability / VPS runbooks | [#327](https://github.com/Gfermoto/BirdLense-Hub/issues/327) |
 | Processor performance | [#328](https://github.com/Gfermoto/BirdLense-Hub/issues/328) |

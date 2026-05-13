@@ -203,14 +203,36 @@ export function CaptureFeederSection({ form }: Props) {
                           >
                             {t('settings.frigateMotionIntro')}
                           </Alert>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ mb: 2 }}
-                          >
-                            {t('settings.frigateMinScoreYamlHint')}
-                          </Typography>
                           <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                              <form.Field name="triggers.frigate.min_trigger_score">
+                                {(field) => (
+                                  <TextField
+                                    fullWidth
+                                    type="number"
+                                    inputProps={{ min: 0, max: 1, step: 0.05 }}
+                                    value={
+                                      field.state.value === undefined ||
+                                      field.state.value === null
+                                        ? 0.5
+                                        : field.state.value
+                                    }
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      if (v === '') {
+                                        field.handleChange(undefined);
+                                        return;
+                                      }
+                                      field.handleChange(Number(v));
+                                    }}
+                                    label={t('settings.frigateMinTriggerScore')}
+                                    helperText={t(
+                                      'settings.frigateMinTriggerScoreHint',
+                                    )}
+                                  />
+                                )}
+                              </form.Field>
+                            </Grid>
                             <Grid size={{ xs: 12 }}>
                               <form.Field name="triggers.frigate.topic">
                                 {(field) => (
