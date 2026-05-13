@@ -424,6 +424,27 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Auto-unstick night tracker profile is low-level recovery policy.",
         "next_step": "Expose in expert mode with profile presets.",
     },
+    # Behavior recognition baseline (#416) — YAML until UI pilot.
+    "processor.behavior_recognition.confidence_review_threshold": {
+        "category": "ops-only",
+        "reason": "Weak-label review gate for behavior baseline logits; ops tuning.",
+        "next_step": "Optional System → ML when behavior controls leave YAML-only.",
+    },
+    "processor.behavior_recognition.confidence_store_min": {
+        "category": "ops-only",
+        "reason": "Minimum probability to persist behavior_label on finalize; avoids noisy writes.",
+        "next_step": "Same as processor.behavior_recognition.enabled.",
+    },
+    "processor.behavior_recognition.enabled": {
+        "category": "ops-only",
+        "reason": "Master switch for optional logistic behavior head on recording finalize.",
+        "next_step": "Expose pilot toggle + status after operator UX review.",
+    },
+    "processor.behavior_recognition.weights_path": {
+        "category": "ops-only",
+        "reason": "Path to behavior_logistic_export@v1 JSON; deployment-specific like detector weights.",
+        "next_step": "Optional upload alongside processor weights when artifact workflow matures.",
+    },
     "processor.binary_track_iou": {
         "category": "advanced",
         "reason": "Binary detector tracker IoU threshold is low-level tracking parameter.",

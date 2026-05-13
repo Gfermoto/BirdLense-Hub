@@ -57,10 +57,7 @@ def runtime_meta_features(
             except json.JSONDecodeError:
                 pass
     n_dets = float(len(dets))
-    species = {
-        str(d.get("species_name") or d.get("species") or "").strip().lower()
-        for d in dets
-    }
+    species = {str(d.get("species_name") or d.get("species") or "").strip().lower() for d in dets}
     species.discard("")
     return [
         math.log1p(max(0.0, t_frames)),
