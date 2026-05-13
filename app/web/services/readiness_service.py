@@ -12,6 +12,53 @@ from data_paths import data_dir
 from services.component_status_service import build_component_status_payload_safe
 
 
+def _env_flag_enabled(raw: str | None) -> bool:
+    return (raw or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _is_production_env() -> bool:
+    be = (os.environ.get("BIRDLENSE_ENV") or "").strip().lower()
+    if be in ("production", "prod"):
+        return True
+    return (os.environ.get("FLASK_ENV") or "").strip().lower() == "production"
+
+
+def _looks_unexpanded_secret(value: str) -> bool:
+    v = value.strip()
+    return "${" in v or v.startswith("${")
+
+
+def _secret_gate_status(raw: str | None, *, min_len: int, prod: bool) -> str:
+    v = (raw or "").strip()
+    if not v or _looks_unexpanded_secret(v) or len(v) < min_len:
+        return "error" if prod else "warn"
+    return "ok"
+
+
+def _strict_auth_gate_status(prod: bool) -> str:
+    if _env_flag_enabled(os.environ.get("BIRDLENSE_STRICT_API_AUTH")):
+        return "ok"
+    return "error" if prod else "warn"
+
+
+def build_security_gates_payload() -> dict[str, object]:
+    """Aligns with scripts/verify-prod-env.sh (strict auth + secrets); UI checklist."""
+    prod = _is_production_env()
+    runtime = "production" if prod else "development"
+    items: list[dict[str, str]] = [
+        {"id": "strict_api_auth", "status": _strict_auth_gate_status(prod)},
+        {
+            "id": "flask_secret_key",
+            "status": _secret_gate_status(os.environ.get("FLASK_SECRET_KEY"), min_len=32, prod=prod),
+        },
+        {
+            "id": "processor_secret",
+            "status": _secret_gate_status(os.environ.get("PROCESSOR_SECRET"), min_len=32, prod=prod),
+        },
+    ]
+    return {"runtime": runtime, "items": items}
+
+
 def _path_status(path: Path, label: str) -> dict[str, object]:
     exists = path.exists()
     is_dir = path.is_dir()
@@ -45,5 +92,6 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "checks": checks,
         "components": build_component_status_payload_safe(session),
+        "security_gates": build_security_gates_payload(),
     }
     return payload, (200 if ready else 503)
