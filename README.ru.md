@@ -90,6 +90,51 @@ UI: http://localhost:8085
 
 Для одношагового запуска: **`./install.sh`** из корня репозитория (или **`make install`**). Скрипт ставит Docker при необходимости, создаёт `app/.env`, поднимает стек и проверяет health/readiness/status. Готовый образ: **`./install.sh --pull`** или **`make install-pull`**.
 
+## Обучение baseline «поведения» (логистика, не YOLO)
+
+Это **отдельная маленькая модель** (файл JSON `behavior_logistic_export@v1`): по статистике кадров/детекций решает класс вроде `feeding` / `flying`. **Скачать готовую с Hugging Face нельзя** — классы и признаки ваши. Ниже — минимальный рецепт.
+
+### Что у вас должно быть на диске
+
+1. **Папка с CSV** (можно вложенные каталоги). Скрипт берёт **все `*.csv`** рекурсивно.
+2. **Имя файла** = условный ключ ролика (например `20250601_120000.csv` → ключ `20250601_120000`).
+3. В **каждой строке CSV минимум 6 колонок** (нумерация с нуля). Скрипт для поведения использует только:
+   - **колонка 4** — целое **id поведения** (должен совпасть с таксономией; по умолчанию `2` = feeding, `3` = flying и т.д. — см. `DEFAULT_TAXONOMY` в `scripts/ml_behavior_dataset_manifest.py`);
+   - **колонка 5** — строка **id субъекта/трека** (хоть `a` в каждой строке);
+   - **колонка 6** (если есть) — **название вида** (для признаков; можно пусто).
+
+Столбцы 0–3 скрипт не интерпретирует для поведения — заполните нулями/временем, как удобно, лишь бы строка была длиной ≥ 6.
+
+### Команды (скопировать и подставить пути)
+
+Из **корня репозитория** BirdLense на машине, где стоит Python:
+
+```bash
+cd /путь/к/BirdLense
+
+# 1) Манифест из ваших CSV
+export ANNOTATIONS_ROOT=/абсолютный/путь/к/папке/с_csv
+export OUT=/tmp/behavior_dataset_manifest.json
+make ml-build-behavior-dataset
+
+# 2) Обучение (один раз: pip install scikit-learn)
+pip install 'scikit-learn>=1.3,<2'
+export MANIFEST=/tmp/behavior_dataset_manifest.json
+export EXPORT=/tmp/behavior_logistic_export@v1.json
+export PRED=/tmp/behavior_predictions.json
+make ml-train-behavior-baseline
+```
+
+В конце появится файл **`EXPORT`** — это и есть веса для хаба.
+
+### Подключить к хабу
+
+1. Скопируйте `EXPORT` на сервер в каталог процессора, например `app/processor/models/behavior/moi_vesa.json`.
+2. **Настройки** → аккордеон **Процессор** → блок **«Распознавание поведения»** (`/settings#processor-behavior`): укажите путь **относительно корня `app/processor/`**, например `models/behavior/moi_vesa.json`.
+3. Включите baseline, **сохраните**, **перезапустите контейнер процессора**.
+
+Если своих CSV пока нет: в репозитории уже лежит демо-JSON; пересборка демо одной командой: **`make ml-train-behavior-synthetic-fixture`** (нужен `scikit-learn`). Подробнее: `app/processor/models/behavior/README.md`.
+
 ## Разработчикам
 
 - **Окружение:** [docs/LOCAL_DEV.ru.md](./docs/LOCAL_DEV.ru.md) — Docker, **Node.js 22** для `app/ui` (`.nvmrc`, `engines` в `package.json`), отдельный venv для MkDocs.
