@@ -310,6 +310,13 @@ export interface Settings {
     track_regen_ignore_regional_species?: boolean;
     track_regen_match_live_pipeline?: boolean;
     track_regen_parallel_auto_with_manual?: boolean;
+    /** Baseline behavior head (#416): logistic on finalize when enabled. */
+    behavior_recognition?: {
+      enabled?: boolean;
+      weights_path?: string;
+      confidence_store_min?: number;
+      confidence_review_threshold?: number;
+    };
   };
   secrets: {
     openweather_api_key: string; // API key for OpenWeather

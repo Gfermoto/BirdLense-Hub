@@ -23,6 +23,7 @@ import { ProcessorDetectorPipelineBlock } from './processor/ProcessorDetectorPip
 import { ProcessorBirdnetExtendedBlock } from './processor/ProcessorBirdnetExtendedBlock';
 import { ProcessorModelsScopeBlock } from './processor/ProcessorModelsScopeBlock';
 import { ProcessorTrackRegenBlock } from './processor/ProcessorTrackRegenBlock';
+import { ProcessorBehaviorRecognitionBlock } from './processor/ProcessorBehaviorRecognitionBlock';
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
@@ -60,7 +61,8 @@ export function ProcessorSection({ form, simpleMode = true }: Props) {
   const location = useLocation();
   const expandProcessor =
     location.hash === '#processor-weights' ||
-    location.hash === '#processor-models';
+    location.hash === '#processor-models' ||
+    location.hash === '#processor-behavior';
 
   return (
     <Accordion
@@ -106,6 +108,15 @@ export function ProcessorSection({ form, simpleMode = true }: Props) {
           <ProcessorLightGateBlock form={form} />
           <ProcessorAdaptiveProfilesBlock form={form} />
           <ProcessorDetectorPipelineBlock form={form} />
+
+          <Divider sx={{ my: 2 }} />
+
+          <SectionHeading>
+            {t('settings.processorSectionHeadingBehavior')}
+          </SectionHeading>
+          <Box id="processor-behavior">
+            <ProcessorBehaviorRecognitionBlock form={form} />
+          </Box>
 
           <Divider sx={{ my: 2 }} />
 
