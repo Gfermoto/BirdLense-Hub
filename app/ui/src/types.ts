@@ -98,6 +98,8 @@ export interface Video {
     display_value: number;
     display_unit: 'kg' | 'g';
   } | null;
+  behavior_label?: string | null;
+  behavior_confidence?: number | null;
 }
 
 /** См. OpenAPI `BirdFood`; для списка из API поля id/name/active приходят заполненными. */

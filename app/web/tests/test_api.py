@@ -1853,6 +1853,60 @@ class TestVideos:
             app_config.set("general.settings_password", old_admin)
             app_config.set("general.contributor_password", old_contrib)
 
+    def test_patch_video_behavior_and_get_detail(self, app, client):
+        """PATCH behavior_label/confidence; GET detail includes behavior_* (#416)."""
+        from datetime import datetime, timezone
+
+        from app_config.app_config import app_config
+        from models import Video, db
+
+        old_admin = app_config.get("general.settings_password")
+        old_contrib = app_config.get("general.contributor_password")
+        app_config.set("general.settings_password", "")
+        app_config.set("general.contributor_password", "")
+        try:
+            with app.app_context():
+                v = Video(
+                    processor_version="test",
+                    start_time=datetime(2025, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+                    end_time=datetime(2025, 7, 1, 10, 0, 30, tzinfo=timezone.utc),
+                    video_path="data/recordings/2025/07/01/100000/video.mp4",
+                    favorite=False,
+                )
+                db.session.add(v)
+                db.session.commit()
+                vid = v.id
+
+            rp = client.patch(
+                f"/api/ui/videos/{vid}",
+                json={"behavior_label": "feeding", "behavior_confidence": 0.82},
+            )
+            assert rp.status_code == 200
+            body = rp.get_json()
+            assert body.get("behavior_label") == "feeding"
+            assert abs(float(body.get("behavior_confidence") or 0) - 0.82) < 1e-6
+
+            rg = client.get(f"/api/ui/videos/{vid}")
+            assert rg.status_code == 200
+            detail = rg.get_json()
+            assert detail.get("behavior_label") == "feeding"
+            assert abs(float(detail.get("behavior_confidence") or 0) - 0.82) < 1e-6
+
+            rc = client.patch(f"/api/ui/videos/{vid}", json={"behavior_label": ""})
+            assert rc.status_code == 200
+            cleared = rc.get_json()
+            assert not cleared.get("behavior_label")
+            assert cleared.get("behavior_confidence") in (None, 0, 0.0)
+
+            rg2 = client.get(f"/api/ui/videos/{vid}")
+            assert rg2.status_code == 200
+            d2 = rg2.get_json()
+            assert not d2.get("behavior_label")
+            assert d2.get("behavior_confidence") in (None, 0, 0.0)
+        finally:
+            app_config.set("general.settings_password", old_admin)
+            app_config.set("general.contributor_password", old_contrib)
+
 
 class TestBirdfood:
     def test_birdfood_get_returns_list(self, client):

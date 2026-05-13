@@ -40,10 +40,12 @@ def runtime_meta_features(
     video_detections: list[dict[str, Any]],
     *,
     duration_s: float,
+    max_detections: int = 50,
 ) -> list[float]:
     """Proxy aligned with manifest_row_meta_features (domain gap possible)."""
+    dets = video_detections[: max(1, int(max_detections))]
     t_frames = 0.0
-    for d in video_detections:
+    for d in dets:
         frames = d.get("frames") or []
         if isinstance(frames, list):
             t_frames += float(len(frames))
@@ -54,10 +56,10 @@ def runtime_meta_features(
                     t_frames += float(len(parsed))
             except json.JSONDecodeError:
                 pass
-    n_dets = float(len(video_detections))
+    n_dets = float(len(dets))
     species = {
         str(d.get("species_name") or d.get("species") or "").strip().lower()
-        for d in video_detections
+        for d in dets
     }
     species.discard("")
     return [

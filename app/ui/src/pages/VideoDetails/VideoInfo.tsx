@@ -16,6 +16,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
+import TextField from '@mui/material/TextField';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -35,6 +36,7 @@ import { BASE_API_URL } from '../../api/client';
 import {
   deleteVideo,
   patchVideoFavorite,
+  patchVideoRecording,
   fetchVideoFusionTrace,
   type VideoActionEventsPayload,
   type FusionTracePayload,
@@ -145,6 +147,9 @@ export const VideoInfo = ({
   const queryClient = useQueryClient();
   const { unlocked, canEdit } = useProtectedArea();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [behaviorDialogOpen, setBehaviorDialogOpen] = useState(false);
+  const [behaviorDraftLabel, setBehaviorDraftLabel] = useState('');
+  const [behaviorDraftConf, setBehaviorDraftConf] = useState('');
   const [fusionOpen, setFusionOpen] = useState(false);
   const [fusionLoading, setFusionLoading] = useState(false);
   const [fusionErr, setFusionErr] = useState<string | null>(null);
@@ -178,6 +183,26 @@ export const VideoInfo = ({
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.video.detail(String(video.id)),
+      });
+    },
+  });
+
+  const behaviorMutation = useMutation({
+    mutationFn: (payload: { label: string; conf: string }) =>
+      patchVideoRecording(Number(video.id), {
+        behavior_label: payload.label.trim() || '',
+        behavior_confidence:
+          payload.conf.trim() === ''
+            ? null
+            : Math.min(1, Math.max(0, Number(payload.conf))),
+      }),
+    onSuccess: async () => {
+      setBehaviorDialogOpen(false);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.video.detail(String(video.id)),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.calendar.timelineTab,
       });
     },
   });
@@ -233,6 +258,8 @@ export const VideoInfo = ({
     weather,
     food,
     scales,
+    behavior_label,
+    behavior_confidence,
   } = video;
 
   const formatDate = (date: string | Date) => formatLocalDateTime(date);
@@ -346,6 +373,100 @@ export const VideoInfo = ({
             sx={{ alignSelf: 'flex-start' }}
           />
         )
+      )}
+
+      {(behavior_label || canEdit) && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            {t('videoInfo.behaviorTitle')}
+          </Typography>
+          {behavior_label ? (
+            <Chip
+              label={`${behavior_label}${
+                behavior_confidence != null && !Number.isNaN(Number(behavior_confidence))
+                  ? ` (${(Number(behavior_confidence) * 100).toFixed(0)}%)`
+                  : ''
+              }`}
+              size="small"
+              sx={{ mb: 1, alignSelf: 'flex-start' }}
+            />
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              {t('videoInfo.behaviorNone')}
+            </Typography>
+          )}
+          {canEdit && (
+            <>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setBehaviorDraftLabel(behavior_label || '');
+                  setBehaviorDraftConf(
+                    behavior_confidence != null
+                      ? String(behavior_confidence)
+                      : '',
+                  );
+                  setBehaviorDialogOpen(true);
+                }}
+              >
+                {t('videoInfo.behaviorEdit')}
+              </Button>
+              <Dialog
+                open={behaviorDialogOpen}
+                onClose={() =>
+                  !behaviorMutation.isPending && setBehaviorDialogOpen(false)
+                }
+              >
+                <DialogTitle>{t('videoInfo.behaviorDialogTitle')}</DialogTitle>
+                <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+                  <TextField
+                    label={t('videoInfo.behaviorLabelField')}
+                    value={behaviorDraftLabel}
+                    onChange={(e) => setBehaviorDraftLabel(e.target.value)}
+                    size="small"
+                    fullWidth
+                    helperText={t('videoInfo.behaviorLabelHint')}
+                  />
+                  <TextField
+                    label={t('videoInfo.behaviorConfField')}
+                    value={behaviorDraftConf}
+                    onChange={(e) => setBehaviorDraftConf(e.target.value)}
+                    size="small"
+                    fullWidth
+                    type="number"
+                    inputProps={{ min: 0, max: 1, step: 0.05 }}
+                    helperText={t('videoInfo.behaviorConfHint')}
+                  />
+                </DialogContent>
+                <DialogActions>
+                  <Button
+                    onClick={() => setBehaviorDialogOpen(false)}
+                    disabled={behaviorMutation.isPending}
+                  >
+                    {t('common.cancel')}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    disabled={behaviorMutation.isPending}
+                    onClick={() => {
+                      const c = behaviorDraftConf.trim();
+                      if (c !== '' && Number.isNaN(Number(c))) return;
+                      behaviorMutation.mutate({
+                        label: behaviorDraftLabel,
+                        conf: behaviorDraftConf,
+                      });
+                    }}
+                  >
+                    {behaviorMutation.isPending
+                      ? t('videoInfo.behaviorSaving')
+                      : t('videoInfo.behaviorSave')}
+                  </Button>
+                </DialogActions>
+              </Dialog>
+            </>
+          )}
+        </Paper>
       )}
 
       {/* Recording Info Card */}

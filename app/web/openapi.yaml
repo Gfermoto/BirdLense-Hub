@@ -382,9 +382,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
     patch:
-      summary: Update recording (favorite)
+      summary: Update recording (favorite, behavior)
       description: |
-        Set ``favorite`` so retention can skip this recording when ``retention.protect_favorites`` is enabled (cascade and files_only). Contributor or admin session required (same gate as DELETE / download).
+        Update ``favorite`` (retention may skip when ``retention.protect_favorites`` is on) and/or
+        manual **behavior** label for ML feedback (#416). At least one of ``favorite``, ``behavior_label``,
+        ``behavior_confidence`` must be present. Contributor or admin session required (same gate as DELETE / download).
       parameters:
         - in: path
           name: video_id
@@ -397,11 +399,22 @@ paths:
           application/json:
             schema:
               type: object
-              required: [favorite]
+              minProperties: 1
               additionalProperties: false
               properties:
                 favorite:
                   type: boolean
+                behavior_label:
+                  type: string
+                  nullable: true
+                  maxLength: 32
+                  description: Lowercased taxonomy label, or null/empty to clear behavior fields
+                behavior_confidence:
+                  type: number
+                  nullable: true
+                  minimum: 0
+                  maximum: 1
+                  description: Manual confidence for ``behavior_label``; null clears
       responses:
         "200":
           description: Updated video details (same shape as GET)
@@ -4432,6 +4445,14 @@ components:
             display_unit:
               type: string
               enum: [kg, g]
+        behavior_label:
+          type: string
+          nullable: true
+          description: Runtime or manually set behavior taxonomy label (#416)
+        behavior_confidence:
+          type: number
+          nullable: true
+          description: Confidence for behavior_label (0..1)
     VideoNeighbors:
       type: object
       properties:

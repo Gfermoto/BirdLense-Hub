@@ -165,16 +165,29 @@ export const fetchNearestRecordingDay = async (
 };
 
 /** Mark recording as favorite (retention may skip it when protect favorites is on). Contributor/admin. */
-export const patchVideoFavorite = async (
+export type PatchVideoRecordingBody = {
+  favorite?: boolean;
+  behavior_label?: string | null;
+  behavior_confidence?: number | null;
+};
+
+export const patchVideoRecording = async (
   id: number,
-  favorite: boolean,
-): Promise<{ favorite?: boolean } & Record<string, unknown>> => {
+  body: PatchVideoRecordingBody,
+): Promise<Record<string, unknown>> => {
   const response = await axios.patch(
     `${BASE_API_URL}/videos/${id}`,
-    { favorite },
+    body,
     { withCredentials: true },
   );
   return response.data;
+};
+
+export const patchVideoFavorite = async (
+  id: number,
+  favorite: boolean,
+): Promise<Record<string, unknown>> => {
+  return patchVideoRecording(id, { favorite });
 };
 
 /** Delete video recording. Requires contributor or admin access. */
