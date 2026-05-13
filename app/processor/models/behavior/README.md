@@ -1,33 +1,42 @@
-# Behavior baseline weights (`behavior_logistic_export@v1`)
+# Веса baseline поведения (`behavior_logistic_export@v1`)
 
-## Bundled starter file
+## Что уже лежит в этом каталоге
 
-`behavior_logistic_export@v1.json` in this directory is a **small valid export** so the processor can load weights and you can verify `processor.behavior_recognition.weights_path` end-to-end. It is **not** tuned on your cameras; replace it after you train on your data.
+Файл **`behavior_logistic_export@v1.json`** — это **реально обученная** логистическая регрессия (sklearn), но на **синтетическом** манифесте из репозитория (`scripts/fixtures/behavior/synthetic_train_manifest.v1.json`). Она **не привязана к вашим камерам** и годится, чтобы проверить, что процессор грузит JSON и пишет метки; для продакшена замените файл после обучения на своих разметках.
 
-## Train on your annotations
+## Что сделать вам (коротко)
 
-1. **Install** (on the machine where you run training): `pip install scikit-learn`
-2. **Build a manifest** from a folder of annotation CSVs (see `scripts/ml_behavior_dataset_manifest.py` for column layout):
+1. В веб-интерфейсе: **Настройки** → аккордеон **Процессор** → блок **«Распознавание поведения»** (`/settings#processor-behavior`).
+2. Путь к весам оставьте **`models/behavior/behavior_logistic_export@v1.json`** (так в дефолтном конфиге).
+3. Включите **«Включить baseline поведения»**, сохраните.
+4. **Перезапустите контейнер/процессор** — иначе подхватится только после рестарта.
 
-   ```bash
-   cd /path/to/BirdLense
-   ANNOTATIONS_ROOT=/path/to/annotations OUT=/tmp/behavior_dataset_manifest.v1.json \
-     make ml-build-behavior-dataset
-   ```
+## Пересобрать демо-веса у себя (опционально)
 
-3. **Train + export** weights + predictions:
+Из корня репозитория, с установленным `scikit-learn`:
 
-   ```bash
-   MANIFEST=/tmp/behavior_dataset_manifest.v1.json \
-   EXPORT=/tmp/behavior_logistic_export@v1.json \
-   PRED=/tmp/behavior_predictions.v1.json \
-     make ml-train-behavior-baseline
-   ```
+```bash
+pip install 'scikit-learn>=1.3,<2'
+python3 scripts/ml_behavior_train_baseline.py \
+  --manifest scripts/fixtures/behavior/synthetic_train_manifest.v1.json \
+  --export-out app/processor/models/behavior/behavior_logistic_export@v1.json \
+  --predictions-out /tmp/behavior_predictions_synthetic.json
+```
 
-4. Copy `EXPORT` JSON onto the hub host under `app/processor/` (e.g. `models/behavior/my_export.json`), set **Settings → Processor → Behavior recognition → Weights path** to that **relative** path (relative to the processor package root, e.g. `models/behavior/my_export.json`), enable the toggle, **save**, restart the processor container.
+Или цель **`make ml-train-behavior-synthetic-fixture`** (см. `Makefile` рядом с `ml-train-behavior-baseline`).
 
-5. Optional report: `make ml-build-behavior-train-report` (see `Makefile`).
+## Обучение на своих разметках (настоящие данные)
 
-## Hub settings keys
+Нужна папка с CSV аннотациями в формате, который читает `scripts/ml_behavior_dataset_manifest.py` (см. исходник скрипта — колонки кадра, id поведения и т.д.).
 
-YAML / API mirror: `processor.behavior_recognition.enabled`, `weights_path`, `confidence_store_min`, `confidence_review_threshold`.
+```bash
+cd /путь/к/BirdLense
+ANNOTATIONS_ROOT=/путь/к/разметке OUT=/tmp/behavior_dataset_manifest.v1.json make ml-build-behavior-dataset
+
+MANIFEST=/tmp/behavior_dataset_manifest.v1.json \
+EXPORT=/tmp/my_export.json \
+PRED=/tmp/my_predictions.json \
+  make ml-train-behavior-baseline
+```
+
+Полученный **`EXPORT`** скопируйте на хаб (например в `app/processor/models/behavior/`), в настройках укажите **относительный путь от корня `app/processor/`**, включите baseline, сохраните, перезапустите процессор.

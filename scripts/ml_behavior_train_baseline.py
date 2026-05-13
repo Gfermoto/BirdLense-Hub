@@ -105,8 +105,19 @@ def train_and_export(
     clf.fit(X, y)
 
     classes = [str(c) for c in clf.classes_]
-    coef = clf.coef_.tolist()
-    intercept = clf.intercept_.tolist()
+    n_features = int(X.shape[1])
+    raw_coef = np.asarray(clf.coef_, dtype=np.float64)
+    raw_inter = np.asarray(clf.intercept_, dtype=np.float64).reshape(-1)
+    if len(classes) == 2:
+        # sklearn OvR: shape (1, F); positive class is classes_[1]. Export two logits for softmax
+        # so runtime (n_classes, n_features) matches len(labels).
+        w = raw_coef.reshape(-1)
+        b = float(raw_inter[0]) if raw_inter.size else 0.0
+        coef = [[0.0] * n_features, w.tolist()]
+        intercept = [0.0, b]
+    else:
+        coef = raw_coef.tolist()
+        intercept = raw_inter.tolist()
 
     export = {
         "schema": EXPORT_SCHEMA,
