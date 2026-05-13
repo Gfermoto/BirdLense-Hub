@@ -466,6 +466,9 @@ export const VideoInfo = ({
               </Dialog>
             </>
           )}
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+            {t('videoInfo.behaviorTrainingNotInUi')}
+          </Typography>
         </Paper>
       )}
 

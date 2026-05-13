@@ -651,6 +651,9 @@
     "processorSectionHeadingBehavior": "Распознавание поведения (baseline)",
     "processorBehaviorTitle": "Распознавание поведения",
     "processorBehaviorDesc": "Опциональная логистическая baseline при финализации записи (#416). Нужен валидный JSON behavior_logistic_export на диске; после смены настроек перезапустите процессор.",
+    "processorBehaviorBundledWeights": "В образе уже есть демо-веса: models/behavior/behavior_logistic_export@v1.json (обучены на синтетике, не на ваших камерах). В дефолтном конфиге путь туда же — проверьте поле «Путь к файлу весов» ниже после обновления.",
+    "processorBehaviorNoDatasetUi": "Разметка датасета для переобучения и запуск обучения в интерфейсе не сделаны: нужны CSV на компьютере и цели Makefile (см. README репозитория). На странице ролика можно только поправить уже сохранённую метку для этой записи.",
+    "processorBehaviorReadmeLink": "README.ru.md на GitHub (раздел про обучение)",
     "processorBehaviorEnabled": "Включить baseline поведения",
     "processorBehaviorEnabledHint": "Если включено, процессор может выставить behavior_label у новых роликов при наличии детекций и рабочего weights_path.",
     "processorBehaviorWeightsPath": "Путь к файлу весов",
@@ -1505,7 +1508,8 @@
     "behaviorConfField": "Уверенность (0–1)",
     "behaviorConfHint": "Опционально. Сбрасывается при очистке метки.",
     "behaviorSaving": "Сохранение…",
-    "behaviorSave": "Сохранить"
+    "behaviorSave": "Сохранить",
+    "behaviorTrainingNotInUi": "Обучение новой модели и разметка датасета здесь не делаются — только метка для этого ролика. Baseline: Настройки → Процессор; свои веса — офлайн (CSV и Makefile, см. README на GitHub)."
   },
   "weather": {
     "title": "Погода",

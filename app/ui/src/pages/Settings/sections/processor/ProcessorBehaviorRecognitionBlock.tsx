@@ -6,8 +6,13 @@ import Typography from '@mui/material/Typography';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
+import Alert from '@mui/material/Alert';
+import Link from '@mui/material/Link';
 import { ServiceBlock } from '../../shared/ServiceBlock';
 import type { Settings } from '../../../../types';
+
+const BEHAVIOR_README_RU =
+  'https://github.com/Gfermoto/BirdLense-Hub/blob/dev/README.ru.md';
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
@@ -21,6 +26,15 @@ export function ProcessorBehaviorRecognitionBlock({ form }: Props) {
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         {t('settings.processorBehaviorDesc')}
       </Typography>
+      <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+        {t('settings.processorBehaviorBundledWeights')}
+      </Alert>
+      <Alert severity="warning" variant="outlined" sx={{ mb: 2 }}>
+        {t('settings.processorBehaviorNoDatasetUi')}{' '}
+        <Link href={BEHAVIOR_README_RU} target="_blank" rel="noopener noreferrer">
+          {t('settings.processorBehaviorReadmeLink')}
+        </Link>
+      </Alert>
       <Grid container spacing={2}>
         <Grid size={{ xs: 12 }}>
           <form.Field name="processor.behavior_recognition.enabled">
