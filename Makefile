@@ -53,6 +53,13 @@ verify-runtime-sli:
 	MCP_TOKEN="$${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="$${BIRDLENSE_UI_API_KEY:-}" \
 	  bash ./scripts/check-runtime-sli.sh --base-url "$$_url"
 
+perf-gate-runtime:
+	@set -e; cd "$(CURDIR)"; \
+	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
+	_url="$${BASE_URL:-$${DEPLOY_URL:-http://127.0.0.1:8085}}"; \
+	MCP_TOKEN="$${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="$${BIRDLENSE_UI_API_KEY:-}" \
+	  python3 ./scripts/perf_gate_runtime.py --base-url "$$_url" --out /tmp/runtime_perf_gate.v1.json
+
 # A1: локальная копия server app/.env (verify-prod-env) + живой хаб (DEPLOY_URL из deploy.local.sh)
 preflight-deploy: verify-prod-env verify
 	@echo "preflight-deploy: OK"

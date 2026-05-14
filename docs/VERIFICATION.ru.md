@@ -18,6 +18,26 @@ Gate читает `/metrics` и падает при нарушении поро�
 Пороги настраиваются через env:
 `MAX_HEARTBEAT_AGE_SECONDS`, `MAX_HTTP_OVER_1000MS_RATIO`, `MIN_HTTP_SAMPLE_COUNT`, `REQUIRE_HEARTBEAT_STALE_ZERO`.
 
+## 2026-05-14 — Runtime performance gate (C3)
+
+Для воспроизводимой проверки burst/scrape/soak:
+
+```bash
+make perf-gate-runtime
+```
+
+Gate (`runtime_perf_gate@v1`) выполняет:
+- burst по `/api/ui/status` с конкурентностью
+- scrape storm по `/metrics`
+- короткий soak для `/api/ui/health` и `/api/ui/readiness`
+
+Gate падает при превышении дефолтных порогов:
+- у status burst `error_rate > 0.02`
+- у status burst `p95 > 3000ms` или `p99 > 5000ms`
+- у scrape/soak `error_rate > 0.02`
+
+Артефакт результата: `/tmp/runtime_perf_gate.v1.json`.
+
 ## 2026-05-02 — Постоянный ML proof gate (локально + хаб)
 
 Чтобы исключить регрессию вида «сделали в контейнере, потом потерялось после деплоя», используйте единый воспроизводимый gate:
