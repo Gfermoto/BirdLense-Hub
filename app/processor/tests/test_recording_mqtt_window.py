@@ -196,6 +196,66 @@ class TestRecordingMqttWindow(unittest.TestCase):
         self.assertEqual(events, [{"source": "frigate", "camera": "side"}])
         self.assertIn(("mqtt_scope_drop_total", 1), calls)
 
+    def test_injects_trigger_fallback_when_frigate_window_empty(self):
+        aggregator = MagicMock()
+        aggregator.get_events_in_window.return_value = []
+        motion_detector = MagicMock()
+        motion_detector.get_triggered_camera.return_value = "front"
+        motion_detector.get_last_frigate_event.return_value = {
+            "source": "frigate",
+            "camera": "front",
+            "species": "bird",
+            "label": "bird",
+            "confidence": 0.71,
+            "timestamp": "2026-01-01T00:00:01+00:00",
+            "_frigate_has_geometry": False,
+        }
+        start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        end = datetime(2026, 1, 1, 0, 0, 5, tzinfo=timezone.utc)
+
+        events = get_recording_mqtt_events(
+            aggregator,
+            motion_detector,
+            start_time=start,
+            end_time=end,
+            merge_window=5,
+            yolo_tracks_count=0,
+            scope_camera_id="front",
+            trigger_source="frigate",
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["source"], "frigate")
+        self.assertTrue(events[0].get("_synthetic_trigger_fallback"))
+
+    def test_no_trigger_fallback_for_non_frigate_source(self):
+        aggregator = MagicMock()
+        aggregator.get_events_in_window.return_value = []
+        motion_detector = MagicMock()
+        motion_detector.get_triggered_camera.return_value = "front"
+        motion_detector.get_last_frigate_event.return_value = {
+            "source": "frigate",
+            "camera": "front",
+            "species": "bird",
+            "label": "bird",
+            "confidence": 0.71,
+            "timestamp": "2026-01-01T00:00:01+00:00",
+        }
+        start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        end = datetime(2026, 1, 1, 0, 0, 5, tzinfo=timezone.utc)
+
+        events = get_recording_mqtt_events(
+            aggregator,
+            motion_detector,
+            start_time=start,
+            end_time=end,
+            merge_window=5,
+            yolo_tracks_count=0,
+            scope_camera_id="front",
+            trigger_source="opencv",
+        )
+        self.assertEqual(events, [])
+
 
 if __name__ == "__main__":
     unittest.main()
