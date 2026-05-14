@@ -318,6 +318,83 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         self.assertEqual(stored.get('label'), 'cat')
         self.assertEqual(stored.get('frigate_bbox_norm'), [0.02, 0.02, 0.2, 0.25])
 
+    def test_geometry_fallback_blocks_person_label(self):
+        calls = []
+
+        def cb(cam, species):
+            calls.append((cam, species))
+
+        agg = ma.MQTTEventAggregator.__new__(ma.MQTTEventAggregator)
+        agg._lock = threading.Lock()
+        agg._events = deque()
+        agg.frigate_topic = 'frigate/events'
+        agg._frigate_label_exclude = set()
+        agg._on_frigate_motion = (set(), {'bird'}, cb)
+        agg._geometry_fallback_last_emit = {}
+        payload = json.dumps(
+            {'after': {'camera': 'Forest', 'label': 'person', 'top_score': 0.77, 'box': [0, 0, 1, 1]}}
+        ).encode()
+        msg = MagicMock()
+        msg.topic = 'frigate/events'
+        msg.payload = payload
+
+        def cfg_get(key, default=None):
+            if key == 'triggers.frigate.trigger_on_tracked_object':
+                return True
+            if key == 'triggers.frigate.geometry_fallback_enabled':
+                return True
+            if key == 'triggers.frigate.geometry_fallback_label_exclude':
+                return ['person']
+            if key == 'triggers.frigate.min_trigger_score':
+                return 0.5
+            return default
+
+        with patch.object(ma.app_config, 'get', side_effect=cfg_get):
+            agg._on_message(None, None, msg)
+
+        self.assertEqual(len(calls), 0)
+        self.assertEqual(len(agg._events), 0)
+
+    def test_geometry_fallback_has_cooldown_for_same_camera_label(self):
+        calls = []
+
+        def cb(cam, species):
+            calls.append((cam, species))
+
+        agg = ma.MQTTEventAggregator.__new__(ma.MQTTEventAggregator)
+        agg._lock = threading.Lock()
+        agg._events = deque()
+        agg.frigate_topic = 'frigate/events'
+        agg._frigate_label_exclude = set()
+        agg._on_frigate_motion = (set(), {'bird'}, cb)
+        agg._geometry_fallback_last_emit = {}
+        payload = json.dumps(
+            {'after': {'camera': 'Forest', 'label': 'unknown_label', 'top_score': 0.77, 'box': [0, 0, 1, 1]}}
+        ).encode()
+        msg = MagicMock()
+        msg.topic = 'frigate/events'
+        msg.payload = payload
+
+        def cfg_get(key, default=None):
+            if key == 'triggers.frigate.trigger_on_tracked_object':
+                return True
+            if key == 'triggers.frigate.geometry_fallback_enabled':
+                return True
+            if key == 'triggers.frigate.geometry_fallback_label_exclude':
+                return []
+            if key == 'triggers.frigate.geometry_fallback_cooldown_seconds':
+                return 999.0
+            if key == 'triggers.frigate.min_trigger_score':
+                return 0.5
+            return default
+
+        with patch.object(ma.app_config, 'get', side_effect=cfg_get):
+            agg._on_message(None, None, msg)
+            agg._on_message(None, None, msg)
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(agg._events), 1)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -398,6 +398,12 @@ triggers:
     topic: "frigate/events"
     # Мин. top_score события внешнего MQTT-детектора до старта клипа (0 = без порога).
     min_trigger_score: 0.50
+    # Разрешать fallback-триггер по geometry (когда label не в filter, но есть tracked box/region).
+    geometry_fallback_enabled: true
+    # Анти-шум: эти метки не должны запускать geometry-fallback запись.
+    geometry_fallback_label_exclude: ["person", "car", "vehicle", "truck", "bus"]
+    # Анти-дребезг: подавить повтор geometry-fallback для camera+label в пределах окна.
+    geometry_fallback_cooldown_seconds: 2.0
   motion_sensor:
     enabled: false
     source: mqtt  # mqtt | esphome
