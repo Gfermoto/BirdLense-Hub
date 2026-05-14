@@ -35,7 +35,9 @@ def get_recording_mqtt_events(
     scope_cam_l = str(scope_camera_id or "").strip().lower()
     if yolo_tracks_count == 0:
         if lookback_cam:
-            lookback = max(merge_window, 60)
+            # Long lookback tends to resurrect stale Frigate events and create empty clips.
+            # Keep a short recovery window only.
+            lookback = max(merge_window, 15)
             logging.info(
                 "Frigate trigger (camera=%s), 0 YOLO: extended MQTT lookback to %ds",
                 lookback_cam,
@@ -67,8 +69,7 @@ def get_recording_mqtt_events(
     if skipped_frigate > 0:
         inc_counter("mqtt_scope_drop_total", skipped_frigate)
         logging.info(
-            "Finalize MQTT window camera-scope: dropped %s Frigate event(s) from other cameras "
-            "(triggered_camera=%s)",
+            "Finalize MQTT window camera-scope: dropped %s Frigate event(s) from other cameras (triggered_camera=%s)",
             skipped_frigate,
             scope_cam_l,
         )

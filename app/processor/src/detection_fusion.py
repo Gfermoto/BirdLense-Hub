@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Iterable
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import math
 
 from decision_outcome import compute_outcome_bucket
@@ -185,6 +185,14 @@ def _frigate_standalone_prepared_rows(
 
     species_mapping = _species_mapping(app_config)
     try:
+        max_event_age_s = float(
+            app_config.get("detection.frigate_standalone_max_event_age_seconds") or 10.0
+        )
+    except (TypeError, ValueError):
+        max_event_age_s = 10.0
+    max_event_age_s = max(1.0, min(120.0, max_event_age_s))
+    require_geometry = bool(app_config.get("detection.frigate_standalone_require_geometry", True))
+    try:
         video_duration = (end_time - start_time).total_seconds() if end_time and start_time else 0.0
     except (TypeError, AttributeError):
         logger.debug("frigate standalone: video_duration from start/end failed", exc_info=True)
@@ -195,7 +203,26 @@ def _frigate_standalone_prepared_rows(
     for ev in events:
         if str((ev or {}).get("source") or "").strip().lower() != "frigate":
             continue
+        ts_raw = ev.get("timestamp")
+        try:
+            ts = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+        except (TypeError, ValueError):
+            # Без валидного времени событие не годится для standalone-спасения.
+            continue
+        if start_time and ts < (start_time - timedelta(seconds=max_event_age_s)):
+            continue
+        if end_time and ts > (end_time + timedelta(seconds=2.0)):
+            continue
         if _is_human_like_frigate_event(ev):
+            continue
+        has_geometry_raw = ev.get("_frigate_has_geometry")
+        # Backward compatibility: synthetic/tests may not carry the flag yet.
+        has_geometry = True if has_geometry_raw is None else bool(has_geometry_raw)
+        if not has_geometry and isinstance(ev.get("frigate_bbox_norm"), (list, tuple)):
+            has_geometry = len(ev.get("frigate_bbox_norm") or []) >= 4
+        if require_geometry and not has_geometry:
             continue
         raw = ev.get("species") or ev.get("sub_label") or ev.get("label") or ""
         species = normalize(str(raw), species_mapping)
@@ -237,15 +264,6 @@ def _frigate_standalone_prepared_rows(
         suppressed = bool(pack.get("_standalone_suppressed"))
         kind = "frigate_standalone_excluded" if suppressed else "frigate_standalone"
         reason = "frigate_standalone_excluded_label" if suppressed else "frigate_standalone"
-        bbox_norm = pack.get("frigate_bbox_norm")
-        frames = None
-        if (
-            isinstance(bbox_norm, (list, tuple))
-            and len(bbox_norm) >= 4
-            and all(isinstance(x, (int, float)) for x in bbox_norm[:4])
-        ):
-            t_mid = video_duration * 0.5 if video_duration > 0 else 0.0
-            frames = [{"t": float(t_mid), "bbox": [float(x) for x in bbox_norm[:4]]}]
         row = {
             "track_id": -(i + 1),
             "accepted": True,
@@ -270,8 +288,6 @@ def _frigate_standalone_prepared_rows(
             "frigate_standalone": True,
             "frigate_merge_suppressed": suppressed,
         }
-        if frames:
-            row["frames"] = frames
         rows.append(row)
     return rows
 

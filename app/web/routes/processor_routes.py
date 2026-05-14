@@ -22,7 +22,7 @@ from services.api_json_validation import (
     parse_request_json_dict,
     parse_request_json_object_allow_empty,
 )
-from services.http_response_cache import bust_response_caches
+from services.http_response_cache import bust_all_api_caches
 from services.processor_ingest.gateway import (
     check_processor_secret_token,
     fire_webhook,
@@ -285,7 +285,7 @@ def register_routes(app):
             visit_processor.process_detections(video, pv.species_list)
 
             db.session.commit()
-            bust_response_caches()
+            bust_all_api_caches()
 
             # Webhook: fire-and-forget
             webhook_url = (app_config.get("webhook.url") or "").strip()

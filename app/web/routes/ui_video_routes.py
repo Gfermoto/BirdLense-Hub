@@ -18,7 +18,7 @@ from services.dataset_export_service import (
 )
 from services.detection_crop_service import VIDEO_PATH_SAFE_RE
 from services.favorites_catalog_service import build_favorites_by_species_payload
-from services.http_response_cache import bust_response_caches
+from services.http_response_cache import bust_all_api_caches
 from services.video_neighbors_service import (
     VideoNeighborsParamError,
     build_video_neighbors_payload,
@@ -115,7 +115,7 @@ def register_ui_video_routes(app):
                 video.behavior_confidence = cf
 
         db.session.commit()
-        bust_response_caches()
+        bust_all_api_caches()
         video = (
             db.session.query(Video)
             .options(
@@ -214,7 +214,7 @@ def register_ui_video_routes(app):
 
             db.session.delete(video)
             db.session.commit()
-            bust_response_caches()
+            bust_all_api_caches()
 
             if recording_dir:
                 try:
@@ -348,7 +348,7 @@ def register_ui_video_routes(app):
             vp.update_simultaneous_count(new_visit, new_video_detections)
 
         db.session.commit()
-        bust_response_caches()
+        bust_all_api_caches()
         updated_count = len(to_update)
         return {
             "message": f"All {updated_count} detections merged to {species.name}",

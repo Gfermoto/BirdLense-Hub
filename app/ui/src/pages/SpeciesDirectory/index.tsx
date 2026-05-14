@@ -33,7 +33,13 @@ export function SpeciesDirectoryPage() {
   });
 
   const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
+    const normalizeNeedle = (value: string) =>
+      value
+        .toLowerCase()
+        .replace(/[-_]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const needle = normalizeNeedle(query);
     const rows = speciesQ.data ?? [];
     const sorted = [...rows].sort((a, b) => {
       const aCount = Number(a.count ?? 0);
@@ -43,8 +49,8 @@ export function SpeciesDirectoryPage() {
     });
     if (!needle) return sorted;
     return sorted.filter((row) => {
-      const name = String(row.name || '').toLowerCase();
-      const desc = String(row.description || '').toLowerCase();
+      const name = normalizeNeedle(String(row.name || ''));
+      const desc = normalizeNeedle(String(row.description || ''));
       return name.includes(needle) || desc.includes(needle);
     });
   }, [query, speciesQ.data]);

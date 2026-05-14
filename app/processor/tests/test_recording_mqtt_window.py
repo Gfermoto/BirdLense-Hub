@@ -55,7 +55,7 @@ class TestRecordingMqttWindow(unittest.TestCase):
             start,
             end,
             5,
-            lookback_seconds=60,
+            lookback_seconds=15,
         )
 
     def test_uses_merge_window_when_yolo_tracks_exist(self):
@@ -166,7 +166,7 @@ class TestRecordingMqttWindow(unittest.TestCase):
             start,
             end,
             5,
-            lookback_seconds=60,
+            lookback_seconds=15,
         )
 
     def test_scope_drop_increments_runtime_counter(self):
