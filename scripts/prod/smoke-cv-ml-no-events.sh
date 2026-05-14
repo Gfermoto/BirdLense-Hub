@@ -57,15 +57,12 @@ except Exception:
     build_feedback_loop_status = None
 from services.ml_ops_service import (
     build_reid_summary,
-    build_video_action_events_payload,
     build_video_reid_match_payload,
 )
 try:
     sys.path.insert(0, '/app/scripts')
-    from verify_action_labeling_gates import verify_action_gates
     from verify_reid_production_gates import verify_reid_gates
 except Exception:
-    verify_action_gates = None
     verify_reid_gates = None
 
 db_path = '/app/data/db/birdlense.db'
@@ -169,7 +166,6 @@ print()
 latest_video_id = int(rows[0][0])
 print('=== Product-slice API payload smoke ===')
 with flask_app.app_context():
-    action_payload, action_code = build_video_action_events_payload(db.session, latest_video_id)
     reid_payload, reid_code = build_video_reid_match_payload(db.session, latest_video_id)
     reid_summary_payload, reid_summary_code = build_reid_summary(db.session)
     if build_feedback_loop_status is not None:
@@ -182,9 +178,6 @@ with flask_app.app_context():
         }
 print(json.dumps({
     'video_id': latest_video_id,
-    'video_action_events_http': int(action_code),
-    'video_action_events_schema': action_payload.get('schema'),
-    'video_action_events_available': bool(action_payload.get('available')),
     'video_reid_match_http': int(reid_code),
     'video_reid_match_schema': reid_payload.get('schema'),
     'video_reid_match_available': bool(reid_payload.get('available')),
@@ -196,7 +189,7 @@ print(json.dumps({
 }, ensure_ascii=False, indent=2))
 print()
 
-print('=== Execution gates smoke (#389/#390/#392) ===')
+print('=== Execution gates smoke (#389/#390) ===')
 if verify_reid_gates is not None:
     reid_ok, reid_gate = verify_reid_gates(
         reid_summary=reid_summary_payload,
@@ -225,45 +218,13 @@ else:
         },
         'errors': [] if reid_ok else ['reid_fallback_gate_failed'],
     }
-
-if verify_action_gates is not None:
-    action_ok, action_gate = verify_action_gates(
-        action_events=action_payload,
-        dataset_rows=None,
-        min_events=1,
-        min_dataset_rows=0,
-        min_segment_ms=300,
-        allow_extended_labels=False,
-    )
-else:
-    events = action_payload.get('events') if isinstance(action_payload.get('events'), list) else []
-    action_ok = (
-        action_payload.get('schema') == 'video_action_events@v1'
-        and bool(action_payload.get('available'))
-        and len(events) >= 1
-    )
-    action_gate = {
-        'schema': 'action_labeling_gates@v1',
-        'ok': bool(action_ok),
-        'fallback': True,
-        'checks': {
-            'action_events_schema': action_payload.get('schema'),
-            'action_events_available': bool(action_payload.get('available')),
-            'action_events_count': len(events),
-        },
-        'errors': [] if action_ok else ['action_fallback_gate_failed'],
-    }
 print(json.dumps({
     'reid_gate_ok': bool(reid_ok),
     'reid_gate': reid_gate,
-    'action_gate_ok': bool(action_ok),
-    'action_gate': action_gate,
 }, ensure_ascii=False, indent=2))
 print()
 if not reid_ok:
     raise SystemExit('reid production gate failed')
-if not action_ok:
-    raise SystemExit('action labeling gate failed')
 
 print('Smoke no-events completed.')
 PY"

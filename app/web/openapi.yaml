@@ -613,32 +613,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-  /videos/{video_id}/action-events:
-    get:
-      summary: Weak action events for a recording
-      description: |
-        Weightless behavior hints for #379. Uses existing tracks and optional feeder
-        weight delta to emit `arrival`, `departure`, and `possible_feeding`.
-      parameters:
-        - in: path
-          name: video_id
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Weak action-event payload
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "404":
-          description: Video not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
   /birdfood:
     get:
       summary: List all bird food
@@ -4595,6 +4569,7 @@ components:
           nullable: true
         behavior_events:
           type: array
+          description: Behavior events produced by behavior recognition model runtime.
           items:
             type: object
             properties:

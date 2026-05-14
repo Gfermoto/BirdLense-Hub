@@ -223,14 +223,7 @@ export const VisitCard = memo(function VisitCard({
         .filter(Boolean),
     ),
   ];
-  const behaviorText = behaviorLabels
-    .map((label) => {
-      if (label === 'arrival') return t('video.actionArrival');
-      if (label === 'departure') return t('video.actionDeparture');
-      if (label === 'possible_feeding') return t('video.actionPossibleFeeding');
-      return label;
-    })
-    .join(', ');
+  const behaviorText = behaviorLabels.join(', ');
 
   const startDateTime = new Date(visit.start_time);
   const isToday = new Date().toDateString() === startDateTime.toDateString();

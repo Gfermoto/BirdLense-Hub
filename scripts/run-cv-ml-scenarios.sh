@@ -52,11 +52,9 @@ Hub-side checklist (when field/hub stage starts):
    scripts/prod/smoke-cv-ml-no-events.sh
 2) Re-ID gate from payload snapshots:
    make ml-verify-reid-gates REID_SUMMARY=/tmp/reid_summary.json REID_MATCH=/tmp/reid_match.json REQUIRE_CONTRACT_OK=1
-3) Action labeling gate:
-   make ml-verify-action-labeling ACTION_EVENTS=/tmp/action_events.json
-4) Feedback loop export dry-run:
+3) Feedback loop export dry-run:
    curl -X POST /api/ui/system/feedback-loop/export {"dry_run":true,"since_hours":24,"limit":200}
-5) NAS mirror connectivity (if configured):
+4) NAS mirror connectivity (if configured):
    POST /api/ui/storage/recordings-mirror/test
 EOF
 

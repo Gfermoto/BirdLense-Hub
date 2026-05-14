@@ -125,7 +125,6 @@ export const queryKeys = {
     neighbors: (id: string) => ['video-neighbors', id] as const,
     neighborsAll: ['video-neighbors'] as const,
     detectionFrames: (id: string) => ['video-detection-frames', id] as const,
-    actionEvents: (id: string) => ['video-action-events', id] as const,
     reidMatch: (id: string) => ['video-reid-match', id] as const,
     listAll: ['videos'] as const,
     trackRegenStatusUi: (videoId: number | null, nonce: number) =>

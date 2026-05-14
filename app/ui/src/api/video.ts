@@ -24,34 +24,6 @@ export const fetchVideoDetectionFrames = async (id: string) => {
   };
 };
 
-export type VideoActionEvent = {
-  label: string;
-  source?: string;
-  time_offset?: number;
-  time?: string;
-  confidence?: number;
-  evidence?: {
-    species_name?: string | null;
-    reason?: string;
-    [key: string]: unknown;
-  };
-};
-
-export type VideoActionEventsPayload = {
-  schema: string;
-  video_id: number;
-  available: boolean;
-  message?: string;
-  events: VideoActionEvent[];
-};
-
-export const fetchVideoActionEvents = async (
-  id: string,
-): Promise<VideoActionEventsPayload> => {
-  const response = await axios.get(`${BASE_API_URL}/videos/${id}/action-events`);
-  return response.data;
-};
-
 export type VideoReidMatchItem = {
   video_species_id: number;
   track_id?: number | null;

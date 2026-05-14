@@ -27,16 +27,16 @@
 | [#373](https://github.com/Gfermoto/BirdLense-Hub/issues/373) Декод видео | **Готово в репо** | Скрипт замеров + FFmpeg VA-API backend + `video.capture_backend` + UI/API runtime status готовы; матрица платформ — часть операторской валидации. |
 | [#374](https://github.com/Gfermoto/BirdLense-Hub/issues/374) Re-ID | **Готово в репо** | Доки + DINOv2 offline embed/cosine/export + SQLite sidecar import + UI/API sidecar summary готовы; продуктовая галерея вынесена за текущий пакет. |
 | [#375](https://github.com/Gfermoto/BirdLense-Hub/issues/375) Federated | **Готово в репо** | Игрушечная симуляция + threat model готовы; prod-channel не входит в текущий пакет. |
-| [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) Action recognition | **Закрыто (execution completed)** | E2 benchmark (`run_action_e2_pipeline.py`), E3 hub shadow sweep (`run_action_e3_shadow_sweep.py`) и E4 guarded rollout report (`run_action_e4_guarded_rollout_report.py`) выполнены и подтверждены артефактами. |
+| [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379) Action recognition | **Закрыто (execution completed)** | Legacy weak-label rollout-скрипты архивированы; runtime работает на model-derived behavior + manual training feedback loop в UI/API. |
 | [#388](https://github.com/Gfermoto/BirdLense-Hub/issues/388) CV/ML v2 Epic | **Закрыто (planning scope)** | v2-направления декомпозированы и формализованы, execution-гейты закреплены в дочерних задачах и документах. |
 | [#389](https://github.com/Gfermoto/BirdLense-Hub/issues/389) DINOv2 production pipeline | **Закрыто (execution completed)** | Добавлен исполняемый `run_reid_execution_report.py` + Make target; на хабе подтверждены nearline snapshots, import success/failure metrics, failover-гейты (schema/stale) и kill-switch/shadow rollback. |
 | [#390](https://github.com/Gfermoto/BirdLense-Hub/issues/390) Re-ID productization | **Закрыто (execution completed)** | Shadow sweep tooling и хабовые evidence доставлены: non-zero окна suggestions, proxy outcomes (`accepted_proxy`), pending-очередь закрыта по отслеживаемой паре, runtime-gates стабильны. |
 | [#391](https://github.com/Gfermoto/BirdLense-Hub/issues/391) Benchmark robustness gates | **Закрыто** | Slice-gate скрипты/тесты/интеграция (`verify_benchmark_slice_gates.py`, Makefile, docs) внедрены. |
-| [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) Action dataset/labeling protocol | **Закрыто (execution completed)** | E0+E1 закрыты воспроизводимыми пайплайнами и свежими артефактами: fixture-gates, `run_action_e1_pipeline.py`, real-data seed/calibration/kappa report. |
+| [#392](https://github.com/Gfermoto/BirdLense-Hub/issues/392) Action dataset/labeling protocol | **Закрыто (execution completed)** | Миграция протокола завершена; obsolete weak-label gates/scripts удалены из активного runtime-контура. |
 | [#393](https://github.com/Gfermoto/BirdLense-Hub/issues/393) ML release train | **Закрыто** | Реестр моделей + release gates (`build/verify_model_registry_entry.py`, тесты, docs, Makefile) внедрены. |
 | [#394](https://github.com/Gfermoto/BirdLense-Hub/issues/394) Data engine quality gates | **Закрыто** | Dataset quality + hard-negatives integrity gates (`verify_detector_dataset_quality.py`, `verify_hard_negatives_manifest.py`, тесты/docs) внедрены. |
 | [#395](https://github.com/Gfermoto/BirdLense-Hub/issues/395) Classifier OpenVINO migration | **Закрыто** | Миграция классификатора на OpenVINO закрыта. |
-| [#396](https://github.com/Gfermoto/BirdLense-Hub/issues/396) Product-slice v1 | **Закрыто** | Полный product-срез (nickname + Re-ID hints + action timeline) доставлен и подтверждён smoke/DoD. |
+| [#396](https://github.com/Gfermoto/BirdLense-Hub/issues/396) Product-slice v1 | **Закрыто** | Полный product-срез (nickname + Re-ID hints + behavior section) доставлен; лишний action timeline удалён. |
 | [#397](https://github.com/Gfermoto/BirdLense-Hub/issues/397) Feedback learning loop | **Закрыто** | Feedback events + export API/script + status-contract наблюдаемости реализованы и проверены. |
 
 *Обновляйте таблицу при закрытии вех или смене фокуса.*
@@ -109,7 +109,6 @@
 
 | Endpoint | Назначение |
 |----------|------------|
-| `GET /api/ui/videos/{video_id}/action-events` | Слабые метки поведения (#379): `arrival`, `departure`, `possible_feeding` из треков и изменения веса кормушки. |
 | `GET /api/ui/videos/{video_id}/reid-match` | Product hints Re-ID (`video_reid_match@v2`) с policy-gate и candidate match без merge-операций. |
 | `GET /api/ui/system/active-learning/pool-preview` | Кандидаты из review/uncertainty для active-learning pool (#369). |
 | `GET /api/ui/system/reid/summary` | Read-only статус sidecar-таблицы `reid_embedding` (#374). |

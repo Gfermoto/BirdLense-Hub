@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -24,93 +24,6 @@ from services.feedback_loop_service import (
 )
 
 _log = logging.getLogger(__name__)
-
-
-def build_video_action_events_payload(session, video_id: int) -> tuple[dict[str, Any], int]:
-    """Weak behavior labels from existing tracks and feeder-weight evidence (#379)."""
-    video = session.get(Video, int(video_id))
-    if not video:
-        return {"error": "Video not found"}, 404
-
-    rows = (
-        session.query(VideoSpecies)
-        .options(joinedload(VideoSpecies.species))
-        .filter(VideoSpecies.video_id == video.id)
-        .order_by(VideoSpecies.start_time.asc(), VideoSpecies.id.asc())
-        .all()
-    )
-    if not rows:
-        return {
-            "schema": "video_action_events@v1",
-            "video_id": video.id,
-            "available": False,
-            "message": "no_video_tracks",
-            "events": [],
-        }, 200
-
-    video_start = ensure_utc(video.start_time)
-    first = rows[0]
-    last = rows[-1]
-    events: list[dict[str, Any]] = []
-
-    def _event(label: str, offset: float, confidence: float, evidence: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "label": label,
-            "source": "weak_label",
-            "time_offset": round(float(offset), 3),
-            "time": (video_start + timedelta(seconds=float(offset))).astimezone(timezone.utc).isoformat(),
-            "confidence": round(max(0.0, min(float(confidence), 1.0)), 4),
-            "evidence": evidence,
-        }
-
-    events.append(
-        _event(
-            "arrival",
-            first.start_time,
-            0.55,
-            {
-                "track_id": first.track_id,
-                "species_name": getattr(first.species, "name", None),
-                "reason": "first_track_start",
-            },
-        )
-    )
-
-    weight_delta = getattr(video, "scales_weight_delta_kg", None)
-    if weight_delta is not None and abs(float(weight_delta)) > 0:
-        mid = (float(first.start_time) + float(last.end_time)) / 2.0
-        events.append(
-            _event(
-                "possible_feeding",
-                mid,
-                0.5,
-                {
-                    "reason": "feeder_weight_delta",
-                    "scales_weight_delta_kg": float(weight_delta),
-                    "track_count": len(rows),
-                },
-            )
-        )
-
-    events.append(
-        _event(
-            "departure",
-            last.end_time,
-            0.5,
-            {
-                "track_id": last.track_id,
-                "species_name": getattr(last.species, "name", None),
-                "reason": "last_track_end",
-            },
-        )
-    )
-
-    return {
-        "schema": "video_action_events@v1",
-        "video_id": video.id,
-        "available": True,
-        "events": events,
-    }, 200
 
 
 def build_active_learning_pool_preview(session, *, limit: int = 100) -> tuple[dict[str, Any], int]:

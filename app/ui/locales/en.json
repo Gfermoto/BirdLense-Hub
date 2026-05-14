@@ -957,6 +957,16 @@
     "timeDay": "Midday (10–14)",
     "timeAfternoon": "Afternoon (14–18)",
     "timeEvening": "Evening (18–22)",
+    "nicknameFilter": "Nickname",
+    "nicknameFilterPlaceholder": "Filter by nickname",
+    "behaviorFilter": "Behavior",
+    "behaviorFilterPlaceholder": "Filter by behavior",
+    "sortBy": "Sort by",
+    "sortDateDesc": "Date/time: newest first",
+    "sortDateAsc": "Date/time: oldest first",
+    "sortSpecies": "Species name",
+    "sortNickname": "Nickname",
+    "sortBehavior": "Behavior",
     "hourFilterChip": "Hour: {{from}}–{{to}}",
     "expandVisitDetails": "Expand visit details",
     "collapseVisitDetails": "Collapse visit details"
@@ -1289,9 +1299,6 @@
     "editNickname": "Set nickname",
     "nicknameSaved": "Nickname saved",
     "behavior": "Behavior",
-    "actionArrival": "arrival",
-    "actionDeparture": "departure",
-    "actionPossibleFeeding": "possible feeding",
     "timelineHint": "Colored bars = species. Hover to see source: YOLO, external MQTT, or BirdNET.",
     "noTrackFramesHint": "No YOLO bbox on this clip (overlay hidden). Defaults were tightened so birds stay in the recording; use Admin → “Rebuild tracks for this clip” or lower processor.min_track_duration / min_confidence_to_process in Settings.",
     "regenerateTracksThisVideo": "Rebuild tracks for this clip",
@@ -1340,13 +1347,7 @@
     "possibleSameBird": "Possibly the same bird",
     "reidCrossCameraHint": "stricter cross-camera gate",
     "similarityPercent": "Similarity: {{value}}%",
-    "relatedVideo": "Related video",
-    "actionEventsTitle": "Action timeline",
-    "actionLabel": {
-      "arrival": "Arrival",
-      "departure": "Departure",
-      "possible_feeding": "Possible feeding"
-    }
+    "relatedVideo": "Related video"
   },
   "feed": {
     "feederControl": "Feeder Control",

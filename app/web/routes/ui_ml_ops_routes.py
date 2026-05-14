@@ -16,17 +16,12 @@ from services.ml_ops_service import (
     build_ml_runtime_status,
     build_video_reid_match_payload,
     build_reid_summary,
-    build_video_action_events_payload,
 )
 from services.api_json_validation import parse_request_json_object_allow_empty
 
 
 def register_ui_ml_ops_routes(app):
     """Register lightweight ML/CV helper routes."""
-
-    @app.route("/api/ui/videos/<int:video_id>/action-events", methods=["GET"])
-    def video_action_events(video_id: int):
-        return build_video_action_events_payload(db.session, video_id)
 
     @app.route("/api/ui/videos/<int:video_id>/reid-match", methods=["GET"])
     @require_ui_contributor_or_admin

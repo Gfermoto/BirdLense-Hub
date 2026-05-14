@@ -11,9 +11,8 @@
 
 - Re-ID / DINO pipeline (контракт эмбеддингов, import, gate-проверки).
 - Product hints и safety-gates (`video_reid_match@v2`, `reid_summary@v2`).
-- Action labeling protocol (`video_action_events@v1` + gate).
 - Feedback loop (`detection_feedback_event`, export/status API).
-- Product-slice UX/contract (клички, action timeline, Re-ID hints).
+- Product-slice UX/contract (клички, behavior, Re-ID hints).
 - Интеграции, влияющие на CV/ML эксплуатацию (SFTP mirror/NAS, весы, радар).
 
 ---
@@ -50,12 +49,9 @@
    `scripts/prod/smoke-cv-ml-no-events.sh`
 2. **Re-ID gates** по snapshot payload  
    `make ml-verify-reid-gates ...`
-3. **Action labeling gates**  
-   `make ml-verify-action-labeling ...`  
-   (быстрый детерминированный smoke по фикстурам: `make ml-verify-action-labeling-fixtures`)
-4. **Feedback loop export dry-run**  
+3. **Feedback loop export dry-run**  
    `POST /api/ui/system/feedback-loop/export` с `dry_run=true`
-5. **NAS mirror connectivity**  
+4. **NAS mirror connectivity**  
    `POST /api/ui/storage/recordings-mirror/test`
 
 Отдельные полевые issues-reminder (держим открытыми до реального прогона):
