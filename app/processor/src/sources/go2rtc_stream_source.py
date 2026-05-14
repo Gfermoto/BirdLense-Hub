@@ -583,13 +583,8 @@ class Go2RTCStreamSource:
                             self.logger.log(lvl, "FFmpeg: %s", safe)
                 except Exception:
                     self.logger.debug("FFmpeg stderr drain failed", exc_info=True)
-            graceful_sigterm = int(return_code or 0) == 255 and (
-                "Exiting normally, received signal 15." in stderr_text
-            )
-            if self._recording_used_vaapi and (
-                return_code is None
-                or (int(return_code) != 0 and not graceful_sigterm)
-            ):
+            graceful_sigterm = int(return_code or 0) == 255 and ("Exiting normally, received signal 15." in stderr_text)
+            if self._recording_used_vaapi and (return_code is None or (int(return_code) != 0 and not graceful_sigterm)):
                 # Quarantine only VA-API recording path after encode failure.
                 # Keep capture path independent (it may remain healthy).
                 self._vaapi_record_available = False

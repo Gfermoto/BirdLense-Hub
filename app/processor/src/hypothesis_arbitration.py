@@ -148,6 +148,17 @@ def _tag_row(row: dict, reason: str) -> None:
     row["_fusion_used"] = f"{tag}+{reason}" if tag else reason
 
 
+def _mark_arbitrated_primary_provider(row: dict) -> None:
+    provider = str(row.get("detection_provider") or "").strip()
+    if provider and provider.lower() != "arbitration":
+        row["arbitrated_primary_provider"] = provider
+    lineage = _merge_provider_sets([row])
+    if "arbitration" not in lineage:
+        lineage.append("arbitration")
+    row["contributing_providers"] = sorted(set(lineage))
+    row["detection_provider"] = "arbitration"
+
+
 def _sync_outcome_bucket(row: dict) -> dict:
     row["accepted"] = bool(row.get("accepted", True))
     row["visit_eligible"] = bool(row.get("visit_eligible", True))
@@ -333,6 +344,7 @@ def apply_hypothesis_arbitration(detections: list[dict]) -> list[dict]:
 
         if winner_supports >= ARBITRATION_MIN_SUPPORTS and score_gap >= ARBITRATION_SCORE_GAP:
             _tag_row(winner, "species_won_by_multi_source_consensus")
+            _mark_arbitrated_primary_provider(winner)
             winner["visit_eligible"] = True
             winner["notification_eligible"] = bool(winner.get("notification_eligible", True))
             _sync_outcome_bucket(winner)
@@ -347,6 +359,7 @@ def apply_hypothesis_arbitration(detections: list[dict]) -> list[dict]:
             and score_gap >= (ARBITRATION_SCORE_GAP * 0.5)
         ):
             _tag_row(winner, "species_kept_by_visual_anchor")
+            _mark_arbitrated_primary_provider(winner)
             winner["visit_eligible"] = True
             winner["notification_eligible"] = bool(winner.get("notification_eligible", True))
             _sync_outcome_bucket(winner)

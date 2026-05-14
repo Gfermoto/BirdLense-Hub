@@ -24,7 +24,8 @@ _SYSTEM_RESPONSE_PREFIXES = (
     "storage_stats:",
     "system_metrics:",
     "system_visitors:",
-    "system_metrics_hist:",
+    "system_metrics_hist:",  # legacy typo key
+    "system_metrics_history:",
     "system_activity:",
 )
 

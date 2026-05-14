@@ -29,9 +29,9 @@ def test_species_payload_hash_ignores_non_persisted_flags():
             "classifier_confidence": 0.01,
         }
     ]
-    assert processor_routes._build_species_payload_hash(species_list=base) == processor_routes._build_species_payload_hash(
-        species_list=changed
-    )
+    assert processor_routes._build_species_payload_hash(
+        species_list=base
+    ) == processor_routes._build_species_payload_hash(species_list=changed)
 
 
 def test_species_payload_hash_stable_for_numeric_and_track_normalization():

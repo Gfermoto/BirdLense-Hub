@@ -671,10 +671,10 @@ class MQTTEventAggregator:
                     raw_min_trigger_score = app_config.get("triggers.frigate.min_trigger_score")
                     try:
                         min_trigger_score = (
-                            0.0 if isinstance(raw_min_trigger_score, bool) else float(raw_min_trigger_score or 0.0)
+                            0.5 if isinstance(raw_min_trigger_score, bool) else float(raw_min_trigger_score or 0.5)
                         )
                     except (TypeError, ValueError):
-                        min_trigger_score = 0.0
+                        min_trigger_score = 0.5
                     per_camera_thresholds = app_config.get("triggers.frigate.min_trigger_score_by_camera") or {}
                     if isinstance(per_camera_thresholds, dict):
                         camera_key = str(camera or "").strip().lower()
@@ -696,6 +696,7 @@ class MQTTEventAggregator:
                     lbl_ok = (not lbl_f_lower) or bool(lbl_f_lower & labels_lower)
                     relaxed = bool(app_config.get("triggers.frigate.trigger_on_tracked_object", True))
                     has_geometry = _frigate_after_has_tracked_geometry(after if isinstance(after, dict) else {})
+                    ev["_frigate_has_geometry"] = bool(has_geometry)
                     accepted_by = "label_filter"
                     if not lbl_ok and relaxed and has_geometry:
                         lbl_ok = True
@@ -790,6 +791,7 @@ class MQTTEventAggregator:
                     "confidence": 0.0,
                     "camera": camera,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "_frigate_has_geometry": False,
                 }
                 after = {}
                 labels = {label}
