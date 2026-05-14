@@ -161,6 +161,7 @@ class MQTTEventAggregator:
         fs_dir = (fifo_snapshot_data_dir or "").strip()
         self._fifo_snapshot_dir = fs_dir or None
         self._fifo_snapshot_last_monotonic = 0.0
+        self._geometry_fallback_last_emit: dict[tuple[str, str], float] = {}
         self._birdnet_fifo_persist = None
         self._birdnet_merge_db_path = None
         _merge_data_root = fs_dir or None
@@ -710,10 +711,49 @@ class MQTTEventAggregator:
                     # Empty label filter means wildcard (accept any label).
                     lbl_ok = (not lbl_f_lower) or bool(lbl_f_lower & labels_lower)
                     relaxed = bool(app_config.get("triggers.frigate.trigger_on_tracked_object", True))
+                    geometry_fallback_enabled = bool(
+                        app_config.get("triggers.frigate.geometry_fallback_enabled", True)
+                    )
+                    try:
+                        geometry_fallback_cooldown = float(
+                            app_config.get("triggers.frigate.geometry_fallback_cooldown_seconds", 2.0) or 2.0
+                        )
+                    except (TypeError, ValueError):
+                        geometry_fallback_cooldown = 2.0
+                    geometry_fallback_cooldown = max(0.0, geometry_fallback_cooldown)
+                    raw_geometry_exclude = (
+                        app_config.get("triggers.frigate.geometry_fallback_label_exclude")
+                        or ["person", "car", "vehicle", "truck", "bus"]
+                    )
+                    if not isinstance(raw_geometry_exclude, (list, tuple, set)):
+                        raw_geometry_exclude = []
+                    geometry_exclude = {
+                        str(x).strip().lower() for x in raw_geometry_exclude if str(x).strip()
+                    }
                     has_geometry = _frigate_after_has_tracked_geometry(after if isinstance(after, dict) else {})
                     ev["_frigate_has_geometry"] = bool(has_geometry)
                     accepted_by = "label_filter"
-                    if not lbl_ok and relaxed and has_geometry:
+                    geometry_blocked_reason = ""
+                    can_geometry_fallback = bool(not lbl_ok and relaxed and has_geometry and geometry_fallback_enabled)
+                    if can_geometry_fallback:
+                        label_key = str(label or "").strip().lower()
+                        if label_key and label_key in geometry_exclude:
+                            geometry_blocked_reason = "geometry_label_excluded"
+                            can_geometry_fallback = False
+                        else:
+                            gf_last_emit = getattr(self, "_geometry_fallback_last_emit", None)
+                            if not isinstance(gf_last_emit, dict):
+                                gf_last_emit = {}
+                                self._geometry_fallback_last_emit = gf_last_emit
+                            emit_key = (str(camera or "").strip().lower(), label_key or "_")
+                            now_mono = time.monotonic()
+                            prev_emit = float(gf_last_emit.get(emit_key) or 0.0)
+                            if prev_emit > 0 and (now_mono - prev_emit) < geometry_fallback_cooldown:
+                                geometry_blocked_reason = "geometry_cooldown"
+                                can_geometry_fallback = False
+                            else:
+                                gf_last_emit[emit_key] = now_mono
+                    if can_geometry_fallback:
                         lbl_ok = True
                         accepted_by = "geometry_fallback"
                         # Geometry fallback keeps recording responsiveness, but such
@@ -734,6 +774,8 @@ class MQTTEventAggregator:
                                 label,
                                 sub_label,
                             )
+                    elif not lbl_ok and relaxed and has_geometry and geometry_blocked_reason:
+                        inc_counter("frigate_geometry_fallback_rejected_total")
                     score_ok = trigger_score >= max(0.0, min_trigger_score)
                     if cam_ok and lbl_ok and score_ok:
                         logger.info(
@@ -769,6 +811,8 @@ class MQTTEventAggregator:
                                 reasons.append("label_filter_miss")
                             if not has_geometry:
                                 reasons.append("no_tracked_geometry")
+                            if geometry_blocked_reason:
+                                reasons.append(geometry_blocked_reason)
                         if not score_ok:
                             reasons.append("score_below_trigger_min")
                         logger.info(
