@@ -20,6 +20,26 @@ This gate reads `/metrics` and fails when thresholds are violated:
 Thresholds are configurable via env:
 `MAX_HEARTBEAT_AGE_SECONDS`, `MAX_HTTP_OVER_1000MS_RATIO`, `MIN_HTTP_SAMPLE_COUNT`, `REQUIRE_HEARTBEAT_STALE_ZERO`.
 
+## 2026-05-14 — Runtime performance gate (C3)
+
+For a repeatable burst/scrape/soak check:
+
+```bash
+make perf-gate-runtime
+```
+
+The gate (`runtime_perf_gate@v1`) runs:
+- status burst (`/api/ui/status`) with concurrency
+- metrics scrape storm (`/metrics`)
+- short soak for `/api/ui/health` and `/api/ui/readiness`
+
+It fails when default thresholds are exceeded:
+- status burst `error_rate > 0.02`
+- status burst `p95 > 3000ms` or `p99 > 5000ms`
+- scrape/soak error rates above `0.02`
+
+Output artifact: `/tmp/runtime_perf_gate.v1.json`.
+
 ## 2026-05-02 — Persistent ML proof gate (local + hub)
 
 To prevent "works now, lost after deploy" regressions, run one reproducible gate:
