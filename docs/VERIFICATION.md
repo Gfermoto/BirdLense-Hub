@@ -4,6 +4,22 @@ Short log of automated checks. Full cycle: [CONTRIBUTING.md](https://github.com/
 
 Shared install/deploy smoke contract: `make verify` (or `scripts/verify-stack.sh --base-url ...`) checks `/api/ui/health`, `/api/ui/readiness`, and `/api/ui/status`.
 
+## 2026-05-14 — Runtime SLI threshold gate (C2)
+
+For operational alerting before/after deploy:
+
+```bash
+make verify-runtime-sli
+```
+
+This gate reads `/metrics` and fails when thresholds are violated:
+- `birdlense_processor_heartbeat_stale != 0` (by default required)
+- `birdlense_processor_heartbeat_age_seconds > 240` (default max age)
+- HTTP slow-ratio (`>1000ms`) exceeds `0.20` with at least `20` samples
+
+Thresholds are configurable via env:
+`MAX_HEARTBEAT_AGE_SECONDS`, `MAX_HTTP_OVER_1000MS_RATIO`, `MIN_HTTP_SAMPLE_COUNT`, `REQUIRE_HEARTBEAT_STALE_ZERO`.
+
 ## 2026-05-02 — Persistent ML proof gate (local + hub)
 
 To prevent "works now, lost after deploy" regressions, run one reproducible gate:

@@ -2,6 +2,22 @@
 
 Краткий журнал автоматических проверок перед возвратом к roadmap. Полный цикл — см. [CONTRIBUTING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.ru.md), [TESTING.ru.md](./TESTING.ru.md).
 
+## 2026-05-14 — Пороговый runtime SLI gate (C2)
+
+Для операционного alerting до/после деплоя:
+
+```bash
+make verify-runtime-sli
+```
+
+Gate читает `/metrics` и падает при нарушении порогов:
+- `birdlense_processor_heartbeat_stale != 0` (по умолчанию строго `0`)
+- `birdlense_processor_heartbeat_age_seconds > 240` (дефолтный максимум)
+- доля медленных HTTP (`>1000ms`) выше `0.20` при выборке от `20` запросов
+
+Пороги настраиваются через env:
+`MAX_HEARTBEAT_AGE_SECONDS`, `MAX_HTTP_OVER_1000MS_RATIO`, `MIN_HTTP_SAMPLE_COUNT`, `REQUIRE_HEARTBEAT_STALE_ZERO`.
+
 ## 2026-05-02 — Постоянный ML proof gate (локально + хаб)
 
 Чтобы исключить регрессию вида «сделали в контейнере, потом потерялось после деплоя», используйте единый воспроизводимый gate:
