@@ -871,6 +871,144 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
         self.assertEqual(persisted[0].get('decision_kind'), 'review_only_generic')
         self.assertTrue(persisted[0].get('yolo_weak_track_salvage'))
 
+    def test_non_frigate_trigger_does_not_scope_camera(self):
+        api = MagicMock()
+        motion_detector = MagicMock()
+        motion_detector.get_triggered_camera.return_value = 'cam-default'
+        mqtt_aggregator = MagicMock()
+        frame_processor = MagicMock(tracks={})
+        decision_maker = MagicMock()
+        decision_maker.get_decisions.return_value = []
+
+        def fake_cfg_get(key, default=None):
+            mapping = {
+                'detection.merge_window_seconds': 6,
+                'processor.generate_spectrogram_always': False,
+                'processor.keep_recording_when_no_detections': True,
+                'video.source': 'file',
+            }
+            return mapping.get(key, default)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = os.path.join(tmp, 'session')
+            os.makedirs(out_dir, exist_ok=True)
+            video_path = os.path.join(out_dir, 'clip.mp4')
+            with patch.object(
+                recording_finalize_mod.app_config,
+                'get',
+                side_effect=fake_cfg_get,
+            ), patch(
+                'recording_finalize.get_recording_mqtt_events',
+                return_value=[],
+            ) as mocked_window, patch(
+                'recording_finalize.build_fused_video_detections',
+                return_value=[],
+            ) as mocked_fusion, patch(
+                'recording_finalize.generate_spectrogram',
+                return_value=False,
+            ), patch(
+                'recording_finalize._is_playable_video_file',
+                return_value=True,
+            ):
+                finalize_motion_recording(
+                    api,
+                    motion_detector,
+                    mqtt_aggregator,
+                    frame_processor,
+                    decision_maker,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    output_path_physical=out_dir,
+                    output_path_logical='data/recordings/2026/05/14/074500',
+                    video_output=video_path,
+                    video_path_for_api='data/recordings/2026/05/14/074500/video.mp4',
+                    scales_topic_arg=None,
+                    data_dir=tmp,
+                    recording_context={
+                        'triggered_by': 'opencv',
+                        'triggered_camera': 'cam-from-context',
+                    },
+                )
+
+        self.assertIsNone(mocked_window.call_args.kwargs.get('scope_camera_id'))
+        self.assertEqual(
+            mocked_window.call_args.kwargs.get('lookback_camera_id'),
+            'cam-from-context',
+        )
+        self.assertIsNone(mocked_fusion.call_args.kwargs.get('triggered_camera'))
+
+    def test_frigate_trigger_scopes_camera(self):
+        api = MagicMock()
+        motion_detector = MagicMock()
+        motion_detector.get_triggered_camera.return_value = 'cam-live'
+        mqtt_aggregator = MagicMock()
+        frame_processor = MagicMock(tracks={})
+        decision_maker = MagicMock()
+        decision_maker.get_decisions.return_value = []
+
+        def fake_cfg_get(key, default=None):
+            mapping = {
+                'detection.merge_window_seconds': 6,
+                'processor.generate_spectrogram_always': False,
+                'processor.keep_recording_when_no_detections': True,
+                'video.source': 'file',
+            }
+            return mapping.get(key, default)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = os.path.join(tmp, 'session')
+            os.makedirs(out_dir, exist_ok=True)
+            video_path = os.path.join(out_dir, 'clip.mp4')
+            with patch.object(
+                recording_finalize_mod.app_config,
+                'get',
+                side_effect=fake_cfg_get,
+            ), patch(
+                'recording_finalize.get_recording_mqtt_events',
+                return_value=[],
+            ) as mocked_window, patch(
+                'recording_finalize.build_fused_video_detections',
+                return_value=[],
+            ) as mocked_fusion, patch(
+                'recording_finalize.generate_spectrogram',
+                return_value=False,
+            ), patch(
+                'recording_finalize._is_playable_video_file',
+                return_value=True,
+            ):
+                finalize_motion_recording(
+                    api,
+                    motion_detector,
+                    mqtt_aggregator,
+                    frame_processor,
+                    decision_maker,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    output_path_physical=out_dir,
+                    output_path_logical='data/recordings/2026/05/14/074600',
+                    video_output=video_path,
+                    video_path_for_api='data/recordings/2026/05/14/074600/video.mp4',
+                    scales_topic_arg=None,
+                    data_dir=tmp,
+                    recording_context={
+                        'triggered_by': 'frigate',
+                        'triggered_camera': 'cam-from-context',
+                    },
+                )
+
+        self.assertEqual(
+            mocked_window.call_args.kwargs.get('scope_camera_id'),
+            'cam-from-context',
+        )
+        self.assertEqual(
+            mocked_window.call_args.kwargs.get('lookback_camera_id'),
+            'cam-from-context',
+        )
+        self.assertEqual(
+            mocked_fusion.call_args.kwargs.get('triggered_camera'),
+            'cam-from-context',
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

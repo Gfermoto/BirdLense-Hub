@@ -62,7 +62,21 @@ def _build_clip_idempotency_key(*, processor_version: str, pv) -> str:
     return hashlib.sha256(seed.encode("utf-8")).hexdigest()
 
 
-def _build_species_payload_hash(*, species_list: list[dict]) -> str:
+def _canonical_float(value, *, ndigits: int = 6) -> float:
+    try:
+        return round(float(value or 0.0), ndigits)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _canonical_track_id(value):
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _canonical_detection_row(row: dict) -> dict:
     def _canonical_frames(value):
         if value is None:
             return []
@@ -72,30 +86,25 @@ def _build_species_payload_hash(*, species_list: list[dict]) -> str:
             except (TypeError, ValueError):
                 return value
         return value
+    return {
+        "species_name": str(row.get("species_name") or row.get("species") or "").strip(),
+        "source": str(row.get("source") or "").strip(),
+        "detection_provider": str(row.get("detection_provider") or "").strip(),
+        "track_id": _canonical_track_id(row.get("track_id")),
+        "start_time": _canonical_float(row.get("start_time")),
+        "end_time": _canonical_float(row.get("end_time")),
+        "confidence": _canonical_float(row.get("confidence")),
+        "classifier_entropy": _canonical_float(row.get("classifier_entropy")),
+        "classifier_top1_top2_margin": _canonical_float(row.get("classifier_top1_top2_margin")),
+        "classifier_needs_review": bool(row.get("classifier_needs_review", False)),
+        "review_reason": str(row.get("review_reason") or "").strip(),
+        "individual_nickname": str(row.get("individual_nickname") or "").strip(),
+        "frames": _canonical_frames(row.get("frames")),
+    }
 
-    normalized_rows = []
-    for row in species_list or []:
-        normalized_rows.append(
-            {
-                "species_name": str(row.get("species_name") or "").strip(),
-                "source": str(row.get("source") or "").strip(),
-                "detection_provider": str(row.get("detection_provider") or "").strip(),
-                "track_id": row.get("track_id"),
-                "start_time": float(row.get("start_time") or 0.0),
-                "end_time": float(row.get("end_time") or 0.0),
-                "confidence": float(row.get("confidence") or 0.0),
-                "visit_eligible": bool(row.get("visit_eligible", True)),
-                "notification_eligible": bool(row.get("notification_eligible", True)),
-                "decision_kind": str(row.get("decision_kind") or "").strip(),
-                "classifier_confidence": float(row.get("classifier_confidence") or 0.0),
-                "classifier_entropy": float(row.get("classifier_entropy") or 0.0),
-                "classifier_top1_top2_margin": float(row.get("classifier_top1_top2_margin") or 0.0),
-                "classifier_needs_review": bool(row.get("classifier_needs_review", False)),
-                "review_reason": str(row.get("review_reason") or "").strip(),
-                "individual_nickname": str(row.get("individual_nickname") or "").strip(),
-                "frames": _canonical_frames(row.get("frames")),
-            }
-        )
+
+def _build_species_payload_hash(*, species_list: list[dict]) -> str:
+    normalized_rows = [_canonical_detection_row(row or {}) for row in (species_list or [])]
     normalized_rows.sort(
         key=lambda item: (
             item["species_name"],
@@ -105,10 +114,6 @@ def _build_species_payload_hash(*, species_list: list[dict]) -> str:
             item["start_time"],
             item["end_time"],
             item["confidence"],
-            item["visit_eligible"],
-            item["notification_eligible"],
-            item["decision_kind"],
-            item["classifier_confidence"],
             item["classifier_entropy"],
             item["classifier_top1_top2_margin"],
             item["classifier_needs_review"],
@@ -132,25 +137,23 @@ def _build_payload_hash_for_existing_video(video_id: int) -> str:
     species_rows: list[dict] = []
     for detection, species in rows:
         species_rows.append(
-            {
-                "species_name": str(species.name or "").strip(),
-                "source": str(detection.source or "").strip(),
-                "detection_provider": str(detection.detection_provider or "").strip(),
-                "track_id": detection.track_id,
-                "start_time": float(detection.start_time or 0.0),
-                "end_time": float(detection.end_time or 0.0),
-                "confidence": float(detection.confidence or 0.0),
-                "visit_eligible": bool(detection.species_visit_id is not None),
-                "notification_eligible": bool(detection.species_visit_id is not None),
-                "decision_kind": "",
-                "classifier_confidence": 0.0,
-                "classifier_entropy": float(detection.classifier_entropy or 0.0),
-                "classifier_top1_top2_margin": float(detection.classifier_top1_top2_margin or 0.0),
-                "classifier_needs_review": bool(detection.classifier_needs_review),
-                "review_reason": str(detection.review_reason or "").strip(),
-                "individual_nickname": str(detection.individual_nickname or "").strip(),
-                "frames": detection.frames,
-            }
+            _canonical_detection_row(
+                {
+                    "species_name": str(species.name or "").strip(),
+                    "source": detection.source,
+                    "detection_provider": detection.detection_provider,
+                    "track_id": detection.track_id,
+                    "start_time": detection.start_time,
+                    "end_time": detection.end_time,
+                    "confidence": detection.confidence,
+                    "classifier_entropy": detection.classifier_entropy,
+                    "classifier_top1_top2_margin": detection.classifier_top1_top2_margin,
+                    "classifier_needs_review": detection.classifier_needs_review,
+                    "review_reason": detection.review_reason,
+                    "individual_nickname": detection.individual_nickname,
+                    "frames": detection.frames,
+                }
+            )
         )
     return _build_species_payload_hash(species_list=species_rows)
 
@@ -170,6 +173,20 @@ def _find_existing_video_for_idempotent_ingest(*, processor_version: str, pv, cl
     if same_version and same_start and same_end:
         return existing
     return None
+
+
+def _idempotency_conflict_response(*, app_logger, video_id: int, reason: str):
+    conflict_reason = str(reason or "").strip() or "payload_hash_mismatch"
+    app_logger.warning(
+        "processor_ingest idempotency conflict: video_id=%s reason=%s",
+        video_id,
+        conflict_reason,
+    )
+    return {
+        "error": "Idempotency conflict for existing clip key",
+        "video_id": video_id,
+        "conflict_reason": conflict_reason,
+    }, 409
 
 
 def _check_processor_secret():
@@ -216,7 +233,11 @@ def register_routes(app):
                 existing_video.ingest_payload_hash = existing_payload_hash
                 db.session.commit()
             if existing_payload_hash != payload_hash:
-                return {"error": "Idempotency conflict for existing clip key", "video_id": existing_video.id}, 409
+                return _idempotency_conflict_response(
+                    app_logger=app.logger,
+                    video_id=existing_video.id,
+                    reason="payload_hash_mismatch",
+                )
             return {
                 "message": "Video already ingested.",
                 "video_id": existing_video.id,
@@ -291,7 +312,11 @@ def register_routes(app):
                     raced_video.ingest_payload_hash = existing_payload_hash
                     db.session.commit()
                 if existing_payload_hash != payload_hash:
-                    return {"error": "Idempotency conflict for existing clip key", "video_id": raced_video.id}, 409
+                    return _idempotency_conflict_response(
+                        app_logger=app.logger,
+                        video_id=raced_video.id,
+                        reason="payload_hash_mismatch_race",
+                    )
                 return {
                     "message": "Video already ingested.",
                     "video_id": raced_video.id,

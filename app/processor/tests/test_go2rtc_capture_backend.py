@@ -46,6 +46,7 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         self.assertIn("+genpts+igndts", joined)
         self.assertIn("-avoid_negative_ts make_zero", joined)
         self.assertIn("-max_interleave_delta 0", joined)
+        self.assertIn("-vsync 2", joined)
         self.assertIn("-map 0:v:0 -map 0:a:0?", joined)
         self.assertIn("-af aresample=async=1:first_pts=0", joined)
         self.assertIn("-c:v h264_vaapi", joined)
@@ -175,6 +176,49 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         self.assertIsNone(src.capture())
         self.assertGreater(src._force_opencv_until_ts, time.time())
         self.assertEqual(src._ffmpeg_capture_failures, 0)
+
+    def test_recording_vaapi_failure_disables_record_only(self):
+        from sources.go2rtc_stream_source import Go2RTCStreamSource
+
+        class _FakeStderr:
+            def read(self):
+                return b""
+
+        class _FakeProc:
+            def __init__(self):
+                self.stderr = _FakeStderr()
+
+            def terminate(self):
+                return None
+
+            def wait(self, timeout=None):
+                return 1
+
+        class _Logger:
+            def info(self, *_args, **_kwargs):
+                return None
+
+            def error(self, *_args, **_kwargs):
+                return None
+
+            def warning(self, *_args, **_kwargs):
+                return None
+
+            def debug(self, *_args, **_kwargs):
+                return None
+
+        src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
+        src.logger = _Logger()
+        src._ffmpeg_process = _FakeProc()
+        src._recording_used_vaapi = True
+        src._vaapi_record_available = True
+        src._vaapi_available = True
+        src._recording = True
+
+        src.stop_recording()
+
+        self.assertFalse(src._vaapi_record_available)
+        self.assertTrue(src._vaapi_available)
 
 
 if __name__ == "__main__":
