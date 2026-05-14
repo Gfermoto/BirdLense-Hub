@@ -58,7 +58,18 @@ perf-gate-runtime:
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
 	_url="$${BASE_URL:-$${DEPLOY_URL:-http://127.0.0.1:8085}}"; \
 	MCP_TOKEN="$${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="$${BIRDLENSE_UI_API_KEY:-}" \
-	  python3 ./scripts/perf_gate_runtime.py --base-url "$$_url" --out /tmp/runtime_perf_gate.v1.json
+	  python3 ./scripts/perf_gate_runtime.py \
+	    --base-url "$$_url" \
+	    --burst-requests "$${PERF_BURST_REQUESTS:-200}" \
+	    --burst-concurrency "$${PERF_BURST_CONCURRENCY:-20}" \
+	    --metrics-scrapes "$${PERF_METRICS_SCRAPES:-120}" \
+	    --metrics-concurrency "$${PERF_METRICS_CONCURRENCY:-12}" \
+	    --soak-seconds "$${PERF_SOAK_SECONDS:-60}" \
+	    --soak-interval-sec "$${PERF_SOAK_INTERVAL_SEC:-0.75}" \
+	    --max-error-rate "$${PERF_MAX_ERROR_RATE:-0.02}" \
+	    --max-p95-ms "$${PERF_MAX_P95_MS:-3000}" \
+	    --max-p99-ms "$${PERF_MAX_P99_MS:-5000}" \
+	    --out "$${PERF_OUT:-/tmp/runtime_perf_gate.v1.json}"
 
 # A1: локальная копия server app/.env (verify-prod-env) + живой хаб (DEPLOY_URL из deploy.local.sh)
 preflight-deploy: verify-prod-env verify

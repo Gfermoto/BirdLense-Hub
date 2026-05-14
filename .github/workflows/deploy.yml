@@ -137,6 +137,22 @@ jobs:
           cd "$DEPLOY_DIR"
           BIRDLENSE_UI_API_KEY="${EFFECTIVE_UI_KEY}" MCP_TOKEN="${EFFECTIVE_MCP_TOKEN}" \
             scripts/verify-stack.sh --base-url "${BASE_URL}" --check-domain-health --strict-quality
+          BIRDLENSE_UI_API_KEY="${EFFECTIVE_UI_KEY}" MCP_TOKEN="${EFFECTIVE_MCP_TOKEN}" \
+            MAX_HEARTBEAT_AGE_SECONDS=240 MAX_HTTP_OVER_1000MS_RATIO=0.20 MIN_HTTP_SAMPLE_COUNT=20 \
+            scripts/check-runtime-sli.sh --base-url "${BASE_URL}"
+          BIRDLENSE_UI_API_KEY="${EFFECTIVE_UI_KEY}" MCP_TOKEN="${EFFECTIVE_MCP_TOKEN}" \
+            python3 scripts/perf_gate_runtime.py \
+              --base-url "${BASE_URL}" \
+              --burst-requests 120 \
+              --burst-concurrency 12 \
+              --metrics-scrapes 60 \
+              --metrics-concurrency 8 \
+              --soak-seconds 20 \
+              --soak-interval-sec 0.8 \
+              --max-error-rate 0.02 \
+              --max-p95-ms 3000 \
+              --max-p99-ms 5000 \
+              --out /tmp/runtime_perf_gate.deploy.v1.json
           if [ "${RUN_VERIFY_RELEASE}" = "1" ]; then
             REQUIRE_SETTINGS_HEALTH=1 BIRDLENSE_UI_API_KEY="${EFFECTIVE_UI_KEY}" MCP_TOKEN="${EFFECTIVE_MCP_TOKEN}" BASE_URL="${BASE_URL}" \
               scripts/verify-release.sh
