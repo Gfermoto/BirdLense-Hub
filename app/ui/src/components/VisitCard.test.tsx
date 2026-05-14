@@ -34,8 +34,7 @@ describe('VisitCard', () => {
       },
       individual_nickname: 'Nova',
       behavior_events: [
-        { label: 'arrival' },
-        { label: 'possible_feeding' },
+        { label: 'feeding' },
       ],
       detections: [
         {
@@ -59,10 +58,7 @@ describe('VisitCard', () => {
 
     expect(screen.getByText(/Nova/)).toBeInTheDocument();
     expect(
-      screen.getByText(/(arrival|прилёт)/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/(possible feeding|возможное кормление)/i),
+      screen.getByText(/(feeding|кормление)/i),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /(Set nickname|Задать кличку)/i }),

@@ -38,7 +38,6 @@ import {
   patchVideoFavorite,
   patchVideoRecording,
   fetchVideoFusionTrace,
-  type VideoActionEventsPayload,
   type FusionTracePayload,
   type FusionTraceStep,
   type FusionTraceTrack,
@@ -136,10 +135,8 @@ function FusionTrackSteps({
 
 export const VideoInfo = ({
   video,
-  actionEventsPayload,
 }: {
   video: Video;
-  actionEventsPayload?: VideoActionEventsPayload;
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -522,34 +519,6 @@ export const VideoInfo = ({
           )}
         </Box>
       </Paper>
-
-      {actionEventsPayload?.available && actionEventsPayload.events.length > 0 && (
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            {t('video.actionEventsTitle')}
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {actionEventsPayload.events.map((event, idx) => {
-              const sec = Math.max(0, Math.round(event.time_offset || 0));
-              const mm = String(Math.floor(sec / 60)).padStart(2, '0');
-              const ss = String(sec % 60).padStart(2, '0');
-              const labelKey = `video.actionLabel.${event.label}`;
-              const translated = t(labelKey);
-              const actionLabel = translated === labelKey ? event.label : translated;
-              return (
-                <Typography
-                  key={`${event.label}-${event.time_offset}-${idx}`}
-                  variant="body2"
-                  color="text.secondary"
-                >
-                  <strong>{`${mm}:${ss}`}</strong> • {actionLabel}{' '}
-                  ({Math.round((event.confidence ?? 0) * 100)}%)
-                </Typography>
-              );
-            })}
-          </Box>
-        </Paper>
-      )}
 
       <Dialog
         open={fusionOpen}

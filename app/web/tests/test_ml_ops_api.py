@@ -8,42 +8,24 @@ import json
 from sqlalchemy import text
 
 
-def test_video_action_events_weak_labels_from_tracks_and_weight(app, client):
-    from models import Species, Video, VideoSpecies, db
+def test_video_action_events_endpoint_removed(app, client):
+    from models import Video, db
 
     with app.app_context():
-        species = Species(name="Great Tit")
         video = Video(
             processor_version="t",
             start_time=datetime(2026, 4, 29, 10, 0, 0, tzinfo=timezone.utc),
             end_time=datetime(2026, 4, 29, 10, 1, 0, tzinfo=timezone.utc),
             video_path="data/recordings/actions/video.mp4",
-            scales_weight_delta_kg=-0.003,
+            behavior_label="feeding",
+            behavior_confidence=0.82,
         )
-        db.session.add_all([species, video])
-        db.session.flush()
-        db.session.add(
-            VideoSpecies(
-                video_id=video.id,
-                species_id=species.id,
-                start_time=2.0,
-                end_time=12.0,
-                confidence=0.88,
-                source="video",
-                detection_provider="yolo",
-                track_id=42,
-            )
-        )
+        db.session.add(video)
         db.session.commit()
         vid = video.id
 
     r = client.get(f"/api/ui/videos/{vid}/action-events")
-    assert r.status_code == 200
-    body = r.get_json()
-    assert body["available"] is True
-    labels = [e["label"] for e in body["events"]]
-    assert labels == ["arrival", "possible_feeding", "departure"]
-    assert body["events"][1]["evidence"]["scales_weight_delta_kg"] == -0.003
+    assert r.status_code == 404
 
 
 def test_active_learning_pool_preview_lists_uncertain_items(app, client):

@@ -7,9 +7,8 @@ Related: [#379](https://github.com/Gfermoto/BirdLense-Hub/issues/379)
 
 ## Label taxonomy v1
 
-- `arrival`
-- `departure`
-- `possible_feeding`
+Behavior labels are model-oriented and training-driven (for example: `feeding`, `alert`, `idle`).
+Legacy weak labels (`arrival`, `departure`, `possible_feeding`) are archived and removed from runtime APIs.
 
 Extension-ready labels (next phase):
 
@@ -39,8 +38,8 @@ Storage format for training: JSONL + manifest with schema version.
 
 - minimum segment length: 300 ms
 - overlap allowed only if semantic actions are genuinely concurrent
-- `arrival` and `departure` are boundary events: use tight windows
-- `possible_feeding` requires visible feeder interaction or weight-correlated proxy
+- labels must be visually grounded in clip evidence
+- avoid pseudo/proxy-only labels without model-trainable visual cues
 
 Inter-annotator agreement:
 
@@ -70,7 +69,7 @@ Stage C:
 ## Integration constraints
 
 - action head must not reduce detector/classifier throughput
-- if action model is unavailable, weak-label API path remains active
+- if action model is unavailable, no weak-label fallback is emitted in runtime API
 - action output is additive; never blocks species inference
 
 ## Quality bar for first production trial
@@ -89,14 +88,12 @@ Status mapping:
 ### Phase E0 — protocol freeze (#392)
 
 - freeze taxonomy/guideline without ambiguity in docs;
-- run `make ml-verify-action-labeling` on snapshot payload in local/CI flow;
-- verify gate fails on intentionally broken payload (negative smoke).
+- archive legacy weak-label gate protocol and keep only model/runtime behavior flow.
 
 DoD E0:
 
-- `make ml-verify-action-labeling ACTION_EVENTS=<fixture>` passes on valid fixture;
-- negative fixture deterministically fails;
-- issue #392 includes command logs and fixture commit link.
+- legacy gate scripts/fixtures are removed from runtime path;
+- docs and smoke flows reference only current model/runtime behavior path.
 
 ### Phase E1 — dataset bootstrap (#392 -> #379)
 
@@ -112,9 +109,7 @@ DoD E1:
 
 Commands:
 
-- `make ml-export-action-seed ACTION_DB=app/data/db/birdlense.db ACTION_SEED_JSONL=/tmp/action_seed.jsonl ACTION_SEED_MANIFEST=/tmp/action_seed_manifest.json`
-- `make ml-prepare-action-calibration ACTION_SEED_JSONL=/tmp/action_seed.jsonl ACTION_CALIB_DIR=/tmp/action_calibration`
-- `make ml-verify-action-agreement ACTION_ANN_A=/tmp/annotator_a.jsonl ACTION_ANN_B=/tmp/annotator_b.jsonl ACTION_MIN_KAPPA=0.75 ACTION_AGREEMENT_REPORT=/tmp/action_kappa.json`
+- Legacy command set removed after migration completion.
 
 ### Phase E2 — model candidate benchmark (#379)
 
@@ -130,23 +125,22 @@ DoD E2:
 
 Command:
 
-- `make ml-benchmark-action-candidates ACTION_GT=/tmp/action_gt.jsonl ACTION_PRED=/tmp/action_predictions.jsonl ACTION_BENCHMARK_REPORT=/tmp/action_benchmark_report.json`
+- Legacy command removed after migration completion.
 
 ### Phase E3 — hub integration shadow (#379)
 
 - integrate inference path without blocking species pipeline;
-- keep weak-label fallback when action model is unavailable;
-- add observability for action events and failures.
+- add observability for behavior model outputs and failures.
 
 DoD E3:
 
 - hub smoke confirms no species-flow regression;
-- action output appears in `video_action_events@v1`/API payload without crash loops;
+- behavior output appears in `GET /api/ui/videos/:id` payload without crash loops;
 - kill-switch and rollback steps are documented.
 
 Command:
 
-- `make ml-run-action-e3-shadow ACTION_E3_REPORT=/tmp/action_e3_shadow.json ACTION_WINDOW_HOURS=24 ACTION_VIDEO_LIMIT=300`
+- Legacy command removed after migration completion.
 
 ### Phase E4 — guarded rollout (#379)
 

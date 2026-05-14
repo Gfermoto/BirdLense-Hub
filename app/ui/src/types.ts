@@ -39,7 +39,7 @@ export interface SpeciesVisit {
   }[];
   /** Re-ID nickname from backend visit payload when present (#390 UI). */
   individual_nickname?: string | null;
-  /** Discrete action cues for this visit (arrival / etc.). */
+  /** Model-derived behavior events for this visit. */
   behavior_events?: { label?: string }[];
 }
 

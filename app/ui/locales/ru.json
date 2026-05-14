@@ -957,6 +957,16 @@
     "timeDay": "День (10–14)",
     "timeAfternoon": "День (14–18)",
     "timeEvening": "Вечер (18–22)",
+    "nicknameFilter": "Кличка",
+    "nicknameFilterPlaceholder": "Фильтр по кличке",
+    "behaviorFilter": "Поведение",
+    "behaviorFilterPlaceholder": "Фильтр по поведению",
+    "sortBy": "Сортировать по",
+    "sortDateDesc": "Дата/время: сначала новые",
+    "sortDateAsc": "Дата/время: сначала старые",
+    "sortSpecies": "Название вида",
+    "sortNickname": "Кличка",
+    "sortBehavior": "Поведение",
     "hourFilterChip": "Час: {{from}}–{{to}}",
     "expandVisitDetails": "Развернуть детали визита",
     "collapseVisitDetails": "Свернуть детали визита"
@@ -1289,9 +1299,6 @@
     "editNickname": "Задать кличку",
     "nicknameSaved": "Кличка сохранена",
     "behavior": "Поведение",
-    "actionArrival": "прилёт",
-    "actionDeparture": "улёт",
-    "actionPossibleFeeding": "возможное кормление",
     "timelineHint": "Полосы = виды. Наведите курсор — источник: YOLO, внешний MQTT или BirdNET.",
     "noTrackFramesHint": "Нет bbox YOLO на этом ролике (оверлей скрыт). В настройках снижены пороги, чтобы птица чаще попадала в запись; админ может нажать «Пересчитать треки для этого ролика» или подправить processor.min_track_duration / min_confidence_to_process.",
     "regenerateTracksThisVideo": "Пересчитать треки для этого ролика",
@@ -1340,13 +1347,7 @@
     "possibleSameBird": "Возможно, это та же птица",
     "reidCrossCameraHint": "строже для другой камеры/папки записи",
     "similarityPercent": "Сходство: {{value}}%",
-    "relatedVideo": "Связанное видео",
-    "actionEventsTitle": "Таймлайн действий",
-    "actionLabel": {
-      "arrival": "Прилёт",
-      "departure": "Улёт",
-      "possible_feeding": "Возможное кормление"
-    }
+    "relatedVideo": "Связанное видео"
   },
   "feed": {
     "feederControl": "Управление кормушкой",

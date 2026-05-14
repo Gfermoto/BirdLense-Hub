@@ -947,6 +947,16 @@
     "timeDay": "中午（10-14）",
     "timeAfternoon": "下午（14-18）",
     "timeEvening": "晚上（18-22）",
+    "nicknameFilter": "昵称",
+    "nicknameFilterPlaceholder": "按昵称筛选",
+    "behaviorFilter": "行为",
+    "behaviorFilterPlaceholder": "按行为筛选",
+    "sortBy": "排序方式",
+    "sortDateDesc": "日期/时间：最新优先",
+    "sortDateAsc": "日期/时间：最早优先",
+    "sortSpecies": "物种名称",
+    "sortNickname": "昵称",
+    "sortBehavior": "行为",
     "hourFilterChip": "小时：{{from}}–{{to}}",
     "expandVisitDetails": "展开参观详情",
     "collapseVisitDetails": "折叠访问详情"
@@ -1322,13 +1332,7 @@
     "possibleSameBird": "可能是同一只鸟",
     "reidCrossCameraHint": "跨相机/目录更严格",
     "similarityPercent": "相似度：{{value}}%",
-    "relatedVideo": "相关视频",
-    "actionEventsTitle": "行为时间线",
-    "actionLabel": {
-      "arrival": "到达",
-      "departure": "离开",
-      "possible_feeding": "可能在进食"
-    }
+    "relatedVideo": "相关视频"
   },
   "feed": {
     "feederControl": "送料器控制",

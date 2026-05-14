@@ -16,6 +16,7 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
+import TextField from '@mui/material/TextField';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import DownloadIcon from '@mui/icons-material/Download';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -37,6 +38,7 @@ import { queryKeys } from '../../api/queryKeys';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Checkbox from '@mui/material/Checkbox';
 import ListItemText from '@mui/material/ListItemText';
+import Stack from '@mui/material/Stack';
 import { PageHelp } from '../../components/PageHelp';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { timelineHelpConfig } from '../../page-help-config';
@@ -72,6 +74,26 @@ function useFilteredVisits(
   );
 }
 
+type TimelineSortBy = 'date_desc' | 'date_asc' | 'species' | 'nickname' | 'behavior';
+
+function getVisitBehaviorLabels(visit: SpeciesVisit): string[] {
+  return [
+    ...new Set(
+      (visit.behavior_events ?? [])
+        .map((event) => String(event.label || '').trim().toLowerCase())
+        .filter((label) => Boolean(label)),
+    ),
+  ];
+}
+
+function getVisitBehaviorSortValue(visit: SpeciesVisit): string {
+  return getVisitBehaviorLabels(visit).join(', ');
+}
+
+function getVisitNickname(visit: SpeciesVisit): string {
+  return String(visit.individual_nickname || '').trim();
+}
+
 function parseHourFromSearchParams(
   searchParams: URLSearchParams,
 ): number | null {
@@ -88,7 +110,7 @@ function parseHourFromSearchParams(
 }
 
 export function TimelinePage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     canEdit,
     role,
@@ -124,6 +146,9 @@ export function TimelinePage() {
   );
   const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<number[]>([]);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('all');
+  const [nicknameFilter, setNicknameFilter] = useState('');
+  const [behaviorFilter, setBehaviorFilter] = useState('');
+  const [sortBy, setSortBy] = useState<TimelineSortBy>('date_desc');
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -249,7 +274,59 @@ export function TimelinePage() {
   );
 
   const speciesList = useSpeciesList(visits);
-  const filteredVisits = useFilteredVisits(visits, selectedSpeciesIds);
+  const selectedBySpeciesVisits = useFilteredVisits(visits, selectedSpeciesIds);
+  const filteredVisits = useMemo(() => {
+    const nicknameNeedle = nicknameFilter.trim().toLowerCase();
+    const behaviorNeedle = behaviorFilter.trim().toLowerCase();
+    const rows = (selectedBySpeciesVisits ?? []).filter((visit) => {
+      const nickname = getVisitNickname(visit).toLowerCase();
+      const behavior = getVisitBehaviorSortValue(visit).toLowerCase();
+      if (nicknameNeedle && !nickname.includes(nicknameNeedle)) {
+        return false;
+      }
+      if (behaviorNeedle && !behavior.includes(behaviorNeedle)) {
+        return false;
+      }
+      return true;
+    });
+    const sorted = [...rows];
+    sorted.sort((a, b) => {
+      const aStart = dayjs(a.start_time).valueOf();
+      const bStart = dayjs(b.start_time).valueOf();
+      if (sortBy === 'date_asc') {
+        return aStart - bStart;
+      }
+      if (sortBy === 'date_desc') {
+        return bStart - aStart;
+      }
+      if (sortBy === 'species') {
+        const cmp = String(a.species?.name || '').localeCompare(
+          String(b.species?.name || ''),
+          i18n.language,
+        );
+        return cmp !== 0 ? cmp : bStart - aStart;
+      }
+      if (sortBy === 'nickname') {
+        const cmp = getVisitNickname(a).localeCompare(
+          getVisitNickname(b),
+          i18n.language,
+        );
+        return cmp !== 0 ? cmp : bStart - aStart;
+      }
+      const cmp = getVisitBehaviorSortValue(a).localeCompare(
+        getVisitBehaviorSortValue(b),
+        i18n.language,
+      );
+      return cmp !== 0 ? cmp : bStart - aStart;
+    });
+    return sorted;
+  }, [
+    selectedBySpeciesVisits,
+    nicknameFilter,
+    behaviorFilter,
+    sortBy,
+    i18n.language,
+  ]);
 
   const handleSpeciesChange = (event: SelectChangeEvent<number[]>) => {
     const value = event.target.value;
@@ -514,6 +591,53 @@ export function TimelinePage() {
               </MenuItem>
             </Menu>
           </Box>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            sx={{ mb: 3 }}
+          >
+            <TextField
+              size="small"
+              label={t('timeline.nicknameFilter')}
+              value={nicknameFilter}
+              onChange={(event) => setNicknameFilter(event.target.value)}
+              placeholder={t('timeline.nicknameFilterPlaceholder')}
+              sx={{ minWidth: { xs: '100%', md: 240 } }}
+            />
+            <TextField
+              size="small"
+              label={t('timeline.behaviorFilter')}
+              value={behaviorFilter}
+              onChange={(event) => setBehaviorFilter(event.target.value)}
+              placeholder={t('timeline.behaviorFilterPlaceholder')}
+              sx={{ minWidth: { xs: '100%', md: 240 } }}
+            />
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>
+              <InputLabel id="timeline-sort-by-label">
+                {t('timeline.sortBy')}
+              </InputLabel>
+              <Select
+                labelId="timeline-sort-by-label"
+                value={sortBy}
+                label={t('timeline.sortBy')}
+                onChange={(event) =>
+                  setSortBy(event.target.value as TimelineSortBy)
+                }
+              >
+                <MenuItem value="date_desc">
+                  {t('timeline.sortDateDesc')}
+                </MenuItem>
+                <MenuItem value="date_asc">{t('timeline.sortDateAsc')}</MenuItem>
+                <MenuItem value="species">{t('timeline.sortSpecies')}</MenuItem>
+                <MenuItem value="nickname">
+                  {t('timeline.sortNickname')}
+                </MenuItem>
+                <MenuItem value="behavior">
+                  {t('timeline.sortBehavior')}
+                </MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
 
           <TimelineStats visits={visits ?? []} />
           <Divider sx={{ marginBottom: 4 }} />

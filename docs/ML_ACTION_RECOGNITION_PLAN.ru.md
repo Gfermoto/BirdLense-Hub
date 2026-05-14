@@ -7,9 +7,8 @@
 
 ## Таксономия меток v1
 
-- `arrival`
-- `departure`
-- `possible_feeding`
+Метки поведения ориентированы на модель и обучение (например: `feeding`, `alert`, `idle`).
+Legacy weak-label метки (`arrival`, `departure`, `possible_feeding`) архивированы и убраны из runtime API.
 
 Расширение (следующая фаза):
 
@@ -39,8 +38,8 @@
 
 - минимальная длительность сегмента: 300 ms
 - overlap допускается только при реально одновременных действиях
-- `arrival` и `departure` — boundary events: ставим узкие окна
-- `possible_feeding` требует визуального контакта с кормушкой или proxy-сигнала от веса
+- метка должна подтверждаться визуальным сигналом в клипе
+- не использовать pseudo/proxy-only метки без обучаемого визуального признака
 
 Согласованность разметки:
 
@@ -70,7 +69,7 @@ Stage C:
 ## Интеграционные ограничения
 
 - action head не должен ухудшать throughput detector/classifier
-- при недоступности action-модели weak-label API остаётся рабочим
+- при недоступности action-модели weak-label fallback в runtime API не используется
 - action output только добавляет сигнал и не блокирует species inference
 
 ## Quality bar для первого production trial
@@ -89,14 +88,12 @@ Stage C:
 ### Фаза E0 — protocol freeze (#392)
 
 - зафиксировать taxonomy/guideline без разночтений в docs;
-- в CI/локали прогонять `make ml-verify-action-labeling` на snapshot payload;
-- проверить, что gate падает при намеренно сломанном payload (negative smoke).
+- архивировать legacy weak-label/gate контур и оставить только model/runtime behavior flow.
 
 DoD E0:
 
-- `make ml-verify-action-labeling ACTION_EVENTS=<fixture>` проходит на валидном fixture;
-- negative fixture детерминированно падает;
-- в issue #392 приложены команды/логи и ссылка на commit с fixtures.
+- legacy gate скрипты/фикстуры удалены из runtime-контура;
+- docs и smoke-потоки ссылаются только на текущий model/runtime behavior path.
 
 ### Фаза E1 — dataset bootstrap (#392 -> #379)
 
@@ -112,9 +109,7 @@ DoD E1:
 
 Команды:
 
-- `make ml-export-action-seed ACTION_DB=app/data/db/birdlense.db ACTION_SEED_JSONL=/tmp/action_seed.jsonl ACTION_SEED_MANIFEST=/tmp/action_seed_manifest.json`
-- `make ml-prepare-action-calibration ACTION_SEED_JSONL=/tmp/action_seed.jsonl ACTION_CALIB_DIR=/tmp/action_calibration`
-- `make ml-verify-action-agreement ACTION_ANN_A=/tmp/annotator_a.jsonl ACTION_ANN_B=/tmp/annotator_b.jsonl ACTION_MIN_KAPPA=0.75 ACTION_AGREEMENT_REPORT=/tmp/action_kappa.json`
+- Legacy-команды удалены после завершения миграции.
 
 ### Фаза E2 — model candidate benchmark (#379)
 
@@ -130,23 +125,22 @@ DoD E2:
 
 Команда:
 
-- `make ml-benchmark-action-candidates ACTION_GT=/tmp/action_gt.jsonl ACTION_PRED=/tmp/action_predictions.jsonl ACTION_BENCHMARK_REPORT=/tmp/action_benchmark_report.json`
+- Legacy-команда удалена после завершения миграции.
 
 ### Фаза E3 — hub integration shadow (#379)
 
 - интегрировать inference path без блокировки species pipeline;
-- при отсутствии action-модели сохранить weak-label fallback;
-- добавить наблюдаемость по action-событиям и отказам.
+- добавить наблюдаемость по выходам behavior-модели и отказам.
 
 DoD E3:
 
 - smoke на hub подтверждает, что species flow не деградировал;
-- action output появляется в `video_action_events@v1`/API payload без crash-loop;
+- behavior output появляется в `GET /api/ui/videos/:id` payload без crash-loop;
 - зафиксированы kill-switch и rollback шаги.
 
 Команда:
 
-- `make ml-run-action-e3-shadow ACTION_E3_REPORT=/tmp/action_e3_shadow.json ACTION_WINDOW_HOURS=24 ACTION_VIDEO_LIMIT=300`
+- Legacy-команда удалена после завершения миграции.
 
 ### Фаза E4 — guarded rollout (#379)
 

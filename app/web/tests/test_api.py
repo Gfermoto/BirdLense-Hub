@@ -858,8 +858,8 @@ class TestTimeline:
         assert abs(float(sc["delta_kg"]) - 0.015) < 1e-6
         assert sc["display_unit"] == "g"
 
-    def test_timeline_visit_includes_nickname_and_behavior_hints(self, app, client):
-        """Visit payload keeps individual nickname and weak behavior labels."""
+    def test_timeline_visit_includes_nickname_and_model_behavior(self, app, client):
+        """Visit payload keeps individual nickname and model behavior label."""
         from app_config.app_config import app_config
         from models import Species, SpeciesVisit, Video, VideoSpecies, db
         from services.http_response_cache import bust_response_caches
@@ -882,7 +882,8 @@ class TestTimeline:
                 start_time=datetime(2026, 3, 25, 15, 0, 0),
                 end_time=datetime(2026, 3, 25, 15, 0, 30),
                 video_path=f"data/recordings/2026/03/25/150002/identity_{id(app)}.mp4",
-                scales_weight_delta_kg=-0.004,
+                behavior_label="feeding",
+                behavior_confidence=0.88,
             )
             db.session.add_all([visit, video])
             db.session.flush()
@@ -912,7 +913,7 @@ class TestTimeline:
         assert row is not None
         assert row.get("individual_nickname") == "Sparky"
         labels = [e.get("label") for e in row.get("behavior_events") or []]
-        assert labels == ["arrival", "possible_feeding", "departure"]
+        assert labels == ["feeding"]
         first_det = (row.get("detections") or [{}])[0]
         assert first_det.get("individual_nickname") == "Sparky"
 
@@ -946,8 +947,8 @@ class TestTimeline:
         assert unlinked and all(row["id"] < 0 for row in unlinked)
         assert all(row.get("detections") == [] for row in unlinked)
 
-    def test_timeline_unlinked_video_keeps_nickname_and_behavior_hints(self, app, client):
-        """Unlinked video payload must keep nickname/behavior contract parity."""
+    def test_timeline_unlinked_video_keeps_nickname_and_model_behavior(self, app, client):
+        """Unlinked video payload must keep nickname and model behavior contract parity."""
         from datetime import datetime, timezone
         from models import Species, Video, VideoSpecies, db
         from services.http_response_cache import bust_response_caches
@@ -961,7 +962,8 @@ class TestTimeline:
                 processor_version="test",
                 start_time=st,
                 end_time=st.replace(minute=1),
-                scales_weight_delta_kg=-0.005,
+                behavior_label="feeding",
+                behavior_confidence=0.91,
                 video_path=f"2026/03/24/160000/orphan_identity_{id(app)}.mp4",
             )
             db.session.add(v)
@@ -1002,7 +1004,7 @@ class TestTimeline:
         assert row is not None
         assert row.get("individual_nickname") == "Nova"
         labels = [e.get("label") for e in (row.get("behavior_events") or [])]
-        assert labels == ["arrival", "possible_feeding", "departure"]
+        assert labels == ["feeding"]
         first_det = (row.get("detections") or [{}])[0]
         assert first_det.get("individual_nickname") == "Nova"
         assert first_det.get("detection_provider") == "yolo"

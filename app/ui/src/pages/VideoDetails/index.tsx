@@ -12,7 +12,6 @@ import {
 } from '../../api/speciesOverviewDetections';
 import {
   fetchVideo,
-  fetchVideoActionEvents,
   fetchVideoDetectionFrames,
   fetchVideoNeighbors,
   fetchVideoReidMatch,
@@ -189,12 +188,6 @@ export const VideoDetails = () => {
   } = useQuery({
     queryKey: queryKeys.video.detectionFrames(String(params.id)),
     queryFn: () => fetchVideoDetectionFrames(params.id as string),
-    enabled: Boolean(params.id),
-  });
-
-  const { data: actionEventsPayload } = useQuery({
-    queryKey: queryKeys.video.actionEvents(String(params.id)),
-    queryFn: () => fetchVideoActionEvents(params.id as string),
     enabled: Boolean(params.id),
   });
 
@@ -728,7 +721,6 @@ export const VideoDetails = () => {
         <Grid size={{ xs: 12, lg: 4 }}>
           <VideoInfo
             video={(displayVideo ?? video) as Video}
-            actionEventsPayload={actionEventsPayload}
           />
         </Grid>
       </Grid>
