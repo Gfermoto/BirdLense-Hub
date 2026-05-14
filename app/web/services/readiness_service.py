@@ -9,6 +9,7 @@ from pathlib import Path
 from sqlalchemy import text
 
 from data_paths import data_dir
+from services.cache import cache_backend_readiness
 from services.component_status_service import build_component_status_payload_safe
 from services.runtime_env import env_flag_enabled, is_production_runtime
 
@@ -82,6 +83,7 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
 
     checks["data_dir"] = _path_status(Path(data_dir()), "data/")
     checks["app_config_dir"] = _path_status(Path(__file__).resolve().parents[2] / "app_config", "app_config/")
+    checks["cache_backend"] = cache_backend_readiness()
 
     ready = all(check.get("status") == "ok" for check in checks.values())
     payload = {

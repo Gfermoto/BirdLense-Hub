@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import queue
+import random
 import threading
 import time
 from collections import deque
@@ -80,6 +81,8 @@ class MQTTEventAggregator:
         username=None,
         password=None,
         max_events: int = 500,
+        publish_queue_max: int = 2000,
+        feeder_scale_queue_max: int = 200,
         on_frigate_motion=None,
         frigate_label_exclude=None,
         client_id: str | None = None,
@@ -96,6 +99,7 @@ class MQTTEventAggregator:
         scale_motion_min_delta_kg: float | None = None,
         scale_motion_debounce_seconds: float = 1.5,
         scales_bird_present_topic: str | None = None,
+        reconnect_jitter_ratio: float = 0.15,
     ):
         """on_frigate_motion: (camera_filter, label_filter, callback). frigate_label_exclude: labels to ignore (e.g. cat, dog).
         client_id: MQTT client ID; use different ID when running test (args.input) to avoid conflict with main processor.
@@ -123,6 +127,8 @@ class MQTTEventAggregator:
         self.password = password or os.environ.get("MQTT_PASSWORD")
         self.max_events = max_events
         self._events = deque(maxlen=max_events)
+        set_gauge("mqtt_events_queue_capacity", int(max_events))
+        set_gauge("mqtt_events_queue_depth", 0)
         self._birdnet_events = deque()
         self._birdnet_event_cap = max(1000, int(max_events or 500) * 20)
         self._birdnet_obs_level = _normalize_obs_level(
@@ -130,7 +136,10 @@ class MQTTEventAggregator:
         )
         self._birdnet_obs_debug = bool(app_config.get("processor.birdnet_mqtt_observability_debug", False))
         self._lock = threading.Lock()
-        self._publish_queue: queue.Queue[tuple[str, str | bytes, int, bool]] = queue.Queue(maxsize=2000)
+        self._publish_queue: queue.Queue[tuple[str, str | bytes, int, bool]] = queue.Queue(
+            maxsize=max(1, int(publish_queue_max or 2000))
+        )
+        set_gauge("mqtt_outbound_queue_capacity", int(self._publish_queue.maxsize))
         self._client = None
         self._thread = None
         self._connected = False
@@ -202,16 +211,21 @@ class MQTTEventAggregator:
         self._prev_scale_kg: float | None = None
         self._last_scale_motion_ts = 0.0
         self._feeder_scale_queue: queue.Queue | None = None
+        self._feeder_scale_queue_max = max(1, int(feeder_scale_queue_max or 200))
         try:
             _warmup = float(app_config.get("mqtt.frigate_snapshot_retain_warmup_seconds") or 3.0)
         except (TypeError, ValueError):
             _warmup = 3.0
         self._frigate_snapshot_retain_warmup_seconds = max(0.0, min(_warmup, 15.0))
+        try:
+            self._reconnect_jitter_ratio = max(0.0, min(0.8, float(reconnect_jitter_ratio or 0.0)))
+        except (TypeError, ValueError):
+            self._reconnect_jitter_ratio = 0.0
 
     def _ensure_feeder_scale_worker(self) -> None:
         if self._feeder_scale_queue is not None:
             return
-        q: queue.Queue = queue.Queue(maxsize=200)
+        q: queue.Queue = queue.Queue(maxsize=self._feeder_scale_queue_max)
         self._feeder_scale_queue = q
 
         def _loop() -> None:
@@ -261,6 +275,7 @@ class MQTTEventAggregator:
                 }
             )
         except queue.Full:
+            inc_counter("feeder_scale_queue_drops_total")
             logger.warning(
                 "feeder scale write queue full; dropping MQTT scale update",
             )
@@ -928,8 +943,12 @@ class MQTTEventAggregator:
                 )
                 return
             self._validate_normalized_event(ev)
+            ev["_ingest_monotonic"] = time.monotonic()
             with self._lock:
+                if self._events.maxlen and len(self._events) >= self._events.maxlen:
+                    inc_counter("mqtt_events_fifo_drop_total")
                 self._events.append(ev)
+                set_gauge("mqtt_events_queue_depth", len(self._events))
             if ev.get("source") == "birdnet":
                 self._remember_birdnet_event(ev)
 
@@ -1008,7 +1027,11 @@ class MQTTEventAggregator:
                     self._client = None
             if self._stopped:
                 break
-            time.sleep(retry_delay)
+            sleep_for = float(retry_delay)
+            if self._reconnect_jitter_ratio > 0:
+                spread = sleep_for * self._reconnect_jitter_ratio
+                sleep_for = max(0.2, sleep_for + random.uniform(-spread, spread))
+            time.sleep(sleep_for)
             retry_delay = min(retry_delay * 2, self.reconnect_max_delay)
 
     def start(self):
@@ -1078,17 +1101,22 @@ class MQTTEventAggregator:
         except (TypeError, ValueError):
             min_conf = 0.0
         now = datetime.now(timezone.utc)
+        now_mono = time.monotonic()
         camera_allow = {str(camera).strip().lower() for camera in (camera_ids or []) if str(camera).strip()}
         with self._lock:
             for ev in reversed(self._events):
                 if str((ev or {}).get("source") or "").strip().lower() != "frigate":
                     continue
-                ts = _parse_iso8601_utc(ev.get("timestamp"))
-                if ts is None:
-                    continue
-                age = (now - ts).total_seconds()
-                if age < 0:
-                    age = 0
+                ingest_mono = ev.get("_ingest_monotonic")
+                if isinstance(ingest_mono, (int, float)) and float(ingest_mono) > 0:
+                    age = max(0.0, now_mono - float(ingest_mono))
+                else:
+                    ts = _parse_iso8601_utc(ev.get("timestamp"))
+                    if ts is None:
+                        continue
+                    age = (now - ts).total_seconds()
+                    if age < 0:
+                        age = 0
                 if age > max_age:
                     continue
                 if camera_allow:

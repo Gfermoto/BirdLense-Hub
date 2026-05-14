@@ -62,7 +62,9 @@ def normalize(species: str, mapping: dict = None) -> str:
     key = s.lower().replace(" ", "_").replace("-", "_")
     if key in mapping:
         return mapping[key]
-    for k, v in mapping.items():
+    # Deterministic fallback over mapping aliases: stable key order.
+    for k in sorted(mapping.keys(), key=lambda item: str(item)):
+        v = mapping[k]
         if key == k.lower().replace(" ", "_"):
             return v
     return _to_title_case(s)

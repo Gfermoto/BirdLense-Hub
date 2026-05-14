@@ -157,6 +157,22 @@ def start_mqtt_aggregator_session(
 
     bird_present_topic = scales_mqtt_bird_present_topic()
     scales_data_for_file = data_dir if (scales_topic_arg or bird_present_topic) else None
+    try:
+        mqtt_max_events = int(app_config.get("mqtt.max_events", 500) or 500)
+    except (TypeError, ValueError):
+        mqtt_max_events = 500
+    try:
+        mqtt_publish_queue_max = int(app_config.get("mqtt.publish_queue_max", 2000) or 2000)
+    except (TypeError, ValueError):
+        mqtt_publish_queue_max = 2000
+    try:
+        mqtt_feeder_scale_queue_max = int(app_config.get("mqtt.feeder_scale_queue_max", 200) or 200)
+    except (TypeError, ValueError):
+        mqtt_feeder_scale_queue_max = 200
+    try:
+        mqtt_reconnect_jitter_ratio = float(app_config.get("mqtt.reconnect_jitter_ratio", 0.15) or 0.15)
+    except (TypeError, ValueError):
+        mqtt_reconnect_jitter_ratio = 0.15
 
     mqtt_aggregator = MQTTEventAggregator(
         broker=mqtt_broker,
@@ -166,6 +182,9 @@ def start_mqtt_aggregator_session(
         publish_topic=app_config.get("mqtt.publish_topic", "birdlense/detections"),
         username=os.environ.get("MQTT_USERNAME") or app_config.get("mqtt.username"),
         password=os.environ.get("MQTT_PASSWORD") or app_config.get("mqtt.password"),
+        max_events=mqtt_max_events,
+        publish_queue_max=mqtt_publish_queue_max,
+        feeder_scale_queue_max=mqtt_feeder_scale_queue_max,
         on_frigate_motion=on_frigate_motion,
         frigate_label_exclude=list(frigate_label_exclude),
         client_id=mqtt_client_id,
@@ -173,6 +192,7 @@ def start_mqtt_aggregator_session(
         base_url=app_config.get("notifications.base_url", ""),
         reconnect_min_delay=app_config.get("mqtt.reconnect_min_delay", 5),
         reconnect_max_delay=app_config.get("mqtt.reconnect_max_delay", 300),
+        reconnect_jitter_ratio=mqtt_reconnect_jitter_ratio,
         scales_topic=scales_topic_arg,
         scales_bird_present_topic=bird_present_topic,
         scales_data_dir=scales_data_for_file,

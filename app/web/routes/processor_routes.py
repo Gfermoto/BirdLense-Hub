@@ -233,6 +233,7 @@ def register_routes(app):
                 existing_payload_hash = _build_payload_hash_for_existing_video(existing_video.id)
                 existing_video.ingest_payload_hash = existing_payload_hash
                 db.session.commit()
+                bust_all_api_caches()
             if existing_payload_hash != payload_hash:
                 return _idempotency_conflict_response(
                     app_logger=app.logger,
@@ -312,6 +313,7 @@ def register_routes(app):
                     existing_payload_hash = _build_payload_hash_for_existing_video(raced_video.id)
                     raced_video.ingest_payload_hash = existing_payload_hash
                     db.session.commit()
+                    bust_all_api_caches()
                 if existing_payload_hash != payload_hash:
                     return _idempotency_conflict_response(
                         app_logger=app.logger,
@@ -355,6 +357,7 @@ def register_routes(app):
                 app.logger.warning(f'Unknown active species "{name}"')
 
         db.session.commit()
+        bust_all_api_caches()
         return {"message": "success", "active_feeder_names": active_feeder_names}, 200
 
     @app.route("/api/processor/notify/detections", methods=["POST"])

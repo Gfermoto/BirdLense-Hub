@@ -149,6 +149,42 @@ def test_build_fused_video_detections_marks_birdnet_conflict_and_multi_camera_su
     assert out[0]['_multi_camera_support'] is True
 
 
+def test_build_fused_video_detections_birdnet_top_species_tie_is_stable():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=30)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.05,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    })
+    base_det = [_base_detection('Great Tit')]
+    mqtt_a = [
+        {'source': 'birdnet', 'species': 'Blue Tit', 'confidence': 0.7, 'timestamp': end.isoformat()},
+        {'source': 'birdnet', 'species': 'Great Tit', 'confidence': 0.7, 'timestamp': end.isoformat()},
+    ]
+    mqtt_b = list(reversed(mqtt_a))
+    out_a = build_fused_video_detections(
+        base_det,
+        mqtt_a,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    out_b = build_fused_video_detections(
+        base_det,
+        mqtt_b,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    assert out_a[0]['audio_top_species'] == out_b[0]['audio_top_species']
+
+
 def test_build_fused_video_detections_marks_learned_fusion_failure_status(monkeypatch):
     start = datetime.now(timezone.utc)
     end = start + timedelta(seconds=30)

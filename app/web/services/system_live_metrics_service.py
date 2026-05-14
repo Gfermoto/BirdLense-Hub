@@ -11,7 +11,11 @@ from app_config.app_config import app_config
 
 def collect_live_system_metrics(app):
     """Мгновенный снимок: CPU, память, диск, GPU."""
-    cpu_percent = psutil.cpu_percent(interval=0.5)
+    try:
+        cpu_interval = max(0.0, float(app_config.get("system_metrics.cpu_sample_interval_seconds") or 0.0))
+    except (TypeError, ValueError):
+        cpu_interval = 0.0
+    cpu_percent = psutil.cpu_percent(interval=cpu_interval)
     memory = psutil.virtual_memory()
     memory_total_gb = round(memory.total / (1024**3), 1)
     memory_used_gb = round(memory.used / (1024**3), 1)
