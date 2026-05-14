@@ -324,6 +324,8 @@ def prepare_track_results_for_fusion(
 def _frigate_events_camera_scoped(
     frigate_events: Iterable[dict],
     app_config,
+    *,
+    triggered_camera: str | None = None,
 ) -> list:
     """Оставить только события Frigate с камер из scope Hub (video.cameras + фильтр YAML).
 
@@ -339,6 +341,9 @@ def _frigate_events_camera_scoped(
     proc_cams = cameras_for_processor(valid)
     allow = frigate_camera_allow_ids(proc_cams, app_config)
     allow_l = {str(x).strip().lower() for x in allow if str(x).strip()}
+    trig = str(triggered_camera or "").strip().lower()
+    if trig:
+        allow_l = {trig} if not allow_l else {trig} & allow_l
     if not allow_l:
         return [e for e in (frigate_events or []) if e]
     out = []
@@ -526,6 +531,7 @@ def build_fused_video_detections(
     end_time,
     app_config,
     fusion_min_confidence_to_store: float | None = None,
+    triggered_camera: str | None = None,
 ) -> list[dict]:
     """Apply shared production fusion rules to video detections.
 
@@ -555,7 +561,11 @@ def build_fused_video_detections(
     frigate_events = [
         ev for ev in (mqtt_events or []) if str((ev or {}).get("source") or "").strip().lower() == "frigate"
     ]
-    frigate_events = _frigate_events_camera_scoped(frigate_events, app_config)
+    frigate_events = _frigate_events_camera_scoped(
+        frigate_events,
+        app_config,
+        triggered_camera=triggered_camera,
+    )
     frigate_events_for_merge = [ev for ev in frigate_events if not ev.get("_frigate_merge_suppressed")]
     # Safe-by-default: Frigate stays fallback-only unless explicitly enabled in config.
     standalone_on = bool(app_config.get("detection.frigate_standalone_when_no_yolo", False))

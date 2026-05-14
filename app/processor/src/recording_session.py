@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from collections import Counter
@@ -176,6 +177,16 @@ class MotionRecordingSession:
                 frigate_hold_seconds = float(app_config.get("processor.frigate_activity_hold_seconds") or 0.0)
             except (TypeError, ValueError):
                 frigate_hold_seconds = 0.0
+            try:
+                none_frame_retries = int(app_config.get("processor.capture_none_frame_retries") or 3)
+            except (TypeError, ValueError):
+                none_frame_retries = 3
+            try:
+                none_frame_retry_sleep_ms = int(app_config.get("processor.capture_none_frame_retry_sleep_ms") or 80)
+            except (TypeError, ValueError):
+                none_frame_retry_sleep_ms = 80
+            none_frame_retries = max(0, none_frame_retries)
+            none_frame_retry_sleep_s = max(0.0, float(none_frame_retry_sleep_ms) / 1000.0)
             runtime_signals = {
                 "frames_seen": 0,
                 "yolo_frames_ran": 0,
@@ -189,13 +200,34 @@ class MotionRecordingSession:
             if camera_overrides:
                 self.decision_maker.apply_runtime_overrides(camera_overrides)
             frame_n = 0
+            consecutive_none_frames = 0
             while True:
                 if self.file_test_runtime and self.file_test_runtime.abort_session:
                     logger.info("File test: stop requested, ending session")
                     break
                 frame = self.media_source.capture()
                 if frame is None:
+                    if not file_mode and none_frame_retries > 0:
+                        consecutive_none_frames += 1
+                        inc_counter("recording_capture_none_frame_total")
+                        if consecutive_none_frames <= none_frame_retries:
+                            logger.warning(
+                                "recording_session: capture returned empty frame (%s/%s), retrying",
+                                consecutive_none_frames,
+                                none_frame_retries,
+                            )
+                            if none_frame_retry_sleep_s > 0:
+                                time.sleep(none_frame_retry_sleep_s)
+                            continue
+                        inc_counter("recording_capture_none_frame_abort_total")
+                        logger.warning(
+                            "recording_session: capture returned empty frame %s times подряд; closing session",
+                            consecutive_none_frames,
+                        )
                     break
+                if consecutive_none_frames > 0:
+                    inc_counter("recording_capture_none_frame_recovered_total")
+                    consecutive_none_frames = 0
                 frame_n += 1
                 runtime_signals["frames_seen"] += 1
                 if self.file_test_runtime:

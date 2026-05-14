@@ -171,7 +171,7 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
 
 def run_motion_loop(ctx: ProcessorRunContext) -> None:
     """Бесконечный цикл движения; выход при ``session.run()`` → True (режим файла) или SystemExit."""
-    last_recording_end = 0.0
+    last_recording_end_by_camera: dict[str, float] = {}
     cooldown = float(app_config.get("processor.min_seconds_between_recordings") or 0)
     while True:
         check_restart_flag()
@@ -183,16 +183,23 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                 continue
         if not ctx.session.motion_detector.detect():
             continue
+        camera_id = (
+            getattr(ctx.session.motion_detector, "get_triggered_camera", lambda: None)()
+            or getattr(ctx.session, "default_camera_id", None)
+            or "_default"
+        )
+        camera_key = str(camera_id)
         wait = recording_cooldown_remaining(
-            last_recording_end=last_recording_end,
+            last_recording_end=last_recording_end_by_camera.get(camera_key, 0.0),
             cooldown=cooldown,
         )
         if wait > 0:
             elapsed = cooldown - wait
             requeued = bool(getattr(ctx.session.motion_detector, "requeue_last_trigger", lambda: False)())
             logger.info(
-                "Skipping motion trigger: processor.min_seconds_between_recordings=%.1fs "
-                "(%.1fs since last clip, requeued=%s)",
+                "Skipping motion trigger for camera=%s: processor.min_seconds_between_recordings=%.1fs "
+                "(%.1fs since last clip on this camera, requeued=%s)",
+                camera_key,
                 cooldown,
                 elapsed,
                 requeued,
@@ -204,7 +211,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
         try:
             should_stop = bool(ctx.session.run())
         finally:
-            last_recording_end = time.monotonic()
+            last_recording_end_by_camera[camera_key] = time.monotonic()
         if should_stop:
             break
 

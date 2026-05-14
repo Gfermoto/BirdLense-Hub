@@ -159,19 +159,19 @@ def _ffmpeg_record_cmd(
         "0",
     ]
     if use_vaapi:
+        # More stable than mixed hw decode+encode on some iGPU/driver combos:
+        # decode in software and upload NV12 frames for VA-API encoder explicitly.
         cmd += [
-            "-hwaccel",
-            "vaapi",
-            "-hwaccel_device",
+            "-vaapi_device",
             VAAPI_DEVICE,
-            "-hwaccel_output_format",
-            "vaapi",
         ]
     cmd += [
         "-rtsp_transport",
         "tcp",
         "-i",
         stream_url,
+        "-vsync",
+        "2",
         "-map",
         "0:v:0",
         "-map",
@@ -179,6 +179,8 @@ def _ffmpeg_record_cmd(
     ]
     if use_vaapi:
         cmd += [
+            "-vf",
+            "format=nv12,hwupload",
             "-c:v",
             "h264_vaapi",
             "-b:v",
@@ -301,6 +303,8 @@ class Go2RTCStreamSource:
         self._read_lock = threading.Lock()
         self._vaapi_checked = False
         self._vaapi_available = True
+        self._vaapi_record_available = True
+        self._recording_used_vaapi = False
         self._ffmpeg_capture_failures = 0
         self._force_opencv_until_ts = 0.0
 
@@ -450,7 +454,8 @@ class Go2RTCStreamSource:
                 self._streaming_output.write(jpeg.tobytes())
 
     def _probe_vaapi(self) -> bool:
-        """Check if VA-API actually works in this container (libva/driver)."""
+        """Check if VA-API encode path works in this container."""
+        probe_out = "/tmp/birdlense_vaapi_probe.mp4"
         try:
             r = subprocess.run(
                 [
@@ -458,28 +463,33 @@ class Go2RTCStreamSource:
                     "-y",
                     "-loglevel",
                     "error",
-                    "-hwaccel",
-                    "vaapi",
-                    "-hwaccel_device",
+                    "-vaapi_device",
                     VAAPI_DEVICE,
-                    "-hwaccel_output_format",
-                    "vaapi",
                     "-f",
                     "lavfi",
                     "-i",
-                    "nullsrc=d=1",
-                    "-t",
-                    "0.01",
-                    "-f",
-                    "null",
-                    "-",
+                    "testsrc2=size=640x360:rate=5:duration=1",
+                    "-vf",
+                    "format=nv12,hwupload",
+                    "-c:v",
+                    "h264_vaapi",
+                    "-frames:v",
+                    "5",
+                    "-an",
+                    probe_out,
                 ],
                 capture_output=True,
                 timeout=10,
             )
             if r.returncode != 0 and r.stderr:
                 self.logger.debug("VA-API probe stderr: %s", r.stderr.decode("utf-8", errors="replace")[:300])
-            return r.returncode == 0
+            ok = r.returncode == 0 and os.path.exists(probe_out) and os.path.getsize(probe_out) > 1024
+            try:
+                if os.path.exists(probe_out):
+                    os.remove(probe_out)
+            except OSError:
+                pass
+            return ok
         except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
             self.logger.debug("VA-API probe failed: %s", e)
             return False
@@ -510,9 +520,12 @@ class Go2RTCStreamSource:
     def start_recording(self, output: str):
         """Start recording via FFmpeg (video+audio from RTSP). CPU or Intel VA-API."""
         self._recording = True
+        self._recording_used_vaapi = False
         self._video_output = output
         os.makedirs(os.path.dirname(output), exist_ok=True)
         use_vaapi = self._use_intel_vaapi()
+        if use_vaapi and not self._vaapi_record_available:
+            use_vaapi = False
         cmd = _ffmpeg_record_cmd(
             stream_url=self.stream_url,
             output=output,
@@ -523,6 +536,7 @@ class Go2RTCStreamSource:
             from encoding_status import set_last_encoding_used
 
             if use_vaapi:
+                self._recording_used_vaapi = True
                 set_last_encoding_used("vaapi")
             elif self._record_stream_codec == "h264" and not use_vaapi:
                 set_last_encoding_used("x264_cpu")
@@ -548,12 +562,13 @@ class Go2RTCStreamSource:
         """Stop FFmpeg recording."""
         self._recording = False
         if self._ffmpeg_process:
+            return_code = None
             try:
                 self._ffmpeg_process.terminate()
-                self._ffmpeg_process.wait(timeout=5)
+                return_code = self._ffmpeg_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self._ffmpeg_process.kill()
-                self._ffmpeg_process.wait(timeout=2)
+                return_code = self._ffmpeg_process.wait(timeout=2)
             except Exception as e:
                 self.logger.warning("Error stopping FFmpeg: %s", e)
             if self._ffmpeg_process and self._ffmpeg_process.stderr:
@@ -566,7 +581,18 @@ class Go2RTCStreamSource:
                             self.logger.log(lvl, "FFmpeg: %s", safe)
                 except Exception:
                     self.logger.debug("FFmpeg stderr drain failed", exc_info=True)
+            if self._recording_used_vaapi and (return_code is None or int(return_code) != 0):
+                # Quarantine only VA-API recording path after encode failure.
+                # Keep capture path independent (it may remain healthy).
+                self._vaapi_record_available = False
+                _inc_runtime_counter("video_recording_vaapi_fail_total", 1)
+                self.logger.error(
+                    "VA-API recording failed (ffmpeg rc=%s). Fallback to CPU recording for next clips "
+                    "until processor restart/reprobe.",
+                    return_code,
+                )
             self._ffmpeg_process = None
+        self._recording_used_vaapi = False
         self.logger.info("Recording stopped")
 
     def capture(self):

@@ -392,6 +392,65 @@ def test_processor_videos_same_clip_conflict_detected_when_legacy_hash_missing(
         assert db.session.query(VideoSpecies).count() == 1
 
 
+def test_processor_videos_idempotent_ignores_non_persisted_flags(
+    app,
+    client,
+    proc_headers,
+    monkeypatch,
+    tmp_path,
+):
+    from app_config.app_config import app_config
+    from routes import processor_routes
+    from models import Video, db
+    import services.visit_processor as vp_mod
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
+    monkeypatch.setitem(
+        app_config.config.setdefault("detection", {}),
+        "min_confidence_to_store",
+        0.05,
+    )
+    monkeypatch.setitem(app_config.config.setdefault("webhook", {}), "url", "")
+
+    token = str(id(app))[-6:].zfill(6)
+    body = _base_video_payload(token)
+    _touch_video_file(body["video_path"], data_root=str(tmp_path / "data"))
+    body["species"] = [
+        {
+            "species_name": f"Pytest Canonical {token}",
+            "confidence": 0.95,
+            "start_time": 0.0,
+            "end_time": 2.0,
+            "source": "video",
+            "frames": [],
+            "visit_eligible": True,
+            "notification_eligible": True,
+            "decision_kind": "accepted_species",
+            "classifier_confidence": 0.95,
+        }
+    ]
+    r1 = client.post("/api/processor/videos", json=body, headers=proc_headers)
+    assert r1.status_code == 201, r1.get_data(as_text=True)
+    first_video_id = r1.get_json()["video_id"]
+
+    changed = dict(body)
+    changed["species"] = [dict(body["species"][0])]
+    changed["species"][0]["visit_eligible"] = False
+    changed["species"][0]["notification_eligible"] = False
+    changed["species"][0]["decision_kind"] = "review_only_generic"
+    changed["species"][0]["classifier_confidence"] = 0.01
+    r2 = client.post("/api/processor/videos", json=changed, headers=proc_headers)
+    assert r2.status_code == 200, r2.get_data(as_text=True)
+    payload2 = r2.get_json() or {}
+    assert payload2.get("duplicate") is True
+    assert payload2.get("video_id") == first_video_id
+
+    with app.app_context():
+        assert db.session.query(Video).count() == 1
+
+
 def test_processor_videos_hot_path_skips_species_metadata_enrichment(app, client, proc_headers, monkeypatch, tmp_path):
     from app_config.app_config import app_config
     from routes import processor_routes

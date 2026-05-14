@@ -105,9 +105,15 @@ def _conflict_score(det: dict) -> tuple:
     confidence = float(det.get("confidence") or 0.0)
     duration = max(0.0, float(det.get("end_time") or 0.0) - float(det.get("start_time") or 0.0))
     provider_count = len(set(det.get("contributing_providers") or []))
-    name = str(det.get("species_name") or det.get("species") or "")
+    name = str(det.get("species_name") or det.get("species") or "").strip().lower()
+    provider = str(det.get("detection_provider") or det.get("source") or "").strip().lower()
+    track_id = det.get("track_id")
+    try:
+        track_rank = int(track_id) if track_id is not None else 0
+    except (TypeError, ValueError):
+        track_rank = 0
     # Deterministic tie-breaker: stronger evidence first, lexical fallback for stability.
-    return (accepted_species, classifier_conf, confidence, duration, provider_count, name)
+    return (accepted_species, classifier_conf, confidence, duration, provider_count, name, provider, -track_rank)
 
 
 def _collapse_overlapping_generic_bird_detection(
@@ -297,6 +303,23 @@ def merge_detections(
             return _is_rodent_like_ev_label(str(ev.get("species") or ev.get("sub_label") or ev.get("label") or ""))
         return False
 
+    def _track_sort_value(value) -> int:
+        try:
+            return int(value) if value is not None else 0
+        except (TypeError, ValueError):
+            return 0
+
+    def _mqtt_sort_key(ev: dict) -> tuple:
+        provider = str((ev or {}).get("source") or "").strip().lower()
+        species = str((ev or {}).get("species") or (ev or {}).get("sub_label") or (ev or {}).get("label") or "").strip()
+        camera = str((ev or {}).get("camera") or "").strip().lower()
+        timestamp = str((ev or {}).get("timestamp") or "").strip()
+        try:
+            confidence = float((ev or {}).get("confidence") or 0.0)
+        except (TypeError, ValueError):
+            confidence = 0.0
+        return (provider, timestamp, camera, species.lower(), -confidence)
+
     # YOLO: объединяем по виду. Мержим в детекцию с наименьшим разрывом (не первую попавшуюся)
     sorted_yolo = sorted(yolo_detections, key=lambda d: d.get("start_time", 0))
     for d in sorted_yolo:
@@ -347,7 +370,7 @@ def merge_detections(
             by_key[(key, visit_id)] = row
 
     # MQTT: мержим в существующую детекцию с наибольшим перекрытием по времени
-    for ev in mqtt_events:
+    for ev in sorted((mqtt_events or []), key=_mqtt_sort_key):
         provider = ev.get("source", "mqtt")
         if provider == "birdnet":
             # BirdNET only biases confidence thresholds before YOLO decision-making.
@@ -463,8 +486,18 @@ def merge_detections(
                 collapsed.extend(sorted(group, key=lambda item: item.get("start_time", 0)))
                 logger.debug("merge: preserved %d fragmented generic bird visits", len(group))
                 continue
-            existing = group[0]
-            for d in group[1:]:
+            group_sorted = sorted(
+                group,
+                key=lambda item: (
+                    -float(item.get("confidence") or 0.0),
+                    float(item.get("start_time") or 0.0),
+                    float(item.get("end_time") or 0.0),
+                    str(item.get("detection_provider") or "").strip().lower(),
+                    _track_sort_value(item.get("track_id")),
+                ),
+            )
+            existing = group_sorted[0]
+            for d in group_sorted[1:]:
                 _merge_into(
                     existing,
                     d.get("confidence", 0),
@@ -565,7 +598,16 @@ def merge_detections(
                         break
         result_list = [d for i, d in enumerate(result_list) if i not in to_remove]
 
-    out = sorted(result_list, key=lambda x: x.get("start_time", 0))
+    out = sorted(
+        result_list,
+        key=lambda x: (
+            float(x.get("start_time") or 0.0),
+            float(x.get("end_time") or 0.0),
+            str(x.get("species_name") or x.get("species") or "").strip().lower(),
+            str(x.get("detection_provider") or "").strip().lower(),
+            _track_sort_value(x.get("track_id")),
+        ),
+    )
     for d in out:
         d.pop("_cross_mqtt_merges", None)
     return out

@@ -12,6 +12,7 @@ import detection_fusion as detection_fusion_mod
 from birdnet_merge_key import reset_birdnet_merge_key_cache_for_tests
 from detection_fusion import build_fused_video_detections
 from hypothesis_arbitration import apply_hypothesis_arbitration
+from species_normalizer import merge_detections
 
 
 class DummyConfig(dict):
@@ -1301,3 +1302,61 @@ def test_merge_adjacent_yolo_fragments_keeps_distant_rows_separate():
     })
     out = detection_fusion_mod._merge_adjacent_yolo_fragments(rows, cfg)
     assert len(out) == 2
+
+
+def test_merge_detections_conflict_result_stable_across_mqtt_order():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=12)
+    yolo = [
+        {
+            "species_name": "Blue Tit",
+            "species": "Blue Tit",
+            "confidence": 0.6,
+            "start_time": 0.0,
+            "end_time": 6.0,
+            "detection_provider": "yolo",
+            "source": "video",
+            "track_id": 1,
+            "decision_kind": "accepted_species",
+            "classifier_confidence": 0.6,
+        },
+        {
+            "species_name": "Great Tit",
+            "species": "Great Tit",
+            "confidence": 0.6,
+            "start_time": 0.0,
+            "end_time": 6.0,
+            "detection_provider": "yolo",
+            "source": "video",
+            "track_id": 2,
+            "decision_kind": "accepted_species",
+            "classifier_confidence": 0.6,
+        },
+    ]
+    mqtt_a = [
+        {"source": "frigate", "species": "Great Tit", "camera": "a", "timestamp": end.isoformat(), "confidence": 0.8},
+        {"source": "frigate", "species": "Blue Tit", "camera": "b", "timestamp": end.isoformat(), "confidence": 0.8},
+    ]
+    mqtt_b = list(reversed(mqtt_a))
+    out_a = merge_detections(
+        yolo,
+        mqtt_a,
+        start,
+        end,
+        merge_window_seconds=5,
+        dedup_window_seconds=45,
+        one_per_species=True,
+        source_priority=["yolo", "frigate"],
+    )
+    out_b = merge_detections(
+        yolo,
+        mqtt_b,
+        start,
+        end,
+        merge_window_seconds=5,
+        dedup_window_seconds=45,
+        one_per_species=True,
+        source_priority=["yolo", "frigate"],
+    )
+    assert [row["species_name"] for row in out_a] == [row["species_name"] for row in out_b]
+    assert len(out_a) == len(out_b) == 1

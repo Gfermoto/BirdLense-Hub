@@ -51,6 +51,15 @@ class API:
                 resp = getattr(e, "response", None)
                 if resp is not None and 400 <= resp.status_code < 500:
                     inc_counter("api_request_client_errors_total")
+                    if int(resp.status_code) == 409 and endpoint == "videos":
+                        inc_counter("api_ingest_conflict_total")
+                        try:
+                            body = resp.json() if callable(getattr(resp, "json", None)) else {}
+                        except ValueError:
+                            body = {}
+                        reason = str((body or {}).get("conflict_reason") or "unknown").strip().lower()
+                        if reason:
+                            inc_counter(f"api_ingest_conflict_reason_{reason}_total")
                     break
                 if attempt < max_retries - 1:
                     time.sleep(2**attempt)
