@@ -257,6 +257,28 @@ echo "  - Shared verify contract:"
 BASE_URL="${DEPLOY_URL}" ATTEMPTS=20 SLEEP_SEC=3 CHECK_CAMERAS=1 \
   MCP_TOKEN="${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
   ./scripts/verify-stack.sh --check-domain-health --strict-quality
+echo "  - Runtime SLI gate:"
+BASE_URL="${DEPLOY_URL}" \
+  MCP_TOKEN="${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
+  MAX_HEARTBEAT_AGE_SECONDS="${MAX_HEARTBEAT_AGE_SECONDS:-240}" \
+  MAX_HTTP_OVER_1000MS_RATIO="${MAX_HTTP_OVER_1000MS_RATIO:-0.20}" \
+  MIN_HTTP_SAMPLE_COUNT="${MIN_HTTP_SAMPLE_COUNT:-20}" \
+  ./scripts/check-runtime-sli.sh --base-url "${DEPLOY_URL}"
+echo "  - Runtime performance gate:"
+BASE_URL="${DEPLOY_URL}" \
+  MCP_TOKEN="${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
+  python3 ./scripts/perf_gate_runtime.py \
+    --base-url "${DEPLOY_URL}" \
+    --burst-requests "${PERF_BURST_REQUESTS:-120}" \
+    --burst-concurrency "${PERF_BURST_CONCURRENCY:-12}" \
+    --metrics-scrapes "${PERF_METRICS_SCRAPES:-60}" \
+    --metrics-concurrency "${PERF_METRICS_CONCURRENCY:-8}" \
+    --soak-seconds "${PERF_SOAK_SECONDS:-20}" \
+    --soak-interval-sec "${PERF_SOAK_INTERVAL_SEC:-0.8}" \
+    --max-error-rate "${PERF_MAX_ERROR_RATE:-0.02}" \
+    --max-p95-ms "${PERF_MAX_P95_MS:-3000}" \
+    --max-p99-ms "${PERF_MAX_P99_MS:-5000}" \
+    --out "${PERF_OUT:-/tmp/runtime_perf_gate.deploy.v1.json}"
 echo ""
 echo "=== Готово. UI: ${DEPLOY_URL} ==="
 echo "Записи и БД не трогаем; user_config.yaml не синхронизируем (есть бэкап .bak.deploy-* перед rsync)."
