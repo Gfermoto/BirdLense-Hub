@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy import text
 
+from app_config.app_config import app_config
 from data_paths import data_dir
+from models import ActivityLog
 from services.cache import cache_backend_readiness
 from services.component_status_service import build_component_status_payload_safe
 from services.runtime_env import env_flag_enabled, is_production_runtime
+from util import ensure_utc
 
 
 def _env_flag_enabled(raw: str | None) -> bool:
@@ -71,6 +74,43 @@ def _path_status(path: Path, label: str) -> dict[str, object]:
     }
 
 
+def _processor_heartbeat_readiness(session) -> dict[str, object]:
+    """Processor heartbeat freshness check for readiness gate."""
+    prod = _is_production_env()
+    try:
+        max_age = int(app_config.get("processor.readiness_heartbeat_max_age_seconds") or 180)
+    except (TypeError, ValueError):
+        max_age = 180
+    max_age = max(30, max_age)
+    row = (
+        session.query(ActivityLog).filter_by(type="heartbeat").order_by(ActivityLog.updated_at.desc()).first()
+    )
+    if not row or not row.updated_at:
+        return {
+            "status": "error" if prod else "ok",
+            "reason": "missing_heartbeat",
+            "max_age_seconds": max_age,
+        }
+    try:
+        hb_ts = ensure_utc(row.updated_at)
+    except (TypeError, ValueError):
+        return {
+            "status": "error" if prod else "ok",
+            "reason": "invalid_heartbeat_timestamp",
+            "max_age_seconds": max_age,
+        }
+    now = datetime.now(timezone.utc)
+    age = max(0.0, (now - hb_ts).total_seconds())
+    stale = hb_ts < (now - timedelta(seconds=max_age))
+    return {
+        "status": "error" if (prod and stale) else "ok",
+        "reason": "stale_heartbeat" if stale else "ok",
+        "max_age_seconds": max_age,
+        "age_seconds": round(age, 3),
+        "last_heartbeat_utc": hb_ts.isoformat(),
+    }
+
+
 def build_readiness_payload(session) -> tuple[dict[str, object], int]:
     """Return readiness JSON and suggested HTTP status."""
     checks: dict[str, dict[str, object]] = {}
@@ -84,6 +124,7 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
     checks["data_dir"] = _path_status(Path(data_dir()), "data/")
     checks["app_config_dir"] = _path_status(Path(__file__).resolve().parents[2] / "app_config", "app_config/")
     checks["cache_backend"] = cache_backend_readiness()
+    checks["processor_heartbeat"] = _processor_heartbeat_readiness(session)
 
     ready = all(check.get("status") == "ok" for check in checks.values())
     payload = {
