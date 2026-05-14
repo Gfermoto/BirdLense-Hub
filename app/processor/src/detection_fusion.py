@@ -115,6 +115,8 @@ def _attach_audio_evidence(
         key=lambda item: (
             _safe_float(item[1].get("score"), 0.0),
             int(item[1].get("support_count") or 0),
+            # Deterministic tie-break for equal score/support.
+            str(item[0] or "").strip().lower(),
         ),
     )
     top_score = _safe_float(top_bucket.get("score"), 0.0)

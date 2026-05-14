@@ -8,6 +8,8 @@ import uuid
 
 from flask import g, has_request_context, request
 
+from services.request_metrics_service import observe_http_request
+
 
 class RequestContextFilter(logging.Filter):
     """Attach request metadata when logs are emitted inside a Flask request."""
@@ -57,6 +59,16 @@ def init_request_logging(app) -> None:
         elapsed_ms = None
         if isinstance(started_at, (int, float)):
             elapsed_ms = round((time.perf_counter() - started_at) * 1000)
+        route = request.path
+        rule = getattr(getattr(request, "url_rule", None), "rule", None)
+        if isinstance(rule, str) and rule.strip():
+            route = rule
+        observe_http_request(
+            method=request.method,
+            route=route,
+            status_code=response.status_code,
+            duration_ms=float(elapsed_ms or 0.0),
+        )
         response.headers["X-Request-ID"] = request_id
         app.logger.info(
             "request complete status=%s duration_ms=%s remote_addr=%s",

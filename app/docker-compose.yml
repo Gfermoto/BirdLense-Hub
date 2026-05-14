@@ -11,12 +11,21 @@ services:
     image: redis:7-alpine
     container_name: birdlense-redis
     restart: unless-stopped
+    stop_grace_period: 20s
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    mem_limit: 512m
+    cpus: "1.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
+      start_period: 5s
 
   birdlense:
     build:
@@ -56,6 +65,14 @@ services:
       - TRUSTED_PROXY=${TRUSTED_PROXY:-}
       - BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=${BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT:-}
     restart: unless-stopped
+    stop_grace_period: 45s
+    mem_limit: 4g
+    cpus: "4.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "7"
     deploy:
       resources:
         limits:
@@ -66,3 +83,4 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 25s

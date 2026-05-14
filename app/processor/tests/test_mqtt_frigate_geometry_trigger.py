@@ -13,9 +13,25 @@ src_path = os.path.abspath(os.path.join(current_dir, '../src'))
 sys.path.insert(0, src_path)
 
 import mqtt_aggregator as ma  # noqa: E402
+from motion_detectors.frigate_mqtt import FrigateMotionFromAggregator  # noqa: E402
 
 
 class TestFrigateGeometryTrigger(unittest.TestCase):
+    def test_frigate_motion_queue_preserves_burst_events(self):
+        det = FrigateMotionFromAggregator(None, camera_filter=set(), label_filter={'bird'})
+        det._on_motion('BirdBox', 'bird', 0.7, {'timestamp': '2026-01-01T00:00:00+00:00'})
+        det._on_motion('BirdBox', 'bird', 0.8, {'timestamp': '2026-01-01T00:00:01+00:00'})
+        self.assertTrue(det.check_pending())
+        self.assertTrue(det.check_pending())
+        self.assertFalse(det.check_pending())
+
+    def test_frigate_motion_mark_pending_requeues_active_event(self):
+        det = FrigateMotionFromAggregator(None, camera_filter=set(), label_filter={'bird'})
+        det._on_motion('BirdBox', 'bird', 0.7, {'timestamp': '2026-01-01T00:00:00+00:00'})
+        self.assertTrue(det.check_pending())
+        det.mark_pending()
+        self.assertTrue(det.check_pending())
+
     def test_labels_match_exclude_case_insensitive(self):
         self.assertTrue(
             ma._frigate_labels_match_exclude({'Cat', ''}, {'cat'}),

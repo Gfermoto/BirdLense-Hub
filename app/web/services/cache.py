@@ -227,3 +227,14 @@ def cached(key_fn: Callable[..., str], ttl_seconds: float):
         return wrapper
 
     return decorator
+
+
+def cache_backend_readiness() -> dict[str, object]:
+    """Readiness for cache backend: Redis (if configured) or in-memory fallback."""
+    url = _redis_url_effective()
+    if not url:
+        return {"status": "ok", "backend": "memory", "configured": False}
+    r = _redis()
+    if r is None:
+        return {"status": "error", "backend": "redis", "configured": True, "error": "redis_unavailable"}
+    return {"status": "ok", "backend": "redis", "configured": True}

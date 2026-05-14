@@ -419,10 +419,21 @@ mqtt:
   frigate_topic: "frigate/events"
   birdnet_topic: "birdnet"  # BirdNET-Go/Pi публикует сюда
   publish_topic: "birdlense/detections"
+  # FIFO буфер входящих MQTT-событий для окна merge/fallback.
+  max_events: 1200
+  # Границы backpressure для исходящих publish в MQTT.
+  publish_queue_max: 4000
+  # Очередь фоновых записей веса кормушки.
+  feeder_scale_queue_max: 400
   reconnect_min_delay: 5  # сек; стартовый backoff при потере связи
   reconnect_max_delay: 300  # сек; потолок backoff
+  reconnect_jitter_ratio: 0.15  # ±15% jitter для несинхронных reconnect storm
   # Home Assistant MQTT Autodiscovery — публикация config и state для автообнаружения
   ha_discovery: true
+
+system_metrics:
+  # 0.0 = non-blocking snapshot; >0 enables blocking CPU sampling window.
+  cpu_sample_interval_seconds: 0.0
 
 # Detection fusion (detector/classifier + Frigate promotion)
 detection:

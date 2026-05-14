@@ -44,6 +44,14 @@ class TestMetrics:
         assert "birdlense_disk_used_percent" in body
         assert "birdlense_detections_total" in body
 
+    def test_metrics_expose_http_request_counters_and_histogram(self, client):
+        assert client.get("/api/ui/health").status_code == 200
+        # First scrape captures previous request stats.
+        assert client.get("/metrics").status_code == 200
+        body = client.get("/metrics").get_data(as_text=True)
+        assert "birdlense_http_requests_total" in body
+        assert "birdlense_http_request_duration_ms_bucket" in body
+
     def test_metrics_summary_json(self, client):
         r = client.get("/api/metrics/summary")
         assert r.status_code == 200

@@ -12,6 +12,7 @@ from services.activity_notify_insights_service import (
     notify_preview_by_source_24h,
     notify_preview_generated_by_source_24h,
 )
+from services.request_metrics_service import prometheus_http_request_metrics_lines
 from services.system_live_metrics_service import collect_live_system_metrics
 
 
@@ -41,13 +42,13 @@ def prometheus_metrics_body(app) -> str:
         "# TYPE birdlense_disk_used_percent gauge",
         f"birdlense_disk_used_percent {sys_m['disk']['percent']}",
         "# HELP birdlense_detections_total Total number of bird detections",
-        "# TYPE birdlense_detections_total counter",
+        "# TYPE birdlense_detections_total gauge",
         f"birdlense_detections_total {detections}",
         "# HELP birdlense_species_count Number of unique species detected",
         "# TYPE birdlense_species_count gauge",
         f"birdlense_species_count {species_count}",
         "# HELP birdlense_videos_total Total number of recorded videos",
-        "# TYPE birdlense_videos_total counter",
+        "# TYPE birdlense_videos_total gauge",
         f"birdlense_videos_total {videos_count}",
         "# HELP birdlense_notify_preview_24h Notification preview source counts for last 24h",
         "# TYPE birdlense_notify_preview_24h gauge",
@@ -92,4 +93,5 @@ def prometheus_metrics_body(app) -> str:
                 f"birdlense_gpu_usage_percent {sys_m['gpu_percent']}",
             ]
         )
+    lines.extend(prometheus_http_request_metrics_lines())
     return "\n".join(lines) + "\n"
