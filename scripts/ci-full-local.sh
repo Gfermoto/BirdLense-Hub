@@ -12,6 +12,7 @@ VENV_CI="${VENV_CI:-$ROOT/.venv-ci}"
 VENV_DOCS="${VENV_DOCS:-$ROOT/.venv-docs}"
 PYTHON="${PYTHON:-python3}"
 CI_FULL_DOCKER="${CI_FULL_DOCKER:-0}"
+CI_STRICT_QUALITY_REQUIRED="${CI_STRICT_QUALITY_REQUIRED:-0}"
 
 log() { printf '\n=== %s ===\n' "$*"; }
 
@@ -144,6 +145,8 @@ git diff --exit-code -- app/ui/src/generated/openapi-types.ts
 (
   cd "${ROOT}/app/ui"
   npm run test -- --run
+  npm run coverage
+  npm run coverage:critical
   npm run typecheck
   npm run lint
   npm run build
@@ -237,6 +240,13 @@ log "Docker: build + processor unittest + web pytest + E2E smoke"
   env -u NO_COLOR -u FORCE_COLOR NODE_NO_WARNINGS=1 \
     BASE_URL="${BASE}" npx playwright test tests/smoke.spec.ts
   cd "${ROOT}"
+  if ! make verify-strict-quality BASE_URL="${BASE}"; then
+    if [[ "${CI_STRICT_QUALITY_REQUIRED}" == "1" ]]; then
+      echo "verify-strict-quality failed and CI_STRICT_QUALITY_REQUIRED=1" >&2
+      exit 1
+    fi
+    echo "WARN: verify-strict-quality failed on local dataset; continue (CI_STRICT_QUALITY_REQUIRED=0)." >&2
+  fi
   python3 scripts/audit_species_cards.py \
     --base-url "${BASE}" \
     --workers 4 \

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import os
-
 from app_config.app_config import app_config
+from services.runtime_env import is_production_runtime
 from services.ui_password_service import verify_ui_password
 
 
@@ -13,7 +12,7 @@ def settings_gate_requires_password() -> bool:
     admin_pw = (app_config.get("general.settings_password") or "").strip()
     contrib_pw = (app_config.get("general.contributor_password") or "").strip()
     if not admin_pw and not contrib_pw:
-        return os.environ.get("FLASK_ENV") == "production" or os.environ.get("BIRDLENSE_ENV") == "production"
+        return is_production_runtime()
     return bool(admin_pw or contrib_pw)
 
 
@@ -24,7 +23,7 @@ def contributor_tier_configured() -> bool:
 
 def is_production_env() -> bool:
     """True если FLASK_ENV или BIRDLENSE_ENV указывают на production."""
-    return os.environ.get("FLASK_ENV") == "production" or os.environ.get("BIRDLENSE_ENV") == "production"
+    return is_production_runtime()
 
 
 def empty_passwords_block_verify_in_production() -> bool:

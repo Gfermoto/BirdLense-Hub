@@ -3,14 +3,12 @@
 import logging
 import os
 
-
-def _env_flag_enabled(raw: str | None) -> bool:
-    return (raw or "").strip().lower() in {"1", "true", "yes", "on"}
+from services.runtime_env import env_flag_enabled, is_production_runtime
 
 
 # Secret key for Flask session (settings unlock)
 _SECRET_KEY = os.environ.get("FLASK_SECRET_KEY")
-_is_production = os.environ.get("FLASK_ENV") == "production" or os.environ.get("BIRDLENSE_ENV") == "production"
+_is_production = is_production_runtime()
 if not _SECRET_KEY:
     if _is_production:
         raise RuntimeError("FLASK_SECRET_KEY is required in production. Set it in app/.env or environment.")
@@ -19,7 +17,7 @@ if not _SECRET_KEY:
 if _is_production:
     if not (os.environ.get("PROCESSOR_SECRET") or "").strip():
         raise RuntimeError("PROCESSOR_SECRET is required in production. Set it in app/.env or environment.")
-    if not _env_flag_enabled(os.environ.get("BIRDLENSE_STRICT_API_AUTH")):
+    if not env_flag_enabled(os.environ.get("BIRDLENSE_STRICT_API_AUTH")):
         raise RuntimeError("BIRDLENSE_STRICT_API_AUTH=1 is required in production.")
 
 # Локальная разработка (Vite, LAN): не хранить в app.py — один источник для CORS.

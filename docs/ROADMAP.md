@@ -259,6 +259,7 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 | **Quality** | CI on PRs — see [TESTING](./TESTING.md) §1 (Bandit, pip-audit, Ruff, OpenAPI contract, UI build, MkDocs, Docker tests + Playwright smoke + catalog audit); Dependabot |
 | **Docs** | `VERSION` aligned with `mkdocs.yml`, `app/ui/package.json`, and `app/web/openapi.yaml` (`scripts/check-docs-version.py`); interactive OpenAPI (Redoc) on the doc site |
 | **Releases** | Tags + GitHub Release → Docker semver image + Pages deploy |
+| **Public release gate** | Unified runbook: [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.md) + [RELEASE_READINESS](./RELEASE_READINESS.md) |
 
 The **shipped archive** above is historical only. Active work is the **consilium** issues and **future candidates**; always cross-check [FEATURES](./FEATURES.md).
 

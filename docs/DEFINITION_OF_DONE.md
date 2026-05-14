@@ -2,7 +2,7 @@
 
 [Русский](./DEFINITION_OF_DONE.ru.md)
 
-One-page gate before you tag a release, merge a stabilization branch, or tell others the hub is “production ready”. For the **full** checklist (domain health, registry, CI secrets), see [RELEASE_READINESS](./RELEASE_READINESS.md).
+One-page gate before you tag a release, merge a stabilization branch, or tell others the hub is “production ready”. For the **full** checklist (domain health, registry, CI secrets), see [RELEASE_READINESS](./RELEASE_READINESS.md) and [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.md).
 
 **Where settings live in the UI:** [UI settings map](./UI_SETTINGS_MAP.md) · [RU](./UI_SETTINGS_MAP.ru.md).
 

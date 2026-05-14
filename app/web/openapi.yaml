@@ -293,6 +293,89 @@ paths:
                   birdnet_url:
                     type: string
                     nullable: true
+  /metrics:
+    get:
+      summary: Prometheus metrics (root path)
+      description: |
+        Prometheus text payload on the root host path (`/metrics`).
+        This path is outside `/api/ui`; use the root server URL for scraping.
+      servers:
+        - url: http://birdlense.local
+          description: Hub root host (for Prometheus paths)
+      responses:
+        "200":
+          description: Prometheus text payload
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Missing or invalid bearer token when `BIRDLENSE_METRICS_TOKEN` is enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Metrics backend error
+          content:
+            text/plain:
+              schema:
+                type: string
+  /api/metrics:
+    get:
+      summary: Prometheus metrics (API alias)
+      description: |
+        Same Prometheus payload as `/metrics`, exposed at `/api/metrics` for scraper compatibility.
+      servers:
+        - url: http://birdlense.local
+          description: Hub root host (for Prometheus paths)
+      responses:
+        "200":
+          description: Prometheus text payload
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Missing or invalid bearer token when `BIRDLENSE_METRICS_TOKEN` is enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Metrics backend error
+          content:
+            text/plain:
+              schema:
+                type: string
+  /api/metrics/summary:
+    get:
+      summary: Metrics JSON summary
+      description: |
+        JSON summary used by dashboards and observability checks.
+      servers:
+        - url: http://birdlense.local
+          description: Hub root host (for Prometheus paths)
+      responses:
+        "200":
+          description: Metrics summary
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          description: Missing or invalid bearer token when `BIRDLENSE_METRICS_TOKEN` is enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Metrics summary build error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /weather:
     get:
       summary: Get current weather

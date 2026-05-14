@@ -28,6 +28,21 @@ def test_gate_no_passwords_prod_true(monkeypatch):
         monkeypatch.delenv("FLASK_ENV", raising=False)
 
 
+def test_gate_no_passwords_prod_alias_true(monkeypatch):
+    monkeypatch.delenv("FLASK_ENV", raising=False)
+    monkeypatch.setenv("BIRDLENSE_ENV", "PROD")
+    from app_config.app_config import app_config
+    from services.settings_access_service import settings_gate_requires_password
+
+    gen = app_config.config.setdefault("general", {})
+    monkeypatch.setitem(gen, "settings_password", "")
+    monkeypatch.setitem(gen, "contributor_password", "")
+    try:
+        assert settings_gate_requires_password() is True
+    finally:
+        monkeypatch.delenv("BIRDLENSE_ENV", raising=False)
+
+
 def test_gate_any_password_true(monkeypatch):
     monkeypatch.delenv("FLASK_ENV", raising=False)
     from app_config.app_config import app_config

@@ -10,9 +10,9 @@
 |----------------|------------|
 | **CI → python-security** | `bandit` по `web/` + `processor/src/`; `pip-audit` по обоим `requirements.txt`. |
 | **CI → openapi-contract** | `ruff check` + **`ruff format --check`** по `web/` + `processor/src/`; сводка **radon cc** (без порога); скрипт версии доков; узкие pytest-наборы. |
-| **CI → ui-build** | `npm ci`; **`npm run codegen:openapi`** + `git diff` для `src/generated/openapi-types.ts`; **`npm run typecheck`**; `npm run lint`; `npm run build` в `app/ui`. |
+| **CI → ui-build** | `npm ci`; **`npm run codegen:openapi`** + `git diff` для `src/generated/openapi-types.ts`; **`npm run coverage`** + **`npm run coverage:critical`**; **`npm run typecheck`**; `npm run lint`; `npm run build` в `app/ui`. |
 | **CI → docs** | MkDocs strict, скрипт покрытия Settings UI, проверка версии. |
-| **CI → docker-tests** | Сборка образа; тесты processor + web; Playwright smoke; аудит карточек. |
+| **CI → docker-tests** | Сборка образа; тесты processor + web; Playwright smoke; `make verify-strict-quality BASE_URL=...`; аудит карточек. |
 
 Источник: `.github/workflows/ci-pr.yml`.
 
@@ -27,8 +27,8 @@
 
 | Команда | Что делает |
 |---------|------------|
-| **`make ci-local`** | **Bandit** + **pip-audit** + **Ruff** (проверка и `format --check`) + весь **`pytest web/tests/`** в отдельном **`.venv-ci`**, `scripts/check-docs-version.py`, **UI** (`npm ci`, дрейф OpenAPI codegen, **Vitest**, `typecheck`, `lint`, `build`), скрипт **покрытия Settings UI**, **MkDocs** `build --strict` через **`.venv-docs`**, сводка **radon**. |
-| **`make ci-local-docker`** | Всё выше, затем загрузка **весов processor**, **`docker compose build`**, **`make test`** + **`make test-web`** в `app/`, подъём стека, **Playwright** `app/e2e/tests/smoke.spec.ts`, остановка стека. |
+| **`make ci-local`** | **Bandit** + **pip-audit** + **Ruff** (проверка и `format --check`) + весь **`pytest web/tests/`** в отдельном **`.venv-ci`**, `scripts/check-docs-version.py`, **UI** (`npm ci`, дрейф OpenAPI codegen, **Vitest**, **coverage**, `typecheck`, `lint`, `build`), скрипт **покрытия Settings UI**, **MkDocs** `build --strict` через **`.venv-docs`**, сводка **radon**. |
+| **`make ci-local-docker`** | Всё выше, затем загрузка **весов processor**, **`docker compose build`**, **`make test`** + **`make test-web`** в `app/`, подъём стека, **Playwright** `app/e2e/tests/smoke.spec.ts`, локальный strict-quality probe (`make verify-strict-quality BASE_URL=...`), остановка стека. Для блокирующего режима выставьте `CI_STRICT_QUALITY_REQUIRED=1`. |
 
 **Требования:** **Node.js ≥ 22** для фазы UI (как в CI и `engines` в `app/ui/package.json`). Перед ошибкой `ci-full-local.sh` пробует **nvm** (`$NVM_DIR` или `~/.nvm`, затем `nvm use` из `app/ui/.nvmrc`) и **fnm**, чтобы неинтерактивный `make ci-local` не упирался в системный Node 20. **Docker** — для `ci-local-docker`. Для `pip` включается **`PYTHONNOUSERSITE=1`** и сбрасывается унаследованный **`PYTHONPATH`**, чтобы зависимости ставились в **`.venv-ci`**, а не только в `~/.local` (каталоги **`.venv-ci`** / **`.venv-docs`** в git не коммитятся).
 

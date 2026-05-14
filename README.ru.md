@@ -146,7 +146,7 @@ make ml-train-behavior-baseline
 ## Разработчикам
 
 - **Окружение:** [docs/LOCAL_DEV.ru.md](./docs/LOCAL_DEV.ru.md) — Docker, **Node.js 22** для `app/ui` (`.nvmrc`, `engines` в `package.json`), отдельный venv для MkDocs.
-- **Тесты и CI:** [docs/TESTING.ru.md](./docs/TESTING.ru.md) — `make test`, `make test-web`, E2E; тесты процессора требовательны к RAM.
+- **Тесты и CI:** [docs/TESTING.ru.md](./docs/TESTING.ru.md) — `cd app && make test`, `cd app && make test-web`, E2E; тесты процессора требовательны к RAM.
 - **Участие:** [CONTRIBUTING.ru.md](./CONTRIBUTING.ru.md).
 
 ### Первый прогон CI (как в Actions)
