@@ -33,6 +33,27 @@
 
 Чеклист релиза: [RELEASE_READINESS](./RELEASE_READINESS.ru.md).
 
+## Матрица rollback для release-gate (C1)
+
+Используйте матрицу при блокировке выката или деградации после канареечного включения.
+
+| Сигнал | Действие | Проверка |
+|---|---|---|
+| `verify-stack --strict-quality` падает на domain/quality | Релиз остаётся заблокированным, деплой не считаем успешным | `make verify` должен проходить по health/readiness/status; причины блокировки видны в `domain-health` |
+| После выката `readiness` деградировал (`503`) | Откат к последнему стабильному образу/конфигу и рестарт стека | `make verify` = PASS и `checks.*.status=ok` |
+| Canary SLI регрессирует по `p95/error` выше порога | Остановить rollout и выполнить rollback-drill | Повторно собрать отчёт `make ml-canary-rollback-report`, требуется `ok=true` |
+| После отката деградация остаётся | Эскалация инцидента, freeze новых деплоев | Приложить артефакт `canary_rollback_report@v1` и актуальный вывод `verify-stack` в issue |
+
+Команда для rollback-drill (пример):
+
+```bash
+BASELINE=/tmp/base_sli.json \
+CANARY=/tmp/canary_sli.json \
+ROLLBACK=/tmp/rollback_sli.json \
+OUT=/tmp/canary_rollback.v1.json \
+make ml-canary-rollback-report
+```
+
 ## Деплой завершён, но в браузере старый UI
 
 1. Жёсткое обновление страницы.

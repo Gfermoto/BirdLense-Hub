@@ -33,6 +33,27 @@ GitHub Actions deploy: optional repository secret **`BIRDLENSE_UI_API_KEY`** (ma
 
 Release checklist: [RELEASE_READINESS](./RELEASE_READINESS.md).
 
+## Release gate rollback matrix (C1)
+
+Use this matrix when a deploy is blocked or when canary/quality degrades after rollout.
+
+| Signal | Action | Verification |
+|---|---|---|
+| `verify-stack --strict-quality` fails on domain/quality | Keep current release blocked, do **not** mark deploy successful | `make verify` must pass health/readiness/status; quality blockers are visible in `domain-health` payload |
+| `readiness` is degraded (`503`) after rollout | Roll back to last known-good image/config and restart stack | `make verify` returns PASS and `checks.*.status=ok` |
+| Canary SLI regression (`p95/error`) exceeds threshold | Stop rollout and execute rollback drill | Re-run canary with `make ml-canary-rollback-report` and require `ok=true` |
+| Post-rollback still degraded | Escalate incident, keep rollback active, freeze further deploys | Attach `canary_rollback_report@v1` artifact and latest `verify-stack` output to issue |
+
+Rollback drill command (example):
+
+```bash
+BASELINE=/tmp/base_sli.json \
+CANARY=/tmp/canary_sli.json \
+ROLLBACK=/tmp/rollback_sli.json \
+OUT=/tmp/canary_rollback.v1.json \
+make ml-canary-rollback-report
+```
+
 ## Deploy finished, but the browser shows stale UI
 
 1. Hard-reload the page.
