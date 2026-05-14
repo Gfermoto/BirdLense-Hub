@@ -671,10 +671,10 @@ class MQTTEventAggregator:
                     raw_min_trigger_score = app_config.get("triggers.frigate.min_trigger_score")
                     try:
                         min_trigger_score = (
-                            0.5 if isinstance(raw_min_trigger_score, bool) else float(raw_min_trigger_score or 0.5)
+                            0.0 if isinstance(raw_min_trigger_score, bool) else float(raw_min_trigger_score or 0.0)
                         )
                     except (TypeError, ValueError):
-                        min_trigger_score = 0.5
+                        min_trigger_score = 0.0
                     per_camera_thresholds = app_config.get("triggers.frigate.min_trigger_score_by_camera") or {}
                     if isinstance(per_camera_thresholds, dict):
                         camera_key = str(camera or "").strip().lower()
@@ -736,9 +736,12 @@ class MQTTEventAggregator:
                         )
                         try:
                             try:
-                                cb(camera, species, trigger_score)
+                                cb(camera, species, trigger_score, ev)
                             except TypeError:
-                                cb(camera, species)
+                                try:
+                                    cb(camera, species, trigger_score)
+                                except TypeError:
+                                    cb(camera, species)
                         except Exception as e:
                             logger.debug("Frigate motion callback: %s", e)
                     else:
@@ -819,7 +822,13 @@ class MQTTEventAggregator:
                             not bool(lbl_f_lower),
                         )
                         try:
-                            cb(camera, label)
+                            try:
+                                cb(camera, label, 0.0, ev)
+                            except TypeError:
+                                try:
+                                    cb(camera, label, 0.0)
+                                except TypeError:
+                                    cb(camera, label)
                         except Exception as e:
                             logger.debug("Frigate motion callback: %s", e)
                     else:

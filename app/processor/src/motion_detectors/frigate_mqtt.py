@@ -8,6 +8,7 @@ import logging
 import os
 import threading
 import time
+from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 
@@ -25,14 +26,26 @@ class FrigateMotionFromAggregator:
         self._last_camera = None
         self._last_confidence = 0.0
         self._last_event_ts = 0.0
+        self._last_event_payload = None
 
-    def _on_motion(self, camera, label, confidence=0.0):
+    def _on_motion(self, camera, label, confidence=0.0, event=None):
         self._last_camera = camera
         try:
             self._last_confidence = float(confidence or 0.0)
         except (TypeError, ValueError):
             self._last_confidence = 0.0
         self._last_event_ts = time.time()
+        payload = event if isinstance(event, dict) else {}
+        self._last_event_payload = {
+            "source": "frigate",
+            "camera": camera,
+            "species": str(payload.get("species") or label or "bird"),
+            "label": str(payload.get("label") or label or "bird"),
+            "sub_label": str(payload.get("sub_label") or ""),
+            "confidence": self._last_confidence,
+            "timestamp": str(payload.get("timestamp") or datetime.now(timezone.utc).isoformat()),
+            "_frigate_has_geometry": bool(payload.get("_frigate_has_geometry", True)),
+        }
         logger.info(
             "Frigate motion: camera=%s, label=%s, confidence=%.3f",
             camera,
@@ -76,6 +89,11 @@ class FrigateMotionFromAggregator:
 
     def get_triggered_camera(self):
         return self._last_camera
+
+    def get_last_frigate_event(self):
+        if isinstance(self._last_event_payload, dict):
+            return dict(self._last_event_payload)
+        return None
 
     def has_recent_activity(self, camera=None, max_age_seconds=0, min_confidence=0.0):
         try:
@@ -127,6 +145,7 @@ class FrigateMQTTMotionDetector:
         self._last_camera = None
         self._last_confidence = 0.0
         self._last_event_ts = 0.0
+        self._last_event_payload = None
         self._client = None
         self._thread = None
         self._connected = False
@@ -174,6 +193,22 @@ class FrigateMQTTMotionDetector:
         self._last_camera = camera
         self._last_confidence = score
         self._last_event_ts = time.time()
+        has_geometry = bool(
+            after.get("box")
+            or after.get("region")
+            or (isinstance(after.get("snapshot"), dict) and (after.get("snapshot") or {}).get("box"))
+            or (isinstance(after.get("snapshot"), dict) and (after.get("snapshot") or {}).get("region"))
+        )
+        self._last_event_payload = {
+            "source": "frigate",
+            "camera": camera,
+            "species": str(sub_label or label or "bird"),
+            "label": str(label or sub_label or "bird"),
+            "sub_label": str(sub_label or ""),
+            "confidence": score,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "_frigate_has_geometry": has_geometry,
+        }
         logger.info(
             "Frigate event: camera=%s, label=%s, sub_label=%s, confidence=%.3f",
             camera,
@@ -247,6 +282,11 @@ class FrigateMQTTMotionDetector:
     def get_triggered_camera(self):
         """Return camera id from last Frigate event, or None."""
         return self._last_camera
+
+    def get_last_frigate_event(self):
+        if isinstance(self._last_event_payload, dict):
+            return dict(self._last_event_payload)
+        return None
 
     def has_recent_activity(self, camera=None, max_age_seconds=0, min_confidence=0.0):
         try:

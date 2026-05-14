@@ -155,6 +155,7 @@ def finalize_motion_recording(
         yolo_tracks_count=yolo_tracks_count,
         scope_camera_id=scope_camera_id,
         lookback_camera_id=session_camera_id,
+        trigger_source=trigger_source,
     )
     if yolo_tracks_count > 0:
         min_dur = app_config.get("processor.min_track_duration", 1)

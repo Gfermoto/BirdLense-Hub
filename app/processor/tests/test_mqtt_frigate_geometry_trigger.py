@@ -119,7 +119,14 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         msg.payload = b'/api/events/x/snapshot.jpg'
         msg.retain = False
 
-        with patch.object(ma.app_config, 'get', return_value=True):
+        def cfg_get(key, default=None):
+            if key == 'triggers.frigate.trigger_on_tracked_object':
+                return True
+            if key == 'triggers.frigate.min_trigger_score':
+                return 0.0
+            return default
+
+        with patch.object(ma.app_config, 'get', side_effect=cfg_get):
             agg._on_message(None, None, msg)
 
         self.assertEqual(len(calls), 1)
@@ -281,6 +288,8 @@ class TestFrigateGeometryTrigger(unittest.TestCase):
         def cfg_get(key, default=None):
             if key == 'triggers.frigate.trigger_on_tracked_object':
                 return True
+            if key == 'triggers.frigate.min_trigger_score':
+                return 0.0
             return default
 
         with patch.object(ma.app_config, 'get', side_effect=cfg_get):

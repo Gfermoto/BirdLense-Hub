@@ -222,7 +222,7 @@ def _frigate_standalone_prepared_rows(
         has_geometry = True if has_geometry_raw is None else bool(has_geometry_raw)
         if not has_geometry and isinstance(ev.get("frigate_bbox_norm"), (list, tuple)):
             has_geometry = len(ev.get("frigate_bbox_norm") or []) >= 4
-        if require_geometry and not has_geometry:
+        if require_geometry and not has_geometry and not bool(ev.get("_synthetic_trigger_fallback")):
             continue
         raw = ev.get("species") or ev.get("sub_label") or ev.get("label") or ""
         species = normalize(str(raw), species_mapping)

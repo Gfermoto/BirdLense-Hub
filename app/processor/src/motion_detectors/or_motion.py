@@ -92,6 +92,17 @@ class OrMotionDetector:
                 )
         return False
 
+    def get_last_frigate_event(self):
+        for name, detector in self._detectors:
+            if name not in {"frigate", "primary"}:
+                continue
+            fn = getattr(detector, "get_last_frigate_event", None)
+            if callable(fn):
+                payload = fn()
+                if isinstance(payload, dict) and payload:
+                    return payload
+        return None
+
     def stop(self):
         for _, detector in self._detectors:
             if detector and hasattr(detector, "stop"):
