@@ -31,6 +31,8 @@ processor:
   # video.source=file: нижняя граница max_record_seconds (сек). Большое значение при playlist+split по файлам — не резать длинный клип по таймеру.
   file_max_record_floor_seconds: 86400
   max_inactive_seconds: 12
+  # Readiness guardrail: максимальный возраст heartbeat процессора (сек) в production.
+  readiness_heartbeat_max_age_seconds: 180
   # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
   post_record_seconds: 3
   # Мин. пауза после окончания записи до следующего старта (сек). 0 = выкл.

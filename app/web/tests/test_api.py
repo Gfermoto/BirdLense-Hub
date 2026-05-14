@@ -1318,6 +1318,31 @@ class TestHealth:
         assert data["components"]["web"] == "ok"
         assert data["components"]["processor"] == "unknown"
 
+    def test_readiness_returns_503_when_processor_heartbeat_check_fails_in_production(
+        self,
+        client,
+        monkeypatch,
+    ):
+        import services.readiness_service as rs
+
+        monkeypatch.setenv("BIRDLENSE_ENV", "production")
+
+        def _stale(_session):
+            return {
+                "status": "error",
+                "reason": "stale_heartbeat",
+                "max_age_seconds": 180,
+            }
+
+        monkeypatch.setattr(rs, "_processor_heartbeat_readiness", _stale)
+
+        r = client.get("/api/ui/readiness")
+
+        assert r.status_code == 503
+        assert r.json["ready"] is False
+        assert r.json["checks"]["processor_heartbeat"]["status"] == "error"
+        assert r.json["checks"]["processor_heartbeat"]["reason"] == "stale_heartbeat"
+
 
 class TestStatus:
     def test_status_returns_component_status(self, client):
