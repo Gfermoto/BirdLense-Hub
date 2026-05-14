@@ -17,6 +17,8 @@ class TestMetrics:
         assert "birdlense_detections_total" in body
         assert "birdlense_species_count" in body
         assert "birdlense_videos_total" in body
+        assert "birdlense_processor_heartbeat_age_seconds" in body
+        assert "birdlense_processor_heartbeat_stale" in body
         assert "# HELP" in body
         assert "# TYPE" in body
 
