@@ -181,18 +181,22 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         from sources.go2rtc_stream_source import Go2RTCStreamSource
 
         class _FakeStderr:
+            def __init__(self, text=b""):
+                self._text = text
+
             def read(self):
-                return b""
+                return self._text
 
         class _FakeProc:
-            def __init__(self):
-                self.stderr = _FakeStderr()
+            def __init__(self, rc=1, stderr=b""):
+                self.stderr = _FakeStderr(stderr)
+                self._rc = rc
 
             def terminate(self):
                 return None
 
             def wait(self, timeout=None):
-                return 1
+                return self._rc
 
         class _Logger:
             def info(self, *_args, **_kwargs):
@@ -218,6 +222,41 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         src.stop_recording()
 
         self.assertFalse(src._vaapi_record_available)
+        self.assertTrue(src._vaapi_available)
+
+    def test_recording_vaapi_sigterm_255_is_not_failure(self):
+        from sources.go2rtc_stream_source import Go2RTCStreamSource
+
+        class _Logger:
+            def info(self, *_args, **_kwargs):
+                return None
+
+            def error(self, *_args, **_kwargs):
+                return None
+
+            def warning(self, *_args, **_kwargs):
+                return None
+
+            def debug(self, *_args, **_kwargs):
+                return None
+
+            def log(self, *_args, **_kwargs):
+                return None
+
+        src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
+        src.logger = _Logger()
+        src._ffmpeg_process = _FakeProc(
+            rc=255,
+            stderr=b"Exiting normally, received signal 15.\n",
+        )
+        src._recording_used_vaapi = True
+        src._vaapi_record_available = True
+        src._vaapi_available = True
+        src._recording = True
+
+        src.stop_recording()
+
+        self.assertTrue(src._vaapi_record_available)
         self.assertTrue(src._vaapi_available)
 
 
