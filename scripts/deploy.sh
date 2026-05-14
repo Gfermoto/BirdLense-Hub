@@ -256,7 +256,7 @@ echo "  - Shared verify contract:"
 # strict production: /api/ui/status требует Bearer (MCP) или UI key — передаём из deploy.local.sh
 BASE_URL="${DEPLOY_URL}" ATTEMPTS=20 SLEEP_SEC=3 CHECK_CAMERAS=1 \
   MCP_TOKEN="${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
-  ./scripts/verify-stack.sh
+  ./scripts/verify-stack.sh --check-domain-health --strict-quality
 echo ""
 echo "=== Готово. UI: ${DEPLOY_URL} ==="
 echo "Записи и БД не трогаем; user_config.yaml не синхронизируем (есть бэкап .bak.deploy-* перед rsync)."

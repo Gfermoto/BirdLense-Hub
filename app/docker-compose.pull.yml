@@ -62,7 +62,7 @@ services:
         max-size: "20m"
         max-file: "7"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/ui/health"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/ui/readiness"]
       interval: 30s
       timeout: 10s
       retries: 3
