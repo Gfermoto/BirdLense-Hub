@@ -151,4 +151,4 @@ This is the **structural** checkpoint before prioritizing product features (GitH
 
 ## See also
 
-[CONFIGURATION](./CONFIGURATION.md) · [API](./API.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [GLOSSARY](./GLOSSARY.md) · [OVERVIEW](./OVERVIEW.md)
+[CONFIGURATION](./CONFIGURATION.md) · [API](./API.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [GLOSSARY](./GLOSSARY.md) · [OVERVIEW](./OVERVIEW.md) · [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.md)

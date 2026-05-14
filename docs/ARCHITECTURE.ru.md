@@ -147,4 +147,4 @@ BirdLense держит три разные временные сущности:
 
 ---
 
-См. также: [CONFIGURATION](./CONFIGURATION.ru.md), [API](./API.ru.md), [GLOSSARY](./GLOSSARY.ru.md).
+См. также: [CONFIGURATION](./CONFIGURATION.ru.md), [API](./API.ru.md), [GLOSSARY](./GLOSSARY.ru.md), [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.ru.md).

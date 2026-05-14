@@ -28,6 +28,7 @@ from services.processor_ingest.gateway import (
     fire_webhook,
     is_safe_webhook_url,
 )
+from services.runtime_env import is_production_runtime
 from services.processor_ingest.activity_log_ingest import upsert_activity_log_from_processor
 from services.processor_ingest.notify_ingest import process_processor_notify_detections
 from services.processor_ingest.video_ingest import prepare_processor_video
@@ -86,6 +87,7 @@ def _canonical_detection_row(row: dict) -> dict:
             except (TypeError, ValueError):
                 return value
         return value
+
     return {
         "species_name": str(row.get("species_name") or row.get("species") or "").strip(),
         "source": str(row.get("source") or "").strip(),
@@ -191,11 +193,10 @@ def _idempotency_conflict_response(*, app_logger, video_id: int, reason: str):
 
 def _check_processor_secret():
     """Return True if request is from processor (has valid secret). In production, empty secret blocks access."""
-    is_prod = os.environ.get("FLASK_ENV") == "production" or os.environ.get("BIRDLENSE_ENV") == "production"
     return check_processor_secret_token(
         request_token=request.headers.get("X-Processor-Token") or "",
         env_secret=os.environ.get("PROCESSOR_SECRET", ""),
-        is_prod=is_prod,
+        is_prod=is_production_runtime(),
     )
 
 

@@ -325,6 +325,7 @@ bash scripts/github-project-add-backlog-consilium.sh
 | **Качество**     | CI на PR — см. [TESTING.ru.md](./TESTING.ru.md) §1 (Bandit, pip-audit, Ruff, OpenAPI contract, сборка UI, MkDocs, Docker-тесты + Playwright smoke + аудит карточек); Dependabot |
 | **Документация** | Баннер версии в `mkdocs.yml` = `VERSION`; интерактивный OpenAPI (Redoc) на сайте                                        |
 | **Релизы**       | Теги + GitHub Release → semver-образ Docker + деплой Pages                                                              |
+| **Публичный релиз** | Единый runbook: [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.ru.md) + [RELEASE_READINESS](./RELEASE_READINESS.ru.md) |
 
 
 Таблица **архива** выше — только история. Активная работа — issues **консилиума** и блок **кандидатов**; сверяйтесь с [FEATURES](./FEATURES.ru.md).

@@ -12,6 +12,26 @@ if _src_path not in sys.path:
     sys.path.insert(0, _src_path)
 
 
+class _FakeStderr:
+    def __init__(self, text=b""):
+        self._text = text
+
+    def read(self):
+        return self._text
+
+
+class _FakeProc:
+    def __init__(self, rc=1, stderr=b""):
+        self.stderr = _FakeStderr(stderr)
+        self._rc = rc
+
+    def terminate(self):
+        return None
+
+    def wait(self, timeout=None):
+        return self._rc
+
+
 class TestGo2RTCCaptureBackend(unittest.TestCase):
     def test_normalize_capture_backend(self):
         from sources.go2rtc_stream_source import _normalize_capture_backend

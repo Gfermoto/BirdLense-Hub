@@ -56,6 +56,7 @@ All paths in this table are prefixed with `/api/ui` (e.g. `/health` → `GET /ap
 |----------|--------|-------------|
 | `/metrics` | GET | Prometheus text format |
 | `/api/metrics` | GET | Same (Grafana-friendly path) |
+| `/api/metrics/summary` | GET | JSON summary for dashboards and observability checks |
 
 Scrape config: [CONFIGURATION](./CONFIGURATION.md) → Prometheus / Grafana.
 

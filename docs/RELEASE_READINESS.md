@@ -2,7 +2,8 @@
 
 [Русский](./RELEASE_READINESS.ru.md)
 
-**Short one-page gate:** [Definition of Done](./DEFINITION_OF_DONE.md) (`make ci-local` + `verify-stack` + 5-minute smoke).
+**Short one-page gate:** [Definition of Done](./DEFINITION_OF_DONE.md) (`make ci-local` + `verify-stack` + 5-minute smoke).  
+**Public release sequence:** [Public Release Checklist](./PUBLIC_RELEASE_CHECKLIST.md).
 
 ---
 

@@ -10,6 +10,7 @@ import threading
 import time
 
 from app_config.app_config import app_config
+from services.runtime_env import is_production_runtime
 
 # Rate limit for verify-password: 5 failed attempts per 60 sec per IP
 _verify_password_attempts: dict = {}
@@ -19,11 +20,7 @@ VERIFY_PASSWORD_WINDOW = 60
 
 
 def _is_production_runtime() -> bool:
-    values = {
-        (os.environ.get("FLASK_ENV") or "").strip().lower(),
-        (os.environ.get("BIRDLENSE_ENV") or "").strip().lower(),
-    }
-    return any(value in {"production", "prod"} for value in values)
+    return is_production_runtime()
 
 
 def trusted_proxy_enabled() -> bool:

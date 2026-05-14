@@ -56,6 +56,7 @@
 |----------|-------|----------|
 | `/metrics` | GET | Prometheus: CPU, память, диск, GPU, detections, species, videos |
 | `/api/metrics` | GET | То же (для Grafana) |
+| `/api/metrics/summary` | GET | JSON-сводка метрик для дашбордов и observability-checks |
 
 См. [CONFIGURATION](./CONFIGURATION.ru.md) — раздел Prometheus / Grafana.
 

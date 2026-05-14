@@ -10,9 +10,9 @@ This document describes what runs in GitHub Actions, how to reproduce checks loc
 |----------------|---------|
 | **CI → python-security** | `bandit` on `web/` + `processor/src/`; `pip-audit` on both `requirements.txt` files. |
 | **CI → openapi-contract** | `ruff check` + **`ruff format --check`** on `web/` + `processor/src/`; **radon cc** summary (non-blocking); docs version script; focused pytest slices. |
-| **CI → ui-build** | `npm ci`; **`npm run codegen:openapi`** + `git diff` on `src/generated/openapi-types.ts`; **`npm run typecheck`**; `npm run lint`; `npm run build` in `app/ui`. |
+| **CI → ui-build** | `npm ci`; **`npm run codegen:openapi`** + `git diff` on `src/generated/openapi-types.ts`; **`npm run coverage`** + **`npm run coverage:critical`**; **`npm run typecheck`**; `npm run lint`; `npm run build` in `app/ui`. |
 | **CI → docs** | MkDocs strict, settings UI coverage script, version check. |
-| **CI → docker-tests** | Full image build; processor + web tests; Playwright smoke; catalog audit script. |
+| **CI → docker-tests** | Full image build; processor + web tests; Playwright smoke; `make verify-strict-quality BASE_URL=...`; catalog audit script. |
 
 Source: `.github/workflows/ci-pr.yml`.
 
@@ -27,8 +27,8 @@ From the **repository root** (see `scripts/ci-full-local.sh`):
 
 | Command | What it runs |
 |---------|----------------|
-| **`make ci-local`** | **Bandit** + **pip-audit** + **Ruff** (`check` + `format --check`) + full **`pytest web/tests/`** inside a dedicated **`.venv-ci`**, `scripts/check-docs-version.py`, **UI** (`npm ci`, OpenAPI codegen drift check, **Vitest**, `typecheck`, `lint`, `build`), **Settings UI coverage** script, **MkDocs** `build --strict` via **`.venv-docs`**, **radon** summary (informational). |
-| **`make ci-local-docker`** | Everything above, then **processor weights** fetch (with retries), **`docker compose build`**, **`make test`** + **`make test-web`** under `app/`, stack **up**, **Playwright** `app/e2e/tests/smoke.spec.ts`, then **down**. |
+| **`make ci-local`** | **Bandit** + **pip-audit** + **Ruff** (`check` + `format --check`) + full **`pytest web/tests/`** inside a dedicated **`.venv-ci`**, `scripts/check-docs-version.py`, **UI** (`npm ci`, OpenAPI codegen drift check, **Vitest**, **coverage**, `typecheck`, `lint`, `build`), **Settings UI coverage** script, **MkDocs** `build --strict` via **`.venv-docs`**, **radon** summary (informational). |
+| **`make ci-local-docker`** | Everything above, then **processor weights** fetch (with retries), **`docker compose build`**, **`make test`** + **`make test-web`** under `app/`, stack **up**, **Playwright** `app/e2e/tests/smoke.spec.ts`, local strict-quality probe (`make verify-strict-quality BASE_URL=...`), then **down**. Export `CI_STRICT_QUALITY_REQUIRED=1` to make this probe blocking. |
 
 **Requirements:** **Node.js ≥ 22** for the UI phase (matches CI and `app/ui/package.json` `engines`). Before failing, `ci-full-local.sh` tries **`nvm`** (`$NVM_DIR` or `~/.nvm`, then `nvm use` from `app/ui/.nvmrc`) and **`fnm`** so non-interactive `make ci-local` is not stuck on a system Node 20. **Docker** for `ci-local-docker`. The script uses **`PYTHONNOUSERSITE=1`** and clears inherited **`PYTHONPATH`** for `pip` so dependencies land in **`.venv-ci`**, not only `~/.local` (both venv dirs are **gitignored**).
 

@@ -116,4 +116,4 @@ Full spec: [OpenAPI (YAML)](./project/openapi.md) · narrative: [API](./API.md).
 
 ## See also
 
-[API](./API.md) · [CONFIGURATION](./CONFIGURATION.md) · [GLOSSARY](./GLOSSARY.md) · [ROADMAP](./ROADMAP.md) · [OVERVIEW](./OVERVIEW.md)
+[API](./API.md) · [CONFIGURATION](./CONFIGURATION.md) · [GLOSSARY](./GLOSSARY.md) · [ROADMAP](./ROADMAP.md) · [OVERVIEW](./OVERVIEW.md) · [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.md)

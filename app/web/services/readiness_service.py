@@ -10,17 +10,15 @@ from sqlalchemy import text
 
 from data_paths import data_dir
 from services.component_status_service import build_component_status_payload_safe
+from services.runtime_env import env_flag_enabled, is_production_runtime
 
 
 def _env_flag_enabled(raw: str | None) -> bool:
-    return (raw or "").strip().lower() in {"1", "true", "yes", "on"}
+    return env_flag_enabled(raw)
 
 
 def _is_production_env() -> bool:
-    be = (os.environ.get("BIRDLENSE_ENV") or "").strip().lower()
-    if be in ("production", "prod"):
-        return True
-    return (os.environ.get("FLASK_ENV") or "").strip().lower() == "production"
+    return is_production_runtime()
 
 
 def _looks_unexpanded_secret(value: str) -> bool:

@@ -95,7 +95,7 @@ For a one-step Docker bootstrap, run **`./install.sh`** from the repository root
 ## Developers
 
 - **Local setup:** [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) — Docker, **Node.js 22** for `app/ui` (see `app/ui/.nvmrc` and `package.json` `engines`), MkDocs venv vs app Python.
-- **Tests & CI:** [docs/TESTING.md](./docs/TESTING.md) — `make test`, `make test-web`, E2E; processor tests are RAM-heavy.
+- **Tests & CI:** [docs/TESTING.md](./docs/TESTING.md) — `cd app && make test`, `cd app && make test-web`, E2E; processor tests are RAM-heavy.
 - **Contributing:** [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ### First-time contributor CI (same as Actions)

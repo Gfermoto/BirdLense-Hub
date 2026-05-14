@@ -18,9 +18,9 @@ On **GitHub** (PR/push to `main` and `dev`), workflow **[`.github/workflows/ci-p
 |-----|----------------|
 | **`python-security`** | **Bandit** on `web/` + `processor/src`; **pip-audit** on `web/requirements.txt` + `processor/requirements.txt` |
 | **`openapi-contract`** | **Ruff** — `ruff check` + `ruff format --check` on `web/` + `processor/src/`; **radon cc** summary; **`scripts/check-docs-version.py`**; multiple **pytest** slices (OpenAPI contract, species registry, dataset export, util metadata, bird food seed, Xeno-canto, settings mutations, processor videos, system routes) |
-| **`ui-build`** | **Node 22** — `npm ci`; **`npm run codegen:openapi`** + drift check on `src/generated/openapi-types.ts`; **Vitest** (`npm run test -- --run`); **`npm run typecheck`**; `npm run lint`; production build of the SPA (`app/ui`) |
+| **`ui-build`** | **Node 22** — `npm ci`; **`npm run codegen:openapi`** + drift check on `src/generated/openapi-types.ts`; **Vitest** (`npm run test -- --run`); **`npm run coverage`** + **`npm run coverage:critical`**; **`npm run typecheck`**; `npm run lint`; production build of the SPA (`app/ui`) |
 | **`docs`** | **Python 3.12** — `check-docs-version.py`, **Settings UI coverage** report (artifact + summary), **MkDocs** `build --strict` |
-| **`docker-tests`** | Docker **Buildx** — fetch processor weights, `docker compose build birdlense`, **`make test`** + **`make test-web`**, **Playwright** `smoke.spec.ts` against compose, **catalog cards audit** script (artifact) |
+| **`docker-tests`** | Docker **Buildx** — fetch processor weights, `docker compose build birdlense`, **`make test`** + **`make test-web`**, **Playwright** `smoke.spec.ts` against compose, **`make verify-strict-quality BASE_URL=...`**, **catalog cards audit** script (artifact) |
 
 The same **`ci-pr.yml`** file is also triggered on a **daily cron** (repository **default branch** only, in GitHub) and via **`workflow_dispatch`**, running the same jobs without a code push.
 
@@ -50,7 +50,7 @@ The same **`ci-pr.yml`** file is also triggered on a **daily cron** (repository 
 | Flask route / service (web only) | `cd app && make test-web-local` after `make venv-web`, or narrow: `pytest web/tests/test_<area>.py` |
 | Processor logic (no heavy YOLO) | `cd app && make test-processor-light` |
 | Markdown / MkDocs only | `.venv-docs/bin/mkdocs build --strict` from repo root |
-| “Full parity before push” | `make ci-local` (add **`make ci-local-docker`** when runtime or E2E smoke matters) |
+| “Full parity before push” | `make ci-local` + **`make ci-local-docker`** |
 
 **E2E selector policy:** Prefer stable **`data-testid`** on elements that drive smoke flows (nav pills, empty states, **Settings password gate** / overlays where `aria-hidden` can confuse role-based queries). New Playwright specs should default to `getByTestId` for those widgets; use text/role selectors only when they are unambiguous in both themes and locales.
 
@@ -120,7 +120,9 @@ Debug one file / UI mode: `cd app/e2e && npx playwright test tests/migration.spe
 
 **Scheduled CI:** workflow **E2E (Playwright)** (`.github/workflows/e2e-scheduled.yml`) runs **daily** and on **`workflow_dispatch`** — not a required check on every PR.
 
-**Local parity:** from repo root, **`make ci-local`** (and optionally **`make ci-local-docker`**) runs the same layers as CI without opening a PR — see [CI_AND_QUALITY](./CI_AND_QUALITY.md).
+**Local parity:** from repo root, run **`make ci-local`** and **`make ci-local-docker`** to mirror the required CI layers without opening a PR — see [CI_AND_QUALITY](./CI_AND_QUALITY.md).
+
+> `make ci-local-docker` runs local `verify-strict-quality` as a probe; set `CI_STRICT_QUALITY_REQUIRED=1` to make it blocking (close to CI gate behavior).
 
 **Expanding coverage:** extra journeys (full login, timeline drill-down, species correction flows) are added **incrementally** when a change needs them; track new specs in the PR and in this doc — no standing umbrella issue required.
 
