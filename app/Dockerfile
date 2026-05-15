@@ -66,8 +66,8 @@ COPY scripts/benchmark_regen_labels.py ./scripts/
 COPY scripts/reid/run_daily_ssl_cycle.py ./scripts/reid/
 # SHA256 EU-классификатора — синхронизировать с CHECKSUMS (.../classification/weights/best.pt) и fetch-processor-weights.sh.
 ARG CLASSIFIER_SHA256=9e99b6d1b0b7697f671a728bfa887f2f45d574ec932e8a745855e9818aadd46e
-# Детектор по умолчанию: Ultralytics ``yolo11n.pt`` (COCO); в конфиге ``binary_predict_class_allowlist: [14]`` только bird.
-# BRG 3-class zip: свой ``best.pt`` + снять allowlist (см. docs / fetch-processor-weights.sh).
+# Рабочий дефолт пайплайна см. ``app_config/default_config.yaml``: BRG ``best.pt`` + ``best_openvino_model/`` (копируются из репозитория выше).
+# Дополнительно качается Ultralytics COCO ``yolo11n.pt`` и экспорт OpenVINO ниже — артефакт совместимости/диагностики (legacy сценарий с ``binary_predict_class_allowlist: [14]``).
 ARG YOLO11N_PT_URL=https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt
 RUN mkdir -p processor/models/detection/weights processor/models/classification/weights \
     && YPT="processor/models/detection/weights/yolo11n.pt" \
@@ -87,7 +87,7 @@ RUN pip install --no-cache-dir -r web/requirements.txt \
     && pip install --no-cache-dir -r processor/requirements.txt \
     && pip install --no-cache-dir 'openvino>=2024.0'
 
-# Экспорт OpenVINO для бинарника (imgsz должен совпадать с ``processor.binary_imgsz``, обычно 640).
+# Экспорт OpenVINO для COCO ``yolo11n.pt`` (не путать с BRG ``best_openvino_model`` из репозитория). imgsz 640 — согласовать с ``processor.binary_imgsz``.
 RUN python3 <<'PY'
 from pathlib import Path
 
