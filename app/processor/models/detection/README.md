@@ -1,15 +1,14 @@
-# Binary detector weights (`detection/weights/`)
+# Detection weights (`detection/weights/`)
 
-По умолчанию образ Hub тянет **Ultralytics COCO [`yolo11n.pt`](https://github.com/ultralytics/assets)** и экспортирует **`yolo11n_openvino_model/`** (OpenVINO, `imgsz=640`).
-В конфиге **`processor.binary_predict_class_allowlist: [14]`** — в пайплайн попадает только класс **14 (bird)**; грызуны через COCO не покрыты (нужна своя голова или BRG-детектор).
+**Рабочий дефолт Hub:** модель **BRG** — три класса **Bird / Rodent / Background**. В Git закоммичены **`weights/best.pt`**, резерв **`weights/last.pt`** и каталог **`weights/best_openvino_model/`** (OpenVINO IR); пути в рантайме задаются в `processor.models.binary` / `processor.models.binary_openvino` (см. `default_config.yaml`). При сборке образа они попадают через `COPY app/processor`, на площадку — через `make deploy` / rsync.
 
-**Репозиторий:** в Git закоммичены **`weights/best.pt`**, **`weights/last.pt`** (резерв/предыдущий снимок для отката или сравнения) и каталог **`weights/best_openvino_model/`**; при сборке образа они попадают через `COPY app/processor`, затем на VPS — через `make deploy` / rsync. Остальные файлы в `weights/` по-прежнему локальные.
+**Дополнительно в образе:** Ultralytics COCO **[`yolo11n.pt`](https://github.com/ultralytics/assets)** и экспорт **`yolo11n_openvino_model/`** (сборочный шаг в `Dockerfile`). Это не продуктовый дефолт конфига; при явном указании пути на `yolo11n.pt` можно использовать **`processor.binary_predict_class_allowlist: [14]`**, чтобы в пайплайн попадал только класс **bird** — грызуны так не покрываются.
 
-## BRG 3-class Bird / Rodent / Background (архив форка)
+`scripts/fetch-processor-weights.sh` может стянуть BRG zip из форка и положить `best.pt` (см. ниже).
 
-Пакеты и описание см. **[AleksandrRogachev94/BirdLense](https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor)** (`nabirds_yolo11n_binary.zip`).
-Для возврата к ним задайте `processor.models.binary` → распакованный **`best.pt`**, `binary_openvino` → свой IR и **уберите или обнулите `binary_predict_class_allowlist`**.
-`scripts/fetch-processor-weights.sh` по-прежнему может стянуть zip и положить `best.pt`.
+## BRG 3-class (архив форка)
+
+Пакеты и описание: **[AleksandrRogachev94/BirdLense](https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor)** (`nabirds_yolo11n_binary.zip`). Для ручной подстановки: `processor.models.binary` → **`best.pt`**, `binary_openvino` → свой IR и при необходимости уберите или обнулите `binary_predict_class_allowlist`.
 
 ## EU classifier (отдельно)
 
