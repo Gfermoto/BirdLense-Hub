@@ -44,6 +44,23 @@ jobs:
             --ignore-vuln PYSEC-2022-42969 \
             --ignore-vuln GHSA-r374-rxx8-8654
 
+  # Roadmap #418 / A1: lock production env gate script into CI (same logic as deploy pre-flight).
+  # Synthetic secrets satisfy length/shape checks only — not real deployment values.
+  verify-prod-env-smoke:
+    name: verify-prod-env-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: scripts/verify-prod-env.sh (--require-mcp-token)
+        run: |
+          VERIFY_PROD_ENV=1 \
+          BIRDLENSE_STRICT_API_AUTH=1 \
+          FLASK_SECRET_KEY='0123456789abcdef0123456789abcdef' \
+          PROCESSOR_SECRET='fedcba9876543210fedcba9876543210' \
+          MCP_TOKEN='0123456789abcdef0123456789abcdef' \
+          ./scripts/verify-prod-env.sh --require-mcp-token
+
   openapi-contract:
     runs-on: ubuntu-latest
     defaults:
