@@ -163,6 +163,22 @@ docker logs birdlense --tail 200 2>&1
 
 ---
 
+## Процессор: деградация триггеров / MQTT (метрики) {#processor-trigger-metrics}
+
+Симптом: записи почти не стартуют при включённом **`triggers.frigate`** или MQTT-only motion, без явного traceback.
+
+На сервере откройте **`data/diagnostics/processor_runtime_stats.json`** (снимок процессора):
+
+| Сигнал | Смысл |
+|--------|--------|
+| `trigger_frigate_degraded_no_mqtt` = **1** | Frigate включён в конфиге, MQTT задан, но сессия **не** жива (`trigger_mqtt_live` = 0). |
+| `trigger_degraded_effective_lt_configured` = **1** | При простое MQTT эффективных путей motion меньше, чем включено в `triggers.*`. |
+| `trigger_motion_factory_frigate_fallback_opencv_total` | Фабрика motion откатилась на один OpenCV — детектор Frigate не был подключён. |
+
+Вместе с **`mqtt_connected`** и счётчиками очередей — см. [PROCESSOR_PERFORMANCE.ru.md](./PROCESSOR_PERFORMANCE.ru.md). Ключи YAML: [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) § MQTT и инвентаризация триггеров.
+
+---
+
 ## Восстановление SQLite не сработало
 
 Функция: **System → Storage → Восстановить из файла**.

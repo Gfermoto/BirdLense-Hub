@@ -241,6 +241,7 @@ One connection — Frigate and BirdNET topics. Triggers: Frigate, ESPHome, MQTT 
 | `publish_topic` | BirdLense detection publish topic |
 | `reconnect_min_delay` | Minimum MQTT reconnect/backoff delay (seconds) |
 | `reconnect_max_delay` | Maximum MQTT reconnect/backoff delay (seconds) |
+| `publish_queue_max` | Cap for outbound MQTT publish queue inside the processor (default **4000** in `default_config.yaml`; flush after reconnect). Related gauges: `mqtt_outbound_queue_depth`, `mqtt_outbound_drops_total`, `mqtt_outbound_publish_errors_total`. See [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.md#queues-backpressure). |
 | `ha_discovery` | Home Assistant MQTT discovery for BirdLense entities. Default true. Observe-only: last species / confidence / detection time, feeder presence, current feeder weight (when scales use MQTT), and related availability/device metadata. |
 
 **Topics:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (publish), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA), `birdlense/sensor/feeder_weight/state` (HA), `birdlense/binary_sensor/feeder_bird_present/state` (HA). Feeder relay: `homeassistant/switch/bird_feeder/command`.
@@ -248,6 +249,8 @@ One connection — Frigate and BirdNET topics. Triggers: Frigate, ESPHome, MQTT 
 **BirdNET (any common build):** the processor accepts several field layouts — notably **BirdNET-Go** (`CommonName`, `ScientificName`, `SpeciesCode`, `Confidence`, `BeginTime`, optional `BirdImage.URL`) and **BirdNET-Pi** (`Common_Name`, `Confidence_Score`, `Date`, etc.). You do **not** pick “Go vs Pi” in config: JSON must arrive on `mqtt.birdnet_topic`. **Video merge and FIFO priors** use the Hub’s **canonical species name**: when the payload includes a **scientific name** (Go usually does), the **MQTT display language** (EN/RU, …) does not break matching; without it, use **species aliases** in the registry and/or `detection.species_mapping`. If the Hub runs on **PostgreSQL only** without a shared `birdlense.db` file, automatic catalog matching from that SQLite path is unavailable — rely on YAML mapping. BirdNET remains **confidence-only** for the final video label. **Frigate:** `after` — `camera`, `label`, `sub_label` (species from Bird Classification), `frame_time`. `sub_label` wins over `label` and may promote a generic detector fallback when the video detector already confirmed a target.
 
 **Missed-event note:** during outages, MQTT events can be missed and are usually not replayed later (Frigate events are typically a live stream, not backlog replay). Use Frigate recording/clip retention as the source of historical truth.
+
+**Operator metrics:** `data/diagnostics/processor_runtime_stats.json` exposes trigger/MQTT degradation gauges (`trigger_*`, `mqtt_connected`) — see [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.md) § Trigger path observability.
 
 ---
 

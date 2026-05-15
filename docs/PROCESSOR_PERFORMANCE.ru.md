@@ -29,6 +29,22 @@
 
 В подсказках рантайма два смысла: **счётчик медленных кадров** и **p95 детектора** около порога. Поднять `frame_processing_warn_ms` — про *шум в логах*; уменьшить `binary_imgsz` / ослабить light gate — про *реальную задержку* (с компромиссом по recall мелких птиц).
 
+## Наблюдаемость триггеров (Scale / [#432](https://github.com/Gfermoto/BirdLense-Hub/issues/432))
+
+Снимок `data/diagnostics/processor_runtime_stats.json` дополняется **gauge** для сгруппированных триггеров (`triggers.*`): включённые ветки, живость MQTT, деградация Frigate при отключённом брокере, число сконфигурированных vs эффективных путей после выкидывания MQTT-зависимых триггеров.
+
+**Счётчики** при fallback фабрики motion на один только OpenCV: `trigger_motion_factory_frigate_fallback_opencv_total`, `trigger_motion_factory_opencv_fallback_total`. Обновление gauge — после сборки motion-стека и при connect/disconnect MQTT.
+
+Полная таблица имён — в [PROCESSOR_PERFORMANCE.md](./PROCESSOR_PERFORMANCE.md) (EN).
+
+## Очереди и backpressure {#queues-backpressure}
+
+- **`mqtt.publish_queue_max`** — лимит исходящей очереди публикаций; см. gauge `mqtt_outbound_*` и счётчики `mqtt_outbound_drops_total` / `mqtt_outbound_publish_errors_total`.
+- Очередь событий Frigate → motion: `motion_trigger_queue_drop_total`.
+- Очередь записи весов: `feeder_scale_queue_drops_total`.
+
+Единый исполнитель «тяжёлых задач» для всего процессора — вне этого документа; при необходимости — отдельное ишью.
+
 Динамический троттлинг / агрегация логов в коде здесь не описаны — отдельное ишью.
 
 Трекинг: [BirdLense-Hub#328](https://github.com/Gfermoto/BirdLense-Hub/issues/328).

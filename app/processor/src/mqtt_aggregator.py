@@ -41,6 +41,7 @@ from mqtt_event_parsers import (
 )
 from mqtt_scale_state import FEEDER_SCALE_STATE_FILE, write_feeder_scale_state
 from processor_runtime_stats import inc_counter, set_gauge
+from trigger_runtime_gauges import notify_mqtt_connection_changed_for_trigger_gauges
 from scale_sample_log import weight_reading_to_kg
 
 logger = logging.getLogger(__name__)
@@ -446,6 +447,7 @@ class MQTTEventAggregator:
             self._last_connect_fail_log_monotonic = 0.0
             set_gauge("mqtt_connected", 1)
             logger.info("MQTT aggregator connected")
+            notify_mqtt_connection_changed_for_trigger_gauges(self)
             if self.ha_discovery:
                 time.sleep(0.3)
                 self._publish_ha_discovery()
@@ -453,6 +455,7 @@ class MQTTEventAggregator:
             self._connected = False
             set_gauge("mqtt_connected", 0)
             logger.warning(f"MQTT aggregator connect failed: {reason_code}")
+            notify_mqtt_connection_changed_for_trigger_gauges(self)
 
     def _publish_ha_discovery(self):
         """Publish Home Assistant MQTT Autodiscovery configs."""
@@ -602,6 +605,7 @@ class MQTTEventAggregator:
         set_gauge("mqtt_connected", 0)
         reason = args[0] if args else "unknown"
         logger.warning(f"MQTT aggregator disconnected: {reason}")
+        notify_mqtt_connection_changed_for_trigger_gauges(self)
 
     def _clear_publish_queue(self) -> None:
         while True:

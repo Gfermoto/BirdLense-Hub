@@ -241,6 +241,7 @@
 | `publish_topic` | Топик публикации детекций BirdLense Hub |
 | `reconnect_min_delay` | Минимальная задержка reconnect/backoff MQTT (сек) |
 | `reconnect_max_delay` | Максимальная задержка reconnect/backoff MQTT (сек) |
+| `publish_queue_max` | Лимит исходящей очереди MQTT-публикаций в процессоре (по умолчанию **4000** в `default_config.yaml`; дренаж после reconnect). Связанные gauge: `mqtt_outbound_queue_depth`, счётчики `mqtt_outbound_drops_total`, `mqtt_outbound_publish_errors_total`. См. [PROCESSOR_PERFORMANCE.ru.md](./PROCESSOR_PERFORMANCE.ru.md#queues-backpressure). |
 | `ha_discovery` | Home Assistant MQTT Autodiscovery для сущностей BirdLense. По умолчанию true. Только observe-only: last species / confidence / detection time, присутствие птицы, текущий вес кормушки (если весы идут по MQTT) и связанная availability/device metadata. |
 
 **Топики:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (публикация), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA), `birdlense/sensor/feeder_weight/state` (HA), `birdlense/binary_sensor/feeder_bird_present/state` (HA). Реле кормушки: `homeassistant/switch/bird_feeder/command`.
@@ -248,6 +249,8 @@
 **BirdNET (универсально):** процессор принимает несколько схем имён полей — в частности **BirdNET-Go** (`CommonName`, `ScientificName`, `SpeciesCode`, `Confidence`, `BeginTime`, опционально `BirdImage.URL`) и **BirdNET-Pi** (`Common_Name`, `Confidence_Score`, `Date`, и др.). Отдельно в конфиге не выбирается «Go или Pi»: достаточно, чтобы JSON приходил на `mqtt.birdnet_topic`. **Слияние с видео и приоритеты по FIFO** опираются на **каноническое имя вида** в Hub: при типичном payload с **научным именем** язык подписи в MQTT (русский/английский) не мешает; если научного имени нет, помогают **алиасы** в реестре видов (`species_alias`) и при необходимости `detection.species_mapping`. При Hub только на PostgreSQL без общего файла `birdlense.db` автоматическое сопоставление по каталогу из SQLite недоступно — используйте маппинг в YAML. BirdNET по-прежнему **confidence-only** для финального video label. **Frigate:** `after` — `camera`, `label`, `sub_label` (вид из Bird Classification), `frame_time`. `sub_label` — приоритет над `label` и может продвинуть generic detector fallback, если video detector уже подтвердил target.
 
 **Важно про пропуски:** при потере соединения события MQTT могут быть пропущены и обычно не «догоняются» задним числом (стандартно Frigate публикует их как live stream, без replay). Для истории опирайтесь на retention Frigate записей/клипов.
+
+**Метрики оператора:** `data/diagnostics/processor_runtime_stats.json` — gauge деградации триггеров/MQTT (`trigger_*`, `mqtt_connected`); см. [PROCESSOR_PERFORMANCE.ru.md](./PROCESSOR_PERFORMANCE.ru.md).
 
 ---
 
