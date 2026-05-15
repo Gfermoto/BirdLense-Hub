@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Roadmap EN/RU:** секция **Scale / [#424](https://github.com/Gfermoto/BirdLense-Hub/issues/424)** — статус закрытого эпика и таблица результатов B1–B3 (ссылки на доки и [#432](https://github.com/Gfermoto/BirdLense-Hub/issues/432)–[#434](https://github.com/Gfermoto/BirdLense-Hub/issues/434)).
+
 - **Scale [#432](https://github.com/Gfermoto/BirdLense-Hub/issues/432):** процессор — наблюдаемость **`triggers.*`**: gauge в `processor_runtime_stats.json` (`trigger_cfg_*`, `trigger_mqtt_*`, `trigger_frigate_degraded_no_mqtt`, `trigger_*_paths_count`, …), счётчики fallback фабрики motion (`trigger_motion_factory_*`), обновление при старте motion-стека и connect/disconnect MQTT (`trigger_runtime_gauges.py`, `motion_runtime.py`, `mqtt_aggregator.py`, `motion_detectors/factory.py`).
 
 - **Scale [#433](https://github.com/Gfermoto/BirdLense-Hub/issues/433):** документация — очереди/backpressure (`mqtt.publish_queue_max`, `mqtt_outbound_*`, `motion_trigger_queue_drop_total`, `feeder_scale_queue_drops_total`) в **PROCESSOR_PERFORMANCE** EN/RU, **CONFIGURATION** EN/RU (ключ `publish_queue_max`), **TROUBLESHOOTING** EN/RU.
