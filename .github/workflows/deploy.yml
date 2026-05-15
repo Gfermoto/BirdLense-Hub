@@ -130,9 +130,17 @@ jobs:
               EFFECTIVE_MCP_TOKEN="${EFFECTIVE_MCP_TOKEN//\'/}"
             fi
           fi
+          # Strict verify uses either credential (same as verify-stack.sh / check-runtime-sli.sh /
+          # perf_gate_runtime.py): prefer X-Birdlense-Api-Key when BIRDLENSE_UI_API_KEY is non-empty,
+          # else Authorization: Bearer with MCP_TOKEN. Passing an empty string for the unused var is OK.
           if [ -z "${EFFECTIVE_UI_KEY}" ] && [ -z "${EFFECTIVE_MCP_TOKEN}" ]; then
-            echo "FAIL: missing auth for strict verify (BIRDLENSE_UI_API_KEY/MCP_TOKEN)." >&2
+            echo "FAIL: strict verify needs at least one of BIRDLENSE_UI_API_KEY or MCP_TOKEN (GitHub secret and/or ${ENV_FILE})." >&2
             exit 1
+          fi
+          if [ -n "${EFFECTIVE_UI_KEY}" ]; then
+            echo "Verify auth: BIRDLENSE_UI_API_KEY (API key header); MCP_TOKEN unused when UI key is set."
+          else
+            echo "Verify auth: MCP_TOKEN (Bearer) only."
           fi
           cd "$DEPLOY_DIR"
           BIRDLENSE_UI_API_KEY="${EFFECTIVE_UI_KEY}" MCP_TOKEN="${EFFECTIVE_MCP_TOKEN}" \

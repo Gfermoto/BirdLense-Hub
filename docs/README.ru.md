@@ -36,6 +36,7 @@
 | **Версионирование** | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
 | **Чеклист деплоя на сервер** | [DEPLOY_SERVER](./DEPLOY_SERVER.md) | [RU](./DEPLOY_SERVER.ru.md) |
 | **Публичный контур записей (VPS)** | [PUBLIC_RECORDINGS](./PUBLIC_RECORDINGS.md) | [RU](./PUBLIC_RECORDINGS.ru.md) |
+| **PostgreSQL (БД хаба)** | [POSTGRES_MIGRATION](./POSTGRES_MIGRATION.md) | [RU](./POSTGRES_MIGRATION.ru.md) |
 | **Release readiness** | [RELEASE_READINESS](./RELEASE_READINESS.md) | [RU](./RELEASE_READINESS.ru.md) |
 | **Definition of Done (ворота релиза)** | [DEFINITION_OF_DONE](./DEFINITION_OF_DONE.md) | [RU](./DEFINITION_OF_DONE.ru.md) |
 | **Карта настроек UI** | [UI_SETTINGS_MAP](./UI_SETTINGS_MAP.md) | [RU](./UI_SETTINGS_MAP.ru.md) |
