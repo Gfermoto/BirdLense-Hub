@@ -13,6 +13,7 @@ sys.path.append(src_path)
 from motion_detectors.factory import build_motion_detector
 from motion_detectors.opencv_motion import OpenCVMotionDetector
 from motion_detectors.or_motion import OrMotionDetector
+from processor_runtime_stats import reset_runtime_stats_for_tests, runtime_stats_snapshot
 
 
 class TestMotionDetectorFactory(unittest.TestCase):
@@ -76,6 +77,43 @@ class TestMotionDetectorFactory(unittest.TestCase):
         self.assertIsInstance(detector, OrMotionDetector)
         self.assertIs(detector._primary, primary)
         self.assertIsInstance(detector._additional, OpenCVMotionDetector)
+
+    def test_grouped_frigate_unavailable_falls_back_to_opencv_and_increments_counter(self):
+        reset_runtime_stats_for_tests()
+        media_source = type(
+            'FakeMediaSource',
+            (),
+            {'capture': lambda self: None},
+        )()
+        trigger_config = {
+            "opencv": {
+                "enabled": False,
+                "check_every_n_frames": 1,
+                "diff_threshold": 18,
+                "min_contour_area": 320,
+            },
+            "frigate": {"enabled": True, "topic": "frigate/events"},
+            "motion_sensor": {
+                "enabled": False,
+                "source": "mqtt",
+                "mqtt_topic": "",
+                "esphome_url": "",
+                "esphome_sensor_id": "",
+            },
+            "scales": {"enabled": False},
+        }
+        detector = build_motion_detector(
+            trigger_config=trigger_config,
+            media_source=media_source,
+            frigate_detector=None,
+            mqtt_broker="mqtt.local",
+        )
+        self.assertIsInstance(detector, OpenCVMotionDetector)
+        snap = runtime_stats_snapshot()
+        self.assertEqual(
+            snap["counters"].get("trigger_motion_factory_frigate_fallback_opencv_total"),
+            1,
+        )
 
 
 if __name__ == '__main__':

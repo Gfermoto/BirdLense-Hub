@@ -18,6 +18,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Scale [#432](https://github.com/Gfermoto/BirdLense-Hub/issues/432):** процессор — наблюдаемость **`triggers.*`**: gauge в `processor_runtime_stats.json` (`trigger_cfg_*`, `trigger_mqtt_*`, `trigger_frigate_degraded_no_mqtt`, `trigger_*_paths_count`, …), счётчики fallback фабрики motion (`trigger_motion_factory_*`), обновление при старте motion-стека и connect/disconnect MQTT (`trigger_runtime_gauges.py`, `motion_runtime.py`, `mqtt_aggregator.py`, `motion_detectors/factory.py`).
+
+- **Scale [#433](https://github.com/Gfermoto/BirdLense-Hub/issues/433):** документация — очереди/backpressure (`mqtt.publish_queue_max`, `mqtt_outbound_*`, `motion_trigger_queue_drop_total`, `feeder_scale_queue_drops_total`) в **PROCESSOR_PERFORMANCE** EN/RU, **CONFIGURATION** EN/RU (ключ `publish_queue_max`), **TROUBLESHOOTING** EN/RU.
+
 - **Scale [#434](https://github.com/Gfermoto/BirdLense-Hub/issues/434) / epic [#424](https://github.com/Gfermoto/BirdLense-Hub/issues/424):** операторский SSOT для PostgreSQL как БД хаба — **`docs/POSTGRES_MIGRATION.md`** / **`.ru.md`** (compose, `DATABASE_URL`, пул, greenfield vs миграция данных, ограничения процессорского SQLite и BirdNET FIFO); навигация **MkDocs**, **SITE_MAP** EN/RU, строки в **CONFIGURATION** EN/RU, блок в **RUNBOOKS** EN/RU.
 
 - **A2 / roadmap [#423](https://github.com/Gfermoto/BirdLense-Hub/issues/423):** единый операторский SSOT для публичного контура записей — **`docs/PUBLIC_RECORDINGS.md`** / **`.ru.md`**; **SECURITY** / **DEPLOY_SERVER** / **CONFIGURATION** / **ACCESS_CONTROL** сведены к перекрёстным ссылкам вместо дублирования чеклистов; **mkdocs**, **SITE_MAP**, **README** (EN/RU).

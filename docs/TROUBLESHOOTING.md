@@ -171,6 +171,22 @@ Symptom: **System → Automation → BirdNET FIFO** shows events, but fusion wit
 
 ---
 
+## Processor: trigger / MQTT degradation (metrics) {#processor-trigger-metrics}
+
+Symptom: clips rarely start while **`triggers.frigate.enabled`** (or MQTT-only motion) is on, without an obvious traceback.
+
+On the hub host open **`data/diagnostics/processor_runtime_stats.json`** (processor snapshot):
+
+| Signal | Meaning |
+|--------|---------|
+| `trigger_frigate_degraded_no_mqtt` = **1** | Frigate is enabled in config but MQTT is configured and **not** live (`trigger_mqtt_live` = 0). |
+| `trigger_degraded_effective_lt_configured` = **1** | Effective motion paths while MQTT is down are fewer than configured (MQTT-only triggers stripped). |
+| `trigger_motion_factory_frigate_fallback_opencv_total` | Factory fell back to OpenCV motion because Frigate detector could not be wired. |
+
+Pair with **`mqtt_connected`** and queue counters documented in [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.md) § Trigger path observability / Queues & backpressure. Trigger YAML keys: [CONFIGURATION](./CONFIGURATION.md) § MQTT / triggers inventory.
+
+---
+
 ## SQLite restore failed
 
 Feature location: **System → Storage → Restore from file**.

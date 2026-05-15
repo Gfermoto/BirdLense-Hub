@@ -91,6 +91,14 @@ def build_processor_motion_detector(
         if not (scale_url and scale_sensor):
             logging.warning("Grouped scales=esphome but URL/weight sensor empty")
 
+    from trigger_runtime_gauges import refresh_trigger_runtime_gauges
+
+    refresh_trigger_runtime_gauges(
+        mqtt_broker=mqtt_broker,
+        mqtt_aggregator=mqtt_aggregator,
+        trigger_config=trigger_config,
+    )
+
     return motion_detector
 
 
