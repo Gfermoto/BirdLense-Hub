@@ -19,7 +19,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ServiceBlock } from '../shared/ServiceBlock';
 import { ScalesIntegrationFields } from '../shared/scalesIntegrationFields';
 import { FeederRelayFields } from '../shared/feederRelayFields';
-import { FrigateExclusionsFields } from '../shared/FrigateExclusionsFields';
+import { FrigateTriggerBlock } from '../shared/FrigateTriggerBlock';
 import type { Settings } from '../../../types';
 
 type Props = {
@@ -29,13 +29,6 @@ type Props = {
 type TriggerTransportSource = NonNullable<
   NonNullable<Settings['triggers']>['motion_sensor']
 >['source'];
-
-function splitCsv(value: string): string[] {
-  return (value || '')
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
 
 export function CaptureFeederSection({ form }: Props) {
   const { t } = useTranslation();
@@ -173,151 +166,7 @@ export function CaptureFeederSection({ form }: Props) {
 
               <Grid size={{ xs: 12 }}>
                 <ServiceBlock title={t('settings.triggerFrigateBlock')}>
-                  <form.Field name="triggers.frigate.enabled">
-                    {(field) => (
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={field.state.value !== false}
-                            onChange={(e) =>
-                              field.handleChange(e.target.checked)
-                            }
-                          />
-                        }
-                        label={t('settings.triggerFrigate')}
-                      />
-                    )}
-                  </form.Field>
-                  <form.Subscribe
-                    selector={(state) =>
-                      state.values.triggers?.frigate?.enabled !== false
-                    }
-                  >
-                    {(enabled) =>
-                      enabled ? (
-                        <>
-                          <Alert
-                            severity="info"
-                            variant="outlined"
-                            sx={{ mb: 2 }}
-                          >
-                            {t('settings.frigateMotionIntro')}
-                          </Alert>
-                          <Grid container spacing={2}>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="triggers.frigate.min_trigger_score">
-                                {(field) => (
-                                  <TextField
-                                    fullWidth
-                                    type="number"
-                                    inputProps={{ min: 0, max: 1, step: 0.05 }}
-                                    value={
-                                      field.state.value === undefined ||
-                                      field.state.value === null
-                                        ? 0.5
-                                        : field.state.value
-                                    }
-                                    onChange={(e) => {
-                                      const v = e.target.value;
-                                      if (v === '') {
-                                        field.handleChange(undefined);
-                                        return;
-                                      }
-                                      field.handleChange(Number(v));
-                                    }}
-                                    label={t('settings.frigateMinTriggerScore')}
-                                    helperText={t(
-                                      'settings.frigateMinTriggerScoreHint',
-                                    )}
-                                  />
-                                )}
-                              </form.Field>
-                            </Grid>
-                            <Grid size={{ xs: 12 }}>
-                              <form.Field name="triggers.frigate.topic">
-                                {(field) => (
-                                  <TextField
-                                    fullWidth
-                                    value={
-                                      field.state.value ?? 'frigate/events'
-                                    }
-                                    onChange={(e) =>
-                                      field.handleChange(e.target.value)
-                                    }
-                                    label={t('settings.frigateTopic')}
-                                    placeholder="frigate/events"
-                                    helperText={t('settings.frigateTopicHint')}
-                                  />
-                                )}
-                              </form.Field>
-                            </Grid>
-                            <Grid size={{ xs: 12 }}>
-                              <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5 }}>
-                                {t('settings.frigateRoutingTitle')}
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ mb: 1 }}
-                              >
-                                {t('settings.frigateRoutingDesc')}
-                              </Typography>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="triggers.frigate.camera_filter">
-                                {(field) => (
-                                  <TextField
-                                    fullWidth
-                                    value={(field.state.value || []).join(', ')}
-                                    onChange={(e) =>
-                                      field.handleChange(
-                                        splitCsv(e.target.value),
-                                      )
-                                    }
-                                    label={t('settings.frigateCameraFilter')}
-                                    placeholder={t(
-                                      'settings.frigateCameraFilterPlaceholder',
-                                    )}
-                                    helperText={t(
-                                      'settings.frigateCameraFilterHint',
-                                    )}
-                                  />
-                                )}
-                              </form.Field>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="triggers.frigate.label_filter">
-                                {(field) => (
-                                  <TextField
-                                    fullWidth
-                                    value={(field.state.value || []).join(', ')}
-                                    onChange={(e) =>
-                                      field.handleChange(
-                                        splitCsv(e.target.value),
-                                      )
-                                    }
-                                    label={t('settings.frigateLabelFilter')}
-                                    placeholder={t(
-                                      'settings.frigateLabelFilterPlaceholder',
-                                    )}
-                                    helperText={t(
-                                      'settings.frigateLabelFilterHint',
-                                    )}
-                                  />
-                                )}
-                              </form.Field>
-                            </Grid>
-                            <Grid size={{ xs: 12 }}>
-                              <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5 }}>
-                                {t('settings.frigateExclusionsHeading')}
-                              </Typography>
-                            </Grid>
-                            <FrigateExclusionsFields form={form} />
-                          </Grid>
-                        </>
-                      ) : null
-                    }
-                  </form.Subscribe>
+                  <FrigateTriggerBlock form={form} />
                 </ServiceBlock>
               </Grid>
 
