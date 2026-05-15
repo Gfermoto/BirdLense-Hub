@@ -10,7 +10,6 @@ import Grid from '@mui/material/Grid2';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
-import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Accordion from '@mui/material/Accordion';
@@ -20,6 +19,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ServiceBlock } from '../shared/ServiceBlock';
 import { ScalesIntegrationFields } from '../shared/scalesIntegrationFields';
 import { FeederRelayFields } from '../shared/feederRelayFields';
+import { FrigateExclusionsFields } from '../shared/FrigateExclusionsFields';
 import type { Settings } from '../../../types';
 
 type Props = {
@@ -178,7 +178,7 @@ export function CaptureFeederSection({ form }: Props) {
                       <FormControlLabel
                         control={
                           <Checkbox
-                            checked={field.state.value ?? false}
+                            checked={field.state.value !== false}
                             onChange={(e) =>
                               field.handleChange(e.target.checked)
                             }
@@ -190,7 +190,7 @@ export function CaptureFeederSection({ form }: Props) {
                   </form.Field>
                   <form.Subscribe
                     selector={(state) =>
-                      state.values.triggers?.frigate?.enabled === true
+                      state.values.triggers?.frigate?.enabled !== false
                     }
                   >
                     {(enabled) =>
@@ -311,134 +311,8 @@ export function CaptureFeederSection({ form }: Props) {
                               <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5 }}>
                                 {t('settings.frigateExclusionsHeading')}
                               </Typography>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ mb: 1 }}
-                              >
-                                {t('settings.frigateExclusionsIntro')}
-                              </Typography>
                             </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="triggers.frigate.label_exclude">
-                                {(field) => (
-                                  <TextField
-                                    fullWidth
-                                    value={(field.state.value || []).join(', ')}
-                                    onChange={(e) =>
-                                      field.handleChange(
-                                        splitCsv(e.target.value),
-                                      )
-                                    }
-                                    label={t('settings.frigateLabelExclude')}
-                                    placeholder={t(
-                                      'settings.frigateLabelExcludePlaceholder',
-                                    )}
-                                    helperText={t(
-                                      'settings.frigateLabelExcludeHint',
-                                    )}
-                                  />
-                                )}
-                              </form.Field>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="triggers.frigate.geometry_fallback_label_exclude">
-                                {(field) => (
-                                  <TextField
-                                    fullWidth
-                                    value={(field.state.value || []).join(', ')}
-                                    onChange={(e) =>
-                                      field.handleChange(
-                                        splitCsv(e.target.value),
-                                      )
-                                    }
-                                    label={t(
-                                      'settings.frigateGeometryFallbackExclude',
-                                    )}
-                                    placeholder={t(
-                                      'settings.frigateGeometryFallbackExcludePlaceholder',
-                                    )}
-                                    helperText={t(
-                                      'settings.frigateGeometryFallbackExcludeHint',
-                                    )}
-                                  />
-                                )}
-                              </form.Field>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="detection.frigate_standalone_skip_labels">
-                                {(field) => (
-                                  <TextField
-                                    fullWidth
-                                    value={(field.state.value || []).join(', ')}
-                                    onChange={(e) =>
-                                      field.handleChange(
-                                        splitCsv(e.target.value),
-                                      )
-                                    }
-                                    label={t('settings.frigateStandaloneSkipLabels')}
-                                    placeholder={t(
-                                      'settings.frigateStandaloneSkipLabelsPlaceholder',
-                                    )}
-                                    helperText={t(
-                                      'settings.frigateStandaloneSkipLabelsHint',
-                                    )}
-                                  />
-                                )}
-                              </form.Field>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="triggers.frigate.trigger_on_tracked_object">
-                                {(field) => (
-                                  <FormControl fullWidth>
-                                    <FormControlLabel
-                                      control={
-                                        <Switch
-                                          checked={field.state.value !== false}
-                                          onChange={(e) =>
-                                            field.handleChange(e.target.checked)
-                                          }
-                                        />
-                                      }
-                                      label={t(
-                                        'settings.frigateTriggerOnGeometry',
-                                      )}
-                                    />
-                                    <FormHelperText>
-                                      {t(
-                                        'settings.frigateTriggerOnGeometryHint',
-                                      )}
-                                    </FormHelperText>
-                                  </FormControl>
-                                )}
-                              </form.Field>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="triggers.frigate.geometry_fallback_enabled">
-                                {(field) => (
-                                  <FormControl fullWidth>
-                                    <FormControlLabel
-                                      control={
-                                        <Switch
-                                          checked={field.state.value !== false}
-                                          onChange={(e) =>
-                                            field.handleChange(e.target.checked)
-                                          }
-                                        />
-                                      }
-                                      label={t(
-                                        'settings.frigateGeometryFallbackEnabled',
-                                      )}
-                                    />
-                                    <FormHelperText>
-                                      {t(
-                                        'settings.frigateGeometryFallbackEnabledHint',
-                                      )}
-                                    </FormHelperText>
-                                  </FormControl>
-                                )}
-                              </form.Field>
-                            </Grid>
+                            <FrigateExclusionsFields form={form} />
                           </Grid>
                         </>
                       ) : null

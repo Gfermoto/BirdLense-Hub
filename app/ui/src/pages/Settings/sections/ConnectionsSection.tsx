@@ -20,6 +20,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { PasswordField } from '../../../components/PasswordField';
 import { ServiceBlock } from '../shared/ServiceBlock';
 import { CamerasListField } from '../shared/CamerasListField';
+import { FrigateExclusionsFields } from '../shared/FrigateExclusionsFields';
 import type { Settings } from '../../../types';
 
 type Props = {
@@ -182,6 +183,34 @@ export function ConnectionsSection({ form }: Props) {
               </Grid>
             </Grid>
           </ServiceBlock>
+
+          <form.Subscribe
+            selector={(state) =>
+              state.values.triggers?.frigate?.enabled !== false
+            }
+          >
+            {(frigateOn) =>
+              frigateOn ? (
+                <ServiceBlock title={t('settings.frigateExclusionsBlockTitle')}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 2 }}
+                  >
+                    {t('settings.frigateExclusionsBlockHint')}
+                  </Typography>
+                  <FrigateExclusionsFields
+                    form={form}
+                    showGeometryToggles={false}
+                  />
+                </ServiceBlock>
+              ) : (
+                <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+                  {t('settings.frigateExclusionsDisabledHint')}
+                </Alert>
+              )
+            }
+          </form.Subscribe>
 
           <ServiceBlock title={t('settings.accordionHomeAssistant')}>
             <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
