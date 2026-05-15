@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import Grid from '@mui/material/Grid2';
+import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Switch from '@mui/material/Switch';
@@ -68,6 +69,60 @@ export function ProcessorBehaviorRecognitionBlock({ form }: Props) {
                 onChange={(e) => field.handleChange(e.target.value)}
                 label={t('settings.processorBehaviorWeightsPath')}
                 helperText={t('settings.processorBehaviorWeightsPathHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="processor.behavior_recognition.inference_backend">
+            {(field) => (
+              <TextField
+                select
+                fullWidth
+                value={field.state.value ?? 'auto'}
+                onChange={(e) => field.handleChange(e.target.value)}
+                label={t('settings.processorBehaviorInferenceBackend')}
+                helperText={t('settings.processorBehaviorInferenceBackendHint')}
+              >
+                <MenuItem value="auto">{t('settings.processorBehaviorInferenceAuto')}</MenuItem>
+                <MenuItem value="logistic_json">{t('settings.processorBehaviorInferenceLogisticJson')}</MenuItem>
+                <MenuItem value="openvino">{t('settings.processorBehaviorInferenceOpenvino')}</MenuItem>
+              </TextField>
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="processor.behavior_recognition.openvino_fallback_logistic">
+            {(field) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(field.state.value ?? true)}
+                    onChange={(e) => field.handleChange(e.target.checked)}
+                  />
+                }
+                label={t('settings.processorBehaviorOpenvinoFallback')}
+              />
+            )}
+          </form.Field>
+          <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
+            {t('settings.processorBehaviorOpenvinoFallbackHint')}
+          </FormHelperText>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="processor.behavior_recognition.max_runtime_detections">
+            {(field) => (
+              <TextField
+                fullWidth
+                type="number"
+                inputProps={{ min: 1, max: 500, step: 1 }}
+                value={field.state.value ?? 50}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  field.handleChange(Number.isFinite(v) ? Math.round(v) : 50);
+                }}
+                label={t('settings.processorBehaviorMaxRuntimeDets')}
+                helperText={t('settings.processorBehaviorMaxRuntimeDetsHint')}
               />
             )}
           </form.Field>
