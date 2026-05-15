@@ -98,6 +98,13 @@ ensure_venv_docs() {
   pip_docs install -q -U -r "${ROOT}/requirements-docs.txt"
 }
 
+log "verify-prod-env.sh (A1 CI parity / synthetic secrets)"
+VERIFY_PROD_ENV=1 BIRDLENSE_STRICT_API_AUTH=1 \
+  FLASK_SECRET_KEY='0123456789abcdef0123456789abcdef' \
+  PROCESSOR_SECRET='fedcba9876543210fedcba9876543210' \
+  MCP_TOKEN='0123456789abcdef0123456789abcdef' \
+  "${ROOT}/scripts/verify-prod-env.sh" --require-mcp-token
+
 log "Python: security + ruff + pytest (app/web/tests)"
 ensure_venv_ci
 (

@@ -62,6 +62,8 @@ scripts/          # ci-full-local.sh, deploy.sh, etc.
 - `BIRDLENSE_STRICT_API_AUTH=1`
 - `FLASK_SECRET_KEY`, `PROCESSOR_SECRET` (32-char hex, NOT `${VAR}`)
 
+Pre-flight script: `scripts/verify-prod-env.sh` (see `make verify-prod-env`, optional hook in `scripts/deploy.sh`). **CI:** every PR/push runs job **`verify-prod-env-smoke`** in `.github/workflows/ci-pr.yml` with synthetic secrets — it only guards that the script and checks stay green; real deployments still validate your actual `app/.env`.
+
 ## CI Source of Truth
 
 - `.github/workflows/ci-pr.yml` (parallel jobs)
