@@ -125,6 +125,10 @@ export MCP_TOKEN='your-token-from-server-env'
 
 Details: [MCP_SETUP](./MCP_SETUP.md).
 
+## PostgreSQL as hub DB
+
+Compose overlay, `DATABASE_URL`, pool tuning, greenfield vs SQLite data migration caveats, and processor **`birdlense.db`** separation: [POSTGRES_MIGRATION](./POSTGRES_MIGRATION.md).
+
 ## Request-level debugging
 
 Every API response now includes `X-Request-ID`.

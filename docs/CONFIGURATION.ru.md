@@ -62,7 +62,7 @@
 |------------|----------|
 | `DATA_DIR` | Каталог данных (/app/data в Docker) |
 | `REDIS_URL` | **`app/docker-compose.yml`:** по умолчанию `redis://redis:6379/0` (контейнер `birdlense-redis`). **`docker-compose.image.yml`:** отдельного Redis нет — не задавайте или укажите **внешний** Redis; иначе кэш **в процессе**. Переопределение — в `app/.env`. **Запуск на хосте без compose:** пусто — кэш в памяти процесса. |
-| `DATABASE_URL` | Опционально. URI SQLAlchemy. По умолчанию SQLite в `DATA_DIR`. Под высокую запись — PostgreSQL, например `postgresql+psycopg://user:pass@host:5432/dbname`. |
+| `DATABASE_URL` | Опционально. URI SQLAlchemy. По умолчанию SQLite в `DATA_DIR`. Под высокую запись — PostgreSQL, например `postgresql+psycopg://user:pass@host:5432/dbname`. Операторский гайд: [POSTGRES_MIGRATION.ru.md](./POSTGRES_MIGRATION.ru.md). |
 | `SQLALCHEMY_POOL_SIZE` | Размер пула PostgreSQL (по умолчанию `5`) |
 | `SQLALCHEMY_MAX_OVERFLOW` | Доп. соединения пула PostgreSQL (по умолчанию `15`) |
 | `FLASK_SECRET_KEY` | Ключ сессии Flask (защита настроек) |

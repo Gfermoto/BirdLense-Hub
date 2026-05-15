@@ -125,6 +125,10 @@ export MCP_TOKEN='ваш-токен-с-сервера'
 
 Подробнее: [MCP_SETUP.ru](./MCP_SETUP.ru.md).
 
+## PostgreSQL как БД хаба
+
+Compose overlay, `DATABASE_URL`, пул, greenfield vs перенос с SQLite и разделение с файлом процессора **`birdlense.db`**: [POSTGRES_MIGRATION.ru](./POSTGRES_MIGRATION.ru.md).
+
 ## Отладка по запросам
 
 Каждый ответ API содержит заголовок `X-Request-ID`.

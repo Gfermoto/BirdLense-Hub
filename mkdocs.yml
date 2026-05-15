@@ -57,6 +57,7 @@ nav:
       - Install: INSTALL.md
       - Server deploy checklist: DEPLOY_SERVER.md
       - "Public recordings (VPS checklist)": PUBLIC_RECORDINGS.md
+      - "PostgreSQL (hub DB)": POSTGRES_MIGRATION.md
       - Scenarios: SCENARIOS.md
       - Configuration: CONFIGURATION.md
       - Features: FEATURES.md
@@ -134,6 +135,7 @@ nav:
       - Установка: INSTALL.ru.md
       - Чеклист деплоя на сервер: DEPLOY_SERVER.ru.md
       - "Публичный контур записей (VPS)": PUBLIC_RECORDINGS.ru.md
+      - "PostgreSQL (БД хаба)": POSTGRES_MIGRATION.ru.md
       - Сценарии: SCENARIOS.ru.md
       - Конфигурация: CONFIGURATION.ru.md
       - Возможности: FEATURES.ru.md

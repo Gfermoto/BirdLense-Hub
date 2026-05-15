@@ -38,6 +38,7 @@ Pick what matches you — you can read the rest as reference.
 | **Versioning** | [VERSIONING](./VERSIONING.md) | [RU](./VERSIONING.ru.md) |
 | **Server deploy checklist** | [DEPLOY_SERVER](./DEPLOY_SERVER.md) | [RU](./DEPLOY_SERVER.ru.md) |
 | **Public recordings (VPS)** | [PUBLIC_RECORDINGS](./PUBLIC_RECORDINGS.md) | [RU](./PUBLIC_RECORDINGS.ru.md) |
+| **PostgreSQL (hub DB)** | [POSTGRES_MIGRATION](./POSTGRES_MIGRATION.md) | [RU](./POSTGRES_MIGRATION.ru.md) |
 | **Release readiness** | [RELEASE_READINESS](./RELEASE_READINESS.md) | [RU](./RELEASE_READINESS.ru.md) |
 | **Definition of Done (short gate)** | [DEFINITION_OF_DONE](./DEFINITION_OF_DONE.md) | [RU](./DEFINITION_OF_DONE.ru.md) |
 | **UI settings map** | [UI_SETTINGS_MAP](./UI_SETTINGS_MAP.md) | [RU](./UI_SETTINGS_MAP.ru.md) |

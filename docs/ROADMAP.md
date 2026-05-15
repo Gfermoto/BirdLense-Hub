@@ -261,7 +261,21 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 | **Releases** | Tags + GitHub Release → Docker semver image + Pages deploy |
 | **Public release gate** | Unified runbook: [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.md) + [RELEASE_READINESS](./RELEASE_READINESS.md) |
 
-The **shipped archive** above is historical only. Active work is the **consilium** issues and **future candidates**; always cross-check [FEATURES](./FEATURES.md).
+### Scale (#418): motion, queue, Postgres ([#424](https://github.com/Gfermoto/BirdLense-Hub/issues/424))
+
+Epic (**`release-blocker`**). Land **B1–B3** as separate scoped issues/PRs — do not mix tracks in one change set.
+
+| Track | Goal | Where to start |
+|-------|------|----------------|
+| **B1** | Motion/triggers: **visible** degradation when inputs fail — no silent loss of recording intent | [CONFIGURATION](./CONFIGURATION.md) → Processor / triggers; `app/app_config/trigger_config.py`; processor diagnostics for trigger paths |
+| **B2** | **Heavy** processor job queue: bounded depth, backpressure, retries (beyond in-process MQTT publish / feeder queues in `mqtt_aggregator.py`) | `app/processor/src/mqtt_aggregator.py` (partial patterns today); dedicated design + per-surface issues |
+| **B3** | Hub DB under concurrent writes: **PostgreSQL** via `DATABASE_URL` with Alembic parity; SQLite→Postgres **data** migration stays operator-run | [POSTGRES_MIGRATION](./POSTGRES_MIGRATION.md); [CONFIGURATION](./CONFIGURATION.md); **`app/docker-compose.stack.example.yml`** |
+
+Roadmap parent: [#418](https://github.com/Gfermoto/BirdLense-Hub/issues/418).
+
+Child issues: [**B1** #432](https://github.com/Gfermoto/BirdLense-Hub/issues/432) · [**B2** #433](https://github.com/Gfermoto/BirdLense-Hub/issues/433) · [**B3** #434](https://github.com/Gfermoto/BirdLense-Hub/issues/434).
+
+The **shipped archive** and other historical tables earlier in this document are not a live backlog. Active work is the **consilium** issues and **future candidates**; always cross-check [FEATURES](./FEATURES.md).
 
 ---
 

@@ -62,7 +62,7 @@ Older installs may still have a top-level **`motion:`** block in `user_config.ya
 |----------|-------------|
 | `DATA_DIR` | Data directory (`/app/data` in Docker) |
 | `REDIS_URL` | **`app/docker-compose.yml`:** defaults to `redis://redis:6379/0` (service `birdlense-redis`). **`docker-compose.image.yml`:** no Redis container — omit or point to an **external** Redis; otherwise the hub uses an **in-process** cache. Override in `app/.env` in any layout. **Host run without Compose:** unset → in-process cache. |
-| `DATABASE_URL` | Optional. SQLAlchemy URI. Default: SQLite under `DATA_DIR`. For high write load use PostgreSQL, e.g. `postgresql+psycopg://user:pass@host:5432/dbname`. |
+| `DATABASE_URL` | Optional. SQLAlchemy URI. Default: SQLite under `DATA_DIR`. For high write load use PostgreSQL, e.g. `postgresql+psycopg://user:pass@host:5432/dbname`. Operator runbook: [POSTGRES_MIGRATION](./POSTGRES_MIGRATION.md). |
 | `SQLALCHEMY_POOL_SIZE` | PostgreSQL pool size (default `5`) |
 | `SQLALCHEMY_MAX_OVERFLOW` | PostgreSQL pool overflow (default `15`) |
 | `FLASK_SECRET_KEY` | Flask session key (settings protection) |

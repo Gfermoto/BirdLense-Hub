@@ -192,7 +192,6 @@ app/web/instance/
 /.unknown_rows.json
 /.video*.json
 /.weird_*.json
-/ok=true,
 
 # Локальный scratch и копии диагностики у корня репо (не путать с app/data/)
 /tmp/
