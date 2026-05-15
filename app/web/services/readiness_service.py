@@ -82,9 +82,7 @@ def _processor_heartbeat_readiness(session) -> dict[str, object]:
     except (TypeError, ValueError):
         max_age = 180
     max_age = max(30, max_age)
-    row = (
-        session.query(ActivityLog).filter_by(type="heartbeat").order_by(ActivityLog.updated_at.desc()).first()
-    )
+    row = session.query(ActivityLog).filter_by(type="heartbeat").order_by(ActivityLog.updated_at.desc()).first()
     if not row or not row.updated_at:
         return {
             "status": "error" if prod else "ok",

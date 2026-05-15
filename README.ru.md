@@ -27,7 +27,7 @@
 
 **Текущая модель:** EU (birds-525 + iNaturalist Europe, ~491 вид). US (NABirds) — резерв в `best_US.pt`.
 
-**EU-модель:** классификатор обучен на merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Веса: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Обучение: [TRAINING.md](./docs/TRAINING.md). Детектор не меняется.
+**EU-модель:** классификатор обучен на merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Веса: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Обучение: [TRAINING.md](./archive/internal/docs-legacy/TRAINING.md). Детектор не меняется.
 
 **Каталог видов:** приведение к классам классификатора — `species.catalog_allowlist_file`, опционально `catalog_strict_ingest`, скрипт `scripts/datasets/dump_classifier_allowlist.py`, массовая чистка `POST /api/ui/system/species-catalog/reconcile`; см. [docs/CONFIGURATION.ru.md](./docs/CONFIGURATION.ru.md).
 
@@ -86,7 +86,7 @@ docker pull ghcr.io/gfermoto/birdlense-hub:latest
 ```
 UI: http://localhost:8085
 
-**Установка:** [docs/INSTALL.md](./docs/INSTALL.md) | **Сценарии:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **Все возможности:** [docs/FEATURES.md](./docs/FEATURES.md)
+**Установка:** [docs/INSTALL.md](./docs/user/install.md) | **Сценарии:** [docs/SCENARIOS.md](./docs/user/scenarios.md) | **Все возможности:** [docs/FEATURES.md](./docs/user/features.md)
 
 Для одношагового запуска: **`./install.sh`** из корня репозитория (или **`make install`**). Скрипт ставит Docker при необходимости, создаёт `app/.env`, поднимает стек и проверяет health/readiness/status. Готовый образ: **`./install.sh --pull`** или **`make install-pull`**.
 

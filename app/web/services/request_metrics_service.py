@@ -63,10 +63,10 @@ def prometheus_http_request_metrics_lines() -> list[str]:
                 )
             lines.append(
                 f'birdlense_http_request_duration_ms_count{{method="{method}",route="{route}"}} '
-                f'{int(_REQUEST_DURATION_COUNT.get((method, route), 0))}'
+                f"{int(_REQUEST_DURATION_COUNT.get((method, route), 0))}"
             )
             lines.append(
                 f'birdlense_http_request_duration_ms_sum{{method="{method}",route="{route}"}} '
-                f'{float(_REQUEST_DURATION_SUM_MS.get((method, route), 0.0))}'
+                f"{float(_REQUEST_DURATION_SUM_MS.get((method, route), 0.0))}"
             )
     return lines

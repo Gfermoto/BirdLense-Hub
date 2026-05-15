@@ -196,9 +196,7 @@ def _frigate_standalone_prepared_rows(
 
     species_mapping = _species_mapping(app_config)
     try:
-        max_event_age_s = float(
-            app_config.get("detection.frigate_standalone_max_event_age_seconds") or 10.0
-        )
+        max_event_age_s = float(app_config.get("detection.frigate_standalone_max_event_age_seconds") or 10.0)
     except (TypeError, ValueError):
         max_event_age_s = 10.0
     max_event_age_s = max(1.0, min(120.0, max_event_age_s))
@@ -233,8 +231,11 @@ def _frigate_standalone_prepared_rows(
         has_geometry = True if has_geometry_raw is None else bool(has_geometry_raw)
         if not has_geometry and isinstance(ev.get("frigate_bbox_norm"), (list, tuple)):
             has_geometry = len(ev.get("frigate_bbox_norm") or []) >= 4
-        if require_geometry and not has_geometry and not bool(ev.get("_synthetic_trigger_fallback")) and not bool(
-            ev.get("_session_trigger_snapshot")
+        if (
+            require_geometry
+            and not has_geometry
+            and not bool(ev.get("_synthetic_trigger_fallback"))
+            and not bool(ev.get("_session_trigger_snapshot"))
         ):
             continue
         raw = ev.get("species") or ev.get("sub_label") or ev.get("label") or ""

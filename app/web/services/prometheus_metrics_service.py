@@ -78,7 +78,7 @@ def prometheus_metrics_body(app) -> str:
         f"birdlense_processor_heartbeat_age_seconds {heartbeat_age}",
         "# HELP birdlense_processor_heartbeat_stale Processor heartbeat stale flag (1 stale/missing, 0 fresh)",
         "# TYPE birdlense_processor_heartbeat_stale gauge",
-        f"birdlense_processor_heartbeat_stale{{max_age_seconds=\"{heartbeat_max_age}\"}} {heartbeat_stale}",
+        f'birdlense_processor_heartbeat_stale{{max_age_seconds="{heartbeat_max_age}"}} {heartbeat_stale}',
         "# HELP birdlense_notify_preview_24h Notification preview source counts for last 24h",
         "# TYPE birdlense_notify_preview_24h gauge",
     ]
