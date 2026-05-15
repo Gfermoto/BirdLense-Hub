@@ -10,13 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
-- **A2 / roadmap [#418](https://github.com/Gfermoto/BirdLense-Hub/issues/418):** переменная **`BIRDLENSE_HIDE_DIRECT_RECORDINGS`** (`1`/`true`/`yes`/`on`) — при старте контейнера не добавляется nginx-`location` для **`/data/recordings/`**; анонимный доступ к предсказуемым URL получает **403**, воспроизведение остаётся через **`/api/ui/videos/:id/stream`** (`app/nginx/standalone.conf.template`, `app/scripts/entrypoint.sh`). Доки: **CONFIGURATION**, **SECURITY**, **DEPLOY_SERVER** (EN/RU), **`app/.env.example`**.
+- **A2 / roadmap [#418](https://github.com/Gfermoto/BirdLense-Hub/issues/418):** переменная **`BIRDLENSE_HIDE_DIRECT_RECORDINGS`** (`1`/`true`/`yes`/`on`) — при старте контейнера не добавляется nginx-`location` для **`/data/recordings/`**; анонимный доступ к предсказуемым URL получает **403**, воспроизведение остаётся через **`/api/ui/videos/:id/stream`** (`app/nginx/standalone.conf.template`, `app/scripts/entrypoint.sh`). Доки: **CONFIGURATION**, **SECURITY**, **DEPLOY_SERVER** (EN/RU), **`app/.env.example`**. Публичный VPS — единый чеклист: **`docs/PUBLIC_RECORDINGS*.md`** ([#423](https://github.com/Gfermoto/BirdLense-Hub/issues/423)).
 
 - **[#341](https://github.com/Gfermoto/BirdLense-Hub/issues/341):** на POST upload-роутах (веса процессора, file-test, restore SQLite, YAML import) отклоняется непустой **`Content-Encoding`**, кроме единственного значения **`identity`** — снижает риск decompression bomb при нетипичных клиентах (`services/upload_request_encoding_guard.py`). Путь из ревью `processor.js` / `uploads.js` в этом репозитории отсутствует; дублирующих Flask-логгеров по коду не найдено.
 
 - **[#339](https://github.com/Gfermoto/BirdLense-Hub/issues/339):** nginx больше не отдаёт весь volume `DATA_DIR` по префиксу `/data/`. Разрешены только **`/data/recordings/`**, **`/data/images/`**, **`/data/file_test/`** (видео, картинки каталога, file-replay); остальное, включая **`/data/db/*.db`**, датасет и кэш, получает **403** (`app/nginx/standalone.conf.template`, `standalone.conf`, `default.conf`).
 
 ### Changed
+
+- **A2 / roadmap [#423](https://github.com/Gfermoto/BirdLense-Hub/issues/423):** единый операторский SSOT для публичного контура записей — **`docs/PUBLIC_RECORDINGS.md`** / **`.ru.md`**; **SECURITY** / **DEPLOY_SERVER** / **CONFIGURATION** / **ACCESS_CONTROL** сведены к перекрёстным ссылкам вместо дублирования чеклистов; **mkdocs**, **SITE_MAP**, **README** (EN/RU).
 
 - **Деплой (доки):** явно зафиксирован сценарий **только `http://IP:порт`** без домена и без внешнего reverse proxy до появления DNS/TLS — `DEPLOY_SERVER` (EN/RU), `deploy.local.sh.example`, `.cursor/rules/deploy.mdc`, подсказка в конце `scripts/deploy.sh`.
 

@@ -114,6 +114,4 @@ Standard deploy keeps:
 
 ## 8) Direct recording URLs (`/data/recordings/`)
 
-By default nginx serves **`/data/recordings/`** as static files without extra HTTP auth. For public exposure, set **`BIRDLENSE_HIDE_DIRECT_RECORDINGS=1`** in `app/.env` so the hub omits that `location` and anonymous **`GET /data/recordings/...`** returns **403**; the UI still plays clips via **`/api/ui/videos/:id/stream`**.
-
-Other mitigations (IP allowlist, reverse-proxy-only) — see [SECURITY.md §3](./SECURITY.md) and `app/nginx/examples/recordings_allowlist.conf.snippet`.
+Follow **[PUBLIC_RECORDINGS.md](./PUBLIC_RECORDINGS.md)** — single checklist for public/VPS ( **`BIRDLENSE_HIDE_DIRECT_RECORDINGS`**, strict auth, optional stream lock). This section intentionally stays short to avoid duplicating [SECURITY.md §3](./SECURITY.md).

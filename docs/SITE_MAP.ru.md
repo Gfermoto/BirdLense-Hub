@@ -23,6 +23,7 @@
 | Быстрый старт | [QUICKSTART.ru.md](./QUICKSTART.ru.md) · [EN](./QUICKSTART.md) |
 | Установка | [INSTALL.ru.md](./INSTALL.ru.md) · [EN](./INSTALL.md) |
 | Чеклист деплоя на сервер | [DEPLOY_SERVER.ru.md](./DEPLOY_SERVER.ru.md) · [EN](./DEPLOY_SERVER.md) |
+| Публичный контур записей (VPS) | [PUBLIC_RECORDINGS.ru.md](./PUBLIC_RECORDINGS.ru.md) · [EN](./PUBLIC_RECORDINGS.md) |
 | Сценарии | [SCENARIOS.ru.md](./SCENARIOS.ru.md) · [EN](./SCENARIOS.md) |
 | Конфигурация | [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) · [EN](./CONFIGURATION.md) |
 | Возможности | [FEATURES.ru.md](./FEATURES.ru.md) · [EN](./FEATURES.md) |

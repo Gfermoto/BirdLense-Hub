@@ -23,6 +23,7 @@ Section → file map for humans and for keeping [`mkdocs.yml`](https://github.co
 | Quickstart | [QUICKSTART.md](./QUICKSTART.md) · [RU](./QUICKSTART.ru.md) |
 | Install | [INSTALL.md](./INSTALL.md) · [RU](./INSTALL.ru.md) |
 | Server deploy checklist | [DEPLOY_SERVER.md](./DEPLOY_SERVER.md) · [RU](./DEPLOY_SERVER.ru.md) |
+| Public recordings / VPS exposure | [PUBLIC_RECORDINGS.md](./PUBLIC_RECORDINGS.md) · [RU](./PUBLIC_RECORDINGS.ru.md) |
 | Scenarios | [SCENARIOS.md](./SCENARIOS.md) · [RU](./SCENARIOS.ru.md) |
 | Configuration | [CONFIGURATION.md](./CONFIGURATION.md) · [RU](./CONFIGURATION.ru.md) |
 | Features | [FEATURES.md](./FEATURES.md) · [RU](./FEATURES.ru.md) |

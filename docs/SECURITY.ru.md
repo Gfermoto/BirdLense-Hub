@@ -53,9 +53,9 @@
 |------|----------|--------------|
 | ~~**Критический**~~ **Исправлено** | `location /data/` + `alias` — запрос `/data/../.env`. | Проверка `..` в URI → 403 во всех конфигах nginx. |
 | ~~**Критический**~~ **Исправлено** | Тот же широкий alias отдавал весь volume: **`/data/db/birdlense.db`**, кропы датасета, кэш — без HTTP-auth. | **Allowlist** в nginx: только `/data/recordings/`, `/data/images/`, `/data/file_test/`; остальное под `/data/*` → **403** ([#339](https://github.com/Gfermoto/BirdLense-Hub/issues/339)). |
-| **Высокий** | `/data/recordings/` без аутентификации; предсказуемые пути к `video.mp4`. | **`BIRDLENSE_HIDE_DIRECT_RECORDINGS=1`** убирает nginx-static для `/data/recordings/` → **`GET …`** получает **403**; воспроизведение через **`/api/ui/videos/:id/stream`**. Либо API с auth, либо ограничение по IP ([CONFIGURATION.ru.md](./CONFIGURATION.ru.md)). |
+| **Высокий** | Когда в nginx есть `location` для recordings, **`/data/recordings/.../video.mp4`** отдаётся статикой **без** сессии Flask; структура URL частично угадуема. | **Операторский SSOT:** [PUBLIC_RECORDINGS.ru.md](./PUBLIC_RECORDINGS.ru.md) — baseline для VPS (**убрать прямой путь**, **strict API auth**, опционально **пароль на стрим**). Расширенные варианты (IP allowlist, только proxy, `auth_request`) — там же, чтобы не дублировать матрицы смягчений. Сниппет: `app/nginx/examples/recordings_allowlist.conf.snippet`. |
 
-**Смягчение (на выбор при публичном доступе):** (1) **`BIRDLENSE_HIDE_DIRECT_RECORDINGS=1`** — простейший вариант для публичного/VPS; (2) **allowlist по IP** — `location ^~ /data/recordings/` с `allow`/`deny` (`app/nginx/examples/recordings_allowlist.conf.snippet`, [DEPLOY_SERVER.ru.md §8](./DEPLOY_SERVER.ru.md)); (3) **без прямой раздачи медиа** — снаружи только reverse proxy на `/api/…` и авторизованные stream-роуты; (4) **`auth_request`** к сессии Hub — сложнее, в образ по умолчанию не входит.
+Ключи: [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) (`BIRDLENSE_HIDE_DIRECT_RECORDINGS`, `require_auth_for_video_stream`). Деплой: [DEPLOY_SERVER.ru.md §8](./DEPLOY_SERVER.ru.md).
 
 **Проверки:** `curl -I "http://YOUR_HOST:8085/data/../.env"` — при уязвимости будет 200. **`curl -I "http://YOUR_HOST:8085/data/db/birdlense.db"`** — должно быть **403** (не `application/octet-stream`).
 
@@ -155,7 +155,7 @@
 1. ~~Секреты~~ ✅ Деплой: `PROCESSOR_SECRET`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV=production`.
 2. **Пароль настроек:** `general.settings_password`.
 3. ~~Path traversal~~ ✅ Nginx блокирует `..`, `%2e%2e`; пути изображений проверяются.
-4. **Ограничить** доступ к `/data/recordings/` (auth или IP).
+4. **Контур записей (публичный VPS):** [PUBLIC_RECORDINGS.ru.md](./PUBLIC_RECORDINGS.ru.md).
 5. ~~**Rate limiting**~~ ✅ `POST /api/ui/settings/verify-password`: **5** неудач за **60** с на IP клиента → **429** + `Retry-After`; успешный вход сбрасывает счётчик. IP из `X-Real-IP` / `X-Forwarded-For` за nginx — см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md).
 6. ~~**Docker:** не root в контейнере.~~ ✅ Процессы под uid 1000 (`birdlense`).
 7. ~~Маскирование секретов~~ ✅ в `GET /api/ui/settings`.

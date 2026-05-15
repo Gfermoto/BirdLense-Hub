@@ -29,6 +29,10 @@ When **`BIRDLENSE_ENV=production`** (or `FLASK_ENV=production`) **and** **`BIRDL
 
 Still public without session: **`GET /api/ui/health`**, **`GET /api/ui/settings/requires-password`**, **`GET /api/ui/settings/check-access`**, **`POST /api/ui/settings/verify-password`**, **`GET /api/ui/push/vapid-public`**, **`POST /api/ui/settings/logout`**. `OPTIONS` preflight is allowed.
 
+### Video playback on public hubs
+
+**`GET /api/ui/videos/<id>/stream`** reads files from disk. With **strict production auth**, the middleware still treats **`GET /api/ui/videos/...`** as public dashboard reads unless **`general.require_auth_for_video_stream: true`** — then the route handler requires Contributor/Admin. Separately, nginx may serve **`/data/recordings/...`** as static files unless **`BIRDLENSE_HIDE_DIRECT_RECORDINGS=1`**. Operator checklist: **[PUBLIC_RECORDINGS.md](./PUBLIC_RECORDINGS.md)**.
+
 ---
 
 ## Roles

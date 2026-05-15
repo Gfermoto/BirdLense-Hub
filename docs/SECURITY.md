@@ -53,9 +53,9 @@
 |------|--------------|----------------|
 | ~~**Critical**~~ **Fixed** | `location /data/` with `alias /app/data/` — request `/data/../.env` could read `/app/.env`. | Added check `if ($request_uri ~* "\.\.") { return 403; }` in all nginx configs. |
 | ~~**Critical**~~ **Fixed** | Same broad `/data/` alias exposed the whole volume: e.g. **`/data/db/birdlense.db`**, dataset crops, cache — no HTTP auth. | **Allowlist** in nginx: only `/data/recordings/`, `/data/images/`, `/data/file_test/`; any other `/data/*` → **403** ([#339](https://github.com/Gfermoto/BirdLense-Hub/issues/339)). |
-| **High** | `/data/recordings/` accessible without authentication. Path `YYYY/MM/DD/HHMMSS/video.mp4` is predictable. | Add access check via API with auth or restrict by IP. **`BIRDLENSE_HIDE_DIRECT_RECORDINGS=1`** removes the nginx static alias so `/data/recordings/*` falls through to **403**; use **`/api/ui/videos/:id/stream`** for playback ([CONFIGURATION.md](./CONFIGURATION.md)). |
+| **High** | When nginx includes the recordings `location`, **`/data/recordings/.../video.mp4`** is static HTTP **without** Flask session; paths are structured and partly guessable. | **Operator SSOT:** [PUBLIC_RECORDINGS.md](./PUBLIC_RECORDINGS.md) — recommended VPS checklist (**hide direct path** + **strict API auth** + optional **stream password**). Extended options (IP allowlist, proxy-only, `auth_request`) live there to avoid duplicating mitigation matrices in this file. Snippet: `app/nginx/examples/recordings_allowlist.conf.snippet`. |
 
-**Mitigations (pick one for production exposure):** (1) **`BIRDLENSE_HIDE_DIRECT_RECORDINGS=1`** — simplest for public/VPS; (2) **IP allowlist** — more specific `location ^~ /data/recordings/` with `allow`/`deny` (see `app/nginx/examples/recordings_allowlist.conf.snippet` and [DEPLOY_SERVER.md §8](./DEPLOY_SERVER.md)); (3) **no direct nginx media** — reverse proxy only passes `/api/…` and authenticated stream routes; (4) **`auth_request`** to the Hub session endpoint — advanced, not shipped by default.
+Config keys: [CONFIGURATION.md](./CONFIGURATION.md) (`BIRDLENSE_HIDE_DIRECT_RECORDINGS`, `general.require_auth_for_video_stream`). Deploy pointer: [DEPLOY_SERVER.md §8](./DEPLOY_SERVER.md).
 
 **Tests:** `curl -I "http://YOUR_HOST:8085/data/../.env"` — if vulnerable, returns 200. **`curl -I "http://YOUR_HOST:8085/data/db/birdlense.db"`** — must be **403** (not `application/octet-stream`).
 
@@ -155,7 +155,7 @@ Default recommendation for this project: **step 1 + 2**; use step 3 only under m
 1. ~~**Set secrets**~~ ✅ Deploy via `deploy.local.sh` writes `PROCESSOR_SECRET`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV=production`.
 2. **Settings password:** set `general.settings_password`.
 3. ~~**Path traversal**~~ ✅ Nginx: block `\.\.`, `%2e%2e`. `image_path` in notify: `_is_safe_image_path`.
-4. **Restrict access** to `/data/recordings/` (auth or IP).
+4. **Recording exposure (public/VPS):** follow [PUBLIC_RECORDINGS.md](./PUBLIC_RECORDINGS.md).
 5. ~~**Rate limiting**~~ ✅ `POST /api/ui/settings/verify-password`: **5** failed attempts per **60** s per client IP → **429** + `Retry-After`; success clears the counter. IP from `X-Real-IP` / `X-Forwarded-For` behind nginx — see [ACCESS_CONTROL](./ACCESS_CONTROL.md).
 6. ~~**Docker:** run as non-privileged user.~~ ✅ Processes use uid 1000 (`birdlense`).
 7. ~~**Mask secrets**~~ ✅ `GET /api/ui/settings` returns `***` for sensitive fields.
