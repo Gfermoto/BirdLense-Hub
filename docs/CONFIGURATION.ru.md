@@ -72,7 +72,7 @@
 | `BIRDLENSE_STRICT_API_AUTH` | `1` / `true` — при **production** закрыть анонимный доступ к `/api/ui/*` (сессия, `BIRDLENSE_UI_API_KEY` или MCP Bearer); см. [SECURITY.ru.md](./SECURITY.ru.md) |
 | `BIRDLENSE_UI_API_KEY` | Секрет для UI API в strict-режиме: **`X-Birdlense-Api-Key`** или **`Authorization: Bearer`** (то же значение). Пусто — только сессия и MCP |
 | `BIRDLENSE_PORT` | Порт nginx (по умолчанию 8085) |
-| `BIRDLENSE_HIDE_DIRECT_RECORDINGS` | `1` / `true` / `yes` / `on` — не добавлять nginx `location` для `/data/recordings/`; анонимный **`GET /data/recordings/...`** → **403**; воспроизведение — **`/api/ui/videos/:id/stream`**. По умолчанию: прямой alias (см. [SECURITY.ru.md §3](./SECURITY.ru.md)). |
+| `BIRDLENSE_HIDE_DIRECT_RECORDINGS` | `1` / `true` / `yes` / `on` — не добавлять nginx `location` для `/data/recordings/`; анонимный **`GET /data/recordings/...`** → **403**; воспроизведение — **`/api/ui/videos/:id/stream`**. По умолчанию: прямой alias. **Публичный VPS:** [PUBLIC_RECORDINGS.ru.md](./PUBLIC_RECORDINGS.ru.md). |
 | `GUNICORN_THREADS` | Число потоков воркера Gunicorn (`gthread`; по умолчанию **16**; `app/scripts/entrypoint.sh`) |
 | `CORS_LOCAL_DEV_ORIGINS` | Локальные/dev origins CORS (через запятую): Vite, `birdlense.local`, порт хаба. Дефолт — как раньше в коде; пустая строка — не добавлять этот набор |
 | `CORS_DEFAULT_ORIGINS` | Базовые origins CORS (через запятую), если нужны не-localhost адреса по умолчанию |
@@ -128,7 +128,7 @@
 | Ключ | Описание |
 |------|----------|
 | `settings_password` | Пароль **Admin**: настройки, кормушка, система, перезапуск processor. Пусто — без блокировки (типично для дома) |
-| `require_auth_for_video_stream` | **`false`** (по умолчанию): гости могут смотреть запись в плеере (`/api/ui/videos/:id/stream`), как в [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md). **`true`** — поток только с паролем Contributor/Admin (старое поведение). |
+| `require_auth_for_video_stream` | **`false`** (по умолчанию): гости могут смотреть запись в плеере (`/api/ui/videos/:id/stream`), как в [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md). **`true`** — поток только с паролем Contributor/Admin (старое поведение). **Публичный хаб:** решать совместно с [PUBLIC_RECORDINGS.ru.md](./PUBLIC_RECORDINGS.ru.md). |
 | `contributor_password` | Опционально пароль **Contributor**: правка видов, «Неизвестные», iNaturalist, экспорт датасета, отчёты — **без** настроек/кормушки/системы. Пусто — один уровень пароля (см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md)) |
 | `session_idle_minutes` | Сброс сессии входа (admin/contributor) после **N** минут без запросов к `/api/*`. **0** — отключить. По умолчанию **30**. Учитывается, если задан хотя бы один пароль (admin/contributor) или включён production-runtime; см. [SECURITY](./SECURITY.ru.md). |
 | `enable_notifications` | Включить уведомления (глобально) |
