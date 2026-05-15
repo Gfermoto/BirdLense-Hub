@@ -183,10 +183,12 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                 continue
         if not ctx.session.motion_detector.detect():
             continue
-        camera_id = (
-            getattr(ctx.session.motion_detector, "get_triggered_camera", lambda: None)()
-            or getattr(ctx.session, "default_camera_id", None)
-            or "_default"
+        from motion_recording_camera import resolve_motion_recording_camera_id
+
+        camera_id = resolve_motion_recording_camera_id(
+            ctx.session.motion_detector,
+            mqtt_aggregator=getattr(ctx.session, "mqtt_aggregator", None),
+            default_camera_id=getattr(ctx.session, "default_camera_id", None),
         )
         camera_key = str(camera_id)
         wait = recording_cooldown_remaining(

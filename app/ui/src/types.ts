@@ -238,7 +238,7 @@ export interface Settings {
     birdnet_mqtt_auto_confidence?: boolean;
     birdnet_mqtt_bias_delta?: number;
     birdnet_mqtt_bias_floor?: number;
-    /** Frigate camera id groups at one location, e.g. [["BirdBox","Forest"]]. */
+    /** Frigate camera id groups at one location (IDs match Video → Cameras). */
     multi_camera_groups?: string[][];
     multi_camera_confidence_boost?: number;
     save_dataset_crops?: boolean;
@@ -446,6 +446,13 @@ export interface Settings {
       topic?: string;
       /** Мин. score события MQTT до старта записи (внешний детектор). */
       min_trigger_score?: number;
+      camera_filter?: string[];
+      label_filter?: string[];
+      label_exclude?: string[];
+      trigger_on_tracked_object?: boolean;
+      geometry_fallback_enabled?: boolean;
+      geometry_fallback_label_exclude?: string[];
+      geometry_fallback_cooldown_seconds?: number;
     };
     motion_sensor?: {
       enabled?: boolean;
@@ -471,6 +478,9 @@ export interface Settings {
     frigate_standalone_excluded_min_score?: number;
     frigate_standalone_excluded_missing_score_fallback?: number;
     frigate_standalone_notify?: boolean;
+    /** Не создавать standalone/review-only строки из MQTT по этим лейблам (person, car, …). */
+    frigate_standalone_skip_labels?: string[];
+    frigate_trigger_review_salvage_enabled?: boolean;
     merge_window_seconds?: number;
     dedup_window_seconds?: number;
     one_per_species?: boolean;

@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import data_paths
 from app_config.app_config import app_config
 from models import ActivityLog, Species, SpeciesUnresolvedName, Video, VideoSpecies, db
 from services.species_data_quality_service import find_duplicate_name_groups
@@ -333,6 +335,32 @@ def _recent_runtime_backend_metrics(hours: int = 24, limit: int = 1000) -> dict[
     }
 
 
+def _processor_runtime_funnel_metrics() -> dict[str, int]:
+    """Counters from processor runtime snapshot (recording funnel)."""
+    path = os.path.join(data_paths.data_dir(), "diagnostics", "processor_runtime_stats.json")
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            snap = json.load(f)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return {}
+    counters = snap.get("counters") if isinstance(snap, dict) and isinstance(snap.get("counters"), dict) else {}
+    keys = (
+        "recording_session_total",
+        "recording_persisted_total",
+        "recording_clips_deleted_empty_total",
+        "recording_frigate_trigger_salvage_total",
+    )
+    out: dict[str, int] = {}
+    for key in keys:
+        try:
+            out[key] = int(counters.get(key) or 0)
+        except (TypeError, ValueError):
+            out[key] = 0
+    return out
+
+
 def build_domain_health_payload() -> tuple[dict[str, Any], int]:
     contract = "2026-04-polish-v1"
     contracts_block = {
@@ -363,6 +391,7 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
         detection_track_metrics = _recent_detection_track_metrics()
         trigger_camera_metrics = _recent_trigger_camera_metrics()
         runtime_backend_metrics = _recent_runtime_backend_metrics()
+        processor_funnel_metrics = _processor_runtime_funnel_metrics()
 
         payload: dict[str, Any] = {
             "domain_contract_version": contract,
@@ -394,6 +423,7 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                         "decision_trace_rows_runtime_backend_24h"
                     ],
                 },
+                **processor_funnel_metrics,
             },
             "samples": {
                 "duplicate_clip_candidates": duplicate_clip_candidates[:12],

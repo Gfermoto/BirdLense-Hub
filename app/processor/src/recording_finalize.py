@@ -13,7 +13,7 @@ from typing import Any, Optional
 from api import API
 from app_config.app_config import app_config
 from decision_trace_builder import build_decision_trace_payload
-from detection_fusion import build_fused_video_detections
+from detection_fusion import build_fused_video_detections, skip_frigate_ev_for_standalone
 from notify_preview_encode import encode_notify_preview_base64
 from processor_runtime_stats import inc_counter
 from processor_support import get_data_dir
@@ -95,6 +95,82 @@ def _build_weak_yolo_salvage_row(
     }
 
 
+def _pick_frigate_evidence_for_salvage(
+    mqtt_events: list[dict[str, Any]],
+    *,
+    frigate_trigger_event: dict[str, Any] | None,
+    session_camera_id: str | None,
+) -> dict[str, Any] | None:
+    candidates: list[dict[str, Any]] = []
+    if isinstance(frigate_trigger_event, dict) and frigate_trigger_event:
+        candidates.append(frigate_trigger_event)
+    cam_key = str(session_camera_id or "").strip().lower()
+    for ev in mqtt_events or []:
+        if str((ev or {}).get("source") or "").strip().lower() != "frigate":
+            continue
+        if cam_key:
+            ev_cam = str((ev or {}).get("camera") or "").strip().lower()
+            if ev_cam and ev_cam != cam_key:
+                continue
+        candidates.append(ev)
+    if not candidates:
+        return None
+
+    def _score(ev: dict[str, Any]) -> tuple[float, float]:
+        snapshot = 1.0 if bool(ev.get("_session_trigger_snapshot")) else 0.0
+        try:
+            conf = float(ev.get("confidence") or 0.0)
+        except (TypeError, ValueError):
+            conf = 0.0
+        return snapshot, conf
+
+    return max(candidates, key=_score)
+
+
+def _build_frigate_trigger_review_salvage_row(
+    ev: dict[str, Any],
+    *,
+    duration_s: float,
+    app_config,
+) -> dict[str, Any]:
+    from detection_fusion import _species_mapping
+    from species_normalizer import normalize
+
+    species_mapping = _species_mapping(app_config)
+    raw = ev.get("species") or ev.get("sub_label") or ev.get("label") or ""
+    species = normalize(str(raw), species_mapping) if str(raw).strip() else ""
+    if not species or species.lower() == "unknown":
+        species = str(raw).strip() or "Unidentified"
+    try:
+        conf = float(ev.get("confidence") or 0.0)
+    except (TypeError, ValueError):
+        conf = 0.0
+    if conf <= 0.0:
+        try:
+            conf = float(app_config.get("detection.frigate_standalone_missing_score_fallback") or 0.68)
+        except (TypeError, ValueError):
+            conf = 0.68
+    return {
+        "track_id": -9001,
+        "accepted": True,
+        "visit_eligible": False,
+        "notification_eligible": False,
+        "species_name": species,
+        "species": species,
+        "confidence": max(0.0, min(1.0, conf)),
+        "start_time": 0.0,
+        "end_time": max(0.0, float(duration_s)),
+        "detection_provider": "frigate",
+        "detector_confidence": max(0.0, min(1.0, conf)),
+        "classifier_confidence": None,
+        "decision_reason": "review_only_frigate_trigger_salvage",
+        "decision_kind": "review_only_generic",
+        "outcome_bucket": "review_only",
+        "source": "video",
+        "frigate_trigger_salvage": True,
+    }
+
+
 def _best_yolo_anchor_row(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
     yolo_rows = [
         row for row in (rows or []) if str((row or {}).get("detection_provider") or "").strip().lower() == "yolo"
@@ -146,6 +222,11 @@ def finalize_motion_recording(
     scope_camera_id = None
     if trigger_source == "frigate":
         scope_camera_id = session_camera_id
+    frigate_trigger_event = None
+    if isinstance(recording_context, dict):
+        raw_trigger_ev = recording_context.get("frigate_trigger_event")
+        if isinstance(raw_trigger_ev, dict) and raw_trigger_ev:
+            frigate_trigger_event = raw_trigger_ev
     mqtt_events = get_recording_mqtt_events(
         mqtt_aggregator,
         motion_detector,
@@ -156,6 +237,7 @@ def finalize_motion_recording(
         scope_camera_id=scope_camera_id,
         lookback_camera_id=session_camera_id,
         trigger_source=trigger_source,
+        frigate_trigger_event=frigate_trigger_event,
     )
     if yolo_tracks_count > 0:
         min_dur = app_config.get("processor.min_track_duration", 1)
@@ -330,6 +412,39 @@ def finalize_motion_recording(
                 salvage.get("track_id"),
                 float(salvage.get("confidence") or 0.0),
             )
+    if (
+        not video_detections
+        and bool(app_config.get("detection.frigate_trigger_review_salvage_enabled", True))
+        and (
+            trigger_source == "frigate"
+            or isinstance(frigate_trigger_event, dict)
+            or any(str((ev or {}).get("source") or "").strip().lower() == "frigate" for ev in mqtt_events)
+        )
+    ):
+        try:
+            duration_s = max(0.0, (end_time - start_time).total_seconds())
+        except (TypeError, AttributeError):
+            duration_s = 0.0
+        evidence = _pick_frigate_evidence_for_salvage(
+            mqtt_events,
+            frigate_trigger_event=frigate_trigger_event,
+            session_camera_id=session_camera_id,
+        )
+        if evidence is not None and not skip_frigate_ev_for_standalone(evidence, app_config):
+            salvage_row = _build_frigate_trigger_review_salvage_row(
+                evidence,
+                duration_s=duration_s,
+                app_config=app_config,
+            )
+            video_detections = [salvage_row]
+            inc_counter("recording_frigate_trigger_salvage_total")
+            logging.warning(
+                "Finalize safeguard: recovered Frigate trigger evidence as review-only "
+                "(species=%s, conf=%.3f, camera=%s).",
+                salvage_row.get("species_name"),
+                float(salvage_row.get("confidence") or 0.0),
+                session_camera_id,
+            )
     if video_detections:
         try:
             video_detections = enrich_runtime_reid_detections(
@@ -494,6 +609,7 @@ def finalize_motion_recording(
             behavior_label=behavior_label_kw,
             behavior_confidence=behavior_conf_kw,
         )
+        inc_counter("recording_persisted_total", len(video_detections))
         video_id = response_video_id(resp)
         if video_id is not None:
             try:
@@ -525,6 +641,7 @@ def finalize_motion_recording(
                 output_path_physical,
             )
         else:
+            inc_counter("recording_clips_deleted_empty_total")
             remove_session_dir(output_path_physical, reason="empty")
     # Фоновая копия на SFTP/NAS (#350): не блокирует finalize; только если каталог ещё на диске.
     try:

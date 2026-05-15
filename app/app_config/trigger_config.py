@@ -118,14 +118,111 @@ def _apply_legacy_motion_source_flags(source_raw: Any, triggers: dict[str, Any])
 
 
 def fold_legacy_motion_out_of_merged_config(merged: dict[str, Any]) -> None:
-    """Fold top-level ``motion`` into ``triggers`` and drop ``motion`` from merged YAML snapshot."""
+    """Fold top-level ``motion`` into ``triggers`` and drop ``motion`` from merged YAML snapshot.
+
+    Не вызываем ``_apply_legacy_motion_source_flags`` здесь: при merge с ``default_config``
+    старый ``motion.source: frigate`` перезаписывал ``triggers.frigate.enabled`` из user YAML
+    на каждом старте. Флаги enabled для legacy остаются только в ``migrate_legacy_motion_block``.
+    """
     motion = merged.get("motion")
     if not isinstance(motion, dict) or not motion:
         return
     triggers = merged.setdefault("triggers", {})
     _fold_motion_fields_into_triggers(motion, triggers)
-    _apply_legacy_motion_source_flags(motion.get("source"), triggers)
     del merged["motion"]
+
+
+def fold_motion_settings_patch_into_triggers(updates: dict[str, Any]) -> None:
+    """Fold UI ``motion.*`` PATCH fields into ``triggers.*`` and drop ``motion`` (in-place)."""
+    motion = updates.get("motion")
+    if not isinstance(motion, dict) or not motion:
+        return
+    triggers = updates.setdefault("triggers", {})
+    if not isinstance(triggers, dict):
+        triggers = {}
+        updates["triggers"] = triggers
+    _fold_motion_fields_into_triggers(motion, triggers)
+    del updates["motion"]
+
+
+def build_motion_settings_mirror_for_api(cfg: dict[str, Any]) -> dict[str, Any]:
+    """Синтез блока ``motion`` для GET /api/ui/settings (legacy ``motion.*`` в API).
+
+    После merge ``motion`` удаляется из merged-дерева; UI редактирует ``triggers.frigate.*``,
+    но зеркало ``motion.frigate_*`` оставляем для старых клиентов и экспорта YAML.
+    """
+    triggers = cfg.get("triggers") if isinstance(cfg.get("triggers"), dict) else {}
+    op = triggers.get("opencv") if isinstance(triggers.get("opencv"), dict) else {}
+    fr = triggers.get("frigate") if isinstance(triggers.get("frigate"), dict) else {}
+    ms = triggers.get("motion_sensor") if isinstance(triggers.get("motion_sensor"), dict) else {}
+    op_on = _as_bool(op.get("enabled"), True)
+    fr_on = _as_bool(fr.get("enabled"), False)
+    ms_on = _as_bool(ms.get("enabled"), False)
+    ms_src = str(ms.get("source") or TRIGGER_SOURCE_MQTT).strip().lower()
+
+    if ms_on and ms_src == TRIGGER_SOURCE_MQTT:
+        src = "mqtt"
+    elif ms_on and ms_src == TRIGGER_SOURCE_ESPHOME:
+        src = "esphome"
+    elif fr_on and op_on:
+        src = "frigate"
+    elif fr_on:
+        src = "frigate"
+    elif op_on:
+        src = "opencv"
+    else:
+        src = "opencv"
+
+    label_filter = fr.get("label_filter")
+    if not isinstance(label_filter, (list, tuple)):
+        label_filter = []
+    label_exclude = fr.get("label_exclude")
+    if not isinstance(label_exclude, (list, tuple)):
+        label_exclude = []
+    cam_f = fr.get("camera_filter")
+    if not isinstance(cam_f, (list, tuple)):
+        cam_f = []
+
+    min_score = _as_float(
+        _get_from_config(cfg, "triggers.frigate.min_trigger_score", 0.43),
+        0.43,
+    )
+
+    return {
+        "source": src,
+        "check_every_n_frames": max(
+            1,
+            min(
+                30,
+                _as_int(_get_from_config(cfg, "triggers.opencv.check_every_n_frames", 1), 1),
+            ),
+        ),
+        "opencv_diff_threshold": max(
+            5,
+            min(
+                80,
+                _as_int(_get_from_config(cfg, "triggers.opencv.diff_threshold", 18), 18),
+            ),
+        ),
+        "opencv_min_contour_area": max(
+            50,
+            min(
+                20000,
+                _as_int(_get_from_config(cfg, "triggers.opencv.min_contour_area", 320), 320),
+            ),
+        ),
+        "frigate_camera_filter": [str(x) for x in cam_f if str(x).strip()],
+        "frigate_label_filter": [str(x) for x in label_filter if str(x).strip()],
+        "frigate_label_exclude": [str(x) for x in label_exclude if str(x).strip()],
+        "frigate_trigger_on_tracked_object": _as_bool(
+            _get_from_config(cfg, "triggers.frigate.trigger_on_tracked_object"),
+            True,
+        ),
+        "frigate_min_trigger_score": max(0.0, min_score),
+        "mqtt_topic": str(ms.get("mqtt_topic") or "").strip(),
+        "esphome_url": str(ms.get("esphome_url") or "").strip(),
+        "esphome_sensor_id": str(ms.get("esphome_sensor_id") or "").strip(),
+    }
 
 
 def migrate_legacy_motion_block(user_config: dict[str, Any]) -> bool:

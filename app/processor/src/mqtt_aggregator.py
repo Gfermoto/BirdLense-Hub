@@ -721,10 +721,9 @@ class MQTTEventAggregator:
                     except (TypeError, ValueError):
                         geometry_fallback_cooldown = 2.0
                     geometry_fallback_cooldown = max(0.0, geometry_fallback_cooldown)
-                    raw_geometry_exclude = (
-                        app_config.get("triggers.frigate.geometry_fallback_label_exclude")
-                        or ["person", "car", "vehicle", "truck", "bus"]
-                    )
+                    raw_geometry_exclude = app_config.get("triggers.frigate.geometry_fallback_label_exclude")
+                    if raw_geometry_exclude is None:
+                        raw_geometry_exclude = []
                     if not isinstance(raw_geometry_exclude, (list, tuple, set)):
                         raw_geometry_exclude = []
                     geometry_exclude = {
@@ -1175,6 +1174,60 @@ class MQTTEventAggregator:
                     continue
                 return True
         return False
+
+    def pick_recent_frigate_camera(
+        self,
+        *,
+        camera_ids=None,
+        max_age_seconds=0,
+        min_confidence=0.0,
+    ) -> str | None:
+        """Return camera id of the freshest in-window Frigate event among ``camera_ids``."""
+        try:
+            max_age = float(max_age_seconds or 0.0)
+        except (TypeError, ValueError):
+            max_age = 0.0
+        if max_age <= 0:
+            return None
+        try:
+            min_conf = float(min_confidence or 0.0)
+        except (TypeError, ValueError):
+            min_conf = 0.0
+        now = datetime.now(timezone.utc)
+        now_mono = time.monotonic()
+        camera_allow = {str(camera).strip().lower(): str(camera).strip() for camera in (camera_ids or []) if str(camera).strip()}
+        with self._lock:
+            for ev in reversed(self._events):
+                if str((ev or {}).get("source") or "").strip().lower() != "frigate":
+                    continue
+                ingest_mono = ev.get("_ingest_monotonic")
+                if isinstance(ingest_mono, (int, float)) and float(ingest_mono) > 0:
+                    age = max(0.0, now_mono - float(ingest_mono))
+                else:
+                    ts = _parse_iso8601_utc(ev.get("timestamp"))
+                    if ts is None:
+                        continue
+                    age = (now - ts).total_seconds()
+                    if age < 0:
+                        age = 0
+                if age > max_age:
+                    continue
+                camera_raw = str((ev or {}).get("camera") or "").strip()
+                if camera_allow:
+                    camera_key = camera_raw.lower()
+                    if camera_key not in camera_allow:
+                        continue
+                    camera_raw = camera_allow[camera_key]
+                if not camera_raw:
+                    continue
+                try:
+                    conf = float(ev.get("confidence") or 0.0)
+                except (TypeError, ValueError):
+                    conf = 0.0
+                if conf < min_conf:
+                    continue
+                return camera_raw
+        return None
 
     def get_birdnet_events(self, now=None, ttl_hours: float = 25.0) -> list[dict]:
         now = now or datetime.now(timezone.utc)

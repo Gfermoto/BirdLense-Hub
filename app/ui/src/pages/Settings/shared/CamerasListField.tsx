@@ -108,7 +108,7 @@ export function CamerasListField({
               value={row.stream_name ?? ''}
               onChange={(e) => updateRow(i, 'stream_name', e.target.value)}
               label={t('settings.streamName')}
-              placeholder="BirdBox"
+              placeholder={t('settings.streamNamePlaceholder')}
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 5 }}>

@@ -338,6 +338,9 @@ export function ProcessorFrigateFusionBlock({ form }: Props) {
                   >
                     {t('settings.frigateStandaloneExcludedIntro')}
                   </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    {t('settings.frigateStandaloneExcludedCaptureHint')}
+                  </Typography>
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <form.Field name="detection.frigate_standalone_excluded_min_score">

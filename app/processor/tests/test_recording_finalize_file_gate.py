@@ -1009,6 +1009,100 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             'cam-from-context',
         )
 
+    def test_salvages_frigate_trigger_as_review_only_when_fused_empty(self):
+        api = MagicMock()
+        api.create_video.return_value = {'video_id': 204}
+        motion_detector = MagicMock()
+        mqtt_aggregator = MagicMock()
+        frame_processor = MagicMock(tracks={})
+        decision_maker = MagicMock()
+        decision_maker.get_decisions.return_value = []
+
+        def fake_cfg_get(key, default=None):
+            mapping = {
+                'detection.merge_window_seconds': 5,
+                'processor.min_track_duration': 1,
+                'processor.generate_spectrogram_always': False,
+                'processor.save_dataset_crops': False,
+                'integrations.scales.enabled': False,
+                'processor.min_confidence_to_notify': 0.3,
+                'processor.min_confidence_to_process': 0.3,
+                'detection.min_confidence_to_store': 0.22,
+                'processor.dataset_min_confidence': 0.5,
+                'detection.yolo_core_anchor_enabled': True,
+                'detection.persist_video_detections_require_frames': True,
+                'detection.yolo_weak_track_salvage_enabled': True,
+                'detection.frigate_trigger_review_salvage_enabled': True,
+                'detection.frigate_standalone_missing_score_fallback': 0.72,
+                'detection.species_mapping': {},
+            }
+            return mapping.get(key, default)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = os.path.join(tmp, 'session')
+            os.makedirs(out_dir, exist_ok=True)
+            video_path = os.path.join(out_dir, 'clip.mp4')
+            frame = np.zeros((32, 32, 3), dtype=np.uint8)
+            vw = cv2.VideoWriter(
+                video_path,
+                cv2.VideoWriter_fourcc(*'mp4v'),
+                2.0,
+                (32, 32),
+            )
+            vw.write(frame)
+            vw.release()
+            with patch.object(
+                recording_finalize_mod.app_config,
+                'get',
+                side_effect=fake_cfg_get,
+            ), patch(
+                'recording_finalize.get_recording_mqtt_events',
+                return_value=[],
+            ), patch(
+                'recording_finalize.build_fused_video_detections',
+                return_value=[],
+            ), patch(
+                'recording_finalize.generate_spectrogram',
+                return_value=False,
+            ), patch(
+                'recording_finalize._is_playable_video_file',
+                return_value=True,
+            ):
+                finalize_motion_recording(
+                    api,
+                    motion_detector,
+                    mqtt_aggregator,
+                    frame_processor,
+                    decision_maker,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    output_path_physical=out_dir,
+                    output_path_logical='data/recordings/2026/05/15/120000',
+                    video_output=video_path,
+                    video_path_for_api='data/recordings/2026/05/15/120000/video.mp4',
+                    scales_topic_arg=None,
+                    data_dir=tmp,
+                    recording_context={
+                        'triggered_by': 'frigate',
+                        'triggered_camera': 'Forest',
+                        'frigate_trigger_event': {
+                            'source': 'frigate',
+                            'camera': 'Forest',
+                            'label': 'bird',
+                            'species': 'Hooded Crow',
+                            'confidence': 0.81,
+                            '_session_trigger_snapshot': True,
+                        },
+                    },
+                )
+
+        persisted = api.create_video.call_args.args[0]
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0].get('decision_kind'), 'review_only_generic')
+        self.assertTrue(persisted[0].get('frigate_trigger_salvage'))
+        self.assertFalse(persisted[0].get('visit_eligible'))
+        api.create_video.assert_called_once()
+
 
 if __name__ == '__main__':
     unittest.main()

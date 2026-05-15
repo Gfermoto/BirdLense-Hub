@@ -186,6 +186,26 @@ def test_grouped_trigger_helpers_read_triggers_flat():
     assert get_legacy_motion_source_label(_get, mqtt_broker="mqtt.local") == ("opencv,frigate,motion_sensor,scales")
 
 
+def test_fold_legacy_motion_does_not_force_frigate_enabled():
+    """Смерженный default ``motion.source`` не должен перетирать ``triggers.frigate.enabled`` (#fold-only)."""
+    from app_config.trigger_config import fold_legacy_motion_out_of_merged_config
+
+    merged = {
+        "motion": {
+            "source": "frigate",
+            "frigate_label_filter": ["bird"],
+        },
+        "triggers": {
+            "opencv": {"enabled": True},
+            "frigate": {"enabled": False, "topic": "frigate/events"},
+        },
+    }
+    fold_legacy_motion_out_of_merged_config(merged)
+    assert "motion" not in merged
+    assert merged["triggers"]["frigate"]["enabled"] is False
+    assert merged["triggers"]["frigate"]["label_filter"] == ["bird"]
+
+
 def test_migrate_legacy_motion_block_moves_into_triggers():
     from app_config.trigger_config import migrate_legacy_motion_block
 
@@ -233,3 +253,38 @@ def test_migrate_processor_classifier_unchanged_for_canonical():
         },
     }
     assert migrate_processor_classifier_best_eu_path(user) is False
+
+
+def test_fold_motion_settings_patch_into_triggers():
+    from app_config.trigger_config import fold_motion_settings_patch_into_triggers
+
+    updates = {
+        "motion": {
+            "frigate_label_exclude": ["cat", "dog"],
+            "frigate_label_filter": ["bird"],
+        },
+        "triggers": {"frigate": {"enabled": True, "min_trigger_score": 0.5}},
+    }
+    fold_motion_settings_patch_into_triggers(updates)
+    assert "motion" not in updates
+    assert updates["triggers"]["frigate"]["label_exclude"] == ["cat", "dog"]
+    assert updates["triggers"]["frigate"]["label_filter"] == ["bird"]
+    assert updates["triggers"]["frigate"]["min_trigger_score"] == 0.5
+
+
+def test_normalize_settings_patch_folds_motion_into_triggers():
+    from services.settings_patch_service import normalize_settings_patch_updates
+
+    out = normalize_settings_patch_updates(
+        {
+            "motion": {
+                "frigate_label_filter": ["bird"],
+                "frigate_label_exclude": ["cat"],
+            }
+        },
+        access_role="admin",
+        contributor_tier_configured=False,
+    )
+    assert "motion" not in out
+    assert out["triggers"]["frigate"]["label_filter"] == ["bird"]
+    assert out["triggers"]["frigate"]["label_exclude"] == ["cat"]

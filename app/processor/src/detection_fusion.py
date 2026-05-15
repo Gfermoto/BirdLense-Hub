@@ -29,14 +29,23 @@ def _safe_float(value, default: float = 0.0) -> float:
         return default
 
 
-def _is_human_like_frigate_event(ev: dict) -> bool:
+def skip_frigate_ev_for_standalone(ev: dict | None, app_config) -> bool:
+    """True when label/species intersect ``detection.frigate_standalone_skip_labels``."""
+    if not isinstance(ev, dict) or not ev:
+        return False
+    raw = app_config.get("detection.frigate_standalone_skip_labels")
+    if not isinstance(raw, (list, tuple)):
+        return False
+    skip = {str(x).strip().lower() for x in raw if str(x).strip()}
+    if not skip:
+        return False
     labels = {
         str(ev.get("species") or "").strip().lower(),
         str(ev.get("label") or "").strip().lower(),
         str(ev.get("sub_label") or "").strip().lower(),
     }
     labels.discard("")
-    return "person" in labels or "human" in labels
+    return bool(labels & skip)
 
 
 def _aggregate_birdnet_scores(
@@ -217,14 +226,16 @@ def _frigate_standalone_prepared_rows(
             continue
         if end_time and ts > (end_time + timedelta(seconds=2.0)):
             continue
-        if _is_human_like_frigate_event(ev):
+        if skip_frigate_ev_for_standalone(ev, app_config):
             continue
         has_geometry_raw = ev.get("_frigate_has_geometry")
         # Backward compatibility: synthetic/tests may not carry the flag yet.
         has_geometry = True if has_geometry_raw is None else bool(has_geometry_raw)
         if not has_geometry and isinstance(ev.get("frigate_bbox_norm"), (list, tuple)):
             has_geometry = len(ev.get("frigate_bbox_norm") or []) >= 4
-        if require_geometry and not has_geometry and not bool(ev.get("_synthetic_trigger_fallback")):
+        if require_geometry and not has_geometry and not bool(ev.get("_synthetic_trigger_fallback")) and not bool(
+            ev.get("_session_trigger_snapshot")
+        ):
             continue
         raw = ev.get("species") or ev.get("sub_label") or ev.get("label") or ""
         species = normalize(str(raw), species_mapping)
