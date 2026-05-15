@@ -4,7 +4,7 @@
 
 Файл **`behavior_logistic_export@v1.json`** — это **реально обученная** логистическая регрессия (sklearn), но на **синтетическом** манифесте из репозитория (`scripts/fixtures/behavior/synthetic_train_manifest.v1.json`). Она **не привязана к вашим камерам** и годится, чтобы проверить, что процессор грузит JSON и пишет метки; для продакшена замените файл после обучения на своих разметках.
 
-## Что сделать вам (коротко)
+Рядом каталог **`behavior_logistic_openvino/`** с **`behavior_logistic.onnx`** — тот же классификатор в виде одного Gemm для **OpenVINO** (`processor.models.behavior_openvino`, см. дефолтный конфиг). При `processor.behavior_recognition.inference_backend: auto` процессор возьмёт ONNX при наличии runtime OpenVINO и корректных путей; иначе остаётся numpy по JSON. Пересборка ONNX из обновлённого JSON: **`make ml-export-behavior-onnx`** (нужен пакет `onnx`, обычно в `app/.venv`).
 
 1. В веб-интерфейсе: **Настройки** → аккордеон **Процессор** → блок **«Распознавание поведения»** (`/settings#processor-behavior`).
 2. Путь к весам оставьте **`models/behavior/behavior_logistic_export@v1.json`** (так в дефолтном конфиге).

@@ -280,6 +280,7 @@ export interface Settings {
       binary_openvino?: string;
       classifier?: string;
       classifier_openvino?: string;
+      behavior_openvino?: string;
     };
     classifier_uncertainty_entropy_ge?: number | null;
     classifier_uncertainty_margin_le?: number | null;
@@ -314,6 +315,9 @@ export interface Settings {
     behavior_recognition?: {
       enabled?: boolean;
       weights_path?: string;
+      inference_backend?: 'auto' | 'logistic_json' | 'openvino' | string;
+      openvino_fallback_logistic?: boolean;
+      max_runtime_detections?: number;
       confidence_store_min?: number;
       confidence_review_threshold?: number;
     };

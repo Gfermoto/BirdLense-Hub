@@ -139,6 +139,8 @@ app/processor/models/detection/weights/best_openvino_model/*
 app/processor/models/behavior/*
 !app/processor/models/behavior/README.md
 !app/processor/models/behavior/behavior_logistic_export@v1.json
+!app/processor/models/behavior/behavior_logistic_openvino/
+!app/processor/models/behavior/behavior_logistic_openvino/behavior_logistic.onnx
 
 # Сгенерированная документация (make docs)
 docs/api/

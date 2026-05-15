@@ -111,11 +111,13 @@ def train_and_export(
         xf = np.array([_meta_features(row)], dtype=np.float64)
         proba = clf.predict_proba(xf)[0]
         idx = int(np.argmax(proba))
+        prob_row = {classes[i]: round(float(proba[i]), 6) for i in range(len(classes))}
         pred_rows.append(
             {
                 "video_key": key,
                 "pred_label": classes[idx],
                 "confidence": round(float(proba[idx]), 6),
+                "proba": prob_row,
             }
         )
 

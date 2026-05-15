@@ -285,6 +285,9 @@ processor:
     # OpenVINO IR для классификатора (processor.classifier_inference_backend=openvino):
     # каталог экспорта или путь к .xml.
     classifier_openvino: "models/classification/weights/best_openvino_model"
+    # ONNX logistic baseline поведения (Gemm → softmax в коде). Дефолт: экспорт из demos JSON в дереве.
+    # Перегенерация: `make ml-export-behavior-onnx` (нужен pip-пакет onnx в app/.venv).
+    behavior_openvino: "models/behavior/behavior_logistic_openvino"
   # Неопределённость YOLO-cls (#370): энтропия (наты) и margin top1−top2 по полному вектору probs.
   # null — не выставлять classifier_needs_review в decision rows; задайте пороги для AL/аналитики.
   classifier_uncertainty_entropy_ge: null
@@ -312,10 +315,16 @@ processor:
   # Веса: JSON из `scripts/ml_behavior_train_baseline.py` (schema behavior_logistic_export@v1).
   behavior_recognition:
     enabled: false
+    # Инференс: logistic_json (numpy+json) | openvino (ONNX/IR через OpenVINO Runtime) | auto.
+    inference_backend: auto
+    # Если OpenVINO не загрузился/ошибка — вернуться к logistic_json из weights_path.
+    openvino_fallback_logistic: true
     # Относительно корня app/processor/; в образе лежит стартовый JSON (см. models/behavior/README.md).
     weights_path: "models/behavior/behavior_logistic_export@v1.json"
     confidence_store_min: 0.2
     confidence_review_threshold: 0.45
+    # Ограничение числа треков при расчёте meta-признаков (согласовано с runtime baseline).
+    max_runtime_detections: 50
 
 # Video source: go2rtc | file
 video:

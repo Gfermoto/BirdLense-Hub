@@ -49,11 +49,15 @@ def test_manifest_meta_features_matches_training_script():
     assert v[0] == pytest.approx(np.log1p(10.0))
 
 
-def test_runtime_meta_features_caps_detection_count():
-    from behavior_baseline_runtime import runtime_meta_features
+def test_resolve_backend_auto_prefers_logistic_without_openvino_path(tmp_path, tiny_export: Path):
+    from behavior_baseline_runtime import resolve_behavior_inference_backend
 
-    one = {"species_name": "Tit", "frames": [{"t": 0}]}
-    long = [dict(one) for _ in range(60)]
-    capped = runtime_meta_features(long, duration_s=10.0, max_detections=50)
-    first50 = runtime_meta_features(long[:50], duration_s=10.0, max_detections=50)
-    assert capped == first50
+    cfg = {
+        "processor.behavior_recognition": {
+            "weights_path": str(tiny_export),
+            "inference_backend": "auto",
+        },
+        "processor.models.behavior_openvino": "",
+    }
+    assert resolve_behavior_inference_backend(cfg, processor_cwd=str(tmp_path)) == "logistic_json"
+

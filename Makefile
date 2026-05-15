@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify verify-prod-env preflight-deploy verify-strict-quality restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-dedupe-detector-yolo dataset-report-detector-yolo dataset-dedupe-detector-binary dataset-import-cub dataset-import-roboflow-bird-feeder dataset-download-roboflow-bird-feeder dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data bootstrap-rodents-until-verify bootstrap-bird-coco-only report-detector-bird-sources dataset-rebalance-bird-binary dataset-bootstrap-rodent-oid-fast dataset-import-roboflow-rodent dataset-fetch-lila-california-rodents-sample dataset-build-birds-rodents-quick dataset-build-detector-tz detector-etl-verify-birds-rodents detector-etl-progress detector-etl-progress-watch detector-etl-restart detector-etl-supervise detector-etl-supervise-bg active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices ml-verify-reid-gates ml-run-reid-execution-report ml-build-eval-dataset ml-build-behavior-dataset ml-build-behavior-train-report ml-offline-benchmark-gate ml-detector-shortlist ml-openvino-async-profile ml-decode-path-benchmark ml-track-continuity-eval ml-int8-candidate-eval ml-shadow-rollout-report ml-canary-rollback-report ml-full-rollout-watch-report ml-action-model-shortlist ml-proof ml-proof-local ml-proof-hub ml-fusion-ab-local ml-fusion-ab-hub dedupe-videos-local
+.PHONY: install install-pull deploy build start stop logs verify verify-prod-env preflight-deploy verify-strict-quality restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-dedupe-detector-yolo dataset-report-detector-yolo dataset-dedupe-detector-binary dataset-import-cub dataset-import-roboflow-bird-feeder dataset-download-roboflow-bird-feeder dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data bootstrap-rodents-until-verify bootstrap-bird-coco-only report-detector-bird-sources dataset-rebalance-bird-binary dataset-bootstrap-rodent-oid-fast dataset-import-roboflow-rodent dataset-fetch-lila-california-rodents-sample dataset-build-birds-rodents-quick dataset-build-detector-tz detector-etl-verify-birds-rodents detector-etl-progress detector-etl-progress-watch detector-etl-restart detector-etl-supervise detector-etl-supervise-bg active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices ml-verify-reid-gates ml-run-reid-execution-report ml-build-eval-dataset ml-build-behavior-dataset ml-export-behavior-onnx ml-build-behavior-train-report ml-offline-benchmark-gate ml-detector-shortlist ml-openvino-async-profile ml-decode-path-benchmark ml-track-continuity-eval ml-int8-candidate-eval ml-shadow-rollout-report ml-canary-rollback-report ml-full-rollout-watch-report ml-action-model-shortlist ml-proof ml-proof-local ml-proof-hub ml-fusion-ab-local ml-fusion-ab-hub dedupe-videos-local
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -103,6 +103,8 @@ ml-proof-local:
 		app/processor/tests/test_ml_full_rollout_watch_report.py \
 		app/processor/tests/test_ml_fusion_ab_report.py \
 		app/processor/tests/test_ml_action_model_shortlist.py \
+		app/processor/tests/test_ml_behavior_canary_gate.py \
+		app/processor/tests/test_ml_behavior_export_onnx.py \
 		app/processor/tests/test_processor_runtime_profile_openvino.py \
 		app/processor/tests/test_inference_selector.py
 
@@ -470,6 +472,15 @@ ml-train-behavior-synthetic-fixture:
 		--export-out app/processor/models/behavior/behavior_logistic_export@v1.json \
 		--predictions-out /tmp/behavior_predictions_synthetic.json
 
+# Экспорт behavior_logistic_export@v1.json → ONNX для processor.models.behavior_openvino (#416).
+# Требует: pip install onnx (удобно в app/.venv). Переменные: EXPORT_JSON, OUT_ONNX.
+ml-export-behavior-onnx:
+	@PY="$$(test -x app/.venv/bin/python && echo app/.venv/bin/python || command -v python3)"; \
+	_JSON="$${EXPORT_JSON:-app/processor/models/behavior/behavior_logistic_export@v1.json}"; \
+	_OUT="$${OUT_ONNX:-app/processor/models/behavior/behavior_logistic_openvino/behavior_logistic.onnx}"; \
+	mkdir -p "$$(dirname "$$_OUT")"; \
+	"$$PY" scripts/ml_behavior_export_onnx.py --export-json "$$_JSON" --out-onnx "$$_OUT"
+
 # Build behavior training/eval report from predictions and manifest (Wave 2 / #416).
 # Example:
 # MANIFEST=/tmp/behavior_dataset_manifest.v1.json PREDICTIONS=/tmp/behavior_predictions.v1.json OUT=/tmp/behavior_train_report.v1.json make ml-build-behavior-train-report
@@ -482,6 +493,21 @@ ml-build-behavior-train-report:
 		--predictions "$${PREDICTIONS}" \
 		$$(test -n "$${SPLIT:-}" && printf -- '--split "%s" ' "$${SPLIT}") \
 		$$(test -n "$${MIN_MACRO_F1:-}" && printf -- '--min-macro-f1 "%s" ' "$${MIN_MACRO_F1}") \
+		$$(test -n "$${CONFUSION_CSV:-}" && printf -- '--confusion-csv "%s" ' "$${CONFUSION_CSV}") \
+		--out "$${OUT}" \
+		$${ARGS:-}
+
+# Сравнить два behavior_train_report@v1 (офлайн accuracy/F1 gate), #416 Wave 6.
+# BASELINE=/tmp/base_behavior_report.json CANARY=/tmp/canary_behavior_report.json OUT=/tmp/behavior_canary_gate.json make ml-behavior-canary-gate
+ml-behavior-canary-gate:
+	@test -n "$${BASELINE:-}" || (echo "Set BASELINE=path/to/baseline behavior_train_report@v1.json" >&2; exit 1)
+	@test -n "$${CANARY:-}" || (echo "Set CANARY=path/to/canary behavior_train_report@v1.json" >&2; exit 1)
+	@test -n "$${OUT:-}" || (echo "Set OUT=path/to/behavior_canary_gate_report.v1.json" >&2; exit 1)
+	@python3 scripts/ml_behavior_canary_gate.py \
+		--baseline-report "$${BASELINE}" \
+		--canary-report "$${CANARY}" \
+		$$(test -n "$${MAX_MACRO_F1_DROP:-}" && printf -- '--max-macro-f1-drop "%s" ' "$${MAX_MACRO_F1_DROP}") \
+		$$(test -n "$${MAX_ACCURACY_DROP:-}" && printf -- '--max-accuracy-drop "%s" ' "$${MAX_ACCURACY_DROP}") \
 		--out "$${OUT}" \
 		$${ARGS:-}
 
