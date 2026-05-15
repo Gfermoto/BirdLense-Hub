@@ -3,7 +3,7 @@
 По умолчанию образ Hub тянет **Ultralytics COCO [`yolo11n.pt`](https://github.com/ultralytics/assets)** и экспортирует **`yolo11n_openvino_model/`** (OpenVINO, `imgsz=640`).
 В конфиге **`processor.binary_predict_class_allowlist: [14]`** — в пайплайн попадает только класс **14 (bird)**; грызуны через COCO не покрыты (нужна своя голова или BRG-детектор).
 
-**Репозиторий:** в Git закоммичены **`weights/best.pt`** и каталог **`weights/best_openvino_model/`** (BRG 3-class); при сборке образа они попадают в образ через `COPY app/processor`. Остальные файлы в `weights/` по-прежнему локальные.
+**Репозиторий:** в Git закоммичены **`weights/best.pt`**, **`weights/last.pt`** (резерв/предыдущий снимок для отката или сравнения) и каталог **`weights/best_openvino_model/`**; при сборке образа они попадают через `COPY app/processor`, затем на VPS — через `make deploy` / rsync. Остальные файлы в `weights/` по-прежнему локальные.
 
 ## BRG 3-class Bird / Rodent / Background (архив форка)
 
