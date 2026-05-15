@@ -23,19 +23,19 @@ def _softmax(logits: np.ndarray) -> np.ndarray:
 
 def _resolve_behavior_openvino_path(raw: str, *, processor_cwd: str | None) -> Path | None:
     """Resolve ONNX/XML path or first *.xml under directory."""
-    p = (raw or '').strip()
+    p = (raw or "").strip()
     if not p:
         return None
     path = Path(p)
     suf = path.suffix.lower()
-    if path.is_file() and suf in ('.onnx', '.xml'):
+    if path.is_file() and suf in (".onnx", ".xml"):
         return path.resolve()
     if path.is_dir():
-        for name in ('model.onnx', 'behavior_logistic.onnx'):
+        for name in ("model.onnx", "behavior_logistic.onnx"):
             cand = (path / name).resolve()
             if cand.is_file():
                 return cand
-        xmls = sorted(path.glob('*.xml'))
+        xmls = sorted(path.glob("*.xml"))
         if xmls:
             return xmls[0].resolve()
         return None
@@ -46,18 +46,18 @@ def _resolve_behavior_openvino_path(raw: str, *, processor_cwd: str | None) -> P
     for root in roots:
         cand = (root / p).resolve()
         cs = cand.suffix.lower()
-        if cand.is_file() and cs in ('.onnx', '.xml'):
+        if cand.is_file() and cs in (".onnx", ".xml"):
             return cand
         if cand.is_dir():
-            for name in ('model.onnx', 'behavior_logistic.onnx'):
+            for name in ("model.onnx", "behavior_logistic.onnx"):
                 cp = (cand / name).resolve()
                 if cp.is_file():
                     return cp
-            xs = sorted(cand.glob('*.xml'))
+            xs = sorted(cand.glob("*.xml"))
             if xs:
                 return xs[0].resolve()
             break
-    env = (os.environ.get('BIRDLENSE_BEHAVIOR_OPENVINO_PATH') or '').strip()
+    env = (os.environ.get("BIRDLENSE_BEHAVIOR_OPENVINO_PATH") or "").strip()
     if env:
         pe = Path(env).expanduser()
         if pe.is_file():
@@ -83,7 +83,7 @@ class BehaviorOpenvinoRuntime:
         app_config: MappingLike | None,
     ) -> bool:
         """Compile OpenVINO model if path or labels changed."""
-        key = f'{onnx_or_xml.resolve()}|{",".join(labels)}'
+        key = f"{onnx_or_xml.resolve()}|{','.join(labels)}"
         if self._compiled is not None and self._model_key == key:
             self._labels = list(labels)
             return True
@@ -96,7 +96,7 @@ class BehaviorOpenvinoRuntime:
                 resolve_openvino_device_policy,
             )
         except ImportError as e:
-            _log.warning('behavior openvino: import failed (%s)', e)
+            _log.warning("behavior openvino: import failed (%s)", e)
             return False
 
         if not openvino_runtime_available():
@@ -106,15 +106,15 @@ class BehaviorOpenvinoRuntime:
         try:
             model = core.read_model(str(onnx_or_xml))
             compiled = None
-            raw_dev = resolve_classifier_inference_device(app_config) or ''
-            for dev in resolve_openvino_device_policy(raw_dev or 'auto'):
+            raw_dev = resolve_classifier_inference_device(app_config) or ""
+            for dev in resolve_openvino_device_policy(raw_dev or "auto"):
                 try:
                     compiled = core.compile_model(model, dev)
                     break
                 except Exception:
                     continue
             if compiled is None:
-                compiled = core.compile_model(model, 'CPU')
+                compiled = core.compile_model(model, "CPU")
             inp0 = compiled.inputs[0]
             self._compiled = compiled
             self._input_name = inp0.get_any_name()
@@ -123,7 +123,7 @@ class BehaviorOpenvinoRuntime:
             self._labels = list(labels)
             return True
         except Exception as exc:
-            _log.warning('behavior openvino: failed to load %s (%s)', onnx_or_xml, exc)
+            _log.warning("behavior openvino: failed to load %s (%s)", onnx_or_xml, exc)
             self._compiled = None
             self._model_key = None
             self._labels = None
@@ -165,7 +165,7 @@ def maybe_predict_video_behavior_openvino(
     lab = _RUNTIME_OV._labels or labels
     if logits.shape[0] != len(lab):
         _log.warning(
-            'behavior openvino: logits dim %s != n_labels %s',
+            "behavior openvino: logits dim %s != n_labels %s",
             logits.shape[0],
             len(lab),
         )
@@ -181,7 +181,7 @@ def resolve_behavior_openvino_model_path(
     processor_cwd: str | None,
 ) -> Path | None:
     """Resolve from processor.models.behavior_openvino."""
-    raw = ''
+    raw = ""
     if app_config is not None:
-        raw = str(app_config.get('processor.models.behavior_openvino') or '').strip()
+        raw = str(app_config.get("processor.models.behavior_openvino") or "").strip()
     return _resolve_behavior_openvino_path(raw, processor_cwd=processor_cwd)

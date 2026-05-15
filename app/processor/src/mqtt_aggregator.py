@@ -715,9 +715,7 @@ class MQTTEventAggregator:
                     # Empty label filter means wildcard (accept any label).
                     lbl_ok = (not lbl_f_lower) or bool(lbl_f_lower & labels_lower)
                     relaxed = bool(app_config.get("triggers.frigate.trigger_on_tracked_object", True))
-                    geometry_fallback_enabled = bool(
-                        app_config.get("triggers.frigate.geometry_fallback_enabled", True)
-                    )
+                    geometry_fallback_enabled = bool(app_config.get("triggers.frigate.geometry_fallback_enabled", True))
                     try:
                         geometry_fallback_cooldown = float(
                             app_config.get("triggers.frigate.geometry_fallback_cooldown_seconds", 2.0) or 2.0
@@ -730,9 +728,7 @@ class MQTTEventAggregator:
                         raw_geometry_exclude = []
                     if not isinstance(raw_geometry_exclude, (list, tuple, set)):
                         raw_geometry_exclude = []
-                    geometry_exclude = {
-                        str(x).strip().lower() for x in raw_geometry_exclude if str(x).strip()
-                    }
+                    geometry_exclude = {str(x).strip().lower() for x in raw_geometry_exclude if str(x).strip()}
                     has_geometry = _frigate_after_has_tracked_geometry(after if isinstance(after, dict) else {})
                     ev["_frigate_has_geometry"] = bool(has_geometry)
                     accepted_by = "label_filter"
@@ -1199,7 +1195,9 @@ class MQTTEventAggregator:
             min_conf = 0.0
         now = datetime.now(timezone.utc)
         now_mono = time.monotonic()
-        camera_allow = {str(camera).strip().lower(): str(camera).strip() for camera in (camera_ids or []) if str(camera).strip()}
+        camera_allow = {
+            str(camera).strip().lower(): str(camera).strip() for camera in (camera_ids or []) if str(camera).strip()
+        }
         with self._lock:
             for ev in reversed(self._events):
                 if str((ev or {}).get("source") or "").strip().lower() != "frigate":

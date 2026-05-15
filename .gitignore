@@ -194,6 +194,15 @@ app/web/instance/
 /.unknown_rows.json
 /.video*.json
 /.weird_*.json
+/benchmark*.json
+/benchmark_*.json
+/mlruns/
+/wandb/
+/runs/
+/lightning_logs/
+*.ckpt
+*.prof
+*.trace.json
 
 # Локальный scratch и копии диагностики у корня репо (не путать с app/data/)
 /tmp/
