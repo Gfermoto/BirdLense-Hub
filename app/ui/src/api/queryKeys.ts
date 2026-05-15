@@ -60,6 +60,7 @@ export const queryKeys = {
     feedbackLoopStatus: ['feedback-loop-status'] as const,
     fusionExportStatus: ['fusion-export-status'] as const,
     fusionEvalStatus: ['fusion-eval-status'] as const,
+    domainHealth: ['system-domain-health'] as const,
   },
   feed: {
     info: ['feed-info'] as const,

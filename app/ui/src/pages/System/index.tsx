@@ -12,6 +12,7 @@ import { AutomationCard } from './AutomationCard';
 import { AutomationDangerZoneCard } from './AutomationPanels';
 import { ProcessorLogs } from './ProcessorLogs';
 import { SystemReadinessCard } from './SystemReadinessCard';
+import { DomainTrustCard } from './DomainTrustCard';
 import { SystemHero } from './SystemHero';
 import { RecognitionImprovementCard } from './RecognitionImprovementCard';
 import { BehaviorBaselineRetrainCard } from './BehaviorBaselineRetrainCard';
@@ -64,6 +65,15 @@ export const System: React.FC = () => {
   }, [location.hash]);
 
   React.useEffect(() => {
+    if (location.hash !== '#domain-trust') return;
+    const node = document.getElementById('domain-trust');
+    if (!node) return;
+    requestAnimationFrame(() => {
+      node.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+  }, [location.hash]);
+
+  React.useEffect(() => {
     if (location.hash !== '#behavior-baseline-retrain') return;
     const node = document.getElementById('behavior-baseline-retrain');
     if (!node) return;
@@ -103,6 +113,12 @@ export const System: React.FC = () => {
           >
             <Stack spacing={2} sx={systemStackSx}>
               <SystemReadinessCard />
+              <Box
+                id="domain-trust-wrap"
+                sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}
+              >
+                <DomainTrustCard />
+              </Box>
               <SystemMonitor showVisitors={isAdvanced} />
               <Box
                 id="recognition-improvement"
