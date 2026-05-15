@@ -327,19 +327,17 @@ bash scripts/github-project-add-backlog-consilium.sh
 | **Релизы**       | Теги + GitHub Release → semver-образ Docker + деплой Pages                                                              |
 | **Публичный релиз** | Единый runbook: [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.ru.md) + [RELEASE_READINESS](./RELEASE_READINESS.ru.md) |
 
-### Масштабирование (#418): motion, очередь, Postgres ([#424](https://github.com/Gfermoto/BirdLense-Hub/issues/424))
+### Масштабирование (#418): motion, очередь, Postgres ([#424](https://github.com/Gfermoto/BirdLense-Hub/issues/424) — **закрыт**)
 
-Эпик (**метка `release-blocker`**). Треки **B1–B3** — отдельные issues/PR, без смешивания в один diff.
+Эпик: треки B1–B3 закрыты отдельными итерациями ([#432](https://github.com/Gfermoto/BirdLense-Hub/issues/432)–[#434](https://github.com/Gfermoto/BirdLense-Hub/issues/434)).
 
-| Трек | Цель | Точка входа |
-|------|------|-------------|
-| **B1** | Motion/триггеры: **заметная** деградация при поломке входов — без «тихого» исчезновения записи | [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) → Processor / triggers; `app/app_config/trigger_config.py`; диагностика процессора по путям триггеров |
-| **B2** | Очередь **тяжёлых** задач процессора: лимит глубины, backpressure, ретраи (отдельно от in-process очередей MQTT publish / feeder в `mqtt_aggregator.py`) | `app/processor/src/mqtt_aggregator.py` (частичные паттерны); отдельный дизайн + issues по поверхностям |
-| **B3** | Hub БД под параллельную запись: **PostgreSQL** через `DATABASE_URL` и паритет Alembic; перенос **данных** SQLite→Postgres — процедура оператора | [POSTGRES_MIGRATION.ru.md](./POSTGRES_MIGRATION.ru.md); [CONFIGURATION.ru.md](./CONFIGURATION.ru.md); **`app/docker-compose.stack.example.yml`** |
+| Трек | Результат (MVP) | Куда смотреть |
+|------|-----------------|---------------|
+| **B1** | Метрики деградации `triggers.*` и MQTT в `processor_runtime_stats.json`, счётчики fallback motion | [PROCESSOR_PERFORMANCE.ru.md](./PROCESSOR_PERFORMANCE.ru.md); [TROUBLESHOOTING.ru.md](./TROUBLESHOOTING.ru.md#processor-trigger-metrics) |
+| **B2** | Документация лимитов/метрик очередей MQTT и смежных путей; отдельный единый heavy-queue executor — по новому issue при необходимости | [PROCESSOR_PERFORMANCE.ru.md](./PROCESSOR_PERFORMANCE.ru.md#queues-backpressure) |
+| **B3** | Runbook PostgreSQL | [POSTGRES_MIGRATION.ru.md](./POSTGRES_MIGRATION.ru.md) |
 
 Родитель дорожной карты: [#418](https://github.com/Gfermoto/BirdLense-Hub/issues/418).
-
-Дочерние issues: [**B1** #432](https://github.com/Gfermoto/BirdLense-Hub/issues/432) · [**B2** #433](https://github.com/Gfermoto/BirdLense-Hub/issues/433) · [**B3** #434](https://github.com/Gfermoto/BirdLense-Hub/issues/434).
 
 Таблицы **архива** и другие исторические блоки выше по документу — не живой backlog. Активная работа — issues **консилиума** и блок **кандидатов**; сверяйтесь с [FEATURES](./FEATURES.ru.md).
 
