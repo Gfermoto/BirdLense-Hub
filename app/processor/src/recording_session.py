@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def _camera_processor_overrides(camera_id: str | None) -> dict:
-    """Per-camera processor override block from config (e.g. distant Forest tuning)."""
+    """Per-camera processor overrides from ``processor.camera_overrides.<camera_id>``."""
     cam = str(camera_id or "").strip()
     if not cam:
         return {}
@@ -151,7 +151,20 @@ class MotionRecordingSession:
         )
         self.decision_maker.species_confidence_overrides = session_overrides
 
-        camera_id = getattr(self.motion_detector, "get_triggered_camera", lambda: None)() or self.default_camera_id
+        from motion_recording_camera import resolve_motion_recording_camera_id
+
+        camera_id = resolve_motion_recording_camera_id(
+            self.motion_detector,
+            mqtt_aggregator=self.mqtt_aggregator,
+            default_camera_id=self.default_camera_id,
+        )
+        frigate_trigger_event = None
+        if getattr(self.motion_detector, "get_triggered_by", lambda: None)() == "frigate":
+            _last_frigate = getattr(self.motion_detector, "get_last_frigate_event", None)
+            if callable(_last_frigate):
+                _ev = _last_frigate()
+                if isinstance(_ev, dict) and _ev:
+                    frigate_trigger_event = {**_ev, "_session_trigger_snapshot": True}
         if not self.args.input and app_config.get("video.source") == "go2rtc":
             self.media_source = self.get_media_source(camera_id)
 
@@ -320,6 +333,7 @@ class MotionRecordingSession:
                 data_dir=self.data_dir,
                 recording_context={
                     "triggered_camera": camera_id,
+                    "frigate_trigger_event": frigate_trigger_event,
                     "frigate_activity_hold_seconds": frigate_hold_seconds,
                     "triggered_by": getattr(self.motion_detector, "get_triggered_by", lambda: None)(),
                     "trigger_display": format_trigger_display_line(_active_names),

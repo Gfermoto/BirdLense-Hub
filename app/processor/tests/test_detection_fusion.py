@@ -10,7 +10,7 @@ sys.path.insert(0, src_path)
 
 import detection_fusion as detection_fusion_mod
 from birdnet_merge_key import reset_birdnet_merge_key_cache_for_tests
-from detection_fusion import build_fused_video_detections
+from detection_fusion import build_fused_video_detections, skip_frigate_ev_for_standalone
 from hypothesis_arbitration import apply_hypothesis_arbitration
 from species_normalizer import merge_detections
 
@@ -372,6 +372,52 @@ def test_frigate_standalone_requires_geometry_by_default():
         app_config=cfg,
     )
     assert out == []
+
+
+def test_frigate_standalone_accepts_session_trigger_snapshot_without_geometry():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    cfg = DummyConfig({
+        'video.cameras': [
+            {'id': 'Forest', 'stream_name': 'Forest'},
+            {'id': 'BirdBox', 'stream_name': 'BirdBox'},
+        ],
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.36,
+        'detection.frigate_standalone_when_no_yolo': True,
+        'detection.frigate_standalone_min_score': 0.45,
+        'detection.frigate_standalone_missing_score_fallback': 0.0,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    })
+    mqtt = [
+        {
+            'source': 'frigate',
+            'camera': 'Forest',
+            'species': 'Hooded Crow',
+            'label': 'bird',
+            'sub_label': 'Hooded Crow',
+            'confidence': 0.66,
+            'timestamp': (start + timedelta(seconds=1)).isoformat(),
+            '_frigate_has_geometry': False,
+            '_session_trigger_snapshot': True,
+        },
+    ]
+    out = build_fused_video_detections(
+        [],
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+        triggered_camera='Forest',
+    )
+    assert len(out) == 1
+    assert out[0]['decision_kind'] == 'frigate_standalone'
+    assert out[0]['species_name'] == 'Hooded Crow'
 
 
 def test_frigate_standalone_ignores_stale_events_outside_age_window():
@@ -1469,3 +1515,11 @@ def test_merge_detections_conflict_result_stable_across_mqtt_order():
     )
     assert [row["species_name"] for row in out_a] == [row["species_name"] for row in out_b]
     assert len(out_a) == len(out_b) == 1
+
+
+def test_skip_frigate_ev_for_standalone_respects_config():
+    cfg = DummyConfig({'detection.frigate_standalone_skip_labels': ['person', 'human']})
+    assert skip_frigate_ev_for_standalone({'label': 'Person'}, cfg)
+    assert skip_frigate_ev_for_standalone({'species': 'human'}, cfg)
+    assert not skip_frigate_ev_for_standalone({'label': 'crow'}, cfg)
+    assert not skip_frigate_ev_for_standalone({'label': 'person'}, DummyConfig({}))

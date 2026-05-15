@@ -34,6 +34,9 @@ def normalize_settings_patch_updates(
     ограничить оператора, placeholders, secrets.zip.
     """
     out = copy.deepcopy(updates)
+    from app_config.trigger_config import fold_motion_settings_patch_into_triggers
+
+    fold_motion_settings_patch_into_triggers(out)
     if isinstance(out.get("performance"), dict):
         out["performance"].pop("redis_url_effective_masked", None)
 
@@ -76,6 +79,9 @@ def apply_settings_patch_and_refresh_caches(normalized_updates: dict) -> dict:
         app_config.config,
         to_merge,
     )
+    from app_config.trigger_config import fold_legacy_motion_out_of_merged_config
+
+    fold_legacy_motion_out_of_merged_config(app_config.config)
     app_config.save()
 
     bust_response_caches()

@@ -251,8 +251,20 @@ export function CaptureFeederSection({ form }: Props) {
                                 )}
                               </form.Field>
                             </Grid>
+                            <Grid size={{ xs: 12 }}>
+                              <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5 }}>
+                                {t('settings.frigateRoutingTitle')}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mb: 1 }}
+                              >
+                                {t('settings.frigateRoutingDesc')}
+                              </Typography>
+                            </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_camera_filter">
+                              <form.Field name="triggers.frigate.camera_filter">
                                 {(field) => (
                                   <TextField
                                     fullWidth
@@ -263,7 +275,9 @@ export function CaptureFeederSection({ form }: Props) {
                                       )
                                     }
                                     label={t('settings.frigateCameraFilter')}
-                                    placeholder="BirdCam, Patio"
+                                    placeholder={t(
+                                      'settings.frigateCameraFilterPlaceholder',
+                                    )}
                                     helperText={t(
                                       'settings.frigateCameraFilterHint',
                                     )}
@@ -272,7 +286,7 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_label_filter">
+                              <form.Field name="triggers.frigate.label_filter">
                                 {(field) => (
                                   <TextField
                                     fullWidth
@@ -283,7 +297,9 @@ export function CaptureFeederSection({ form }: Props) {
                                       )
                                     }
                                     label={t('settings.frigateLabelFilter')}
-                                    placeholder="bird, squirrel (Frigate)"
+                                    placeholder={t(
+                                      'settings.frigateLabelFilterPlaceholder',
+                                    )}
                                     helperText={t(
                                       'settings.frigateLabelFilterHint',
                                     )}
@@ -291,8 +307,20 @@ export function CaptureFeederSection({ form }: Props) {
                                 )}
                               </form.Field>
                             </Grid>
+                            <Grid size={{ xs: 12 }}>
+                              <Typography variant="subtitle2" sx={{ mt: 1, mb: 0.5 }}>
+                                {t('settings.frigateExclusionsHeading')}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mb: 1 }}
+                              >
+                                {t('settings.frigateExclusionsIntro')}
+                              </Typography>
+                            </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_label_exclude">
+                              <form.Field name="triggers.frigate.label_exclude">
                                 {(field) => (
                                   <TextField
                                     fullWidth
@@ -303,7 +331,9 @@ export function CaptureFeederSection({ form }: Props) {
                                       )
                                     }
                                     label={t('settings.frigateLabelExclude')}
-                                    placeholder="cat, dog"
+                                    placeholder={t(
+                                      'settings.frigateLabelExcludePlaceholder',
+                                    )}
                                     helperText={t(
                                       'settings.frigateLabelExcludeHint',
                                     )}
@@ -312,7 +342,53 @@ export function CaptureFeederSection({ form }: Props) {
                               </form.Field>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_trigger_on_tracked_object">
+                              <form.Field name="triggers.frigate.geometry_fallback_label_exclude">
+                                {(field) => (
+                                  <TextField
+                                    fullWidth
+                                    value={(field.state.value || []).join(', ')}
+                                    onChange={(e) =>
+                                      field.handleChange(
+                                        splitCsv(e.target.value),
+                                      )
+                                    }
+                                    label={t(
+                                      'settings.frigateGeometryFallbackExclude',
+                                    )}
+                                    placeholder={t(
+                                      'settings.frigateGeometryFallbackExcludePlaceholder',
+                                    )}
+                                    helperText={t(
+                                      'settings.frigateGeometryFallbackExcludeHint',
+                                    )}
+                                  />
+                                )}
+                              </form.Field>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                              <form.Field name="detection.frigate_standalone_skip_labels">
+                                {(field) => (
+                                  <TextField
+                                    fullWidth
+                                    value={(field.state.value || []).join(', ')}
+                                    onChange={(e) =>
+                                      field.handleChange(
+                                        splitCsv(e.target.value),
+                                      )
+                                    }
+                                    label={t('settings.frigateStandaloneSkipLabels')}
+                                    placeholder={t(
+                                      'settings.frigateStandaloneSkipLabelsPlaceholder',
+                                    )}
+                                    helperText={t(
+                                      'settings.frigateStandaloneSkipLabelsHint',
+                                    )}
+                                  />
+                                )}
+                              </form.Field>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                              <form.Field name="triggers.frigate.trigger_on_tracked_object">
                                 {(field) => (
                                   <FormControl fullWidth>
                                     <FormControlLabel
@@ -331,6 +407,32 @@ export function CaptureFeederSection({ form }: Props) {
                                     <FormHelperText>
                                       {t(
                                         'settings.frigateTriggerOnGeometryHint',
+                                      )}
+                                    </FormHelperText>
+                                  </FormControl>
+                                )}
+                              </form.Field>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                              <form.Field name="triggers.frigate.geometry_fallback_enabled">
+                                {(field) => (
+                                  <FormControl fullWidth>
+                                    <FormControlLabel
+                                      control={
+                                        <Switch
+                                          checked={field.state.value !== false}
+                                          onChange={(e) =>
+                                            field.handleChange(e.target.checked)
+                                          }
+                                        />
+                                      }
+                                      label={t(
+                                        'settings.frigateGeometryFallbackEnabled',
+                                      )}
+                                    />
+                                    <FormHelperText>
+                                      {t(
+                                        'settings.frigateGeometryFallbackEnabledHint',
                                       )}
                                     </FormHelperText>
                                   </FormControl>

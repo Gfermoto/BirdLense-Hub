@@ -7,6 +7,7 @@ import yaml
 
 from app_config.secret_env import apply_secret_env_overrides
 from app_config.trigger_config import (
+    build_motion_settings_mirror_for_api,
     copy_legacy_topic_if_missing,
     fold_legacy_motion_out_of_merged_config,
     migrate_legacy_motion_block,
@@ -23,8 +24,7 @@ CONFIDENCE_FLOORS = {
     "processor.min_confidence_to_notify": 0.28,
     "processor.min_confidence_binary": 0.22,
     "processor.min_track_duration": 0.35,
-    # Дальние камеры (Forest) дают мелкий bbox; пол 40 режет валидные птицы.
-    # Оставляем guard против мусора, но ниже для small-object сцен.
+    # Small-object / distant scenes: keep floor usable without site-specific camera hacks.
     "processor.min_box_size_px": 24,
 }
 
@@ -535,6 +535,7 @@ class AppConfig:
         if isinstance(w, dict):
             w.pop("ha_url", None)
             w.pop("ha_token", None)
+        out["motion"] = build_motion_settings_mirror_for_api(out)
         return cls.mask_config_for_api(out)
 
     @classmethod

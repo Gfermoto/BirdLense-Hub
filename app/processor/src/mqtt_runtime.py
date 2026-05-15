@@ -86,12 +86,12 @@ def frigate_filters_for_cameras(cameras: list) -> tuple[Any, set, set]:
     label_filter = _frigate_label_set(
         "triggers.frigate.label_filter",
         "mqtt.frigate_label_filter",
-        ["bird", "Bird"],
+        [],
     )
     label_exclude = _frigate_label_set(
         "triggers.frigate.label_exclude",
         "mqtt.frigate_label_exclude",
-        ["cat", "dog"],
+        [],
     )
     return camera_filter, label_filter, label_exclude
 
