@@ -457,13 +457,9 @@ def _parity_reason_from_decision_payload(payload: dict[str, Any], ingest_reason_
     if rejected_count > 0:
         return "REJECTED_NO_REASON"
 
-    recording_context = (
-        payload.get("recording_context") if isinstance(payload.get("recording_context"), dict) else {}
-    )
+    recording_context = payload.get("recording_context") if isinstance(payload.get("recording_context"), dict) else {}
     runtime_signals = (
-        recording_context.get("runtime_signals")
-        if isinstance(recording_context.get("runtime_signals"), dict)
-        else {}
+        recording_context.get("runtime_signals") if isinstance(recording_context.get("runtime_signals"), dict) else {}
     )
     if runtime_signals.get("yolo_ran") is False:
         return "YOLO_NOT_RUN"
