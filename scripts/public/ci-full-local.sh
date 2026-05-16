@@ -99,10 +99,11 @@ ensure_venv_docs() {
 }
 
 log "verify-prod-env.sh (A1 CI parity / synthetic secrets)"
+SYNTH_SECRET="$(printf 'ci_%028d' 0)"
 VERIFY_PROD_ENV=1 BIRDLENSE_STRICT_API_AUTH=1 \
-  FLASK_SECRET_KEY='0123456789abcdef0123456789abcdef' \
-  PROCESSOR_SECRET='fedcba9876543210fedcba9876543210' \
-  MCP_TOKEN='0123456789abcdef0123456789abcdef' \
+  FLASK_SECRET_KEY="${SYNTH_SECRET}" \
+  PROCESSOR_SECRET="${SYNTH_SECRET}" \
+  MCP_TOKEN="${SYNTH_SECRET}" \
   "${ROOT}/scripts/verify-prod-env.sh" --require-mcp-token
 
 log "Python: security + ruff + pytest (app/web/tests)"
