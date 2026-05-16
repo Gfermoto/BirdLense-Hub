@@ -1,6 +1,6 @@
 # Модель доступа и роли BirdLense Hub
 
-[English](./ACCESS_CONTROL.md)
+[English](../contributor/access-control.md)
 
 ---
 
@@ -20,7 +20,7 @@
 
 При **`BIRDLENSE_ENV=production`** (или `FLASK_ENV=production`) и **`BIRDLENSE_STRICT_API_AUTH=1`** каждый запрос к `/api/ui/*` требует **одно из**: сессия после `verify-password`, **`Authorization: Bearer <MCP_TOKEN>`**, или **`BIRDLENSE_UI_API_KEY`** через **`X-Birdlense-Api-Key`** / **Bearer**. Без сессии по-прежнему доступны: **`GET /api/ui/health`**, **`requires-password`**, **`check-access`**, **`POST verify-password`**, **`vapid-public`**, **`logout`**; для preflight разрешён **`OPTIONS`**.
 
-Многие **GET только для чтения** (overview, timeline, **`GET /api/ui/videos/…`** включая **`stream`**) middleware считает публичными — см. код **`strict_ui_api_auth_service`**. Чтобы **стрим MP4** требовал Contributor/Admin, включите **`general.require_auth_for_video_stream: true`**. Прямая статика **`/data/recordings/`** у nginx — отдельно, см. **[PUBLIC_RECORDINGS.ru.md](./PUBLIC_RECORDINGS.ru.md)**.
+Многие **GET только для чтения** (overview, timeline, **`GET /api/ui/videos/…`** включая **`stream`**) middleware считает публичными — см. код **`strict_ui_api_auth_service`**. Чтобы **стрим MP4** требовал Contributor/Admin, включите **`general.require_auth_for_video_stream: true`**. Прямая статика **`/data/recordings/`** у nginx — отдельно, см. **[PUBLIC_RECORDINGS.ru.md](./public-recordings.ru.md)**.
 
 ---
 
@@ -134,7 +134,7 @@ session['settings_unlocked'] = True  # True для admin; для contributor ч�
 
 ## Будущее: донаты и сообщество
 
-Сводно на уровне roadmap репозитория: [ROADMAP](./ROADMAP.ru.md) — раздел **«Кандидаты на будущее»**.
+Сводно на уровне roadmap репозитория: [ROADMAP](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/ROADMAP.ru.md) — раздел **«Кандидаты на будущее»**.
 
 ### Идеи для монетизации/поддержки
 
@@ -156,7 +156,7 @@ session['settings_unlocked'] = True  # True для admin; для contributor ч�
 
 ### Технические заготовки
 
-- `general.donate_url` — опциональные ссылки поддержки в шапке, меню и карточке «Корм» (см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md)).
+- `general.donate_url` — опциональные ссылки поддержки в шапке, меню и карточке «Корм» (см. [CONFIGURATION.ru.md](./configuration.ru.md)).
 - `general.community_stats_enabled` — показывать ли рейтинг помощников.
 - В БД: `SpeciesVisit` или отдельная таблица `contributor_actions` для учёта (опционально).
 
@@ -190,4 +190,4 @@ session['settings_unlocked'] = True  # True для admin; для contributor ч�
 
 ---
 
-См. также: [CONFIGURATION](./CONFIGURATION.ru.md), [API](./API.ru.md), [SECURITY](./SECURITY.md), [GLOSSARY](./GLOSSARY.ru.md).
+См. также: [CONFIGURATION](./configuration.ru.md), [API](./api.ru.md), [SECURITY](../contributor/security.md), [GLOSSARY](./glossary.ru.md).

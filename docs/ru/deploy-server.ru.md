@@ -1,8 +1,8 @@
 # Деплой BirdLense Hub на сервер (RU)
 
-Короткая рабочая инструкция для прод-сервера без лишних шагов. Контекст и ссылки: [INSTALL.ru](./INSTALL.ru.md) § *Деплой на сервер*.
+Короткая рабочая инструкция для прод-сервера без лишних шагов. Контекст и ссылки: [INSTALL.ru](./install.ru.md) § *Деплой на сервер*.
 
-[English](./DEPLOY_SERVER.md)
+[English](../user/deploy-server.md)
 
 ## 1) Подготовка
 
@@ -25,7 +25,7 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 
 Заходите на хаб по **`http://<хост>:<порт>`** (в контейнере nginx слушает **8080**, на хосте проброс через **`BIRDLENSE_PORT`**, часто **8085**). **`DEPLOY_URL`**, а при ошибках CORS в браузере — **`CORS_ORIGINS`** в **`app/.env`** на сервере, задайте **ровно этим же URL** (схема + хост + порт).
 
-Отдельный **reverse proxy** перед стеком и **DNS-имя** для работы **не обязательны**: контейнер сам отвечает по HTTP на выбранном порту. Когда появятся **домен и TLS** (и при желании внешний прокси), поменяйте **`DEPLOY_URL`**, **`CORS_ORIGINS`** и публичные URL в интеграциях; если TLS обрывает доверенный прокси — **`TRUSTED_PROXY=1`**, см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md).
+Отдельный **reverse proxy** перед стеком и **DNS-имя** для работы **не обязательны**: контейнер сам отвечает по HTTP на выбранном порту. Когда появятся **домен и TLS** (и при желании внешний прокси), поменяйте **`DEPLOY_URL`**, **`CORS_ORIGINS`** и публичные URL в интеграциях; если TLS обрывает доверенный прокси — **`TRUSTED_PROXY=1`**, см. [CONFIGURATION.ru.md](./configuration.ru.md).
 
 **Рабочая линия (VPS по IP, без домена):** один и тот же URL в локальном **`DEPLOY_URL`** и в **`CORS_ORIGINS`** на сервере **`app/.env`**, например **`http://185.218.111.196:8085`**. Опционально A1 перед **`make deploy`**: скопируйте **`app/.env`** с сервера, в **`deploy.local.sh`** задайте **`RUN_VERIFY_PROD_BEFORE_DEPLOY=1`** (и **`VERIFY_PROD_ENV_FILE`**, если копия не **`app/.env`**) — **`scripts/deploy.sh`** сначала вызовет **`verify-prod-env`**, см. **`scripts/deploy.local.sh.example`**.
 
@@ -40,7 +40,7 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 
 Если **`BIRDLENSE_ENV`** ещё не `production`, задайте **`VERIFY_PROD_ENV=1`** для тех же проверок. Для обязательного MCP: **`./scripts/verify-prod-env.sh --require-mcp-token`**.
 
-Для **UI с другого origin** (другой хост/порт, чем API) задайте **`CORS_ORIGINS`** / **`CORS_DEFAULT_ORIGINS`** / **`CORS_LOCAL_DEV_ORIGINS`** — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md).
+Для **UI с другого origin** (другой хост/порт, чем API) задайте **`CORS_ORIGINS`** / **`CORS_DEFAULT_ORIGINS`** / **`CORS_LOCAL_DEV_ORIGINS`** — см. [CONFIGURATION.ru.md](./configuration.ru.md).
 
 ## 2) Деплой
 
@@ -107,4 +107,4 @@ curl -sS http://<server>:8085/api/ui/status
 
 ## 8) Прямые URL к записям (`/data/recordings/`)
 
-См. **[PUBLIC_RECORDINGS.ru.md](./PUBLIC_RECORDINGS.ru.md)** — единый чеклист для публичного VPS. Здесь кратко, без повтора [SECURITY.ru.md §3](./SECURITY.ru.md).
+См. **[PUBLIC_RECORDINGS.ru.md](./public-recordings.ru.md)** — единый чеклист для публичного VPS. Здесь кратко, без повтора [SECURITY.ru.md §3](./security.ru.md).

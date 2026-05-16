@@ -2,11 +2,11 @@
 
 **Version:** the release semver in repository root `VERSION` (mirrored in `app/web/openapi.yaml`).
 
-Authoritative contract: [OpenAPI YAML](./project/openapi.md) (import into Redoc, Stoplight, or IDE).
+Authoritative contract: [OpenAPI YAML](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/openapi.yaml) (import into Redoc, Stoplight, or IDE).
 
-**Interactive (browser):** [OpenAPI (Redoc)](reference/openapi.md).
+**Interactive (browser):** [OpenAPI (Redoc)](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/openapi.yaml).
 
-[Русский](./API.ru.md)
+[Русский](../ru/api.ru.md)
 
 ---
 
@@ -30,10 +30,10 @@ All paths in this table are prefixed with `/api/ui` (e.g. `/health` → `GET /ap
 | `/birdfood` | GET/POST | Food list / add |
 | `/birdfood/:id/toggle` | PATCH | Toggle food entry |
 | `/bird_families` | GET | Bird family list |
-| `/feed/dispense` | POST | Trigger feeder (**Admin** session or MCP Bearer — see [ACCESS_CONTROL](./ACCESS_CONTROL.md)) |
+| `/feed/dispense` | POST | Trigger feeder (**Admin** session or MCP Bearer — see [ACCESS_CONTROL](./access-control.md)) |
 | `/settings` | GET/PATCH | Read/update settings |
 | `/settings/requires-password` | GET | Whether a password is configured |
-| `/settings/verify-password` | POST | Unlock session (`password` → `role`: `admin` \| `contributor`). **401** if wrong password; **429** + `Retry-After` after 5 failed attempts / 60s per IP — see [ACCESS_CONTROL](./ACCESS_CONTROL.md) |
+| `/settings/verify-password` | POST | Unlock session (`password` → `role`: `admin` \| `contributor`). **401** if wrong password; **429** + `Retry-After` after 5 failed attempts / 60s per IP — see [ACCESS_CONTROL](./access-control.md) |
 | `/settings/check-access` | GET | Session unlock state: `{ unlocked, role? }` — always **200** (locked → `unlocked: false`; no red 403 in browser for probes) |
 | `/unknowns` | GET | Low-confidence detections (`start_time`, `end_time`, `limit`) |
 | `/region-comparison` | GET | Your species vs regional eBird (needs `secrets.ebird_api_key`) |
@@ -58,7 +58,7 @@ All paths in this table are prefixed with `/api/ui` (e.g. `/health` → `GET /ap
 | `/api/metrics` | GET | Same (Grafana-friendly path) |
 | `/api/metrics/summary` | GET | JSON summary for dashboards and observability checks |
 
-Scrape config: [CONFIGURATION](./CONFIGURATION.md) → Prometheus / Grafana.
+Scrape config: [CONFIGURATION](../user/configuration.md) → Prometheus / Grafana.
 
 ---
 
@@ -129,7 +129,7 @@ In **`app/web/openapi.yaml`**, choose the **`…/api/processor`** server entry i
 | **MCP** | Optional `MCP_TOKEN` — `Authorization: Bearer <token>` |
 | **Processor** | Optional `PROCESSOR_SECRET` — `X-Processor-Token` |
 
-Details: [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [CONFIGURATION](./CONFIGURATION.md).
+Details: [ACCESS_CONTROL](./access-control.md) · [CONFIGURATION](../user/configuration.md).
 
 ---
 
@@ -142,4 +142,4 @@ Details: [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [CONFIGURATION](./CONFIGURATIO
 
 ## See also
 
-[CONFIGURATION](./CONFIGURATION.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [FEATURES](./FEATURES.md) · [GLOSSARY](./GLOSSARY.md)
+[CONFIGURATION](../user/configuration.md) · [ARCHITECTURE](./architecture.md) · [ACCESS_CONTROL](./access-control.md) · [FEATURES](../user/features.md) · [GLOSSARY](../user/glossary.md)

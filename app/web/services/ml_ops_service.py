@@ -274,6 +274,7 @@ def build_ml_runtime_status() -> tuple[dict[str, Any], int]:
         "schema": "ml_runtime_status@v1",
         "video": {
             "encoding": app_config.get("video.encoding"),
+            "record_with_vaapi": app_config.get("video.record_with_vaapi"),
             "capture_backend_config": app_config.get("video.capture_backend"),
         },
         "processor": {

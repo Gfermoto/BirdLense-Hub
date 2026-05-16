@@ -104,6 +104,13 @@ processor:
   # Слишком высокий bird — много пропусков на кормушке; 0.28–0.32 обычный диапазон.
   min_confidence_binary_bird: 0.28
   min_confidence_binary_rodent: 0.24
+  # OpenVINO-only: Ultralytics даёт более низкие conf, чем torch на том же IR (#371 field parity).
+  # Ниже — без второго инференса: (1) ослабить track(conf), (2) при сравнении с порогом Bird умножить conf.
+  # В БД/трейсах остаётся сырая conf; torch-бэкенд ключи не читает. При лишних FP — поднять track или снизить scale.
+  openvino_binary_track_ultralytics_conf: 0.032
+  openvino_binary_bird_score_scale: 8.5
+  # Необязательно: явная подмена YAML-порога Bird только при OV (иначе = min_confidence_binary_bird).
+  openvino_min_confidence_binary_bird: null
   # Устаревший алиас (читается, если min_confidence_binary_rodent не задан):
   # min_confidence_binary_squirrel: 0.24
   # Доля площади кадра (0..1): Bird с bbox ≤ порога — без видового классификатора. 0 = выкл. (рекомендуется для видов на кормушке).
@@ -262,7 +269,9 @@ processor:
   # CV/ML epic (#367, #371): движок инференса. Основной backend: OpenVINO.
   # Env BIRDLENSE_INFERENCE_BACKEND имеет приоритет.
   inference_backend: openvino
-  # Устройство Ultralytics для бинарного детектора (track/predict): пусто = дефолт пакета.
+  # Устройство Ultralytics для бинарного детектора (track/predict): пусто = дефолт пакета (часто CPU для OV).
+  # На площадке с Intel iGPU и DRI в контейнере задайте intel:gpu (или env BIRDLENSE_INFERENCE_DEVICE=intel:gpu).
+  # Без GPU OV на CPU обычно медленнее и не «исправляет» низкие conf — см. processor.openvino_* ниже.
   # OpenVINO на Intel GPU: например intel:gpu (см. Ultralytics OpenVINO). Env: BIRDLENSE_INFERENCE_DEVICE.
   inference_device: ""
   # Отдельный backend классификатора видов: openvino | torch | auto.
@@ -346,6 +355,10 @@ video:
   go2rtc_password: ""
   # Кодирование записи: cpu | intel (встроенная видеокарта Intel — VA-API)
   encoding: cpu
+  # При encoding=intel: использовать h264_vaapi для записи MP4 (true) или libx264 (false).
+  # false — стабильнее на части iGPU/драйверов (ошибка encode issue 24 / битый moov), при этом
+  # при capture_backend=auto захват для YOLO по-прежнему может идти через VA-API.
+  record_with_vaapi: true
   # Захват кадров для motion/detection: auto | opencv | ffmpeg_vaapi.
   # auto: при encoding=intel пробует FFmpeg VA-API, иначе OpenCV; при ошибке fallback на OpenCV.
   capture_backend: auto
@@ -478,8 +491,11 @@ detection:
   # Если ровно один accepted_generic «Bird» от YOLO — НЕ подменять на Frigate standalone по умолчанию.
   # Иначе Frigate начинает доминировать как primary provider даже при наличии визуального YOLO-трека.
   frigate_standalone_when_no_accepted_species: true
-  # Last-resort: Frigate-триггер + пустой fusion → review-only строка, клип не удаляется.
-  frigate_trigger_review_salvage_enabled: true
+  # Last-resort: Frigate-триггер + пустой fusion → review-only строка (без кадров YOLO).
+  # По умолчанию выкл.: иначе Frigate MQTT (Bird Classification / sub_label) даёт вид на пустом клипе.
+  frigate_trigger_review_salvage_enabled: false
+  # true — разрешить salvage даже при 0 ByteTrack-треках (старое поведение; риск ложных видов на пустом видео).
+  frigate_trigger_review_salvage_allow_without_yolo_tracks: false
   # Не строить standalone/review-only строки из MQTT по этим лейблам Frigate (person/human и т.д.).
   frigate_standalone_skip_labels:
     - person

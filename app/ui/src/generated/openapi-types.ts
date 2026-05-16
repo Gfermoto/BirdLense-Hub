@@ -8497,6 +8497,12 @@ export interface components {
                 min_confidence_binary_rodent?: number | null;
                 /** @description Deprecated alias for min_confidence_binary_rodent (legacy YAML only). */
                 min_confidence_binary_squirrel?: number | null;
+                /** @description OpenVINO-only cap for YOLO.track(conf); min(stock_floor, this). Compensates lower OV scores vs torch. */
+                openvino_binary_track_ultralytics_conf?: number | null;
+                /** @description OpenVINO-only Bird confidence multiplier for threshold compare only; stored conf stays raw. */
+                openvino_binary_bird_score_scale?: number | null;
+                /** @description Optional OpenVINO-only replacement for min_confidence_binary_bird in floor + per-label. */
+                openvino_min_confidence_binary_bird?: number | null;
                 bird_skip_classifier_max_area_frac?: number | null;
                 min_confidence_to_process?: number;
                 min_confidence_to_notify?: number;

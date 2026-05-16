@@ -2,7 +2,7 @@
 
 **BirdLense Hub** — открытое ПО для **мониторинга птиц у кормушек, в саду и на площадках**: детекция на видео, классификация видов локальным ML, запись роликов и структурированный таймлайн для операторов, орнитологии и гражданской науки.
 
-[English](./OVERVIEW.md)
+[English](../user/overview.md)
 
 ---
 
@@ -18,11 +18,11 @@
 
 | Аудитория | С чего начать |
 |-----------|----------------|
-| **Наблюдатели, кольцеватели** | [INSTALL](./INSTALL.md) → [SCENARIOS](./SCENARIOS.ru.md) — учёт визитов, экспорт (eBird, CSV), проверка неуверенных детекций |
-| **Исследователи, станции** | [CONFIGURATION](./CONFIGURATION.ru.md), [DATASETS](./DATASETS.ru.md), [TRAINING](./TRAINING.ru.md) — каталоги, датасеты, свои веса |
-| **Frigate / Home Assistant** | [SCENARIOS](./SCENARIOS.ru.md), [CONFIGURATION](./CONFIGURATION.ru.md) |
-| **Разработчик / контрибьютор** | [LOCAL_DEV](./LOCAL_DEV.ru.md), [Contributing](./project/contributing.md), [ARCHITECTURE](./ARCHITECTURE.md) |
-| **Автор статей / лендинга** | Эта страница + [FEATURES](./FEATURES.ru.md) |
+| **Наблюдатели, кольцеватели** | [INSTALL](../user/install.md) → [SCENARIOS](./scenarios.ru.md) — учёт визитов, экспорт (eBird, CSV), проверка неуверенных детекций |
+| **Исследователи, станции** | [CONFIGURATION](./configuration.ru.md), [DATASETS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/DATASETS.ru.md), [TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.ru.md) — каталоги, датасеты, свои веса |
+| **Frigate / Home Assistant** | [SCENARIOS](./scenarios.ru.md), [CONFIGURATION](./configuration.ru.md) |
+| **Разработчик / контрибьютор** | [LOCAL_DEV](./local-dev.ru.md), [Contributing](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md), [ARCHITECTURE](../contributor/architecture.md) |
+| **Автор статей / лендинга** | Эта страница + [FEATURES](./features.ru.md) |
 
 ---
 
@@ -31,13 +31,13 @@
 - **Один контейнер:** nginx, веб-API (Flask), опционально MCP и **processor** (видео, YOLO, ByteTrack, FFmpeg, MQTT).
 - **Снаружи:** Go2RTC (желательно), MQTT, опционально Frigate, BirdNET-Pi/Go, ESPHome/Tasmota.
 
-Схема и потоки данных: [ARCHITECTURE](./ARCHITECTURE.md).
+Схема и потоки данных: [ARCHITECTURE](../contributor/architecture.md).
 
 ---
 
 ## Как устроено распознавание
 
-- **Детектор + классификатор (YOLO):** птица или грызун (Rodent) в кадре, затем вид. По умолчанию **EU**-модель (~491 вид); веса US — в [TRAINING](./TRAINING.md).
+- **Детектор + классификатор (YOLO):** птица или грызун (Rodent) в кадре, затем вид. По умолчанию **EU**-модель (~491 вид); веса US — в [TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.md).
 - **Frigate** может отдавать **Bird Classification** (`sub_label`); результаты сливаются с видео-ML.
 - **BirdNET** — слияние по времени при настроенном MQTT.
 
@@ -47,27 +47,27 @@
 
 | Задача | Документ |
 |--------|----------|
-| Установка и деплой | [INSTALL](./INSTALL.md) |
-| Сценарии «как настроить X» | [SCENARIOS](./SCENARIOS.ru.md) |
-| Все параметры | [CONFIGURATION](./CONFIGURATION.ru.md) |
-| Термины | [GLOSSARY](./GLOSSARY.ru.md) |
-| Список возможностей | [FEATURES](./FEATURES.ru.md) |
-| Проблемы | [TROUBLESHOOTING](./TROUBLESHOOTING.ru.md) |
-| Тесты и проверка после деплоя | [TESTING](./TESTING.ru.md) |
-| CI и локальный полный прогон (`make ci-local`) | [CI_AND_QUALITY](./CI_AND_QUALITY.ru.md) |
-| Полный индекс | [docs/README](./README.ru.md) |
-| Карта разделов для сайта | [SITE_MAP](./SITE_MAP.ru.md) |
+| Установка и деплой | [INSTALL](../user/install.md) |
+| Сценарии «как настроить X» | [SCENARIOS](./scenarios.ru.md) |
+| Все параметры | [CONFIGURATION](./configuration.ru.md) |
+| Термины | [GLOSSARY](./glossary.ru.md) |
+| Список возможностей | [FEATURES](./features.ru.md) |
+| Проблемы | [TROUBLESHOOTING](./troubleshooting.ru.md) |
+| Тесты и проверка после деплоя | [TESTING](./testing.ru.md) |
+| CI и локальный полный прогон (`make ci-local`) | [CI_AND_QUALITY](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CI_AND_QUALITY.ru.md) |
+| Полный индекс | [docs/README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/README.ru.md) |
+| Карта разделов для сайта | [SITE_MAP](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SITE_MAP.ru.md) |
 
-**OpenAPI:** [спецификация YAML](./project/openapi.md).
+**OpenAPI:** [спецификация YAML](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/openapi.yaml).
 
 ---
 
 ## Сайт и статьи на базе репозитория
 
-**Этот файл** — сюжет «что и зачем»; **INSTALL** + **SCENARIOS** — быстрый старт; **FEATURES** — витрина возможностей; **ARCHITECTURE** — техника. Правила оформления: [Documentation](./Documentation.ru.md). Локализация: [I18N_STATUS](./I18N_STATUS.md).
+**Этот файл** — сюжет «что и зачем»; **INSTALL** + **SCENARIOS** — быстрый старт; **FEATURES** — витрина возможностей; **ARCHITECTURE** — техника. Правила оформления: [Documentation](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/Documentation.ru.md). Локализация: [I18N_STATUS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/I18N_STATUS.md).
 
 ---
 
 ## Версия
 
-Актуальная линейка релизов: бейдж в [корневом README](./project/root-readme.md) и [Changelog](./project/changelog.md).
+Актуальная линейка релизов: бейдж в [корневом README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/README.md) и [Changelog](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md).

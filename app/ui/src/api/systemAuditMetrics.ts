@@ -68,6 +68,7 @@ export type MlRuntimeStatus = {
   schema: string;
   video: {
     encoding?: string;
+    record_with_vaapi?: boolean;
     capture_backend_config?: string;
   };
   processor: {

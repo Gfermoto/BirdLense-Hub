@@ -39,6 +39,7 @@ try:
         binary_track_ultralytics_conf_floor,
         bird_skip_classifier_area_limit,
         build_binary_track_ultralytics_extras,
+        openvino_binary_bird_score_scale,
         per_label_binary_conf_threshold,
         should_skip_bird_species_classifier,
     )
@@ -48,6 +49,7 @@ except ImportError:
     _regional_class_ids = None  # type: ignore
     binary_track_ultralytics_conf_floor = None  # type: ignore
     bird_skip_classifier_area_limit = None  # type: ignore
+    openvino_binary_bird_score_scale = None  # type: ignore
     per_label_binary_conf_threshold = None  # type: ignore
     should_skip_bird_species_classifier = None  # type: ignore
 
@@ -661,6 +663,45 @@ class TestBinaryConfHelpers(unittest.TestCase):
         self.assertAlmostEqual(per_label_binary_conf_threshold("Bird", 0.3, cfg), 0.5)
         self.assertAlmostEqual(per_label_binary_conf_threshold("Rodent", 0.3, cfg), 0.2)
         self.assertAlmostEqual(per_label_binary_conf_threshold("Squirrel", 0.3, cfg), 0.2)
+
+    def test_openvino_track_conf_cap_lowers_floor(self):
+        if binary_track_ultralytics_conf_floor is None:
+            self.skipTest("detection_strategy import failed")
+        cfg = {
+            "processor.min_confidence_binary_bird": 0.55,
+            "processor.min_confidence_binary_rodent": 0.22,
+            "processor.openvino_binary_track_ultralytics_conf": 0.05,
+        }
+        self.assertAlmostEqual(binary_track_ultralytics_conf_floor(0.30, cfg, inference_backend="torch"), 0.22)
+        self.assertAlmostEqual(binary_track_ultralytics_conf_floor(0.30, cfg, inference_backend="openvino"), 0.05)
+
+    def test_openvino_bird_threshold_override(self):
+        if per_label_binary_conf_threshold is None:
+            self.skipTest("detection_strategy import failed")
+        cfg = {
+            "processor.min_confidence_binary_bird": 0.5,
+            "processor.openvino_min_confidence_binary_bird": 0.19,
+        }
+        self.assertAlmostEqual(
+            per_label_binary_conf_threshold("Bird", 0.3, cfg, inference_backend="openvino"),
+            0.19,
+        )
+        self.assertAlmostEqual(per_label_binary_conf_threshold("Bird", 0.3, cfg, inference_backend="torch"), 0.5)
+
+    def test_openvino_bird_score_scale_helper(self):
+        if openvino_binary_bird_score_scale is None:
+            self.skipTest("detection_strategy import failed")
+        self.assertAlmostEqual(
+            openvino_binary_bird_score_scale({}, inference_backend="torch"),
+            1.0,
+        )
+        self.assertAlmostEqual(
+            openvino_binary_bird_score_scale(
+                {"processor.openvino_binary_bird_score_scale": 6.0},
+                inference_backend="openvino",
+            ),
+            6.0,
+        )
 
     def test_bird_skip_classifier_area(self):
         if should_skip_bird_species_classifier is None:

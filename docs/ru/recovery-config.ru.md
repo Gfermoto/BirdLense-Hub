@@ -1,6 +1,6 @@
 # Восстановление настроек
 
-[English](./RECOVERY_CONFIG.md)
+[English](../user/recovery-config.md)
 
 ---
 
@@ -61,4 +61,4 @@ git checkout app/app_config/user_config.yaml
 - `general.settings_password`
 - и т.д.
 
-См. [CONFIGURATION](./CONFIGURATION.ru.md).
+См. [CONFIGURATION](./configuration.ru.md).

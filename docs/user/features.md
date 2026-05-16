@@ -1,8 +1,8 @@
 # BirdLense Hub — Features
 
-Capability overview. Per-version notes: [Changelog](./project/changelog.md).
+Capability overview. Per-version notes: [Changelog](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md).
 
-[Русский](./FEATURES.ru.md)
+[Русский](../ru/features.ru.md)
 
 ---
 
@@ -22,7 +22,7 @@ Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 | **Weather** | OpenWeather or Home Assistant |
 | **Telegram** | Detection alerts, optional best-frame photo |
 | **Feeder** | Relay via MQTT (Tasmota) or ESPHome on detection |
-| **MCP** | [Model Context Protocol](https://modelcontextprotocol.io/) — optional server for **authorized clients** to call hub tools (see [MCP_SETUP](./MCP_SETUP.md)) |
+| **MCP** | [Model Context Protocol](https://modelcontextprotocol.io/) — optional server for **authorized clients** to call hub tools (see [MCP_SETUP](../contributor/mcp-setup.md)) |
 
 ---
 
@@ -57,7 +57,7 @@ Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 | **Training crops** | `processor.save_dataset_crops`; ZIP + relabel from System |
 | **Download video** | Video details — Admin/Contributor after password |
 | **Video prev/next** | Same UTC calendar day: arrows + counter on video details; `GET /api/ui/videos/:id/neighbors` |
-| **System: resources & visitors** | `/system` charts (server history + live tail, window 6/24/48 h), unique visitors over selectable period; tune via `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION](./CONFIGURATION.md) |
+| **System: resources & visitors** | `/system` charts (server history + live tail, window 6/24/48 h), unique visitors over selectable period; tune via `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION](./configuration.md) |
 | **Library** | `/library` — recordings calendar, dataset exports, file-replay controls when **`video.source: file`**; **System → Scan and import** for clips already on disk |
 
 ---
@@ -83,7 +83,7 @@ Capability overview. Per-version notes: [Changelog](./project/changelog.md).
 | `ebird` | `country`, `state`, `location_name` |
 | `secrets` | `xeno_canto_api_key`, `ebird_api_key` |
 
-Full reference: [CONFIGURATION](./CONFIGURATION.md).
+Full reference: [CONFIGURATION](./configuration.md).
 
 ---
 
@@ -110,10 +110,10 @@ Full reference: [CONFIGURATION](./CONFIGURATION.md).
 | GET | `/api/ui/species/:id/xeno-canto` | Xeno-canto proxy |
 | GET | `/metrics` | Prometheus |
 
-Full spec: [OpenAPI (YAML)](./project/openapi.md) · narrative: [API](./API.md).
+Full spec: [OpenAPI (YAML)](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/openapi.yaml) · narrative: [API](../contributor/api.md).
 
 ---
 
 ## See also
 
-[API](./API.md) · [CONFIGURATION](./CONFIGURATION.md) · [GLOSSARY](./GLOSSARY.md) · [ROADMAP](./ROADMAP.md) · [OVERVIEW](./OVERVIEW.md) · [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.md)
+[API](../contributor/api.md) · [CONFIGURATION](./configuration.md) · [GLOSSARY](./glossary.md) · [ROADMAP](../contributor/roadmap.md) · [OVERVIEW](./overview.md) · [PUBLIC_RELEASE_CHECKLIST](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.md)

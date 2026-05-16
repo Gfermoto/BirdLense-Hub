@@ -62,6 +62,7 @@ COPY scripts/train_fusion.py ./scripts/
 COPY scripts/diag_video_detect.py ./scripts/
 COPY scripts/diag_coco_bird_frames.py ./scripts/
 COPY scripts/benchmark-track-regen.py ./scripts/
+COPY scripts/compare_detector_bboxes.py ./scripts/
 COPY scripts/benchmark_regen_labels.py ./scripts/
 COPY scripts/reid/run_daily_ssl_cycle.py ./scripts/reid/
 # SHA256 EU-классификатора — синхронизировать с CHECKSUMS (.../classification/weights/best.pt) и fetch-processor-weights.sh.

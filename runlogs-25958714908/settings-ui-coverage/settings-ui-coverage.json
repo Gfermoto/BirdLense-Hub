@@ -1,0 +1,2401 @@
+{
+  "summary": {
+    "config_keys": 340,
+    "ui_fields": 242,
+    "allowlisted_non_ui": 152,
+    "missing": 0,
+    "allowlist_by_category": {
+      "advanced": 42,
+      "ops-only": 21,
+      "yaml-only": 3,
+      "access-control": 1,
+      "legacy": 5,
+      "library-ui": 26,
+      "derived": 1,
+      "backend-managed": 3
+    }
+  },
+  "missing_keys": [],
+  "rows": [
+    {
+      "key": "detection.absorb_generic_bird",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.absorb_generic_bird_min_classifier_confidence",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.absorb_generic_bird_overlap_min_sec",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.cross_source_confidence_bonus",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.dedup_window_seconds",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.frigate_standalone_excluded_min_score",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.frigate_standalone_excluded_missing_score_fallback",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.frigate_standalone_min_score",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.frigate_standalone_missing_score_fallback",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.frigate_standalone_notify",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.frigate_standalone_skip_labels",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.frigate_standalone_when_no_accepted_species",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.frigate_standalone_when_no_yolo",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.frigate_trigger_review_salvage_enabled",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Frigate trigger review salvage is expert anti-regression tuning.",
+      "next_step": "YAML-only until Frigate trigger advanced UX exists."
+    },
+    {
+      "key": "detection.fusion_alpha",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.fusion_model_path",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Fusion model artifact is managed by product workflow or support tools, not typed as a path in Settings.",
+      "next_step": "Expose only via recognition improvement workflow / service mode."
+    },
+    {
+      "key": "detection.fusion_non_species_confidence_slack",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Fusion confidence tolerance for non-species tracks; expert merge tuning.",
+      "next_step": "Expose only with merge diagnostics presets."
+    },
+    {
+      "key": "detection.merge_window_seconds",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.min_confidence_to_store",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.one_per_species",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.source_priority",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Advanced merge tuning; kept config-level for now.",
+      "next_step": "Keep config-level until merge strategy presets are designed."
+    },
+    {
+      "key": "detection.species_mapping",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Bulk mapping maintained as config dictionary.",
+      "next_step": "Consider import/export UI when species tools are expanded."
+    },
+    {
+      "key": "detection.track_fragment_merge_enabled",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Track-fragment merge behavior is low-level tracking tuning.",
+      "next_step": "Consider expert tracker panel with validation."
+    },
+    {
+      "key": "detection.track_fragment_merge_gap_sec",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Track-fragment merge gap is low-level tracking tuning.",
+      "next_step": "Consider expert tracker panel with validation."
+    },
+    {
+      "key": "detection.track_fragment_merge_max_center_dist",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Track-fragment merge distance threshold is low-level tracking tuning.",
+      "next_step": "Consider expert tracker panel with validation."
+    },
+    {
+      "key": "detection.track_fragment_merge_min_iou",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Track-fragment merge IoU threshold is low-level tracking tuning.",
+      "next_step": "Consider expert tracker panel with validation."
+    },
+    {
+      "key": "detection.use_learned_fusion",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "detection.yolo_weak_track_salvage_enabled",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Weak-track salvage is anti-regression fallback logic for hard scenes.",
+      "next_step": "Expose only with clear safety notes and presets."
+    },
+    {
+      "key": "detection.yolo_weak_track_salvage_min_confidence",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Weak-track salvage confidence gate is expert-level tuning.",
+      "next_step": "Expose only with clear safety notes and presets."
+    },
+    {
+      "key": "ebird.country",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "ebird.location_name",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "ebird.protocol",
+      "status": "allowlisted_non_ui",
+      "category": "yaml-only",
+      "reason": "eBird export protocol seldom changed from defaults; config-level.",
+      "next_step": "Expose under eBird section if editors need toggles."
+    },
+    {
+      "key": "ebird.species_mapping",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "ebird.state",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "feed.duration_seconds",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "feed.esphome_switch_id",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "feed.esphome_type",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "feed.esphome_url",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "feed.mqtt_topic",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "feed.source",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "general.birdnet_url",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "general.contributor_password",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "general.donate_url",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "general.enable_notifications",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "general.notification_excluded_species",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "general.require_auth_for_video_stream",
+      "status": "allowlisted_non_ui",
+      "category": "access-control",
+      "reason": "Video stream Viewer vs Contributor gate; keyed in typed Settings snapshot but toggled elsewhere / YAML-focused.",
+      "next_step": "Wire to General accordion when UX revisits ACCESS_CONTROL knobs."
+    },
+    {
+      "key": "general.session_idle_minutes",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "general.settings_password",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "homeassistant.token",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "homeassistant.url",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.birdnet.mqtt_topic",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.esphome_bird_present_sensor_id",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.esphome_tare_button_id",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.esphome_url",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.esphome_weight_sensor_id",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.estimate_require_consecutive_spike",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.history_max_lines",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.min_delta_kg_for_estimate",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.motion_trigger_debounce_seconds",
+      "status": "allowlisted_non_ui",
+      "category": "legacy",
+      "reason": "Superseded by triggers.scales.motion_trigger_debounce_seconds with fallback in trigger_config.",
+      "next_step": "YAML-only once old configs are rare."
+    },
+    {
+      "key": "integrations.scales.motion_trigger_enabled",
+      "status": "allowlisted_non_ui",
+      "category": "legacy",
+      "reason": "Superseded by triggers.scales.enabled; trigger_config still reads this for YAML migration.",
+      "next_step": "Remove key after migration period or document YAML-only."
+    },
+    {
+      "key": "integrations.scales.motion_trigger_min_delta_kg",
+      "status": "allowlisted_non_ui",
+      "category": "legacy",
+      "reason": "Superseded by triggers.scales.motion_trigger_min_delta_kg with fallback in trigger_config.",
+      "next_step": "YAML-only once old configs are rare."
+    },
+    {
+      "key": "integrations.scales.mqtt_bird_present_topic",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.mqtt_command_topic",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.mqtt_tare_payload",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.mqtt_topic",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.mqtt_topic_prefix",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.source",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.unit",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "integrations.scales.weight_estimate_enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "mcp.enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "mcp.token",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "mqtt.birdnet_topic",
+      "status": "allowlisted_non_ui",
+      "category": "legacy",
+      "reason": "Superseded by integrations.birdnet.mqtt_topic via migrate_legacy_trigger_topics.",
+      "next_step": "Keep MQTT mirror for old configs."
+    },
+    {
+      "key": "mqtt.broker",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "mqtt.feeder_scale_queue_max",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Outbound queue sizing for feeder-scale MQTT path; operator backpressure tuning.",
+      "next_step": "YAML-only or optional advanced MQTT/Processor panel."
+    },
+    {
+      "key": "mqtt.frigate_topic",
+      "status": "allowlisted_non_ui",
+      "category": "legacy",
+      "reason": "Superseded by triggers.frigate.topic; migrate_legacy_trigger_topics copies into triggers on save/load.",
+      "next_step": "Keep MQTT mirror for old configs."
+    },
+    {
+      "key": "mqtt.ha_discovery",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "mqtt.max_events",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Inbound MQTT ring buffer cap for processor transport.",
+      "next_step": "YAML-only or observability presets."
+    },
+    {
+      "key": "mqtt.password",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "mqtt.port",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "mqtt.publish_queue_max",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Publish-side MQTT queue cap (backpressure); operator tuning.",
+      "next_step": "YAML-only; see processor performance docs."
+    },
+    {
+      "key": "mqtt.publish_topic",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "mqtt.reconnect_jitter_ratio",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Reconnect backoff jitter ratio for MQTT client.",
+      "next_step": "YAML-only."
+    },
+    {
+      "key": "mqtt.reconnect_max_delay",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "mqtt.reconnect_min_delay",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "mqtt.username",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.base_url",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.compress_photo_over_kb",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.custom_emoji_id_bird",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.custom_emoji_id_chipmunk",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.custom_emoji_id_open_live",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.disable_notification",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.link_preview_large",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.message_thread_id",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.paid_media_forward_star_count",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.paid_media_view_star_count",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.protect_content",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.send_photo",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.telegram_api_base",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.telegram_api_hash",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.telegram_api_id",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.telegram_bot_token",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.telegram_chat_id",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.telegram_max_side_px",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.telegram_mtproto_host",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.telegram_mtproto_port",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.telegram_mtproto_secret",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.telegram_proxy_type",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.telegram_proxy_url",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.telegram_retries",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.telegram_timeout",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "notifications.use_custom_emoji",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "performance.cache_redis_enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "performance.redis_url",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.adaptive_profiles.enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.adaptive_profiles.night.max_brightness",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.adaptive_profiles.night.max_contrast",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.adaptive_profiles.night.overrides.binary_imgsz",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Night adaptive profile detector size override is deployment-specific performance tuning.",
+      "next_step": "Keep YAML-only until adaptive profile UX exists."
+    },
+    {
+      "key": "processor.adaptive_profiles.night.overrides.light_gate_min_brightness",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.adaptive_profiles.night.overrides.light_gate_min_contrast",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.adaptive_profiles.night.overrides.max_classifications_per_frame",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.adaptive_profiles.night.overrides.min_box_size_px",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.adaptive_profiles.night.overrides.min_center_dist",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.adaptive_profiles.night.overrides.min_confidence_binary",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.adaptive_profiles.night.overrides.min_confidence_binary_bird",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.adaptive_profiles.night.overrides.min_confidence_to_process",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.adaptive_profiles.night.overrides.min_track_duration",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.auto_small_object_relax_conf_delta",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Auto-relax delta for small objects is low-level detector rescue tuning.",
+      "next_step": "Expose in expert mode with diagnostics only."
+    },
+    {
+      "key": "processor.auto_small_object_relax_enabled",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Auto-relax for small objects is low-level detector rescue tuning.",
+      "next_step": "Expose in expert mode with diagnostics only."
+    },
+    {
+      "key": "processor.auto_small_object_relax_max_candidates",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Auto-relax candidate cap for small objects is low-level tuning.",
+      "next_step": "Expose in expert mode with diagnostics only."
+    },
+    {
+      "key": "processor.auto_small_object_relax_min_box_size_px",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Auto-relax min box size for small objects is low-level tuning.",
+      "next_step": "Expose in expert mode with diagnostics only."
+    },
+    {
+      "key": "processor.auto_small_object_relax_min_center_dist",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Auto-relax center distance for small objects is low-level tuning.",
+      "next_step": "Expose in expert mode with diagnostics only."
+    },
+    {
+      "key": "processor.auto_unstick_enabled",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Auto-unstick logic controls tracker recovery behavior.",
+      "next_step": "Expose in expert mode with safeguards."
+    },
+    {
+      "key": "processor.auto_unstick_min_box_size_px",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Auto-unstick min box size is low-level tracker recovery tuning.",
+      "next_step": "Expose in expert mode with safeguards."
+    },
+    {
+      "key": "processor.auto_unstick_min_center_dist",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Auto-unstick center distance is low-level tracker recovery tuning.",
+      "next_step": "Expose in expert mode with safeguards."
+    },
+    {
+      "key": "processor.auto_unstick_min_confidence_binary",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Auto-unstick confidence gate is low-level detector recovery tuning.",
+      "next_step": "Expose in expert mode with safeguards."
+    },
+    {
+      "key": "processor.auto_unstick_min_confidence_binary_bird",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Bird-specific auto-unstick confidence gate is low-level detector recovery tuning.",
+      "next_step": "Expose in expert mode with safeguards."
+    },
+    {
+      "key": "processor.auto_unstick_no_track_frames",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Auto-unstick no-track frame threshold is low-level tracker recovery tuning.",
+      "next_step": "Expose in expert mode with safeguards."
+    },
+    {
+      "key": "processor.auto_unstick_tracker",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Auto-unstick day tracker profile is low-level recovery policy.",
+      "next_step": "Expose in expert mode with profile presets."
+    },
+    {
+      "key": "processor.auto_unstick_tracker_night",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Auto-unstick night tracker profile is low-level recovery policy.",
+      "next_step": "Expose in expert mode with profile presets."
+    },
+    {
+      "key": "processor.behavior_recognition.confidence_review_threshold",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.behavior_recognition.confidence_store_min",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.behavior_recognition.enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.behavior_recognition.inference_backend",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.behavior_recognition.max_runtime_detections",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.behavior_recognition.openvino_fallback_logistic",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.behavior_recognition.weights_path",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.binary_imgsz",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.binary_track_iou",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Binary detector tracker IoU threshold is low-level tracking parameter.",
+      "next_step": "Expose in expert tracker section with validation."
+    },
+    {
+      "key": "processor.binary_track_max_det",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Binary detector max detections per frame is low-level performance/safety tuning.",
+      "next_step": "Expose in expert tracker section with validation."
+    },
+    {
+      "key": "processor.bird_skip_classifier_max_area_frac",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_fifo_hearing_active_hours",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_fifo_persist_enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_fifo_snapshot_enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_fifo_snapshot_interval_sec",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_fifo_snapshot_recent_limit",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_fifo_snapshot_stale_sec",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_fifo_sqlite_busy_ms",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_mqtt_auto_confidence",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_mqtt_bias_delta",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_mqtt_bias_floor",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_mqtt_bias_window_seconds",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_mqtt_observability_debug",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_mqtt_observability_level",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_mqtt_prior_half_life_hours",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_mqtt_prior_min_confidence",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_mqtt_prior_ttl_hours",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.birdnet_mqtt_prior_window_hours",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.blur_threshold",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.classification_scheduler",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.classifier_fallback_bird",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.classifier_inference_backend",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.classifier_inference_device",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.classifier_uncertainty_entropy_ge",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.classifier_uncertainty_margin_le",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.dataset_min_confidence",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.detection_strategy",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.detector_scope",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.detector_weight_contract",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.ebird_regional_top_auto_confidence",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.ebird_regional_top_confidence_delta",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.ebird_regional_top_confidence_floor",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.file_max_record_floor_seconds",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.frame_processing_warn_ms",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.frigate_activity_hold_seconds",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.generate_spectrogram_always",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.generic_bird_min_area_frac",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.generic_bird_min_best_frame_score",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.generic_bird_min_detector_conf",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.generic_bird_min_frames",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.generic_rodent_max_area_frac",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Reject rodent fallbacks that look like full-frame detector artifacts.",
+      "next_step": "Consider expert UI once rollout baselines are collected."
+    },
+    {
+      "key": "processor.generic_rodent_min_best_frame_score",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Rodent fallback visual-quality gate tied to best-frame sharpness.",
+      "next_step": "Keep YAML-only pending multi-camera calibration."
+    },
+    {
+      "key": "processor.generic_rodent_min_frames",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Rodent fallback quality gate; sensitive anti-noise tuning.",
+      "next_step": "Keep YAML-only until rodent false-positive profile stabilizes."
+    },
+    {
+      "key": "processor.included_bird_families",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.inference_backend",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.inference_device",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.inference_lores_px",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.iou_id_fallback_live_enabled",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Live IoU ID fallback is low-level identity continuity logic.",
+      "next_step": "Expose in expert mode with explanatory diagnostics."
+    },
+    {
+      "key": "processor.iou_id_fallback_live_match_threshold",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Live IoU ID fallback match threshold is low-level identity continuity tuning.",
+      "next_step": "Expose in expert mode with explanatory diagnostics."
+    },
+    {
+      "key": "processor.keep_recording_when_no_detections",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.key_frame_limit",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.letterbox_resize_interpolation",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Letterbox interpolation method affects inference image preprocessing internals.",
+      "next_step": "Keep YAML-only unless benchmarking UI is introduced."
+    },
+    {
+      "key": "processor.light_gate_enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.light_gate_min_brightness",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.light_gate_min_contrast",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.max_blur_checks",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.max_box_area_norm",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Detector anti-collapse guardrail for near full-frame boxes.",
+      "next_step": "Potential expert UI field with diagnostics preview after validation."
+    },
+    {
+      "key": "processor.max_classifications_per_frame",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.max_inactive_seconds",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.max_record_seconds",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.min_box_size_px",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.min_center_dist",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.min_confidence_binary",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.min_confidence_binary_bird",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.min_confidence_binary_rodent",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.min_confidence_to_notify",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.min_confidence_to_process",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.min_seconds_between_recordings",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.min_track_duration",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.models.behavior_openvino",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Behavior OpenVINO bundle path is deployment-specific.",
+      "next_step": "Same policy as binary_openvino; not in Settings form."
+    },
+    {
+      "key": "processor.models.binary",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Model path is environment/deployment-specific.",
+      "next_step": "Upload/reset via System → Processor weights (#276); not in Settings form."
+    },
+    {
+      "key": "processor.models.binary_openvino",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "OpenVINO detector bundle path is deployment-specific and managed server-side.",
+      "next_step": "Keep hidden from Settings form; surface only backend selector in UI."
+    },
+    {
+      "key": "processor.models.classifier",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Model path is environment/deployment-specific.",
+      "next_step": "Upload/reset via System → Processor weights (#276); not in Settings form."
+    },
+    {
+      "key": "processor.models.classifier_openvino",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "OpenVINO classifier bundle path is deployment-specific and managed server-side.",
+      "next_step": "Keep hidden from Settings form; surface only backend selector in UI."
+    },
+    {
+      "key": "processor.multi_camera_confidence_boost",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.multi_camera_groups",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.post_record_seconds",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.readiness_heartbeat_max_age_seconds",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Readiness gate threshold for processor heartbeat freshness; deployment/ops tuning.",
+      "next_step": "YAML-only; reflected in /api/ui/readiness payload."
+    },
+    {
+      "key": "processor.regional_species",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.reid_cross_camera_threshold_boost",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Risk control for cross-folder/camera collisions using video_path heuristics.",
+      "next_step": "Replace heuristic with explicit camera_id once available end-to-end."
+    },
+    {
+      "key": "processor.reid_default_similarity_threshold",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Cosine gate depends on embedding contract + species; unsafe as casual slider.",
+      "next_step": "Preset tables + per-site calibration workflow (#390)."
+    },
+    {
+      "key": "processor.reid_different_similarity_threshold",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Lower bound for inconclusive decisions; tightly coupled to embeddings noise.",
+      "next_step": "Same as reid_default_similarity_threshold."
+    },
+    {
+      "key": "processor.reid_embedding_pipeline_mode",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Embedding generation runs out-of-band; mode is informational + policy input.",
+      "next_step": "Expose as read-only status + pilot toggle after nearline worker (#389)."
+    },
+    {
+      "key": "processor.reid_kill_switch",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Emergency disable for suggestions without dropping embeddings.",
+      "next_step": "Same as reid_suggestions_enabled."
+    },
+    {
+      "key": "processor.reid_max_embedding_age_hours",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Staleness gate for offline refresh cadence.",
+      "next_step": "Automate refresh jobs + show stale age in System card (#389)."
+    },
+    {
+      "key": "processor.reid_shadow_mode",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Production shadow evaluation without user-facing hints.",
+      "next_step": "Pair with metrics dashboard before UI surfacing."
+    },
+    {
+      "key": "processor.reid_suggestions_enabled",
+      "status": "allowlisted_non_ui",
+      "category": "ops-only",
+      "reason": "Safety switch for similarity hints; needs ops discipline.",
+      "next_step": "Move to System → ML after UX review queue lands (#390)."
+    },
+    {
+      "key": "processor.save_dataset_crops",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.save_images",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.spectrogram_px_per_sec",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.track_regen_detection_strategy",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.track_regen_frame_step",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.track_regen_ignore_regional_species",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.track_regen_iou_id_fallback",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.track_regen_iou_match_threshold",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.track_regen_lores_px",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.track_regen_match_live_pipeline",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.track_regen_min_track_duration",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Track regeneration minimum track duration is batch-regeneration tuning.",
+      "next_step": "Expose under System track regeneration advanced controls."
+    },
+    {
+      "key": "processor.track_regen_parallel_auto_with_manual",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.track_regen_precise_detection_strategy",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.track_regen_precise_min_center_dist",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.track_regen_precise_timeout_sec",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.track_regen_serialize_inference",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Track regeneration inference serialization is batch performance tuning.",
+      "next_step": "Expose under System track regeneration advanced controls."
+    },
+    {
+      "key": "processor.track_regen_serialize_inference_interprocess",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Interprocess serialization for regeneration inference is batch performance tuning.",
+      "next_step": "Expose under System track regeneration advanced controls."
+    },
+    {
+      "key": "processor.track_regen_video_timeout_sec",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.track_to_predict_fallback_confidence",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Track-to-predict fallback confidence gate is low-level inference fallback tuning.",
+      "next_step": "Expose in expert mode with diagnostics."
+    },
+    {
+      "key": "processor.track_to_predict_fallback_enabled",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Track-to-predict fallback switch is low-level inference fallback tuning.",
+      "next_step": "Expose in expert mode with diagnostics."
+    },
+    {
+      "key": "processor.tracker",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "processor.tracker_profiles.night",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Nested tracker profile object for low-light tuning is expert-level and high-risk for misconfiguration.",
+      "next_step": "Expose through dedicated tracker profile editor with validation."
+    },
+    {
+      "key": "processor.ultra_weak_box_salvage_enabled",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Ultra-weak box salvage is emergency detector recovery logic.",
+      "next_step": "Expose only in expert mode with warnings."
+    },
+    {
+      "key": "processor.ultra_weak_box_salvage_max_candidates",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Ultra-weak salvage candidate cap is low-level recovery tuning.",
+      "next_step": "Expose only in expert mode with warnings."
+    },
+    {
+      "key": "processor.ultra_weak_box_salvage_min_confidence",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Ultra-weak salvage confidence gate is low-level recovery tuning.",
+      "next_step": "Expose only in expert mode with warnings."
+    },
+    {
+      "key": "retention.batch_size",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Batch size for retention API; YAML + read-only summary on Library retention card.",
+      "next_step": "Keep Library card / YAML."
+    },
+    {
+      "key": "retention.dataset_max_age_days",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Dataset TTL for retention; YAML + read-only summary on Library retention card.",
+      "next_step": "Keep Library card / YAML."
+    },
+    {
+      "key": "retention.days",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Retention knobs are shown and run from Library → Database maintenance (RetentionPolicy), not Settings forms.",
+      "next_step": "Optional: mirror in Settings later; single UX entry is Library card."
+    },
+    {
+      "key": "retention.migration_max_age_days",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Migration history TTL; YAML + read-only summary on Library retention card.",
+      "next_step": "Keep Library card / YAML."
+    },
+    {
+      "key": "retention.min_age_hours",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Grace period for retention; YAML + read-only summary on Library retention card.",
+      "next_step": "Keep Library card / YAML."
+    },
+    {
+      "key": "retention.mode",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Retention run mode override lives next to dry-run/apply on Library maintenance card.",
+      "next_step": "Keep Library as single UX entry unless Settings parity is required."
+    },
+    {
+      "key": "retention.protect_favorites",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Safety flag for retention; YAML + read-only summary on Library retention card.",
+      "next_step": "Keep Library card / YAML."
+    },
+    {
+      "key": "secrets.ebird_api_key",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "secrets.latitude",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "secrets.longitude",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "secrets.openweather_api_key",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "secrets.xeno_canto_api_key",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "species.catalog_allowlist_file",
+      "status": "allowlisted_non_ui",
+      "category": "yaml-only",
+      "reason": "Path to classifier class list is deployment/repo layout; not configured in Settings.",
+      "next_step": "Keep in user_config.yaml or defaults."
+    },
+    {
+      "key": "species.catalog_strict_ingest",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "species.tuning_target_species_ids",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "storage.recordings_mirror.delete_local_after_success",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Expert destructive option on NAS mirror card.",
+      "next_step": "Keep expert-only on Library/System card."
+    },
+    {
+      "key": "storage.recordings_mirror.enabled",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Edited in Library → Storage (NAS mirror card); processor reads after restart.",
+      "next_step": "Keep Library/System as single UX entry."
+    },
+    {
+      "key": "storage.recordings_mirror.host",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Mirror host on NAS mirror card.",
+      "next_step": "Keep Library/System card."
+    },
+    {
+      "key": "storage.recordings_mirror.known_hosts_path",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Optional known_hosts path on NAS mirror card.",
+      "next_step": "Keep Library/System card."
+    },
+    {
+      "key": "storage.recordings_mirror.max_concurrent_uploads",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Processor concurrency; advanced on NAS mirror card / YAML.",
+      "next_step": "Optional Settings advanced later."
+    },
+    {
+      "key": "storage.recordings_mirror.port",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "SFTP port on NAS mirror card.",
+      "next_step": "Keep Library/System card."
+    },
+    {
+      "key": "storage.recordings_mirror.protocol",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "SFTP-only today; exposed on NAS mirror card, not Settings.",
+      "next_step": "Keep Library/System card."
+    },
+    {
+      "key": "storage.recordings_mirror.remote_base_path",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Remote base path on NAS mirror card.",
+      "next_step": "Keep Library/System card."
+    },
+    {
+      "key": "storage.recordings_mirror.retry_backoff_seconds",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Backoff on NAS mirror card / YAML.",
+      "next_step": "Keep Library/System card."
+    },
+    {
+      "key": "storage.recordings_mirror.sftp_key_passphrase",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Key passphrase on NAS mirror card.",
+      "next_step": "Keep Library/System card."
+    },
+    {
+      "key": "storage.recordings_mirror.sftp_password",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Secret on NAS mirror card; masked in settings API like other hub secrets.",
+      "next_step": "Keep Library/System card."
+    },
+    {
+      "key": "storage.recordings_mirror.ssh_private_key_path",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Optional key path on NAS mirror card.",
+      "next_step": "Keep Library/System card."
+    },
+    {
+      "key": "storage.recordings_mirror.strict_host_key",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Host key policy toggle on NAS mirror card.",
+      "next_step": "Keep Library/System card."
+    },
+    {
+      "key": "storage.recordings_mirror.upload_retries",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Retry count on NAS mirror card / YAML.",
+      "next_step": "Keep Library/System card."
+    },
+    {
+      "key": "storage.recordings_mirror.username",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "SFTP user on NAS mirror card.",
+      "next_step": "Keep Library/System card."
+    },
+    {
+      "key": "system_metrics.cpu_sample_interval_seconds",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "CPU sampler interval for system metrics; low-level observability knob.",
+      "next_step": "YAML-only or future System diagnostics UI."
+    },
+    {
+      "key": "triggers.frigate.camera_filter",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.frigate.enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.frigate.geometry_fallback_cooldown_seconds",
+      "status": "allowlisted_non_ui",
+      "category": "advanced",
+      "reason": "Cooldown for Frigate geometry fallback path; anti-flap operator tuning.",
+      "next_step": "YAML-only until Frigate trigger advanced panel exists."
+    },
+    {
+      "key": "triggers.frigate.geometry_fallback_enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.frigate.geometry_fallback_label_exclude",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.frigate.label_exclude",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.frigate.label_filter",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.frigate.min_trigger_score",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.frigate.topic",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.frigate.trigger_on_tracked_object",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.motion_sensor.enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.motion_sensor.esphome_sensor_id",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.motion_sensor.esphome_url",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.motion_sensor.mqtt_topic",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.motion_sensor.source",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.opencv.check_every_n_frames",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.opencv.diff_threshold",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.opencv.enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.opencv.min_contour_area",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.scales.enabled",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.scales.motion_trigger_debounce_seconds",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.scales.motion_trigger_min_delta_kg",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "triggers.scales.source",
+      "status": "allowlisted_non_ui",
+      "category": "derived",
+      "reason": "Processor resolves scales trigger transport from integrations.scales.source when unset; duplicate source pickers were removed from Settings.",
+      "next_step": "Re-expose only if product needs different MQTT/ESPHome paths for live weight vs weight-trigger sampling."
+    },
+    {
+      "key": "ui.unknown_confidence_threshold",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "video.auto_reconnect",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "video.cameras",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "video.capture_backend",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "video.encoding",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "video.file_dir",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Test clip folder; edited in Library file replay card.",
+      "next_step": "Keep Library as single UX entry."
+    },
+    {
+      "key": "video.file_loop",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Default playlist loop for file mode; set in Library when enabling replay.",
+      "next_step": "Keep Library as single UX entry."
+    },
+    {
+      "key": "video.file_path",
+      "status": "allowlisted_non_ui",
+      "category": "yaml-only",
+      "reason": "Absolute path to test mp4 is deployment-specific; not edited in Settings (Library / YAML).",
+      "next_step": "Keep out of Settings form."
+    },
+    {
+      "key": "video.file_realtime_simulation",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "video.file_test_max_upload_mb",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "Hub upload size cap for Library file replay; tunable in YAML.",
+      "next_step": "Optional expose in Library advanced later."
+    },
+    {
+      "key": "video.go2rtc_password",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "video.go2rtc_url",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "video.go2rtc_username",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "video.pre_record_seconds",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "video.record_stream_codec",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "video.source",
+      "status": "allowlisted_non_ui",
+      "category": "library-ui",
+      "reason": "go2rtc vs file replay; toggled in Library (PATCH), not Settings form.",
+      "next_step": "Single entry: Library → file replay."
+    },
+    {
+      "key": "video.video_height",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "video.video_width",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "weather.ha_entity_id",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "weather.source",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    },
+    {
+      "key": "web_push.enabled",
+      "status": "allowlisted_non_ui",
+      "category": "backend-managed",
+      "reason": "Derived by backend from subscriptions.",
+      "next_step": "Keep backend-managed."
+    },
+    {
+      "key": "web_push.vapid_private_key",
+      "status": "allowlisted_non_ui",
+      "category": "backend-managed",
+      "reason": "Secret generated/managed by backend.",
+      "next_step": "Keep backend-managed."
+    },
+    {
+      "key": "web_push.vapid_public_key",
+      "status": "allowlisted_non_ui",
+      "category": "backend-managed",
+      "reason": "Generated/managed by backend.",
+      "next_step": "Keep backend-managed."
+    },
+    {
+      "key": "webhook.url",
+      "status": "ui",
+      "category": "",
+      "reason": "",
+      "next_step": ""
+    }
+  ]
+}

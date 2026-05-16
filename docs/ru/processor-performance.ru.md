@@ -1,6 +1,6 @@
 # Производительность процессора (разрешение, VA-API, пороги)
 
-[English](./PROCESSOR_PERFORMANCE.md)
+[English](../user/processor-performance.md)
 
 Ориентиры для тяжёлого видео: высокое разрешение, VA-API. Цель — не путать **нехватку FPS** со «случайным багом».
 
@@ -10,7 +10,7 @@
 |----------|--------|
 | `processor.binary_imgsz` | Даунскейл до binary-детектора; меньше → быстрее, меньше деталей. |
 | `processor.frame_processing_warn_ms` | Порог предупреждения «медленный кадр»; **поднять** — меньше шума в логах. |
-| GPU / VA-API | Без железа/драйверов будет CPU и дольше — см. [RUNBOOKS](./RUNBOOKS.ru.md). |
+| GPU / VA-API | Без железа/драйверов будет CPU и дольше — см. [RUNBOOKS](./runbooks.ru.md). |
 | Light gate / ночные профили | Частые «no YOLO tracks» могут быть от экспозиции — сначала профили. |
 
 ## Качественная таблица
@@ -35,7 +35,7 @@
 
 **Счётчики** при fallback фабрики motion на один только OpenCV: `trigger_motion_factory_frigate_fallback_opencv_total`, `trigger_motion_factory_opencv_fallback_total`. Обновление gauge — после сборки motion-стека и при connect/disconnect MQTT.
 
-Полная таблица имён — в [PROCESSOR_PERFORMANCE.md](./PROCESSOR_PERFORMANCE.md) (EN).
+Полная таблица имён — в [PROCESSOR_PERFORMANCE.md](../user/processor-performance.md) (EN).
 
 ## Очереди и backpressure {#queues-backpressure}
 

@@ -2,7 +2,7 @@
 
 Build and run the full stack on your machine **without** a production server. Ideal for UI/API work and running automated tests.
 
-[Русский](./LOCAL_DEV.ru.md)
+[Русский](../ru/local-dev.ru.md)
 
 ---
 
@@ -51,16 +51,16 @@ python3 -m venv .venv-docs
 .venv-docs/bin/mkdocs build --strict
 ```
 
-Details: [Documentation](./Documentation.md).
+Details: [Documentation](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/Documentation.md).
 
 ### Maintainer checklist (before a release)
 
-- [ ] From **repo root:** `make ci-local` (full parity with GitHub **CI** jobs except Docker-heavy layer — see [CI_AND_QUALITY](./CI_AND_QUALITY.md)); optional **`make ci-local-docker`** if you need processor image tests + Playwright smoke locally. **`scripts/ci-full-local.sh`** tries **nvm** / **fnm** against `app/ui/.nvmrc` if `node` on `PATH` is missing or &lt; 22 (non-interactive `make` friendly).
+- [ ] From **repo root:** `make ci-local` (full parity with GitHub **CI** jobs except Docker-heavy layer — see [CI_AND_QUALITY](./ci-and-quality.md)); optional **`make ci-local-docker`** if you need processor image tests + Playwright smoke locally. **`scripts/ci-full-local.sh`** tries **nvm** / **fnm** against `app/ui/.nvmrc` if `node` on `PATH` is missing or &lt; 22 (non-interactive `make` friendly).
 - [ ] `cd app && make test && make test-web` (or green **CI** on `dev` → `main`)
 - [ ] `cd app && make verify`
 - [ ] From repo root: `mkdocs build --strict` (or `.venv-docs` commands above)
 - [ ] Optional: `cd app && make start` then `make test-e2e` (or workflow **E2E (Playwright)** → *Run workflow*)
-- [ ] After deploy: smoke `curl`/UI per [TESTING](./TESTING.md) §2
+- [ ] After deploy: smoke `curl`/UI per [TESTING](./testing.md) §2
 
 ---
 
@@ -77,7 +77,7 @@ Open **http://localhost:8085**.
 
 `make local` runs **setup** (creates `app/.env` with `PROCESSOR_SECRET` and `FLASK_SECRET_KEY` if missing), **local-build** (UI + Docker image), then **start**.
 
-Docker **startup order**, `PYTHONPATH`, and health vs readiness: [RUNTIME_COUPLING](./RUNTIME_COUPLING.md). If the stack seems stuck after `compose up`, see [TROUBLESHOOTING](./TROUBLESHOOTING.md#single-container-startup-stuck).
+Docker **startup order**, `PYTHONPATH`, and health vs readiness: [RUNTIME_COUPLING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/RUNTIME_COUPLING.md). If the stack seems stuck after `compose up`, see [TROUBLESHOOTING](../user/troubleshooting.md#single-container-startup-stuck).
 
 Without cameras or Go2RTC, the processor idles in wait mode — **the web UI and API still work**.
 
@@ -123,7 +123,7 @@ docker compose run --rm -v $(pwd):/app birdlense \
   python -m pytest web/tests/test_api.py -v -k "unknowns or overview"
 ```
 
-Details: [TESTING](./TESTING.md).
+Details: [TESTING](./testing.md).
 
 ---
 
@@ -181,7 +181,7 @@ Authoritative HTTP contract: `app/web/openapi.yaml`.
 
 ## CodeQL (optional)
 
-CI runs CodeQL on push/PR; locally you can use the [VS Code CodeQL extension](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql). See [CODEQL.md](./CODEQL.md).
+CI runs CodeQL on push/PR; locally you can use the [VS Code CodeQL extension](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql). See [CODEQL.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CODEQL.md).
 
 ---
 

@@ -1,6 +1,6 @@
 # Диагностика и решение проблем
 
-[English](./TROUBLESHOOTING.md)
+[English](../user/troubleshooting.md)
 
 ---
 
@@ -25,13 +25,13 @@ make stop && make start
 
 **Диагностика:** `docker inspect birdlense --format '{{.RestartCount}}'` (растёт = цикл). Логи: `create_app() invoked`, `notify_app_startup: sending` / `skip`.
 
-Тихие сообщения, фото: [CONFIGURATION](./CONFIGURATION.ru.md) — Notifications.
+Тихие сообщения, фото: [CONFIGURATION](./configuration.ru.md) — Notifications.
 
 ---
 
 ## Старт одного контейнера (entrypoint): куда смотреть, если «зависло» {#single-container-startup-stuck}
 
-Контейнер запускает **`app/scripts/entrypoint.sh`**: nginx → gunicorn → ожидание **`GET /api/ui/health`** (до ~400 с) → опционально MCP → цикл **processor** (`processor/src/main.py`). См. [ARCHITECTURE.ru.md](./ARCHITECTURE.ru.md#runtime-processes-ports-and-health-signals) и [RUNTIME_COUPLING.ru.md](./RUNTIME_COUPLING.ru.md).
+Контейнер запускает **`app/scripts/entrypoint.sh`**: nginx → gunicorn → ожидание **`GET /api/ui/health`** (до ~400 с) → опционально MCP → цикл **processor** (`processor/src/main.py`). См. [ARCHITECTURE.ru.md](./architecture.ru.md#runtime-processes-ports-and-health-signals) и [RUNTIME_COUPLING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/RUNTIME_COUPLING.ru.md).
 
 | Симптом | Куда смотреть |
 | --------- | ---------------- |
@@ -73,7 +73,7 @@ docker logs birdlense --tail 200 2>&1
 
 **Причина:** веб (gunicorn/Flask) и **processor** — разные процессы. Сохранение настроек пишет `user_config.yaml` и обновляет конфиг в памяти веба; **цикл записи и детекции** в processor не опрашивает файл на каждом кадре — действуют значения на момент старта процесса.
 
-**Что сделать:** после правок `processor.*`, `detection.*` и связанных ключей выполните **перезапуск processor** (Настройки → соответствующая кнопка, `POST /api/ui/restart-processor` или перезапуск контейнера `birdlense`). Чтобы отделить шум в Telegram от записи в БД, используйте **`processor.min_confidence_to_notify`** — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) → Processor.
+**Что сделать:** после правок `processor.*`, `detection.*` и связанных ключей выполните **перезапуск processor** (Настройки → соответствующая кнопка, `POST /api/ui/restart-processor` или перезапуск контейнера `birdlense`). Чтобы отделить шум в Telegram от записи в БД, используйте **`processor.min_confidence_to_notify`** — см. [CONFIGURATION.ru.md](./configuration.ru.md) → Processor.
 
 ---
 
@@ -83,9 +83,9 @@ docker logs birdlense --tail 200 2>&1
 
 **Падения нет** при `processor.detector_weight_contract: warn` (дефолт). В режиме **`enforce`** старт не пройдёт, пока веса и scope не согласованы.
 
-**Что сделать:** (1) Сузьте `processor.detector_scope` под реальные `model.names` / манифест обучения. (2) Либо выкатите веса, где есть все scoped-классы, и перезапустите processor. (3) Не добавляйте `Background` в scope — см. [CV_ML_PREP.ru.md](./CV_ML_PREP.ru.md).
+**Что сделать:** (1) Сузьте `processor.detector_scope` под реальные `model.names` / манифест обучения. (2) Либо выкатите веса, где есть все scoped-классы, и перезапустите processor. (3) Не добавляйте `Background` в scope — см. [CV_ML_PREP.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_PREP.ru.md).
 
-**Связано:** [CV_ML_ROADMAP_PHASES.ru.md](./CV_ML_ROADMAP_PHASES.ru.md) (эпик #368). Англ. версия: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md#detector-weight-contract-mismatch).
+**Связано:** [CV_ML_ROADMAP_PHASES.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.ru.md) (эпик #368). Англ. версия: [TROUBLESHOOTING.md](../user/troubleshooting.md#detector-weight-contract-mismatch).
 
 ---
 
@@ -103,9 +103,9 @@ docker logs birdlense --tail 200 2>&1
 
 **Симптом:** много строк `Slow frame processing: …ms >= …ms`, низкий эффективный FPS — типично для **2.7K+** и тяжёлого YOLO.
 
-**Важно:** `processor.frame_processing_warn_ms` (по умолчанию **450**) влияет только на **частоту предупреждений в логах**, не на скорость инференса. Снижать **реальную** задержку: `processor.binary_imgsz`, профиль, ресурсы — см. [PROCESSOR_PERFORMANCE.ru.md](./PROCESSOR_PERFORMANCE.ru.md) и [RUNBOOKS.ru.md](./RUNBOOKS.ru.md). Подсказка **config-audit** в UI (`configAuditRuntimeSlowFrames`) об этом же компромиссе.
+**Важно:** `processor.frame_processing_warn_ms` (по умолчанию **450**) влияет только на **частоту предупреждений в логах**, не на скорость инференса. Снижать **реальную** задержку: `processor.binary_imgsz`, профиль, ресурсы — см. [PROCESSOR_PERFORMANCE.ru.md](./processor-performance.ru.md) и [RUNBOOKS.ru.md](./runbooks.ru.md). Подсказка **config-audit** в UI (`configAuditRuntimeSlowFrames`) об этом же компромиссе.
 
-**Англ. версия:** [TROUBLESHOOTING.md](./TROUBLESHOOTING.md#processor-slow-frame-warnings).
+**Англ. версия:** [TROUBLESHOOTING.md](../user/troubleshooting.md#processor-slow-frame-warnings).
 
 ---
 
@@ -157,7 +157,7 @@ docker logs birdlense --tail 200 2>&1
 | 1 | В MQTT **нет научного имени** (`ScientificName` / аналог), только локализованное имя | Предпочтительно **BirdNET-Go** (обычно шлёт латинское имя). Иначе добавьте **алиас** в реестре видов Hub на эту строку из MQTT → таксон, либо пару в `detection.species_mapping`. |
 | 2 | Вид в каталоге Hub **не совпадает** с `species_taxon.scientific_name` | Проверьте строку таксона и латинское имя (опечатки, лишние пробелы). |
 | 3 | Hub на **PostgreSQL** без общего `birdlense.db` у процессора | Авто-сопоставление по SQLite-каталогу недоступно — используйте **`detection.species_mapping`** для строк из MQTT. |
-| 4 | MQTT-имя вида не совпадает с **именем вида у классификатора** | После сопоставления с каталогом ключ слияния должен совпасть с тем, что даёт `normalize()` для видео-детекций (см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) § MQTT). |
+| 4 | MQTT-имя вида не совпадает с **именем вида у классификатора** | После сопоставления с каталогом ключ слияния должен совпасть с тем, что даёт `normalize()` для видео-детекций (см. [CONFIGURATION.ru.md](./configuration.ru.md) § MQTT). |
 
 **Проверка на сервере:** `GET /api/ui/health` — `mqtt: ok`; логи процессора — `MQTT aggregator connected`, при отладке BirdNET — уровень `processor.birdnet_mqtt_observability_level: debug`. Снимок FIFO: **Система → Автоматизация → BirdNET FIFO: снимок** (нужен пароль администратора).
 
@@ -175,7 +175,7 @@ docker logs birdlense --tail 200 2>&1
 | `trigger_degraded_effective_lt_configured` = **1** | При простое MQTT эффективных путей motion меньше, чем включено в `triggers.*`. |
 | `trigger_motion_factory_frigate_fallback_opencv_total` | Фабрика motion откатилась на один OpenCV — детектор Frigate не был подключён. |
 
-Вместе с **`mqtt_connected`** и счётчиками очередей — см. [PROCESSOR_PERFORMANCE.ru.md](./PROCESSOR_PERFORMANCE.ru.md). Ключи YAML: [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) § MQTT и инвентаризация триггеров.
+Вместе с **`mqtt_connected`** и счётчиками очередей — см. [PROCESSOR_PERFORMANCE.ru.md](./processor-performance.ru.md). Ключи YAML: [CONFIGURATION.ru.md](./configuration.ru.md) § MQTT и инвентаризация триггеров.
 
 ---
 
@@ -211,4 +211,4 @@ go2rtc должен слушать `0.0.0.0:1984`. Проверка: `curl -s -o
 
 ## См. также
 
-[INSTALL](./INSTALL.ru.md) · [CONFIGURATION](./CONFIGURATION.ru.md) · [SCENARIOS](./SCENARIOS.ru.md) · [GLOSSARY](./GLOSSARY.ru.md)
+[INSTALL](./install.ru.md) · [CONFIGURATION](./configuration.ru.md) · [SCENARIOS](./scenarios.ru.md) · [GLOSSARY](./glossary.ru.md)

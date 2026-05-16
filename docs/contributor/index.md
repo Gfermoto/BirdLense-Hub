@@ -10,3 +10,5 @@ Developer and maintainer documentation: architecture, API, testing, CI, and repo
 - [Local development](local-dev.md)
 - [Testing](testing.md)
 - [CI and quality](ci-and-quality.md)
+- [Hub reliability and quality plan](hub-reliability-and-quality-plan.md)
+- [Hub incident protocol](hub-incident-protocol.md)

@@ -1,8 +1,8 @@
 # Glossary — BirdLense Hub
 
-Short definitions of terms used across [CONFIGURATION](./CONFIGURATION.md), [API](./API.md), and [ARCHITECTURE](./ARCHITECTURE.md).
+Short definitions of terms used across [CONFIGURATION](./configuration.md), [API](../contributor/api.md), and [ARCHITECTURE](../contributor/architecture.md).
 
-[Русский](./GLOSSARY.ru.md)
+[Русский](../ru/glossary.ru.md)
 
 ---
 
@@ -65,8 +65,8 @@ Short definitions of terms used across [CONFIGURATION](./CONFIGURATION.md), [API
 |------|---------|
 | **Admin (role)** | Unlocked with `settings_password` — full UI + feeder + system + restart processor. |
 | **Contributor (role)** | Unlocked with `contributor_password` — labeling and exports without admin powers. |
-| **Viewer** | Not unlocked — read-only browsing (exact export routes may still vary; see [ACCESS_CONTROL](./ACCESS_CONTROL.md)). |
-| **MCP** | **Model Context Protocol** — optional `/mcp` endpoint for **authorized clients** (automation, integrations) to invoke hub tools; secured with `MCP_TOKEN` / `mcp.token`. See [MCP_SETUP](./MCP_SETUP.md). |
+| **Viewer** | Not unlocked — read-only browsing (exact export routes may still vary; see [ACCESS_CONTROL](../contributor/access-control.md)). |
+| **MCP** | **Model Context Protocol** — optional `/mcp` endpoint for **authorized clients** (automation, integrations) to invoke hub tools; secured with `MCP_TOKEN` / `mcp.token`. See [MCP_SETUP](../contributor/mcp-setup.md). |
 | **`PROCESSOR_SECRET`** | Shared secret for processor → web API (`X-Processor-Token`). |
 
 ---
@@ -77,10 +77,10 @@ Short definitions of terms used across [CONFIGURATION](./CONFIGURATION.md), [API
 |------|---------|
 | **Timeline** | Visits and clips aggregated by time; supports CSV/JSON/eBird export. |
 | **Species visit** | Logical visit derived from detections and dedup windows (`dedup_window_seconds`). |
-| **Dataset export** | ZIP of training crops for fine-tuning (see [DATASETS](./DATASETS.md)). |
+| **Dataset export** | ZIP of training crops for fine-tuning (see [DATASETS](../contributor/datasets.md)). |
 
 ---
 
 ## See also
 
-[OVERVIEW](./OVERVIEW.md) · [SCENARIOS](./SCENARIOS.md) · [TROUBLESHOOTING](./TROUBLESHOOTING.md)
+[OVERVIEW](./overview.md) · [SCENARIOS](./scenarios.md) · [TROUBLESHOOTING](./troubleshooting.md)
