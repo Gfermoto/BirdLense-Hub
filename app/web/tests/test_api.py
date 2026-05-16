@@ -3366,6 +3366,9 @@ class TestConfigAudit:
         assert response.status_code == 200
         data = response.get_json()
         assert isinstance(data.get("processor_runtime_hints"), list)
+        assert isinstance(data.get("config_presets"), list)
+        assert isinstance(data.get("preflight"), dict)
+        assert isinstance(data.get("runtime_parity"), dict)
         assert "camera" not in data["deprecated_keys_present"]
         assert "camera" not in data["unknown_keys"]
         assert "mqtt.username" not in data["unknown_keys"]
@@ -3376,6 +3379,62 @@ class TestConfigAudit:
         assert "ebird.species_mapping.Gray-headed Woodpecker" not in data["unknown_keys"]
         assert "processor.species_confidence_overrides.Bird" not in data["unknown_keys"]
         assert "secrets.zip" not in data["unknown_keys"]
+
+    def test_config_audit_preflight_and_runtime_parity(self, client, tmp_path, monkeypatch):
+        import json
+        import yaml
+        from app_config.app_config import app_config
+
+        user_cfg = {
+            "triggers": {"frigate": {"enabled": True}},
+            "mqtt": {"broker": ""},
+            "video": {"encoding": "cpu"},
+            "processor": {
+                "inference_backend": "openvino",
+                "inference_device": "intel:gpu",
+            },
+        }
+        user_config = tmp_path / "user_config.yaml"
+        user_config.write_text(yaml.safe_dump(user_cfg), encoding="utf-8")
+        monkeypatch.setattr(app_config, "user_config_file", str(user_config))
+        monkeypatch.setenv("DATA_DIR", str(tmp_path))
+        diagnostics = tmp_path / "diagnostics"
+        diagnostics.mkdir(parents=True, exist_ok=True)
+        (diagnostics / "processor_runtime_stats.json").write_text(
+            json.dumps(
+                {
+                    "counters": {},
+                    "gauges": {
+                        "trigger_cfg_frigate_enabled": 1,
+                        "trigger_configured_paths_count": 2,
+                        "trigger_effective_paths_count": 1,
+                        "trigger_degraded_effective_lt_configured": 1,
+                        "trigger_frigate_degraded_no_mqtt": 1,
+                        "trigger_mqtt_live": 0,
+                        "last_session_runtime_profile": "low_light",
+                    },
+                    "latency_ms": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+        with client.session_transaction() as sess:
+            sess["access_role"] = "admin"
+            sess["settings_unlocked"] = True
+
+        response = client.get("/api/ui/system/config-audit")
+        assert response.status_code == 200
+        data = response.get_json() or {}
+        preflight = data.get("preflight") or {}
+        runtime_parity = data.get("runtime_parity") or {}
+        runtime = runtime_parity.get("runtime") or {}
+        parity_alerts = runtime_parity.get("parity_alerts") or {}
+        assert preflight.get("status") in {"fail", "warn"}
+        assert runtime.get("trigger_degraded_effective_lt_configured") is True
+        assert runtime.get("trigger_frigate_degraded_no_mqtt") is True
+        assert runtime.get("last_session_runtime_profile") == "low_light"
+        assert parity_alerts.get("effective_trigger_paths_dropped") is True
+        assert parity_alerts.get("frigate_degraded_no_mqtt") is True
 
     def test_update_settings_does_not_persist_transient_zip_field(self, client, tmp_path, monkeypatch):
         import yaml
