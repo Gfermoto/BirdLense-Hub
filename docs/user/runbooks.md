@@ -126,6 +126,7 @@ Data source and capture:
    - `ingest_gate_reason_code_counts_24h` (top causes)
 3. Add camera/day-night diagnostics:
    - `parity_camera_split_24h`
+   - `parity_hotspots_24h` (high-volume cameras with elevated mismatch rate)
 4. Verify guardrails:
    - `strict_quality.strict_quality_ready`
    - p95 detect latency + CPU from runtime diagnostics.
@@ -134,6 +135,7 @@ Decision rules:
 
 - if mismatch trend worsens week-over-week, create follow-up issue and assign owner
 - if `recording_artifact_failures_24h > 0`, open P1 incident immediately
+- if `parity_hotspot_count_24h > 0`, open/refresh camera-focused follow-up issue per hotspot
 - if `video_encoding_flapping` alert is true, lock config changes and investigate runtime transitions before next deploy.
 
 Decision log template:

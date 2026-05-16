@@ -118,6 +118,7 @@ ssh ВАШ_SSH_ХОСТ "tail -100 ВАШ_УДАЛЁННЫЙ_КАТАЛОГ/app/
    - `ingest_gate_reason_code_counts_24h` (топ причин)
 3. Добавить camera/day-night диагностику:
    - `parity_camera_split_24h`
+   - `parity_hotspots_24h` (камеры с достаточным объёмом и повышенным mismatch rate)
 4. Проверить guardrails:
    - `strict_quality.strict_quality_ready`
    - p95 detect latency + CPU из runtime diagnostics.
@@ -126,6 +127,7 @@ ssh ВАШ_SSH_ХОСТ "tail -100 ВАШ_УДАЛЁННЫЙ_КАТАЛОГ/app/
 
 - если mismatch тренд растёт week-over-week — создать follow-up issue и назначить owner
 - если `recording_artifact_failures_24h > 0` — сразу открывать P1-инцидент
+- если `parity_hotspot_count_24h > 0` — открыть/обновить follow-up issue по каждой hotspot-камере
 - если alert `video_encoding_flapping=true` — заморозить config-изменения и разобрать runtime transitions до следующего деплоя.
 
 Шаблон decision log:
