@@ -124,6 +124,7 @@ app/processor/models/detection/*
 # BRG binary detector shipped with Hub + matching OpenVINO IR (rest of weights/ — локально).
 !app/processor/models/detection/weights/
 app/processor/models/detection/weights/*
+app/processor/models/detection/weights/snapshots/**
 !app/processor/models/detection/weights/best.pt
 !app/processor/models/detection/weights/last.pt
 !app/processor/models/detection/weights/best_openvino_model/
@@ -135,6 +136,8 @@ app/processor/models/detection/weights/best_openvino_model/*
 # Windows / экспорт мусор рядом с весами
 **/Zone.Identifier
 !app/processor/models/tracker/
+app/processor/models/tracker/*
+!app/processor/models/tracker/*.yaml
 !app/processor/models/behavior/
 app/processor/models/behavior/*
 !app/processor/models/behavior/README.md
