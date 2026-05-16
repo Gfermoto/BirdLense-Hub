@@ -21,6 +21,10 @@ markdown_extensions:
   - attr_list
   - md_in_html
 
+validation:
+  nav:
+    omitted_files: ignore
+
 exclude_docs: |
   archive/**
   article/**
