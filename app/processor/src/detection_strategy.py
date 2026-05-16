@@ -21,6 +21,59 @@ def _rodent_binary_threshold_raw(config: Mapping[str, Any]) -> Any:
     return config.get("processor.min_confidence_binary_squirrel")
 
 
+def _parse_optional_processor_float(config: Mapping[str, Any], key: str) -> float | None:
+    raw = config.get(key)
+    if raw is None:
+        return None
+    if isinstance(raw, str) and raw.strip().lower() in ("", "null", "none"):
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _openvino_binary_bird_threshold_override(
+    bird_m: float,
+    config: Mapping[str, Any],
+    *,
+    inference_backend: str | None,
+) -> float:
+    """При ``openvino`` и непустом ``processor.openvino_min_confidence_binary_bird`` — заменить порог Bird."""
+    if (inference_backend or "").strip().lower() != "openvino":
+        return bird_m
+    ov = _parse_optional_processor_float(config, "processor.openvino_min_confidence_binary_bird")
+    if ov is None:
+        return bird_m
+    return max(0.001, min(0.99, float(ov)))
+
+
+def openvino_binary_bird_score_scale(config: Mapping[str, Any], *, inference_backend: str | None) -> float:
+    """Только Bird + OpenVINO: множитель к conf при сравнении с порогом (сырой conf в БД не меняется). 1.0 = выкл."""
+    if (inference_backend or "").strip().lower() != "openvino":
+        return 1.0
+    s = _parse_optional_processor_float(config, "processor.openvino_binary_bird_score_scale")
+    if s is None:
+        return 1.0
+    return max(1.0, min(25.0, float(s)))
+
+
+def _openvino_binary_track_ultralytics_conf_cap(
+    stock_floor: float,
+    config: Mapping[str, Any],
+    *,
+    inference_backend: str | None,
+) -> float:
+    """При OV: ``min(stock_floor, openvino_binary_track_ultralytics_conf)`` — ослабить ``track(conf=…)`` без второго инференса."""
+    if (inference_backend or "").strip().lower() != "openvino":
+        return stock_floor
+    cap = _parse_optional_processor_float(config, "processor.openvino_binary_track_ultralytics_conf")
+    if cap is None:
+        return stock_floor
+    cap = max(0.01, min(0.25, float(cap)))
+    return min(float(stock_floor), cap)
+
+
 def build_binary_track_ultralytics_extras(runtime_cfg: Mapping[str, Any]) -> dict[str, float | int]:
     """Доп. аргументы для ``YOLO.track()`` / NMS: ``iou``, ``max_det``.
 
@@ -46,7 +99,12 @@ def build_binary_track_ultralytics_extras(runtime_cfg: Mapping[str, Any]) -> dic
     return extras
 
 
-def binary_track_ultralytics_conf_floor(base_min: float, config: Mapping[str, Any]) -> float:
+def binary_track_ultralytics_conf_floor(
+    base_min: float,
+    config: Mapping[str, Any],
+    *,
+    inference_backend: str | None = None,
+) -> float:
     """
     Минимальный ``conf`` для YOLO ``track()``, чтобы кандидаты не отсекались до per-label фильтра.
 
@@ -62,14 +120,18 @@ def binary_track_ultralytics_conf_floor(base_min: float, config: Mapping[str, An
     b_raw = config.get("processor.min_confidence_binary_bird")
     s_raw = _rodent_binary_threshold_raw(config)
     bird_m = float(b_raw) if b_raw is not None else base
+    bird_m = _openvino_binary_bird_threshold_override(bird_m, config, inference_backend=inference_backend)
     rod_m = float(s_raw) if s_raw is not None else base
-    return min(base, bird_m, rod_m)
+    stock = min(base, bird_m, rod_m)
+    return _openvino_binary_track_ultralytics_conf_cap(stock, config, inference_backend=inference_backend)
 
 
 def per_label_binary_conf_threshold(
     detector_label: str,
     base_min: float,
     config: Mapping[str, Any],
+    *,
+    inference_backend: str | None = None,
 ) -> float:
     """Порог confidence бинарника после нормализации метки (Bird / Rodent)."""
     try:
@@ -79,6 +141,7 @@ def per_label_binary_conf_threshold(
     b_raw = config.get("processor.min_confidence_binary_bird")
     s_raw = _rodent_binary_threshold_raw(config)
     bird_m = float(b_raw) if b_raw is not None else base
+    bird_m = _openvino_binary_bird_threshold_override(bird_m, config, inference_backend=inference_backend)
     rod_m = float(s_raw) if s_raw is not None else base
     if detector_label == "Bird":
         return bird_m
@@ -536,6 +599,7 @@ class TwoStageStrategy(DetectionStrategy):
         if not hasattr(self, "classification_scheduler"):
             self.classification_scheduler = "priority"
         self._frame_index += 1
+        inference_backend = str(getattr(self, "inference_backend", "torch") or "torch").strip().lower()
         imgsz = int(runtime_cfg.resolve_strategy_field("processor.binary_imgsz", self, "binary_imgsz", 320) or 320)
         min_center_dist = float(
             runtime_cfg.resolve_strategy_field("processor.min_center_dist", self, "min_center_dist", 0.1) or 0.1
@@ -586,7 +650,11 @@ class TwoStageStrategy(DetectionStrategy):
             )
             or 1
         )
-        track_conf = binary_track_ultralytics_conf_floor(min_confidence, runtime_cfg)
+        track_conf = binary_track_ultralytics_conf_floor(
+            min_confidence,
+            runtime_cfg,
+            inference_backend=inference_backend,
+        )
         track_regen_ctx = bool(getattr(self, "_for_track_regen", False))
         iou_fb = bool(runtime_cfg.get("processor.track_regen_iou_id_fallback", False))
         _tkw: dict = {
@@ -710,6 +778,11 @@ class TwoStageStrategy(DetectionStrategy):
 
         h, w, _ = frame.shape
 
+        _ov_bird_scale = openvino_binary_bird_score_scale(
+            runtime_cfg,
+            inference_backend=inference_backend,
+        )
+
         def _collect_valid_boxes(
             *,
             min_box_px: int,
@@ -727,11 +800,15 @@ class TwoStageStrategy(DetectionStrategy):
                     detector_label,
                     min_confidence,
                     runtime_cfg,
+                    inference_backend=inference_backend,
                 )
                 eff_min = max(0.0, float(eff_min) - float(conf_delta))
+                cmp_conf = float(conf)
+                if detector_label == "Bird" and _ov_bird_scale > 1.0:
+                    cmp_conf *= _ov_bird_scale
                 if not self.is_valid_detection(
                     bbox_norm,
-                    conf,
+                    cmp_conf,
                     eff_min,
                     min_center_dist=min_center,
                     max_box_area_norm=max_box_area_norm,
