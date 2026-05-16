@@ -47,9 +47,16 @@ fi
 export BROTLI_BLOCK
 python3 -c '
 import os
-hide = os.environ.get("BIRDLENSE_HIDE_DIRECT_RECORDINGS", "").strip().lower() in (
-    "1", "true", "yes", "on",
-)
+truthy = {"1", "true", "yes", "on"}
+raw_hide = os.environ.get("BIRDLENSE_HIDE_DIRECT_RECORDINGS", "").strip().lower()
+if raw_hide:
+    hide = raw_hide in truthy
+else:
+    env_name = os.environ.get("BIRDLENSE_ENV", "").strip().lower()
+    strict_auth = os.environ.get("BIRDLENSE_STRICT_API_AUTH", "").strip().lower() in truthy
+    # Safer default for public deployments: hide direct static recordings URLs
+    # whenever strict production auth is enabled.
+    hide = env_name == "production" and strict_auth
 recordings_block = (
     ""
     if hide
