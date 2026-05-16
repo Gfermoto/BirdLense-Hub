@@ -1,14 +1,14 @@
 # API BirdLense Hub
 
-[English](./API.md)
+[English](../contributor/api.md)
 
 ---
 
 **Версия:** совпадает с корневым файлом `VERSION` в репозитории (то же значение, что в `app/web/openapi.yaml`).
 
-Полная спецификация: [OpenAPI YAML](./project/openapi.md).
+Полная спецификация: [OpenAPI YAML](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/openapi.yaml).
 
-**Интерактивно в браузере:** [OpenAPI (Redoc)](reference/openapi.ru.md).
+**Интерактивно в браузере:** [OpenAPI (Redoc)](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/reference/openapi.ru.md).
 
 ## Группы эндпоинтов
 
@@ -35,7 +35,7 @@
 | `/feed/dispense` | POST | Выдать корм |
 | `/settings` | GET/PATCH | Настройки |
 | `/settings/requires-password` | GET | Проверка, требуется ли пароль |
-| `/settings/verify-password` | POST | Разблокировка (`password` → `role`). **401** при неверном пароле; **429** + `Retry-After` после 5 неудач за 60 с на IP — см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) |
+| `/settings/verify-password` | POST | Разблокировка (`password` → `role`). **401** при неверном пароле; **429** + `Retry-After` после 5 неудач за 60 с на IP — см. [ACCESS_CONTROL](./access-control.ru.md) |
 | `/settings/check-access` | GET | Состояние сессии: `{ unlocked, role? }` — всегда **200** (заблокировано → `unlocked: false`; без лишнего 403 в консоли браузера) |
 | `/unknowns` | GET | Детекции с низкой confidence (params: start_time, end_time, limit) |
 | `/region-comparison` | GET | Сравнение видов с топом eBird региона (требует secrets.ebird_api_key) |
@@ -58,7 +58,7 @@
 | `/api/metrics` | GET | То же (для Grafana) |
 | `/api/metrics/summary` | GET | JSON-сводка метрик для дашбордов и observability-checks |
 
-См. [CONFIGURATION](./CONFIGURATION.ru.md) — раздел Prometheus / Grafana.
+См. [CONFIGURATION](./configuration.ru.md) — раздел Prometheus / Grafana.
 
 ### System API (`/api/ui/system/*`)
 
@@ -127,4 +127,4 @@
 
 ---
 
-См. также: [CONFIGURATION](./CONFIGURATION.ru.md), [ARCHITECTURE](./ARCHITECTURE.ru.md), [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md), [GLOSSARY](./GLOSSARY.ru.md).
+См. также: [CONFIGURATION](./configuration.ru.md), [ARCHITECTURE](./architecture.ru.md), [ACCESS_CONTROL](./access-control.ru.md), [GLOSSARY](./glossary.ru.md).

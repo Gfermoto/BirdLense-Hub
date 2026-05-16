@@ -13,8 +13,8 @@ Welcome to the BirdLense Hub docs.
 
 ## Governance files
 
-- [README](../README.md)
-- [CONTRIBUTING](../CONTRIBUTING.md)
-- [CODE_OF_CONDUCT](../CODE_OF_CONDUCT.md)
-- [SECURITY](../SECURITY.md)
-- [LICENSE](../LICENSE)
+- [README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/README.md)
+- [CONTRIBUTING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md)
+- [CODE_OF_CONDUCT](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CODE_OF_CONDUCT.md)
+- [SECURITY](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SECURITY.md)
+- [LICENSE](https://github.com/Gfermoto/BirdLense-Hub/blob/main/LICENSE)

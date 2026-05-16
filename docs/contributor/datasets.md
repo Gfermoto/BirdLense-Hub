@@ -1,8 +1,8 @@
 # Datasets & models — BirdLense Hub
 
-Formats, scripts, sources, and training hardware. **End-to-end training:** [TRAINING](./TRAINING.md).
+Formats, scripts, sources, and training hardware. **End-to-end training:** [TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.md).
 
-[Русский](./DATASETS.ru.md)
+[Русский](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/DATASETS.ru.md)
 
 ---
 
@@ -20,7 +20,7 @@ Do not duplicate long command lists here — **`scripts/datasets/README.md`** is
 | Pack YOLO → zip | `python3 scripts/datasets/pack_brg_for_gdrive.py` → **`datasets/new/detector/BirdLense_detector_brg_<UTC>.zip`** (default source: **`datasets/new/detector/yolo`**) |
 | Disk layout detail | `scripts/datasets/DETECTOR_DATA_LAYOUT.md`, `scripts/datasets/binary/README.md` |
 | Hugging Face detector zips | Different filenames (`detector_merged_*`, etc.) — [BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main); not the same as local `BirdLense_detector_brg_*.zip` |
-| Classifier merged dirs (local) | Often repo-root `datasets/merged_cls/` etc. — gitignored; see [TRAINING](./TRAINING.md) |
+| Classifier merged dirs (local) | Often repo-root `datasets/merged_cls/` etc. — gitignored; see [TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.md) |
 
 ---
 
@@ -106,7 +106,7 @@ Full EU pipeline and optional external sources: **`scripts/datasets/EU_CLASSIFIE
 ## CV / ML prep gate (#377)
 
 Before starting the CV / ML roadmap epic, keep the detector/classifier contract
-in [CV_ML_PREP](./CV_ML_PREP.md) in sync with this page. In short: first-stage
+in [CV_ML_PREP](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_PREP.md) in sync with this page. In short: first-stage
 detector boxes enter the species classifier only if their normalized label is in
 `processor.detector_scope` (default `["Bird", "Rodent"]`). Background /
 hard-negative detector classes are detector-only evidence and must stay outside
@@ -140,7 +140,7 @@ Phase 2 items from the epic (MineUp, dual mining, COCO export) remain future wor
 
 ### `brg` dataset and Drive ZIP — provenance and enrichment
 
-**Starter weights for Colab fine-tuning:** put **`bl_best.pt`** on Drive — your current **YOLO11n detection** checkpoint from the Hub (or a copy from `app/processor/models/detection/weights/`). Fine-tune from that file per [ML_DETECTOR_COLAB.md](./ML_DETECTOR_COLAB.md) (two-stage `freeze` train, then OpenVINO export). Alternative “from scratch” on the same architecture: **`YOLO("yolo11n.pt")`** from Ultralytics (auto-download), no extra weights file on Drive.
+**Starter weights for Colab fine-tuning:** put **`bl_best.pt`** on Drive — your current **YOLO11n detection** checkpoint from the Hub (or a copy from `app/processor/models/detection/weights/`). Fine-tune from that file per [ML_DETECTOR_COLAB.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/ML_DETECTOR_COLAB.md) (two-stage `freeze` train, then OpenVINO export). Alternative “from scratch” on the same architecture: **`YOLO("yolo11n.pt")`** from Ultralytics (auto-download), no extra weights file on Drive.
 
 **Where birds and rodents (`Rodent`, including mice) come from in `brg`:**
 
@@ -161,7 +161,7 @@ Phase 2 items from the epic (MineUp, dual mining, COCO export) remain future wor
 | 5 | **Dedup** near-duplicate images (SHA256 per split): **`dedupe_yolo_images.py`**. |
 | 6 | **Drive packaging:** **`pack_brg_for_gdrive.py`** → **`datasets/new/detector/BirdLense_detector_brg_<UTC>.zip`**. |
 
-Colab flow for this ZIP + **`bl_best.pt`**: [ML_DETECTOR_COLAB.md](./ML_DETECTOR_COLAB.md). Scripts: **`scripts/datasets/README.md`**.
+Colab flow for this ZIP + **`bl_best.pt`**: [ML_DETECTOR_COLAB.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/ML_DETECTOR_COLAB.md). Scripts: **`scripts/datasets/README.md`**.
 
 ---
 
@@ -305,7 +305,7 @@ The shipped detector is commonly described as trained on **NABirds + COCO birds 
 | **RunPod** | RTX 4090, A100 | ~$0.40–0.80/h |
 | **Local** | Your GPU | — |
 
-**Practical default:** Colab Free (T4) — see [TRAINING](./TRAINING.md).
+**Practical default:** Colab Free (T4) — see [TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.md).
 
 ---
 
@@ -325,7 +325,7 @@ birds-525 + iNaturalist → merge_classification_datasets.py → merged_cls
 
 | Platform | Use |
 |----------|-----|
-| **Hugging Face** | [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged), [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) — see [TRAINING](./TRAINING.md) |
+| **Hugging Face** | [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged), [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) — see [TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.md) |
 | **Hugging Face (detector)** | [gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main) — 3-class detector zips (balanced + full) |
 | **Zenodo** | DOI snapshots for papers |
 
@@ -333,4 +333,4 @@ birds-525 + iNaturalist → merge_classification_datasets.py → merged_cls
 
 ## See also
 
-[TRAINING](./TRAINING.md) · [FEATURES](./FEATURES.md) · [CONFIGURATION](./CONFIGURATION.md)
+[TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.md) · [FEATURES](../user/features.md) · [CONFIGURATION](../user/configuration.md)

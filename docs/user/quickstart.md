@@ -1,6 +1,6 @@
 # Quickstart — BirdLense Hub
 
-[Русский](./QUICKSTART.ru.md)
+[Русский](../ru/quickstart.ru.md)
 
 Fastest paths for the three common jobs: run the hub, develop locally, or verify a deploy.
 
@@ -37,7 +37,7 @@ make verify
 make test-web
 ```
 
-UI dependencies use **Node 22** in `app/ui/`. Full details: [LOCAL_DEV](./LOCAL_DEV.md).
+UI dependencies use **Node 22** in `app/ui/`. Full details: [LOCAL_DEV](../contributor/local-dev.md).
 
 ### Full CI locally (no GitHub push)
 
@@ -47,7 +47,7 @@ From the **repository root** (Node **≥ 22** required for the UI step):
 make ci-local
 ```
 
-Adds **`.venv-ci`** / **`.venv-docs`** (gitignored). For Docker image tests + Playwright smoke: `make ci-local-docker`. See [CI_AND_QUALITY](./CI_AND_QUALITY.md).
+Adds **`.venv-ci`** / **`.venv-docs`** (gitignored). For Docker image tests + Playwright smoke: `make ci-local-docker`. See [CI_AND_QUALITY](../contributor/ci-and-quality.md).
 
 ## 3. Deploy to a server
 
@@ -64,4 +64,4 @@ Success contract after deploy:
 - `/api/ui/readiness` returns `"ready": true`
 - `/api/ui/status` reports `"web": "ok"`
 
-For the full deploy path, SSH notes, and data-safety details, see [INSTALL](./INSTALL.md) and [DEPLOY_SERVER](./DEPLOY_SERVER.md).
+For the full deploy path, SSH notes, and data-safety details, see [INSTALL](./install.md) and [DEPLOY_SERVER](./deploy-server.md).

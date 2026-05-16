@@ -1,8 +1,8 @@
 # BirdLense Hub — Architecture
 
-High-level layout of the single-container app, data paths, and integrations. For feature lists see [FEATURES](./FEATURES.md); for HTTP details see [API](./API.md) and [OpenAPI (YAML)](./project/openapi.md).
+High-level layout of the single-container app, data paths, and integrations. For feature lists see [FEATURES](../user/features.md); for HTTP details see [API](./api.md) and [OpenAPI (YAML)](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/openapi.yaml).
 
-[Русский](./ARCHITECTURE.ru.md)
+[Русский](../ru/architecture.ru.md)
 
 ---
 
@@ -71,7 +71,7 @@ High-level layout of the single-container app, data paths, and integrations. For
 2. Processor **MQTTEventAggregator** consumes messages.
 3. BirdNET adjusts classifier confidence thresholds and other confidence logic, but it does not create final video labels.
 
-**Models:** EU classifier (~491 species) in `best.pt`; US (NABirds) backup `best_US.pt`. See [TRAINING](./TRAINING.md).
+**Models:** EU classifier (~491 species) in `best.pt`; US (NABirds) backup `best_US.pt`. See [TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.md).
 
 ### Web UI
 
@@ -87,7 +87,7 @@ High-level layout of the single-container app, data paths, and integrations. For
 
 ## Database
 
-- **SQLite** — `data/db/birdlense.db` (path configurable via `DATA_DIR`; see [CONFIGURATION](./CONFIGURATION.md)).
+- **SQLite** — `data/db/birdlense.db` (path configurable via `DATA_DIR`; see [CONFIGURATION](../user/configuration.md)).
 - **ORM:** Flask-SQLAlchemy; **schema evolution:** **Flask-Migrate / Alembic** — revision scripts under `app/web/migrations/`. On startup, `create_app()` calls **`app_startup.apply_schema_migrations_and_seed`**, which runs `db.create_all()` then `upgrade()` so new installs and upgrades share one path (replaces ad-hoc `ALTER TABLE` in application code for tracked columns).
 - **DDL policy (audit, [#287](https://github.com/Gfermoto/BirdLense-Hub/issues/287)):** table/column changes belong in new Alembic revisions under `migrations/versions/`, not in route or startup code. SQLite **PRAGMA** tuning on connect (I/O performance; not schema) is registered via **`flask_extensions.register_sqlite_connect_pragmas()`** from `create_app()`. Other `session.execute` usages in app code are DML (e.g. deletes), not DDL.
 - **Entities:** Video, Species, VideoSpecies, SpeciesVisit, BirdFood, ActivityLog, and related tables (see `app/web/models`).
@@ -151,4 +151,4 @@ This is the **structural** checkpoint before prioritizing product features (GitH
 
 ## See also
 
-[CONFIGURATION](./CONFIGURATION.md) · [API](./API.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [GLOSSARY](./GLOSSARY.md) · [OVERVIEW](./OVERVIEW.md) · [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.md)
+[CONFIGURATION](../user/configuration.md) · [API](./api.md) · [ACCESS_CONTROL](./access-control.md) · [GLOSSARY](../user/glossary.md) · [OVERVIEW](../user/overview.md) · [PUBLIC_RELEASE_CHECKLIST](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.md)

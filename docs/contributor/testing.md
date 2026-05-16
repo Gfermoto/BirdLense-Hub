@@ -1,6 +1,6 @@
 # Testing BirdLense Hub
 
-[Русский](./TESTING.ru.md)
+[Русский](../ru/testing.ru.md)
 
 ---
 
@@ -24,11 +24,11 @@ On **GitHub** (PR/push to `main` and `dev`), workflow **[`.github/workflows/ci-p
 
 The same **`ci-pr.yml`** file is also triggered on a **daily cron** (repository **default branch** only, in GitHub) and via **`workflow_dispatch`**, running the same jobs without a code push.
 
-**`docker-tests`** is the usual **required** check in the **Protect** ruleset on `main` (see [GITHUB_SETUP_GH](./GITHUB_SETUP_GH.md)). Other jobs should stay green before merge.
+**`docker-tests`** is the usual **required** check in the **Protect** ruleset on `main` (see [GITHUB_SETUP_GH](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/GITHUB_SETUP_GH.md)). Other jobs should stay green before merge.
 
-**Policy & thresholds:** [CI_AND_QUALITY](./CI_AND_QUALITY.md) (pip-audit ignores, Ruff format, npm audit, OpenAPI→TypeScript codegen).
+**Policy & thresholds:** [CI_AND_QUALITY](./ci-and-quality.md) (pip-audit ignores, Ruff format, npm audit, OpenAPI→TypeScript codegen).
 
-**Related workflows:** **CodeQL** (see [CODEQL](./CODEQL.md)); **E2E (Playwright)** scheduled / manual — [§ E2E](#e2e-playwright) below. **npm audit (UI)** — weekly + `workflow_dispatch`: [`.github/workflows/npm-audit-scheduled.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/npm-audit-scheduled.yml) runs `npm audit --omit=dev --audit-level=moderate` in `app/ui` (not a required PR check; policy in workflow comments — [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)).
+**Related workflows:** **CodeQL** (see [CODEQL](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CODEQL.md)); **E2E (Playwright)** scheduled / manual — [§ E2E](#e2e-playwright) below. **npm audit (UI)** — weekly + `workflow_dispatch`: [`.github/workflows/npm-audit-scheduled.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/npm-audit-scheduled.yml) runs `npm audit --omit=dev --audit-level=moderate` in `app/ui` (not a required PR check; policy in workflow comments — [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)).
 
 ### Test pyramid & targeted local runs ([#348](https://github.com/Gfermoto/BirdLense-Hub/issues/348))
 
@@ -74,7 +74,7 @@ cd app && make test-web
 
 Runs pytest against the Flask API (health, status, settings, feed, cameras). Build the image first: `make build`.
 
-Includes **`TestVerifyPasswordRateLimit`** — `POST /api/ui/settings/verify-password` returns **429** after five wrong passwords in 60s, **`Retry-After`**, separate buckets per `X-Real-IP`, counter reset on success ([ACCESS_CONTROL](./ACCESS_CONTROL.md)).
+Includes **`TestVerifyPasswordRateLimit`** — `POST /api/ui/settings/verify-password` returns **429** after five wrong passwords in 60s, **`Retry-After`**, separate buckets per `X-Real-IP`, counter reset on success ([ACCESS_CONTROL](./access-control.md)).
 
 ### Domain integrity quality gate
 
@@ -92,7 +92,7 @@ At minimum, check:
 - `duplicate_clip_candidates_24h` is not turning into a repeated pattern
 - review-only rows remain explainable and do not leak into visits or monthly stats
 
-Contract details: [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.md).
+Contract details: [DOMAIN_CONTRACT](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/DOMAIN_CONTRACT.md).
 
 ### Coverage
 
@@ -120,7 +120,7 @@ Debug one file / UI mode: `cd app/e2e && npx playwright test tests/migration.spe
 
 **Scheduled CI:** workflow **E2E (Playwright)** (`.github/workflows/e2e-scheduled.yml`) runs **daily** and on **`workflow_dispatch`** — not a required check on every PR.
 
-**Local parity:** from repo root, run **`make ci-local`** and **`make ci-local-docker`** to mirror the required CI layers without opening a PR — see [CI_AND_QUALITY](./CI_AND_QUALITY.md).
+**Local parity:** from repo root, run **`make ci-local`** and **`make ci-local-docker`** to mirror the required CI layers without opening a PR — see [CI_AND_QUALITY](./ci-and-quality.md).
 
 > `make ci-local-docker` runs local `verify-strict-quality` as a probe; set `CI_STRICT_QUALITY_REQUIRED=1` to make it blocking (close to CI gate behavior).
 
@@ -234,4 +234,4 @@ Startup message **“App is UP!”** is from the **web** app. **Detection** noti
 
 ## See also
 
-[INSTALL](./INSTALL.md) · [CONFIGURATION](./CONFIGURATION.md) · [TROUBLESHOOTING](./TROUBLESHOOTING.md)
+[INSTALL](../user/install.md) · [CONFIGURATION](../user/configuration.md) · [TROUBLESHOOTING](../user/troubleshooting.md)

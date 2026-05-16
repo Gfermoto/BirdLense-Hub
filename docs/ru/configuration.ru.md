@@ -1,6 +1,6 @@
 # Конфигурация BirdLense Hub
 
-[English](./CONFIGURATION.md)
+[English](../user/configuration.md)
 
 ---
 
@@ -19,7 +19,7 @@
 
 **Настройки в UI:** большинство параметров можно менять через веб-интерфейс (Настройки → шестерёнка). YAML остаётся для продвинутых сценариев и переменных окружения.
 
-**Связанные документы:** [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) · [EN](./ACCESS_CONTROL.md) (уровни паролей), [API](./API.ru.md) · [EN](./API.md) (HTTP), [GLOSSARY](./GLOSSARY.ru.md) · [EN](./GLOSSARY.md) (термины). **Файл env:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (шаблон для установки). **Контракт:** [OpenAPI](./project/openapi.md).
+**Связанные документы:** [ACCESS_CONTROL](./access-control.ru.md) · [EN](../contributor/access-control.md) (уровни паролей), [API](./api.ru.md) · [EN](../contributor/api.md) (HTTP), [GLOSSARY](./glossary.ru.md) · [EN](../user/glossary.md) (термины). **Файл env:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (шаблон для установки). **Контракт:** [OpenAPI](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/openapi.yaml).
 
 **По странице:** [Переменные окружения](#environment-variables) · [Стартовые профили](#starter-profiles) · [Профиль minimal без MQTT](#minimal-profile-no-mqtt) · [Устаревший `motion:`](#legacy-motion-block) · [Processor](#processor) · [Video](#video) · [Retention](#retention) · [Prometheus / Grafana](#prometheus--grafana) · [Метрики System](#system-page-metrics-history) · [Secrets](#secrets) · [См. также](#see-also)
 
@@ -54,7 +54,7 @@
 ## Как читать ключи
 
 - В таблицах — **точечные пути**, как в YAML: `video.go2rtc_url` → секция `video:`, поле `go2rtc_url:`.
-- Поведение «пустой пароль = открытый хаб» см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md).
+- Поведение «пустой пароль = открытый хаб» см. [ACCESS_CONTROL](./access-control.ru.md).
 
 ## Переменные окружения {#environment-variables}
 
@@ -62,22 +62,22 @@
 |------------|----------|
 | `DATA_DIR` | Каталог данных (/app/data в Docker) |
 | `REDIS_URL` | **`app/docker-compose.yml`:** по умолчанию `redis://redis:6379/0` (контейнер `birdlense-redis`). **`docker-compose.image.yml`:** отдельного Redis нет — не задавайте или укажите **внешний** Redis; иначе кэш **в процессе**. Переопределение — в `app/.env`. **Запуск на хосте без compose:** пусто — кэш в памяти процесса. |
-| `DATABASE_URL` | Опционально. URI SQLAlchemy. По умолчанию SQLite в `DATA_DIR`. Под высокую запись — PostgreSQL, например `postgresql+psycopg://user:pass@host:5432/dbname`. Операторский гайд: [POSTGRES_MIGRATION.ru.md](./POSTGRES_MIGRATION.ru.md). |
+| `DATABASE_URL` | Опционально. URI SQLAlchemy. По умолчанию SQLite в `DATA_DIR`. Под высокую запись — PostgreSQL, например `postgresql+psycopg://user:pass@host:5432/dbname`. Операторский гайд: [POSTGRES_MIGRATION.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/POSTGRES_MIGRATION.ru.md). |
 | `SQLALCHEMY_POOL_SIZE` | Размер пула PostgreSQL (по умолчанию `5`) |
 | `SQLALCHEMY_MAX_OVERFLOW` | Доп. соединения пула PostgreSQL (по умолчанию `15`) |
 | `FLASK_SECRET_KEY` | Ключ сессии Flask (защита настроек) |
 | `FLASK_MAX_CONTENT_LENGTH` | Лимит тела HTTP в **байтах** для Flask/Werkzeug (по умолчанию ~80 ГиБ в `web/config.py`). У reverse proxy (nginx и т.д.) нужен свой лимит загрузки для больших файлов в **Библиотеке** |
 | `PROCESSOR_SECRET` | Защита API processor (X-Processor-Token) |
 | `MCP_TOKEN` | Токен MCP (переопределяет mcp.token) |
-| `BIRDLENSE_STRICT_API_AUTH` | `1` / `true` — при **production** закрыть анонимный доступ к `/api/ui/*` (сессия, `BIRDLENSE_UI_API_KEY` или MCP Bearer); см. [SECURITY.ru.md](./SECURITY.ru.md) |
+| `BIRDLENSE_STRICT_API_AUTH` | `1` / `true` — при **production** закрыть анонимный доступ к `/api/ui/*` (сессия, `BIRDLENSE_UI_API_KEY` или MCP Bearer); см. [SECURITY.ru.md](./security.ru.md) |
 | `BIRDLENSE_UI_API_KEY` | Секрет для UI API в strict-режиме: **`X-Birdlense-Api-Key`** или **`Authorization: Bearer`** (то же значение). Пусто — только сессия и MCP |
 | `BIRDLENSE_PORT` | Порт nginx (по умолчанию 8085) |
-| `BIRDLENSE_HIDE_DIRECT_RECORDINGS` | `1` / `true` / `yes` / `on` — не добавлять nginx `location` для `/data/recordings/`; анонимный **`GET /data/recordings/...`** → **403**; воспроизведение — **`/api/ui/videos/:id/stream`**. По умолчанию: прямой alias. **Публичный VPS:** [PUBLIC_RECORDINGS.ru.md](./PUBLIC_RECORDINGS.ru.md). |
+| `BIRDLENSE_HIDE_DIRECT_RECORDINGS` | `1` / `true` / `yes` / `on` — не добавлять nginx `location` для `/data/recordings/`; анонимный **`GET /data/recordings/...`** → **403**; воспроизведение — **`/api/ui/videos/:id/stream`**. По умолчанию: прямой alias. **Публичный VPS:** [PUBLIC_RECORDINGS.ru.md](./public-recordings.ru.md). |
 | `GUNICORN_THREADS` | Число потоков воркера Gunicorn (`gthread`; по умолчанию **16**; `app/scripts/entrypoint.sh`) |
 | `CORS_LOCAL_DEV_ORIGINS` | Локальные/dev origins CORS (через запятую): Vite, `birdlense.local`, порт хаба. Дефолт — как раньше в коде; пустая строка — не добавлять этот набор |
 | `CORS_DEFAULT_ORIGINS` | Базовые origins CORS (через запятую), если нужны не-localhost адреса по умолчанию |
 | `CORS_ORIGINS` | Доп. origins для CORS (через запятую) |
-| `TRUSTED_PROXY` | `1` / `true` — учитывать `X-Real-IP` / `X-Forwarded-For` в rate limit за **доверенным** reverse proxy; см. раздел Webhook и [SECURITY.ru.md](./SECURITY.ru.md) |
+| `TRUSTED_PROXY` | `1` / `true` — учитывать `X-Real-IP` / `X-Forwarded-For` в rate limit за **доверенным** reverse proxy; см. раздел Webhook и [SECURITY.ru.md](./security.ru.md) |
 | `OPENWEATHER_API_KEY` | Ключ OpenWeather |
 | `XENO_CANTO_API_KEY` | Ключ API v3 Xeno-canto для воспроизведения песен в UI. После merge YAML по-прежнему можно переопределить через `BIRDLENSE_XENO_CANTO_API_KEY` → `secrets.xeno_canto_api_key` |
 | `MQTT_BROKER`, `MQTT_PASSWORD` | MQTT (если не в конфиге) |
@@ -88,7 +88,7 @@
 | `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT` | `1` — при старте удалять legacy-плейсхолдеры после старого «импорта с диска»; по умолчанию выкл.; очистка при сканировании записей всё равно выполняется |
 | `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA` | `1` — фоновой repair метаданных (картинки) при старте; по умолчанию выкл. |
 | `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — не слать Telegram «App is UP!» при старте; по умолчанию включено |
-| `BIRDLENSE_INFERENCE_BACKEND` | Переопределяет `processor.inference_backend` (`torch`, `openvino`, …) — см. [CV_ML_ROADMAP_PHASES.ru.md](./CV_ML_ROADMAP_PHASES.ru.md) |
+| `BIRDLENSE_INFERENCE_BACKEND` | Переопределяет `processor.inference_backend` (`torch`, `openvino`, …) — см. [CV_ML_ROADMAP_PHASES.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.ru.md) |
 | `BIRDLENSE_INFERENCE_DEVICE` | Переопределяет `processor.inference_device` (`auto`, `cpu`, `cuda`, `intel:gpu`, …) |
 | `BIRDLENSE_BINARY_OPENVINO_PATH` | Опциональный путь к IR OpenVINO (каталог или `.xml`) для бинарника; при непустом значении важнее YAML |
 | `BIRDLENSE_OPENVINO_PROFILE` | Профиль производительности OpenVINO (`latency` или `throughput`) |
@@ -115,7 +115,7 @@
 | `BIRDLENSE_RECORDINGS_MIRROR_SFTP_PASSWORD` | **Опциональное** перекрытие в рантайме для `storage.recordings_mirror.sftp_password` (обычно задаётся в **Библиотека → Хранилище** или в `user_config.yaml`) |
 | `BIRDLENSE_RECORDINGS_MIRROR_SFTP_KEY_PASSPHRASE` | **Опциональное** перекрытие для `storage.recordings_mirror.sftp_key_passphrase` |
 
-**Зеркало записей на NAS / SFTP:** хост, пользователь, пароль и опции — в UI хаба (**Библиотека → Хранилище**, админ) или в `user_config.yaml`; в API секреты маскируются. После сохранения UI запрашивает **перезапуск процессора** (флаг), чтобы процесс подхватил конфиг, а кнопка **«Проверить подключение»** проверяет SFTP и доступность удалённого каталога. При `storage.recordings_mirror.enabled: true` процессор после финализации в фоне загружает каталог сессии на SFTP. Пути в БД остаются `data/recordings/...`; воспроизведение с локального диска, пока не включён **`delete_local_after_success`**. **Альтернатива:** смонтировать NAS в `DATA_DIR` или в `recordings/`. См. [INSTALL.ru.md](./INSTALL.ru.md) про пути данных.
+**Зеркало записей на NAS / SFTP:** хост, пользователь, пароль и опции — в UI хаба (**Библиотека → Хранилище**, админ) или в `user_config.yaml`; в API секреты маскируются. После сохранения UI запрашивает **перезапуск процессора** (флаг), чтобы процесс подхватил конфиг, а кнопка **«Проверить подключение»** проверяет SFTP и доступность удалённого каталога. При `storage.recordings_mirror.enabled: true` процессор после финализации в фоне загружает каталог сессии на SFTP. Пути в БД остаются `data/recordings/...`; воспроизведение с локального диска, пока не включён **`delete_local_after_success`**. **Альтернатива:** смонтировать NAS в `DATA_DIR` или в `recordings/`. См. [INSTALL.ru.md](./install.ru.md) про пути данных.
 
 **Пароли UI:** при сохранении из веб-интерфейса новые значения в виде plaintext **хешируются (bcrypt)** в `user_config.yaml`; старые записи в plaintext продолжают работать, пока не смените пароль. В env можно передать и plaintext, и уже готовый bcrypt-строковый хеш.
 
@@ -128,9 +128,9 @@
 | Ключ | Описание |
 |------|----------|
 | `settings_password` | Пароль **Admin**: настройки, кормушка, система, перезапуск processor. Пусто — без блокировки (типично для дома) |
-| `require_auth_for_video_stream` | **`false`** (по умолчанию): гости могут смотреть запись в плеере (`/api/ui/videos/:id/stream`), как в [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md). **`true`** — поток только с паролем Contributor/Admin (старое поведение). **Публичный хаб:** решать совместно с [PUBLIC_RECORDINGS.ru.md](./PUBLIC_RECORDINGS.ru.md). |
-| `contributor_password` | Опционально пароль **Contributor**: правка видов, «Неизвестные», iNaturalist, экспорт датасета, отчёты — **без** настроек/кормушки/системы. Пусто — один уровень пароля (см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md)) |
-| `session_idle_minutes` | Сброс сессии входа (admin/contributor) после **N** минут без запросов к `/api/*`. **0** — отключить. По умолчанию **30**. Учитывается, если задан хотя бы один пароль (admin/contributor) или включён production-runtime; см. [SECURITY](./SECURITY.ru.md). |
+| `require_auth_for_video_stream` | **`false`** (по умолчанию): гости могут смотреть запись в плеере (`/api/ui/videos/:id/stream`), как в [ACCESS_CONTROL](./access-control.ru.md). **`true`** — поток только с паролем Contributor/Admin (старое поведение). **Публичный хаб:** решать совместно с [PUBLIC_RECORDINGS.ru.md](./public-recordings.ru.md). |
+| `contributor_password` | Опционально пароль **Contributor**: правка видов, «Неизвестные», iNaturalist, экспорт датасета, отчёты — **без** настроек/кормушки/системы. Пусто — один уровень пароля (см. [ACCESS_CONTROL](./access-control.ru.md)) |
+| `session_idle_minutes` | Сброс сессии входа (admin/contributor) после **N** минут без запросов к `/api/*`. **0** — отключить. По умолчанию **30**. Учитывается, если задан хотя бы один пароль (admin/contributor) или включён production-runtime; см. [SECURITY](./security.ru.md). |
 | `enable_notifications` | Включить уведомления (глобально) |
 | `notification_excluded_species` | Виды, исключённые из уведомлений |
 | `birdnet_url` | Ссылка на веб-интерфейс вашего аудио-стека (BirdNET-Go, BirdNET-Pi и т.д.). Пусто — ссылка/иконка в UI скрыта. От выбора сборки настройки слияния не зависят — важен MQTT. |
@@ -148,7 +148,7 @@
 
 На странице «Система» эти URL также показаны в блоке **Наблюдаемость уведомлений** (после входа в настройки).
 
-**Плитки Heimdall:** пошаговый список URL и ограничения импорта в v2 — [HEIMDALL.ru](./HEIMDALL.ru.md).
+**Плитки Heimdall:** пошаговый список URL и ограничения импорта в v2 — [HEIMDALL.ru](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/HEIMDALL.ru.md).
 
 ---
 
@@ -181,7 +181,7 @@
 | `spectrogram_px_per_sec` | Горизонтальная детализация mel-спектрограммы (пикселей на секунду аудио). |
 | `generate_spectrogram_always` | По умолчанию **true**: после **каждой** финализированной записи строить `spectrogram_*.jpg` (FFmpeg + librosa). **false** — только если в окне записи было событие BirdNET по MQTT (меньше нагрузка). |
 | `regional_species` | Опциональное сужение classifier scope (пусто — классификатор использует все классы). |
-| `detector_scope` | Цели детектора первого уровня. По умолчанию: `["Bird", "Rodent"]`. В EU-классификаторе не-птица — **Rodent**; сырые веса могут отдавать Squirrel, хаб нормализует в Rodent. Background / hard-negative классы детектора должны оставаться вне этого scope; см. [контракт подготовки CV / ML](./CV_ML_PREP.ru.md). |
+| `detector_scope` | Цели детектора первого уровня. По умолчанию: `["Bird", "Rodent"]`. В EU-классификаторе не-птица — **Rodent**; сырые веса могут отдавать Squirrel, хаб нормализует в Rodent. Background / hard-negative классы детектора должны оставаться вне этого scope; см. [контракт подготовки CV / ML](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_PREP.ru.md). |
 | `classifier_fallback_bird` | Сохранять generic detector label, если detector подтвердил target, а классификатор остался ниже порога. Затем Frigate может продвинуть этот fallback до species label. |
 | `included_bird_families` | Список семейств птиц для фильтра (напр. Perching Birds); к Rodent не относится |
 | `save_images` | Сохранять кадры детекций |
@@ -241,7 +241,7 @@
 | `publish_topic` | Топик публикации детекций BirdLense Hub |
 | `reconnect_min_delay` | Минимальная задержка reconnect/backoff MQTT (сек) |
 | `reconnect_max_delay` | Максимальная задержка reconnect/backoff MQTT (сек) |
-| `publish_queue_max` | Лимит исходящей очереди MQTT-публикаций в процессоре (по умолчанию **4000** в `default_config.yaml`; дренаж после reconnect). Связанные gauge: `mqtt_outbound_queue_depth`, счётчики `mqtt_outbound_drops_total`, `mqtt_outbound_publish_errors_total`. См. [PROCESSOR_PERFORMANCE.ru.md](./PROCESSOR_PERFORMANCE.ru.md#queues-backpressure). |
+| `publish_queue_max` | Лимит исходящей очереди MQTT-публикаций в процессоре (по умолчанию **4000** в `default_config.yaml`; дренаж после reconnect). Связанные gauge: `mqtt_outbound_queue_depth`, счётчики `mqtt_outbound_drops_total`, `mqtt_outbound_publish_errors_total`. См. [PROCESSOR_PERFORMANCE.ru.md](./processor-performance.ru.md#queues-backpressure). |
 | `ha_discovery` | Home Assistant MQTT Autodiscovery для сущностей BirdLense. По умолчанию true. Только observe-only: last species / confidence / detection time, присутствие птицы, текущий вес кормушки (если весы идут по MQTT) и связанная availability/device metadata. |
 
 **Топики:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (публикация), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA), `birdlense/sensor/feeder_weight/state` (HA), `birdlense/binary_sensor/feeder_bird_present/state` (HA). Реле кормушки: `homeassistant/switch/bird_feeder/command`.
@@ -250,7 +250,7 @@
 
 **Важно про пропуски:** при потере соединения события MQTT могут быть пропущены и обычно не «догоняются» задним числом (стандартно Frigate публикует их как live stream, без replay). Для истории опирайтесь на retention Frigate записей/клипов.
 
-**Метрики оператора:** `data/diagnostics/processor_runtime_stats.json` — gauge деградации триггеров/MQTT (`trigger_*`, `mqtt_connected`); см. [PROCESSOR_PERFORMANCE.ru.md](./PROCESSOR_PERFORMANCE.ru.md).
+**Метрики оператора:** `data/diagnostics/processor_runtime_stats.json` — gauge деградации триггеров/MQTT (`trigger_*`, `mqtt_connected`); см. [PROCESSOR_PERFORMANCE.ru.md](./processor-performance.ru.md).
 
 ---
 
@@ -308,7 +308,7 @@
 
 **Соответствие датасету классификатора (EU ~491 / US NABirds ~400):** в `user_config.yaml` секция `species`: `catalog_allowlist_file` — текстовый список классов (одна строка = одно имя, как в merged_cls / после нормализации YOLO). Сгенерировать из вашего `best.pt` (или другого `.pt`): `scripts/datasets/dump_classifier_allowlist.py` → положить рядом с весами, напр. `models/classification/weights/class_names.txt` (путь относительно `app/processor`). `catalog_strict_ingest: true` — вне allowlist новые виды не создаются, детекции привязываются к «Unknown». Уже накопившийся мусор и дубликаты: `POST /api/ui/system/species-catalog/reconcile` (обязательно сначала `{"dry_run": true}`), опции см. ответ API / подсказки в `data-quality`. Сверка классов с БД: System → «Классификатор, каталог и датасет».
 
-**Выход классификатора vs БД / ручные имена:** автоматические метки — только строки из обученной головы внутри `.pt` (merged class list). Новая строка в таблице видов SQLite или правка в UI **не** добавляет новый выход классификатора — например метки «курица» не будет, если такого класса нет в обученной модели. Держите allowlist в соответствии с весами; новые авто-виды — переобучение или смена `.pt` ([TRAINING](./TRAINING.ru.md)).
+**Выход классификатора vs БД / ручные имена:** автоматические метки — только строки из обученной головы внутри `.pt` (merged class list). Новая строка в таблице видов SQLite или правка в UI **не** добавляет новый выход классификатора — например метки «курица» не будет, если такого класса нет в обученной модели. Держите allowlist в соответствии с весами; новые авто-виды — переобучение или смена `.pt` ([TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.ru.md)).
 
 **UX «Неизвестные»:** при strict ingest подписи вне allowlist попадают в **Unknown** (без новой строки вида). Contributor исправляет в разделе **Неизвестные**; массовая уборка — System → качество каталога / reconcile. Отображаемые имена одного таксона согласуйте с каноном выше (`species_mapping`, `species_canonical_mapping.txt`, объединение дубликатов).
 
@@ -324,9 +324,9 @@
 
 **Трассировка fusion (UI):** на странице ролика кнопка **Трассировка fusion** подгружает последнюю запись `decision_trace` из ActivityLog (сначала по `video_id` в JSON после ingest, иначе по совпадению `video_path`). По каждому треку этапы: **детектор** (общая метка YOLO), **классификатор** (вид, доля голосов, порог), **scores** (кадры, trust band, причина отклонения), **audio** (согласование с BirdNET), **fusion** (несколько камер / Frigate), **outcome** (сохранённый вид и уверенность). API: `GET /api/ui/videos/{video_id}/fusion-trace` — **только сессия оператора или администратора**, не для анонимных зрителей.
 
-**Инференс и контракт имён детектора (CV/ML):** `processor.inference_backend` — `torch` (по умолчанию) или `openvino` для бинарного детектора (экспорт Ultralytics OpenVINO, [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)). `BIRDLENSE_INFERENCE_BACKEND` переопределяет YAML. Для `openvino` задайте `processor.models.binary_openvino` (каталог экспорта или `.xml`) или `BIRDLENSE_BINARY_OPENVINO_PATH` (абсолютный или относительно корня пакета процессора). Классификатор — по-прежнему `.pt`. `processor.detector_weight_contract`: `off` \| `warn` \| `enforce` — проверка имён классов детектора против `processor.detector_scope` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)). Фазы: [CV_ML_ROADMAP_PHASES.ru.md](./CV_ML_ROADMAP_PHASES.ru.md).
+**Инференс и контракт имён детектора (CV/ML):** `processor.inference_backend` — `torch` (по умолчанию) или `openvino` для бинарного детектора (экспорт Ultralytics OpenVINO, [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)). `BIRDLENSE_INFERENCE_BACKEND` переопределяет YAML. Для `openvino` задайте `processor.models.binary_openvino` (каталог экспорта или `.xml`) или `BIRDLENSE_BINARY_OPENVINO_PATH` (абсолютный или относительно корня пакета процессора). Классификатор — по-прежнему `.pt`. `processor.detector_weight_contract`: `off` \| `warn` \| `enforce` — проверка имён классов детектора против `processor.detector_scope` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)). Фазы: [CV_ML_ROADMAP_PHASES.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.ru.md).
 
-**EU-модель:** `best.pt` с [HF gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (дефолт `processor.models.classifier`). US — `best_US.pt`. Обучение: [TRAINING](./TRAINING.ru.md).
+**EU-модель:** `best.pt` с [HF gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (дефолт `processor.models.classifier`). US — `best_US.pt`. Обучение: [TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.ru.md).
 
 ## Retention
 
@@ -603,7 +603,7 @@ rule_files:
 | `ebird_api_key` | eBird API для сравнения с регионом (ebird.org/api/keygen) |
 | `latitude`, `longitude` | Координаты для погоды и eBird |
 
-**Ротация в проде** (бэкап, перезапуск, проверка, откат): [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md).
+**Ротация в проде** (бэкап, перезапуск, проверка, откат): [SECRETS_ROTATION.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SECRETS_ROTATION.ru.md).
 
 ---
 
@@ -611,7 +611,7 @@ rule_files:
 
 В приложении есть **встроенный список** типичных кормов (ориентация US + EU). **Источник в коде:** [`app/web/seed/seed.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/seed/seed.py) → `seed_bird_food()`. Поля `image_url` ссылаются на `data/images/food/*` в поставке.
 
-**Уже существующие БД:** при каждом старте `seed()` **добавляет только отсутствующие по имени** позиции каталога — обновление образа не создаёт дубликаты. Устаревшая позиция **Apple pieces** при старте **удаляется** (см. `seed.py`); связи с записями видео для неё очищаются. Свой корм по-прежнему можно завести через **`GET` / `POST /api/ui/birdfood`** (см. [API.ru.md](./API.ru.md)).
+**Уже существующие БД:** при каждом старте `seed()` **добавляет только отсутствующие по имени** позиции каталога — обновление образа не создаёт дубликаты. Устаревшая позиция **Apple pieces** при старте **удаляется** (см. `seed.py`); связи с записями видео для неё очищаются. Свой корм по-прежнему можно завести через **`GET` / `POST /api/ui/birdfood`** (см. [API.ru.md](./api.ru.md)).
 
 Задача: [issue #134](https://github.com/Gfermoto/BirdLense-Hub/issues/134).
 
@@ -619,4 +619,4 @@ rule_files:
 
 ## См. также {#see-also}
 
-[INSTALL](./INSTALL.ru.md) · [ARCHITECTURE](./ARCHITECTURE.ru.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md) · [API](./API.ru.md) · [SCENARIOS](./SCENARIOS.ru.md) · [GLOSSARY](./GLOSSARY.ru.md) · [SECRETS_ROTATION](./SECRETS_ROTATION.ru.md) · [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.ru.md)
+[INSTALL](./install.ru.md) · [ARCHITECTURE](./architecture.ru.md) · [ACCESS_CONTROL](./access-control.ru.md) · [API](./api.ru.md) · [SCENARIOS](./scenarios.ru.md) · [GLOSSARY](./glossary.ru.md) · [SECRETS_ROTATION](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SECRETS_ROTATION.ru.md) · [PUBLIC_RELEASE_CHECKLIST](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.ru.md)

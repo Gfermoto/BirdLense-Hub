@@ -1,6 +1,6 @@
 # Настройка MCP BirdLense Hub
 
-[English](./MCP_SETUP.md)
+[English](../contributor/mcp-setup.md)
 
 ---
 
@@ -113,4 +113,4 @@ ssh -p 2222 -N -L 18085:127.0.0.1:8085 root@203.0.113.10
 
 ---
 
-См. также: [INSTALL](./INSTALL.ru.md), [API](./API.ru.md), [CONFIGURATION](./CONFIGURATION.ru.md).
+См. также: [INSTALL](./install.ru.md), [API](./api.ru.md), [CONFIGURATION](./configuration.ru.md).

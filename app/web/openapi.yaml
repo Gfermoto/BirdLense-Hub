@@ -5168,6 +5168,20 @@ components:
               type: number
               nullable: true
               description: Deprecated alias for min_confidence_binary_rodent (legacy YAML only).
+            openvino_binary_track_ultralytics_conf:
+              type: number
+              nullable: true
+              description: >
+                OpenVINO-only cap for YOLO.track(conf); min(stock_floor, this). Compensates lower OV scores vs torch.
+            openvino_binary_bird_score_scale:
+              type: number
+              nullable: true
+              description: >
+                OpenVINO-only Bird confidence multiplier for threshold compare only; stored conf stays raw.
+            openvino_min_confidence_binary_bird:
+              type: number
+              nullable: true
+              description: Optional OpenVINO-only replacement for min_confidence_binary_bird in floor + per-label.
             bird_skip_classifier_max_area_frac:
               type: number
               nullable: true

@@ -1,6 +1,6 @@
 # BirdLense Hub configuration
 
-[Русский](./CONFIGURATION.ru.md)
+[Русский](../ru/configuration.ru.md)
 
 ---
 
@@ -19,7 +19,7 @@ Defaults: `app/app_config/default_config.yaml`. User config is merged on top.
 
 **UI:** Most options are editable in the web app (Settings → gear). YAML remains for advanced cases and env-based overrides.
 
-**Related:** [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [RU](./ACCESS_CONTROL.ru.md) (password tiers), [API](./API.md) · [RU](./API.ru.md) (HTTP surface), [GLOSSARY](./GLOSSARY.md) · [RU](./GLOSSARY.ru.md) (terms). **Env file:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (copy for your install). **Contract:** [OpenAPI YAML](./project/openapi.md).
+**Related:** [ACCESS_CONTROL](../contributor/access-control.md) · [RU](../ru/access-control.ru.md) (password tiers), [API](../contributor/api.md) · [RU](../ru/api.ru.md) (HTTP surface), [GLOSSARY](./glossary.md) · [RU](../ru/glossary.ru.md) (terms). **Env file:** [`app/.env.example`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/.env.example) (copy for your install). **Contract:** [OpenAPI YAML](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/openapi.yaml).
 
 **On this page:** [Environment variables](#environment-variables) · [Starter profiles](#starter-profiles) · [Minimal profile (no MQTT)](#minimal-profile-no-mqtt) · [Legacy `motion:` (deprecated)](#legacy-motion-block) · [Processor](#processor) · [Video](#video) · [Retention](#retention) · [Prometheus / Grafana](#prometheus--grafana) · [System page metrics](#system-page-metrics-history) · [Secrets](#secrets) · [See also](#see-also)
 
@@ -54,7 +54,7 @@ Older installs may still have a top-level **`motion:`** block in `user_config.ya
 ## How keys are named
 
 - Tables use **dotted paths** that mirror YAML nesting, e.g. `video.go2rtc_url` → `video:` → `go2rtc_url:` in `user_config.yaml`.
-- Boolean defaults like “empty password = open hub” are documented in [ACCESS_CONTROL](./ACCESS_CONTROL.md).
+- Boolean defaults like “empty password = open hub” are documented in [ACCESS_CONTROL](../contributor/access-control.md).
 
 ## Environment variables
 
@@ -62,22 +62,22 @@ Older installs may still have a top-level **`motion:`** block in `user_config.ya
 |----------|-------------|
 | `DATA_DIR` | Data directory (`/app/data` in Docker) |
 | `REDIS_URL` | **`app/docker-compose.yml`:** defaults to `redis://redis:6379/0` (service `birdlense-redis`). **`docker-compose.image.yml`:** no Redis container — omit or point to an **external** Redis; otherwise the hub uses an **in-process** cache. Override in `app/.env` in any layout. **Host run without Compose:** unset → in-process cache. |
-| `DATABASE_URL` | Optional. SQLAlchemy URI. Default: SQLite under `DATA_DIR`. For high write load use PostgreSQL, e.g. `postgresql+psycopg://user:pass@host:5432/dbname`. Operator runbook: [POSTGRES_MIGRATION](./POSTGRES_MIGRATION.md). |
+| `DATABASE_URL` | Optional. SQLAlchemy URI. Default: SQLite under `DATA_DIR`. For high write load use PostgreSQL, e.g. `postgresql+psycopg://user:pass@host:5432/dbname`. Operator runbook: [POSTGRES_MIGRATION](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/POSTGRES_MIGRATION.md). |
 | `SQLALCHEMY_POOL_SIZE` | PostgreSQL pool size (default `5`) |
 | `SQLALCHEMY_MAX_OVERFLOW` | PostgreSQL pool overflow (default `15`) |
 | `FLASK_SECRET_KEY` | Flask session key (settings protection) |
 | `FLASK_MAX_CONTENT_LENGTH` | Max HTTP body size in **bytes** for Flask/Werkzeug (default ~80 GiB in `web/config.py`). Your reverse proxy still needs its own upload limit (e.g. nginx `client_max_body_size`) for large Library uploads |
 | `PROCESSOR_SECRET` | Processor API protection (`X-Processor-Token`) |
 | `MCP_TOKEN` | MCP token (overrides `mcp.token`) |
-| `BIRDLENSE_STRICT_API_AUTH` | `1` / `true` — in **production**, require auth for `/api/ui/*` (session after `verify-password`, `BIRDLENSE_UI_API_KEY`, or MCP Bearer); see [SECURITY](./SECURITY.md) |
+| `BIRDLENSE_STRICT_API_AUTH` | `1` / `true` — in **production**, require auth for `/api/ui/*` (session after `verify-password`, `BIRDLENSE_UI_API_KEY`, or MCP Bearer); see [SECURITY](../contributor/security.md) |
 | `BIRDLENSE_UI_API_KEY` | Secret for UI API in strict mode: header **`X-Birdlense-Api-Key`** or **`Authorization: Bearer`** (same value). Empty → session and MCP only |
 | `BIRDLENSE_PORT` | Nginx port (default 8085) |
-| `BIRDLENSE_HIDE_DIRECT_RECORDINGS` | `1` / `true` / `yes` / `on` — omit nginx `location` for `/data/recordings/` so anonymous **`GET /data/recordings/...`** falls through to **403**; playback remains **`/api/ui/videos/:id/stream`**. Default: direct static alias. **Public/VPS checklist:** [PUBLIC_RECORDINGS.md](./PUBLIC_RECORDINGS.md). |
+| `BIRDLENSE_HIDE_DIRECT_RECORDINGS` | `1` / `true` / `yes` / `on` — omit nginx `location` for `/data/recordings/` so anonymous **`GET /data/recordings/...`** falls through to **403**; playback remains **`/api/ui/videos/:id/stream`**. Default: direct static alias. **Public/VPS checklist:** [PUBLIC_RECORDINGS.md](./public-recordings.md). |
 | `GUNICORN_THREADS` | Gunicorn `gthread` worker thread count (default **16**; `app/scripts/entrypoint.sh`) |
 | `CORS_LOCAL_DEV_ORIGINS` | Local/dev CORS origins (comma-separated): Vite, `birdlense.local`, hub port. Default matches former in-code list; set empty to omit |
 | `CORS_DEFAULT_ORIGINS` | Baseline CORS origins (comma-separated) for non-localhost defaults |
 | `CORS_ORIGINS` | Extra CORS origins (comma-separated) |
-| `TRUSTED_PROXY` | `1` / `true` — honor `X-Real-IP` / `X-Forwarded-For` for rate limiting behind a **trusted** reverse proxy; see Webhook § and [SECURITY](./SECURITY.md) |
+| `TRUSTED_PROXY` | `1` / `true` — honor `X-Real-IP` / `X-Forwarded-For` for rate limiting behind a **trusted** reverse proxy; see Webhook § and [SECURITY](../contributor/security.md) |
 | `OPENWEATHER_API_KEY` | OpenWeather key |
 | `XENO_CANTO_API_KEY` | Xeno-canto v3 key for species song audio in the UI. `BIRDLENSE_XENO_CANTO_API_KEY` still overrides `secrets.xeno_canto_api_key` after YAML merge |
 | `MQTT_BROKER`, `MQTT_PASSWORD` | MQTT if not in config |
@@ -88,7 +88,7 @@ Older installs may still have a top-level **`motion:`** block in `user_config.ya
 | `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT` | `1` — remove legacy disk-import placeholder detections on startup; default off; recording scan still cleans |
 | `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA` | `1` — background metadata/image repair on startup; default off |
 | `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — skip Telegram “App is UP!” on startup; default on |
-| `BIRDLENSE_INFERENCE_BACKEND` | Overrides `processor.inference_backend` (`torch`, `openvino`, …) — see [CV_ML_ROADMAP_PHASES](./CV_ML_ROADMAP_PHASES.md) |
+| `BIRDLENSE_INFERENCE_BACKEND` | Overrides `processor.inference_backend` (`torch`, `openvino`, …) — see [CV_ML_ROADMAP_PHASES](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.md) |
 | `BIRDLENSE_INFERENCE_DEVICE` | Overrides `processor.inference_device` (`auto`, `cpu`, `cuda`, `intel:gpu`, …) |
 | `BIRDLENSE_BINARY_OPENVINO_PATH` | Optional path to OpenVINO IR (directory or `.xml`) for the binary detector; highest precedence over YAML when set |
 | `BIRDLENSE_OPENVINO_PROFILE` | OpenVINO performance profile (`latency` or `throughput`) |
@@ -115,7 +115,7 @@ Older installs may still have a top-level **`motion:`** block in `user_config.ya
 | `BIRDLENSE_RECORDINGS_MIRROR_SFTP_PASSWORD` | **Optional runtime override** of `storage.recordings_mirror.sftp_password` (normally set in **Library → Storage** or `user_config.yaml`) |
 | `BIRDLENSE_RECORDINGS_MIRROR_SFTP_KEY_PASSPHRASE` | **Optional runtime override** of `storage.recordings_mirror.sftp_key_passphrase` |
 
-**NAS / SFTP mirror (recordings):** Configure mirror host, user, password, and options in the hub UI (**Library → Storage**, admin) or in `user_config.yaml`; secrets are masked in `GET /api/ui/settings` like other hub secrets. Saving requests a **processor restart** (flag) so the processor process reloads config, and **Test connection** validates SFTP access to the remote directory. With `storage.recordings_mirror.enabled: true`, the processor uploads each saved session folder to SFTP in the background after finalize. Paths in the database stay `data/recordings/...`; the hub still serves video from local disk unless you enable **`delete_local_after_success`** (expert-only). **Alternative:** mount NAS at `DATA_DIR` / bind-mount `recordings/` — no SFTP code path. See [INSTALL.md](./INSTALL.md) data paths.
+**NAS / SFTP mirror (recordings):** Configure mirror host, user, password, and options in the hub UI (**Library → Storage**, admin) or in `user_config.yaml`; secrets are masked in `GET /api/ui/settings` like other hub secrets. Saving requests a **processor restart** (flag) so the processor process reloads config, and **Test connection** validates SFTP access to the remote directory. With `storage.recordings_mirror.enabled: true`, the processor uploads each saved session folder to SFTP in the background after finalize. Paths in the database stay `data/recordings/...`; the hub still serves video from local disk unless you enable **`delete_local_after_success`** (expert-only). **Alternative:** mount NAS at `DATA_DIR` / bind-mount `recordings/` — no SFTP code path. See [INSTALL.md](./install.md) data paths.
 
 **UI passwords:** values saved from Settings are stored as **bcrypt** hashes in `user_config.yaml` when you enter a new plaintext; existing **plaintext** entries still work until changed. Env may supply either plaintext or an existing bcrypt string.
 
@@ -128,9 +128,9 @@ See `app/.env.example`. Secrets are generated by `make setup` (via `make start` 
 | Key | Description |
 |-----|-------------|
 | `settings_password` | **Admin** password: settings, feeder dispense, system tools, processor restart. Empty = no lock (home lab default) |
-| `require_auth_for_video_stream` | **`false`** (default): guests can play recordings (`/api/ui/videos/:id/stream`), consistent with [ACCESS_CONTROL](./ACCESS_CONTROL.md). **`true`**: stream requires Contributor/Admin (legacy lock-down). **Public hub:** decide together with [PUBLIC_RECORDINGS.md](./PUBLIC_RECORDINGS.md). |
-| `contributor_password` | Optional **Contributor** password: species fixes, Unknowns, iNaturalist, dataset export, reports — **not** settings/feeder/system. Empty = single-tier mode (see [ACCESS_CONTROL](./ACCESS_CONTROL.md)) |
-| `session_idle_minutes` | Drop login session (admin/contributor) after **N** minutes without `/api/*` requests. **0** disables. Default **30**. Applies when either password is set or production runtime; see [SECURITY](./SECURITY.md). |
+| `require_auth_for_video_stream` | **`false`** (default): guests can play recordings (`/api/ui/videos/:id/stream`), consistent with [ACCESS_CONTROL](../contributor/access-control.md). **`true`**: stream requires Contributor/Admin (legacy lock-down). **Public hub:** decide together with [PUBLIC_RECORDINGS.md](./public-recordings.md). |
+| `contributor_password` | Optional **Contributor** password: species fixes, Unknowns, iNaturalist, dataset export, reports — **not** settings/feeder/system. Empty = single-tier mode (see [ACCESS_CONTROL](../contributor/access-control.md)) |
+| `session_idle_minutes` | Drop login session (admin/contributor) after **N** minutes without `/api/*` requests. **0** disables. Default **30**. Applies when either password is set or production runtime; see [SECURITY](../contributor/security.md). |
 | `enable_notifications` | Enable notifications (global) |
 | `notification_excluded_species` | Species excluded from notifications |
 | `birdnet_url` | Link to your audio stack’s web UI (BirdNET-Go, BirdNET-Pi, etc.). Empty = footer link/icon hidden. Merge settings do **not** depend on which build you use — MQTT payload matters. |
@@ -148,7 +148,7 @@ See `app/.env.example`. Secrets are generated by `make setup` (via `make start` 
 
 The System page also lists these endpoints under **Notification observability** (authenticated UI).
 
-**Heimdall dashboard:** URL checklist and manual tile setup (Heimdall v2 has no bulk import in the UI) — [HEIMDALL](./HEIMDALL.md).
+**Heimdall dashboard:** URL checklist and manual tile setup (Heimdall v2 has no bulk import in the UI) — [HEIMDALL](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/HEIMDALL.md).
 
 ---
 
@@ -181,7 +181,7 @@ The System page also lists these endpoints under **Notification observability** 
 | `spectrogram_px_per_sec` | Mel-spectrogram horizontal resolution (pixels per second of audio). |
 | `generate_spectrogram_always` | Default **true**: build `spectrogram_*.jpg` after **every** finalized recording (FFmpeg + librosa). **false**: only when a BirdNET MQTT event falls inside the recording window (less CPU). |
 | `regional_species` | Optional classifier narrowing list (empty = classifier can use all classes). |
-| `detector_scope` | First-stage detector targets. Default: `["Bird", "Rodent"]`. EU classifier non-bird class **Rodent** is the catalog name; raw detector weights may still label that head “Squirrel”, which the hub maps to **Rodent**. Background / hard-negative detector classes must stay outside this scope; see [CV / ML prep contract](./CV_ML_PREP.md). |
+| `detector_scope` | First-stage detector targets. Default: `["Bird", "Rodent"]`. EU classifier non-bird class **Rodent** is the catalog name; raw detector weights may still label that head “Squirrel”, which the hub maps to **Rodent**. Background / hard-negative detector classes must stay outside this scope; see [CV / ML prep contract](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_PREP.md). |
 | `classifier_fallback_bird` | Keep the generic detector label when the detector confirmed a target but the classifier stayed below threshold. Frigate may still promote that fallback label later if it has a matching species/sub-label. |
 | `included_bird_families` | Bird family filter list (e.g. Perching Birds); not related to Rodent |
 | `save_images` | Save detection frames |
@@ -241,7 +241,7 @@ One connection — Frigate and BirdNET topics. Triggers: Frigate, ESPHome, MQTT 
 | `publish_topic` | BirdLense detection publish topic |
 | `reconnect_min_delay` | Minimum MQTT reconnect/backoff delay (seconds) |
 | `reconnect_max_delay` | Maximum MQTT reconnect/backoff delay (seconds) |
-| `publish_queue_max` | Cap for outbound MQTT publish queue inside the processor (default **4000** in `default_config.yaml`; flush after reconnect). Related gauges: `mqtt_outbound_queue_depth`, `mqtt_outbound_drops_total`, `mqtt_outbound_publish_errors_total`. See [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.md#queues-backpressure). |
+| `publish_queue_max` | Cap for outbound MQTT publish queue inside the processor (default **4000** in `default_config.yaml`; flush after reconnect). Related gauges: `mqtt_outbound_queue_depth`, `mqtt_outbound_drops_total`, `mqtt_outbound_publish_errors_total`. See [PROCESSOR_PERFORMANCE](./processor-performance.md#queues-backpressure). |
 | `ha_discovery` | Home Assistant MQTT discovery for BirdLense entities. Default true. Observe-only: last species / confidence / detection time, feeder presence, current feeder weight (when scales use MQTT), and related availability/device metadata. |
 
 **Topics:** `frigate/events` (Frigate), `birdnet` (BirdNET), `birdlense/detections` (publish), `birdlense/sensor/last_species/state` (HA), `birdlense/binary_sensor/bird_detected/state` (HA), `birdlense/sensor/feeder_weight/state` (HA), `birdlense/binary_sensor/feeder_bird_present/state` (HA). Feeder relay: `homeassistant/switch/bird_feeder/command`.
@@ -250,7 +250,7 @@ One connection — Frigate and BirdNET topics. Triggers: Frigate, ESPHome, MQTT 
 
 **Missed-event note:** during outages, MQTT events can be missed and are usually not replayed later (Frigate events are typically a live stream, not backlog replay). Use Frigate recording/clip retention as the source of historical truth.
 
-**Operator metrics:** `data/diagnostics/processor_runtime_stats.json` exposes trigger/MQTT degradation gauges (`trigger_*`, `mqtt_connected`) — see [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.md) § Trigger path observability.
+**Operator metrics:** `data/diagnostics/processor_runtime_stats.json` exposes trigger/MQTT degradation gauges (`trigger_*`, `mqtt_connected`) — see [PROCESSOR_PERFORMANCE](./processor-performance.md) § Trigger path observability.
 
 ---
 
@@ -308,7 +308,7 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 
 **Classifier dataset alignment (EU ~491 / US NABirds ~400):** in `user_config.yaml`, `species.catalog_allowlist_file` points to a text file of class display names (one per line, same as merged_cls / YOLO-normalized). Generate from your `best.pt` (or other `.pt`) with `scripts/datasets/dump_classifier_allowlist.py` (e.g. write `models/classification/weights/class_names.txt` under `app/processor`). Set `species.catalog_strict_ingest: true` to block new species outside that list (detections go to “Unknown”). Bulk cleanup of existing junk and duplicate names: `POST /api/ui/system/species-catalog/reconcile` (always try `{"dry_run": true}` first). Compare classifier vs DB vs `data/dataset` folders: System → “Classifier vs catalog vs dataset”.
 
-**Classifier output vs DB / manual names:** Automatic labels are only strings that exist in the trained head inside the `.pt` (the merged class list). Adding a row in the SQLite species table or fixing text in the UI does **not** create a new classifier output — for example there is no “chicken” label unless that exact class name was trained in. Use the allowlist file to stay aligned with the model; to add new auto species, retrain or swap weights ([TRAINING](./TRAINING.md)).
+**Classifier output vs DB / manual names:** Automatic labels are only strings that exist in the trained head inside the `.pt` (the merged class list). Adding a row in the SQLite species table or fixing text in the UI does **not** create a new classifier output — for example there is no “chicken” label unless that exact class name was trained in. Use the allowlist file to stay aligned with the model; to add new auto species, retrain or swap weights ([TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.md)).
 
 **Unknowns UX:** With strict ingest, out-of-allowlist names are stored against **Unknown** (no new species row). Contributors fix labels in **Unknowns**; operators use System → species data quality / reconcile for bulk cleanup. Display names for the same taxon should follow **canonical** rules above (`species_mapping`, `species_canonical_mapping.txt`, merge duplicates).
 
@@ -324,9 +324,9 @@ Shared **URL** and **Long-Lived Access Token** for any feature that calls the Ho
 
 **Fusion trace (UI):** On the video page, **Fusion trace** loads the latest processor `decision_trace` row from ActivityLog (matched by `video_id` in the payload after ingest, or legacy match on `video_path`). Stages shown per track: **detector** (YOLO generic label and confidence), **classifier** (species head, vote share, threshold), **scores** (frame evidence, trust band, reject reason), **audio** (BirdNET alignment), **fusion** (multi-camera / Frigate flags), **outcome** (species and confidence stored on the clip). API: `GET /api/ui/videos/{video_id}/fusion-trace` — **contributor or admin session only** (not anonymous viewers).
 
-**Inference backend & detector weight contract (CV/ML):** `processor.inference_backend` is `torch` (default) or `openvino` for the binary detector via Ultralytics OpenVINO export ([#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)). `BIRDLENSE_INFERENCE_BACKEND` overrides YAML. For `openvino`, set `processor.models.binary_openvino` to the export directory or `.xml`, or set `BIRDLENSE_BINARY_OPENVINO_PATH` (absolute or relative to the processor package root). Classifier weights stay PyTorch `.pt`. `processor.detector_weight_contract` is `off` \| `warn` \| `enforce` and validates loaded detector `model.names` against `processor.detector_scope` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)). Phase overview: [CV_ML_ROADMAP_PHASES.md](./CV_ML_ROADMAP_PHASES.md).
+**Inference backend & detector weight contract (CV/ML):** `processor.inference_backend` is `torch` (default) or `openvino` for the binary detector via Ultralytics OpenVINO export ([#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)). `BIRDLENSE_INFERENCE_BACKEND` overrides YAML. For `openvino`, set `processor.models.binary_openvino` to the export directory or `.xml`, or set `BIRDLENSE_BINARY_OPENVINO_PATH` (absolute or relative to the processor package root). Classifier weights stay PyTorch `.pt`. `processor.detector_weight_contract` is `off` \| `warn` \| `enforce` and validates loaded detector `model.names` against `processor.detector_scope` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)). Phase overview: [CV_ML_ROADMAP_PHASES.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.md).
 
-**EU model:** `best.pt` from [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (default `processor.models.classifier`). US: `best_US.pt`. Training: [TRAINING](./TRAINING.md).
+**EU model:** `best.pt` from [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (default `processor.models.classifier`). US: `best_US.pt`. Training: [TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.md).
 
 ## Retention
 
@@ -604,7 +604,7 @@ Coordinates and API keys. Settings → Advanced. Prefer env for keys: `OPENWEATH
 | `ebird_api_key` | eBird “Compare to region” |
 | `latitude`, `longitude` | Weather and eBird |
 
-**Operational rotation** (backup, restart, verification, rollback): [SECRETS_ROTATION.md](./SECRETS_ROTATION.md).
+**Operational rotation** (backup, restart, verification, rollback): [SECRETS_ROTATION.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SECRETS_ROTATION.md).
 
 ---
 
@@ -612,7 +612,7 @@ Coordinates and API keys. Settings → Advanced. Prefer env for keys: `OPENWEATH
 
 The app ships a **curated default list** of feeder foods (US + EU-oriented names and hints). **Source of truth in code:** [`app/web/seed/seed.py`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/seed/seed.py) → `seed_bird_food()`. Image paths point at `data/images/food/*` in the app bundle.
 
-**Existing databases:** on each startup, `seed()` **merges** any catalog entries **missing by `name`** — upgrades pick up new defaults without duplicating rows. The legacy catalog row **Apple pieces** is **removed** on startup (see `seed.py`), including clearing `video_bird_food_association` links. Operators can still add custom foods via **`GET` / `POST /api/ui/birdfood`** (see [API.md](./API.md)).
+**Existing databases:** on each startup, `seed()` **merges** any catalog entries **missing by `name`** — upgrades pick up new defaults without duplicating rows. The legacy catalog row **Apple pieces** is **removed** on startup (see `seed.py`), including clearing `video_bird_food_association` links. Operators can still add custom foods via **`GET` / `POST /api/ui/birdfood`** (see [API.md](../contributor/api.md)).
 
 Tracked as [issue #134](https://github.com/Gfermoto/BirdLense-Hub/issues/134).
 
@@ -620,4 +620,4 @@ Tracked as [issue #134](https://github.com/Gfermoto/BirdLense-Hub/issues/134).
 
 ## See also
 
-[INSTALL](./INSTALL.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.md) · [API](./API.md) · [SCENARIOS](./SCENARIOS.md) · [GLOSSARY](./GLOSSARY.md) · [SECRETS_ROTATION](./SECRETS_ROTATION.md) · [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.md)
+[INSTALL](./install.md) · [ARCHITECTURE](../contributor/architecture.md) · [ACCESS_CONTROL](../contributor/access-control.md) · [API](../contributor/api.md) · [SCENARIOS](./scenarios.md) · [GLOSSARY](./glossary.md) · [SECRETS_ROTATION](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SECRETS_ROTATION.md) · [PUBLIC_RELEASE_CHECKLIST](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.md)

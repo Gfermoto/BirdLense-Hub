@@ -1,6 +1,6 @@
 # Архитектура BirdLense Hub
 
-[English](./ARCHITECTURE.md)
+[English](../contributor/architecture.md)
 
 ---
 
@@ -63,7 +63,7 @@ BirdLense держит три разные временные сущности:
 - **clip-time** — физические границы `Video` / файла `video.mp4`;
 - **visit-time** — логическое окно присутствия вида после дедупликации.
 
-Подробный контракт и инварианты: [DOMAIN_CONTRACT](./DOMAIN_CONTRACT.ru.md).
+Подробный контракт и инварианты: [DOMAIN_CONTRACT](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/DOMAIN_CONTRACT.ru.md).
 
 ### Видео: Frigate (опционально)
 
@@ -91,7 +91,7 @@ BirdLense держит три разные временные сущности:
 
 ## База данных
 
-- **SQLite** — `data/db/birdlense.db` (каталог задаётся через `DATA_DIR`; см. [CONFIGURATION.ru](./CONFIGURATION.ru.md)).
+- **SQLite** — `data/db/birdlense.db` (каталог задаётся через `DATA_DIR`; см. [CONFIGURATION.ru](./configuration.ru.md)).
 - **ORM:** Flask-SQLAlchemy; **эволюция схемы:** **Flask-Migrate / Alembic** — ревизии в `app/web/migrations/`. При старте `create_app()` через **`app_startup.apply_schema_migrations_and_seed`** выполняет `db.create_all()`, затем `upgrade()` — единый путь для новой установки и обновления (вместо разрозненных `ALTER TABLE` в коде приложения для отслеживаемых колонок).
 - **Политика DDL (аудит, [#287](https://github.com/Gfermoto/BirdLense-Hub/issues/287)):** изменения таблиц/колонок — только новые ревизии Alembic в `migrations/versions/`, не в роутах и не в «ручном» старте. **PRAGMA** SQLite при подключении (I/O; не схема) регистрируются в **`flask_extensions.register_sqlite_connect_pragmas()`** из `create_app()`. Прочие `session.execute` в коде приложения — DML (например `DELETE`), не DDL.
 - **Модели:** Video, Species, VideoSpecies, SpeciesVisit, BirdFood, ActivityLog и связанные таблицы (`app/web/models`).
@@ -147,4 +147,4 @@ BirdLense держит три разные временные сущности:
 
 ---
 
-См. также: [CONFIGURATION](./CONFIGURATION.ru.md), [API](./API.ru.md), [GLOSSARY](./GLOSSARY.ru.md), [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.ru.md).
+См. также: [CONFIGURATION](./configuration.ru.md), [API](./api.ru.md), [GLOSSARY](./glossary.ru.md), [PUBLIC_RELEASE_CHECKLIST](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.ru.md).

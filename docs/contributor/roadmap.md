@@ -1,8 +1,8 @@
 # Roadmap — BirdLense Hub
 
-Direction of travel and current stack. **Shipped items** are summarized here; details live in [Changelog](./project/changelog.md) and [FEATURES](./FEATURES.md).
+Direction of travel and current stack. **Shipped items** are summarized here; details live in [Changelog](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md) and [FEATURES](../user/features.md).
 
-[Русский](./ROADMAP.ru.md)
+[Русский](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/ROADMAP.ru.md)
 
 ---
 
@@ -10,24 +10,24 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 
 | Component | Version / note |
 |-----------|----------------|
-| **Ultralytics** | **8.4.33** at runtime (`app/processor/requirements.txt`, installed via pip in the image). Base image remains **`ultralytics/ultralytics:8.4.21`** (newer base tags broke ngx_brotli build against nginx in CI; see [CHANGELOG](./project/changelog.md) **0.3.1**). |
+| **Ultralytics** | **8.4.33** at runtime (`app/processor/requirements.txt`, installed via pip in the image). Base image remains **`ultralytics/ultralytics:8.4.21`** (newer base tags broke ngx_brotli build against nginx in CI; see [CHANGELOG](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md) **0.3.1**). |
 | **Platform** | **x86/amd64 only** (Intel or AMD 64-bit). ARM / Apple Silicon / aarch64 — **not supported, not planned** |
 | **Detection** | `two_stage`: binary `.pt` + YOLO11n-cls (EU); `single_stage` fallback if weights missing |
 | **EU classifier** | `best.pt` — birds-525 + iNaturalist (~491 species) |
 | **US classifier** | `best_US.pt` — NABirds (fallback) |
 | **React** | **19.x** (`^19.0.0` in `app/ui/package.json`; resolved lock may pin a patch) |
 | **Vite** | **6.x** (`^6.4.2` in `app/ui/package.json`) |
-| **Web DB schema** | **Flask-Migrate / Alembic** — revisions under `app/web/migrations/`; `create_app()` runs `db.create_all()` then `upgrade()` (see [CHANGELOG on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md) *[Unreleased]* / issue [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225); local stub: [project/changelog](./project/changelog.md)) |
+| **Web DB schema** | **Flask-Migrate / Alembic** — revisions under `app/web/migrations/`; `create_app()` runs `db.create_all()` then `upgrade()` (see [CHANGELOG on GitHub](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md) *[Unreleased]* / issue [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225); local stub: [project/changelog](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md)) |
 
 ---
 
 ## Recently delivered (high level)
 
-- **Home Assistant** — MQTT discovery (e.g. last species, bird-detected). See [CONFIGURATION](./CONFIGURATION.md) → MQTT.
+- **Home Assistant** — MQTT discovery (e.g. last species, bird-detected). See [CONFIGURATION](../user/configuration.md) → MQTT.
 - **Dataset pipeline** — `best_frame` in YOLO layout, ZIP export (`GET /api/ui/dataset/export`), relabel moves on-disk crops. **System → Storage**.
 - **Video prev/next (same UTC day)** — [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) closed (**v0.2.6**): `GET /api/ui/videos/:id/neighbors` + arrows on video details (browse clips for that calendar day in UTC without losing list context).
 - **Overview mean recording duration** — [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) closed: metric is the average length of **one clip** (`Video`), not a visit aggregate; PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106).
-- **System: resource charts with server-side history** — SQLite `system_resource_sample`, `GET /api/ui/system/metrics/history`, UI windows 6/24/48 h plus live tail; tune with `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION](./CONFIGURATION.md) → Prometheus / Grafana.
+- **System: resource charts with server-side history** — SQLite `system_resource_sample`, `GET /api/ui/system/metrics/history`, UI windows 6/24/48 h plus live tail; tune with `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION](../user/configuration.md) → Prometheus / Grafana.
 
 ---
 
@@ -58,9 +58,9 @@ Status/assignee/checklist sync: `bash scripts/github-project-sync.sh --assign Gf
 | 8 | CI: OpenAPI contract tests | [#54](https://github.com/Gfermoto/BirdLense-Hub/issues/54) ✅ `openapi-contract` in CI + `web/tests/test_openapi_contract.py` | `area:web`, P3 |
 | 9 | Yearly species checklist / life list | [#55](https://github.com/Gfermoto/BirdLense-Hub/issues/55) ✅ Migration page: year filter + table (rows and Σ) — no duplicate checklist block | `area:web`, P3 |
 | 10 | CORS demo host → config/env | [#56](https://github.com/Gfermoto/BirdLense-Hub/issues/56) ✅ demo host moved out of hardcoded CORS defaults into `CORS_DEFAULT_ORIGINS` / `CORS_ORIGINS` | `area:web`, P3 |
-| 11 | Docs: Prometheus alert examples | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](./CONFIGURATION.md) | `area:docs`, P3 |
+| 11 | Docs: Prometheus alert examples | [#57](https://github.com/Gfermoto/BirdLense-Hub/issues/57) ✅ `examples/prometheus/`, [CONFIGURATION](../user/configuration.md) | `area:docs`, P3 |
 | 12 | Gallery upload threading / app context | [#80](https://github.com/Gfermoto/BirdLense-Hub/issues/80) ✅ app context in upload thread + docs/tests **v0.2.4** | `area:web`, P2, `bug` |
-| 13 | Manual species correction: unify Unknowns vs in-video flow | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) ✅ phases A+B+C: shared API + Unknowns **Open video** snackbar + recent shared correction history — [UX spec](./UX_UNKNOWN_VIDEO_CORRECTION.md) | `area:web`, P2 |
+| 13 | Manual species correction: unify Unknowns vs in-video flow | [#81](https://github.com/Gfermoto/BirdLense-Hub/issues/81) ✅ phases A+B+C: shared API + Unknowns **Open video** snackbar + recent shared correction history — [UX spec](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/UX_UNKNOWN_VIDEO_CORRECTION.md) | `area:web`, P2 |
 | 14 | Video navigation: sequential browse (e.g. same day), no list reset | [#82](https://github.com/Gfermoto/BirdLense-Hub/issues/82) ✅ UI + `GET /videos/:id/neighbors` **v0.2.6** | `area:web`, P2 |
 | 15 | Video neighbors: local TZ, cross-day jump, docs clarity (follow-up to #82) | [#85](https://github.com/Gfermoto/BirdLense-Hub/issues/85) ✅ local day + `cross_day` + API/UI docs | `area:web`, P3 |
 | 16 | Overview: “mean duration” used visit span instead of per-recording average | [#107](https://github.com/Gfermoto/BirdLense-Hub/issues/107) ✅ mean over `Video` rows (PR [#106](https://github.com/Gfermoto/BirdLense-Hub/pull/106)); RU/EN labels | `area:web`, P3, `bug` |
@@ -78,7 +78,7 @@ Status/assignee/checklist sync: `bash scripts/github-project-sync.sh --assign Gf
 - move to **single_stage** + COCO (or another detect model) and rely on the animal filter / custom classes;
 - factor in Frigate / extra motion triggers.
 
-See [CONFIGURATION.md](./CONFIGURATION.md) (processor, motion). Non-bird classes overlap [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) — consilium should decide one epic vs child issues.
+See [CONFIGURATION.md](../user/configuration.md) (processor, motion). Non-bird classes overlap [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163) — consilium should decide one epic vs child issues.
 
 **Do not forget (checklist):**
 
@@ -109,11 +109,11 @@ Prioritize by capacity; open a new **GitHub issue** when work is scoped (see [CO
 
 | Theme | Why |
 |-------|-----|
-| **Accessibility (a11y)** | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) ✅ baseline **v0.2.9**: skip link, focus, contrast, axe E2E, [A11Y.md](./A11Y.md); further work via new issues. |
-| **Broader E2E (Playwright)** | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118) ✅ issue closed: smoke suites + scheduled CI — [TESTING.md](./TESTING.md); more journeys added incrementally in PRs. |
-| **Secrets in production** | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119) ✅: runbook [SECRETS_ROTATION.md](./SECRETS_ROTATION.md) (complements [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
-| **Stack version sync** | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120) ✅: checklist + `python3 scripts/check-docs-version.py` — see [VERSIONING](./VERSIONING.md). |
-| **Community / donation UX** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121) ✅ MVP: `general.donate_url` drives links in Navigation (desktop + mobile + gear menu) and Food card; see [CONFIGURATION.md](./CONFIGURATION.md). Click analytics out of scope. |
+| **Accessibility (a11y)** | [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) ✅ baseline **v0.2.9**: skip link, focus, contrast, axe E2E, [A11Y.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/A11Y.md); further work via new issues. |
+| **Broader E2E (Playwright)** | [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118) ✅ issue closed: smoke suites + scheduled CI — [TESTING.md](./testing.md); more journeys added incrementally in PRs. |
+| **Secrets in production** | [#119](https://github.com/Gfermoto/BirdLense-Hub/issues/119) ✅: runbook [SECRETS_ROTATION.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SECRETS_ROTATION.md) (complements [#47](https://github.com/Gfermoto/BirdLense-Hub/issues/47)). |
+| **Stack version sync** | [#120](https://github.com/Gfermoto/BirdLense-Hub/issues/120) ✅: checklist + `python3 scripts/check-docs-version.py` — see [VERSIONING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/VERSIONING.md). |
+| **Community / donation UX** | [#121](https://github.com/Gfermoto/BirdLense-Hub/issues/121) ✅ MVP: `general.donate_url` drives links in Navigation (desktop + mobile + gear menu) and Food card; see [CONFIGURATION.md](../user/configuration.md). Click analytics out of scope. |
 | **Interactive life list (planning)** | [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125) ✅ issue closed: same intent — manual flags/notes vs migration table; open a new issue when a spec exists. |
 | **Species canonical registry** | [#168](https://github.com/Gfermoto/BirdLense-Hub/issues/168) ✅: unified registry, name normalization, backfill, background metadata jobs, CI quality gate for the full dataset. |
 
@@ -124,14 +124,14 @@ Tracked as separate issues; acceptance criteria live in each issue.
 **Preparation before coding ([#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131), [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139)):** [pre-implementation checklist](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md) (maintainer notes in the repository; omitted from the static documentation site).
 
 **Progress update (Apr 2026):**
-- [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) — a11y baseline shipped in **v0.2.9** (PR [#187](https://github.com/Gfermoto/BirdLense-Hub/pull/187), release [#188](https://github.com/Gfermoto/BirdLense-Hub/pull/188)); see [A11Y.md](./A11Y.md).
+- [#117](https://github.com/Gfermoto/BirdLense-Hub/issues/117) — a11y baseline shipped in **v0.2.9** (PR [#187](https://github.com/Gfermoto/BirdLense-Hub/pull/187), release [#188](https://github.com/Gfermoto/BirdLense-Hub/pull/188)); see [A11Y.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/A11Y.md).
 - [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) — shipped and closed: Unknowns nav removed, `/unknowns` legacy redirect to `/timeline?review=1`, Timeline review mode (chip + counter), OpenAPI + API tests + smoke redirect coverage.
 - [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) — shipped and closed: catalog nav reshaped toward the seasonality table; **current UI (v0.3.7+):** nav **Species** → `/species` (same grid as `/migration-calendar`, which remains an alias URL); card directory → `/species-directory`; deep links `/species/:id` preserved. (Issue text described an intermediate redirect-only `/species` — no longer accurate.)
 - [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) — shipped and closed: region comparison block moved from Overview to Migration; leftover Overview pointer removed.
 - [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) — shipped and closed: Overview species distribution chart (slice and legend) now drills down to Timeline with species/date filters.
 - [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) — shipped and closed: Migration page now supports day-level date-range filtering for the migration table while keeping regional reference block unfiltered.
-- [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129), [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153), [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) — shipped and closed: BirdNET MQTT bias, multi-camera confidence boost, recording post-roll; see [CONFIGURATION.md](./CONFIGURATION.md) → Processor.
-- [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114), [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118), [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125), [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163)–[#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) — issues closed for a zero-open backlog tail: UX gate in [CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md), E2E note in [TESTING.md](./TESTING.md), other ideas in the tables below + consilium item 17.
+- [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129), [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153), [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157) — shipped and closed: BirdNET MQTT bias, multi-camera confidence boost, recording post-roll; see [CONFIGURATION.md](../user/configuration.md) → Processor.
+- [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114), [#118](https://github.com/Gfermoto/BirdLense-Hub/issues/118), [#125](https://github.com/Gfermoto/BirdLense-Hub/issues/125), [#163](https://github.com/Gfermoto/BirdLense-Hub/issues/163)–[#166](https://github.com/Gfermoto/BirdLense-Hub/issues/166) — issues closed for a zero-open backlog tail: UX gate in [CONTRIBUTING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md), E2E note in [TESTING.md](./testing.md), other ideas in the tables below + consilium item 17.
 - [#167](https://github.com/Gfermoto/BirdLense-Hub/issues/167) — **closed:** scales — MQTT/HA, **weight spike → recording**, per-clip **delta** on video page, HA settings split, perf defaults; optional auto-tare out of scope.
 - [#228](https://github.com/Gfermoto/BirdLense-Hub/issues/228) — **closed:** scale **delta on visit card** (timeline/overview) like feeder/weather.
 - [#243](https://github.com/Gfermoto/BirdLense-Hub/issues/243) — **open QA gate:** field acceptance for feeder scales (ESPHome HX711 + hub). Before running tests: move the issue card on [BirdLense Hub — Roadmap](https://github.com/users/Gfermoto/projects/2) to **Ready** (or assign + date), deploy hub code, and set `integrations.scales.*` to match your MQTT prefix/units (`g`); checklist is in the issue body.
@@ -139,15 +139,15 @@ Tracked as separate issues; acceptance criteria live in each issue.
 | # | Issue | Summary |
 |---|--------|--------|
 | [#127](https://github.com/Gfermoto/BirdLense-Hub/issues/127) | Regional top + overlap with recognized | ✅ Compare-to-region on Migration (see progress above) |
-| [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Auto thresholds for regional top | ✅ Processor merge + settings; delta/floor from `min_confidence_to_process`; manual overrides win; [CONFIGURATION.md](./CONFIGURATION.md) |
-| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Thresholds + MQTT BirdNET | ✅ Lower classifier thresholds for species in recent BirdNET MQTT: `birdnet_mqtt_auto_confidence` + delta/floor; [CONFIGURATION.md](./CONFIGURATION.md) |
+| [#128](https://github.com/Gfermoto/BirdLense-Hub/issues/128) | Auto thresholds for regional top | ✅ Processor merge + settings; delta/floor from `min_confidence_to_process`; manual overrides win; [CONFIGURATION.md](../user/configuration.md) |
+| [#129](https://github.com/Gfermoto/BirdLense-Hub/issues/129) | Thresholds + MQTT BirdNET | ✅ Lower classifier thresholds for species in recent BirdNET MQTT: `birdnet_mqtt_auto_confidence` + delta/floor; [CONFIGURATION.md](../user/configuration.md) |
 | [#130](https://github.com/Gfermoto/BirdLense-Hub/issues/130) | Overview second chart | Click species → today’s recordings for that species |
 | [#131](https://github.com/Gfermoto/BirdLense-Hub/issues/131) | Migration as catalog entry | Historical: nav toward seasonality table; **now** `/species` + `/migration-calendar` (same UI), `/species-directory` (cards), `/species/:id` |
 | [#139](https://github.com/Gfermoto/BirdLense-Hub/issues/139) | Unknowns + Timeline | Remove Unknowns nav; review mode on Timeline (chip + badge; redirect legacy URL) |
-| [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Species filters | ✅ Bird Directory «Regional» = eBird regional top + `birdnet_mqtt` detections; `regional_scope` on `GET /species`; [CONFIGURATION.md](./CONFIGURATION.md) |
+| [#132](https://github.com/Gfermoto/BirdLense-Hub/issues/132) | Species filters | ✅ Bird Directory «Regional» = eBird regional top + `birdnet_mqtt` detections; `regional_scope` on `GET /species`; [CONFIGURATION.md](../user/configuration.md) |
 | [#133](https://github.com/Gfermoto/BirdLense-Hub/issues/133) | Period on Migration | **Day-level date range**; table + heard/recognized; not regional |
-| [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Food list for Europe | ✅ expanded `seed.py` + idempotent merge by name; [CONFIGURATION.md](./CONFIGURATION.md) → Bird food |
-| [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping` | ✅ `GET /api/ui/settings/ebird-species-mapping-suggestions`, Settings UI button, shared eBird top cache; [CONFIGURATION.md](./CONFIGURATION.md) |
+| [#134](https://github.com/Gfermoto/BirdLense-Hub/issues/134) | Food list for Europe | ✅ expanded `seed.py` + idempotent merge by name; [CONFIGURATION.md](../user/configuration.md) → Bird food |
+| [#136](https://github.com/Gfermoto/BirdLense-Hub/issues/136) | eBird `species_mapping` | ✅ `GET /api/ui/settings/ebird-species-mapping-suggestions`, Settings UI button, shared eBird top cache; [CONFIGURATION.md](../user/configuration.md) |
 
 **New ideas (Apr 2026) — table keeps historical GitHub numbers; open a new issue when work starts:**
 
@@ -155,7 +155,7 @@ Tracked as separate issues; acceptance criteria live in each issue.
 |---|--------|-------|-----------------|
 | 1 | System: unique visitor counter | [#151](https://github.com/Gfermoto/BirdLense-Hub/issues/151) ✅ | P3, web |
 | 2 | After deleting a recording, return to list not Home | [#152](https://github.com/Gfermoto/BirdLense-Hub/issues/152) ✅ | P2, web, bug |
-| 3 | Multi-camera confidence for cameras at one location | [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153) ✅ `multi_camera_groups` + boost after merge; [CONFIGURATION.md](./CONFIGURATION.md) | P2, processor |
+| 3 | Multi-camera confidence for cameras at one location | [#153](https://github.com/Gfermoto/BirdLense-Hub/issues/153) ✅ `multi_camera_groups` + boost after merge; [CONFIGURATION.md](../user/configuration.md) | P2, processor |
 | 4 | “Daily pattern” chart: click should filter by hour | [#154](https://github.com/Gfermoto/BirdLense-Hub/issues/154) ✅ | P2, web, bug |
 | 5 | Recording duration mismatch (Home vs recording page) | [#155](https://github.com/Gfermoto/BirdLense-Hub/issues/155) ✅ | P2, web, bug |
 | 6 | Review counter not updating without full reload | [#156](https://github.com/Gfermoto/BirdLense-Hub/issues/156) ✅ | P2, web, bug |
@@ -192,7 +192,7 @@ Analogous work **exists in datasets and papers**; few off-the-shelf solutions co
 
 ## Shipped ideas (archive)
 
-Historical **simple → complex** checklist (all rows shipped). Cross-check [FEATURES](./FEATURES.md); do **not** treat this table as a to-do list.
+Historical **simple → complex** checklist (all rows shipped). Cross-check [FEATURES](../user/features.md); do **not** treat this table as a to-do list.
 
 | Idea | Notes | Complexity |
 |------|--------|--------------|
@@ -245,9 +245,9 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 
 **Execution lives in GitHub issues and the [BirdLense Hub — Roadmap](https://github.com/users/Gfermoto/projects/2) board**; this section is a pointer only.
 
-- Navigator: [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220). **Sub-issues** (board hierarchy): [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (**closed** — split `ui_routes` into domain `ui_*_routes`, see [ARCHITECTURE](./ARCHITECTURE.md)), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (**closed** — processor modularization, HA `user_config` migration, PR [#237](https://github.com/Gfermoto/BirdLense-Hub/pull/237)), [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238) (processor **phase 2** **done** — `MotionRecordingSession`, MQTT queue, **ebird_region_core**), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221) · [#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222) · [#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223) · [#224](https://github.com/Gfermoto/BirdLense-Hub/issues/224) (**closed** — MQTT outbound queue, `frame_processor` no sleep) · [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225) (**done** on Hub: Alembic `001` + `MotionRecordingSession`; further checklist in issue). Re-link: `bash scripts/github-issue-link-subissues.sh 220 198 201 238 221 222 223 224 225`. RU: [ROADMAP.ru.md](./ROADMAP.ru.md) (wave D). Not this wave: [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164); Heimdall/HA backlog [#229](https://github.com/Gfermoto/BirdLense-Hub/issues/229)–[#234](https://github.com/Gfermoto/BirdLense-Hub/issues/234) (**#234** ✅ — [Heimdall tiles](./HEIMDALL.md)).
+- Navigator: [#220](https://github.com/Gfermoto/BirdLense-Hub/issues/220). **Sub-issues** (board hierarchy): [#198](https://github.com/Gfermoto/BirdLense-Hub/issues/198) (**closed** — split `ui_routes` into domain `ui_*_routes`, see [ARCHITECTURE](./architecture.md)), [#201](https://github.com/Gfermoto/BirdLense-Hub/issues/201) (**closed** — processor modularization, HA `user_config` migration, PR [#237](https://github.com/Gfermoto/BirdLense-Hub/pull/237)), [#238](https://github.com/Gfermoto/BirdLense-Hub/issues/238) (processor **phase 2** **done** — `MotionRecordingSession`, MQTT queue, **ebird_region_core**), [#221](https://github.com/Gfermoto/BirdLense-Hub/issues/221) · [#222](https://github.com/Gfermoto/BirdLense-Hub/issues/222) · [#223](https://github.com/Gfermoto/BirdLense-Hub/issues/223) · [#224](https://github.com/Gfermoto/BirdLense-Hub/issues/224) (**closed** — MQTT outbound queue, `frame_processor` no sleep) · [#225](https://github.com/Gfermoto/BirdLense-Hub/issues/225) (**done** on Hub: Alembic `001` + `MotionRecordingSession`; further checklist in issue). Re-link: `bash scripts/github-issue-link-subissues.sh 220 198 201 238 221 222 223 224 225`. RU: [ROADMAP.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/ROADMAP.ru.md) (wave D). Not this wave: [#164](https://github.com/Gfermoto/BirdLense-Hub/issues/164); Heimdall/HA backlog [#229](https://github.com/Gfermoto/BirdLense-Hub/issues/229)–[#234](https://github.com/Gfermoto/BirdLense-Hub/issues/234) (**#234** ✅ — [Heimdall tiles](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/HEIMDALL.md)).
 
-**Architecture & maintainability (next wave, Apr 2026):** same [Roadmap project board](https://github.com/users/Gfermoto/projects/2) — [#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292) (decompose `app/web/app.py`: extensions, errors, startup), [#293](https://github.com/Gfermoto/BirdLense-Hub/issues/293) (service layer / thin routes), [#281](https://github.com/Gfermoto/BirdLense-Hub/issues/281) (Pydantic on mutating APIs), [#294](https://github.com/Gfermoto/BirdLense-Hub/issues/294) (N+1 / DB indexes), [#295](https://github.com/Gfermoto/BirdLense-Hub/issues/295) (**baseline ✅** — bootstrap + `DetectionStrategy` ABC + `DetectionStrategyProtocol`, see [ARCHITECTURE](./ARCHITECTURE.md) § Maintainability baseline), [#296](https://github.com/Gfermoto/BirdLense-Hub/issues/296) (TanStack Query on primary routes — **phase 1**; Context / prop-drilling polish stays in issue), [#297](https://github.com/Gfermoto/BirdLense-Hub/issues/297) (CI: complexity metrics, OpenAPI→TS; npm audit policy → **#284** ✅). **Security / hardening:** [#277](https://github.com/Gfermoto/BirdLense-Hub/issues/277)–[#286](https://github.com/Gfermoto/BirdLense-Hub/issues/286) (Docker non-root, secrets, API auth, session timeout, nginx recordings, CORS, ESLint imports). **#284** ✅ **closed** — scheduled **npm audit** for `app/ui`; [TESTING](./TESTING.md). **#287** ✅ **closed** — audit: no `ALTER TABLE` in `create_app` / web runtime; DDL via Alembic only; [ARCHITECTURE](./ARCHITECTURE.md) § Database.
+**Architecture & maintainability (next wave, Apr 2026):** same [Roadmap project board](https://github.com/users/Gfermoto/projects/2) — [#292](https://github.com/Gfermoto/BirdLense-Hub/issues/292) (decompose `app/web/app.py`: extensions, errors, startup), [#293](https://github.com/Gfermoto/BirdLense-Hub/issues/293) (service layer / thin routes), [#281](https://github.com/Gfermoto/BirdLense-Hub/issues/281) (Pydantic on mutating APIs), [#294](https://github.com/Gfermoto/BirdLense-Hub/issues/294) (N+1 / DB indexes), [#295](https://github.com/Gfermoto/BirdLense-Hub/issues/295) (**baseline ✅** — bootstrap + `DetectionStrategy` ABC + `DetectionStrategyProtocol`, see [ARCHITECTURE](./architecture.md) § Maintainability baseline), [#296](https://github.com/Gfermoto/BirdLense-Hub/issues/296) (TanStack Query on primary routes — **phase 1**; Context / prop-drilling polish stays in issue), [#297](https://github.com/Gfermoto/BirdLense-Hub/issues/297) (CI: complexity metrics, OpenAPI→TS; npm audit policy → **#284** ✅). **Security / hardening:** [#277](https://github.com/Gfermoto/BirdLense-Hub/issues/277)–[#286](https://github.com/Gfermoto/BirdLense-Hub/issues/286) (Docker non-root, secrets, API auth, session timeout, nginx recordings, CORS, ESLint imports). **#284** ✅ **closed** — scheduled **npm audit** for `app/ui`; [TESTING](./testing.md). **#287** ✅ **closed** — audit: no `ALTER TABLE` in `create_app` / web runtime; DDL via Alembic only; [ARCHITECTURE](./architecture.md) § Database.
 
 ---
 
@@ -256,10 +256,10 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 | Priority | Focus |
 |----------|--------|
 | **Community** | [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions), `good first issue` triage, docs feedback |
-| **Quality** | CI on PRs — see [TESTING](./TESTING.md) §1 (Bandit, pip-audit, Ruff, OpenAPI contract, UI build, MkDocs, Docker tests + Playwright smoke + catalog audit); Dependabot |
+| **Quality** | CI on PRs — see [TESTING](./testing.md) §1 (Bandit, pip-audit, Ruff, OpenAPI contract, UI build, MkDocs, Docker tests + Playwright smoke + catalog audit); Dependabot |
 | **Docs** | `VERSION` aligned with `mkdocs.yml`, `app/ui/package.json`, and `app/web/openapi.yaml` (`scripts/check-docs-version.py`); interactive OpenAPI (Redoc) on the doc site |
 | **Releases** | Tags + GitHub Release → Docker semver image + Pages deploy |
-| **Public release gate** | Unified runbook: [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.md) + [RELEASE_READINESS](./RELEASE_READINESS.md) |
+| **Public release gate** | Unified runbook: [PUBLIC_RELEASE_CHECKLIST](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.md) + [RELEASE_READINESS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/release-readiness.md) |
 
 ### Scale (#418): motion, queue, Postgres ([#424](https://github.com/Gfermoto/BirdLense-Hub/issues/424) — **закрыт**, релизные подзадачи 2026-05)
 
@@ -267,16 +267,16 @@ Historical **simple → complex** checklist (all rows shipped). Cross-check [FEA
 
 | Track | Результат (MVP) | Где смотреть |
 |-------|-----------------|--------------|
-| **B1** | Gauge/счётчики деградации `triggers.*` + MQTT в `processor_runtime_stats.json`; fallback motion фабрики учитывается | [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.md) § Trigger path observability; [TROUBLESHOOTING](./TROUBLESHOOTING.md#processor-trigger-metrics) |
-| **B2** | Задокументированы лимиты и метрики существующих очередей (`mqtt.publish_queue_max`, outbound / Frigate / scales drops); единый «heavy job executor» — при необходимости новое issue | [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.md#queues-backpressure) |
-| **B3** | Операторский Postgres runbook | [POSTGRES_MIGRATION](./POSTGRES_MIGRATION.md) |
+| **B1** | Gauge/счётчики деградации `triggers.*` + MQTT в `processor_runtime_stats.json`; fallback motion фабрики учитывается | [PROCESSOR_PERFORMANCE](../user/processor-performance.md) § Trigger path observability; [TROUBLESHOOTING](../user/troubleshooting.md#processor-trigger-metrics) |
+| **B2** | Задокументированы лимиты и метрики существующих очередей (`mqtt.publish_queue_max`, outbound / Frigate / scales drops); единый «heavy job executor» — при необходимости новое issue | [PROCESSOR_PERFORMANCE](../user/processor-performance.md#queues-backpressure) |
+| **B3** | Операторский Postgres runbook | [POSTGRES_MIGRATION](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/POSTGRES_MIGRATION.md) |
 
 Родитель фазы: [#418](https://github.com/Gfermoto/BirdLense-Hub/issues/418).
 
-The **shipped archive** and other historical tables earlier in this document are not a live backlog. Active work is the **consilium** issues and **future candidates**; always cross-check [FEATURES](./FEATURES.md).
+The **shipped archive** and other historical tables earlier in this document are not a live backlog. Active work is the **consilium** issues and **future candidates**; always cross-check [FEATURES](../user/features.md).
 
 ---
 
 ## See also
 
-[ACCESS_CONTROL](./ACCESS_CONTROL.md) · [DATASETS](./DATASETS.md) · [TESTING](./TESTING.md) · [CONFIGURATION](./CONFIGURATION.md)
+[ACCESS_CONTROL](./access-control.md) · [DATASETS](./datasets.md) · [TESTING](./testing.md) · [CONFIGURATION](../user/configuration.md)

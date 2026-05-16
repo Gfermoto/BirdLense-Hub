@@ -23,7 +23,10 @@ from recording_decision_trace_log import write_decision_trace_activity
 from recording_file_gate import _is_playable_video_file
 from recording_ingest_gate import log_missing_video_gate
 from recording_mqtt_window import get_recording_mqtt_events
-from recording_no_detection_log import log_no_detections_after_merge
+from recording_no_detection_log import (
+    log_no_detection_activity,
+    log_no_detections_after_merge,
+)
 from recording_notify_dispatch import notify_unique_species
 from recording_post_fusion_rejections import collect_post_fusion_rejections
 from recording_scales_evidence import estimate_recording_scales_delta
@@ -412,9 +415,15 @@ def finalize_motion_recording(
                 salvage.get("track_id"),
                 float(salvage.get("confidence") or 0.0),
             )
+    salvage_enabled = bool(app_config.get("detection.frigate_trigger_review_salvage_enabled", False))
+    salvage_allow_without_yolo = bool(
+        app_config.get("detection.frigate_trigger_review_salvage_allow_without_yolo_tracks", False)
+    )
+    if salvage_enabled and not salvage_allow_without_yolo and yolo_tracks_count <= 0:
+        salvage_enabled = False
     if (
         not video_detections
-        and bool(app_config.get("detection.frigate_trigger_review_salvage_enabled", True))
+        and salvage_enabled
         and (
             trigger_source == "frigate"
             or isinstance(frigate_trigger_event, dict)
@@ -546,6 +555,16 @@ def finalize_motion_recording(
             now_monotonic=time.monotonic(),
             next_warn_monotonic=_no_detections_warn_next_monotonic,
             warn_interval_seconds=_NO_DETECTIONS_WARN_INTERVAL_S,
+        )
+    if len(video_detections) == 0:
+        log_no_detection_activity(
+            api,
+            track_count=len(frame_processor.tracks),
+            mqtt_event_count=len(mqtt_events),
+            rejected_count=len(rejected_decisions),
+            video_path_for_api=video_path_for_api,
+            trigger_source=trigger_source,
+            triggered_camera=session_camera_id,
         )
 
     video_file_ok = _is_playable_video_file(video_output)

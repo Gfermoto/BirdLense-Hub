@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify verify-prod-env preflight-deploy verify-strict-quality restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-dedupe-detector-yolo dataset-report-detector-yolo dataset-dedupe-detector-binary dataset-import-cub dataset-import-roboflow-bird-feeder dataset-download-roboflow-bird-feeder dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data bootstrap-rodents-until-verify bootstrap-bird-coco-only report-detector-bird-sources dataset-rebalance-bird-binary dataset-bootstrap-rodent-oid-fast dataset-import-roboflow-rodent dataset-fetch-lila-california-rodents-sample dataset-build-birds-rodents-quick dataset-build-detector-tz detector-etl-verify-birds-rodents detector-etl-progress detector-etl-progress-watch detector-etl-restart detector-etl-supervise detector-etl-supervise-bg active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices ml-verify-reid-gates ml-run-reid-execution-report ml-build-eval-dataset ml-build-behavior-dataset ml-export-behavior-onnx ml-build-behavior-train-report ml-offline-benchmark-gate ml-detector-shortlist ml-openvino-async-profile ml-decode-path-benchmark ml-track-continuity-eval ml-int8-candidate-eval ml-shadow-rollout-report ml-canary-rollback-report ml-full-rollout-watch-report ml-action-model-shortlist ml-proof ml-proof-local ml-proof-hub ml-fusion-ab-local ml-fusion-ab-hub dedupe-videos-local
+.PHONY: install install-pull deploy build start stop logs verify verify-prod-env preflight-deploy verify-strict-quality restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-dedupe-detector-yolo dataset-report-detector-yolo dataset-dedupe-detector-binary dataset-import-cub dataset-import-roboflow-bird-feeder dataset-download-roboflow-bird-feeder dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data bootstrap-rodents-until-verify bootstrap-bird-coco-only report-detector-bird-sources dataset-rebalance-bird-binary dataset-bootstrap-rodent-oid-fast dataset-import-roboflow-rodent dataset-fetch-lila-california-rodents-sample dataset-build-birds-rodents-quick dataset-build-detector-tz detector-etl-verify-birds-rodents detector-etl-progress detector-etl-progress-watch detector-etl-restart detector-etl-supervise detector-etl-supervise-bg active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices ml-verify-reid-gates ml-run-reid-execution-report ml-build-eval-dataset ml-build-behavior-dataset ml-export-behavior-onnx ml-build-behavior-train-report ml-offline-benchmark-gate ml-detector-shortlist snapshot-detector-weights compare-detector-bboxes-help ml-openvino-async-profile ml-decode-path-benchmark ml-track-continuity-eval ml-int8-candidate-eval ml-shadow-rollout-report ml-canary-rollback-report ml-full-rollout-watch-report ml-action-model-shortlist ml-proof ml-proof-local ml-proof-hub ml-fusion-ab-local ml-fusion-ab-hub dedupe-videos-local
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -536,6 +536,21 @@ ml-detector-shortlist:
 		$$(test -n "$${SHORTLIST_SIZE:-}" && printf -- '--shortlist-size "%s" ' "$${SHORTLIST_SIZE}") \
 		--out "$${OUT}" \
 		$${ARGS:-}
+
+# Снимок weights/best.pt + weights/best_openvino_model/ → weights/snapshots/<tag>/ (перед заменой весов).
+# TAG=mytag make snapshot-detector-weights  — иначе UTC timestamp.
+snapshot-detector-weights:
+	@if [ -n "$${TAG:-}" ]; then \
+	  python3 "$(CURDIR)/scripts/snapshot_detector_weights.py" \
+	    --processor-root "$(CURDIR)/app/processor" --tag "$${TAG}"; \
+	else \
+	  python3 "$(CURDIR)/scripts/snapshot_detector_weights.py" \
+	    --processor-root "$(CURDIR)/app/processor"; \
+	fi
+
+# Подсказка по compare_detector_bboxes.py (PT vs OpenVINO на mp4; см. docstring скрипта).
+compare-detector-bboxes-help:
+	@python3 "$(CURDIR)/scripts/compare_detector_bboxes.py" --help
 
 # Profile OpenVINO device/hint combos and emit ov_async_profile_report@v1 (#412).
 # Example:
