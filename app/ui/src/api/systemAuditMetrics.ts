@@ -64,6 +64,52 @@ export const fetchObservability = async (): Promise<ObservabilityPayload> => {
   return response.data;
 };
 
+export type MlRuntimeStatus = {
+  schema: string;
+  video: {
+    encoding?: string;
+    capture_backend_config?: string;
+  };
+  processor: {
+    inference_backend?: string;
+    inference_device?: string;
+    classifier_inference_backend?: string;
+    classifier_inference_device?: string;
+    detector_weight_contract?: string;
+    binary_imgsz?: number;
+    frame_processing_warn_ms?: number;
+  };
+};
+
+export const fetchMlRuntimeStatus = async (): Promise<MlRuntimeStatus> => {
+  const response = await axios.get(`${BASE_API_URL}/system/ml-runtime`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export type FeedbackLoopStatus = {
+  schema: string;
+  events_total: number;
+  events_relabel: number;
+  events_delete_as_background: number;
+  latest_event_at: string | null;
+  latest_export?: {
+    status?: string;
+    events_total?: number;
+    exported_total?: number;
+    missing_crop_events?: number;
+    generated_at_utc?: string;
+  } | null;
+};
+
+export const fetchFeedbackLoopStatus = async (): Promise<FeedbackLoopStatus> => {
+  const response = await axios.get(`${BASE_API_URL}/system/feedback-loop/status`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 export const trackSiteVisitor = async (browserId: string): Promise<void> => {
   await axios.post(`${BASE_API_URL}/system/visitors/track`, {
     browser_id: browserId,

@@ -91,11 +91,11 @@ jobs:
           make build
           make start
 
-      # Optional repo secret: same value as server app/.env BIRDLENSE_UI_API_KEY when strict UI auth is on.
-      # Enables verify-stack --check-domain-health and verify-release with REQUIRE_SETTINGS_HEALTH=1.
+      # Blocking post-deploy verification: domain-health + strict-quality must pass.
       - name: Verify
         env:
           BIRDLENSE_UI_API_KEY: ${{ secrets.BIRDLENSE_UI_API_KEY }}
+          RUN_VERIFY_RELEASE: ${{ vars.RUN_VERIFY_RELEASE || '0' }}
         run: |
           set -euo pipefail
           DEPLOY_DIR="${DEPLOY_DIR:-/root/BirdLense}"
@@ -112,15 +112,60 @@ jobs:
           BASE_URL="http://127.0.0.1:${PORT}"
           echo "Verify stack: ${BASE_URL}"
           sleep 10
-          VERIFY_ARGS=(--base-url "$BASE_URL")
-          if [ -n "${BIRDLENSE_UI_API_KEY:-}" ]; then
-            VERIFY_ARGS+=(--check-domain-health)
+          EFFECTIVE_UI_KEY="${BIRDLENSE_UI_API_KEY:-}"
+          EFFECTIVE_MCP_TOKEN=""
+          if [ -f "$ENV_FILE" ]; then
+            if [ -z "${EFFECTIVE_UI_KEY}" ]; then
+              V=$(grep -E '^[[:space:]]*BIRDLENSE_UI_API_KEY=' "$ENV_FILE" | tail -1 || true)
+              if [ -n "$V" ]; then
+                EFFECTIVE_UI_KEY="${V#*=}"
+                EFFECTIVE_UI_KEY="${EFFECTIVE_UI_KEY//\"/}"
+                EFFECTIVE_UI_KEY="${EFFECTIVE_UI_KEY//\'/}"
+              fi
+            fi
+            V2=$(grep -E '^[[:space:]]*MCP_TOKEN=' "$ENV_FILE" | tail -1 || true)
+            if [ -n "$V2" ]; then
+              EFFECTIVE_MCP_TOKEN="${V2#*=}"
+              EFFECTIVE_MCP_TOKEN="${EFFECTIVE_MCP_TOKEN//\"/}"
+              EFFECTIVE_MCP_TOKEN="${EFFECTIVE_MCP_TOKEN//\'/}"
+            fi
+          fi
+          # Strict verify uses either credential (same as verify-stack.sh / check-runtime-sli.sh /
+          # perf_gate_runtime.py): prefer X-Birdlense-Api-Key when BIRDLENSE_UI_API_KEY is non-empty,
+          # else Authorization: Bearer with MCP_TOKEN. Passing an empty string for the unused var is OK.
+          if [ -z "${EFFECTIVE_UI_KEY}" ] && [ -z "${EFFECTIVE_MCP_TOKEN}" ]; then
+            echo "FAIL: strict verify needs at least one of BIRDLENSE_UI_API_KEY or MCP_TOKEN (GitHub secret and/or ${ENV_FILE})." >&2
+            exit 1
+          fi
+          if [ -n "${EFFECTIVE_UI_KEY}" ]; then
+            echo "Verify auth: BIRDLENSE_UI_API_KEY (API key header); MCP_TOKEN unused when UI key is set."
+          else
+            echo "Verify auth: MCP_TOKEN (Bearer) only."
           fi
           cd "$DEPLOY_DIR"
-          BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" scripts/verify-stack.sh "${VERIFY_ARGS[@]}"
-          if [ -n "${BIRDLENSE_UI_API_KEY:-}" ]; then
-            REQUIRE_SETTINGS_HEALTH=1 BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY}" BASE_URL="${BASE_URL}" \
+          BIRDLENSE_UI_API_KEY="${EFFECTIVE_UI_KEY}" MCP_TOKEN="${EFFECTIVE_MCP_TOKEN}" \
+            scripts/verify-stack.sh --base-url "${BASE_URL}" --check-domain-health --strict-quality
+          BIRDLENSE_UI_API_KEY="${EFFECTIVE_UI_KEY}" MCP_TOKEN="${EFFECTIVE_MCP_TOKEN}" \
+            MAX_HEARTBEAT_AGE_SECONDS=240 MAX_HTTP_OVER_1000MS_RATIO=0.20 MIN_HTTP_SAMPLE_COUNT=20 \
+            scripts/check-runtime-sli.sh --base-url "${BASE_URL}"
+          BIRDLENSE_UI_API_KEY="${EFFECTIVE_UI_KEY}" MCP_TOKEN="${EFFECTIVE_MCP_TOKEN}" \
+            python3 scripts/perf_gate_runtime.py \
+              --base-url "${BASE_URL}" \
+              --burst-requests 120 \
+              --burst-concurrency 12 \
+              --metrics-scrapes 60 \
+              --metrics-concurrency 8 \
+              --soak-seconds 20 \
+              --soak-interval-sec 0.8 \
+              --max-error-rate 0.02 \
+              --max-p95-ms 3000 \
+              --max-p99-ms 5000 \
+              --out /tmp/runtime_perf_gate.deploy.v1.json
+          if [ "${RUN_VERIFY_RELEASE}" = "1" ]; then
+            REQUIRE_SETTINGS_HEALTH=1 BIRDLENSE_UI_API_KEY="${EFFECTIVE_UI_KEY}" MCP_TOKEN="${EFFECTIVE_MCP_TOKEN}" BASE_URL="${BASE_URL}" \
               scripts/verify-release.sh
+          else
+            echo "Skip verify-release.sh (set repository variable RUN_VERIFY_RELEASE=1 to enable)."
           fi
 
       - name: Test recognition (optional)

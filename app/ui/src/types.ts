@@ -37,6 +37,10 @@ export interface SpeciesVisit {
     source: 'video' | 'audio';
     detection_provider?: string;
   }[];
+  /** Re-ID nickname from backend visit payload when present (#390 UI). */
+  individual_nickname?: string | null;
+  /** Model-derived behavior events for this visit. */
+  behavior_events?: { label?: string }[];
 }
 
 export interface TrackFrame {
@@ -54,6 +58,7 @@ export interface VideoSpecies {
   confidence: number;
   source: string;
   detection_provider?: string;
+  individual_nickname?: string | null;
   /** Relative path or full URL — use resolveImageUrl() */
   image_url?: string;
   frames?: TrackFrame[];
@@ -93,6 +98,8 @@ export interface Video {
     display_value: number;
     display_unit: 'kg' | 'g';
   } | null;
+  behavior_label?: string | null;
+  behavior_confidence?: number | null;
 }
 
 /** См. OpenAPI `BirdFood`; для списка из API поля id/name/active приходят заполненными. */
@@ -231,7 +238,7 @@ export interface Settings {
     birdnet_mqtt_auto_confidence?: boolean;
     birdnet_mqtt_bias_delta?: number;
     birdnet_mqtt_bias_floor?: number;
-    /** Frigate camera id groups at one location, e.g. [["BirdBox","Forest"]]. */
+    /** Frigate camera id groups at one location (IDs match Video → Cameras). */
     multi_camera_groups?: string[][];
     multi_camera_confidence_boost?: number;
     save_dataset_crops?: boolean;
@@ -258,7 +265,25 @@ export interface Settings {
     key_frame_limit?: number;
     keep_recording_when_no_detections?: boolean;
     detection_strategy?: string;
-    models?: { binary?: string; classifier?: string };
+    inference_backend?: 'auto' | 'torch' | 'openvino' | 'onnxruntime' | string;
+    classifier_inference_backend?:
+      | 'auto'
+      | 'torch'
+      | 'openvino'
+      | 'onnxruntime'
+      | string;
+    inference_device?: string;
+    classifier_inference_device?: string;
+    detector_weight_contract?: 'off' | 'warn' | 'enforce' | string;
+    models?: {
+      binary?: string;
+      binary_openvino?: string;
+      classifier?: string;
+      classifier_openvino?: string;
+      behavior_openvino?: string;
+    };
+    classifier_uncertainty_entropy_ge?: number | null;
+    classifier_uncertainty_margin_le?: number | null;
     save_images?: boolean;
     birdnet_mqtt_prior_window_hours?: number;
     birdnet_mqtt_bias_window_seconds?: number;
@@ -277,6 +302,8 @@ export interface Settings {
     track_regen_frame_step?: number;
     track_regen_detection_strategy?: string;
     track_regen_lores_px?: number;
+    track_regen_iou_id_fallback?: boolean;
+    track_regen_iou_match_threshold?: number | null;
     track_regen_video_timeout_sec?: number;
     track_regen_precise_timeout_sec?: number;
     track_regen_precise_detection_strategy?: string;
@@ -284,6 +311,16 @@ export interface Settings {
     track_regen_ignore_regional_species?: boolean;
     track_regen_match_live_pipeline?: boolean;
     track_regen_parallel_auto_with_manual?: boolean;
+    /** Baseline behavior head (#416): logistic on finalize when enabled. */
+    behavior_recognition?: {
+      enabled?: boolean;
+      weights_path?: string;
+      inference_backend?: 'auto' | 'logistic_json' | 'openvino' | string;
+      openvino_fallback_logistic?: boolean;
+      max_runtime_detections?: number;
+      confidence_store_min?: number;
+      confidence_review_threshold?: number;
+    };
   };
   secrets: {
     openweather_api_key: string; // API key for OpenWeather
@@ -295,17 +332,27 @@ export interface Settings {
   };
   video?: {
     source?: 'go2rtc' | 'file' | string;
+    pre_record_seconds?: number;
+    auto_reconnect?: boolean;
     file_path?: string;
     file_dir?: string;
     file_loop?: boolean;
     file_realtime_simulation?: boolean;
     go2rtc_url?: string;
     stream_name?: string;
-    cameras?: Array<{ id?: string; stream_name?: string; name?: string }>;
+    cameras?: Array<{
+      id?: string;
+      stream_name?: string;
+      /** Optional stream for motion/YOLO (can be direct low-res camera feed). */
+      detect_stream_name?: string;
+      name?: string;
+    }>;
     go2rtc_username?: string;
     go2rtc_password?: string;
     /** cpu | intel — VA-API vs CPU для записи (intel = уже H.264). */
     encoding?: string;
+    /** auto | opencv | ffmpeg_vaapi — live capture path for motion/detection. */
+    capture_backend?: 'auto' | 'opencv' | 'ffmpeg_vaapi' | string;
     /** h264 | copy — перекодировать RTSP в H.264 для браузера или копировать веб-кодек как есть. */
     record_stream_codec?: 'h264' | 'copy' | string;
     video_width?: number;
@@ -401,6 +448,15 @@ export interface Settings {
     frigate?: {
       enabled?: boolean;
       topic?: string;
+      /** Мин. score события MQTT до старта записи (внешний детектор). */
+      min_trigger_score?: number;
+      camera_filter?: string[];
+      label_filter?: string[];
+      label_exclude?: string[];
+      trigger_on_tracked_object?: boolean;
+      geometry_fallback_enabled?: boolean;
+      geometry_fallback_label_exclude?: string[];
+      geometry_fallback_cooldown_seconds?: number;
     };
     motion_sensor?: {
       enabled?: boolean;
@@ -426,6 +482,9 @@ export interface Settings {
     frigate_standalone_excluded_min_score?: number;
     frigate_standalone_excluded_missing_score_fallback?: number;
     frigate_standalone_notify?: boolean;
+    /** Не создавать standalone/review-only строки из MQTT по этим лейблам (person, car, …). */
+    frigate_standalone_skip_labels?: string[];
+    frigate_trigger_review_salvage_enabled?: boolean;
     merge_window_seconds?: number;
     dedup_window_seconds?: number;
     one_per_species?: boolean;

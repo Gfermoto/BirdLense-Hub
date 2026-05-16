@@ -7,6 +7,7 @@ from interfaces import DetectionStrategyProtocol
 from app_config.app_config import app_config
 from processor_runtime_profile import light_gate_allows_frame, resolve_runtime_profile
 from processor_runtime_stats import inc_counter, observe_timing, set_gauge
+from tracker_paths import resolve_tracker_config_path
 
 
 class _LightGateDisabled:
@@ -33,7 +34,8 @@ class FrameProcessor:
         tracker="bytetrack.yaml",
     ):
         self.save_images = save_images
-        self.tracker = tracker
+        self.tracker_raw = tracker
+        self.tracker = resolve_tracker_config_path(tracker)
         self.logger = logging.getLogger(__name__)
         if bool(app_config.get("processor.light_gate_enabled", True)):
             mb = int(app_config.get("processor.light_gate_min_brightness") or 25)
@@ -51,8 +53,37 @@ class FrameProcessor:
         except (TypeError, ValueError):
             self.key_frame_limit = 3
 
-        self.logger.info("FrameProcessor initialized.")
+        self.logger.info(
+            "FrameProcessor initialized (tracker=%s -> %s).",
+            self.tracker_raw,
+            self.tracker,
+        )
         self.reset()
+
+    def _frame_light_metrics(self, img):
+        """Яркость/контраст + флаг light detector (для gate и для adaptive profile)."""
+        if hasattr(self.light_detector, "measure"):
+            metrics = dict(self.light_detector.measure(img) or {})
+        else:
+            metrics = {}
+        if "has_sufficient_light" not in metrics:
+            metrics["has_sufficient_light"] = self.light_detector.has_sufficient_light(img)
+        return metrics
+
+    def _resolve_tracker_for_profile(self, profile_name: str | None) -> str:
+        """Pick tracker YAML: only ``night`` reads ``processor.tracker_profiles``; else ``processor.tracker``."""
+        base = str(self.tracker or "bytetrack.yaml").strip() or "bytetrack.yaml"
+        profile = str(profile_name or "").strip().lower()
+        if not profile:
+            return base
+        profiles = app_config.get("processor.tracker_profiles") or {}
+        if not isinstance(profiles, dict):
+            return base
+        val = profiles.get(profile)
+        if val is None:
+            return base
+        out = str(val).strip()
+        return resolve_tracker_config_path(out or base)
 
     def _update_key_frames(self, track: dict, crop, frame_time, bbox, frame_score):
         key_frames = track.setdefault("key_frames", [])
@@ -66,12 +97,21 @@ class FrameProcessor:
         key_frames.sort(key=lambda item: item["score"], reverse=True)
         del key_frames[self.key_frame_limit :]
 
-    def run(self, img, frame_time=None, *, skip_light_gate: bool = False):
+    def run(
+        self,
+        img,
+        frame_time=None,
+        *,
+        skip_light_gate: bool = False,
+        camera_overrides: dict | None = None,
+    ):
         """
         Process frame. frame_time: optional seconds (for video file); else uses elapsed real time.
 
         skip_light_gate: для offline track regen по mp4 — не отсекать ночные кадры до YOLO
         (Frigate уже записал клип; иначе весь ролик может пройти без detect()).
+        Adaptive profile (ночные overrides min_box_size_px, min_center_dist и т.д.) считается
+        всегда; при skip только отключена проверка light_gate_allows_frame.
         """
         self.last_run_stats = {
             "yolo_ran": False,
@@ -90,27 +130,41 @@ class FrameProcessor:
         else:
             frame_time = round(float(frame_time), 2)
 
+        metrics = self._frame_light_metrics(img)
+        profile_name, profile_overrides = resolve_runtime_profile(
+            app_config,
+            brightness=metrics.get("brightness"),
+            contrast=metrics.get("contrast"),
+        )
+        profile_overrides = dict(profile_overrides or {})
+        # Camera-specific tuning (e.g. distant camera with smaller birds) overlays
+        # profile values and applies even outside night profile.
+        if isinstance(camera_overrides, dict) and camera_overrides:
+            profile_overrides.update(camera_overrides)
+        if getattr(self.strategy, "_for_track_regen", False):
+            raw_mc = app_config.get("processor.track_regen_min_confidence_binary")
+            if raw_mc is not None:
+                try:
+                    profile_overrides["min_confidence_binary"] = float(raw_mc)
+                except (TypeError, ValueError):
+                    pass
+            raw_bird = app_config.get("processor.track_regen_min_confidence_binary_bird")
+            if raw_bird is not None:
+                try:
+                    profile_overrides["min_confidence_binary_bird"] = float(raw_bird)
+                except (TypeError, ValueError):
+                    pass
+        self.last_run_stats["runtime_profile"] = profile_name
+        self.last_run_stats["profile_overrides"] = dict(profile_overrides)
+        self.last_run_stats["light_brightness"] = metrics.get("brightness")
+        self.last_run_stats["light_contrast"] = metrics.get("contrast")
+        set_gauge("last_runtime_profile", profile_name or "none")
+        if metrics.get("brightness") is not None:
+            set_gauge("light_brightness", round(float(metrics["brightness"]), 3))
+        if metrics.get("contrast") is not None:
+            set_gauge("light_contrast", round(float(metrics["contrast"]), 3))
+
         if not skip_light_gate:
-            if hasattr(self.light_detector, "measure"):
-                metrics = dict(self.light_detector.measure(img) or {})
-            else:
-                metrics = {}
-            if "has_sufficient_light" not in metrics:
-                metrics["has_sufficient_light"] = self.light_detector.has_sufficient_light(img)
-            profile_name, profile_overrides = resolve_runtime_profile(
-                app_config,
-                brightness=metrics.get("brightness"),
-                contrast=metrics.get("contrast"),
-            )
-            self.last_run_stats["runtime_profile"] = profile_name
-            self.last_run_stats["profile_overrides"] = dict(profile_overrides or {})
-            self.last_run_stats["light_brightness"] = metrics.get("brightness")
-            self.last_run_stats["light_contrast"] = metrics.get("contrast")
-            set_gauge("last_runtime_profile", profile_name or "none")
-            if metrics.get("brightness") is not None:
-                set_gauge("light_brightness", round(float(metrics["brightness"]), 3))
-            if metrics.get("contrast") is not None:
-                set_gauge("light_contrast", round(float(metrics["contrast"]), 3))
             now_m = time.monotonic()
             if now_m < self._low_light_cooldown_until:
                 # Не крутить CPU в tight-loop пока действует cooldown (#237 review).
@@ -129,10 +183,6 @@ class FrameProcessor:
                 time.sleep(0.02)
                 self.last_run_stats["light_gate_blocked"] = True
                 return False
-        else:
-            profile_overrides = {}
-            self.last_run_stats["runtime_profile"] = None
-            self.last_run_stats["profile_overrides"] = {}
 
         st = time.time()
         try:
@@ -141,16 +191,86 @@ class FrameProcessor:
             )
         except (TypeError, ValueError):
             min_conf = 0.22
-        self.last_run_stats["yolo_ran"] = True
+        auto_unstick_enabled = bool(app_config.get("processor.auto_unstick_enabled", True))
         try:
-            results = self.strategy.detect(
-                img,
-                self.tracker,
-                min_confidence=min_conf,
-                profile_overrides=profile_overrides,
+            auto_unstick_no_track_frames = int(app_config.get("processor.auto_unstick_no_track_frames") or 180)
+        except (TypeError, ValueError):
+            auto_unstick_no_track_frames = 180
+        try:
+            auto_unstick_min_conf = float(app_config.get("processor.auto_unstick_min_confidence_binary") or 0.12)
+        except (TypeError, ValueError):
+            auto_unstick_min_conf = 0.12
+        try:
+            auto_unstick_min_conf_bird = float(
+                app_config.get("processor.auto_unstick_min_confidence_binary_bird") or auto_unstick_min_conf
             )
-        except TypeError:
-            results = self.strategy.detect(img, self.tracker, min_confidence=min_conf)
+        except (TypeError, ValueError):
+            auto_unstick_min_conf_bird = auto_unstick_min_conf
+        try:
+            auto_unstick_min_box_px = int(app_config.get("processor.auto_unstick_min_box_size_px") or 12)
+        except (TypeError, ValueError):
+            auto_unstick_min_box_px = 12
+        try:
+            auto_unstick_min_center_dist = float(app_config.get("processor.auto_unstick_min_center_dist") or 0.0)
+        except (TypeError, ValueError):
+            auto_unstick_min_center_dist = 0.0
+        if (
+            auto_unstick_enabled
+            and auto_unstick_no_track_frames > 0
+            and self._consecutive_no_track_frames >= auto_unstick_no_track_frames
+        ):
+            min_conf = min(min_conf, auto_unstick_min_conf)
+            try:
+                curr_bird = profile_overrides.get("min_confidence_binary_bird")
+                if curr_bird is None:
+                    curr_bird = app_config.get("processor.min_confidence_binary_bird")
+                curr_bird_f = float(curr_bird) if curr_bird is not None else auto_unstick_min_conf_bird
+                profile_overrides["min_confidence_binary_bird"] = min(curr_bird_f, auto_unstick_min_conf_bird)
+            except (TypeError, ValueError):
+                profile_overrides["min_confidence_binary_bird"] = auto_unstick_min_conf_bird
+            try:
+                curr_box = profile_overrides.get("min_box_size_px")
+                if curr_box is None:
+                    curr_box = app_config.get("processor.min_box_size_px")
+                curr_box_i = int(curr_box) if curr_box is not None else auto_unstick_min_box_px
+                profile_overrides["min_box_size_px"] = min(curr_box_i, auto_unstick_min_box_px)
+            except (TypeError, ValueError):
+                profile_overrides["min_box_size_px"] = auto_unstick_min_box_px
+            try:
+                curr_center = profile_overrides.get("min_center_dist")
+                if curr_center is None:
+                    curr_center = app_config.get("processor.min_center_dist")
+                curr_center_f = float(curr_center) if curr_center is not None else auto_unstick_min_center_dist
+                profile_overrides["min_center_dist"] = min(curr_center_f, auto_unstick_min_center_dist)
+            except (TypeError, ValueError):
+                profile_overrides["min_center_dist"] = auto_unstick_min_center_dist
+            self.last_run_stats["auto_unstick_active"] = True
+        else:
+            self.last_run_stats["auto_unstick_active"] = False
+        tracker_cfg = self._resolve_tracker_for_profile(self.last_run_stats.get("runtime_profile"))
+        if self.last_run_stats.get("auto_unstick_active"):
+            # Universal fallback tracker profile for weak/small distant objects.
+            profile = str(self.last_run_stats.get("runtime_profile") or "").strip().lower()
+            if profile == "night":
+                unstick_tracker = str(app_config.get("processor.auto_unstick_tracker_night") or "").strip()
+            else:
+                unstick_tracker = str(app_config.get("processor.auto_unstick_tracker") or "").strip()
+            if unstick_tracker:
+                tracker_cfg = resolve_tracker_config_path(unstick_tracker)
+                self.last_run_stats["auto_unstick_tracker_used"] = tracker_cfg
+        if isinstance(camera_overrides, dict):
+            tracker_override = str(camera_overrides.get("tracker") or "").strip()
+            if tracker_override:
+                tracker_cfg = resolve_tracker_config_path(tracker_override)
+        self.last_run_stats["tracker_used"] = tracker_cfg
+        set_gauge("tracker_config_used", tracker_cfg)
+        self.last_run_stats["yolo_ran"] = True
+        results = self.strategy.detect(
+            img,
+            tracker_cfg,
+            min_confidence=min_conf,
+            profile_overrides=profile_overrides,
+        )
         detect_ms = (time.time() - st) * 1000.0
         observe_timing("frame_processor_detect", detect_ms)
         try:
@@ -162,6 +282,10 @@ class FrameProcessor:
             self.logger.warning("Slow frame processing: %.1fms >= %.1fms", detect_ms, warn_ms)
         self.last_run_stats["result_count"] = len(results or [])
         self.last_run_stats["yolo_track_found"] = bool(results)
+        if self.last_run_stats["yolo_track_found"]:
+            self._consecutive_no_track_frames = 0
+        else:
+            self._consecutive_no_track_frames += 1
 
         if self.save_images and results:
             debug_img = img.copy()
@@ -198,6 +322,8 @@ class FrameProcessor:
                 frame_time,
                 res.crop,
                 res.blur_variance,
+                classifier_entropy=getattr(res, "classifier_entropy", None),
+                classifier_top1_top2_margin=getattr(res, "classifier_top1_top2_margin", None),
             )
 
         self.logger.debug(f"Detection Time: {(time.time() - st) * 1000:.0f} msec | Valid: {len(results)}")
@@ -215,6 +341,9 @@ class FrameProcessor:
         frame_time,
         crop=None,
         blur_variance=None,
+        *,
+        classifier_entropy=None,
+        classifier_top1_top2_margin=None,
     ):
         if track_id not in self.tracks:
             self.tracks[track_id] = {
@@ -235,15 +364,18 @@ class FrameProcessor:
         )
         if class_name is not None and classifier_confidence is not None:
             combined_conf = float(detector_confidence or 0.0) * float(classifier_confidence or 0.0)
-            self.tracks[track_id]["classifier_events"].append(
-                {
-                    "species_name": class_name,
-                    "confidence": float(classifier_confidence or 0.0),
-                    "detector_confidence": float(detector_confidence or 0.0),
-                    "combined_confidence": combined_conf,
-                    "t": frame_time,
-                }
-            )
+            ev = {
+                "species_name": class_name,
+                "confidence": float(classifier_confidence or 0.0),
+                "detector_confidence": float(detector_confidence or 0.0),
+                "combined_confidence": combined_conf,
+                "t": frame_time,
+            }
+            if classifier_entropy is not None:
+                ev["entropy"] = float(classifier_entropy)
+            if classifier_top1_top2_margin is not None:
+                ev["top1_top2_margin"] = float(classifier_top1_top2_margin)
+            self.tracks[track_id]["classifier_events"].append(ev)
         self.tracks[track_id]["end_time"] = frame_time
 
         self.tracks[track_id]["frames"].append({"t": frame_time, "bbox": [round(float(b), 4) for b in bbox]})
@@ -273,3 +405,4 @@ class FrameProcessor:
             "light_gate_blocked": False,
             "result_count": 0,
         }
+        self._consecutive_no_track_frames = 0

@@ -26,6 +26,7 @@ from services.track_regen_service import (
     summarize_track_regen_detections as _summarize_track_regen_detections,
 )
 from services.visit_processor import VisitProcessor
+from shared.ctor_kwarg_guard import assert_ctor_kwargs
 from sqlalchemy import or_, select
 
 
@@ -245,12 +246,13 @@ def run_regenerate_tracks_worker(
             )
 
             visit_timeout = int(app_config.get("detection.dedup_window_seconds") or 60)
-            visit_processor = VisitProcessor(
-                db,
-                flask_app.logger,
-                visit_timeout=visit_timeout,
-                update_species_metadata=False,
+            _vp_kw = {"visit_timeout": visit_timeout, "update_species_metadata": False}
+            assert_ctor_kwargs(
+                VisitProcessor.__init__,
+                _vp_kw,
+                label="track_regen VisitProcessor",
             )
+            visit_processor = VisitProcessor(db, flask_app.logger, **_vp_kw)
             species_identity = SpeciesIdentityService(db, flask_app.logger)
             frame_processor, decision_maker = build_detection_pipeline(
                 app_config,
@@ -295,6 +297,11 @@ def run_regenerate_tracks_worker(
             if precise_params:
                 regen_params["precise_fallback"] = precise_params
             precise_pipeline = None
+            try:
+                _trff = app_config.get("processor.track_regen_fusion_min_confidence_to_store")
+                track_regen_fusion_floor = float(_trff) if _trff is not None else None
+            except (TypeError, ValueError):
+                track_regen_fusion_floor = None
             species_scope = set(species_ids_f) if species_ids_f else None
             scope_catalog_species: list[Species] = []
             scope_names_lc: set[str] = set()
@@ -371,10 +378,22 @@ def run_regenerate_tracks_worker(
 
             for video in videos:
                 species_name_to_id_cache.clear()
+
+                def _regen_progress(meta: dict):
+                    try:
+                        job_state._regenerate_tracks_status["progress"].update(meta)
+                    except Exception:
+                        flask_app.logger.debug(
+                            "track regen progress update failed",
+                            exc_info=True,
+                        )
+
                 job_state._regenerate_tracks_status["progress"].update(
                     current_video=video.video_path or None,
                     current_video_id=video.id,
                     phase="yolo_decode",
+                    yolo_frames_done=0,
+                    yolo_frames_total=None,
                 )
                 if not video.video_path:
                     skipped += 1
@@ -418,6 +437,8 @@ def run_regenerate_tracks_worker(
                         "decision_maker": decision_maker,
                         "frame_step": frame_step,
                         "max_runtime_sec": max_runtime_sec,
+                        "progress_hook": _regen_progress,
+                        "progress_hook_interval": 15,
                     }
 
                     def _precise_kwargs():
@@ -442,6 +463,8 @@ def run_regenerate_tracks_worker(
                             "decision_maker": precise_decision_maker,
                             "frame_step": precise_frame_step,
                             "max_runtime_sec": precise_max_runtime_sec,
+                            "progress_hook": _regen_progress,
+                            "progress_hook_interval": 15,
                         }
 
                     track_detections, precise_used = _run_track_regen_with_precise_fallback(
@@ -456,10 +479,16 @@ def run_regenerate_tracks_worker(
                         start_time=video.start_time,
                         end_time=video.end_time,
                         app_config=app_config,
+                        fusion_min_confidence_to_store=track_regen_fusion_floor,
                     )
                     if not detections and track_detections and precise_enabled and not precise_used:
                         precise_kwargs = _precise_kwargs()
                         if precise_kwargs:
+                            assert_ctor_kwargs(
+                                process_video_for_tracks,
+                                precise_kwargs,
+                                label="track_regen post-fusion precise_kwargs",
+                            )
                             track_detections = process_video_for_tracks(
                                 full_video,
                                 **precise_kwargs,
@@ -471,6 +500,7 @@ def run_regenerate_tracks_worker(
                                 start_time=video.start_time,
                                 end_time=video.end_time,
                                 app_config=app_config,
+                                fusion_min_confidence_to_store=track_regen_fusion_floor,
                             )
                             flask_app.logger.info(
                                 "Track regen: post-fusion precise pass (video_id=%s path=%s)",
@@ -480,6 +510,15 @@ def run_regenerate_tracks_worker(
                     if regen_species_scope_lc:
                         detections = [_remap_detection_to_local_scope(d, regen_species_scope_lc) for d in detections]
                     if not detections:
+                        flask_app.logger.warning(
+                            "Track regen: fused empty (video_id=%s path=%s precise_used=%s "
+                            "raw_track_rows=%s regen_fusion_floor=%s)",
+                            video.id,
+                            video.video_path,
+                            precise_used,
+                            len(track_detections or []),
+                            track_regen_fusion_floor,
+                        )
                         reason = "no_detections_after_precise_pass" if precise_used else "no_detections_fast_run"
                         skipped += 1
                         precise_candidates.append(
@@ -656,7 +695,6 @@ def run_regenerate_tracks_worker(
                             ).delete(synchronize_session=False)
                         visit_processor.process_detections(video, scoped_detections)
                         persisted_detections_for_trace = list(scoped_detections)
-                        generated += 1
                         if len(target_video_ids) == 1 and video.id == target_video_ids[0]:
                             single_video_regen_summary = _summarize_track_regen_detections(
                                 scoped_detections,
@@ -666,12 +704,12 @@ def run_regenerate_tracks_worker(
                         VideoSpecies.query.filter_by(video_id=video.id).delete()
                         visit_processor.process_detections(video, detections)
                         persisted_detections_for_trace = list(detections)
-                        generated += 1
                         if len(target_video_ids) == 1 and video.id == target_video_ids[0]:
                             single_video_regen_summary = _summarize_track_regen_detections(
                                 detections,
                             )
                             single_video_regen_summary.update(single_video_summary_extra)
+                    generated += 1
                     decision_trace = build_decision_trace_payload(
                         app_config=app_config,
                         start_time=video.start_time,

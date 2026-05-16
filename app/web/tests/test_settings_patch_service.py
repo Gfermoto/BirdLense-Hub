@@ -53,6 +53,44 @@ def test_normalize_drops_cameras_without_stream_name(monkeypatch):
     assert "zip" not in (app_config.config.get("secrets") or {})
 
 
+def test_normalize_preserves_detect_stream_name(monkeypatch):
+    from app_config.app_config import app_config
+    from services.settings_patch_service import normalize_settings_patch_updates
+
+    monkeypatch.setattr(
+        app_config,
+        "strip_contributor_admin_only_updates",
+        lambda u: u,
+    )
+    monkeypatch.setattr(
+        app_config,
+        "filter_sensitive_placeholders",
+        lambda u: u,
+    )
+    app_config.config.setdefault("secrets", {})["zip"] = "dropme"
+    updates = {
+        "video": {
+            "cameras": [
+                {
+                    "stream_name": "main",
+                    "detect_stream_name": "sub",
+                    "name": "Cam",
+                },
+            ],
+        },
+    }
+    out = normalize_settings_patch_updates(
+        updates,
+        access_role="admin",
+        contributor_tier_configured=False,
+    )
+    assert len(out["video"]["cameras"]) == 1
+    row = out["video"]["cameras"][0]
+    assert row["stream_name"] == "main"
+    assert row["detect_stream_name"] == "sub"
+    assert row["name"] == "Cam"
+
+
 def test_normalize_contributor_calls_strip_when_tier(monkeypatch):
     from app_config.app_config import app_config
     from services.settings_patch_service import normalize_settings_patch_updates

@@ -29,6 +29,7 @@ os.environ.pop("ESPHOME_FEEDER_URL", None)
 os.environ.pop("OPENWEATHER_API_KEY", None)
 os.environ.pop("HA_TOKEN", None)
 os.environ.pop("HA_URL", None)
+os.environ.setdefault("BIRDLENSE_RATELIMIT_DISABLED", "1")
 
 # Add project root to path (app/ on host, or /app in Docker)
 _app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -38,6 +39,11 @@ if _app_root not in sys.path:
 _parent = os.path.dirname(_app_root)
 if _parent not in sys.path and os.path.isdir(os.path.join(_parent, "app_config")):
     sys.path.insert(0, _parent)
+# inference.* (binary_paths, ml_lineage_service) — app/processor/src (_app_root is app/web).
+_app_home = os.path.dirname(_app_root)
+_processor_src = os.path.join(_app_home, "processor", "src")
+if os.path.isdir(_processor_src) and _processor_src not in sys.path:
+    sys.path.insert(0, _processor_src)
 
 
 @pytest.fixture

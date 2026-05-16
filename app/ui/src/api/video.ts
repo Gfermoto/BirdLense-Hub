@@ -24,6 +24,44 @@ export const fetchVideoDetectionFrames = async (id: string) => {
   };
 };
 
+export type VideoReidMatchItem = {
+  video_species_id: number;
+  track_id?: number | null;
+  species_name?: string | null;
+  individual_nickname?: string | null;
+  candidate_video_species_id?: number | null;
+  candidate_video_id?: number | null;
+  candidate_track_id?: number | null;
+  candidate_species_name?: string | null;
+  candidate_nickname?: string | null;
+  similarity: number;
+  decision?: string;
+  policy_decision?: string;
+  policy_reasons?: string[];
+  effective_threshold?: number | null;
+  cross_camera?: boolean;
+  hours_apart?: number | null;
+};
+
+export type VideoReidMatchPayload = {
+  schema: string;
+  available: boolean;
+  video_id: number;
+  message?: string;
+  policy?: Record<string, unknown>;
+  contract_ready?: boolean;
+  matches: VideoReidMatchItem[];
+};
+
+export const fetchVideoReidMatch = async (
+  id: string,
+): Promise<VideoReidMatchPayload> => {
+  const response = await axios.get(`${BASE_API_URL}/videos/${id}/reid-match`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 /** Prev/next video IDs for the selected day scope. */
 export type VideoNeighbors = {
   day_scope: 'utc' | 'local';
@@ -99,16 +137,29 @@ export const fetchNearestRecordingDay = async (
 };
 
 /** Mark recording as favorite (retention may skip it when protect favorites is on). Contributor/admin. */
-export const patchVideoFavorite = async (
+export type PatchVideoRecordingBody = {
+  favorite?: boolean;
+  behavior_label?: string | null;
+  behavior_confidence?: number | null;
+};
+
+export const patchVideoRecording = async (
   id: number,
-  favorite: boolean,
-): Promise<{ favorite?: boolean } & Record<string, unknown>> => {
+  body: PatchVideoRecordingBody,
+): Promise<Record<string, unknown>> => {
   const response = await axios.patch(
     `${BASE_API_URL}/videos/${id}`,
-    { favorite },
+    body,
     { withCredentials: true },
   );
   return response.data;
+};
+
+export const patchVideoFavorite = async (
+  id: number,
+  favorite: boolean,
+): Promise<Record<string, unknown>> => {
+  return patchVideoRecording(id, { favorite });
 };
 
 /** Delete video recording. Requires contributor or admin access. */

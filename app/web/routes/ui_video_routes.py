@@ -18,7 +18,7 @@ from services.dataset_export_service import (
 )
 from services.detection_crop_service import VIDEO_PATH_SAFE_RE
 from services.favorites_catalog_service import build_favorites_by_species_payload
-from services.http_response_cache import bust_response_caches
+from services.http_response_cache import bust_all_api_caches
 from services.video_neighbors_service import (
     VideoNeighborsParamError,
     build_video_neighbors_payload,
@@ -66,25 +66,56 @@ def register_ui_video_routes(app):
 
     @app.route("/api/ui/videos/<int:video_id>", methods=["PATCH"])
     def patch_video(video_id):
-        """Поле favorite: защита от retention при включённой настройке. Только contributor/admin."""
+        """Избранное и/или ручная правка поведения (#416). Только contributor/admin."""
         if not contributor_or_admin_access():
             return {"error": "Access denied"}, 403
         data, v_err = parse_request_json_dict(request)
         if v_err is not None:
             return v_err, 400
-        if "favorite" not in data:
-            return {"error": "favorite is required"}, 400
-        fav = data["favorite"]
-        if not isinstance(fav, bool):
-            return {"error": "favorite must be a boolean"}, 400
+        allowed_keys = {"favorite", "behavior_label", "behavior_confidence"}
+        if not data or any(k not in allowed_keys for k in data):
+            return {"error": "Invalid body"}, 400
         video = db.session.get(Video, video_id)
         if not video:
             return {"error": "Video not found"}, 404
         if video.deleted_at is not None:
             return {"error": "Video deleted"}, 410
-        video.favorite = fav
+
+        if "favorite" in data:
+            fav = data["favorite"]
+            if not isinstance(fav, bool):
+                return {"error": "favorite must be a boolean"}, 400
+            video.favorite = fav
+
+        if "behavior_label" in data:
+            raw = data["behavior_label"]
+            if raw is None or raw == "":
+                video.behavior_label = None
+                video.behavior_confidence = None
+            elif isinstance(raw, str):
+                lab = raw.strip().lower()[:32]
+                if not lab:
+                    video.behavior_label = None
+                else:
+                    video.behavior_label = lab
+            else:
+                return {"error": "behavior_label must be a string or null"}, 400
+
+        if "behavior_confidence" in data:
+            rawc = data["behavior_confidence"]
+            if rawc is None:
+                video.behavior_confidence = None
+            else:
+                try:
+                    cf = float(rawc)
+                except (TypeError, ValueError):
+                    return {"error": "behavior_confidence must be a number or null"}, 400
+                if cf < 0 or cf > 1:
+                    return {"error": "behavior_confidence must be between 0 and 1"}, 400
+                video.behavior_confidence = cf
+
         db.session.commit()
-        bust_response_caches()
+        bust_all_api_caches()
         video = (
             db.session.query(Video)
             .options(
@@ -183,7 +214,7 @@ def register_ui_video_routes(app):
 
             db.session.delete(video)
             db.session.commit()
-            bust_response_caches()
+            bust_all_api_caches()
 
             if recording_dir:
                 try:
@@ -317,7 +348,7 @@ def register_ui_video_routes(app):
             vp.update_simultaneous_count(new_visit, new_video_detections)
 
         db.session.commit()
-        bust_response_caches()
+        bust_all_api_caches()
         updated_count = len(to_update)
         return {
             "message": f"All {updated_count} detections merged to {species.name}",

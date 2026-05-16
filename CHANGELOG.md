@@ -10,11 +10,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
+- **A2 / roadmap [#418](https://github.com/Gfermoto/BirdLense-Hub/issues/418):** переменная **`BIRDLENSE_HIDE_DIRECT_RECORDINGS`** (`1`/`true`/`yes`/`on`) — при старте контейнера не добавляется nginx-`location` для **`/data/recordings/`**; анонимный доступ к предсказуемым URL получает **403**, воспроизведение остаётся через **`/api/ui/videos/:id/stream`** (`app/nginx/standalone.conf.template`, `app/scripts/entrypoint.sh`). Доки: **CONFIGURATION**, **SECURITY**, **DEPLOY_SERVER** (EN/RU), **`app/.env.example`**. Публичный VPS — единый чеклист: **`docs/PUBLIC_RECORDINGS*.md`** ([#423](https://github.com/Gfermoto/BirdLense-Hub/issues/423)).
+
 - **[#341](https://github.com/Gfermoto/BirdLense-Hub/issues/341):** на POST upload-роутах (веса процессора, file-test, restore SQLite, YAML import) отклоняется непустой **`Content-Encoding`**, кроме единственного значения **`identity`** — снижает риск decompression bomb при нетипичных клиентах (`services/upload_request_encoding_guard.py`). Путь из ревью `processor.js` / `uploads.js` в этом репозитории отсутствует; дублирующих Flask-логгеров по коду не найдено.
 
 - **[#339](https://github.com/Gfermoto/BirdLense-Hub/issues/339):** nginx больше не отдаёт весь volume `DATA_DIR` по префиксу `/data/`. Разрешены только **`/data/recordings/`**, **`/data/images/`**, **`/data/file_test/`** (видео, картинки каталога, file-replay); остальное, включая **`/data/db/*.db`**, датасет и кэш, получает **403** (`app/nginx/standalone.conf.template`, `standalone.conf`, `default.conf`).
 
 ### Changed
+
+- **Roadmap EN/RU:** секция **Scale / [#424](https://github.com/Gfermoto/BirdLense-Hub/issues/424)** — статус закрытого эпика и таблица результатов B1–B3 (ссылки на доки и [#432](https://github.com/Gfermoto/BirdLense-Hub/issues/432)–[#434](https://github.com/Gfermoto/BirdLense-Hub/issues/434)).
+
+- **Scale [#432](https://github.com/Gfermoto/BirdLense-Hub/issues/432):** процессор — наблюдаемость **`triggers.*`**: gauge в `processor_runtime_stats.json` (`trigger_cfg_*`, `trigger_mqtt_*`, `trigger_frigate_degraded_no_mqtt`, `trigger_*_paths_count`, …), счётчики fallback фабрики motion (`trigger_motion_factory_*`), обновление при старте motion-стека и connect/disconnect MQTT (`trigger_runtime_gauges.py`, `motion_runtime.py`, `mqtt_aggregator.py`, `motion_detectors/factory.py`).
+
+- **Scale [#433](https://github.com/Gfermoto/BirdLense-Hub/issues/433):** документация — очереди/backpressure (`mqtt.publish_queue_max`, `mqtt_outbound_*`, `motion_trigger_queue_drop_total`, `feeder_scale_queue_drops_total`) в **PROCESSOR_PERFORMANCE** EN/RU, **CONFIGURATION** EN/RU (ключ `publish_queue_max`), **TROUBLESHOOTING** EN/RU.
+
+- **Scale [#434](https://github.com/Gfermoto/BirdLense-Hub/issues/434) / epic [#424](https://github.com/Gfermoto/BirdLense-Hub/issues/424):** операторский SSOT для PostgreSQL как БД хаба — **`docs/POSTGRES_MIGRATION.md`** / **`.ru.md`** (compose, `DATABASE_URL`, пул, greenfield vs миграция данных, ограничения процессорского SQLite и BirdNET FIFO); навигация **MkDocs**, **SITE_MAP** EN/RU, строки в **CONFIGURATION** EN/RU, блок в **RUNBOOKS** EN/RU.
+
+- **A2 / roadmap [#423](https://github.com/Gfermoto/BirdLense-Hub/issues/423):** единый операторский SSOT для публичного контура записей — **`docs/PUBLIC_RECORDINGS.md`** / **`.ru.md`**; **SECURITY** / **DEPLOY_SERVER** / **CONFIGURATION** / **ACCESS_CONTROL** сведены к перекрёстным ссылкам вместо дублирования чеклистов; **mkdocs**, **SITE_MAP**, **README** (EN/RU).
+
+- **Деплой (доки):** явно зафиксирован сценарий **только `http://IP:порт`** без домена и без внешнего reverse proxy до появления DNS/TLS — `DEPLOY_SERVER` (EN/RU), `deploy.local.sh.example`, `.cursor/rules/deploy.mdc`, подсказка в конце `scripts/deploy.sh`.
+
+- **A1 / деплой:** опционально **`RUN_VERIFY_PROD_BEFORE_DEPLOY=1`** в `deploy.local.sh` — перед rsync вызывается **`scripts/verify-prod-env.sh`** по локальной копии server **`app/.env`**; цель **`make preflight-deploy`** (= `verify-prod-env` + **`make verify`**). Пример базового URL VPS в **`DEPLOY_SERVER`** (EN/RU).
+
+- **A3 / наблюдаемость CV:** в JSON-строке **`recording_session_summary`** (processor logs) добавлены поля **`duration_s`**, **`triggered_camera`**, **`yolo_frames_with_tracks`**, **`session_extended_by_frigate_only`** — проще root-cause по воронке; **TROUBLESHOOTING** EN/RU обновлены.
+
+- **Триггеры и конфиг:** из **`default_config.yaml`** убран блок **`motion:`**; источник истины для захвата — **`triggers.*`**. Остаток **`motion:`** в пользовательском YAML при загрузке сворачивается в **`triggers`** (**`migrate_legacy_motion_block`**, **`fold_legacy_motion_out_of_merged_config`**). **`get_effective_trigger_config`** без чтения **`motion.*`** как fallback; нужен явный **`triggers.frigate.enabled`** для записи по Frigate. UI: фильтры Frigate в **`triggers.frigate.*`**. Документы ARCHITECTURE, CONFIGURATION (EN/RU), TESTING/TROUBLESHOOTING/GLOSSARY (EN/RU), CONFIGURATION_TRIGGERS_INVENTORY (EN/RU), SETTINGS_TRIGGERS_PHASE2 (EN/RU) приведены в соответствие.
+
+- **Документация:** актуализация ROADMAP EN/RU — секция **Scale / [#424](https://github.com/Gfermoto/BirdLense-Hub/issues/424)** (треки B1–B3: motion/triggers, очередь процессора, Postgres); дочерние issues **#432–#434**; родитель фазы [#418](https://github.com/Gfermoto/BirdLense-Hub/issues/418). Ранее в этом блоке: апрель 2026 в заголовках backlog, UI видов **v0.3.7+**, outcome эпика реестра; SECURITY EN/RU (baseline gitleaks); индекс [docs/README](docs/README.md) / [README.ru](docs/README.ru.md) и эпик CV/ML [#367](https://github.com/Gfermoto/BirdLense-Hub/issues/367), [CV_ML_PREP](docs/CV_ML_PREP.md) / [RU](docs/CV_ML_PREP.ru.md), [HUB_EPICS_TRACKER](docs/HUB_EPICS_TRACKER.md) / [RU](docs/HUB_EPICS_TRACKER.ru.md); [VERIFICATION](docs/VERIFICATION.md) / [RU](docs/VERIFICATION.ru.md).
 
 - **[#343](https://github.com/Gfermoto/BirdLense-Hub/issues/343) (фазы C–D):** UI — **`BirdFood`** и ответы **`/status`**, **`/readiness`** типизированы через **`openapi-types`** (`types.ts`, **`camerasHealth.ts`**); документ **`docs/project/UI_API_MANUAL_CONTRACTS.md`** (ручные контракты: камеры, feed/info, observability) + ссылка из **`docs/project/openapi.md`**; Vitest: **`client.test.ts`**, **`camerasHealth.test.ts`**, **`birdFoodFeed.test.ts`**; **`data-testid`** на пунктах навигации (**`nav-pill-*`**, **`nav-live`**, мобильное **`nav-mobile-*`**) и смоук **Playwright** на **`nav-pill-timeline`**.
 
@@ -387,7 +409,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Статус MQTT в шапке:** при работающем процессоре индикатор берёт **`mqtt_connected` из heartbeat** (тот же клиент, что Frigate/BirdNET). Дополнительно: проверка из веб-процесса ждёт до ~2 с после `loop_start()` и нормализует `mqtt.port` в int — меньше ложных «ошибок» из-за гонки.
 - **UI (страница видео):** кнопки «предыдущая / следующая запись» не работали из‑за обращения к несуществующей переменной `listReturnState` (**ReferenceError** в обработчике). Исправлено: `useLocation()`, сохранение `state.from` при переходе к соседним роликам (как с Timeline / Unknowns). Журнал проверок: [VERIFICATION.ru.md](docs/VERIFICATION.ru.md) / [EN](docs/VERIFICATION.md).
 - **UI / доступ:** `GET /api/ui/settings/check-access` всегда отвечает **200** с `{ unlocked: false }`, если сессия не разблокирована (раньше **403** — шум в консоли браузера). Защищённые POST/PATCH по-прежнему возвращают 403 без сессии.
-- **Processor:** при **single_stage** и **80 классах COCO** детекция по умолчанию только **животные** классы (без person и без предметов): `processor.single_stage_coco_animals_only_auto` (по умолчанию true; читается и устаревший `single_stage_coco_bird_only_auto`, если новый ключ не задан).
+- **Processor:** удалён legacy-compat флаг для старого single-stage COCO animal-only режима; runtime и конфигурация сведены к production-пайплайну `two_stage`.
 
 ### Changed
 

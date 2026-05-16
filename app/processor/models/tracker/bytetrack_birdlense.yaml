@@ -1,0 +1,13 @@
+# Дневной сценарий (нормальный свет): тот же трекер, что и без adaptive «night».
+# track_high_thresh / new_track_thresh ДОЛЖНЫ быть < processor.binary_track_ultralytics conf,
+# иначе ByteTrack не выдаёт track id при conf из YOLO — detect() пустой (см. detection_strategy).
+# max_det/NMS — processor.binary_track_* (Ultralytics track()).
+# upstream: ultralytics/cfg/trackers/bytetrack.yaml (8.4.x)
+tracker_type: bytetrack
+# Универсальный профиль: мягче старт трека, чтобы не терять дальний/мелкий объект.
+track_high_thresh: 0.12
+track_low_thresh: 0.05
+new_track_thresh: 0.12
+track_buffer: 32
+match_thresh: 0.82
+fuse_score: true

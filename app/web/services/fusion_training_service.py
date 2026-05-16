@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 import sys
 from collections.abc import Mapping
 from datetime import datetime, timezone
@@ -17,6 +18,8 @@ from sqlalchemy.orm import joinedload
 
 from data_paths import data_dir
 from models import ActivityLog, VideoSpecies, db
+
+_log = logging.getLogger(__name__)
 
 
 def repo_root() -> Path:
@@ -227,6 +230,16 @@ def _persisted_track_list_from_trace_payload(payload: dict) -> list:
     return at if isinstance(at, list) else []
 
 
+def _opt_float_csv(v: object) -> float | str:
+    """Число для CSV или пустая строка если нет значения."""
+    if v is None:
+        return ""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return ""
+
+
 def normalize_fusion_trace_row(row: dict) -> dict:
     """Привести строку трассы к полям CSV экспорта."""
     accepted = bool(row.get("accepted"))
@@ -263,6 +276,9 @@ def normalize_fusion_trace_row(row: dict) -> dict:
         "audio_conflict_species": row.get("audio_conflict_species") or "",
         "audio_conflict_score": row.get("audio_conflict_score") or 0.0,
         "classifier_vote_share": row.get("classifier_vote_share") or 0.0,
+        "classifier_entropy": _opt_float_csv(row.get("classifier_entropy")),
+        "classifier_top1_top2_margin": _opt_float_csv(row.get("classifier_top1_top2_margin")),
+        "classifier_needs_review": 1 if bool(row.get("classifier_needs_review")) else 0,
         "track_id": row.get("track_id") or 0,
         "video_id": row.get("video_id") or 0,
         "species_name": row.get("species_name") or row.get("species") or "",
@@ -340,6 +356,9 @@ def run_fusion_export_job() -> dict:
                 "audio_conflict_species",
                 "audio_conflict_score",
                 "classifier_vote_share",
+                "classifier_entropy",
+                "classifier_top1_top2_margin",
+                "classifier_needs_review",
                 "track_id",
                 "video_id",
                 "species_name",
@@ -393,7 +412,12 @@ def run_fusion_export_job() -> dict:
                         extra = json.loads(raw_extra)
                     else:
                         extra = dict(raw_extra)
-                except Exception:
+                except (json.JSONDecodeError, TypeError, ValueError):
+                    _log.debug(
+                        "VideoSpecies.extra JSON/normalize failed id=%s",
+                        getattr(r, "id", None),
+                        exc_info=True,
+                    )
                     extra = {}
             det_c = extra.get("detector_confidence") or getattr(r, "confidence", 0.0)
             clf_c = extra.get("classifier_confidence") or getattr(r, "confidence", 0.0)

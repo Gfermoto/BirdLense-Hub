@@ -70,8 +70,22 @@ esphome upload esphome/bird-feeder-scale.yaml
 
 - Прошивка на базе [ESP32_LD2450](https://github.com/53l3cu5/ESP32_LD2450) / [веб-конфигуратор](https://53l3cu5.github.io/): нативный компонент `ld2450`, три HW-зоны, цели 1–3, кнопки записи конфигурации в радар.
 - **Секреты:** в `secrets.yaml` добавьте `api_encryption_key`, `hotspot_password` (см. `secrets.yaml.example`) плюс стандартные `wifi_*`, `ota_password`.
-- **BirdLense:** триггер записи можно взять из HA через MQTT binary или напрямую `triggers.motion_sensor` с `source: mqtt` / `source: esphome` — см. `app/app_config/default_config.yaml` и `app/processor/src/motion_detectors/factory.py`. Сейчас в конфиге один канал motion; объединение **радар ИЛИ PIR** удобнее сделать в ESPHome template + один MQTT topic или в HA automation (в YAML есть комментарий в конце файла).
+- **BirdLense:** триггер записи можно взять из HA через MQTT binary или напрямую `triggers.motion_sensor` с `source: mqtt` / `source: esphome` — см. `app/app_config/default_config.yaml` и `app/processor/src/motion_detectors/factory.py`.
+- **Выбранный сценарий PIR+радар для площадки (issue #376): Вариант 1.** Делайте OR на стороне ESPHome (`template binary_sensor`: `radar_has_target OR pir_gpio`) и публикуйте единый state в один MQTT topic (например `birdlense/motion`). В хабе указывайте этот же топик в `triggers.motion_sensor.mqtt_topic`.
 - **Карта в HA:** пример `custom:plotly-graph` — `esphome/home-assistant/ld2450-plotly-graph.card.yaml` (подставьте реальные `entity_id` из Developer Tools → States).
+
+### Выбранный сценарий PIR + радар для площадки (issue #376)
+
+Для BirdLense-Hub принят **вариант 1**:
+
+- в ESPHome/HA собираем `radar_has_target OR pir_gpio`,
+- публикуем состояние в **один** MQTT topic (например, `birdlense/motion/ld2450_or_pir`),
+- в хабе указываем `triggers.motion_sensor.source: mqtt` и этот же `mqtt_topic`.
+
+Почему так:
+
+- в хабе сейчас один канал `motion_sensor`, без мульти-топиков,
+- OR на стороне ESPHome/HA даёт простой и предсказуемый контракт для `factory.py`.
 
 ```bash
 esphome compile esphome/ld2450-native-zones.yaml

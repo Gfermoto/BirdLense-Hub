@@ -193,8 +193,8 @@ class BirdnetFifoPersist:
             logger.exception("BirdNET FIFO persist: schema init failed")
             try:
                 conn.close()
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug("BirdNET FIFO persist: conn.close after schema error: %s", e, exc_info=True)
             return
 
         while True:
@@ -238,5 +238,5 @@ class BirdnetFifoPersist:
 
         try:
             conn.close()
-        except OSError:
-            pass
+        except OSError as e:
+            logger.debug("BirdNET FIFO persist: conn.close on worker stop: %s", e, exc_info=True)

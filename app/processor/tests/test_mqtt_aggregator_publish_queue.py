@@ -129,6 +129,36 @@ class TestMqttAggregatorPublishQueue(unittest.TestCase):
         self.assertIn(("birdlense/sensor/feeder_weight/state", "45.6", 1, True), queued)
         self.assertIn(("birdlense/binary_sensor/feeder_bird_present/state", "ON", 1, True), queued)
 
+    def test_custom_queue_sizes_are_applied(self):
+        agg = MQTTEventAggregator(
+            broker="127.0.0.1",
+            max_events=7,
+            publish_queue_max=11,
+            feeder_scale_queue_max=13,
+        )
+        self.assertEqual(agg._events.maxlen, 7)
+        self.assertEqual(agg._publish_queue.maxsize, 11)
+        self.assertEqual(agg._feeder_scale_queue_max, 13)
+
+    def test_event_fifo_keeps_latest_when_over_capacity(self):
+        agg = MQTTEventAggregator(
+            broker="127.0.0.1",
+            max_events=1,
+        )
+
+        class Msg:
+            def __init__(self, topic, payload):
+                self.topic = topic
+                self.payload = payload
+
+        p1 = json.dumps({"after": {"camera": "c1", "label": "bird", "top_score": 0.61}}).encode()
+        p2 = json.dumps({"after": {"camera": "c2", "label": "bird", "top_score": 0.74}}).encode()
+        agg._on_message(None, None, Msg("frigate/events", p1))
+        agg._on_message(None, None, Msg("frigate/events", p2))
+
+        self.assertEqual(len(agg._events), 1)
+        self.assertEqual(agg._events[0].get("camera"), "c2")
+
 
 if __name__ == "__main__":
     unittest.main()

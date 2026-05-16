@@ -14,21 +14,19 @@ import logging
 from flask import Flask, jsonify
 
 from auth import (
-    _is_production_runtime,
     contributor_or_admin_access,
     mcp_bearer_authorized,
 )
+from services.runtime_env import env_flag_enabled, is_production_runtime
 
 
 def _env_flag_enabled(raw: str | None) -> bool:
-    if raw is None:
-        return False
-    return raw.strip().lower() in ("1", "true", "yes", "on")
+    return env_flag_enabled(raw)
 
 
 def strict_ui_api_auth_enabled() -> bool:
     """Strict gate: production runtime and explicit env flag."""
-    return _is_production_runtime() and _env_flag_enabled(os.environ.get("BIRDLENSE_STRICT_API_AUTH"))
+    return is_production_runtime() and _env_flag_enabled(os.environ.get("BIRDLENSE_STRICT_API_AUTH"))
 
 
 def security_monitor_only_enabled() -> bool:
@@ -101,6 +99,8 @@ _PUBLIC_GET_EXACT: frozenset[str] = frozenset(
         "/api/ui/birdfood",
         "/api/ui/favorites/by-species",
         "/api/ui/corrections/recent",
+        "/api/ui/storage/stats",
+        "/api/ui/storage/nearest-recording-day",
     }
 )
 

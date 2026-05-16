@@ -42,6 +42,8 @@ from services.settings_patch_service import (
 )
 from util import data_dir, notify_telegram_test
 
+from extensions import limiter
+
 
 def register_ui_settings_routes(app):
     @app.route("/api/ui/settings/requires-password", methods=["GET"])
@@ -177,6 +179,7 @@ def register_ui_settings_routes(app):
         )
 
     @app.route("/api/ui/settings/yaml-import", methods=["POST"])
+    @limiter.limit("30 per hour")
     def settings_yaml_import():
         """Импорт YAML в user_config: merge с текущим user, *** не перезаписывают секреты."""
         if not admin_settings_yaml_access():
@@ -216,6 +219,7 @@ def register_ui_settings_routes(app):
         }, 200
 
     @app.route("/api/ui/settings", methods=["PATCH"])
+    @limiter.limit("180 per minute")
     def update_settings():
         if not contributor_or_admin_access():
             return {"error": "Password required"}, 403
@@ -239,6 +243,7 @@ def register_ui_settings_routes(app):
             return {"error": "Failed to save settings"}, 500
 
     @app.route("/api/ui/notify/test", methods=["POST"])
+    @limiter.limit("30 per minute")
     def notify_test():
         if not settings_check_access():
             return {"error": "Password required"}, 403
@@ -254,6 +259,7 @@ def register_ui_settings_routes(app):
         return {"error": err or "Failed"}, 500
 
     @app.route("/api/ui/restart-processor", methods=["POST"])
+    @limiter.limit("30 per minute")
     def restart_processor():
         if not contributor_or_admin_access():
             return {"error": "Password required"}, 403

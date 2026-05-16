@@ -38,11 +38,13 @@ try:
         _regional_class_ids,
         binary_track_ultralytics_conf_floor,
         bird_skip_classifier_area_limit,
+        build_binary_track_ultralytics_extras,
         per_label_binary_conf_threshold,
         should_skip_bird_species_classifier,
     )
 except ImportError:
     TwoStageStrategy = None  # type: ignore
+    build_binary_track_ultralytics_extras = None  # type: ignore
     _regional_class_ids = None  # type: ignore
     binary_track_ultralytics_conf_floor = None  # type: ignore
     bird_skip_classifier_area_limit = None  # type: ignore
@@ -117,7 +119,7 @@ class TestDetectionStrategy(unittest.TestCase):
         self.project_root = os.path.abspath(os.path.join(current_dir, "../../.."))
 
         # PyTorch two_stage (.pt): см. scripts/fetch-processor-weights.sh и Dockerfile.
-        self.binary_model_path = os.path.join(self.project_root, "app/processor/models/detection/weights/best.pt")
+        self.binary_model_path = os.path.join(self.project_root, "app/processor/models/detection/weights/yolo11n.pt")
         self.classifier_model_path = os.path.join(
             self.project_root, "app/processor/models/classification/weights/best.pt"
         )
@@ -266,7 +268,7 @@ class TestDetectionStrategy(unittest.TestCase):
 
         boxes = _FakeBoxes(
             track_ids=[1, 2, 3],
-            class_indexes=[0, 0, 0],
+            class_indexes=[14, 14, 14],
             confidences=[0.9, 0.85, 0.8],
             boxes_norm=[
                 [0.0, 0.0, 0.25, 0.25],
@@ -286,7 +288,7 @@ class TestDetectionStrategy(unittest.TestCase):
             (),
             {
                 "track": lambda *args, **kwargs: [_FakeDetectResult(boxes)],
-                "names": {0: "bird"},
+                "names": {14: "bird"},
             },
         )()
         strategy.classifier_model = _FakeClassifierModel(
@@ -330,7 +332,7 @@ class TestDetectionStrategy(unittest.TestCase):
 
         boxes = _FakeBoxes(
             track_ids=[1, 2, 3, 4],
-            class_indexes=[0, 0, 0, 0],
+            class_indexes=[14, 14, 14, 14],
             confidences=[0.9, 0.85, 0.8, 0.75],
             boxes_norm=[
                 [0.0, 0.0, 0.2, 0.2],
@@ -352,7 +354,7 @@ class TestDetectionStrategy(unittest.TestCase):
             (),
             {
                 "track": lambda *args, **kwargs: [_FakeDetectResult(boxes)],
-                "names": {0: "bird"},
+                "names": {14: "bird"},
             },
         )()
         strategy.classifier_model = _FakeClassifierModel(
@@ -391,12 +393,28 @@ class _FakeBoxesNoTrackId:
     def __init__(self):
         self.id = None
         self.conf = _FakeTensor([0.9])
-        self.cls = _FakeTensor([0])
+        self.cls = _FakeTensor([14])
         self.xyxyn = _FakeTensor([[0.2, 0.2, 0.6, 0.6]])
         self.xyxy = _FakeTensor([[100, 100, 300, 300]])
 
     def __len__(self):
         return 1
+
+
+class _FakeBoxesNoTrackIdParam:
+    """Several boxes without track ids — для regen IoU fallback."""
+
+    def __init__(self, boxes_norm, boxes_abs, confidences=None):
+        self.id = None
+        n = len(boxes_norm)
+        c = confidences if confidences is not None else [0.9] * n
+        self.conf = _FakeTensor(c)
+        self.cls = _FakeTensor([14] * n)
+        self.xyxyn = _FakeTensor(boxes_norm)
+        self.xyxy = _FakeTensor(boxes_abs)
+
+    def __len__(self):
+        return len(self.conf.tolist())
 
 
 class TestTrackIdMissingBehavior(unittest.TestCase):
@@ -413,7 +431,7 @@ class TestTrackIdMissingBehavior(unittest.TestCase):
                 return [_FakeDetectResult(_FakeBoxesNoTrackId())]
             good = _FakeBoxes(
                 [42],
-                [0],
+                [14],
                 [0.9],
                 [[0.1, 0.1, 0.4, 0.4]],
                 [[1, 1, 50, 50]],
@@ -436,7 +454,7 @@ class TestTrackIdMissingBehavior(unittest.TestCase):
             calls.append(1)
             good = _FakeBoxes(
                 [7],
-                [0],
+                [14],
                 [0.9],
                 [[0.1, 0.1, 0.4, 0.4]],
                 [[1, 1, 50, 50]],
@@ -450,7 +468,7 @@ class TestTrackIdMissingBehavior(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertEqual(results[0].boxes.id.tolist(), [7])
 
-    def test_two_stage_returns_empty_when_ids_stay_none(self):
+    def test_two_stage_live_iou_fallback_keeps_detection_when_ids_stay_none(self):
         if TwoStageStrategy is None:
             self.skipTest("TwoStageStrategy not available (import failed).")
         frame = np.zeros((400, 400, 3), dtype=np.uint8)
@@ -461,10 +479,10 @@ class TestTrackIdMissingBehavior(unittest.TestCase):
             (),
             {
                 "track": lambda *args, **kwargs: [_FakeDetectResult(boxes)],
-                "names": {0: "bird"},
+                "names": {14: "bird"},
             },
         )()
-        strategy.classifier_model = _FakeClassifierModel({0: "X"}, {10: [1.0]})
+        strategy.classifier_model = _FakeClassifierModel({0: "X"}, {0: [1.0]})
         strategy.classes = None
         strategy.regional_species = None
         strategy.logger = logging.getLogger("test")
@@ -478,7 +496,140 @@ class TestTrackIdMissingBehavior(unittest.TestCase):
         strategy.is_blurry = lambda crop: (False, 250.0)
 
         results = strategy.detect(frame, "bytetrack.yaml", 0.1)
-        self.assertEqual(results, [])
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].track_id, 1)
+
+
+class TestGreedyIoUTrackIds(unittest.TestCase):
+    def test_greedy_match_reuses_prev_id_when_iou_high(self):
+        from detection_strategy import _greedy_match_iou_track_ids
+
+        prev = np.array([[0.2, 0.2, 0.55, 0.55]])
+        curr = np.array([[0.21, 0.21, 0.56, 0.56]])
+        ids, nid = _greedy_match_iou_track_ids(prev, [42], curr, iou_thr=0.25, next_id=100)
+        self.assertEqual(ids, [42])
+        self.assertEqual(nid, 100)
+
+    def test_greedy_match_allocates_next_id_when_iou_low(self):
+        from detection_strategy import _greedy_match_iou_track_ids
+
+        prev = np.array([[0.1, 0.1, 0.2, 0.2]])
+        curr = np.array([[0.8, 0.8, 0.9, 0.9]])
+        ids, nid = _greedy_match_iou_track_ids(prev, [1], curr, iou_thr=0.25, next_id=7)
+        self.assertEqual(ids, [7])
+        self.assertEqual(nid, 8)
+
+
+class TestRegenSyntheticTrackIds(unittest.TestCase):
+    def test_two_stage_regen_iou_fallback_stable_id_across_frames(self):
+        if TwoStageStrategy is None:
+            self.skipTest("TwoStageStrategy not available (import failed).")
+        try:
+            import app_config.app_config as ac_mod
+        except ImportError:
+            self.skipTest("app_config not available on PYTHONPATH")
+
+        frame = np.zeros((320, 320, 3), dtype=np.uint8)
+        frame[60:180, 60:180] = 77
+
+        b1 = _FakeBoxesNoTrackIdParam([[0.15, 0.15, 0.52, 0.52]], [[48, 48, 166, 166]])
+        b2 = _FakeBoxesNoTrackIdParam([[0.16, 0.16, 0.53, 0.53]], [[51, 51, 170, 170]])
+        rounds = [{"box": b1}, {"box": b2}]
+
+        def fake_track_model():
+            ri = {"i": 0}
+
+            def track(*a, **k):
+                bx = rounds[ri["i"]]["box"]
+                ri["i"] += 1
+                return [_FakeDetectResult(bx)]
+
+            return track
+
+        strategy = TwoStageStrategy.__new__(TwoStageStrategy)
+        strategy.binary_model = type(
+            "FakeBinaryModel",
+            (),
+            {
+                "track": fake_track_model(),
+                "names": {14: "bird"},
+            },
+        )()
+        strategy.classifier_model = _FakeClassifierModel({0: "Great_Tit"}, {77: [1.0], 0: [1.0]})
+        strategy.classes = None
+        strategy.regional_species = None
+        strategy.logger = logging.getLogger("test_regen_iou")
+        strategy.detector_scope = {"Bird", "Rodent"}
+        strategy.min_center_dist = 0.0
+        strategy.min_box_size_px = 1
+        strategy.blur_threshold = 0.0
+        strategy.max_blur_checks = 3
+        strategy.max_classifications_per_frame = 2
+        strategy.classification_scheduler = "priority"
+        strategy._classification_index = 0
+        strategy.binary_imgsz = 640
+        strategy.inference_backend = "torch"
+        strategy._for_track_regen = True
+        strategy._regen_iou_prev_boxes = None
+        strategy._regen_iou_prev_ids = None
+        strategy._regen_iou_next_id = 1
+        strategy.is_blurry = lambda crop: (False, 250.0)
+
+        cfg_map = {
+            "processor.track_regen_iou_id_fallback": True,
+            "processor.track_regen_iou_match_threshold": 0.22,
+            "processor.binary_track_missing_id_extra_retries": 0,
+            "processor.min_confidence_binary_bird": 0.12,
+            "processor.min_confidence_binary_rodent": 0.12,
+            "processor.max_classifications_per_frame": 4,
+            "processor.min_box_size_px": 1,
+            "processor.binary_imgsz": 640,
+        }
+
+        def _cfg_get(key, default=None):
+            return cfg_map.get(key, default)
+
+        mock_cfg = MagicMock(get=MagicMock(side_effect=_cfg_get))
+        with patch.object(ac_mod, "app_config", mock_cfg):
+            r1 = strategy.detect(frame, "bytetrack.yaml", 0.12)
+            r2 = strategy.detect(frame, "bytetrack.yaml", 0.12)
+
+        self.assertEqual(len(r1), 1)
+        self.assertEqual(len(r2), 1)
+        self.assertEqual(r1[0].track_id, 1)
+        self.assertEqual(r2[0].track_id, 1)
+
+
+class TestBinaryPredictClassAllowlist(unittest.TestCase):
+    def test_allowlist_parses_processor_key(self):
+        if TwoStageStrategy is None:
+            self.skipTest("TwoStageStrategy unavailable")
+        from processor_runtime_profile import RuntimeProfileConfigOverlay
+
+        s = TwoStageStrategy.__new__(TwoStageStrategy)
+
+        def _g(k, d=None):
+            if k == "processor.binary_predict_class_allowlist":
+                return [14, 99]
+            return d
+
+        mock = MagicMock(get=MagicMock(side_effect=_g))
+        rt = RuntimeProfileConfigOverlay(mock, None)
+        self.assertEqual(s._binary_class_allowlist(rt), {14, 99})
+
+    def test_allowlist_empty_returns_none(self):
+        if TwoStageStrategy is None:
+            self.skipTest("TwoStageStrategy unavailable")
+        from processor_runtime_profile import RuntimeProfileConfigOverlay
+
+        s = TwoStageStrategy.__new__(TwoStageStrategy)
+
+        def _g(k, d=None):
+            return [] if k == "processor.binary_predict_class_allowlist" else d
+
+        mock = MagicMock(get=MagicMock(side_effect=_g))
+        rt = RuntimeProfileConfigOverlay(mock, None)
+        self.assertIsNone(s._binary_class_allowlist(rt))
 
 
 class TestBinaryConfHelpers(unittest.TestCase):
@@ -521,6 +672,32 @@ class TestBinaryConfHelpers(unittest.TestCase):
         self.assertIsNone(bird_skip_classifier_area_limit({}))
 
 
+class TestBuildBinaryTrackUltralyticsExtras(unittest.TestCase):
+    def test_extras_include_iou_and_max_det_when_valid(self):
+        if build_binary_track_ultralytics_extras is None:
+            self.skipTest("detection_strategy import failed")
+        cfg = {
+            "processor.binary_track_iou": 0.72,
+            "processor.binary_track_max_det": 384,
+        }
+        self.assertEqual(
+            build_binary_track_ultralytics_extras(cfg),
+            {"iou": 0.72, "max_det": 384},
+        )
+
+    def test_extras_skip_invalid_or_out_of_range(self):
+        if build_binary_track_ultralytics_extras is None:
+            self.skipTest("detection_strategy import failed")
+        self.assertEqual(
+            build_binary_track_ultralytics_extras({"processor.binary_track_iou": 0.01}),
+            {},
+        )
+        self.assertEqual(
+            build_binary_track_ultralytics_extras({"processor.binary_track_max_det": 5000}),
+            {},
+        )
+
+
 class TestTwoStageBirdSkipClassifier(unittest.TestCase):
     def test_tiny_bird_skips_classifier_when_area_limit_set(self):
         if TwoStageStrategy is None:
@@ -535,7 +712,7 @@ class TestTwoStageBirdSkipClassifier(unittest.TestCase):
         # bbox ~8% area — ниже порога skip 0.10
         boxes = _FakeBoxes(
             track_ids=[1],
-            class_indexes=[0],
+            class_indexes=[14],
             confidences=[0.95],
             boxes_norm=[[0.0, 0.0, 0.2, 0.2]],
             boxes_abs=[[0, 0, 40, 40]],
@@ -547,7 +724,7 @@ class TestTwoStageBirdSkipClassifier(unittest.TestCase):
             (),
             {
                 "track": lambda *args, **kwargs: [_FakeDetectResult(boxes)],
-                "names": {0: "bird"},
+                "names": {14: "bird"},
             },
         )()
         strategy.classifier_model = _FakeClassifierModel(
@@ -578,6 +755,88 @@ class TestTwoStageBirdSkipClassifier(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertIsNone(results[0].class_name)
         self.assertIsNone(results[0].classifier_confidence)
+
+
+class TestSmallObjectAutoRelax(unittest.TestCase):
+    def test_auto_small_object_relax_recovers_small_box(self):
+        if TwoStageStrategy is None:
+            self.skipTest("TwoStageStrategy import failed")
+        try:
+            import app_config.app_config as ac_mod
+        except ImportError:
+            self.skipTest("app_config not available on PYTHONPATH")
+
+        frame = np.zeros((120, 120, 3), dtype=np.uint8)
+        frame[10:26, 10:26] = 33
+        boxes = _FakeBoxes(
+            track_ids=[7],
+            class_indexes=[14],
+            confidences=[0.23],
+            boxes_norm=[[0.08, 0.08, 0.22, 0.22]],
+            boxes_abs=[[10, 10, 26, 26]],
+        )
+
+        strategy = TwoStageStrategy.__new__(TwoStageStrategy)
+        strategy.binary_model = type(
+            "FakeBinaryModel",
+            (),
+            {
+                "track": lambda *args, **kwargs: [_FakeDetectResult(boxes)],
+                "names": {14: "bird"},
+            },
+        )()
+        strategy.classifier_model = _FakeClassifierModel(
+            {0: "Great_Tit"},
+            {33: [1.0]},
+        )
+        strategy.classes = None
+        strategy.regional_species = None
+        strategy.logger = logging.getLogger("test_small_relax")
+        strategy.detector_scope = {"Bird", "Rodent"}
+        strategy.min_center_dist = 0.03
+        strategy.min_box_size_px = 40
+        strategy.blur_threshold = 0.0
+        strategy.max_blur_checks = 3
+        strategy.max_classifications_per_frame = 2
+        strategy._classification_index = 0
+        strategy.is_blurry = lambda crop: (False, 250.0)
+        strategy.classification_scheduler = "priority"
+        strategy.binary_imgsz = 640
+        strategy._for_track_regen = False
+
+        def _cfg_get(key, default=None):
+            mapping = {
+                "processor.auto_small_object_relax_enabled": True,
+                "processor.auto_small_object_relax_min_box_size_px": 12,
+                "processor.auto_small_object_relax_min_center_dist": 0.0,
+                "processor.auto_small_object_relax_conf_delta": 0.08,
+                "processor.auto_small_object_relax_max_candidates": 2,
+                "processor.min_confidence_binary_bird": 0.24,
+            }
+            return mapping.get(key, default)
+
+        mock_cfg = MagicMock(get=MagicMock(side_effect=_cfg_get))
+        with patch.object(ac_mod, "app_config", mock_cfg):
+            results = strategy.detect(frame, "bytetrack.yaml", 0.24)
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].track_id, 7)
+
+
+class TestEntropyMargin(unittest.TestCase):
+    def test_entropy_and_margin_pure_numpy(self):
+        from detection_strategy import entropy_and_margin_from_prob_vector
+
+        p = np.ones(100, dtype=np.float64) / 100.0
+        ent, margin = entropy_and_margin_from_prob_vector(p)
+        self.assertGreater(ent, 4.5)
+        self.assertAlmostEqual(margin, 0.0, places=5)
+
+        peak = np.zeros(50)
+        peak[0] = 1.0
+        ent2, margin2 = entropy_and_margin_from_prob_vector(peak)
+        self.assertAlmostEqual(ent2, 0.0, places=5)
+        self.assertAlmostEqual(margin2, 1.0)
 
 
 if __name__ == "__main__":

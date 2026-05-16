@@ -308,6 +308,7 @@ def run_retention(dry_run: bool = False, mode: str = None):
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+                logger.exception("Retention commit failed after max_gb cascade deletes")
 
         if cutoff and mode == "cascade":
             rec_cascade = _recordings_dir()

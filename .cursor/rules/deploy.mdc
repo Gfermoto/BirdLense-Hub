@@ -7,7 +7,9 @@ alwaysApply: true
 
 ## Два режима (переключайте `deploy.local.sh`)
 
-Часть времени хаб в **домашней/LAN-сети**, часть — заходите **удалённо через VPS/HTTPS**. В **`scripts/deploy.local.sh`** должен быть активен **ровно один** набор `DEPLOY_HOST` / `DEPLOY_SSH_PORT` / `DEPLOY_URL` под текущую ситуацию (шаблон: **`deploy.local.sh.example`**).
+Часть времени хаб в **домашней/LAN-сети**, часть — **удалённо** (VPS). В **`scripts/deploy.local.sh`** должен быть активен **ровно один** набор `DEPLOY_HOST` / `DEPLOY_SSH_PORT` / `DEPLOY_URL` под текущую ситуацию (шаблон: **`deploy.local.sh.example`**).
+
+**Пока без домена:** нормально работать по **`http://IP:порт`** — задайте **`DEPLOY_URL`** и при необходимости **`CORS_ORIGINS`** на сервере тем же URL. Отдельный reverse proxy перед контейнером и HTTPS **не обязательны**; домен и прокси можно добавить позже и обновить URL/`TRUSTED_PROXY`.
 
 ### На площадке (LAN)
 
@@ -21,13 +23,15 @@ alwaysApply: true
 
 **SSH:** например **`203.0.113.10`** ([TEST-NET-3](https://datatracker.ietf.org/doc/html/rfc5737), подставьте свой VPS), порт **`2222`** — задать `DEPLOY_SSH_PORT=2222` в `deploy.local.sh`.
 
-**Веб-UI:** например **`https://hub.example.com/`** или `http://203.0.113.10:8085/` — **`DEPLOY_URL`** для health после деплоя и для ориентира в браузере.
+**Веб-UI:** **`http://185.218.111.196:8085/`** — **`DEPLOY_URL`** для health после деплоя и в браузере (сейчас достаточно IP:порт без домена; при появлении hostname подставьте свой URL).
 
-**MCP:** тот же базовый URL, что и UI, путь **`/mcp`**.
+**MCP:** `http://185.218.111.196:8085/mcp` (Bearer — `MCP_TOKEN` / настройки MCP в UI).
 
 ---
 
 **После изменений в коде** — по запросу: `make deploy` из корня репозитория. Не запускать автоматически при открытии проекта.
+
+До деплоя: **`make verify`** (контракт по **`DEPLOY_URL`**), опционально **`make preflight-deploy`** (= проверка локальной копии **`app/.env`** + живой хаб). Перед **`make deploy`** можно задать в **`deploy.local.sh`** **`RUN_VERIFY_PROD_BEFORE_DEPLOY=1`**, чтобы **`deploy.sh`** сначала вызвал **`verify-prod-env`**.
 
 ## Команда деплоя
 
@@ -40,6 +44,7 @@ make deploy
 
 1. Синхронизирует код (исключая **`datasets/`**, **`app/data/`** целиком (как в CI), **`app/.env`**, **`.tools/`** (локальный CodeQL), venv и `site/` — данные на сервере не перезаписываются rsync)
 2. На сервере: `make stop` → `make build` → `make start`
+3. Intel iGPU на том же хосте: при `/dev/dri/renderD*` генерируется `app/docker-compose.override.yml` (DRI, `group_add`, `LIBVA_DRIVER_NAME=iHD`). В образе OpenCL ICD для OpenVINO на GPU. Опционально `BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=1` — упасть, если override не создался.
 
 ## Данные на сервере (не теряются)
 
@@ -85,3 +90,17 @@ Host birdlense-vps
 - `app/data/` — записи и БД
 - `app/app_config/user_config.yaml` — настройки
 - Старые контейнеры — удаляются перед деплоем по логике `deploy.sh`
+
+## BRG веса + OpenVINO на Intel GPU (площадка)
+
+1. Локально: положить `best.pt` и каталог `best_openvino_model/` под `app/processor/models/detection/weights/` (как после распаковки zip). Резерв старого набора — отдельная папка на сервере или `weights_backup_*`.
+2. `make deploy` подтягивает код и артефакты в образ; rsync **не** удаляет защищённые `*.pt` на сервере без замены с вашей стороны — при смене файлов локально они **обновятся** при синхронизации.
+3. На сервере в **`user_config.yaml`** (деплой его не затирает):  
+   `processor.models.binary_openvino: models/detection/weights/best_openvino_model`,  
+   `processor.inference_backend: openvino` (или `auto` после smoke),  
+   `processor.inference_device: intel:gpu`,  
+   `processor.binary_imgsz: 640` под экспорт.  
+   Путь к IR — **относительно `app/processor/`** или существующий абсолютный путь с реальным каталогом `*.xml`. Абсолютный путь вида `/app/app_config/models/…` без файлов даёт цикл падений процессора (`FileNotFoundError` в логах контейнера).
+4. Либо то же через **`app/.env`**: `BIRDLENSE_INFERENCE_DEVICE=intel:gpu`, при необходимости `BIRDLENSE_BINARY_OPENVINO_PATH=...`.
+5. Intel iGPU: деплой уже вызывает `docker-compose-intel-override-gen.sh` при наличии `renderD*`; нужны драйверы и рабочий `/dev/dri` в контейнере.
+6. Сравнение рамок со старым бинарником офлайн: `scripts/compare_detector_bboxes.py` (два `.pt`, те же ролики); полный пайплайн с треками: `scripts/benchmark-track-regen.py` с `--inference-backend` / `--inference-device`.

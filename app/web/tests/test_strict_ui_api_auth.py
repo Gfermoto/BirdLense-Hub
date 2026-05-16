@@ -48,6 +48,17 @@ def test_production_strict_allows_public_status_and_feed(client, _strict_prod_en
     assert client.get("/api/ui/feed/info").status_code == 200
 
 
+def test_production_strict_allows_public_storage_read_endpoints(client, _strict_prod_env):
+    assert client.get("/api/ui/storage/stats").status_code == 200
+    assert (
+        client.get(
+            "/api/ui/storage/nearest-recording-day",
+            query_string={"date": "2026-05-11", "direction": "prev"},
+        ).status_code
+        == 200
+    )
+
+
 def test_production_strict_report_pdf_passes_gate_route_denies_guest(client, _strict_prod_env):
     """Как unknowns/export: strict не режет; доступ — в обработчике (ui_sensitive_export_access)."""
     r = client.get("/api/ui/report/pdf")

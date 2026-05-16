@@ -82,6 +82,14 @@ describe('fetchReadiness', () => {
           mqtt: 'not_configured',
           yolo: 'unknown',
         },
+        security_gates: {
+          runtime: 'development',
+          items: [
+            { id: 'strict_api_auth', status: 'warn' },
+            { id: 'flask_secret_key', status: 'ok' },
+            { id: 'processor_secret', status: 'ok' },
+          ],
+        },
       },
     });
 

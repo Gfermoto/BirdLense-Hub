@@ -5,6 +5,8 @@ import time
 
 import cv2
 
+logger = logging.getLogger(__name__)
+
 
 def encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple[str | None, str]:
     """(image_base64, source): bbox_crop | full_frame | best_frame | none.
@@ -24,6 +26,7 @@ def encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple
                     return st + (et - st) * 0.5
                 return st
             except Exception:
+                logger.debug("_pick_timestamp fallback 0", exc_info=True)
                 return 0.0
 
         key_frames = detection.get("key_frames") or []

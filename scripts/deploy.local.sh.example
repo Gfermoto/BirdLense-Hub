@@ -4,6 +4,9 @@
 #
 # Важно: держите активным ОДИН режим — LAN (на площадке в той же сети) или VPS (удалённо).
 # Перед поездкой на LAN / возвратом к удалёнке — переключите блоки ниже.
+#
+# Публичный доступ без домена: достаточно http://IP:порт в DEPLOY_URL и (при CORS) CORS_ORIGINS.
+# Отдельный reverse proxy и TLS — позже; до тех пор не блокируйте деплой их отсутствием.
 
 # =============================================================================
 # Режим A — на площадке (LAN): пара дней в сети с сервером
@@ -26,9 +29,12 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 # unset DEPLOY_SSH_PORT
 # export DEPLOY_HOST="root@203.0.113.10"
 # export DEPLOY_SSH_PORT="2222"
-# export DEPLOY_URL="https://hub.example.com"
-# или по IP: export DEPLOY_URL="http://203.0.113.10:8085"
-# CORS: https://hub.example.com
+# export DEPLOY_URL="http://185.218.111.196:8085"
+# CORS на сервере (app/.env): например CORS_ORIGINS=http://185.218.111.196:8085
+#
+# Опционально A1: перед rsync прогнать verify-prod-env по локальной копии server app/.env:
+# export RUN_VERIFY_PROD_BEFORE_DEPLOY=1
+# export VERIFY_PROD_ENV_FILE=/path/to/copy-of-server.env   # по умолчанию: app/.env в корне репо
 
 # Куда rsync заливает код на сервере (по умолчанию в deploy.sh: /root/BirdLense)
 # export DEPLOY_REMOTE_DIR="/root/BirdLense"
@@ -41,3 +47,7 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 # Публичный хаб: опционально strict UI API (#279) — см. CONFIGURATION / SECURITY
 # export BIRDLENSE_STRICT_API_AUTH=1
 # export BIRDLENSE_UI_API_KEY="..."   # для curl/интеграций без браузерной сессии
+
+# Один сервер с Intel iGPU: VA-API (видео) + OpenVINO GPU при пробросе DRI (deploy.sh генерирует docker-compose.override.yml).
+# В user_config: processor.inference_backend: openvino (или auto), models.binary_openvino, inference_device: intel:gpu
+# Если без renderD* деплой не должен проходить как «полный GPU»: export BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=1

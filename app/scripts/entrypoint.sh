@@ -11,6 +11,12 @@ set -e
 # SECTION 1 — Root bootstrap: volume ownership, DRM groups, drop to birdlense
 # =============================================================================
 if [ "$(id -u)" = "0" ]; then
+  mkdir -p /app/data/.ultralytics
+  # Битый symlink app_config/app_config -> /app/app_config ломает import app_config.app_config
+  # (Python берёт каталог вместо app_config.py). Удаляем только если это symlink.
+  if [ -L /app/app_config/app_config ]; then
+    rm -f /app/app_config/app_config
+  fi
   chown -R birdlense:birdlense /app/data /app/app_config 2>/dev/null || true
   if [ -d /dev/dri ]; then
     for dev in /dev/dri/renderD128 /dev/dri/card0; do
@@ -41,11 +47,25 @@ fi
 export BROTLI_BLOCK
 python3 -c '
 import os
-t=open("/etc/nginx/conf.d/default.conf.template").read()
-t=t.replace("__GO2RTC_UPSTREAM__", __import__("sys").argv[1])
-t=t.replace("__BIRDLENSE_PORT__", __import__("sys").argv[2])
-t=t.replace("__BROTLI_BLOCK__", os.environ.get("BROTLI_BLOCK", ""))
-open("/etc/nginx/conf.d/default.conf","w").write(t)
+hide = os.environ.get("BIRDLENSE_HIDE_DIRECT_RECORDINGS", "").strip().lower() in (
+    "1", "true", "yes", "on",
+)
+recordings_block = (
+    ""
+    if hide
+    else """  location ^~ /data/recordings/ {
+    alias /app/data/recordings/;
+    autoindex off;
+    add_header Accept-Ranges bytes;
+  }
+"""
+)
+t = open("/etc/nginx/conf.d/default.conf.template").read()
+t = t.replace("__GO2RTC_UPSTREAM__", __import__("sys").argv[1])
+t = t.replace("__BIRDLENSE_PORT__", __import__("sys").argv[2])
+t = t.replace("__BROTLI_BLOCK__", os.environ.get("BROTLI_BLOCK", ""))
+t = t.replace("__RECORDINGS_LOCATION_BLOCK__", recordings_block)
+open("/etc/nginx/conf.d/default.conf", "w").write(t)
 ' "$GO2RTC_UPSTREAM" "$BIRDLENSE_PORT"
 
 # =============================================================================
@@ -62,7 +82,8 @@ mkdir -p /tmp/nginx-client-body /tmp/nginx-proxy /tmp/nginx-fastcgi /tmp/nginx-u
 # SECTION 4 — Gunicorn (FastAPI on 127.0.0.1:8000)
 # =============================================================================
 GUNICORN_THREADS="${GUNICORN_THREADS:-16}"
-cd /app/web && PYTHONPATH=/app gunicorn -w 1 -k gthread --threads "$GUNICORN_THREADS" --timeout 0 -b 127.0.0.1:8000 app:app &
+# processor/src — пакет inference (ml_lineage_service, processor_*); см. docs/RUNTIME_COUPLING.md
+cd /app/web && PYTHONPATH=/app:/app/web:/app/processor/src gunicorn -w 1 -k gthread --threads "$GUNICORN_THREADS" --timeout 0 -b 127.0.0.1:8000 app:app &
 
 # =============================================================================
 # SECTION 4b — Nginx раньше ожидания API (порт :8080 сразу на хосте; до готовности upstream — 502, не «молча»)
@@ -93,7 +114,57 @@ if python3 /app/scripts/check_mcp_enabled.py 2>/dev/null; then
 fi
 
 # =============================================================================
-# SECTION 8 — Processor supervisor loop
+# SECTION 8 — Optional daily Re-ID SSL scheduler (inside container only)
+# =============================================================================
+is_true() {
+  case "${1:-}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+if is_true "${BIRDLENSE_REID_SSL_DAILY_ENABLED:-0}"; then
+  REID_SSL_DB="${BIRDLENSE_REID_SSL_DB:-/app/data/db/birdlense.db}"
+  REID_SSL_WINDOW_HOURS="${BIRDLENSE_REID_SSL_WINDOW_HOURS:-24}"
+  REID_SSL_LIMIT="${BIRDLENSE_REID_SSL_LIMIT:-400}"
+  REID_SSL_CLUSTER_THRESHOLD="${BIRDLENSE_REID_SSL_CLUSTER_THRESHOLD:-0.88}"
+  REID_SSL_REPORT_JSON="${BIRDLENSE_REID_SSL_REPORT_JSON:-/app/data/reid_ssl_reports/latest.json}"
+  REID_SSL_INTERVAL_SEC="${BIRDLENSE_REID_SSL_INTERVAL_SEC:-86400}"
+  REID_SSL_START_DELAY_SEC="${BIRDLENSE_REID_SSL_START_DELAY_SEC:-300}"
+
+  run_reid_ssl_cycle_once() {
+    cmd=(
+      python3 /app/scripts/reid/run_daily_ssl_cycle.py
+      --db "${REID_SSL_DB}"
+      --window-hours "${REID_SSL_WINDOW_HOURS}"
+      --limit "${REID_SSL_LIMIT}"
+      --cluster-threshold "${REID_SSL_CLUSTER_THRESHOLD}"
+      --report-json "${REID_SSL_REPORT_JSON}"
+    )
+    if is_true "${BIRDLENSE_REID_SSL_UPDATE_VIDEO_NICKNAMES:-1}"; then
+      cmd+=(--update-video-nicknames)
+    fi
+    echo "[reid-ssl] start: ${cmd[*]}"
+    if command -v flock >/dev/null 2>&1; then
+      flock -n /tmp/birdlense-reid-ssl.lock "${cmd[@]}" || true
+    else
+      "${cmd[@]}" || true
+    fi
+    echo "[reid-ssl] done"
+  }
+
+  (
+    sleep "${REID_SSL_START_DELAY_SEC}"
+    while true; do
+      run_reid_ssl_cycle_once
+      sleep "${REID_SSL_INTERVAL_SEC}"
+    done
+  ) &
+  echo "[reid-ssl] scheduler enabled (interval=${REID_SSL_INTERVAL_SEC}s, start_delay=${REID_SSL_START_DELAY_SEC}s)"
+fi
+
+# =============================================================================
+# SECTION 9 — Processor supervisor loop
 # =============================================================================
 while true; do
   PYTHONPATH=/app:/app/web python3 /app/processor/src/main.py || true

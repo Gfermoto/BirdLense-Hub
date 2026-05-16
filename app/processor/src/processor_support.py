@@ -15,6 +15,8 @@ processor_status = {
     "last_yolo_detection_at": None,
 }
 
+_log = logging.getLogger(__name__)
+
 
 def get_data_dir() -> str:
     """Каталог данных процессора (записи, логи, флаги). Совпадает с DATA_DIR в Docker."""
@@ -46,8 +48,8 @@ def _setup_logging():
         )
         fh.setFormatter(logging.Formatter(fmt))
         root.addHandler(fh)
-    except OSError:
-        pass
+    except OSError as e:
+        _log.warning("processor file logging disabled (%s): %s", log_path, e)
 
 
 _setup_logging()
@@ -74,8 +76,8 @@ def check_restart_flag():
     if os.path.exists(flag_path):
         try:
             os.remove(flag_path)
-        except OSError:
-            pass
+        except OSError as e:
+            _log.debug("restart flag removal failed path=%s: %s", flag_path, e, exc_info=True)
         logging.info("Restart flag found, exiting for restart")
         raise SystemExit(0)
 
@@ -108,12 +110,12 @@ def heartbeat():
                 if enc:
                     data["encoding_used"] = enc
             except Exception:
-                pass
+                _log.debug("heartbeat: encoding_status unavailable", exc_info=True)
             try:
                 flush_runtime_stats_snapshot()
                 data["runtime_stats"] = runtime_stats_snapshot()
             except Exception:
-                pass
+                _log.debug("heartbeat: runtime_stats flush/snapshot failed", exc_info=True)
             hb_row_id = api.activity_log(type="heartbeat", data=data, id=hb_row_id)
         except Exception as e:
             logging.error("Heartbeat failed: %s (will retry in 60s)", e)

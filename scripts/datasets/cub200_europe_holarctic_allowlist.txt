@@ -1,0 +1,28 @@
+# Не использовать по умолчанию: для детектора одного класса «bird» чаще нужен весь CUB.
+# Этот список — только если включаете filter_binary_birds_cub_europe_bias.py --execute.
+# Имена без «NNN.» как в classes.txt CUB (одна строка = один label).
+Northern_Fulmar
+Gadwall
+European_Goldfinch
+Eared_Grebe
+Horned_Grebe
+Herring_Gull
+Ivory_Gull
+Long_tailed_Jaeger
+Pomarine_Jaeger
+Mallard
+Red_breasted_Merganser
+Pied_Kingfisher
+Common_Raven
+House_Sparrow
+Bank_Swallow
+Barn_Swallow
+Horned_Lark
+Great_Grey_Shrike
+Artic_Tern
+Black_Tern
+Caspian_Tern
+Common_Tern
+Bohemian_Waxwing
+Pine_Grosbeak
+Winter_Wren

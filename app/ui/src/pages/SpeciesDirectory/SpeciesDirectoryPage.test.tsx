@@ -5,6 +5,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { SpeciesDirectoryPage } from './index';
 
+const memoryRouterFuture = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+} as const;
+
 const fetchBirdDirectory = vi.hoisted(() =>
   vi.fn().mockResolvedValue([
     {
@@ -27,6 +32,16 @@ const fetchBirdDirectory = vi.hoisted(() =>
       active: true,
       count: 4,
     },
+    {
+      id: 3,
+      name: 'Common Wood-Pigeon',
+      parent_id: null,
+      created_at: '2026-01-01T00:00:00Z',
+      image_url: null,
+      description: 'Pigeon from woodland edges',
+      active: true,
+      count: 2,
+    },
   ]),
 );
 
@@ -47,7 +62,7 @@ function renderPage() {
   });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
+      <MemoryRouter future={memoryRouterFuture}>
         <SpeciesDirectoryPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -66,5 +81,17 @@ describe('SpeciesDirectoryPage', () => {
 
     expect(screen.queryByText('Great Tit')).not.toBeInTheDocument();
     expect(screen.getByText('House Sparrow')).toBeInTheDocument();
+  });
+
+  it('matches hyphenated species names when user types spaces', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(await screen.findByText('Common Wood-Pigeon')).toBeInTheDocument();
+
+    await user.type(screen.getByRole('searchbox'), 'wood pigeon');
+
+    expect(screen.getByText('Common Wood-Pigeon')).toBeInTheDocument();
+    expect(screen.queryByText('Great Tit')).not.toBeInTheDocument();
   });
 });

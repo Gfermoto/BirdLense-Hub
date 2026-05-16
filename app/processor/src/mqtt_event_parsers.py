@@ -27,7 +27,8 @@ def _parse_bird_present_payload(payload: bytes) -> bool | None:
         return None
     try:
         raw = payload.decode("utf-8", errors="replace").strip().lower()
-    except Exception:
+    except (UnicodeDecodeError, AttributeError, TypeError):
+        logger.debug("bird_present payload decode unexpected type/bytes", exc_info=True)
         return None
     if raw in ("on", "true", "1", "yes"):
         return True
@@ -42,7 +43,8 @@ def _parse_scale_payload(payload: bytes) -> float | None:
         return None
     try:
         raw = payload.decode("utf-8", errors="replace").strip()
-    except Exception:
+    except (UnicodeDecodeError, AttributeError, TypeError):
+        logger.debug("scale payload decode unexpected type/bytes", exc_info=True)
         return None
     if not raw:
         return None

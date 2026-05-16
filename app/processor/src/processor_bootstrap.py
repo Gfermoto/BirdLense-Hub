@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
@@ -23,8 +24,29 @@ from mqtt_runtime import (
 )
 from processor_support import check_restart_flag
 from recording_session import MotionRecordingSession
+from reid_runtime import prewarm_runtime_reid_model
 
 logger = logging.getLogger(__name__)
+
+
+def _start_runtime_reid_prewarm_async() -> None:
+    """Warm up runtime ReID model in background without blocking motion loop startup."""
+
+    def _run() -> None:
+        try:
+            prewarmed = prewarm_runtime_reid_model()
+            if prewarmed:
+                logger.info("Runtime ReID prewarm: ok")
+            else:
+                logger.info("Runtime ReID prewarm: skipped_or_failed")
+        except Exception as exc:
+            logger.warning("Runtime ReID prewarm failed: %s", exc)
+
+    threading.Thread(
+        target=_run,
+        name="runtime-reid-prewarm",
+        daemon=True,
+    ).start()
 
 
 @dataclass(frozen=True)
@@ -111,6 +133,7 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
         save_images=bool(app_config.get("processor.save_images")),
         warn_two_stage_fallback=False,
     )
+    _start_runtime_reid_prewarm_async()
     regional_species = app_config.get("processor.regional_species") or []
     if regional_species:
         api.set_active_species(regional_species)
@@ -148,7 +171,7 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
 
 def run_motion_loop(ctx: ProcessorRunContext) -> None:
     """Бесконечный цикл движения; выход при ``session.run()`` → True (режим файла) или SystemExit."""
-    last_recording_end = 0.0
+    last_recording_end_by_camera: dict[str, float] = {}
     cooldown = float(app_config.get("processor.min_seconds_between_recordings") or 0)
     while True:
         check_restart_flag()
@@ -160,16 +183,25 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                 continue
         if not ctx.session.motion_detector.detect():
             continue
+        from motion_recording_camera import resolve_motion_recording_camera_id
+
+        camera_id = resolve_motion_recording_camera_id(
+            ctx.session.motion_detector,
+            mqtt_aggregator=getattr(ctx.session, "mqtt_aggregator", None),
+            default_camera_id=getattr(ctx.session, "default_camera_id", None),
+        )
+        camera_key = str(camera_id)
         wait = recording_cooldown_remaining(
-            last_recording_end=last_recording_end,
+            last_recording_end=last_recording_end_by_camera.get(camera_key, 0.0),
             cooldown=cooldown,
         )
         if wait > 0:
             elapsed = cooldown - wait
             requeued = bool(getattr(ctx.session.motion_detector, "requeue_last_trigger", lambda: False)())
             logger.info(
-                "Skipping motion trigger: processor.min_seconds_between_recordings=%.1fs "
-                "(%.1fs since last clip, requeued=%s)",
+                "Skipping motion trigger for camera=%s: processor.min_seconds_between_recordings=%.1fs "
+                "(%.1fs since last clip on this camera, requeued=%s)",
+                camera_key,
                 cooldown,
                 elapsed,
                 requeued,
@@ -181,7 +213,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
         try:
             should_stop = bool(ctx.session.run())
         finally:
-            last_recording_end = time.monotonic()
+            last_recording_end_by_camera[camera_key] = time.monotonic()
         if should_stop:
             break
 

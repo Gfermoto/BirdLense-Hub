@@ -8,8 +8,11 @@ import logging
 import os
 import threading
 import time
+from collections import deque
+from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
+from processor_runtime_stats import inc_counter
 
 logger = logging.getLogger(__name__)
 
@@ -22,17 +25,39 @@ class FrigateMotionFromAggregator:
         self._camera_filter = set(camera_filter or [])
         self._label_filter = set(label_filter or ["bird", "Bird"])
         self._event = threading.Event()
+        self._lock = threading.Lock()
+        self._pending_events = deque(maxlen=256)
         self._last_camera = None
         self._last_confidence = 0.0
         self._last_event_ts = 0.0
+        self._last_event_monotonic = 0.0
+        self._last_event_payload = None
+        self._active_event_payload = None
 
-    def _on_motion(self, camera, label, confidence=0.0):
+    def _on_motion(self, camera, label, confidence=0.0, event=None):
         self._last_camera = camera
         try:
             self._last_confidence = float(confidence or 0.0)
         except (TypeError, ValueError):
             self._last_confidence = 0.0
         self._last_event_ts = time.time()
+        self._last_event_monotonic = time.monotonic()
+        payload = event if isinstance(event, dict) else {}
+        self._last_event_payload = {
+            "source": "frigate",
+            "camera": camera,
+            "species": str(payload.get("species") or label or "bird"),
+            "label": str(payload.get("label") or label or "bird"),
+            "sub_label": str(payload.get("sub_label") or ""),
+            "confidence": self._last_confidence,
+            "timestamp": str(payload.get("timestamp") or datetime.now(timezone.utc).isoformat()),
+            "_frigate_has_geometry": bool(payload.get("_frigate_has_geometry", True)),
+        }
+        with self._lock:
+            if len(self._pending_events) >= self._pending_events.maxlen:
+                self._pending_events.popleft()
+                inc_counter("motion_trigger_queue_drop_total")
+            self._pending_events.append(dict(self._last_event_payload))
         logger.info(
             "Frigate motion: camera=%s, label=%s, confidence=%.3f",
             camera,
@@ -46,14 +71,32 @@ class FrigateMotionFromAggregator:
 
     def check_pending(self):
         """Non-blocking: True if motion event is pending (for OR with other detectors)."""
+        with self._lock:
+            if self._pending_events:
+                self._active_event_payload = self._pending_events.popleft()
+                if not self._pending_events:
+                    self._event.clear()
+                self._last_camera = self._active_event_payload.get("camera")
+                try:
+                    self._last_confidence = float(self._active_event_payload.get("confidence") or 0.0)
+                except (TypeError, ValueError):
+                    self._last_confidence = 0.0
+                self._last_event_monotonic = time.monotonic()
+                self._last_event_ts = time.time()
+                return True
         if self._event.is_set():
             self._event.clear()
-            return True
         return False
 
     def mark_pending(self):
         """Re-arm the pending motion flag when caller defers recording."""
-        if self._last_camera is not None:
+        payload = self._active_event_payload or self._last_event_payload
+        if isinstance(payload, dict) and payload:
+            with self._lock:
+                if len(self._pending_events) >= self._pending_events.maxlen:
+                    self._pending_events.popleft()
+                    inc_counter("motion_trigger_queue_drop_total")
+                self._pending_events.append(dict(payload))
             self._event.set()
 
     @property
@@ -64,27 +107,29 @@ class FrigateMotionFromAggregator:
         if not self._connected:
             time.sleep(1)
             return False
-        # Pending event from during recording — check before clear()
-        if self._event.is_set():
-            self._event.clear()
+        if self.check_pending():
             logger.info(f"Frigate motion (pending): camera={self._last_camera}")
             return True
         self._event.clear()
-        self._last_camera = None
         self._event.wait(timeout=300)
-        return self._event.is_set()
+        return self.check_pending()
 
     def get_triggered_camera(self):
         return self._last_camera
+
+    def get_last_frigate_event(self):
+        if isinstance(self._last_event_payload, dict):
+            return dict(self._last_event_payload)
+        return None
 
     def has_recent_activity(self, camera=None, max_age_seconds=0, min_confidence=0.0):
         try:
             max_age = float(max_age_seconds or 0.0)
         except (TypeError, ValueError):
             max_age = 0.0
-        if max_age <= 0 or self._last_event_ts <= 0:
+        if max_age <= 0 or self._last_event_monotonic <= 0:
             return False
-        if time.time() - self._last_event_ts > max_age:
+        if time.monotonic() - self._last_event_monotonic > max_age:
             return False
         if camera and self._last_camera and str(camera) != str(self._last_camera):
             return False
@@ -124,9 +169,14 @@ class FrigateMQTTMotionDetector:
         self.username = username or os.environ.get("MQTT_USERNAME")
         self.password = password or os.environ.get("MQTT_PASSWORD")
         self._event = threading.Event()
+        self._lock = threading.Lock()
+        self._pending_events = deque(maxlen=256)
         self._last_camera = None
         self._last_confidence = 0.0
         self._last_event_ts = 0.0
+        self._last_event_monotonic = 0.0
+        self._last_event_payload = None
+        self._active_event_payload = None
         self._client = None
         self._thread = None
         self._connected = False
@@ -174,6 +224,28 @@ class FrigateMQTTMotionDetector:
         self._last_camera = camera
         self._last_confidence = score
         self._last_event_ts = time.time()
+        self._last_event_monotonic = time.monotonic()
+        has_geometry = bool(
+            after.get("box")
+            or after.get("region")
+            or (isinstance(after.get("snapshot"), dict) and (after.get("snapshot") or {}).get("box"))
+            or (isinstance(after.get("snapshot"), dict) and (after.get("snapshot") or {}).get("region"))
+        )
+        self._last_event_payload = {
+            "source": "frigate",
+            "camera": camera,
+            "species": str(sub_label or label or "bird"),
+            "label": str(label or sub_label or "bird"),
+            "sub_label": str(sub_label or ""),
+            "confidence": score,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "_frigate_has_geometry": has_geometry,
+        }
+        with self._lock:
+            if len(self._pending_events) >= self._pending_events.maxlen:
+                self._pending_events.popleft()
+                inc_counter("motion_trigger_queue_drop_total")
+            self._pending_events.append(dict(self._last_event_payload))
         logger.info(
             "Frigate event: camera=%s, label=%s, sub_label=%s, confidence=%.3f",
             camera,
@@ -182,6 +254,22 @@ class FrigateMQTTMotionDetector:
             self._last_confidence,
         )
         self._event.set()
+
+    def _consume_pending_event(self) -> bool:
+        with self._lock:
+            if not self._pending_events:
+                return False
+            self._active_event_payload = self._pending_events.popleft()
+            if not self._pending_events:
+                self._event.clear()
+        self._last_camera = self._active_event_payload.get("camera")
+        try:
+            self._last_confidence = float(self._active_event_payload.get("confidence") or 0.0)
+        except (TypeError, ValueError):
+            self._last_confidence = 0.0
+        self._last_event_monotonic = time.monotonic()
+        self._last_event_ts = time.time()
+        return True
 
     def _run_client(self):
         retry_delay = self.reconnect_min_delay
@@ -215,7 +303,7 @@ class FrigateMQTTMotionDetector:
                     try:
                         self._client.disconnect()
                     except Exception:
-                        pass
+                        logger.debug("Frigate MQTT disconnect cleanup failed", exc_info=True)
                     self._client = None
             if self._stopped:
                 break
@@ -234,28 +322,40 @@ class FrigateMQTTMotionDetector:
         if not self._client or not self._connected:
             time.sleep(1)
             return False
+        if self._consume_pending_event():
+            return True
         self._event.clear()
-        self._last_camera = None
         self._event.wait(timeout=300)
-        return self._event.is_set()
+        return self._consume_pending_event()
 
     def mark_pending(self):
         """Re-arm the pending motion flag when caller defers recording."""
-        if self._last_camera is not None:
+        payload = self._active_event_payload or self._last_event_payload
+        if isinstance(payload, dict) and payload:
+            with self._lock:
+                if len(self._pending_events) >= self._pending_events.maxlen:
+                    self._pending_events.popleft()
+                    inc_counter("motion_trigger_queue_drop_total")
+                self._pending_events.append(dict(payload))
             self._event.set()
 
     def get_triggered_camera(self):
         """Return camera id from last Frigate event, or None."""
         return self._last_camera
 
+    def get_last_frigate_event(self):
+        if isinstance(self._last_event_payload, dict):
+            return dict(self._last_event_payload)
+        return None
+
     def has_recent_activity(self, camera=None, max_age_seconds=0, min_confidence=0.0):
         try:
             max_age = float(max_age_seconds or 0.0)
         except (TypeError, ValueError):
             max_age = 0.0
-        if max_age <= 0 or self._last_event_ts <= 0:
+        if max_age <= 0 or self._last_event_monotonic <= 0:
             return False
-        if time.time() - self._last_event_ts > max_age:
+        if time.monotonic() - self._last_event_monotonic > max_age:
             return False
         if camera and self._last_camera and str(camera) != str(self._last_camera):
             return False

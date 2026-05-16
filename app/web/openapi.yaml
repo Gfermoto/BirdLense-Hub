@@ -55,7 +55,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [status, ready, checked_at, checks, components]
+                required: [status, ready, checked_at, checks, components, security_gates]
                 properties:
                   status:
                     type: string
@@ -130,13 +130,35 @@ paths:
                       birdnet_url:
                         type: string
                         nullable: true
+                  security_gates:
+                    type: object
+                    required: [runtime, items]
+                    description: |
+                      Environment checklist aligned with `scripts/verify-prod-env.sh` (strict UI/API auth + secrets).
+                      In `development` runtime, missing values are reported as `warn` so operators see gaps before switching to production.
+                    properties:
+                      runtime:
+                        type: string
+                        enum: [development, production]
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          required: [id, status]
+                          properties:
+                            id:
+                              type: string
+                              enum: [strict_api_auth, flask_secret_key, processor_secret]
+                            status:
+                              type: string
+                              enum: [ok, warn, error]
         "503":
           description: App is up but not fully ready for use
           content:
             application/json:
               schema:
                 type: object
-                required: [status, ready, checked_at, checks, components]
+                required: [status, ready, checked_at, checks, components, security_gates]
                 properties:
                   status:
                     type: string
@@ -212,6 +234,25 @@ paths:
                       birdnet_url:
                         type: string
                         nullable: true
+                  security_gates:
+                    type: object
+                    required: [runtime, items]
+                    properties:
+                      runtime:
+                        type: string
+                        enum: [development, production]
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          required: [id, status]
+                          properties:
+                            id:
+                              type: string
+                              enum: [strict_api_auth, flask_secret_key, processor_secret]
+                            status:
+                              type: string
+                              enum: [ok, warn, error]
   /status:
     get:
       summary: Component status
@@ -252,6 +293,89 @@ paths:
                   birdnet_url:
                     type: string
                     nullable: true
+  /metrics:
+    get:
+      summary: Prometheus metrics (root path)
+      description: |
+        Prometheus text payload on the root host path (`/metrics`).
+        This path is outside `/api/ui`; use the root server URL for scraping.
+      servers:
+        - url: http://birdlense.local
+          description: Hub root host (for Prometheus paths)
+      responses:
+        "200":
+          description: Prometheus text payload
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Missing or invalid bearer token when `BIRDLENSE_METRICS_TOKEN` is enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Metrics backend error
+          content:
+            text/plain:
+              schema:
+                type: string
+  /api/metrics:
+    get:
+      summary: Prometheus metrics (API alias)
+      description: |
+        Same Prometheus payload as `/metrics`, exposed at `/api/metrics` for scraper compatibility.
+      servers:
+        - url: http://birdlense.local
+          description: Hub root host (for Prometheus paths)
+      responses:
+        "200":
+          description: Prometheus text payload
+          content:
+            text/plain:
+              schema:
+                type: string
+        "401":
+          description: Missing or invalid bearer token when `BIRDLENSE_METRICS_TOKEN` is enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Metrics backend error
+          content:
+            text/plain:
+              schema:
+                type: string
+  /api/metrics/summary:
+    get:
+      summary: Metrics JSON summary
+      description: |
+        JSON summary used by dashboards and observability checks.
+      servers:
+        - url: http://birdlense.local
+          description: Hub root host (for Prometheus paths)
+      responses:
+        "200":
+          description: Metrics summary
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          description: Missing or invalid bearer token when `BIRDLENSE_METRICS_TOKEN` is enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Metrics summary build error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /weather:
     get:
       summary: Get current weather
@@ -341,9 +465,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
     patch:
-      summary: Update recording (favorite)
+      summary: Update recording (favorite, behavior)
       description: |
-        Set ``favorite`` so retention can skip this recording when ``retention.protect_favorites`` is enabled (cascade and files_only). Contributor or admin session required (same gate as DELETE / download).
+        Update ``favorite`` (retention may skip when ``retention.protect_favorites`` is on) and/or
+        manual **behavior** label for ML feedback (#416). At least one of ``favorite``, ``behavior_label``,
+        ``behavior_confidence`` must be present. Contributor or admin session required (same gate as DELETE / download).
       parameters:
         - in: path
           name: video_id
@@ -356,11 +482,22 @@ paths:
           application/json:
             schema:
               type: object
-              required: [favorite]
+              minProperties: 1
               additionalProperties: false
               properties:
                 favorite:
                   type: boolean
+                behavior_label:
+                  type: string
+                  nullable: true
+                  maxLength: 32
+                  description: Lowercased taxonomy label, or null/empty to clear behavior fields
+                behavior_confidence:
+                  type: number
+                  nullable: true
+                  minimum: 0
+                  maximum: 1
+                  description: Manual confidence for ``behavior_label``; null clears
       responses:
         "200":
           description: Updated video details (same shape as GET)
@@ -1080,6 +1217,74 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ConfigAuditResponse"
+        "401":
+          description: Settings password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/active-learning/pool-preview:
+    get:
+      summary: Active-learning pool preview
+      description: Review/uncertainty candidates for active-learning export (#369).
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+      responses:
+        "200":
+          description: Pool preview payload
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/reid/summary:
+    get:
+      summary: Re-ID sidecar summary
+      description: Read-only summary of offline `reid_embedding` sidecar table (#374).
+      responses:
+        "200":
+          description: Sidecar table summary
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "403":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /system/ml-runtime:
+    get:
+      summary: ML/video runtime config status
+      description: Operator-facing snapshot of ML/video runtime config (#373/#372).
+      responses:
+        "200":
+          description: Runtime status payload
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
         "401":
           description: Settings password required
           content:
@@ -3311,6 +3516,47 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Fusion export job status
+  /system/behavior-baseline/retrain:
+    post:
+      description: |
+        Admin (settings password session): retrain behavior logistic weights from ``Video.behavior_label``
+        on non-deleted recordings, using the same 3 meta-features as the processor runtime. Writes
+        ``processor/models/behavior/behavior_logistic_export@v1.json`` by default. Requires scikit-learn
+        in the web environment and at least four labeled videos with two distinct labels.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: true
+              type: object
+        required: false
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation error
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: scikit-learn missing
+      summary: Retrain behavior baseline from hub labels
   /system/merge-duplicate-species:
     post:
       description: 'Admin: merge catalog duplicates.'
@@ -4256,10 +4502,15 @@ components:
           items:
             type: object
             properties:
+              id:
+                type: integer
               species_id:
                 type: integer
               species_name:
                 type: string
+              track_id:
+                type: integer
+                nullable: true
               start_time:
                 type: number
               end_time:
@@ -4268,6 +4519,12 @@ components:
                 type: number
               source:
                 type: string
+              detection_provider:
+                type: string
+                nullable: true
+              individual_nickname:
+                type: string
+                nullable: true
               image_url:
                 type: string
         food:
@@ -4286,6 +4543,14 @@ components:
             display_unit:
               type: string
               enum: [kg, g]
+        behavior_label:
+          type: string
+          nullable: true
+          description: Runtime or manually set behavior taxonomy label (#416)
+        behavior_confidence:
+          type: number
+          nullable: true
+          description: Confidence for behavior_label (0..1)
     VideoNeighbors:
       type: object
       properties:
@@ -4374,6 +4639,30 @@ components:
           format: date-time
         max_simultaneous:
           type: integer
+        total_recording_seconds:
+          type: integer
+        video_duration_seconds:
+          type: integer
+          nullable: true
+        timeline_kind:
+          type: string
+          enum: [visit, unlinked_video]
+        individual_nickname:
+          type: string
+          nullable: true
+        behavior_events:
+          type: array
+          description: Behavior events produced by behavior recognition model runtime.
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              confidence:
+                type: number
+              evidence:
+                type: object
+                additionalProperties: true
         weather:
           type: object
           nullable: true
@@ -4412,6 +4701,8 @@ components:
           items:
             type: object
             properties:
+              id:
+                type: integer
               video_id:
                 type: integer
               start_time:
@@ -4424,6 +4715,12 @@ components:
                 type: number
               source:
                 type: string
+              detection_provider:
+                type: string
+                nullable: true
+              individual_nickname:
+                type: string
+                nullable: true
     UnknownDetection:
       type: object
       properties:
@@ -4451,6 +4748,25 @@ components:
         image_url:
           type: string
           nullable: true
+        review_state:
+          type: string
+          nullable: true
+          enum: [pending, reviewed, not_applicable]
+        review_reason:
+          type: string
+          nullable: true
+          enum: [low_confidence, generic_bird, classifier_uncertainty]
+        review_source:
+          type: string
+          nullable: true
+        classifier_entropy:
+          type: number
+          nullable: true
+        classifier_top1_top2_margin:
+          type: number
+          nullable: true
+        classifier_needs_review:
+          type: boolean
     SpeciesSummary:
       type: object
       properties:
@@ -4919,6 +5235,12 @@ components:
               type: integer
             binary_imgsz:
               type: integer
+            binary_track_iou:
+              type: number
+              description: Optional NMS IoU for Ultralytics YOLO.track() on the binary detector (omit from JSON to use engine default)
+            binary_track_max_det:
+              type: integer
+              description: Optional max detections per frame for binary YOLO.track()
             classification_scheduler:
               type: string
             max_classifications_per_frame:
@@ -4951,8 +5273,6 @@ components:
               type: object
               additionalProperties: true
             save_images:
-              type: boolean
-            single_stage_coco_animals_only_auto:
               type: boolean
             birdnet_mqtt_prior_window_hours:
               type: number
@@ -4988,6 +5308,13 @@ components:
               type: string
             track_regen_lores_px:
               type: integer
+            track_regen_iou_id_fallback:
+              type: boolean
+              description: When Ultralytics ByteTrack yields no box ids during offline regen, stitch frames via IoU (processor internal).
+            track_regen_iou_match_threshold:
+              type: number
+              nullable: true
+              description: IoU threshold for matching boxes between frames in regen id fallback; null uses internal default (0.22).
             track_regen_video_timeout_sec:
               type: number
             track_regen_precise_timeout_sec:
@@ -5002,6 +5329,36 @@ components:
               type: boolean
             track_regen_parallel_auto_with_manual:
               type: boolean
+            reid_embedding_pipeline_mode:
+              type: string
+              description: Offline/nearline/realtime embedding pipeline mode label for operators (#389); realtime requires explicit pilot.
+            reid_suggestions_enabled:
+              type: boolean
+              description: Enable cosine-based similarity hints for contributors/admins when embedding contract metadata exists (#390).
+            reid_kill_switch:
+              type: boolean
+              description: Emergency disable for similarity hints without deleting embeddings (#390).
+            reid_shadow_mode:
+              type: boolean
+              description: Evaluate policy server-side but suppress user-facing similarity hints (#390).
+            reid_default_similarity_threshold:
+              type: number
+              description: Default cosine similarity threshold for suggest_same_individual (#390).
+            reid_different_similarity_threshold:
+              type: number
+              description: Cosine similarity below this value is treated as inconclusive (#390).
+            reid_cross_camera_threshold_boost:
+              type: number
+              description: Extra threshold boost when candidate recordings likely come from different folders/cameras (#390).
+            reid_max_embedding_age_hours:
+              type: number
+              nullable: true
+              description: Suppress hints when embedding timestamps exceed this age (hours); null disables (#389/#390).
+            reid_species_similarity_thresholds:
+              type: object
+              additionalProperties:
+                type: number
+              description: Optional per-species cosine thresholds keyed by species display name (#390).
         secrets:
           type: object
           properties:

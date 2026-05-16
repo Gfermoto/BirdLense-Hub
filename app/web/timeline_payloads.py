@@ -10,6 +10,28 @@ from time_util import ensure_utc
 from services.feeder_scale import video_scales_estimate_payload
 
 
+def _model_behavior_events_from_video(video) -> list[dict]:
+    """Runtime behavior baseline persisted on Video (#416)."""
+    if not video:
+        return []
+    lab = getattr(video, "behavior_label", None) or ""
+    lab = str(lab).strip()
+    if not lab:
+        return []
+    conf = getattr(video, "behavior_confidence", None)
+    try:
+        c = max(0.0, min(1.0, float(conf))) if conf is not None else 0.0
+    except (TypeError, ValueError):
+        c = 0.0
+    return [
+        {
+            "label": lab,
+            "confidence": round(c, 4),
+            "evidence": {"reason": "behavior_recognition_runtime"},
+        }
+    ]
+
+
 def get_primary_video_for_visit(visit) -> object | None:
     """Deterministically pick the earliest video for a SpeciesVisit."""
     return get_primary_video_for_visit_in_window(visit)
@@ -59,10 +81,15 @@ def format_visit_for_timeline(visit) -> dict:
         video_duration_seconds = max(0, round((v1 - v0).total_seconds()))
     detections = []
     total_recording_seconds = 0.0
+    nickname = None
     for vs in sorted(visit.video_species, key=lambda x: x.created_at, reverse=True):
         video_start = ensure_utc(vs.video.start_time)
         seg_dur = max(0, vs.end_time - vs.start_time) if vs.end_time > vs.start_time else 0
         total_recording_seconds += seg_dur
+        if not nickname and getattr(vs, "individual_nickname", None):
+            nn = str(vs.individual_nickname).strip()
+            if nn:
+                nickname = nn
         det = {
             "id": vs.id,
             "video_id": vs.video_id,
@@ -71,9 +98,12 @@ def format_visit_for_timeline(visit) -> dict:
             "confidence": vs.confidence,
             "source": vs.source,
         }
+        if getattr(vs, "individual_nickname", None):
+            det["individual_nickname"] = vs.individual_nickname
         if vs.detection_provider:
             det["detection_provider"] = vs.detection_provider
         detections.append(det)
+    behavior_events = _model_behavior_events_from_video(video)
     return {
         "id": visit.id,
         "start_time": ensure_utc(visit.start_time).isoformat(),
@@ -95,6 +125,8 @@ def format_visit_for_timeline(visit) -> dict:
             "parent_id": visit.species.parent_id,
         },
         "detections": detections,
+        "individual_nickname": nickname,
+        "behavior_events": behavior_events,
         "timeline_kind": "visit",
     }
 
@@ -107,10 +139,15 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
     detections = []
     total_recording_seconds = 0.0
     vss = sorted(video.video_species, key=lambda x: x.created_at, reverse=True)
+    nickname = None
     for vs in vss:
         video_start = ensure_utc(vs.video.start_time)
         seg_dur = max(0, vs.end_time - vs.start_time) if vs.end_time > vs.start_time else 0
         total_recording_seconds += seg_dur
+        if not nickname and getattr(vs, "individual_nickname", None):
+            nn = str(vs.individual_nickname).strip()
+            if nn:
+                nickname = nn
         det = {
             "id": vs.id,
             "video_id": vs.video_id,
@@ -119,6 +156,8 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
             "confidence": vs.confidence,
             "source": vs.source,
         }
+        if getattr(vs, "individual_nickname", None):
+            det["individual_nickname"] = vs.individual_nickname
         if vs.detection_provider:
             det["detection_provider"] = vs.detection_provider
         detections.append(det)
@@ -160,5 +199,7 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
         "scales": video_scales_estimate_payload(video),
         "species": species_block,
         "detections": detections,
+        "individual_nickname": nickname,
+        "behavior_events": _model_behavior_events_from_video(video),
         "timeline_kind": "unlinked_video",
     }

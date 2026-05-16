@@ -3,12 +3,49 @@ Regenerate ByteTrack tracks for an existing video file.
 Runs YOLO+ByteTrack on each frame and returns detections with frames.
 """
 
+from __future__ import annotations
+
 import logging
+import math
 import os
 import time
+import threading
+from contextlib import contextmanager
 import cv2
 
+from shared.ctor_kwarg_guard import assert_ctor_kwargs
+from yolo_geometry import letterbox_bgr_to_wh
+
 logger = logging.getLogger(__name__)
+_TRACK_REGEN_INFER_LOCK = threading.RLock()
+
+
+@contextmanager
+def _track_regen_interprocess_lock(enabled: bool):
+    """Optional cross-process lock to prevent concurrent heavy regen OOM on small hosts."""
+    if not enabled:
+        yield
+        return
+    lock_path = "/tmp/birdlense_track_regen.lock"
+    lock_fd = None
+    try:
+        import fcntl
+
+        lock_fd = open(lock_path, "w", encoding="utf-8")
+        fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX)
+        yield
+    finally:
+        if lock_fd is not None:
+            try:
+                import fcntl
+
+                fcntl.flock(lock_fd.fileno(), fcntl.LOCK_UN)
+            except Exception:
+                logger.debug("Track regen: interprocess unlock failed", exc_info=True)
+            try:
+                lock_fd.close()
+            except Exception:
+                logger.debug("Track regen: lock file close failed", exc_info=True)
 
 
 def _track_detection_preference(detection: dict) -> tuple[int, int, float]:
@@ -70,15 +107,23 @@ def build_detection_pipeline(
     """Собрать frame_processor и decision_maker (см. ``build_detection_stack``)."""
     from detection_stack import build_detection_stack
 
-    fp, dm, _ = build_detection_stack(
-        app_config,
-        strategy_override=strategy_override,
-        for_track_regen=for_track_regen,
-        regional_species_override=regional_species_override,
-        min_center_dist_override=min_center_dist_override,
-        save_images=False,
-        warn_two_stage_fallback=False,
+    interprocess_serialize = bool(app_config.get("processor.track_regen_serialize_inference_interprocess", True))
+
+    stack_kw = {
+        "strategy_override": strategy_override,
+        "for_track_regen": for_track_regen,
+        "regional_species_override": regional_species_override,
+        "min_center_dist_override": min_center_dist_override,
+        "save_images": False,
+        "warn_two_stage_fallback": False,
+    }
+    assert_ctor_kwargs(
+        build_detection_stack,
+        stack_kw,
+        label="build_detection_pipeline→build_detection_stack",
     )
+    with _track_regen_interprocess_lock(interprocess_serialize):
+        fp, dm, _ = build_detection_stack(app_config, **stack_kw)
     return fp, dm
 
 
@@ -89,10 +134,14 @@ def process_video_for_tracks(
     decision_maker=None,
     frame_step: int = 1,
     max_runtime_sec: int | None = None,
+    progress_hook=None,
+    progress_hook_interval: int = 20,
 ):
     """
     Run YOLO+ByteTrack on video file. Returns list of detections with frames.
     Each detection: {species_name, start_time, end_time, confidence, track_id, frames, ...}
+
+    progress_hook: вызывается из UI-воркера; meta: phase, yolo_frames_done, yolo_frames_total (оценка).
     """
     from app_config.app_config import app_config
     from species_normalizer import normalize
@@ -109,6 +158,8 @@ def process_video_for_tracks(
     frame_processor.reset()
     decision_maker.reset()
     frame_step = max(1, int(frame_step or 1))
+    serialize_infer = bool(app_config.get("processor.track_regen_serialize_inference", True))
+    interprocess_serialize = bool(app_config.get("processor.track_regen_serialize_inference_interprocess", True))
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -116,31 +167,70 @@ def process_video_for_tracks(
         return []
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    frame_total_guess = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    try:
+        fcg = float(frame_total_guess)
+        yolo_runs_est = int(math.ceil(fcg / float(frame_step))) if fcg > 1.5 else None
+    except (TypeError, ValueError):
+        yolo_runs_est = None
+    if yolo_runs_est is not None:
+        yolo_runs_est = max(1, yolo_runs_est)
     frame_count = 0
+    runs_done = 0
+    try:
+        _hi = max(1, int(progress_hook_interval or 20))
+    except (TypeError, ValueError):
+        _hi = 20
     started = time.monotonic()
     try:
-        while True:
-            if max_runtime_sec and (time.monotonic() - started) > max_runtime_sec:
-                raise TimeoutError(f"Track regeneration timeout ({max_runtime_sec}s) for {video_path}")
-            # Только decode+retrieve на обрабатываемых кадрах; между ними — grab()
-            # без полного декодирования (иначе frame_step почти не ускоряет батч).
-            if frame_count % frame_step == 0:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                frame_time_sec = frame_count / fps
-                frame_resized = cv2.resize(frame, lores_size)
-                has_detections = frame_processor.run(
-                    frame_resized,
-                    frame_time=frame_time_sec,
-                    skip_light_gate=True,
-                )
-                decision_maker.update_has_detections(has_detections)
-            else:
-                ret = cap.grab()
-                if not ret:
-                    break
-            frame_count += 1
+        with _track_regen_interprocess_lock(interprocess_serialize):
+            while True:
+                if max_runtime_sec and (time.monotonic() - started) > max_runtime_sec:
+                    raise TimeoutError(f"Track regeneration timeout ({max_runtime_sec}s) for {video_path}")
+                # Только decode+retrieve на обрабатываемых кадрах; между ними — grab()
+                # без полного декодирования (иначе frame_step почти не ускоряет батч).
+                if frame_count % frame_step == 0:
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
+                    frame_time_sec = frame_count / fps
+                    # Не stretch в lores_size: иначе на 16:9 клипах YOLO+ByteTrack почти пустой (см. yolo_geometry).
+                    frame_resized = letterbox_bgr_to_wh(frame, (int(lores_size[0]), int(lores_size[1])))
+                    if serialize_infer:
+                        with _TRACK_REGEN_INFER_LOCK:
+                            has_detections = frame_processor.run(
+                                frame_resized,
+                                frame_time=frame_time_sec,
+                                skip_light_gate=True,
+                            )
+                    else:
+                        has_detections = frame_processor.run(
+                            frame_resized,
+                            frame_time=frame_time_sec,
+                            skip_light_gate=True,
+                        )
+                    decision_maker.update_has_detections(has_detections)
+                    runs_done += 1
+                    if progress_hook is not None and (
+                        runs_done == 1
+                        or runs_done % _hi == 0
+                        or (yolo_runs_est is not None and runs_done >= yolo_runs_est)
+                    ):
+                        try:
+                            progress_hook(
+                                {
+                                    "phase": "yolo_infer",
+                                    "yolo_frames_done": runs_done,
+                                    "yolo_frames_total": yolo_runs_est,
+                                }
+                            )
+                        except Exception:
+                            logger.debug("Track regen progress_hook failed", exc_info=True)
+                else:
+                    ret = cap.grab()
+                    if not ret:
+                        break
+                frame_count += 1
     finally:
         cap.release()
 
@@ -171,6 +261,9 @@ def process_video_for_tracks(
             "detector_confidence",
             "classifier_confidence",
             "classifier_species_name",
+            "classifier_entropy",
+            "classifier_top1_top2_margin",
+            "classifier_needs_review",
             "evidence_state",
             "reject_reason_code",
         ):

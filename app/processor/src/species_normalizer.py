@@ -10,6 +10,30 @@ import re
 logger = logging.getLogger(__name__)
 
 
+def _is_frigate_standalone_row(row: dict) -> bool:
+    provider = str(row.get("detection_provider") or "").strip().lower()
+    kind = str(row.get("decision_kind") or "").strip().lower()
+    return provider == "frigate" and kind in {"frigate_standalone", "frigate_standalone_excluded"}
+
+
+def _merge_absorb_trace_reason(generic_row: dict, species_row: dict) -> str:
+    """Совпадает по смыслу с hypothesis_arbitration (без циклического импорта)."""
+    if _is_frigate_standalone_row(generic_row) and _is_frigate_standalone_row(species_row):
+        return "absorbed_generic_into_frigate_species"
+    return "absorbed_generic_into_species"
+
+
+def _apply_arbitration_trace_for_merge(row: dict, reason: str) -> None:
+    """Как hypothesis_arbitration._tag_row — для provenance после merge conflict."""
+    previous_reason = row.get("decision_reason")
+    if previous_reason and previous_reason != reason and "decision_reason_before_arbitration" not in row:
+        row["decision_reason_before_arbitration"] = previous_reason
+    row["decision_reason"] = reason
+    row["arbitration_reason"] = reason
+    tag = str(row.get("_fusion_used") or "").strip()
+    row["_fusion_used"] = f"{tag}+{reason}" if tag else reason
+
+
 def _extract_common_for_merge(s: str) -> str:
     """
     Извлечь common name для сравнения при слиянии.
@@ -38,7 +62,9 @@ def normalize(species: str, mapping: dict = None) -> str:
     key = s.lower().replace(" ", "_").replace("-", "_")
     if key in mapping:
         return mapping[key]
-    for k, v in mapping.items():
+    # Deterministic fallback over mapping aliases: stable key order.
+    for k in sorted(mapping.keys(), key=lambda item: str(item)):
+        v = mapping[k]
         if key == k.lower().replace(" ", "_"):
             return v
     return _to_title_case(s)
@@ -68,6 +94,28 @@ def _is_rodent_taxon_name(name: str) -> bool:
 
 def _canonical_merge_key(species_name: str) -> str:
     return _extract_common_for_merge(species_name or "") or (species_name or "").lower()
+
+
+def _is_generic_bird_key(key: str) -> bool:
+    return str(key or "").strip().lower() == "bird"
+
+
+def _conflict_score(det: dict) -> tuple:
+    decision_kind = str(det.get("decision_kind") or "").strip().lower()
+    accepted_species = 1 if decision_kind == "accepted_species" else 0
+    classifier_conf = float(det.get("classifier_confidence") or 0.0)
+    confidence = float(det.get("confidence") or 0.0)
+    duration = max(0.0, float(det.get("end_time") or 0.0) - float(det.get("start_time") or 0.0))
+    provider_count = len(set(det.get("contributing_providers") or []))
+    name = str(det.get("species_name") or det.get("species") or "").strip().lower()
+    provider = str(det.get("detection_provider") or det.get("source") or "").strip().lower()
+    track_id = det.get("track_id")
+    try:
+        track_rank = int(track_id) if track_id is not None else 0
+    except (TypeError, ValueError):
+        track_rank = 0
+    # Deterministic tie-breaker: stronger evidence first, lexical fallback for stability.
+    return (accepted_species, classifier_conf, confidence, duration, provider_count, name, provider, -track_rank)
 
 
 def _collapse_overlapping_generic_bird_detection(
@@ -180,6 +228,7 @@ def merge_detections(
     absorb_generic_bird=True,
     absorb_generic_bird_overlap_min_sec=0.1,
     absorb_generic_bird_min_classifier_confidence=0.22,
+    preserve_equal_rank_conflicts_for_arbitration=False,
 ):
     """
     Merge YOLO detections with MQTT (Frigate/BirdNET) events.
@@ -256,6 +305,23 @@ def merge_detections(
             return _is_rodent_like_ev_label(str(ev.get("species") or ev.get("sub_label") or ev.get("label") or ""))
         return False
 
+    def _track_sort_value(value) -> int:
+        try:
+            return int(value) if value is not None else 0
+        except (TypeError, ValueError):
+            return 0
+
+    def _mqtt_sort_key(ev: dict) -> tuple:
+        provider = str((ev or {}).get("source") or "").strip().lower()
+        species = str((ev or {}).get("species") or (ev or {}).get("sub_label") or (ev or {}).get("label") or "").strip()
+        camera = str((ev or {}).get("camera") or "").strip().lower()
+        timestamp = str((ev or {}).get("timestamp") or "").strip()
+        try:
+            confidence = float((ev or {}).get("confidence") or 0.0)
+        except (TypeError, ValueError):
+            confidence = 0.0
+        return (provider, timestamp, camera, species.lower(), -confidence)
+
     # YOLO: объединяем по виду. Мержим в детекцию с наименьшим разрывом (не первую попавшуюся)
     sorted_yolo = sorted(yolo_detections, key=lambda d: d.get("start_time", 0))
     for d in sorted_yolo:
@@ -306,7 +372,7 @@ def merge_detections(
             by_key[(key, visit_id)] = row
 
     # MQTT: мержим в существующую детекцию с наибольшим перекрытием по времени
-    for ev in mqtt_events:
+    for ev in sorted((mqtt_events or []), key=_mqtt_sort_key):
         provider = ev.get("source", "mqtt")
         if provider == "birdnet":
             # BirdNET only biases confidence thresholds before YOLO decision-making.
@@ -422,8 +488,18 @@ def merge_detections(
                 collapsed.extend(sorted(group, key=lambda item: item.get("start_time", 0)))
                 logger.debug("merge: preserved %d fragmented generic bird visits", len(group))
                 continue
-            existing = group[0]
-            for d in group[1:]:
+            group_sorted = sorted(
+                group,
+                key=lambda item: (
+                    -float(item.get("confidence") or 0.0),
+                    float(item.get("start_time") or 0.0),
+                    float(item.get("end_time") or 0.0),
+                    str(item.get("detection_provider") or "").strip().lower(),
+                    _track_sort_value(item.get("track_id")),
+                ),
+            )
+            existing = group_sorted[0]
+            for d in group_sorted[1:]:
                 _merge_into(
                     existing,
                     d.get("confidence", 0),
@@ -468,8 +544,40 @@ def merge_detections(
                 sb, eb = b.get("start_time", 0), b.get("end_time", 0)
                 overlap = min(ea, eb) - max(sa, sb)
                 if overlap >= conflict_overlap_sec:
+                    # Product rule: when generic Bird overlaps specific species,
+                    # prefer species even if source priority differs.
+                    if _is_generic_bird_key(key_a) and not _is_generic_bird_key(key_b):
+                        _apply_arbitration_trace_for_merge(b, _merge_absorb_trace_reason(a, b))
+                        to_remove.add(i)
+                        break
+                    if _is_generic_bird_key(key_b) and not _is_generic_bird_key(key_a):
+                        _apply_arbitration_trace_for_merge(a, _merge_absorb_trace_reason(b, a))
+                        to_remove.add(j)
+                        continue
                     rank_b = _provider_rank(b.get("detection_provider"))
                     if rank_a == rank_b:
+                        if (
+                            preserve_equal_rank_conflicts_for_arbitration
+                            and not _is_generic_bird_key(key_a)
+                            and not _is_generic_bird_key(key_b)
+                        ):
+                            # Keep equal-rank specific conflicts for downstream
+                            # arbitration after evidence enrichment.
+                            continue
+                        score_a = _conflict_score(a)
+                        score_b = _conflict_score(b)
+                        if score_a == score_b:
+                            # Stable lexical fallback when scores are identical.
+                            if str(a.get("species_name") or "") <= str(b.get("species_name") or ""):
+                                to_remove.add(j)
+                            else:
+                                to_remove.add(i)
+                                break
+                        elif score_a > score_b:
+                            to_remove.add(j)
+                        else:
+                            to_remove.add(i)
+                            break
                         continue
                     if rank_a < rank_b:
                         to_remove.add(j)
@@ -492,7 +600,16 @@ def merge_detections(
                         break
         result_list = [d for i, d in enumerate(result_list) if i not in to_remove]
 
-    out = sorted(result_list, key=lambda x: x.get("start_time", 0))
+    out = sorted(
+        result_list,
+        key=lambda x: (
+            float(x.get("start_time") or 0.0),
+            float(x.get("end_time") or 0.0),
+            str(x.get("species_name") or x.get("species") or "").strip().lower(),
+            str(x.get("detection_provider") or "").strip().lower(),
+            _track_sort_value(x.get("track_id")),
+        ),
+    )
     for d in out:
         d.pop("_cross_mqtt_merges", None)
     return out

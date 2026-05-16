@@ -12,7 +12,7 @@ Canonical one-liners for **GitHub About**, mirrors, and press: **[SHORT_DESCRIPT
 
 Bird monitoring for feeders, gardens, and field setups: computer vision and audio recognition to detect, identify, record, and analyze visits—aimed at ornithology, citizen science, and operators who keep data on their own hardware. Runs in Docker on x86; integrates with Go2RTC, Frigate, BirdNET via MQTT. No vendor cloud required for core processing.
 
-**Docs:** [Project overview](./docs/OVERVIEW.md) · [Full documentation index](./docs/README.md) · [Documentation site (Pages)](https://gfermoto.github.io/BirdLense-Hub/)
+**Docs:** [Project overview](./docs/user/overview.md) · [Full documentation index](./docs/index.md) · [Documentation site (Pages)](https://gfermoto.github.io/BirdLense-Hub/)
 
 **Community:** [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions) · [Issues](https://github.com/Gfermoto/BirdLense-Hub/issues)
 
@@ -27,11 +27,13 @@ Two components: **detector** (bird or rodent in frame) and **classifier** (bird 
 
 **Current model:** EU (birds-525 + iNaturalist Europe, ~491 species). US (NABirds) — backup in `best_US.pt`.
 
-**EU model:** classifier trained on merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Weights: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Training: [docs/TRAINING.md](./docs/TRAINING.md). Detector unchanged.
+**EU model:** classifier trained on merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Weights: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Training: [docs/TRAINING.md](./archive/internal/docs-legacy/TRAINING.md). Detector unchanged.
 
 **Runtime weights:** two-stage `app/processor/models/detection/weights/best.pt` (binary from zip in fork [AleksandrRogachev94/BirdLense `app/processor`](https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor)) and `app/processor/models/classification/weights/best.pt` ([`gfermoto/birdlense-birds-eu`](https://huggingface.co/gfermoto/birdlense-birds-eu) on Hugging Face). `scripts/fetch-processor-weights.sh` fetches both. Keep `class_names.txt` aligned with the classifier. `app/yolo11n.pt` is legacy-only (`--legacy-single-stage`).
 
-**Catalog hygiene:** align the Hub species list with your classifier using `species.catalog_allowlist_file` + optional `catalog_strict_ingest`, `scripts/datasets/dump_classifier_allowlist.py`, and `POST /api/ui/system/species-catalog/reconcile` — see [docs/CONFIGURATION.md](./docs/CONFIGURATION.md).
+**Catalog hygiene:** align the Hub species list with your classifier using `species.catalog_allowlist_file` + optional `catalog_strict_ingest`, `scripts/datasets/dump_classifier_allowlist.py`, and `POST /api/ui/system/species-catalog/reconcile` — see [docs/CONFIGURATION.md](./docs/user/configuration.md).
+
+**Optional behavior baseline (logistic JSON, #416):** a **demo** `behavior_logistic_export@v1.json` ships under `app/processor/models/behavior/` with default path `models/behavior/behavior_logistic_export@v1.json` (relative to `app/processor/`). There is **no in-Hub UI to label a training dataset or run training** — only Settings toggles/path/thresholds and per-clip manual label edit on the video page. Full training: CSV → `make ml-build-behavior-dataset` → `make ml-train-behavior-baseline` (see [README.ru.md](./README.ru.md) Russian section *Обучение baseline «поведения»*).
 
 <details>
 <summary>📷 Screenshots</summary>
@@ -86,14 +88,14 @@ docker pull ghcr.io/gfermoto/birdlense-hub:latest
 ```
 UI: http://localhost:8085
 
-**Quickstart:** [docs/QUICKSTART.md](./docs/QUICKSTART.md) | **Full install:** [docs/INSTALL.md](./docs/INSTALL.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **All docs:** [docs/README.md](./docs/README.md) | **Features:** [docs/FEATURES.md](./docs/FEATURES.md)
+**Quickstart:** [docs/QUICKSTART.md](./docs/user/quickstart.md) | **Full install:** [docs/INSTALL.md](./docs/user/install.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/user/scenarios.md) | **All docs:** [docs/README.md](./docs/index.md) | **Features:** [docs/FEATURES.md](./docs/user/features.md)
 
 For a one-step Docker bootstrap, run **`./install.sh`** from the repository root (or **`make install`**). It installs Docker if needed, creates `app/.env`, starts the stack, and verifies the shared `health + readiness + status` contract. Pre-built image: **`./install.sh --pull`** or **`make install-pull`**.
 
 ## Developers
 
-- **Local setup:** [docs/LOCAL_DEV.md](./docs/LOCAL_DEV.md) — Docker, **Node.js 22** for `app/ui` (see `app/ui/.nvmrc` and `package.json` `engines`), MkDocs venv vs app Python.
-- **Tests & CI:** [docs/TESTING.md](./docs/TESTING.md) — `make test`, `make test-web`, E2E; processor tests are RAM-heavy.
+- **Local setup:** [docs/LOCAL_DEV.md](./docs/contributor/local-dev.md) — Docker, **Node.js 22** for `app/ui` (see `app/ui/.nvmrc` and `package.json` `engines`), MkDocs venv vs app Python.
+- **Tests & CI:** [docs/TESTING.md](./docs/contributor/testing.md) — `cd app && make test`, `cd app && make test-web`, E2E; processor tests are RAM-heavy.
 - **Contributing:** [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ### First-time contributor CI (same as Actions)

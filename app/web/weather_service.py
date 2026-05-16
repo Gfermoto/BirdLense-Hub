@@ -156,10 +156,49 @@ def _create_weather_fetcher():
     )
 
 
-weather_fetcher = _create_weather_fetcher()
+_weather_fetcher = None
+_weather_fetcher_key = None
+
+
+class _WeatherFetcherProxy:
+    """Compatibility proxy for legacy imports of ``weather_fetcher``."""
+
+    def fetch(self):
+        return _get_weather_fetcher().fetch()
+
+
+def _current_weather_fetcher_key():
+    source = app_config.get("weather.source", "openweather")
+    if source == "homeassistant":
+        return (
+            "homeassistant",
+            get_homeassistant_url(),
+            app_config.get("weather.ha_entity_id", "weather.home"),
+            get_homeassistant_token(),
+        )
+    return (
+        "openweather",
+        _normalize_coord(app_config.get("secrets.latitude")),
+        _normalize_coord(app_config.get("secrets.longitude")),
+        os.environ.get("OPENWEATHER_API_KEY") or app_config.get("secrets.openweather_api_key"),
+    )
+
+
+def _get_weather_fetcher():
+    """Return a cached fetcher, recreating only when weather config changes."""
+    global _weather_fetcher, _weather_fetcher_key
+    key = _current_weather_fetcher_key()
+    if _weather_fetcher is None or key != _weather_fetcher_key:
+        _weather_fetcher = _create_weather_fetcher()
+        _weather_fetcher_key = key
+    return _weather_fetcher
 
 
 def fetch_weather():
     """Fetch weather using current app_config (picks up settings changes without restart)."""
-    fetcher = _create_weather_fetcher()
+    fetcher = _get_weather_fetcher()
     return fetcher.fetch()
+
+
+# Backward compatibility: ``compat_reexports`` imports this symbol.
+weather_fetcher = _WeatherFetcherProxy()

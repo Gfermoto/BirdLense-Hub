@@ -1,0 +1,17 @@
+{
+  "schema": "hard_negatives_manifest@v1",
+  "notes": "Example only — replace paths before training. Curated background / FP mines for 3-class detector (#367).",
+  "items": [
+    {
+      "relative_path": "binary/background/train/images/night_empty_001.jpg",
+      "kind": "image_level",
+      "source": "manual_empty_feeder"
+    },
+    {
+      "relative_path": "binary/background/train/images/fp_branch_crop_002.jpg",
+      "kind": "object_crop",
+      "source": "hub_export_high_fp",
+      "seed": 42
+    }
+  ]
+}

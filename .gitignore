@@ -10,16 +10,36 @@ backups-recovered/
 app/data/recordings
 app/data/dataset/
 app/data/cache/
+app/data/.ultralytics/
+app/data/processor/
 app/data/notify_temp
 # Снимки runtime процессора (локально / в volume; не коммитить)
 app/data/diagnostics/
-data/diagnostics/
+app/data/feedback_exports/
 app/processor/data/
 app/data/processor.log*
 app.log
 .DS_Store
+# Windows NTFS ADS artifacts from downloaded/copied files
+**/*:Zone.Identifier
+**/*:Zone.Identifier.*
 /datasets
 scripts/datasets/.cache/
+scripts/datasets/brg/
+# Локальная выгрузка YOLO для трёхклассового детектора (bootstrap_detector_yolo.py)
+scripts/datasets/binary/birds/
+scripts/datasets/binary/rodent/
+scripts/datasets/binary/background/
+scripts/datasets/binary/merged/
+# Слитый трёхклассовый датасет (merge_datasets_three_class.py --output-dir brg)
+scripts/datasets/brg/
+# старые пути (миграция с прежней схемы)
+scripts/datasets/birds_binary_yolo/
+scripts/datasets/rodent_yolo/
+scripts/datasets/background_yolo/
+scripts/datasets/birds_rodent_background_yolo/
+scripts/datasets/coco_birds_yolo/
+scripts/datasets/.venv-detector/
 .venv-datasets/
 app/.venv/
 app/.ruff_cache/
@@ -29,6 +49,7 @@ app/.pytest_cache/
 .venv/
 # make ci-local / scripts/ci-full-local.sh
 .venv-ci/
+.venv-yolo-fetch/
 .venv-docs/
 # Local model weight (do not commit large model blobs)
 app/yolo11n.pt
@@ -89,12 +110,37 @@ app/ui/coverage/
 # Артефакты (curl -c, debug)
 **/-X
 
-# Обученные модели (веса и артефакты обучения)
-app/processor/models/
-# Исключение: текстовые allowlist-файлы — часть конфигурации, не весов
+# Обученные модели (веса): игнор под models/, кроме явных текстов/YAML.
+# Примечание: app/processor/models/ целиком ломает negation для подкаталогов — используем models/*.
+app/processor/models/*
+!app/processor/models/classification/
+app/processor/models/classification/*
+!app/processor/models/classification/weights/
+app/processor/models/classification/weights/*
 !app/processor/models/classification/weights/class_names.txt
-# Краткая памятка по бинарному детектору (не веса)
+!app/processor/models/detection/
+app/processor/models/detection/*
 !app/processor/models/detection/README.md
+# BRG binary detector shipped with Hub + matching OpenVINO IR (rest of weights/ — локально).
+!app/processor/models/detection/weights/
+app/processor/models/detection/weights/*
+!app/processor/models/detection/weights/best.pt
+!app/processor/models/detection/weights/last.pt
+!app/processor/models/detection/weights/best_openvino_model/
+app/processor/models/detection/weights/best_openvino_model/*
+!app/processor/models/detection/weights/best_openvino_model/best.bin
+!app/processor/models/detection/weights/best_openvino_model/best.xml
+!app/processor/models/detection/weights/best_openvino_model/metadata.yaml
+
+# Windows / экспорт мусор рядом с весами
+**/Zone.Identifier
+!app/processor/models/tracker/
+!app/processor/models/behavior/
+app/processor/models/behavior/*
+!app/processor/models/behavior/README.md
+!app/processor/models/behavior/behavior_logistic_export@v1.json
+!app/processor/models/behavior/behavior_logistic_openvino/
+!app/processor/models/behavior/behavior_logistic_openvino/behavior_logistic.onnx
 
 # Сгенерированная документация (make docs)
 docs/api/
@@ -148,3 +194,16 @@ app/web/instance/
 /.unknown_rows.json
 /.video*.json
 /.weird_*.json
+/benchmark*.json
+/benchmark_*.json
+/mlruns/
+/wandb/
+/runs/
+/lightning_logs/
+*.ckpt
+*.prof
+*.trace.json
+
+# Локальный scratch и копии диагностики у корня репо (не путать с app/data/)
+/tmp/
+/data/

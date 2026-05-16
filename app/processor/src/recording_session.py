@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from collections import Counter
@@ -20,6 +21,15 @@ from processor_runtime_stats import inc_counter, observe_timing, set_gauge
 from recording_finalize import finalize_motion_recording
 
 logger = logging.getLogger(__name__)
+
+
+def _camera_processor_overrides(camera_id: str | None) -> dict:
+    """Per-camera processor overrides from ``processor.camera_overrides.<camera_id>``."""
+    cam = str(camera_id or "").strip()
+    if not cam:
+        return {}
+    raw = app_config.get(f"processor.camera_overrides.{cam}")
+    return dict(raw) if isinstance(raw, dict) else {}
 
 
 class MotionRecordingSession:
@@ -104,7 +114,11 @@ class MotionRecordingSession:
                 ):
                     return True
             except Exception:
-                pass
+                logger.debug(
+                    "recording_session: motion_detector frigate probe failed camera=%s",
+                    camera_id,
+                    exc_info=True,
+                )
 
         aggregator_recent = getattr(self.mqtt_aggregator, "has_recent_frigate_activity", None)
         if callable(aggregator_recent):
@@ -122,6 +136,11 @@ class MotionRecordingSession:
                     )
                 )
             except Exception:
+                logger.debug(
+                    "recording_session: mqtt_aggregator frigate probe failed cameras=%s",
+                    camera_ids,
+                    exc_info=True,
+                )
                 return False
         return False
 
@@ -132,7 +151,20 @@ class MotionRecordingSession:
         )
         self.decision_maker.species_confidence_overrides = session_overrides
 
-        camera_id = getattr(self.motion_detector, "get_triggered_camera", lambda: None)() or self.default_camera_id
+        from motion_recording_camera import resolve_motion_recording_camera_id
+
+        camera_id = resolve_motion_recording_camera_id(
+            self.motion_detector,
+            mqtt_aggregator=self.mqtt_aggregator,
+            default_camera_id=self.default_camera_id,
+        )
+        frigate_trigger_event = None
+        if getattr(self.motion_detector, "get_triggered_by", lambda: None)() == "frigate":
+            _last_frigate = getattr(self.motion_detector, "get_last_frigate_event", None)
+            if callable(_last_frigate):
+                _ev = _last_frigate()
+                if isinstance(_ev, dict) and _ev:
+                    frigate_trigger_event = {**_ev, "_session_trigger_snapshot": True}
         if not self.args.input and app_config.get("video.source") == "go2rtc":
             self.media_source = self.get_media_source(camera_id)
 
@@ -158,6 +190,16 @@ class MotionRecordingSession:
                 frigate_hold_seconds = float(app_config.get("processor.frigate_activity_hold_seconds") or 0.0)
             except (TypeError, ValueError):
                 frigate_hold_seconds = 0.0
+            try:
+                none_frame_retries = int(app_config.get("processor.capture_none_frame_retries") or 3)
+            except (TypeError, ValueError):
+                none_frame_retries = 3
+            try:
+                none_frame_retry_sleep_ms = int(app_config.get("processor.capture_none_frame_retry_sleep_ms") or 80)
+            except (TypeError, ValueError):
+                none_frame_retry_sleep_ms = 80
+            none_frame_retries = max(0, none_frame_retries)
+            none_frame_retry_sleep_s = max(0.0, float(none_frame_retry_sleep_ms) / 1000.0)
             runtime_signals = {
                 "frames_seen": 0,
                 "yolo_frames_ran": 0,
@@ -167,14 +209,38 @@ class MotionRecordingSession:
             }
             runtime_profile_counts: Counter[str] = Counter()
             runtime_profile_overrides: dict[str, dict] = {}
+            camera_overrides = _camera_processor_overrides(camera_id)
+            if camera_overrides:
+                self.decision_maker.apply_runtime_overrides(camera_overrides)
             frame_n = 0
+            consecutive_none_frames = 0
             while True:
                 if self.file_test_runtime and self.file_test_runtime.abort_session:
                     logger.info("File test: stop requested, ending session")
                     break
                 frame = self.media_source.capture()
                 if frame is None:
+                    if not file_mode and none_frame_retries > 0:
+                        consecutive_none_frames += 1
+                        inc_counter("recording_capture_none_frame_total")
+                        if consecutive_none_frames <= none_frame_retries:
+                            logger.warning(
+                                "recording_session: capture returned empty frame (%s/%s), retrying",
+                                consecutive_none_frames,
+                                none_frame_retries,
+                            )
+                            if none_frame_retry_sleep_s > 0:
+                                time.sleep(none_frame_retry_sleep_s)
+                            continue
+                        inc_counter("recording_capture_none_frame_abort_total")
+                        logger.warning(
+                            "recording_session: capture returned empty frame %s times подряд; closing session",
+                            consecutive_none_frames,
+                        )
                     break
+                if consecutive_none_frames > 0:
+                    inc_counter("recording_capture_none_frame_recovered_total")
+                    consecutive_none_frames = 0
                 frame_n += 1
                 runtime_signals["frames_seen"] += 1
                 if self.file_test_runtime:
@@ -190,7 +256,11 @@ class MotionRecordingSession:
                 processor_status["last_video_ok_at"] = datetime.now(timezone.utc).isoformat()
                 frame_time = getattr(self.media_source, "get_frame_time", lambda: None)()
                 with self.fps_tracker:
-                    has_detections = self.frame_processor.run(frame, frame_time=frame_time)
+                    has_detections = self.frame_processor.run(
+                        frame,
+                        frame_time=frame_time,
+                        camera_overrides=camera_overrides,
+                    )
                 run_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
                 if run_stats.get("yolo_ran"):
                     runtime_signals["yolo_frames_ran"] += 1
@@ -238,7 +308,9 @@ class MotionRecordingSession:
             if runtime_profile_counts:
                 dominant_runtime_profile = runtime_profile_counts.most_common(1)[0][0]
                 dominant_runtime_overrides = dict(runtime_profile_overrides.get(dominant_runtime_profile) or {})
-                self.decision_maker.apply_runtime_overrides(dominant_runtime_overrides)
+                merged_runtime_overrides = dict(dominant_runtime_overrides)
+                merged_runtime_overrides.update(camera_overrides)
+                self.decision_maker.apply_runtime_overrides(merged_runtime_overrides)
             session_duration_ms = max(0.0, (end_time - start_time).total_seconds() * 1000.0)
             observe_timing("recording_session_duration", session_duration_ms)
             set_gauge("last_session_frames_seen", runtime_signals["frames_seen"])
@@ -261,6 +333,7 @@ class MotionRecordingSession:
                 data_dir=self.data_dir,
                 recording_context={
                     "triggered_camera": camera_id,
+                    "frigate_trigger_event": frigate_trigger_event,
                     "frigate_activity_hold_seconds": frigate_hold_seconds,
                     "triggered_by": getattr(self.motion_detector, "get_triggered_by", lambda: None)(),
                     "trigger_display": format_trigger_display_line(_active_names),

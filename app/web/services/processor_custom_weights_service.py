@@ -53,16 +53,37 @@ def _resolve_model_path(rel_or_abs: str) -> str:
 
 
 def effective_binary_path() -> str:
-    raw = app_config.get("processor.models.binary", "models/detection/weights/best.pt")
-    return _resolve_model_path(str(raw).strip())
+    """Путь для UI статуса/отпечатка: приоритет OpenVINO IR при наличии, иначе ``processor.models.binary``.
+
+    Если ``inference_backend=openvino``, но IR не задан, резолвер даёт ``''``, хотя оператор уже
+    загрузил ``binary.pt`` (ключ ``processor.models.binary``). Processor по-прежнему требует IR
+    на старте; здесь нужен человекочитаемый слот метаданных и fingerprint загруженного .pt (#276).
+    """
+    root = _processor_root()
+    from inference.binary_paths import (
+        resolve_binary_detector_weight_path,
+        resolve_relative_to_processor_root,
+    )
+
+    path, _backend = resolve_binary_detector_weight_path(app_config, root)
+    path_stripped = str(path or "").strip()
+    if path_stripped:
+        return path_stripped
+    default_bin = "models/detection/weights/yolo11n.pt"
+    raw = app_config.get("processor.models.binary", default_bin)
+    rel = str(raw).strip() if raw is not None else default_bin
+    if not rel:
+        rel = default_bin
+    return resolve_relative_to_processor_root(rel, root)
 
 
 def effective_classifier_path() -> str:
-    raw = app_config.get(
-        "processor.models.classifier",
-        "models/classification/weights/best.pt",
-    )
-    return _resolve_model_path(str(raw).strip())
+    from inference.classifier_paths import resolve_classifier_weight_path
+
+    return resolve_classifier_weight_path(
+        app_config,
+        _processor_root(),
+    )[0]
 
 
 def effective_allowlist_path() -> str | None:
@@ -72,7 +93,30 @@ def effective_allowlist_path() -> str | None:
 
 
 def _stat_slot(path: str | None) -> dict[str, Any] | None:
-    if not path or not os.path.isfile(path):
+    if not path:
+        return None
+    if os.path.isdir(path):
+        from inference.binary_paths import openvino_bundle_fingerprint
+
+        try:
+            st = os.stat(path)
+        except OSError:
+            return None
+        total = 0
+        try:
+            for fn in os.listdir(path):
+                fp = os.path.join(path, fn)
+                if os.path.isfile(fp):
+                    total += os.path.getsize(fp)
+        except OSError:
+            pass
+        return {
+            "path": path,
+            "bytes": total if total > 0 else None,
+            "mtime_unix": int(st.st_mtime),
+            "fingerprint_sha256_16": (openvino_bundle_fingerprint(path) or "")[:16] or None,
+        }
+    if not os.path.isfile(path):
         return None
     try:
         st = os.stat(path)
@@ -145,12 +189,15 @@ def _allowlist_slot() -> dict[str, Any]:
 
 def get_status() -> dict[str, Any]:
     """Сводка для UI: эффективные пути, встроенные дефолты, признак «наш» custom-файл."""
-    def_bin = _resolve_model_path("models/detection/weights/best.pt")
+    from inference.selector import resolve_inference_backend
+
+    def_bin = _resolve_model_path("models/detection/weights/yolo11n.pt")
     def_cls = _resolve_model_path("models/classification/weights/best.pt")
     eb = effective_binary_path()
     ec = effective_classifier_path()
     return {
         "custom_weights_dir": _custom_dir(),
+        "inference_backend": resolve_inference_backend(app_config),
         "binary": _slot_info(eb, def_bin),
         "classifier": _slot_info(ec, def_cls),
         "allowlist": _allowlist_slot(),

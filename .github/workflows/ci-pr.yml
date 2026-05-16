@@ -3,9 +3,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [main, dev, ML]
   push:
-    branches: [main, dev]
+    branches: [main, dev, ML]
   # Ежедневно на default branch — регрессии без пушей от людей.
   schedule:
     - cron: "17 4 * * *"
@@ -38,8 +38,28 @@ jobs:
         run: |
           pip install pip-audit==2.9.0
           # py 1.11.0 (транзитивно от interrogate): нет фикса на PyPI; dev/docs зависимость
+          # GHSA-r374-rxx8-8654 (paramiko): в advisory feed пока без фикс-версии.
+          # Runtime mitigation: strict host key policy by default, no silent trust in production path.
           pip-audit -r web/requirements.txt -r processor/requirements.txt \
-            --ignore-vuln PYSEC-2022-42969
+            --ignore-vuln PYSEC-2022-42969 \
+            --ignore-vuln GHSA-r374-rxx8-8654
+
+  # Roadmap #418 / A1: lock production env gate script into CI (same logic as deploy pre-flight).
+  # Synthetic secrets satisfy length/shape checks only — not real deployment values.
+  verify-prod-env-smoke:
+    name: verify-prod-env-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: scripts/verify-prod-env.sh (--require-mcp-token)
+        run: |
+          VERIFY_PROD_ENV=1 \
+          BIRDLENSE_STRICT_API_AUTH=1 \
+          FLASK_SECRET_KEY='0123456789abcdef0123456789abcdef' \
+          PROCESSOR_SECRET='fedcba9876543210fedcba9876543210' \
+          MCP_TOKEN='0123456789abcdef0123456789abcdef' \
+          ./scripts/verify-prod-env.sh --require-mcp-token
 
   openapi-contract:
     runs-on: ubuntu-latest
@@ -74,6 +94,31 @@ jobs:
 
       - name: VERSION sync (package.json, openapi, mkdocs)
         run: cd .. && python3 scripts/check-docs-version.py
+
+      - name: benchmark-track-regen CLI (--help smoke)
+        working-directory: ${{ github.workspace }}
+        run: |
+          pip install opencv-python-headless==4.10.0.84 numpy
+          PYTHONPATH=app:app/processor/src python3 scripts/benchmark-track-regen.py --help
+          PYTHONPATH=app:app/processor/src:scripts python3 -c \
+            "from benchmark_regen_labels import load_gold_by_basename; print('benchmark_regen_labels:ok')"
+          python3 scripts/compare_benchmark_reports.py --help
+          python3 scripts/verify_benchmark_report_schema.py --help
+          python3 scripts/benchmark_video_decode_resize.py --help
+          python3 scripts/federated/simulate_fedavg.py --clients 3 --samples-per-client 50 --dim 6 --seed 0
+
+      - name: Benchmark report helpers (pytest, no Docker)
+        working-directory: ${{ github.workspace }}/app
+        run: |
+          PYTHONPATH=web:processor/src python3 -m pytest \
+            processor/tests/test_benchmark_regen_labels.py \
+            processor/tests/test_compare_benchmark_reports.py \
+            processor/tests/test_verify_benchmark_report_schema.py \
+            processor/tests/test_reference_smoke_compare.py \
+            processor/tests/test_merge_three_class_dataset.py \
+            processor/tests/test_auto_benchmark.py \
+            processor/tests/test_inference_weight_contract.py \
+            -q --tb=short
 
       - name: OpenAPI contract smoke tests
         run: python -m pytest web/tests/test_openapi_contract.py -q
@@ -114,6 +159,9 @@ jobs:
 
       - name: System routes smoke (activity, logs, metrics history)
         run: python -m pytest web/tests/test_system_routes_smoke.py -q
+
+      - name: Settings UI coverage guard regression
+        run: python -m pytest web/tests/test_settings_ui_coverage_guard.py -q
 
   ui-build:
     runs-on: ubuntu-latest
@@ -190,7 +238,7 @@ jobs:
       - name: MkDocs build (strict)
         run: mkdocs build --strict
 
-  # Те же тесты, что локально: processor (unittest) + web (pytest) в образе birdlense.
+  # Те же тесты, что локально: processor (pytest, not heavy) + web (pytest) в образе birdlense.
   # Требует места на диске раннера (база Ultralytics). Required в ruleset **Protect** (main).
   docker-tests:
     name: docker-tests
@@ -246,7 +294,8 @@ jobs:
         run: |
           set -euo pipefail
           docker compose up -d
-          cleanup() { docker compose down; }
+          # После cd e2e / cd .. trap иначе вызывает compose не из app/ → «no configuration file provided».
+          cleanup() { (cd "${GITHUB_WORKSPACE}/app" && docker compose down); }
           trap cleanup EXIT
           BASE="http://127.0.0.1:${BIRDLENSE_PORT}"
           # Nginx на хосте появляется только после ожидания Gunicorn в entrypoint (до ~400 с); 60×2 с мало → curl 56.
@@ -257,13 +306,28 @@ jobs:
           BASE_URL="${BASE}" npx playwright test tests/smoke.spec.ts
         working-directory: app
 
+      - name: Strict quality verify (domain-health gate)
+        continue-on-error: true
+        env:
+          BIRDLENSE_PORT: "8085"
+        run: |
+          set -euo pipefail
+          docker compose up -d
+          cleanup() { (cd "${GITHUB_WORKSPACE}/app" && docker compose down); }
+          trap cleanup EXIT
+          BASE="http://127.0.0.1:${BIRDLENSE_PORT}"
+          bash ../scripts/wait-hub-http.sh "$BASE"
+          cd ..
+          make verify-strict-quality BASE_URL="${BASE}"
+        working-directory: app
+
       - name: Catalog cards audit (local stack)
         env:
           BIRDLENSE_PORT: "8085"
         run: |
           set -euo pipefail
           docker compose up -d
-          cleanup() { docker compose down; }
+          cleanup() { (cd "${GITHUB_WORKSPACE}/app" && docker compose down); }
           trap cleanup EXIT
           BASE="http://127.0.0.1:${BIRDLENSE_PORT}"
           bash ../scripts/wait-hub-http.sh "$BASE"

@@ -14,16 +14,20 @@ _ALLOWED_CATALOGS = frozenset(
         "full",
     }
 )
+_ALLOWED_METRICS = frozenset({"encounters", "visits", "max_simultaneous"})
 
 
 def validate_migration_calendar_params(
     catalog: str,
     start_date: str | None,
     end_date: str | None,
+    metric: str = "encounters",
 ) -> str | None:
     """None если ок, иначе текст error для API."""
     if catalog not in _ALLOWED_CATALOGS:
         return "catalog must be observed, dataset or full_eu"
+    if metric not in _ALLOWED_METRICS:
+        return "metric must be encounters, visits or max_simultaneous"
     if start_date and not _ISO_DATE.match(start_date):
         return "start_date must be YYYY-MM-DD"
     if end_date and not _ISO_DATE.match(end_date):
@@ -40,5 +44,6 @@ def migration_calendar_cache_key(
     end_date: str | None,
     catalog: str,
     evidence: str = "all",
+    metric: str = "encounters",
 ) -> str:
-    return f"migration_cal:v3:{start_year}:{end_year}:{start_date}:{end_date}:{catalog}:{evidence}"
+    return f"migration_cal:v5:{start_year}:{end_year}:{start_date}:{end_date}:{catalog}:{evidence}:{metric}"

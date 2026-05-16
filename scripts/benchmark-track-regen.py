@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a reproducible regenerate-tracks benchmark on one or more local videos."""
+"""Benchmark regenerate-tracks on local videos (reproducible JSON output)."""
 
 from __future__ import annotations
 
@@ -7,25 +7,46 @@ import argparse
 import json
 import os
 import sys
+import time
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
 import cv2
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-APP_ROOT = os.path.join(ROOT, 'app')
-PROCESSOR_SRC = os.path.join(ROOT, 'app', 'processor', 'src')
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT = os.path.dirname(_SCRIPT_DIR)
+
+
+def _resolve_app_paths() -> tuple[str, str]:
+    """Checkout: <repo>/app; hub container: flat /app (processor, web, app_config)."""
+    hub = '/app'
+    if (
+        os.path.isdir(os.path.join(hub, 'processor', 'src'))
+        and os.path.isdir(os.path.join(hub, 'app_config'))
+        and os.path.isfile(os.path.join(hub, 'web', 'app.py'))
+    ):
+        return hub, os.path.join(hub, 'processor', 'src')
+    app_root = os.path.join(_REPO_ROOT, 'app')
+    return app_root, os.path.join(app_root, 'processor', 'src')
+
+
+APP_ROOT, PROCESSOR_SRC = _resolve_app_paths()
+SCRIPTS_DIR = _SCRIPT_DIR
 if APP_ROOT not in sys.path:
     sys.path.insert(0, APP_ROOT)
 if PROCESSOR_SRC not in sys.path:
     sys.path.insert(0, PROCESSOR_SRC)
+if SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, SCRIPTS_DIR)
 
-from app_config.app_config import app_config  # noqa: E402
-from detection_fusion import build_fused_video_detections  # noqa: E402
-from track_regenerator import build_detection_pipeline, process_video_for_tracks  # noqa: E402
+from benchmark_regen_labels import (  # noqa: E402
+    eval_video_against_gold,
+    load_gold_by_basename,
+)
 
 
 def _video_window(path: str) -> tuple[datetime, datetime]:
+    """Approximate video wall-clock span from container metadata."""
     cap = cv2.VideoCapture(path)
     try:
         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -38,13 +59,82 @@ def _video_window(path: str) -> tuple[datetime, datetime]:
 
 
 def main() -> int:
+    """Parse CLI, set inference env if requested, run benchmark, print JSON."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--video', action='append', required=True, help='Video path to benchmark')
+    parser.add_argument(
+        '--video',
+        action='append',
+        required=True,
+        help='Video path to benchmark',
+    )
     parser.add_argument('--frame-step', type=int, default=2)
     parser.add_argument('--lores-px', type=int, default=640)
     parser.add_argument('--max-runtime-sec', type=int, default=420)
     parser.add_argument('--strategy', default='two_stage')
+    parser.add_argument(
+        '--inference-backend',
+        default='',
+        help=(
+            'Sets BIRDLENSE_INFERENCE_BACKEND for this run '
+            '(e.g. torch, openvino). Empty = env/config.'
+        ),
+    )
+    parser.add_argument(
+        '--inference-device',
+        default='',
+        help=(
+            'Sets BIRDLENSE_INFERENCE_DEVICE for this run '
+            '(e.g. intel:gpu for OpenVINO on Intel iGPU). Empty = env/config.'
+        ),
+    )
+    parser.add_argument(
+        '--labels-json',
+        default='',
+        help=(
+            'Optional gold labels sidecar (schema gold_by_basename@v1). '
+            'See benchmark_regen_labels.py docstring.'
+        ),
+    )
+    parser.add_argument(
+        '--write-report',
+        default='',
+        help='Also write the same JSON as stdout to this file (UTF-8).',
+    )
     args = parser.parse_args()
+
+    if args.inference_backend:
+        be = args.inference_backend.strip().lower()
+        os.environ['BIRDLENSE_INFERENCE_BACKEND'] = be
+    if args.inference_device:
+        os.environ['BIRDLENSE_INFERENCE_DEVICE'] = args.inference_device.strip()
+
+    labels_sidecar_path = (args.labels_json or '').strip()
+    gold_map: dict[str, list[str]] | None = None
+    if labels_sidecar_path:
+        if not os.path.isfile(labels_sidecar_path):
+            print(
+                json.dumps(
+                    {'error': 'labels_json_not_found', 'path': labels_sidecar_path},
+                    ensure_ascii=False,
+                ),
+                file=sys.stderr,
+            )
+            return 2
+        gold_map = load_gold_by_basename(labels_sidecar_path)
+
+    from app_config.app_config import app_config  # noqa: E402
+    from detection_fusion import build_fused_video_detections  # noqa: E402
+    from inference.selector import (  # noqa: E402
+        resolve_inference_backend,
+        resolve_inference_device,
+    )
+    from track_regenerator import (  # noqa: E402
+        build_detection_pipeline,
+        process_video_for_tracks,
+    )
+
+    resolved_backend = resolve_inference_backend(app_config)
+    resolved_device = resolve_inference_device(app_config)
 
     frame_processor, decision_maker = build_detection_pipeline(
         app_config,
@@ -54,6 +144,7 @@ def main() -> int:
     results: list[dict] = []
     for video_path in args.video:
         start, end = _video_window(video_path)
+        t0 = time.monotonic()
         raw = process_video_for_tracks(
             video_path,
             lores_size=(args.lores_px, args.lores_px),
@@ -62,26 +153,69 @@ def main() -> int:
             frame_step=args.frame_step,
             max_runtime_sec=args.max_runtime_sec,
         )
+        elapsed_s = max(0.0, time.monotonic() - t0)
+        try:
+            _fl = app_config.get("processor.track_regen_fusion_min_confidence_to_store")
+            _fusion_floor = float(_fl) if _fl is not None else None
+        except (TypeError, ValueError):
+            _fusion_floor = None
         fused = build_fused_video_detections(
             raw,
             [],
             start_time=start,
             end_time=end,
             app_config=app_config,
+            fusion_min_confidence_to_store=_fusion_floor,
         )
-        results.append(
-            {
-                'video': video_path,
-                'raw_track_count': len(raw),
-                'fused_track_count': len(fused),
-                'species': [track.get('species_name') for track in fused],
-                'decision_kind_counts': dict(
-                    sorted(Counter(str(track.get('decision_kind') or 'unknown') for track in fused).items()),
-                ),
-                'fallback_count': sum(1 for track in fused if bool(track.get('fallback_used'))),
-            },
-        )
-    print(json.dumps({'videos': results}, ensure_ascii=False, indent=2))
+        kind_iter = (str(track.get('decision_kind') or 'unknown') for track in fused)
+        clf_review_raw = sum(1 for track in raw if bool(track.get('classifier_needs_review')))
+        clf_review_fused = sum(1 for track in fused if bool(track.get('classifier_needs_review')))
+        row = {
+            'video': video_path,
+            'raw_track_count': len(raw),
+            'fused_track_count': len(fused),
+            'species': [track.get('species_name') for track in fused],
+            'decision_kind_counts': dict(
+                sorted(Counter(kind_iter).items()),
+            ),
+            'fallback_count': sum(
+                (1 for track in fused if bool(track.get('fallback_used'))),
+            ),
+            'classifier_needs_review_count_raw': clf_review_raw,
+            'classifier_needs_review_count_fused': clf_review_fused,
+            'runtime_seconds': round(elapsed_s, 4),
+        }
+        if gold_map is not None:
+            ev = eval_video_against_gold(gold_map, video_path, fused)
+            if ev is not None:
+                row['label_eval'] = ev
+            else:
+                row['label_eval'] = {
+                    'skipped': True,
+                    'reason': 'no_gold_for_basename',
+                    'video_basename': os.path.basename(video_path),
+                }
+        results.append(row)
+    out_obj: dict = {
+        'report_format': 'benchmark_track_regen@v1',
+        'inference_backend': resolved_backend,
+        'inference_device': resolved_device,
+        'videos': results,
+    }
+    if gold_map is not None:
+        out_obj['labels_sidecar'] = {
+            'path': labels_sidecar_path,
+            'schema': 'gold_by_basename@v1',
+        }
+    text = json.dumps(out_obj, ensure_ascii=False, indent=2)
+    print(text)
+    write_report = (args.write_report or '').strip()
+    if write_report:
+        parent = os.path.dirname(os.path.abspath(write_report))
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(write_report, 'w', encoding='utf-8') as fh:
+            fh.write(text)
     return 0
 
 

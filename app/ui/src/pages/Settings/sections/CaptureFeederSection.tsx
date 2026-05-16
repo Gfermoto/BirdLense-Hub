@@ -10,7 +10,6 @@ import Grid from '@mui/material/Grid2';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
-import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Accordion from '@mui/material/Accordion';
@@ -18,9 +17,9 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ServiceBlock } from '../shared/ServiceBlock';
-import { MotionLegacyMirrorBlock } from './MotionLegacyMirrorBlock';
 import { ScalesIntegrationFields } from '../shared/scalesIntegrationFields';
 import { FeederRelayFields } from '../shared/feederRelayFields';
+import { FrigateTriggerBlock } from '../shared/FrigateTriggerBlock';
 import type { Settings } from '../../../types';
 
 type Props = {
@@ -30,13 +29,6 @@ type Props = {
 type TriggerTransportSource = NonNullable<
   NonNullable<Settings['triggers']>['motion_sensor']
 >['source'];
-
-function splitCsv(value: string): string[] {
-  return (value || '')
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
 
 export function CaptureFeederSection({ form }: Props) {
   const { t } = useTranslation();
@@ -174,146 +166,7 @@ export function CaptureFeederSection({ form }: Props) {
 
               <Grid size={{ xs: 12 }}>
                 <ServiceBlock title={t('settings.triggerFrigateBlock')}>
-                  <form.Field name="triggers.frigate.enabled">
-                    {(field) => (
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={field.state.value ?? false}
-                            onChange={(e) =>
-                              field.handleChange(e.target.checked)
-                            }
-                          />
-                        }
-                        label={t('settings.triggerFrigate')}
-                      />
-                    )}
-                  </form.Field>
-                  <form.Subscribe
-                    selector={(state) =>
-                      state.values.triggers?.frigate?.enabled === true
-                    }
-                  >
-                    {(enabled) =>
-                      enabled ? (
-                        <>
-                          <Alert
-                            severity="info"
-                            variant="outlined"
-                            sx={{ mb: 2 }}
-                          >
-                            {t('settings.frigateMotionIntro')}
-                          </Alert>
-                          <Grid container spacing={2}>
-                            <Grid size={{ xs: 12 }}>
-                              <form.Field name="triggers.frigate.topic">
-                                {(field) => (
-                                  <TextField
-                                    fullWidth
-                                    value={
-                                      field.state.value ?? 'frigate/events'
-                                    }
-                                    onChange={(e) =>
-                                      field.handleChange(e.target.value)
-                                    }
-                                    label={t('settings.frigateTopic')}
-                                    placeholder="frigate/events"
-                                    helperText={t('settings.frigateTopicHint')}
-                                  />
-                                )}
-                              </form.Field>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_camera_filter">
-                                {(field) => (
-                                  <TextField
-                                    fullWidth
-                                    value={(field.state.value || []).join(', ')}
-                                    onChange={(e) =>
-                                      field.handleChange(
-                                        splitCsv(e.target.value),
-                                      )
-                                    }
-                                    label={t('settings.frigateCameraFilter')}
-                                    placeholder="BirdCam, Patio"
-                                    helperText={t(
-                                      'settings.frigateCameraFilterHint',
-                                    )}
-                                  />
-                                )}
-                              </form.Field>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_label_filter">
-                                {(field) => (
-                                  <TextField
-                                    fullWidth
-                                    value={(field.state.value || []).join(', ')}
-                                    onChange={(e) =>
-                                      field.handleChange(
-                                        splitCsv(e.target.value),
-                                      )
-                                    }
-                                    label={t('settings.frigateLabelFilter')}
-                                    placeholder="bird, squirrel (Frigate)"
-                                    helperText={t(
-                                      'settings.frigateLabelFilterHint',
-                                    )}
-                                  />
-                                )}
-                              </form.Field>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_label_exclude">
-                                {(field) => (
-                                  <TextField
-                                    fullWidth
-                                    value={(field.state.value || []).join(', ')}
-                                    onChange={(e) =>
-                                      field.handleChange(
-                                        splitCsv(e.target.value),
-                                      )
-                                    }
-                                    label={t('settings.frigateLabelExclude')}
-                                    placeholder="cat, dog"
-                                    helperText={t(
-                                      'settings.frigateLabelExcludeHint',
-                                    )}
-                                  />
-                                )}
-                              </form.Field>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                              <form.Field name="motion.frigate_trigger_on_tracked_object">
-                                {(field) => (
-                                  <FormControl fullWidth>
-                                    <FormControlLabel
-                                      control={
-                                        <Switch
-                                          checked={field.state.value !== false}
-                                          onChange={(e) =>
-                                            field.handleChange(e.target.checked)
-                                          }
-                                        />
-                                      }
-                                      label={t(
-                                        'settings.frigateTriggerOnGeometry',
-                                      )}
-                                    />
-                                    <FormHelperText>
-                                      {t(
-                                        'settings.frigateTriggerOnGeometryHint',
-                                      )}
-                                    </FormHelperText>
-                                  </FormControl>
-                                )}
-                              </form.Field>
-                            </Grid>
-                          </Grid>
-                        </>
-                      ) : null
-                    }
-                  </form.Subscribe>
+                  <FrigateTriggerBlock form={form} />
                 </ServiceBlock>
               </Grid>
 
@@ -443,10 +296,6 @@ export function CaptureFeederSection({ form }: Props) {
                     }
                   </form.Subscribe>
                 </ServiceBlock>
-              </Grid>
-
-              <Grid size={{ xs: 12 }}>
-                <MotionLegacyMirrorBlock form={form} />
               </Grid>
 
               <Grid size={{ xs: 12 }}>

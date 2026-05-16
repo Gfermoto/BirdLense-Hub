@@ -114,6 +114,20 @@ export interface paths {
                                 active_triggers?: ("opencv" | "frigate" | "motion_sensor" | "scales")[];
                                 birdnet_url?: string | null;
                             };
+                            /**
+                             * @description Environment checklist aligned with `scripts/verify-prod-env.sh` (strict UI/API auth + secrets).
+                             *     In `development` runtime, missing values are reported as `warn` so operators see gaps before switching to production.
+                             */
+                            security_gates: {
+                                /** @enum {string} */
+                                runtime: "development" | "production";
+                                items: {
+                                    /** @enum {string} */
+                                    id: "strict_api_auth" | "flask_secret_key" | "processor_secret";
+                                    /** @enum {string} */
+                                    status: "ok" | "warn" | "error";
+                                }[];
+                            };
                         };
                     };
                 };
@@ -163,6 +177,16 @@ export interface paths {
                                 trigger_display?: string;
                                 active_triggers?: ("opencv" | "frigate" | "motion_sensor" | "scales")[];
                                 birdnet_url?: string | null;
+                            };
+                            security_gates: {
+                                /** @enum {string} */
+                                runtime: "development" | "production";
+                                items: {
+                                    /** @enum {string} */
+                                    id: "strict_api_auth" | "flask_secret_key" | "processor_secret";
+                                    /** @enum {string} */
+                                    status: "ok" | "warn" | "error";
+                                }[];
                             };
                         };
                     };
@@ -217,6 +241,180 @@ export interface paths {
                             active_triggers?: ("opencv" | "frigate" | "motion_sensor" | "scales")[];
                             birdnet_url?: string | null;
                         };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Prometheus metrics (root path)
+         * @description Prometheus text payload on the root host path (`/metrics`).
+         *     This path is outside `/api/ui`; use the root server URL for scraping.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Prometheus text payload */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": string;
+                    };
+                };
+                /** @description Missing or invalid bearer token when `BIRDLENSE_METRICS_TOKEN` is enabled */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Metrics backend error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Prometheus metrics (API alias)
+         * @description Same Prometheus payload as `/metrics`, exposed at `/api/metrics` for scraper compatibility.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Prometheus text payload */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": string;
+                    };
+                };
+                /** @description Missing or invalid bearer token when `BIRDLENSE_METRICS_TOKEN` is enabled */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Metrics backend error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": string;
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/metrics/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Metrics JSON summary
+         * @description JSON summary used by dashboards and observability checks.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Metrics summary */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Missing or invalid bearer token when `BIRDLENSE_METRICS_TOKEN` is enabled */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Metrics summary build error */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
                     };
                 };
             };
@@ -422,8 +620,10 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Update recording (favorite)
-         * @description Set ``favorite`` so retention can skip this recording when ``retention.protect_favorites`` is enabled (cascade and files_only). Contributor or admin session required (same gate as DELETE / download).
+         * Update recording (favorite, behavior)
+         * @description Update ``favorite`` (retention may skip when ``retention.protect_favorites`` is on) and/or
+         *     manual **behavior** label for ML feedback (#416). At least one of ``favorite``, ``behavior_label``,
+         *     ``behavior_confidence`` must be present. Contributor or admin session required (same gate as DELETE / download).
          */
         patch: {
             parameters: {
@@ -437,7 +637,11 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        favorite: boolean;
+                        favorite?: boolean;
+                        /** @description Lowercased taxonomy label, or null/empty to clear behavior fields */
+                        behavior_label?: string | null;
+                        /** @description Manual confidence for ``behavior_label``; null clears */
+                        behavior_confidence?: number | null;
                     };
                 };
             };
@@ -1556,6 +1760,167 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ConfigAuditResponse"];
+                    };
+                };
+                /** @description Settings password required */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/active-learning/pool-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Active-learning pool preview
+         * @description Review/uncertainty candidates for active-learning export (#369).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Pool preview payload */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Access denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/reid/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Re-ID sidecar summary
+         * @description Read-only summary of offline `reid_embedding` sidecar table (#374).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Sidecar table summary */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Access denied */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/ml-runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ML/video runtime config status
+         * @description Operator-facing snapshot of ML/video runtime config (#373/#372).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Runtime status payload */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
                     };
                 };
                 /** @description Settings password required */
@@ -6086,6 +6451,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/behavior-baseline/retrain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retrain behavior baseline from hub labels
+         * @description Admin (settings password session): retrain behavior logistic weights from ``Video.behavior_label``
+         *     on non-deleted recordings, using the same 3 meta-features as the processor runtime. Writes
+         *     ``processor/models/behavior/behavior_logistic_export@v1.json`` by default. Requires scikit-learn
+         *     in the web environment and at least four labeled videos with two distinct labels.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Validation error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description scikit-learn missing */
+                501: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/merge-duplicate-species": {
         parameters: {
             query?: never;
@@ -7717,12 +8159,16 @@ export interface components {
                 wind_speed?: number;
             };
             species?: {
+                id?: number;
                 species_id?: number;
                 species_name?: string;
+                track_id?: number | null;
                 start_time?: number;
                 end_time?: number;
                 confidence?: number;
                 source?: string;
+                detection_provider?: string | null;
+                individual_nickname?: string | null;
                 image_url?: string;
             }[];
             food?: components["schemas"]["BirdFood"][];
@@ -7733,6 +8179,10 @@ export interface components {
                 /** @enum {string} */
                 display_unit?: "kg" | "g";
             } | null;
+            /** @description Runtime or manually set behavior taxonomy label (#416) */
+            behavior_label?: string | null;
+            /** @description Confidence for behavior_label (0..1) */
+            behavior_confidence?: number | null;
         };
         VideoNeighbors: {
             /** @enum {string} */
@@ -7783,6 +8233,19 @@ export interface components {
             /** Format: date-time */
             end_time?: string;
             max_simultaneous?: number;
+            total_recording_seconds?: number;
+            video_duration_seconds?: number | null;
+            /** @enum {string} */
+            timeline_kind?: "visit" | "unlinked_video";
+            individual_nickname?: string | null;
+            /** @description Behavior events produced by behavior recognition model runtime. */
+            behavior_events?: {
+                label?: string;
+                confidence?: number;
+                evidence?: {
+                    [key: string]: unknown;
+                };
+            }[];
             weather?: {
                 temp?: number | null;
                 clouds?: number | null;
@@ -7801,6 +8264,7 @@ export interface components {
                 parent_id?: number;
             };
             detections?: {
+                id?: number;
                 video_id?: number;
                 /** Format: date-time */
                 start_time?: string;
@@ -7808,6 +8272,8 @@ export interface components {
                 end_time?: string;
                 confidence?: number;
                 source?: string;
+                detection_provider?: string | null;
+                individual_nickname?: string | null;
             }[];
         };
         UnknownDetection: {
@@ -7823,6 +8289,14 @@ export interface components {
             source?: string;
             detection_provider?: string | null;
             image_url?: string | null;
+            /** @enum {string|null} */
+            review_state?: "pending" | "reviewed" | "not_applicable" | null;
+            /** @enum {string|null} */
+            review_reason?: "low_confidence" | "generic_bird" | "classifier_uncertainty" | null;
+            review_source?: string | null;
+            classifier_entropy?: number | null;
+            classifier_top1_top2_margin?: number | null;
+            classifier_needs_review?: boolean;
         };
         SpeciesSummary: {
             id?: number;
@@ -8055,6 +8529,10 @@ export interface components {
                 frame_processing_warn_ms?: number;
                 inference_lores_px?: number;
                 binary_imgsz?: number;
+                /** @description Optional NMS IoU for Ultralytics YOLO.track() on the binary detector (omit from JSON to use engine default) */
+                binary_track_iou?: number;
+                /** @description Optional max detections per frame for binary YOLO.track() */
+                binary_track_max_det?: number;
                 classification_scheduler?: string;
                 max_classifications_per_frame?: number;
                 max_blur_checks?: number;
@@ -8072,7 +8550,6 @@ export interface components {
                     [key: string]: unknown;
                 };
                 save_images?: boolean;
-                single_stage_coco_animals_only_auto?: boolean;
                 birdnet_mqtt_prior_window_hours?: number;
                 birdnet_mqtt_bias_window_seconds?: number;
                 birdnet_mqtt_prior_ttl_hours?: number;
@@ -8090,6 +8567,10 @@ export interface components {
                 track_regen_frame_step?: number;
                 track_regen_detection_strategy?: string;
                 track_regen_lores_px?: number;
+                /** @description When Ultralytics ByteTrack yields no box ids during offline regen, stitch frames via IoU (processor internal). */
+                track_regen_iou_id_fallback?: boolean;
+                /** @description IoU threshold for matching boxes between frames in regen id fallback; null uses internal default (0.22). */
+                track_regen_iou_match_threshold?: number | null;
                 track_regen_video_timeout_sec?: number;
                 track_regen_precise_timeout_sec?: number;
                 track_regen_precise_detection_strategy?: string;
@@ -8097,6 +8578,26 @@ export interface components {
                 track_regen_ignore_regional_species?: boolean;
                 track_regen_match_live_pipeline?: boolean;
                 track_regen_parallel_auto_with_manual?: boolean;
+                /** @description Offline/nearline/realtime embedding pipeline mode label for operators (#389); realtime requires explicit pilot. */
+                reid_embedding_pipeline_mode?: string;
+                /** @description Enable cosine-based similarity hints for contributors/admins when embedding contract metadata exists (#390). */
+                reid_suggestions_enabled?: boolean;
+                /** @description Emergency disable for similarity hints without deleting embeddings (#390). */
+                reid_kill_switch?: boolean;
+                /** @description Evaluate policy server-side but suppress user-facing similarity hints (#390). */
+                reid_shadow_mode?: boolean;
+                /** @description Default cosine similarity threshold for suggest_same_individual (#390). */
+                reid_default_similarity_threshold?: number;
+                /** @description Cosine similarity below this value is treated as inconclusive (#390). */
+                reid_different_similarity_threshold?: number;
+                /** @description Extra threshold boost when candidate recordings likely come from different folders/cameras (#390). */
+                reid_cross_camera_threshold_boost?: number;
+                /** @description Suppress hints when embedding timestamps exceed this age (hours); null disables (#389/#390). */
+                reid_max_embedding_age_hours?: number | null;
+                /** @description Optional per-species cosine thresholds keyed by species display name (#390). */
+                reid_species_similarity_thresholds?: {
+                    [key: string]: number;
+                };
             } & {
                 [key: string]: unknown;
             };

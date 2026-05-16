@@ -12,6 +12,28 @@ logger = logging.getLogger(__name__)
 DEFAULT_MIN_CONFIDENCE = 0.30
 
 
+def _parse_optional_threshold(raw):
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _classifier_needs_review_flag(entropy, margin, entropy_ge, margin_le):
+    """True если энтропия/ margin выходят за пороги из конфига (#370, AL)."""
+    if entropy_ge is None and margin_le is None:
+        return False
+    hi = False
+    lo = False
+    if entropy_ge is not None and entropy is not None:
+        hi = float(entropy) >= float(entropy_ge)
+    if margin_le is not None and margin is not None:
+        lo = float(margin) <= float(margin_le)
+    return bool(hi or lo)
+
+
 def _is_rodent_detector_label(detector_label: str) -> bool:
     """Канон в пайплайне — ``Rodent``; ``squirrel`` только для старых событий/логов."""
     d = str(detector_label or "").strip().lower()
@@ -55,6 +77,9 @@ class DecisionMaker:
         generic_bird_min_frames=3,
         generic_bird_min_area_frac=0.01,
         generic_bird_min_best_frame_score=6.5,
+        generic_rodent_min_frames=1,
+        generic_rodent_max_area_frac=1.0,
+        generic_rodent_min_best_frame_score=0.0,
     ):
         self.max_record_seconds = max_record_seconds
         self.max_inactive_seconds = max_inactive_seconds
@@ -99,6 +124,18 @@ class DecisionMaker:
             self.generic_bird_min_best_frame_score = float(generic_bird_min_best_frame_score)
         except (TypeError, ValueError):
             self.generic_bird_min_best_frame_score = 6.5
+        try:
+            self.generic_rodent_min_frames = max(1, int(generic_rodent_min_frames))
+        except (TypeError, ValueError):
+            self.generic_rodent_min_frames = 1
+        try:
+            self.generic_rodent_max_area_frac = max(0.0, min(1.0, float(generic_rodent_max_area_frac)))
+        except (TypeError, ValueError):
+            self.generic_rodent_max_area_frac = 1.0
+        try:
+            self.generic_rodent_min_best_frame_score = float(generic_rodent_min_best_frame_score)
+        except (TypeError, ValueError):
+            self.generic_rodent_min_best_frame_score = 0.0
         self._runtime_override_defaults = {
             "min_track_duration": self.min_track_duration,
             "min_confidence_to_process": self.min_confidence_to_process,
@@ -139,6 +176,7 @@ class DecisionMaker:
             "rejected_detector_below_store_floor",
             "rejected_classifier_fallback_disabled",
             "rejected_weak_generic_bird",
+            "rejected_weak_generic_rodent",
         }:
             if classifier_event_count > 1 and float(classifier_vote_share or 0.0) <= 0.5:
                 return "conflicting_evidence"
@@ -204,6 +242,28 @@ class DecisionMaker:
         if max_area < self.generic_bird_min_area_frac:
             return False
         if float(track.get("best_frame_score") or 0.0) < self.generic_bird_min_best_frame_score:
+            return False
+        return True
+
+    def _promotable_generic_rodent(
+        self,
+        *,
+        detector_label: str,
+        detector_conf: float,
+        track: dict,
+    ) -> bool:
+        if not _is_rodent_detector_label(detector_label):
+            return True
+        if float(detector_conf or 0.0) < float(self.min_confidence_to_store):
+            return False
+        max_area, n_frames = self._generic_bird_visual_support(track)
+        if n_frames <= 0:
+            return True
+        if n_frames < self.generic_rodent_min_frames:
+            return False
+        if max_area > self.generic_rodent_max_area_frac:
+            return False
+        if float(track.get("best_frame_score") or 0.0) < self.generic_rodent_min_best_frame_score:
             return False
         return True
 
@@ -349,6 +409,10 @@ class DecisionMaker:
         vote_share = counts[best_name] / len(classifier_events)
         avg_classifier_conf = sum(float(ev.get("confidence") or 0.0) for ev in relevant) / len(relevant)
         avg_combined_conf = sum(float(ev.get("combined_confidence") or 0.0) for ev in relevant) / len(relevant)
+        ent_vals = [float(ev["entropy"]) for ev in relevant if ev.get("entropy") is not None]
+        margin_vals = [float(ev["top1_top2_margin"]) for ev in relevant if ev.get("top1_top2_margin") is not None]
+        avg_entropy = sum(ent_vals) / len(ent_vals) if ent_vals else None
+        avg_top1_top2_margin = sum(margin_vals) / len(margin_vals) if margin_vals else None
         return {
             "species_name": best_name,
             "vote_share": vote_share,
@@ -356,11 +420,17 @@ class DecisionMaker:
             "avg_classifier_confidence": avg_classifier_conf,
             "avg_combined_confidence": avg_combined_conf,
             "combined_confidence": vote_share * avg_combined_conf,
+            "avg_entropy": avg_entropy,
+            "avg_top1_top2_margin": avg_top1_top2_margin,
         }
 
     def get_decisions(self, tracks):
+        from app_config.app_config import app_config
+
         decisions = []
         store_floor = float(self.min_confidence_to_store)
+        entropy_ge = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_entropy_ge"))
+        margin_le = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_margin_le"))
         for track_id, track in tracks.items():
             detector_events = track.get("detector_events") or []
             if not detector_events:
@@ -479,13 +549,24 @@ class DecisionMaker:
                         is_rodent = _is_rodent_detector_label(detector_label)
                         is_bird = detector_label.lower() == "bird"
                         if is_rodent:
-                            decision_reason = "fallback_rodent"
-                            decision_kind = "accepted_generic"
-                            evidence_state = (
-                                "conflicting_classifier_votes"
-                                if float(classifier_candidate["vote_share"] or 0.0) <= 0.5
-                                else "detector_backed_generic"
-                            )
+                            if self._promotable_generic_rodent(
+                                detector_label=detector_label,
+                                detector_conf=detector_conf,
+                                track=track,
+                            ):
+                                decision_reason = "fallback_rodent"
+                                decision_kind = "accepted_generic"
+                                evidence_state = (
+                                    "conflicting_classifier_votes"
+                                    if float(classifier_candidate["vote_share"] or 0.0) <= 0.5
+                                    else "detector_backed_generic"
+                                )
+                            else:
+                                accepted = False
+                                out_conf = detector_conf
+                                decision_reason = "rejected_weak_generic_rodent"
+                                decision_kind = "rejected"
+                                evidence_state = "detector_only_low_quality"
                         elif is_bird and not self._promotable_generic_bird(
                             detector_label=detector_label,
                             detector_conf=detector_conf,
@@ -535,9 +616,20 @@ class DecisionMaker:
                     is_rodent = _is_rodent_detector_label(detector_label)
                     is_bird = detector_label.lower() == "bird"
                     if is_rodent:
-                        decision_reason = "fallback_rodent"
-                        decision_kind = "accepted_generic"
-                        evidence_state = "detector_only"
+                        if self._promotable_generic_rodent(
+                            detector_label=detector_label,
+                            detector_conf=detector_conf,
+                            track=track,
+                        ):
+                            decision_reason = "fallback_rodent"
+                            decision_kind = "accepted_generic"
+                            evidence_state = "detector_only"
+                        else:
+                            accepted = False
+                            out_conf = detector_conf
+                            decision_reason = "rejected_weak_generic_rodent"
+                            decision_kind = "rejected"
+                            evidence_state = "detector_only_low_quality"
                     elif is_bird and not self._promotable_generic_bird(
                         detector_label=detector_label,
                         detector_conf=detector_conf,
@@ -565,6 +657,10 @@ class DecisionMaker:
                 classifier_event_count=(classifier_candidate["event_count"] if classifier_candidate is not None else 0),
                 classifier_vote_share=(classifier_candidate["vote_share"] if classifier_candidate is not None else 0.0),
             )
+
+            clf_entropy = classifier_candidate.get("avg_entropy") if classifier_candidate is not None else None
+            clf_margin = classifier_candidate.get("avg_top1_top2_margin") if classifier_candidate is not None else None
+            clf_needs_review = _classifier_needs_review_flag(clf_entropy, clf_margin, entropy_ge, margin_le)
 
             decisions.append(
                 apply_runtime_contract(
@@ -605,6 +701,9 @@ class DecisionMaker:
                         "classifier_vote_share": (
                             classifier_candidate["vote_share"] if classifier_candidate is not None else 0.0
                         ),
+                        "classifier_entropy": clf_entropy,
+                        "classifier_top1_top2_margin": clf_margin,
+                        "classifier_needs_review": clf_needs_review,
                         "decision_kind": decision_kind,
                         "reject_reason_code": reject_reason_code,
                         "evidence_state": evidence_state,

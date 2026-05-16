@@ -9,15 +9,31 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
+
+from shared.ctor_kwarg_guard import assert_ctor_kwargs
 
 logger = logging.getLogger(__name__)
 
 
-def _resolve_model_path(rel_or_abs: str, processor_root: str) -> str:
-    if os.path.isabs(rel_or_abs):
-        return rel_or_abs
-    return os.path.join(processor_root, rel_or_abs)
+def _inference_device_label(binary_model: Any) -> str:
+    """Best-effort device label for startup log (#371)."""
+    try:
+        predictor = getattr(binary_model, "predictor", None)
+        args = getattr(predictor, "args", None)
+        device = getattr(args, "device", None)
+        if device:
+            return str(device)
+    except Exception:
+        logger.debug("inference device via predictor.args failed", exc_info=True)
+    try:
+        model = getattr(binary_model, "model", None)
+        dev = getattr(model, "device", None)
+        if dev:
+            return str(dev)
+    except Exception:
+        logger.debug("inference device via model.device failed", exc_info=True)
+    return "unknown"
 
 
 def build_detection_stack(
@@ -34,6 +50,24 @@ def build_detection_stack(
     from detection_strategy import TwoStageStrategy
     from frame_processor import FrameProcessor
     from decision_maker import DecisionMaker
+    from inference.backend_cache import write_inference_backend_cache
+    from inference.binary_paths import (
+        detector_weights_available,
+        openvino_expected_input_size,
+        resolve_binary_detector_weight_path,
+        resolve_relative_to_processor_root,
+    )
+    from inference.classifier_paths import (
+        classifier_weights_available,
+        resolve_classifier_weight_path,
+    )
+    from inference.selector import (
+        assert_backend_supported,
+        resolve_classifier_inference_backend,
+        resolve_classifier_inference_device,
+        resolve_inference_backend,
+        resolve_inference_device,
+    )
     from ebird_regional_confidence import (
         merge_species_confidence_overrides_with_ebird_top,
     )
@@ -60,27 +94,97 @@ def build_detection_stack(
         if min_center_dist_override is not None
         else float(app_config.get("processor.min_center_dist", 0.1))
     )
-    binary_path = _resolve_model_path(
-        app_config.get("processor.models.binary", "models/detection/weights/best.pt"),
-        processor_root,
-    )
-    classifier_path = _resolve_model_path(
-        app_config.get(
-            "processor.models.classifier",
-            "models/classification/weights/best.pt",
-        ),
-        processor_root,
-    )
 
-    if not os.path.isfile(binary_path):
+    _requested_backend = resolve_inference_backend(app_config)
+    assert_backend_supported(_requested_backend)
+    _requested_classifier_backend = resolve_classifier_inference_backend(app_config)
+    assert_backend_supported(_requested_classifier_backend)
+
+    binary_path, _inf_backend = resolve_binary_detector_weight_path(app_config, processor_root)
+    if _requested_backend == "openvino" and not (binary_path or "").strip():
         raise FileNotFoundError(
-            f"YOLO binary detector weights missing: {binary_path}. "
-            "Set processor.models.binary or run scripts/fetch-processor-weights.sh",
+            "OpenVINO binary detector path missing: set processor.models.binary_openvino "
+            "or environment variable BIRDLENSE_BINARY_OPENVINO_PATH "
+            "(export: yolo export ... format=openvino).",
         )
-    if not os.path.isfile(classifier_path):
+
+    classifier_path, _cls_backend = resolve_classifier_weight_path(
+        app_config,
+        processor_root,
+    )
+    if _requested_classifier_backend == "openvino" and not (classifier_path or "").strip():
         raise FileNotFoundError(
-            f"YOLO classifier weights missing: {classifier_path}. "
-            "Set processor.models.classifier or run scripts/fetch-processor-weights.sh",
+            "OpenVINO classifier path missing: set processor.models.classifier_openvino "
+            "or environment variable BIRDLENSE_CLASSIFIER_OPENVINO_PATH "
+            "(export: yolo export ... format=openvino).",
+        )
+
+    if _inf_backend == "openvino":
+        expected_ov_imgsz = openvino_expected_input_size(binary_path)
+        configured_imgsz_values: set[int] = set()
+        for key in (
+            "processor.binary_imgsz",
+            "processor.adaptive_profiles.night.overrides.binary_imgsz",
+        ):
+            raw = app_config.get(key)
+            if raw is None:
+                continue
+            try:
+                configured_imgsz_values.add(int(raw))
+            except (TypeError, ValueError):
+                continue
+        if not configured_imgsz_values:
+            try:
+                configured_imgsz_values.add(int(app_config.get("processor.binary_imgsz", 640) or 640))
+            except (TypeError, ValueError):
+                configured_imgsz_values.add(640)
+
+        if expected_ov_imgsz and any(v != expected_ov_imgsz for v in configured_imgsz_values):
+            mismatch = ",".join(str(v) for v in sorted(configured_imgsz_values))
+            mismatch_msg = (
+                "OpenVINO detector input-size mismatch: model expects "
+                f"{expected_ov_imgsz}, configured binary_imgsz values={mismatch}. "
+                "Align processor.binary_imgsz (+ adaptive profile overrides) with model export imgsz."
+            )
+            can_auto_fallback = _requested_backend == "auto"
+            if can_auto_fallback:
+                torch_binary_path = resolve_relative_to_processor_root(
+                    str(
+                        app_config.get(
+                            "processor.models.binary",
+                            "models/detection/weights/yolo11n.pt",
+                        ),
+                    ).strip(),
+                    processor_root,
+                )
+                if detector_weights_available(torch_binary_path):
+                    logger.error(
+                        "%s Auto fallback detector backend: openvino -> torch (%s). "
+                        "Runtime uses .pt, not IR — quality/latency differ; fix binary_imgsz to %s for OpenVINO.",
+                        mismatch_msg,
+                        torch_binary_path,
+                        expected_ov_imgsz,
+                    )
+                    binary_path = torch_binary_path
+                    _inf_backend = "torch"
+                else:
+                    raise RuntimeError(mismatch_msg)
+            else:
+                raise RuntimeError(mismatch_msg)
+
+    if not detector_weights_available(binary_path):
+        raise FileNotFoundError(
+            f"YOLO binary detector weights missing or invalid path: {binary_path}. "
+            "For torch set processor.models.binary (.pt); for OpenVINO use a directory or .xml "
+            "from yolo export format=openvino (processor.models.binary_openvino or "
+            "BIRDLENSE_BINARY_OPENVINO_PATH).",
+        )
+    if not classifier_weights_available(classifier_path):
+        raise FileNotFoundError(
+            f"YOLO classifier weights missing or invalid path: {classifier_path}. "
+            "For torch set processor.models.classifier (.pt); for OpenVINO use a directory "
+            "or .xml from yolo export format=openvino (processor.models.classifier_openvino "
+            "or BIRDLENSE_CLASSIFIER_OPENVINO_PATH).",
         )
 
     regional_species = regional_species_override
@@ -104,38 +208,165 @@ def build_detection_stack(
     max_blur_checks = app_config.get("processor.max_blur_checks", 3)
     blur_threshold = app_config.get("processor.blur_threshold", 100.0)
     min_box_size_px = app_config.get("processor.min_box_size_px", 64)
+    try:
+        min_box_size_px = int(min_box_size_px)
+    except (TypeError, ValueError):
+        min_box_size_px = 64
+    if for_track_regen:
+        raw_mb = app_config.get("processor.track_regen_min_box_size_px")
+        if raw_mb is not None:
+            try:
+                min_box_size_px = max(8, int(raw_mb))
+            except (TypeError, ValueError):
+                pass
     classification_scheduler = app_config.get(
         "processor.classification_scheduler",
         "priority",
     )
 
-    detection_strategy = TwoStageStrategy(
+    _weight_contract = (
+        str(
+            app_config.get("processor.detector_weight_contract") or "warn",
+        )
+        .strip()
+        .lower()
+    )
+    _binary_inference_device = resolve_inference_device(app_config)
+    _classifier_inference_device = resolve_classifier_inference_device(app_config)
+
+    def _two_stage_kwargs() -> Dict[str, Any]:
+        try:
+            _imgsz = int(app_config.get("processor.binary_imgsz", 640) or 640)
+        except (TypeError, ValueError):
+            _imgsz = 640
+        return {
+            "binary_model_path": binary_path,
+            "classifier_model_path": classifier_path,
+            "regional_species": regional_species,
+            "detector_scope": detector_scope,
+            "min_center_dist": min_center_dist,
+            "min_box_size_px": min_box_size_px,
+            "blur_threshold": blur_threshold,
+            "max_blur_checks": max_blur_checks,
+            "max_classifications_per_frame": max_classifications_per_frame,
+            "classification_scheduler": classification_scheduler,
+            "binary_imgsz": _imgsz,
+            "weight_contract_mode": _weight_contract,
+            "inference_backend": _inf_backend,
+            "classifier_inference_backend": _cls_backend,
+            "binary_inference_device": _binary_inference_device,
+            "classifier_inference_device": _classifier_inference_device,
+        }
+
+    try:
+        _ts_kw = _two_stage_kwargs()
+        assert_ctor_kwargs(TwoStageStrategy.__init__, _ts_kw, label="TwoStageStrategy")
+        detection_strategy = TwoStageStrategy(**_ts_kw)
+    except Exception:
+        can_fallback_detector = _requested_backend == "auto" and _inf_backend == "openvino"
+        can_fallback_classifier = _requested_classifier_backend == "auto" and _cls_backend == "openvino"
+        if not (can_fallback_detector or can_fallback_classifier):
+            raise
+
+        if can_fallback_detector:
+            torch_binary_path = resolve_relative_to_processor_root(
+                str(
+                    app_config.get(
+                        "processor.models.binary",
+                        "models/detection/weights/yolo11n.pt",
+                    ),
+                ).strip(),
+                processor_root,
+            )
+            if not detector_weights_available(torch_binary_path):
+                raise
+            binary_path = torch_binary_path
+            _inf_backend = "torch"
+        if can_fallback_classifier:
+            torch_classifier_path = resolve_relative_to_processor_root(
+                str(
+                    app_config.get(
+                        "processor.models.classifier",
+                        "models/classification/weights/best.pt",
+                    ),
+                ).strip(),
+                processor_root,
+            )
+            if not os.path.isfile(torch_classifier_path):
+                raise
+            classifier_path = torch_classifier_path
+            _cls_backend = "torch"
+        logger.exception(
+            "Inference auto backend fallback: detector=(%s,%s)->%s classifier=(%s,%s)->%s",
+            binary_path,
+            _requested_backend,
+            _inf_backend,
+            classifier_path,
+            _requested_classifier_backend,
+            _cls_backend,
+        )
+        _ts_kw_fb = _two_stage_kwargs()
+        assert_ctor_kwargs(TwoStageStrategy.__init__, _ts_kw_fb, label="TwoStageStrategy(fallback)")
+        detection_strategy = TwoStageStrategy(**_ts_kw_fb)
+    logger.info(
+        "Inference startup: detector_backend=%s classifier_backend=%s ultralytics_device_label=%s "
+        "binary_inference_device_kw=%s classifier_inference_device_kw=%s binary_path=%s classifier_path=%s "
+        "binary_imgsz=%s",
+        _inf_backend,
+        _cls_backend,
+        _inference_device_label(detection_strategy.binary_model),
+        _binary_inference_device or "(default)",
+        _classifier_inference_device or "(default)",
+        binary_path,
+        classifier_path,
+        getattr(detection_strategy, "binary_imgsz", None),
+    )
+    if _requested_backend == "auto":
+        logger.info("Inference backend auto resolved to %s", _inf_backend)
+
+    extra_cache: Optional[Dict[str, Any]] = None
+    raw_auto = (os.environ.get("BIRDLENSE_INFERENCE_AUTO_BENCHMARK") or "").strip().lower()
+    if raw_auto in ("1", "true", "yes", "on"):
+        from inference.auto_benchmark import measure_binary_detector_predict_ms
+
+        try:
+            _isz = int(app_config.get("processor.binary_imgsz", 640) or 640)
+        except (TypeError, ValueError):
+            _isz = 640
+        _ms = measure_binary_detector_predict_ms(
+            detection_strategy.binary_model,
+            imgsz=max(320, _isz),
+            device=_binary_inference_device,
+        )
+        if _ms is not None:
+            extra_cache = {"cold_start_predict_ms": round(float(_ms), 3)}
+
+    write_inference_backend_cache(
+        processor_root,
+        backend=_inf_backend,
         binary_model_path=binary_path,
+        classifier_backend=_cls_backend,
         classifier_model_path=classifier_path,
-        regional_species=regional_species,
-        detector_scope=detector_scope,
-        min_center_dist=min_center_dist,
-        min_box_size_px=min_box_size_px,
-        blur_threshold=blur_threshold,
-        max_blur_checks=max_blur_checks,
-        max_classifications_per_frame=max_classifications_per_frame,
-        classification_scheduler=classification_scheduler,
-        binary_imgsz=app_config.get("processor.binary_imgsz", 320),
+        extra=extra_cache,
     )
 
     tracker = app_config.get("processor.tracker") or "bytetrack.yaml"
-    frame_processor = FrameProcessor(
-        detection_strategy=detection_strategy,
-        tracker=tracker,
-        save_images=save_images,
-    )
-    policy_snapshot = build_pipeline_policy_snapshot(
-        app_config,
-        for_track_regen=for_track_regen,
-        strategy_override=strategy_override,
-        regional_species_override=regional_species_override,
-        min_center_dist_override=min_center_dist_override,
-    )
+    _fp_kw = {
+        "detection_strategy": detection_strategy,
+        "tracker": tracker,
+        "save_images": save_images,
+    }
+    assert_ctor_kwargs(FrameProcessor.__init__, _fp_kw, label="FrameProcessor")
+    frame_processor = FrameProcessor(**_fp_kw)
+    frame_processor.strategy._for_track_regen = bool(for_track_regen)
+    _pp_kw = {
+        "for_track_regen": for_track_regen,
+        "strategy_override": strategy_override,
+        "regional_species_override": regional_species_override,
+        "min_center_dist_override": min_center_dist_override,
+    }
+    assert_ctor_kwargs(build_pipeline_policy_snapshot, _pp_kw, label="build_pipeline_policy_snapshot")
+    policy_snapshot = build_pipeline_policy_snapshot(app_config, **_pp_kw)
     frame_processor.pipeline_policy = dict(policy_snapshot)
     merged_overrides = merge_species_confidence_overrides_with_ebird_top(app_config)
     min_store = app_config.get("detection.min_confidence_to_store")
@@ -174,19 +405,65 @@ def build_detection_stack(
             max_record_seconds,
             max_inactive_seconds,
         )
-    decision_maker = DecisionMaker(
-        max_record_seconds=max_record_seconds,
-        max_inactive_seconds=max_inactive_seconds,
-        min_track_duration=app_config.get("processor.min_track_duration", 1.0),
-        min_confidence_to_process=app_config.get("processor.min_confidence_to_process"),
-        species_confidence_overrides=merged_overrides,
-        post_record_seconds=app_config.get("processor.post_record_seconds", 0),
-        min_confidence_to_store=min_confidence_to_store,
-        classifier_fallback_bird=fallback_bird,
-        generic_bird_min_detector_conf=app_config.get("processor.generic_bird_min_detector_conf"),
-        generic_bird_min_frames=app_config.get("processor.generic_bird_min_frames", 3),
-        generic_bird_min_area_frac=app_config.get("processor.generic_bird_min_area_frac", 0.01),
-        generic_bird_min_best_frame_score=app_config.get("processor.generic_bird_min_best_frame_score", 6.5),
-    )
+    try:
+        min_track_duration_val = float(app_config.get("processor.min_track_duration", 1.0))
+    except (TypeError, ValueError):
+        min_track_duration_val = 1.0
+    min_conf_proc_val = app_config.get("processor.min_confidence_to_process")
+    dm_detector_store_val = min_confidence_to_store
+    if for_track_regen:
+        v = app_config.get("processor.track_regen_min_track_duration")
+        if v is not None:
+            try:
+                min_track_duration_val = float(v)
+            except (TypeError, ValueError):
+                pass
+        v = app_config.get("processor.track_regen_min_confidence_to_process")
+        if v is not None:
+            try:
+                min_conf_proc_val = float(v)
+            except (TypeError, ValueError):
+                pass
+        v = app_config.get("processor.track_regen_decision_detector_store_floor")
+        if v is not None:
+            try:
+                dm_detector_store_val = float(v)
+            except (TypeError, ValueError):
+                pass
+        if any(
+            app_config.get(k) is not None
+            for k in (
+                "processor.track_regen_min_track_duration",
+                "processor.track_regen_min_confidence_to_process",
+                "processor.track_regen_decision_detector_store_floor",
+            )
+        ):
+            logger.info(
+                "track_regen DecisionMaker thresholds: min_track_duration=%s "
+                "min_confidence_to_process=%s detector_store_floor=%s",
+                min_track_duration_val,
+                min_conf_proc_val,
+                dm_detector_store_val,
+            )
+
+    _dm_kw = {
+        "max_record_seconds": max_record_seconds,
+        "max_inactive_seconds": max_inactive_seconds,
+        "min_track_duration": min_track_duration_val,
+        "min_confidence_to_process": min_conf_proc_val,
+        "species_confidence_overrides": merged_overrides,
+        "post_record_seconds": app_config.get("processor.post_record_seconds", 0),
+        "min_confidence_to_store": dm_detector_store_val,
+        "classifier_fallback_bird": fallback_bird,
+        "generic_bird_min_detector_conf": app_config.get("processor.generic_bird_min_detector_conf"),
+        "generic_bird_min_frames": app_config.get("processor.generic_bird_min_frames", 3),
+        "generic_bird_min_area_frac": app_config.get("processor.generic_bird_min_area_frac", 0.01),
+        "generic_bird_min_best_frame_score": app_config.get("processor.generic_bird_min_best_frame_score", 6.5),
+        "generic_rodent_min_frames": app_config.get("processor.generic_rodent_min_frames", 1),
+        "generic_rodent_max_area_frac": app_config.get("processor.generic_rodent_max_area_frac", 1.0),
+        "generic_rodent_min_best_frame_score": app_config.get("processor.generic_rodent_min_best_frame_score", 0.0),
+    }
+    assert_ctor_kwargs(DecisionMaker.__init__, _dm_kw, label="DecisionMaker")
+    decision_maker = DecisionMaker(**_dm_kw)
     decision_maker.pipeline_policy = dict(policy_snapshot)
     return frame_processor, decision_maker, merged_overrides

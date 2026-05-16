@@ -153,8 +153,12 @@ def _system_metrics_sampler_worker(flask_app):
             flask_app.logger.warning("system metrics sampler: %s", e)
             try:
                 db.session.rollback()
-            except Exception:
-                pass
+            except Exception as rb_exc:
+                flask_app.logger.debug(
+                    "system metrics sampler rollback failed: %s",
+                    rb_exc,
+                    exc_info=True,
+                )
         time.sleep(SYSTEM_METRICS_SAMPLE_INTERVAL_SEC)
 
 

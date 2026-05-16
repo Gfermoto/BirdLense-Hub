@@ -112,8 +112,11 @@ export interface UnknownDetection {
   detection_provider?: string;
   image_url?: string;
   review_state?: 'pending' | 'reviewed' | 'not_applicable';
-  review_reason?: 'low_confidence' | 'generic_bird' | string;
+  review_reason?: 'low_confidence' | 'generic_bird' | 'classifier_uncertainty' | string;
   review_source?: string;
+  classifier_entropy?: number | null;
+  classifier_top1_top2_margin?: number | null;
+  classifier_needs_review?: boolean;
 }
 
 export const fetchUnknowns = async (

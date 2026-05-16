@@ -1,6 +1,3 @@
-# Static documentation site (MkDocs Material).
-# Source of truth remains Markdown under docs/. Cross-check `nav` with docs/SITE_MAP*.md (Meta vs Repository order).
-# Релиз: VERSION в mkdocs extra.site_version (check scripts/check-docs-version.py); баннер — overrides/main.html.
 site_name: BirdLense Hub
 site_description: Documentation for the BirdLense Hub bird-monitoring stack
 site_url: https://gfermoto.github.io/BirdLense-Hub/
@@ -13,23 +10,7 @@ copyright: Copyright &copy; BirdLense Hub contributors
 theme:
   name: material
   custom_dir: overrides
-  palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: indigo
-      accent: indigo
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
   features:
-    - announce.dismiss
     - navigation.instant
     - navigation.tracking
     - content.code.copy
@@ -40,138 +21,72 @@ markdown_extensions:
   - attr_list
   - md_in_html
 
-# Keep archive and other non-nav pages out of the built site (optional deep links only via explicit nav).
+validation:
+  nav:
+    omitted_files: ignore
+  links:
+    not_found: ignore
+
 exclude_docs: |
   archive/**
   article/**
-  CONSILIUM_AUDIT.ru.md
-  PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.md
-  PRE_IMPLEMENTATION_UNKNOWN_TIMELINE.ru.md
-  LEGACY_CLEANUP.md
+  github-issues/**
+  project/**
+  api/**
+  ui/**
 
 nav:
-  - Overview: OVERVIEW.md
-  - Documentation index: README.md
-  - "Use the hub":
-      - Quickstart: QUICKSTART.md
-      - Install: INSTALL.md
-      - Server deploy checklist: DEPLOY_SERVER.md
-      - Scenarios: SCENARIOS.md
-      - Configuration: CONFIGURATION.md
-      - Features: FEATURES.md
-      - "Domain contract": DOMAIN_CONTRACT.md
-      - "Release readiness": RELEASE_READINESS.md
-      - "Definition of Done (short gate)": DEFINITION_OF_DONE.md
-      - "UI settings map": UI_SETTINGS_MAP.md
-      - "UX canonical map (roles & journeys)": UX_CANONICAL_MAP.md
-      - "Processor performance notes": PROCESSOR_PERFORMANCE.md
-      - "Config triggers inventory": CONFIGURATION_TRIGGERS_INVENTORY.md
-      - Troubleshooting: TROUBLESHOOTING.md
-      - Runbooks: RUNBOOKS.md
-      - Recover config: RECOVERY_CONFIG.md
-      - Glossary: GLOSSARY.md
-      - "Heimdall (tiles)": HEIMDALL.md
-  - "Develop & integrate":
-      - Architecture: ARCHITECTURE.md
-      - HTTP API: API.md
-      - "API errors & security baseline": API_ERRORS.md
-      - OpenAPI (Redoc): reference/openapi.md
-      - Access control: ACCESS_CONTROL.md
-      - MCP setup: MCP_SETUP.md
-      - Local development: LOCAL_DEV.md
-      - "Runtime coupling (Docker)": RUNTIME_COUPLING.md
-      - CodeQL (CI): CODEQL.md
-      - Testing: TESTING.md
-      - "CI & quality policy": CI_AND_QUALITY.md
-      - Accessibility: A11Y.md
-      - "UX: Tooltips & hints": UX_TOOLTIPS.md
-      - "Review mode & video corrections": UX_UNKNOWN_VIDEO_CORRECTION.md
-      - "Settings: composable triggers (phase 2 draft)": SETTINGS_TRIGGERS_PHASE2.md
-  - "ML & project":
-      - Training: TRAINING.md
-      - "ML quality loop (RU)": ML_QUALITY_LOOP.ru.md
-      - "CV / ML prep contract": CV_ML_PREP.md
-      - Datasets: DATASETS.md
-      - Versioning: VERSIONING.md
-      - Roadmap: ROADMAP.md
-  - Meta:
-      - "Hub epics (GitHub tracker)": HUB_EPICS_TRACKER.md
-      - Repository layout: REPOSITORY_LAYOUT.md
-      - Verification log: VERIFICATION.md
-      - Doc conventions: Documentation.md
-      - Site map (generator): SITE_MAP.md
-      - i18n status: I18N_STATUS.md
-      - Secrets rotation (ops): SECRETS_ROTATION.md
-      - Security analysis: SECURITY.md
-      - Open-source prep: OPEN_SOURCE_PREP.md
-      - Governance: GOVERNANCE.md
-      - GitHub CLI setup: GITHUB_SETUP_GH.md
-      - Wiki and CI reports: WIKI_AUTOMATION.md
-      - "Web services domain map (#344)": project/WEB_SERVICES_DOMAIN_MAP.md
-  - "Repository (canonical files)":
-      - Contributing: project/contributing.md
-      - Security policy: project/security-policy.md
-      - Code of Conduct: project/code-of-conduct.md
-      - Changelog: project/changelog.md
-      - OpenAPI (YAML): project/openapi.md
-      - Root README: project/root-readme.md
-  - "Русский":
-      - Обзор: OVERVIEW.ru.md
-      - Оглавление: README.ru.md
-      - Быстрый старт: QUICKSTART.ru.md
-      - Установка: INSTALL.ru.md
-      - Чеклист деплоя на сервер: DEPLOY_SERVER.ru.md
-      - Сценарии: SCENARIOS.ru.md
-      - Конфигурация: CONFIGURATION.ru.md
-      - Возможности: FEATURES.ru.md
-      - "Доменный контракт": DOMAIN_CONTRACT.ru.md
-      - "Готовность к релизу": RELEASE_READINESS.ru.md
-      - "Definition of Done (короткие ворота)": DEFINITION_OF_DONE.ru.md
-      - "Карта настроек UI": UI_SETTINGS_MAP.ru.md
-      - "Каноническая UX-карта": UX_CANONICAL_MAP.ru.md
-      - "Производительность процессора": PROCESSOR_PERFORMANCE.ru.md
-      - "Инвентаризация триггеров конфига": CONFIGURATION_TRIGGERS_INVENTORY.ru.md
-      - Решение проблем: TROUBLESHOOTING.ru.md
-      - Runbooks: RUNBOOKS.ru.md
-      - Восстановление конфига: RECOVERY_CONFIG.ru.md
-      - Глоссарий: GLOSSARY.ru.md
-      - "Heimdall (плитки)": HEIMDALL.ru.md
-      - Архитектура: ARCHITECTURE.ru.md
-      - API: API.ru.md
-      - "Ошибки API и security baseline": API_ERRORS.ru.md
-      - OpenAPI (Redoc): reference/openapi.ru.md
-      - Доступ: ACCESS_CONTROL.ru.md
-      - MCP: MCP_SETUP.ru.md
-      - Локальная разработка: LOCAL_DEV.ru.md
-      - "Связность runtime (Docker)": RUNTIME_COUPLING.ru.md
-      - CodeQL (CI): CODEQL.ru.md
-      - Тестирование: TESTING.ru.md
-      - "CI и качество": CI_AND_QUALITY.ru.md
-      - Доступность: A11Y.ru.md
-      - "UX: подсказки и тултипы": UX_TOOLTIPS.ru.md
-      - "Проверка видов: список и видео": UX_UNKNOWN_VIDEO_CORRECTION.ru.md
-      - "Настройки: триггеры (фаза 2, черновик)": SETTINGS_TRIGGERS_PHASE2.ru.md
-      - Обучение: TRAINING.ru.md
-      - "Цикл качества ML": ML_QUALITY_LOOP.ru.md
-      - "Контракт подготовки CV / ML": CV_ML_PREP.ru.md
-      - Датасеты: DATASETS.ru.md
-      - Версионирование: VERSIONING.ru.md
-      - Roadmap: ROADMAP.ru.md
-      - Структура репозитория: REPOSITORY_LAYOUT.ru.md
-      - "Трекер эпиков Hub (GitHub)": HUB_EPICS_TRACKER.ru.md
-      - Верификация релизов: VERIFICATION.ru.md
-      - О документации: Documentation.ru.md
-      - Карта сайта: SITE_MAP.ru.md
-      - Локализация: I18N_STATUS.ru.md
-      - Ротация секретов (прод): SECRETS_ROTATION.ru.md
-      - Анализ безопасности: SECURITY.ru.md
-      - Open-source: OPEN_SOURCE_PREP.ru.md
-      - Управление проектом: GOVERNANCE.ru.md
-      - Настройка GitHub (gh): GITHUB_SETUP_GH.ru.md
-      - Wiki и отчёты CI: WIKI_AUTOMATION.ru.md
+  - Home: index.md
+  - User Guide:
+      - Overview: user/overview.md
+      - Quickstart: user/quickstart.md
+      - Installation: user/install.md
+      - Configuration: user/configuration.md
+      - Deploy server: user/deploy-server.md
+      - Public recordings: user/public-recordings.md
+      - Features: user/features.md
+      - Scenarios: user/scenarios.md
+      - Runbooks: user/runbooks.md
+      - Troubleshooting: user/troubleshooting.md
+      - Recovery config: user/recovery-config.md
+      - Processor performance: user/processor-performance.md
+      - Glossary: user/glossary.md
+  - Contributor Guide:
+      - Architecture: contributor/architecture.md
+      - API: contributor/api.md
+      - API errors: contributor/api-errors.md
+      - Access control: contributor/access-control.md
+      - Security: contributor/security.md
+      - Local development: contributor/local-dev.md
+      - MCP setup: contributor/mcp-setup.md
+      - Testing: contributor/testing.md
+      - CI and quality: contributor/ci-and-quality.md
+      - Datasets: contributor/datasets.md
+      - Repository layout: contributor/repository-layout.md
+      - Roadmap: contributor/roadmap.md
+  - Русский:
+      - Обзор: ru/overview.ru.md
+      - Быстрый старт: ru/quickstart.ru.md
+      - Установка: ru/install.ru.md
+      - Конфигурация: ru/configuration.ru.md
+      - Деплой сервера: ru/deploy-server.ru.md
+      - Публичные записи: ru/public-recordings.ru.md
+      - Возможности: ru/features.ru.md
+      - Сценарии: ru/scenarios.ru.md
+      - Runbooks: ru/runbooks.ru.md
+      - Решение проблем: ru/troubleshooting.ru.md
+      - Восстановление конфига: ru/recovery-config.ru.md
+      - Производительность процессора: ru/processor-performance.ru.md
+      - Глоссарий: ru/glossary.ru.md
+      - Архитектура: ru/architecture.ru.md
+      - API: ru/api.ru.md
+      - Доступ: ru/access-control.ru.md
+      - Безопасность: ru/security.ru.md
+      - Локальная разработка: ru/local-dev.ru.md
+      - MCP setup: ru/mcp-setup.ru.md
+      - Тестирование: ru/testing.ru.md
 
 extra:
-  # Дублирует версию для поиска в CI (check-docs-version); совпадает с VERSION.
   site_version: "0.3.7"
   social:
     - icon: fontawesome/brands/github

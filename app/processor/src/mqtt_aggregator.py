@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import queue
+import random
 import threading
 import time
 from collections import deque
@@ -40,6 +41,7 @@ from mqtt_event_parsers import (
 )
 from mqtt_scale_state import FEEDER_SCALE_STATE_FILE, write_feeder_scale_state
 from processor_runtime_stats import inc_counter, set_gauge
+from trigger_runtime_gauges import notify_mqtt_connection_changed_for_trigger_gauges
 from scale_sample_log import weight_reading_to_kg
 
 logger = logging.getLogger(__name__)
@@ -80,6 +82,8 @@ class MQTTEventAggregator:
         username=None,
         password=None,
         max_events: int = 500,
+        publish_queue_max: int = 2000,
+        feeder_scale_queue_max: int = 200,
         on_frigate_motion=None,
         frigate_label_exclude=None,
         client_id: str | None = None,
@@ -96,6 +100,7 @@ class MQTTEventAggregator:
         scale_motion_min_delta_kg: float | None = None,
         scale_motion_debounce_seconds: float = 1.5,
         scales_bird_present_topic: str | None = None,
+        reconnect_jitter_ratio: float = 0.15,
     ):
         """on_frigate_motion: (camera_filter, label_filter, callback). frigate_label_exclude: labels to ignore (e.g. cat, dog).
         client_id: MQTT client ID; use different ID when running test (args.input) to avoid conflict with main processor.
@@ -123,6 +128,8 @@ class MQTTEventAggregator:
         self.password = password or os.environ.get("MQTT_PASSWORD")
         self.max_events = max_events
         self._events = deque(maxlen=max_events)
+        set_gauge("mqtt_events_queue_capacity", int(max_events))
+        set_gauge("mqtt_events_queue_depth", 0)
         self._birdnet_events = deque()
         self._birdnet_event_cap = max(1000, int(max_events or 500) * 20)
         self._birdnet_obs_level = _normalize_obs_level(
@@ -130,12 +137,17 @@ class MQTTEventAggregator:
         )
         self._birdnet_obs_debug = bool(app_config.get("processor.birdnet_mqtt_observability_debug", False))
         self._lock = threading.Lock()
-        self._publish_queue: queue.Queue[tuple[str, str | bytes, int, bool]] = queue.Queue(maxsize=2000)
+        self._publish_queue: queue.Queue[tuple[str, str | bytes, int, bool]] = queue.Queue(
+            maxsize=max(1, int(publish_queue_max or 2000))
+        )
+        set_gauge("mqtt_outbound_queue_capacity", int(self._publish_queue.maxsize))
         self._client = None
         self._thread = None
         self._connected = False
         self._last_connected_at = None  # for heartbeat: ok if connected or recently was
+        self._last_connected_monotonic = 0.0
         self._stopped = False
+        self._last_connect_fail_log_monotonic = 0.0
         self._on_frigate_motion = on_frigate_motion  # (camera_filter, label_filter, callback)
         self._frigate_label_exclude = set(frigate_label_exclude or [])
         self.ha_discovery = ha_discovery
@@ -150,6 +162,7 @@ class MQTTEventAggregator:
         fs_dir = (fifo_snapshot_data_dir or "").strip()
         self._fifo_snapshot_dir = fs_dir or None
         self._fifo_snapshot_last_monotonic = 0.0
+        self._geometry_fallback_last_emit: dict[tuple[str, str], float] = {}
         self._birdnet_fifo_persist = None
         self._birdnet_merge_db_path = None
         _merge_data_root = fs_dir or None
@@ -200,11 +213,21 @@ class MQTTEventAggregator:
         self._prev_scale_kg: float | None = None
         self._last_scale_motion_ts = 0.0
         self._feeder_scale_queue: queue.Queue | None = None
+        self._feeder_scale_queue_max = max(1, int(feeder_scale_queue_max or 200))
+        try:
+            _warmup = float(app_config.get("mqtt.frigate_snapshot_retain_warmup_seconds") or 3.0)
+        except (TypeError, ValueError):
+            _warmup = 3.0
+        self._frigate_snapshot_retain_warmup_seconds = max(0.0, min(_warmup, 15.0))
+        try:
+            self._reconnect_jitter_ratio = max(0.0, min(0.8, float(reconnect_jitter_ratio or 0.0)))
+        except (TypeError, ValueError):
+            self._reconnect_jitter_ratio = 0.0
 
     def _ensure_feeder_scale_worker(self) -> None:
         if self._feeder_scale_queue is not None:
             return
-        q: queue.Queue = queue.Queue(maxsize=200)
+        q: queue.Queue = queue.Queue(maxsize=self._feeder_scale_queue_max)
         self._feeder_scale_queue = q
 
         def _loop() -> None:
@@ -254,6 +277,7 @@ class MQTTEventAggregator:
                 }
             )
         except queue.Full:
+            inc_counter("feeder_scale_queue_drops_total")
             logger.warning(
                 "feeder scale write queue full; dropping MQTT scale update",
             )
@@ -419,8 +443,11 @@ class MQTTEventAggregator:
         if reason_code == 0:
             self._connected = True
             self._last_connected_at = time.time()
+            self._last_connected_monotonic = time.monotonic()
+            self._last_connect_fail_log_monotonic = 0.0
             set_gauge("mqtt_connected", 1)
             logger.info("MQTT aggregator connected")
+            notify_mqtt_connection_changed_for_trigger_gauges(self)
             if self.ha_discovery:
                 time.sleep(0.3)
                 self._publish_ha_discovery()
@@ -428,6 +455,7 @@ class MQTTEventAggregator:
             self._connected = False
             set_gauge("mqtt_connected", 0)
             logger.warning(f"MQTT aggregator connect failed: {reason_code}")
+            notify_mqtt_connection_changed_for_trigger_gauges(self)
 
     def _publish_ha_discovery(self):
         """Publish Home Assistant MQTT Autodiscovery configs."""
@@ -577,6 +605,7 @@ class MQTTEventAggregator:
         set_gauge("mqtt_connected", 0)
         reason = args[0] if args else "unknown"
         logger.warning(f"MQTT aggregator disconnected: {reason}")
+        notify_mqtt_connection_changed_for_trigger_gauges(self)
 
     def _clear_publish_queue(self) -> None:
         while True:
@@ -614,6 +643,7 @@ class MQTTEventAggregator:
 
     def _on_message(self, client, userdata, msg):
         ev = None
+        queue_frigate_event = True
         if msg.topic == self.frigate_topic:
             try:
                 fdata = json.loads(msg.payload.decode())
@@ -658,13 +688,25 @@ class MQTTEventAggregator:
                         trigger_score = float(ev.get("confidence") or 0.0)
                     except (TypeError, ValueError):
                         trigger_score = 0.0
-                    raw_min_trigger_score = app_config.get("motion.frigate_min_trigger_score")
+                    raw_min_trigger_score = app_config.get("triggers.frigate.min_trigger_score")
                     try:
                         min_trigger_score = (
                             0.0 if isinstance(raw_min_trigger_score, bool) else float(raw_min_trigger_score or 0.0)
                         )
                     except (TypeError, ValueError):
                         min_trigger_score = 0.0
+                    per_camera_thresholds = app_config.get("triggers.frigate.min_trigger_score_by_camera") or {}
+                    if isinstance(per_camera_thresholds, dict):
+                        camera_key = str(camera or "").strip().lower()
+                        for key, value in per_camera_thresholds.items():
+                            if str(key or "").strip().lower() != camera_key:
+                                continue
+                            try:
+                                cam_score = float(value)
+                            except (TypeError, ValueError):
+                                break
+                            min_trigger_score = max(min_trigger_score, cam_score)
+                            break
                     cam_lower = {str(c).strip().lower() for c in cam_f if str(c).strip()}
                     # Пустой camera_filter = любая камера (как пустой label_filter).
                     cam_ok = (not cam_lower) or (str(camera or "").strip().lower() in cam_lower)
@@ -672,12 +714,50 @@ class MQTTEventAggregator:
                     lbl_f_lower = {s.lower() for s in lbl_f}
                     # Empty label filter means wildcard (accept any label).
                     lbl_ok = (not lbl_f_lower) or bool(lbl_f_lower & labels_lower)
-                    relaxed = bool(app_config.get("motion.frigate_trigger_on_tracked_object", True))
+                    relaxed = bool(app_config.get("triggers.frigate.trigger_on_tracked_object", True))
+                    geometry_fallback_enabled = bool(app_config.get("triggers.frigate.geometry_fallback_enabled", True))
+                    try:
+                        geometry_fallback_cooldown = float(
+                            app_config.get("triggers.frigate.geometry_fallback_cooldown_seconds", 2.0) or 2.0
+                        )
+                    except (TypeError, ValueError):
+                        geometry_fallback_cooldown = 2.0
+                    geometry_fallback_cooldown = max(0.0, geometry_fallback_cooldown)
+                    raw_geometry_exclude = app_config.get("triggers.frigate.geometry_fallback_label_exclude")
+                    if raw_geometry_exclude is None:
+                        raw_geometry_exclude = []
+                    if not isinstance(raw_geometry_exclude, (list, tuple, set)):
+                        raw_geometry_exclude = []
+                    geometry_exclude = {str(x).strip().lower() for x in raw_geometry_exclude if str(x).strip()}
                     has_geometry = _frigate_after_has_tracked_geometry(after if isinstance(after, dict) else {})
+                    ev["_frigate_has_geometry"] = bool(has_geometry)
                     accepted_by = "label_filter"
-                    if not lbl_ok and relaxed and has_geometry:
+                    geometry_blocked_reason = ""
+                    can_geometry_fallback = bool(not lbl_ok and relaxed and has_geometry and geometry_fallback_enabled)
+                    if can_geometry_fallback:
+                        label_key = str(label or "").strip().lower()
+                        if label_key and label_key in geometry_exclude:
+                            geometry_blocked_reason = "geometry_label_excluded"
+                            can_geometry_fallback = False
+                        else:
+                            gf_last_emit = getattr(self, "_geometry_fallback_last_emit", None)
+                            if not isinstance(gf_last_emit, dict):
+                                gf_last_emit = {}
+                                self._geometry_fallback_last_emit = gf_last_emit
+                            emit_key = (str(camera or "").strip().lower(), label_key or "_")
+                            now_mono = time.monotonic()
+                            prev_emit = float(gf_last_emit.get(emit_key) or 0.0)
+                            if prev_emit > 0 and (now_mono - prev_emit) < geometry_fallback_cooldown:
+                                geometry_blocked_reason = "geometry_cooldown"
+                                can_geometry_fallback = False
+                            else:
+                                gf_last_emit[emit_key] = now_mono
+                    if can_geometry_fallback:
                         lbl_ok = True
                         accepted_by = "geometry_fallback"
+                        # Geometry fallback keeps recording responsiveness, but such
+                        # events must not influence species merge/promotion.
+                        ev["_frigate_merge_suppressed"] = True
                         if skip_merge_queue:
                             logger.info(
                                 "Frigate trigger: geometry fallback (excluded label, recording only) "
@@ -693,6 +773,8 @@ class MQTTEventAggregator:
                                 label,
                                 sub_label,
                             )
+                    elif not lbl_ok and relaxed and has_geometry and geometry_blocked_reason:
+                        inc_counter("frigate_geometry_fallback_rejected_total")
                     score_ok = trigger_score >= max(0.0, min_trigger_score)
                     if cam_ok and lbl_ok and score_ok:
                         logger.info(
@@ -710,12 +792,16 @@ class MQTTEventAggregator:
                         )
                         try:
                             try:
-                                cb(camera, species, trigger_score)
+                                cb(camera, species, trigger_score, ev)
                             except TypeError:
-                                cb(camera, species)
+                                try:
+                                    cb(camera, species, trigger_score)
+                                except TypeError:
+                                    cb(camera, species)
                         except Exception as e:
                             logger.debug("Frigate motion callback: %s", e)
                     else:
+                        queue_frigate_event = bool(cam_ok and lbl_ok)
                         reasons = []
                         if not cam_ok:
                             reasons.append("camera_filter_miss")
@@ -724,6 +810,8 @@ class MQTTEventAggregator:
                                 reasons.append("label_filter_miss")
                             if not has_geometry:
                                 reasons.append("no_tracked_geometry")
+                            if geometry_blocked_reason:
+                                reasons.append(geometry_blocked_reason)
                         if not score_ok:
                             reasons.append("score_below_trigger_min")
                         logger.info(
@@ -743,9 +831,16 @@ class MQTTEventAggregator:
                         )
         elif mqtt.topic_matches_sub(getattr(self, "_frigate_snapshot_topic", ""), msg.topic):
             # Fallback when frigate/events is sparse/disabled: topic like
-            # frigate/<camera>/<label>/snapshot (ignore retained bootstrap payloads).
+            # frigate/<camera>/<label>/snapshot.
+            # NOTE: Frigate may publish snapshots as retained messages. We only ignore
+            # the initial retained burst right after (re)connect and accept retained
+            # updates later, otherwise fallback can stay permanently silent.
             if getattr(msg, "retain", False):
-                return
+                age = 0.0
+                if self._last_connected_monotonic > 0:
+                    age = max(0.0, time.monotonic() - self._last_connected_monotonic)
+                if age < self._frigate_snapshot_retain_warmup_seconds:
+                    return
             parsed = _parse_frigate_snapshot_topic(msg.topic)
             if parsed:
                 camera, label = parsed
@@ -757,6 +852,7 @@ class MQTTEventAggregator:
                     "confidence": 0.0,
                     "camera": camera,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "_frigate_has_geometry": False,
                 }
                 after = {}
                 labels = {label}
@@ -784,10 +880,17 @@ class MQTTEventAggregator:
                             not bool(lbl_f_lower),
                         )
                         try:
-                            cb(camera, label)
+                            try:
+                                cb(camera, label, 0.0, ev)
+                            except TypeError:
+                                try:
+                                    cb(camera, label, 0.0)
+                                except TypeError:
+                                    cb(camera, label)
                         except Exception as e:
                             logger.debug("Frigate motion callback: %s", e)
                     else:
+                        queue_frigate_event = False
                         reasons = []
                         if not cam_ok:
                             reasons.append("camera_filter_miss")
@@ -874,9 +977,21 @@ class MQTTEventAggregator:
                 )
             return
         if ev:
+            if str(ev.get("source") or "").strip().lower() == "frigate" and not queue_frigate_event:
+                logger.debug(
+                    "Frigate event dropped from queue: camera=%s label=%s sub_label=%s",
+                    ev.get("camera", ""),
+                    ev.get("label", ""),
+                    ev.get("sub_label", ""),
+                )
+                return
             self._validate_normalized_event(ev)
+            ev["_ingest_monotonic"] = time.monotonic()
             with self._lock:
+                if self._events.maxlen and len(self._events) >= self._events.maxlen:
+                    inc_counter("mqtt_events_fifo_drop_total")
                 self._events.append(ev)
+                set_gauge("mqtt_events_queue_depth", len(self._events))
             if ev.get("source") == "birdnet":
                 self._remember_birdnet_event(ev)
 
@@ -935,18 +1050,31 @@ class MQTTEventAggregator:
                         logger.debug("MQTT loop rc=%s, leaving inner loop", rc)
                         break
             except Exception as e:
-                logger.error("MQTT aggregator error: %s, reconnecting in %ds", e, retry_delay)
+                now_m = time.monotonic()
+                interval = 90.0
+                if now_m - self._last_connect_fail_log_monotonic >= interval:
+                    self._last_connect_fail_log_monotonic = now_m
+                    logger.warning(
+                        "MQTT aggregator error: %s, reconnecting in %ds (log at most every %.0fs)",
+                        e,
+                        retry_delay,
+                        interval,
+                    )
             finally:
                 self._connected = False
                 if self._client:
                     try:
                         self._client.disconnect()
                     except Exception:
-                        pass
+                        logger.debug("MQTT aggregator disconnect cleanup failed", exc_info=True)
                     self._client = None
             if self._stopped:
                 break
-            time.sleep(retry_delay)
+            sleep_for = float(retry_delay)
+            if self._reconnect_jitter_ratio > 0:
+                spread = sleep_for * self._reconnect_jitter_ratio
+                sleep_for = max(0.2, sleep_for + random.uniform(-spread, spread))
+            time.sleep(sleep_for)
             retry_delay = min(retry_delay * 2, self.reconnect_max_delay)
 
     def start(self):
@@ -1016,17 +1144,22 @@ class MQTTEventAggregator:
         except (TypeError, ValueError):
             min_conf = 0.0
         now = datetime.now(timezone.utc)
+        now_mono = time.monotonic()
         camera_allow = {str(camera).strip().lower() for camera in (camera_ids or []) if str(camera).strip()}
         with self._lock:
             for ev in reversed(self._events):
                 if str((ev or {}).get("source") or "").strip().lower() != "frigate":
                     continue
-                ts = _parse_iso8601_utc(ev.get("timestamp"))
-                if ts is None:
-                    continue
-                age = (now - ts).total_seconds()
-                if age < 0:
-                    age = 0
+                ingest_mono = ev.get("_ingest_monotonic")
+                if isinstance(ingest_mono, (int, float)) and float(ingest_mono) > 0:
+                    age = max(0.0, now_mono - float(ingest_mono))
+                else:
+                    ts = _parse_iso8601_utc(ev.get("timestamp"))
+                    if ts is None:
+                        continue
+                    age = (now - ts).total_seconds()
+                    if age < 0:
+                        age = 0
                 if age > max_age:
                     continue
                 if camera_allow:
@@ -1041,6 +1174,62 @@ class MQTTEventAggregator:
                     continue
                 return True
         return False
+
+    def pick_recent_frigate_camera(
+        self,
+        *,
+        camera_ids=None,
+        max_age_seconds=0,
+        min_confidence=0.0,
+    ) -> str | None:
+        """Return camera id of the freshest in-window Frigate event among ``camera_ids``."""
+        try:
+            max_age = float(max_age_seconds or 0.0)
+        except (TypeError, ValueError):
+            max_age = 0.0
+        if max_age <= 0:
+            return None
+        try:
+            min_conf = float(min_confidence or 0.0)
+        except (TypeError, ValueError):
+            min_conf = 0.0
+        now = datetime.now(timezone.utc)
+        now_mono = time.monotonic()
+        camera_allow = {
+            str(camera).strip().lower(): str(camera).strip() for camera in (camera_ids or []) if str(camera).strip()
+        }
+        with self._lock:
+            for ev in reversed(self._events):
+                if str((ev or {}).get("source") or "").strip().lower() != "frigate":
+                    continue
+                ingest_mono = ev.get("_ingest_monotonic")
+                if isinstance(ingest_mono, (int, float)) and float(ingest_mono) > 0:
+                    age = max(0.0, now_mono - float(ingest_mono))
+                else:
+                    ts = _parse_iso8601_utc(ev.get("timestamp"))
+                    if ts is None:
+                        continue
+                    age = (now - ts).total_seconds()
+                    if age < 0:
+                        age = 0
+                if age > max_age:
+                    continue
+                camera_raw = str((ev or {}).get("camera") or "").strip()
+                if camera_allow:
+                    camera_key = camera_raw.lower()
+                    if camera_key not in camera_allow:
+                        continue
+                    camera_raw = camera_allow[camera_key]
+                if not camera_raw:
+                    continue
+                try:
+                    conf = float(ev.get("confidence") or 0.0)
+                except (TypeError, ValueError):
+                    conf = 0.0
+                if conf < min_conf:
+                    continue
+                return camera_raw
+        return None
 
     def get_birdnet_events(self, now=None, ttl_hours: float = 25.0) -> list[dict]:
         now = now or datetime.now(timezone.utc)

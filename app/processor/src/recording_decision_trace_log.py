@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+logger = logging.getLogger(__name__)
+
 
 def write_decision_trace_activity(api: Any, decision_trace: dict[str, Any]) -> None:
     if not api:
@@ -14,4 +16,4 @@ def write_decision_trace_activity(api: Any, decision_trace: dict[str, Any]) -> N
     try:
         api.activity_log("decision_trace", decision_trace)
     except Exception:
-        logging.exception("Failed to write decision_trace activity log")
+        logger.exception("Failed to write decision_trace activity log")

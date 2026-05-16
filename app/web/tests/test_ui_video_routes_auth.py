@@ -63,7 +63,10 @@ def test_fusion_trace_allows_mcp_style_non_session_access(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "services.http_response_cache",
-        types.SimpleNamespace(bust_response_caches=lambda: None),
+        types.SimpleNamespace(
+            bust_response_caches=lambda: None,
+            bust_all_api_caches=lambda: None,
+        ),
     )
     monkeypatch.setitem(
         sys.modules,
