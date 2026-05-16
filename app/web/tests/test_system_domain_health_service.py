@@ -1,8 +1,9 @@
-"""Domain health snapshot strict-quality metrics."""
+"""Domain health snapshot strict-quality and ingest-gate metrics."""
 
+import json
 from datetime import datetime, timedelta, timezone
 
-from models import Species, Video, VideoSpecies, db
+from models import ActivityLog, Species, Video, VideoSpecies, db
 
 
 def _auth_headers() -> dict[str, str]:
@@ -24,6 +25,10 @@ def test_domain_health_includes_strict_quality_block(client):
     samples = payload.get("samples") or {}
     assert "binary_backend_counts_24h" in samples
     assert "inference_device_counts_24h" in samples
+    reliability = payload.get("reliability_alerts") or {}
+    assert "thresholds" in reliability
+    assert "metrics" in reliability
+    assert "alerts" in reliability
 
 
 def test_domain_health_flags_duplicate_detection_groups(app, client):
@@ -64,3 +69,103 @@ def test_domain_health_flags_duplicate_detection_groups(app, client):
     assert int(metrics.get("duplicate_detection_groups") or 0) >= 1
     assert strict.get("duplicate_detection_groups_ok") is False
     assert strict.get("strict_quality_ready") is False
+
+
+def test_domain_health_includes_ingest_gate_reason_metrics(app, client):
+    with app.app_context():
+        now = datetime.now(timezone.utc)
+        rows = [
+            ActivityLog(
+                type="ingest_gate",
+                data=json.dumps(
+                    {
+                        "reason": "video_file_missing",
+                        "reason_code": "REC_FILE_UNPLAYABLE",
+                    }
+                ),
+                created_at=now - timedelta(minutes=5),
+            ),
+            ActivityLog(
+                type="ingest_gate",
+                data=json.dumps(
+                    {
+                        "reason": "no_persisted_detections",
+                        "reason_code": "FUSION_NO_ACCEPTED",
+                    }
+                ),
+                created_at=now - timedelta(minutes=4),
+            ),
+            ActivityLog(
+                type="ingest_gate",
+                data=json.dumps(
+                    {
+                        "reason": "no_persisted_detections",
+                    }
+                ),
+                created_at=now - timedelta(minutes=3),
+            ),
+        ]
+        db.session.add_all(rows)
+        db.session.commit()
+
+    res = client.get("/api/ui/system/domain-health", headers=_auth_headers())
+    assert res.status_code == 200, res.get_data(as_text=True)
+    payload = res.get_json() or {}
+    metrics = payload.get("metrics") or {}
+    samples = payload.get("samples") or {}
+    reason_counts = samples.get("ingest_gate_reason_code_counts_24h") or {}
+
+    assert int(metrics.get("ingest_gate_rows_24h") or 0) >= 3
+    assert int(metrics.get("ingest_gate_known_reason_rows_24h") or 0) >= 2
+    assert int(metrics.get("ingest_gate_unknown_reason_rows_24h") or 0) >= 1
+    assert int(reason_counts.get("REC_FILE_UNPLAYABLE") or 0) >= 1
+    assert int(reason_counts.get("FUSION_NO_ACCEPTED") or 0) >= 1
+
+
+def test_domain_health_reliability_alerts_for_artifact_failures_and_unknown_reasons(app, client):
+    with app.app_context():
+        now = datetime.now(timezone.utc)
+        db.session.add_all(
+            [
+                ActivityLog(
+                    type="ingest_gate",
+                    data=json.dumps(
+                        {
+                            "reason": "video_file_missing",
+                            "reason_code": "REC_FILE_MISSING",
+                        }
+                    ),
+                    created_at=now - timedelta(minutes=6),
+                ),
+                ActivityLog(
+                    type="ingest_gate",
+                    data=json.dumps(
+                        {
+                            "reason": "video_file_missing",
+                            "reason_code": "REC_FILE_UNPLAYABLE",
+                        }
+                    ),
+                    created_at=now - timedelta(minutes=5),
+                ),
+                ActivityLog(
+                    type="ingest_gate",
+                    data=json.dumps({"reason": "no_persisted_detections"}),
+                    created_at=now - timedelta(minutes=4),
+                ),
+            ]
+        )
+        db.session.commit()
+
+    res = client.get("/api/ui/system/domain-health", headers=_auth_headers())
+    assert res.status_code == 200, res.get_data(as_text=True)
+    payload = res.get_json() or {}
+    reliability = payload.get("reliability_alerts") or {}
+    metrics = reliability.get("metrics") or {}
+    alerts = reliability.get("alerts") or {}
+
+    assert int(metrics.get("recording_artifact_failures_24h") or 0) >= 2
+    assert int(metrics.get("recording_file_missing_24h") or 0) >= 1
+    assert int(metrics.get("recording_file_unplayable_24h") or 0) >= 1
+    assert int(metrics.get("unknown_ingest_gate_rows_24h") or 0) >= 1
+    assert alerts.get("recording_artifact_failures") is True
+    assert alerts.get("unknown_ingest_gate_reasons") is True
