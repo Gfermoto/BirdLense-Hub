@@ -2,7 +2,7 @@
 
 How optional passwords split **view**, **contribute**, and **admin** capabilities. Default install: **no password** = full local trust.
 
-[Русский](./ACCESS_CONTROL.ru.md)
+[Русский](../ru/access-control.ru.md)
 
 ---
 
@@ -31,7 +31,7 @@ Still public without session: **`GET /api/ui/health`**, **`GET /api/ui/settings/
 
 ### Video playback on public hubs
 
-**`GET /api/ui/videos/<id>/stream`** reads files from disk. With **strict production auth**, the middleware still treats **`GET /api/ui/videos/...`** as public dashboard reads unless **`general.require_auth_for_video_stream: true`** — then the route handler requires Contributor/Admin. Separately, nginx may serve **`/data/recordings/...`** as static files unless **`BIRDLENSE_HIDE_DIRECT_RECORDINGS=1`**. Operator checklist: **[PUBLIC_RECORDINGS.md](./PUBLIC_RECORDINGS.md)**.
+**`GET /api/ui/videos/<id>/stream`** reads files from disk. With **strict production auth**, the middleware still treats **`GET /api/ui/videos/...`** as public dashboard reads unless **`general.require_auth_for_video_stream: true`** — then the route handler requires Contributor/Admin. Separately, nginx may serve **`/data/recordings/...`** as static files unless **`BIRDLENSE_HIDE_DIRECT_RECORDINGS=1`**. Operator checklist: **[PUBLIC_RECORDINGS.md](../user/public-recordings.md)**.
 
 ---
 
@@ -135,10 +135,10 @@ Tests: `TestVerifyPasswordRateLimit` in `app/web/tests/test_api.py` (run via `ma
 
 ## Future ideas (not roadmap commitments)
 
-Community / donation UX (leaderboards, “unlock with support”, badges) is listed under **Future work candidates** in [ROADMAP](./ROADMAP.md). Config hook `general.donate_url` adds optional support links in the app chrome and Food card — see [CONFIGURATION](./CONFIGURATION.md).
+Community / donation UX (leaderboards, “unlock with support”, badges) is listed under **Future work candidates** in [ROADMAP](./roadmap.md). Config hook `general.donate_url` adds optional support links in the app chrome and Food card — see [CONFIGURATION](../user/configuration.md).
 
 ---
 
 ## See also
 
-[CONFIGURATION](./CONFIGURATION.md) · [API](./API.md) · [SECURITY](./SECURITY.md) · [GLOSSARY](./GLOSSARY.md)
+[CONFIGURATION](../user/configuration.md) · [API](./api.md) · [SECURITY](./security.md) · [GLOSSARY](../user/glossary.md)

@@ -1,10 +1,10 @@
 # Возможности BirdLense Hub
 
-[English](./FEATURES.md)
+[English](../user/features.md)
 
 ---
 
-Полный список фич. См. [Changelog](./project/changelog.md) для деталей по версиям.
+Полный список фич. См. [Changelog](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md) для деталей по версиям.
 
 ---
 
@@ -24,7 +24,7 @@
 | **Погода** | OpenWeather, Home Assistant |
 | **Telegram** | Уведомления при детекции, превью best frame в фото |
 | **Кормушка** | Реле (MQTT/ESPHome) при детекции |
-| **MCP** | [Model Context Protocol](https://modelcontextprotocol.io/) — опциональный сервер для **авторизованных клиентов** ([MCP_SETUP.ru](./MCP_SETUP.ru.md)) |
+| **MCP** | [Model Context Protocol](https://modelcontextprotocol.io/) — опциональный сервер для **авторизованных клиентов** ([MCP_SETUP.ru](./mcp-setup.ru.md)) |
 
 ---
 
@@ -59,7 +59,7 @@
 | **Датасет для дообучения** | `processor.save_dataset_crops`, экспорт ZIP в Система → Управление хранилищем, коррекция вида перемещает файл |
 | **Скачать видео** | Кнопка в VideoDetails — только для Admin/Contributor (после ввода пароля) |
 | **Предыдущий/следующий ролик** | Тот же календарный день UTC: стрелки и счётчик на странице видео; `GET /api/ui/videos/:id/neighbors` |
-| **Система: ресурсы и посетители** | `/system`: графики CPU/RAM/диск/GPU (история на сервере + живой хвост, окно 6/24/48 ч), уникальные посетители за период; `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION](./CONFIGURATION.ru.md) |
+| **Система: ресурсы и посетители** | `/system`: графики CPU/RAM/диск/GPU (история на сервере + живой хвост, окно 6/24/48 ч), уникальные посетители за период; `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION](./configuration.ru.md) |
 | **Библиотека** | `/library` — календарь записей, экспорт датасетов, тест по файлам при **`video.source: file`**; **Система → Сканировать и импортировать** для роликов уже на диске |
 
 ---
@@ -110,8 +110,8 @@
 | GET | `/api/ui/species/:id/xeno-canto` | Записи Xeno-canto |
 | GET | `/metrics` | Prometheus |
 
-Полная спецификация: [OpenAPI (YAML)](./project/openapi.md).
+Полная спецификация: [OpenAPI (YAML)](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/openapi.yaml).
 
 ---
 
-См. также: [API](./API.md), [CONFIGURATION](./CONFIGURATION.ru.md), [GLOSSARY](./GLOSSARY.ru.md), [ROADMAP](./ROADMAP.md), [PUBLIC_RELEASE_CHECKLIST](./PUBLIC_RELEASE_CHECKLIST.ru.md).
+См. также: [API](../contributor/api.md), [CONFIGURATION](./configuration.ru.md), [GLOSSARY](./glossary.ru.md), [ROADMAP](../contributor/roadmap.md), [PUBLIC_RELEASE_CHECKLIST](../../archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.ru.md).

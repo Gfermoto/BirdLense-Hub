@@ -6,7 +6,7 @@ Offline helpers — **не** в Docker-процессоре по умолчан�
 
 Эмбеддинг одного или нескольких **кропов** (jpeg/png) через **DINOv2** из `torch.hub` (Facebook Research). Выход: L2-нормированный вектор (JSON Lines на stdout).
 
-Каждая строка JSONL также содержит контрактные поля для прод-пайплайна (**`embedding_schema@v1`**, `embedding_model_id`, `embedding_model_sha16`, `crop_fingerprint_sha16`, `created_at_utc`) — см. `docs/ML_DINOV2_PRODUCTION_PIPELINE.md`.
+Каждая строка JSONL также содержит контрактные поля для прод-пайплайна (**`embedding_schema@v1`**, `embedding_model_id`, `embedding_model_sha16`, `crop_fingerprint_sha16`, `created_at_utc`) — см. [ML_DINOV2_PRODUCTION_PIPELINE](../../archive/internal/docs-legacy/ML_DINOV2_PRODUCTION_PIPELINE.md).
 
 **Зависимости:** `torch`, `torchvision`, `Pillow` (отдельный venv или машина с GPU/CPU для экспериментов).
 
@@ -84,4 +84,4 @@ BIRDLENSE_REID_SSL_START_DELAY_SEC=300
 BIRDLENSE_REID_SSL_REPORT_JSON=/app/data/reid_ssl_reports/latest.json
 ```
 
-См. также [REID_ROADMAP.md](../../docs/REID_ROADMAP.md).
+См. также [REID_ROADMAP.md](../../archive/internal/docs-legacy/REID_ROADMAP.md).

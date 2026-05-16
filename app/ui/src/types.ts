@@ -128,6 +128,12 @@ export type ProcessorNightProfileOverrides = {
   min_confidence_binary?: number;
   min_confidence_binary_bird?: number;
   min_confidence_binary_rodent?: number;
+  /** Только OpenVINO: нижняя страховка для ``track(conf)`` (см. detection_strategy). */
+  openvino_binary_track_ultralytics_conf?: number | null;
+  /** Только OpenVINO: множитель conf Bird при сравнении с порогом; сырая conf в данных не меняется. */
+  openvino_binary_bird_score_scale?: number | null;
+  /** Только OpenVINO: подмена порога Bird (null = как min_confidence_binary_bird). */
+  openvino_min_confidence_binary_bird?: number | null;
   /** @deprecated см. min_confidence_binary_rodent */
   min_confidence_binary_squirrel?: number;
   min_track_duration?: number;
@@ -214,6 +220,9 @@ export interface Settings {
     min_confidence_binary?: number; // Binary detector threshold (bird vs no-bird); 0.25 = stricter
     /** Строже только для боксов Bird. null / пусто в UI → как min_confidence_binary. */
     min_confidence_binary_bird?: number | null;
+    openvino_binary_track_ultralytics_conf?: number | null;
+    openvino_binary_bird_score_scale?: number | null;
+    openvino_min_confidence_binary_bird?: number | null;
     /** Мягче для Rodent (грызуны). null → как min_confidence_binary. */
     min_confidence_binary_rodent?: number | null;
     /** @deprecated Используйте min_confidence_binary_rodent; читается из YAML для совместимости */
@@ -351,6 +360,8 @@ export interface Settings {
     go2rtc_password?: string;
     /** cpu | intel — VA-API vs CPU для записи (intel = уже H.264). */
     encoding?: string;
+    /** При encoding=intel: true — h264_vaapi для файла записи; false — libx264 (стабильнее на части iGPU). */
+    record_with_vaapi?: boolean;
     /** auto | opencv | ffmpeg_vaapi — live capture path for motion/detection. */
     capture_backend?: 'auto' | 'opencv' | 'ffmpeg_vaapi' | string;
     /** h264 | copy — перекодировать RTSP в H.264 для браузера или копировать веб-кодек как есть. */
@@ -485,6 +496,7 @@ export interface Settings {
     /** Не создавать standalone/review-only строки из MQTT по этим лейблам (person, car, …). */
     frigate_standalone_skip_labels?: string[];
     frigate_trigger_review_salvage_enabled?: boolean;
+    frigate_trigger_review_salvage_allow_without_yolo_tracks?: boolean;
     merge_window_seconds?: number;
     dedup_window_seconds?: number;
     one_per_species?: boolean;

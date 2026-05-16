@@ -27,4 +27,4 @@
 - Задайте `MCP_TOKEN` при включённом MCP.
 - Храните секреты в переменных окружения, не в `user_config.yaml`.
 
-Подробный анализ рисков: [docs/SECURITY.md](docs/SECURITY.md).
+Подробный анализ рисков: [docs/contributor/security.md](docs/contributor/security.md) · [RU](docs/ru/security.ru.md).

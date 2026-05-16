@@ -2,9 +2,9 @@
 
 BirdLense Hub — bird feeder monitoring: video and audio detection, recordings, analytics. Docker on **x86_64** (Intel or AMD).
 
-**New here?** Read [OVERVIEW](./OVERVIEW.md) (what it is, who it’s for). **Recipes:** [SCENARIOS](./SCENARIOS.md).
+**New here?** Read [OVERVIEW](./overview.md) (what it is, who it’s for). **Recipes:** [SCENARIOS](./scenarios.md).
 
-[Русский](./INSTALL.ru.md)
+[Русский](../ru/install.ru.md)
 
 ## Requirements
 
@@ -113,13 +113,13 @@ Requires: SSH (configure `~/.ssh/config` or `DEPLOY_HOST` / optional **`DEPLOY_S
 
 **Remote directory:** `scripts/deploy.sh` defaults to `DEPLOY_REMOTE_DIR=/root/BirdLense` on the server. Your local clone folder (`BirdLense-Hub` or any name) does not need to match.
 
-**What it does:** stops/removes container **`birdlense`** (leaves **`birdlense-redis`** if present), runs **local** UI `npm ci && npm run build`, **rsync** with excludes aligned to `scripts/deploy.sh` (among others: **`datasets/`**, **`app/data/`**, **`app/.env`**, **`app/app_config/user_config.yaml`**, **`.tools/`**, **`.venv-ci`** / **`.venv-docs`**, `app/.venv`, `site/`, `node_modules`, ruff/pytest caches), merges secrets into **`app/.env`** on the server (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, optional **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — see [CONFIGURATION.md](./CONFIGURATION.md), [SECRETS_ROTATION.md](./SECRETS_ROTATION.md)), if `/dev/dri/renderD*` exists runs **`bash scripts/docker-compose-intel-override-gen.sh`** (VA-API + GPU metrics), **`make build && make start`** in `app/` on the server, then **`scripts/verify-stack.sh`** against **`DEPLOY_URL`** (health, readiness, status, cameras when reachable).
+**What it does:** stops/removes container **`birdlense`** (leaves **`birdlense-redis`** if present), runs **local** UI `npm ci && npm run build`, **rsync** with excludes aligned to `scripts/deploy.sh` (among others: **`datasets/`**, **`app/data/`**, **`app/.env`**, **`app/app_config/user_config.yaml`**, **`.tools/`**, **`.venv-ci`** / **`.venv-docs`**, `app/.venv`, `site/`, `node_modules`, ruff/pytest caches), merges secrets into **`app/.env`** on the server (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, optional **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — see [CONFIGURATION.md](./configuration.md), [SECRETS_ROTATION.md](../../archive/internal/docs-legacy/SECRETS_ROTATION.md)), if `/dev/dri/renderD*` exists runs **`bash scripts/docker-compose-intel-override-gen.sh`** (VA-API + GPU metrics), **`make build && make start`** in `app/` on the server, then **`scripts/verify-stack.sh`** against **`DEPLOY_URL`** (health, readiness, status, cameras when reachable).
 
 **Auto-deploy:** `./scripts/setup-auto-deploy.sh` on server → push to main → GitHub Actions workflow **Deploy** (self-hosted runner with labels `self-hosted`, `birdlense`). If the run stays **Queued**, the runner is offline or not registered — use **`make deploy`** from your machine until the runner is fixed.
 
 **Server unavailable:** `cd app && make build` locally; when access returns — `make deploy` (data untouched).
 
-**Linear checklist**, VPS paths, logs, common pitfalls: [DEPLOY_SERVER](./DEPLOY_SERVER.md).
+**Linear checklist**, VPS paths, logs, common pitfalls: [DEPLOY_SERVER](./deploy-server.md).
 
 ### HTTPS / nginx and large uploads (Library → file replay)
 
@@ -185,4 +185,4 @@ Recordings not visible? System → «Scan and import».
 
 ---
 
-See also: [CONFIGURATION](./CONFIGURATION.md) · [SCENARIOS](./SCENARIOS.md) · [GLOSSARY](./GLOSSARY.md) · [TROUBLESHOOTING](./TROUBLESHOOTING.md) · [Security policy](./project/security-policy.md).
+See also: [CONFIGURATION](./configuration.md) · [SCENARIOS](./scenarios.md) · [GLOSSARY](./glossary.md) · [TROUBLESHOOTING](./troubleshooting.md) · [Security policy](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SECURITY.md).

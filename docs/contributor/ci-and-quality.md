@@ -1,6 +1,6 @@
 # CI and code quality policy
 
-[Русский](./CI_AND_QUALITY.ru.md)
+[Русский](../contributor/ci-and-quality.md)
 
 This document describes what runs in GitHub Actions, how to reproduce checks locally, and how we extend quality gates without breaking the default green pipeline.
 
@@ -32,7 +32,7 @@ From the **repository root** (see `scripts/ci-full-local.sh`):
 
 **Requirements:** **Node.js ≥ 22** for the UI phase (matches CI and `app/ui/package.json` `engines`). Before failing, `ci-full-local.sh` tries **`nvm`** (`$NVM_DIR` or `~/.nvm`, then `nvm use` from `app/ui/.nvmrc`) and **`fnm`** so non-interactive `make ci-local` is not stuck on a system Node 20. **Docker** for `ci-local-docker`. The script uses **`PYTHONNOUSERSITE=1`** and clears inherited **`PYTHONPATH`** for `pip` so dependencies land in **`.venv-ci`**, not only `~/.local` (both venv dirs are **gitignored**).
 
-See [TESTING](./TESTING.md) §1 (including **Test pyramid** / targeted runs) and [LOCAL_DEV](./LOCAL_DEV.md).
+See [TESTING](./testing.md) §1 (including **Test pyramid** / targeted runs) and [LOCAL_DEV](./local-dev.md).
 
 ## Ruff
 

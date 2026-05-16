@@ -18,6 +18,8 @@
 | `cd app && make test-web` | Web API pytest (needs Docker image) |
 | `cd app && make test-web-local` | Web API pytest on host (needs venv, no Docker) |
 | `cd app && make test-processor-light` | Skip heavy YOLO tests (`SKIP_HEAVY_PROCESSOR_TESTS=1`) |
+| `make snapshot-detector-weights` | Копия `best.pt` + `best_openvino_model/` → `weights/snapshots/<tag>/` перед заменой (`TAG=` опционально) |
+| `make compare-detector-bboxes-help` | Справка `compare_detector_bboxes.py` (PT vs OpenVINO на mp4) |
 | `npm run codegen:openapi` | Generate TS types from `web/openapi.yaml` (run in `app/ui/`) |
 | `npm run typecheck` | TypeScript check in UI |
 | `npm run lint` | ESLint in UI |

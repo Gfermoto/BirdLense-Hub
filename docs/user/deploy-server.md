@@ -1,8 +1,8 @@
 # BirdLense Hub server deployment (EN)
 
-Minimal production deployment checklist. Narrative and context: [INSTALL](./INSTALL.md) § *Deploy to server*.
+Minimal production deployment checklist. Narrative and context: [INSTALL](./install.md) § *Deploy to server*.
 
-[Русский](./DEPLOY_SERVER.ru.md)
+[Русский](../ru/deploy-server.ru.md)
 
 ## 1) Prepare
 
@@ -25,7 +25,7 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 
 Use the hub at **`http://<host>:<port>`** (default nginx port inside the container is **8080**; on the host map it with **`BIRDLENSE_PORT`**, often **8085**). Set **`DEPLOY_URL`** and, if the browser shows CORS errors, **`CORS_ORIGINS`** in **`app/.env`** on the server to **exactly that URL** (scheme + host + port).
 
-You do **not** need a separate reverse proxy in front of the stack or a DNS name for a working deployment: the container already exposes HTTP on the chosen port. When you later add a **domain + TLS** (and optionally reverse proxy), switch **`DEPLOY_URL`**, **`CORS_ORIGINS`**, and any webhook/public URLs; if TLS terminates at a trusted proxy, set **`TRUSTED_PROXY=1`** — see [CONFIGURATION](./CONFIGURATION.md).
+You do **not** need a separate reverse proxy in front of the stack or a DNS name for a working deployment: the container already exposes HTTP on the chosen port. When you later add a **domain + TLS** (and optionally reverse proxy), switch **`DEPLOY_URL`**, **`CORS_ORIGINS`**, and any webhook/public URLs; if TLS terminates at a trusted proxy, set **`TRUSTED_PROXY=1`** — see [CONFIGURATION](./configuration.md).
 
 **Operational baseline (VPS by IP, no domain yet):** use the same URL in **`DEPLOY_URL`** (local `deploy.local.sh`) and in server **`app/.env`** as **`CORS_ORIGINS`**, e.g. **`http://185.218.111.196:8085`**. Optional A1 gate before **`make deploy`**: copy server **`app/.env`** to your laptop, then in **`deploy.local.sh`** set **`RUN_VERIFY_PROD_BEFORE_DEPLOY=1`** (and **`VERIFY_PROD_ENV_FILE`** if the copy is not **`app/.env`**) so **`scripts/deploy.sh`** runs **`verify-prod-env`** first — see **`scripts/deploy.local.sh.example`**.
 
@@ -40,7 +40,7 @@ For **`BIRDLENSE_ENV=production`**, validate **`app/.env`** on the server (or lo
 
 Set **`VERIFY_PROD_ENV=1`** if you need the same checks while `BIRDLENSE_ENV` is not yet `production`. Use **`./scripts/verify-prod-env.sh --require-mcp-token`** when MCP must be gated.
 
-For **browser access from another origin** (UI on a different host/port than the API), set **`CORS_ORIGINS`** / **`CORS_DEFAULT_ORIGINS`** / **`CORS_LOCAL_DEV_ORIGINS`** — see [CONFIGURATION](./CONFIGURATION.md).
+For **browser access from another origin** (UI on a different host/port than the API), set **`CORS_ORIGINS`** / **`CORS_DEFAULT_ORIGINS`** / **`CORS_LOCAL_DEV_ORIGINS`** — see [CONFIGURATION](./configuration.md).
 
 ## 2) Deploy
 
@@ -114,4 +114,4 @@ Standard deploy keeps:
 
 ## 8) Direct recording URLs (`/data/recordings/`)
 
-Follow **[PUBLIC_RECORDINGS.md](./PUBLIC_RECORDINGS.md)** — single checklist for public/VPS ( **`BIRDLENSE_HIDE_DIRECT_RECORDINGS`**, strict auth, optional stream lock). This section intentionally stays short to avoid duplicating [SECURITY.md §3](./SECURITY.md).
+Follow **[PUBLIC_RECORDINGS.md](./public-recordings.md)** — single checklist for public/VPS ( **`BIRDLENSE_HIDE_DIRECT_RECORDINGS`**, strict auth, optional stream lock). This section intentionally stays short to avoid duplicating [SECURITY.md §3](../contributor/security.md).

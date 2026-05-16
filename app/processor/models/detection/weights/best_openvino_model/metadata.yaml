@@ -1,7 +1,7 @@
 description: Ultralytics YOLO11n model trained on /content/brg_dataset/brg/dataset.yaml
 author: Ultralytics
-date: '2026-05-12T15:05:26.945406'
-version: 8.4.48
+date: '2026-05-15T14:32:08.995931'
+version: 8.4.45
 license: AGPL-3.0 License (https://ultralytics.com/license)
 docs: https://docs.ultralytics.com
 stride: 32

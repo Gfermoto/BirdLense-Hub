@@ -1,8 +1,8 @@
 # Глоссарий — BirdLense Hub
 
-Краткие определения терминов из [CONFIGURATION](./CONFIGURATION.ru.md), [API](./API.ru.md), [ARCHITECTURE](./ARCHITECTURE.ru.md).
+Краткие определения терминов из [CONFIGURATION](./configuration.ru.md), [API](./api.ru.md), [ARCHITECTURE](./architecture.ru.md).
 
-[English](./GLOSSARY.md)
+[English](../user/glossary.md)
 
 ---
 
@@ -68,8 +68,8 @@
 |--------|----------|
 | **Admin (роль)** | Разблокировка `settings_password` — полный UI, кормушка, система, перезапуск processor. |
 | **Contributor (роль)** | `contributor_password` — разметка и экспорты без админ-функций. |
-| **Viewer** | Без разблокировки — просмотр (экспорты см. [ACCESS_CONTROL](./ACCESS_CONTROL.ru.md)). |
-| **MCP** | **Model Context Protocol** — опциональная точка `/mcp` для **авторизованных клиентов** (автоматизация, интеграции); защита `MCP_TOKEN` / `mcp.token`. См. [MCP_SETUP.ru](./MCP_SETUP.ru.md). |
+| **Viewer** | Без разблокировки — просмотр (экспорты см. [ACCESS_CONTROL](./access-control.ru.md)). |
+| **MCP** | **Model Context Protocol** — опциональная точка `/mcp` для **авторизованных клиентов** (автоматизация, интеграции); защита `MCP_TOKEN` / `mcp.token`. См. [MCP_SETUP.ru](./mcp-setup.ru.md). |
 | **`PROCESSOR_SECRET`** | Секрет processor → web API (`X-Processor-Token`). |
 
 ---
@@ -82,10 +82,10 @@
 | **Визит вида** | Логическая сущность из детекций и окон дедупликации (`dedup_window_seconds`). |
 | **Review-only detection** | Детекция, видимая человеку, но не создающая `SpeciesVisit`; обычно `visit_eligible = false`. |
 | **Canonical taxon** | Каноническая сущность вида (`SpeciesTaxon`), к которой сводятся алиасы и исторические имена. |
-| **Экспорт датасета** | ZIP кадров для дообучения ([DATASETS](./DATASETS.ru.md)). |
+| **Экспорт датасета** | ZIP кадров для дообучения ([DATASETS](../contributor/datasets.md)). |
 
 ---
 
 ## См. также
 
-[OVERVIEW](./OVERVIEW.ru.md) · [SCENARIOS](./SCENARIOS.ru.md) · [TROUBLESHOOTING](./TROUBLESHOOTING.ru.md)
+[OVERVIEW](./overview.ru.md) · [SCENARIOS](./scenarios.ru.md) · [TROUBLESHOOTING](./troubleshooting.ru.md)

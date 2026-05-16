@@ -4,7 +4,7 @@
 
 Single container. Connects to Go2RTC (standalone or via Frigate) and MQTT (BirdNET, Frigate).
 
-**Features:** Timeline (date + time of day), CSV/JSON/eBird export, PDF report, “Unknowns”, iNaturalist, Xeno-canto, Prometheus. See [docs/FEATURES.md](../docs/FEATURES.md).
+**Features:** Timeline (date + time of day), CSV/JSON/eBird export, PDF report, “Unknowns”, iNaturalist, Xeno-canto, Prometheus. See [docs/user/features.md](../docs/user/features.md).
 
 ## Run
 
@@ -15,7 +15,7 @@ cd app
 make local
 ```
 
-See [docs/LOCAL_DEV.md](../docs/LOCAL_DEV.md) — full build, tests, E2E.
+See [docs/contributor/local-dev.md](../docs/contributor/local-dev.md) — full build, tests, E2E.
 
 ### Option 1: Pre-built image (recommended)
 
@@ -45,12 +45,12 @@ UI: http://localhost:8085
 | `make pull` | Pull and run pre-built image |
 | `make stop` | Stop |
 | `make logs` | Logs |
-| `make deploy` | Deploy to server (from repo root; see [docs/INSTALL.md](../docs/INSTALL.md)) |
+| `make deploy` | Deploy to server (from repo root; see [docs/user/install.md](../docs/user/install.md)) |
 
 ## Configuration
 
 - `app_config/default_config.yaml` — defaults shipped with the image/repo (read-only baseline).
-- `app_config/user_config.yaml` — **operator overrides**: deep-merged over default; this file is the primary place for durable settings in the UI. Server deploy does not rsync over your live `data/` or `user_config.yaml` (see repo `docs/INSTALL.md` / deploy rules).
+- `app_config/user_config.yaml` — **operator overrides**: deep-merged over default; this file is the primary place for durable settings in the UI. Server deploy does not rsync over your live `data/` or `user_config.yaml` (see [docs/user/install.md](../docs/user/install.md) / deploy rules).
 - **Environment variables** — runtime layer for secrets, infra, and flags: e.g. `DATA_DIR`, `MQTT_BROKER`, `MQTT_USERNAME`, `MQTT_PASSWORD`, `GO2RTC_URL`, `PROCESSOR_SECRET`, `FLASK_SECRET_KEY`, `BIRDLENSE_*`, `MCP_TOKEN`. Many code paths use **env first, then YAML** (e.g. MQTT broker in processor bootstrap and some UI checks).
 - On load, merged config is checked for **top-level section types** (each known section must be a mapping, not a scalar). Errors are logged; set `BIRDLENSE_STRICT_CONFIG=1` to **fail fast** at startup if validation fails.
 
@@ -68,7 +68,7 @@ No recordings in UI? System → “Scan and import”.
 
 ## MCP
 
-Settings → section 8. Setup: [docs/MCP_SETUP.md](../docs/MCP_SETUP.md)
+Settings → section 8. Setup: [docs/contributor/mcp-setup.md](../docs/contributor/mcp-setup.md)
 
 ## Deploy
 

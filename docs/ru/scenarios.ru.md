@@ -1,6 +1,6 @@
 # Типичные сценарии BirdLense Hub
 
-[English](./SCENARIOS.md)
+[English](../user/scenarios.md)
 
 ---
 
@@ -36,7 +36,7 @@
 
 **Цель:** Распознавание по голосу в дополнение к видео.
 
-**Какой BirdNET использовать:** в Hub **нет** отдельной настройки «Pi или Go». Подходит **любой источник**, который публикует **JSON** на ваш MQTT-топик в формате, который умеет читать процессор (частые варианты — **BirdNET-Go**, **BirdNET-Pi**; см. поля в [CONFIGURATION.ru.md](./CONFIGURATION.ru.md) § MQTT). Достаточно указать брокер и топик в Настройках.
+**Какой BirdNET использовать:** в Hub **нет** отдельной настройки «Pi или Go». Подходит **любой источник**, который публикует **JSON** на ваш MQTT-топик в формате, который умеет читать процессор (частые варианты — **BirdNET-Go**, **BirdNET-Pi**; см. поля в [CONFIGURATION.ru.md](./configuration.ru.md) § MQTT). Достаточно указать брокер и топик в Настройках.
 
 **Локаль подписи (RU/EN и т.д.):** менять язык в BirdNET **не обязательно** ради слияния с видео. Hub привязывает событие к **каноническому имени вида** в вашей базе по **научному имени** из MQTT (у BirdNET-Go оно обычно есть) и при необходимости по **алиасам** в реестре видов. Подробнее — там же, § MQTT.
 
@@ -76,7 +76,7 @@
 
 ## Сценарий 6: Деплой на сервер
 
-См. [INSTALL.md](./INSTALL.ru.md) — «Деплой на сервер (`make deploy`)» и чеклист [DEPLOY_SERVER.ru.md](./DEPLOY_SERVER.ru.md): `scripts/deploy.local.sh`, **`DEPLOY_URL`** для **`verify-stack`** после выката, при необходимости **`DEPLOY_SSH_PORT`**. После деплоя: `BASE_URL=... make verify` из корня репозитория. Только **x86_64 / amd64** (Intel или AMD); ARM / aarch64 не поддерживаются и не планируются.
+См. [INSTALL.md](./install.ru.md) — «Деплой на сервер (`make deploy`)» и чеклист [DEPLOY_SERVER.ru.md](./deploy-server.ru.md): `scripts/deploy.local.sh`, **`DEPLOY_URL`** для **`verify-stack`** после выката, при необходимости **`DEPLOY_SSH_PORT`**. После деплоя: `BASE_URL=... make verify` из корня репозитория. Только **x86_64 / amd64** (Intel или AMD); ARM / aarch64 не поддерживаются и не планируются.
 
 ---
 
@@ -131,14 +131,14 @@
 
 ## Сценарий 11: Исследование и дообучение модели
 
-См. [TRAINING.ru.md](./TRAINING.ru.md), [DATASETS.ru.md](./DATASETS.ru.md) (**Актуальные пути**: merge, `brg/`, имена архивов). Скрипты: `scripts/datasets/`, merge → Colab.
+См. [TRAINING.ru.md](../../archive/internal/docs-legacy/TRAINING.ru.md), [datasets](../contributor/datasets.md) (**Актуальные пути**: merge, `brg/`, имена архивов). Скрипты: `scripts/datasets/`, merge → Colab.
 
 ---
 
 ## Troubleshooting
 
-**Frigate обнаружил птицу, но BirdLense не записал:** см. [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) — пропущенные события, чеклист причин.
+**Frigate обнаружил птицу, но BirdLense не записал:** см. [TROUBLESHOOTING.md](../user/troubleshooting.md) — пропущенные события, чеклист причин.
 
 ---
 
-См. также: [OVERVIEW](./OVERVIEW.ru.md) · [INSTALL](./INSTALL.ru.md) · [CONFIGURATION](./CONFIGURATION.ru.md) · [GLOSSARY](./GLOSSARY.ru.md) · [ARCHITECTURE](./ARCHITECTURE.md).
+См. также: [OVERVIEW](./overview.ru.md) · [INSTALL](./install.ru.md) · [CONFIGURATION](./configuration.ru.md) · [GLOSSARY](./glossary.ru.md) · [ARCHITECTURE](../contributor/architecture.md).

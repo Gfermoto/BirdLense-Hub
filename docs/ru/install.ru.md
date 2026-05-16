@@ -1,10 +1,10 @@
 # Установка и деплой BirdLense Hub
 
-[English](./INSTALL.md)
+[English](../user/install.md)
 
 BirdLense Hub — мониторинг кормушки: детекция птиц по видео и аудио, записи, аналитика. Docker только на **x86_64** (Intel или AMD).
 
-**Сначала:** [OVERVIEW](./OVERVIEW.ru.md) · **Сценарии:** [SCENARIOS](./SCENARIOS.ru.md)
+**Сначала:** [OVERVIEW](./overview.ru.md) · **Сценарии:** [SCENARIOS](./scenarios.ru.md)
 
 ## Требования
 
@@ -103,13 +103,13 @@ make deploy
 
 **Каталог на сервере:** в `scripts/deploy.sh` по умолчанию `DEPLOY_REMOTE_DIR=/root/BirdLense`. Имя локальной папки клона (`BirdLense-Hub` или своё) с этим не связано.
 
-**Что делает:** останавливает и удаляет контейнер **`birdlense`** (контейнер **`birdlense-redis`** не трогает), собирает UI **локально**, **rsync** с исключениями как в `scripts/deploy.sh` (в т.ч. **`datasets/`**, **`app/data/`**, **`app/.env`**, **`app/app_config/user_config.yaml`**, **`.tools/`**, **`.venv-ci`** / **`.venv-docs`**, `app/.venv`, `site/`, кэши ruff/pytest), дописывает секреты в **`app/.env`** на сервере (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, опционально **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — см. [CONFIGURATION.ru.md](./CONFIGURATION.ru.md), [SECRETS_ROTATION.ru.md](./SECRETS_ROTATION.ru.md)), при наличии `/dev/dri/renderD*` — **`bash scripts/docker-compose-intel-override-gen.sh`**, на сервере в `app/` — **`make build && make start`**, затем **`scripts/verify-stack.sh`** для **`DEPLOY_URL`** (health, readiness, status, камеры при доступности).
+**Что делает:** останавливает и удаляет контейнер **`birdlense`** (контейнер **`birdlense-redis`** не трогает), собирает UI **локально**, **rsync** с исключениями как в `scripts/deploy.sh` (в т.ч. **`datasets/`**, **`app/data/`**, **`app/.env`**, **`app/app_config/user_config.yaml`**, **`.tools/`**, **`.venv-ci`** / **`.venv-docs`**, `app/.venv`, `site/`, кэши ruff/pytest), дописывает секреты в **`app/.env`** на сервере (`MCP_TOKEN`, `FLASK_SECRET_KEY`, `BIRDLENSE_ENV`, `PROCESSOR_SECRET`, опционально **`BIRDLENSE_STRICT_API_AUTH`** / **`BIRDLENSE_UI_API_KEY`** — см. [CONFIGURATION.ru.md](./configuration.ru.md), [SECRETS_ROTATION.ru.md](../../archive/internal/docs-legacy/SECRETS_ROTATION.ru.md)), при наличии `/dev/dri/renderD*` — **`bash scripts/docker-compose-intel-override-gen.sh`**, на сервере в `app/` — **`make build && make start`**, затем **`scripts/verify-stack.sh`** для **`DEPLOY_URL`** (health, readiness, status, камеры при доступности).
 
 **Автодеплой:** `./scripts/setup-auto-deploy.sh` на сервере → push в main → workflow **Deploy** в GitHub Actions (self-hosted runner с метками `self-hosted`, `birdlense`). Если запуск долго **Queued** — runner не в сети или не зарегистрирован; до починки используйте **`make deploy`** с вашей машины.
 
 **Сервер недоступен:** `cd app && make build` локально; при появлении доступа — `make deploy` (данные не трогаются).
 
-**Пошаговый чеклист**, пути на VPS, логи и типичные сбои: [DEPLOY_SERVER.ru](./DEPLOY_SERVER.ru.md).
+**Пошаговый чеклист**, пути на VPS, логи и типичные сбои: [DEPLOY_SERVER.ru](./deploy-server.ru.md).
 
 ### HTTPS / nginx и большие upload (Библиотека → прогон с диска)
 
@@ -172,4 +172,4 @@ make refresh-telegram-proxy  # разовый запуск подбора пря
 
 ---
 
-См. также: [CONFIGURATION](./CONFIGURATION.ru.md) · [SCENARIOS](./SCENARIOS.ru.md) · [GLOSSARY](./GLOSSARY.ru.md) · [TROUBLESHOOTING](./TROUBLESHOOTING.ru.md) · [политика безопасности](./project/security-policy.md).
+См. также: [CONFIGURATION](./configuration.ru.md) · [SCENARIOS](./scenarios.ru.md) · [GLOSSARY](./glossary.ru.md) · [TROUBLESHOOTING](./troubleshooting.ru.md) · [политика безопасности](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SECURITY.md).

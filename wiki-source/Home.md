@@ -4,7 +4,7 @@
 
 ## Автоматические отчёты CI
 
-- Страница **[Latest-CI-Report](Latest-CI-Report)** обновляется workflow **Wiki report**, если в репозитории задан секрет `WIKI_PUSH_TOKEN` (см. `docs/WIKI_AUTOMATION.ru.md` в основном репо).
+- Страница **[Latest-CI-Report](Latest-CI-Report)** обновляется workflow **Wiki report**, если в репозитории задан секрет `WIKI_PUSH_TOKEN` (см. `archive/internal/docs-legacy/WIKI_AUTOMATION.ru.md` в основном репо).
 - **Всегда** можно открыть: **Actions** → **Wiki report** → последний запуск → вкладка **Summary** (полный вывод) и **Artifacts** (файл `wiki-report.md`).
 
 ## Ручное редактирование

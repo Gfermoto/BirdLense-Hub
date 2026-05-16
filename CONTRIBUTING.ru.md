@@ -2,7 +2,7 @@
 
 Спасибо за интерес к проекту BirdLense Hub.
 
-**Issues и доска:** [docs/ROADMAP.ru.md](docs/ROADMAP.ru.md) (триаж и отчётность) и § *Issues и доска Project* ниже.
+**Issues и доска:** [docs/contributor/roadmap.md](docs/contributor/roadmap.md) (триаж и отчётность) и § *Issues и доска Project* ниже.
 
 ### Полный цикл (мейнтейнер / контрибьютор)
 
@@ -11,8 +11,8 @@
 1. **Код** — в стиле репозитория; локально прогоняйте релевантные тесты/линтеры (`app/`, например `make test-web`; в CI проверок больше).
 2. **Доки и журнал** — обновляйте `docs/*`, когда меняются факты для операторов/интеграторов; пользовательские изменения → [CHANGELOG.md](CHANGELOG.md).
 3. **Git** — осмысленные коммиты; **push** в согласованную ветку (обычно `dev`), если не локальная работа.
-4. **Путь к релизу** — фичи сначала в **`dev`**; выкладка **`dev` → `main`** — отдельный PR мейнтейнера после зелёного CI. Ссылки на PR в Issues, закрытие issue; доска **BirdLense Hub — Roadmap** (**Done**) по процессу (скрипты `scripts/github-project-*.sh`, см. [docs/ROADMAP.ru.md](docs/ROADMAP.ru.md)).
-5. **Деплой** — если хаб на сервере должен получить код: из корня репозитория **`make deploy`** (см. [docs/INSTALL.ru.md](docs/INSTALL.ru.md) § *Деплой на сервер*).
+4. **Путь к релизу** — фичи сначала в **`dev`**; выкладка **`dev` → `main`** — отдельный PR мейнтейнера после зелёного CI. Ссылки на PR в Issues, закрытие issue; доска **BirdLense Hub — Roadmap** (**Done**) по процессу (скрипты `scripts/github-project-*.sh`, см. [roadmap](docs/contributor/roadmap.md)).
+5. **Деплой** — если хаб на сервере должен получить код: из корня репозитория **`make deploy`** (см. [установка](docs/ru/install.ru.md) § *Деплой на сервер*).
 6. **Проверка** — после деплоя или смены CI убедиться в health/логах или успешном workflow.
 
 ## Как участвовать
@@ -30,10 +30,10 @@
 
 1. **Клонируйте** [BirdLense-Hub](https://github.com/Gfermoto/BirdLense-Hub) (при необходимости — **fork** в свой аккаунт) и создайте ветку от **`dev`**.
 2. **Вносите изменения** — следуйте существующему стилю кода.
-3. **Тестируйте** — в `app/`: `make test` и `make test-web` (Docker), либо убедитесь, что PR зелёный в CI: **`python-security`**, **`openapi-contract`**, **`ui-build`**, **`docs`**, **`docker-tests`** (см. [docs/TESTING.ru.md](docs/TESTING.ru.md) §1).
+3. **Тестируйте** — в `app/`: `make test` и `make test-web` (Docker), либо убедитесь, что PR зелёный в CI: **`python-security`**, **`openapi-contract`**, **`ui-build`**, **`docs`**, **`docker-tests`** (см. [тестирование](docs/ru/testing.ru.md) §1).
 4. **Откройте Pull Request** с базой **`dev`**.
 
-**Вторая пара глаз:** для защищённых веток желательно одобрение другого человека. См. [docs/GOVERNANCE.ru.md](docs/GOVERNANCE.ru.md) — как добавить наблюдателя; приглашение collaborator принимает только **живой аккаунт GitHub**, для автоматизации используйте бот-аккаунт или GitHub App.
+**Вторая пара глаз:** для защищённых веток желательно одобрение другого человека. См. [GOVERNANCE.md](GOVERNANCE.md) / [RU](archive/internal/docs-legacy/GOVERNANCE.ru.md) — как добавить наблюдателя; приглашение collaborator принимает только **живой аккаунт GitHub**, для автоматизации используйте бот-аккаунт или GitHub App.
 
 ## Настройка окружения
 
@@ -44,14 +44,14 @@ make build
 make start
 ```
 
-Подробнее: [docs/LOCAL_DEV.ru.md](docs/LOCAL_DEV.ru.md).
+Подробнее: [локальная разработка](docs/ru/local-dev.ru.md).
 
 ## Документация
 
-- **Структура репозитория:** [docs/REPOSITORY_LAYOUT.ru.md](docs/REPOSITORY_LAYOUT.ru.md) — где `app/`, `docs/` и `scripts/`.
-- **Индекс:** [docs/README.ru.md](docs/README.ru.md) — структура (запуск / интеграции / разработка).
-- **Текст для читателей и статей:** [docs/OVERVIEW.ru.md](docs/OVERVIEW.ru.md).
-- **Правила оформления:** [docs/Documentation.ru.md](docs/Documentation.ru.md). **Термины:** [docs/GLOSSARY.ru.md](docs/GLOSSARY.ru.md).
+- **Структура репозитория:** [repository-layout](docs/contributor/repository-layout.md) — где `app/`, `docs/` и `scripts/`.
+- **Индекс:** [docs/index.md](docs/index.md) · [RU](docs/ru/index.md).
+- **Текст для читателей и статей:** [обзор](docs/ru/overview.ru.md).
+- **Правила оформления:** [documentation](docs/contributor/documentation.md). **Термины:** [глоссарий](docs/ru/glossary.ru.md).
 - Изменение поведения для пользователя → обновить соответствующий гайд и [CHANGELOG.md](CHANGELOG.md).
 
 ## Стиль кода
@@ -62,19 +62,19 @@ make start
 
 ## Issues и доска Project (отчётность)
 
-**Вся содержательная работа** должна быть отражена в **GitHub Issues** и, если карточка на доске, в проекте **BirdLense Hub — Roadmap** — включая задачи **вне** таблицы консилиума в ROADMAP (только CI, доки, chore). Комментарий с итогом + ссылки на PR, **закрытие** issue при готовности, на доске **Status → Done** (или `bash scripts/github-project-mark-done.sh <n>` при PAT `repo` + `project`). **Отложенные идеи** без текущего объёма работы могут фиксироваться только в [ROADMAP](docs/ROADMAP.ru.md), пока не заведён новый issue под реализацию.
+**Вся содержательная работа** должна быть отражена в **GitHub Issues** и, если карточка на доске, в проекте **BirdLense Hub — Roadmap** — включая задачи **вне** таблицы консилиума в ROADMAP (только CI, доки, chore). Комментарий с итогом + ссылки на PR, **закрытие** issue при готовности, на доске **Status → Done** (или `bash scripts/github-project-mark-done.sh <n>` при PAT `repo` + `project`). **Отложенные идеи** без текущего объёма работы могут фиксироваться только в [roadmap](docs/contributor/roadmap.md), пока не заведён новый issue под реализацию.
 
 ## Требования к Pull Request
 
 - Один PR — одна фича или исправление.
 - Добавляйте тесты для новых API и логики процессора.
 - Обновляйте документацию при изменении поведения.
-- Должны проходить **`make test`** и **`make test-web`** в `app/` (Docker), либо PR зелёный в CI (все job из [docs/TESTING.ru.md](docs/TESTING.ru.md) §1).
+- Должны проходить **`make test`** и **`make test-web`** в `app/` (Docker), либо PR зелёный в CI (все job из [тестирование](docs/ru/testing.ru.md) §1).
 - Для PR, которые меняют **размещение в UI** или добавляют новый экран (`area:web`): в описании PR кратко подтвердите **ворота UX-контекста** (после [#114](https://github.com/Gfermoto/BirdLense-Hub/issues/114)): какая страница отвечает за намерение пользователя, переиспользуется ли поток данных/API, что покажется оператору «не на своём месте».
 
 ### Чеклист перед релизом (мейнтейнер)
 
-См. [docs/LOCAL_DEV.ru.md](docs/LOCAL_DEV.ru.md) — блок **«Чеклист перед релизом»**: тесты, `mkdocs build --strict`, по желанию E2E, смоук после деплоя.
+См. [локальная разработка](docs/ru/local-dev.ru.md) — блок **«Чеклист перед релизом»**: тесты, `mkdocs build --strict`, по желанию E2E, смоук после деплоя.
 
 ## Сообщение об ошибках
 
@@ -87,7 +87,7 @@ make start
 
 ## Good first issue
 
-Ищите задачи с меткой **`good first issue`**. Мейнтейнерам: в таком issue укажите файлы, критерии готовности и ссылки на `docs/LOCAL_DEV.ru.md` / `docs/TESTING.ru.md`.
+Ищите задачи с меткой **`good first issue`**. Мейнтейнерам: в таком issue укажите файлы, критерии готовности и ссылки на [local-dev](docs/ru/local-dev.ru.md) / [testing](docs/ru/testing.ru.md).
 
 ## Сообщество
 

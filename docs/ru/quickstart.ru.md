@@ -2,7 +2,7 @@
 
 Самые короткие пути для трёх задач: поднять хаб, разрабатывать локально или проверить деплой.
 
-[English](./QUICKSTART.md)
+[English](../user/quickstart.md)
 
 ## 1. Запуск на одной машине
 
@@ -37,7 +37,7 @@ make verify
 make test-web
 ```
 
-Зависимости UI — **Node 22** в `app/ui/`. Подробности: [LOCAL_DEV](./LOCAL_DEV.ru.md).
+Зависимости UI — **Node 22** в `app/ui/`. Подробности: [LOCAL_DEV](./local-dev.ru.md).
 
 ### Полный CI локально (без push в GitHub)
 
@@ -47,7 +47,7 @@ make test-web
 make ci-local
 ```
 
-Появятся **`.venv-ci`** / **`.venv-docs`** (в `.gitignore`). Образ Docker + Playwright smoke: `make ci-local-docker`. См. [CI_AND_QUALITY](./CI_AND_QUALITY.ru.md).
+Появятся **`.venv-ci`** / **`.venv-docs`** (в `.gitignore`). Образ Docker + Playwright smoke: `make ci-local-docker`. См. [CI_AND_QUALITY](../contributor/ci-and-quality.md).
 
 ## 3. Деплой на сервер
 
@@ -64,4 +64,4 @@ BASE_URL=https://ВАШ_ХОСТ make verify
 - `/api/ui/readiness` → `"ready": true`
 - `/api/ui/status` → `"web": "ok"`
 
-Полный путь деплоя, SSH и данные — [INSTALL](./INSTALL.ru.md) и [DEPLOY_SERVER](./DEPLOY_SERVER.ru.md).
+Полный путь деплоя, SSH и данные — [INSTALL](./install.ru.md) и [DEPLOY_SERVER](./deploy-server.ru.md).

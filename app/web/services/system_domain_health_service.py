@@ -408,6 +408,67 @@ def _day_night_bucket(ts: datetime | None) -> str:
     return "day" if 6 <= ts.hour < 18 else "night"
 
 
+def _normalize_parity_reason_token(value: Any, *, prefix: str = "REJECT_") -> str | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    token = raw.upper().replace("-", "_").replace(" ", "_")
+    if token.startswith(
+        (
+            "REC_",
+            "FUSION_",
+            "REJECT_",
+            "YOLO_",
+            "FRIGATE_",
+            "MQTT_",
+            "GATE_",
+            "UNKNOWN_",
+        )
+    ):
+        return token
+    return f"{prefix}{token}" if prefix else token
+
+
+def _parity_reason_from_decision_payload(payload: dict[str, Any], ingest_reason_by_path: dict[str, str]) -> str:
+    trace_path = _norm_path(payload.get("video_path"))
+    if trace_path:
+        mapped = ingest_reason_by_path.get(trace_path)
+        if mapped:
+            return mapped
+
+    rejected_tracks = payload.get("rejected_tracks")
+    if isinstance(rejected_tracks, list) and rejected_tracks:
+        reason_counts: dict[str, int] = defaultdict(int)
+        for row in rejected_tracks:
+            if not isinstance(row, dict):
+                continue
+            reason = (
+                _normalize_parity_reason_token(row.get("reject_reason_code"), prefix="")
+                or _normalize_parity_reason_token(row.get("decision_reason"))
+                or _normalize_parity_reason_token(row.get("arbitration_reason"))
+            )
+            if reason:
+                reason_counts[reason] += 1
+        if reason_counts:
+            return sorted(reason_counts.items(), key=lambda x: (-x[1], x[0]))[0][0]
+
+    outcome = payload.get("outcome_summary") if isinstance(payload.get("outcome_summary"), dict) else {}
+    rejected_count = int(outcome.get("rejected_track_count") or payload.get("rejected_track_count") or 0)
+    if rejected_count > 0:
+        return "REJECTED_NO_REASON"
+
+    recording_context = payload.get("recording_context") if isinstance(payload.get("recording_context"), dict) else {}
+    runtime_signals = (
+        recording_context.get("runtime_signals") if isinstance(recording_context.get("runtime_signals"), dict) else {}
+    )
+    if runtime_signals.get("yolo_ran") is False:
+        return "YOLO_NOT_RUN"
+    if runtime_signals.get("yolo_ran") is True and runtime_signals.get("yolo_track_found") is False:
+        return "YOLO_NO_TRACK"
+
+    return "UNKNOWN_NO_PERSIST"
+
+
 def _recent_parity_diagnostics_metrics(hours: int = 24, limit: int = 5000) -> dict[str, Any]:
     cutoff = _utc_now() - timedelta(hours=max(1, int(hours or 24)))
     decision_rows = (
@@ -498,10 +559,7 @@ def _recent_parity_diagnostics_metrics(hours: int = 24, limit: int = 5000) -> di
         mismatched_windows += 1
         entry["mismatched"] += 1
         entry[f"{bucket}_mismatched"] += 1
-        reason = "UNKNOWN_NO_PERSIST"
-        trace_path = _norm_path(payload.get("video_path"))
-        if trace_path:
-            reason = ingest_reason_by_path.get(trace_path, reason)
+        reason = _parity_reason_from_decision_payload(payload, ingest_reason_by_path)
         cause_counts[reason] += 1
 
     camera_rows: list[dict[str, Any]] = []
@@ -523,14 +581,21 @@ def _recent_parity_diagnostics_metrics(hours: int = 24, limit: int = 5000) -> di
                 "unknown_mismatched": int(item["unknown_mismatched"] or 0),
             }
         )
+    parity_hotspots = [
+        row
+        for row in camera_rows
+        if int(row.get("windows") or 0) >= 10 and float(row.get("mismatch_rate") or 0.0) >= 0.2
+    ]
     top_causes = dict(sorted(cause_counts.items(), key=lambda x: (-x[1], x[0]))[:10])
     return {
         "parity_frigate_windows_24h": int(total_windows),
         "parity_hub_matched_windows_24h": int(matched_windows),
         "parity_mismatched_windows_24h": int(mismatched_windows),
         "parity_mismatch_rate_24h": (mismatched_windows / total_windows) if total_windows else None,
+        "parity_hotspot_count_24h": len(parity_hotspots),
         "parity_top_mismatch_reasons_24h": top_causes,
         "parity_camera_split_24h": camera_rows[:20],
+        "parity_hotspots_24h": parity_hotspots[:10],
     }
 
 
@@ -673,6 +738,7 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                     "parity_hub_matched_windows_24h": parity_diagnostics_metrics["parity_hub_matched_windows_24h"],
                     "parity_mismatched_windows_24h": parity_diagnostics_metrics["parity_mismatched_windows_24h"],
                     "parity_mismatch_rate_24h": parity_diagnostics_metrics["parity_mismatch_rate_24h"],
+                    "parity_hotspot_count_24h": parity_diagnostics_metrics["parity_hotspot_count_24h"],
                 },
                 **processor_funnel_metrics,
             },
@@ -692,6 +758,7 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "ingest_gate_reason_code_counts_24h": ingest_gate_reason_metrics["ingest_gate_reason_code_counts_24h"],
                 "parity_top_mismatch_reasons_24h": parity_diagnostics_metrics["parity_top_mismatch_reasons_24h"],
                 "parity_camera_split_24h": parity_diagnostics_metrics["parity_camera_split_24h"],
+                "parity_hotspots_24h": parity_diagnostics_metrics["parity_hotspots_24h"],
             },
             "contracts": contracts_block,
             "reliability_alerts": reliability_alerts,
@@ -762,6 +829,7 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "parity_hub_matched_windows_24h": None,
                 "parity_mismatched_windows_24h": None,
                 "parity_mismatch_rate_24h": None,
+                "parity_hotspot_count_24h": None,
             },
             "samples": {
                 "duplicate_clip_candidates": [],
@@ -779,6 +847,7 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "ingest_gate_reason_code_counts_24h": {},
                 "parity_top_mismatch_reasons_24h": {},
                 "parity_camera_split_24h": [],
+                "parity_hotspots_24h": [],
             },
             "contracts": contracts_block,
             "reliability_alerts": {

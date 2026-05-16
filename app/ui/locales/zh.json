@@ -425,6 +425,8 @@
     "encodingCpu": "中央处理器",
     "encodingIntel": "英特尔 GPU（集成）",
     "encodingHint": "Intel — 任何 Intel 集成 GPU 上的 VA-API。需要容器中的 /dev/dri/renderD128。",
+    "recordWithVaapiLabel": "用 VA-API 编码录制文件（h264_vaapi）",
+    "recordWithVaapiHint": "关闭则仅对 MP4 使用 libx264（在部分 iGPU 上更稳定：损坏的 moov / encode error 24）。捕获后端为“自动”时，实时抓取仍可使用 VA-API。OpenVINO 推理不变。",
     "recordStreamCodecLabel": "将流录制为",
     "recordStreamCodecH264": "H.264（浏览器安全）",
     "recordStreamCodecCopy": "从流复制（快速，可能是 HEVC）",

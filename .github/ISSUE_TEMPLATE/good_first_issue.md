@@ -13,7 +13,7 @@ assignees: []
 ## Где в коде
 
 - Файлы / каталоги: 
-- Подсказки: см. `docs/LOCAL_DEV.md`, `docs/TESTING.md`
+- Подсказки: см. [docs/contributor/local-dev.md](../../docs/contributor/local-dev.md), [docs/contributor/testing.md](../../docs/contributor/testing.md)
 
 ## Критерии готовности
 

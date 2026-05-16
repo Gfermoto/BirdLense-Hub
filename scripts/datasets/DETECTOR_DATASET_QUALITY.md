@@ -108,5 +108,5 @@ RUN_MERGE=1 bash scripts/datasets/build_detector_dataset_waves.sh   # в кон�
 
 ## Дальше
 
-- Обучение: `docs/ML_DETECTOR_COLAB.md` (или свой пайплайн).
+- Обучение: [ML_DETECTOR_COLAB](../../archive/internal/docs-legacy/ML_DETECTOR_COLAB.md) (или свой пайплайн).
 - Экспорт OpenVINO и сравнение с baseline — см. ML-гейты в `Makefile`.

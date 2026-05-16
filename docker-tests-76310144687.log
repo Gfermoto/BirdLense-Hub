@@ -1,0 +1,17 @@
+docker-tests	Set up job	﻿2026-05-16T09:42:06.1530001Z Current runner version: '2.334.0'
+docker-tests	Set up job	2026-05-16T09:42:06.1555077Z ##[group]Runner Image Provisioner
+docker-tests	Set up job	2026-05-16T09:42:06.1555925Z Hosted Compute Agent
+docker-tests	Set up job	2026-05-16T09:42:06.1556477Z Version: 20260213.493
+docker-tests	Set up job	2026-05-16T09:42:06.1557122Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+docker-tests	Set up job	2026-05-16T09:42:06.1557841Z Build Date: 2026-02-13T00:28:41Z
+docker-tests	Set up job	2026-05-16T09:42:06.1558510Z Worker ID: {6ea955ec-4d4d-41fd-9a1b-e0a348b25c57}
+docker-tests	Set up job	2026-05-16T09:42:06.1559158Z Azure Region: westus
+docker-tests	Set up job	2026-05-16T09:42:06.1559762Z ##[endgroup]
+docker-tests	Set up job	2026-05-16T09:42:06.1561377Z ##[group]Operating System
+docker-tests	Set up job	2026-05-16T09:42:06.1561987Z Ubuntu
+docker-tests	Set up job	2026-05-16T09:42:06.1562563Z 24.04.4
+docker-tests	Set up job	2026-05-16T09:42:06.1563028Z LTS
+docker-tests	Set up job	2026-05-16T09:42:06.1563480Z ##[endgroup]
+docker-tests	Set up job	2026-05-16T09:42:06.1564018Z ##[group]Runner Image
+... (3045 more lines)
+[lean-ctx: 165801→505 tok, -100%]

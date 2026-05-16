@@ -19,7 +19,7 @@ github_project_load_env "$ROOT"
 OWNER="${GITHUB_PROJECT_OWNER:-Gfermoto}"
 REPO_FULL="${GITHUB_REPO:-Gfermoto/BirdLense-Hub}"
 PROJECT_TITLE="${GITHUB_PROJECT_TITLE:-BirdLense Hub — Roadmap}"
-# Issues из docs/ROADMAP.md § Backlog consilium
+# Issues из docs/contributor/roadmap.md § Backlog consilium
 ISSUE_START="${GITHUB_BACKLOG_ISSUE_START:-46}"
 ISSUE_END="${GITHUB_BACKLOG_ISSUE_END:-57}"
 # Пробел-разделённые номера issues, которые не добавлять (например закрытые / вне скоупа)

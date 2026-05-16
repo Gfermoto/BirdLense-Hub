@@ -236,3 +236,104 @@ def test_domain_health_includes_parity_diagnostics_daily_split(app, client):
     assert int(causes.get("FUSION_NO_ACCEPTED") or 0) >= 1
     assert any(str(row.get("camera") or "") == "cam-front" for row in camera_split)
     assert any(str(row.get("camera") or "") == "cam-back" for row in camera_split)
+
+
+def test_domain_health_parity_uses_rejected_track_reason_when_ingest_gate_absent(app, client):
+    with app.app_context():
+        now = datetime.now(timezone.utc)
+        mismatched_payload = {
+            "start_time": now.replace(hour=9, minute=0, second=0, microsecond=0).isoformat(),
+            "video_path": "data/recordings/2026/05/16/090000/camx.mp4",
+            "recording_context": {
+                "triggered_by": "frigate",
+                "triggered_camera": "cam-x",
+                "active_triggers": ["frigate"],
+                "runtime_signals": {"yolo_ran": True, "yolo_track_found": False},
+            },
+            "outcome_summary": {"persisted_track_count": 0, "rejected_track_count": 1},
+            "rejected_tracks": [{"decision_reason": "rejected_short_track"}],
+        }
+        db.session.add(
+            ActivityLog(
+                type="decision_trace",
+                data=json.dumps(mismatched_payload),
+                created_at=now - timedelta(minutes=3),
+            )
+        )
+        db.session.commit()
+
+    res = client.get("/api/ui/system/domain-health", headers=_auth_headers())
+    assert res.status_code == 200, res.get_data(as_text=True)
+    payload = res.get_json() or {}
+    causes = (payload.get("samples") or {}).get("parity_top_mismatch_reasons_24h") or {}
+    assert int(causes.get("REJECT_REJECTED_SHORT_TRACK") or 0) >= 1
+
+
+def test_domain_health_parity_uses_yolo_no_track_reason_without_rejected_rows(app, client):
+    with app.app_context():
+        now = datetime.now(timezone.utc)
+        mismatched_payload = {
+            "start_time": now.replace(hour=8, minute=30, second=0, microsecond=0).isoformat(),
+            "video_path": "data/recordings/2026/05/16/083000/camy.mp4",
+            "recording_context": {
+                "triggered_by": "frigate",
+                "triggered_camera": "cam-y",
+                "active_triggers": ["frigate"],
+                "runtime_signals": {"yolo_ran": True, "yolo_track_found": False},
+            },
+            "outcome_summary": {"persisted_track_count": 0, "rejected_track_count": 0},
+            "rejected_tracks": [],
+        }
+        db.session.add(
+            ActivityLog(
+                type="decision_trace",
+                data=json.dumps(mismatched_payload),
+                created_at=now - timedelta(minutes=2),
+            )
+        )
+        db.session.commit()
+
+    res = client.get("/api/ui/system/domain-health", headers=_auth_headers())
+    assert res.status_code == 200, res.get_data(as_text=True)
+    payload = res.get_json() or {}
+    causes = (payload.get("samples") or {}).get("parity_top_mismatch_reasons_24h") or {}
+    assert int(causes.get("YOLO_NO_TRACK") or 0) >= 1
+
+
+def test_domain_health_reports_parity_hotspot_for_camera_with_high_mismatch_rate(app, client):
+    with app.app_context():
+        now = datetime.now(timezone.utc)
+        rows = []
+        for idx in range(12):
+            rows.append(
+                ActivityLog(
+                    type="decision_trace",
+                    data=json.dumps(
+                        {
+                            "start_time": (
+                                now.replace(hour=11, minute=0, second=0, microsecond=0) - timedelta(minutes=idx)
+                            ).isoformat(),
+                            "video_path": f"data/recordings/2026/05/16/1100{idx:02d}/hot.mp4",
+                            "recording_context": {
+                                "triggered_by": "frigate",
+                                "triggered_camera": "cam-hot",
+                                "active_triggers": ["frigate"],
+                                "runtime_signals": {"yolo_ran": True, "yolo_track_found": False},
+                            },
+                            "outcome_summary": {"persisted_track_count": 0, "rejected_track_count": 0},
+                        }
+                    ),
+                    created_at=now - timedelta(minutes=idx),
+                )
+            )
+        db.session.add_all(rows)
+        db.session.commit()
+
+    res = client.get("/api/ui/system/domain-health", headers=_auth_headers())
+    assert res.status_code == 200, res.get_data(as_text=True)
+    payload = res.get_json() or {}
+    metrics = payload.get("metrics") or {}
+    hotspots = (payload.get("samples") or {}).get("parity_hotspots_24h") or []
+
+    assert int(metrics.get("parity_hotspot_count_24h") or 0) >= 1
+    assert any(str(row.get("camera") or "") == "cam-hot" for row in hotspots)

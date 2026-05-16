@@ -1,3 +1,4 @@
 # Pin versions for reproducible CI / local `mkdocs build`.
 mkdocs==1.6.1
 mkdocs-material==9.6.7
+mkdocs-redirects==1.2.2

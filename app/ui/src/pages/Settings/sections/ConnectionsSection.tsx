@@ -370,6 +370,40 @@ export function ConnectionsSection({ form }: Props) {
                   )}
                 </form.Field>
               </Grid>
+              <form.Subscribe
+                selector={(state) =>
+                  [state.values.video?.source, state.values.video?.encoding] as const
+                }
+              >
+                {([videoSource, encoding]) =>
+                  (videoSource ?? 'go2rtc').toLowerCase() !== 'file' &&
+                  (encoding ?? 'cpu').toLowerCase() === 'intel' ? (
+                    <Grid size={{ xs: 12 }}>
+                      <form.Field name="video.record_with_vaapi">
+                        {(field) => (
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={Boolean(field.state.value ?? true)}
+                                onChange={(_, checked) => field.handleChange(checked)}
+                              />
+                            }
+                            label={t('settings.recordWithVaapiLabel')}
+                          />
+                        )}
+                      </form.Field>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                        sx={{ pl: 4.5, mt: -0.5 }}
+                      >
+                        {t('settings.recordWithVaapiHint')}
+                      </Typography>
+                    </Grid>
+                  ) : null
+                }
+              </form.Subscribe>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <form.Field name="video.record_stream_codec">
                   {(field) => (

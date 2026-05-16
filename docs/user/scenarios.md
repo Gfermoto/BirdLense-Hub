@@ -1,6 +1,6 @@
 # BirdLense Hub — Typical scenarios
 
-[Русский](./SCENARIOS.ru.md)
+[Русский](../ru/scenarios.ru.md)
 
 ---
 
@@ -36,7 +36,7 @@
 
 **Goal:** Voice-based recognition alongside video.
 
-**Which BirdNET build:** there is **no** Hub toggle for “Pi vs Go”. Any stack that publishes **JSON** to your MQTT topic in a shape the processor understands will work — commonly **BirdNET-Go** or **BirdNET-Pi** (field names are listed in [CONFIGURATION.md](./CONFIGURATION.md) § MQTT). Set broker and topic in Settings.
+**Which BirdNET build:** there is **no** Hub toggle for “Pi vs Go”. Any stack that publishes **JSON** to your MQTT topic in a shape the processor understands will work — commonly **BirdNET-Go** or **BirdNET-Pi** (field names are listed in [CONFIGURATION.md](./configuration.md) § MQTT). Set broker and topic in Settings.
 
 **Display locale (EN/RU, etc.):** you do **not** need to switch BirdNET’s UI language for video merge to work. The Hub maps each event to the **canonical species name** in your database using the **scientific name** from MQTT (BirdNET-Go usually includes it) and, when needed, **species aliases** in the registry. Details: same doc, § MQTT.
 
@@ -76,7 +76,7 @@
 
 ## Scenario 6: Server deployment
 
-See [INSTALL.md](./INSTALL.md) — “Deploy to server (`make deploy`)” and the operator checklist [DEPLOY_SERVER.md](./DEPLOY_SERVER.md): `scripts/deploy.local.sh`, **`DEPLOY_URL`** for post-deploy **`verify-stack`**, optional **`DEPLOY_SSH_PORT`**. After each deploy: `BASE_URL=... make verify` from the repo root. **x86_64 / amd64** (Intel or AMD) only; ARM / aarch64 not supported or planned.
+See [INSTALL.md](./install.md) — “Deploy to server (`make deploy`)” and the operator checklist [DEPLOY_SERVER.md](./deploy-server.md): `scripts/deploy.local.sh`, **`DEPLOY_URL`** for post-deploy **`verify-stack`**, optional **`DEPLOY_SSH_PORT`**. After each deploy: `BASE_URL=... make verify` from the repo root. **x86_64 / amd64** (Intel or AMD) only; ARM / aarch64 not supported or planned.
 
 ---
 
@@ -131,14 +131,14 @@ See [INSTALL.md](./INSTALL.md) — “Deploy to server (`make deploy`)” and th
 
 ## Scenario 11: Research and model fine-tuning
 
-See [TRAINING.md](./TRAINING.md), [DATASETS.md](./DATASETS.md) (**Canonical paths** for merge vs `brg/` vs zip names). Scripts: `scripts/datasets/`, merge → Colab.
+See [TRAINING.md](../../archive/internal/docs-legacy/TRAINING.md), [DATASETS.md](../contributor/datasets.md) (**Canonical paths** for merge vs `brg/` vs zip names). Scripts: `scripts/datasets/`, merge → Colab.
 
 ---
 
 ## Troubleshooting
 
-**Frigate saw a bird but BirdLense did not record:** see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) — missed events, checklist.
+**Frigate saw a bird but BirdLense did not record:** see [TROUBLESHOOTING.md](./troubleshooting.md) — missed events, checklist.
 
 ---
 
-See also: [OVERVIEW](./OVERVIEW.md) · [INSTALL](./INSTALL.md) · [CONFIGURATION](./CONFIGURATION.md) · [GLOSSARY](./GLOSSARY.md) · [ARCHITECTURE](./ARCHITECTURE.md).
+See also: [OVERVIEW](./overview.md) · [INSTALL](./install.md) · [CONFIGURATION](./configuration.md) · [GLOSSARY](./glossary.md) · [ARCHITECTURE](../contributor/architecture.md).

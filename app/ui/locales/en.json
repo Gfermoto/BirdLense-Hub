@@ -425,6 +425,8 @@
     "encodingCpu": "CPU",
     "encodingIntel": "Intel GPU (integrated)",
     "encodingHint": "Intel — VA-API on any Intel integrated GPU. Requires /dev/dri/renderD128 in container.",
+    "recordWithVaapiLabel": "Encode recording file with VA-API (h264_vaapi)",
+    "recordWithVaapiHint": "Off uses libx264 for the MP4 file only — more stable on some iGPUs (broken moov / encode error 24). Live capture can still use VA-API when Capture backend is Auto. Inference (OpenVINO) is unchanged.",
     "recordStreamCodecLabel": "Record stream as",
     "recordStreamCodecH264": "H.264 (browser-safe)",
     "recordStreamCodecCopy": "Copy from stream (fast, may be HEVC)",

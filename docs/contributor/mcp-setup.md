@@ -2,7 +2,7 @@
 
 [**Model Context Protocol (MCP)**](https://modelcontextprotocol.io/) exposes BirdLense Hub tools (from your OpenAPI surface) to **authorized MCP clients**—automation, IDE extensions, monitoring, or custom integrations—so they can query and operate the hub with your consent and a valid token.
 
-[Русский](./MCP_SETUP.ru.md)
+[Русский](../ru/mcp-setup.ru.md)
 
 ---
 
@@ -24,7 +24,7 @@ ssh YOUR_SSH_HOST "echo 'MCP_TOKEN=your-secret-token' >> YOUR_REMOTE_DIR/app/.en
 # then: make stop && make start
 ```
 
-You can also set the token in **Settings → MCP** in the UI; env overrides are documented in [CONFIGURATION](./CONFIGURATION.md).
+You can also set the token in **Settings → MCP** in the UI; env overrides are documented in [CONFIGURATION](../user/configuration.md).
 
 ---
 
@@ -124,4 +124,4 @@ Both servers (if configured) should show as connected in the client’s MCP pane
 
 ## See also
 
-[INSTALL](./INSTALL.md) · [API](./API.md) · [CONFIGURATION](./CONFIGURATION.md) · [ACCESS_CONTROL](./ACCESS_CONTROL.md)
+[INSTALL](../user/install.md) · [API](./api.md) · [CONFIGURATION](../user/configuration.md) · [ACCESS_CONTROL](./access-control.md)

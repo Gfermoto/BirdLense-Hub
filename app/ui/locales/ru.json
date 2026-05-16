@@ -425,6 +425,8 @@
     "encodingCpu": "CPU",
     "encodingIntel": "Intel GPU (встроенная)",
     "encodingHint": "Intel — VA-API на любой встроенной графике Intel. Нужен проброс /dev/dri/renderD128 в контейнер.",
+    "recordWithVaapiLabel": "Кодировать файл записи через VA-API (h264_vaapi)",
+    "recordWithVaapiHint": "Выкл. — для MP4 только libx264 (стабильнее на части iGPU: битый moov, encode error 24). Захват кадров при «Авто» по-прежнему может идти через VA-API. OpenVINO/инференс не трогаем.",
     "recordStreamCodecLabel": "Запись потока как",
     "recordStreamCodecH264": "H.264 (для браузера)",
     "recordStreamCodecCopy": "Копировать как в потоке (быстро, может быть HEVC)",

@@ -2,7 +2,7 @@
 # Файл bird-feeder-scale.yaml в .gitignore — не коммитится.
 
 # Умные весы для кормушки: HX711 + ESP32-WROOM-32. Данные в Home Assistant — через api: (нативная интеграция ESPHome).
-# Если хабу BirdLense нужны вес по MQTT, журнал дельты и тара из UI хаба — см. docs/CONFIGURATION.md (integrations.scales) и автоматизацию HA «sensor → MQTT» или отдельный конфиг.
+# Если хабу BirdLense нужны вес по MQTT, журнал дельты и тара из UI хаба — см. docs/user/configuration.md (integrations.scales) и автоматизацию HA «sensor → MQTT» или отдельный конфиг.
 #
 # Перед прошивкой: подставьте Wi‑Fi и OTA в substitutions ниже; dout/clk и ha_temperature_entity.
 #

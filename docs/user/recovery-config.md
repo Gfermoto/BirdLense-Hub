@@ -2,7 +2,7 @@
 
 If the UI shows wrong defaults or empty cameras after an edit, restore from backup or re-sync from the server.
 
-[Русский](./RECOVERY_CONFIG.ru.md)
+[Русский](../ru/recovery-config.ru.md)
 
 ---
 
@@ -68,7 +68,7 @@ If you accidentally committed `user_config.yaml`:
 git checkout app/app_config/user_config.yaml
 ```
 
-Prefer **not** storing API keys or tokens in git — use env vars documented in [CONFIGURATION](./CONFIGURATION.md).
+Prefer **not** storing API keys or tokens in git — use env vars documented in [CONFIGURATION](./configuration.md).
 
 ---
 
@@ -81,10 +81,10 @@ Re-enter critical keys in **Settings** or edit YAML directly:
 - `notifications.telegram_bot_token`, `notifications.telegram_chat_id`
 - `general.settings_password`, `general.contributor_password`
 
-Full reference: [CONFIGURATION](./CONFIGURATION.md).
+Full reference: [CONFIGURATION](./configuration.md).
 
 ---
 
 ## See also
 
-[INSTALL](./INSTALL.md) · [CONFIGURATION](./CONFIGURATION.md) · [TROUBLESHOOTING](./TROUBLESHOOTING.md)
+[INSTALL](./install.md) · [CONFIGURATION](./configuration.md) · [TROUBLESHOOTING](./troubleshooting.md)

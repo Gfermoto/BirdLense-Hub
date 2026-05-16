@@ -205,6 +205,14 @@ def setup_processor_media(
             capture_backend = (app_config.get("video.capture_backend") or "auto").strip().lower()
             if capture_backend not in ("auto", "opencv", "ffmpeg_vaapi"):
                 capture_backend = "auto"
+            rwv = app_config.get("video.record_with_vaapi")
+            if rwv is None:
+                record_with_vaapi = True
+            elif isinstance(rwv, bool):
+                record_with_vaapi = rwv
+            else:
+                s = str(rwv).strip().lower()
+                record_with_vaapi = s not in ("0", "false", "no", "off")
             media_sources_cache[camera_id] = Go2RTCStreamSource(
                 stream_url=record_url,
                 main_size=main_size,
@@ -215,6 +223,7 @@ def setup_processor_media(
                 record_stream_codec=rcodec,
                 capture_backend=capture_backend,
                 capture_stream_url=capture_url,
+                record_with_vaapi=record_with_vaapi,
             )
         return media_sources_cache[camera_id]
 

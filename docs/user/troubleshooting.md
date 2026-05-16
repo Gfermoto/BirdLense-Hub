@@ -1,6 +1,6 @@
 # Troubleshooting BirdLense Hub
 
-[Русский](./TROUBLESHOOTING.ru.md)
+[Русский](../ru/troubleshooting.ru.md)
 
 ---
 
@@ -27,13 +27,13 @@ Re-select **Intel GPU** in settings. **System** should show **Intel GPU (VA-API)
 
 **Diagnose:** `docker inspect birdlense --format '{{.RestartCount}}'` (increasing = loop). Logs: `create_app() invoked`, `notify_app_startup: sending` / `skip`.
 
-Notification tuning: [CONFIGURATION](./CONFIGURATION.md) → Notifications.
+Notification tuning: [CONFIGURATION](./configuration.md) → Notifications.
 
 ---
 
 ## Single-container startup (entrypoint): if stuck {#single-container-startup-stuck}
 
-The container runs **`app/scripts/entrypoint.sh`**: nginx → gunicorn → wait for **`GET /api/ui/health`** (up to ~400s) → optional MCP → **processor** loop (`processor/src/main.py`). See [ARCHITECTURE](./ARCHITECTURE.md#runtime-processes-ports-and-health-signals) and [RUNTIME_COUPLING](./RUNTIME_COUPLING.md).
+The container runs **`app/scripts/entrypoint.sh`**: nginx → gunicorn → wait for **`GET /api/ui/health`** (up to ~400s) → optional MCP → **processor** loop (`processor/src/main.py`). See [ARCHITECTURE](../contributor/architecture.md#runtime-processes-ports-and-health-signals) and [RUNTIME_COUPLING](../../archive/internal/docs-legacy/RUNTIME_COUPLING.md).
 
 | Symptom | Where to look |
 | -------- | ---------------- |
@@ -78,7 +78,7 @@ docker logs birdlense --tail 200 2>&1
 
 **Cause:** the web stack (gunicorn/Flask) and the **processor** are separate processes. Saving settings writes `user_config.yaml` and refreshes the in-memory config for the web app; the **recording/detection loop** does not re-read the file every frame, so it keeps the values from processor startup.
 
-**Fix:** after changing `processor.*`, `detection.*`, or related keys, **restart the processor** (Settings UI button, `POST /api/ui/restart-processor`, or restart the `birdlense` container). To reduce Telegram noise without tightening DB acceptance, tune **`processor.min_confidence_to_notify`** — see [CONFIGURATION.md](./CONFIGURATION.md) → Processor.
+**Fix:** after changing `processor.*`, `detection.*`, or related keys, **restart the processor** (Settings UI button, `POST /api/ui/restart-processor`, or restart the `birdlense` container). To reduce Telegram noise without tightening DB acceptance, tune **`processor.min_confidence_to_notify`** — see [CONFIGURATION.md](./configuration.md) → Processor.
 
 ---
 
@@ -88,9 +88,9 @@ docker logs birdlense --tail 200 2>&1
 
 **Not a crash** when `processor.detector_weight_contract` is `warn` (default). In `enforce` mode startup fails until weights and scope align.
 
-**What to do:** (1) Set `processor.detector_scope` to match `model.names` / your training manifest. (2) Or deploy weights that include every scoped label, then restart the processor. (3) Do not put `Background` in scope — see [CV_ML_PREP.md](./CV_ML_PREP.md).
+**What to do:** (1) Set `processor.detector_scope` to match `model.names` / your training manifest. (2) Or deploy weights that include every scoped label, then restart the processor. (3) Do not put `Background` in scope — see [CV_ML_PREP.md](../../archive/internal/docs-legacy/CV_ML_PREP.md).
 
-**Related:** [CV_ML_ROADMAP_PHASES.md](./CV_ML_ROADMAP_PHASES.md) (#368).
+**Related:** [CV_ML_ROADMAP_PHASES.md](../../archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.md) (#368).
 
 ---
 
@@ -108,7 +108,7 @@ docker logs birdlense --tail 200 2>&1
 
 **Symptom:** many lines `Slow frame processing: …ms >= …ms`; low FPS in summaries — common at **2.7K+** with heavy YOLO.
 
-**Note:** `processor.frame_processing_warn_ms` (default **450**) only reduces **log noise**; it does not speed up inference. For **latency**, tune `processor.binary_imgsz`, profiles, or resources — see [PROCESSOR_PERFORMANCE.md](./PROCESSOR_PERFORMANCE.md) and [RUNBOOKS.md](./RUNBOOKS.md). The System config-audit hint (`configAuditRuntimeSlowFrames`) explains the same trade-off.
+**Note:** `processor.frame_processing_warn_ms` (default **450**) only reduces **log noise**; it does not speed up inference. For **latency**, tune `processor.binary_imgsz`, profiles, or resources — see [PROCESSOR_PERFORMANCE.md](./processor-performance.md) and [RUNBOOKS.md](./runbooks.md). The System config-audit hint (`configAuditRuntimeSlowFrames`) explains the same trade-off.
 
 ---
 
@@ -165,7 +165,7 @@ Symptom: **System → Automation → BirdNET FIFO** shows events, but fusion wit
 | 1 | MQTT payload has **no scientific name** (`ScientificName` or equivalent), only a localized label | Prefer **BirdNET-Go** (usually sends Latin name). Otherwise add a **species alias** in the Hub registry for that MQTT string → taxon, or a `detection.species_mapping` entry. |
 | 2 | Taxon **scientific name** in Hub does not match the MQTT value | Check `species_taxon.scientific_name` for typos/extra spaces. |
 | 3 | Hub on **PostgreSQL** without a shared `birdlense.db` for the processor | SQLite-catalog auto-match is unavailable — use **`detection.species_mapping`** for MQTT strings. |
-| 4 | Resolved name still differs from **video classifier** output | After catalog resolution, the merge key must match `normalize()` on video detections (see [CONFIGURATION.md](./CONFIGURATION.md) § MQTT). |
+| 4 | Resolved name still differs from **video classifier** output | After catalog resolution, the merge key must match `normalize()` on video detections (see [CONFIGURATION.md](./configuration.md) § MQTT). |
 
 **On-server checks:** `GET /api/ui/health` — `mqtt: ok`; processor logs — `MQTT aggregator connected`; for verbose BirdNET path set `processor.birdnet_mqtt_observability_level: debug`. FIFO UI: **System → Automation → BirdNET FIFO snapshot** (admin password required).
 
@@ -183,7 +183,7 @@ On the hub host open **`data/diagnostics/processor_runtime_stats.json`** (proces
 | `trigger_degraded_effective_lt_configured` = **1** | Effective motion paths while MQTT is down are fewer than configured (MQTT-only triggers stripped). |
 | `trigger_motion_factory_frigate_fallback_opencv_total` | Factory fell back to OpenCV motion because Frigate detector could not be wired. |
 
-Pair with **`mqtt_connected`** and queue counters documented in [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.md) § Trigger path observability / Queues & backpressure. Trigger YAML keys: [CONFIGURATION](./CONFIGURATION.md) § MQTT / triggers inventory.
+Pair with **`mqtt_connected`** and queue counters documented in [PROCESSOR_PERFORMANCE](./processor-performance.md) § Trigger path observability / Queues & backpressure. Trigger YAML keys: [CONFIGURATION](./configuration.md) § MQTT / triggers inventory.
 
 ---
 
@@ -222,4 +222,4 @@ go2rtc must listen on `0.0.0.0:1984`. Test from host/container: `curl -s -o /dev
 
 ## See also
 
-[INSTALL](./INSTALL.md) · [CONFIGURATION](./CONFIGURATION.md) · [SCENARIOS](./SCENARIOS.md) · [GLOSSARY](./GLOSSARY.md)
+[INSTALL](./install.md) · [CONFIGURATION](./configuration.md) · [SCENARIOS](./scenarios.md) · [GLOSSARY](./glossary.md)

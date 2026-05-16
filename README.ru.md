@@ -12,7 +12,7 @@
 
 Мониторинг птиц у кормушек, в саду и на площадках: компьютерное зрение и аудио для детекции, идентификации, записи и анализа визитов — для орнитологии, гражданской науки и операторов, которые держат данные на своём железе. Docker на x86; интеграции с Go2RTC, Frigate, BirdNET по MQTT. Ядро обработки без облака вендора.
 
-**Документация:** [Обзор проекта](./docs/OVERVIEW.ru.md) · [Полный индекс](./docs/README.ru.md) · [Сайт документации (Pages)](https://gfermoto.github.io/BirdLense-Hub/)
+**Документация:** [Обзор](./docs/ru/overview.ru.md) · [Индекс RU](./docs/ru/index.md) · [Полный индекс](./docs/index.md) · [Сайт (Pages)](https://gfermoto.github.io/BirdLense-Hub/)
 
 **Сообщество:** [Discussions](https://github.com/Gfermoto/BirdLense-Hub/discussions) · [Issues](https://github.com/Gfermoto/BirdLense-Hub/issues)
 
@@ -29,7 +29,7 @@
 
 **EU-модель:** классификатор обучен на merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Веса: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Обучение: [TRAINING.md](./archive/internal/docs-legacy/TRAINING.md). Детектор не меняется.
 
-**Каталог видов:** приведение к классам классификатора — `species.catalog_allowlist_file`, опционально `catalog_strict_ingest`, скрипт `scripts/datasets/dump_classifier_allowlist.py`, массовая чистка `POST /api/ui/system/species-catalog/reconcile`; см. [docs/CONFIGURATION.ru.md](./docs/CONFIGURATION.ru.md).
+**Каталог видов:** приведение к классам классификатора — `species.catalog_allowlist_file`, опционально `catalog_strict_ingest`, скрипт `scripts/datasets/dump_classifier_allowlist.py`, массовая чистка `POST /api/ui/system/species-catalog/reconcile`; см. [конфигурация](./docs/ru/configuration.ru.md).
 
 **Модели:** two-stage — `detection/weights/best.pt` (бинарник, zip из форка [AleksandrRogachev94/BirdLense → `app/processor`](https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor)) и `classification/weights/best.pt` (EU, [HF `gfermoto/birdlense-birds-eu`](https://huggingface.co/gfermoto/birdlense-birds-eu)). Скачивание: `scripts/fetch-processor-weights.sh`. Рядом с классификатором — `class_names.txt`. `app/yolo11n.pt` — legacy (`--legacy-single-stage`).
 
@@ -58,7 +58,7 @@
 - **UI** — React, Material UI, i18n (en/ru/zh), адаптивный, PWA (установка на экран, офлайн)
 - **Погода** — OpenWeather или Home Assistant
 - **Уведомления** — Telegram Bot API
-- **MCP** — опциональный [Model Context Protocol](https://modelcontextprotocol.io/) для **авторизованных клиентов** (автоматизация, интеграции; см. `docs/MCP_SETUP.ru.md`)
+- **MCP** — опциональный [Model Context Protocol](https://modelcontextprotocol.io/) для **авторизованных клиентов** (автоматизация, интеграции; см. [MCP setup](./docs/ru/mcp-setup.ru.md))
 
 ### Аналитика и экспорт
 - **CSV/JSON** — скачать визиты для анализа в Excel/Python
@@ -82,11 +82,11 @@
 **Docker (бесплатный образ):**
 ```bash
 docker pull ghcr.io/gfermoto/birdlense-hub:latest
-# или docker-compose — см. docs/INSTALL.md
+# или docker-compose — см. docs/user/install.md
 ```
 UI: http://localhost:8085
 
-**Установка:** [docs/INSTALL.md](./docs/user/install.md) | **Сценарии:** [docs/SCENARIOS.md](./docs/user/scenarios.md) | **Все возможности:** [docs/FEATURES.md](./docs/user/features.md)
+**Установка:** [install](./docs/user/install.md) | **Сценарии:** [scenarios](./docs/user/scenarios.md) | **Возможности:** [features](./docs/user/features.md) | **Индекс:** [docs](./docs/ru/index.md)
 
 Для одношагового запуска: **`./install.sh`** из корня репозитория (или **`make install`**). Скрипт ставит Docker при необходимости, создаёт `app/.env`, поднимает стек и проверяет health/readiness/status. Готовый образ: **`./install.sh --pull`** или **`make install-pull`**.
 
@@ -145,8 +145,8 @@ make ml-train-behavior-baseline
 
 ## Разработчикам
 
-- **Окружение:** [docs/LOCAL_DEV.ru.md](./docs/LOCAL_DEV.ru.md) — Docker, **Node.js 22** для `app/ui` (`.nvmrc`, `engines` в `package.json`), отдельный venv для MkDocs.
-- **Тесты и CI:** [docs/TESTING.ru.md](./docs/TESTING.ru.md) — `cd app && make test`, `cd app && make test-web`, E2E; тесты процессора требовательны к RAM.
+- **Окружение:** [локальная разработка](./docs/ru/local-dev.ru.md) — Docker, **Node.js 22** для `app/ui` (`.nvmrc`, `engines` в `package.json`), отдельный venv для MkDocs.
+- **Тесты и CI:** [тестирование](./docs/ru/testing.ru.md) — `cd app && make test`, `cd app && make test-web`, E2E; тесты процессора требовательны к RAM.
 - **Участие:** [CONTRIBUTING.ru.md](./CONTRIBUTING.ru.md).
 
 ### Первый прогон CI (как в Actions)
@@ -159,7 +159,7 @@ make ml-train-behavior-baseline
 cd app && PYTHONPATH="${PWD}:${PWD}/web" ../.venv-ci/bin/python -m pytest web/tests/ -q --tb=short
 ```
 
-**Карта экранов настроек:** [docs/UI_SETTINGS_MAP.ru.md](./docs/UI_SETTINGS_MAP.ru.md) · [EN](./docs/UI_SETTINGS_MAP.md)
+**Карта экранов настроек:** [RU](./archive/internal/docs-legacy/UI_SETTINGS_MAP.ru.md) · [EN](./archive/internal/docs-legacy/UI_SETTINGS_MAP.md)
 
 ## Требования
 
@@ -183,14 +183,14 @@ cd app && PYTHONPATH="${PWD}:${PWD}/web" ../.venv-ci/bin/python -m pytest web/te
 |---------|----------|
 | `make deploy` | Деплой на сервер (требуется `scripts/deploy.local.sh`) |
 | `make verify` | Проверка `health` + `readiness` + `status` на `BASE_URL` или localhost |
-| `make ci-local` | `scripts/ci-full-local.sh` — Bandit, pip-audit, Ruff, полный `pytest web/tests/`, версии доков, UI (codegen + Vitest + typecheck + lint + build), покрытие Settings UI, MkDocs strict (см. [docs/CI_AND_QUALITY.ru.md](./docs/CI_AND_QUALITY.ru.md)) |
+| `make ci-local` | `scripts/ci-full-local.sh` — Bandit, pip-audit, Ruff, полный `pytest web/tests/`, версии доков, UI (codegen + Vitest + typecheck + lint + build), покрытие Settings UI, MkDocs strict (см. [CI and quality](./docs/contributor/ci-and-quality.md)) |
 | `make ci-local-docker` | То же, плюс тесты в Docker-образе и Playwright smoke (тяжело; нужны веса processor) |
 | `make build` | Сборка образа |
 | `make start` | Запуск контейнера |
 | `make stop` | Остановка |
 | `make logs` | Логи |
 
-**Ворота релиза (коротко):** [Definition of Done](./docs/DEFINITION_OF_DONE.ru.md) · [EN](./docs/DEFINITION_OF_DONE.md) — `make ci-local`, `verify-stack`, ручной смоук ~5 минут. Полный чеклист: [RELEASE_READINESS](./docs/RELEASE_READINESS.ru.md).
+**Ворота релиза (коротко):** [Definition of Done](./archive/internal/docs-legacy/DEFINITION_OF_DONE.ru.md) · [EN](./archive/internal/docs-legacy/DEFINITION_OF_DONE.md) — `make ci-local`, `verify-stack`, ручной смоук ~5 минут. Полный чеклист: [release-readiness](./release-readiness.md).
 
 Из `app/`:
 

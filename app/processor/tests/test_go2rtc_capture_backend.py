@@ -197,6 +197,54 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         self.assertGreater(src._force_opencv_until_ts, time.time())
         self.assertEqual(src._ffmpeg_capture_failures, 0)
 
+    def test_start_recording_intel_record_with_vaapi_false_uses_libx264_cmd(self):
+        from unittest.mock import patch
+
+        from sources.go2rtc_stream_source import Go2RTCStreamSource
+
+        captured: list[list[str]] = []
+
+        class _P:
+            stderr = _FakeStderr(b"")
+            rc = 0
+
+            def terminate(self):
+                return None
+
+            def wait(self, timeout=None):
+                return self.rc
+
+        def _popen(cmd, **_kwargs):
+            captured.append(cmd)
+            return _P()
+
+        class _Log:
+            def info(self, *_a, **_k):
+                return None
+
+            def debug(self, *_a, **_k):
+                return None
+
+        src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
+        src.logger = _Log()
+        src.stream_url = "rtsp://example/stream"
+        src._encoding_mode = "intel"
+        src._record_with_vaapi = False
+        src._vaapi_record_available = True
+        src._record_stream_codec = "h264"
+        src._use_intel_vaapi = lambda: True
+        src._recording = False
+        src._ffmpeg_process = None
+
+        with patch("sources.go2rtc_stream_source.subprocess.Popen", side_effect=_popen):
+            src.start_recording("/tmp/out.mp4")
+
+        self.assertTrue(captured)
+        joined = " ".join(captured[0])
+        self.assertIn("libx264", joined)
+        self.assertNotIn("h264_vaapi", joined)
+        self.assertFalse(src._recording_used_vaapi)
+
     def test_recording_vaapi_failure_disables_record_only(self):
         from sources.go2rtc_stream_source import Go2RTCStreamSource
 
