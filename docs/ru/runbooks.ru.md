@@ -97,6 +97,57 @@ ssh ВАШ_SSH_ХОСТ "tail -100 ВАШ_УДАЛЁННЫЙ_КАТАЛОГ/app/
    - перезапустить стек
    - прогнать `make verify` и сохранить post-rollback `domain-health`.
 
+## Еженедельный reliability-review KPI и decision log
+
+Используйте этот ритм, чтобы reliability-задачи шли непрерывно и прозрачно.
+
+Каденс и владелец:
+
+- запуск 1 раз в неделю (фиксированные день/время)
+- один ответственный за обзор KPI и постановку follow-up issues
+- для тренда брать 7 дней, для острых сигналов — последние 24ч.
+
+Источник и фиксация данных:
+
+1. Получить `GET /api/ui/system/domain-health`.
+2. Зафиксировать KPI-снимок в одном комментарии к issue (или ops-заметке) минимум по полям:
+   - `parity_mismatch_rate_24h`
+   - `parity_mismatched_windows_24h`
+   - `recording_artifact_failures_24h`
+   - `video_encoding_transitions_24h`
+   - `ingest_gate_reason_code_counts_24h` (топ причин)
+3. Добавить camera/day-night диагностику:
+   - `parity_camera_split_24h`
+4. Проверить guardrails:
+   - `strict_quality.strict_quality_ready`
+   - p95 detect latency + CPU из runtime diagnostics.
+
+Правила решений:
+
+- если mismatch тренд растёт week-over-week — создать follow-up issue и назначить owner
+- если `recording_artifact_failures_24h > 0` — сразу открывать P1-инцидент
+- если alert `video_encoding_flapping=true` — заморозить config-изменения и разобрать runtime transitions до следующего деплоя.
+
+Шаблон decision log:
+
+```markdown
+### Еженедельный reliability-review — YYYY-MM-DD
+- Reviewer: <имя>
+- Окно: <start>.. <end>
+- KPI snapshot:
+  - parity_mismatch_rate_24h: <значение>
+  - parity_mismatched_windows_24h: <значение>
+  - recording_artifact_failures_24h: <значение>
+  - video_encoding_transitions_24h: <значение>
+  - top_mismatch_causes: <reason_code:count, ...>
+- Акценты по камерам:
+  - <camera>: mismatch=<x/y>, day=<a/b>, night=<c/d>
+- Решения:
+  - <keep / rollback / tune / investigate>
+- Follow-up issues:
+  - #<id> <title> (owner: <имя>, due: <дата>)
+```
+
 ## В логах «Slow frame processing» (медленная обработка кадра)
 
 Симптом: в логах процессора строки вида **`Slow frame processing: … ms >= … ms`** — время прохода детектора/пайплайна превышает **`processor.frame_processing_warn_ms`** (по умолчанию **450** мс). Высокое разрешение + VA-API всё равно упираются в бюджет кадра.

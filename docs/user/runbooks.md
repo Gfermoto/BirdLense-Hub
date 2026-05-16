@@ -105,6 +105,57 @@ Use this when you want to validate PyTorch detector weights (`.pt`) against the 
    - restart stack
    - re-run `make verify` and capture post-rollback `domain-health`.
 
+## Weekly reliability KPI review and decision log
+
+Use this cadence to keep reliability work continuous and auditable.
+
+Cadence and owner:
+
+- run every week (same weekday/time)
+- assign one incident owner for KPI review and follow-up issue creation
+- use last 7 days for trend and last 24h for acute alerts.
+
+Data source and capture:
+
+1. Fetch `GET /api/ui/system/domain-health`.
+2. Record KPI snapshot in one shared issue comment (or ops note) using this minimum set:
+   - `parity_mismatch_rate_24h`
+   - `parity_mismatched_windows_24h`
+   - `recording_artifact_failures_24h`
+   - `video_encoding_transitions_24h`
+   - `ingest_gate_reason_code_counts_24h` (top causes)
+3. Add camera/day-night diagnostics:
+   - `parity_camera_split_24h`
+4. Verify guardrails:
+   - `strict_quality.strict_quality_ready`
+   - p95 detect latency + CPU from runtime diagnostics.
+
+Decision rules:
+
+- if mismatch trend worsens week-over-week, create follow-up issue and assign owner
+- if `recording_artifact_failures_24h > 0`, open P1 incident immediately
+- if `video_encoding_flapping` alert is true, lock config changes and investigate runtime transitions before next deploy.
+
+Decision log template:
+
+```markdown
+### Reliability weekly review — YYYY-MM-DD
+- Reviewer: <name>
+- Window: <start>.. <end>
+- KPI snapshot:
+  - parity_mismatch_rate_24h: <value>
+  - parity_mismatched_windows_24h: <value>
+  - recording_artifact_failures_24h: <value>
+  - video_encoding_transitions_24h: <value>
+  - top_mismatch_causes: <reason_code:count, ...>
+- Camera split highlights:
+  - <camera>: mismatch=<x/y>, day=<a/b>, night=<c/d>
+- Decisions:
+  - <keep / rollback / tune / investigate>
+- Follow-up issues:
+  - #<id> <title> (owner: <name>, due: <date>)
+```
+
 ## Slow frame processing in logs (`Slow frame processing: … ms >= … ms`)
 
 Symptom: processor log or FPS summary shows **YOLO / frame pipeline** taking longer than `processor.frame_processing_warn_ms` (default **450** ms). High-resolution video + VA-API still has a hard latency budget.
