@@ -296,6 +296,7 @@ def _recent_runtime_backend_metrics(hours: int = 24, limit: int = 1000) -> dict[
     capture_backend_counts: dict[str, int] = defaultdict(int)
     reid_device_counts: dict[str, int] = defaultdict(int)
     reid_model_counts: dict[str, int] = defaultdict(int)
+    timeline: list[tuple[datetime | None, str]] = []
     scanned = 0
     for row in rows:
         try:
@@ -315,6 +316,8 @@ def _recent_runtime_backend_metrics(hours: int = 24, limit: int = 1000) -> dict[
         video_encoding = str(policy.get("video_encoding") or "unknown").strip().lower()
         capture_backend = str(policy.get("video_capture_backend") or "unknown").strip().lower()
         reid_device = str(policy.get("reid_device") or "unknown").strip().lower()
+        if video_encoding and video_encoding != "unknown":
+            timeline.append((row.created_at, video_encoding))
         inference_device_counts[inference_device] += 1
         video_encoding_counts[video_encoding] += 1
         capture_backend_counts[capture_backend] += 1
@@ -323,6 +326,15 @@ def _recent_runtime_backend_metrics(hours: int = 24, limit: int = 1000) -> dict[
             model = str((track or {}).get("reid_model") or "").strip()
             if model:
                 reid_model_counts[model] += 1
+    transitions = 0
+    prev: str | None = None
+    for _, encoding in sorted(timeline, key=lambda item: item[0] or datetime.min.replace(tzinfo=timezone.utc)):
+        if prev is None:
+            prev = encoding
+            continue
+        if encoding != prev:
+            transitions += 1
+            prev = encoding
     return {
         "decision_trace_rows_runtime_backend_24h": scanned,
         "binary_backend_counts_24h": dict(sorted(binary_backend_counts.items())),
@@ -332,6 +344,74 @@ def _recent_runtime_backend_metrics(hours: int = 24, limit: int = 1000) -> dict[
         "capture_backend_counts_24h": dict(sorted(capture_backend_counts.items())),
         "reid_device_counts_24h": dict(sorted(reid_device_counts.items())),
         "reid_model_counts_24h": dict(sorted(reid_model_counts.items())),
+        "video_encoding_transitions_24h": int(transitions),
+    }
+
+
+def _build_reliability_alerts(
+    *,
+    ingest_gate_reason_metrics: dict[str, Any],
+    runtime_backend_metrics: dict[str, Any],
+) -> dict[str, Any]:
+    reason_counts = ingest_gate_reason_metrics.get("ingest_gate_reason_code_counts_24h") or {}
+    rec_file_missing = int(reason_counts.get("REC_FILE_MISSING") or 0)
+    rec_file_unplayable = int(reason_counts.get("REC_FILE_UNPLAYABLE") or 0)
+    artifact_failures = rec_file_missing + rec_file_unplayable
+    unknown_ingest = int(ingest_gate_reason_metrics.get("ingest_gate_unknown_reason_rows_24h") or 0)
+    transitions = int(runtime_backend_metrics.get("video_encoding_transitions_24h") or 0)
+    return {
+        "thresholds": {
+            "recording_artifact_failures_24h_max": 0,
+            "video_encoding_transitions_24h_warn": 4,
+            "unknown_ingest_gate_rows_24h_warn": 0,
+        },
+        "metrics": {
+            "recording_artifact_failures_24h": int(artifact_failures),
+            "recording_file_missing_24h": int(rec_file_missing),
+            "recording_file_unplayable_24h": int(rec_file_unplayable),
+            "video_encoding_transitions_24h": int(transitions),
+            "unknown_ingest_gate_rows_24h": int(unknown_ingest),
+        },
+        "alerts": {
+            "recording_artifact_failures": bool(artifact_failures > 0),
+            "video_encoding_flapping": bool(transitions >= 4),
+            "unknown_ingest_gate_reasons": bool(unknown_ingest > 0),
+        },
+    }
+
+
+def _recent_ingest_gate_reason_metrics(hours: int = 24, limit: int = 2000) -> dict[str, Any]:
+    cutoff = _utc_now() - timedelta(hours=max(1, int(hours or 24)))
+    rows = (
+        db.session.query(ActivityLog)
+        .filter(
+            ActivityLog.type == "ingest_gate",
+            ActivityLog.created_at >= cutoff,
+        )
+        .order_by(ActivityLog.id.desc())
+        .limit(max(1, int(limit or 2000)))
+        .all()
+    )
+    reason_counts: dict[str, int] = defaultdict(int)
+    unknown = 0
+    scanned = 0
+    for row in rows:
+        scanned += 1
+        try:
+            payload = json.loads(row.data or "{}")
+        except Exception:
+            unknown += 1
+            continue
+        code = str((payload or {}).get("reason_code") or "").strip().upper()
+        if not code:
+            unknown += 1
+            continue
+        reason_counts[code] += 1
+    return {
+        "ingest_gate_rows_24h": scanned,
+        "ingest_gate_known_reason_rows_24h": int(sum(reason_counts.values())),
+        "ingest_gate_unknown_reason_rows_24h": int(unknown),
+        "ingest_gate_reason_code_counts_24h": dict(sorted(reason_counts.items())),
     }
 
 
@@ -391,7 +471,12 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
         detection_track_metrics = _recent_detection_track_metrics()
         trigger_camera_metrics = _recent_trigger_camera_metrics()
         runtime_backend_metrics = _recent_runtime_backend_metrics()
+        ingest_gate_reason_metrics = _recent_ingest_gate_reason_metrics()
         processor_funnel_metrics = _processor_runtime_funnel_metrics()
+        reliability_alerts = _build_reliability_alerts(
+            ingest_gate_reason_metrics=ingest_gate_reason_metrics,
+            runtime_backend_metrics=runtime_backend_metrics,
+        )
 
         payload: dict[str, Any] = {
             "domain_contract_version": contract,
@@ -422,6 +507,13 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                     "decision_trace_rows_runtime_backend_24h": runtime_backend_metrics[
                         "decision_trace_rows_runtime_backend_24h"
                     ],
+                    "ingest_gate_rows_24h": ingest_gate_reason_metrics["ingest_gate_rows_24h"],
+                    "ingest_gate_known_reason_rows_24h": ingest_gate_reason_metrics[
+                        "ingest_gate_known_reason_rows_24h"
+                    ],
+                    "ingest_gate_unknown_reason_rows_24h": ingest_gate_reason_metrics[
+                        "ingest_gate_unknown_reason_rows_24h"
+                    ],
                 },
                 **processor_funnel_metrics,
             },
@@ -438,8 +530,12 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "capture_backend_counts_24h": runtime_backend_metrics["capture_backend_counts_24h"],
                 "reid_device_counts_24h": runtime_backend_metrics["reid_device_counts_24h"],
                 "reid_model_counts_24h": runtime_backend_metrics["reid_model_counts_24h"],
+                "ingest_gate_reason_code_counts_24h": ingest_gate_reason_metrics[
+                    "ingest_gate_reason_code_counts_24h"
+                ],
             },
             "contracts": contracts_block,
+            "reliability_alerts": reliability_alerts,
             "strict_quality": {
                 "duplicate_video_groups_ok": duplicate_video_groups == 0,
                 "duplicate_detection_groups_ok": duplicate_detection_groups == 0,
@@ -500,6 +596,9 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "decision_trace_rows_24h": None,
                 "session_extended_by_frigate_only_sum_24h": None,
                 "decision_trace_rows_runtime_backend_24h": None,
+                "ingest_gate_rows_24h": None,
+                "ingest_gate_known_reason_rows_24h": None,
+                "ingest_gate_unknown_reason_rows_24h": None,
             },
             "samples": {
                 "duplicate_clip_candidates": [],
@@ -514,8 +613,28 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "capture_backend_counts_24h": {},
                 "reid_device_counts_24h": {},
                 "reid_model_counts_24h": {},
+                "ingest_gate_reason_code_counts_24h": {},
             },
             "contracts": contracts_block,
+            "reliability_alerts": {
+                "thresholds": {
+                    "recording_artifact_failures_24h_max": 0,
+                    "video_encoding_transitions_24h_warn": 4,
+                    "unknown_ingest_gate_rows_24h_warn": 0,
+                },
+                "metrics": {
+                    "recording_artifact_failures_24h": None,
+                    "recording_file_missing_24h": None,
+                    "recording_file_unplayable_24h": None,
+                    "video_encoding_transitions_24h": None,
+                    "unknown_ingest_gate_rows_24h": None,
+                },
+                "alerts": {
+                    "recording_artifact_failures": False,
+                    "video_encoding_flapping": False,
+                    "unknown_ingest_gate_reasons": False,
+                },
+            },
             "strict_quality": {
                 "duplicate_video_groups_ok": False,
                 "duplicate_detection_groups_ok": False,
