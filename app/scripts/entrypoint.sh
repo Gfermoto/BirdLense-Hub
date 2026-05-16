@@ -3,8 +3,8 @@ set -e
 #
 # Single-container startup (order matters): Gunicorn -> HealthCheck -> Nginx
 # Operability / «если зависло»:
-#   docs/TROUBLESHOOTING.md → «Single-container startup (entrypoint)»
-#   docs/RUNTIME_COUPLING.md — PYTHONPATH, web↔processor, compose dev-split draft
+#   docs/user/troubleshooting.md → «Single-container startup (entrypoint)»
+#   archive/internal/docs-legacy/RUNTIME_COUPLING.md — PYTHONPATH, web↔processor, compose dev-split draft
 #
 
 # =============================================================================
@@ -89,7 +89,7 @@ mkdir -p /tmp/nginx-client-body /tmp/nginx-proxy /tmp/nginx-fastcgi /tmp/nginx-u
 # SECTION 4 — Gunicorn (FastAPI on 127.0.0.1:8000)
 # =============================================================================
 GUNICORN_THREADS="${GUNICORN_THREADS:-16}"
-# processor/src — пакет inference (ml_lineage_service, processor_*); см. docs/RUNTIME_COUPLING.md
+# processor/src — пакет inference (ml_lineage_service, processor_*); см. archive/internal/docs-legacy/RUNTIME_COUPLING.md
 cd /app/web && PYTHONPATH=/app:/app/web:/app/processor/src gunicorn -w 1 -k gthread --threads "$GUNICORN_THREADS" --timeout 0 -b 127.0.0.1:8000 app:app &
 
 # =============================================================================

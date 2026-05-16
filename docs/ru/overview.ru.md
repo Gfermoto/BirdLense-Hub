@@ -19,7 +19,7 @@
 | Аудитория | С чего начать |
 |-----------|----------------|
 | **Наблюдатели, кольцеватели** | [INSTALL](../user/install.md) → [SCENARIOS](./scenarios.ru.md) — учёт визитов, экспорт (eBird, CSV), проверка неуверенных детекций |
-| **Исследователи, станции** | [CONFIGURATION](./configuration.ru.md), [DATASETS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/DATASETS.ru.md), [TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.ru.md) — каталоги, датасеты, свои веса |
+| **Исследователи, станции** | [CONFIGURATION](./configuration.ru.md), [DATASETS](../contributor/datasets.md), [TRAINING](../../archive/internal/docs-legacy/TRAINING.ru.md) — каталоги, датасеты, свои веса |
 | **Frigate / Home Assistant** | [SCENARIOS](./scenarios.ru.md), [CONFIGURATION](./configuration.ru.md) |
 | **Разработчик / контрибьютор** | [LOCAL_DEV](./local-dev.ru.md), [Contributing](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md), [ARCHITECTURE](../contributor/architecture.md) |
 | **Автор статей / лендинга** | Эта страница + [FEATURES](./features.ru.md) |
@@ -37,7 +37,7 @@
 
 ## Как устроено распознавание
 
-- **Детектор + классификатор (YOLO):** птица или грызун (Rodent) в кадре, затем вид. По умолчанию **EU**-модель (~491 вид); веса US — в [TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.md).
+- **Детектор + классификатор (YOLO):** птица или грызун (Rodent) в кадре, затем вид. По умолчанию **EU**-модель (~491 вид); веса US — в [TRAINING](../../archive/internal/docs-legacy/TRAINING.md).
 - **Frigate** может отдавать **Bird Classification** (`sub_label`); результаты сливаются с видео-ML.
 - **BirdNET** — слияние по времени при настроенном MQTT.
 
@@ -54,9 +54,9 @@
 | Список возможностей | [FEATURES](./features.ru.md) |
 | Проблемы | [TROUBLESHOOTING](./troubleshooting.ru.md) |
 | Тесты и проверка после деплоя | [TESTING](./testing.ru.md) |
-| CI и локальный полный прогон (`make ci-local`) | [CI_AND_QUALITY](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CI_AND_QUALITY.ru.md) |
-| Полный индекс | [docs/README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/README.ru.md) |
-| Карта разделов для сайта | [SITE_MAP](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SITE_MAP.ru.md) |
+| CI и локальный полный прогон (`make ci-local`) | [CI_AND_QUALITY](../contributor/ci-and-quality.md) |
+| Полный индекс | [индекс документации](../index.md) |
+| Карта разделов для сайта | [SITE_MAP](../../archive/internal/docs-legacy/SITE_MAP.ru.md) |
 
 **OpenAPI:** [спецификация YAML](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/openapi.yaml).
 
@@ -64,7 +64,7 @@
 
 ## Сайт и статьи на базе репозитория
 
-**Этот файл** — сюжет «что и зачем»; **INSTALL** + **SCENARIOS** — быстрый старт; **FEATURES** — витрина возможностей; **ARCHITECTURE** — техника. Правила оформления: [Documentation](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/Documentation.ru.md). Локализация: [I18N_STATUS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/I18N_STATUS.md).
+**Этот файл** — сюжет «что и зачем»; **INSTALL** + **SCENARIOS** — быстрый старт; **FEATURES** — витрина возможностей; **ARCHITECTURE** — техника. Правила оформления: [Documentation](../../archive/internal/docs-legacy/Documentation.ru.md). Локализация: [I18N_STATUS](../../archive/internal/docs-legacy/I18N_STATUS.md).
 
 ---
 

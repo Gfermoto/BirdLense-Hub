@@ -62,7 +62,7 @@
 |------------|----------|
 | `DATA_DIR` | Каталог данных (/app/data в Docker) |
 | `REDIS_URL` | **`app/docker-compose.yml`:** по умолчанию `redis://redis:6379/0` (контейнер `birdlense-redis`). **`docker-compose.image.yml`:** отдельного Redis нет — не задавайте или укажите **внешний** Redis; иначе кэш **в процессе**. Переопределение — в `app/.env`. **Запуск на хосте без compose:** пусто — кэш в памяти процесса. |
-| `DATABASE_URL` | Опционально. URI SQLAlchemy. По умолчанию SQLite в `DATA_DIR`. Под высокую запись — PostgreSQL, например `postgresql+psycopg://user:pass@host:5432/dbname`. Операторский гайд: [POSTGRES_MIGRATION.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/POSTGRES_MIGRATION.ru.md). |
+| `DATABASE_URL` | Опционально. URI SQLAlchemy. По умолчанию SQLite в `DATA_DIR`. Под высокую запись — PostgreSQL, например `postgresql+psycopg://user:pass@host:5432/dbname`. Операторский гайд: [POSTGRES_MIGRATION.ru.md](../../archive/internal/docs-legacy/POSTGRES_MIGRATION.ru.md). |
 | `SQLALCHEMY_POOL_SIZE` | Размер пула PostgreSQL (по умолчанию `5`) |
 | `SQLALCHEMY_MAX_OVERFLOW` | Доп. соединения пула PostgreSQL (по умолчанию `15`) |
 | `FLASK_SECRET_KEY` | Ключ сессии Flask (защита настроек) |
@@ -88,7 +88,7 @@
 | `BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT` | `1` — при старте удалять legacy-плейсхолдеры после старого «импорта с диска»; по умолчанию выкл.; очистка при сканировании записей всё равно выполняется |
 | `BIRDLENSE_STARTUP_REPAIR_SPECIES_METADATA` | `1` — фоновой repair метаданных (картинки) при старте; по умолчанию выкл. |
 | `BIRDLENSE_NOTIFY_APP_STARTUP` | `0` — не слать Telegram «App is UP!» при старте; по умолчанию включено |
-| `BIRDLENSE_INFERENCE_BACKEND` | Переопределяет `processor.inference_backend` (`torch`, `openvino`, …) — см. [CV_ML_ROADMAP_PHASES.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.ru.md) |
+| `BIRDLENSE_INFERENCE_BACKEND` | Переопределяет `processor.inference_backend` (`torch`, `openvino`, …) — см. [CV_ML_ROADMAP_PHASES.ru.md](../../archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.ru.md) |
 | `BIRDLENSE_INFERENCE_DEVICE` | Переопределяет `processor.inference_device` (`auto`, `cpu`, `cuda`, `intel:gpu`, …) |
 | `BIRDLENSE_BINARY_OPENVINO_PATH` | Опциональный путь к IR OpenVINO (каталог или `.xml`) для бинарника; при непустом значении важнее YAML |
 | `BIRDLENSE_OPENVINO_PROFILE` | Профиль производительности OpenVINO (`latency` или `throughput`) |
@@ -148,7 +148,7 @@
 
 На странице «Система» эти URL также показаны в блоке **Наблюдаемость уведомлений** (после входа в настройки).
 
-**Плитки Heimdall:** пошаговый список URL и ограничения импорта в v2 — [HEIMDALL.ru](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/HEIMDALL.ru.md).
+**Плитки Heimdall:** пошаговый список URL и ограничения импорта в v2 — [HEIMDALL.ru](../../archive/internal/docs-legacy/HEIMDALL.ru.md).
 
 ---
 
@@ -181,7 +181,7 @@
 | `spectrogram_px_per_sec` | Горизонтальная детализация mel-спектрограммы (пикселей на секунду аудио). |
 | `generate_spectrogram_always` | По умолчанию **true**: после **каждой** финализированной записи строить `spectrogram_*.jpg` (FFmpeg + librosa). **false** — только если в окне записи было событие BirdNET по MQTT (меньше нагрузка). |
 | `regional_species` | Опциональное сужение classifier scope (пусто — классификатор использует все классы). |
-| `detector_scope` | Цели детектора первого уровня. По умолчанию: `["Bird", "Rodent"]`. В EU-классификаторе не-птица — **Rodent**; сырые веса могут отдавать Squirrel, хаб нормализует в Rodent. Background / hard-negative классы детектора должны оставаться вне этого scope; см. [контракт подготовки CV / ML](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_PREP.ru.md). |
+| `detector_scope` | Цели детектора первого уровня. По умолчанию: `["Bird", "Rodent"]`. В EU-классификаторе не-птица — **Rodent**; сырые веса могут отдавать Squirrel, хаб нормализует в Rodent. Background / hard-negative классы детектора должны оставаться вне этого scope; см. [контракт подготовки CV / ML](../../archive/internal/docs-legacy/CV_ML_PREP.ru.md). |
 | `classifier_fallback_bird` | Сохранять generic detector label, если detector подтвердил target, а классификатор остался ниже порога. Затем Frigate может продвинуть этот fallback до species label. |
 | `included_bird_families` | Список семейств птиц для фильтра (напр. Perching Birds); к Rodent не относится |
 | `save_images` | Сохранять кадры детекций |
@@ -308,7 +308,7 @@
 
 **Соответствие датасету классификатора (EU ~491 / US NABirds ~400):** в `user_config.yaml` секция `species`: `catalog_allowlist_file` — текстовый список классов (одна строка = одно имя, как в merged_cls / после нормализации YOLO). Сгенерировать из вашего `best.pt` (или другого `.pt`): `scripts/datasets/dump_classifier_allowlist.py` → положить рядом с весами, напр. `models/classification/weights/class_names.txt` (путь относительно `app/processor`). `catalog_strict_ingest: true` — вне allowlist новые виды не создаются, детекции привязываются к «Unknown». Уже накопившийся мусор и дубликаты: `POST /api/ui/system/species-catalog/reconcile` (обязательно сначала `{"dry_run": true}`), опции см. ответ API / подсказки в `data-quality`. Сверка классов с БД: System → «Классификатор, каталог и датасет».
 
-**Выход классификатора vs БД / ручные имена:** автоматические метки — только строки из обученной головы внутри `.pt` (merged class list). Новая строка в таблице видов SQLite или правка в UI **не** добавляет новый выход классификатора — например метки «курица» не будет, если такого класса нет в обученной модели. Держите allowlist в соответствии с весами; новые авто-виды — переобучение или смена `.pt` ([TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.ru.md)).
+**Выход классификатора vs БД / ручные имена:** автоматические метки — только строки из обученной головы внутри `.pt` (merged class list). Новая строка в таблице видов SQLite или правка в UI **не** добавляет новый выход классификатора — например метки «курица» не будет, если такого класса нет в обученной модели. Держите allowlist в соответствии с весами; новые авто-виды — переобучение или смена `.pt` ([TRAINING](../../archive/internal/docs-legacy/TRAINING.ru.md)).
 
 **UX «Неизвестные»:** при strict ingest подписи вне allowlist попадают в **Unknown** (без новой строки вида). Contributor исправляет в разделе **Неизвестные**; массовая уборка — System → качество каталога / reconcile. Отображаемые имена одного таксона согласуйте с каноном выше (`species_mapping`, `species_canonical_mapping.txt`, объединение дубликатов).
 
@@ -324,9 +324,9 @@
 
 **Трассировка fusion (UI):** на странице ролика кнопка **Трассировка fusion** подгружает последнюю запись `decision_trace` из ActivityLog (сначала по `video_id` в JSON после ingest, иначе по совпадению `video_path`). По каждому треку этапы: **детектор** (общая метка YOLO), **классификатор** (вид, доля голосов, порог), **scores** (кадры, trust band, причина отклонения), **audio** (согласование с BirdNET), **fusion** (несколько камер / Frigate), **outcome** (сохранённый вид и уверенность). API: `GET /api/ui/videos/{video_id}/fusion-trace` — **только сессия оператора или администратора**, не для анонимных зрителей.
 
-**Инференс и контракт имён детектора (CV/ML):** `processor.inference_backend` — `torch` (по умолчанию) или `openvino` для бинарного детектора (экспорт Ultralytics OpenVINO, [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)). `BIRDLENSE_INFERENCE_BACKEND` переопределяет YAML. Для `openvino` задайте `processor.models.binary_openvino` (каталог экспорта или `.xml`) или `BIRDLENSE_BINARY_OPENVINO_PATH` (абсолютный или относительно корня пакета процессора). Классификатор — по-прежнему `.pt`. `processor.detector_weight_contract`: `off` \| `warn` \| `enforce` — проверка имён классов детектора против `processor.detector_scope` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)). Фазы: [CV_ML_ROADMAP_PHASES.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.ru.md).
+**Инференс и контракт имён детектора (CV/ML):** `processor.inference_backend` — `torch` (по умолчанию) или `openvino` для бинарного детектора (экспорт Ultralytics OpenVINO, [#371](https://github.com/Gfermoto/BirdLense-Hub/issues/371)). `BIRDLENSE_INFERENCE_BACKEND` переопределяет YAML. Для `openvino` задайте `processor.models.binary_openvino` (каталог экспорта или `.xml`) или `BIRDLENSE_BINARY_OPENVINO_PATH` (абсолютный или относительно корня пакета процессора). Классификатор — по-прежнему `.pt`. `processor.detector_weight_contract`: `off` \| `warn` \| `enforce` — проверка имён классов детектора против `processor.detector_scope` ([#368](https://github.com/Gfermoto/BirdLense-Hub/issues/368)). Фазы: [CV_ML_ROADMAP_PHASES.ru.md](../../archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.ru.md).
 
-**EU-модель:** `best.pt` с [HF gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (дефолт `processor.models.classifier`). US — `best_US.pt`. Обучение: [TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.ru.md).
+**EU-модель:** `best.pt` с [HF gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu) (дефолт `processor.models.classifier`). US — `best_US.pt`. Обучение: [TRAINING](../../archive/internal/docs-legacy/TRAINING.ru.md).
 
 ## Retention
 
@@ -603,7 +603,7 @@ rule_files:
 | `ebird_api_key` | eBird API для сравнения с регионом (ebird.org/api/keygen) |
 | `latitude`, `longitude` | Координаты для погоды и eBird |
 
-**Ротация в проде** (бэкап, перезапуск, проверка, откат): [SECRETS_ROTATION.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SECRETS_ROTATION.ru.md).
+**Ротация в проде** (бэкап, перезапуск, проверка, откат): [SECRETS_ROTATION.ru.md](../../archive/internal/docs-legacy/SECRETS_ROTATION.ru.md).
 
 ---
 
@@ -619,4 +619,4 @@ rule_files:
 
 ## См. также {#see-also}
 
-[INSTALL](./install.ru.md) · [ARCHITECTURE](./architecture.ru.md) · [ACCESS_CONTROL](./access-control.ru.md) · [API](./api.ru.md) · [SCENARIOS](./scenarios.ru.md) · [GLOSSARY](./glossary.ru.md) · [SECRETS_ROTATION](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SECRETS_ROTATION.ru.md) · [PUBLIC_RELEASE_CHECKLIST](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.ru.md)
+[INSTALL](./install.ru.md) · [ARCHITECTURE](./architecture.ru.md) · [ACCESS_CONTROL](./access-control.ru.md) · [API](./api.ru.md) · [SCENARIOS](./scenarios.ru.md) · [GLOSSARY](./glossary.ru.md) · [SECRETS_ROTATION](../../archive/internal/docs-legacy/SECRETS_ROTATION.ru.md) · [PUBLIC_RELEASE_CHECKLIST](../../archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.ru.md)

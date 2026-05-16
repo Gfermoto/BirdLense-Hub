@@ -131,7 +131,7 @@ See [INSTALL.md](./install.md) — “Deploy to server (`make deploy`)” and th
 
 ## Scenario 11: Research and model fine-tuning
 
-See [TRAINING.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.md), [DATASETS.md](../contributor/datasets.md) (**Canonical paths** for merge vs `brg/` vs zip names). Scripts: `scripts/datasets/`, merge → Colab.
+See [TRAINING.md](../../archive/internal/docs-legacy/TRAINING.md), [DATASETS.md](../contributor/datasets.md) (**Canonical paths** for merge vs `brg/` vs zip names). Scripts: `scripts/datasets/`, merge → Colab.
 
 ---
 

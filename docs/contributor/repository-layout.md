@@ -2,7 +2,7 @@
 
 Where things live in the BirdLense Hub monorepo. **Release version** is the root `VERSION` file (also mirrored in `mkdocs.yml`, `app/ui/package.json`, and `app/web/openapi.yaml` — see `scripts/check-docs-version.py`).
 
-[Русский](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/REPOSITORY_LAYOUT.ru.md)
+[Русский](../../archive/internal/docs-legacy/REPOSITORY_LAYOUT.ru.md)
 
 ---
 
@@ -11,13 +11,13 @@ Where things live in the BirdLense Hub monorepo. **Release version** is the root
 | Path | Role |
 |------|------|
 | **`app/`** | Runtime stack: Docker Compose, **web** (Flask API), **processor** (detection), **ui** (React/Vite). Day-to-day: `cd app && make local` / `make start` — see [LOCAL_DEV](./local-dev.md). |
-| **`docs/`** | Operator and developer documentation (this tree); **MkDocs** source. Index: [README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/README.md). |
+| **`docs/`** | Operator and developer documentation (this tree); **MkDocs** source. Index: [docs/index.md](../index.md). |
 | **`scripts/`** | Deploy (`deploy.sh`, `deploy.local.sh.example`), diagnostics, dataset helpers, GitHub project scripts, verification. |
-| **`mkdocs.yml`**, **`overrides/`** | Static documentation site (GitHub Pages). Build: `make docs-site` or see [Documentation](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/Documentation.md). |
+| **`mkdocs.yml`**, **`overrides/`** | Static documentation site (GitHub Pages). Build: `make docs-site` or see [documentation guide](./documentation.md). |
 | **`Makefile`** (root) | `deploy`, **`ci-local`** / **`ci-local-docker`** (full CI mirror via `scripts/ci-full-local.sh`), `verify`, `docs-site`, Telegram proxy helpers, `restore-config`, etc. Application build/start is under `app/Makefile`. |
 | **`VERSION`** | Current release semver for the hub (single source of truth for version checks). |
 | **`examples/`** | Reference configs (e.g. Prometheus alert rules), not loaded by the app automatically. |
-| **`wiki-source/`** | Seeds / automation for GitHub Wiki (see [WIKI_AUTOMATION](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/WIKI_AUTOMATION.md)). |
+| **`wiki-source/`** | Seeds / automation for GitHub Wiki (see [WIKI_AUTOMATION](../../archive/internal/docs-legacy/WIKI_AUTOMATION.md)). |
 | **`screenshots/`** | Images for docs and articles. |
 | **`docs/article/`** | Drafts for external posts (e.g. Habr); not part of the running product. |
 | **`datasets/`** | Local dataset artifacts (gitignored): classifier merges (e.g. **`merged_cls`**), **`BirdLense_detector_brg_*.zip`** (`pack_brg_for_gdrive.py`, default **`datasets/new/detector/`**), Roboflow zips, etc. **vs** legacy **`scripts/datasets/binary/`** — [DATASETS](./datasets.md) (**Canonical paths**). |
@@ -46,6 +46,6 @@ Where things live in the BirdLense Hub monorepo. **Release version** is the root
 
 ## See also
 
-- [Documentation index](https://github.com/Gfermoto/BirdLense-Hub/blob/main/README.md) — three entry paths (run / integrate / build).
+- [Documentation index](../index.md) — user / contributor / RU entry paths.
 - [ARCHITECTURE](./architecture.md) — how components talk.
 - Root [README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/README.md) — quick links for visitors.

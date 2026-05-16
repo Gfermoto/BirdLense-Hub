@@ -63,7 +63,7 @@ BirdLense держит три разные временные сущности:
 - **clip-time** — физические границы `Video` / файла `video.mp4`;
 - **visit-time** — логическое окно присутствия вида после дедупликации.
 
-Подробный контракт и инварианты: [DOMAIN_CONTRACT](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/DOMAIN_CONTRACT.ru.md).
+Подробный контракт и инварианты: [DOMAIN_CONTRACT](../../archive/internal/docs-legacy/DOMAIN_CONTRACT.ru.md).
 
 ### Видео: Frigate (опционально)
 
@@ -147,4 +147,4 @@ BirdLense держит три разные временные сущности:
 
 ---
 
-См. также: [CONFIGURATION](./configuration.ru.md), [API](./api.ru.md), [GLOSSARY](./glossary.ru.md), [PUBLIC_RELEASE_CHECKLIST](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.ru.md).
+См. также: [CONFIGURATION](./configuration.ru.md), [API](./api.ru.md), [GLOSSARY](./glossary.ru.md), [PUBLIC_RELEASE_CHECKLIST](../../archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.ru.md).

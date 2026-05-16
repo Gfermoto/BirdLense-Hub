@@ -47,7 +47,7 @@ make test-web
 make ci-local
 ```
 
-Появятся **`.venv-ci`** / **`.venv-docs`** (в `.gitignore`). Образ Docker + Playwright smoke: `make ci-local-docker`. См. [CI_AND_QUALITY](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CI_AND_QUALITY.ru.md).
+Появятся **`.venv-ci`** / **`.venv-docs`** (в `.gitignore`). Образ Docker + Playwright smoke: `make ci-local-docker`. См. [CI_AND_QUALITY](../contributor/ci-and-quality.md).
 
 ## 3. Деплой на сервер
 

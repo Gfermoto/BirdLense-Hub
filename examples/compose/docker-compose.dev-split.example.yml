@@ -8,8 +8,8 @@
 #   profiles: ["dev-split"]
 # so `docker compose up` without --profile stays single-stack.
 #
-# Design notes: docs/RUNTIME_COUPLING.md
+# Design notes: archive/internal/docs-legacy/RUNTIME_COUPLING.md
 
 x-birdlense-dev-split-draft:
-  doc: ../docs/RUNTIME_COUPLING.md
+  doc: ../archive/internal/docs-legacy/RUNTIME_COUPLING.md
   tracker: https://github.com/Gfermoto/BirdLense-Hub/issues/347

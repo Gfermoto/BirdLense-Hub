@@ -72,7 +72,7 @@ cat <<EOF
 ## Куда смотреть вывод
 
 - **GitHub Actions** → workflow **Wiki report** → вкладка **Summary** (этот текст) и **Artifacts** (\`wiki-report.md\`).
-- **Wiki**: страница **Latest-CI-Report** — если в настройках репозитория задан секрет \`WIKI_PUSH_TOKEN\` (см. \`docs/WIKI_AUTOMATION.ru.md\`).
+- **Wiki**: страница **Latest-CI-Report** — если в настройках репозитория задан секрет \`WIKI_PUSH_TOKEN\` (см. \`archive/internal/docs-legacy/WIKI_AUTOMATION.ru.md\`).
 
 ---
 _Сгенерировано \`scripts/generate-wiki-report.sh\`_

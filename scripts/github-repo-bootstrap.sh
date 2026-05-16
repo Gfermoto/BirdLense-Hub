@@ -35,7 +35,7 @@ gh repo edit "$FULL" \
   --enable-projects
 
 gh api "repos/${FULL}" -X PATCH -f has_wiki=true >/dev/null \
-  && echo "    Wiki: включена (has_wiki=true). Автоотчёты: workflow Wiki report + docs/WIKI_AUTOMATION.ru.md" \
+  && echo "    Wiki: включена (has_wiki=true). Автоотчёты: workflow Wiki report + archive/internal/docs-legacy/WIKI_AUTOMATION.ru.md" \
   || echo "    Wiki: не удалось включить через API (включите в Settings → General → Wikis)."
 
 # Автоудаление head-ветки после merge: фича-ветки не копятся. Ветки main и dev защищены
@@ -54,7 +54,7 @@ echo "==> Защита веток main и dev (PR, без approve; allow_deletio
 echo "    Файл: $ROOT/scripts/github-branch-protection-main.json (тот же payload для обеих)"
 if ! gh api --method PUT "repos/${FULL}/branches/main/protection" \
   --input "$ROOT/scripts/github-branch-protection-main.json"; then
-  echo "    Ошибка: main (часто 422 — используйте Rulesets). См. docs/GITHUB_SETUP_GH.ru.md"
+  echo "    Ошибка: main (часто 422 — используйте Rulesets). См. archive/internal/docs-legacy/GITHUB_SETUP_GH.ru.md"
   exit 1
 fi
 echo "    OK: main"
@@ -69,6 +69,6 @@ fi
 echo ""
 echo "Готово. Дальше вручную в UI:"
 echo "  - Settings → Pages → Source: GitHub Actions (если ещё не)"
-echo "  - Wiki: при желании секрет WIKI_PUSH_TOKEN для пуша отчёта (см. docs/WIKI_AUTOMATION.ru.md)"
+echo "  - Wiki: при желании секрет WIKI_PUSH_TOKEN для пуша отчёта (см. archive/internal/docs-legacy/WIKI_AUTOMATION.ru.md)"
 echo "  - Security → Dependabot: разгрести алерты"
 echo "  - При отсутствии self-hosted runner: не включать workflow Deploy как required check"

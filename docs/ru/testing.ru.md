@@ -24,11 +24,11 @@
 
 Тот же файл **`ci-pr.yml`** дополнительно запускается по **ежедневному cron** (на GitHub только для **ветки по умолчанию**) и через **`workflow_dispatch`** — те же job, что и на push.
 
-Обычно **required** в ruleset **Protect** на `main` — job **`docker-tests`** (см. [GITHUB_SETUP_GH.ru](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/GITHUB_SETUP_GH.ru.md)). Остальные job тоже должны быть зелёными перед merge.
+Обычно **required** в ruleset **Protect** на `main` — job **`docker-tests`** (см. [GITHUB_SETUP_GH.ru](../../archive/internal/docs-legacy/GITHUB_SETUP_GH.ru.md)). Остальные job тоже должны быть зелёными перед merge.
 
-**Пороги и политика:** [CI_AND_QUALITY.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CI_AND_QUALITY.ru.md) (игноры pip-audit, Ruff format, npm audit, OpenAPI→TypeScript).
+**Пороги и политика:** [CI_AND_QUALITY.ru.md](../contributor/ci-and-quality.md) (игноры pip-audit, Ruff format, npm audit, OpenAPI→TypeScript).
 
-**Отдельно:** **CodeQL** — [CODEQL.ru](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CODEQL.ru.md); полный **E2E** — по расписанию / вручную, см. § E2E ниже. **npm audit (UI)** — раз в неделю + `workflow_dispatch`: [`.github/workflows/npm-audit-scheduled.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/npm-audit-scheduled.yml) в `app/ui` — `npm audit --omit=dev --audit-level=moderate` (не required на PR; политика в комментариях workflow — [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)).
+**Отдельно:** **CodeQL** — [CODEQL.ru](../../archive/internal/docs-legacy/CODEQL.ru.md); полный **E2E** — по расписанию / вручную, см. § E2E ниже. **npm audit (UI)** — раз в неделю + `workflow_dispatch`: [`.github/workflows/npm-audit-scheduled.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/npm-audit-scheduled.yml) в `app/ui` — `npm audit --omit=dev --audit-level=moderate` (не required на PR; политика в комментариях workflow — [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)).
 
 ### Пирамида тестов и точечные прогоны ([#348](https://github.com/Gfermoto/BirdLense-Hub/issues/348))
 
@@ -61,7 +61,7 @@
 ```
 
 Скрипт запускает локальный A-этап (synthetic + web checks) и печатает B-handoff команды для хаба.  
-Подробный сценарий: [CV_ML_SCENARIOS.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_SCENARIOS.ru.md).
+Подробный сценарий: [CV_ML_SCENARIOS.ru.md](../../archive/internal/docs-legacy/CV_ML_SCENARIOS.ru.md).
 
 **E2E / селекторы:** для smoke и хрупких состояний (пилюли навигации, пустые состояния, **гейт пароля настроек** / оверлеи с `aria-hidden`) предпочитайте стабильные **`data-testid`** и `getByTestId`; текст/роль — только если однозначно в обеих темах и локалях.
 
@@ -133,7 +133,7 @@ curl -s http://YOUR_HOST:8085/api/ui/system/domain-health
 - `duplicate_clip_candidates_24h` не становится массовым паттерном
 - `review_only_video_detections` остаются объяснимыми и не попадают в визиты
 
-Смысл метрик и инварианты: [DOMAIN_CONTRACT](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/DOMAIN_CONTRACT.ru.md).
+Смысл метрик и инварианты: [DOMAIN_CONTRACT](../../archive/internal/docs-legacy/DOMAIN_CONTRACT.ru.md).
 
 ### Покрытие (coverage)
 
@@ -198,7 +198,7 @@ cd app/e2e && npx playwright test --debug tests/migration.spec.ts
 
 **CI по расписанию:** workflow **E2E (Playwright)** (`.github/workflows/e2e-scheduled.yml`) — **ежедневно** и по **`workflow_dispatch`**; в ruleset **не required** на каждый PR.
 
-**Локально как в CI:** из корня репозитория запускайте **`make ci-local`** и **`make ci-local-docker`** — см. [CI_AND_QUALITY.ru](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CI_AND_QUALITY.ru.md).
+**Локально как в CI:** из корня репозитория запускайте **`make ci-local`** и **`make ci-local-docker`** — см. [CI_AND_QUALITY.ru](../contributor/ci-and-quality.md).
 
 > `make ci-local-docker` выполняет локальный `verify-strict-quality` как probe; для блокирующего режима выставьте `CI_STRICT_QUALITY_REQUIRED=1` (ближе к CI gate).
 

@@ -10,4 +10,4 @@ DB=app/data/db/birdlense.db OUT=pool.jsonl make active-learning-pool-from-sqlite
 python3 scripts/active_learning/export_pool_from_sqlite.py --db app/data/db/birdlense.db --needs-review-only -o pool.jsonl
 ```
 
-See [docs/ACTIVE_LEARNING.md](../../docs/ACTIVE_LEARNING.md).
+See [ACTIVE_LEARNING](../../archive/internal/docs-legacy/ACTIVE_LEARNING.md).

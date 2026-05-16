@@ -24,11 +24,11 @@ On **GitHub** (PR/push to `main` and `dev`), workflow **[`.github/workflows/ci-p
 
 The same **`ci-pr.yml`** file is also triggered on a **daily cron** (repository **default branch** only, in GitHub) and via **`workflow_dispatch`**, running the same jobs without a code push.
 
-**`docker-tests`** is the usual **required** check in the **Protect** ruleset on `main` (see [GITHUB_SETUP_GH](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/GITHUB_SETUP_GH.md)). Other jobs should stay green before merge.
+**`docker-tests`** is the usual **required** check in the **Protect** ruleset on `main` (see [GITHUB_SETUP_GH](../../archive/internal/docs-legacy/GITHUB_SETUP_GH.md)). Other jobs should stay green before merge.
 
 **Policy & thresholds:** [CI_AND_QUALITY](./ci-and-quality.md) (pip-audit ignores, Ruff format, npm audit, OpenAPI→TypeScript codegen).
 
-**Related workflows:** **CodeQL** (see [CODEQL](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CODEQL.md)); **E2E (Playwright)** scheduled / manual — [§ E2E](#e2e-playwright) below. **npm audit (UI)** — weekly + `workflow_dispatch`: [`.github/workflows/npm-audit-scheduled.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/npm-audit-scheduled.yml) runs `npm audit --omit=dev --audit-level=moderate` in `app/ui` (not a required PR check; policy in workflow comments — [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)).
+**Related workflows:** **CodeQL** (see [CODEQL](../../archive/internal/docs-legacy/CODEQL.md)); **E2E (Playwright)** scheduled / manual — [§ E2E](#e2e-playwright) below. **npm audit (UI)** — weekly + `workflow_dispatch`: [`.github/workflows/npm-audit-scheduled.yml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/.github/workflows/npm-audit-scheduled.yml) runs `npm audit --omit=dev --audit-level=moderate` in `app/ui` (not a required PR check; policy in workflow comments — [#284](https://github.com/Gfermoto/BirdLense-Hub/issues/284)).
 
 ### Test pyramid & targeted local runs ([#348](https://github.com/Gfermoto/BirdLense-Hub/issues/348))
 
@@ -92,7 +92,7 @@ At minimum, check:
 - `duplicate_clip_candidates_24h` is not turning into a repeated pattern
 - review-only rows remain explainable and do not leak into visits or monthly stats
 
-Contract details: [DOMAIN_CONTRACT](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/DOMAIN_CONTRACT.md).
+Contract details: [DOMAIN_CONTRACT](../../archive/internal/docs-legacy/DOMAIN_CONTRACT.md).
 
 ### Coverage
 

@@ -71,7 +71,7 @@ High-level layout of the single-container app, data paths, and integrations. For
 2. Processor **MQTTEventAggregator** consumes messages.
 3. BirdNET adjusts classifier confidence thresholds and other confidence logic, but it does not create final video labels.
 
-**Models:** EU classifier (~491 species) in `best.pt`; US (NABirds) backup `best_US.pt`. See [TRAINING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.md).
+**Models:** EU classifier (~491 species) in `best.pt`; US (NABirds) backup `best_US.pt`. See [TRAINING](../../archive/internal/docs-legacy/TRAINING.md).
 
 ### Web UI
 
@@ -151,4 +151,4 @@ This is the **structural** checkpoint before prioritizing product features (GitH
 
 ## See also
 
-[CONFIGURATION](../user/configuration.md) · [API](./api.md) · [ACCESS_CONTROL](./access-control.md) · [GLOSSARY](../user/glossary.md) · [OVERVIEW](../user/overview.md) · [PUBLIC_RELEASE_CHECKLIST](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.md)
+[CONFIGURATION](../user/configuration.md) · [API](./api.md) · [ACCESS_CONTROL](./access-control.md) · [GLOSSARY](../user/glossary.md) · [OVERVIEW](../user/overview.md) · [PUBLIC_RELEASE_CHECKLIST](../../archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.md)

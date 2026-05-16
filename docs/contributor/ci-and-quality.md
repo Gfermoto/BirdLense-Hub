@@ -1,6 +1,6 @@
 # CI and code quality policy
 
-[Русский](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CI_AND_QUALITY.ru.md)
+[Русский](../contributor/ci-and-quality.md)
 
 This document describes what runs in GitHub Actions, how to reproduce checks locally, and how we extend quality gates without breaking the default green pipeline.
 

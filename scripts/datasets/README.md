@@ -1,6 +1,6 @@
 # Dataset Scripts
 
-**Paths:** merge по умолчанию → **`datasets/new/detector/yolo/`** (`make dataset-merge-three-class`). Упаковка под Drive: `pack_brg_for_gdrive.py` → **`datasets/new/detector/BirdLense_detector_brg_<UTC>.zip`** (по умолчанию из `datasets/new/detector/yolo/`). Legacy-папка `scripts/datasets/brg/` опционально. Источники под **`datasets/new/`**: [docs/DATASETS.ru.md](../../docs/DATASETS.ru.md) / [DATASETS.md](../../docs/DATASETS.md).
+**Paths:** merge по умолчанию → **`datasets/new/detector/yolo/`** (`make dataset-merge-three-class`). Упаковка под Drive: `pack_brg_for_gdrive.py` → **`datasets/new/detector/BirdLense_detector_brg_<UTC>.zip`** (по умолчанию из `datasets/new/detector/yolo/`). Legacy-папка `scripts/datasets/brg/` опционально. Источники под **`datasets/new/`**: [datasets (contributor)](../../docs/contributor/datasets.md).
 
 Scripts for preparing bird detection training datasets. Uses [NABirds](https://dl.allaboutbirds.org/nabirds) as the base dataset.
 
@@ -26,10 +26,10 @@ Scripts for preparing bird detection training datasets. Uses [NABirds](https://d
 - **backfill_classifier_open.py** — добор редких классов с iNaturalist в staging (без урезания остальных); см. **`EU_CLASSIFIER.md`**
 - **balance_classifier_yolo_cls.py** — опциональное **урезание** датасета (subsampling); основной путь баланса — добор, не этот скрипт
 - **download_and_merge_all.sh** — полный пайплайн
-- **dump_classifier_allowlist.py** — имена классов из `best.pt` → `class_names.txt` для `species.catalog_allowlist_file` в Hub ([CONFIGURATION](../../docs/CONFIGURATION.md))
+- **dump_classifier_allowlist.py** — имена классов из `best.pt` → `class_names.txt` для `species.catalog_allowlist_file` в Hub ([configuration](../../docs/user/configuration.md))
 - **../validate-processor-weights.py** — финальная проверка rollout-кандидата (`best.pt` + `class_names.txt` + `dataset_info.json`)
 
-Формат имён: `Scientific_name (Common Name)` — совпадает с Frigate. См. [docs/DATASETS.md](../docs/DATASETS.md).
+Формат имён: `Scientific_name (Common Name)` — совпадает с Frigate. См. [docs/contributor/datasets.md](../../docs/contributor/datasets.md).
 
 ## Детектор (Bird / Rodent / Background)
 
@@ -86,7 +86,7 @@ Merges the cleaned NABirds dataset (`nabirds_yolo_cleaned/`) with COCO birds (`c
 
 Merges **`binary/birds/`** + **`binary/rodent/`** + **`binary/background/`** into выходной каталог (по умолчанию **`datasets/new/detector/yolo/`**) с YOLO class ids **0 = Bird**, **1 = Rodent**, **2 = Background** и `dataset.yaml` в терминах Hub (`Bird` / `Rodent` / `Background`). Background images may use **empty** label files (image-level negatives).
 
-From repo root: **`make dataset-merge-three-class`** читает **`datasets/new/detector/binary/{birds,rodent,background}/`** и пишет **`datasets/new/detector/yolo/`** (см. `Makefile`). Иначе задайте пути вручную в **`merge_datasets_three_class.py`**. Options: `--manifest-out` for a merge audit JSON; see [DATASETS.md](../docs/DATASETS.md). Hard-negative manifest schema: `schemas/hard_negatives_manifest_v1.schema.json`.
+From repo root: **`make dataset-merge-three-class`** читает **`datasets/new/detector/binary/{birds,rodent,background}/`** и пишет **`datasets/new/detector/yolo/`** (см. `Makefile`). Иначе задайте пути вручную в **`merge_datasets_three_class.py`**. Options: `--manifest-out` for a merge audit JSON; see [datasets](../../docs/contributor/datasets.md). Hard-negative manifest schema: `schemas/hard_negatives_manifest_v1.schema.json`.
 
 Published detector archives (ready for Colab Stage A -> Stage B) are in:
 **[gfermoto/BirdLense_Detector](https://huggingface.co/datasets/gfermoto/BirdLense_Detector/tree/main)**.
@@ -118,7 +118,7 @@ make dataset-verify-hard-negatives \
 
 Собрать **`brg/`** в один ZIP под облако (Google Drive и т.д.): `dataset.yaml`, все сплиты, внутри архива `brg/README_UPLOAD.txt` с командой train. Выход: **`datasets/new/detector/BirdLense_detector_brg_<UTC>.zip`**.
 
-Стартовые веса **`bl_best.pt`** и состав датасета **`brg`**: [docs/DATASETS.md](../../docs/DATASETS.md) / [DATASETS.ru.md](../../docs/DATASETS.ru.md); Colab: [docs/ML_DETECTOR_COLAB.md](../../docs/ML_DETECTOR_COLAB.md).
+Стартовые веса **`bl_best.pt`** и состав датасета **`brg`**: [datasets](../../docs/contributor/datasets.md); Colab: [ML_DETECTOR_COLAB](../../archive/internal/docs-legacy/ML_DETECTOR_COLAB.md).
 
 ```bash
 python3 scripts/datasets/pack_brg_for_gdrive.py

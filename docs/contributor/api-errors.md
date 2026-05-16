@@ -1,6 +1,6 @@
 # API error shape & security checklist (UI contract)
 
-[Русский](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/API_ERRORS.ru.md)
+[Русский](../../archive/internal/docs-legacy/API_ERRORS.ru.md)
 
 Lightweight guide for **new** `/api/ui/*` routes: what the SPA expects and where to document exceptions.
 

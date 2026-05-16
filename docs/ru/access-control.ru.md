@@ -134,7 +134,7 @@ session['settings_unlocked'] = True  # True для admin; для contributor ч�
 
 ## Будущее: донаты и сообщество
 
-Сводно на уровне roadmap репозитория: [ROADMAP](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/ROADMAP.ru.md) — раздел **«Кандидаты на будущее»**.
+Сводно на уровне roadmap репозитория: [ROADMAP](../contributor/roadmap.md) — раздел **«Кандидаты на будущее»**.
 
 ### Идеи для монетизации/поддержки
 

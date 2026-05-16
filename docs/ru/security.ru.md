@@ -15,7 +15,7 @@
 | Средний | 9 | Таймаут сессии, CORS, зависимости |
 | Низкий | 6 | Документация, миграции |
 
-**Автоматизация:** в CI подключён **GitHub CodeQL** (Python + TypeScript UI). Подробнее — [CODEQL.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CODEQL.ru.md).
+**Автоматизация:** в CI подключён **GitHub CodeQL** (Python + TypeScript UI). Подробнее — [CODEQL.ru.md](../../archive/internal/docs-legacy/CODEQL.ru.md).
 
 ---
 
@@ -43,7 +43,7 @@
 | ~~**Средний**~~ **Смягчено** | `settings_password` / `contributor_password` раньше только plain text. | Новые сохранения из UI — **bcrypt**; старый plaintext всё ещё принимается; опционально **`BIRDLENSE_SETTINGS_PASSWORD`** / **`BIRDLENSE_CONTRIBUTOR_PASSWORD`** в env. |
 | **Низкий** | `.env` в `.gitignore`. | Оставить как есть. |
 
-**Runbook для оператора:** [SECRETS_ROTATION.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SECRETS_ROTATION.ru.md) — перечень секретов, шаги ротации, проверка, откат, шаблон экстренной заметки ([issue #119](https://github.com/Gfermoto/BirdLense-Hub/issues/119)).
+**Runbook для оператора:** [SECRETS_ROTATION.ru.md](../../archive/internal/docs-legacy/SECRETS_ROTATION.ru.md) — перечень секретов, шаги ротации, проверка, откат, шаблон экстренной заметки ([issue #119](https://github.com/Gfermoto/BirdLense-Hub/issues/119)).
 
 ---
 
@@ -159,7 +159,7 @@
 5. ~~**Rate limiting**~~ ✅ `POST /api/ui/settings/verify-password`: **5** неудач за **60** с на IP клиента → **429** + `Retry-After`; успешный вход сбрасывает счётчик. IP из `X-Real-IP` / `X-Forwarded-For` за nginx — см. [ACCESS_CONTROL](./access-control.ru.md).
 6. ~~**Docker:** не root в контейнере.~~ ✅ Процессы под uid 1000 (`birdlense`).
 7. ~~Маскирование секретов~~ ✅ в `GET /api/ui/settings`.
-8. **Ротация секретов:** [SECRETS_ROTATION.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SECRETS_ROTATION.ru.md) (операции в проде).
+8. **Ротация секретов:** [SECRETS_ROTATION.ru.md](../../archive/internal/docs-legacy/SECRETS_ROTATION.ru.md) (операции в проде).
 
 ---
 

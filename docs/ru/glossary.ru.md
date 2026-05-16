@@ -82,7 +82,7 @@
 | **Визит вида** | Логическая сущность из детекций и окон дедупликации (`dedup_window_seconds`). |
 | **Review-only detection** | Детекция, видимая человеку, но не создающая `SpeciesVisit`; обычно `visit_eligible = false`. |
 | **Canonical taxon** | Каноническая сущность вида (`SpeciesTaxon`), к которой сводятся алиасы и исторические имена. |
-| **Экспорт датасета** | ZIP кадров для дообучения ([DATASETS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/DATASETS.ru.md)). |
+| **Экспорт датасета** | ZIP кадров для дообучения ([DATASETS](../contributor/datasets.md)). |
 
 ---
 

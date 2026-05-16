@@ -8,7 +8,7 @@
 
 Полная спецификация: [OpenAPI YAML](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/openapi.yaml).
 
-**Интерактивно в браузере:** [OpenAPI (Redoc)](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/reference/openapi.ru.md).
+**Интерактивно в браузере:** [OpenAPI (Redoc)](../../archive/internal/docs-legacy/reference/openapi.ru.md).
 
 ## Группы эндпоинтов
 

@@ -168,7 +168,7 @@ Symptom: processor log or FPS summary shows **YOLO / frame pipeline** taking lon
 4. **Light gate / night** — if many frames are skipped before YOLO, revisit `processor.light_gate_*` and night overrides (recall vs CPU load).
 5. **GPU / VA-API on the VPS** — confirm the container actually uses the expected path: `docker logs birdlense` for VA-API / FFmpeg lines; on the host, `intel_gpu_top` / `vainfo` where applicable. If GPU is missing, you are on CPU-only inference — expect slow frames at high resolution.
 
-Related: [PROCESSOR_PERFORMANCE](./processor-performance.md) (resolution × `binary_imgsz` guidance), [CONFIGURATION](./configuration.md) (`processor.*`, `detection.*`), [RELEASE_READINESS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/release-readiness.md). Release gate: [DEFINITION_OF_DONE](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/DEFINITION_OF_DONE.md).
+Related: [PROCESSOR_PERFORMANCE](./processor-performance.md) (resolution × `binary_imgsz` guidance), [CONFIGURATION](./configuration.md) (`processor.*`, `detection.*`), [RELEASE_READINESS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/release-readiness.md). Release gate: [DEFINITION_OF_DONE](../../archive/internal/docs-legacy/DEFINITION_OF_DONE.md).
 
 ## Install or deploy verification fails on readiness
 
@@ -199,7 +199,7 @@ python3 scripts/prune_deprecated_user_config.py --path app/app_config/user_confi
 cd app && docker compose restart birdlense
 ```
 
-The script writes `user_config.yaml.bak` next to the file before replacing it. See also [SECRETS_ROTATION](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SECRETS_ROTATION.md).
+The script writes `user_config.yaml.bak` next to the file before replacing it. See also [SECRETS_ROTATION](../../archive/internal/docs-legacy/SECRETS_ROTATION.md).
 
 ## MCP smoke check (Bearer token)
 
@@ -214,7 +214,7 @@ Details: [MCP_SETUP](../contributor/mcp-setup.md).
 
 ## PostgreSQL as hub DB
 
-Compose overlay, `DATABASE_URL`, pool tuning, greenfield vs SQLite data migration caveats, and processor **`birdlense.db`** separation: [POSTGRES_MIGRATION](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/POSTGRES_MIGRATION.md).
+Compose overlay, `DATABASE_URL`, pool tuning, greenfield vs SQLite data migration caveats, and processor **`birdlense.db`** separation: [POSTGRES_MIGRATION](../../archive/internal/docs-legacy/POSTGRES_MIGRATION.md).
 
 ## Request-level debugging
 

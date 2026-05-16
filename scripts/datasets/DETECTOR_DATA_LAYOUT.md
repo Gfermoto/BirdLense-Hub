@@ -39,7 +39,7 @@ binary/
 make dataset-merge-three-class
 ```
 
-Выход: **`scripts/datasets/binary/merged/`** с классами **Bird / Rodent / Background**. Обучение: [docs/ML_DETECTOR_COLAB.md](../../docs/ML_DETECTOR_COLAB.md).
+Выход: **`scripts/datasets/binary/merged/`** с классами **Bird / Rodent / Background**. Обучение: [ML_DETECTOR_COLAB](../../archive/internal/docs-legacy/ML_DETECTOR_COLAB.md).
 
 ## Каталог `brg/` и ZIP для Drive
 

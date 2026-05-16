@@ -51,7 +51,7 @@ python3 -m venv .venv-docs
 .venv-docs/bin/mkdocs build --strict
 ```
 
-Details: [Documentation](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/Documentation.md).
+Details: [documentation guide](./documentation.md).
 
 ### Maintainer checklist (before a release)
 
@@ -77,7 +77,7 @@ Open **http://localhost:8085**.
 
 `make local` runs **setup** (creates `app/.env` with `PROCESSOR_SECRET` and `FLASK_SECRET_KEY` if missing), **local-build** (UI + Docker image), then **start**.
 
-Docker **startup order**, `PYTHONPATH`, and health vs readiness: [RUNTIME_COUPLING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/RUNTIME_COUPLING.md). If the stack seems stuck after `compose up`, see [TROUBLESHOOTING](../user/troubleshooting.md#single-container-startup-stuck).
+Docker **startup order**, `PYTHONPATH`, and health vs readiness: [RUNTIME_COUPLING](../../archive/internal/docs-legacy/RUNTIME_COUPLING.md). If the stack seems stuck after `compose up`, see [TROUBLESHOOTING](../user/troubleshooting.md#single-container-startup-stuck).
 
 Without cameras or Go2RTC, the processor idles in wait mode — **the web UI and API still work**.
 
@@ -181,7 +181,7 @@ Authoritative HTTP contract: `app/web/openapi.yaml`.
 
 ## CodeQL (optional)
 
-CI runs CodeQL on push/PR; locally you can use the [VS Code CodeQL extension](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql). See [CODEQL.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CODEQL.md).
+CI runs CodeQL on push/PR; locally you can use the [VS Code CodeQL extension](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql). See [CODEQL.md](../../archive/internal/docs-legacy/CODEQL.md).
 
 ---
 
