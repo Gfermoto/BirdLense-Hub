@@ -25,6 +25,9 @@ app.log
 **/*:Zone.Identifier.*
 /datasets
 scripts/datasets/.cache/
+# Optional local clones of external repos (do not commit as git submodules)
+scripts/datasets/github_sources/*
+!scripts/datasets/github_sources/README.md
 scripts/datasets/brg/
 # Локальная выгрузка YOLO для трёхклассового детектора (bootstrap_detector_yolo.py)
 scripts/datasets/binary/birds/
