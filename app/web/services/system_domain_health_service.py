@@ -468,9 +468,13 @@ def _recent_parity_diagnostics_metrics(hours: int = 24, limit: int = 5000) -> di
             continue
         if not isinstance(payload, dict):
             continue
-        recording_context = payload.get("recording_context") if isinstance(payload.get("recording_context"), dict) else {}
+        recording_context = (
+            payload.get("recording_context") if isinstance(payload.get("recording_context"), dict) else {}
+        )
         active_triggers = recording_context.get("active_triggers")
-        active_triggers_l = [str(x or "").strip().lower() for x in (active_triggers if isinstance(active_triggers, list) else [])]
+        active_triggers_l = [
+            str(x or "").strip().lower() for x in (active_triggers if isinstance(active_triggers, list) else [])
+        ]
         triggered_by = str(recording_context.get("triggered_by") or "").strip().lower()
         is_frigate = triggered_by == "frigate" or any("frigate" == trg for trg in active_triggers_l)
         if not is_frigate:
@@ -685,9 +689,7 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "capture_backend_counts_24h": runtime_backend_metrics["capture_backend_counts_24h"],
                 "reid_device_counts_24h": runtime_backend_metrics["reid_device_counts_24h"],
                 "reid_model_counts_24h": runtime_backend_metrics["reid_model_counts_24h"],
-                "ingest_gate_reason_code_counts_24h": ingest_gate_reason_metrics[
-                    "ingest_gate_reason_code_counts_24h"
-                ],
+                "ingest_gate_reason_code_counts_24h": ingest_gate_reason_metrics["ingest_gate_reason_code_counts_24h"],
                 "parity_top_mismatch_reasons_24h": parity_diagnostics_metrics["parity_top_mismatch_reasons_24h"],
                 "parity_camera_split_24h": parity_diagnostics_metrics["parity_camera_split_24h"],
             },
