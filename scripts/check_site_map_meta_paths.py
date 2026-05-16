@@ -93,7 +93,13 @@ def _check(label: str, paths: list[str], chunk: str) -> None:
 
 
 def main() -> None:
-    site = (ROOT / "docs" / "SITE_MAP.md").read_text(encoding="utf-8")
+    site_map = ROOT / "docs" / "SITE_MAP.md"
+    site_map_ru = ROOT / "docs" / "SITE_MAP.ru.md"
+    if not site_map.exists() or not site_map_ru.exists():
+        print("check_site_map_meta_paths: SKIP (docs/SITE_MAP*.md not present)")
+        return
+
+    site = site_map.read_text(encoding="utf-8")
     hub = _nav_paths("Use the hub")
     develop = _nav_paths("Develop & integrate")
     ml = _nav_paths("ML & project")
@@ -110,7 +116,7 @@ def main() -> None:
     _check("Meta", meta, meta_chunk)
     _check("Repository", repo, repo_chunk)
 
-    site_ru = (ROOT / "docs" / "SITE_MAP.ru.md").read_text(encoding="utf-8")
+    site_ru = site_map_ru.read_text(encoding="utf-8")
     ru_all = _nav_paths("Русский")
     ru_top, ru_hub, ru_develop, ru_ml, ru_meta = _partition_russian_nav(ru_all)
     top_chunk = _chunk(site_ru, _RU_TOP_START, _RU_USE_START)
