@@ -169,3 +169,70 @@ def test_domain_health_reliability_alerts_for_artifact_failures_and_unknown_reas
     assert int(metrics.get("unknown_ingest_gate_rows_24h") or 0) >= 1
     assert alerts.get("recording_artifact_failures") is True
     assert alerts.get("unknown_ingest_gate_reasons") is True
+
+
+def test_domain_health_includes_parity_diagnostics_daily_split(app, client):
+    with app.app_context():
+        now = datetime.now(timezone.utc)
+        matched_payload = {
+            "start_time": now.replace(hour=10, minute=0, second=0, microsecond=0).isoformat(),
+            "video_path": "data/recordings/2026/05/16/100000/cam1.mp4",
+            "recording_context": {
+                "triggered_by": "frigate",
+                "triggered_camera": "cam-front",
+                "active_triggers": ["frigate"],
+            },
+            "outcome_summary": {"persisted_track_count": 2},
+        }
+        mismatched_payload = {
+            "start_time": now.replace(hour=23, minute=0, second=0, microsecond=0).isoformat(),
+            "video_path": "data/recordings/2026/05/16/230000/cam2.mp4",
+            "recording_context": {
+                "triggered_by": "frigate",
+                "triggered_camera": "cam-back",
+                "active_triggers": ["frigate"],
+            },
+            "outcome_summary": {"persisted_track_count": 0},
+        }
+        db.session.add_all(
+            [
+                ActivityLog(
+                    type="decision_trace",
+                    data=json.dumps(matched_payload),
+                    created_at=now - timedelta(minutes=9),
+                ),
+                ActivityLog(
+                    type="decision_trace",
+                    data=json.dumps(mismatched_payload),
+                    created_at=now - timedelta(minutes=8),
+                ),
+                ActivityLog(
+                    type="ingest_gate",
+                    data=json.dumps(
+                        {
+                            "reason": "no_persisted_detections",
+                            "reason_code": "FUSION_NO_ACCEPTED",
+                            "video_path": "data/recordings/2026/05/16/230000/cam2.mp4",
+                        }
+                    ),
+                    created_at=now - timedelta(minutes=7),
+                ),
+            ]
+        )
+        db.session.commit()
+
+    res = client.get("/api/ui/system/domain-health", headers=_auth_headers())
+    assert res.status_code == 200, res.get_data(as_text=True)
+    payload = res.get_json() or {}
+    metrics = payload.get("metrics") or {}
+    samples = payload.get("samples") or {}
+    causes = samples.get("parity_top_mismatch_reasons_24h") or {}
+    camera_split = samples.get("parity_camera_split_24h") or []
+
+    assert int(metrics.get("parity_frigate_windows_24h") or 0) >= 2
+    assert int(metrics.get("parity_hub_matched_windows_24h") or 0) >= 1
+    assert int(metrics.get("parity_mismatched_windows_24h") or 0) >= 1
+    assert float(metrics.get("parity_mismatch_rate_24h") or 0.0) > 0.0
+    assert int(causes.get("FUSION_NO_ACCEPTED") or 0) >= 1
+    assert any(str(row.get("camera") or "") == "cam-front" for row in camera_split)
+    assert any(str(row.get("camera") or "") == "cam-back" for row in camera_split)

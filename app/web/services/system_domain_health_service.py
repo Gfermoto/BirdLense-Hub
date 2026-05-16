@@ -27,6 +27,13 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _norm_path(path: str | None) -> str:
+    raw = str(path or "").strip().replace("\\", "/")
+    while raw.startswith("./"):
+        raw = raw[2:]
+    return raw.rstrip("/")
+
+
 def _clip_duplicate_gap_seconds() -> int:
     raw = app_config.get("processor.min_seconds_between_recordings")
     try:
@@ -380,6 +387,149 @@ def _build_reliability_alerts(
     }
 
 
+def _parse_payload_time(value: Any) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _day_night_bucket(ts: datetime | None) -> str:
+    if ts is None:
+        return "unknown"
+    return "day" if 6 <= ts.hour < 18 else "night"
+
+
+def _recent_parity_diagnostics_metrics(hours: int = 24, limit: int = 5000) -> dict[str, Any]:
+    cutoff = _utc_now() - timedelta(hours=max(1, int(hours or 24)))
+    decision_rows = (
+        db.session.query(ActivityLog)
+        .filter(
+            ActivityLog.type == "decision_trace",
+            ActivityLog.created_at >= cutoff,
+        )
+        .order_by(ActivityLog.id.desc())
+        .limit(max(1, int(limit or 5000)))
+        .all()
+    )
+    ingest_rows = (
+        db.session.query(ActivityLog)
+        .filter(
+            ActivityLog.type == "ingest_gate",
+            ActivityLog.created_at >= cutoff,
+        )
+        .order_by(ActivityLog.id.desc())
+        .limit(max(1, int(limit or 5000)))
+        .all()
+    )
+
+    ingest_reason_by_path: dict[str, str] = {}
+    for row in ingest_rows:
+        try:
+            payload = json.loads(row.data or "{}")
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        code = str(payload.get("reason_code") or "").strip().upper() or "UNKNOWN"
+        path = _norm_path(payload.get("video_path"))
+        if path and path not in ingest_reason_by_path:
+            ingest_reason_by_path[path] = code
+
+    total_windows = 0
+    matched_windows = 0
+    mismatched_windows = 0
+    cause_counts: dict[str, int] = defaultdict(int)
+    camera_split: dict[str, dict[str, int]] = defaultdict(
+        lambda: {
+            "windows": 0,
+            "matched": 0,
+            "mismatched": 0,
+            "day_windows": 0,
+            "day_mismatched": 0,
+            "night_windows": 0,
+            "night_mismatched": 0,
+            "unknown_windows": 0,
+            "unknown_mismatched": 0,
+        }
+    )
+    for row in decision_rows:
+        try:
+            payload = json.loads(row.data or "{}")
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        recording_context = payload.get("recording_context") if isinstance(payload.get("recording_context"), dict) else {}
+        active_triggers = recording_context.get("active_triggers")
+        active_triggers_l = [str(x or "").strip().lower() for x in (active_triggers if isinstance(active_triggers, list) else [])]
+        triggered_by = str(recording_context.get("triggered_by") or "").strip().lower()
+        is_frigate = triggered_by == "frigate" or any("frigate" == trg for trg in active_triggers_l)
+        if not is_frigate:
+            continue
+
+        total_windows += 1
+        camera = str(recording_context.get("triggered_camera") or "unknown").strip() or "unknown"
+        clip_start = _parse_payload_time(payload.get("start_time"))
+        bucket = _day_night_bucket(clip_start)
+        entry = camera_split[camera]
+        entry["windows"] += 1
+        entry[f"{bucket}_windows"] += 1
+
+        outcome = payload.get("outcome_summary") if isinstance(payload.get("outcome_summary"), dict) else {}
+        persisted_count = int(outcome.get("persisted_track_count") or payload.get("persisted_track_count") or 0)
+        if persisted_count > 0:
+            matched_windows += 1
+            entry["matched"] += 1
+            continue
+
+        mismatched_windows += 1
+        entry["mismatched"] += 1
+        entry[f"{bucket}_mismatched"] += 1
+        reason = "UNKNOWN_NO_PERSIST"
+        trace_path = _norm_path(payload.get("video_path"))
+        if trace_path:
+            reason = ingest_reason_by_path.get(trace_path, reason)
+        cause_counts[reason] += 1
+
+    camera_rows: list[dict[str, Any]] = []
+    for camera, item in sorted(camera_split.items(), key=lambda x: (-x[1]["mismatched"], x[0])):
+        windows = int(item["windows"] or 0)
+        mismatches = int(item["mismatched"] or 0)
+        camera_rows.append(
+            {
+                "camera": camera,
+                "windows": windows,
+                "matched": int(item["matched"] or 0),
+                "mismatched": mismatches,
+                "mismatch_rate": (mismatches / windows) if windows else None,
+                "day_windows": int(item["day_windows"] or 0),
+                "day_mismatched": int(item["day_mismatched"] or 0),
+                "night_windows": int(item["night_windows"] or 0),
+                "night_mismatched": int(item["night_mismatched"] or 0),
+                "unknown_windows": int(item["unknown_windows"] or 0),
+                "unknown_mismatched": int(item["unknown_mismatched"] or 0),
+            }
+        )
+    top_causes = dict(sorted(cause_counts.items(), key=lambda x: (-x[1], x[0]))[:10])
+    return {
+        "parity_frigate_windows_24h": int(total_windows),
+        "parity_hub_matched_windows_24h": int(matched_windows),
+        "parity_mismatched_windows_24h": int(mismatched_windows),
+        "parity_mismatch_rate_24h": (mismatched_windows / total_windows) if total_windows else None,
+        "parity_top_mismatch_reasons_24h": top_causes,
+        "parity_camera_split_24h": camera_rows[:20],
+    }
+
+
 def _recent_ingest_gate_reason_metrics(hours: int = 24, limit: int = 2000) -> dict[str, Any]:
     cutoff = _utc_now() - timedelta(hours=max(1, int(hours or 24)))
     rows = (
@@ -472,6 +622,7 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
         trigger_camera_metrics = _recent_trigger_camera_metrics()
         runtime_backend_metrics = _recent_runtime_backend_metrics()
         ingest_gate_reason_metrics = _recent_ingest_gate_reason_metrics()
+        parity_diagnostics_metrics = _recent_parity_diagnostics_metrics()
         processor_funnel_metrics = _processor_runtime_funnel_metrics()
         reliability_alerts = _build_reliability_alerts(
             ingest_gate_reason_metrics=ingest_gate_reason_metrics,
@@ -514,6 +665,10 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                     "ingest_gate_unknown_reason_rows_24h": ingest_gate_reason_metrics[
                         "ingest_gate_unknown_reason_rows_24h"
                     ],
+                    "parity_frigate_windows_24h": parity_diagnostics_metrics["parity_frigate_windows_24h"],
+                    "parity_hub_matched_windows_24h": parity_diagnostics_metrics["parity_hub_matched_windows_24h"],
+                    "parity_mismatched_windows_24h": parity_diagnostics_metrics["parity_mismatched_windows_24h"],
+                    "parity_mismatch_rate_24h": parity_diagnostics_metrics["parity_mismatch_rate_24h"],
                 },
                 **processor_funnel_metrics,
             },
@@ -533,6 +688,8 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "ingest_gate_reason_code_counts_24h": ingest_gate_reason_metrics[
                     "ingest_gate_reason_code_counts_24h"
                 ],
+                "parity_top_mismatch_reasons_24h": parity_diagnostics_metrics["parity_top_mismatch_reasons_24h"],
+                "parity_camera_split_24h": parity_diagnostics_metrics["parity_camera_split_24h"],
             },
             "contracts": contracts_block,
             "reliability_alerts": reliability_alerts,
@@ -599,6 +756,10 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "ingest_gate_rows_24h": None,
                 "ingest_gate_known_reason_rows_24h": None,
                 "ingest_gate_unknown_reason_rows_24h": None,
+                "parity_frigate_windows_24h": None,
+                "parity_hub_matched_windows_24h": None,
+                "parity_mismatched_windows_24h": None,
+                "parity_mismatch_rate_24h": None,
             },
             "samples": {
                 "duplicate_clip_candidates": [],
@@ -614,6 +775,8 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "reid_device_counts_24h": {},
                 "reid_model_counts_24h": {},
                 "ingest_gate_reason_code_counts_24h": {},
+                "parity_top_mismatch_reasons_24h": {},
+                "parity_camera_split_24h": [],
             },
             "contracts": contracts_block,
             "reliability_alerts": {
