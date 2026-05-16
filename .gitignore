@@ -207,6 +207,11 @@ app/web/instance/
 *.prof
 *.trace.json
 
+# Артефакты автомат-ревью / CI runlogs (локально можно держать, в git не коммитить)
+/.review-automation/
+/runlogs*/
+/.pending-changes.md
+
 # Локальный scratch и копии диагностики у корня репо (не путать с app/data/)
 /tmp/
 /data/

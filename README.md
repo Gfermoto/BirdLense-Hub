@@ -60,7 +60,7 @@ Two components: **detector** (bird or rodent in frame) and **classifier** (bird 
 - **UI** — React 19, Material UI, i18n (en/ru/zh), mobile-friendly, PWA (install prompt, offline cache)
 - **Weather** — OpenWeather or Home Assistant
 - **Notifications** — Telegram Bot API
-- **MCP** — optional [Model Context Protocol](https://modelcontextprotocol.io/) for **authorized clients** (automation, integrations; see `docs/MCP_SETUP.md`)
+- **MCP** — optional [Model Context Protocol](https://modelcontextprotocol.io/) for **authorized clients** (automation, integrations; see [MCP setup](./docs/contributor/mcp-setup.md))
 
 ### Analytics & Export
 - **CSV/JSON export** — download visits for analysis in Excel/Python
@@ -84,18 +84,18 @@ Two components: **detector** (bird or rodent in frame) and **classifier** (bird 
 **Docker (free image):**
 ```bash
 docker pull ghcr.io/gfermoto/birdlense-hub:latest
-# or use docker-compose — see docs/INSTALL.md
+# or use docker-compose — see docs/user/install.md
 ```
 UI: http://localhost:8085
 
-**Quickstart:** [docs/QUICKSTART.md](./docs/user/quickstart.md) | **Full install:** [docs/INSTALL.md](./docs/user/install.md) | **Scenarios:** [docs/SCENARIOS.md](./docs/user/scenarios.md) | **All docs:** [docs/README.md](./docs/index.md) | **Features:** [docs/FEATURES.md](./docs/user/features.md)
+**Quickstart:** [quickstart](./docs/user/quickstart.md) | **Full install:** [install](./docs/user/install.md) | **Scenarios:** [scenarios](./docs/user/scenarios.md) | **All docs:** [index](./docs/index.md) | **Features:** [features](./docs/user/features.md)
 
 For a one-step Docker bootstrap, run **`./install.sh`** from the repository root (or **`make install`**). It installs Docker if needed, creates `app/.env`, starts the stack, and verifies the shared `health + readiness + status` contract. Pre-built image: **`./install.sh --pull`** or **`make install-pull`**.
 
 ## Developers
 
-- **Local setup:** [docs/LOCAL_DEV.md](./docs/contributor/local-dev.md) — Docker, **Node.js 22** for `app/ui` (see `app/ui/.nvmrc` and `package.json` `engines`), MkDocs venv vs app Python.
-- **Tests & CI:** [docs/TESTING.md](./docs/contributor/testing.md) — `cd app && make test`, `cd app && make test-web`, E2E; processor tests are RAM-heavy.
+- **Local setup:** [local dev](./docs/contributor/local-dev.md) — Docker, **Node.js 22** for `app/ui` (see `app/ui/.nvmrc` and `package.json` `engines`), MkDocs venv vs app Python.
+- **Tests & CI:** [testing](./docs/contributor/testing.md) — `cd app && make test`, `cd app && make test-web`, E2E; processor tests are RAM-heavy.
 - **Contributing:** [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ### First-time contributor CI (same as Actions)
@@ -108,7 +108,7 @@ For a one-step Docker bootstrap, run **`./install.sh`** from the repository root
 cd app && PYTHONPATH="${PWD}:${PWD}/web" ../.venv-ci/bin/python -m pytest web/tests/ -q --tb=short
 ```
 
-**UI map (where to click):** [docs/UI_SETTINGS_MAP.md](./docs/UI_SETTINGS_MAP.md) · [RU](./docs/UI_SETTINGS_MAP.ru.md)
+**UI map (where to click):** [UI settings map](./archive/internal/docs-legacy/UI_SETTINGS_MAP.md) · [RU](./archive/internal/docs-legacy/UI_SETTINGS_MAP.ru.md)
 - **Weights workflow:** `scripts/fetch-processor-weights.sh` prefers the two-stage detector/classifier paths; use `--legacy-single-stage` only if you explicitly need the compatibility `app/yolo11n.pt` asset from GitHub Release `weights/v1`.
 
 ## Before Release
@@ -117,7 +117,7 @@ cd app && PYTHONPATH="${PWD}:${PWD}/web" ../.venv-ci/bin/python -m pytest web/te
 - Confirm production env gates: `BIRDLENSE_ENV=production`, `BIRDLENSE_STRICT_API_AUTH=1`, non-empty `FLASK_SECRET_KEY` and `PROCESSOR_SECRET`.
 - Verify public deployment terminates TLS at the edge and does not expose Gunicorn directly.
 - Keep `CORS_ORIGINS` explicit; never use `*` with credentialed UI requests.
-- Review `PRODUCTION_READINESS.md` and `.review-automation/critical-issues.md` before tagging a release.
+- Review [`release-readiness.md`](release-readiness.md) before tagging a release.
 
 ## Requirements
 
@@ -141,14 +141,14 @@ From repo root:
 |---------|-------------|
 | `make deploy` | Deploy to server (requires `scripts/deploy.local.sh`) |
 | `make verify` | Check `health` + `readiness` + `status` on `BASE_URL` or localhost |
-| `make ci-local` | Run `scripts/ci-full-local.sh` — Bandit, pip-audit, Ruff, full `web/tests` pytest, docs version, UI (codegen + Vitest + typecheck + lint + build), Settings UI coverage, MkDocs strict (see [docs/CI_AND_QUALITY.md](./docs/CI_AND_QUALITY.md)) |
+| `make ci-local` | Run `scripts/ci-full-local.sh` — Bandit, pip-audit, Ruff, full `web/tests` pytest, docs version, UI (codegen + Vitest + typecheck + lint + build), Settings UI coverage, MkDocs strict (see [CI and quality](./docs/contributor/ci-and-quality.md)) |
 | `make ci-local-docker` | Same as `ci-local`, then Docker image tests + Playwright smoke (heavy; needs processor weights) |
 | `make build` | Build Docker image |
 | `make start` | Start container |
 | `make stop` | Stop container |
 | `make logs` | View logs |
 
-**Release gate (short):** [Definition of Done](./docs/DEFINITION_OF_DONE.md) · [RU](./docs/DEFINITION_OF_DONE.ru.md) — `make ci-local`, `verify-stack`, 5-minute smoke. Full checklist: [RELEASE_READINESS](./docs/RELEASE_READINESS.md).
+**Release gate (short):** [Definition of Done](./archive/internal/docs-legacy/DEFINITION_OF_DONE.md) · [RU](./archive/internal/docs-legacy/DEFINITION_OF_DONE.ru.md) — `make ci-local`, `verify-stack`, 5-minute smoke. Full checklist: [release-readiness](./release-readiness.md).
 
 From `app/`:
 
