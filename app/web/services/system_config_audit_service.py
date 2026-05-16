@@ -401,12 +401,18 @@ def _preflight_config_safety(app_config_get) -> dict:
     checks.append(
         {
             "id": "light_gate_recall",
-            "status": "warn" if light_gate_enabled and (light_gate_brightness > 35 or light_gate_contrast > 35) else "ok",
+            "status": "warn"
+            if light_gate_enabled and (light_gate_brightness > 35 or light_gate_contrast > 35)
+            else "ok",
             "severity": "warning",
             "message": "Aggressive light gate can block dusk/night detections before YOLO.",
         }
     )
-    status = "fail" if any(c["status"] == "fail" for c in checks) else ("warn" if any(c["status"] == "warn" for c in checks) else "ok")
+    status = (
+        "fail"
+        if any(c["status"] == "fail" for c in checks)
+        else ("warn" if any(c["status"] == "warn" for c in checks) else "ok")
+    )
     return {
         "status": status,
         "checks": checks,

@@ -270,6 +270,8 @@ class Go2RTCStreamSource:
         record_stream_codec="h264",
         capture_backend="auto",
         capture_stream_url: str | None = None,
+        *,
+        record_with_vaapi: bool | None = None,
     ):
         self.logger = logging.getLogger(__name__)
         # Main/high stream: FFmpeg recording only.
@@ -304,6 +306,15 @@ class Go2RTCStreamSource:
         self._vaapi_checked = False
         self._vaapi_available = True
         self._vaapi_record_available = True
+        # When encoding=intel: still use VA-API for ffmpeg capture (auto) unless capture falls back;
+        # recording can use libx264 only if record_with_vaapi is false (avoids flaky h264_vaapi on some iGPU drivers).
+        if record_with_vaapi is None:
+            self._record_with_vaapi = True
+        elif isinstance(record_with_vaapi, bool):
+            self._record_with_vaapi = record_with_vaapi
+        else:
+            s = str(record_with_vaapi).strip().lower()
+            self._record_with_vaapi = s not in ("0", "false", "no", "off")
         self._recording_used_vaapi = False
         self._ffmpeg_capture_failures = 0
         self._force_opencv_until_ts = 0.0
@@ -523,7 +534,7 @@ class Go2RTCStreamSource:
         self._recording_used_vaapi = False
         self._video_output = output
         os.makedirs(os.path.dirname(output), exist_ok=True)
-        use_vaapi = self._use_intel_vaapi()
+        use_vaapi = self._encoding_mode == "intel" and self._record_with_vaapi and self._use_intel_vaapi()
         if use_vaapi and not self._vaapi_record_available:
             use_vaapi = False
         cmd = _ffmpeg_record_cmd(
