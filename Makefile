@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify verify-prod-env preflight-deploy verify-strict-quality restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-dedupe-detector-yolo dataset-report-detector-yolo dataset-dedupe-detector-binary dataset-import-cub dataset-import-roboflow-bird-feeder dataset-download-roboflow-bird-feeder dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data bootstrap-rodents-until-verify bootstrap-bird-coco-only report-detector-bird-sources dataset-rebalance-bird-binary dataset-bootstrap-rodent-oid-fast dataset-import-roboflow-rodent dataset-fetch-lila-california-rodents-sample dataset-build-birds-rodents-quick dataset-build-detector-tz detector-etl-verify-birds-rodents detector-etl-progress detector-etl-progress-watch detector-etl-restart detector-etl-supervise detector-etl-supervise-bg active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices ml-verify-reid-gates ml-run-reid-execution-report ml-build-eval-dataset ml-build-behavior-dataset ml-export-behavior-onnx ml-build-behavior-train-report ml-offline-benchmark-gate ml-detector-shortlist snapshot-detector-weights compare-detector-bboxes-help ml-openvino-async-profile ml-decode-path-benchmark ml-track-continuity-eval ml-int8-candidate-eval ml-shadow-rollout-report ml-canary-rollback-report ml-full-rollout-watch-report ml-action-model-shortlist ml-proof ml-proof-local ml-proof-hub ml-fusion-ab-local ml-fusion-ab-hub dedupe-videos-local
+.PHONY: install install-pull deploy build start stop logs verify verify-prod-env preflight-deploy verify-strict-quality restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-dedupe-detector-yolo dataset-report-detector-yolo dataset-dedupe-detector-binary dataset-import-cub dataset-import-roboflow-bird-feeder dataset-download-roboflow-bird-feeder dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data bootstrap-rodents-until-verify bootstrap-bird-coco-only report-detector-bird-sources dataset-rebalance-bird-binary dataset-bootstrap-rodent-oid-fast dataset-import-roboflow-rodent dataset-fetch-lila-california-rodents-sample dataset-build-birds-rodents-quick dataset-build-detector-tz detector-etl-verify-birds-rodents detector-etl-progress detector-etl-progress-watch detector-etl-restart detector-etl-supervise detector-etl-supervise-bg active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices ml-verify-reid-gates ml-run-reid-execution-report ml-build-eval-dataset ml-build-behavior-dataset ml-export-behavior-onnx ml-build-behavior-train-report ml-verify-behavior-runtime ml-offline-benchmark-gate ml-detector-shortlist snapshot-detector-weights compare-detector-bboxes-help ml-openvino-async-profile ml-decode-path-benchmark ml-track-continuity-eval ml-int8-candidate-eval ml-shadow-rollout-report ml-canary-rollback-report ml-full-rollout-watch-report ml-action-model-shortlist ml-proof ml-proof-local ml-proof-hub ml-fusion-ab-local ml-fusion-ab-hub dedupe-videos-local
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -496,6 +496,18 @@ ml-build-behavior-train-report:
 		$$(test -n "$${CONFUSION_CSV:-}" && printf -- '--confusion-csv "%s" ' "$${CONFUSION_CSV}") \
 		--out "$${OUT}" \
 		$${ARGS:-}
+
+# Verify behavior runtime profile against explicit p95/mean latency thresholds (#416).
+# Example:
+# PROFILE=/tmp/behavior_runtime_profile.v1.json OUT=/tmp/behavior_runtime_gate.v1.json make ml-verify-behavior-runtime
+ml-verify-behavior-runtime:
+	@test -n "$${PROFILE:-}" || (echo "Set PROFILE=path/to/behavior_runtime_profile@v1.json" >&2; exit 1)
+	@test -n "$${OUT:-}" || (echo "Set OUT=path/to/behavior_runtime_gate_report.v1.json" >&2; exit 1)
+	@python3 scripts/ml_behavior_runtime_gate.py \
+		--profile "$${PROFILE}" \
+		--max-p95-ms "$${BEHAVIOR_MAX_P95_MS:-25}" \
+		--max-mean-ms "$${BEHAVIOR_MAX_MEAN_MS:-15}" \
+		--out "$${OUT}"
 
 # Сравнить два behavior_train_report@v1 (офлайн accuracy/F1 gate), #416 Wave 6.
 # BASELINE=/tmp/base_behavior_report.json CANARY=/tmp/canary_behavior_report.json OUT=/tmp/behavior_canary_gate.json make ml-behavior-canary-gate
