@@ -10,6 +10,8 @@ TIMEOUT_SEC="${TIMEOUT_SEC:-20}"
 AUTH_ARGS=()
 if [ -n "${BIRDLENSE_UI_API_KEY:-}" ]; then
   AUTH_ARGS=(-H "X-Birdlense-Api-Key: ${BIRDLENSE_UI_API_KEY}")
+elif [ -n "${MCP_TOKEN:-}" ]; then
+  AUTH_ARGS=(-H "Authorization: Bearer ${MCP_TOKEN}")
 fi
 
 curl_json() {
@@ -80,7 +82,17 @@ show_or_fail_optional_json "config-audit" "/api/ui/system/config-audit" "/tmp/bi
 echo ""
 echo "9. E2E тесты:"
 cd "$(dirname "$0")/../app/e2e"
-npm test 2>&1 | tail -5
+tmp_e2e_log="$(mktemp)"
+set +e
+npm test >"${tmp_e2e_log}" 2>&1
+e2e_rc=$?
+set -e
+tail -5 "${tmp_e2e_log}"
+rm -f "${tmp_e2e_log}"
+if [ "${e2e_rc}" -ne 0 ]; then
+  echo " FAIL (E2E rc=${e2e_rc})"
+  exit "${e2e_rc}"
+fi
 
 echo ""
 echo "=== Проверка завершена ==="

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import json
 import math
 import os
@@ -9,6 +10,8 @@ import pickle
 import threading
 import time
 from typing import Any, Callable
+
+_log = logging.getLogger(__name__)
 
 KEY_ROOT = "bl:v1:"
 
@@ -37,7 +40,7 @@ def _redis_url_effective() -> str:
         if u:
             return u
     except Exception:
-        pass
+        _log.debug("cache: app_config redis URL read failed", exc_info=True)
     return (os.environ.get("REDIS_URL") or "").strip()
 
 
@@ -62,6 +65,7 @@ def mask_redis_url(url: str) -> str:
         netloc = f"{auth}{host}{port}"
         return urlunsplit((p.scheme, netloc, p.path or "", p.query, p.fragment))
     except Exception:
+        _log.debug("cache: mask_redis_url parse failed", exc_info=True)
         return "***"
 
 
@@ -100,9 +104,7 @@ def _redis():
     except Exception as e:
         _redis_client = False
         if not _redis_warned:
-            import logging
-
-            logging.getLogger(__name__).warning(
+            _log.warning(
                 "Redis недоступен (%s) — используется in-memory кэш.",
                 e,
             )
@@ -141,6 +143,7 @@ def cache_get(key: str) -> tuple[bool, Any]:
                 return False, None
             return True, _deserialize(raw)
         except Exception:
+            _log.debug("cache_get redis failed (key_len=%s)", len(key), exc_info=True)
             return False, None
 
     with _lock:
@@ -164,7 +167,7 @@ def cache_set(key: str, value: Any, ttl_seconds: float) -> None:
             r.setex(_full_key(key), ttl, _serialize(value))
             return
         except Exception:
-            pass
+            _log.debug("cache_set redis failed (key_len=%s)", len(key), exc_info=True)
     # In testing environments we avoid populating the in-memory cache to reduce
     # cross-test interference (tests set FLASK_TESTING=1 in conftest).
     if (os.environ.get("FLASK_TESTING") or "").strip().lower() in ("1", "true", "yes"):
@@ -180,7 +183,7 @@ def cache_delete(key: str) -> None:
         try:
             r.delete(_full_key(key))
         except Exception:
-            pass
+            _log.debug("cache_delete redis failed (key_len=%s)", len(key), exc_info=True)
     with _lock:
         _store.pop(key, None)
 
@@ -194,7 +197,11 @@ def cache_delete_prefix(prefix: str) -> None:
             for k in r.scan_iter(match=pattern, count=200):
                 r.delete(k)
         except Exception:
-            pass
+            _log.debug(
+                "cache_delete_prefix redis failed (prefix_len=%s)",
+                len(prefix),
+                exc_info=True,
+            )
     with _lock:
         keys = [k for k in _store if k.startswith(prefix)]
         for k in keys:
@@ -220,3 +227,14 @@ def cached(key_fn: Callable[..., str], ttl_seconds: float):
         return wrapper
 
     return decorator
+
+
+def cache_backend_readiness() -> dict[str, object]:
+    """Readiness for cache backend: Redis (if configured) or in-memory fallback."""
+    url = _redis_url_effective()
+    if not url:
+        return {"status": "ok", "backend": "memory", "configured": False}
+    r = _redis()
+    if r is None:
+        return {"status": "error", "backend": "redis", "configured": True, "error": "redis_unavailable"}
+    return {"status": "ok", "backend": "redis", "configured": True}

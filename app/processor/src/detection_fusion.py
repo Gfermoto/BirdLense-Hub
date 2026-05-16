@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Iterable
-from datetime import datetime, timezone
+from typing import Any, Iterable
+from datetime import datetime, timezone, timedelta
+import math
 
 from decision_outcome import compute_outcome_bucket
 from multi_camera_confidence import apply_multi_camera_confidence_boost
@@ -26,6 +27,25 @@ def _safe_float(value, default: float = 0.0) -> float:
         return float(value)
     except (TypeError, ValueError):
         return default
+
+
+def skip_frigate_ev_for_standalone(ev: dict | None, app_config) -> bool:
+    """True when label/species intersect ``detection.frigate_standalone_skip_labels``."""
+    if not isinstance(ev, dict) or not ev:
+        return False
+    raw = app_config.get("detection.frigate_standalone_skip_labels")
+    if not isinstance(raw, (list, tuple)):
+        return False
+    skip = {str(x).strip().lower() for x in raw if str(x).strip()}
+    if not skip:
+        return False
+    labels = {
+        str(ev.get("species") or "").strip().lower(),
+        str(ev.get("label") or "").strip().lower(),
+        str(ev.get("sub_label") or "").strip().lower(),
+    }
+    labels.discard("")
+    return bool(labels & skip)
 
 
 def _aggregate_birdnet_scores(
@@ -66,7 +86,7 @@ def _aggregate_birdnet_scores(
                 if parsed.tzinfo is None:
                     parsed = parsed.replace(tzinfo=timezone.utc)
                 age_hours = max(0.0, (end_dt - parsed).total_seconds() / 3600.0)
-            except Exception:
+            except (TypeError, ValueError, OSError):
                 age_hours = 0.0
                 bucket["timestamp_parse_failed"] = True
         weighted = conf * (0.5 ** (age_hours / half_life_hours))
@@ -104,6 +124,8 @@ def _attach_audio_evidence(
         key=lambda item: (
             _safe_float(item[1].get("score"), 0.0),
             int(item[1].get("support_count") or 0),
+            # Deterministic tie-break for equal score/support.
+            str(item[0] or "").strip().lower(),
         ),
     )
     top_score = _safe_float(top_bucket.get("score"), 0.0)
@@ -174,14 +196,47 @@ def _frigate_standalone_prepared_rows(
 
     species_mapping = _species_mapping(app_config)
     try:
+        max_event_age_s = float(app_config.get("detection.frigate_standalone_max_event_age_seconds") or 10.0)
+    except (TypeError, ValueError):
+        max_event_age_s = 10.0
+    max_event_age_s = max(1.0, min(120.0, max_event_age_s))
+    require_geometry = bool(app_config.get("detection.frigate_standalone_require_geometry", True))
+    try:
         video_duration = (end_time - start_time).total_seconds() if end_time and start_time else 0.0
-    except Exception:
+    except (TypeError, AttributeError):
+        logger.debug("frigate standalone: video_duration from start/end failed", exc_info=True)
         video_duration = 0.0
     video_duration = max(0.0, float(video_duration))
 
     best: dict[str, dict] = {}
     for ev in events:
         if str((ev or {}).get("source") or "").strip().lower() != "frigate":
+            continue
+        ts_raw = ev.get("timestamp")
+        try:
+            ts = datetime.fromisoformat(str(ts_raw).replace("Z", "+00:00"))
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+        except (TypeError, ValueError):
+            # Без валидного времени событие не годится для standalone-спасения.
+            continue
+        if start_time and ts < (start_time - timedelta(seconds=max_event_age_s)):
+            continue
+        if end_time and ts > (end_time + timedelta(seconds=2.0)):
+            continue
+        if skip_frigate_ev_for_standalone(ev, app_config):
+            continue
+        has_geometry_raw = ev.get("_frigate_has_geometry")
+        # Backward compatibility: synthetic/tests may not carry the flag yet.
+        has_geometry = True if has_geometry_raw is None else bool(has_geometry_raw)
+        if not has_geometry and isinstance(ev.get("frigate_bbox_norm"), (list, tuple)):
+            has_geometry = len(ev.get("frigate_bbox_norm") or []) >= 4
+        if (
+            require_geometry
+            and not has_geometry
+            and not bool(ev.get("_synthetic_trigger_fallback"))
+            and not bool(ev.get("_session_trigger_snapshot"))
+        ):
             continue
         raw = ev.get("species") or ev.get("sub_label") or ev.get("label") or ""
         species = normalize(str(raw), species_mapping)
@@ -223,15 +278,6 @@ def _frigate_standalone_prepared_rows(
         suppressed = bool(pack.get("_standalone_suppressed"))
         kind = "frigate_standalone_excluded" if suppressed else "frigate_standalone"
         reason = "frigate_standalone_excluded_label" if suppressed else "frigate_standalone"
-        bbox_norm = pack.get("frigate_bbox_norm")
-        frames = None
-        if (
-            isinstance(bbox_norm, (list, tuple))
-            and len(bbox_norm) >= 4
-            and all(isinstance(x, (int, float)) for x in bbox_norm[:4])
-        ):
-            t_mid = video_duration * 0.5 if video_duration > 0 else 0.0
-            frames = [{"t": float(t_mid), "bbox": [float(x) for x in bbox_norm[:4]]}]
         row = {
             "track_id": -(i + 1),
             "accepted": True,
@@ -256,8 +302,6 @@ def _frigate_standalone_prepared_rows(
             "frigate_standalone": True,
             "frigate_merge_suppressed": suppressed,
         }
-        if frames:
-            row["frames"] = frames
         rows.append(row)
     return rows
 
@@ -271,6 +315,15 @@ def _prepared_is_single_generic_bird_track(prepared: list[dict]) -> bool:
         return False
     name = str(row.get("species_name") or row.get("species") or "").strip().lower()
     return name == "bird"
+
+
+def _prepared_has_accepted_species(prepared: list[dict]) -> bool:
+    """True when at least one prepared row is an accepted species result."""
+    for row in prepared or []:
+        kind = str(row.get("decision_kind") or "").strip().lower()
+        if kind == "accepted_species" and bool(row.get("accepted", True)):
+            return True
+    return False
 
 
 def prepare_track_results_for_fusion(
@@ -301,6 +354,8 @@ def prepare_track_results_for_fusion(
 def _frigate_events_camera_scoped(
     frigate_events: Iterable[dict],
     app_config,
+    *,
+    triggered_camera: str | None = None,
 ) -> list:
     """Оставить только события Frigate с камер из scope Hub (video.cameras + фильтр YAML).
 
@@ -316,6 +371,9 @@ def _frigate_events_camera_scoped(
     proc_cams = cameras_for_processor(valid)
     allow = frigate_camera_allow_ids(proc_cams, app_config)
     allow_l = {str(x).strip().lower() for x in allow if str(x).strip()}
+    trig = str(triggered_camera or "").strip().lower()
+    if trig:
+        allow_l = {trig} if not allow_l else {trig} & allow_l
     if not allow_l:
         return [e for e in (frigate_events or []) if e]
     out = []
@@ -334,8 +392,18 @@ def _frigate_events_camera_scoped(
     return out
 
 
-def _clamp_fusion_confidence_inflation(detections: list[dict]) -> list[dict]:
-    """Prevent Frigate/BirdNET/learned fusion from rescuing weak non-species tracks."""
+def _clamp_fusion_confidence_inflation(detections: list[dict], app_config: Any) -> list[dict]:
+    """Prevent Frigate/BirdNET/learned fusion from rescuing weak non-species tracks.
+
+    По умолчанию итоговый confidence не поднимается выше pre-fusion. Необязательный
+    ``detection.fusion_non_species_confidence_slack`` разрешает небольшой «хвост»
+    для cross_source_bonus (до base + slack).
+    """
+    try:
+        slack = float((app_config or {}).get("detection.fusion_non_species_confidence_slack") or 0.0)
+    except (TypeError, ValueError):
+        slack = 0.0
+    slack = max(0.0, min(0.25, slack))
     for d in detections:
         kind = str(d.get("decision_kind") or "").strip().lower()
         if kind == "accepted_species":
@@ -345,10 +413,144 @@ def _clamp_fusion_confidence_inflation(detections: list[dict]) -> list[dict]:
             cur = float(d.get("confidence") or 0.0)
         except (TypeError, ValueError):
             continue
-        if cur > base:
-            d["confidence"] = float(base)
+        cap = base + slack
+        if cur > cap:
+            d["confidence"] = float(cap)
             d["_fusion_clamped"] = True
     return detections
+
+
+def _bbox_iou_norm(a: list[float], b: list[float]) -> float:
+    try:
+        ax1, ay1, ax2, ay2 = [float(x) for x in a]
+        bx1, by1, bx2, by2 = [float(x) for x in b]
+    except (TypeError, ValueError):
+        return 0.0
+    ix1, iy1 = max(ax1, bx1), max(ay1, by1)
+    ix2, iy2 = min(ax2, bx2), min(ay2, by2)
+    iw, ih = max(0.0, ix2 - ix1), max(0.0, iy2 - iy1)
+    inter = iw * ih
+    if inter <= 0.0:
+        return 0.0
+    aa = max(0.0, ax2 - ax1) * max(0.0, ay2 - ay1)
+    ba = max(0.0, bx2 - bx1) * max(0.0, by2 - by1)
+    den = aa + ba - inter
+    if den <= 1e-9:
+        return 0.0
+    return max(0.0, min(1.0, inter / den))
+
+
+def _bbox_center_dist_norm(a: list[float], b: list[float]) -> float:
+    try:
+        ax1, ay1, ax2, ay2 = [float(x) for x in a]
+        bx1, by1, bx2, by2 = [float(x) for x in b]
+    except (TypeError, ValueError):
+        return 1.0
+    acx, acy = (ax1 + ax2) * 0.5, (ay1 + ay2) * 0.5
+    bcx, bcy = (bx1 + bx2) * 0.5, (by1 + by2) * 0.5
+    return math.sqrt((acx - bcx) ** 2 + (acy - bcy) ** 2)
+
+
+def _row_bbox_first_last(row: dict) -> tuple[list[float] | None, list[float] | None]:
+    frames = row.get("frames")
+    if not isinstance(frames, list) or not frames:
+        return None, None
+    first = frames[0] if isinstance(frames[0], dict) else None
+    last = frames[-1] if isinstance(frames[-1], dict) else None
+    return (
+        (first.get("bbox") if first else None),
+        (last.get("bbox") if last else None),
+    )
+
+
+def _merge_adjacent_yolo_fragments(detections: list[dict], app_config: Any) -> list[dict]:
+    """Merge same-species adjacent YOLO fragments (short gap + spatial continuity)."""
+    if not detections:
+        return detections
+    try:
+        enabled = bool((app_config or {}).get("detection.track_fragment_merge_enabled", True))
+    except Exception:
+        enabled = True
+    if not enabled:
+        return detections
+    try:
+        max_gap = float((app_config or {}).get("detection.track_fragment_merge_gap_sec") or 1.2)
+    except (TypeError, ValueError):
+        max_gap = 1.2
+    try:
+        min_iou = float((app_config or {}).get("detection.track_fragment_merge_min_iou") or 0.08)
+    except (TypeError, ValueError):
+        min_iou = 0.08
+    try:
+        max_center = float((app_config or {}).get("detection.track_fragment_merge_max_center_dist") or 0.18)
+    except (TypeError, ValueError):
+        max_center = 0.18
+    max_gap = max(0.0, min(5.0, max_gap))
+    min_iou = max(0.0, min(1.0, min_iou))
+    max_center = max(0.0, min(1.0, max_center))
+
+    rows = sorted(detections, key=lambda r: float(r.get("start_time") or 0.0))
+    out: list[dict] = []
+    merged_count = 0
+    for row in rows:
+        if not out:
+            out.append(row)
+            continue
+        prev = out[-1]
+        if str(prev.get("detection_provider") or "").strip().lower() != "yolo":
+            out.append(row)
+            continue
+        if str(row.get("detection_provider") or "").strip().lower() != "yolo":
+            out.append(row)
+            continue
+        if str(prev.get("species_name") or "") != str(row.get("species_name") or ""):
+            out.append(row)
+            continue
+        prev_end = float(prev.get("end_time") or 0.0)
+        cur_start = float(row.get("start_time") or 0.0)
+        gap = cur_start - prev_end
+        if gap < 0.0 or gap > max_gap:
+            out.append(row)
+            continue
+        _, prev_last = _row_bbox_first_last(prev)
+        row_first, _ = _row_bbox_first_last(row)
+        if prev_last is None or row_first is None:
+            out.append(row)
+            continue
+        iou = _bbox_iou_norm(prev_last, row_first)
+        cdist = _bbox_center_dist_norm(prev_last, row_first)
+        if iou < min_iou and cdist > max_center:
+            out.append(row)
+            continue
+        prev_frames = prev.get("frames") if isinstance(prev.get("frames"), list) else []
+        row_frames = row.get("frames") if isinstance(row.get("frames"), list) else []
+        merged = {**prev}
+        merged["end_time"] = max(float(prev.get("end_time") or 0.0), float(row.get("end_time") or 0.0))
+        merged["confidence"] = max(float(prev.get("confidence") or 0.0), float(row.get("confidence") or 0.0))
+        merged["detector_confidence"] = max(
+            float(prev.get("detector_confidence") or 0.0),
+            float(row.get("detector_confidence") or 0.0),
+        )
+        if prev_frames or row_frames:
+            merged["frames"] = prev_frames + row_frames
+        merged["track_fragment_merged"] = True
+        merged["merged_track_ids"] = sorted(
+            {
+                int(x)
+                for x in [
+                    prev.get("track_id"),
+                    row.get("track_id"),
+                    *(prev.get("merged_track_ids") or []),
+                    *(row.get("merged_track_ids") or []),
+                ]
+                if isinstance(x, int)
+            }
+        )
+        out[-1] = merged
+        merged_count += 1
+    if merged_count:
+        logger.info("Fusion: merged %s adjacent YOLO track fragment(s)", merged_count)
+    return out
 
 
 def build_fused_video_detections(
@@ -358,6 +560,8 @@ def build_fused_video_detections(
     start_time,
     end_time,
     app_config,
+    fusion_min_confidence_to_store: float | None = None,
+    triggered_camera: str | None = None,
 ) -> list[dict]:
     """Apply shared production fusion rules to video detections.
 
@@ -365,9 +569,9 @@ def build_fused_video_detections(
     biasing before DecisionMaker runs. Frigate usually only promotes/boosts
     existing YOLO rows; ``detection.frigate_standalone_when_no_yolo`` adds Frigate-only
     rows when video tracks are empty (see ``_frigate_standalone_prepared_rows``).
-    When ``detection.frigate_standalone_when_no_accepted_species`` is true (default),
-    synthetic rows are also used when YOLO produced exactly one accepted_generic
-    ``Bird`` row (useless fallback) — merge otherwise keeps Bird and drops Frigate's species.
+    When ``detection.frigate_standalone_when_no_accepted_species`` is true,
+    synthetic rows are also used when YOLO produced no accepted species result
+    (including the classic single accepted_generic ``Bird`` fallback).
     Frigate events with ``_frigate_merge_suppressed`` (excluded labels) still feed
     standalone but are kept out of ``merge_detections`` so they do not overwrite YOLO species.
     """
@@ -375,25 +579,32 @@ def build_fused_video_detections(
     merge_window = app_config.get("detection.merge_window_seconds", 5)
     dedup_window = app_config.get("detection.dedup_window_seconds", 45)
     one_per_species = app_config.get("detection.one_per_species", True)
-    source_priority = app_config.get("detection.source_priority") or [
+    source_priority_cfg = app_config.get("detection.source_priority") or [
         "yolo",
         "frigate",
     ]
+    source_priority = [str(x).strip().lower() for x in source_priority_cfg if str(x).strip()]
+    # Hard guard: YOLO stays primary even if config is edited incorrectly.
+    source_priority = [x for x in source_priority if x != "yolo"]
+    source_priority.insert(0, "yolo")
     cross_bonus = float(app_config.get("detection.cross_source_confidence_bonus") or 0)
     frigate_events = [
         ev for ev in (mqtt_events or []) if str((ev or {}).get("source") or "").strip().lower() == "frigate"
     ]
-    frigate_events = _frigate_events_camera_scoped(frigate_events, app_config)
+    frigate_events = _frigate_events_camera_scoped(
+        frigate_events,
+        app_config,
+        triggered_camera=triggered_camera,
+    )
     frigate_events_for_merge = [ev for ev in frigate_events if not ev.get("_frigate_merge_suppressed")]
-    standalone_on = bool(app_config.get("detection.frigate_standalone_when_no_yolo", True))
-    standalone_no_species = bool(app_config.get("detection.frigate_standalone_when_no_accepted_species", True))
+    # Safe-by-default: Frigate stays fallback-only unless explicitly enabled in config.
+    standalone_on = bool(app_config.get("detection.frigate_standalone_when_no_yolo", False))
+    standalone_no_species = bool(app_config.get("detection.frigate_standalone_when_no_accepted_species", False))
+    has_accepted_species = _prepared_has_accepted_species(prepared)
     want_standalone = (
         standalone_on
         and bool(frigate_events)
-        and (
-            not prepared
-            or (standalone_no_species and len(prepared) == 1 and _prepared_is_single_generic_bird_track(prepared))
-        )
+        and (not prepared or (standalone_no_species and not has_accepted_species))
     )
     if want_standalone:
         prepared_before = len(prepared)
@@ -405,8 +616,16 @@ def build_fused_video_detections(
         )
         if synthetic:
             extra = prepare_track_results_for_fusion(synthetic, app_config)
-            if not prepared or _prepared_is_single_generic_bird_track(prepared):
+            if not prepared:
                 prepared = extra
+            elif standalone_no_species and not has_accepted_species:
+                # Rescue mode: YOLO produced only weak/review rows, keep Frigate standalone
+                # as primary clip-level evidence so fallback cannot be silently suppressed.
+                prepared = extra
+            else:
+                # Keep YOLO evidence and add Frigate synthetic candidates; downstream
+                # arbitration/conflict rules decide final winner.
+                prepared.extend(extra)
             logger.info(
                 "Fusion: Frigate standalone — %s synthetic row(s); "
                 "yolo_prepared_rows_before=%s (merge uses %s non-suppressed Frigate events)",
@@ -432,6 +651,7 @@ def build_fused_video_detections(
         absorb_generic_bird_min_classifier_confidence=float(
             app_config.get("detection.absorb_generic_bird_min_classifier_confidence") or 0.22
         ),
+        preserve_equal_rank_conflicts_for_arbitration=True,
     )
     fused = apply_multi_camera_confidence_boost(
         fused,
@@ -445,12 +665,13 @@ def build_fused_video_detections(
         app_config=app_config,
     )
     fused = apply_hypothesis_arbitration(fused)
+    fused = _merge_adjacent_yolo_fragments(fused, app_config)
     # Optional learned fusion/calibration step. If enabled, the learned scorer
     # produces a calibrated probability from multimodal features and is blended
     # with the existing rule-based confidence.
     try:
         use_learned = bool(app_config.get("detection.use_learned_fusion") or False)
-    except Exception:
+    except (TypeError, ValueError):
         use_learned = False
     if use_learned:
         alpha = float(app_config.get("detection.fusion_alpha") or 0.6)
@@ -473,6 +694,11 @@ def build_fused_video_detections(
                 fused_score = float(scorer.score(features) or 0.0)
                 d["_fusion_scorer_status"] = "ok"
             except Exception:
+                logger.debug(
+                    "learned FusionScorer.score failed (features_keys=%s)",
+                    sorted(features.keys()),
+                    exc_info=True,
+                )
                 fused_score = 0.0
                 d["_fusion_scorer_status"] = "error"
             # blend learned score with existing confidence to be conservative by default
@@ -482,7 +708,20 @@ def build_fused_video_detections(
             prev_fusion_used = str(d.get("_fusion_used") or "").strip()
             d["_fusion_used"] = f"learned+{prev_fusion_used}" if prev_fusion_used else "learned"
             d["_fusion_score"] = fused_score
-    fused = _clamp_fusion_confidence_inflation(fused)
+    fused = _clamp_fusion_confidence_inflation(fused, app_config)
     fused = apply_runtime_contract_rows(fused)
-    min_conf_store = float(app_config.get("detection.min_confidence_to_store") or 0.05)
-    return [d for d in fused if float(d.get("confidence") or 0.0) >= min_conf_store]
+    if fusion_min_confidence_to_store is not None:
+        try:
+            min_conf_store = float(fusion_min_confidence_to_store)
+        except (TypeError, ValueError):
+            min_conf_store = float(app_config.get("detection.min_confidence_to_store") or 0.05)
+    else:
+        min_conf_store = float(app_config.get("detection.min_confidence_to_store") or 0.05)
+    out = [d for d in fused if float(d.get("confidence") or 0.0) >= min_conf_store]
+    if len(out) < len(fused):
+        logger.info(
+            "Fusion: dropped %s row(s) below min_confidence_to_store=%s",
+            len(fused) - len(out),
+            min_conf_store,
+        )
+    return out

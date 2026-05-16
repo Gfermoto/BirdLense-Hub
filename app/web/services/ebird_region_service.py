@@ -67,6 +67,11 @@ def get_region_comparison(user_species_names: list[str]) -> dict | None:
     try:
         region_top = get_region_top_species_cached(api_key, region_code)
     except Exception:
+        logger.debug(
+            "eBird get_region_top_species_cached failed region=%s",
+            region_code,
+            exc_info=True,
+        )
         return None
 
     if not region_top:

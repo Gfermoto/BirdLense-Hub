@@ -127,7 +127,11 @@ export const StatusIndicator = () => {
   });
   if (!data) return null;
   const line = formatTriggersLine(data, t);
-  const tooltip = [t('status.motionActive'), line].join('\n');
+  const parts = [t('status.motionActive'), line];
+  if (data.mqtt === 'error') {
+    parts.push(t('status.motionNoteMqttDown'));
+  }
+  const tooltip = parts.join('\n');
   return (
     <Box
       sx={{ display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}

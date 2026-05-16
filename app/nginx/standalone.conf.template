@@ -28,11 +28,8 @@ server {
   if ($request_uri ~* "\.\.") { return 403; }
 
   # #339: не отдаём весь DATA_DIR — иначе скачиваем SQLite (db/), датасет, кэш без auth.
-  location ^~ /data/recordings/ {
-    alias /app/data/recordings/;
-    autoindex off;
-    add_header Accept-Ranges bytes;
-  }
+  # Прямая раздача recordings (по умолчанию вкл.); откл.: BIRDLENSE_HIDE_DIRECT_RECORDINGS=1 → placeholder пустой, /data/recordings/* → 403.
+  __RECORDINGS_LOCATION_BLOCK__
   location ^~ /data/images/ {
     alias /app/data/images/;
     autoindex off;
@@ -64,6 +61,7 @@ server {
     proxy_set_header Connection "";
     proxy_buffering off;
     proxy_request_buffering off;
+    proxy_connect_timeout 90s;
     proxy_read_timeout 1h;
     proxy_send_timeout 1h;
   }
@@ -76,6 +74,7 @@ server {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 90s;
     proxy_read_timeout 24h;
     proxy_send_timeout 24h;
     proxy_request_buffering off;
@@ -90,6 +89,7 @@ server {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 90s;
   }
 
   # MCP (Model Context Protocol) — при mcp.enabled

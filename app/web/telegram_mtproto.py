@@ -225,7 +225,7 @@ async def _mtproto_send_inner(
         try:
             await client.disconnect()
         except Exception:
-            pass
+            logger.debug("Telegram MTProto client disconnect failed", exc_info=True)
 
 
 def mtproto_send(

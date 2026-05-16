@@ -1,8 +1,9 @@
 """ORM-модели BirdLense: видео, детекции, визиты, каталог видов и вспомогательные сущности."""
 
 import datetime
+import uuid
 from typing import List
-from sqlalchemy import String, Integer, Float, DateTime, Table, ForeignKey, Column, Index, desc, JSON
+from sqlalchemy import String, Integer, Float, DateTime, Table, ForeignKey, Column, Index, desc, JSON, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from flask_sqlalchemy import SQLAlchemy
@@ -34,8 +35,14 @@ class VideoSpecies(db.Model):
     source: Mapped[str] = mapped_column(String, nullable=False)  # video or audio
     detection_provider: Mapped[str] = mapped_column(String, nullable=True)  # yolo, frigate, birdnet_mqtt, legacy
     track_id: Mapped[int] = mapped_column(Integer, nullable=True)  # ByteTrack ID for stable identification
+    individual_nickname: Mapped[str] = mapped_column(String(64), nullable=True)
     # JSON: [{t: 0.1, bbox: [x1,y1,x2,y2]}, ...] for track visualization
     frames: Mapped[str] = mapped_column(String, nullable=True)
+    classifier_entropy: Mapped[float | None] = mapped_column(Float, nullable=True)
+    classifier_top1_top2_margin: Mapped[float | None] = mapped_column(Float, nullable=True)
+    classifier_needs_review: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
+    review_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    individual_nickname: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # True if user corrected species — track regen must not overwrite
     manually_corrected: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
     video: Mapped["Video"] = relationship(back_populates="video_species")
@@ -181,6 +188,12 @@ class Video(db.Model):
     start_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     end_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     video_path: Mapped[str] = mapped_column(nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(
+        String(96),
+        nullable=False,
+        default=lambda: uuid.uuid4().hex,
+    )
+    ingest_payload_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     spectrogram_path: Mapped[str] = mapped_column(String, nullable=True)  # spectrogram image
     favorite: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -198,6 +211,9 @@ class Video(db.Model):
     weather_wind_speed: Mapped[int] = mapped_column(Float(precision=2), nullable=True)  # wind speed, meter/sec
     # Оценка изменения массы на весах за интервал записи (кг), issue #167
     scales_weight_delta_kg: Mapped[float | None] = mapped_column(Float(precision=6), nullable=True)
+    # Распознавание поведения: baseline из процессора (#416), nullable до первого включения.
+    behavior_label: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    behavior_confidence: Mapped[float | None] = mapped_column(Float(), nullable=True)
 
     # Relations
     video_species: Mapped[List["VideoSpecies"]] = relationship(back_populates="video")
@@ -208,6 +224,13 @@ class Video(db.Model):
         Index("ix_video_start_time", "start_time"),
         Index("ix_video_end_time", "end_time"),
         Index("ix_video_deleted_at", "deleted_at"),
+        Index(
+            "ux_video_idempotency_active",
+            "idempotency_key",
+            unique=True,
+            sqlite_where=text("deleted_at IS NULL"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
     )
 
 
@@ -225,6 +248,43 @@ class ActivityLog(db.Model):
     data: Mapped[str] = mapped_column(String(), nullable=True)
 
     __table_args__ = (Index("ix_activitylog_type_created_at", "type", desc("created_at")),)
+
+
+class DetectionFeedbackEvent(db.Model):
+    """Operator correction/delete signals for feedback-learning loop (#397)."""
+
+    __tablename__ = "detection_feedback_event"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    action: Mapped[str] = mapped_column(String(32), nullable=False)  # relabel | delete_as_background
+    trigger_source: Mapped[str | None] = mapped_column(String(32), nullable=True)  # video | unknowns | ...
+    apply_scope: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    video_species_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("video_species.id"), nullable=True)
+    video_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("video.id"), nullable=True)
+    track_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    from_species_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("species.id"), nullable=True)
+    to_species_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("species.id"), nullable=True)
+    from_species_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    to_species_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    detection_provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    frames_json: Mapped[str | None] = mapped_column(String, nullable=True)
+    crop_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    camera: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    __table_args__ = (
+        Index("ix_feedback_event_created_at", desc("created_at")),
+        Index("ix_feedback_event_action_created_at", "action", desc("created_at")),
+        Index("ix_feedback_event_video_species_id", "video_species_id"),
+        Index("ix_feedback_event_video_track", "video_id", "track_id"),
+    )
 
 
 class SiteVisitor(db.Model):

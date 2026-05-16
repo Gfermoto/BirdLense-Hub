@@ -56,8 +56,11 @@ export const queryKeys = {
     catalogCoverageMetrics: ['catalog-coverage-metrics'] as const,
     classifierDatasetAlignment: ['classifier-dataset-alignment'] as const,
     processorWeightsStatus: ['processor-weights-status'] as const,
+    mlRuntimeStatus: ['ml-runtime-status'] as const,
+    feedbackLoopStatus: ['feedback-loop-status'] as const,
     fusionExportStatus: ['fusion-export-status'] as const,
     fusionEvalStatus: ['fusion-eval-status'] as const,
+    domainHealth: ['system-domain-health'] as const,
   },
   feed: {
     info: ['feed-info'] as const,
@@ -123,6 +126,7 @@ export const queryKeys = {
     neighbors: (id: string) => ['video-neighbors', id] as const,
     neighborsAll: ['video-neighbors'] as const,
     detectionFrames: (id: string) => ['video-detection-frames', id] as const,
+    reidMatch: (id: string) => ['video-reid-match', id] as const,
     listAll: ['videos'] as const,
     trackRegenStatusUi: (videoId: number | null, nonce: number) =>
       ['track-regen-status-ui', videoId, nonce] as const,

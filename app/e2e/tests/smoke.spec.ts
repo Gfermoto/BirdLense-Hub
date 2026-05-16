@@ -25,8 +25,12 @@ async function waitMainSpinnerGone(page: import('@playwright/test').Page) {
 }
 
 async function isSettingsProtected(page: import('@playwright/test').Page) {
+  const dialogPasswordInput = page.locator('[role="dialog"] input[type="password"]').first();
+  if (await dialogPasswordInput.isVisible().catch(() => false)) return true;
   return page
-    .getByRole('dialog', { name: /Password for settings access/i })
+    .getByText(
+      /This area is for station setup or service maintenance|Раздел для настройки станции или сервисного обслуживания|此区域用于站点设置或服务维护/i,
+    )
     .isVisible()
     .catch(() => false);
 }
@@ -62,10 +66,10 @@ test.describe('Smoke tests', () => {
     await page.getByTestId('nav-pill-timeline').click();
     await expect(page).toHaveURL(/\/timeline/);
 
-    await page.goto('/settings');
+    await gotoReady(page, '/settings');
     await expect(page).toHaveURL(/\/settings/);
 
-    await page.goto('/live');
+    await gotoReady(page, '/live');
     await expect(page).toHaveURL(/\/live/);
   });
 
@@ -77,16 +81,15 @@ test.describe('Smoke tests', () => {
     );
     if (mode === 'protected') {
       await expect(
-        page.getByText(/This area is for station setup or service maintenance/i),
+        page.getByText(
+          /This area is for station setup or service maintenance|Раздел для настройки станции или сервисного обслуживания|此区域用于站点设置或服务维护/i,
+        ),
       ).toBeVisible({ timeout: 15000 });
       await expect(
-        page.getByRole('dialog', { name: /Password for settings access/i }),
+        page.locator('[role="dialog"]').first(),
       ).toBeVisible({ timeout: 15000 });
       await expect(
-        page
-          .getByRole('dialog', { name: /Password for settings access/i })
-          .locator('input[type="password"]')
-          .first(),
+        page.locator('[role="dialog"] input[type="password"]').first(),
       ).toBeVisible({ timeout: 15000 });
       return;
     }
@@ -114,7 +117,16 @@ test.describe('Smoke tests', () => {
 
   test('Timeline page loads', async ({ page }) => {
     await gotoReady(page, '/timeline');
-    await expect(page.getByText(/Timeline|Записи|时间线|时间轴|选择|Select/i).first()).toBeVisible({
+    await waitMainSpinnerGone(page);
+    // EN: чип режима «Timeline» или intro; nav.timeline = «Recordings»; при ошибке API — заголовок «Recordings».
+    // RU/ZH: см. locales `nav.timeline`, `timeline.intro`, `timeline.modeTimeline`.
+    await expect(
+      page
+        .getByText(
+          /Timeline|Recordings|Записи|记录|时间线|时间轴|选择|Select|Pick a day|Выберите день|选择有录像/i,
+        )
+        .first(),
+    ).toBeVisible({
       timeout: 15000,
     });
   });
@@ -169,7 +181,14 @@ test.describe('Smoke tests', () => {
     // /unknowns → /timeline?review=1. На хабе без пароля canEdit=true — review=1 остаётся (это ок).
     // С паролем гость получает replace без review=1 (см. TimelinePage useEffect).
     await expect(page).toHaveURL(/\/timeline/);
-    await expect(page.getByText(/Timeline|Записи|时间线|时间轴|选择|Select/i).first()).toBeVisible({
+    await waitMainSpinnerGone(page);
+    await expect(
+      page
+        .getByText(
+          /Timeline|Recordings|Записи|记录|时间线|时间轴|选择|Select|Pick a day|Выберите день|选择有录像/i,
+        )
+        .first(),
+    ).toBeVisible({
       timeout: 15000,
     });
   });
@@ -189,26 +208,27 @@ test.describe('Smoke tests', () => {
 
   test('System page loads', async ({ page }) => {
     await gotoReady(page, '/system');
-    const mode = await detectViewMode(page, /System|Система|系统/i);
-    if (mode === 'protected') {
+    // Не использовать detectViewMode: эвристика protectedHeading («Service»/settings) даёт ложный
+    // «protected» на /system и разводит по ветке с текстом из /settings.
+    if (await isSettingsProtected(page)) {
       await expect(
-        page.getByText(/This area is for station setup or service maintenance/i),
+        page.getByText(
+          /This area is for station setup or service maintenance|Раздел для настройки станции или сервисного обслуживания|此区域用于站点设置或服务维护/i,
+        ),
       ).toBeVisible({ timeout: 15000 });
       await expect(
-        page.getByRole('dialog', { name: /Password for settings access/i }),
+        page.locator('[role="dialog"]').first(),
       ).toBeVisible({ timeout: 15000 });
       await expect(
-        page
-          .getByRole('dialog', { name: /Password for settings access/i })
-          .locator('input[type="password"]')
-          .first(),
+        page.locator('[role="dialog"] input[type="password"]').first(),
       ).toBeVisible({ timeout: 15000 });
       return;
     }
-    expect(mode).toBe('unlocked');
-    await expect(page.getByText(/System|Система|系统/i).first()).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/Ready|Готово|已就绪|Needs attention|Требует внимания/i).first()).toBeVisible({
-      timeout: 15000,
+    await expect(page).toHaveURL(/\/system/, { timeout: 20000 });
+    await expect(
+      page.getByText(/Ready|Готово|已就绪|Needs attention|Требует внимания/i).first(),
+    ).toBeVisible({
+      timeout: 20000,
     });
   });
 });

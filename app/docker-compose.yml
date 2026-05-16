@@ -5,16 +5,27 @@
 # Вручную: см. docker-compose.intel.example.yml.
 
 services:
+  # Если в docker logs redis: «Memory overcommit must be enabled» — на Docker-хосте (не в контейнере):
+  # bash scripts/host-enable-vm-overcommit-memory.sh
   redis:
     image: redis:7-alpine
     container_name: birdlense-redis
     restart: unless-stopped
+    stop_grace_period: 20s
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    mem_limit: 512m
+    cpus: "1.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
+      start_period: 5s
 
   birdlense:
     build:
@@ -22,6 +33,8 @@ services:
       context: ..
       dockerfile: app/Dockerfile
     container_name: birdlense
+    # YOLO/OpenCV в процессоре: дефолтный 64 MB /dev/shm даёт лишние warning и реже — артефакты.
+    shm_size: "2gb"
     depends_on:
       redis:
         condition: service_healthy
@@ -48,16 +61,26 @@ services:
       - MCP_TOKEN=${MCP_TOKEN:-}
       - BIRDLENSE_STRICT_API_AUTH=${BIRDLENSE_STRICT_API_AUTH:-}
       - BIRDLENSE_UI_API_KEY=${BIRDLENSE_UI_API_KEY:-}
+      - BIRDLENSE_HIDE_DIRECT_RECORDINGS=${BIRDLENSE_HIDE_DIRECT_RECORDINGS:-}
       - TRUSTED_PROXY=${TRUSTED_PROXY:-}
       - BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=${BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT:-}
     restart: unless-stopped
+    stop_grace_period: 45s
+    mem_limit: 4g
+    cpus: "4.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "7"
     deploy:
       resources:
         limits:
           cpus: '4'
           memory: 4G
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/ui/health"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/ui/readiness"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 25s

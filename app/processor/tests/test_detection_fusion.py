@@ -10,8 +10,9 @@ sys.path.insert(0, src_path)
 
 import detection_fusion as detection_fusion_mod
 from birdnet_merge_key import reset_birdnet_merge_key_cache_for_tests
-from detection_fusion import build_fused_video_detections
+from detection_fusion import build_fused_video_detections, skip_frigate_ev_for_standalone
 from hypothesis_arbitration import apply_hypothesis_arbitration
+from species_normalizer import merge_detections
 
 
 class DummyConfig(dict):
@@ -148,6 +149,42 @@ def test_build_fused_video_detections_marks_birdnet_conflict_and_multi_camera_su
     assert out[0]['_multi_camera_support'] is True
 
 
+def test_build_fused_video_detections_birdnet_top_species_tie_is_stable():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=30)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.05,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    })
+    base_det = [_base_detection('Great Tit')]
+    mqtt_a = [
+        {'source': 'birdnet', 'species': 'Blue Tit', 'confidence': 0.7, 'timestamp': end.isoformat()},
+        {'source': 'birdnet', 'species': 'Great Tit', 'confidence': 0.7, 'timestamp': end.isoformat()},
+    ]
+    mqtt_b = list(reversed(mqtt_a))
+    out_a = build_fused_video_detections(
+        base_det,
+        mqtt_a,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    out_b = build_fused_video_detections(
+        base_det,
+        mqtt_b,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    assert out_a[0]['audio_top_species'] == out_b[0]['audio_top_species']
+
+
 def test_build_fused_video_detections_marks_learned_fusion_failure_status(monkeypatch):
     start = datetime.now(timezone.utc)
     end = start + timedelta(seconds=30)
@@ -263,7 +300,7 @@ def test_frigate_standalone_creates_row_when_no_yolo():
     assert out[0]['yolo_track_present'] is False
 
 
-def test_frigate_standalone_attaches_frames_when_frigate_bbox_norm_on_event():
+def test_frigate_standalone_keeps_rows_frameless_to_avoid_stuck_overlay_bbox():
     start = datetime.now(timezone.utc)
     end = start + timedelta(seconds=20)
     cfg = DummyConfig({
@@ -287,6 +324,7 @@ def test_frigate_standalone_attaches_frames_when_frigate_bbox_norm_on_event():
             'confidence': 0.88,
             'timestamp': (start + timedelta(seconds=2)).isoformat(),
             'frigate_bbox_norm': [0.1, 0.2, 0.55, 0.65],
+            '_frigate_has_geometry': True,
         },
     ]
     out = build_fused_video_detections(
@@ -297,10 +335,126 @@ def test_frigate_standalone_attaches_frames_when_frigate_bbox_norm_on_event():
         app_config=cfg,
     )
     assert len(out) == 1
-    frames = out[0].get('frames')
-    assert isinstance(frames, list) and len(frames) == 1
-    assert frames[0]['t'] == 10.0
-    assert frames[0]['bbox'] == [0.1, 0.2, 0.55, 0.65]
+    assert not out[0].get('frames')
+
+
+def test_frigate_standalone_requires_geometry_by_default():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.36,
+        'detection.frigate_standalone_when_no_yolo': True,
+        'detection.frigate_standalone_min_score': 0.62,
+        'detection.frigate_standalone_missing_score_fallback': 0.72,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    })
+    mqtt = [
+        {
+            'source': 'frigate',
+            'species': 'bird',
+            'label': 'bird',
+            'confidence': 0.0,
+            'timestamp': (start + timedelta(seconds=1)).isoformat(),
+            '_frigate_has_geometry': False,
+        },
+    ]
+    out = build_fused_video_detections(
+        [],
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    assert out == []
+
+
+def test_frigate_standalone_accepts_session_trigger_snapshot_without_geometry():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    cfg = DummyConfig({
+        'video.cameras': [
+            {'id': 'Forest', 'stream_name': 'Forest'},
+            {'id': 'BirdBox', 'stream_name': 'BirdBox'},
+        ],
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.36,
+        'detection.frigate_standalone_when_no_yolo': True,
+        'detection.frigate_standalone_min_score': 0.45,
+        'detection.frigate_standalone_missing_score_fallback': 0.0,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    })
+    mqtt = [
+        {
+            'source': 'frigate',
+            'camera': 'Forest',
+            'species': 'Hooded Crow',
+            'label': 'bird',
+            'sub_label': 'Hooded Crow',
+            'confidence': 0.66,
+            'timestamp': (start + timedelta(seconds=1)).isoformat(),
+            '_frigate_has_geometry': False,
+            '_session_trigger_snapshot': True,
+        },
+    ]
+    out = build_fused_video_detections(
+        [],
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+        triggered_camera='Forest',
+    )
+    assert len(out) == 1
+    assert out[0]['decision_kind'] == 'frigate_standalone'
+    assert out[0]['species_name'] == 'Hooded Crow'
+
+
+def test_frigate_standalone_ignores_stale_events_outside_age_window():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.36,
+        'detection.frigate_standalone_when_no_yolo': True,
+        'detection.frigate_standalone_min_score': 0.62,
+        'detection.frigate_standalone_max_event_age_seconds': 8,
+        'detection.frigate_standalone_missing_score_fallback': 0.0,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    })
+    mqtt = [
+        {
+            'source': 'frigate',
+            'species': 'bird',
+            'label': 'bird',
+            'confidence': 0.92,
+            'timestamp': (start - timedelta(seconds=20)).isoformat(),
+            '_frigate_has_geometry': True,
+        },
+    ]
+    out = build_fused_video_detections(
+        [],
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    assert out == []
 
 
 def test_frigate_standalone_injects_when_yolo_only_generic():
@@ -363,6 +517,57 @@ def test_frigate_standalone_injects_when_yolo_only_generic():
     )
     kinds_off = {str(d.get('decision_kind') or '') for d in out_off}
     assert 'frigate_standalone' not in kinds_off
+
+
+def test_frigate_standalone_injects_when_yolo_has_no_accepted_species():
+    """If YOLO returns only review/generic rows, Frigate standalone must still rescue clip."""
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.34,
+        'detection.frigate_standalone_when_no_yolo': True,
+        'detection.frigate_standalone_when_no_accepted_species': True,
+        'detection.frigate_standalone_min_score': 0.48,
+        'detection.frigate_standalone_missing_score_fallback': 0.0,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+    })
+    video = [
+        {
+            **_base_detection('Great Tit'),
+            'confidence': 0.39,
+            'classifier_confidence': 0.17,
+            'decision_kind': 'review_only_generic',
+            'decision_reason': 'weak_generic_review',
+            'accepted': False,
+            'visit_eligible': False,
+            'start_time': 0.0,
+            'end_time': 18.0,
+        },
+    ]
+    mqtt = [
+        {
+            'source': 'frigate',
+            'species': 'Great Tit',
+            'label': 'Great Tit',
+            'confidence': 0.82,
+            'timestamp': (start + timedelta(seconds=2)).isoformat(),
+        },
+    ]
+
+    out = build_fused_video_detections(
+        video,
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    assert any(str(d.get('decision_kind') or '') == 'frigate_standalone' for d in out)
 
 
 def test_frigate_standalone_uses_missing_score_fallback():
@@ -696,6 +901,8 @@ def test_arbitration_keeps_strongest_species_with_multi_source_consensus():
     assert out[0]['species_name'] == 'Great Tit'
     assert out[0]['decision_reason'] == 'species_won_by_multi_source_consensus'
     assert out[0].get('arbitration_reason') == 'species_won_by_multi_source_consensus'
+    assert out[0].get('detection_provider') == 'arbitration'
+    assert out[0].get('arbitrated_primary_provider') == 'yolo'
 
 
 def test_arbitration_absorbs_generic_bird_into_species_with_cross_source_support():
@@ -931,6 +1138,43 @@ def test_arbitration_downgrades_strong_unresolved_conflict_to_review_only():
     assert out[0]['outcome_bucket'] == 'review_only'
 
 
+def test_arbitration_keeps_visually_anchored_species_when_gap_is_small():
+    rows = [
+        {
+            **_base_detection('Great Tit'),
+            'track_id': 1,
+            'accepted': True,
+            'visit_eligible': True,
+            'confidence': 0.67,
+            'decision_kind': 'accepted_generic',
+            'decision_reason': 'fallback_detector_generic',
+            'start_time': 0.0,
+            'end_time': 6.0,
+            'detection_provider': 'yolo',
+            'contributing_providers': ['yolo'],
+            'classifier_confidence': 0.20,
+        },
+        {
+            **_base_detection('Blue Tit'),
+            'track_id': -2,
+            'accepted': True,
+            'visit_eligible': True,
+            'confidence': 0.53,
+            'decision_kind': 'frigate_standalone',
+            'decision_reason': 'frigate_standalone',
+            'start_time': 0.2,
+            'end_time': 6.2,
+            'detection_provider': 'frigate',
+            'contributing_providers': ['frigate'],
+            'classifier_confidence': None,
+        },
+    ]
+    out = apply_hypothesis_arbitration(rows)
+    assert len(out) == 1
+    assert out[0]['species_name'] == 'Great Tit'
+    assert out[0]['decision_reason'] == 'species_kept_by_visual_anchor'
+
+
 def test_arbitration_absorbs_generic_bird_into_strong_frigate_species():
     rows = [
         {
@@ -951,7 +1195,7 @@ def test_arbitration_absorbs_generic_bird_into_strong_frigate_species():
             'track_id': -1,
             'species_name': 'Eurasian Jay',
             'species': 'Eurasian Jay',
-            'confidence': 0.79,
+            'confidence': 0.84,
             'start_time': 0.0,
             'end_time': 48.2,
             'detection_provider': 'frigate',
@@ -1027,7 +1271,7 @@ def test_build_fused_video_detections_absorbs_generic_bird_into_frigate_species(
         {
             'source': 'frigate',
             'species': 'Eurasian Jay',
-            'confidence': 0.79296875,
+            'confidence': 0.86296875,
             'timestamp': start.isoformat(),
         },
         {
@@ -1104,3 +1348,178 @@ def test_build_fused_video_detections_keeps_fragmented_generic_bird_visits_separ
         (1, 1.0, 3.0),
         (2, 31.0, 39.0),
     ]
+
+
+def test_fusion_clamp_non_species_respects_slack():
+    rows = [
+        {
+            'decision_kind': 'accepted_generic',
+            '_pre_fusion_confidence': 0.40,
+            'confidence': 0.50,
+        }
+    ]
+    cfg = DummyConfig({'detection.fusion_non_species_confidence_slack': 0.02})
+    out = detection_fusion_mod._clamp_fusion_confidence_inflation(rows, cfg)
+    assert abs(out[0]['confidence'] - 0.42) < 1e-9
+    assert out[0].get('_fusion_clamped') is True
+
+
+def test_fusion_clamp_non_species_zero_slack_legacy():
+    rows = [
+        {
+            'decision_kind': 'accepted_generic',
+            '_pre_fusion_confidence': 0.40,
+            'confidence': 0.50,
+        }
+    ]
+    cfg = DummyConfig({'detection.fusion_non_species_confidence_slack': 0.0})
+    out = detection_fusion_mod._clamp_fusion_confidence_inflation(rows, cfg)
+    assert abs(out[0]['confidence'] - 0.40) < 1e-9
+
+
+def test_fusion_clamp_skips_accepted_species():
+    rows = [
+        {
+            'decision_kind': 'accepted_species',
+            '_pre_fusion_confidence': 0.40,
+            'confidence': 0.90,
+        }
+    ]
+    out = detection_fusion_mod._clamp_fusion_confidence_inflation(
+        rows,
+        DummyConfig({'detection.fusion_non_species_confidence_slack': 0.0}),
+    )
+    assert abs(out[0]['confidence'] - 0.90) < 1e-9
+
+
+def test_merge_adjacent_yolo_fragments_same_species_small_gap():
+    rows = [
+        {
+            'track_id': 10,
+            'species_name': 'Great Tit',
+            'confidence': 0.61,
+            'start_time': 0.0,
+            'end_time': 2.0,
+            'detection_provider': 'yolo',
+            'detector_confidence': 0.62,
+            'frames': [{'t': 1.9, 'bbox': [0.10, 0.10, 0.30, 0.30]}],
+        },
+        {
+            'track_id': 11,
+            'species_name': 'Great Tit',
+            'confidence': 0.64,
+            'start_time': 2.4,
+            'end_time': 4.0,
+            'detection_provider': 'yolo',
+            'detector_confidence': 0.66,
+            'frames': [{'t': 2.4, 'bbox': [0.11, 0.10, 0.31, 0.30]}],
+        },
+    ]
+    cfg = DummyConfig({
+        'detection.track_fragment_merge_enabled': True,
+        'detection.track_fragment_merge_gap_sec': 1.2,
+        'detection.track_fragment_merge_min_iou': 0.08,
+        'detection.track_fragment_merge_max_center_dist': 0.18,
+    })
+    out = detection_fusion_mod._merge_adjacent_yolo_fragments(rows, cfg)
+    assert len(out) == 1
+    assert out[0]['track_fragment_merged'] is True
+    assert out[0]['merged_track_ids'] == [10, 11]
+    assert float(out[0]['end_time']) == 4.0
+
+
+def test_merge_adjacent_yolo_fragments_keeps_distant_rows_separate():
+    rows = [
+        {
+            'track_id': 10,
+            'species_name': 'Great Tit',
+            'confidence': 0.61,
+            'start_time': 0.0,
+            'end_time': 2.0,
+            'detection_provider': 'yolo',
+            'frames': [{'t': 1.9, 'bbox': [0.10, 0.10, 0.30, 0.30]}],
+        },
+        {
+            'track_id': 11,
+            'species_name': 'Great Tit',
+            'confidence': 0.64,
+            'start_time': 2.4,
+            'end_time': 4.0,
+            'detection_provider': 'yolo',
+            'frames': [{'t': 2.4, 'bbox': [0.70, 0.70, 0.90, 0.90]}],
+        },
+    ]
+    cfg = DummyConfig({
+        'detection.track_fragment_merge_enabled': True,
+        'detection.track_fragment_merge_gap_sec': 1.2,
+        'detection.track_fragment_merge_min_iou': 0.08,
+        'detection.track_fragment_merge_max_center_dist': 0.18,
+    })
+    out = detection_fusion_mod._merge_adjacent_yolo_fragments(rows, cfg)
+    assert len(out) == 2
+
+
+def test_merge_detections_conflict_result_stable_across_mqtt_order():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=12)
+    yolo = [
+        {
+            "species_name": "Blue Tit",
+            "species": "Blue Tit",
+            "confidence": 0.6,
+            "start_time": 0.0,
+            "end_time": 6.0,
+            "detection_provider": "yolo",
+            "source": "video",
+            "track_id": 1,
+            "decision_kind": "accepted_species",
+            "classifier_confidence": 0.6,
+        },
+        {
+            "species_name": "Great Tit",
+            "species": "Great Tit",
+            "confidence": 0.6,
+            "start_time": 0.0,
+            "end_time": 6.0,
+            "detection_provider": "yolo",
+            "source": "video",
+            "track_id": 2,
+            "decision_kind": "accepted_species",
+            "classifier_confidence": 0.6,
+        },
+    ]
+    mqtt_a = [
+        {"source": "frigate", "species": "Great Tit", "camera": "a", "timestamp": end.isoformat(), "confidence": 0.8},
+        {"source": "frigate", "species": "Blue Tit", "camera": "b", "timestamp": end.isoformat(), "confidence": 0.8},
+    ]
+    mqtt_b = list(reversed(mqtt_a))
+    out_a = merge_detections(
+        yolo,
+        mqtt_a,
+        start,
+        end,
+        merge_window_seconds=5,
+        dedup_window_seconds=45,
+        one_per_species=True,
+        source_priority=["yolo", "frigate"],
+    )
+    out_b = merge_detections(
+        yolo,
+        mqtt_b,
+        start,
+        end,
+        merge_window_seconds=5,
+        dedup_window_seconds=45,
+        one_per_species=True,
+        source_priority=["yolo", "frigate"],
+    )
+    assert [row["species_name"] for row in out_a] == [row["species_name"] for row in out_b]
+    assert len(out_a) == len(out_b) == 1
+
+
+def test_skip_frigate_ev_for_standalone_respects_config():
+    cfg = DummyConfig({'detection.frigate_standalone_skip_labels': ['person', 'human']})
+    assert skip_frigate_ev_for_standalone({'label': 'Person'}, cfg)
+    assert skip_frigate_ev_for_standalone({'species': 'human'}, cfg)
+    assert not skip_frigate_ev_for_standalone({'label': 'crow'}, cfg)
+    assert not skip_frigate_ev_for_standalone({'label': 'person'}, DummyConfig({}))

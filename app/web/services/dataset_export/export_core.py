@@ -138,6 +138,7 @@ def _video_metadata_for_ids(video_ids: set[int]) -> dict[int, dict]:
         # No DB/app context available (e.g. unit tests that call this function
         # without creating an app). Return empty metadata to allow file-only
         # dataset generation.
+        logger.debug("video metadata query skipped (no app/DB context)", exc_info=True)
         return {}
     out: dict[int, dict] = {}
     for video_id, start_time, video_path in rows:
@@ -494,7 +495,7 @@ def build_dataset_zip(
                         if parts:
                             try:
                                 vids.add(int(parts[0]))
-                            except Exception:
+                            except (ValueError, TypeError, IndexError):
                                 pass
                     if len(vids) == 1:
                         # safe to split within group
@@ -645,7 +646,10 @@ def build_dataset_zip(
                     tr_part, va_part, te_part = new_tr, new_va, new_te
                 except Exception:
                     # If grouping fails for any reason, fallback to original parts.
-                    pass
+                    logger.debug(
+                        "dataset split group rebuild failed; using ungrouped parts",
+                        exc_info=True,
+                    )
                 # Final safeguard: ensure val/test get at least one example when requested.
                 try:
 
@@ -677,7 +681,10 @@ def build_dataset_zip(
                             # fallback: move a single item if grouping couldn't move a whole group
                             te_part.append(tr_part.pop())
                 except Exception:
-                    pass
+                    logger.debug(
+                        "dataset split group rebalance fallback failed",
+                        exc_info=True,
+                    )
                 # Final unconditional fallback: ensure val/test get at least one example
                 if val_ratio and not va_part:
                     if tr_part:
@@ -843,7 +850,10 @@ def build_dataset_zip(
                 new_export.extend(splits[preferred])
             export_entries = [tuple(x) for x in new_export]
         except Exception:
-            pass
+            logger.debug(
+                "dataset export grouping repair for split leakage failed",
+                exc_info=True,
+            )
         quality = _quality_report_from_entries(export_entries, video_meta=video_meta)
         # If strict_quality requested and grouping leakage detected, attempt final repair:
         if strict_quality:
@@ -897,8 +907,13 @@ def build_dataset_zip(
                                 try:
                                     if os.path.isfile(src):
                                         zf2.write(src, f"{split}/{cls}/{os.path.basename(fname)}")
-                                except OSError:
-                                    pass
+                                except OSError as e:
+                                    logger.debug(
+                                        "strict_quality zip write skip src=%s: %s",
+                                        src,
+                                        e,
+                                        exc_info=True,
+                                    )
                         # recompute export_entries and quality for manifest
                         repaired_entries = []
                         for s, lst in (("train", new_tr), ("val", new_va), ("test", new_te)):
@@ -911,7 +926,10 @@ def build_dataset_zip(
                         buf2.seek(0)
                         buf = buf2
                 except Exception:
-                    pass
+                    logger.debug(
+                        "dataset export strict_quality zip repair failed",
+                        exc_info=True,
+                    )
         quality["slices"] = _slice_report_from_entries(export_entries, video_meta)
         info["quality"] = quality
         info["manifest"] = {

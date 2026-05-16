@@ -27,7 +27,7 @@
 
 **Текущая модель:** EU (birds-525 + iNaturalist Europe, ~491 вид). US (NABirds) — резерв в `best_US.pt`.
 
-**EU-модель:** классификатор обучен на merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Веса: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Обучение: [TRAINING.md](./docs/TRAINING.md). Детектор не меняется.
+**EU-модель:** классификатор обучен на merged_cls → [gfermoto/birds-eu-merged](https://huggingface.co/datasets/gfermoto/birds-eu-merged). Веса: [gfermoto/birdlense-birds-eu](https://huggingface.co/gfermoto/birdlense-birds-eu). Обучение: [TRAINING.md](./archive/internal/docs-legacy/TRAINING.md). Детектор не меняется.
 
 **Каталог видов:** приведение к классам классификатора — `species.catalog_allowlist_file`, опционально `catalog_strict_ingest`, скрипт `scripts/datasets/dump_classifier_allowlist.py`, массовая чистка `POST /api/ui/system/species-catalog/reconcile`; см. [docs/CONFIGURATION.ru.md](./docs/CONFIGURATION.ru.md).
 
@@ -86,14 +86,67 @@ docker pull ghcr.io/gfermoto/birdlense-hub:latest
 ```
 UI: http://localhost:8085
 
-**Установка:** [docs/INSTALL.md](./docs/INSTALL.md) | **Сценарии:** [docs/SCENARIOS.md](./docs/SCENARIOS.md) | **Все возможности:** [docs/FEATURES.md](./docs/FEATURES.md)
+**Установка:** [docs/INSTALL.md](./docs/user/install.md) | **Сценарии:** [docs/SCENARIOS.md](./docs/user/scenarios.md) | **Все возможности:** [docs/FEATURES.md](./docs/user/features.md)
 
 Для одношагового запуска: **`./install.sh`** из корня репозитория (или **`make install`**). Скрипт ставит Docker при необходимости, создаёт `app/.env`, поднимает стек и проверяет health/readiness/status. Готовый образ: **`./install.sh --pull`** или **`make install-pull`**.
+
+## Обучение baseline «поведения» (логистика, не YOLO)
+
+### Готовые демо-веса (уже в репозитории и в Docker-образе)
+
+Файл **`app/processor/models/behavior/behavior_logistic_export@v1.json`** коммитится в git и попадает в сборку. В **`default_config.yaml`** путь по умолчанию: **`models/behavior/behavior_logistic_export@v1.json`** (относительно корня `app/processor/`). Включите baseline в настройках и перезапустите процессор — **отдельно «скачивать веса» не нужно**, если вы не затирали этот путь в `user_config.yaml`.
+
+Это **не** модель под вашу кормушку, а проверка цепочки; свои веса — только после обучения на своих CSV (ниже).
+
+Это **отдельная маленькая модель** (файл JSON `behavior_logistic_export@v1`): по статистике кадров/детекций решает класс вроде `feeding` / `flying`. **Скачать готовую с Hugging Face нельзя** — классы и признаки ваши. Ниже — минимальный рецепт.
+
+**Важно про интерфейс хаба:** разметить тысячи кадров для датасета или нажать «обучить» в UI **нельзя** — такого экрана нет. В UI доступны только: **включить/выключить** baseline, **путь к JSON**, пороги уверенности, и на **странице ролика** — ручная правка **уже записанной** метки для этой записи. Полный цикл обучения — на машине разработчика/оператора (CSV → `make …`).
+
+### Что у вас должно быть на диске
+
+1. **Папка с CSV** (можно вложенные каталоги). Скрипт берёт **все `*.csv`** рекурсивно.
+2. **Имя файла** = условный ключ ролика (например `20250601_120000.csv` → ключ `20250601_120000`).
+3. В **каждой строке CSV минимум 6 колонок** (нумерация с нуля). Скрипт для поведения использует только:
+   - **колонка 4** — целое **id поведения** (должен совпасть с таксономией; по умолчанию `2` = feeding, `3` = flying и т.д. — см. `DEFAULT_TAXONOMY` в `scripts/ml_behavior_dataset_manifest.py`);
+   - **колонка 5** — строка **id субъекта/трека** (хоть `a` в каждой строке);
+   - **колонка 6** (если есть) — **название вида** (для признаков; можно пусто).
+
+Столбцы 0–3 скрипт не интерпретирует для поведения — заполните нулями/временем, как удобно, лишь бы строка была длиной ≥ 6.
+
+### Команды (скопировать и подставить пути)
+
+Из **корня репозитория** BirdLense на машине, где стоит Python:
+
+```bash
+cd /путь/к/BirdLense
+
+# 1) Манифест из ваших CSV
+export ANNOTATIONS_ROOT=/абсолютный/путь/к/папке/с_csv
+export OUT=/tmp/behavior_dataset_manifest.json
+make ml-build-behavior-dataset
+
+# 2) Обучение (один раз: pip install scikit-learn)
+pip install 'scikit-learn>=1.3,<2'
+export MANIFEST=/tmp/behavior_dataset_manifest.json
+export EXPORT=/tmp/behavior_logistic_export@v1.json
+export PRED=/tmp/behavior_predictions.json
+make ml-train-behavior-baseline
+```
+
+В конце появится файл **`EXPORT`** — это и есть веса для хаба.
+
+### Подключить к хабу
+
+1. Скопируйте `EXPORT` на сервер в каталог процессора, например `app/processor/models/behavior/moi_vesa.json`.
+2. **Настройки** → аккордеон **Процессор** → блок **«Распознавание поведения»** (`/settings#processor-behavior`): укажите путь **относительно корня `app/processor/`**, например `models/behavior/moi_vesa.json`.
+3. Включите baseline, **сохраните**, **перезапустите контейнер процессора**.
+
+Если своих CSV пока нет: в репозитории уже лежит демо-JSON; пересборка демо одной командой: **`make ml-train-behavior-synthetic-fixture`** (нужен `scikit-learn`). Подробнее: `app/processor/models/behavior/README.md`.
 
 ## Разработчикам
 
 - **Окружение:** [docs/LOCAL_DEV.ru.md](./docs/LOCAL_DEV.ru.md) — Docker, **Node.js 22** для `app/ui` (`.nvmrc`, `engines` в `package.json`), отдельный venv для MkDocs.
-- **Тесты и CI:** [docs/TESTING.ru.md](./docs/TESTING.ru.md) — `make test`, `make test-web`, E2E; тесты процессора требовательны к RAM.
+- **Тесты и CI:** [docs/TESTING.ru.md](./docs/TESTING.ru.md) — `cd app && make test`, `cd app && make test-web`, E2E; тесты процессора требовательны к RAM.
 - **Участие:** [CONTRIBUTING.ru.md](./CONTRIBUTING.ru.md).
 
 ### Первый прогон CI (как в Actions)

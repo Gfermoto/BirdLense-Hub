@@ -10,6 +10,7 @@ src_path = os.path.abspath(os.path.join(current_dir, "../src"))
 sys.path.insert(0, src_path)
 
 from frame_processor import FrameProcessor  # noqa: E402
+from tracker_paths import resolve_tracker_config_path  # noqa: E402
 
 
 class _DummyStrategy:
@@ -19,6 +20,7 @@ class _DummyStrategy:
     def detect(self, frame, tracker_config, *, min_confidence, profile_overrides=None):
         self.calls.append(
             {
+                "tracker_config": tracker_config,
                 "min_confidence": min_confidence,
                 "profile_overrides": dict(profile_overrides or {}),
             }
@@ -90,6 +92,10 @@ class TestRuntimeProfile(unittest.TestCase):
                     "min_confidence_binary": 0.18,
                     "min_box_size_px": 32,
                 },
+                "processor.tracker": "bytetrack.yaml",
+                "processor.tracker_profiles": {
+                    "night": "models/tracker/bytetrack_night.yaml",
+                },
             }
             return mapping.get(key, default)
 
@@ -102,6 +108,10 @@ class TestRuntimeProfile(unittest.TestCase):
         self.assertFalse(ran)
         self.assertEqual(len(strategy.calls), 1)
         self.assertAlmostEqual(strategy.calls[0]["min_confidence"], 0.18)
+        self.assertEqual(
+            strategy.calls[0]["tracker_config"],
+            resolve_tracker_config_path("models/tracker/bytetrack_night.yaml"),
+        )
         self.assertEqual(strategy.calls[0]["profile_overrides"]["min_box_size_px"], 32)
         self.assertEqual(fp.last_run_stats["runtime_profile"], "night")
 

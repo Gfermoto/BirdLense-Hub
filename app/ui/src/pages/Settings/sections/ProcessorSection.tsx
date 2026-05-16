@@ -23,9 +23,11 @@ import { ProcessorDetectorPipelineBlock } from './processor/ProcessorDetectorPip
 import { ProcessorBirdnetExtendedBlock } from './processor/ProcessorBirdnetExtendedBlock';
 import { ProcessorModelsScopeBlock } from './processor/ProcessorModelsScopeBlock';
 import { ProcessorTrackRegenBlock } from './processor/ProcessorTrackRegenBlock';
+import { ProcessorBehaviorRecognitionBlock } from './processor/ProcessorBehaviorRecognitionBlock';
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
+  simpleMode?: boolean;
 };
 
 function SectionHeading({
@@ -54,12 +56,13 @@ function SectionHeading({
   );
 }
 
-export function ProcessorSection({ form }: Props) {
+export function ProcessorSection({ form, simpleMode = true }: Props) {
   const { t } = useTranslation();
   const location = useLocation();
   const expandProcessor =
     location.hash === '#processor-weights' ||
-    location.hash === '#processor-models';
+    location.hash === '#processor-models' ||
+    location.hash === '#processor-behavior';
 
   return (
     <Accordion
@@ -109,6 +112,15 @@ export function ProcessorSection({ form }: Props) {
           <Divider sx={{ my: 2 }} />
 
           <SectionHeading>
+            {t('settings.processorSectionHeadingBehavior')}
+          </SectionHeading>
+          <Box id="processor-behavior">
+            <ProcessorBehaviorRecognitionBlock form={form} />
+          </Box>
+
+          <Divider sx={{ my: 2 }} />
+
+          <SectionHeading>
             {t('settings.processorSectionHeadingAudio')}
           </SectionHeading>
           <ProcessorMultiCameraBirdnetBlock form={form} />
@@ -116,21 +128,25 @@ export function ProcessorSection({ form }: Props) {
 
           <Divider sx={{ my: 2 }} />
 
-          <SectionHeading>
-            {t('settings.processorSectionHeadingQuality')}
-          </SectionHeading>
-          <ProcessorConfidenceAdvancedBlock form={form} />
-          <ProcessorFalsePositiveGuardrailsBlock form={form} />
+          {!simpleMode ? (
+            <>
+              <SectionHeading>
+                {t('settings.processorSectionHeadingQuality')}
+              </SectionHeading>
+              <ProcessorConfidenceAdvancedBlock form={form} />
+              <ProcessorFalsePositiveGuardrailsBlock form={form} />
 
-          <Divider sx={{ my: 2 }} />
+              <Divider sx={{ my: 2 }} />
 
-          <SectionHeading>
-            {t('settings.processorSectionHeadingData')}
-          </SectionHeading>
-          <ProcessorSpectrogramDatasetBlock form={form} />
-          <ProcessorModelsScopeBlock form={form} />
-          <ProcessorTrackRegenBlock form={form} />
-          <ProcessorFrigateFusionBlock form={form} />
+              <SectionHeading>
+                {t('settings.processorSectionHeadingData')}
+              </SectionHeading>
+              <ProcessorSpectrogramDatasetBlock form={form} />
+              <ProcessorModelsScopeBlock form={form} />
+              <ProcessorTrackRegenBlock form={form} />
+              <ProcessorFrigateFusionBlock form={form} />
+            </>
+          ) : null}
         </Box>
       </AccordionDetails>
     </Accordion>

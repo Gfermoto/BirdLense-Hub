@@ -26,6 +26,9 @@ export function invalidateLocalSpeciesEditCaches(
     queryClient.invalidateQueries({
       queryKey: queryKeys.video.detail(String(videoId)),
     });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.video.reidMatch(String(videoId)),
+    });
   }
   for (const key of AFTER_LOCAL_SPECIES_EDIT_KEYS) {
     queryClient.invalidateQueries({ queryKey: [...key] });

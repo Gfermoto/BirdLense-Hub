@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import data_paths
 from app_config.app_config import app_config
-from models import Species, SpeciesUnresolvedName, Video, VideoSpecies, db
+from models import ActivityLog, Species, SpeciesUnresolvedName, Video, VideoSpecies, db
 from services.species_data_quality_service import find_duplicate_name_groups
 from services.species_visit_maintenance_service import (
     _collect_large_gap_visit_splits,
@@ -45,6 +48,41 @@ def _large_gap_seconds() -> int:
     except (TypeError, ValueError):
         visit_timeout = 60
     return max(300, visit_timeout * 4)
+
+
+def _duplicate_video_groups_count() -> int:
+    return int(
+        db.session.query(Video.video_path, Video.start_time, Video.end_time, Video.processor_version)
+        .filter(Video.deleted_at.is_(None))
+        .group_by(Video.video_path, Video.start_time, Video.end_time, Video.processor_version)
+        .having(db.func.count(Video.id) > 1)
+        .count()
+    )
+
+
+def _duplicate_detection_groups_count() -> int:
+    return int(
+        db.session.query(
+            VideoSpecies.video_id,
+            VideoSpecies.species_id,
+            VideoSpecies.start_time,
+            VideoSpecies.end_time,
+            VideoSpecies.source,
+            VideoSpecies.detection_provider,
+            VideoSpecies.track_id,
+        )
+        .group_by(
+            VideoSpecies.video_id,
+            VideoSpecies.species_id,
+            VideoSpecies.start_time,
+            VideoSpecies.end_time,
+            VideoSpecies.source,
+            VideoSpecies.detection_provider,
+            VideoSpecies.track_id,
+        )
+        .having(db.func.count(VideoSpecies.id) > 1)
+        .count()
+    )
 
 
 def _duplicate_clip_candidates(*, recent_hours: int = 24, limit: int = 12) -> list[dict[str, Any]]:
@@ -177,6 +215,152 @@ def _thresholds_safe() -> dict[str, Any]:
         }
 
 
+def _recent_detection_track_metrics(hours: int = 24) -> dict[str, Any]:
+    cutoff = _utc_now() - timedelta(hours=max(1, int(hours or 24)))
+    rows = (
+        db.session.query(VideoSpecies)
+        .filter(
+            VideoSpecies.source == "video",
+            VideoSpecies.created_at >= cutoff,
+        )
+        .all()
+    )
+    total = len(rows)
+    with_frames = sum(1 for row in rows if bool(row.frames))
+    yolo_provider = sum(1 for row in rows if str(row.detection_provider or "").strip().lower() == "yolo")
+    return {
+        "video_detections_24h": total,
+        "video_detections_with_frames_24h": with_frames,
+        "video_detections_with_frames_ratio_24h": (with_frames / total) if total else None,
+        "video_detections_primary_yolo_24h": yolo_provider,
+        "video_detections_primary_yolo_ratio_24h": (yolo_provider / total) if total else None,
+    }
+
+
+def _recent_trigger_camera_metrics(hours: int = 24, limit: int = 1000) -> dict[str, Any]:
+    cutoff = _utc_now() - timedelta(hours=max(1, int(hours or 24)))
+    rows = (
+        db.session.query(ActivityLog)
+        .filter(
+            ActivityLog.type == "decision_trace",
+            ActivityLog.created_at >= cutoff,
+        )
+        .order_by(ActivityLog.id.desc())
+        .limit(max(1, int(limit or 1000)))
+        .all()
+    )
+    triggered_camera_counts: dict[str, int] = defaultdict(int)
+    active_trigger_counts: dict[str, int] = defaultdict(int)
+    session_extended_by_frigate_only_sum = 0
+    scanned = 0
+    for row in rows:
+        try:
+            payload = json.loads(row.data or "{}")
+        except Exception:
+            continue
+        rc = payload.get("recording_context") or {}
+        rs = rc.get("runtime_signals") or {}
+        cam = str(rc.get("triggered_camera") or "none")
+        triggered_camera_counts[cam] += 1
+        for trg in rc.get("active_triggers") or []:
+            active_trigger_counts[str(trg)] += 1
+        try:
+            session_extended_by_frigate_only_sum += int(rs.get("session_extended_by_frigate_only") or 0)
+        except (TypeError, ValueError):
+            pass
+        scanned += 1
+    return {
+        "decision_trace_rows_24h": scanned,
+        "session_extended_by_frigate_only_sum_24h": session_extended_by_frigate_only_sum,
+        "triggered_camera_counts_24h": dict(sorted(triggered_camera_counts.items())),
+        "active_trigger_counts_24h": dict(sorted(active_trigger_counts.items())),
+    }
+
+
+def _recent_runtime_backend_metrics(hours: int = 24, limit: int = 1000) -> dict[str, Any]:
+    cutoff = _utc_now() - timedelta(hours=max(1, int(hours or 24)))
+    rows = (
+        db.session.query(ActivityLog)
+        .filter(
+            ActivityLog.type == "decision_trace",
+            ActivityLog.created_at >= cutoff,
+        )
+        .order_by(ActivityLog.id.desc())
+        .limit(max(1, int(limit or 1000)))
+        .all()
+    )
+    binary_backend_counts: dict[str, int] = defaultdict(int)
+    classifier_backend_counts: dict[str, int] = defaultdict(int)
+    inference_device_counts: dict[str, int] = defaultdict(int)
+    video_encoding_counts: dict[str, int] = defaultdict(int)
+    capture_backend_counts: dict[str, int] = defaultdict(int)
+    reid_device_counts: dict[str, int] = defaultdict(int)
+    reid_model_counts: dict[str, int] = defaultdict(int)
+    scanned = 0
+    for row in rows:
+        try:
+            payload = json.loads(row.data or "{}")
+        except Exception:
+            continue
+        scanned += 1
+        pf = payload.get("pipeline_fingerprint") or {}
+        binary_backend = str(((pf.get("binary_model") or {}).get("inference_backend")) or "unknown").strip().lower()
+        classifier_backend = (
+            str(((pf.get("classifier_model") or {}).get("inference_backend")) or "unknown").strip().lower()
+        )
+        binary_backend_counts[binary_backend] += 1
+        classifier_backend_counts[classifier_backend] += 1
+        policy = (payload.get("recording_context") or {}).get("policy_snapshot") or {}
+        inference_device = str(policy.get("inference_device") or "unknown").strip().lower()
+        video_encoding = str(policy.get("video_encoding") or "unknown").strip().lower()
+        capture_backend = str(policy.get("video_capture_backend") or "unknown").strip().lower()
+        reid_device = str(policy.get("reid_device") or "unknown").strip().lower()
+        inference_device_counts[inference_device] += 1
+        video_encoding_counts[video_encoding] += 1
+        capture_backend_counts[capture_backend] += 1
+        reid_device_counts[reid_device] += 1
+        for track in payload.get("persisted_tracks") or []:
+            model = str((track or {}).get("reid_model") or "").strip()
+            if model:
+                reid_model_counts[model] += 1
+    return {
+        "decision_trace_rows_runtime_backend_24h": scanned,
+        "binary_backend_counts_24h": dict(sorted(binary_backend_counts.items())),
+        "classifier_backend_counts_24h": dict(sorted(classifier_backend_counts.items())),
+        "inference_device_counts_24h": dict(sorted(inference_device_counts.items())),
+        "video_encoding_counts_24h": dict(sorted(video_encoding_counts.items())),
+        "capture_backend_counts_24h": dict(sorted(capture_backend_counts.items())),
+        "reid_device_counts_24h": dict(sorted(reid_device_counts.items())),
+        "reid_model_counts_24h": dict(sorted(reid_model_counts.items())),
+    }
+
+
+def _processor_runtime_funnel_metrics() -> dict[str, int]:
+    """Counters from processor runtime snapshot (recording funnel)."""
+    path = os.path.join(data_paths.data_dir(), "diagnostics", "processor_runtime_stats.json")
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            snap = json.load(f)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return {}
+    counters = snap.get("counters") if isinstance(snap, dict) and isinstance(snap.get("counters"), dict) else {}
+    keys = (
+        "recording_session_total",
+        "recording_persisted_total",
+        "recording_clips_deleted_empty_total",
+        "recording_frigate_trigger_salvage_total",
+    )
+    out: dict[str, int] = {}
+    for key in keys:
+        try:
+            out[key] = int(counters.get(key) or 0)
+        except (TypeError, ValueError):
+            out[key] = 0
+    return out
+
+
 def build_domain_health_payload() -> tuple[dict[str, Any], int]:
     contract = "2026-04-polish-v1"
     contracts_block = {
@@ -202,6 +386,12 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
             )
             .count()
         )
+        duplicate_video_groups = _duplicate_video_groups_count()
+        duplicate_detection_groups = _duplicate_detection_groups_count()
+        detection_track_metrics = _recent_detection_track_metrics()
+        trigger_camera_metrics = _recent_trigger_camera_metrics()
+        runtime_backend_metrics = _recent_runtime_backend_metrics()
+        processor_funnel_metrics = _processor_runtime_funnel_metrics()
 
         payload: dict[str, Any] = {
             "domain_contract_version": contract,
@@ -221,13 +411,67 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "review_only_video_detections": int(review_only_count or 0),
                 "unresolved_species_names": SpeciesUnresolvedName.query.count(),
                 "duplicate_clip_candidates_24h": len(duplicate_clip_candidates),
+                "duplicate_video_groups": duplicate_video_groups,
+                "duplicate_detection_groups": duplicate_detection_groups,
+                **detection_track_metrics,
+                **{
+                    "decision_trace_rows_24h": trigger_camera_metrics["decision_trace_rows_24h"],
+                    "session_extended_by_frigate_only_sum_24h": trigger_camera_metrics[
+                        "session_extended_by_frigate_only_sum_24h"
+                    ],
+                    "decision_trace_rows_runtime_backend_24h": runtime_backend_metrics[
+                        "decision_trace_rows_runtime_backend_24h"
+                    ],
+                },
+                **processor_funnel_metrics,
             },
             "samples": {
                 "duplicate_clip_candidates": duplicate_clip_candidates[:12],
                 "recent_unresolved_species": _recent_unresolved_names(),
                 "recent_review_only_video_detections": _recent_review_only_detections(),
+                "triggered_camera_counts_24h": trigger_camera_metrics["triggered_camera_counts_24h"],
+                "active_trigger_counts_24h": trigger_camera_metrics["active_trigger_counts_24h"],
+                "binary_backend_counts_24h": runtime_backend_metrics["binary_backend_counts_24h"],
+                "classifier_backend_counts_24h": runtime_backend_metrics["classifier_backend_counts_24h"],
+                "inference_device_counts_24h": runtime_backend_metrics["inference_device_counts_24h"],
+                "video_encoding_counts_24h": runtime_backend_metrics["video_encoding_counts_24h"],
+                "capture_backend_counts_24h": runtime_backend_metrics["capture_backend_counts_24h"],
+                "reid_device_counts_24h": runtime_backend_metrics["reid_device_counts_24h"],
+                "reid_model_counts_24h": runtime_backend_metrics["reid_model_counts_24h"],
             },
             "contracts": contracts_block,
+            "strict_quality": {
+                "duplicate_video_groups_ok": duplicate_video_groups == 0,
+                "duplicate_detection_groups_ok": duplicate_detection_groups == 0,
+                "duplicate_clip_candidates_ok": len(duplicate_clip_candidates) == 0,
+                "visit_species_mismatches_ok": len(species_sync_actions) == 0,
+                "video_detections_with_frames_ratio_ok": (
+                    (detection_track_metrics.get("video_detections_with_frames_ratio_24h") or 0.0) >= 0.9
+                    if detection_track_metrics.get("video_detections_with_frames_ratio_24h") is not None
+                    else False
+                ),
+                "video_detections_primary_yolo_ratio_ok": (
+                    (detection_track_metrics.get("video_detections_primary_yolo_ratio_24h") or 0.0) >= 0.8
+                    if detection_track_metrics.get("video_detections_primary_yolo_ratio_24h") is not None
+                    else False
+                ),
+                "strict_quality_ready": (
+                    duplicate_video_groups == 0
+                    and duplicate_detection_groups == 0
+                    and len(duplicate_clip_candidates) == 0
+                    and len(species_sync_actions) == 0
+                    and (
+                        (detection_track_metrics.get("video_detections_with_frames_ratio_24h") or 0.0) >= 0.9
+                        if detection_track_metrics.get("video_detections_with_frames_ratio_24h") is not None
+                        else False
+                    )
+                    and (
+                        (detection_track_metrics.get("video_detections_primary_yolo_ratio_24h") or 0.0) >= 0.8
+                        if detection_track_metrics.get("video_detections_primary_yolo_ratio_24h") is not None
+                        else False
+                    )
+                ),
+            },
         }
         return payload, 200
     except Exception as exc:
@@ -246,11 +490,39 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "review_only_video_detections": None,
                 "unresolved_species_names": None,
                 "duplicate_clip_candidates_24h": None,
+                "duplicate_video_groups": None,
+                "duplicate_detection_groups": None,
+                "video_detections_24h": None,
+                "video_detections_with_frames_24h": None,
+                "video_detections_with_frames_ratio_24h": None,
+                "video_detections_primary_yolo_24h": None,
+                "video_detections_primary_yolo_ratio_24h": None,
+                "decision_trace_rows_24h": None,
+                "session_extended_by_frigate_only_sum_24h": None,
+                "decision_trace_rows_runtime_backend_24h": None,
             },
             "samples": {
                 "duplicate_clip_candidates": [],
                 "recent_unresolved_species": [],
                 "recent_review_only_video_detections": [],
+                "triggered_camera_counts_24h": {},
+                "active_trigger_counts_24h": {},
+                "binary_backend_counts_24h": {},
+                "classifier_backend_counts_24h": {},
+                "inference_device_counts_24h": {},
+                "video_encoding_counts_24h": {},
+                "capture_backend_counts_24h": {},
+                "reid_device_counts_24h": {},
+                "reid_model_counts_24h": {},
             },
             "contracts": contracts_block,
+            "strict_quality": {
+                "duplicate_video_groups_ok": False,
+                "duplicate_detection_groups_ok": False,
+                "duplicate_clip_candidates_ok": False,
+                "visit_species_mismatches_ok": False,
+                "video_detections_with_frames_ratio_ok": False,
+                "video_detections_primary_yolo_ratio_ok": False,
+                "strict_quality_ready": False,
+            },
         }, 200

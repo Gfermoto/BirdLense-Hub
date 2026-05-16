@@ -28,8 +28,10 @@ def apply_multi_camera_confidence_boost(
     """If two+ cameras in the same configured group report the same species (Frigate), add boost.
 
     Config:
-      processor.multi_camera_groups: list of lists of camera ids, e.g. [["BirdBox","Forest"]]
-      processor.multi_camera_confidence_boost: additive to confidence (default 0.05), capped at 1.0
+      processor.multi_camera_groups: groups of hub camera ids (same as Video → Cameras),
+        e.g. [["cam_a","cam_b"]]
+      processor.multi_camera_confidence_boost: additive to confidence (default 0.05),
+        capped at 1.0
     """
     groups = _parse_groups(app_config.get("processor.multi_camera_groups"))
     try:

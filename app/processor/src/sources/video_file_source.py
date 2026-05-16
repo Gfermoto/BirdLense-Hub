@@ -8,6 +8,8 @@ from pathlib import Path
 
 import cv2
 
+from yolo_geometry import letterbox_bgr_to_wh
+
 
 class VideoFileSource:
     """Video source with camera-like timing over an mp4 file."""
@@ -86,8 +88,13 @@ class VideoFileSource:
         if self._record_output and self._recorded_frames == 0:
             try:
                 os.remove(self._record_output)
-            except OSError:
-                pass
+            except OSError as e:
+                self.logger.debug(
+                    "empty recording unlink failed path=%s: %s",
+                    self._record_output,
+                    e,
+                    exc_info=True,
+                )
         self._record_output = None
 
     def _ensure_h264(self, output_path: str) -> None:
@@ -340,8 +347,13 @@ class VideoPlaylistSource:
         if self._record_output and self._recorded_frames == 0:
             try:
                 os.remove(self._record_output)
-            except OSError:
-                pass
+            except OSError as e:
+                self.logger.debug(
+                    "empty recording unlink failed path=%s: %s",
+                    self._record_output,
+                    e,
+                    exc_info=True,
+                )
         self._record_output = None
 
     def _ensure_h264(self, output_path: str) -> None:
@@ -415,7 +427,7 @@ class VideoPlaylistSource:
                 frame_main = cv2.resize(frame, self.main_size)
                 self.out.write(frame_main)
                 self._recorded_frames += 1
-            return cv2.resize(frame, self.lores_size)
+            return letterbox_bgr_to_wh(frame, (int(self.lores_size[0]), int(self.lores_size[1])))
 
         if self.realtime_simulation:
             now = time.time()
@@ -459,7 +471,10 @@ class VideoPlaylistSource:
 
         if result_frame is None:
             return None
-        return cv2.resize(result_frame, self.lores_size)
+        return letterbox_bgr_to_wh(
+            result_frame,
+            (int(self.lores_size[0]), int(self.lores_size[1])),
+        )
 
     def get_frame_time(self):
         if self.frame_count <= 0:

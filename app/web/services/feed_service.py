@@ -47,7 +47,8 @@ def get_last_dispense():
             return None
         data = json.loads(path.read_text(encoding="utf-8"))
         return data.get("last_dispense_at")
-    except (OSError, json.JSONDecodeError, KeyError):
+    except (OSError, json.JSONDecodeError, KeyError) as exc:
+        logger.debug("get_last_dispense unreadable: %s", exc)
         return None
 
 
@@ -68,7 +69,7 @@ def _get_mqtt_client():
         try:
             _mqtt_client.disconnect()
         except Exception:
-            pass
+            logger.debug("MQTT feed client disconnect cleanup failed", exc_info=True)
         _mqtt_client = None
     broker = os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker")
     if not broker:
@@ -117,6 +118,7 @@ def check_mqtt_connected():
             time.sleep(0.05)
         return "error" if not client.is_connected() else "ok"
     except Exception:
+        logger.debug("check_mqtt_connected poll failed", exc_info=True)
         return "error"
 
 
@@ -131,7 +133,8 @@ def check_esphome_reachable():
     try:
         r = requests.get(url.rstrip("/"), timeout=3)
         return "ok" if r.status_code < 500 else "error"
-    except Exception:
+    except requests.RequestException:
+        logger.debug("ESPHome reachability check failed url=%s", url, exc_info=True)
         return "error"
 
 
@@ -226,4 +229,4 @@ def mqtt_publish_once(
             client.loop_stop()
             client.disconnect()
         except Exception:
-            pass
+            logger.debug("mqtt_publish_once client cleanup failed", exc_info=True)

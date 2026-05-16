@@ -14,8 +14,9 @@ def test_build_detection_quality_baseline_summarizes_traces_and_slices(app):
         db.session.add_all([great_tit, bird])
         db.session.flush()
 
-        day_start = datetime(2026, 4, 10, 10, 0, tzinfo=timezone.utc)
-        night_start = datetime(2026, 4, 10, 22, 0, tzinfo=timezone.utc)
+        now_utc = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+        day_start = (now_utc - timedelta(days=1)).replace(hour=10)
+        night_start = day_start.replace(hour=22)
         day_video = Video(
             processor_version="t",
             start_time=day_start,

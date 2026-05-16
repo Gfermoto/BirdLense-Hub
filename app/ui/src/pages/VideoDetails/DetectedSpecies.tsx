@@ -20,6 +20,8 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
+import TextField from '@mui/material/TextField';
+import Chip from '@mui/material/Chip';
 import { Link as RouterLink } from 'react-router-dom';
 import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
@@ -29,9 +31,10 @@ import { getApiErrorMessage, resolveImageUrl } from '../../api/api';
 import { downloadDetectionCropForINaturalist } from '../../api/dataset';
 import {
   fetchBirdDirectory,
+  updateDetectionNickname,
   updateDetectionSpecies,
 } from '../../api/speciesOverviewDetections';
-import { mergeVideoSpecies } from '../../api/video';
+import { mergeVideoSpecies, type VideoReidMatchItem } from '../../api/video';
 import { queryKeys } from '../../api/queryKeys';
 import { invalidateLocalSpeciesEditCaches } from '../../api/invalidateLocalSpeciesCaches';
 
@@ -112,11 +115,13 @@ const INaturalistButton = ({
 interface DetectedSpeciesProps {
   species: VideoSpecies[];
   videoId?: string | number;
+  reidMatchByDetectionId?: Record<number, VideoReidMatchItem>;
 }
 
 export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   species = [],
   videoId,
+  reidMatchByDetectionId = {},
 }) => {
   const { t } = useTranslation();
   const safeSpecies = species ?? [];
@@ -161,11 +166,26 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
     },
   });
 
+  const nicknameMutation = useMutation({
+    mutationFn: ({
+      detectionId,
+      nickname,
+    }: {
+      detectionId: number;
+      nickname: string | null;
+    }) => updateDetectionNickname(detectionId, nickname),
+    onSuccess: () => {
+      invalidateLocalSpeciesEditCaches(queryClient, videoId);
+      setCorrectSuccess(t('video.nicknameSaved'));
+    },
+  });
+
   const [editingGroupKey, setEditingGroupKey] = useState<string | null>(null);
   const [selectedSpeciesId, setSelectedSpeciesId] = useState<number | ''>('');
   const [mergeSpeciesId, setMergeSpeciesId] = useState<number | ''>('');
   const [correctError, setCorrectError] = useState<string | null>(null);
   const [correctSuccess, setCorrectSuccess] = useState<string | null>(null);
+  const [nicknameDraft, setNicknameDraft] = useState<Record<string, string>>({});
 
   const handleCorrectGroup = async (group: GroupedSpecies) => {
     if (selectedSpeciesId === '') return;
@@ -357,6 +377,17 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   <Typography variant="subtitle1" noWrap>
                     {group.species_name}
                   </Typography>
+                  {(() => {
+                    const bestDet = group.detections
+                      .filter((d) => d.source === 'video' && d.id)
+                      .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
+                    const nickname = bestDet?.individual_nickname?.trim();
+                    return nickname ? (
+                      <Typography variant="body2" color="primary" sx={{ mt: 0.25 }}>
+                        {t('video.nicknameLabel')}: {nickname}
+                      </Typography>
+                    ) : null;
+                  })()}
                   <Typography variant="body2" color="text.secondary">
                     {group.detections.length}{' '}
                     {group.detections.length > 1
@@ -390,6 +421,46 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     {t('video.confidence')}: {group.confidenceRange}
                   </Typography>
+                  {(() => {
+                    const bestDet = group.detections
+                      .filter((d) => d.source === 'video' && d.id)
+                      .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
+                    if (!bestDet?.id) return null;
+                    const match = reidMatchByDetectionId[bestDet.id];
+                    if (!match || match.decision !== 'suggest_same_individual') return null;
+                    return (
+                      <Box sx={{ mt: 1 }}>
+                        <Alert severity="info" variant="outlined" sx={{ py: 0.5 }}>
+                          <Typography variant="caption" display="block">
+                            {t('video.possibleSameBird')}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {t('video.similarityPercent', {
+                              value: Math.round(match.similarity * 100),
+                            })}
+                            {typeof match.effective_threshold === 'number'
+                              ? ` • τ≈${Math.round(match.effective_threshold * 100)}%`
+                              : ''}
+                            {match.cross_camera ? ` • ${t('video.reidCrossCameraHint')}` : ''}
+                            {match.candidate_nickname
+                              ? ` • ${t('video.nicknameLabel')}: ${match.candidate_nickname}`
+                              : ''}
+                          </Typography>
+                          {match.candidate_video_id ? (
+                            <Box sx={{ mt: 0.5 }}>
+                              <Chip
+                                size="small"
+                                label={`${t('video.relatedVideo')}: #${match.candidate_video_id}`}
+                                component={RouterLink}
+                                clickable
+                                to={`/videos/${match.candidate_video_id}`}
+                              />
+                            </Box>
+                          ) : null}
+                        </Alert>
+                      </Box>
+                    );
+                  })()}
                 </CardContent>
                 <CardActions
                   sx={{
@@ -529,6 +600,58 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                       </Stack>
                     </Stack>
                   )}
+                  {(() => {
+                    const bestDet = group.detections
+                      .filter((d) => d.source === 'video' && d.id)
+                      .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
+                    if (!bestDet?.id || !canEdit) return null;
+                    const key = String(bestDet.id);
+                    const current = bestDet.individual_nickname ?? '';
+                    const draft = nicknameDraft[key] ?? current;
+                    return (
+                      <Stack spacing={1} sx={{ width: '100%', minWidth: 0, mt: 1 }}>
+                        <TextField
+                          size="small"
+                          label={t('video.nicknameField')}
+                          value={draft}
+                          onChange={(e) =>
+                            setNicknameDraft((prev) => ({
+                              ...prev,
+                              [key]: e.target.value,
+                            }))
+                          }
+                          placeholder={t('video.nicknameFieldPlaceholder')}
+                        />
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            disabled={nicknameMutation.isPending}
+                            onClick={() =>
+                              nicknameMutation.mutate({
+                                detectionId: bestDet.id!,
+                                nickname: draft.trim() ? draft.trim() : null,
+                              })
+                            }
+                          >
+                            {t('video.nicknameSaveButton', { defaultValue: t('common.save') })}
+                          </Button>
+                          <Button
+                            size="small"
+                            disabled={nicknameMutation.isPending}
+                            onClick={() =>
+                              setNicknameDraft((prev) => ({
+                                ...prev,
+                                [key]: current,
+                              }))
+                            }
+                          >
+                            {t('video.nicknameCancelButton', { defaultValue: t('common.cancel') })}
+                          </Button>
+                        </Box>
+                      </Stack>
+                    );
+                  })()}
                 </CardActions>
               </Card>
             </Grid>

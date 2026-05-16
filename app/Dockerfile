@@ -12,10 +12,13 @@ RUN test -f dist/index.html && echo "Using pre-built UI" || (npm install --legac
 # Базовый образ держим на 8.4.21: сборка ngx_brotli под nginx из образа проверена в CI.
 # Версию Python-пакета ultralytics задаём в processor/requirements.txt (pip ниже).
 FROM ultralytics/ultralytics:8.4.21
-# Intel VA-API: драйвер, vainfo, intel_gpu_top (метрики как во Frigate NVR)
+# Intel VA-API: драйвер, vainfo, intel_gpu_top (метрики как во Frigate NVR).
+# OpenCL ICD — пользовательский стек для OpenVINO «GPU» внутри контейнера при пробросе /dev/dri
+# (docker-compose.override.yml от docker-compose-intel-override-gen.sh). Без ICD Ultralytics часто падает на CPU.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg nginx curl unzip gosu \
     intel-media-va-driver-non-free vainfo intel-gpu-tools \
+    ocl-icd-libopencl1 intel-opencl-icd clinfo \
     libbrotli1 \
     && apt-get clean && rm -rf /var/cache/apt /var/lib/apt/lists/*
 # Brotli: в Ubuntu 22.04 нет пакета libnginx-mod-http-brotli — собираем ngx_brotli как динамический модуль к версии nginx из образа
@@ -56,19 +59,22 @@ COPY app/scripts/ ./scripts/
 # REQUIRED_SHIPPED_SCRIPT_RELPATHS — при добавлении subprocess-скрипта расширьте оба места.
 COPY scripts/export_fusion_training_data.py ./scripts/
 COPY scripts/train_fusion.py ./scripts/
+COPY scripts/diag_video_detect.py ./scripts/
+COPY scripts/diag_coco_bird_frames.py ./scripts/
+COPY scripts/benchmark-track-regen.py ./scripts/
+COPY scripts/benchmark_regen_labels.py ./scripts/
+COPY scripts/reid/run_daily_ssl_cycle.py ./scripts/reid/
 # SHA256 EU-классификатора — синхронизировать с CHECKSUMS (.../classification/weights/best.pt) и fetch-processor-weights.sh.
 ARG CLASSIFIER_SHA256=9e99b6d1b0b7697f671a728bfa887f2f45d574ec932e8a745855e9818aadd46e
-ARG BINARY_ZIP_URL=https://raw.githubusercontent.com/AleksandrRogachev94/BirdLense/main/app/processor/models/detection/nabirds_yolo11n_binary.zip
-# two_stage: бинарник из zip (форк https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor );
-# классификатор best.pt с https://huggingface.co/gfermoto/birdlense-birds-eu
+# Рабочий дефолт пайплайна см. ``app_config/default_config.yaml``: BRG ``best.pt`` + ``best_openvino_model/`` (копируются из репозитория выше).
+# Дополнительно качается Ultralytics COCO ``yolo11n.pt`` и экспорт OpenVINO ниже — артефакт совместимости/диагностики (legacy сценарий с ``binary_predict_class_allowlist: [14]``).
+ARG YOLO11N_PT_URL=https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt
 RUN mkdir -p processor/models/detection/weights processor/models/classification/weights \
-    && if [ ! -s processor/models/detection/nabirds_yolo11n_binary.zip ]; then \
-         curl -fsSL --retry 3 --retry-connrefused --retry-delay 5 \
-           -o processor/models/detection/nabirds_yolo11n_binary.zip "${BINARY_ZIP_URL}"; \
-       fi \
-    && if [ ! -s processor/models/detection/weights/best.pt ]; then \
-         unzip -j -o processor/models/detection/nabirds_yolo11n_binary.zip weights/best.pt \
-           -d processor/models/detection/weights/; \
+    && YPT="processor/models/detection/weights/yolo11n.pt" \
+    && if [ ! -s "$YPT" ]; then \
+         curl -fsSL --retry 5 --retry-connrefused --retry-delay 8 \
+           --connect-timeout 45 \
+           -o "$YPT" "${YOLO11N_PT_URL}"; \
        fi \
     && if [ ! -s processor/models/classification/weights/best.pt ]; then \
          curl -fsSL --retry 3 --retry-connrefused --retry-delay 5 \
@@ -78,7 +84,23 @@ RUN mkdir -p processor/models/detection/weights processor/models/classification/
          && mv processor/models/classification/weights/best.pt.tmp processor/models/classification/weights/best.pt; \
        fi
 RUN pip install --no-cache-dir -r web/requirements.txt \
-    && pip install --no-cache-dir -r processor/requirements.txt
+    && pip install --no-cache-dir -r processor/requirements.txt \
+    && pip install --no-cache-dir 'openvino>=2024.0'
+
+# Экспорт OpenVINO для COCO ``yolo11n.pt`` (не путать с BRG ``best_openvino_model`` из репозитория). imgsz 640 — согласовать с ``processor.binary_imgsz``.
+RUN python3 <<'PY'
+from pathlib import Path
+
+from ultralytics import YOLO
+
+w = Path("/app/processor/models/detection/weights")
+pt = w / "yolo11n.pt"
+ov = w / "yolo11n_openvino_model"
+if pt.is_file() and (not ov.exists() or not list(ov.glob("*.xml"))):
+    YOLO(str(pt)).export(format="openvino", imgsz=640)
+PY
+
+# OpenVINO runtime нужен для dual-mode (processor.inference_backend=auto/openvino).
 
 # UI + nginx (template, подставляется при старте)
 COPY --from=ui /ui/dist /usr/share/nginx/html
@@ -99,6 +121,8 @@ EXPOSE 8080
 
 ENV API_URL_BASE=http://127.0.0.1:8000/api/processor
 ENV DATA_DIR=/app/data
+# Ultralytics: writable settings dir (avoids /app/.config not owned by birdlense) — #385
+ENV YOLO_CONFIG_DIR=/app/data/.ultralytics
 # Меньше шума libav/h264 от OpenCV VideoCapture (RTSP) в docker logs
 ENV OPENCV_LOG_LEVEL=ERROR
 ENV OPENCV_FFMPEG_LOGLEVEL=quiet

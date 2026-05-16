@@ -5,15 +5,19 @@ import Stack from '@mui/material/Stack';
 import { SystemMonitor } from './SystemMonitor';
 import { ConfigAuditCard } from './ConfigAuditCard';
 import { ObservabilityCard } from './ObservabilityCard';
+import { MlRuntimeCard } from './MlRuntimeCard';
 import { CatalogDiagnosticsAccordion } from './CatalogDiagnosticsAccordion';
 import { CatalogRepairCard } from './CatalogRepairCard';
 import { AutomationCard } from './AutomationCard';
 import { AutomationDangerZoneCard } from './AutomationPanels';
 import { ProcessorLogs } from './ProcessorLogs';
 import { SystemReadinessCard } from './SystemReadinessCard';
+import { DomainTrustCard } from './DomainTrustCard';
 import { SystemHero } from './SystemHero';
 import { RecognitionImprovementCard } from './RecognitionImprovementCard';
+import { BehaviorBaselineRetrainCard } from './BehaviorBaselineRetrainCard';
 import Box from '@mui/material/Box';
+import Alert from '@mui/material/Alert';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { PageModeToggle, type PageMode } from '../../components/PageModeToggle';
 import { PageSection } from '../../components/PageSection';
@@ -60,6 +64,24 @@ export const System: React.FC = () => {
     });
   }, [location.hash]);
 
+  React.useEffect(() => {
+    if (location.hash !== '#domain-trust') return;
+    const node = document.getElementById('domain-trust');
+    if (!node) return;
+    requestAnimationFrame(() => {
+      node.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+  }, [location.hash]);
+
+  React.useEffect(() => {
+    if (location.hash !== '#behavior-baseline-retrain') return;
+    const node = document.getElementById('behavior-baseline-retrain');
+    if (!node) return;
+    requestAnimationFrame(() => {
+      node.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+  }, [location.hash]);
+
   return (
     <ProtectedRoute title={t('nav.system')}>
       <Stack spacing={4} sx={{ ...systemStackSx, pb: 1 }}>
@@ -78,6 +100,10 @@ export const System: React.FC = () => {
           titleVariant="h3"
         />
 
+        <Alert severity="info" variant="outlined" sx={{ mt: -2 }}>
+          {t('system.pageModeToggleHint')}
+        </Alert>
+
         <SystemHero advanced={isAdvanced} />
 
         <Box id="system-overview">
@@ -87,6 +113,12 @@ export const System: React.FC = () => {
           >
             <Stack spacing={2} sx={systemStackSx}>
               <SystemReadinessCard />
+              <Box
+                id="domain-trust-wrap"
+                sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}
+              >
+                <DomainTrustCard />
+              </Box>
               <SystemMonitor showVisitors={isAdvanced} />
               <Box
                 id="recognition-improvement"
@@ -94,6 +126,13 @@ export const System: React.FC = () => {
               >
                 <RecognitionImprovementCard />
               </Box>
+              <Box
+                id="behavior-baseline-retrain"
+                sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}
+              >
+                <BehaviorBaselineRetrainCard />
+              </Box>
+              <MlRuntimeCard />
               <ConfigAuditCard simple={!isAdvanced} />
               <ObservabilityCard simple={!isAdvanced} />
             </Stack>

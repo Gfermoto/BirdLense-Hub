@@ -37,6 +37,9 @@ export interface TrackRegenProgress {
   current_video_id?: number | null;
   active_request_video_id?: number | null;
   phase?: string | null;
+  /** Оценка числа YOLO-проходов (декодированных кадров / frame_step) для прогресс-бара. */
+  yolo_frames_done?: number | null;
+  yolo_frames_total?: number | null;
   regen_params?: Record<string, unknown>;
 }
 
@@ -253,6 +256,20 @@ export const updateDetectionSpecies = async (
       species_id: speciesId,
       source,
       ...(applyScope ? { apply_scope: applyScope } : {}),
+    },
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
+export const updateDetectionNickname = async (
+  detectionId: number,
+  individualNickname: string | null,
+): Promise<{ message: string; detection_id: number; individual_nickname: string | null }> => {
+  const response = await axios.patch(
+    `${BASE_API_URL}/detections/${detectionId}`,
+    {
+      individual_nickname: individualNickname,
     },
     { withCredentials: true },
   );

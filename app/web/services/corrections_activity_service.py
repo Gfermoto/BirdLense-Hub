@@ -85,8 +85,13 @@ def fetch_recent_species_corrections(session, limit: int) -> list[dict]:
         if row.data:
             try:
                 parsed = json.loads(row.data)
-            except (TypeError, ValueError):
+            except (json.JSONDecodeError, TypeError, ValueError) as exc:
                 parsed = {}
+                logger.debug(
+                    "species_correction history payload unreadable id=%s: %s",
+                    getattr(row, "id", None),
+                    exc,
+                )
         out.append(
             {
                 "id": row.id,

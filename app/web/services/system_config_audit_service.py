@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import yaml
 
@@ -16,6 +17,8 @@ from app_config.trigger_config import (
 
 # Совпадает с `integrations.scales.mqtt_topic_prefix` в default_config и примером `esphome/bird-feeder-scale.yaml`.
 DOCUMENTED_SCALES_MQTT_PREFIX = "birdlense/scale"
+
+_log = logging.getLogger(__name__)
 
 DEPRECATED_USER_CONFIG_KEYS = (
     "gallery.enabled",
@@ -49,9 +52,9 @@ IGNORED_CONFIG_AUDIT_KEYS = frozenset(
     }
 )
 
-# Совпадает с `motion.*` в `default_config.yaml` и fallback в `trigger_config.py`.
+# Совпадает с `triggers.opencv.*` в `default_config.yaml`.
 RECOMMENDED_OPENCV_DIFF_THRESHOLD = 18
-RECOMMENDED_OPENCV_MIN_CONTOUR_AREA = 240
+RECOMMENDED_OPENCV_MIN_CONTOUR_AREA = 320
 
 
 def _safe_int(value, default: int) -> int:
@@ -92,13 +95,13 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
     mqtt_broker = (app_config_get("mqtt.broker") or "").strip()
     active_triggers = get_active_trigger_names(app_config_get, mqtt_broker=mqtt_broker)
     motion_source = format_motion_source_summary(active_triggers)
-    check_every_n_frames = max(1, _safe_int(app_config_get("motion.check_every_n_frames", 1), 1))
+    check_every_n_frames = max(1, _safe_int(app_config_get("triggers.opencv.check_every_n_frames", 1), 1))
     opencv_diff_threshold = max(
         5,
         min(
             80,
             _safe_int(
-                app_config_get("motion.opencv_diff_threshold", RECOMMENDED_OPENCV_DIFF_THRESHOLD),
+                app_config_get("triggers.opencv.diff_threshold", RECOMMENDED_OPENCV_DIFF_THRESHOLD),
                 RECOMMENDED_OPENCV_DIFF_THRESHOLD,
             ),
         ),
@@ -108,7 +111,7 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
         min(
             20000,
             _safe_int(
-                app_config_get("motion.opencv_min_contour_area", RECOMMENDED_OPENCV_MIN_CONTOUR_AREA),
+                app_config_get("triggers.opencv.min_contour_area", RECOMMENDED_OPENCV_MIN_CONTOUR_AREA),
                 RECOMMENDED_OPENCV_MIN_CONTOUR_AREA,
             ),
         ),
@@ -122,7 +125,7 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
         0,
         min(255, _safe_int(app_config_get("processor.light_gate_min_contrast", 20), 20)),
     )
-    binary_imgsz = max(320, _safe_int(app_config_get("processor.binary_imgsz", 512), 512))
+    binary_imgsz = max(320, _safe_int(app_config_get("processor.binary_imgsz", 640), 640))
     min_center_dist = max(0.0, min(1.0, _safe_float(app_config_get("processor.min_center_dist", 0.06), 0.06)))
     min_box_size_px = max(1, _safe_int(app_config_get("processor.min_box_size_px", 72), 72))
 
@@ -140,17 +143,17 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
         hints.append("fusion.FRIGATE_STANDALONE_OFF")
     if check_every_n_frames > 1:
         hints.append(
-            f"motion.check_every_n_frames={check_every_n_frames} skips frames and can miss brief motion; "
+            f"triggers.opencv.check_every_n_frames={check_every_n_frames} skips frames and can miss brief motion; "
             "1 is the highest-recall setting."
         )
     if opencv_diff_threshold > RECOMMENDED_OPENCV_DIFF_THRESHOLD:
         hints.append(
-            f"motion.opencv_diff_threshold={opencv_diff_threshold} is above the hub default "
+            f"triggers.opencv.diff_threshold={opencv_diff_threshold} is above the hub default "
             f"({RECOMMENDED_OPENCV_DIFF_THRESHOLD}); higher values react to fewer pixel changes (less motion recall)."
         )
     if opencv_min_contour_area > RECOMMENDED_OPENCV_MIN_CONTOUR_AREA:
         hints.append(
-            f"motion.opencv_min_contour_area={opencv_min_contour_area} is above the hub default "
+            f"triggers.opencv.min_contour_area={opencv_min_contour_area} is above the hub default "
             f"({RECOMMENDED_OPENCV_MIN_CONTOUR_AREA}); higher values drop smaller motion blobs (e.g. distant birds)."
         )
     if light_gate_enabled and (light_gate_min_brightness > 20 or light_gate_min_contrast > 15):
@@ -291,7 +294,8 @@ def load_yaml_mapping(path: str) -> dict:
         with open(path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
             return data if isinstance(data, dict) else {}
-    except Exception:
+    except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
+        _log.debug("load_yaml_mapping failed path=%r: %s", path, exc, exc_info=True)
         return {}
 
 
@@ -316,6 +320,15 @@ def _processor_runtime_hints(app_config_get) -> list[str]:
         slow = 0
     if slow > 0 and warn_ms > 0:
         hints.append(f"processor.runtime.SLOW_FRAMES total={slow} warn_ms={int(warn_ms)}")
+    try:
+        clf_rev = int(counters.get("classifier_needs_review_total") or 0)
+    except (TypeError, ValueError):
+        clf_rev = 0
+    if clf_rev > 0:
+        hints.append(
+            "processor.runtime.CLASSIFIER_NEEDS_REVIEW "
+            f"total={clf_rev} (entropy/margin thresholds in processor.classifier_uncertainty_*)"
+        )
     lat = snap.get("latency_ms") if isinstance(snap.get("latency_ms"), dict) else {}
     p95_raw = lat.get("frame_processor_detect_p95")
     try:

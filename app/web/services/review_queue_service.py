@@ -65,6 +65,7 @@ def fetch_review_queue_items(
             VideoSpecies.manually_corrected.is_(False),
             or_(
                 VideoSpecies.confidence < threshold,
+                VideoSpecies.classifier_needs_review.is_(True),
                 Species.name == GENERIC_BIRD_SPECIES,
             ),
         )
@@ -90,7 +91,14 @@ def fetch_review_queue_items(
             continue
         video_start = ensure_utc(vs.video.start_time)
         det_time = video_start + timedelta(seconds=vs.start_time)
-        review_reason = "generic_bird" if vs.species.name == GENERIC_BIRD_SPECIES else "low_confidence"
+        if vs.review_reason:
+            review_reason = vs.review_reason
+        elif bool(vs.classifier_needs_review):
+            review_reason = "classifier_uncertainty"
+        elif vs.species.name == GENERIC_BIRD_SPECIES:
+            review_reason = "generic_bird"
+        else:
+            review_reason = "low_confidence"
         result.append(
             {
                 "id": vs.id,
@@ -106,6 +114,9 @@ def fetch_review_queue_items(
                 "review_state": "pending",
                 "review_reason": review_reason,
                 "review_source": "unknowns",
+                "classifier_entropy": vs.classifier_entropy,
+                "classifier_top1_top2_margin": vs.classifier_top1_top2_margin,
+                "classifier_needs_review": bool(vs.classifier_needs_review),
             }
         )
         if len(result) >= limit:

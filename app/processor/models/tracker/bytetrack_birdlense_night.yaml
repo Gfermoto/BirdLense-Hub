@@ -1,0 +1,8 @@
+# Ночной / низкая контрастность: ещё мягче старт трека для слабого сигнала.
+tracker_type: bytetrack
+track_high_thresh: 0.10
+track_low_thresh: 0.05
+new_track_thresh: 0.10
+track_buffer: 50
+match_thresh: 0.78
+fuse_score: true

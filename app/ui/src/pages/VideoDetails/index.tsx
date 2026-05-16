@@ -14,6 +14,7 @@ import {
   fetchVideo,
   fetchVideoDetectionFrames,
   fetchVideoNeighbors,
+  fetchVideoReidMatch,
   regenerateSpectrogramForSingleVideo,
   regenerateTracksForSingleVideo,
 } from '../../api/video';
@@ -190,6 +191,12 @@ export const VideoDetails = () => {
     enabled: Boolean(params.id),
   });
 
+  const { data: reidMatchPayload } = useQuery({
+    queryKey: queryKeys.video.reidMatch(String(params.id)),
+    queryFn: () => fetchVideoReidMatch(params.id as string),
+    enabled: Boolean(params.id),
+  });
+
   const displayVideo = useMemo((): Video | undefined => {
     if (!video) return undefined;
     const tracks = detectionFrames?.tracks;
@@ -330,6 +337,12 @@ export const VideoDetails = () => {
   const specRegenBusy = specRegenStart.isPending || followSpecRegen !== null;
 
   const trackProgress = trackRemoteStatus?.progress;
+  const yoloFramesDone = trackProgress?.yolo_frames_done;
+  const yoloFramesTotal = trackProgress?.yolo_frames_total;
+  const hasYoloFrameProgress =
+    typeof yoloFramesDone === 'number' &&
+    typeof yoloFramesTotal === 'number' &&
+    yoloFramesTotal > 0;
   const trackProgressOtherJob =
     followTrackRegen !== null &&
     trackRemoteStatus?.status === 'running' &&
@@ -391,11 +404,18 @@ export const VideoDetails = () => {
           Math.round((100 * trackProgress.processed) / trackProgress.total),
         )
       : null;
+  const trackBarPct = hasYoloFrameProgress
+    ? Math.min(
+        100,
+        Math.round((100 * yoloFramesDone) / yoloFramesTotal),
+      )
+    : trackProgressPct;
   const trackIndeterminate =
-    !trackProgress ||
-    !trackProgress.total ||
-    trackProgress.total <= 1 ||
-    (trackProgress.total === 1 && (trackProgress.processed ?? 0) < 1);
+    !hasYoloFrameProgress &&
+    (!trackProgress ||
+      !trackProgress.total ||
+      trackProgress.total <= 1 ||
+      (trackProgress.total === 1 && (trackProgress.processed ?? 0) < 1));
 
   if (isLoading) return <PageLoadingState label={t('common.loading')} />;
   if (error || !video)
@@ -551,7 +571,7 @@ export const VideoDetails = () => {
                             trackIndeterminate ? 'indeterminate' : 'determinate'
                           }
                           {...(!trackIndeterminate
-                            ? { value: trackProgressPct ?? 0 }
+                            ? { value: trackBarPct ?? 0 }
                             : {})}
                           sx={{ mb: 1 }}
                         />
@@ -567,6 +587,19 @@ export const VideoDetails = () => {
                                 phase: trackProgress?.phase ?? '…',
                               })}
                         </Typography>
+                        {hasYoloFrameProgress ? (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            display="block"
+                            sx={{ mt: 0.5 }}
+                          >
+                            {t('video.trackRegenFrameProgress', {
+                              done: yoloFramesDone ?? 0,
+                              total: yoloFramesTotal ?? 0,
+                            })}
+                          </Typography>
+                        ) : null}
                         {trackProgress?.current_video ? (
                           <Typography
                             variant="caption"
@@ -679,11 +712,16 @@ export const VideoDetails = () => {
           <DetectedSpecies
             species={(displayVideo ?? (video as Video)).species}
             videoId={(video as Video).id}
+            reidMatchByDetectionId={Object.fromEntries(
+              (reidMatchPayload?.matches ?? []).map((m) => [m.video_species_id, m]),
+            )}
           />
         </Grid>
         {/* Video Info Column */}
         <Grid size={{ xs: 12, lg: 4 }}>
-          <VideoInfo video={(displayVideo ?? video) as Video} />
+          <VideoInfo
+            video={(displayVideo ?? video) as Video}
+          />
         </Grid>
       </Grid>
     </>

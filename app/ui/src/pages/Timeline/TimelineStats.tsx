@@ -14,9 +14,10 @@ export const TimelineStats = memo(function TimelineStats({
   visits: SpeciesVisit[];
 }) {
   const { t } = useTranslation();
-  const uniqueSpecies = new Set(visits.map((visit) => visit.species.id)).size;
-  const totalVisits = visits.length;
-  const recordingDurationSec = visits.reduce((acc, visit) => {
+  const visitRows = visits.filter((visit) => visit.timeline_kind !== 'unlinked_video');
+  const uniqueSpecies = new Set(visitRows.map((visit) => visit.species.id)).size;
+  const totalVisits = visitRows.length;
+  const recordingDurationSec = visitRows.reduce((acc, visit) => {
     const sec =
       visit.video_duration_seconds != null && visit.video_duration_seconds > 0
         ? visit.video_duration_seconds

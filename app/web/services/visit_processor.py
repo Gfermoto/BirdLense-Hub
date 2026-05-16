@@ -5,6 +5,7 @@ from typing import List, Dict, Optional, Tuple
 import json
 
 from models import Video, Species, VideoSpecies, SpeciesVisit
+from sqlalchemy import text
 from services.species_identity_service import SpeciesIdentityService
 
 
@@ -13,6 +14,16 @@ def _ensure_utc(dt: datetime) -> datetime:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
+
+
+def _review_reason_from_detection(det: dict) -> str | None:
+    """Normalize optional review reason fields from processor payload."""
+    reason = (det.get("review_reason") or "").strip()
+    if reason:
+        return reason
+    if bool(det.get("classifier_needs_review")):
+        return "classifier_uncertainty"
+    return None
 
 
 class VisitProcessor:
@@ -44,6 +55,11 @@ class VisitProcessor:
         track_id: Optional[int] = None,
         frames: Optional[List[Dict]] = None,
         detection_provider: Optional[str] = None,
+        classifier_entropy: float | None = None,
+        classifier_top1_top2_margin: float | None = None,
+        classifier_needs_review: bool = False,
+        review_reason: str | None = None,
+        individual_nickname: str | None = None,
     ) -> Tuple[SpeciesVisit, VideoSpecies]:
         """
         Process a video detection and create/update associated visit.
@@ -63,6 +79,11 @@ class VisitProcessor:
             source="video",
             detection_provider=detection_provider,
             track_id=track_id,
+            classifier_entropy=classifier_entropy,
+            classifier_top1_top2_margin=classifier_top1_top2_margin,
+            classifier_needs_review=bool(classifier_needs_review),
+            review_reason=review_reason,
+            individual_nickname=individual_nickname,
             created_at=detection_time,
             species_visit=visit,
             video=video,
@@ -83,6 +104,11 @@ class VisitProcessor:
         track_id: Optional[int] = None,
         frames: Optional[List[Dict]] = None,
         detection_provider: Optional[str] = None,
+        classifier_entropy: float | None = None,
+        classifier_top1_top2_margin: float | None = None,
+        classifier_needs_review: bool = False,
+        review_reason: str | None = None,
+        individual_nickname: str | None = None,
     ) -> VideoSpecies:
         """Persist a video detection without creating/extending a SpeciesVisit."""
         video_start = _ensure_utc(video.start_time)
@@ -95,6 +121,11 @@ class VisitProcessor:
             source="video",
             detection_provider=detection_provider,
             track_id=track_id,
+            classifier_entropy=classifier_entropy,
+            classifier_top1_top2_margin=classifier_top1_top2_margin,
+            classifier_needs_review=bool(classifier_needs_review),
+            review_reason=review_reason,
+            individual_nickname=individual_nickname,
             created_at=detection_time,
             species_visit_id=None,
             video=video,
@@ -102,6 +133,90 @@ class VisitProcessor:
         )
         self.db.session.add(video_species)
         return video_species
+
+    def _upsert_reid_embedding_from_detection(
+        self,
+        *,
+        video_species: VideoSpecies,
+        detection_row: Dict,
+    ) -> None:
+        self.db.session.flush()
+        emb = detection_row.get("reid_embedding")
+        if not isinstance(emb, list) or not emb:
+            return
+        vals: list[float] = []
+        for v in emb:
+            try:
+                vals.append(float(v))
+            except (TypeError, ValueError):
+                return
+        dim = int(detection_row.get("reid_dim") or len(vals))
+        if dim <= 0 or dim != len(vals):
+            return
+        model = str(detection_row.get("reid_model") or "dinov2_vits14").strip()
+        if not model:
+            model = "dinov2_vits14"
+        crop_key = str(detection_row.get("reid_crop_key") or "").strip()
+        if not crop_key:
+            crop_key = f"runtime://video/{video_species.video_id}/vs/{video_species.id}"
+
+        self.db.session.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS reid_embedding (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    video_species_id INTEGER,
+                    video_id INTEGER,
+                    species_id INTEGER,
+                    track_id INTEGER,
+                    crop_path TEXT NOT NULL UNIQUE,
+                    model TEXT NOT NULL,
+                    dim INTEGER NOT NULL,
+                    embedding_json TEXT NOT NULL,
+                    species_name TEXT,
+                    individual_label TEXT,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+        )
+        self.db.session.execute(
+            text(
+                """
+                INSERT INTO reid_embedding (
+                    video_species_id, video_id, species_id, track_id,
+                    crop_path, model, dim, embedding_json,
+                    species_name, individual_label
+                ) VALUES (
+                    :video_species_id, :video_id, :species_id, :track_id,
+                    :crop_path, :model, :dim, :embedding_json,
+                    :species_name, :individual_label
+                )
+                ON CONFLICT(crop_path) DO UPDATE SET
+                    video_species_id=excluded.video_species_id,
+                    video_id=excluded.video_id,
+                    species_id=excluded.species_id,
+                    track_id=excluded.track_id,
+                    model=excluded.model,
+                    dim=excluded.dim,
+                    embedding_json=excluded.embedding_json,
+                    species_name=excluded.species_name,
+                    individual_label=excluded.individual_label
+                """
+            ),
+            {
+                "video_species_id": int(video_species.id),
+                "video_id": int(video_species.video_id),
+                "species_id": int(video_species.species_id),
+                "track_id": video_species.track_id,
+                "crop_path": crop_key,
+                "model": model,
+                "dim": int(dim),
+                "embedding_json": json.dumps(vals, separators=(",", ":")),
+                "species_name": str(video_species.species.name),
+                "individual_label": (video_species.individual_nickname or None),
+            },
+        )
 
     def process_audio_detection(
         self,
@@ -141,9 +256,10 @@ class VisitProcessor:
         """Обработка детекций видео, создание визитов и VideoSpecies."""
         video_species_records = []
         visits_to_update = {}  # Map (species_id, start_time) to visit data
+        deduped_detections = self._deduplicate_detections(detections)
 
         # First pass: Process all detections
-        for det in detections:
+        for det in deduped_detections:
             visit_eligible = bool(det.get("visit_eligible", True))
             species = self.get_or_create_species(det["species_name"])
             if not species:
@@ -161,6 +277,15 @@ class VisitProcessor:
                         track_id=det.get("track_id"),
                         frames=det.get("frames"),
                         detection_provider=det.get("detection_provider"),
+                        classifier_entropy=det.get("classifier_entropy"),
+                        classifier_top1_top2_margin=det.get("classifier_top1_top2_margin"),
+                        classifier_needs_review=bool(det.get("classifier_needs_review")),
+                        review_reason=_review_reason_from_detection(det),
+                        individual_nickname=(det.get("individual_nickname") or None),
+                    )
+                    self._upsert_reid_embedding_from_detection(
+                        video_species=video_species,
+                        detection_row=det,
                     )
                     visit_key = (visit.species_id, visit.start_time)
                     if visit_key not in visits_to_update:
@@ -177,6 +302,15 @@ class VisitProcessor:
                         track_id=det.get("track_id"),
                         frames=det.get("frames"),
                         detection_provider=det.get("detection_provider"),
+                        classifier_entropy=det.get("classifier_entropy"),
+                        classifier_top1_top2_margin=det.get("classifier_top1_top2_margin"),
+                        classifier_needs_review=bool(det.get("classifier_needs_review")),
+                        review_reason=_review_reason_from_detection(det),
+                        individual_nickname=(det.get("individual_nickname") or None),
+                    )
+                    self._upsert_reid_embedding_from_detection(
+                        video_species=video_species,
+                        detection_row=det,
                     )
                     video_species_records.append(video_species)
             else:  # audio
@@ -196,6 +330,46 @@ class VisitProcessor:
             self.update_simultaneous_count(visit_data["visit"], visit_data["detections"])
 
         return video_species_records
+
+    @staticmethod
+    def _dedup_detection_key(det: Dict) -> tuple:
+        def _round_num(v, ndigits):
+            try:
+                return round(float(v), ndigits)
+            except (TypeError, ValueError):
+                return None
+
+        track_id = det.get("track_id")
+        try:
+            track_id = int(track_id) if track_id is not None else None
+        except (TypeError, ValueError):
+            track_id = None
+        return (
+            str(det.get("source") or "").strip().lower(),
+            str(det.get("species_name") or "").strip().lower(),
+            _round_num(det.get("start_time"), 3),
+            _round_num(det.get("end_time"), 3),
+            _round_num(det.get("confidence"), 4),
+            track_id,
+            str(det.get("detection_provider") or "").strip().lower(),
+            bool(det.get("visit_eligible", True)),
+        )
+
+    def _deduplicate_detections(self, detections: List[Dict]) -> List[Dict]:
+        if not detections:
+            return []
+        out: List[Dict] = []
+        seen: set[tuple] = set()
+        for det in detections:
+            key = self._dedup_detection_key(det)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(det)
+        removed = len(detections) - len(out)
+        if removed > 0:
+            self.logger.info("VisitProcessor: dropped %d duplicate detections", removed)
+        return out
 
     def get_or_create_visit(self, species: Species, detection_time: datetime) -> Tuple[SpeciesVisit, bool]:
         """

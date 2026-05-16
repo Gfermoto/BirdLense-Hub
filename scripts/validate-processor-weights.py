@@ -9,7 +9,15 @@ import json
 import os
 import sys
 import zipfile
+from pathlib import Path
 from typing import Any
+
+
+def _default_dataset_info_path() -> str | None:
+    """Репозиторный stub без экспорта из хаба (см. datasets/new/detector/)."""
+    root = Path(__file__).resolve().parent.parent
+    p = root / "datasets/new/detector/dataset_info_validate_stub.json"
+    return str(p) if p.is_file() else None
 
 
 def _sha256(path: str) -> str:
@@ -86,6 +94,68 @@ def _read_class_names(path: str | None) -> tuple[dict[str, Any], list[str]]:
     return record, issues
 
 
+def _normalize_detector_label_for_validate(name: str) -> str:
+    """Align with processor ``detector_labels.normalize_detector_label`` for rollout checks (#367)."""
+    raw = (
+        str(name or "")
+        .replace("_OR_", "/")
+        .replace("_", " ")
+        .replace("-", " ")
+        .strip()
+    )
+    key = " ".join(raw.lower().split())
+    if not key:
+        return "Unknown"
+    if key == "background":
+        return "Background"
+    if any(token in key for token in ("squirrel", "chipmunk", "rodent", "грызун")):
+        return "Rodent"
+    if any(token in key for token in ("bird", "avian")):
+        return "Bird"
+    return " ".join(part.capitalize() for part in raw.split())
+
+
+def _check_detector_classes(binary_path: str, expect_csv: str) -> tuple[dict[str, Any], list[str]]:
+    """Optional: load binary ``.pt`` with Ultralytics and compare ``model.names`` to expected set."""
+    record: dict[str, Any] = {
+        "checked": False,
+        "expected": None,
+        "got": None,
+    }
+    issues: list[str] = []
+    raw = (expect_csv or "").strip()
+    if not raw:
+        return record, issues
+    expected = sorted(
+        {_normalize_detector_label_for_validate(x) for x in raw.split(",") if x.strip()},
+    )
+    record["expected"] = expected
+    if not os.path.isfile(binary_path):
+        issues.append("detector_class_check_skipped_missing_binary")
+        return record, issues
+    try:
+        from ultralytics import YOLO  # noqa: PLC0415
+    except ImportError:
+        issues.append("detector_class_check_skipped_ultralytics_not_installed")
+        return record, issues
+    try:
+        model = YOLO(binary_path, task="detect")
+        names = getattr(model, "names", None) or {}
+        got = sorted(
+            {_normalize_detector_label_for_validate(names[k]) for k in sorted(names.keys())},
+        )
+        record["got"] = got
+        record["checked"] = True
+        if set(expected) != set(got):
+            issues.append(
+                "detector_class_names_mismatch:"
+                f"expected={sorted(set(expected))} got={sorted(set(got))}",
+            )
+    except Exception as exc:  # noqa: BLE001 — rollout helper
+        issues.append(f"detector_class_check_failed:{exc}")
+    return record, issues
+
+
 def _validate_dataset_info(path: str | None, *, require_train_ready: bool) -> tuple[dict[str, Any], list[str]]:
     issues: list[str] = []
     record: dict[str, Any] = {
@@ -138,6 +208,10 @@ def build_report(args) -> dict[str, Any]:
     binary, binary_issues = _validate_pt(args.binary)
     classifier, classifier_issues = _validate_pt(args.classifier)
     class_names, class_name_issues = _read_class_names(args.class_names)
+    detector_chk, detector_chk_issues = _check_detector_classes(
+        args.binary,
+        getattr(args, "expect_detector_classes", "") or "",
+    )
     dataset_info, dataset_issues = _validate_dataset_info(
         args.dataset_info,
         require_train_ready=not args.allow_non_train_ready,
@@ -152,7 +226,14 @@ def build_report(args) -> dict[str, Any]:
         }
         if not fusion['exists']:
             fusion_issues.append(f'missing_file:{args.fusion_model}')
-    issues = binary_issues + classifier_issues + class_name_issues + dataset_issues + fusion_issues
+    issues = (
+        binary_issues
+        + classifier_issues
+        + class_name_issues
+        + detector_chk_issues
+        + dataset_issues
+        + fusion_issues
+    )
     return {
         'ok': not issues,
         'rollout_profile': 'ready_for_train+strict_quality',
@@ -163,6 +244,7 @@ def build_report(args) -> dict[str, Any]:
             'class_names': class_names,
             'dataset_info': dataset_info,
             'fusion_model': fusion,
+            'detector_class_check': detector_chk,
         },
     }
 
@@ -173,6 +255,15 @@ def main() -> int:
     parser.add_argument('--classifier', required=True, help='Path to classifier .pt')
     parser.add_argument('--class-names', dest='class_names', required=True, help='Path to class_names.txt')
     parser.add_argument('--dataset-info', help='Path to exported dataset_info.json')
+    parser.add_argument(
+        '--expect-detector-classes',
+        dest='expect_detector_classes',
+        default='',
+        help=(
+            'Optional: comma-separated canonical detector labels to match model.names '
+            '(e.g. Bird,Rodent,Background). Requires ultralytics; compares after normalization (#367).'
+        ),
+    )
     parser.add_argument('--fusion-model', help='Optional learned fusion model path')
     parser.add_argument(
         '--allow-non-train-ready',
@@ -181,6 +272,10 @@ def main() -> int:
     )
     parser.add_argument('--output', help='Write the JSON report to a file')
     args = parser.parse_args()
+    if getattr(args, "dataset_info", None) is None:
+        fallback = _default_dataset_info_path()
+        if fallback:
+            args.dataset_info = fallback
 
     report = build_report(args)
     body = json.dumps(report, ensure_ascii=False, indent=2)

@@ -1,5 +1,6 @@
 import { useForm } from '@tanstack/react-form';
 import { useTranslation } from 'react-i18next';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import type { Settings } from '../../types';
@@ -17,12 +18,14 @@ export const SettingsForm = ({
   onSubmit,
   yamlSafeExportEnabled = false,
   yamlAdminBackupEnabled = false,
+  simpleMode = true,
 }: {
   currentSettings: Settings;
   observedSpecies: Array<{ id: number; name: string; count: number }>;
   onSubmit: (settings: Settings) => void;
   yamlSafeExportEnabled?: boolean;
   yamlAdminBackupEnabled?: boolean;
+  simpleMode?: boolean;
 }) => {
   const { t } = useTranslation();
   const form = useForm<Settings>({
@@ -42,6 +45,11 @@ export const SettingsForm = ({
       }}
     >
       <Box id="settings-general">
+        {simpleMode ? (
+          <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+            {t('settings.simpleModeHint')}
+          </Alert>
+        ) : null}
         <GeneralSection
           form={form}
           yamlSafeExportEnabled={yamlSafeExportEnabled}
@@ -58,10 +66,10 @@ export const SettingsForm = ({
         <NotificationsSection form={form} observedSpecies={observedSpecies} />
       </Box>
       <Box id="settings-integrations">
-        <IntegrationsSection form={form} />
+        <IntegrationsSection form={form} simpleMode={simpleMode} />
       </Box>
       <Box id="settings-recognition">
-        <ProcessorSection form={form} />
+        <ProcessorSection form={form} simpleMode={simpleMode} />
       </Box>
 
       <Button variant="contained" fullWidth type="submit" sx={{ mt: 4 }}>

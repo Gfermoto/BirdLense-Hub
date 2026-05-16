@@ -58,7 +58,7 @@ export function ProcessorMultiCameraBirdnetBlock({ form }: Props) {
                     field.handleChange(groups.length ? groups : []);
                   }}
                   label={t('settings.multiCameraGroups')}
-                  placeholder="BirdBox, Forest"
+                  placeholder={t('settings.multiCameraGroupsPlaceholder')}
                   helperText={t('settings.multiCameraGroupsHint')}
                 />
               );

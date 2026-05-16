@@ -93,10 +93,10 @@ def generate_spectrogram(video_path: str, output_path: str, px_per_sec: int = 20
         if wav_fd is not None:
             try:
                 os.close(wav_fd)
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug("spectrogram wav_fd close: %s", e, exc_info=True)
         if wav_path and os.path.isfile(wav_path):
             try:
                 os.remove(wav_path)
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug("spectrogram temp wav unlink: %s", e, exc_info=True)

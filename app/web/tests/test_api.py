@@ -17,6 +17,8 @@ class TestMetrics:
         assert "birdlense_detections_total" in body
         assert "birdlense_species_count" in body
         assert "birdlense_videos_total" in body
+        assert "birdlense_processor_heartbeat_age_seconds" in body
+        assert "birdlense_processor_heartbeat_stale" in body
         assert "# HELP" in body
         assert "# TYPE" in body
 
@@ -43,6 +45,14 @@ class TestMetrics:
         assert "birdlense_memory_used_percent" in body
         assert "birdlense_disk_used_percent" in body
         assert "birdlense_detections_total" in body
+
+    def test_metrics_expose_http_request_counters_and_histogram(self, client):
+        assert client.get("/api/ui/health").status_code == 200
+        # First scrape captures previous request stats.
+        assert client.get("/metrics").status_code == 200
+        body = client.get("/metrics").get_data(as_text=True)
+        assert "birdlense_http_requests_total" in body
+        assert "birdlense_http_request_duration_ms_bucket" in body
 
     def test_metrics_summary_json(self, client):
         r = client.get("/api/metrics/summary")
@@ -254,6 +264,21 @@ class TestTrackRegenFallback:
         assert precise_used is False
         assert detections == [{"species_name": "Great Tit"}]
         assert calls == [("/tmp/test.mp4", 6)]
+
+    def test_fast_kwargs_rejects_unknown_for_explicit_signature_process(self):
+        """Лишний ключ в ``fast_kwargs`` — TypeError до входа в процессор."""
+        from services.track_regen_service import run_track_regen_with_precise_fallback
+
+        def strict_process(video_path: str, frame_step: int = 1):  # noqa: ARG001
+            raise AssertionError("process should not be invoked")
+
+        with pytest.raises(TypeError, match="bogus"):
+            run_track_regen_with_precise_fallback(
+                "/tmp/test.mp4",
+                strict_process,
+                {"frame_step": 6, "bogus": True},
+                None,
+            )
 
     def test_manual_conflict_filter_drops_unknown_same_track(self):
         from types import SimpleNamespace
@@ -843,6 +868,65 @@ class TestTimeline:
         assert abs(float(sc["delta_kg"]) - 0.015) < 1e-6
         assert sc["display_unit"] == "g"
 
+    def test_timeline_visit_includes_nickname_and_model_behavior(self, app, client):
+        """Visit payload keeps individual nickname and model behavior label."""
+        from app_config.app_config import app_config
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+        from services.http_response_cache import bust_response_caches
+
+        with app.app_context():
+            app_config.set("secrets.latitude", "55.7558")
+            app_config.set("secrets.longitude", "37.6176")
+            species = Species(name=f"Timeline Identity {id(app)}")
+            db.session.add(species)
+            db.session.flush()
+            species_name = species.name
+            visit = SpeciesVisit(
+                species_id=species.id,
+                start_time=datetime(2026, 3, 25, 15, 0, 0),
+                end_time=datetime(2026, 3, 25, 15, 10, 0),
+                max_simultaneous=1,
+            )
+            video = Video(
+                processor_version="test",
+                start_time=datetime(2026, 3, 25, 15, 0, 0),
+                end_time=datetime(2026, 3, 25, 15, 0, 30),
+                video_path=f"data/recordings/2026/03/25/150002/identity_{id(app)}.mp4",
+                behavior_label="feeding",
+                behavior_confidence=0.88,
+            )
+            db.session.add_all([visit, video])
+            db.session.flush()
+            db.session.add(
+                VideoSpecies(
+                    video_id=video.id,
+                    species_id=species.id,
+                    species_visit_id=visit.id,
+                    start_time=1.0,
+                    end_time=6.0,
+                    confidence=0.92,
+                    source="video",
+                    detection_provider="yolo",
+                    track_id=101,
+                    individual_nickname="Sparky",
+                ),
+            )
+            db.session.commit()
+
+        bust_response_caches()
+        r = client.get("/api/ui/timeline", query_string={"date": "2026-03-25"})
+        assert r.status_code == 200
+        row = next(
+            (x for x in r.json if x.get("species", {}).get("name") == species_name),
+            None,
+        )
+        assert row is not None
+        assert row.get("individual_nickname") == "Sparky"
+        labels = [e.get("label") for e in row.get("behavior_events") or []]
+        assert labels == ["feeding"]
+        first_det = (row.get("detections") or [{}])[0]
+        assert first_det.get("individual_nickname") == "Sparky"
+
     def test_timeline_includes_video_not_attached_to_any_visit(self, app, client):
         """Ролик за сутки без SpeciesVisit появляется как unlinked_video."""
         from datetime import datetime, timezone
@@ -872,6 +956,68 @@ class TestTimeline:
         unlinked = [row for row in r.json if row.get("timeline_kind") == "unlinked_video"]
         assert unlinked and all(row["id"] < 0 for row in unlinked)
         assert all(row.get("detections") == [] for row in unlinked)
+
+    def test_timeline_unlinked_video_keeps_nickname_and_model_behavior(self, app, client):
+        """Unlinked video payload must keep nickname and model behavior contract parity."""
+        from datetime import datetime, timezone
+        from models import Species, Video, VideoSpecies, db
+        from services.http_response_cache import bust_response_caches
+
+        with app.app_context():
+            species = Species(name=f"Unlinked Identity {id(app)}")
+            db.session.add(species)
+            db.session.flush()
+            st = datetime(2026, 3, 24, 16, 0, 0)
+            v = Video(
+                processor_version="test",
+                start_time=st,
+                end_time=st.replace(minute=1),
+                behavior_label="feeding",
+                behavior_confidence=0.91,
+                video_path=f"2026/03/24/160000/orphan_identity_{id(app)}.mp4",
+            )
+            db.session.add(v)
+            db.session.flush()
+            db.session.add(
+                VideoSpecies(
+                    video_id=v.id,
+                    species_id=species.id,
+                    start_time=1.0,
+                    end_time=8.0,
+                    confidence=0.87,
+                    source="video",
+                    detection_provider="yolo",
+                    track_id=77,
+                    individual_nickname="Nova",
+                ),
+            )
+            db.session.commit()
+            video_id = int(v.id)
+
+        bust_response_caches()
+        ts_start = int(datetime(2026, 3, 24, 0, 0, 0, tzinfo=timezone.utc).timestamp())
+        ts_end = int(datetime(2026, 3, 24, 23, 59, 59, tzinfo=timezone.utc).timestamp())
+        r = client.get(
+            "/api/ui/timeline",
+            query_string={"start_time": ts_start, "end_time": ts_end},
+        )
+        assert r.status_code == 200
+        row = next(
+            (
+                x
+                for x in r.json
+                if x.get("timeline_kind") == "unlinked_video"
+                and any(d.get("video_id") == video_id for d in (x.get("detections") or []))
+            ),
+            None,
+        )
+        assert row is not None
+        assert row.get("individual_nickname") == "Nova"
+        labels = [e.get("label") for e in (row.get("behavior_events") or [])]
+        assert labels == ["feeding"]
+        first_det = (row.get("detections") or [{}])[0]
+        assert first_det.get("individual_nickname") == "Nova"
+        assert first_det.get("detection_provider") == "yolo"
 
     def test_timeline_favorite_only_filters_visits_and_orphans(self, app, client):
         """favorite_only=1: визиты без избранного ролика скрыты; осиротевшие favorite — в списке."""
@@ -1136,6 +1282,14 @@ class TestHealth:
         assert data["checks"]["data_dir"]["status"] == "ok"
         assert data["checks"]["app_config_dir"]["status"] == "ok"
         assert data["components"]["web"] == "ok"
+        sg = data["security_gates"]
+        assert sg["runtime"] in ("development", "production")
+        assert len(sg["items"]) == 3
+        assert {x["id"] for x in sg["items"]} == {
+            "strict_api_auth",
+            "flask_secret_key",
+            "processor_secret",
+        }
 
     def test_readiness_returns_503_when_database_check_fails(self, client, monkeypatch):
         from models import db
@@ -1165,6 +1319,31 @@ class TestHealth:
         assert data["ready"] is True
         assert data["components"]["web"] == "ok"
         assert data["components"]["processor"] == "unknown"
+
+    def test_readiness_returns_503_when_processor_heartbeat_check_fails_in_production(
+        self,
+        client,
+        monkeypatch,
+    ):
+        import services.readiness_service as rs
+
+        monkeypatch.setenv("BIRDLENSE_ENV", "production")
+
+        def _stale(_session):
+            return {
+                "status": "error",
+                "reason": "stale_heartbeat",
+                "max_age_seconds": 180,
+            }
+
+        monkeypatch.setattr(rs, "_processor_heartbeat_readiness", _stale)
+
+        r = client.get("/api/ui/readiness")
+
+        assert r.status_code == 503
+        assert r.json["ready"] is False
+        assert r.json["checks"]["processor_heartbeat"]["status"] == "error"
+        assert r.json["checks"]["processor_heartbeat"]["reason"] == "stale_heartbeat"
 
 
 class TestStatus:
@@ -1707,6 +1886,60 @@ class TestVideos:
 
             r1 = client.patch(f"/api/ui/videos/{vid}", json={"favorite": True})
             assert r1.status_code == 410
+        finally:
+            app_config.set("general.settings_password", old_admin)
+            app_config.set("general.contributor_password", old_contrib)
+
+    def test_patch_video_behavior_and_get_detail(self, app, client):
+        """PATCH behavior_label/confidence; GET detail includes behavior_* (#416)."""
+        from datetime import datetime, timezone
+
+        from app_config.app_config import app_config
+        from models import Video, db
+
+        old_admin = app_config.get("general.settings_password")
+        old_contrib = app_config.get("general.contributor_password")
+        app_config.set("general.settings_password", "")
+        app_config.set("general.contributor_password", "")
+        try:
+            with app.app_context():
+                v = Video(
+                    processor_version="test",
+                    start_time=datetime(2025, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
+                    end_time=datetime(2025, 7, 1, 10, 0, 30, tzinfo=timezone.utc),
+                    video_path="data/recordings/2025/07/01/100000/video.mp4",
+                    favorite=False,
+                )
+                db.session.add(v)
+                db.session.commit()
+                vid = v.id
+
+            rp = client.patch(
+                f"/api/ui/videos/{vid}",
+                json={"behavior_label": "feeding", "behavior_confidence": 0.82},
+            )
+            assert rp.status_code == 200
+            body = rp.get_json()
+            assert body.get("behavior_label") == "feeding"
+            assert abs(float(body.get("behavior_confidence") or 0) - 0.82) < 1e-6
+
+            rg = client.get(f"/api/ui/videos/{vid}")
+            assert rg.status_code == 200
+            detail = rg.get_json()
+            assert detail.get("behavior_label") == "feeding"
+            assert abs(float(detail.get("behavior_confidence") or 0) - 0.82) < 1e-6
+
+            rc = client.patch(f"/api/ui/videos/{vid}", json={"behavior_label": ""})
+            assert rc.status_code == 200
+            cleared = rc.get_json()
+            assert not cleared.get("behavior_label")
+            assert cleared.get("behavior_confidence") in (None, 0, 0.0)
+
+            rg2 = client.get(f"/api/ui/videos/{vid}")
+            assert rg2.status_code == 200
+            d2 = rg2.get_json()
+            assert not d2.get("behavior_label")
+            assert d2.get("behavior_confidence") in (None, 0, 0.0)
         finally:
             app_config.set("general.settings_password", old_admin)
             app_config.set("general.contributor_password", old_contrib)
@@ -2677,6 +2910,120 @@ class TestMigrationCalendar:
     def test_migration_calendar_rejects_bad_catalog(self, client):
         r = client.get("/api/ui/migration-calendar", query_string={"catalog": "maybe"})
         assert r.status_code == 400
+
+    def test_migration_calendar_rejects_bad_metric(self, client):
+        r = client.get("/api/ui/migration-calendar", query_string={"metric": "events"})
+        assert r.status_code == 400
+        assert "metric" in (r.json or {}).get("error", "")
+
+    def test_migration_calendar_default_metric_is_encounters(self, app, client, monkeypatch):
+        from models import db, Species, SpeciesVisit
+        import services.migration_calendar_service as mc_service
+
+        monkeypatch.setattr(mc_service, "species_ids_to_exclude_from_bird_catalog", lambda _s: set())
+
+        with app.app_context():
+            species = Species(name="Default metric species")
+            db.session.add(species)
+            db.session.flush()
+            db.session.add(
+                SpeciesVisit(
+                    species_id=species.id,
+                    start_time=datetime(2025, 4, 2, 10, 0, 0),
+                    end_time=datetime(2025, 4, 2, 10, 10, 0),
+                    max_simultaneous=3,
+                )
+            )
+            db.session.commit()
+
+        r = client.get("/api/ui/migration-calendar", query_string={"catalog": "observed"})
+        assert r.status_code == 200
+        assert r.json.get("metric_used") == "encounters"
+
+        for row in r.json.get("species", []):
+            if row.get("name") == "Default metric species":
+                assert int(row.get("total") or 0) == 1
+                break
+        else:
+            raise AssertionError("Default metric species not found")
+
+    def test_migration_calendar_metric_switch(self, app, client, monkeypatch):
+        from models import db, Species, SpeciesVisit
+        import services.migration_calendar_service as mc_service
+
+        monkeypatch.setattr(mc_service, "species_ids_to_exclude_from_bird_catalog", lambda _s: set())
+
+        with app.app_context():
+            species = Species(name="Metric switch species")
+            db.session.add(species)
+            db.session.flush()
+            db.session.add(
+                SpeciesVisit(
+                    species_id=species.id,
+                    start_time=datetime(2025, 4, 1, 10, 0, 0),
+                    end_time=datetime(2025, 4, 1, 10, 10, 0),
+                    max_simultaneous=4,
+                )
+            )
+            db.session.commit()
+
+        r_visits = client.get(
+            "/api/ui/migration-calendar",
+            query_string={"metric": "visits", "catalog": "observed"},
+        )
+        r_max = client.get(
+            "/api/ui/migration-calendar",
+            query_string={"metric": "max_simultaneous", "catalog": "observed"},
+        )
+        assert r_visits.status_code == 200
+        assert r_max.status_code == 200
+        assert r_visits.json.get("metric_used") == "visits"
+        assert r_max.json.get("metric_used") == "max_simultaneous"
+
+        def _find_total(payload):
+            for row in payload.get("species", []):
+                if row.get("name") == "Metric switch species":
+                    return int(row.get("total") or 0)
+            return 0
+
+        assert _find_total(r_visits.json) == 1
+        assert _find_total(r_max.json) == 4
+
+    def test_migration_calendar_compare_endpoint(self, app, client, monkeypatch):
+        from models import db, Species, SpeciesVisit
+        import services.migration_calendar_service as mc_service
+
+        monkeypatch.setattr(mc_service, "species_ids_to_exclude_from_bird_catalog", lambda _s: set())
+
+        with app.app_context():
+            species = Species(name="Compare metric species")
+            db.session.add(species)
+            db.session.flush()
+            db.session.add(
+                SpeciesVisit(
+                    species_id=species.id,
+                    start_time=datetime(2025, 5, 1, 9, 0, 0),
+                    end_time=datetime(2025, 5, 1, 9, 5, 0),
+                    max_simultaneous=4,
+                )
+            )
+            db.session.commit()
+
+        r = client.get("/api/ui/migration-calendar/compare", query_string={"catalog": "observed"})
+        assert r.status_code == 200
+        totals = (r.json or {}).get("totals") or {}
+        assert int(totals.get("encounters") or 0) >= 1
+        assert int(totals.get("max_simultaneous") or 0) >= 4
+        assert int(totals.get("delta") or 0) >= 3
+        target = None
+        for row in (r.json or {}).get("species", []):
+            if row.get("name") == "Compare metric species":
+                target = row
+                break
+        assert target is not None
+        assert int(target.get("encounters_total") or 0) == 1
+        assert int(target.get("max_simultaneous_total") or 0) == 4
+        assert int(target.get("delta") or 0) == 3
 
 
 class TestUnknowns:

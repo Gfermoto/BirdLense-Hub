@@ -61,6 +61,27 @@ def _start_mjpeg_feeder_thread(media_sources_cache: dict) -> None:
     threading.Thread(target=_mjpeg_feeder, daemon=True).start()
 
 
+def _resolve_capture_stream_url(
+    *,
+    go2rtc_url: str,
+    detect_stream_name: str | None,
+    username: str | None = None,
+    password: str | None = None,
+) -> str | None:
+    """Resolve capture stream as direct URL or go2rtc stream name."""
+    detect_sn = (detect_stream_name or "").strip()
+    if not detect_sn:
+        return None
+    if "://" in detect_sn:
+        return detect_sn
+    return _build_stream_url(
+        go2rtc_url,
+        detect_sn,
+        username=username,
+        password=password,
+    )
+
+
 def setup_processor_media(
     args: Any,
     main_size: tuple,
@@ -159,9 +180,15 @@ def setup_processor_media(
     def get_media_source(camera_id):
         if camera_id not in media_sources_cache:
             cam = next((c for c in cameras if c["id"] == camera_id), cameras[0])
-            stream_url = _build_stream_url(
+            record_url = _build_stream_url(
                 go2rtc_url,
                 cam["stream_name"],
+                username=app_config.get("video.go2rtc_username"),
+                password=app_config.get("video.go2rtc_password"),
+            )
+            capture_url = _resolve_capture_stream_url(
+                go2rtc_url=go2rtc_url,
+                detect_stream_name=cam.get("detect_stream_name"),
                 username=app_config.get("video.go2rtc_username"),
                 password=app_config.get("video.go2rtc_password"),
             )
@@ -175,14 +202,19 @@ def setup_processor_media(
             rcodec = (app_config.get("video.record_stream_codec") or "h264").strip().lower()
             if rcodec not in ("h264", "copy"):
                 rcodec = "h264"
+            capture_backend = (app_config.get("video.capture_backend") or "auto").strip().lower()
+            if capture_backend not in ("auto", "opencv", "ffmpeg_vaapi"):
+                capture_backend = "auto"
             media_sources_cache[camera_id] = Go2RTCStreamSource(
-                stream_url=stream_url,
+                stream_url=record_url,
                 main_size=main_size,
                 lores_size=lores_size,
                 auto_reconnect=app_config.get("video.auto_reconnect", True),
                 mjpeg_port=mjpeg_base_port + idx,
                 encoding_mode=encoding,
                 record_stream_codec=rcodec,
+                capture_backend=capture_backend,
+                capture_stream_url=capture_url,
             )
         return media_sources_cache[camera_id]
 

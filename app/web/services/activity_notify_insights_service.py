@@ -3,15 +3,23 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 
 from models import ActivityLog, db
+
+_log = logging.getLogger(__name__)
 
 
 def activity_log_payload(row) -> dict | None:
     try:
         return row.data if isinstance(row.data, dict) else (json.loads(row.data) if row.data else {})
-    except Exception:
+    except (TypeError, ValueError, json.JSONDecodeError) as exc:
+        _log.debug(
+            "activity_log_payload unreadable row id=%s: %s",
+            getattr(row, "id", None),
+            exc,
+        )
         return {}
 
 
