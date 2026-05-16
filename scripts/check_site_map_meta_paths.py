@@ -26,6 +26,15 @@ except ImportError as e:
 
 ROOT = Path(__file__).resolve().parents[1]
 
+_STUB_MARKERS = ("Do not edit this stub", "This page moved")
+
+
+def _is_redirect_stub(path: Path) -> bool:
+    if not path.is_file():
+        return True
+    text = path.read_text(encoding="utf-8")
+    return any(m in text for m in _STUB_MARKERS)
+
 # SITE_MAP.md uses curly quotes in sidebar headings (MkDocs Material style).
 _HUB = "## Sidebar — \u201cUse the hub\u201d"
 _DEVELOP = "## Sidebar — \u201cDevelop & integrate\u201d"
@@ -95,6 +104,12 @@ def _check(label: str, paths: list[str], chunk: str) -> None:
 def main() -> None:
     site_map = ROOT / "docs" / "SITE_MAP.md"
     site_map_ru = ROOT / "docs" / "SITE_MAP.ru.md"
+    if _is_redirect_stub(site_map) or _is_redirect_stub(site_map_ru):
+        print(
+            "check_site_map_meta_paths: SKIP (docs/SITE_MAP*.md are redirect stubs; "
+            "canonical maps: archive/internal/docs-legacy/SITE_MAP*.md)"
+        )
+        return
     if not site_map.exists() or not site_map_ru.exists():
         print("check_site_map_meta_paths: SKIP (docs/SITE_MAP*.md not present)")
         return
