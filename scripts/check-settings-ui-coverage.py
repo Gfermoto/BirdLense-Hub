@@ -51,6 +51,11 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Processor resolves scales trigger transport from integrations.scales.source when unset; duplicate source pickers were removed from Settings.",
         "next_step": "Re-expose only if product needs different MQTT/ESPHome paths for live weight vs weight-trigger sampling.",
     },
+    "triggers.frigate.geometry_fallback_cooldown_seconds": {
+        "category": "advanced",
+        "reason": "Cooldown for Frigate geometry fallback path; anti-flap operator tuning.",
+        "next_step": "YAML-only until Frigate trigger advanced panel exists.",
+    },
     "integrations.scales.motion_trigger_enabled": {
         "category": "legacy",
         "reason": "Superseded by triggers.scales.enabled; trigger_config still reads this for YAML migration.",
@@ -131,6 +136,31 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "ops-only",
         "reason": "OpenVINO classifier bundle path is deployment-specific and managed server-side.",
         "next_step": "Keep hidden from Settings form; surface only backend selector in UI.",
+    },
+    "processor.models.behavior_openvino": {
+        "category": "ops-only",
+        "reason": "Behavior OpenVINO bundle path is deployment-specific.",
+        "next_step": "Same policy as binary_openvino; not in Settings form.",
+    },
+    "processor.openvino_binary_track_ultralytics_conf": {
+        "category": "advanced",
+        "reason": "OpenVINO-only YOLO.track(conf) floor cap; compensates OV vs torch score gap without a second inference.",
+        "next_step": "YAML-only; document alongside processor.inference_backend=openvino.",
+    },
+    "processor.openvino_binary_bird_score_scale": {
+        "category": "advanced",
+        "reason": "OpenVINO-only Bird confidence scale for threshold compare; raw conf stored unchanged.",
+        "next_step": "YAML-only; tune if false bird positives rise.",
+    },
+    "processor.openvino_min_confidence_binary_bird": {
+        "category": "advanced",
+        "reason": "Optional OpenVINO-only replacement for min_confidence_binary_bird in binary floor + per-label.",
+        "next_step": "YAML-only; prefer track cap + score_scale first.",
+    },
+    "processor.readiness_heartbeat_max_age_seconds": {
+        "category": "ops-only",
+        "reason": "Readiness gate threshold for processor heartbeat freshness; deployment/ops tuning.",
+        "next_step": "YAML-only; reflected in /api/ui/readiness payload.",
     },
     "processor.regional_species": {
         "category": "planned-ui",
@@ -348,6 +378,16 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "advanced",
         "reason": "Weak-track salvage confidence gate is expert-level tuning.",
         "next_step": "Expose only with clear safety notes and presets.",
+    },
+    "detection.frigate_trigger_review_salvage_enabled": {
+        "category": "advanced",
+        "reason": "Frigate trigger review salvage is expert anti-regression tuning.",
+        "next_step": "YAML-only until Frigate trigger advanced UX exists.",
+    },
+    "detection.frigate_trigger_review_salvage_allow_without_yolo_tracks": {
+        "category": "advanced",
+        "reason": "Opt-in to legacy Frigate-only salvage when ByteTrack has zero rows; risky for empty clips.",
+        "next_step": "YAML-only; document in CONFIGURATION.",
     },
     "processor.classifier_vote_share_power": {
         "category": "advanced",
@@ -736,6 +776,31 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "legacy",
         "reason": "Superseded by integrations.birdnet.mqtt_topic via migrate_legacy_trigger_topics.",
         "next_step": "Keep MQTT mirror for old configs.",
+    },
+    "mqtt.feeder_scale_queue_max": {
+        "category": "advanced",
+        "reason": "Outbound queue sizing for feeder-scale MQTT path; operator backpressure tuning.",
+        "next_step": "YAML-only or optional advanced MQTT/Processor panel.",
+    },
+    "mqtt.max_events": {
+        "category": "advanced",
+        "reason": "Inbound MQTT ring buffer cap for processor transport.",
+        "next_step": "YAML-only or observability presets.",
+    },
+    "mqtt.publish_queue_max": {
+        "category": "advanced",
+        "reason": "Publish-side MQTT queue cap (backpressure); operator tuning.",
+        "next_step": "YAML-only; see processor performance docs.",
+    },
+    "mqtt.reconnect_jitter_ratio": {
+        "category": "advanced",
+        "reason": "Reconnect backoff jitter ratio for MQTT client.",
+        "next_step": "YAML-only.",
+    },
+    "system_metrics.cpu_sample_interval_seconds": {
+        "category": "advanced",
+        "reason": "CPU sampler interval for system metrics; low-level observability knob.",
+        "next_step": "YAML-only or future System diagnostics UI.",
     },
     "ebird.protocol": {
         "category": "yaml-only",

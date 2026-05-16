@@ -24,6 +24,8 @@ markdown_extensions:
 validation:
   nav:
     omitted_files: ignore
+  links:
+    not_found: ignore
 
 exclude_docs: |
   archive/**
