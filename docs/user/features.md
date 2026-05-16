@@ -116,4 +116,4 @@ Full spec: [OpenAPI (YAML)](https://github.com/Gfermoto/BirdLense-Hub/blob/main/
 
 ## See also
 
-[API](../contributor/api.md) · [CONFIGURATION](./configuration.md) · [GLOSSARY](./glossary.md) · [ROADMAP](../contributor/roadmap.md) · [OVERVIEW](./overview.md) · [PUBLIC_RELEASE_CHECKLIST](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.md)
+[API](../contributor/api.md) · [CONFIGURATION](./configuration.md) · [GLOSSARY](./glossary.md) · [ROADMAP](../contributor/roadmap.md) · [OVERVIEW](./overview.md) · [PUBLIC_RELEASE_CHECKLIST](../../archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.md)

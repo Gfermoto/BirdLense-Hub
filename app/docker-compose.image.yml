@@ -1,5 +1,5 @@
 # Развёртывание из готового образа (без сборки)
-# Использование: docs/INSTALL.md — Option 4 / docs/INSTALL.ru.md — Вариант 4
+# Использование: docs/user/install.md — Option 4 / docs/ru/install.ru.md — Вариант 4
 #
 #   export BIRDLENSE_IMAGE=ghcr.io/gfermoto/birdlense-hub:latest   # или свой registry
 #   cp .env.example .env   # и заполнить PROCESSOR_SECRET, FLASK_SECRET_KEY и при необходимости MQTT_* и др.

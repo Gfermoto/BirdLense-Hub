@@ -48,11 +48,11 @@ python3 -m venv .venv-docs
 .venv-docs/bin/mkdocs build --strict
 ```
 
-Подробнее: [Documentation.ru](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/Documentation.ru.md).
+Подробнее: [Documentation.ru](../../archive/internal/docs-legacy/Documentation.ru.md).
 
 ### Чеклист перед релизом (мейнтейнер)
 
-- [ ] Из **корня репозитория:** `make ci-local` (полный паритет с job **CI** на GitHub, кроме тяжёлого Docker-слоя — см. [CI_AND_QUALITY.ru](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CI_AND_QUALITY.ru.md)); по желанию **`make ci-local-docker`** для локальных `make test` / `test-web` + Playwright smoke. **`scripts/ci-full-local.sh`** подхватывает **nvm** / **fnm** по `app/ui/.nvmrc`, если в `PATH` нет `node` или версия &lt; 22.
+- [ ] Из **корня репозитория:** `make ci-local` (полный паритет с job **CI** на GitHub, кроме тяжёлого Docker-слоя — см. [CI_AND_QUALITY.ru](../contributor/ci-and-quality.md)); по желанию **`make ci-local-docker`** для локальных `make test` / `test-web` + Playwright smoke. **`scripts/ci-full-local.sh`** подхватывает **nvm** / **fnm** по `app/ui/.nvmrc`, если в `PATH` нет `node` или версия &lt; 22.
 - [ ] `cd app && make test && make test-web` (или зелёный **CI** на PR `dev` → `main`)
 - [ ] `cd app && make verify`
 - [ ] Из корня репо: `mkdocs build --strict` (или команды с `.venv-docs` выше)
@@ -76,7 +76,7 @@ make local
 
 Без камер и Go2RTC процессор переходит в режим ожидания — веб-интерфейс и API работают.
 
-Порядок старта Docker, `PYTHONPATH`, health vs readiness: [RUNTIME_COUPLING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/RUNTIME_COUPLING.ru.md). Если после `compose up` «висит»: [TROUBLESHOOTING.ru.md](./troubleshooting.ru.md#single-container-startup-stuck).
+Порядок старта Docker, `PYTHONPATH`, health vs readiness: [RUNTIME_COUPLING.ru.md](../../archive/internal/docs-legacy/RUNTIME_COUPLING.ru.md). Если после `compose up` «висит»: [TROUBLESHOOTING.ru.md](./troubleshooting.ru.md#single-container-startup-stuck).
 
 ## Ручной запуск
 
@@ -190,7 +190,7 @@ OpenAPI: `app/web/openapi.yaml`. Стиль: краткий docstring на ру�
 
 ## CodeQL (по желанию)
 
-В CI CodeQL запускается на push/PR; локально удобно расширение [CodeQL для VS Code](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql). См. [CODEQL.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CODEQL.ru.md).
+В CI CodeQL запускается на push/PR; локально удобно расширение [CodeQL для VS Code](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-codeql). См. [CODEQL.ru.md](../../archive/internal/docs-legacy/CODEQL.ru.md).
 
 ---
 

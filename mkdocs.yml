@@ -34,10 +34,141 @@ exclude_docs: |
   project/**
   api/**
   ui/**
+  ACCESS_CONTROL.md
+  ACCESS_CONTROL.ru.md
+  API.md
+  API.ru.md
+  API_ERRORS.md
+  ARCHITECTURE.md
+  ARCHITECTURE.ru.md
+  CI_AND_QUALITY.md
+  CODEQL.md
+  CODEQL.ru.md
+  CONFIGURATION.md
+  CONFIGURATION.ru.md
+  CV_ML_PREP.md
+  CV_ML_PREP.ru.md
+  CV_ML_ROADMAP_PHASES.md
+  CV_ML_ROADMAP_PHASES.ru.md
+  DATASETS.md
+  DEFINITION_OF_DONE.md
+  DEFINITION_OF_DONE.ru.md
+  DEPLOY_SERVER.md
+  DEPLOY_SERVER.ru.md
+  Documentation.md
+  FEATURES.md
+  FEATURES.ru.md
+  GLOSSARY.md
+  GLOSSARY.ru.md
+  HEIMDALL.md
+  HEIMDALL.ru.md
+  INSTALL.md
+  INSTALL.ru.md
+  LOCAL_DEV.md
+  LOCAL_DEV.ru.md
+  MCP_SETUP.md
+  MCP_SETUP.ru.md
+  ML_DETECTOR_COLAB.md
+  ML_DETECTOR_COLAB.ru.md
+  OVERVIEW.md
+  OVERVIEW.ru.md
+  POSTGRES_MIGRATION.md
+  POSTGRES_MIGRATION.ru.md
+  PROCESSOR_PERFORMANCE.md
+  PROCESSOR_PERFORMANCE.ru.md
+  PUBLIC_RECORDINGS.md
+  PUBLIC_RECORDINGS.ru.md
+  PUBLIC_RELEASE_CHECKLIST.md
+  PUBLIC_RELEASE_CHECKLIST.ru.md
+  QUICKSTART.md
+  QUICKSTART.ru.md
+  README.md
+  RECOVERY_CONFIG.md
+  RECOVERY_CONFIG.ru.md
+  RELEASE_READINESS.md
+  RELEASE_READINESS.ru.md
+  REPOSITORY_LAYOUT.md
+  ROADMAP.md
+  RUNBOOKS.md
+  RUNBOOKS.ru.md
+  RUNTIME_COUPLING.md
+  RUNTIME_COUPLING.ru.md
+  SCENARIOS.md
+  SCENARIOS.ru.md
+  SECRETS_ROTATION.md
+  SECRETS_ROTATION.ru.md
+  SECURITY.md
+  SECURITY.ru.md
+  SITE_MAP.md
+  SITE_MAP.ru.md
+  TESTING.md
+  TESTING.ru.md
+  TRAINING.md
+  TRAINING.ru.md
+  TROUBLESHOOTING.md
+  TROUBLESHOOTING.ru.md
+  UI_SETTINGS_MAP.md
+  UI_SETTINGS_MAP.ru.md
+  VERIFICATION.md
+  VERIFICATION.ru.md
+
+plugins:
+  - search
+  - redirects:
+      redirect_maps:
+        'README.md': 'index.md'
+        'OVERVIEW.md': 'user/overview.md'
+        'QUICKSTART.md': 'user/quickstart.md'
+        'INSTALL.md': 'user/install.md'
+        'DEPLOY_SERVER.md': 'user/deploy-server.md'
+        'PUBLIC_RECORDINGS.md': 'user/public-recordings.md'
+        'SCENARIOS.md': 'user/scenarios.md'
+        'CONFIGURATION.md': 'user/configuration.md'
+        'FEATURES.md': 'user/features.md'
+        'PROCESSOR_PERFORMANCE.md': 'user/processor-performance.md'
+        'TROUBLESHOOTING.md': 'user/troubleshooting.md'
+        'RUNBOOKS.md': 'user/runbooks.md'
+        'RECOVERY_CONFIG.md': 'user/recovery-config.md'
+        'GLOSSARY.md': 'user/glossary.md'
+        'ARCHITECTURE.md': 'contributor/architecture.md'
+        'API.md': 'contributor/api.md'
+        'API_ERRORS.md': 'contributor/api-errors.md'
+        'ACCESS_CONTROL.md': 'contributor/access-control.md'
+        'MCP_SETUP.md': 'contributor/mcp-setup.md'
+        'LOCAL_DEV.md': 'contributor/local-dev.md'
+        'TESTING.md': 'contributor/testing.md'
+        'CI_AND_QUALITY.md': 'contributor/ci-and-quality.md'
+        'SECURITY.md': 'contributor/security.md'
+        'REPOSITORY_LAYOUT.md': 'contributor/repository-layout.md'
+        'ROADMAP.md': 'contributor/roadmap.md'
+        'DATASETS.md': 'contributor/datasets.md'
+        'Documentation.md': 'contributor/documentation.md'
+        'OVERVIEW.ru.md': 'ru/overview.ru.md'
+        'QUICKSTART.ru.md': 'ru/quickstart.ru.md'
+        'INSTALL.ru.md': 'ru/install.ru.md'
+        'DEPLOY_SERVER.ru.md': 'ru/deploy-server.ru.md'
+        'PUBLIC_RECORDINGS.ru.md': 'ru/public-recordings.ru.md'
+        'SCENARIOS.ru.md': 'ru/scenarios.ru.md'
+        'CONFIGURATION.ru.md': 'ru/configuration.ru.md'
+        'FEATURES.ru.md': 'ru/features.ru.md'
+        'PROCESSOR_PERFORMANCE.ru.md': 'ru/processor-performance.ru.md'
+        'TROUBLESHOOTING.ru.md': 'ru/troubleshooting.ru.md'
+        'RUNBOOKS.ru.md': 'ru/runbooks.ru.md'
+        'RECOVERY_CONFIG.ru.md': 'ru/recovery-config.ru.md'
+        'GLOSSARY.ru.md': 'ru/glossary.ru.md'
+        'ARCHITECTURE.ru.md': 'ru/architecture.ru.md'
+        'API.ru.md': 'ru/api.ru.md'
+        'ACCESS_CONTROL.ru.md': 'ru/access-control.ru.md'
+        'MCP_SETUP.ru.md': 'ru/mcp-setup.ru.md'
+        'LOCAL_DEV.ru.md': 'ru/local-dev.ru.md'
+        'TESTING.ru.md': 'ru/testing.ru.md'
+        'SECURITY.ru.md': 'ru/security.ru.md'
+
 
 nav:
   - Home: index.md
   - User Guide:
+      - Index: user/index.md
       - Overview: user/overview.md
       - Quickstart: user/quickstart.md
       - Installation: user/install.md
@@ -52,6 +183,8 @@ nav:
       - Processor performance: user/processor-performance.md
       - Glossary: user/glossary.md
   - Contributor Guide:
+      - Index: contributor/index.md
+      - Documentation guide: contributor/documentation.md
       - Architecture: contributor/architecture.md
       - API: contributor/api.md
       - API errors: contributor/api-errors.md
@@ -64,7 +197,11 @@ nav:
       - Datasets: contributor/datasets.md
       - Repository layout: contributor/repository-layout.md
       - Roadmap: contributor/roadmap.md
+      - Hub reliability plan: contributor/hub-reliability-and-quality-plan.md
+      - Hub incident protocol: contributor/hub-incident-protocol.md
+      - Clean OS test plan: contributor/clean-os-test-plan.md
   - Русский:
+      - Индекс: ru/index.md
       - Обзор: ru/overview.ru.md
       - Быстрый старт: ru/quickstart.ru.md
       - Установка: ru/install.ru.md

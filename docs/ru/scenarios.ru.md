@@ -131,7 +131,7 @@
 
 ## Сценарий 11: Исследование и дообучение модели
 
-См. [TRAINING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/TRAINING.ru.md), [DATASETS.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/DATASETS.ru.md) (**Актуальные пути**: merge, `brg/`, имена архивов). Скрипты: `scripts/datasets/`, merge → Colab.
+См. [TRAINING.ru.md](../../archive/internal/docs-legacy/TRAINING.ru.md), [datasets](../contributor/datasets.md) (**Актуальные пути**: merge, `brg/`, имена архивов). Скрипты: `scripts/datasets/`, merge → Colab.
 
 ---
 

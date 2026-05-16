@@ -4,7 +4,7 @@
 
 Один контейнер. Подключается к Go2RTC (отдельно или в Frigate), MQTT (BirdNET, Frigate).
 
-**Возможности:** Timeline (дата + время суток), экспорт CSV/JSON/eBird, PDF-отчёт, «Неизвестные», iNaturalist, Xeno-canto, Prometheus. См. [docs/FEATURES.md](../docs/FEATURES.md).
+**Возможности:** Timeline (дата + время суток), экспорт CSV/JSON/eBird, PDF-отчёт, «Неизвестные», iNaturalist, Xeno-canto, Prometheus. См. [docs/ru/features.ru.md](../docs/ru/features.ru.md).
 
 ## Запуск
 
@@ -15,7 +15,7 @@ cd app
 make local
 ```
 
-См. [docs/LOCAL_DEV.md](../docs/LOCAL_DEV.md) — полная сборка, тесты, E2E.
+См. [docs/ru/local-dev.ru.md](../docs/ru/local-dev.ru.md) — полная сборка, тесты, E2E.
 
 ### Вариант 1: Готовый образ (рекомендуется)
 
@@ -45,12 +45,12 @@ UI: http://localhost:8085
 | `make pull` | Скачать и запустить готовый образ |
 | `make stop` | Остановка |
 | `make logs` | Логи |
-| `make deploy` | Деплой на сервер (из корня репо; см. [docs/INSTALL.md](../docs/INSTALL.md)) |
+| `make deploy` | Деплой на сервер (из корня репо; см. [docs/ru/install.ru.md](../docs/ru/install.ru.md)) |
 
 ## Конфигурация
 
 - `app_config/default_config.yaml` — значения по умолчанию из образа/репозитория (базовая линия).
-- `app_config/user_config.yaml` — **пользовательские настройки** (глубокий merge поверх default); основной файл для сохранения настроек из UI. При деплое на сервер не перезаписываются живые `data/` и `user_config.yaml` (см. `docs/INSTALL.md` и правила deploy в репозитории).
+- `app_config/user_config.yaml` — **пользовательские настройки** (глубокий merge поверх default); основной файл для сохранения настроек из UI. При деплое на сервер не перезаписываются живые `data/` и `user_config.yaml` (см. [docs/ru/install.ru.md](../docs/ru/install.ru.md) и правила deploy в репозитории).
 - **Переменные окружения** — слой рантайма для секретов и инфраструктуры: `DATA_DIR`, `MQTT_BROKER`, `MQTT_USERNAME`, `MQTT_PASSWORD`, `GO2RTC_URL`, `PROCESSOR_SECRET`, `FLASK_SECRET_KEY`, `BIRDLENSE_*`, `MCP_TOKEN` и др. Во многих местах порядок **сначала env, потом YAML** (например брокер MQTT в bootstrap процессора и части UI).
 - При загрузке выполняется проверка **типов верхнеуровневых секций** merged-конфига (известные секции должны быть mapping, не скаляр). Ошибки пишутся в лог; `BIRDLENSE_STRICT_CONFIG=1` — **падать при старте**, если валидация не прошла.
 
@@ -68,7 +68,7 @@ UI: http://localhost:8085
 
 ## MCP
 
-Настройки → раздел 8. Подключение: [docs/MCP_SETUP.md](../docs/MCP_SETUP.md)
+Настройки → раздел 8. Подключение: [docs/ru/mcp-setup.ru.md](../docs/ru/mcp-setup.ru.md)
 
 ## Деплой
 

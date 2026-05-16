@@ -31,7 +31,7 @@ make stop && make start
 
 ## Старт одного контейнера (entrypoint): куда смотреть, если «зависло» {#single-container-startup-stuck}
 
-Контейнер запускает **`app/scripts/entrypoint.sh`**: nginx → gunicorn → ожидание **`GET /api/ui/health`** (до ~400 с) → опционально MCP → цикл **processor** (`processor/src/main.py`). См. [ARCHITECTURE.ru.md](./architecture.ru.md#runtime-processes-ports-and-health-signals) и [RUNTIME_COUPLING.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/RUNTIME_COUPLING.ru.md).
+Контейнер запускает **`app/scripts/entrypoint.sh`**: nginx → gunicorn → ожидание **`GET /api/ui/health`** (до ~400 с) → опционально MCP → цикл **processor** (`processor/src/main.py`). См. [ARCHITECTURE.ru.md](./architecture.ru.md#runtime-processes-ports-and-health-signals) и [RUNTIME_COUPLING.ru.md](../../archive/internal/docs-legacy/RUNTIME_COUPLING.ru.md).
 
 | Симптом | Куда смотреть |
 | --------- | ---------------- |
@@ -83,9 +83,9 @@ docker logs birdlense --tail 200 2>&1
 
 **Падения нет** при `processor.detector_weight_contract: warn` (дефолт). В режиме **`enforce`** старт не пройдёт, пока веса и scope не согласованы.
 
-**Что сделать:** (1) Сузьте `processor.detector_scope` под реальные `model.names` / манифест обучения. (2) Либо выкатите веса, где есть все scoped-классы, и перезапустите processor. (3) Не добавляйте `Background` в scope — см. [CV_ML_PREP.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_PREP.ru.md).
+**Что сделать:** (1) Сузьте `processor.detector_scope` под реальные `model.names` / манифест обучения. (2) Либо выкатите веса, где есть все scoped-классы, и перезапустите processor. (3) Не добавляйте `Background` в scope — см. [CV_ML_PREP.ru.md](../../archive/internal/docs-legacy/CV_ML_PREP.ru.md).
 
-**Связано:** [CV_ML_ROADMAP_PHASES.ru.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.ru.md) (эпик #368). Англ. версия: [TROUBLESHOOTING.md](../user/troubleshooting.md#detector-weight-contract-mismatch).
+**Связано:** [CV_ML_ROADMAP_PHASES.ru.md](../../archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.ru.md) (эпик #368). Англ. версия: [TROUBLESHOOTING.md](../user/troubleshooting.md#detector-weight-contract-mismatch).
 
 ---
 

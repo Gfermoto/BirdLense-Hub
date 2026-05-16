@@ -15,7 +15,7 @@
 | Medium | 9 | Session timeout, CORS, dependencies |
 | Low | 6 | Documentation, migrations |
 
-**Automated scanning:** GitHub CodeQL runs in CI (Python + TypeScript UI). See [CODEQL.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/CODEQL.md).
+**Automated scanning:** GitHub CodeQL runs in CI (Python + TypeScript UI). See [CODEQL.md](../../archive/internal/docs-legacy/CODEQL.md).
 
 ---
 
@@ -43,7 +43,7 @@
 | ~~**Medium**~~ **Mitigated** | `settings_password` / `contributor_password` historically plain text. | New saves from UI use **bcrypt**; legacy plaintext still verifies; optional **`BIRDLENSE_SETTINGS_PASSWORD`** / **`BIRDLENSE_CONTRIBUTOR_PASSWORD`** override at runtime. |
 | **Low** | `.env` in `.gitignore`, deploy script does not commit it. | Keep as is. |
 
-**Operator runbook:** [SECRETS_ROTATION.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SECRETS_ROTATION.md) — full inventory, rotation steps, verification, rollback, emergency note template ([issue #119](https://github.com/Gfermoto/BirdLense-Hub/issues/119)).
+**Operator runbook:** [SECRETS_ROTATION.md](../../archive/internal/docs-legacy/SECRETS_ROTATION.md) — full inventory, rotation steps, verification, rollback, emergency note template ([issue #119](https://github.com/Gfermoto/BirdLense-Hub/issues/119)).
 
 ---
 
@@ -159,7 +159,7 @@ Default recommendation for this project: **step 1 + 2**; use step 3 only under m
 5. ~~**Rate limiting**~~ ✅ `POST /api/ui/settings/verify-password`: **5** failed attempts per **60** s per client IP → **429** + `Retry-After`; success clears the counter. IP from `X-Real-IP` / `X-Forwarded-For` behind nginx — see [ACCESS_CONTROL](./access-control.md).
 6. ~~**Docker:** run as non-privileged user.~~ ✅ Processes use uid 1000 (`birdlense`).
 7. ~~**Mask secrets**~~ ✅ `GET /api/ui/settings` returns `***` for sensitive fields.
-8. **Secret rotation:** follow [SECRETS_ROTATION.md](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SECRETS_ROTATION.md) (prod ops).
+8. **Secret rotation:** follow [SECRETS_ROTATION.md](../../archive/internal/docs-legacy/SECRETS_ROTATION.md) (prod ops).
 
 ---
 

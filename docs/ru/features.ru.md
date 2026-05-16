@@ -1,6 +1,6 @@
 # Возможности BirdLense Hub
 
-[English](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/FEATURES.md)
+[English](../user/features.md)
 
 ---
 
@@ -114,4 +114,4 @@
 
 ---
 
-См. также: [API](../contributor/api.md), [CONFIGURATION](./configuration.ru.md), [GLOSSARY](./glossary.ru.md), [ROADMAP](../contributor/roadmap.md), [PUBLIC_RELEASE_CHECKLIST](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.ru.md).
+См. также: [API](../contributor/api.md), [CONFIGURATION](./configuration.ru.md), [GLOSSARY](./glossary.ru.md), [ROADMAP](../contributor/roadmap.md), [PUBLIC_RELEASE_CHECKLIST](../../archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.ru.md).

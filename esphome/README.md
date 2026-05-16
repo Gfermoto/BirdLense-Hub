@@ -20,7 +20,7 @@ esphome upload esphome/bird-feeder-relay.yaml
 - В шаблоне можно использовать и **`api:`** (нативная интеграция ESPHome / Home Assistant), и **`mqtt:`**. Для BirdLense оставлены два сценария:
   - **`source: mqtt`** — рекомендовано для этой прошивки: хаб по умолчанию читает `birdlense/scale/weight`, `birdlense/scale/bird_present`, шлёт тару в `birdlense/scale/command`
   - **`source: esphome`** — хаб опрашивает само устройство по ESPHome Web API (`/sensor/<id>`, `/binary_sensor/<id>`, `/button/<id>/press`)
-- Журнал дельты за клип и trigger записи по скачку веса в процессоре работают только в **MQTT**-режиме, см. `docs/CONFIGURATION.md`.
+- Журнал дельты за клип и trigger записи по скачку веса в процессоре работают только в **MQTT**-режиме, см. [docs/user/configuration.md](../docs/user/configuration.md) (раздел scales / MQTT).
 - **OTA** (как у реле): `ota_password` в `secrets.yaml`; при желании включите шифрование API (см. комментарий в YAML).
 - Пины HX711: **`hx_dout_pin`**, **`hx_clk_pin`** в `substitutions` (по умолчанию GPIO27 / GPIO25).
 

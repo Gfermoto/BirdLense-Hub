@@ -3,7 +3,7 @@
 #
 # Prerequisites:
 #   - Scrape job name must match labels below (default: job="birdlense").
-#   - Metrics from GET /api/metrics — see docs/CONFIGURATION.md → Prometheus / Grafana.
+#   - Metrics from GET /api/metrics — see docs/user/configuration.md → Prometheus / Grafana.
 #
 # Metric notes:
 #   - birdlense_detections_total / birdlense_videos_total reflect DB totals at scrape time
