@@ -303,15 +303,8 @@ def _processor_runtime_hints(app_config_get) -> list[str]:
     """Подсказки из data/diagnostics/processor_runtime_stats.json (совпадает с логами VPS)."""
     hints: list[str] = []
     warn_ms = max(0.0, _safe_float(app_config_get("processor.frame_processing_warn_ms", 450), 450))
-    path = os.path.join(data_paths.data_dir(), "diagnostics", "processor_runtime_stats.json")
-    if not os.path.isfile(path):
-        return hints
-    try:
-        with open(path, encoding="utf-8") as f:
-            snap = json.load(f)
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        return hints
-    if not isinstance(snap, dict):
+    snap = _load_processor_runtime_snapshot()
+    if not snap:
         return hints
     counters = snap.get("counters") if isinstance(snap.get("counters"), dict) else {}
     try:
@@ -338,6 +331,163 @@ def _processor_runtime_hints(app_config_get) -> list[str]:
     if warn_ms > 0 and p95 is not None and p95 >= warn_ms * 0.95:
         hints.append(f"processor.runtime.DETECT_P95 p95_ms={p95:.1f} warn_ms={int(warn_ms)}")
     return hints
+
+
+def _load_processor_runtime_snapshot() -> dict | None:
+    path = os.path.join(data_paths.data_dir(), "diagnostics", "processor_runtime_stats.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            snap = json.load(f)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(snap, dict):
+        return None
+    return snap
+
+
+def _preflight_config_safety(app_config_get) -> dict:
+    checks: list[dict[str, object]] = []
+    video_encoding = str(app_config_get("video.encoding") or "cpu").strip().lower()
+    mqtt_broker = str(app_config_get("mqtt.broker") or "").strip()
+    detector_backend = str(app_config_get("processor.inference_backend") or "auto").strip().lower()
+    detector_device = str(app_config_get("processor.inference_device") or "auto").strip().lower()
+    frigate_enabled = bool(app_config_get("triggers.frigate.enabled", False))
+    min_recording_gap = _safe_float(app_config_get("processor.min_seconds_between_recordings", 0), 0.0)
+    binary_imgsz = _safe_int(app_config_get("processor.binary_imgsz", 640), 640)
+    light_gate_enabled = bool(app_config_get("processor.light_gate_enabled", True))
+    light_gate_brightness = _safe_int(app_config_get("processor.light_gate_min_brightness", 25), 25)
+    light_gate_contrast = _safe_int(app_config_get("processor.light_gate_min_contrast", 20), 20)
+
+    checks.append(
+        {
+            "id": "frigate_requires_mqtt",
+            "status": "fail" if frigate_enabled and not mqtt_broker else "ok",
+            "severity": "error",
+            "message": "Frigate trigger needs mqtt.broker; events are dropped when broker is empty.",
+        }
+    )
+    checks.append(
+        {
+            "id": "gpu_split_pipeline",
+            "status": (
+                "warn"
+                if video_encoding == "cpu"
+                and detector_backend in {"openvino", "auto", "torch"}
+                and detector_device.startswith("intel")
+                else "ok"
+            ),
+            "severity": "warning",
+            "message": "Detector on Intel device with CPU video encoding may hide regressions in split runtime path.",
+        }
+    )
+    checks.append(
+        {
+            "id": "recording_gap_guardrail",
+            "status": "warn" if min_recording_gap > 4.0 else "ok",
+            "severity": "warning",
+            "message": "High min_seconds_between_recordings can suppress short repeated visits.",
+        }
+    )
+    checks.append(
+        {
+            "id": "binary_imgsz_floor",
+            "status": "warn" if binary_imgsz < 512 else "ok",
+            "severity": "warning",
+            "message": "Very low binary_imgsz can reduce recall for small birds.",
+        }
+    )
+    checks.append(
+        {
+            "id": "light_gate_recall",
+            "status": "warn"
+            if light_gate_enabled and (light_gate_brightness > 35 or light_gate_contrast > 35)
+            else "ok",
+            "severity": "warning",
+            "message": "Aggressive light gate can block dusk/night detections before YOLO.",
+        }
+    )
+    status = (
+        "fail"
+        if any(c["status"] == "fail" for c in checks)
+        else ("warn" if any(c["status"] == "warn" for c in checks) else "ok")
+    )
+    return {
+        "status": status,
+        "checks": checks,
+    }
+
+
+def _runtime_parity_snapshot(app_config_get) -> dict:
+    snap = _load_processor_runtime_snapshot() or {}
+    gauges = snap.get("gauges") if isinstance(snap.get("gauges"), dict) else {}
+    configured_paths = max(0.0, _safe_float(gauges.get("trigger_configured_paths_count"), 0.0))
+    effective_paths = max(0.0, _safe_float(gauges.get("trigger_effective_paths_count"), 0.0))
+    degraded = int(_safe_float(gauges.get("trigger_degraded_effective_lt_configured"), 0.0)) == 1
+    trigger_cfg_frigate = int(_safe_float(gauges.get("trigger_cfg_frigate_enabled"), 0.0)) == 1
+    trigger_frigate_degraded = int(_safe_float(gauges.get("trigger_frigate_degraded_no_mqtt"), 0.0)) == 1
+    mqtt_live = int(_safe_float(gauges.get("trigger_mqtt_live"), 0.0)) == 1
+    return {
+        "configured": {
+            "triggers_frigate_enabled": bool(app_config_get("triggers.frigate.enabled", False)),
+            "mqtt_broker_configured": bool(str(app_config_get("mqtt.broker") or "").strip()),
+            "inference_backend": str(app_config_get("processor.inference_backend") or "auto"),
+            "inference_device": str(app_config_get("processor.inference_device") or "auto"),
+            "video_encoding": str(app_config_get("video.encoding") or "cpu"),
+        },
+        "runtime": {
+            "trigger_cfg_frigate_enabled": trigger_cfg_frigate,
+            "trigger_configured_paths_count": configured_paths,
+            "trigger_effective_paths_count": effective_paths,
+            "trigger_degraded_effective_lt_configured": degraded,
+            "trigger_frigate_degraded_no_mqtt": trigger_frigate_degraded,
+            "trigger_mqtt_live": mqtt_live,
+            "last_session_runtime_profile": gauges.get("last_session_runtime_profile"),
+        },
+        "parity_alerts": {
+            "frigate_config_runtime_mismatch": bool(
+                bool(app_config_get("triggers.frigate.enabled", False)) != trigger_cfg_frigate
+            ),
+            "effective_trigger_paths_dropped": bool(degraded),
+            "frigate_degraded_no_mqtt": bool(trigger_frigate_degraded),
+        },
+    }
+
+
+def _config_presets() -> list[dict]:
+    return [
+        {
+            "id": "stability",
+            "title": "Stability first",
+            "overrides": {
+                "processor.inference_backend": "auto",
+                "video.encoding": "cpu",
+                "processor.min_seconds_between_recordings": 0.0,
+                "processor.binary_imgsz": 640,
+            },
+        },
+        {
+            "id": "balanced",
+            "title": "Balanced",
+            "overrides": {
+                "processor.inference_backend": "openvino",
+                "video.encoding": "cpu",
+                "processor.binary_imgsz": 640,
+                "processor.min_seconds_between_recordings": 0.0,
+            },
+        },
+        {
+            "id": "recall",
+            "title": "Recall priority",
+            "overrides": {
+                "processor.binary_imgsz": 640,
+                "processor.light_gate_enabled": False,
+                "processor.min_center_dist": 0.04,
+                "processor.min_box_size_px": 48,
+            },
+        },
+    ]
 
 
 def build_system_config_audit_payload(
@@ -375,6 +525,8 @@ def build_system_config_audit_payload(
     scales_tuning, scales_warnings = _scales_mqtt_audit(app_config_get, user_cfg)
     combined_warnings = [*recall_blocking, *scales_warnings]
     processor_runtime_hints = _processor_runtime_hints(app_config_get)
+    preflight = _preflight_config_safety(app_config_get)
+    runtime_parity = _runtime_parity_snapshot(app_config_get)
     return {
         "deprecated_keys_present": deprecated_present,
         "unknown_keys": unknown_keys,
@@ -388,6 +540,9 @@ def build_system_config_audit_payload(
         "scales_mqtt": scales_tuning,
         "scales_warnings": scales_warnings,
         "config_warnings": combined_warnings,
+        "config_presets": _config_presets(),
+        "preflight": preflight,
+        "runtime_parity": runtime_parity,
         "mapping": {
             "gray_to_grey_ok": gray_to_grey_ok,
             "pairs": gray_pairs,
