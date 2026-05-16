@@ -1,6 +1,6 @@
 # Operations runbooks — BirdLense Hub
 
-[Русский](./RUNBOOKS.ru.md)
+[Русский](../ru/runbooks.ru.md)
 
 Short operator playbooks for the most common failures.
 
@@ -8,7 +8,7 @@ Short operator playbooks for the most common failures.
 
 1. From the repository root run `make verify`.
 2. If `health` fails, inspect container state: `cd app && docker compose ps && docker compose logs --tail=100 birdlense`.
-3. If Docker built successfully but the port is busy, override `BIRDLENSE_PORT` or add `docker-compose.override.yml` as shown in [LOCAL_DEV](./LOCAL_DEV.md).
+3. If Docker built successfully but the port is busy, override `BIRDLENSE_PORT` or add `docker-compose.override.yml` as shown in [LOCAL_DEV](../contributor/local-dev.md).
 
 ## `/api/ui/health` is OK, but deploy is still not trustworthy
 
@@ -29,9 +29,9 @@ For scripted checks on a locked hub, pass `BIRDLENSE_UI_API_KEY` and run
 
 For `scripts/verify-stack.sh`, add `--check-domain-health` when you also set `BIRDLENSE_UI_API_KEY` (or `UI_API_KEY`) so domain and registry endpoints can authenticate.
 
-GitHub Actions deploy: optional repository secret **`BIRDLENSE_UI_API_KEY`** (match server `app/.env`) turns on domain-health checks in the Verify step — see [RELEASE_READINESS](./RELEASE_READINESS.md).
+GitHub Actions deploy: optional repository secret **`BIRDLENSE_UI_API_KEY`** (match server `app/.env`) turns on domain-health checks in the Verify step — see [RELEASE_READINESS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/release-readiness.md).
 
-Release checklist: [RELEASE_READINESS](./RELEASE_READINESS.md).
+Release checklist: [RELEASE_READINESS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/release-readiness.md).
 
 ## Release gate rollback matrix (C1)
 
@@ -71,6 +71,91 @@ ssh YOUR_SSH_HOST "tail -100 YOUR_REMOTE_DIR/app/data/processor.log"
 
 3. Verify `PROCESSOR_SECRET` is a real value in `app/.env`, not a literal placeholder.
 
+## Frigate saw event, Hub did not persist clip/visit
+
+1. Fix the incident window first: camera id + local time (MSK) + Frigate event/clip reference.
+2. Collect Hub evidence in a narrow window (`T-2m .. T+2m`): processor logs, recording file state, and `/api/ui/system/ml-runtime`.
+3. For maintainers, classify with a single reason code and standard report template:
+   [Hub incident protocol](../contributor/hub-incident-protocol.md).
+4. If root cause is unknown, do not tune thresholds yet; first complete missing evidence from the protocol checklist.
+
+## PT detector canary (low-resolution stream)
+
+Use this when you want to validate PyTorch detector weights (`.pt`) against the current backend without a full rollout.
+
+1. **Freeze baseline (24h)** on current config:
+   - `domain-health` snapshot
+   - Frigate-vs-Hub mismatch count
+   - recording artifact failures (`ingest_gate` reason codes)
+   - processing guardrails (p95 detect latency + CPU)
+2. **Enable PT canary** on one camera/time window:
+   - set detector backend to PT (`processor.inference_backend: torch`)
+   - keep stream low-resolution and leave all other thresholds unchanged
+   - keep rollback-ready copy of previous config.
+3. **Run canary for 24h** and compare to baseline:
+   - mismatch rate vs Frigate
+   - playable artifact rate
+   - `FUSION_*` / `REC_FILE_*` reason-code distribution
+   - latency and CPU guardrails.
+4. **Go / no-go decision**:
+   - **go**: mismatch not worse than baseline and no guardrail regression
+   - **no-go**: mismatch worsens or guardrails regress -> rollback immediately.
+5. **Rollback**:
+   - restore previous backend/config
+   - restart stack
+   - re-run `make verify` and capture post-rollback `domain-health`.
+
+## Weekly reliability KPI review and decision log
+
+Use this cadence to keep reliability work continuous and auditable.
+
+Cadence and owner:
+
+- run every week (same weekday/time)
+- assign one incident owner for KPI review and follow-up issue creation
+- use last 7 days for trend and last 24h for acute alerts.
+
+Data source and capture:
+
+1. Fetch `GET /api/ui/system/domain-health`.
+2. Record KPI snapshot in one shared issue comment (or ops note) using this minimum set:
+   - `parity_mismatch_rate_24h`
+   - `parity_mismatched_windows_24h`
+   - `recording_artifact_failures_24h`
+   - `video_encoding_transitions_24h`
+   - `ingest_gate_reason_code_counts_24h` (top causes)
+3. Add camera/day-night diagnostics:
+   - `parity_camera_split_24h`
+4. Verify guardrails:
+   - `strict_quality.strict_quality_ready`
+   - p95 detect latency + CPU from runtime diagnostics.
+
+Decision rules:
+
+- if mismatch trend worsens week-over-week, create follow-up issue and assign owner
+- if `recording_artifact_failures_24h > 0`, open P1 incident immediately
+- if `video_encoding_flapping` alert is true, lock config changes and investigate runtime transitions before next deploy.
+
+Decision log template:
+
+```markdown
+### Reliability weekly review — YYYY-MM-DD
+- Reviewer: <name>
+- Window: <start>.. <end>
+- KPI snapshot:
+  - parity_mismatch_rate_24h: <value>
+  - parity_mismatched_windows_24h: <value>
+  - recording_artifact_failures_24h: <value>
+  - video_encoding_transitions_24h: <value>
+  - top_mismatch_causes: <reason_code:count, ...>
+- Camera split highlights:
+  - <camera>: mismatch=<x/y>, day=<a/b>, night=<c/d>
+- Decisions:
+  - <keep / rollback / tune / investigate>
+- Follow-up issues:
+  - #<id> <title> (owner: <name>, due: <date>)
+```
+
 ## Slow frame processing in logs (`Slow frame processing: … ms >= … ms`)
 
 Symptom: processor log or FPS summary shows **YOLO / frame pipeline** taking longer than `processor.frame_processing_warn_ms` (default **450** ms). High-resolution video + VA-API still has a hard latency budget.
@@ -81,7 +166,7 @@ Symptom: processor log or FPS summary shows **YOLO / frame pipeline** taking lon
 4. **Light gate / night** — if many frames are skipped before YOLO, revisit `processor.light_gate_*` and night overrides (recall vs CPU load).
 5. **GPU / VA-API on the VPS** — confirm the container actually uses the expected path: `docker logs birdlense` for VA-API / FFmpeg lines; on the host, `intel_gpu_top` / `vainfo` where applicable. If GPU is missing, you are on CPU-only inference — expect slow frames at high resolution.
 
-Related: [PROCESSOR_PERFORMANCE](./PROCESSOR_PERFORMANCE.md) (resolution × `binary_imgsz` guidance), [CONFIGURATION](./CONFIGURATION.md) (`processor.*`, `detection.*`), [RELEASE_READINESS](./RELEASE_READINESS.md). Release gate: [DEFINITION_OF_DONE](./DEFINITION_OF_DONE.md).
+Related: [PROCESSOR_PERFORMANCE](./processor-performance.md) (resolution × `binary_imgsz` guidance), [CONFIGURATION](./configuration.md) (`processor.*`, `detection.*`), [RELEASE_READINESS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/release-readiness.md). Release gate: [DEFINITION_OF_DONE](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/DEFINITION_OF_DONE.md).
 
 ## Install or deploy verification fails on readiness
 
@@ -112,7 +197,7 @@ python3 scripts/prune_deprecated_user_config.py --path app/app_config/user_confi
 cd app && docker compose restart birdlense
 ```
 
-The script writes `user_config.yaml.bak` next to the file before replacing it. See also [SECRETS_ROTATION](./SECRETS_ROTATION.md).
+The script writes `user_config.yaml.bak` next to the file before replacing it. See also [SECRETS_ROTATION](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/SECRETS_ROTATION.md).
 
 ## MCP smoke check (Bearer token)
 
@@ -123,11 +208,11 @@ export MCP_TOKEN='your-token-from-server-env'
 ./scripts/verify-mcp.sh https://YOUR_HOST/
 ```
 
-Details: [MCP_SETUP](./MCP_SETUP.md).
+Details: [MCP_SETUP](../contributor/mcp-setup.md).
 
 ## PostgreSQL as hub DB
 
-Compose overlay, `DATABASE_URL`, pool tuning, greenfield vs SQLite data migration caveats, and processor **`birdlense.db`** separation: [POSTGRES_MIGRATION](./POSTGRES_MIGRATION.md).
+Compose overlay, `DATABASE_URL`, pool tuning, greenfield vs SQLite data migration caveats, and processor **`birdlense.db`** separation: [POSTGRES_MIGRATION](https://github.com/Gfermoto/BirdLense-Hub/blob/main/archive/internal/docs-legacy/POSTGRES_MIGRATION.md).
 
 ## Request-level debugging
 
