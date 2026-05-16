@@ -48,7 +48,7 @@ python3 scripts/generate-doc-redirect-stubs.py
 python3 scripts/generate-doc-redirect-stubs.py --fix-changelog --no-stubs
 ```
 
-**SITE_MAP guard:** `scripts/check_site_map_meta_paths.py` skips when `docs/SITE_MAP.md` is absent (legacy maps live under `archive/internal/docs-legacy/`).
+**SITE_MAP guard:** `scripts/check_site_map_meta_paths.py` skips when `docs/SITE_MAP.md` is absent or a redirect stub (legacy maps live under `archive/internal/docs-legacy/`).
 
 ---
 
