@@ -53,6 +53,7 @@ NIGHT_OVERRIDES = {
     "min_center_dist": 0.01,
     "min_track_duration": 0.30,
     "min_confidence_to_process": 0.18,
+    "generic_bird_min_detector_conf": 0.10,
 }
 
 
