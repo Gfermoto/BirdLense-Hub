@@ -81,7 +81,39 @@ def _maybe_enable_classifier_openvino(proc: dict, repo_root: Path) -> None:
         print(f"classifier_openvino missing under {ov_dir}; keep torch/cpu")
 
 
-def apply(path: Path, *, repo_root: Path | None = None) -> None:
+def _patch_env(env_path: Path) -> None:
+    """Синхронизировать app/.env (docker compose читает только при create/recreate)."""
+    if not env_path.is_file():
+        print(f"skip env (missing): {env_path}")
+        return
+    updates = {
+        "BIRDLENSE_INFERENCE_BACKEND": "openvino",
+        "BIRDLENSE_INFERENCE_DEVICE": "intel:gpu",
+        "BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND": "openvino",
+        "BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE": "intel:gpu",
+    }
+    lines = env_path.read_text(encoding="utf-8").splitlines()
+    seen: set[str] = set()
+    out: list[str] = []
+    for line in lines:
+        key = line.split("=", 1)[0].strip() if "=" in line else ""
+        if key == "BIRDLENSE_SKIP_CONFIDENCE_FLOORS":
+            continue
+        if key in updates:
+            if key in seen:
+                continue
+            out.append(f"{key}={updates[key]}")
+            seen.add(key)
+        else:
+            out.append(line)
+    for key, val in updates.items():
+        if key not in seen:
+            out.append(f"{key}={val}")
+    env_path.write_text("\n".join(out) + "\n", encoding="utf-8")
+    print(f"ok env {env_path} (recreate container: docker compose up -d --force-recreate birdlense)")
+
+
+def apply(path: Path, *, repo_root: Path | None = None, env_path: Path | None = None) -> None:
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     _deep_merge(data, POLICY)
     proc = data.setdefault("processor", {})
@@ -96,6 +128,8 @@ def apply(path: Path, *, repo_root: Path | None = None) -> None:
         encoding="utf-8",
     )
     print(f"ok {path}")
+    ep = env_path or (path.resolve().parents[1] / ".env")
+    _patch_env(ep)
 
 
 def main() -> int:
