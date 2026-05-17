@@ -102,14 +102,13 @@ processor:
   # VideoSpecies с frames/оверлеем; виды потом можно поправить. false — прежнее «без конфликтов».
   track_regen_parallel_auto_with_manual: false
   # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
-  min_confidence_binary: 0.12  # Детектор «птица/не птица»; после track — per-label (см. accept_min в detection_strategy)
-  # Раздельные пороги после YOLO track. На substream/ИК слишком высокий bird → пустые треки при живом Frigate.
-  min_confidence_binary_bird: 0.12
+  min_confidence_binary: 0.08  # Дневной дефолт: низкий порог на кормушке; ночь — adaptive_profiles.night
+  min_confidence_binary_bird: 0.08
   min_confidence_binary_rodent: 0.24
   # OpenVINO-only: Ultralytics даёт более низкие conf, чем torch на том же IR (#371 field parity).
   # Ниже — без второго инференса: (1) ослабить track(conf), (2) при сравнении с порогом Bird умножить conf.
   # В БД/трейсах остаётся сырая conf; torch-бэкенд ключи не читает. При лишних FP — поднять track или снизить scale.
-  openvino_binary_track_ultralytics_conf: 0.032
+  openvino_binary_track_ultralytics_conf: 0.025
   openvino_binary_bird_score_scale: 8.5
   # Необязательно: явная подмена YAML-порога Bird только при OV (иначе = min_confidence_binary_bird).
   openvino_min_confidence_binary_bird: null
@@ -136,8 +135,8 @@ processor:
         light_gate_min_brightness: 8
         light_gate_min_contrast: 6
         # Смягчить бинарный Bird-порог и small-object фильтры на ночных клипах.
-        min_confidence_binary: 0.12
-        min_confidence_binary_bird: 0.12
+        min_confidence_binary: 0.08
+        min_confidence_binary_bird: 0.08
         min_track_duration: 0.35
         min_confidence_to_process: 0.26
         min_box_size_px: 20
@@ -268,12 +267,9 @@ processor:
   # video.source=file: оставить папку сессии с записанным mp4 при 0 детекций (без create_video / кропов из пайплайна)
   keep_recording_when_no_detections: false
   detection_strategy: "two_stage"
-  # CV/ML epic (#367, #371): движок инференса. Дефолт torch (стабильные conf на substream); OpenVINO — user_config / env.
-  # Env BIRDLENSE_INFERENCE_BACKEND имеет приоритет.
-  inference_backend: torch
-  # Устройство Ultralytics для бинарного детектора (track/predict). cpu — универсально; intel:gpu при openvino + DRI.
-  inference_device: cpu
-  # Отдельный backend классификатора видов: openvino | torch | auto.
+  # CV/ML (#367): бинарник — OpenVINO на Intel GPU (скорость); классификатор — torch/cpu. PT→OV при загрузке в UI (#276).
+  inference_backend: openvino
+  inference_device: intel:gpu
   classifier_inference_backend: torch
   classifier_inference_device: cpu
   # Контракт имён классов бинарного детектора при загрузке весов (#368): off | warn | enforce
@@ -479,7 +475,7 @@ detection:
   track_fragment_merge_max_center_dist: 0.18
   # Ниже порога детекция отбрасывается после fusion; должно быть ≤ processor.min_confidence_to_process.
   # Держим мягче, чтобы YOLO-треки не пропадали до записи в БД/overlay.
-  min_confidence_to_store: 0.12
+  min_confidence_to_store: 0.08
   # Frigate — fallback/подстраховка, не primary: по умолчанию не создаём финальную детекцию
   # только по MQTT без YOLO-трека.
   frigate_standalone_when_no_yolo: true

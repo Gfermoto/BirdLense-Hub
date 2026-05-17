@@ -1580,6 +1580,8 @@ paths:
         Multipart field `file`. Query `role` = `binary` | `classifier` | `class_names`.
         For `classifier`, either a readable allowlist file must exist or `acknowledge_classifier_only=1`.
         Writes under `DATA_DIR/custom_weights/`, updates `user_config`, reloads app config, sets processor restart flag.
+        For `role=binary`, also runs Ultralytics `export(format=openvino)` into `custom_weights/binary_openvino_model/`,
+        sets `processor.models.binary_openvino` and `processor.inference_backend=openvino` (export may take minutes).
         Admin-only when contributor password is enabled. Max 2 GiB for .pt (zip-style checkpoint), 32 MiB for .txt.
       parameters:
         - name: role

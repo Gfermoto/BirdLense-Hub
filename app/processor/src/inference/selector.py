@@ -34,13 +34,13 @@ def _resolve_backend(
 
 def resolve_inference_backend(app_config: Mapping[str, Any] | None = None) -> str:
     """
-    Приоритет: ``BIRDLENSE_INFERENCE_BACKEND``, затем ``processor.inference_backend``, иначе ``torch``.
+    Приоритет: ``BIRDLENSE_INFERENCE_BACKEND``, затем ``processor.inference_backend``, иначе ``openvino``.
     """
     return _resolve_backend(
         app_config,
         env_key="BIRDLENSE_INFERENCE_BACKEND",
         config_key="processor.inference_backend",
-        default="torch",
+        default="openvino",
     )
 
 

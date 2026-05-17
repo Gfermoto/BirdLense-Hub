@@ -125,7 +125,7 @@ def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
     user_cfg = {
         "detection": {"min_confidence_to_store": 0.05},
         "processor": {
-            "min_confidence_binary": 0.1,
+            "min_confidence_binary": 0.05,
             "min_confidence_to_process": 0.03,
             "min_track_duration": 0.2,
             "min_box_size_px": 24,
@@ -139,17 +139,17 @@ def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
     try:
         app_config.reload()
 
-        assert app_config.get("detection.min_confidence_to_store") == 0.12
-        assert app_config.get("processor.min_confidence_binary") == 0.12
-        assert app_config.get("processor.min_confidence_to_process") == 0.22
+        assert app_config.get("detection.min_confidence_to_store") == 0.08
+        assert app_config.get("processor.min_confidence_binary") == 0.08
+        assert app_config.get("processor.min_confidence_to_process") == 0.20
         assert app_config.get("processor.min_track_duration") == 0.25
         assert app_config.get("processor.min_box_size_px") == 24
 
         app_config.save()
         saved = yaml.safe_load(user_config.read_text(encoding="utf-8")) or {}
-        assert float(saved["detection"]["min_confidence_to_store"]) == 0.12
-        assert float(saved["processor"]["min_confidence_binary"]) == 0.12
-        assert float(saved["processor"]["min_confidence_to_process"]) == 0.22
+        assert float(saved["detection"]["min_confidence_to_store"]) == 0.08
+        assert float(saved["processor"]["min_confidence_binary"]) == 0.08
+        assert float(saved["processor"]["min_confidence_to_process"]) == 0.20
         assert float(saved["processor"]["min_track_duration"]) == 0.25
         assert int(saved["processor"]["min_box_size_px"]) == 24
     finally:

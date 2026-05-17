@@ -51,8 +51,41 @@ def test_processor_weights_status_ok(client, monkeypatch, isolated_user_config):
     assert "fingerprint_sha256_16" in body["binary"]
 
 
+def test_processor_weights_upload_binary_triggers_openvino_export(
+    client, monkeypatch, isolated_user_config, tmp_path
+):
+    _open_access(monkeypatch)
+    ov_dir = tmp_path / "custom_weights" / "binary_openvino_model"
+    ov_dir.mkdir(parents=True)
+    (ov_dir / "best.xml").write_text("<net></net>", encoding="utf-8")
+
+    def _fake_export(pt_path, *, imgsz=640, bundle_dir=None):
+        return str(ov_dir), None
+
+    monkeypatch.setattr(
+        "services.processor_custom_weights_service.export_binary_pt_to_openvino",
+        _fake_export,
+    )
+    data = {"file": (io.BytesIO(_fake_pt_bytes()), "custom.pt")}
+    r = client.post(
+        "/api/ui/system/processor-weights/upload?role=binary",
+        data=data,
+        content_type="multipart/form-data",
+    )
+    assert r.status_code == 200
+    j = r.get_json()
+    assert j.get("ok") is True
+    assert j.get("openvino_export", {}).get("ok") is True
+    assert app_config.get("processor.models.binary_openvino")
+    assert app_config.get("processor.inference_backend") == "openvino"
+
+
 def test_processor_weights_upload_binary_and_reset(client, monkeypatch, isolated_user_config):
     _open_access(monkeypatch)
+    monkeypatch.setattr(
+        "services.processor_custom_weights_service.export_binary_pt_to_openvino",
+        lambda *a, **k: (None, "skipped_test"),
+    )
     data = {"file": (io.BytesIO(_fake_pt_bytes()), "custom.pt")}
     r = client.post(
         "/api/ui/system/processor-weights/upload?role=binary",
