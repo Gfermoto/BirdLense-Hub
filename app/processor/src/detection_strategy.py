@@ -727,12 +727,27 @@ class TwoStageStrategy(DetectionStrategy):
             else _track_maybe_retry(self.binary_model, frame, **_tkw)
         )
 
+        def _record_detect_metrics(
+            *,
+            raw_boxes: int,
+            boxes_with_track_id: int,
+            accepted: int,
+            predict_fallback: bool = False,
+        ) -> None:
+            self.last_detect_metrics = {
+                "raw_boxes": int(raw_boxes),
+                "boxes_with_track_id": int(boxes_with_track_id),
+                "accepted": int(accepted),
+                "predict_fallback": bool(predict_fallback),
+            }
+
         boxes = None
         if results and len(results[0].boxes) > 0:
             boxes = results[0].boxes
         else:
             fallback_enabled = bool(runtime_cfg.get("processor.track_to_predict_fallback_enabled", True))
             if not fallback_enabled:
+                _record_detect_metrics(raw_boxes=0, boxes_with_track_id=0, accepted=0)
                 return []
             try:
                 fallback_conf = float(runtime_cfg.get("processor.track_to_predict_fallback_confidence") or 0.005)
@@ -747,6 +762,7 @@ class TwoStageStrategy(DetectionStrategy):
                 _pkw["device"] = _bdev
             pred = self.binary_model.predict(frame, **_pkw)
             if not pred or len(pred[0].boxes) == 0:
+                _record_detect_metrics(raw_boxes=0, boxes_with_track_id=0, accepted=0)
                 return []
             boxes = pred[0].boxes
             boxes_from_predict_fallback = True
@@ -784,6 +800,12 @@ class TwoStageStrategy(DetectionStrategy):
         if boxes.id is None:
             live_iou_fb = bool(runtime_cfg.get("processor.iou_id_fallback_live_enabled", True))
             if not (track_regen_ctx and iou_fb) and not live_iou_fb:
+                _record_detect_metrics(
+                    raw_boxes=len(boxes),
+                    boxes_with_track_id=0,
+                    accepted=0,
+                    predict_fallback=boxes_from_predict_fallback,
+                )
                 return []
             iou_thr_raw = (
                 runtime_cfg.get("processor.track_regen_iou_match_threshold")
@@ -797,6 +819,12 @@ class TwoStageStrategy(DetectionStrategy):
             try:
                 curr_xyxy = np.reshape(_tensor_to_numpy(boxes.xyxy), (-1, 4))
             except Exception:
+                _record_detect_metrics(
+                    raw_boxes=len(boxes),
+                    boxes_with_track_id=0,
+                    accepted=0,
+                    predict_fallback=boxes_from_predict_fallback,
+                )
                 return []
             if track_regen_ctx:
                 prev_boxes = getattr(self, "_regen_iou_prev_boxes", None)
@@ -994,6 +1022,14 @@ class TwoStageStrategy(DetectionStrategy):
                     )
 
         if not valid_boxes:
+            _raw_n = len(boxes) if boxes is not None else 0
+            _tid_n = len(track_ids) if track_ids else 0
+            _record_detect_metrics(
+                raw_boxes=_raw_n,
+                boxes_with_track_id=_tid_n,
+                accepted=0,
+                predict_fallback=boxes_from_predict_fallback,
+            )
             return []
         classification_budget = min(
             len(valid_boxes),
@@ -1107,6 +1143,14 @@ class TwoStageStrategy(DetectionStrategy):
                 )
             )
 
+        _raw_n = len(boxes) if boxes is not None else 0
+        _tid_n = len(track_ids) if track_ids else 0
+        _record_detect_metrics(
+            raw_boxes=_raw_n,
+            boxes_with_track_id=_tid_n,
+            accepted=len(detection_results),
+            predict_fallback=boxes_from_predict_fallback,
+        )
         return detection_results
 
     def reset(self):

@@ -283,6 +283,11 @@ class FrameProcessor:
             inc_counter("slow_frame_processor_detect_total")
             self.logger.warning("Slow frame processing: %.1fms >= %.1fms", detect_ms, warn_ms)
         self.last_run_stats["result_count"] = len(results or [])
+        dm = getattr(self.strategy, "last_detect_metrics", None) or {}
+        self.last_run_stats["yolo_raw_boxes"] = int(dm.get("raw_boxes") or 0)
+        self.last_run_stats["yolo_boxes_with_track_id"] = int(dm.get("boxes_with_track_id") or 0)
+        self.last_run_stats["yolo_accepted_boxes"] = int(dm.get("accepted") or 0)
+        self.last_run_stats["yolo_predict_fallback"] = bool(dm.get("predict_fallback"))
         self.last_run_stats["yolo_track_found"] = bool(results)
         if self.last_run_stats["yolo_track_found"]:
             self._consecutive_no_track_frames = 0

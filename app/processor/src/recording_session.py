@@ -212,6 +212,9 @@ class MotionRecordingSession:
                 "frames_seen": 0,
                 "yolo_frames_ran": 0,
                 "yolo_frames_with_tracks": 0,
+                "yolo_frames_with_raw_boxes": 0,
+                "yolo_raw_boxes_total": 0,
+                "yolo_accepted_boxes_total": 0,
                 "low_light_blocked_frames": 0,
                 "session_extended_by_frigate_only": 0,
             }
@@ -284,6 +287,11 @@ class MotionRecordingSession:
                 if run_stats.get("yolo_track_found"):
                     runtime_signals["yolo_frames_with_tracks"] += 1
                     processor_status["last_yolo_detection_at"] = datetime.now(timezone.utc).isoformat()
+                raw_boxes = int(run_stats.get("yolo_raw_boxes") or 0)
+                if raw_boxes > 0:
+                    runtime_signals["yolo_frames_with_raw_boxes"] += 1
+                    runtime_signals["yolo_raw_boxes_total"] += raw_boxes
+                runtime_signals["yolo_accepted_boxes_total"] += int(run_stats.get("yolo_accepted_boxes") or 0)
                 if run_stats.get("light_gate_blocked"):
                     runtime_signals["low_light_blocked_frames"] += 1
                 runtime_profile = str(run_stats.get("runtime_profile") or "").strip()
