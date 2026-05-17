@@ -1,26 +1,20 @@
-# Раньше: полевая настройка видимости YOLO на кормушке.
-# С dev (default_config.yaml): те же значения уже в поставке — этот файл только для справки / OpenVINO override.
-#
-# OpenVINO + Intel GPU (вместо torch/cpu по умолчанию):
-#   processor.inference_backend: openvino
-#   processor.inference_device: intel:gpu
-#   processor.classifier_inference_backend: openvino
-#   processor.classifier_inference_device: intel:gpu
-#   + processor.openvino_* (см. user_config.openvino-intel.example.yaml)
-#
-# Ещё ниже порогов, чем в default (редко): BIRDLENSE_SKIP_CONFIDENCE_FLOORS=1 в app/.env
+# Решение по умолчанию (см. default_config.yaml): OpenVINO GPU + низкие дневные пороги.
+# Загрузка binary.pt в UI → автоматический export в custom_weights/binary_openvino_model (#276).
 
 processor:
-  inference_backend: torch
-  inference_device: cpu
+  inference_backend: openvino
+  inference_device: intel:gpu
   classifier_inference_backend: torch
   classifier_inference_device: cpu
   tracker: models/tracker/bytetrack_birdlense_unstick.yaml
-  min_confidence_binary: 0.12
-  min_confidence_binary_bird: 0.12
+  min_confidence_binary: 0.08
+  min_confidence_binary_bird: 0.08
   min_box_size_px: 20
   min_center_dist: 0.01
   binary_track_iou: 0.62
+  openvino_binary_track_ultralytics_conf: 0.025
+  openvino_binary_bird_score_scale: 8.5
   auto_unstick_no_track_frames: 60
-  classifier_use_source_frame: true
-  track_fragment_merge_enabled: true
+
+detection:
+  merge_window_seconds: 12

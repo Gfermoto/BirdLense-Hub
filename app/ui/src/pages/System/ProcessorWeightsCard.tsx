@@ -153,9 +153,27 @@ export function ProcessorWeightsCard({
       if (!r.ok) throw new Error(r.error || 'upload_failed');
       return r;
     },
-    onSuccess: async () => {
+    onSuccess: async (data) => {
       setErr(null);
-      setInfo(t('system.processorWeightsUploadOk'));
+      const ov = data?.openvino_export;
+      if (ov?.ok) {
+        setInfo(
+          t('system.processorWeightsUploadOkOpenvino', {
+            defaultValue:
+              'Веса сохранены; OpenVINO IR собран. Перезапустите процессор.',
+          }),
+        );
+      } else if (ov?.attempted && !ov?.ok) {
+        setInfo(
+          t('system.processorWeightsUploadOkOpenvinoFailed', {
+            defaultValue:
+              'PT сохранён, но экспорт OpenVINO не удался ({error}). Проверьте логи.',
+            error: ov.error || '?',
+          }),
+        );
+      } else {
+        setInfo(t('system.processorWeightsUploadOk'));
+      }
       await qc.invalidateQueries({
         queryKey: queryKeys.systemPanels.processorWeightsStatus,
       });

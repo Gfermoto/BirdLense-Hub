@@ -11,11 +11,11 @@ if _src_path not in sys.path:
 
 
 class TestInferenceSelector(unittest.TestCase):
-    def test_resolve_defaults_torch(self):
+    def test_resolve_defaults_openvino(self):
         from inference.selector import resolve_inference_backend
 
-        self.assertEqual(resolve_inference_backend(None), "torch")
-        self.assertEqual(resolve_inference_backend({}), "torch")
+        self.assertEqual(resolve_inference_backend(None), "openvino")
+        self.assertEqual(resolve_inference_backend({}), "openvino")
 
     def test_resolve_env_overrides_config(self):
         from inference.selector import resolve_inference_backend

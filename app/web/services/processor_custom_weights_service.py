@@ -12,12 +12,14 @@ import io
 import hashlib
 import logging
 import os
+import shutil
 import tempfile
 import zipfile
 from typing import Any
 
 from app_config.app_config import AppConfig, app_config
 from data_paths import _data_dir
+from services.openvino_weight_export_service import OV_BUNDLE_DIRNAME, export_binary_pt_to_openvino
 
 logger = logging.getLogger(__name__)
 
@@ -293,8 +295,31 @@ def save_upload(
             except OSError:
                 pass
 
+    openvino_export: dict[str, Any] | None = None
     user = app_config.load_raw_user_config_dict()
     AppConfig._set_nested(user, user_key, config_path)
+    if role == "binary":
+        try:
+            imgsz = int(app_config.get("processor.binary_imgsz") or 640)
+        except (TypeError, ValueError):
+            imgsz = 640
+        ov_dir = os.path.join(_custom_dir(), OV_BUNDLE_DIRNAME)
+        ov_path, ov_err = export_binary_pt_to_openvino(
+            config_path,
+            imgsz=imgsz,
+            bundle_dir=ov_dir,
+        )
+        openvino_export = {
+            "attempted": True,
+            "ok": ov_err is None,
+            "path": ov_path,
+            "error": ov_err,
+        }
+        if ov_path:
+            AppConfig._set_nested(user, "processor.models.binary_openvino", ov_path)
+            AppConfig._set_nested(user, "processor.inference_backend", "openvino")
+            if not str(user.get("processor", {}).get("inference_device") or "").strip():
+                AppConfig._set_nested(user, "processor.inference_device", "intel:gpu")
     issues = app_config.validate_user_config_tree(user)
     if issues:
         try:
@@ -309,12 +334,15 @@ def save_upload(
 
     clear_allowlist_cache()
 
-    return {
+    body: dict[str, Any] = {
         "ok": True,
         "path": config_path,
         "role": role,
         "status": get_status(),
-    }, 200
+    }
+    if openvino_export is not None:
+        body["openvino_export"] = openvino_export
+    return body, 200
 
 
 def reset_roles(roles: list[str]) -> tuple[dict[str, Any], int]:
@@ -345,6 +373,16 @@ def reset_roles(roles: list[str]) -> tuple[dict[str, Any], int]:
         eb = effective_binary_path()
         if _is_under_custom_dir(eb):
             AppConfig._remove_nested(user, "processor.models.binary")
+        ov_custom = _canonical_file(OV_BUNDLE_DIRNAME)
+        if os.path.isdir(ov_custom):
+            try:
+                shutil.rmtree(ov_custom)
+                removed_files.append(ov_custom)
+            except OSError as e:
+                logger.warning("remove custom openvino bundle failed %s: %s", ov_custom, e)
+        bo = app_config.get("processor.models.binary_openvino")
+        if bo and _is_under_custom_dir(str(bo)):
+            AppConfig._remove_nested(user, "processor.models.binary_openvino")
         _maybe_remove_file(BINARY_NAME)
 
     if "classifier" in want:

@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 # Слишком жёсткие полы (1.0s / 0.30 confidence) режут ByteTrack-треки, которые реально есть.
 # detection.min_confidence_to_store должно быть <= processor.min_confidence_to_process для согласованного fusion.
 CONFIDENCE_FLOORS = {
-    "detection.min_confidence_to_store": 0.12,
-    "processor.min_confidence_to_process": 0.22,
+    "detection.min_confidence_to_store": 0.08,
+    "processor.min_confidence_to_process": 0.20,
     "processor.min_confidence_to_notify": 0.28,
-    "processor.min_confidence_binary": 0.12,
+    "processor.min_confidence_binary": 0.08,
     "processor.min_track_duration": 0.25,
     # Small-object / distant scenes: keep floor usable without site-specific camera hacks.
     "processor.min_box_size_px": 18,

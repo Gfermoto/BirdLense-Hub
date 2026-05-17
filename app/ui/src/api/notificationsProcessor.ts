@@ -148,15 +148,25 @@ export const fetchProcessorWeightsStatus =
 
 const _PROCESSOR_WEIGHTS_UPLOAD_TIMEOUT_MS = 3_600_000; // 1 h
 
+export type ProcessorWeightsUploadResponse = {
+  ok?: boolean;
+  error?: string;
+  path?: string;
+  role?: string;
+  openvino_export?: {
+    attempted?: boolean;
+    ok?: boolean;
+    path?: string | null;
+    error?: string | null;
+  };
+  status?: ProcessorWeightsStatusResponse;
+};
+
 export const uploadProcessorWeight = async (
   role: 'binary' | 'classifier' | 'class_names',
   file: File,
   options?: { acknowledgeClassifierOnly?: boolean },
-): Promise<{
-  ok: boolean;
-  error?: string;
-  status?: ProcessorWeightsStatusResponse;
-}> => {
+): Promise<ProcessorWeightsUploadResponse & { ok: boolean }> => {
   const form = new FormData();
   form.append('file', file);
   const params: Record<string, string> = { role };
@@ -174,7 +184,8 @@ export const uploadProcessorWeight = async (
         headers: { 'Content-Type': 'multipart/form-data' },
       },
     );
-    return { ok: true, status: response.data?.status };
+    const data = response.data as ProcessorWeightsUploadResponse;
+    return { ok: true, ...data };
   } catch (e: unknown) {
     const err = e as { response?: { data?: { error?: string } } };
     return {
