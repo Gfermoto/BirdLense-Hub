@@ -11,11 +11,11 @@ if _src_path not in sys.path:
 
 
 class TestInferenceSelector(unittest.TestCase):
-    def test_resolve_defaults_openvino(self):
+    def test_resolve_defaults_torch(self):
         from inference.selector import resolve_inference_backend
 
-        self.assertEqual(resolve_inference_backend(None), "openvino")
-        self.assertEqual(resolve_inference_backend({}), "openvino")
+        self.assertEqual(resolve_inference_backend(None), "torch")
+        self.assertEqual(resolve_inference_backend({}), "torch")
 
     def test_resolve_env_overrides_config(self):
         from inference.selector import resolve_inference_backend
@@ -71,11 +71,11 @@ class TestInferenceSelector(unittest.TestCase):
             else:
                 os.environ["BIRDLENSE_INFERENCE_DEVICE"] = old
 
-    def test_resolve_classifier_backend_defaults_openvino(self):
+    def test_resolve_classifier_backend_defaults_torch(self):
         from inference.selector import resolve_classifier_inference_backend
 
-        self.assertEqual(resolve_classifier_inference_backend(None), "openvino")
-        self.assertEqual(resolve_classifier_inference_backend({}), "openvino")
+        self.assertEqual(resolve_classifier_inference_backend(None), "torch")
+        self.assertEqual(resolve_classifier_inference_backend({}), "torch")
 
     def test_resolve_classifier_device_defaults_from_detector_device(self):
         from inference.selector import resolve_classifier_inference_device
@@ -191,7 +191,7 @@ class TestInferenceSelector(unittest.TestCase):
             else:
                 os.environ["BIRDLENSE_INFERENCE_DEVICE"] = old
 
-    def test_resolve_classifier_backend_defaults_to_main_backend(self):
+    def test_resolve_classifier_backend_independent_when_unset(self):
         from inference.selector import (
             resolve_classifier_inference_backend,
             resolve_inference_backend,
@@ -201,7 +201,7 @@ class TestInferenceSelector(unittest.TestCase):
         try:
             cfg = {"processor.inference_backend": "openvino"}
             self.assertEqual(resolve_inference_backend(cfg), "openvino")
-            self.assertEqual(resolve_classifier_inference_backend(cfg), "openvino")
+            self.assertEqual(resolve_classifier_inference_backend(cfg), "torch")
         finally:
             if old is not None:
                 os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND"] = old

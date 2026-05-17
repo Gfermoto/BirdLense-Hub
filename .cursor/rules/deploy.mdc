@@ -107,4 +107,4 @@ Host birdlense-vps
 
 ## YOLO «слепой», Frigate видит (VPS / кормушка)
 
-Шаблон: **`app/app_config/user_config.yolo-visibility.example.yaml`**. В **`app/.env`** без дублей: `BIRDLENSE_INFERENCE_BACKEND=torch`, `BIRDLENSE_INFERENCE_DEVICE=cpu`, **`BIRDLENSE_SKIP_CONFIDENCE_FLOORS=1`** (иначе пороги 0.08 в YAML поднимутся до 0.22). Трекер: **`bytetrack_birdlense_unstick.yaml`**. После правки `.env` — **`docker compose up -d --force-recreate birdlense`** (не только restart). Метрика в логах: `recording_session_summary` → `yolo_frames_with_tracks` > 0. Деплой кода: `make deploy` (hotfix через `docker cp` сбрасывается при recreate без образа).
+**По умолчанию в `default_config.yaml`:** torch/cpu, unstick-трекер, `min_confidence_binary` 0.12, `merge_window_seconds` 12. Старый `user_config` с openvino/0.22 перекрывает дефолты — проверьте merge. Метрика: `recording_session_summary` → `yolo_frames_with_tracks` > 0. OpenVINO: **`user_config.openvino-intel.example.yaml`**. После смены **`app/.env`** — **`docker compose up -d --force-recreate birdlense`**.

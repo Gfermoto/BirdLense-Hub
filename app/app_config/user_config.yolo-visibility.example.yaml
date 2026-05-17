@@ -1,22 +1,20 @@
-# Пример: восстановление видимости YOLO на кормушке (substream + Frigate рядом).
-# Скопируйте нужные ключи в user_config.yaml на сервере; файл сам по себе не подхватывается.
+# Раньше: полевая настройка видимости YOLO на кормушке.
+# С dev (default_config.yaml): те же значения уже в поставке — этот файл только для справки / OpenVINO override.
 #
-# Симптомы: Frigate видит птиц, yolo_frames_with_tracks ≈ 0, в логах «no track ids»,
-# «Clamped legacy low confidence… 0.08 -> 0.22».
+# OpenVINO + Intel GPU (вместо torch/cpu по умолчанию):
+#   processor.inference_backend: openvino
+#   processor.inference_device: intel:gpu
+#   processor.classifier_inference_backend: openvino
+#   processor.classifier_inference_device: intel:gpu
+#   + processor.openvino_* (см. user_config.openvino-intel.example.yaml)
 #
-# Обязательно в app/.env (пересоздайте контейнер после правки, без дублей ключей):
-#   BIRDLENSE_INFERENCE_BACKEND=torch
-#   BIRDLENSE_INFERENCE_DEVICE=cpu
-#   BIRDLENSE_SKIP_CONFIDENCE_FLOORS=1
-#
-# Код (dev+): accept_min_confidence = min(min_confidence, track_conf) в detection_strategy.py.
+# Ещё ниже порогов, чем в default (редко): BIRDLENSE_SKIP_CONFIDENCE_FLOORS=1 в app/.env
 
 processor:
   inference_backend: torch
   inference_device: cpu
   classifier_inference_backend: torch
   classifier_inference_device: cpu
-  # Unstick: track_high_thresh/new_track_thresh ниже слабых conf OpenVINO/torch.
   tracker: models/tracker/bytetrack_birdlense_unstick.yaml
   min_confidence_binary: 0.12
   min_confidence_binary_bird: 0.12
