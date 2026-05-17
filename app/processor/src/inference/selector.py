@@ -34,13 +34,13 @@ def _resolve_backend(
 
 def resolve_inference_backend(app_config: Mapping[str, Any] | None = None) -> str:
     """
-    Приоритет: ``BIRDLENSE_INFERENCE_BACKEND``, затем ``processor.inference_backend``, иначе ``openvino``.
+    Приоритет: ``BIRDLENSE_INFERENCE_BACKEND``, затем ``processor.inference_backend``, иначе ``torch``.
     """
     return _resolve_backend(
         app_config,
         env_key="BIRDLENSE_INFERENCE_BACKEND",
         config_key="processor.inference_backend",
-        default="openvino",
+        default="torch",
     )
 
 
@@ -68,13 +68,13 @@ def resolve_classifier_inference_backend(
     Отдельный backend для классификатора.
 
     Приоритет: ``BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND``, затем
-    ``processor.classifier_inference_backend``, иначе ``openvino``.
+    ``processor.classifier_inference_backend``, иначе ``torch``.
     """
     return _resolve_backend(
         app_config,
         env_key="BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND",
         config_key="processor.classifier_inference_backend",
-        default="openvino",
+        default="torch",
     )
 
 
