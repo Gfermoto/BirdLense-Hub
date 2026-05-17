@@ -1,25 +1,17 @@
-# Фрагмент для scripts/apply_user_config_patch.py — смягчает отсев YOLOBird
-# (per_label_binary_conf_threshold, min_box_size_px) и согласует fusion store ≤ process.
-#
-# Не является самостоятельным конфигом: только ключи для deep-merge в user_config.yaml.
+# УСТАРЕЛО для detect substream: используйте user-config-yolo-thresholds.partial.yaml
+# или scripts/apply-yolo-production-defaults.py (OV iGPU, пороги 0.08/0.10).
+# Оставлено для истории; не мержить вместе с yolo-thresholds без ревью.
 
 detection:
-  # Было 0.34 при process 0.30 — противоречие контракту app_config (# store ≤ process)
-  min_confidence_to_store: 0.28
+  min_confidence_to_store: 0.08
 
 processor:
-  # ByteTrack: строже IoU и этапы после смягчения conf детектора
-  tracker: models/tracker/bytetrack_birdlense.yaml
-  tracker_profiles:
-    night: models/tracker/bytetrack_birdlense_night.yaml
-  # default_config: 48; 64 режет мелких птиц на lores640
-  min_box_size_px: 48
-  # После track() для Bird фильтр conf — см. detection_strategy.per_label_binary_conf_threshold
-  min_confidence_binary_bird: 0.28
-  min_confidence_binary: 0.26
-  # Чуть ниже порога записи вида без раздувания Telegram (min_confidence_to_notify отдельно)
-  min_confidence_to_process: 0.29
-  generic_bird_min_detector_conf: 0.38
+  tracker: models/tracker/bytetrack_birdlense_unstick.yaml
+  min_box_size_px: 14
+  min_confidence_binary_bird: 0.08
+  min_confidence_binary: 0.08
+  min_confidence_to_process: 0.20
+  generic_bird_min_detector_conf: 0.10
   # Короткие слоты кормушки
   min_track_duration: 0.8
   # Меньше скипов при Frigate+OpenCV подряд
