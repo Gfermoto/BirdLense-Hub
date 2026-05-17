@@ -388,6 +388,72 @@ class TestDetectionStrategy(unittest.TestCase):
         self.assertIn(1, classified)
         self.assertTrue(set(classified.values()).issubset({"Blue Jay", "Great Tit", "Eurasian Jay", "Robin"}))
 
+    def test_two_stage_uses_classification_frame_for_crop_when_provided(self):
+        if TwoStageStrategy is None:
+            self.skipTest("TwoStageStrategy not available (import failed).")
+        try:
+            import app_config.app_config as ac_mod
+        except ImportError:
+            self.skipTest("app_config not available on PYTHONPATH")
+
+        detector_frame = np.zeros((640, 640, 3), dtype=np.uint8)
+        detector_frame[160:480, 160:480] = 10
+        classification_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        # Inverse-letterbox mapping for bbox_norm [0.25,0.25,0.75,0.75]:
+        # x: 320..960, y: 40..680 for source 1280x720 -> detector 640x640.
+        classification_frame[40:680, 320:960] = 77
+
+        boxes = _FakeBoxes(
+            track_ids=[1],
+            class_indexes=[14],
+            confidences=[0.9],
+            boxes_norm=[[0.25, 0.25, 0.75, 0.75]],
+            boxes_abs=[[160, 160, 480, 480]],
+        )
+
+        strategy = TwoStageStrategy.__new__(TwoStageStrategy)
+        strategy.binary_model = type(
+            "FakeBinaryModel",
+            (),
+            {
+                "track": lambda *args, **kwargs: [_FakeDetectResult(boxes)],
+                "names": {14: "bird"},
+            },
+        )()
+        strategy.classifier_model = _FakeClassifierModel(
+            {0: "Blue_Jay", 1: "Great_Tit"},
+            {
+                10: [0.9, 0.1],
+                77: [0.1, 0.9],
+            },
+        )
+        strategy.classes = None
+        strategy.regional_species = None
+        strategy.logger = self.logger
+        strategy.detector_scope = {"Bird", "Rodent"}
+        strategy.min_center_dist = 0.0
+        strategy.min_box_size_px = 1
+        strategy.blur_threshold = 0.0
+        strategy.max_blur_checks = 3
+        strategy.max_classifications_per_frame = 1
+        strategy._classification_index = 0
+        strategy.classification_scheduler = "priority"
+        strategy.binary_imgsz = 640
+        strategy.inference_backend = "torch"
+        strategy._for_track_regen = False
+        strategy.is_blurry = lambda crop: (False, 250.0)
+
+        mock_cfg = MagicMock(get=MagicMock(side_effect=lambda key, default=None: default))
+        with patch.object(ac_mod, "app_config", mock_cfg):
+            results = strategy.detect(
+                detector_frame,
+                "bytetrack.yaml",
+                0.1,
+                classification_frame=classification_frame,
+            )
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].class_name, "Great Tit")
+
 
 class _FakeBoxesNoTrackId:
     """ByteTrack edge case: detections present but ``boxes.id`` is None."""

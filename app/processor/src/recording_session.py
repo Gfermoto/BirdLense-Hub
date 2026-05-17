@@ -32,6 +32,14 @@ def _camera_processor_overrides(camera_id: str | None) -> dict:
     return dict(raw) if isinstance(raw, dict) else {}
 
 
+def _classifier_use_source_frame() -> bool:
+    """Toggle source-frame crops for classifier/ReID (env overrides config)."""
+    env_raw = (os.environ.get("BIRDLENSE_CLASSIFIER_USE_SOURCE_FRAME") or "").strip().lower()
+    if env_raw:
+        return env_raw in ("1", "true", "yes", "on")
+    return bool(app_config.get("processor.classifier_use_source_frame", True))
+
+
 class MotionRecordingSession:
     """Явные зависимости одного цикла «motion → запись → finalize» (тонкий orchestrator в main)."""
 
@@ -241,6 +249,13 @@ class MotionRecordingSession:
                 if consecutive_none_frames > 0:
                     inc_counter("recording_capture_none_frame_recovered_total")
                     consecutive_none_frames = 0
+                classifier_source_frame = None
+                if _classifier_use_source_frame():
+                    classifier_source_frame = getattr(
+                        self.media_source,
+                        "get_classifier_source_frame",
+                        lambda: None,
+                    )()
                 frame_n += 1
                 runtime_signals["frames_seen"] += 1
                 if self.file_test_runtime:
@@ -259,6 +274,7 @@ class MotionRecordingSession:
                     has_detections = self.frame_processor.run(
                         frame,
                         frame_time=frame_time,
+                        classification_frame=classifier_source_frame,
                         camera_overrides=camera_overrides,
                     )
                 run_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})

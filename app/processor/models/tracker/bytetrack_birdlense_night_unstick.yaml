@@ -1,8 +1,8 @@
 tracker_type: bytetrack
 # Night emergency profile: even softer to keep tiny/dim birds tracked.
-track_high_thresh: 0.012
-track_low_thresh: 0.004
-new_track_thresh: 0.012
+track_high_thresh: 0.006
+track_low_thresh: 0.003
+new_track_thresh: 0.006
 track_buffer: 108
 match_thresh: 0.56
 fuse_score: true

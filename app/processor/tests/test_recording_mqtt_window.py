@@ -59,9 +59,10 @@ class TestRecordingMqttWindow(unittest.TestCase):
         )
 
     def test_uses_merge_window_when_yolo_tracks_exist(self):
-        """YOLO sessions use normal merge-window lookback."""
+        """OpenCV-triggered YOLO sessions use normal merge-window lookback."""
         aggregator = MagicMock()
         motion_detector = MagicMock()
+        motion_detector.get_triggered_camera.return_value = "front"
         start = datetime(2026, 1, 1, tzinfo=timezone.utc)
         end = datetime(2026, 1, 1, 0, 0, 5, tzinfo=timezone.utc)
 
@@ -72,6 +73,7 @@ class TestRecordingMqttWindow(unittest.TestCase):
             end_time=end,
             merge_window=5,
             yolo_tracks_count=1,
+            trigger_source="opencv",
         )
 
         aggregator.get_events_in_window.assert_called_once_with(
@@ -79,6 +81,32 @@ class TestRecordingMqttWindow(unittest.TestCase):
             end,
             5,
             lookback_seconds=5,
+        )
+
+    def test_extends_lookback_for_frigate_trigger_with_yolo_tracks(self):
+        """Frigate-triggered sessions keep extended lookback so MQTT can merge into YOLO tracks."""
+        aggregator = MagicMock()
+        motion_detector = MagicMock()
+        motion_detector.get_triggered_camera.return_value = "BirdBox"
+        start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        end = datetime(2026, 1, 1, 0, 0, 5, tzinfo=timezone.utc)
+
+        get_recording_mqtt_events(
+            aggregator,
+            motion_detector,
+            start_time=start,
+            end_time=end,
+            merge_window=6,
+            yolo_tracks_count=3,
+            trigger_source="frigate",
+            lookback_camera_id="BirdBox",
+        )
+
+        aggregator.get_events_in_window.assert_called_once_with(
+            start,
+            end,
+            6,
+            lookback_seconds=15,
         )
 
     def test_scope_camera_id_filters_frigate_only(self):

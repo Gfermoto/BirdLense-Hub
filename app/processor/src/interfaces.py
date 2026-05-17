@@ -22,6 +22,7 @@ class DetectionStrategyProtocol(Protocol):
         *,
         min_confidence: float,
         profile_overrides: dict[str, Any] | None = None,
+        classification_frame: np.ndarray | None = None,
     ) -> list[Any]: ...
 
     def reset(self) -> None: ...

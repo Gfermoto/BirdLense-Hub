@@ -1,8 +1,8 @@
 tracker_type: bytetrack
 # Emergency profile: kick-start tracks when detector confidence is persistently weak.
-track_high_thresh: 0.015
-track_low_thresh: 0.005
-new_track_thresh: 0.015
+track_high_thresh: 0.008
+track_low_thresh: 0.004
+new_track_thresh: 0.008
 track_buffer: 96
 match_thresh: 0.60
 fuse_score: true

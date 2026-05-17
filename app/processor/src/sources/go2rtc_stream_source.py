@@ -318,6 +318,7 @@ class Go2RTCStreamSource:
         self._recording_used_vaapi = False
         self._ffmpeg_capture_failures = 0
         self._force_opencv_until_ts = 0.0
+        self._last_classifier_source_frame = None
 
         if self._capture_stream_url != self.stream_url:
             self.logger.info(
@@ -638,13 +639,19 @@ class Go2RTCStreamSource:
         self._last_frame_time = time.time()
         if self._capture_backend_used == "ffmpeg_vaapi":
             frame_lores = frame
+            self._last_classifier_source_frame = frame
         else:
+            self._last_classifier_source_frame = frame
             frame_lores = letterbox_bgr_to_wh(
                 frame,
                 (int(self.lores_size[0]), int(self.lores_size[1])),
             )
         self._update_streaming_output(frame)
         return frame_lores
+
+    def get_classifier_source_frame(self):
+        """Best-effort source frame for classifier/ReID crops (pre-letterbox when available)."""
+        return self._last_classifier_source_frame
 
     def push_one_frame_to_mjpeg(self):
         """Read one frame and push to MJPEG (for live view). Skips if main thread is reading."""
