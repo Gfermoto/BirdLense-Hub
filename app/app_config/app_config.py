@@ -485,6 +485,12 @@ class AppConfig:
         if source == "file":
             logger.info("Skip confidence floors in file mode (test source) to allow low-threshold tuning.")
             return False
+        skip = (os.environ.get("BIRDLENSE_SKIP_CONFIDENCE_FLOORS") or "").strip().lower()
+        if skip in ("1", "true", "yes", "on"):
+            logger.info(
+                "Skip confidence floors (BIRDLENSE_SKIP_CONFIDENCE_FLOORS) for site tuning."
+            )
+            return False
         changed = False
         adjusted: list[str] = []
         for path, floor in CONFIDENCE_FLOORS.items():

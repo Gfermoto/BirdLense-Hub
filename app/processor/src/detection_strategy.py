@@ -299,6 +299,54 @@ def _greedy_match_iou_track_ids(
     return out_ids, nid
 
 
+def _crop_coords_from_letterboxed_bbox_norm(
+    *,
+    bbox_norm: Sequence[float],
+    detector_frame_shape: Sequence[int],
+    classification_frame_shape: Sequence[int],
+) -> tuple[int, int, int, int] | None:
+    """Map normalized bbox from detector letterbox space to classification frame space."""
+    if len(bbox_norm) != 4:
+        return None
+    try:
+        det_h, det_w = int(detector_frame_shape[0]), int(detector_frame_shape[1])
+        cls_h, cls_w = int(classification_frame_shape[0]), int(classification_frame_shape[1])
+    except Exception:
+        return None
+    if det_h <= 0 or det_w <= 0 or cls_h <= 0 or cls_w <= 0:
+        return None
+
+    x1d = float(bbox_norm[0]) * float(det_w)
+    y1d = float(bbox_norm[1]) * float(det_h)
+    x2d = float(bbox_norm[2]) * float(det_w)
+    y2d = float(bbox_norm[3]) * float(det_h)
+
+    if det_w == cls_w and det_h == cls_h:
+        x1 = int(max(0, min(cls_w, round(x1d))))
+        y1 = int(max(0, min(cls_h, round(y1d))))
+        x2 = int(max(0, min(cls_w, round(x2d))))
+        y2 = int(max(0, min(cls_h, round(y2d))))
+        if x2 <= x1 or y2 <= y1:
+            return None
+        return x1, y1, x2, y2
+
+    # Inverse of letterbox_bgr_to_wh(frame, (det_w, det_h))
+    r = min(float(det_w) / float(cls_w), float(det_h) / float(cls_h))
+    if r <= 0:
+        return None
+    nw = float(cls_w) * r
+    nh = float(cls_h) * r
+    pad_x = (float(det_w) - nw) / 2.0
+    pad_y = (float(det_h) - nh) / 2.0
+    x1 = int(max(0, min(cls_w, round((x1d - pad_x) / r))))
+    y1 = int(max(0, min(cls_h, round((y1d - pad_y) / r))))
+    x2 = int(max(0, min(cls_w, round((x2d - pad_x) / r))))
+    y2 = int(max(0, min(cls_h, round((y2d - pad_y) / r))))
+    if x2 <= x1 or y2 <= y1:
+        return None
+    return x1, y1, x2, y2
+
+
 @dataclass
 class ClassifierOutput:
     """Результат YOLO-cls по кропу: вид, уверенность top1, энтропия и margin (#370)."""
@@ -359,6 +407,7 @@ class DetectionStrategy(ABC):
         tracker_config: str,
         min_confidence: float,
         profile_overrides: Mapping[str, Any] | None = None,
+        classification_frame: np.ndarray | None = None,
     ) -> List[DetectionResult]:
         pass
 
@@ -587,6 +636,7 @@ class TwoStageStrategy(DetectionStrategy):
         tracker_config: str,
         min_confidence: float,
         profile_overrides: Mapping[str, Any] | None = None,
+        classification_frame: np.ndarray | None = None,
     ) -> List[DetectionResult]:
         """Binary detect -> validate -> classify a bounded round-robin slice of tracks."""
         from app_config.app_config import app_config
@@ -655,6 +705,9 @@ class TwoStageStrategy(DetectionStrategy):
             runtime_cfg,
             inference_backend=inference_backend,
         )
+        # Post-track filters must not discard boxes that track() already admitted at track_conf.
+        accept_min_confidence = min(float(min_confidence), float(track_conf))
+        boxes_from_predict_fallback = False
         track_regen_ctx = bool(getattr(self, "_for_track_regen", False))
         iou_fb = bool(runtime_cfg.get("processor.track_regen_iou_id_fallback", False))
         _tkw: dict = {
@@ -696,6 +749,11 @@ class TwoStageStrategy(DetectionStrategy):
             if not pred or len(pred[0].boxes) == 0:
                 return []
             boxes = pred[0].boxes
+            boxes_from_predict_fallback = True
+            accept_min_confidence = min(
+                float(min_confidence),
+                max(float(fallback_conf) * 4.0, 0.04),
+            )
             self._track_predict_fallback_hits = int(getattr(self, "_track_predict_fallback_hits", 0)) + 1
             if self._track_predict_fallback_hits <= 3 or self._track_predict_fallback_hits % 60 == 0:
                 logger.warning(
@@ -777,6 +835,7 @@ class TwoStageStrategy(DetectionStrategy):
         xyxy = _tensor_to_numpy(boxes.xyxy)
 
         h, w, _ = frame.shape
+        cls_frame = classification_frame if isinstance(classification_frame, np.ndarray) else frame
 
         _ov_bird_scale = openvino_binary_bird_score_scale(
             runtime_cfg,
@@ -798,7 +857,7 @@ class TwoStageStrategy(DetectionStrategy):
                 detector_label = self._normalize_detector_label(detector_name)
                 eff_min = per_label_binary_conf_threshold(
                     detector_label,
-                    min_confidence,
+                    accept_min_confidence,
                     runtime_cfg,
                     inference_backend=inference_backend,
                 )
@@ -966,8 +1025,15 @@ class TwoStageStrategy(DetectionStrategy):
                 continue
             if fallback_box is None:
                 fallback_box = box
-            x1, y1, x2, y2 = box["crop_coords"]
-            crop = frame[y1:y2, x1:x2]
+            mapped = _crop_coords_from_letterboxed_bbox_norm(
+                bbox_norm=box["bbox_norm"],
+                detector_frame_shape=frame.shape,
+                classification_frame_shape=cls_frame.shape,
+            )
+            if mapped is None:
+                continue
+            x1, y1, x2, y2 = mapped
+            crop = cls_frame[y1:y2, x1:x2]
             is_blur, variance = self.is_blurry(crop)
             if is_blur:
                 continue
@@ -978,13 +1044,19 @@ class TwoStageStrategy(DetectionStrategy):
             if len(classified_by_track) >= classification_budget:
                 break
         if not classified_by_track and fallback_box is not None:
-            x1, y1, x2, y2 = fallback_box["crop_coords"]
-            crop = frame[y1:y2, x1:x2]
-            _, variance = self.is_blurry(crop)
-            classified_by_track[fallback_box["track_id"]] = {
-                "crop": crop.copy(),
-                "blur_variance": variance,
-            }
+            mapped = _crop_coords_from_letterboxed_bbox_norm(
+                bbox_norm=fallback_box["bbox_norm"],
+                detector_frame_shape=frame.shape,
+                classification_frame_shape=cls_frame.shape,
+            )
+            if mapped is not None:
+                x1, y1, x2, y2 = mapped
+                crop = cls_frame[y1:y2, x1:x2]
+                _, variance = self.is_blurry(crop)
+                classified_by_track[fallback_box["track_id"]] = {
+                    "crop": crop.copy(),
+                    "blur_variance": variance,
+                }
         for box in valid_boxes:
             stats = self._track_stats.setdefault(
                 box["track_id"],

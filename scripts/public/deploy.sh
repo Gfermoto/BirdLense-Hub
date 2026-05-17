@@ -106,6 +106,8 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-yolo-fetch"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.sandbox"
 # Кэши линтера/тестов (часто root после docker compose run) — иначе rsync code 23 Permission denied
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.ruff_cache --exclude=app/.pytest_cache"
+# Локальный build-кэш ESPHome может быть гигабайтным — на сервер Hub не нужен.
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=esphome/.esphome"
 # CodeQL CLI, БД и SARIF (scripts/codeql-local.sh) — десятки МБ/ГБ, на хаб не нужны
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.tools"
 # Не удалять на сервере: веса .pt; user_config (exclude + P — двойная страховка от --delete).

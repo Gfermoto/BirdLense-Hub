@@ -103,6 +103,7 @@ class FrameProcessor:
         frame_time=None,
         *,
         skip_light_gate: bool = False,
+        classification_frame=None,
         camera_overrides: dict | None = None,
     ):
         """
@@ -270,6 +271,7 @@ class FrameProcessor:
             tracker_cfg,
             min_confidence=min_conf,
             profile_overrides=profile_overrides,
+            classification_frame=classification_frame,
         )
         detect_ms = (time.time() - st) * 1000.0
         observe_timing("frame_processor_detect", detect_ms)

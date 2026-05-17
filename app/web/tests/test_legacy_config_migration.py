@@ -100,6 +100,25 @@ def test_processor_rodent_migration_from_legacy_squirrel_keys(tmp_path, monkeypa
         app_config.reload()
 
 
+def test_confidence_floors_skip_when_env_set(tmp_path, monkeypatch):
+    from app_config.app_config import app_config
+
+    user_cfg = {"processor": {"min_confidence_binary": 0.1}}
+    user_config = tmp_path / "user_config.yaml"
+    user_config.write_text(yaml.safe_dump(user_cfg), encoding="utf-8")
+    old_user_config_file = app_config.user_config_file
+    monkeypatch.setattr(app_config, "user_config_file", str(user_config))
+    monkeypatch.setenv("BIRDLENSE_SKIP_CONFIDENCE_FLOORS", "1")
+
+    try:
+        app_config.reload()
+        assert app_config.get("processor.min_confidence_binary") == 0.1
+    finally:
+        monkeypatch.delenv("BIRDLENSE_SKIP_CONFIDENCE_FLOORS", raising=False)
+        app_config.user_config_file = old_user_config_file
+        app_config.reload()
+
+
 def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
     from app_config.app_config import app_config
 

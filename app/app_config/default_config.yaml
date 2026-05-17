@@ -87,6 +87,9 @@ processor:
   # Letterbox для live/file (кратно 32). Держите согласованным с processor.binary_imgsz.
   # При OpenVINO: вход IR и binary_imgsz (+ night overrides) должны совпадать (bundled yolo11n_openvino — 640).
   inference_lores_px: 640
+  # Best-practice split pipeline: YOLO detect/track on lores, classifier/ReID crops from source frame.
+  # false — классификатор/ ReID используют тот же lores-кадр (быстрее, но хуже детализация).
+  classifier_use_source_frame: true
   # Interpolation for OpenCV resize during letterbox preprocessing.
   # linear|cubic|area|nearest|lanczos
   letterbox_resize_interpolation: linear

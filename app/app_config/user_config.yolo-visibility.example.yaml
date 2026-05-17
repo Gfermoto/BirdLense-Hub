@@ -1,0 +1,28 @@
+# Пример: восстановление видимости YOLO на кормушке (substream + Frigate рядом).
+# Скопируйте нужные ключи в user_config.yaml на сервере; файл сам по себе не подхватывается.
+#
+# Симптомы: Frigate видит птиц, yolo_frames_with_tracks ≈ 0, в логах «no track ids»,
+# «Clamped legacy low confidence… 0.08 -> 0.22».
+#
+# Обязательно в app/.env (пересоздайте контейнер после правки, без дублей ключей):
+#   BIRDLENSE_INFERENCE_BACKEND=torch
+#   BIRDLENSE_INFERENCE_DEVICE=cpu
+#   BIRDLENSE_SKIP_CONFIDENCE_FLOORS=1
+#
+# Код (dev+): accept_min_confidence = min(min_confidence, track_conf) в detection_strategy.py.
+
+processor:
+  inference_backend: torch
+  inference_device: cpu
+  classifier_inference_backend: torch
+  classifier_inference_device: cpu
+  # Unstick: track_high_thresh/new_track_thresh ниже слабых conf OpenVINO/torch.
+  tracker: models/tracker/bytetrack_birdlense_unstick.yaml
+  min_confidence_binary: 0.12
+  min_confidence_binary_bird: 0.12
+  min_box_size_px: 20
+  min_center_dist: 0.01
+  binary_track_iou: 0.62
+  auto_unstick_no_track_frames: 60
+  classifier_use_source_frame: true
+  track_fragment_merge_enabled: true
