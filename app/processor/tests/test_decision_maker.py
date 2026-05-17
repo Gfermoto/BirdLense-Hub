@@ -181,6 +181,33 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(results[0]['decision_reason'], 'review_only_generic_bird')
         self.assertEqual(results[0]['decision_kind'], 'review_only_generic')
 
+    def test_weak_detector_conf_accepted_with_detect_stream_defaults(self):
+        """OV detect ~7 FPS: conf ~0.11 must not require generic_bird_min_detector_conf=0.42."""
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.20,
+            min_confidence_to_store=0.08,
+            generic_bird_min_detector_conf=0.10,
+            generic_bird_min_frames=2,
+            generic_bird_min_area_frac=0.006,
+            generic_bird_min_best_frame_score=5.0,
+        )
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.11] * 3,
+                classifier_events=[],
+                frames=[
+                    {"t": 0.0, "bbox": [0.10, 0.10, 0.19, 0.20]},
+                    {"t": 0.1, "bbox": [0.11, 0.11, 0.20, 0.21]},
+                ],
+                best_frame_score=5.5,
+            )
+        }
+        results = dm.get_results(tracks)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["decision_reason"], "fallback_bird")
+        self.assertTrue(results[0].get("visit_eligible", True))
+
     def test_generic_bird_promotion_thresholds_are_configurable(self):
         dm = DecisionMaker(
             min_track_duration=0,
