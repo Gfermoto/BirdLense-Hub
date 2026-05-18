@@ -115,11 +115,14 @@ export function Navigation() {
     logoutAccess,
     isLoading,
     isAdmin,
+    canEdit,
   } = useProtectedArea();
   /** Настройки: только гость (вход) или админ. Оператор (contributor) — без пункта «Настройки». */
   const showSettingsLink = !requiresPassword || !unlocked || isAdmin;
   /** Система/библиотека: гость или админ (оператор после входа не видит). */
   const showAdminOnlyLinks = !requiresPassword || !unlocked || isAdmin;
+  /** Разметка hard-cases: contributor/admin после входа, и гость без пароля. */
+  const showLabellingLink = !requiresPassword || !unlocked || canEdit;
   const gearButtonRef = React.useRef<HTMLButtonElement>(null);
 
   const [mobileMenuAnchor, setMobileMenuAnchor] =
@@ -345,6 +348,15 @@ export function Navigation() {
                   title={t('nav.libraryHint')}
                 >
                   {t('nav.library')}
+                </MenuItem>
+              ) : null}
+              {showLabellingLink ? (
+                <MenuItem
+                  key="mobile-menu-labelling"
+                  onClick={(e) => handleProtectedNav('/labelling', e, 'contributor')}
+                  selected={currentPath === '/labelling'}
+                >
+                  Labelling
                 </MenuItem>
               ) : null}
               {showLogout ? <Divider key="mobile-menu-divider-logout" /> : null}
@@ -616,6 +628,17 @@ export function Navigation() {
                 title={t('nav.libraryHint')}
               >
                 {t('nav.library')}
+              </MenuItem>
+            ) : null}
+            {showLabellingLink ? (
+              <MenuItem
+                key="settings-menu-labelling"
+                component={Link}
+                to="/labelling"
+                onClick={handleSettingsMenuClose}
+                selected={currentPath === '/labelling'}
+              >
+                Labelling
               </MenuItem>
             ) : null}
             {showLogout ? <Divider key="settings-menu-divider-logout" /> : null}

@@ -792,6 +792,28 @@ species:
   catalog_strict_ingest: true
   tuning_target_species_ids: []
 
+# R&D / feature flags
+experimental:
+  # ROI-only super-resolution pilot (#472): affects small classification crops, not full frame.
+  sr_enabled: false
+  # fsrcnn_x2 | realesrgan_x2
+  sr_model: "fsrcnn_x2"
+  # 2..4
+  sr_scale: 2
+  # apply only to small crops in this short-side range (px)
+  sr_min_crop_px: 10
+  sr_max_crop_px: 96
+  # warning budget per crop
+  sr_max_latency_ms: 20
+  # Auto mine hard examples after processor video ingest.
+  active_learning_auto_mine_enabled: true
+  active_learning_auto_mine_lookback_hours: 6
+  active_learning_auto_mine_max_rows: 200
+  active_learning_blind_score_threshold: 0.5
+  active_learning_fallback_ratio_threshold: 0.35
+  active_learning_conf_min: 0.20
+  active_learning_conf_max: 0.35
+
 # Secrets - use env vars: OPENWEATHER_API_KEY, MQTT_PASSWORD, HA_TOKEN
 secrets:
   openweather_api_key: ""

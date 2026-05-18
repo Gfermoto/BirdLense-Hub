@@ -445,6 +445,37 @@ class AnalyticsVisitHourly(db.Model):
     )
 
 
+class ActiveLearningCase(db.Model):
+    """Hard-example queue for labelling and dataset export."""
+
+    __tablename__ = "active_learning_case"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    video_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("video.id"), nullable=True)
+    video_species_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("video_species.id"), nullable=True)
+    camera_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reason_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    blind_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    fallback_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="pending", server_default="pending")
+    payload_json: Mapped[str | None] = mapped_column(String, nullable=True)
+    export_tag: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    __table_args__ = (
+        Index("ix_active_learning_case_created", desc("created_at")),
+        Index("ix_active_learning_case_status_created", "status", desc("created_at")),
+        Index("ix_active_learning_case_reason_created", "reason_code", desc("created_at")),
+        Index("ux_active_learning_case_unique", "video_species_id", "reason_code", unique=True),
+    )
+
+
 class SpeciesVisit(db.Model):
     """Represents a continuous period when a species species was present, groups video and audio detections"""
 
