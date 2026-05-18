@@ -177,6 +177,9 @@ class SessionStateRepository:
         *,
         camera_id: str | None,
         min_recent_sessions: int = 3,
+        min_yolo_frames: int = 1,
+        min_frigate_only_frames: int = 1,
+        min_duration_seconds: float = 0.0,
     ) -> bool:
         rows = self.recent_blind_sessions(camera_id=camera_id, limit=max(min_recent_sessions, 6))
         if not rows or len(rows) < min_recent_sessions:
@@ -186,6 +189,12 @@ class SessionStateRepository:
             yolo_ran = int(row["yolo_frames_ran"] or 0)
             raw_total = int(row["yolo_raw_boxes_total"] or 0)
             ext = int(row["session_extended_by_frigate_only"] or 0)
-            if yolo_ran <= 0 or raw_total > 0 or ext <= 0:
+            duration_s = float(row["duration_s"] or 0.0)
+            if (
+                yolo_ran < int(max(1, min_yolo_frames))
+                or raw_total > 0
+                or ext < int(max(1, min_frigate_only_frames))
+                or duration_s < float(max(0.0, min_duration_seconds))
+            ):
                 return False
         return True

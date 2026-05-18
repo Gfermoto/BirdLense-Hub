@@ -72,3 +72,43 @@ def test_blind_confirmed_requires_consecutive_blind_sessions():
         assert not repo.is_blind_confirmed(camera_id='BirdBox', min_recent_sessions=2)
     finally:
         tmp.cleanup()
+
+
+def test_blind_confirmed_respects_duration_and_frame_thresholds():
+    tmp, repo = _mk_repo()
+    try:
+        repo.save_session_runtime(
+            {
+                'triggered_camera': 'BirdBox',
+                'duration_s': 8.0,
+                'yolo_frames_ran': 60,
+                'yolo_raw_boxes_total': 0,
+                'session_extended_by_frigate_only': 40,
+            }
+        )
+        assert not repo.is_blind_confirmed(
+            camera_id='BirdBox',
+            min_recent_sessions=1,
+            min_yolo_frames=180,
+            min_frigate_only_frames=120,
+            min_duration_seconds=30.0,
+        )
+
+        repo.save_session_runtime(
+            {
+                'triggered_camera': 'BirdBox',
+                'duration_s': 35.0,
+                'yolo_frames_ran': 245,
+                'yolo_raw_boxes_total': 0,
+                'session_extended_by_frigate_only': 180,
+            }
+        )
+        assert repo.is_blind_confirmed(
+            camera_id='BirdBox',
+            min_recent_sessions=1,
+            min_yolo_frames=180,
+            min_frigate_only_frames=120,
+            min_duration_seconds=30.0,
+        )
+    finally:
+        tmp.cleanup()

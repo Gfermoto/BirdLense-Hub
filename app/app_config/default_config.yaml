@@ -93,6 +93,12 @@ processor:
   # Interpolation for OpenCV resize during letterbox preprocessing.
   # linear|cubic|area|nearest|lanczos
   letterbox_resize_interpolation: linear
+  # 7 FPS low-res detect stream: мягкий enhance перед letterbox для мелких объектов.
+  lowres_enhance_enabled: true
+  # Применять enhance только к входу <= N px по большей стороне (чтобы не трогать HD).
+  lowres_enhance_max_input_px: 800
+  # Unsharp amount (0..1): выше = резче, но больше noise.
+  lowres_sharpen_amount: 0.32
   # Regen policy scope_strategy=match_live_pipeline:
   # тот же lores (inference_lores_px), каждый кадр,
   # без обнуления regional_species и без remap детекций по «локальному» scope (#263).
@@ -137,9 +143,9 @@ processor:
         # Смягчить бинарный Bird-порог и small-object фильтры на ночных клипах.
         min_confidence_binary: 0.08
         min_confidence_binary_bird: 0.08
-        min_track_duration: 0.35
-        min_confidence_to_process: 0.26
-        min_box_size_px: 20
+        min_track_duration: 0.25
+        min_confidence_to_process: 0.20
+        min_box_size_px: 14
         min_center_dist: 0.01
         max_classifications_per_frame: 4
         binary_imgsz: 640
@@ -483,6 +489,11 @@ detection:
   frigate_standalone_when_no_yolo: true
   # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).
   frigate_standalone_require_blind_yolo: true
+  # 7 FPS режим: blind подтверждаем по времени/кадрам, а не по коротким провалам.
+  yolo_blind_required_consecutive_sessions: 1
+  yolo_blind_min_duration_seconds: 30
+  yolo_blind_min_frames: 180
+  yolo_blind_min_frigate_only_frames: 120
   # При включении standalone мониторьте баланс провайдеров: fusion_provider_yolo должен оставаться доминирующим.
   # Если ровно один accepted_generic «Bird» от YOLO — НЕ подменять на Frigate standalone по умолчанию.
   # Иначе Frigate начинает доминировать как primary provider даже при наличии визуального YOLO-трека.

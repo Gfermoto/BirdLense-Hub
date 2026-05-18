@@ -307,14 +307,35 @@ def finalize_motion_recording(
     if isinstance(recording_context, dict) and isinstance(recording_context.get("runtime_signals"), dict):
         rs_ctx = dict(recording_context.get("runtime_signals") or {})
     yolo_blind_confirmed = False
+    blind_recovered = False
     try:
         yolo_ran_now = int(rs_ctx.get("yolo_frames_ran") or 0)
         yolo_raw_now = int(rs_ctx.get("yolo_raw_boxes_total") or 0)
         frigate_only_now = int(rs_ctx.get("session_extended_by_frigate_only") or 0)
-        blind_now = yolo_ran_now > 0 and yolo_raw_now == 0 and frigate_only_now > 0
+        blind_min_sessions = int(app_config.get("detection.yolo_blind_required_consecutive_sessions") or 1)
+        blind_min_frames = int(app_config.get("detection.yolo_blind_min_frames") or 180)
+        blind_min_frigate = int(app_config.get("detection.yolo_blind_min_frigate_only_frames") or 120)
+        blind_min_duration_s = float(app_config.get("detection.yolo_blind_min_duration_seconds") or 30.0)
+        current_duration_s = max(0.0, float((end_time - start_time).total_seconds()))
+        blind_now = (
+            yolo_ran_now >= max(1, blind_min_frames)
+            and yolo_raw_now == 0
+            and frigate_only_now >= max(1, blind_min_frigate)
+            and current_duration_s >= max(0.0, blind_min_duration_s)
+        )
         repo = SessionStateRepository()
-        blind_recent = repo.is_blind_confirmed(camera_id=session_camera_id, min_recent_sessions=2)
+        blind_recent = repo.is_blind_confirmed(
+            camera_id=session_camera_id,
+            min_recent_sessions=max(1, blind_min_sessions),
+            min_yolo_frames=max(1, blind_min_frames),
+            min_frigate_only_frames=max(1, blind_min_frigate),
+            min_duration_seconds=max(0.0, blind_min_duration_s),
+        )
         yolo_blind_confirmed = bool(blind_now and blind_recent)
+        if yolo_raw_now > 0:
+            recent = repo.recent_blind_sessions(camera_id=session_camera_id, limit=1)
+            if recent and int(recent[0]["yolo_blind_confirmed"] or 0) == 1:
+                blind_recovered = True
     except Exception:
         logging.debug("finalize: blind-state probe failed", exc_info=True)
     video_detections = build_fused_video_detections(
@@ -734,6 +755,16 @@ def finalize_motion_recording(
                         "yolo_raw_boxes_total": session_summary["yolo_raw_boxes_total"],
                         "session_extended_by_frigate_only": session_summary["session_extended_by_frigate_only"],
                         "mqtt_events_in_window": session_summary["mqtt_events_in_window"],
+                    },
+                )
+            if bool(blind_recovered):
+                repo.append_detector_health_event(
+                    event_type="yolo_blind_recovered",
+                    severity="info",
+                    camera_id=ctx.get("triggered_camera"),
+                    details={
+                        "yolo_frames_ran": session_summary["yolo_frames_ran"],
+                        "yolo_raw_boxes_total": session_summary["yolo_raw_boxes_total"],
                     },
                 )
         except Exception:
