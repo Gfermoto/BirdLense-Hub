@@ -489,16 +489,24 @@ detection:
   frigate_standalone_when_no_yolo: true
   # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).
   frigate_standalone_require_blind_yolo: true
+  frigate_standalone_blind_score_threshold: 0.7
   # 7 FPS режим: blind подтверждаем по времени/кадрам, а не по коротким провалам.
   yolo_blind_required_consecutive_sessions: 1
   yolo_blind_min_duration_seconds: 30
   yolo_blind_min_frames: 180
   # Учитывать просадку до 2 FPS: для blind-gate берётся min(min_frames, min_duration*min_effective_fps).
   yolo_blind_min_effective_fps: 2.0
+  # Интегральная оценка слепоты (0..1) и двухфазное подтверждение.
+  yolo_blind_score_threshold: 0.7
+  yolo_blind_quickcheck_seconds: 2.0
+  yolo_blind_quickcheck_min_confidence_binary: 0.05
+  yolo_blind_quickcheck_min_confidence_binary_bird: 0.03
+  yolo_blind_quickcheck_min_box_size_px: 10
   yolo_blind_min_frigate_only_frames: 120
   # Self-healing (phase-1): при подтверждённой слепоте запросить мягкий рестарт процессора через flag-файл.
   yolo_self_heal_restart_enabled: true
   yolo_self_heal_cooldown_seconds: 300
+  yolo_self_heal_escalation_window_seconds: 900
   # При включении standalone мониторьте баланс провайдеров: fusion_provider_yolo должен оставаться доминирующим.
   # Если ровно один accepted_generic «Bird» от YOLO — НЕ подменять на Frigate standalone по умолчанию.
   # Иначе Frigate начинает доминировать как primary provider даже при наличии визуального YOLO-трека.
@@ -641,6 +649,11 @@ retention:
   protect_favorites: true
   min_age_hours: 1             # Grace period: не трогать свежее N часов
   batch_size: 50                  # Макс. записей за один вызов API
+  runtime_metrics_days: 14
+  detector_health_days: 30
+  runtime_metrics_maintenance_interval_minutes: 60
+  runtime_metrics_vacuum_interval_hours: 12
+  runtime_metrics_analyze_enabled: true
 
 # Notifications (Telegram)
 # TODO: корм за Stars — sendInvoice / paid broadcast для кнопки «Выдать корм»

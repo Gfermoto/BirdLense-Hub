@@ -47,6 +47,7 @@ def _base_cfg() -> DummyConfig:
             "detection.frigate_standalone_when_no_yolo": True,
             "detection.frigate_standalone_when_no_accepted_species": True,
             "detection.frigate_standalone_require_blind_yolo": True,
+            "detection.frigate_standalone_blind_score_threshold": 0.7,
             "detection.frigate_standalone_min_score": 0.52,
             "detection.frigate_standalone_missing_score_fallback": 0.72,
             "detection.yolo_blind_required_consecutive_sessions": 1,
@@ -123,6 +124,7 @@ def run() -> list[ScenarioResult]:
             end_time=end,
             app_config=cfg,
             yolo_blind_confirmed=False,
+            yolo_blind_score=0.0,
         )
         passed_norm = bool(out_norm) and any(
             str((row or {}).get("detection_provider") or "").lower() == "yolo"
@@ -155,6 +157,7 @@ def run() -> list[ScenarioResult]:
             end_time=end,
             app_config=cfg,
             yolo_blind_confirmed=blind_short,
+            yolo_blind_score=0.35,
         )
         results.append(
             ScenarioResult(
@@ -183,6 +186,7 @@ def run() -> list[ScenarioResult]:
             end_time=end,
             app_config=cfg,
             yolo_blind_confirmed=blind_long,
+            yolo_blind_score=0.92,
         )
         long_ok = (
             blind_long
@@ -219,6 +223,24 @@ def run() -> list[ScenarioResult]:
             )
         )
 
+        # 3c) High score gate: with blind false-positive score below threshold standalone must stay off.
+        out_score_gate = build_fused_video_detections(
+            [],
+            frigate,
+            start_time=start,
+            end_time=end,
+            app_config=cfg,
+            yolo_blind_confirmed=True,
+            yolo_blind_score=0.4,
+        )
+        results.append(
+            ScenarioResult(
+                "Blind score gate suppresses standalone",
+                out_score_gate == [],
+                f"rows={len(out_score_gate)} expected=0",
+            )
+        )
+
         # 4) Восстановление: после blind снова появляются боксы => blind сброшен.
         repo.save_session_runtime(
             {
@@ -248,6 +270,37 @@ def run() -> list[ScenarioResult]:
                 "Рестарт контейнера/процесса",
                 restart_ok,
                 f"rows_visible_after_restart={len(rows_after_restart)}",
+            )
+        )
+
+        # 7) Retention/aggregation maintenance should compact and build hourly aggregates.
+        for _ in range(4):
+            repo_after_restart.save_session_runtime(
+                {
+                    "triggered_camera": "BirdBox",
+                    "duration_s": 25.0,
+                    "yolo_frames_ran": 55,
+                    "yolo_raw_boxes_total": 0,
+                    "session_extended_by_frigate_only": 8,
+                    "yolo_blind_confirmed": True,
+                    "video_file_ok": True,
+                }
+            )
+        maintenance = repo_after_restart.run_retention_and_compaction(
+            runtime_retention_days=14,
+            health_retention_days=30,
+            do_analyze=False,
+            do_vacuum=False,
+        )
+        with repo_after_restart._connect() as con:
+            aggr = con.execute("SELECT COUNT(*) AS n FROM analytics_visit_hourly").fetchone()
+        aggr_n = int(aggr["n"]) if aggr is not None else 0
+        maintenance_ok = aggr_n >= 1
+        results.append(
+            ScenarioResult(
+                "Retention + hourly aggregate maintenance",
+                maintenance_ok,
+                f"aggregate_rows={aggr_n} deleted={maintenance.get('deleted_runtime_rows', 0)}",
             )
         )
 

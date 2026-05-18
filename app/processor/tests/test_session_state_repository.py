@@ -163,3 +163,36 @@ def test_latest_health_event_returns_most_recent_row():
         assert int(row['id']) == rid
     finally:
         tmp.cleanup()
+
+
+def test_run_retention_and_compaction_builds_hourly_aggregate():
+    tmp, repo = _mk_repo()
+    try:
+        for _ in range(3):
+            repo.save_session_runtime(
+                {
+                    "triggered_camera": "BirdBox",
+                    "duration_s": 20.0,
+                    "yolo_frames_ran": 40,
+                    "yolo_raw_boxes_total": 0,
+                    "yolo_accepted_boxes_total": 2,
+                    "session_extended_by_frigate_only": 4,
+                    "yolo_blind_confirmed": True,
+                }
+            )
+        res = repo.run_retention_and_compaction(
+            runtime_retention_days=14,
+            health_retention_days=30,
+            do_analyze=False,
+            do_vacuum=False,
+        )
+        assert "deleted_runtime_rows" in res
+        with repo._connect() as con:
+            row = con.execute(
+                "SELECT detections, blind_confirmed_sessions FROM analytics_visit_hourly ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+        assert row is not None
+        assert int(row["detections"]) >= 1
+        assert int(row["blind_confirmed_sessions"]) >= 1
+    finally:
+        tmp.cleanup()

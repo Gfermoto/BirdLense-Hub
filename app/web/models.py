@@ -400,6 +400,51 @@ class DetectorHealthEvent(db.Model):
     )
 
 
+class AnalyticsHeatmapCell(db.Model):
+    """Pre-aggregated heatmap cells for long windows."""
+
+    __tablename__ = "analytics_heatmap_cell"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    bucket_hour: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    camera_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    grid_size: Mapped[int] = mapped_column(Integer, nullable=False, default=12, server_default="12")
+    cell_x: Mapped[int] = mapped_column(Integer, nullable=False)
+    cell_y: Mapped[int] = mapped_column(Integer, nullable=False)
+    hits: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_analytics_heatmap_bucket", "bucket_hour", "camera_id", "grid_size"),
+        Index("ux_analytics_heatmap_cell", "bucket_hour", "camera_id", "grid_size", "cell_x", "cell_y", unique=True),
+    )
+
+
+class AnalyticsVisitHourly(db.Model):
+    """Hourly aggregates for visit quality trends."""
+
+    __tablename__ = "analytics_visit_hourly"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    bucket_hour: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    camera_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    detections: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    frigate_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    blind_confirmed_sessions: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    avg_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ux_analytics_visit_hourly_bucket", "bucket_hour", "camera_id", unique=True),
+        Index("ix_analytics_visit_hourly_bucket", "bucket_hour", "camera_id"),
+    )
+
+
 class SpeciesVisit(db.Model):
     """Represents a continuous period when a species species was present, groups video and audio detections"""
 
