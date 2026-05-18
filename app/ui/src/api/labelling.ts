@@ -42,10 +42,12 @@ export type LabellingCasesResponse = {
 export const fetchLabellingCases = async (
   status: LabellingCaseStatus | 'all' = 'pending',
   limit = 120,
+  withMediaOnly = true,
 ): Promise<LabellingCasesResponse> => {
   const q = new URLSearchParams();
   if (status !== 'all') q.set('status', status);
   q.set('limit', String(limit));
+  if (withMediaOnly) q.set('with_media_only', '1');
   const res = await fetch(`${BASE_API_URL}/labelling/cases?${q.toString()}`, {
     credentials: 'include',
   });

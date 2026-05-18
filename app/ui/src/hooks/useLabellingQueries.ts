@@ -14,10 +14,11 @@ import { queryKeys } from '../api/queryKeys';
 export function useLabellingCasesQuery(
   status: LabellingCaseStatus | 'all',
   limit = 120,
+  withMediaOnly = true,
 ) {
   return useQuery({
-    queryKey: queryKeys.labelling.cases(status),
-    queryFn: () => fetchLabellingCases(status, limit),
+    queryKey: queryKeys.labelling.cases(status, withMediaOnly),
+    queryFn: () => fetchLabellingCases(status, limit, withMediaOnly),
     refetchInterval: 30_000,
   });
 }
