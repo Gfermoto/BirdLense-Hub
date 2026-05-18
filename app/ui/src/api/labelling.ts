@@ -11,7 +11,9 @@ export type LabellingCase = {
   camera_id: string | null;
   video_id: number | null;
   video_species_id: number | null;
+  track_id?: number | null;
   species_name: string | null;
+  individual_nickname?: string | null;
   video_path: string | null;
   video_stream_url?: string | null;
   video_details_url?: string | null;

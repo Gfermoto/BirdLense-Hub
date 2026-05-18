@@ -531,6 +531,15 @@ ml-seed-labelling-queue:
 		$$(test -n "$${MAX_RUNTIME_CASES:-}" && printf -- '--max-runtime-cases "%s" ' "$${MAX_RUNTIME_CASES}") \
 		$${ARGS:-}
 
+# Analyze ReID nickname conflicts in sidecar reid_embedding table.
+# DB=app/data/db/birdlense.db OUT=/tmp/reid_consistency_report.v1.json make ml-analyze-reid-consistency
+ml-analyze-reid-consistency:
+	@test -n "$${DB:-}" || (echo "Set DB=path/to/birdlense.db" >&2; exit 1)
+	@python3 scripts/analyze_reid_consistency.py \
+		--db "$${DB}" \
+		$$(test -n "$${OUT:-}" && printf -- '--out "%s" ' "$${OUT}") \
+		$${ARGS:-}
+
 # Train Behavior v2 candidate profile (tsm|x3d|slowfast) and emit report/export (#458).
 ml-train-behavior-video:
 	@test -n "$${MANIFEST:-}" || (echo "Set MANIFEST=path/to/behavior_tracklet_manifest.v1.json" >&2; exit 1)

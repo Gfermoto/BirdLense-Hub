@@ -42,8 +42,6 @@ const statusColor: Record<LabellingCaseStatus, 'default' | 'success' | 'error' |
   rejected: 'error',
 };
 
-const BEHAVIORS = ['feeding', 'perched_idle', 'flying', 'alert'];
-
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName.toLowerCase();
@@ -58,24 +56,11 @@ function reasonHuman(reason: string, t: (k: string) => string) {
   return reason;
 }
 
-function speciesCandidates(item: LabellingCase): string[] {
-  const payload = item.payload || {};
-  const arr = Array.isArray(payload['species_candidates']) ? payload['species_candidates'] : [];
-  const base = arr
-    .map((x) => (typeof x === 'string' ? x : typeof x === 'object' && x && 'name' in x ? String((x as { name: string }).name) : ''))
-    .filter(Boolean);
-  if (item.suggested_species) base.unshift(item.suggested_species);
-  if (item.species_name) base.unshift(item.species_name);
-  return Array.from(new Set(base)).slice(0, 3);
-}
-
 const MediaCanvas: React.FC<{
   item: LabellingCase;
   viewMode: ViewMode;
-  selected: boolean;
-  onSelect: (v: boolean) => void;
   onSkip: () => void;
-}> = ({ item, viewMode, selected, onSelect, onSkip }) => {
+}> = ({ item, viewMode, onSkip }) => {
   const { t } = useTranslation();
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
 
@@ -124,7 +109,7 @@ const MediaCanvas: React.FC<{
         tracks={[
           {
             id: `case-${item.id}`,
-            label: `${item.species_name || t('labelling.labels.speciesUnknown')} (${Math.round((item.confidence || 0) * 100)}%) • ${t('labelling.labels.behavior')}: ${item.behavior_label || item.suggested_behavior || '-'}`,
+            label: `${item.species_name || t('labelling.labels.speciesUnknown')}${item.individual_nickname ? ` • ${item.individual_nickname}` : ''} (${Math.round((item.confidence || 0) * 100)}%)${item.behavior_label || item.suggested_behavior ? ` • ${item.behavior_label || item.suggested_behavior}` : ''}`,
             color: item.status === 'approved' ? '#22c55e' : item.status === 'rejected' ? '#ef4444' : '#eab308',
             frames: (() => {
               const rows = (item.track_frames || [])
@@ -137,9 +122,7 @@ const MediaCanvas: React.FC<{
           },
         ]}
         currentTime={viewMode === 'video' ? currentTime : item.track_frames?.[0]?.t ?? null}
-        selectedTrackId={selected ? `case-${item.id}` : null}
-        interactive
-        onSelectTrack={(id) => onSelect(Boolean(id))}
+        selectedTrackId={null}
       />
     </Box>
   );
@@ -154,7 +137,6 @@ export const LabellingPage: React.FC = () => {
   const [viewMode, setViewMode] = React.useState<ViewMode>('snapshot');
   const [exportFormat, setExportFormat] = React.useState<'yolo' | 'coco'>('yolo');
   const [currentIndex, setCurrentIndex] = React.useState(0);
-  const [selectedBox, setSelectedBox] = React.useState(false);
   const q = useLabellingCasesQuery('all', 500);
   const mine = useMineLabellingCasesMutation();
   const batch = useLabellingBatchFeedbackMutation();
@@ -184,19 +166,9 @@ export const LabellingPage: React.FC = () => {
 
   React.useEffect(() => {
     if (currentIndex >= items.length) setCurrentIndex(Math.max(0, items.length - 1));
-    setSelectedBox(false);
   }, [currentIndex, items.length]);
 
   const current = items[currentIndex] || null;
-  const topSpecies = React.useMemo(() => (current ? speciesCandidates(current) : []), [current]);
-  const [speciesTag, setSpeciesTag] = React.useState('');
-  const [behaviorTag, setBehaviorTag] = React.useState('feeding');
-
-  React.useEffect(() => {
-    if (!current) return;
-    setSpeciesTag(current.suggested_species || current.species_name || '');
-    setBehaviorTag(current.suggested_behavior || current.behavior_label || 'feeding');
-  }, [current?.id, current?.species_name, current?.suggested_behavior, current?.suggested_species, current?.behavior_label]);
 
   const reviewed = items.filter((x) => x.status !== 'pending').length;
   const progress = items.length > 0 ? (reviewed / items.length) * 100 : 0;
@@ -205,26 +177,15 @@ export const LabellingPage: React.FC = () => {
 
   const approveAll = React.useCallback(async () => {
     if (!current) return;
-    await batch.mutateAsync([
-      { kind: 'feedback', case_id: current.id, action: 'tag_species', species_tag: speciesTag || current.species_name || '' },
-      { kind: 'feedback', case_id: current.id, action: 'confirm_behavior', behavior_tag: behaviorTag },
-      { kind: 'status', case_id: current.id, status: 'approved' },
-    ]);
+    await batch.mutateAsync([{ kind: 'status', case_id: current.id, status: 'approved' }]);
     gotoNext();
-  }, [batch, behaviorTag, current, speciesTag]);
+  }, [batch, current]);
 
   const rejectAll = React.useCallback(async () => {
     if (!current) return;
     await batch.mutateAsync([{ kind: 'feedback', case_id: current.id, action: 'reject_box' }]);
     gotoNext();
   }, [batch, current]);
-
-  const cycleBehavior = React.useCallback(() => {
-    setBehaviorTag((prev) => {
-      const idx = BEHAVIORS.indexOf(prev);
-      return BEHAVIORS[(idx + 1 + BEHAVIORS.length) % BEHAVIORS.length];
-    });
-  }, []);
 
   React.useEffect(() => {
     const handler = async (e: KeyboardEvent) => {
@@ -242,18 +203,11 @@ export const LabellingPage: React.FC = () => {
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         gotoPrev();
-      } else if (e.key.toLowerCase() === 'b') {
-        e.preventDefault();
-        cycleBehavior();
-      } else if (['1', '2', '3'].includes(e.key)) {
-        e.preventDefault();
-        const next = topSpecies[Number(e.key) - 1];
-        if (next) setSpeciesTag(next);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [approveAll, current, cycleBehavior, rejectAll, topSpecies]);
+  }, [approveAll, current, rejectAll]);
 
   return (
     <ProtectedRoute title={t('labelling.title')} requireAdmin={false}>
@@ -323,12 +277,6 @@ export const LabellingPage: React.FC = () => {
               <Tooltip title={t('labelling.shortcuts.reject')}>
                 <Chip size="small" label="Backspace" />
               </Tooltip>
-              <Tooltip title={t('labelling.shortcuts.quickSpecies')}>
-                <Chip size="small" label="1/2/3" />
-              </Tooltip>
-              <Tooltip title={t('labelling.shortcuts.behavior')}>
-                <Chip size="small" label="B" />
-              </Tooltip>
             </Stack>
           </CardContent>
         </Card>
@@ -348,6 +296,11 @@ export const LabellingPage: React.FC = () => {
                   <Typography variant="body1"><strong>{t('labelling.meta.time')}:</strong> {current.created_at || '-'}</Typography>
                   <Typography variant="body1"><strong>{t('labelling.meta.reason')}:</strong> {reasonHuman(current.reason_code, t)}</Typography>
                 </Stack>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
+                  <Typography variant="body1"><strong>{t('labelling.meta.species')}:</strong> {current.species_name || current.suggested_species || '-'}</Typography>
+                  <Typography variant="body1"><strong>{t('labelling.meta.nickname')}:</strong> {current.individual_nickname || '-'}</Typography>
+                  <Typography variant="body1"><strong>{t('labelling.meta.behavior')}:</strong> {current.behavior_label || current.suggested_behavior || '-'}</Typography>
+                </Stack>
                 <Stack direction="row" spacing={1}>
                   <Button size="small" variant={viewMode === 'snapshot' ? 'contained' : 'outlined'} onClick={() => setViewMode('snapshot')}>
                     {t('labelling.view.snapshot')}
@@ -356,52 +309,19 @@ export const LabellingPage: React.FC = () => {
                     {t('labelling.view.video')}
                   </Button>
                 </Stack>
-                <MediaCanvas item={current} viewMode={viewMode} selected={selectedBox} onSelect={setSelectedBox} onSkip={gotoNext} />
+                <MediaCanvas item={current} viewMode={viewMode} onSkip={gotoNext} />
                 <Card variant="outlined">
                   <CardContent>
                     <Typography variant="subtitle2" gutterBottom>
-                      {selectedBox ? t('labelling.panels.boxActions') : t('labelling.panels.sessionActions')}
+                      {t('labelling.panels.sessionActions')}
                     </Typography>
                     <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.2}>
-                      {selectedBox ? (
-                        <>
-                          <FormControl size="small" sx={{ minWidth: 220 }}>
-                            <InputLabel id="species">{t('labelling.labels.species')}</InputLabel>
-                            <Select labelId="species" value={speciesTag} label={t('labelling.labels.species')} onChange={(e) => setSpeciesTag(String(e.target.value))}>
-                              {(topSpecies.length > 0 ? topSpecies : [current.species_name || 'unknown']).map((s) => (
-                                <MenuItem key={s} value={s}>
-                                  {s}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                          <FormControl size="small" sx={{ minWidth: 220 }}>
-                            <InputLabel id="behavior">{t('labelling.labels.behavior')}</InputLabel>
-                            <Select labelId="behavior" value={behaviorTag} label={t('labelling.labels.behavior')} onChange={(e) => setBehaviorTag(String(e.target.value))}>
-                              {BEHAVIORS.map((b) => (
-                                <MenuItem key={b} value={b}>
-                                  {b}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                          <Button variant="contained" color="success" onClick={() => void approveAll()} disabled={batch.isPending}>
-                            {t('labelling.actions.approveAll')}
-                          </Button>
-                          <Button variant="outlined" color="error" onClick={() => void rejectAll()} disabled={batch.isPending}>
-                            {t('labelling.actions.reject')}
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button variant="contained" color="success" onClick={() => void approveAll()} disabled={batch.isPending}>
-                            {t('labelling.actions.approveAndNext')}
-                          </Button>
-                          <Button variant="outlined" color="error" onClick={() => void rejectAll()} disabled={batch.isPending}>
-                            {t('labelling.actions.rejectAndNext')}
-                          </Button>
-                        </>
-                      )}
+                      <Button variant="contained" color="success" onClick={() => void approveAll()} disabled={batch.isPending}>
+                        {t('labelling.actions.approveAndNext')}
+                      </Button>
+                      <Button variant="outlined" color="error" onClick={() => void rejectAll()} disabled={batch.isPending}>
+                        {t('labelling.actions.rejectAndNext')}
+                      </Button>
                       <Button size="small" variant="text" onClick={gotoPrev} disabled={currentIndex <= 0}>
                         {t('labelling.actions.prev')}
                       </Button>

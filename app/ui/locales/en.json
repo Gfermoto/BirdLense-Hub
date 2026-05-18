@@ -1255,6 +1255,9 @@
   "unknowns": {
     "title": "Recognition review",
     "intro": "Low-confidence detections: open the clip, then confirm or correct the species.",
+    "roleSplitTitle": "Review mode = fast operational triage",
+    "roleSplitHint": "Use this page to quickly triage and open recordings. Validate geometry in Data Labelling; edit semantics (species/nickname/behavior) in Video Details.",
+    "openGeometryQueue": "Open geometry queue",
     "viewVideo": "View video",
     "correctSpecies": "Correct species",
     "reviewStatePending": "Pending review",
@@ -1544,7 +1547,22 @@
     "behaviorEdit": "Edit behavior",
     "behaviorDialogTitle": "Behavior label",
     "behaviorLabelField": "Label",
-    "behaviorLabelHint": "Lowercase id (e.g. feeding, flying). Leave empty to clear stored behavior.",
+    "behaviorLabelHint": "Pick from the practical behavior vocabulary. Leave empty to clear stored behavior.",
+    "behaviorTagNone": "No label",
+    "behaviorTags": {
+      "feeding": "Feeding",
+      "food_handling": "Food handling",
+      "drinking": "Drinking",
+      "bathing": "Bathing",
+      "self_maintenance": "Self-maintenance",
+      "resting": "Resting",
+      "vigilance": "Vigilance",
+      "agonistic": "Agonistic / displacement",
+      "alarm_or_flee": "Alarm / flee",
+      "transport_food": "Transport food",
+      "parent_offspring": "Parent-offspring",
+      "pair_or_courtship": "Pair / courtship"
+    },
     "behaviorConfField": "Confidence (0–1)",
     "behaviorConfHint": "Optional manual confidence. Cleared when the label is cleared.",
     "behaviorSaving": "Saving…",
@@ -2390,7 +2408,7 @@
   },
   "labelling": {
     "title": "Data Labelling",
-    "description": "Review boxes and model labels. Confirm valid cases for training.",
+    "description": "Review bbox geometry only. Semantics (species/nickname/behavior) is edited in Video Details.",
     "language": "Language",
     "progressLabel": "Reviewed {{done}} of {{total}}",
     "caseTitle": "Case #{{id}}",
@@ -2417,7 +2435,10 @@
     "meta": {
       "time": "Time",
       "camera": "Camera",
-      "reason": "Reason"
+      "reason": "Reason",
+      "species": "Species",
+      "nickname": "Nickname",
+      "behavior": "Behavior"
     },
     "predictions": {
       "main": "Main model",
@@ -2476,10 +2497,10 @@
     },
     "panels": {
       "boxActions": "Actions for selected object",
-      "sessionActions": "Case actions"
+      "sessionActions": "Geometry review"
     },
     "hints": {
-      "trainingPurpose": "Use this workspace to confirm and correct data for neural model training."
+      "trainingPurpose": "This workspace validates bbox geometry only. Set species, nickname, and behavior in Video Details."
     },
     "reasons": {
       "blind": "YOLO blindness",
