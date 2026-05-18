@@ -111,8 +111,8 @@ export interface UnknownDetection {
   source: string;
   detection_provider?: string;
   image_url?: string;
-  review_state?: 'pending' | 'reviewed' | 'not_applicable';
-  review_reason?: 'low_confidence' | 'generic_bird' | 'classifier_uncertainty' | string;
+  review_state?: 'pending' | 'reviewed' | 'not_applicable' | 'semantic_review_required';
+  review_reason?: 'low_confidence' | 'generic_bird' | 'classifier_uncertainty' | 'semantic_review_required' | string;
   review_source?: string;
   classifier_entropy?: number | null;
   classifier_top1_top2_margin?: number | null;
@@ -136,12 +136,20 @@ export const fetchUnknowns = async (
 
 export const fetchUnknownsForObserverDate = async (
   date: string,
-  options?: { timeOfDay?: TimeOfDay; hour?: number | null; limit?: number },
+  options?: {
+    timeOfDay?: TimeOfDay;
+    hour?: number | null;
+    limit?: number;
+    queue?: 'expert' | 'default';
+    reviewReason?: string;
+  },
 ): Promise<UnknownDetection[]> => {
   const response = await axios.get(`${BASE_API_URL}/unknowns`, {
     params: {
       date,
       limit: options?.limit ?? 100,
+      ...(options?.queue && options.queue !== 'default' ? { queue: options.queue } : {}),
+      ...(options?.reviewReason ? { review_reason: options.reviewReason } : {}),
       ...(options?.hour != null
         ? { hour: options.hour }
         : { time_of_day: options?.timeOfDay ?? 'all' }),

@@ -1264,6 +1264,7 @@
     "reviewReasonLowConfidence": "Низкая уверенность",
     "reviewReasonGenericBird": "Общая метка Bird",
     "reviewReasonClassifierUncertainty": "Неуверенный классификатор",
+    "reviewReasonSemanticConflict": "Требует проверки эксперта",
     "confirmCorrect": "Верно",
     "confirmCorrectHelp": "Вид определён верно — убрать из списка",
     "confirmBlockedPendingApply": "В списке выбран другой вид — нажмите «Применить», чтобы сохранить, или сбросьте выбор в списке, чтобы нажать «Верно».",
@@ -1382,6 +1383,14 @@
     "nicknameField": "Кличка птицы",
     "nicknameFieldPlaceholder": "например, Синичка Соня",
     "nicknameLabel": "Кличка",
+    "profileField": "Профиль птицы",
+    "profileFieldPlaceholder": "Найдите профиль или введите имя для нового",
+    "profileLinkButton": "Привязать профиль",
+    "profileCreateAndLinkButton": "Создать и привязать",
+    "profileLinkedInVideo": "Профиль привязан к {{count}} детекциям в видео",
+    "semanticReviewButton": "На проверку семантики",
+    "semanticReviewQueued": "Кейс отправлен в очередь эксперта",
+    "semanticConflictTitle": "Конфликт семантики",
     "nicknameSaveButton": "Сохранить кличку",
     "nicknameCancelButton": "Отменить",
     "nicknameSaved": "Кличка сохранена",
@@ -2428,6 +2437,7 @@
       "pending": "На проверке",
       "approved": "Готово",
       "rejected": "Ошибка",
+      "semantic_review_required": "Требует проверки эксперта",
       "preApproved": "Предодобрено"
     },
     "filters": {
@@ -2470,7 +2480,8 @@
       "tagSpecies": "Отметить вид",
       "approveAll": "Подтвердить всё",
       "approveAndNext": "Подтвердить и далее",
-      "rejectAndNext": "Отклонить и далее"
+      "rejectAndNext": "Отклонить и далее",
+      "flagSemanticError": "Флаг ошибки семантики"
     },
     "export": {
       "title": "Экспорт",

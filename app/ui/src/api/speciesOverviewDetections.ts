@@ -276,6 +276,91 @@ export const updateDetectionNickname = async (
   return response.data;
 };
 
+export type BirdProfile = {
+  id: number;
+  display_name: string;
+  species_id: number | null;
+  avatar_url: string | null;
+  status: string;
+  created_at?: string | null;
+};
+
+export const fetchBirdProfiles = async (params?: {
+  query?: string;
+  speciesId?: number;
+  limit?: number;
+}): Promise<{ items: BirdProfile[] }> => {
+  const response = await axios.get(`${BASE_API_URL}/bird-profiles`, {
+    params: {
+      ...(params?.query ? { query: params.query } : {}),
+      ...(params?.speciesId ? { species_id: params.speciesId } : {}),
+      ...(params?.limit ? { limit: params.limit } : {}),
+    },
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export const createBirdProfile = async (body: {
+  display_name: string;
+  species_id?: number | null;
+  avatar_url?: string | null;
+  status?: string;
+}): Promise<BirdProfile> => {
+  const response = await axios.post(`${BASE_API_URL}/bird-profiles`, body, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export const patchBirdProfile = async (
+  profileId: number,
+  body: {
+    display_name?: string;
+    avatar_url?: string | null;
+    status?: string;
+  },
+): Promise<BirdProfile> => {
+  const response = await axios.patch(
+    `${BASE_API_URL}/bird-profiles/${profileId}`,
+    body,
+    {
+      withCredentials: true,
+    },
+  );
+  return response.data;
+};
+
+export const assignDetectionBirdProfile = async (
+  detectionId: number,
+  birdProfileId: number,
+): Promise<{ detection_id: number; video_id: number; bird_profile_id: number; updated_count: number }> => {
+  const response = await axios.patch(
+    `${BASE_API_URL}/detections/${detectionId}`,
+    {
+      bird_profile_id: birdProfileId,
+    },
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
+export const setDetectionSemanticReview = async (
+  detectionId: number,
+  body: {
+    semantic_review_required: boolean;
+    semantic_review_note?: string;
+    source?: string;
+  },
+): Promise<{ detection_id: number; required: boolean; review_reason: string | null }> => {
+  const response = await axios.patch(
+    `${BASE_API_URL}/detections/${detectionId}`,
+    body,
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
 /** Confirm detection: mark as verified (manually_corrected), remove from Unknowns. */
 export const confirmDetection = async (
   detectionId: number,

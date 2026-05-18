@@ -61,7 +61,7 @@ export function useLabellingFeedbackMutation() {
       species_tag,
     }: {
       id: number;
-      action: 'confirm_behavior' | 'reject_box' | 'tag_species';
+      action: 'confirm_behavior' | 'reject_box' | 'tag_species' | 'flag_semantic_error';
       behavior_tag?: string;
       species_tag?: string;
     }) => postLabellingFeedback(id, { action, behavior_tag, species_tag }),

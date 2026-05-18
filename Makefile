@@ -393,6 +393,17 @@ reid-import-embeddings:
 	@test -n "$${JSONL:-}" || (echo "Set JSONL=embeddings.jsonl" >&2; exit 1)
 	@python3 scripts/reid/import_embeddings_sqlite.py --db "$${DB}" --jsonl "$${JSONL}" $$(test -n "$${MANIFEST:-}" && printf -- '--manifest "%s" ' "$${MANIFEST}") $${ARGS:-}
 
+# Build ReID triplet manifest grouped by global bird_profile_id.
+# Example: DB=app/data/db/birdlense.db OUT=/tmp/reid_dataset_manifest.v1.json make ml-prepare-reid-dataset
+ml-prepare-reid-dataset:
+	@test -n "$${DB:-}" || (echo "Set DB=path/to/birdlense.db" >&2; exit 1)
+	@test -n "$${OUT:-}" || (echo "Set OUT=path/to/reid_dataset_manifest.v1.json" >&2; exit 1)
+	@python3 scripts/internal/reid/prepare_reid_dataset.py \
+		--db "$${DB}" \
+		--out "$${OUT}" \
+		$$(test -n "$${MIN_SAMPLES_PER_PROFILE:-}" && printf -- '--min-samples-per-profile "%s" ' "$${MIN_SAMPLES_PER_PROFILE}") \
+		$${ARGS:-}
+
 # Daily offline SSL/Re-ID cycle (extract -> embed -> recluster -> report).
 # Example:
 #   DB=app/data/db/birdlense.db REID_SSL_REPORT=app/data/reid_ssl_reports/latest.json make reid-ssl-daily

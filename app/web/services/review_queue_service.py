@@ -24,6 +24,8 @@ def fetch_review_queue_items(
     start_time: str | None = None,
     end_time: str | None = None,
     limit: int = 100,
+    queue: str | None = None,
+    review_reason_filter: str | None = None,
 ) -> list[dict]:
     """Low-confidence review queue with explicit review-state fields."""
     limit = min(max(int(limit or 100), 1), UNKNOWNS_LIMIT_MAX)
@@ -75,6 +77,8 @@ def fetch_review_queue_items(
     )
 
     result = []
+    queue_norm = str(queue or "").strip().lower()
+    reason_filter_norm = str(review_reason_filter or "").strip().lower()
     for vs in rows:
         frames = (vs.frames or "").strip() if getattr(vs, "frames", None) else ""
         if (
@@ -99,6 +103,11 @@ def fetch_review_queue_items(
             review_reason = "generic_bird"
         else:
             review_reason = "low_confidence"
+        if queue_norm == "expert":
+            if not (bool(vs.classifier_needs_review) or review_reason == "semantic_review_required"):
+                continue
+        if reason_filter_norm and review_reason != reason_filter_norm:
+            continue
         result.append(
             {
                 "id": vs.id,
@@ -111,7 +120,7 @@ def fetch_review_queue_items(
                 "source": vs.source,
                 "detection_provider": vs.detection_provider,
                 "image_url": vs.species.image_url,
-                "review_state": "pending",
+                "review_state": "semantic_review_required" if review_reason == "semantic_review_required" else "pending",
                 "review_reason": review_reason,
                 "review_source": "unknowns",
                 "classifier_entropy": vs.classifier_entropy,
