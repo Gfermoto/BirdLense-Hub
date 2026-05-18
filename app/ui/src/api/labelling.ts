@@ -15,6 +15,12 @@ export type LabellingCase = {
   video_path: string | null;
   video_stream_url?: string | null;
   video_details_url?: string | null;
+  bbox?: [number, number, number, number] | null;
+  track_frames?: Array<{
+    t: number | null;
+    bbox: [number, number, number, number];
+    bbox_xyxy?: [number, number, number, number];
+  }>;
   confidence: number | null;
   blind_score: number | null;
   fallback_ratio: number | null;
