@@ -242,12 +242,59 @@ class MotionRecordingSession:
                 "yolo_accepted_boxes_total": 0,
                 "low_light_blocked_frames": 0,
                 "session_extended_by_frigate_only": 0,
+                "yolo_blind_phase": "none",
+                "blind_quickcheck_frames": 0,
+                "blind_quickcheck_hits": 0,
             }
+            blind_suspected_since_monotonic: float | None = None
+            blind_quickcheck_until_monotonic = 0.0
+            try:
+                blind_min_frames = int(app_config.get("detection.yolo_blind_min_frames") or 180)
+            except (TypeError, ValueError):
+                blind_min_frames = 180
+            try:
+                blind_min_frigate = int(app_config.get("detection.yolo_blind_min_frigate_only_frames") or 120)
+            except (TypeError, ValueError):
+                blind_min_frigate = 120
+            try:
+                quickcheck_seconds = float(app_config.get("detection.yolo_blind_quickcheck_seconds") or 2.0)
+            except (TypeError, ValueError):
+                quickcheck_seconds = 2.0
+            try:
+                quickcheck_min_conf = float(app_config.get("detection.yolo_blind_quickcheck_min_confidence_binary") or 0.05)
+            except (TypeError, ValueError):
+                quickcheck_min_conf = 0.05
+            try:
+                quickcheck_min_bird_conf = float(
+                    app_config.get("detection.yolo_blind_quickcheck_min_confidence_binary_bird") or 0.03
+                )
+            except (TypeError, ValueError):
+                quickcheck_min_bird_conf = 0.03
+            try:
+                quickcheck_min_box = int(app_config.get("detection.yolo_blind_quickcheck_min_box_size_px") or 10)
+            except (TypeError, ValueError):
+                quickcheck_min_box = 10
             runtime_profile_counts: Counter[str] = Counter()
             runtime_profile_overrides: dict[str, dict] = {}
             camera_overrides = _camera_processor_overrides(camera_id)
             if camera_overrides:
                 self.decision_maker.apply_runtime_overrides(camera_overrides)
+
+            def _accumulate_run_stats(local_stats: dict) -> int:
+                if local_stats.get("yolo_ran"):
+                    runtime_signals["yolo_frames_ran"] += 1
+                    processor_status["last_yolo_ok_at"] = datetime.now(timezone.utc).isoformat()
+                if local_stats.get("yolo_track_found"):
+                    runtime_signals["yolo_frames_with_tracks"] += 1
+                    processor_status["last_yolo_detection_at"] = datetime.now(timezone.utc).isoformat()
+                raw_boxes_local = int(local_stats.get("yolo_raw_boxes") or 0)
+                if raw_boxes_local > 0:
+                    runtime_signals["yolo_frames_with_raw_boxes"] += 1
+                    runtime_signals["yolo_raw_boxes_total"] += raw_boxes_local
+                runtime_signals["yolo_accepted_boxes_total"] += int(local_stats.get("yolo_accepted_boxes") or 0)
+                if local_stats.get("light_gate_blocked"):
+                    runtime_signals["low_light_blocked_frames"] += 1
+                return raw_boxes_local
             frame_n = 0
             consecutive_none_frames = 0
             while True:
@@ -306,19 +353,7 @@ class MotionRecordingSession:
                         camera_overrides=camera_overrides,
                     )
                 run_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
-                if run_stats.get("yolo_ran"):
-                    runtime_signals["yolo_frames_ran"] += 1
-                    processor_status["last_yolo_ok_at"] = datetime.now(timezone.utc).isoformat()
-                if run_stats.get("yolo_track_found"):
-                    runtime_signals["yolo_frames_with_tracks"] += 1
-                    processor_status["last_yolo_detection_at"] = datetime.now(timezone.utc).isoformat()
-                raw_boxes = int(run_stats.get("yolo_raw_boxes") or 0)
-                if raw_boxes > 0:
-                    runtime_signals["yolo_frames_with_raw_boxes"] += 1
-                    runtime_signals["yolo_raw_boxes_total"] += raw_boxes
-                runtime_signals["yolo_accepted_boxes_total"] += int(run_stats.get("yolo_accepted_boxes") or 0)
-                if run_stats.get("light_gate_blocked"):
-                    runtime_signals["low_light_blocked_frames"] += 1
+                raw_boxes = _accumulate_run_stats(run_stats)
                 runtime_profile = str(run_stats.get("runtime_profile") or "").strip()
                 if runtime_profile:
                     runtime_profile_counts[runtime_profile] += 1
@@ -334,6 +369,65 @@ class MotionRecordingSession:
                 )
                 if has_detections and not raw_yolo_detections:
                     runtime_signals["session_extended_by_frigate_only"] += 1
+                    suspicion_ready = (
+                        runtime_signals["yolo_frames_ran"] >= max(1, blind_min_frames)
+                        and runtime_signals["yolo_raw_boxes_total"] == 0
+                        and runtime_signals["session_extended_by_frigate_only"] >= max(1, blind_min_frigate)
+                    )
+                    if suspicion_ready and runtime_signals["yolo_blind_phase"] == "none":
+                        runtime_signals["yolo_blind_phase"] = "suspected"
+                        blind_suspected_since_monotonic = time.monotonic()
+                        blind_quickcheck_until_monotonic = blind_suspected_since_monotonic + max(0.2, quickcheck_seconds)
+
+                    if runtime_signals["yolo_blind_phase"] == "suspected":
+                        now_m = time.monotonic()
+                        if now_m <= blind_quickcheck_until_monotonic:
+                            burst_overrides = dict(camera_overrides or {})
+                            curr_conf = burst_overrides.get(
+                                "min_confidence_binary",
+                                app_config.get("processor.min_confidence_binary"),
+                            )
+                            curr_bird_conf = burst_overrides.get(
+                                "min_confidence_binary_bird",
+                                app_config.get("processor.min_confidence_binary_bird"),
+                            )
+                            curr_box = burst_overrides.get("min_box_size_px", app_config.get("processor.min_box_size_px"))
+                            try:
+                                burst_overrides["min_confidence_binary"] = min(float(curr_conf), quickcheck_min_conf)
+                            except (TypeError, ValueError):
+                                burst_overrides["min_confidence_binary"] = quickcheck_min_conf
+                            try:
+                                burst_overrides["min_confidence_binary_bird"] = min(
+                                    float(curr_bird_conf), quickcheck_min_bird_conf
+                                )
+                            except (TypeError, ValueError):
+                                burst_overrides["min_confidence_binary_bird"] = quickcheck_min_bird_conf
+                            try:
+                                burst_overrides["min_box_size_px"] = min(int(curr_box), quickcheck_min_box)
+                            except (TypeError, ValueError):
+                                burst_overrides["min_box_size_px"] = quickcheck_min_box
+
+                            with self.fps_tracker:
+                                quick_detect = self.frame_processor.run(
+                                    frame,
+                                    frame_time=frame_time,
+                                    classification_frame=classifier_source_frame,
+                                    camera_overrides=burst_overrides,
+                                )
+                            runtime_signals["blind_quickcheck_frames"] += 1
+                            quick_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
+                            quick_raw = _accumulate_run_stats(quick_stats)
+                            if quick_detect or quick_raw > 0:
+                                runtime_signals["blind_quickcheck_hits"] += 1
+                                runtime_signals["yolo_blind_phase"] = "recovered"
+                                raw_yolo_detections = True
+                                has_detections = True
+                                blind_suspected_since_monotonic = None
+                        else:
+                            runtime_signals["yolo_blind_phase"] = "confirmed"
+                elif raw_boxes > 0:
+                    runtime_signals["yolo_blind_phase"] = "recovered"
+                    blind_suspected_since_monotonic = None
 
                 self.decision_maker.update_has_detections(has_detections)
                 self.decision_maker.get_first_species_result(

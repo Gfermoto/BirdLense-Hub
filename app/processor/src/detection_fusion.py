@@ -565,6 +565,7 @@ def build_fused_video_detections(
     fusion_min_confidence_to_store: float | None = None,
     triggered_camera: str | None = None,
     yolo_blind_confirmed: bool = False,
+    yolo_blind_score: float = 0.0,
 ) -> list[dict]:
     """Apply shared production fusion rules to video detections.
 
@@ -604,8 +605,12 @@ def build_fused_video_detections(
     standalone_on = bool(app_config.get("detection.frigate_standalone_when_no_yolo", False))
     standalone_no_species = bool(app_config.get("detection.frigate_standalone_when_no_accepted_species", False))
     require_blind = bool(app_config.get("detection.frigate_standalone_require_blind_yolo", False))
+    blind_score_threshold = float(app_config.get("detection.frigate_standalone_blind_score_threshold", 0.7) or 0.7)
     has_accepted_species = _prepared_has_accepted_species(prepared)
-    blind_gate_ok = bool(yolo_blind_confirmed) if require_blind else True
+    effective_blind_score = float(yolo_blind_score)
+    if bool(yolo_blind_confirmed) and effective_blind_score <= 0.0:
+        effective_blind_score = 1.0
+    blind_gate_ok = bool(yolo_blind_confirmed and effective_blind_score >= blind_score_threshold) if require_blind else True
     want_standalone = (
         standalone_on
         and bool(frigate_events)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import threading
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -24,6 +25,10 @@ def _db_path() -> str:
 
 
 class SessionStateRepository:
+    _maintenance_lock = threading.Lock()
+    _last_maintenance_epoch_s = 0.0
+    _last_vacuum_epoch_s = 0.0
+
     """Repository pattern for runtime session metrics and detector health events."""
 
     def __init__(self, db_path: str | None = None) -> None:
@@ -105,6 +110,21 @@ class SessionStateRepository:
                 """
             )
             con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS analytics_visit_hourly (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    bucket_hour TEXT NOT NULL,
+                    camera_id TEXT,
+                    detections INTEGER NOT NULL DEFAULT 0,
+                    yolo_rows INTEGER NOT NULL DEFAULT 0,
+                    frigate_rows INTEGER NOT NULL DEFAULT 0,
+                    blind_confirmed_sessions INTEGER NOT NULL DEFAULT 0,
+                    avg_confidence REAL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            con.execute(
                 "CREATE INDEX IF NOT EXISTS ix_srm_camera_created ON session_runtime_metrics(camera_id, created_at DESC)"
             )
             con.execute(
@@ -115,6 +135,9 @@ class SessionStateRepository:
             )
             con.execute(
                 "CREATE INDEX IF NOT EXISTS ix_dhe_type_created ON detector_health_events(event_type, created_at DESC)"
+            )
+            con.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ux_analytics_visit_hourly_bucket ON analytics_visit_hourly(bucket_hour, camera_id)"
             )
             con.commit()
 
@@ -261,3 +284,99 @@ class SessionStateRepository:
             ):
                 return False
         return True
+
+    def run_retention_and_compaction(
+        self,
+        *,
+        runtime_retention_days: int,
+        health_retention_days: int,
+        do_analyze: bool = True,
+        do_vacuum: bool = False,
+    ) -> dict[str, int]:
+        runtime_days = max(1, int(runtime_retention_days))
+        health_days = max(1, int(health_retention_days))
+        runtime_cutoff_sql = (
+            f"datetime('now', '-{runtime_days} days')",
+            f"datetime('now', '-{health_days} days')",
+        )
+        with self._connect() as con:
+            self._execute_with_retry(
+                con,
+                """
+                INSERT INTO analytics_visit_hourly(
+                    bucket_hour, camera_id, detections, yolo_rows, frigate_rows,
+                    blind_confirmed_sessions, avg_confidence, updated_at
+                )
+                SELECT
+                    strftime('%Y-%m-%dT%H:00:00Z', created_at) AS bucket_hour,
+                    camera_id,
+                    COUNT(*) AS detections,
+                    SUM(CASE WHEN yolo_raw_boxes_total > 0 THEN 1 ELSE 0 END) AS yolo_rows,
+                    SUM(CASE WHEN session_extended_by_frigate_only > 0 THEN 1 ELSE 0 END) AS frigate_rows,
+                    SUM(CASE WHEN yolo_blind_confirmed = 1 THEN 1 ELSE 0 END) AS blind_confirmed_sessions,
+                    AVG(CASE WHEN yolo_accepted_boxes_total > 0 THEN 1.0 ELSE 0.0 END) AS avg_confidence,
+                    ?
+                FROM session_runtime_metrics
+                WHERE datetime(created_at) >= datetime('now', '-2 days')
+                GROUP BY 1, 2
+                ON CONFLICT(bucket_hour, camera_id) DO UPDATE SET
+                    detections=excluded.detections,
+                    yolo_rows=excluded.yolo_rows,
+                    frigate_rows=excluded.frigate_rows,
+                    blind_confirmed_sessions=excluded.blind_confirmed_sessions,
+                    avg_confidence=excluded.avg_confidence,
+                    updated_at=excluded.updated_at
+                """,
+                (_utc_now_iso(),),
+            )
+            cur1 = self._execute_with_retry(
+                con,
+                f"""
+                DELETE FROM session_runtime_metrics
+                WHERE datetime(created_at) < {runtime_cutoff_sql[0]}
+                """,
+            )
+            cur2 = self._execute_with_retry(
+                con,
+                f"""
+                DELETE FROM detector_health_events
+                WHERE datetime(created_at) < {runtime_cutoff_sql[1]}
+                """,
+            )
+            deleted_runtime = int(cur1.rowcount or 0)
+            deleted_health = int(cur2.rowcount or 0)
+            if do_analyze:
+                self._execute_with_retry(con, "ANALYZE session_runtime_metrics")
+                self._execute_with_retry(con, "ANALYZE detector_health_events")
+            if do_vacuum:
+                self._execute_with_retry(con, "VACUUM")
+            con.commit()
+        return {
+            "deleted_runtime_rows": deleted_runtime,
+            "deleted_health_rows": deleted_health,
+            "did_analyze": 1 if do_analyze else 0,
+            "did_vacuum": 1 if do_vacuum else 0,
+        }
+
+    def run_maintenance_if_due(self, *, app_config_obj) -> dict[str, int] | None:
+        interval_min = int(app_config_obj.get("retention.runtime_metrics_maintenance_interval_minutes") or 60)
+        runtime_days = int(app_config_obj.get("retention.runtime_metrics_days") or 14)
+        health_days = int(app_config_obj.get("retention.detector_health_days") or 30)
+        vacuum_hours = int(app_config_obj.get("retention.runtime_metrics_vacuum_interval_hours") or 12)
+        analyze_enabled = bool(app_config_obj.get("retention.runtime_metrics_analyze_enabled", True))
+        now = time.time()
+        with self._maintenance_lock:
+            due = (now - float(self._last_maintenance_epoch_s)) >= max(60.0, float(interval_min) * 60.0)
+            if not due:
+                return None
+            do_vacuum = (now - float(self._last_vacuum_epoch_s)) >= max(300.0, float(vacuum_hours) * 3600.0)
+            res = self.run_retention_and_compaction(
+                runtime_retention_days=runtime_days,
+                health_retention_days=health_days,
+                do_analyze=analyze_enabled,
+                do_vacuum=do_vacuum,
+            )
+            self._last_maintenance_epoch_s = now
+            if do_vacuum:
+                self._last_vacuum_epoch_s = now
+            return res

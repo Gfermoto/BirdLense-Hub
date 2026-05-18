@@ -35,6 +35,7 @@ from recording_video_response import response_video_id
 from recordings_remote_mirror import schedule_recordings_session_mirror
 from recording_spectrogram import maybe_generate_recording_spectrogram
 from reid_runtime import enrich_runtime_reid_detections
+from processor_diagnostics import collect_root_cause_snapshot, write_root_cause_dump
 from session_state_repository import SessionStateRepository
 from spectrogram import generate_spectrogram
 from behavior_baseline_runtime import maybe_predict_video_behavior
@@ -56,32 +57,111 @@ def _blind_required_frames(
     return int(max(1, min(int(max(1, min_frames_cfg)), duration_based)))
 
 
-def _should_request_self_heal_restart(
-    *,
-    app_config_obj,
-    repo: SessionStateRepository,
-    camera_id: str | None,
-) -> bool:
-    if not bool(app_config_obj.get("detection.yolo_self_heal_restart_enabled", True)):
-        return False
-    cooldown_s = float(app_config_obj.get("detection.yolo_self_heal_cooldown_seconds") or 300.0)
-    last = repo.latest_health_event(
-        event_type="yolo_self_heal_restart_requested",
-        camera_id=camera_id,
-    )
-    if not last:
-        return True
+def _health_event_age_seconds(row: Any | None) -> float | None:
+    if not row:
+        return None
     try:
-        created_at = str(last["created_at"] or "").strip()
+        created_at = str(row["created_at"] or "").strip()
         if not created_at:
-            return True
+            return None
         dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        age_s = (datetime.now(timezone.utc) - dt.astimezone(timezone.utc)).total_seconds()
+        return float((datetime.now(timezone.utc) - dt.astimezone(timezone.utc)).total_seconds())
     except Exception:
-        return True
-    return age_s >= max(0.0, cooldown_s)
+        return None
+
+
+def _compute_blind_score(
+    *,
+    yolo_ran_now: int,
+    yolo_raw_now: int,
+    frigate_only_now: int,
+    current_duration_s: float,
+    required_frames: int,
+    min_frigate_frames: int,
+    min_duration_s: float,
+) -> float:
+    frames_ratio = min(1.0, float(yolo_ran_now) / float(max(1, required_frames)))
+    raw_signal = 1.0 if int(yolo_raw_now) == 0 else 0.0
+    frigate_ratio = min(1.0, float(frigate_only_now) / float(max(1, min_frigate_frames)))
+    duration_ratio = min(1.0, float(current_duration_s) / float(max(0.1, min_duration_s)))
+    score = 0.35 * frames_ratio + 0.35 * raw_signal + 0.2 * frigate_ratio + 0.1 * duration_ratio
+    return max(0.0, min(1.0, score))
+
+
+def _run_self_heal_escalation(
+    *,
+    repo: SessionStateRepository,
+    app_config_obj,
+    api: API,
+    frame_processor,
+    mqtt_aggregator,
+    camera_id: str | None,
+    diagnostics: dict[str, Any],
+) -> tuple[str, dict[str, Any]]:
+    if not bool(app_config_obj.get("detection.yolo_self_heal_restart_enabled", True)):
+        return "disabled", diagnostics
+    cooldown_s = float(app_config_obj.get("detection.yolo_self_heal_cooldown_seconds") or 300.0)
+    escalation_window_s = float(app_config_obj.get("detection.yolo_self_heal_escalation_window_seconds") or 900.0)
+    last_action = repo.latest_health_event(event_type="yolo_self_heal_action", camera_id=camera_id)
+    age_s = _health_event_age_seconds(last_action)
+    if age_s is not None and age_s < max(0.0, cooldown_s):
+        return "cooldown_skip", diagnostics
+
+    stage = 0
+    if last_action:
+        try:
+            payload = json.loads(str(last_action["details_json"] or "{}"))
+            prev_stage = int(payload.get("stage") or 0)
+            if age_s is not None and age_s <= max(0.0, escalation_window_s):
+                stage = min(prev_stage + 1, 3)
+        except Exception:
+            stage = 0
+    actions = ("soft_clear", "reinit", "restart", "alert")
+    action = actions[stage]
+    details = dict(diagnostics)
+    details["stage"] = stage
+    details["action"] = action
+
+    if action == "soft_clear":
+        try:
+            frame_processor.reset()
+            details["soft_clear_ok"] = True
+        except Exception:
+            details["soft_clear_ok"] = False
+    elif action == "reinit":
+        try:
+            frame_processor.reset()
+            strat = getattr(frame_processor, "strategy", None)
+            if strat is not None and hasattr(strat, "reset"):
+                strat.reset()
+            details["reinit_ok"] = True
+        except Exception:
+            details["reinit_ok"] = False
+    elif action == "restart":
+        flag_path = restart_flag_path()
+        try:
+            with open(flag_path, "w", encoding="utf-8") as fh:
+                fh.write("yolo_blind_confirmed\n")
+            details["restart_flag_path"] = flag_path
+            details["restart_requested"] = True
+        except Exception:
+            details["restart_requested"] = False
+    elif action == "alert":
+        try:
+            api.activity_log(type="yolo_self_heal_alert", data=details)
+            details["alert_emitted"] = True
+        except Exception:
+            details["alert_emitted"] = False
+
+    repo.append_detector_health_event(
+        event_type="yolo_self_heal_action",
+        severity="warning" if action != "alert" else "error",
+        camera_id=camera_id,
+        details=details,
+    )
+    return action, details
 
 
 def _build_weak_yolo_salvage_row(
@@ -347,6 +427,8 @@ def finalize_motion_recording(
     if isinstance(recording_context, dict) and isinstance(recording_context.get("runtime_signals"), dict):
         rs_ctx = dict(recording_context.get("runtime_signals") or {})
     yolo_blind_confirmed = False
+    blind_score = 0.0
+    blind_suspected = False
     blind_recovered = False
     try:
         yolo_ran_now = int(rs_ctx.get("yolo_frames_ran") or 0)
@@ -357,12 +439,23 @@ def finalize_motion_recording(
         blind_min_frigate = int(app_config.get("detection.yolo_blind_min_frigate_only_frames") or 120)
         blind_min_duration_s = float(app_config.get("detection.yolo_blind_min_duration_seconds") or 30.0)
         blind_min_effective_fps = float(app_config.get("detection.yolo_blind_min_effective_fps") or 2.0)
+        blind_score_threshold = float(app_config.get("detection.yolo_blind_score_threshold") or 0.7)
         current_duration_s = max(0.0, float((end_time - start_time).total_seconds()))
         required_frames = _blind_required_frames(
             min_duration_s=blind_min_duration_s,
             min_frames_cfg=blind_min_frames,
             min_effective_fps=blind_min_effective_fps,
         )
+        blind_score = _compute_blind_score(
+            yolo_ran_now=yolo_ran_now,
+            yolo_raw_now=yolo_raw_now,
+            frigate_only_now=frigate_only_now,
+            current_duration_s=current_duration_s,
+            required_frames=required_frames,
+            min_frigate_frames=blind_min_frigate,
+            min_duration_s=blind_min_duration_s,
+        )
+        blind_suspected = bool(blind_score >= float(blind_score_threshold) * 0.5)
         blind_now = (
             yolo_ran_now >= required_frames
             and yolo_raw_now == 0
@@ -378,7 +471,7 @@ def finalize_motion_recording(
             min_duration_seconds=max(0.0, blind_min_duration_s),
             min_effective_fps=max(0.1, blind_min_effective_fps),
         )
-        yolo_blind_confirmed = bool(blind_now and blind_recent)
+        yolo_blind_confirmed = bool(blind_now and blind_recent and blind_score >= blind_score_threshold)
         if yolo_raw_now > 0:
             recent = repo.recent_blind_sessions(camera_id=session_camera_id, limit=1)
             if recent and int(recent[0]["yolo_blind_confirmed"] or 0) == 1:
@@ -393,6 +486,7 @@ def finalize_motion_recording(
         app_config=app_config,
         triggered_camera=triggered_camera,
         yolo_blind_confirmed=yolo_blind_confirmed,
+        yolo_blind_score=blind_score,
     )
     rejected_decisions.extend(
         collect_post_fusion_rejections(
@@ -783,7 +877,9 @@ def finalize_motion_recording(
             "mqtt_events_in_window": len(mqtt_events),
             "video_file_ok": bool(video_file_ok),
             "runtime_profile": rs.get("runtime_profile"),
+            "yolo_blind_suspected": bool(blind_suspected),
             "yolo_blind_confirmed": bool(yolo_blind_confirmed),
+            "yolo_blind_score": round(float(blind_score), 4),
         }
         logging.info(
             "recording_session_summary %s",
@@ -802,31 +898,23 @@ def finalize_motion_recording(
                         "yolo_raw_boxes_total": session_summary["yolo_raw_boxes_total"],
                         "session_extended_by_frigate_only": session_summary["session_extended_by_frigate_only"],
                         "mqtt_events_in_window": session_summary["mqtt_events_in_window"],
+                        "blind_score": session_summary["yolo_blind_score"],
                     },
                 )
-                if _should_request_self_heal_restart(
-                    app_config_obj=app_config,
+                diag = collect_root_cause_snapshot(mqtt_aggregator=mqtt_aggregator)
+                dump_refs = write_root_cause_dump(diag, reason="yolo_blind_confirmed")
+                diag["dump_refs"] = dump_refs
+                action, action_details = _run_self_heal_escalation(
                     repo=repo,
+                    app_config_obj=app_config,
+                    api=api,
+                    frame_processor=frame_processor,
+                    mqtt_aggregator=mqtt_aggregator,
                     camera_id=ctx.get("triggered_camera"),
-                ):
-                    flag_path = restart_flag_path()
-                    try:
-                        with open(flag_path, "w", encoding="utf-8") as fh:
-                            fh.write("yolo_blind_confirmed\n")
-                    except Exception:
-                        logging.warning("self-heal: failed to write restart flag path=%s", flag_path, exc_info=True)
-                    else:
-                        repo.append_detector_health_event(
-                            event_type="yolo_self_heal_restart_requested",
-                            severity="warning",
-                            camera_id=ctx.get("triggered_camera"),
-                            details={
-                                "flag_path": flag_path,
-                                "cooldown_s": float(
-                                    app_config.get("detection.yolo_self_heal_cooldown_seconds") or 300.0
-                                ),
-                            },
-                        )
+                    diagnostics=diag,
+                )
+                if action:
+                    logging.warning("self-heal action=%s details=%s", action, action_details)
             if bool(blind_recovered):
                 repo.append_detector_health_event(
                     event_type="yolo_blind_recovered",
@@ -836,6 +924,14 @@ def finalize_motion_recording(
                         "yolo_frames_ran": session_summary["yolo_frames_ran"],
                         "yolo_raw_boxes_total": session_summary["yolo_raw_boxes_total"],
                     },
+                )
+            maintenance_res = repo.run_maintenance_if_due(app_config_obj=app_config)
+            if maintenance_res:
+                repo.append_detector_health_event(
+                    event_type="runtime_metrics_maintenance",
+                    severity="info",
+                    camera_id=ctx.get("triggered_camera"),
+                    details=maintenance_res,
                 )
         except Exception:
             logging.debug("recording_session_summary persist skipped", exc_info=True)

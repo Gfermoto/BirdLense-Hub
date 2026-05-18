@@ -17,6 +17,7 @@ __all__ = [
 def register_routes(app):
     """Основные ``/api/ui/*`` (без system — ``ui_system_routes``)."""
     from routes.ui_birdfood_routes import register_ui_birdfood_routes
+    from routes.ui_analytics_routes import register_ui_analytics_routes
     from routes.ui_corrections_dataset_routes import (
         register_ui_corrections_dataset_routes,
     )
@@ -36,6 +37,7 @@ def register_routes(app):
 
     register_ui_status_push_routes(app)
     register_ui_birdfood_routes(app)
+    register_ui_analytics_routes(app)
     register_ui_video_routes(app)
     register_ui_overview_timeline_routes(app)
     register_ui_ml_ops_routes(app)
