@@ -106,6 +106,12 @@ class API:
         scales_weight_delta_kg=None,
         behavior_label=None,
         behavior_confidence=None,
+        behavior_model_kind=None,
+        behavior_model_version=None,
+        behavior_shadow_label=None,
+        behavior_shadow_confidence=None,
+        behavior_shadow_model_kind=None,
+        behavior_shadow_model_version=None,
     ):
         # Fields to exclude from API payload (non-serializable or internal)
         exclude_fields = {"best_frame"}
@@ -132,6 +138,21 @@ class API:
                     video_data["behavior_confidence"] = float(behavior_confidence)
                 except (TypeError, ValueError):
                     pass
+        if behavior_model_kind is not None and str(behavior_model_kind).strip():
+            video_data["behavior_model_kind"] = str(behavior_model_kind).strip()[:32]
+        if behavior_model_version is not None and str(behavior_model_version).strip():
+            video_data["behavior_model_version"] = str(behavior_model_version).strip()[:96]
+        if behavior_shadow_label is not None and str(behavior_shadow_label).strip():
+            video_data["behavior_shadow_label"] = str(behavior_shadow_label).strip()[:32]
+            if behavior_shadow_confidence is not None:
+                try:
+                    video_data["behavior_shadow_confidence"] = float(behavior_shadow_confidence)
+                except (TypeError, ValueError):
+                    pass
+        if behavior_shadow_model_kind is not None and str(behavior_shadow_model_kind).strip():
+            video_data["behavior_shadow_model_kind"] = str(behavior_shadow_model_kind).strip()[:32]
+        if behavior_shadow_model_version is not None and str(behavior_shadow_model_version).strip():
+            video_data["behavior_shadow_model_version"] = str(behavior_shadow_model_version).strip()[:96]
         response = self._send_request("POST", "videos", video_data)
         return response.json()
 

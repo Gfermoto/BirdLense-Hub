@@ -16,6 +16,7 @@ _REASON_BLIND = "blind_score_high"
 _REASON_FALLBACK = "fallback_ratio_high"
 _REASON_LOWCONF = "confidence_borderline"
 _ALLOWED_STATUS = {"pending", "approved", "rejected"}
+_ALLOWED_FEEDBACK_ACTION = {"confirm_behavior", "reject_box", "tag_species"}
 
 
 def _parse_payload(raw: str | None) -> dict[str, Any]:
@@ -250,6 +251,10 @@ def list_cases(*, status: str | None = None, limit: int = 100) -> dict[str, Any]
                 "blind_score": case.blind_score,
                 "fallback_ratio": case.fallback_ratio,
                 "payload": _parse_payload(case.payload_json),
+                "behavior_label": getattr(video, "behavior_label", None) if video else None,
+                "behavior_confidence": getattr(video, "behavior_confidence", None) if video else None,
+                "behavior_shadow_label": getattr(video, "behavior_shadow_label", None) if video else None,
+                "behavior_shadow_confidence": getattr(video, "behavior_shadow_confidence", None) if video else None,
             }
         )
     return {"items": items, "count": len(items)}
@@ -270,6 +275,62 @@ def patch_case(*, case_id: int, status: str, reason_note: str | None = None) -> 
     row.payload_json = json.dumps(payload, ensure_ascii=False)
     db.session.commit()
     return {"id": int(row.id), "status": row.status}
+
+
+def apply_case_feedback(
+    *,
+    case_id: int,
+    action: str,
+    behavior_tag: str | None = None,
+    species_tag: str | None = None,
+) -> dict[str, Any]:
+    action_norm = str(action or "").strip().lower()
+    if action_norm not in _ALLOWED_FEEDBACK_ACTION:
+        raise ValueError("action must be confirm_behavior|reject_box|tag_species")
+    row = db.session.get(ActiveLearningCase, int(case_id))
+    if row is None:
+        raise LookupError("case not found")
+    payload = _parse_payload(row.payload_json)
+    payload["last_feedback_action"] = action_norm
+
+    if action_norm == "confirm_behavior":
+        label = (str(behavior_tag or "").strip().lower() or payload.get("behavior_tag") or "").strip()
+        if not label:
+            raise ValueError("behavior_tag is required for confirm_behavior")
+        payload["behavior_tag"] = label
+        if row.video_id is not None:
+            video = db.session.get(Video, int(row.video_id))
+            if video is not None:
+                video.behavior_label = label[:32]
+                video.behavior_confidence = 1.0
+        row.status = "approved"
+
+    elif action_norm == "reject_box":
+        payload["localization_status"] = "rejected"
+        if row.video_species_id is not None:
+            vs = db.session.get(VideoSpecies, int(row.video_species_id))
+            if vs is not None:
+                vs.frames = None
+                vs.classifier_needs_review = True
+                vs.review_reason = "bbox_rejected"
+        row.status = "rejected"
+
+    elif action_norm == "tag_species":
+        tag = str(species_tag or "").strip()
+        if not tag:
+            raise ValueError("species_tag is required for tag_species")
+        payload["species_tag"] = tag
+        if row.video_species_id is not None:
+            sp = db.session.query(Species).filter(Species.name == tag).one_or_none()
+            vs = db.session.get(VideoSpecies, int(row.video_species_id))
+            if sp is not None and vs is not None:
+                vs.species_id = int(sp.id)
+        row.status = "approved"
+
+    row.updated_at = datetime.now(timezone.utc)
+    row.payload_json = json.dumps(payload, ensure_ascii=False)
+    db.session.commit()
+    return {"id": int(row.id), "status": row.status, "action": action_norm}
 
 
 def export_cases(*, fmt: str = "yolo", status: str = "approved", version: str | None = None) -> dict[str, Any]:

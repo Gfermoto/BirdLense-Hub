@@ -38,7 +38,7 @@ from reid_runtime import enrich_runtime_reid_detections
 from processor_diagnostics import collect_root_cause_snapshot, write_root_cause_dump
 from session_state_repository import SessionStateRepository
 from spectrogram import generate_spectrogram
-from behavior_baseline_runtime import maybe_predict_video_behavior
+from behavior_baseline_runtime import maybe_predict_video_behavior_bundle
 
 # Пустые сессии без детекций — частое событие; не засоряем лог (раз в интервал — WARNING, иначе DEBUG).
 _NO_DETECTIONS_WARN_INTERVAL_S = 120.0
@@ -774,7 +774,7 @@ def finalize_motion_recording(
         except Exception:
             duration_behavior_s = 0.0
         proc_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        bl, bc = maybe_predict_video_behavior(
+        behavior_bundle = maybe_predict_video_behavior_bundle(
             app_config,
             video_detections,
             duration_s=duration_behavior_s,
@@ -787,10 +787,12 @@ def finalize_motion_recording(
         rev_thr = float(br_cfg.get("confidence_review_threshold") or 0.45)
         behavior_label_kw = None
         behavior_conf_kw = None
-        if bl and float(bc) >= store_min:
-            behavior_label_kw = bl
-            behavior_conf_kw = float(bc)
-            if float(bc) < rev_thr and video_detections:
+        bl = behavior_bundle.get("main_label")
+        bc = float(behavior_bundle.get("main_confidence") or 0.0)
+        if bl and bc >= store_min:
+            behavior_label_kw = str(bl)
+            behavior_conf_kw = bc
+            if bc < rev_thr and video_detections:
                 d0 = video_detections[0]
                 if isinstance(d0, dict) and not (d0.get("review_reason") or "").strip():
                     d0["review_reason"] = "behavior_uncertainty"
@@ -805,6 +807,12 @@ def finalize_motion_recording(
             scales_weight_delta_kg=scales_delta_kg,
             behavior_label=behavior_label_kw,
             behavior_confidence=behavior_conf_kw,
+            behavior_model_kind=behavior_bundle.get("model_kind"),
+            behavior_model_version=behavior_bundle.get("model_version"),
+            behavior_shadow_label=behavior_bundle.get("shadow_label"),
+            behavior_shadow_confidence=behavior_bundle.get("shadow_confidence"),
+            behavior_shadow_model_kind=behavior_bundle.get("shadow_model_kind"),
+            behavior_shadow_model_version=behavior_bundle.get("shadow_model_version"),
         )
         inc_counter("recording_persisted_total", len(video_detections))
         video_id = response_video_id(resp)
@@ -813,6 +821,23 @@ def finalize_motion_recording(
                 decision_trace["video_id"] = int(video_id)
             except (TypeError, ValueError):
                 decision_trace["video_id"] = video_id
+            try:
+                api.activity_log(
+                    type="behavior_shadow_prediction",
+                    data={
+                        "video_id": video_id,
+                        "main_label": behavior_bundle.get("main_label"),
+                        "main_confidence": behavior_bundle.get("main_confidence"),
+                        "model_kind": behavior_bundle.get("model_kind"),
+                        "model_version": behavior_bundle.get("model_version"),
+                        "shadow_label": behavior_bundle.get("shadow_label"),
+                        "shadow_confidence": behavior_bundle.get("shadow_confidence"),
+                        "shadow_model_kind": behavior_bundle.get("shadow_model_kind"),
+                        "shadow_model_version": behavior_bundle.get("shadow_model_version"),
+                    },
+                )
+            except Exception:
+                logging.debug("behavior shadow activity_log skipped", exc_info=True)
         maybe_save_dataset_crops(
             app_config,
             video_id=video_id,

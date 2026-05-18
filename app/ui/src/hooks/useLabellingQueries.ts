@@ -4,6 +4,7 @@ import {
   fetchLabellingCases,
   mineLabellingCases,
   patchLabellingCase,
+  postLabellingFeedback,
   type LabellingCaseStatus,
 } from '../api/labelling';
 import { queryKeys } from '../api/queryKeys';
@@ -44,5 +45,25 @@ export function useExportLabellingCasesMutation() {
   return useMutation({
     mutationFn: ({ format, status }: { format: 'yolo' | 'coco'; status?: LabellingCaseStatus }) =>
       exportLabellingCases(format, status || 'approved'),
+  });
+}
+
+export function useLabellingFeedbackMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      action,
+      behavior_tag,
+      species_tag,
+    }: {
+      id: number;
+      action: 'confirm_behavior' | 'reject_box' | 'tag_species';
+      behavior_tag?: string;
+      species_tag?: string;
+    }) => postLabellingFeedback(id, { action, behavior_tag, species_tag }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['labelling-cases'] });
+    },
   });
 }

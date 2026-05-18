@@ -16,6 +16,10 @@ export type LabellingCase = {
   confidence: number | null;
   blind_score: number | null;
   fallback_ratio: number | null;
+  behavior_label?: string | null;
+  behavior_confidence?: number | null;
+  behavior_shadow_label?: string | null;
+  behavior_shadow_confidence?: number | null;
   payload: Record<string, unknown> | null;
 };
 
@@ -80,6 +84,20 @@ export const exportLabellingCases = async (
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ format, status }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+};
+
+export const postLabellingFeedback = async (
+  id: number,
+  body: { action: 'confirm_behavior' | 'reject_box' | 'tag_species'; behavior_tag?: string; species_tag?: string },
+): Promise<{ id: number; status: LabellingCaseStatus; action: string }> => {
+  const res = await csrfFetch(`${BASE_API_URL}/labelling/cases/${id}/feedback`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
