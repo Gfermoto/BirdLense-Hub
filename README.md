@@ -79,6 +79,13 @@ Two components: **detector** (bird or rodent in frame) and **classifier** (bird 
 - **Confidence per species** — lower threshold for rare birds
 - **Research** — dataset collection, model fine-tuning (see [docs](./docs))
 
+### SOTA Features & Experiments
+- **ROI Super-Resolution pilot (`#472`)** — optional SR on small crops before classification (`experimental.sr_*`), with synthetic A/B benchmark report in `docs/benchmarks/sr_roi_pilot.md`.
+- **Active Learning hard-case miner** — auto-selects difficult samples (blind score, fallback ratio, borderline confidence) into `/api/ui/labelling/*` queue and `/labelling` UI.
+- **Dataset versioning** — labelling export writes versioned datasets in `app/data/datasets/vN` (YOLO/COCO).
+- **Chaos Engineering suite** — synthetic multi-camera load generator for telemetry, retention, self-heal loop stability (`scripts/chaos_load_generator.py`).
+- **Fine-tuning guide** — end-to-end runbook: [How to run fine-tuning on collected data](./docs/contributor/FINE_TUNING_ACTIVE_LEARNING.md).
+
 ## Quick Start
 
 **Docker (free image):**
@@ -147,6 +154,8 @@ From repo root:
 | `make start` | Start container |
 | `make stop` | Stop container |
 | `make logs` | View logs |
+| `python scripts/benchmark_sr_roi_pilot.py` | Run ROI SR synthetic A/B and write `docs/benchmarks/sr_roi_pilot.md` |
+| `python scripts/chaos_load_generator.py --cameras 10 --sessions-per-camera 150` | Run synthetic chaos/load check and write `docs/benchmarks/chaos_suite_report.json` |
 
 **Release gate (short):** [Definition of Done](./archive/internal/docs-legacy/DEFINITION_OF_DONE.md) · [RU](./archive/internal/docs-legacy/DEFINITION_OF_DONE.ru.md) — `make ci-local`, `verify-stack`, 5-minute smoke. Full checklist: [release-readiness](./release-readiness.md).
 

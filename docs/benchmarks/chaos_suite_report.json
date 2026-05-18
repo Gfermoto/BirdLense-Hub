@@ -1,0 +1,20 @@
+{
+  "load": {
+    "cameras": 10,
+    "sessions_per_camera": 120
+  },
+  "stats": {
+    "sessions": 1200,
+    "blind_sessions": 199,
+    "fallback_sessions": 1197,
+    "self_heal_restarts": 27,
+    "self_heal_alerts": 2,
+    "sessions_per_second": 2288.55,
+    "restart_ratio": 0.0225,
+    "elapsed_ms": 524.3
+  },
+  "health": {
+    "self_heal_loop_stable": true,
+    "retention_maintenance_invoked": true
+  }
+}

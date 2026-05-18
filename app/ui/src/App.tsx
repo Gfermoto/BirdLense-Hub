@@ -41,6 +41,7 @@ const System = lazy(() =>
 const Library = lazy(() =>
   import('./pages/Library').then((m) => ({ default: m.Library })),
 );
+const LabellingPage = lazy(() => import('./pages/Labelling'));
 const MigrationCalendar = lazy(() =>
   import('./pages/MigrationCalendar').then((m) => ({
     default: m.MigrationCalendar,
@@ -405,6 +406,7 @@ function App() {
                         />
                         <Route path="/system" element={<System />} />
                         <Route path="/library" element={<Library />} />
+                        <Route path="/labelling" element={<LabellingPage />} />
                         <Route path="*" element={<NotFoundPage />} />
                       </Routes>
                     </ErrorBoundary>

@@ -32,6 +32,7 @@ from services.runtime_env import is_production_runtime
 from services.processor_ingest.activity_log_ingest import upsert_activity_log_from_processor
 from services.processor_ingest.notify_ingest import process_processor_notify_detections
 from services.processor_ingest.video_ingest import prepare_processor_video
+from services.active_learning_service import mine_hard_examples
 from recording_layout_paths import RECORDING_VIDEO_PATH_RE
 
 # Path traversal protection (см. recording_layout_paths + SECURITY.md).
@@ -287,6 +288,22 @@ def register_routes(app):
 
             db.session.commit()
             bust_all_api_caches()
+            try:
+                if bool(app_config.get("experimental.active_learning_auto_mine_enabled", True)):
+                    mine_hard_examples(
+                        lookback_hours=int(app_config.get("experimental.active_learning_auto_mine_lookback_hours") or 6),
+                        max_rows=int(app_config.get("experimental.active_learning_auto_mine_max_rows") or 200),
+                        blind_score_threshold=float(
+                            app_config.get("experimental.active_learning_blind_score_threshold") or 0.5
+                        ),
+                        fallback_ratio_threshold=float(
+                            app_config.get("experimental.active_learning_fallback_ratio_threshold") or 0.35
+                        ),
+                        conf_min=float(app_config.get("experimental.active_learning_conf_min") or 0.20),
+                        conf_max=float(app_config.get("experimental.active_learning_conf_max") or 0.35),
+                    )
+            except Exception:
+                app.logger.debug("active learning auto-mine skipped", exc_info=True)
 
             # Webhook: fire-and-forget
             webhook_url = (app_config.get("webhook.url") or "").strip()

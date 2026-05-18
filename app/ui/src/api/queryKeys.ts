@@ -120,6 +120,10 @@ export const queryKeys = {
       ['unknowns', date, timeOfDay] as const,
     all: ['unknowns'] as const,
   },
+  labelling: {
+    cases: (status: 'pending' | 'approved' | 'rejected' | 'all') =>
+      ['labelling-cases', status] as const,
+  },
   corrections: {
     recent: ['corrections-recent'] as const,
   },

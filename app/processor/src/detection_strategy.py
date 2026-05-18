@@ -9,6 +9,7 @@ from detector_labels import normalize_detector_label
 from inference.torch_backend import load_yolo_classifier, load_yolo_detector
 from inference.weight_contract import validate_detector_weight_contract
 from processor_runtime_profile import RuntimeProfileConfigOverlay
+from roi_super_resolution import build_roi_super_resolution
 
 logger = logging.getLogger(__name__)
 
@@ -486,6 +487,9 @@ class TwoStageStrategy(DetectionStrategy):
         self.max_classifications_per_frame = max(1, int(max_classifications_per_frame or 1))
         self.classification_scheduler = str(classification_scheduler or "priority").strip().lower()
         self.binary_imgsz = max(320, int(binary_imgsz or 320))
+        from app_config.app_config import app_config
+
+        self._roi_sr = build_roi_super_resolution(app_config)
         raw_scope = detector_scope or ["Bird", "Rodent"]
         self.detector_scope = {normalize_detector_label(name) for name in raw_scope if str(name or "").strip()}
 
@@ -733,12 +737,16 @@ class TwoStageStrategy(DetectionStrategy):
             boxes_with_track_id: int,
             accepted: int,
             predict_fallback: bool = False,
+            sr_applied: int = 0,
+            sr_latency_ms: float = 0.0,
         ) -> None:
             self.last_detect_metrics = {
                 "raw_boxes": int(raw_boxes),
                 "boxes_with_track_id": int(boxes_with_track_id),
                 "accepted": int(accepted),
                 "predict_fallback": bool(predict_fallback),
+                "sr_applied": int(sr_applied),
+                "sr_latency_ms": round(float(sr_latency_ms), 3),
             }
 
         boxes = None
@@ -1051,6 +1059,8 @@ class TwoStageStrategy(DetectionStrategy):
             max(1, int(getattr(self, "max_blur_checks", 1) or 1)),
         )
         classified_by_track = {}
+        sr_applied = 0
+        sr_latency_total_ms = 0.0
         fallback_box = None
         for box in scheduled_boxes[:scan_limit]:
             if should_skip_bird_species_classifier(
@@ -1073,6 +1083,12 @@ class TwoStageStrategy(DetectionStrategy):
             is_blur, variance = self.is_blurry(crop)
             if is_blur:
                 continue
+            if self._roi_sr.should_enhance(crop, min_box_size_px=min_box_size_px):
+                crop_sr, sr_meta = self._roi_sr.enhance(crop)
+                crop = crop_sr
+                if sr_meta.enabled:
+                    sr_applied += 1
+                    sr_latency_total_ms += float(sr_meta.latency_ms)
             classified_by_track[box["track_id"]] = {
                 "crop": crop.copy(),
                 "blur_variance": variance,
@@ -1088,6 +1104,12 @@ class TwoStageStrategy(DetectionStrategy):
             if mapped is not None:
                 x1, y1, x2, y2 = mapped
                 crop = cls_frame[y1:y2, x1:x2]
+                if self._roi_sr.should_enhance(crop, min_box_size_px=min_box_size_px):
+                    crop_sr, sr_meta = self._roi_sr.enhance(crop)
+                    crop = crop_sr
+                    if sr_meta.enabled:
+                        sr_applied += 1
+                        sr_latency_total_ms += float(sr_meta.latency_ms)
                 _, variance = self.is_blurry(crop)
                 classified_by_track[fallback_box["track_id"]] = {
                     "crop": crop.copy(),
@@ -1150,6 +1172,8 @@ class TwoStageStrategy(DetectionStrategy):
             boxes_with_track_id=_tid_n,
             accepted=len(detection_results),
             predict_fallback=boxes_from_predict_fallback,
+            sr_applied=sr_applied,
+            sr_latency_ms=sr_latency_total_ms,
         )
         return detection_results
 
