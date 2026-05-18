@@ -33,6 +33,7 @@ def _seed(app):
             source="video",
             detection_provider="yolo",
             track_id=11,
+            individual_nickname="Синичка Соня",
             frames=json.dumps([{"t": 0.2, "bbox": [0.1, 0.2, 0.4, 0.5]}]),
         )
         rt = SessionRuntimeMetrics(
@@ -65,6 +66,7 @@ def test_labelling_flow(client, app):
     assert "pre_approved" in first
     assert "suggested_species" in first
     assert "suggested_behavior" in first
+    assert any((row.get("individual_nickname") == "Синичка Соня") for row in body["items"])
 
     rows_media_only = client.get("/api/ui/labelling/cases?status=all&with_media_only=1")
     assert rows_media_only.status_code == 200

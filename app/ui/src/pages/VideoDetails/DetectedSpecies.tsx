@@ -9,6 +9,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
 import CardActions from '@mui/material/CardActions';
+import Autocomplete from '@mui/material/Autocomplete';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -127,6 +128,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   const safeSpecies = species ?? [];
   const { canEdit } = useProtectedArea();
   const quickCorrectionOnly = true;
+  const allowNicknameEdit = canEdit;
   const queryClient = useQueryClient();
 
   const { data: speciesList = [] } = useQuery({
@@ -601,27 +603,54 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                       </Stack>
                     </Stack>
                   )}
-                  {!quickCorrectionOnly && (() => {
+                  {allowNicknameEdit && (() => {
                     const bestDet = group.detections
                       .filter((d) => d.source === 'video' && d.id)
                       .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
-                    if (!bestDet?.id || !canEdit) return null;
+                    if (!bestDet?.id) return null;
                     const key = String(bestDet.id);
                     const current = bestDet.individual_nickname ?? '';
                     const draft = nicknameDraft[key] ?? current;
+                    const nicknameOptions = Array.from(
+                      new Set(
+                        [
+                          ...group.detections
+                            .map((d) => (d.individual_nickname || '').trim())
+                            .filter(Boolean),
+                          ...group.detections
+                            .map((d) => reidMatchByDetectionId[d.id || -1]?.candidate_nickname || '')
+                            .map((v) => v.trim())
+                            .filter(Boolean),
+                          bestDet.track_id ? `New Bird #${bestDet.track_id}` : '',
+                        ].filter(Boolean),
+                      ),
+                    );
                     return (
                       <Stack spacing={1} sx={{ width: '100%', minWidth: 0, mt: 1 }}>
-                        <TextField
-                          size="small"
-                          label={t('video.nicknameField')}
+                        <Autocomplete
+                          freeSolo
+                          options={nicknameOptions}
                           value={draft}
-                          onChange={(e) =>
+                          onChange={(_, value) =>
                             setNicknameDraft((prev) => ({
                               ...prev,
-                              [key]: e.target.value,
+                              [key]: String(value || ''),
                             }))
                           }
-                          placeholder={t('video.nicknameFieldPlaceholder')}
+                          onInputChange={(_, value) =>
+                            setNicknameDraft((prev) => ({
+                              ...prev,
+                              [key]: value,
+                            }))
+                          }
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              size="small"
+                              label={t('video.nicknameField')}
+                              placeholder={t('video.nicknameFieldPlaceholder')}
+                            />
+                          )}
                         />
                         <Box sx={{ display: 'flex', gap: 1 }}>
                           <Button

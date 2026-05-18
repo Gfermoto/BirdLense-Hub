@@ -17,6 +17,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -45,6 +46,7 @@ import {
 import { queryKeys } from '../../api/queryKeys';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { formatLocalDateTime } from '../../util';
+import { BEHAVIOR_TAG_OPTIONS } from '../../constants/behaviorTags';
 
 function safeInternalPath(from: unknown): string | null {
   if (
@@ -139,6 +141,17 @@ export const VideoInfo = ({
   video: Video;
 }) => {
   const { t } = useTranslation();
+  const behaviorLabelText = useCallback(
+    (value: string | null | undefined) => {
+      const normalized = String(value || '').trim();
+      if (!normalized) return '';
+      const opt = BEHAVIOR_TAG_OPTIONS.find((row) => row.value === normalized);
+      if (!opt) return normalized;
+      const translated = t(opt.labelKey);
+      return translated === opt.labelKey ? normalized : translated;
+    },
+    [t],
+  );
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -385,7 +398,7 @@ export const VideoInfo = ({
           </Typography>
           {behavior_label ? (
             <Chip
-              label={`${behavior_label}${
+              label={`${behaviorLabelText(behavior_label)}${
                 behavior_confidence != null && !Number.isNaN(Number(behavior_confidence))
                   ? ` (${(Number(behavior_confidence) * 100).toFixed(0)}%)`
                   : ''
@@ -406,7 +419,7 @@ export const VideoInfo = ({
           ) : null}
           {behavior_shadow_label ? (
             <Chip
-              label={`Shadow: ${behavior_shadow_label}${
+              label={`Shadow: ${behaviorLabelText(behavior_shadow_label)}${
                 behavior_shadow_confidence != null &&
                 !Number.isNaN(Number(behavior_shadow_confidence))
                   ? ` (${(Number(behavior_shadow_confidence) * 100).toFixed(0)}%)`
@@ -449,13 +462,23 @@ export const VideoInfo = ({
                 <DialogTitle>{t('videoInfo.behaviorDialogTitle')}</DialogTitle>
                 <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
                   <TextField
+                    select
                     label={t('videoInfo.behaviorLabelField')}
                     value={behaviorDraftLabel}
                     onChange={(e) => setBehaviorDraftLabel(e.target.value)}
                     size="small"
                     fullWidth
                     helperText={t('videoInfo.behaviorLabelHint')}
-                  />
+                  >
+                    <MenuItem value="">
+                      {t('videoInfo.behaviorTagNone')}
+                    </MenuItem>
+                    {BEHAVIOR_TAG_OPTIONS.map((opt) => (
+                      <MenuItem key={opt.value} value={opt.value}>
+                        {behaviorLabelText(opt.value)}
+                      </MenuItem>
+                    ))}
+                  </TextField>
                   <TextField
                     label={t('videoInfo.behaviorConfField')}
                     value={behaviorDraftConf}

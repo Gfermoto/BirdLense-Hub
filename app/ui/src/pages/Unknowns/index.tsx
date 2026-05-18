@@ -652,6 +652,31 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
     <>
       <PageHelp {...unknownsHelpConfig} />
       {afterTitleSlot}
+      <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          justifyContent="space-between"
+        >
+          <Box>
+            <Typography variant="body2" fontWeight={600}>
+              {t('unknowns.roleSplitTitle')}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {t('unknowns.roleSplitHint')}
+            </Typography>
+          </Box>
+          <Button
+            component={RouterLink}
+            to="/labelling"
+            size="small"
+            variant="outlined"
+          >
+            {t('unknowns.openGeometryQueue')}
+          </Button>
+        </Stack>
+      </Alert>
       <Box
         display="flex"
         flexWrap="wrap"
