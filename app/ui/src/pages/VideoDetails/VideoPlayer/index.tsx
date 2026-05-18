@@ -25,7 +25,7 @@ import { ProgressBar } from './ProgressBar';
 import { SpectrogramPlayer } from './SpectrogramPlayer';
 import { useTranslation } from 'react-i18next';
 import { useVideoControl } from './useVideoControl';
-import { TrackOverlay } from './TrackOverlay';
+import { AnnotationViewer } from '../../../components/AnnotationViewer';
 import { SpeciesIcon } from '../../../components/SpeciesIcon';
 import { useProtectedArea } from '../../../contexts/ProtectedAreaContext';
 
@@ -214,6 +214,34 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         (s) => s.source === 'video' && s.frames && s.frames.length > 0,
       ),
     [video.species],
+  );
+  const trackAnnotations = useMemo(
+    () =>
+      trackDetections
+        .map((s, idx) => {
+          const frames =
+            s.frames?.map((f) => {
+              const [x1, y1, x2, y2] = f.bbox;
+              return {
+                t: f.t,
+                bbox: [x1, y1, Math.max(0, x2 - x1), Math.max(0, y2 - y1)] as [number, number, number, number],
+              };
+            }) || [];
+          if (!frames.length) return null;
+          return {
+            id: `video-track-${s.species_id}-${s.track_id ?? idx}`,
+            label: `${s.species_name} (${Math.round((s.confidence || 0) * 100)}%)`,
+            color: '#22c55e',
+            frames,
+          };
+        })
+        .filter(Boolean) as Array<{
+        id: string;
+        label: string;
+        color: string;
+        frames: Array<{ t: number | null; bbox: [number, number, number, number] }>;
+      }>,
+    [trackDetections],
   );
 
   useEffect(() => {
@@ -423,9 +451,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </Box>
         )}
 
-        {/* Track Bounding Box Overlay */}
-        {showTracks && view === 'video' && trackDetections.length > 0 && (
-          <TrackOverlay species={trackDetections} currentTime={progress} />
+        {/* Unified annotation overlay */}
+        {showTracks && view === 'video' && trackAnnotations.length > 0 && (
+          <AnnotationViewer tracks={trackAnnotations} currentTime={progress} />
         )}
 
         {/* Active Species Overlay */}
