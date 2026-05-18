@@ -86,6 +86,13 @@ Two components: **detector** (bird or rodent in frame) and **classifier** (bird 
 - **Chaos Engineering suite** — synthetic multi-camera load generator for telemetry, retention, self-heal loop stability (`scripts/chaos_load_generator.py`).
 - **Fine-tuning guide** — end-to-end runbook: [How to run fine-tuning on collected data](./docs/contributor/FINE_TUNING_ACTIVE_LEARNING.md).
 
+### Quick Start for ML Loop
+- Open `/labelling` and review cases with media preview + `Main/Shadow` predictions.
+- If queue is empty, seed it now: `python3 scripts/seed_labelling_queue.py --db app/data/db/birdlense.db`.
+- Extract tracklets for Behavior v2: `DB=app/data/db/birdlense.db OUT=/tmp/behavior_tracklet_manifest.v1.json make ml-extract-behavior-tracklets`.
+- Train candidate profile: `MANIFEST=/tmp/behavior_tracklet_manifest.v1.json OUT_DIR=/tmp/behavior_v2 make ml-train-behavior-video BACKBONE=x3d`.
+- Full operator flow: [Labelling guide](./docs/user/LABELLING_GUIDE.md).
+
 ## Quick Start
 
 **Docker (free image):**

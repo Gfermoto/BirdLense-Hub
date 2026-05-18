@@ -522,6 +522,15 @@ ml-import-wetlandbirds:
 		$$(test -n "$${DOMAIN_TAG:-}" && printf -- '--domain-tag "%s" ' "$${DOMAIN_TAG}") \
 		$${ARGS:-}
 
+# Seed /labelling queue with media-backed cases from DB (P0 UX unblock).
+ml-seed-labelling-queue:
+	@test -n "$${DB:-}" || (echo "Set DB=path/to/birdlense.db" >&2; exit 1)
+	@python3 scripts/seed_labelling_queue.py \
+		--db "$${DB}" \
+		$$(test -n "$${MAX_VIDEO_CASES:-}" && printf -- '--max-video-cases "%s" ' "$${MAX_VIDEO_CASES}") \
+		$$(test -n "$${MAX_RUNTIME_CASES:-}" && printf -- '--max-runtime-cases "%s" ' "$${MAX_RUNTIME_CASES}") \
+		$${ARGS:-}
+
 # Train Behavior v2 candidate profile (tsm|x3d|slowfast) and emit report/export (#458).
 ml-train-behavior-video:
 	@test -n "$${MANIFEST:-}" || (echo "Set MANIFEST=path/to/behavior_tracklet_manifest.v1.json" >&2; exit 1)
