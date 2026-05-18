@@ -18,9 +18,63 @@ from services.detection_species_correction_service import (
     delete_detection_with_feedback,
     run_confirm_detection,
 )
+from services.bird_profile_service import (
+    assign_profile_to_detection,
+    create_bird_profile,
+    list_bird_profiles,
+    set_detection_semantic_review,
+    update_bird_profile,
+)
 
 
 def register_ui_corrections_dataset_routes(app):
+    @app.route("/api/ui/bird-profiles", methods=["GET"])
+    def get_bird_profiles():
+        if not contributor_or_admin_access():
+            return {"error": "Password required"}, 403
+        query = request.args.get("query")
+        species_id = request.args.get("species_id", type=int)
+        limit = request.args.get("limit", 20, type=int)
+        return {"items": list_bird_profiles(query=query, species_id=species_id, limit=limit)}, 200
+
+    @app.route("/api/ui/bird-profiles", methods=["POST"])
+    def post_bird_profile():
+        if not contributor_or_admin_access():
+            return {"error": "Password required"}, 403
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
+        try:
+            payload = create_bird_profile(
+                display_name=str(data.get("display_name") or ""),
+                species_id=data.get("species_id"),
+                avatar_url=data.get("avatar_url"),
+                status=data.get("status"),
+            )
+            return payload, 201
+        except ValueError as exc:
+            return {"error": str(exc)}, 400
+
+    @app.route("/api/ui/bird-profiles/<int:profile_id>", methods=["PATCH"])
+    def patch_bird_profile(profile_id: int):
+        if not contributor_or_admin_access():
+            return {"error": "Password required"}, 403
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
+        try:
+            payload = update_bird_profile(
+                profile_id=profile_id,
+                display_name=data.get("display_name"),
+                avatar_url=data.get("avatar_url"),
+                status=data.get("status"),
+            )
+            return payload, 200
+        except ValueError as exc:
+            return {"error": str(exc)}, 400
+        except LookupError:
+            return {"error": "profile not found"}, 404
+
     @app.route("/api/ui/detections/<int:detection_id>/crop", methods=["GET"])
     def get_detection_crop(detection_id):
         """Extract a frame from video for iNaturalist export. Returns JPEG."""
@@ -133,6 +187,28 @@ def register_ui_corrections_dataset_routes(app):
                 data,
                 app_obj_for_thread=app_obj,
             )
+        elif "bird_profile_id" in data:
+            try:
+                payload = assign_profile_to_detection(
+                    detection_id=detection_id,
+                    bird_profile_id=int(data.get("bird_profile_id")),
+                )
+                return payload, 200
+            except (TypeError, ValueError):
+                return {"error": "bird_profile_id must be an integer"}, 400
+            except LookupError as exc:
+                return {"error": str(exc)}, 404
+        elif "semantic_review_required" in data:
+            try:
+                payload = set_detection_semantic_review(
+                    detection_id=detection_id,
+                    required=bool(data.get("semantic_review_required")),
+                    note=(str(data.get("semantic_review_note") or "").strip() or None),
+                    source=str(data.get("source") or "video_details"),
+                )
+                return payload, 200
+            except LookupError:
+                return {"error": "detection not found"}, 404
         elif "individual_nickname" in data:
             err, ok = apply_detection_nickname_patch(
                 db.session,
@@ -140,7 +216,11 @@ def register_ui_corrections_dataset_routes(app):
                 data,
             )
         else:
-            return {"error": "species_id or individual_nickname is required"}, 400
+            return {
+                "error": (
+                    "species_id, individual_nickname, bird_profile_id or semantic_review_required is required"
+                )
+            }, 400
         if err:
             code = 404
             if err.get("error") in (

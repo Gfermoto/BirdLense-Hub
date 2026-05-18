@@ -103,3 +103,48 @@ def test_labelling_flow(client, app):
     assert batch.status_code == 200, batch.get_data(as_text=True)
     assert batch.get_json()["ok"] is True
     assert batch.get_json()["count"] == 3
+
+    semantic_flag = client.post(
+        f"/api/ui/labelling/cases/{first['id']}/feedback",
+        json={"action": "flag_semantic_error"},
+    )
+    assert semantic_flag.status_code == 200, semantic_flag.get_data(as_text=True)
+    assert semantic_flag.get_json()["status"] == "semantic_review_required"
+
+
+def test_bird_profiles_link_and_semantic_queue(client, app):
+    _seed(app)
+    mine = client.post("/api/ui/labelling/cases/mine", json={"lookback_hours": 48})
+    assert mine.status_code == 200, mine.get_data(as_text=True)
+    list_resp = client.get("/api/ui/labelling/cases?status=all")
+    items = list_resp.get_json()["items"]
+    case = next((row for row in items if row.get("video_species_id") is not None), None)
+    assert case is not None
+    detection_id = int(case["video_species_id"])
+
+    create_resp = client.post(
+        "/api/ui/bird-profiles",
+        json={"display_name": "Синичка Лада"},
+    )
+    assert create_resp.status_code == 201, create_resp.get_data(as_text=True)
+    profile_id = int(create_resp.get_json()["id"])
+
+    link_resp = client.patch(
+        f"/api/ui/detections/{detection_id}",
+        json={"bird_profile_id": profile_id},
+    )
+    assert link_resp.status_code == 200, link_resp.get_data(as_text=True)
+    assert int(link_resp.get_json()["bird_profile_id"]) == profile_id
+
+    semantic_resp = client.patch(
+        f"/api/ui/detections/{detection_id}",
+        json={"semantic_review_required": True, "semantic_review_note": "species mismatch"},
+    )
+    assert semantic_resp.status_code == 200, semantic_resp.get_data(as_text=True)
+    assert semantic_resp.get_json()["required"] is True
+
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    queue = client.get(
+        f"/api/ui/unknowns?queue=expert&start_time={now_ts - 7200}&end_time={now_ts}&limit=50"
+    )
+    assert queue.status_code == 200, queue.get_data(as_text=True)

@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import json
 from datetime import timedelta
 
 from flask import request, send_file
@@ -9,7 +10,7 @@ from sqlalchemy.orm import joinedload
 
 from app_config.app_config import app_config
 from auth import contributor_or_admin_access, ui_sensitive_export_access
-from models import Species, SpeciesVisit, Video, VideoSpecies, db
+from models import ActiveLearningCase, Species, SpeciesVisit, Video, VideoSpecies, db
 from services.api_json_validation import parse_request_json_dict
 from services.cache import cache_get, cache_set
 from services.dataset_export_service import (
@@ -54,6 +55,7 @@ def register_ui_video_routes(app):
             db.session.query(Video)
             .options(
                 joinedload(Video.video_species).joinedload(VideoSpecies.species),
+                joinedload(Video.video_species).joinedload(VideoSpecies.bird_profile),
                 joinedload(Video.food),
             )
             .filter(Video.id == video_id)
@@ -62,7 +64,37 @@ def register_ui_video_routes(app):
 
         if not video:
             return {"error": "Video not found"}, 404
-        return build_video_detail_dict(video), 200
+        payload = build_video_detail_dict(video)
+        detection_ids = [row.get("id") for row in payload.get("species", []) if row.get("id") is not None]
+        if detection_ids:
+            rows = (
+                db.session.query(ActiveLearningCase)
+                .filter(
+                    ActiveLearningCase.video_id == video_id,
+                    ActiveLearningCase.video_species_id.in_(detection_ids),
+                )
+                .order_by(ActiveLearningCase.updated_at.desc())
+                .all()
+            )
+            history_map = {}
+            for case in rows:
+                try:
+                    p = json.loads(case.payload_json or "{}")
+                except Exception:
+                    p = {}
+                hist = p.get("semantic_review_history")
+                if not isinstance(hist, list):
+                    continue
+                history_map[int(case.video_species_id)] = hist[-10:]
+            for row in payload.get("species", []):
+                did = row.get("id")
+                if did is None:
+                    continue
+                row["semantic_review_history"] = history_map.get(int(did), [])
+                row["semantic_conflict"] = bool(row.get("classifier_needs_review")) or bool(
+                    row.get("review_reason") == "semantic_review_required"
+                )
+        return payload, 200
 
     @app.route("/api/ui/videos/<int:video_id>", methods=["PATCH"])
     def patch_video(video_id):
@@ -120,6 +152,7 @@ def register_ui_video_routes(app):
             db.session.query(Video)
             .options(
                 joinedload(Video.video_species).joinedload(VideoSpecies.species),
+                joinedload(Video.video_species).joinedload(VideoSpecies.bird_profile),
                 joinedload(Video.food),
             )
             .filter(Video.id == video_id)

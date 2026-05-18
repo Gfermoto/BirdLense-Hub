@@ -40,6 +40,7 @@ const statusColor: Record<LabellingCaseStatus, 'default' | 'success' | 'error' |
   pending: 'warning',
   approved: 'success',
   rejected: 'error',
+  semantic_review_required: 'warning',
 };
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -187,6 +188,12 @@ export const LabellingPage: React.FC = () => {
     gotoNext();
   }, [batch, current]);
 
+  const flagSemanticError = React.useCallback(async () => {
+    if (!current) return;
+    await batch.mutateAsync([{ kind: 'feedback', case_id: current.id, action: 'flag_semantic_error' }]);
+    gotoNext();
+  }, [batch, current]);
+
   React.useEffect(() => {
     const handler = async (e: KeyboardEvent) => {
       if (isTypingTarget(e.target)) return;
@@ -234,6 +241,7 @@ export const LabellingPage: React.FC = () => {
                   <MenuItem value="pending">{t('labelling.status.pending')}</MenuItem>
                   <MenuItem value="approved">{t('labelling.status.approved')}</MenuItem>
                   <MenuItem value="rejected">{t('labelling.status.rejected')}</MenuItem>
+                  <MenuItem value="semantic_review_required">{t('labelling.status.semantic_review_required')}</MenuItem>
                 </Select>
               </FormControl>
               <FormControl size="small" sx={{ minWidth: 200 }}>
@@ -321,6 +329,9 @@ export const LabellingPage: React.FC = () => {
                       </Button>
                       <Button variant="outlined" color="error" onClick={() => void rejectAll()} disabled={batch.isPending}>
                         {t('labelling.actions.rejectAndNext')}
+                      </Button>
+                      <Button variant="contained" color="error" onClick={() => void flagSemanticError()} disabled={batch.isPending}>
+                        {t('labelling.actions.flagSemanticError')}
                       </Button>
                       <Button size="small" variant="text" onClick={gotoPrev} disabled={currentIndex <= 0}>
                         {t('labelling.actions.prev')}

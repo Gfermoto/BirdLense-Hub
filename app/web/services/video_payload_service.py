@@ -22,6 +22,12 @@ def _species_row(vs) -> dict:
         "track_id": vs.track_id,
         "image_url": vs.species.image_url,
         "individual_nickname": vs.individual_nickname,
+        "bird_profile_id": vs.bird_profile_id,
+        "bird_profile_name": (vs.bird_profile.display_name if getattr(vs, "bird_profile", None) else None),
+        "bird_profile_avatar_url": (vs.bird_profile.avatar_url if getattr(vs, "bird_profile", None) else None),
+        "bird_profile_status": (vs.bird_profile.status if getattr(vs, "bird_profile", None) else None),
+        "classifier_needs_review": bool(getattr(vs, "classifier_needs_review", False)),
+        "review_reason": getattr(vs, "review_reason", None),
     }
     if vs.detection_provider:
         data["detection_provider"] = vs.detection_provider

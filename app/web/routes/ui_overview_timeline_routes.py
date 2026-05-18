@@ -332,10 +332,12 @@ def register_ui_overview_timeline_routes(app):
         start_time = request.args.get("start_time")
         end_time = request.args.get("end_time")
         limit = request.args.get("limit", 100, type=int)
+        queue = request.args.get("queue")
+        review_reason = request.args.get("review_reason")
 
         uck = (
             f"unknowns:{date_param or start_time}:{time_of_day}:{hour_param}:"
-            f"{end_time}:{limit}:{app_config.get('ui.unknown_confidence_threshold')}"
+            f"{end_time}:{limit}:{queue}:{review_reason}:{app_config.get('ui.unknown_confidence_threshold')}"
         )
         hit, uc = cache_get(uck)
         if hit:
@@ -349,6 +351,8 @@ def register_ui_overview_timeline_routes(app):
                 start_time=start_time,
                 end_time=end_time,
                 limit=limit,
+                queue=queue,
+                review_reason_filter=review_reason,
             )
         except ValueError as exc:
             return {"error": str(exc)}, 400

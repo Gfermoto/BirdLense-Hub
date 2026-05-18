@@ -31,8 +31,11 @@ import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { getApiErrorMessage, resolveImageUrl } from '../../api/api';
 import { downloadDetectionCropForINaturalist } from '../../api/dataset';
 import {
+  assignDetectionBirdProfile,
+  createBirdProfile,
   fetchBirdDirectory,
-  updateDetectionNickname,
+  fetchBirdProfiles,
+  setDetectionSemanticReview,
   updateDetectionSpecies,
 } from '../../api/speciesOverviewDetections';
 import { mergeVideoSpecies, type VideoReidMatchItem } from '../../api/video';
@@ -136,6 +139,13 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
     queryFn: () => fetchBirdDirectory(),
     staleTime: 5 * 60 * 1000,
   });
+  const { data: birdProfilesResponse } = useQuery({
+    queryKey: ['bird-profiles', 'video-details'],
+    queryFn: () => fetchBirdProfiles({ limit: 200 }),
+    enabled: canEdit,
+    staleTime: 60 * 1000,
+  });
+  const birdProfiles = birdProfilesResponse?.items ?? [];
 
   const correctMutation = useMutation({
     mutationFn: ({
@@ -169,17 +179,45 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
     },
   });
 
-  const nicknameMutation = useMutation({
+  const assignProfileMutation = useMutation({
+    mutationFn: ({ detectionId, profileId }: { detectionId: number; profileId: number }) =>
+      assignDetectionBirdProfile(detectionId, profileId),
+    onSuccess: (data) => {
+      invalidateLocalSpeciesEditCaches(queryClient, videoId);
+      setCorrectSuccess(
+        t('video.profileLinkedInVideo', { count: Number(data?.updated_count || 1) }),
+      );
+    },
+  });
+  const createProfileMutation = useMutation({
     mutationFn: ({
-      detectionId,
-      nickname,
+      displayName,
+      speciesId,
+      avatarUrl,
     }: {
-      detectionId: number;
-      nickname: string | null;
-    }) => updateDetectionNickname(detectionId, nickname),
+      displayName: string;
+      speciesId?: number | null;
+      avatarUrl?: string | null;
+    }) =>
+      createBirdProfile({
+        display_name: displayName,
+        species_id: speciesId,
+        avatar_url: avatarUrl,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bird-profiles'] });
+    },
+  });
+  const semanticReviewMutation = useMutation({
+    mutationFn: ({ detectionId }: { detectionId: number }) =>
+      setDetectionSemanticReview(detectionId, {
+        semantic_review_required: true,
+        source: 'video_details',
+      }),
     onSuccess: () => {
       invalidateLocalSpeciesEditCaches(queryClient, videoId);
-      setCorrectSuccess(t('video.nicknameSaved'));
+      queryClient.invalidateQueries({ queryKey: queryKeys.unknowns.all });
+      setCorrectSuccess(t('video.semanticReviewQueued'));
     },
   });
 
@@ -188,7 +226,8 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   const [mergeSpeciesId, setMergeSpeciesId] = useState<number | ''>('');
   const [correctError, setCorrectError] = useState<string | null>(null);
   const [correctSuccess, setCorrectSuccess] = useState<string | null>(null);
-  const [nicknameDraft, setNicknameDraft] = useState<Record<string, string>>({});
+  const [profileDraft, setProfileDraft] = useState<Record<string, string>>({});
+  const [profileSelection, setProfileSelection] = useState<Record<string, number | null>>({});
 
   const handleCorrectGroup = async (group: GroupedSpecies) => {
     if (selectedSpeciesId === '') return;
@@ -609,36 +648,45 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                       .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
                     if (!bestDet?.id) return null;
                     const key = String(bestDet.id);
-                    const current = bestDet.individual_nickname ?? '';
-                    const draft = nicknameDraft[key] ?? current;
-                    const nicknameOptions = Array.from(
-                      new Set(
-                        [
-                          ...group.detections
-                            .map((d) => (d.individual_nickname || '').trim())
-                            .filter(Boolean),
-                          ...group.detections
-                            .map((d) => reidMatchByDetectionId[d.id || -1]?.candidate_nickname || '')
-                            .map((v) => v.trim())
-                            .filter(Boolean),
-                          bestDet.track_id ? `New Bird #${bestDet.track_id}` : '',
-                        ].filter(Boolean),
-                      ),
+                    const selectedProfileId =
+                      profileSelection[key] ?? bestDet.bird_profile_id ?? null;
+                    const selectedProfile =
+                      birdProfiles.find((p) => Number(p.id) === Number(selectedProfileId)) ||
+                      null;
+                    const draftName =
+                      profileDraft[key] ??
+                      selectedProfile?.display_name ??
+                      bestDet.bird_profile_name ??
+                      bestDet.individual_nickname ??
+                      '';
+                    const filteredOptions = birdProfiles.filter(
+                      (p) =>
+                        !draftName ||
+                        p.display_name.toLowerCase().includes(draftName.toLowerCase()),
                     );
                     return (
                       <Stack spacing={1} sx={{ width: '100%', minWidth: 0, mt: 1 }}>
                         <Autocomplete
                           freeSolo
-                          options={nicknameOptions}
-                          value={draft}
-                          onChange={(_, value) =>
-                            setNicknameDraft((prev) => ({
-                              ...prev,
-                              [key]: String(value || ''),
-                            }))
+                          options={filteredOptions}
+                          value={selectedProfile}
+                          getOptionLabel={(option) =>
+                            typeof option === 'string' ? option : option.display_name
                           }
+                          onChange={(_, value) => {
+                            if (value && typeof value !== 'string') {
+                              setProfileSelection((prev) => ({ ...prev, [key]: value.id }));
+                              setProfileDraft((prev) => ({
+                                ...prev,
+                                [key]: value.display_name,
+                              }));
+                            } else {
+                              setProfileSelection((prev) => ({ ...prev, [key]: null }));
+                            }
+                          }}
+                          inputValue={draftName}
                           onInputChange={(_, value) =>
-                            setNicknameDraft((prev) => ({
+                            setProfileDraft((prev) => ({
                               ...prev,
                               [key]: value,
                             }))
@@ -647,38 +695,92 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                             <TextField
                               {...params}
                               size="small"
-                              label={t('video.nicknameField')}
-                              placeholder={t('video.nicknameFieldPlaceholder')}
+                              label={t('video.profileField')}
+                              placeholder={t('video.profileFieldPlaceholder')}
                             />
                           )}
                         />
-                        <Box sx={{ display: 'flex', gap: 1 }}>
+                        {selectedProfile ? (
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            {selectedProfile.avatar_url ? (
+                              <CardMedia
+                                component="img"
+                                image={resolveImageUrl(selectedProfile.avatar_url)}
+                                alt={selectedProfile.display_name}
+                                sx={{ width: 28, height: 28, borderRadius: 1 }}
+                              />
+                            ) : null}
+                            <Chip
+                              size="small"
+                              label={`${selectedProfile.display_name} • ${selectedProfile.status}`}
+                              color="info"
+                              variant="outlined"
+                            />
+                          </Stack>
+                        ) : null}
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                           <Button
                             size="small"
-                            variant="outlined"
-                            disabled={nicknameMutation.isPending}
+                            variant="contained"
+                            disabled={
+                              assignProfileMutation.isPending ||
+                              !Number.isFinite(Number(profileSelection[key] ?? selectedProfileId))
+                            }
                             onClick={() =>
-                              nicknameMutation.mutate({
+                              assignProfileMutation.mutate({
                                 detectionId: bestDet.id!,
-                                nickname: draft.trim() ? draft.trim() : null,
+                                profileId: Number(profileSelection[key] ?? selectedProfileId),
                               })
                             }
                           >
-                            {t('video.nicknameSaveButton', { defaultValue: t('common.save') })}
+                            {t('video.profileLinkButton')}
                           </Button>
                           <Button
                             size="small"
-                            disabled={nicknameMutation.isPending}
+                            variant="outlined"
+                            disabled={
+                              createProfileMutation.isPending ||
+                              !draftName.trim()
+                            }
+                            onClick={async () => {
+                              const created = await createProfileMutation.mutateAsync({
+                                displayName: draftName.trim(),
+                                speciesId: group.species_id,
+                                avatarUrl: group.image_url || null,
+                              });
+                              setProfileSelection((prev) => ({ ...prev, [key]: created.id }));
+                              await assignProfileMutation.mutateAsync({
+                                detectionId: bestDet.id!,
+                                profileId: created.id,
+                              });
+                            }}
+                          >
+                            {t('video.profileCreateAndLinkButton')}
+                          </Button>
+                          <Button
+                            size="small"
+                            color="warning"
+                            variant="outlined"
+                            disabled={semanticReviewMutation.isPending}
                             onClick={() =>
-                              setNicknameDraft((prev) => ({
-                                ...prev,
-                                [key]: current,
-                              }))
+                              semanticReviewMutation.mutate({ detectionId: bestDet.id! })
                             }
                           >
-                            {t('video.nicknameCancelButton', { defaultValue: t('common.cancel') })}
+                            {t('video.semanticReviewButton')}
                           </Button>
                         </Box>
+                        {bestDet.semantic_conflict || bestDet.semantic_review_history?.length ? (
+                          <Alert severity="warning" variant="outlined">
+                            <Typography variant="caption" display="block" fontWeight={700}>
+                              {t('video.semanticConflictTitle')}
+                            </Typography>
+                            {(bestDet.semantic_review_history || []).slice(-3).map((entry, idx) => (
+                              <Typography key={`${key}-history-${idx}`} variant="caption" display="block">
+                                {entry.at || '—'} • {entry.source || 'system'} {entry.note ? `• ${entry.note}` : ''}
+                              </Typography>
+                            ))}
+                          </Alert>
+                        ) : null}
                       </Stack>
                     );
                   })()}

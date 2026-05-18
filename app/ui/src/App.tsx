@@ -407,6 +407,10 @@ function App() {
                         <Route path="/system" element={<System />} />
                         <Route path="/library" element={<Library />} />
                         <Route path="/labelling" element={<LabellingPage />} />
+                        <Route
+                          path="/review"
+                          element={<Navigate to="/timeline?review=1&queue=expert" replace />}
+                        />
                         <Route path="*" element={<NotFoundPage />} />
                       </Routes>
                     </ErrorBoundary>

@@ -123,6 +123,8 @@ export function Navigation() {
   const showAdminOnlyLinks = !requiresPassword || !unlocked || isAdmin;
   /** Разметка hard-cases: contributor/admin после входа, и гость без пароля. */
   const showLabellingLink = !requiresPassword || !unlocked || canEdit;
+  /** Очередь эксперта: отдельный workflow semantic review. */
+  const showReviewLink = !requiresPassword || !unlocked || canEdit;
   const gearButtonRef = React.useRef<HTMLButtonElement>(null);
 
   const [mobileMenuAnchor, setMobileMenuAnchor] =
@@ -357,6 +359,15 @@ export function Navigation() {
                   selected={currentPath === '/labelling'}
                 >
                   {t('nav.labelling')}
+                </MenuItem>
+              ) : null}
+              {showReviewLink ? (
+                <MenuItem
+                  key="mobile-menu-review"
+                  onClick={(e) => handleProtectedNav('/review', e, 'contributor')}
+                  selected={currentPath === '/review'}
+                >
+                  {t('nav.review')}
                 </MenuItem>
               ) : null}
               {showLogout ? <Divider key="mobile-menu-divider-logout" /> : null}
@@ -639,6 +650,17 @@ export function Navigation() {
                 selected={currentPath === '/labelling'}
               >
                 {t('nav.labelling')}
+              </MenuItem>
+            ) : null}
+            {showReviewLink ? (
+              <MenuItem
+                key="settings-menu-review"
+                component={Link}
+                to="/review"
+                onClick={handleSettingsMenuClose}
+                selected={currentPath === '/review'}
+              >
+                {t('nav.review')}
               </MenuItem>
             ) : null}
             {showLogout ? <Divider key="settings-menu-divider-logout" /> : null}

@@ -9,14 +9,15 @@ from typing import Any
 
 from sqlalchemy import text
 
-from models import ActiveLearningCase, Species, Video, VideoSpecies, db
+from models import ActiveLearningCase, BirdProfile, Species, Video, VideoSpecies, db
 from util import data_dir
 
 _REASON_BLIND = "blind_score_high"
 _REASON_FALLBACK = "fallback_ratio_high"
 _REASON_LOWCONF = "confidence_borderline"
-_ALLOWED_STATUS = {"pending", "approved", "rejected"}
-_ALLOWED_FEEDBACK_ACTION = {"confirm_behavior", "reject_box", "tag_species"}
+_REASON_SEMANTIC = "semantic_review_required"
+_ALLOWED_STATUS = {"pending", "approved", "rejected", "semantic_review_required"}
+_ALLOWED_FEEDBACK_ACTION = {"confirm_behavior", "reject_box", "tag_species", "flag_semantic_error"}
 _ALLOWED_BATCH_OP = {"feedback", "status"}
 
 
@@ -280,17 +281,18 @@ def mine_hard_examples(
 def list_cases(*, status: str | None = None, limit: int = 100, with_media_only: bool = False) -> dict[str, Any]:
     lim = max(1, min(int(limit), 500))
     q = (
-        db.session.query(ActiveLearningCase, VideoSpecies, Species, Video)
+        db.session.query(ActiveLearningCase, VideoSpecies, Species, Video, BirdProfile)
         .outerjoin(VideoSpecies, ActiveLearningCase.video_species_id == VideoSpecies.id)
         .outerjoin(Species, VideoSpecies.species_id == Species.id)
         .outerjoin(Video, ActiveLearningCase.video_id == Video.id)
+        .outerjoin(BirdProfile, VideoSpecies.bird_profile_id == BirdProfile.id)
         .order_by(ActiveLearningCase.created_at.desc())
     )
     if status and status in _ALLOWED_STATUS:
         q = q.filter(ActiveLearningCase.status == status)
     rows = q.limit(lim).all()
     items = []
-    for case, vs, species, video in rows:
+    for case, vs, species, video, bird_profile in rows:
         payload = _parse_payload(case.payload_json)
         track_frames = _extract_track_frames(vs, payload)
         bbox = track_frames[0].get('bbox') if track_frames else None
@@ -316,6 +318,10 @@ def list_cases(*, status: str | None = None, limit: int = 100, with_media_only: 
             "track_id": getattr(vs, "track_id", None) if vs else None,
             "species_name": species.name if species else None,
             "individual_nickname": getattr(vs, "individual_nickname", None) if vs else None,
+            "bird_profile_id": getattr(vs, "bird_profile_id", None) if vs else None,
+            "bird_profile_name": getattr(bird_profile, "display_name", None) if bird_profile else None,
+            "bird_profile_avatar_url": getattr(bird_profile, "avatar_url", None) if bird_profile else None,
+            "bird_profile_status": getattr(bird_profile, "status", None) if bird_profile else None,
             "video_path": video.video_path if video else None,
             "video_stream_url": f"/api/ui/videos/{case.video_id}/stream" if case.video_id else None,
             "video_details_url": f"/videos/{case.video_id}" if case.video_id else None,
@@ -350,7 +356,7 @@ def list_cases(*, status: str | None = None, limit: int = 100, with_media_only: 
 def patch_case(*, case_id: int, status: str, reason_note: str | None = None, commit: bool = True) -> dict[str, Any]:
     norm_status = str(status or "").strip().lower()
     if norm_status not in _ALLOWED_STATUS:
-        raise ValueError("status must be pending|approved|rejected")
+        raise ValueError("status must be pending|approved|rejected|semantic_review_required")
     row = db.session.get(ActiveLearningCase, int(case_id))
     if row is None:
         raise LookupError("case not found")
@@ -375,7 +381,7 @@ def apply_case_feedback(
 ) -> dict[str, Any]:
     action_norm = str(action or "").strip().lower()
     if action_norm not in _ALLOWED_FEEDBACK_ACTION:
-        raise ValueError("action must be confirm_behavior|reject_box|tag_species")
+        raise ValueError("action must be confirm_behavior|reject_box|tag_species|flag_semantic_error")
     row = db.session.get(ActiveLearningCase, int(case_id))
     if row is None:
         raise LookupError("case not found")
@@ -415,6 +421,28 @@ def apply_case_feedback(
             if sp is not None and vs is not None:
                 vs.species_id = int(sp.id)
         row.status = "approved"
+
+    elif action_norm == "flag_semantic_error":
+        payload["semantic_review_required"] = True
+        note = str(payload.get("review_note") or "").strip()
+        if row.video_species_id is not None:
+            vs = db.session.get(VideoSpecies, int(row.video_species_id))
+            if vs is not None:
+                vs.classifier_needs_review = True
+                vs.review_reason = _REASON_SEMANTIC
+        row.reason_code = _REASON_SEMANTIC
+        row.status = "semantic_review_required"
+        history = payload.get("semantic_review_history")
+        if not isinstance(history, list):
+            history = []
+        history.append(
+            {
+                "at": datetime.now(timezone.utc).isoformat(),
+                "source": "labelling",
+                "note": note or None,
+            }
+        )
+        payload["semantic_review_history"] = history[-30:]
 
     row.updated_at = datetime.now(timezone.utc)
     row.payload_json = json.dumps(payload, ensure_ascii=False)
@@ -463,7 +491,7 @@ def export_cases(*, fmt: str = "yolo", status: str = "approved", version: str | 
         raise ValueError("format must be yolo|coco")
     status_norm = str(status or "approved").strip().lower()
     if status_norm not in _ALLOWED_STATUS:
-        raise ValueError("status must be pending|approved|rejected")
+        raise ValueError("status must be pending|approved|rejected|semantic_review_required")
 
     rows = (
         db.session.query(ActiveLearningCase, VideoSpecies, Species)

@@ -35,7 +35,7 @@ class VideoSpecies(db.Model):
     source: Mapped[str] = mapped_column(String, nullable=False)  # video or audio
     detection_provider: Mapped[str] = mapped_column(String, nullable=True)  # yolo, frigate, birdnet_mqtt, legacy
     track_id: Mapped[int] = mapped_column(Integer, nullable=True)  # ByteTrack ID for stable identification
-    individual_nickname: Mapped[str] = mapped_column(String(64), nullable=True)
+    bird_profile_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("bird_profiles.id"), nullable=True)
     # JSON: [{t: 0.1, bbox: [x1,y1,x2,y2]}, ...] for track visualization
     frames: Mapped[str] = mapped_column(String, nullable=True)
     classifier_entropy: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -48,6 +48,7 @@ class VideoSpecies(db.Model):
     video: Mapped["Video"] = relationship(back_populates="video_species")
     species: Mapped["Species"] = relationship(back_populates="video_species")
     species_visit: Mapped["SpeciesVisit"] = relationship(back_populates="video_species")
+    bird_profile: Mapped["BirdProfile | None"] = relationship(back_populates="video_species")
 
     __table_args__ = (
         # improves both queries: created_at/species_id and just species_id
@@ -94,10 +95,35 @@ class Species(db.Model):
     parent = relationship("Species", back_populates="children", remote_side=[id])
     species_visits: Mapped[List["SpeciesVisit"]] = relationship(back_populates="species")
     taxon: Mapped["SpeciesTaxon"] = relationship(back_populates="species")
+    bird_profiles: Mapped[List["BirdProfile"]] = relationship(back_populates="species")
 
     __table_args__ = (
         Index("ix_species_parent_id", "parent_id"),
         Index("ix_species_taxon_id", "taxon_id"),
+    )
+
+
+class BirdProfile(db.Model):
+    """Global bird identity profile for ReID and expert workflow."""
+
+    __tablename__ = "bird_profiles"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    display_name: Mapped[str] = mapped_column(String(96), nullable=False)
+    species_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("species.id"), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active", server_default="active")
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    species: Mapped["Species | None"] = relationship(back_populates="bird_profiles")
+    video_species: Mapped[List["VideoSpecies"]] = relationship(back_populates="bird_profile")
+
+    __table_args__ = (
+        Index("ix_bird_profiles_display_name", "display_name"),
+        Index("ix_bird_profiles_species_id", "species_id"),
+        Index("ix_bird_profiles_status", "status"),
     )
 
 

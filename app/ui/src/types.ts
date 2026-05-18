@@ -59,6 +59,18 @@ export interface VideoSpecies {
   source: string;
   detection_provider?: string;
   individual_nickname?: string | null;
+  bird_profile_id?: number | null;
+  bird_profile_name?: string | null;
+  bird_profile_avatar_url?: string | null;
+  bird_profile_status?: string | null;
+  classifier_needs_review?: boolean;
+  review_reason?: string | null;
+  semantic_conflict?: boolean;
+  semantic_review_history?: Array<{
+    at?: string | null;
+    source?: string | null;
+    note?: string | null;
+  }>;
   /** Relative path or full URL — use resolveImageUrl() */
   image_url?: string;
   frames?: TrackFrame[];

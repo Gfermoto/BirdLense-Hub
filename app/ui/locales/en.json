@@ -1264,6 +1264,7 @@
     "reviewReasonLowConfidence": "Low confidence",
     "reviewReasonGenericBird": "Generic bird",
     "reviewReasonClassifierUncertainty": "Classifier uncertain",
+    "reviewReasonSemanticConflict": "Needs expert review",
     "confirmCorrect": "Correct",
     "confirmCorrectHelp": "Species is correct — remove from list",
     "confirmBlockedPendingApply": "A different species is selected — click Apply to save it, or clear the dropdown to confirm the current label.",
@@ -1382,6 +1383,14 @@
     "nicknameField": "Bird nickname",
     "nicknameFieldPlaceholder": "e.g. Sparrow Joe",
     "nicknameLabel": "Nickname",
+    "profileField": "Bird profile",
+    "profileFieldPlaceholder": "Search a profile or type a new one",
+    "profileLinkButton": "Link profile",
+    "profileCreateAndLinkButton": "Create and link",
+    "profileLinkedInVideo": "Profile linked to {{count}} detections in this video",
+    "semanticReviewButton": "Flag semantic review",
+    "semanticReviewQueued": "Case added to expert queue",
+    "semanticConflictTitle": "Semantic conflict",
     "nicknameSaveButton": "Save nickname",
     "nicknameCancelButton": "Cancel",
     "nicknameSaved": "Nickname saved",
@@ -2418,6 +2427,7 @@
       "pending": "In review",
       "approved": "Done",
       "rejected": "Error",
+      "semantic_review_required": "Needs expert review",
       "preApproved": "Pre-approved"
     },
     "filters": {
@@ -2460,7 +2470,8 @@
       "tagSpecies": "Tag species",
       "approveAll": "Approve all",
       "approveAndNext": "Approve and next",
-      "rejectAndNext": "Reject and next"
+      "rejectAndNext": "Reject and next",
+      "flagSemanticError": "Flag semantic error"
     },
     "export": {
       "title": "Export",

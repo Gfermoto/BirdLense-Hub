@@ -1,6 +1,6 @@
 import { BASE_API_URL, csrfFetch } from './client';
 
-export type LabellingCaseStatus = 'pending' | 'approved' | 'rejected';
+export type LabellingCaseStatus = 'pending' | 'approved' | 'rejected' | 'semantic_review_required';
 
 export type LabellingCase = {
   id: number;
@@ -14,6 +14,10 @@ export type LabellingCase = {
   track_id?: number | null;
   species_name: string | null;
   individual_nickname?: string | null;
+  bird_profile_id?: number | null;
+  bird_profile_name?: string | null;
+  bird_profile_avatar_url?: string | null;
+  bird_profile_status?: string | null;
   video_path: string | null;
   video_stream_url?: string | null;
   video_details_url?: string | null;
@@ -106,7 +110,11 @@ export const exportLabellingCases = async (
 
 export const postLabellingFeedback = async (
   id: number,
-  body: { action: 'confirm_behavior' | 'reject_box' | 'tag_species'; behavior_tag?: string; species_tag?: string },
+  body: {
+    action: 'confirm_behavior' | 'reject_box' | 'tag_species' | 'flag_semantic_error';
+    behavior_tag?: string;
+    species_tag?: string;
+  },
 ): Promise<{ id: number; status: LabellingCaseStatus; action: string }> => {
   const res = await csrfFetch(`${BASE_API_URL}/labelling/cases/${id}/feedback`, {
     method: 'POST',
@@ -122,7 +130,7 @@ export type LabellingBatchOperation =
   | {
       kind: 'feedback';
       case_id: number;
-      action: 'confirm_behavior' | 'reject_box' | 'tag_species';
+      action: 'confirm_behavior' | 'reject_box' | 'tag_species' | 'flag_semantic_error';
       behavior_tag?: string;
       species_tag?: string;
     }

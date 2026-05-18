@@ -116,13 +116,13 @@ export const queryKeys = {
     unknownsCountAll: ['unknowns-count'] as const,
   },
   unknowns: {
-    list: (date: string, timeOfDay: string) =>
-      ['unknowns', date, timeOfDay] as const,
+    list: (date: string, timeOfDay: string, queue: string = 'default', reviewReason: string = 'all') =>
+      ['unknowns', date, timeOfDay, queue, reviewReason] as const,
     all: ['unknowns'] as const,
   },
   labelling: {
     cases: (
-      status: 'pending' | 'approved' | 'rejected' | 'all',
+      status: 'pending' | 'approved' | 'rejected' | 'semantic_review_required' | 'all',
       withMediaOnly = true,
     ) => ['labelling-cases', status, withMediaOnly ? 'media-only' : 'all-cases'] as const,
   },

@@ -67,6 +67,8 @@ function reviewReasonLabel(t: (key: string) => string, reason?: string) {
       return t('unknowns.reviewReasonGenericBird');
     case 'classifier_uncertainty':
       return t('unknowns.reviewReasonClassifierUncertainty');
+    case 'semantic_review_required':
+      return t('unknowns.reviewReasonSemanticConflict');
     default:
       return reason || '';
   }
@@ -329,6 +331,9 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const queueParam = (searchParams.get('queue') || '').trim().toLowerCase();
+  const reviewReasonParam = (searchParams.get('review_reason') || '').trim().toLowerCase();
+  const expertQueueEnabled = queueParam === 'expert' || location.pathname === '/review';
   const videoListReturnPath = `${location.pathname}${location.search}`;
   const queryClient = useQueryClient();
   const { canEdit } = useProtectedArea();
@@ -355,8 +360,10 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       queryKeys.unknowns.list(
         selectedDate?.format('YYYY-MM-DD') ?? '',
         timeOfDay,
+        expertQueueEnabled ? 'expert' : 'default',
+        reviewReasonParam || 'all',
       ),
-    [selectedDate, timeOfDay],
+    [selectedDate, timeOfDay, expertQueueEnabled, reviewReasonParam],
   );
 
   const {
@@ -370,6 +377,8 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       return fetchUnknownsForObserverDate(selectedDate.format('YYYY-MM-DD'), {
         timeOfDay,
         limit: 500,
+        ...(expertQueueEnabled ? { queue: 'expert' as const } : {}),
+        ...(reviewReasonParam ? { reviewReason: reviewReasonParam } : {}),
       });
     },
     enabled: !!selectedDate,
