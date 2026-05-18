@@ -6,6 +6,7 @@ from flask import request
 
 from auth import contributor_or_admin_access
 from services.active_learning_service import (
+    apply_batch_feedback,
     apply_case_feedback,
     export_cases,
     list_cases,
@@ -97,6 +98,22 @@ def register_ui_labelling_routes(app):
                 ),
                 200,
             )
+        except ValueError as exc:
+            return {"error": str(exc)}, 400
+        except LookupError:
+            return {"error": "case not found"}, 404
+
+    @app.route("/api/ui/labelling/batch-feedback", methods=["POST"])
+    def post_labelling_batch_feedback():
+        if not contributor_or_admin_access():
+            return {"error": "Access denied"}, 403
+        body, err = parse_request_json_dict(request)
+        if err is not None:
+            return err, 400
+        body = body or {}
+        try:
+            operations = body.get("operations")
+            return apply_batch_feedback(operations=operations if isinstance(operations, list) else []), 200
         except ValueError as exc:
             return {"error": str(exc)}, 400
         except LookupError:

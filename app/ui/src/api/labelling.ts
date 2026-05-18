@@ -28,6 +28,9 @@ export type LabellingCase = {
   behavior_confidence?: number | null;
   behavior_shadow_label?: string | null;
   behavior_shadow_confidence?: number | null;
+  pre_approved?: boolean;
+  suggested_species?: string | null;
+  suggested_behavior?: string | null;
   payload: Record<string, unknown> | null;
 };
 
@@ -106,6 +109,34 @@ export const postLabellingFeedback = async (
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+};
+
+export type LabellingBatchOperation =
+  | {
+      kind: 'feedback';
+      case_id: number;
+      action: 'confirm_behavior' | 'reject_box' | 'tag_species';
+      behavior_tag?: string;
+      species_tag?: string;
+    }
+  | {
+      kind: 'status';
+      case_id: number;
+      status: LabellingCaseStatus;
+      note?: string;
+    };
+
+export const postLabellingBatchFeedback = async (
+  operations: LabellingBatchOperation[],
+): Promise<{ ok: boolean; count: number; processed: Array<{ id: number; status: LabellingCaseStatus }> }> => {
+  const res = await csrfFetch(`${BASE_API_URL}/labelling/batch-feedback`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ operations }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();

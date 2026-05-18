@@ -4,7 +4,9 @@ import {
   fetchLabellingCases,
   mineLabellingCases,
   patchLabellingCase,
+  postLabellingBatchFeedback,
   postLabellingFeedback,
+  type LabellingBatchOperation,
   type LabellingCaseStatus,
 } from '../api/labelling';
 import { queryKeys } from '../api/queryKeys';
@@ -62,6 +64,16 @@ export function useLabellingFeedbackMutation() {
       behavior_tag?: string;
       species_tag?: string;
     }) => postLabellingFeedback(id, { action, behavior_tag, species_tag }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['labelling-cases'] });
+    },
+  });
+}
+
+export function useLabellingBatchFeedbackMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (operations: LabellingBatchOperation[]) => postLabellingBatchFeedback(operations),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['labelling-cases'] });
     },

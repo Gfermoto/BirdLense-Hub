@@ -2398,7 +2398,8 @@
     "status": {
       "pending": "In review",
       "approved": "Done",
-      "rejected": "Error"
+      "rejected": "Error",
+      "preApproved": "Pre-approved"
     },
     "filters": {
       "status": "Status",
@@ -2434,7 +2435,10 @@
       "skip": "Skip",
       "prev": "Previous",
       "next": "Next",
-      "tagSpecies": "Tag species"
+      "tagSpecies": "Tag species",
+      "approveAll": "Approve all",
+      "approveAndNext": "Approve and next",
+      "rejectAndNext": "Reject and next"
     },
     "export": {
       "title": "Export",
@@ -2459,7 +2463,23 @@
     },
     "shortcuts": {
       "confirm": "Enter / Space",
-      "reject": "Esc / Backspace"
+      "reject": "Backspace",
+      "quickSpecies": "Quick species select (1/2/3)",
+      "behavior": "Toggle behavior (B)"
+    },
+    "labels": {
+      "species": "Species",
+      "behavior": "Behavior",
+      "speciesUnknown": "Unknown species"
+    },
+    "panels": {
+      "boxActions": "Actions for selected object",
+      "sessionActions": "Case actions"
+    },
+    "reasons": {
+      "blind": "YOLO blindness",
+      "fallback": "Frigate fallback",
+      "lowConfidence": "Low confidence"
     },
     "help": {
       "title": "How to use labelling",
