@@ -92,6 +92,7 @@ def test_blind_confirmed_respects_duration_and_frame_thresholds():
             min_yolo_frames=180,
             min_frigate_only_frames=120,
             min_duration_seconds=30.0,
+            min_effective_fps=2.0,
         )
 
         repo.save_session_runtime(
@@ -109,6 +110,56 @@ def test_blind_confirmed_respects_duration_and_frame_thresholds():
             min_yolo_frames=180,
             min_frigate_only_frames=120,
             min_duration_seconds=30.0,
+            min_effective_fps=2.0,
         )
+    finally:
+        tmp.cleanup()
+
+
+def test_blind_confirmed_handles_low_fps_when_duration_is_met():
+    tmp, repo = _mk_repo()
+    try:
+        repo.save_session_runtime(
+            {
+                'triggered_camera': 'BirdBox',
+                'duration_s': 31.0,
+                'yolo_frames_ran': 63,  # ~2 FPS stream degradation
+                'yolo_raw_boxes_total': 0,
+                'session_extended_by_frigate_only': 160,
+            }
+        )
+        assert repo.is_blind_confirmed(
+            camera_id='BirdBox',
+            min_recent_sessions=1,
+            min_yolo_frames=180,
+            min_frigate_only_frames=120,
+            min_duration_seconds=30.0,
+            min_effective_fps=2.0,
+        )
+    finally:
+        tmp.cleanup()
+
+
+def test_latest_health_event_returns_most_recent_row():
+    tmp, repo = _mk_repo()
+    try:
+        repo.append_detector_health_event(
+            event_type='yolo_self_heal_restart_requested',
+            severity='warning',
+            camera_id='BirdBox',
+            details={'n': 1},
+        )
+        rid = repo.append_detector_health_event(
+            event_type='yolo_self_heal_restart_requested',
+            severity='warning',
+            camera_id='BirdBox',
+            details={'n': 2},
+        )
+        row = repo.latest_health_event(
+            event_type='yolo_self_heal_restart_requested',
+            camera_id='BirdBox',
+        )
+        assert row is not None
+        assert int(row['id']) == rid
     finally:
         tmp.cleanup()

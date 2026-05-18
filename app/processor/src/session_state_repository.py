@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -33,7 +34,35 @@ class SessionStateRepository:
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA busy_timeout = 5000")
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA synchronous = NORMAL")
         return conn
+
+    @staticmethod
+    def _execute_with_retry(
+        con: sqlite3.Connection,
+        query: str,
+        params: tuple[Any, ...] = (),
+        *,
+        retries: int = 3,
+        retry_delay_s: float = 0.08,
+    ) -> sqlite3.Cursor:
+        last_exc: Exception | None = None
+        for attempt in range(max(1, retries)):
+            try:
+                return con.execute(query, params)
+            except sqlite3.OperationalError as exc:
+                last_exc = exc
+                msg = str(exc).lower()
+                if "locked" not in msg and "busy" not in msg:
+                    raise
+                if attempt >= retries - 1:
+                    raise
+                time.sleep(retry_delay_s * (attempt + 1))
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError("sqlite execute failed without exception")
 
     def _ensure_schema(self) -> None:
         with self._connect() as con:
@@ -93,7 +122,8 @@ class SessionStateRepository:
         camera_id = str(summary.get("triggered_camera") or "").strip() or None
         blind = bool(summary.get("yolo_blind_confirmed"))
         with self._connect() as con:
-            cur = con.execute(
+            cur = self._execute_with_retry(
+                con,
                 """
                 INSERT INTO session_runtime_metrics (
                     created_at, camera_id, duration_s, frames_seen, yolo_frames_ran,
@@ -138,7 +168,8 @@ class SessionStateRepository:
         details: dict[str, Any] | None = None,
     ) -> int:
         with self._connect() as con:
-            cur = con.execute(
+            cur = self._execute_with_retry(
+                con,
                 """
                 INSERT INTO detector_health_events(created_at, camera_id, event_type, severity, details_json)
                 VALUES (?, ?, ?, ?, ?)
@@ -160,7 +191,8 @@ class SessionStateRepository:
         arg = (None,) if cam is None else (cam,)
         with self._connect() as con:
             return list(
-                con.execute(
+                self._execute_with_retry(
+                    con,
                     f"""
                     SELECT *
                     FROM session_runtime_metrics
@@ -172,6 +204,32 @@ class SessionStateRepository:
                 ).fetchall()
             )
 
+    def latest_health_event(
+        self,
+        *,
+        event_type: str,
+        camera_id: str | None,
+    ) -> sqlite3.Row | None:
+        cam = (str(camera_id or "").strip() or None)
+        where = "event_type = ?"
+        params: list[Any] = [str(event_type).strip()]
+        if cam is not None:
+            where += " AND camera_id = ?"
+            params.append(cam)
+        with self._connect() as con:
+            row = self._execute_with_retry(
+                con,
+                f"""
+                SELECT *
+                FROM detector_health_events
+                WHERE {where}
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                tuple(params),
+            ).fetchone()
+        return row
+
     def is_blind_confirmed(
         self,
         *,
@@ -180,6 +238,7 @@ class SessionStateRepository:
         min_yolo_frames: int = 1,
         min_frigate_only_frames: int = 1,
         min_duration_seconds: float = 0.0,
+        min_effective_fps: float = 1.0,
     ) -> bool:
         rows = self.recent_blind_sessions(camera_id=camera_id, limit=max(min_recent_sessions, 6))
         if not rows or len(rows) < min_recent_sessions:
@@ -190,11 +249,15 @@ class SessionStateRepository:
             raw_total = int(row["yolo_raw_boxes_total"] or 0)
             ext = int(row["session_extended_by_frigate_only"] or 0)
             duration_s = float(row["duration_s"] or 0.0)
+            duration_floor = float(max(0.0, min_duration_seconds))
+            fps_floor = float(max(0.1, min_effective_fps))
+            duration_based_min_frames = int(max(1, round(duration_floor * fps_floor)))
+            required_frames = int(max(1, min(int(max(1, min_yolo_frames)), duration_based_min_frames)))
             if (
-                yolo_ran < int(max(1, min_yolo_frames))
+                yolo_ran < required_frames
                 or raw_total > 0
                 or ext < int(max(1, min_frigate_only_frames))
-                or duration_s < float(max(0.0, min_duration_seconds))
+                or duration_s < duration_floor
             ):
                 return False
         return True
