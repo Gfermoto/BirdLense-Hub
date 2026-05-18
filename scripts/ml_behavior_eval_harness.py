@@ -24,12 +24,50 @@ def deterministic_split(tracklet_id: str, *, holdout_ratio: float = 0.2) -> str:
     return "holdout" if bucket < float(holdout_ratio) else "train"
 
 
+def deterministic_video_split(
+    video_id: int | str,
+    *,
+    val_ratio: float = 0.1,
+    holdout_ratio: float = 0.1,
+) -> str:
+    """Split by video_id (session) to prevent leakage across tracklets."""
+    h = hashlib.sha256(f"video:{video_id}".encode("utf-8")).hexdigest()
+    bucket = int(h[:8], 16) / 0xFFFFFFFF
+    holdout_ratio = float(holdout_ratio)
+    val_ratio = float(val_ratio)
+    if bucket < holdout_ratio:
+        return "holdout"
+    if bucket < holdout_ratio + val_ratio:
+        return "val"
+    return "train"
+
+
 def assign_splits(manifest: dict[str, Any], *, holdout_ratio: float = 0.2) -> dict[str, Any]:
     rows = [r for r in (manifest.get("tracklets") or []) if isinstance(r, dict)]
     for row in rows:
         if str(row.get("split") or "").strip() in {"train", "holdout", "val", "test"}:
             continue
         row["split"] = deterministic_split(str(row.get("tracklet_id") or ""), holdout_ratio=holdout_ratio)
+    manifest["tracklets"] = rows
+    manifest["split_counts"] = dict(Counter(str(r.get("split") or "train") for r in rows))
+    return manifest
+
+
+def assign_splits_by_video(
+    manifest: dict[str, Any],
+    *,
+    val_ratio: float = 0.1,
+    holdout_ratio: float = 0.1,
+) -> dict[str, Any]:
+    rows = [r for r in (manifest.get("tracklets") or []) if isinstance(r, dict)]
+    for row in rows:
+        if str(row.get("split") or "").strip() in {"train", "holdout", "val", "test"}:
+            continue
+        vid = row.get("video_id")
+        if vid is None:
+            row["split"] = deterministic_split(str(row.get("tracklet_id") or ""), holdout_ratio=holdout_ratio)
+        else:
+            row["split"] = deterministic_video_split(vid, val_ratio=val_ratio, holdout_ratio=holdout_ratio)
     manifest["tracklets"] = rows
     manifest["split_counts"] = dict(Counter(str(r.get("split") or "train") for r in rows))
     return manifest

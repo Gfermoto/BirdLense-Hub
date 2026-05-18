@@ -83,7 +83,15 @@ def export_video_openvino(
     }
     desc_path = out_dir / "behavior_openvino_export.json"
     desc_path.write_text(json.dumps(descriptor, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"descriptor": str(desc_path), "xml": str(xml_path), "bin": str(bin_path)}
+    # Stable runtime path for processor config (video_weights_path).
+    stable_export = out_dir / "behavior_video_export.json"
+    stable_export.write_text(json.dumps(export, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {
+        "descriptor": str(desc_path),
+        "xml": str(xml_path),
+        "bin": str(bin_path),
+        "stable_export": str(stable_export),
+    }
 
 
 def main() -> int:
