@@ -62,6 +62,28 @@ def build_manifest(db_path: Path, *, min_samples_per_profile: int = 2) -> dict:
         ORDER BY vs.bird_profile_id, priority, vs.id
         """
     ).fetchall()
+    training_pairs: list[dict] = []
+    if _table_exists(conn, "reid_training_pairs"):
+        training_pairs = [
+            {
+                "id": int(row["id"]),
+                "anchor_profile_id": row["anchor_profile_id"],
+                "candidate_profile_id": row["candidate_profile_id"],
+                "anchor_video_species_id": row["anchor_video_species_id"],
+                "similarity": row["similarity"],
+                "label": row["label"],
+                "source": row["source"],
+            }
+            for row in cur.execute(
+                """
+                SELECT id, anchor_profile_id, candidate_profile_id, anchor_video_species_id,
+                       similarity, label, source
+                FROM reid_training_pairs
+                ORDER BY id DESC
+                LIMIT 5000
+                """
+            ).fetchall()
+        ]
     conn.close()
 
     grouped: dict[int, list[ReIdSample]] = {}
@@ -134,9 +156,19 @@ def build_manifest(db_path: Path, *, min_samples_per_profile: int = 2) -> dict:
         "source": str(db_path),
         "profiles_count": len(identities),
         "triplets_count": len(triplets),
+        "training_pairs_count": len(training_pairs),
         "identities": identities,
         "triplets": triplets,
+        "training_pairs": training_pairs,
     }
+
+
+def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
+        (name,),
+    ).fetchone()
+    return row is not None
 
 
 def main() -> int:

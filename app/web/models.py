@@ -103,6 +103,37 @@ class Species(db.Model):
     )
 
 
+class ReidTrainingPair(db.Model):
+    """Operator feedback for ReID triplet mining (auto-link confirm/reject)."""
+
+    __tablename__ = "reid_training_pairs"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    anchor_profile_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("bird_profiles.id", ondelete="SET NULL"), nullable=True
+    )
+    candidate_profile_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("bird_profiles.id", ondelete="SET NULL"), nullable=True
+    )
+    anchor_video_species_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("video_species.id", ondelete="SET NULL"), nullable=True
+    )
+    candidate_video_species_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("video_species.id", ondelete="SET NULL"), nullable=True
+    )
+    similarity: Mapped[float | None] = mapped_column(nullable=True)
+    label: Mapped[str] = mapped_column(String(32), nullable=False)
+    source: Mapped[str] = mapped_column(String(64), nullable=False, default="auto_link_ui", server_default="auto_link_ui")
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_reid_training_pairs_label", "label"),
+        Index("ix_reid_training_pairs_created_at", "created_at"),
+    )
+
+
 class BirdProfile(db.Model):
     """Global bird identity profile for ReID and expert workflow."""
 

@@ -34,9 +34,13 @@ import {
   assignDetectionBirdProfile,
   createBirdProfile,
   fetchBirdDirectory,
+  fetchBirdProfileSuggestLinks,
   fetchBirdProfiles,
+  mergeBirdProfiles,
+  recordBirdProfileLinkFeedback,
   setDetectionSemanticReview,
   updateDetectionSpecies,
+  type BirdProfileLinkCandidate,
 } from '../../api/speciesOverviewDetections';
 import { mergeVideoSpecies, type VideoReidMatchItem } from '../../api/video';
 import { queryKeys } from '../../api/queryKeys';
@@ -121,6 +125,148 @@ interface DetectedSpeciesProps {
   videoId?: string | number;
   reidMatchByDetectionId?: Record<number, VideoReidMatchItem>;
 }
+
+const ProfileSuggestLinksBlock = ({
+  detectionId,
+  speciesId,
+  anchorProfileId,
+  dismissed,
+  onDismiss,
+  onMerged,
+}: {
+  detectionId: number;
+  speciesId: number;
+  anchorProfileId: number | null;
+  dismissed: boolean;
+  onDismiss: () => void;
+  onMerged: (message: string) => void;
+}) => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['bird-profile-suggest-links', detectionId, anchorProfileId],
+    queryFn: () =>
+      fetchBirdProfileSuggestLinks(anchorProfileId, {
+        video_species_id: detectionId,
+        species_id: speciesId,
+        limit: 6,
+      }),
+    enabled: !dismissed,
+    staleTime: 30_000,
+  });
+  const mergeMutation = useMutation({
+    mutationFn: ({
+      targetProfileId,
+      sourceProfileId,
+    }: {
+      targetProfileId: number;
+      sourceProfileId: number;
+    }) => mergeBirdProfiles(targetProfileId, sourceProfileId),
+    onSuccess: (payload) => {
+      queryClient.invalidateQueries({ queryKey: ['bird-profiles'] });
+      onMerged(
+        t('video.profileMergeSuccess', {
+          name: payload.display_name,
+          count: payload.merged_detections,
+        }),
+      );
+    },
+  });
+  const feedbackMutation = useMutation({
+    mutationFn: recordBirdProfileLinkFeedback,
+  });
+
+  if (dismissed || isLoading || !data?.available || !data.candidates?.length) {
+    return null;
+  }
+
+  const handleReject = async (candidate: BirdProfileLinkCandidate) => {
+    await feedbackMutation.mutateAsync({
+      action: 'reject',
+      candidate_profile_id: candidate.profile_id,
+      anchor_profile_id: anchorProfileId,
+      video_species_id: detectionId,
+      similarity: candidate.similarity,
+    });
+    onDismiss();
+  };
+
+  const handleMerge = async (candidate: BirdProfileLinkCandidate) => {
+    const targetId = anchorProfileId ?? candidate.profile_id;
+    const sourceId =
+      anchorProfileId && anchorProfileId !== candidate.profile_id
+        ? candidate.profile_id
+        : null;
+    if (!sourceId || targetId === sourceId) {
+      await assignDetectionBirdProfile(detectionId, candidate.profile_id);
+      await feedbackMutation.mutateAsync({
+        action: 'confirm',
+        candidate_profile_id: candidate.profile_id,
+        anchor_profile_id: anchorProfileId,
+        video_species_id: detectionId,
+        similarity: candidate.similarity,
+      });
+      onMerged(t('video.profileLinkedInVideo', { count: 1 }));
+      return;
+    }
+    await mergeMutation.mutateAsync({
+      targetProfileId: targetId,
+      sourceProfileId: sourceId,
+    });
+    await feedbackMutation.mutateAsync({
+      action: 'confirm',
+      candidate_profile_id: candidate.profile_id,
+      anchor_profile_id: anchorProfileId,
+      video_species_id: detectionId,
+      similarity: candidate.similarity,
+    });
+  };
+
+  return (
+    <Alert severity="info" variant="outlined" sx={{ mt: 0.5 }}>
+      <Typography variant="caption" display="block" fontWeight={700}>
+        {t('video.profileMaybeSameBird')}
+      </Typography>
+      <Stack spacing={0.75} sx={{ mt: 0.75 }}>
+        {data.candidates.map((candidate) => (
+          <Box
+            key={`suggest-${candidate.profile_id}`}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Typography variant="caption">
+              {candidate.display_name} • {candidate.similarity_percent}%
+              {candidate.tier === 'auto' ? ` • ${t('video.profileAutoLinkTier')}` : ''}
+            </Typography>
+            <Stack direction="row" spacing={0.5}>
+              <Button
+                size="small"
+                variant="contained"
+                disabled={mergeMutation.isPending || feedbackMutation.isPending}
+                onClick={() => handleMerge(candidate)}
+              >
+                {t('video.profileMergeButton')}
+              </Button>
+              <Button
+                size="small"
+                variant="text"
+                disabled={feedbackMutation.isPending}
+                onClick={() => handleReject(candidate)}
+              >
+                {t('video.profileDismissSuggest')}
+              </Button>
+            </Stack>
+          </Box>
+        ))}
+      </Stack>
+    </Alert>
+  );
+};
 
 export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   species = [],
@@ -228,6 +374,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   const [correctSuccess, setCorrectSuccess] = useState<string | null>(null);
   const [profileDraft, setProfileDraft] = useState<Record<string, string>>({});
   const [profileSelection, setProfileSelection] = useState<Record<string, number | null>>({});
+  const [dismissedSuggestKeys, setDismissedSuggestKeys] = useState<Record<string, boolean>>({});
 
   const handleCorrectGroup = async (group: GroupedSpecies) => {
     if (selectedSpeciesId === '') return;
@@ -718,6 +865,22 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                             />
                           </Stack>
                         ) : null}
+                        <ProfileSuggestLinksBlock
+                          detectionId={bestDet.id!}
+                          speciesId={group.species_id}
+                          anchorProfileId={
+                            profileSelection[key] ?? bestDet.bird_profile_id ?? null
+                          }
+                          dismissed={!!dismissedSuggestKeys[key]}
+                          onDismiss={() =>
+                            setDismissedSuggestKeys((prev) => ({ ...prev, [key]: true }))
+                          }
+                          onMerged={(message) => {
+                            setCorrectSuccess(message);
+                            invalidateLocalSpeciesEditCaches(queryClient, videoId);
+                            queryClient.invalidateQueries({ queryKey: ['bird-profiles'] });
+                          }}
+                        />
                         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                           <Button
                             size="small"
