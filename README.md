@@ -71,7 +71,7 @@ Two components: **detector** (bird or rodent in frame) and **classifier** (bird 
 
 ### Citizen Science
 - **iNaturalist** — one-click export: download crop from video, open inaturalist.org/observations/upload
-- **Unknowns** — low-confidence detections for manual review; date + time-of-day filter (like Timeline)
+- **Expert review queue** — low-confidence and semantic-conflict detections for expert triage from Timeline (`queue=expert`)
 
 ### Integrations
 - **Webhook** — POST on each detection (IFTTT, Zapier)
@@ -82,13 +82,16 @@ Two components: **detector** (bird or rodent in frame) and **classifier** (bird 
 ### SOTA Features & Experiments
 - **ROI Super-Resolution pilot (`#472`)** — optional SR on small crops before classification (`experimental.sr_*`), with synthetic A/B benchmark report in `docs/benchmarks/sr_roi_pilot.md`.
 - **Active Learning hard-case miner** — auto-selects difficult samples (blind score, fallback ratio, borderline confidence) into `/api/ui/labelling/*` queue and `/labelling` UI.
+- **Global Bird Profiles (ReID)** — structured bird identity (`bird_profiles`) linked to detections via `bird_profile_id`; profile linking in Video Details.
+- **Expert semantic workflow** — `flag_semantic_error` from `/labelling` and Video Details routes cases to expert queue; experts finalize semantics in Video Details.
 - **Dataset versioning** — labelling export writes versioned datasets in `app/data/datasets/vN` (YOLO/COCO).
 - **Chaos Engineering suite** — synthetic multi-camera load generator for telemetry, retention, self-heal loop stability (`scripts/chaos_load_generator.py`).
 - **Fine-tuning guide** — end-to-end runbook: [How to run fine-tuning on collected data](./docs/contributor/FINE_TUNING_ACTIVE_LEARNING.md).
 
 ### Quick Start for ML Loop
-- Open `/labelling` and review cases with media preview + `Main/Shadow` predictions.
+- Open `/labelling` and review bbox geometry with media preview (semantics are edited in Video Details).
 - If queue is empty, seed it now: `python3 scripts/seed_labelling_queue.py --db app/data/db/birdlense.db`.
+- Open expert queue: `/timeline?review=1&queue=expert` to process semantic conflicts.
 - Extract tracklets for Behavior v2: `DB=app/data/db/birdlense.db OUT=/tmp/behavior_tracklet_manifest.v1.json make ml-extract-behavior-tracklets`.
 - Train candidate profile: `MANIFEST=/tmp/behavior_tracklet_manifest.v1.json OUT_DIR=/tmp/behavior_v2 make ml-train-behavior-video BACKBONE=x3d`.
 - Full operator flow: [Labelling guide](./docs/user/LABELLING_GUIDE.md).

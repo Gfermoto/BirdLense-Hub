@@ -16,7 +16,7 @@
     "system": "Service",
     "systemHint": "Station health, species catalog, and maintenance tools you rarely need every day.",
     "library": "Data",
-    "labelling": "Data Labelling",
+    "labelling": "Labelling",
     "libraryHint": "On-disk archive, training exports, and storage care. Watch clips under Recordings.",
     "supportProject": "Support",
     "logout": "Log out",
@@ -1256,7 +1256,7 @@
     "title": "Recognition review",
     "intro": "Low-confidence detections: open the clip, then confirm or correct the species.",
     "roleSplitTitle": "Review mode = fast operational triage",
-    "roleSplitHint": "Use this page to quickly triage and open recordings. Validate geometry in Data Labelling; edit semantics (species/nickname/behavior) in Video Details.",
+    "roleSplitHint": "Use this page to quickly triage and open recordings. Validate geometry in Labelling; edit semantics (species/profile/behavior) in Video Details.",
     "openGeometryQueue": "Open geometry queue",
     "viewVideo": "View video",
     "correctSpecies": "Correct species",
@@ -1576,7 +1576,7 @@
     "behaviorConfHint": "Optional manual confidence. Cleared when the label is cleared.",
     "behaviorSaving": "Saving…",
     "behaviorSave": "Save",
-    "behaviorTrainingNotInUi": "Training a new model or building a dataset is not done here — only this clip’s stored label. Settings → Processor → behavior baseline; offline CSV + Makefile on GitHub."
+    "behaviorTrainingNotInUi": "Behavior model is active. Edit only this clip's behavior label here."
   },
   "weather": {
     "title": "Weather",
@@ -2416,7 +2416,7 @@
     }
   },
   "labelling": {
-    "title": "Data Labelling",
+    "title": "Labelling",
     "description": "Review bbox geometry only. Semantics (species/nickname/behavior) is edited in Video Details.",
     "language": "Language",
     "progressLabel": "Reviewed {{done}} of {{total}}",

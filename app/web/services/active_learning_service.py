@@ -430,7 +430,21 @@ def apply_case_feedback(
             if vs is not None:
                 vs.classifier_needs_review = True
                 vs.review_reason = _REASON_SEMANTIC
-        row.reason_code = _REASON_SEMANTIC
+        # Keep unique(video_species_id, reason_code) stable when a semantic case already exists.
+        if row.video_species_id is not None:
+            exists_semantic = (
+                db.session.query(ActiveLearningCase.id)
+                .filter(
+                    ActiveLearningCase.video_species_id == row.video_species_id,
+                    ActiveLearningCase.reason_code == _REASON_SEMANTIC,
+                    ActiveLearningCase.id != row.id,
+                )
+                .first()
+            )
+            if not exists_semantic:
+                row.reason_code = _REASON_SEMANTIC
+        else:
+            row.reason_code = _REASON_SEMANTIC
         row.status = "semantic_review_required"
         history = payload.get("semantic_review_history")
         if not isinstance(history, list):

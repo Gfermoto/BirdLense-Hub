@@ -16,6 +16,7 @@
     "system": "服务",
     "systemHint": "站点状态、物种目录与不常用的维护工具。",
     "library": "数据",
+    "labelling": "标注",
     "libraryHint": "磁盘归档、训练导出与存储维护。日常看录像请用「记录」。",
     "supportProject": "支持",
     "logout": "退出",
@@ -1249,6 +1250,11 @@
     "reviewStatePending": "待审核",
     "reviewReasonLowConfidence": "低置信度",
     "reviewReasonGenericBird": "通用 Bird 标签",
+    "reviewReasonClassifierUncertainty": "分类器不确定",
+    "reviewReasonSemanticConflict": "需要专家复核",
+    "roleSplitTitle": "复核模式 = 快速运营分流",
+    "roleSplitHint": "几何框修正在「标注」页面；语义冲突进入专家队列。",
+    "openGeometryQueue": "打开几何标注队列",
     "confirmCorrect": "正确的",
     "confirmCorrectHelp": "物种正确 - 从列表中删除",
     "confirmBlockedPendingApply": "选择不同的物种 - 单击“应用”保存它，或清除下拉列表以确认当前标签。",
@@ -1321,6 +1327,7 @@
     "detectionProviderFrigate": "护卫舰",
     "detectionProviderBirdnetMqtt": "鸟网",
     "detectionSource": "来源",
+    "behavior": "行为",
     "timelineHint": "彩色条=物种。将鼠标悬停即可查看来源：YOLO、Frigate 或 BirdNET。",
     "noTrackFramesHint": "此剪辑上没有 YOLO bbox（覆盖层隐藏）。默认值被收紧，以便鸟类保留在记录中；使用管理→“为此剪辑重建轨道”或设置中较低的processor.min_track_duration / min_confidence_to_process。",
     "regenerateTracksThisVideo": "为此剪辑重建轨道",
@@ -1360,12 +1367,13 @@
     "neighborsDayHint": "当地日历日；可以继续到午夜之后。上一个/下一个步骤浏览该日历日的所有剪辑。",
     "localDayLabel": "当地时间",
     "serviceToolsTitle": "此记录的服务工具",
-    "nicknameField": "鸟类昵称",
-    "nicknameFieldPlaceholder": "例如：小灰",
-    "nicknameLabel": "昵称",
-    "nicknameSaveButton": "保存昵称",
-    "nicknameCancelButton": "取消",
-    "nicknameSaved": "昵称已保存",
+    "profileField": "鸟类档案",
+    "profileFieldPlaceholder": "搜索档案或输入新名称",
+    "profileLinkButton": "关联档案",
+    "profileCreateAndLinkButton": "创建并关联",
+    "profileLinkedInVideo": "已在本视频中关联档案",
+    "semanticReviewButton": "标记语义问题",
+    "semanticReviewQueued": "案例已加入专家队列",
     "possibleSameBird": "可能是同一只鸟",
     "reidCrossCameraHint": "跨相机/目录更严格",
     "similarityPercent": "相似度：{{value}}%",
@@ -1529,11 +1537,26 @@
     "behaviorDialogTitle": "行为标签",
     "behaviorLabelField": "标签",
     "behaviorLabelHint": "小写 id（如 feeding、flying）。留空则清除已存行为。",
+    "behaviorTagNone": "无标签",
+    "behaviorTags": {
+      "feeding": "进食",
+      "food_handling": "处理食物",
+      "drinking": "饮水",
+      "bathing": "洗澡",
+      "self_maintenance": "自我整理",
+      "resting": "休息",
+      "vigilance": "警戒",
+      "agonistic": "对抗/驱离",
+      "alarm_or_flee": "警报/逃离",
+      "transport_food": "搬运食物",
+      "parent_offspring": "亲鸟与幼鸟",
+      "pair_or_courtship": "配对/求偶"
+    },
     "behaviorConfField": "置信度（0–1）",
     "behaviorConfHint": "可选手动置信度。清除标签时一并清除。",
     "behaviorSaving": "保存中…",
     "behaviorSave": "保存",
-    "behaviorTrainingNotInUi": "此处不能训练模型或构建数据集——仅本剪辑的标签。行为 baseline：设置 → 处理器；训练见 GitHub README（CSV + Makefile）。"
+    "behaviorTrainingNotInUi": "行为模型已启用。这里仅编辑当前片段的行为标签。"
   },
   "weather": {
     "title": "天气",
@@ -2317,6 +2340,117 @@
           "content": "频谱图可视化显示：\n- 鸟鸣声和歌曲作为颜色图案\n- 垂直轴上的频率范围\n- 水平轴上的时间进展\n- 可视化上标记的已识别物种\n帮助验证基于音频的物种识别"
         }
       ]
+    }
+  },
+  "labelling": {
+    "title": "标注",
+    "description": "此页仅复核边框几何。语义（物种/档案/行为）请在视频详情中编辑。",
+    "language": "语言",
+    "progressLabel": "已复核 {{done}} / {{total}}",
+    "caseTitle": "案例 #{{id}}",
+    "minerResult": "挖掘结果：新建 {{created}}，跳过 {{skipped}}",
+    "exportDone": "导出完成：{{format}} {{version}}（{{path}}）",
+    "status": {
+      "pending": "待处理",
+      "approved": "已完成",
+      "rejected": "已拒绝",
+      "semantic_review_required": "需要专家复核",
+      "preApproved": "预通过"
+    },
+    "filters": {
+      "status": "状态",
+      "workflow": "流程",
+      "camera": "摄像头",
+      "all": "全部",
+      "onlyNew": "仅新项",
+      "onlyError": "仅检测错误"
+    },
+    "view": {
+      "snapshot": "快照",
+      "video": "视频"
+    },
+    "meta": {
+      "time": "时间",
+      "camera": "摄像头",
+      "reason": "原因",
+      "species": "物种",
+      "nickname": "档案",
+      "behavior": "行为"
+    },
+    "predictions": {
+      "main": "主模型",
+      "shadow": "影子模型"
+    },
+    "fields": {
+      "behaviorTag": "行为",
+      "speciesTag": "物种",
+      "empty": "（空）",
+      "current": "（当前）"
+    },
+    "actions": {
+      "runMiner": "运行挖掘",
+      "confirm": "确认",
+      "reject": "拒绝",
+      "skip": "跳过",
+      "prev": "上一条",
+      "next": "下一条",
+      "tagSpecies": "标记物种",
+      "approveAll": "全部通过",
+      "approveAndNext": "通过并下一条",
+      "rejectAndNext": "拒绝并下一条",
+      "flagSemanticError": "标记语义错误"
+    },
+    "export": {
+      "title": "导出",
+      "approved": "导出已通过数据"
+    },
+    "states": {
+      "loading": "加载中...",
+      "error": "队列不可用。请使用操作员/管理员账号登录。",
+      "empty": "暂无数据。请运行挖掘器或先填充队列。",
+      "noFiltered": "当前筛选下没有案例。"
+    },
+    "media": {
+      "noMedia": "此案例没有可用媒体。",
+      "noOverlayData": "没有可绘制的边框数据。",
+      "unavailable": "此案例媒体不可用，请点击“跳过”。"
+    },
+    "box": {
+      "main": "主框",
+      "shadow": "影子框",
+      "groundTruth": "已确认",
+      "rejected": "已拒绝",
+      "detection": "检测框"
+    },
+    "shortcuts": {
+      "confirm": "Enter / Space",
+      "reject": "Backspace",
+      "quickSpecies": "快速选择物种（1/2/3）",
+      "behavior": "切换行为（B）"
+    },
+    "labels": {
+      "species": "物种",
+      "behavior": "行为",
+      "speciesUnknown": "未知物种"
+    },
+    "panels": {
+      "boxActions": "当前目标操作",
+      "sessionActions": "几何复核"
+    },
+    "hints": {
+      "trainingPurpose": "这里仅复核边框几何；物种、档案、行为请在视频详情中修改。"
+    },
+    "reasons": {
+      "blind": "YOLO 盲区",
+      "fallback": "Frigate 回退",
+      "lowConfidence": "低置信度"
+    },
+    "help": {
+      "title": "如何使用标注",
+      "step1": "先看框：鸟是否在框内，类别是否正确。",
+      "step2": "正确点“确认”；框错误点“拒绝”。",
+      "step3": "用左右方向键在案例间切换。",
+      "gotIt": "知道了"
     }
   },
   "speciesDirectory": {
