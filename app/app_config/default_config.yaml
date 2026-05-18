@@ -481,6 +481,8 @@ detection:
   # Frigate — fallback/подстраховка, не primary: по умолчанию не создаём финальную детекцию
   # только по MQTT без YOLO-трека.
   frigate_standalone_when_no_yolo: true
+  # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).
+  frigate_standalone_require_blind_yolo: true
   # При включении standalone мониторьте баланс провайдеров: fusion_provider_yolo должен оставаться доминирующим.
   # Если ровно один accepted_generic «Bird» от YOLO — НЕ подменять на Frigate standalone по умолчанию.
   # Иначе Frigate начинает доминировать как primary provider даже при наличии визуального YOLO-трека.

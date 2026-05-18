@@ -1523,3 +1523,88 @@ def test_skip_frigate_ev_for_standalone_respects_config():
     assert skip_frigate_ev_for_standalone({'species': 'human'}, cfg)
     assert not skip_frigate_ev_for_standalone({'label': 'crow'}, cfg)
     assert not skip_frigate_ev_for_standalone({'label': 'person'}, DummyConfig({}))
+
+
+def test_frigate_standalone_requires_blind_confirmation_by_default():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=30)
+    cfg = DummyConfig(
+        {
+            "detection.merge_window_seconds": 5,
+            "detection.dedup_window_seconds": 45,
+            "detection.one_per_species": True,
+            "detection.source_priority": ["yolo", "frigate"],
+            "detection.cross_source_confidence_bonus": 0.0,
+            "detection.min_confidence_to_store": 0.05,
+            "detection.frigate_standalone_when_no_yolo": True,
+            "detection.frigate_standalone_when_no_accepted_species": True,
+            "detection.frigate_standalone_require_blind_yolo": True,
+            "detection.frigate_standalone_min_score": 0.4,
+            "detection.frigate_standalone_missing_score_fallback": 0.7,
+            "processor.multi_camera_groups": [],
+        }
+    )
+    mqtt_events = [
+        {
+            "source": "frigate",
+            "species": "Great Tit",
+            "label": "bird",
+            "camera": "BirdBox",
+            "confidence": 0.8,
+            "timestamp": end.isoformat(),
+            "_session_trigger_snapshot": True,
+        }
+    ]
+    out = build_fused_video_detections(
+        [],
+        mqtt_events,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+        yolo_blind_confirmed=False,
+    )
+    assert out == []
+
+
+def test_frigate_standalone_allowed_when_blind_confirmed():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=30)
+    cfg = DummyConfig(
+        {
+            "detection.merge_window_seconds": 5,
+            "detection.dedup_window_seconds": 45,
+            "detection.one_per_species": True,
+            "detection.source_priority": ["yolo", "frigate"],
+            "detection.cross_source_confidence_bonus": 0.0,
+            "detection.min_confidence_to_store": 0.05,
+            "detection.frigate_standalone_when_no_yolo": True,
+            "detection.frigate_standalone_when_no_accepted_species": True,
+            "detection.frigate_standalone_require_blind_yolo": True,
+            "detection.frigate_standalone_min_score": 0.4,
+            "detection.frigate_standalone_missing_score_fallback": 0.7,
+            "processor.multi_camera_groups": [],
+        }
+    )
+    mqtt_events = [
+        {
+            "source": "frigate",
+            "species": "Great Tit",
+            "label": "bird",
+            "camera": "BirdBox",
+            "confidence": 0.8,
+            "timestamp": end.isoformat(),
+            "_session_trigger_snapshot": True,
+        }
+    ]
+    out = build_fused_video_detections(
+        [],
+        mqtt_events,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+        yolo_blind_confirmed=True,
+    )
+    assert len(out) == 1
+    assert out[0]["detection_provider"] == "frigate"
+    assert out[0]["source_reason"] == "blind_yolo"
+    assert out[0]["confidence_level"] == "low"

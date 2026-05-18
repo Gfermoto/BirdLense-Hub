@@ -292,6 +292,8 @@ def _frigate_standalone_prepared_rows(
             "classifier_confidence": None,
             "decision_reason": reason,
             "decision_kind": kind,
+            "source_reason": "blind_yolo",
+            "confidence_level": "low",
             "outcome_bucket": compute_outcome_bucket(
                 accepted=True,
                 visit_eligible=True,
@@ -562,6 +564,7 @@ def build_fused_video_detections(
     app_config,
     fusion_min_confidence_to_store: float | None = None,
     triggered_camera: str | None = None,
+    yolo_blind_confirmed: bool = False,
 ) -> list[dict]:
     """Apply shared production fusion rules to video detections.
 
@@ -600,11 +603,14 @@ def build_fused_video_detections(
     # Safe-by-default: Frigate stays fallback-only unless explicitly enabled in config.
     standalone_on = bool(app_config.get("detection.frigate_standalone_when_no_yolo", False))
     standalone_no_species = bool(app_config.get("detection.frigate_standalone_when_no_accepted_species", False))
+    require_blind = bool(app_config.get("detection.frigate_standalone_require_blind_yolo", False))
     has_accepted_species = _prepared_has_accepted_species(prepared)
+    blind_gate_ok = bool(yolo_blind_confirmed) if require_blind else True
     want_standalone = (
         standalone_on
         and bool(frigate_events)
         and (not prepared or (standalone_no_species and not has_accepted_species))
+        and blind_gate_ok
     )
     if want_standalone:
         prepared_before = len(prepared)

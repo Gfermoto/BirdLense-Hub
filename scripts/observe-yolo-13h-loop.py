@@ -355,8 +355,10 @@ def run_loop(args: argparse.Namespace) -> int:
             f"raw_boxes={snap.get('yolo_raw_boxes_total')} videos={vids}"
         )
 
-        if args.duration_hours * 3600 - (time.time() - started_at.timestamp()) > args.interval_sec:
-            time.sleep(args.interval_sec)
+        remaining = max(0.0, end_ts - time.time())
+        if remaining <= 0:
+            break
+        time.sleep(min(float(args.interval_sec), remaining))
 
     ended_iso = datetime.now(timezone.utc).isoformat()
     full_log = _docker_logs(f"{int(args.duration_hours)}h", container=args.container)

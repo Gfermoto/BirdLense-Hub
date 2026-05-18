@@ -19,6 +19,7 @@ from fps_tracker import FPSTracker
 from processor_support import get_output_path, processor_status
 from processor_runtime_stats import inc_counter, observe_timing, set_gauge
 from recording_finalize import finalize_motion_recording
+from session_state_repository import SessionStateRepository
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,21 @@ class MotionRecordingSession:
         self.data_dir = data_dir
         self.fps_tracker = fps_tracker
         self.file_test_runtime = file_test_runtime
+        self.session_state_repo = SessionStateRepository()
+        self._startup_blind_confirmed = False
+        try:
+            self._startup_blind_confirmed = self.session_state_repo.is_blind_confirmed(
+                camera_id=self.default_camera_id,
+                min_recent_sessions=2,
+            )
+            if self._startup_blind_confirmed:
+                set_gauge("yolo_blind_restored_state", "1")
+                logger.warning(
+                    "recording_session: restored blind-state context for camera=%s",
+                    self.default_camera_id,
+                )
+        except Exception:
+            logger.debug("recording_session: startup state restore failed", exc_info=True)
 
     @property
     def media_source(self) -> Any:
