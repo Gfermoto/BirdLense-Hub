@@ -26,7 +26,7 @@ def _seed(app):
             species_id=sp.id,
             start_time=0.2,
             end_time=3.2,
-            confidence=0.27,
+            confidence=0.97,
             source="video",
             detection_provider="yolo",
             track_id=11,
@@ -59,6 +59,9 @@ def test_labelling_flow(client, app):
     body = rows.get_json()
     assert body["count"] >= 1
     first = body["items"][0]
+    assert "pre_approved" in first
+    assert "suggested_species" in first
+    assert "suggested_behavior" in first
 
     patch = client.patch(f"/api/ui/labelling/cases/{first['id']}", json={"status": "approved"})
     assert patch.status_code == 200
@@ -76,3 +79,17 @@ def test_labelling_flow(client, app):
     )
     assert fb.status_code == 200, fb.get_data(as_text=True)
     assert fb.get_json()["action"] == "confirm_behavior"
+
+    batch = client.post(
+        "/api/ui/labelling/batch-feedback",
+        json={
+            "operations": [
+                {"kind": "feedback", "case_id": first["id"], "action": "tag_species", "species_tag": "Robin"},
+                {"kind": "feedback", "case_id": first["id"], "action": "confirm_behavior", "behavior_tag": "feeding"},
+                {"kind": "status", "case_id": first["id"], "status": "approved"},
+            ]
+        },
+    )
+    assert batch.status_code == 200, batch.get_data(as_text=True)
+    assert batch.get_json()["ok"] is True
+    assert batch.get_json()["count"] == 3

@@ -1,31 +1,54 @@
 # Labelling Guide
 
-## Open `/labelling`
+## Открыть `/labelling`
 
-1. Open Hub UI.
-2. Go to `http://<host>:8085/labelling`.
-3. You should see queue cards with:
-   - media preview (video tracklet),
-   - `Main` and `Shadow` predictions,
-   - actions: `Confirm Behavior`, `Reject Box`, `Tag Species`.
+1. Откройте UI Hub.
+2. Перейдите на `http://<host>:8085/labelling`.
+3. Выберите язык `RU/EN` в верхней панели.
+
+## Новый сценарий (Single-Pass)
+
+1. Открывается кейс с видео/кадром и рамкой детекции.
+2. Цвет рамки показывает статус:
+   - зелёный — подтверждено,
+   - жёлтый — на проверке,
+   - красный — отклонено.
+3. Если всё верно: `Enter` / `Space` (`Approve and next`).
+4. Если ошибка: `Backspace` (`Reject and next`).
+5. Для правки выбранного объекта:
+   - кликните по рамке,
+   - выберите `Species` и `Behavior` в контекстной панели,
+   - нажмите `Approve all`.
+
+## Горячие клавиши
+
+- `Enter` / `Space` — подтвердить и перейти к следующему кейсу.
+- `Backspace` — отклонить и перейти к следующему кейсу.
+- `ArrowLeft` / `ArrowRight` — предыдущий / следующий кейс.
+- `1` / `2` / `3` — быстрый выбор вида из топ-3 кандидатов.
+- `B` — переключение поведения.
+
+## Фильтры
+
+- `Status`: все / на проверке / готово / ошибка.
+- `Workflow`: только новые, только ошибки детекции.
+- `Camera`: фильтр по камере.
 
 ## If Queue Is Empty
-
-Run one of:
 
 ```bash
 # automatic miner
 curl -X POST "http://<host>:8085/api/ui/labelling/cases/mine" -H "Content-Type: application/json" --cookie "<session_cookie>"
 ```
 
-or seed from existing DB:
+или заполнение из текущей БД:
 
 ```bash
 cd /path/to/BirdLense
 python3 scripts/seed_labelling_queue.py --db app/data/db/birdlense.db
 ```
 
-On production host:
+на production:
 
 ```bash
 cd /root/BirdLense
@@ -34,14 +57,6 @@ python3 scripts/seed_labelling_queue.py --db app/data/db/birdlense.db --max-vide
 
 ## Main vs Shadow
 
-- `Main` — production decision used by current pipeline (`engine: meta` by default).
-- `Shadow` — background Behavior v2 candidate. Logged for comparison, does not affect production decisions while shadow mode is active.
-- Goal: collect operator feedback and compare `Main` vs `Shadow` before rollout switch.
-
-## Recommended Operator Flow
-
-1. Watch media preview.
-2. Click `Confirm Behavior` with correct behavior tag.
-3. If bbox is wrong, click `Reject Box`.
-4. If species is wrong, apply `Tag Species`.
-5. Export approved data from `/labelling` when enough reviewed cases accumulated.
+- `Main` — текущее прод-решение.
+- `Shadow` — фоновый кандидат Behavior v2 (без влияния на прод-логику).
+- Цель: сверять прогнозы и собирать чистую обратную связь оператора.

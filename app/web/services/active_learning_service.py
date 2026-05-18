@@ -17,6 +17,7 @@ _REASON_FALLBACK = "fallback_ratio_high"
 _REASON_LOWCONF = "confidence_borderline"
 _ALLOWED_STATUS = {"pending", "approved", "rejected"}
 _ALLOWED_FEEDBACK_ACTION = {"confirm_behavior", "reject_box", "tag_species"}
+_ALLOWED_BATCH_OP = {"feedback", "status"}
 
 
 def _parse_payload(raw: str | None) -> dict[str, Any]:
@@ -281,6 +282,16 @@ def list_cases(*, status: str | None = None, limit: int = 100) -> dict[str, Any]
         payload = _parse_payload(case.payload_json)
         track_frames = _extract_track_frames(vs, payload)
         bbox = track_frames[0].get('bbox') if track_frames else None
+        pre_approved = False
+        if case.status == "pending":
+            conf = float(case.confidence or 0.0)
+            beh_conf = float(getattr(video, "behavior_confidence", 0.0) or 0.0) if video else 0.0
+            pre_approved = conf >= 0.95 or beh_conf >= 0.95
+        suggested_species = species.name if species else None
+        suggested_behavior = (
+            (getattr(video, "behavior_label", None) if video else None)
+            or (getattr(video, "behavior_shadow_label", None) if video else None)
+        )
         items.append(
             {
                 "id": int(case.id),
@@ -301,6 +312,9 @@ def list_cases(*, status: str | None = None, limit: int = 100) -> dict[str, Any]
                 "payload": payload,
                 "bbox": bbox,
                 "track_frames": track_frames,
+                "pre_approved": pre_approved,
+                "suggested_species": suggested_species,
+                "suggested_behavior": suggested_behavior,
                 "behavior_label": getattr(video, "behavior_label", None) if video else None,
                 "behavior_confidence": getattr(video, "behavior_confidence", None) if video else None,
                 "behavior_shadow_label": getattr(video, "behavior_shadow_label", None) if video else None,
@@ -310,7 +324,7 @@ def list_cases(*, status: str | None = None, limit: int = 100) -> dict[str, Any]
     return {"items": items, "count": len(items)}
 
 
-def patch_case(*, case_id: int, status: str, reason_note: str | None = None) -> dict[str, Any]:
+def patch_case(*, case_id: int, status: str, reason_note: str | None = None, commit: bool = True) -> dict[str, Any]:
     norm_status = str(status or "").strip().lower()
     if norm_status not in _ALLOWED_STATUS:
         raise ValueError("status must be pending|approved|rejected")
@@ -323,7 +337,8 @@ def patch_case(*, case_id: int, status: str, reason_note: str | None = None) -> 
     if reason_note:
         payload["review_note"] = str(reason_note).strip()[:500]
     row.payload_json = json.dumps(payload, ensure_ascii=False)
-    db.session.commit()
+    if commit:
+        db.session.commit()
     return {"id": int(row.id), "status": row.status}
 
 
@@ -333,6 +348,7 @@ def apply_case_feedback(
     action: str,
     behavior_tag: str | None = None,
     species_tag: str | None = None,
+    commit: bool = True,
 ) -> dict[str, Any]:
     action_norm = str(action or "").strip().lower()
     if action_norm not in _ALLOWED_FEEDBACK_ACTION:
@@ -379,8 +395,43 @@ def apply_case_feedback(
 
     row.updated_at = datetime.now(timezone.utc)
     row.payload_json = json.dumps(payload, ensure_ascii=False)
-    db.session.commit()
+    if commit:
+        db.session.commit()
     return {"id": int(row.id), "status": row.status, "action": action_norm}
+
+
+def apply_batch_feedback(*, operations: list[dict[str, Any]]) -> dict[str, Any]:
+    if not isinstance(operations, list) or not operations:
+        raise ValueError("operations must be a non-empty list")
+    processed: list[dict[str, Any]] = []
+    for op in operations:
+        if not isinstance(op, dict):
+            raise ValueError("invalid operation payload")
+        kind = str(op.get("kind") or "").strip().lower()
+        if kind not in _ALLOWED_BATCH_OP:
+            raise ValueError("operation kind must be feedback|status")
+        case_id = int(op.get("case_id"))
+        if kind == "feedback":
+            processed.append(
+                apply_case_feedback(
+                    case_id=case_id,
+                    action=str(op.get("action") or ""),
+                    behavior_tag=op.get("behavior_tag"),
+                    species_tag=op.get("species_tag"),
+                    commit=False,
+                )
+            )
+        else:
+            processed.append(
+                patch_case(
+                    case_id=case_id,
+                    status=str(op.get("status") or ""),
+                    reason_note=op.get("note"),
+                    commit=False,
+                )
+            )
+    db.session.commit()
+    return {"ok": True, "count": len(processed), "processed": processed}
 
 
 def export_cases(*, fmt: str = "yolo", status: str = "approved", version: str | None = None) -> dict[str, Any]:

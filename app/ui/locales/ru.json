@@ -2408,7 +2408,8 @@
     "status": {
       "pending": "На проверке",
       "approved": "Готово",
-      "rejected": "Ошибка"
+      "rejected": "Ошибка",
+      "preApproved": "Предодобрено"
     },
     "filters": {
       "status": "Статус",
@@ -2444,7 +2445,10 @@
       "skip": "Пропустить",
       "prev": "Предыдущий",
       "next": "Следующий",
-      "tagSpecies": "Отметить вид"
+      "tagSpecies": "Отметить вид",
+      "approveAll": "Подтвердить всё",
+      "approveAndNext": "Подтвердить и далее",
+      "rejectAndNext": "Отклонить и далее"
     },
     "export": {
       "title": "Экспорт",
@@ -2469,7 +2473,23 @@
     },
     "shortcuts": {
       "confirm": "Enter / Space",
-      "reject": "Esc / Backspace"
+      "reject": "Backspace",
+      "quickSpecies": "Быстрый выбор вида (1/2/3)",
+      "behavior": "Переключить поведение (B)"
+    },
+    "labels": {
+      "species": "Вид",
+      "behavior": "Поведение",
+      "speciesUnknown": "Неопознанный"
+    },
+    "panels": {
+      "boxActions": "Действия для выбранного объекта",
+      "sessionActions": "Действия для кейса"
+    },
+    "reasons": {
+      "blind": "Слепота YOLO",
+      "fallback": "Frigate fallback",
+      "lowConfidence": "Низкая уверенность"
     },
     "help": {
       "title": "Как работать с разметкой",
