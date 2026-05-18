@@ -126,6 +126,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   const { t } = useTranslation();
   const safeSpecies = species ?? [];
   const { canEdit } = useProtectedArea();
+  const quickCorrectionOnly = true;
   const queryClient = useQueryClient();
 
   const { data: speciesList = [] } = useQuery({
@@ -267,7 +268,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
         <Typography variant="h6" gutterBottom>
           {t('video.speciesInVideo')}
         </Typography>
-        {groupedSpecies.length >= 2 && videoId && canEdit && (
+        {groupedSpecies.length >= 2 && videoId && canEdit && !quickCorrectionOnly && (
           <Box
             sx={{
               mb: 2,
@@ -489,7 +490,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                     >
                       {t('video.learnMore')}
                     </Button>
-                    {(() => {
+                    {!quickCorrectionOnly && (() => {
                       const bestDet = group.detections
                         .filter((d) => d.source === 'video' && d.id)
                         .sort(
@@ -600,7 +601,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                       </Stack>
                     </Stack>
                   )}
-                  {(() => {
+                  {!quickCorrectionOnly && (() => {
                     const bestDet = group.detections
                       .filter((d) => d.source === 'video' && d.id)
                       .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];

@@ -356,7 +356,7 @@ export function Navigation() {
                   onClick={(e) => handleProtectedNav('/labelling', e, 'contributor')}
                   selected={currentPath === '/labelling'}
                 >
-                  Labelling
+                  {t('nav.labelling')}
                 </MenuItem>
               ) : null}
               {showLogout ? <Divider key="mobile-menu-divider-logout" /> : null}
@@ -638,7 +638,7 @@ export function Navigation() {
                 onClick={handleSettingsMenuClose}
                 selected={currentPath === '/labelling'}
               >
-                Labelling
+                {t('nav.labelling')}
               </MenuItem>
             ) : null}
             {showLogout ? <Divider key="settings-menu-divider-logout" /> : null}

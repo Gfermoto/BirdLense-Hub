@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { PageHeader } from '../../components/PageHeader';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
+import { AnnotationViewer } from '../../components/AnnotationViewer';
 import {
   useExportLabellingCasesMutation,
   useLabellingBatchFeedbackMutation,
@@ -57,13 +58,6 @@ function reasonHuman(reason: string, t: (k: string) => string) {
   return reason;
 }
 
-function getFrame(item: LabellingCase, at: number | null) {
-  const frames = (item.track_frames || []).filter((x) => Array.isArray(x.bbox) && x.bbox.length === 4);
-  if (frames.length === 0) return item.bbox ? { bbox: item.bbox, t: null } : null;
-  if (at == null) return frames[0];
-  return [...frames].sort((a, b) => Math.abs((a.t ?? 0) - at) - Math.abs((b.t ?? 0) - at))[0];
-}
-
 function speciesCandidates(item: LabellingCase): string[] {
   const payload = item.payload || {};
   const arr = Array.isArray(payload['species_candidates']) ? payload['species_candidates'] : [];
@@ -83,25 +77,6 @@ const MediaCanvas: React.FC<{
 }> = ({ item, viewMode, selected, onSelect }) => {
   const { t } = useTranslation();
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
-  const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
-  const [hovered, setHovered] = React.useState(false);
-  const frameRef = React.useRef<{ bbox: [number, number, number, number] } | null>(null);
-
-  React.useEffect(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
-    const syncSize = () => {
-      const rect = container.getBoundingClientRect();
-      canvas.width = Math.max(1, Math.floor(rect.width));
-      canvas.height = Math.max(1, Math.floor(rect.height));
-    };
-    syncSize();
-    const ro = new ResizeObserver(syncSize);
-    ro.observe(container);
-    return () => ro.disconnect();
-  }, []);
 
   React.useEffect(() => {
     const video = videoRef.current;
@@ -116,72 +91,13 @@ const MediaCanvas: React.FC<{
     return () => video.removeEventListener('loadedmetadata', seek);
   }, [item.track_frames, viewMode]);
 
-  React.useEffect(() => {
-    const draw = () => {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      const ctx = canvas?.getContext('2d');
-      if (!canvas || !video || !ctx) return;
-      const at = viewMode === 'video' ? video.currentTime : item.track_frames?.[0]?.t ?? null;
-      const frame = getFrame(item, at);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (!frame || !Array.isArray(frame.bbox)) {
-        frameRef.current = null;
-        requestAnimationFrame(draw);
-        return;
-      }
-      const [x, y, w, h] = frame.bbox;
-      const bx = x * canvas.width;
-      const by = y * canvas.height;
-      const bw = w * canvas.width;
-      const bh = h * canvas.height;
-      const color = item.status === 'approved' ? '#22c55e' : item.status === 'rejected' ? '#ef4444' : '#eab308';
-      frameRef.current = { bbox: frame.bbox };
-      ctx.save();
-      ctx.lineWidth = selected ? 4 : 2;
-      ctx.strokeStyle = color;
-      ctx.strokeRect(bx, by, bw, bh);
-      const label = `${item.species_name || t('labelling.labels.speciesUnknown')} (${Math.round((item.confidence || 0) * 100)}%)`;
-      const behavior = item.behavior_label || item.suggested_behavior || '-';
-      const txt = `${label} • ${t('labelling.labels.behavior')}: ${behavior}`;
-      ctx.font = '12px sans-serif';
-      const tw = Math.ceil(ctx.measureText(txt).width + 10);
-      ctx.fillStyle = color;
-      ctx.fillRect(bx, Math.max(0, by - 18), tw, 16);
-      ctx.fillStyle = '#111';
-      ctx.fillText(txt, bx + 5, Math.max(12, by - 6));
-      if (hovered || selected) {
-        ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = '#fff';
-        ctx.strokeRect(bx - 2, by - 2, bw + 4, bh + 4);
-      }
-      ctx.restore();
-      requestAnimationFrame(draw);
-    };
-    const raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
-  }, [hovered, item, selected, t, viewMode]);
-
-  const onPointer = (ev: React.MouseEvent<HTMLCanvasElement>) => {
-    const frame = frameRef.current;
-    const canvas = canvasRef.current;
-    if (!frame || !canvas) {
-      setHovered(false);
-      return;
-    }
-    const rect = canvas.getBoundingClientRect();
-    const px = ev.clientX - rect.left;
-    const py = ev.clientY - rect.top;
-    const [x, y, w, h] = frame.bbox;
-    const hit = px >= x * canvas.width && px <= (x + w) * canvas.width && py >= y * canvas.height && py <= (y + h) * canvas.height;
-    setHovered(hit);
-  };
+  const [currentTime, setCurrentTime] = React.useState<number | null>(null);
 
   if (!item.video_stream_url) return <Alert severity="warning">{t('labelling.media.noMedia')}</Alert>;
   if (!item.bbox && (!item.track_frames || item.track_frames.length === 0)) return <Alert severity="warning">{t('labelling.media.noOverlayData')}</Alert>;
 
   return (
-    <Box ref={containerRef} sx={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', bgcolor: '#000' }}>
+    <Box sx={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', bgcolor: '#000' }}>
       <Box
         component="video"
         ref={videoRef}
@@ -191,14 +107,28 @@ const MediaCanvas: React.FC<{
         preload="metadata"
         sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
         src={item.video_stream_url}
+        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
       />
-      <Box
-        component="canvas"
-        ref={canvasRef}
-        sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: hovered ? 'pointer' : 'default' }}
-        onMouseMove={onPointer}
-        onMouseLeave={() => setHovered(false)}
-        onClick={() => onSelect(!selected)}
+      <AnnotationViewer
+        tracks={[
+          {
+            id: `case-${item.id}`,
+            label: `${item.species_name || t('labelling.labels.speciesUnknown')} (${Math.round((item.confidence || 0) * 100)}%) • ${t('labelling.labels.behavior')}: ${item.behavior_label || item.suggested_behavior || '-'}`,
+            color: item.status === 'approved' ? '#22c55e' : item.status === 'rejected' ? '#ef4444' : '#eab308',
+            frames: (() => {
+              const rows = (item.track_frames || [])
+                .filter((x) => Array.isArray(x.bbox) && x.bbox.length === 4)
+                .map((x) => ({ t: x.t, bbox: x.bbox }));
+              if (rows.length > 0) return rows;
+              if (item.bbox && item.bbox.length === 4) return [{ t: null, bbox: item.bbox }];
+              return [];
+            })(),
+          },
+        ]}
+        currentTime={viewMode === 'video' ? currentTime : item.track_frames?.[0]?.t ?? null}
+        selectedTrackId={selected ? `case-${item.id}` : null}
+        interactive
+        onSelectTrack={(id) => onSelect(Boolean(id))}
       />
     </Box>
   );
@@ -318,6 +248,7 @@ export const LabellingPage: React.FC = () => {
     <ProtectedRoute title={t('labelling.title')} requireAdmin={false}>
       <Stack spacing={2}>
         <PageHeader title={t('labelling.title')} description={t('labelling.description')} titleVariant="h4" />
+        <Alert severity="info">{t('labelling.hints.trainingPurpose')}</Alert>
         <Card>
           <CardContent>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ md: 'center' }}>

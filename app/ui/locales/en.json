@@ -16,6 +16,7 @@
     "system": "Service",
     "systemHint": "Station health, species catalog, and maintenance tools you rarely need every day.",
     "library": "Data",
+    "labelling": "Data Labelling",
     "libraryHint": "On-disk archive, training exports, and storage care. Watch clips under Recordings.",
     "supportProject": "Support",
     "logout": "Log out",
@@ -2475,6 +2476,9 @@
     "panels": {
       "boxActions": "Actions for selected object",
       "sessionActions": "Case actions"
+    },
+    "hints": {
+      "trainingPurpose": "Use this workspace to confirm and correct data for neural model training."
     },
     "reasons": {
       "blind": "YOLO blindness",

@@ -194,6 +194,7 @@ export const VisitCard = memo(function VisitCard({
 }: VisitCardProps) {
   const { t } = useTranslation();
   const { canEdit } = useProtectedArea();
+  const quickCorrectionOnly = true;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
@@ -278,7 +279,7 @@ export const VisitCard = memo(function VisitCard({
                     {behaviorText ? `${t('video.behavior')}: ${behaviorText}` : ''}
                   </Typography>
                 )}
-                {firstVideoDetectionId && canEdit && (
+                {firstVideoDetectionId && canEdit && !quickCorrectionOnly && (
                   <Box mt={0.5}>
                     {!editingNickname ? (
                       <Button
