@@ -90,6 +90,18 @@ def _next_dataset_version(base_dir: Path) -> str:
     return f"v{n}"
 
 
+def _video_file_exists(video_path: str | None) -> bool:
+    raw = str(video_path or "").strip()
+    if not raw:
+        return False
+    p = Path(raw)
+    if p.is_absolute():
+        return p.exists()
+    base = Path(data_dir()).resolve()
+    candidate = (base.parent / raw).resolve()
+    return candidate.exists()
+
+
 def _insert_case(
     *,
     video_id: int | None,
@@ -320,8 +332,10 @@ def list_cases(*, status: str | None = None, limit: int = 100, with_media_only: 
             "behavior_shadow_confidence": getattr(video, "behavior_shadow_confidence", None) if video else None,
         }
         if with_media_only:
-            has_media = bool(item["video_stream_url"]) and (
-                bool(item["bbox"]) or bool(item["track_frames"])
+            has_media = (
+                bool(item["video_stream_url"])
+                and bool(item["track_frames"])
+                and _video_file_exists(item["video_path"])
             )
             if not has_media:
                 continue

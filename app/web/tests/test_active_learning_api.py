@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from models import SessionRuntimeMetrics, Species, Video, VideoSpecies, db
 
 
 def _seed(app):
     with app.app_context():
+        Path("/tmp/a.mp4").write_bytes(b"test")
         sp = Species(name="Robin", active=True)
         start = datetime.now(timezone.utc) - timedelta(hours=1)
         video = Video(
