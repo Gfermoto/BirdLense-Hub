@@ -497,6 +497,51 @@ ml-build-behavior-train-report:
 		--out "$${OUT}" \
 		$${ARGS:-}
 
+# Build tracklet manifest from Hub DB for Behavior v2 (#456).
+# Example:
+# DB=app/data/db/birdlense.db OUT=/tmp/behavior_tracklet_manifest.v1.json make ml-extract-behavior-tracklets
+ml-extract-behavior-tracklets:
+	@test -n "$${DB:-}" || (echo "Set DB=path/to/birdlense.db" >&2; exit 1)
+	@test -n "$${OUT:-}" || (echo "Set OUT=path/to/behavior_tracklet_manifest.v1.json" >&2; exit 1)
+	@python3 scripts/ml_behavior_extract_tracklets.py \
+		--db "$${DB}" \
+		--out "$${OUT}" \
+		$$(test -n "$${MIN_FRAMES:-}" && printf -- '--min-frames "%s" ' "$${MIN_FRAMES}") \
+		$$(test -n "$${SPLIT:-}" && printf -- '--split "%s" ' "$${SPLIT}") \
+		$$(test -n "$${DOMAIN_TAG:-}" && printf -- '--domain-tag "%s" ' "$${DOMAIN_TAG}") \
+		$${ARGS:-}
+
+# Import WetlandBirds annotations into behavior_tracklet_manifest@v1 (#457).
+ml-import-wetlandbirds:
+	@test -n "$${ANNOTATIONS_ROOT:-}" || (echo "Set ANNOTATIONS_ROOT=path/to/wetlandbirds/csv" >&2; exit 1)
+	@test -n "$${OUT:-}" || (echo "Set OUT=path/to/wetland_tracklet_manifest.v1.json" >&2; exit 1)
+	@python3 scripts/ml_behavior_import_wetlandbirds.py \
+		--annotations-root "$${ANNOTATIONS_ROOT}" \
+		--out "$${OUT}" \
+		$$(test -n "$${SPLIT:-}" && printf -- '--split "%s" ' "$${SPLIT}") \
+		$$(test -n "$${DOMAIN_TAG:-}" && printf -- '--domain-tag "%s" ' "$${DOMAIN_TAG}") \
+		$${ARGS:-}
+
+# Train Behavior v2 candidate profile (tsm|x3d|slowfast) and emit report/export (#458).
+ml-train-behavior-video:
+	@test -n "$${MANIFEST:-}" || (echo "Set MANIFEST=path/to/behavior_tracklet_manifest.v1.json" >&2; exit 1)
+	@test -n "$${OUT_DIR:-}" || (echo "Set OUT_DIR=path/to/artifacts" >&2; exit 1)
+	@python3 scripts/ml_behavior_train_video.py \
+		--manifest "$${MANIFEST}" \
+		--backbone "$${BACKBONE:-x3d}" \
+		--out-dir "$${OUT_DIR}" \
+		$${ARGS:-}
+
+# Create OpenVINO export descriptor for Behavior v2 model artifacts (#458).
+ml-export-behavior-video-openvino:
+	@test -n "$${VIDEO_EXPORT:-}" || (echo "Set VIDEO_EXPORT=path/to/behavior_video_export@v1.json" >&2; exit 1)
+	@test -n "$${OUT_DIR:-}" || (echo "Set OUT_DIR=path/to/openvino_artifacts" >&2; exit 1)
+	@python3 scripts/ml_behavior_export_video_openvino.py \
+		--video-export "$${VIDEO_EXPORT}" \
+		--out-dir "$${OUT_DIR}" \
+		--precision "$${PRECISION:-fp16}" \
+		$${ARGS:-}
+
 # Verify behavior runtime profile against explicit p95/mean latency thresholds (#416).
 # Example:
 # PROFILE=/tmp/behavior_runtime_profile.v1.json OUT=/tmp/behavior_runtime_gate.v1.json make ml-verify-behavior-runtime

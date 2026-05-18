@@ -13,12 +13,14 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import { BASE_API_URL } from '../../api/client';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { PageHeader } from '../../components/PageHeader';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import {
   useExportLabellingCasesMutation,
   useLabellingCasesQuery,
+  useLabellingFeedbackMutation,
   useMineLabellingCasesMutation,
   usePatchLabellingCaseMutation,
 } from '../../hooks/useLabellingQueries';
@@ -39,7 +41,10 @@ export const LabellingPage: React.FC = () => {
   const q = useLabellingCasesQuery(status, 150);
   const mine = useMineLabellingCasesMutation();
   const patch = usePatchLabellingCaseMutation();
+  const feedback = useLabellingFeedbackMutation();
   const exp = useExportLabellingCasesMutation();
+  const [behaviorTag, setBehaviorTag] = React.useState('feeding');
+  const [speciesTag, setSpeciesTag] = React.useState('');
 
   return (
     <ProtectedRoute title="Labelling" requireAdmin={false}>
@@ -120,6 +125,59 @@ export const LabellingPage: React.FC = () => {
                     conf={item.confidence ?? '-'} blind_score={item.blind_score ?? '-'} fallback_ratio=
                     {item.fallback_ratio ?? '-'} camera={item.camera_id ?? '-'}
                   </Typography>
+                  {item.video_id ? (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Tracklet preview (video #{item.video_id})
+                      </Typography>
+                      <Box
+                        component="video"
+                        controls
+                        muted
+                        preload="metadata"
+                        sx={{ width: '100%', maxHeight: 220, borderRadius: 1, mt: 0.5 }}
+                        src={`${BASE_API_URL}/videos/${item.video_id}/stream`}
+                      />
+                    </Box>
+                  ) : null}
+                  <Typography variant="body2" color="text.secondary">
+                    Main: {item.behavior_label || '-'}
+                    {item.behavior_confidence != null
+                      ? ` (${(Number(item.behavior_confidence) * 100).toFixed(0)}%)`
+                      : ''}
+                    {'  '}| Shadow: {item.behavior_shadow_label || '-'}
+                    {item.behavior_shadow_confidence != null
+                      ? ` (${(Number(item.behavior_shadow_confidence) * 100).toFixed(0)}%)`
+                      : ''}
+                  </Typography>
+                  <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
+                    <FormControl size="small" sx={{ minWidth: 180 }}>
+                      <InputLabel id={`behavior-tag-${item.id}`}>Behavior Tag</InputLabel>
+                      <Select
+                        labelId={`behavior-tag-${item.id}`}
+                        value={behaviorTag}
+                        label="Behavior Tag"
+                        onChange={(e) => setBehaviorTag(String(e.target.value))}
+                      >
+                        <MenuItem value="feeding">feeding</MenuItem>
+                        <MenuItem value="perched_idle">perched_idle</MenuItem>
+                        <MenuItem value="flying">flying</MenuItem>
+                        <MenuItem value="alert">alert</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ minWidth: 220 }}>
+                      <InputLabel id={`species-tag-${item.id}`}>Tag Species</InputLabel>
+                      <Select
+                        labelId={`species-tag-${item.id}`}
+                        value={speciesTag}
+                        label="Tag Species"
+                        onChange={(e) => setSpeciesTag(String(e.target.value))}
+                      >
+                        <MenuItem value="">(empty)</MenuItem>
+                        <MenuItem value={item.species_name || ''}>{item.species_name || '(current)'}</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Stack>
                   <Box>
                     <Button
                       size="small"
@@ -141,6 +199,42 @@ export const LabellingPage: React.FC = () => {
                       disabled={patch.isPending}
                     >
                       Reset
+                    </Button>
+                    <Button
+                      size="small"
+                      color="success"
+                      onClick={() =>
+                        feedback.mutate({
+                          id: item.id,
+                          action: 'confirm_behavior',
+                          behavior_tag: behaviorTag,
+                        })
+                      }
+                      disabled={feedback.isPending}
+                    >
+                      Confirm Behavior
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => feedback.mutate({ id: item.id, action: 'reject_box' })}
+                      disabled={feedback.isPending}
+                    >
+                      Reject Box
+                    </Button>
+                    <Button
+                      size="small"
+                      color="secondary"
+                      onClick={() =>
+                        feedback.mutate({
+                          id: item.id,
+                          action: 'tag_species',
+                          species_tag: speciesTag || item.species_name || '',
+                        })
+                      }
+                      disabled={feedback.isPending}
+                    >
+                      Tag Species
                     </Button>
                   </Box>
                 </Stack>

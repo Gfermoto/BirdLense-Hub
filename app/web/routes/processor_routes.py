@@ -277,6 +277,27 @@ def register_routes(app):
                     video.behavior_confidence = float(raw_bc)
                 except (TypeError, ValueError):
                     pass
+            raw_mk = data.get("behavior_model_kind")
+            if isinstance(raw_mk, str) and raw_mk.strip():
+                video.behavior_model_kind = raw_mk.strip()[:32]
+            raw_mv = data.get("behavior_model_version")
+            if isinstance(raw_mv, str) and raw_mv.strip():
+                video.behavior_model_version = raw_mv.strip()[:96]
+            raw_sh_lab = data.get("behavior_shadow_label")
+            if isinstance(raw_sh_lab, str) and raw_sh_lab.strip():
+                video.behavior_shadow_label = raw_sh_lab.strip()[:32]
+            raw_sh_conf = data.get("behavior_shadow_confidence")
+            if raw_sh_conf is not None:
+                try:
+                    video.behavior_shadow_confidence = float(raw_sh_conf)
+                except (TypeError, ValueError):
+                    pass
+            raw_sh_mk = data.get("behavior_shadow_model_kind")
+            if isinstance(raw_sh_mk, str) and raw_sh_mk.strip():
+                video.behavior_shadow_model_kind = raw_sh_mk.strip()[:32]
+            raw_sh_mv = data.get("behavior_shadow_model_version")
+            if isinstance(raw_sh_mv, str) and raw_sh_mv.strip():
+                video.behavior_shadow_model_version = raw_sh_mv.strip()[:96]
 
             # Add active bird foods
             active_bird_foods = BirdFood.query.filter_by(active=True).all()

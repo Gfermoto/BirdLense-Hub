@@ -5,7 +5,13 @@ from __future__ import annotations
 from flask import request
 
 from auth import contributor_or_admin_access
-from services.active_learning_service import export_cases, list_cases, mine_hard_examples, patch_case
+from services.active_learning_service import (
+    apply_case_feedback,
+    export_cases,
+    list_cases,
+    mine_hard_examples,
+    patch_case,
+)
 from services.api_json_validation import parse_request_json_dict
 
 
@@ -72,3 +78,26 @@ def register_ui_labelling_routes(app):
             return payload, 200
         except ValueError as exc:
             return {"error": str(exc)}, 400
+
+    @app.route("/api/ui/labelling/cases/<int:case_id>/feedback", methods=["POST"])
+    def post_labelling_feedback(case_id: int):
+        if not contributor_or_admin_access():
+            return {"error": "Access denied"}, 403
+        body, err = parse_request_json_dict(request)
+        if err is not None:
+            return err, 400
+        body = body or {}
+        try:
+            return (
+                apply_case_feedback(
+                    case_id=case_id,
+                    action=str(body.get("action") or ""),
+                    behavior_tag=body.get("behavior_tag"),
+                    species_tag=body.get("species_tag"),
+                ),
+                200,
+            )
+        except ValueError as exc:
+            return {"error": str(exc)}, 400
+        except LookupError:
+            return {"error": "case not found"}, 404

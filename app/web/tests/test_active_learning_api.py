@@ -15,6 +15,9 @@ def _seed(app):
             start_time=start,
             end_time=start + timedelta(seconds=20),
             video_path="/tmp/a.mp4",
+            behavior_label="alert",
+            behavior_shadow_label="feeding",
+            behavior_shadow_confidence=0.66,
         )
         db.session.add_all([sp, video])
         db.session.flush()
@@ -66,3 +69,10 @@ def test_labelling_flow(client, app):
     payload = exp.get_json()
     assert payload["format"] == "yolo"
     assert payload["version"].startswith("v")
+
+    fb = client.post(
+        f"/api/ui/labelling/cases/{first['id']}/feedback",
+        json={"action": "confirm_behavior", "behavior_tag": "feeding"},
+    )
+    assert fb.status_code == 200, fb.get_data(as_text=True)
+    assert fb.get_json()["action"] == "confirm_behavior"

@@ -61,6 +61,27 @@ def build_video_detail_dict(video) -> dict:
             out["behavior_confidence"] = round(float(bc), 6)
         except (TypeError, ValueError):
             pass
+    mk = getattr(video, "behavior_model_kind", None)
+    if mk:
+        out["behavior_model_kind"] = str(mk).strip()
+    mv = getattr(video, "behavior_model_version", None)
+    if mv:
+        out["behavior_model_version"] = str(mv).strip()
+    sh = getattr(video, "behavior_shadow_label", None)
+    if sh:
+        out["behavior_shadow_label"] = str(sh).strip()
+    shc = getattr(video, "behavior_shadow_confidence", None)
+    if shc is not None:
+        try:
+            out["behavior_shadow_confidence"] = round(float(shc), 6)
+        except (TypeError, ValueError):
+            pass
+    shk = getattr(video, "behavior_shadow_model_kind", None)
+    if shk:
+        out["behavior_shadow_model_kind"] = str(shk).strip()
+    shv = getattr(video, "behavior_shadow_model_version", None)
+    if shv:
+        out["behavior_shadow_model_version"] = str(shv).strip()
     return out
 
 

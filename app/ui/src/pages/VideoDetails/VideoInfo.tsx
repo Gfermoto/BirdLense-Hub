@@ -257,6 +257,12 @@ export const VideoInfo = ({
     scales,
     behavior_label,
     behavior_confidence,
+    behavior_model_kind,
+    behavior_model_version,
+    behavior_shadow_label,
+    behavior_shadow_confidence,
+    behavior_shadow_model_kind,
+    behavior_shadow_model_version,
   } = video;
 
   const formatDate = (date: string | Date) => formatLocalDateTime(date);
@@ -392,6 +398,31 @@ export const VideoInfo = ({
               {t('videoInfo.behaviorNone')}
             </Typography>
           )}
+          {behavior_model_kind ? (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              Model: {behavior_model_kind}
+              {behavior_model_version ? ` (${behavior_model_version})` : ''}
+            </Typography>
+          ) : null}
+          {behavior_shadow_label ? (
+            <Chip
+              label={`Shadow: ${behavior_shadow_label}${
+                behavior_shadow_confidence != null &&
+                !Number.isNaN(Number(behavior_shadow_confidence))
+                  ? ` (${(Number(behavior_shadow_confidence) * 100).toFixed(0)}%)`
+                  : ''
+              }`}
+              size="small"
+              variant="outlined"
+              sx={{ mb: 1, ml: 1, alignSelf: 'flex-start' }}
+            />
+          ) : null}
+          {behavior_shadow_model_kind ? (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              Shadow model: {behavior_shadow_model_kind}
+              {behavior_shadow_model_version ? ` (${behavior_shadow_model_version})` : ''}
+            </Typography>
+          ) : null}
           {canEdit && (
             <>
               <Button
