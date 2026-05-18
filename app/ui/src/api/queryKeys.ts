@@ -121,8 +121,10 @@ export const queryKeys = {
     all: ['unknowns'] as const,
   },
   labelling: {
-    cases: (status: 'pending' | 'approved' | 'rejected' | 'all') =>
-      ['labelling-cases', status] as const,
+    cases: (
+      status: 'pending' | 'approved' | 'rejected' | 'all',
+      withMediaOnly = true,
+    ) => ['labelling-cases', status, withMediaOnly ? 'media-only' : 'all-cases'] as const,
   },
   corrections: {
     recent: ['corrections-recent'] as const,

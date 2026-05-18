@@ -74,7 +74,8 @@ const MediaCanvas: React.FC<{
   viewMode: ViewMode;
   selected: boolean;
   onSelect: (v: boolean) => void;
-}> = ({ item, viewMode, selected, onSelect }) => {
+  onSkip: () => void;
+}> = ({ item, viewMode, selected, onSelect, onSkip }) => {
   const { t } = useTranslation();
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
 
@@ -93,8 +94,18 @@ const MediaCanvas: React.FC<{
 
   const [currentTime, setCurrentTime] = React.useState<number | null>(null);
 
-  if (!item.video_stream_url) return <Alert severity="warning">{t('labelling.media.noMedia')}</Alert>;
-  if (!item.bbox && (!item.track_frames || item.track_frames.length === 0)) return <Alert severity="warning">{t('labelling.media.noOverlayData')}</Alert>;
+  if (!item.video_stream_url)
+    return (
+      <Alert severity="warning" action={<Button size="small" onClick={onSkip}>{t('labelling.actions.skip')}</Button>}>
+        {t('labelling.media.unavailable')}
+      </Alert>
+    );
+  if (!item.bbox && (!item.track_frames || item.track_frames.length === 0))
+    return (
+      <Alert severity="warning" action={<Button size="small" onClick={onSkip}>{t('labelling.actions.skip')}</Button>}>
+        {t('labelling.media.unavailable')}
+      </Alert>
+    );
 
   return (
     <Box sx={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', bgcolor: '#000' }}>
@@ -345,7 +356,7 @@ export const LabellingPage: React.FC = () => {
                     {t('labelling.view.video')}
                   </Button>
                 </Stack>
-                <MediaCanvas item={current} viewMode={viewMode} selected={selectedBox} onSelect={setSelectedBox} />
+                <MediaCanvas item={current} viewMode={viewMode} selected={selectedBox} onSelect={setSelectedBox} onSkip={gotoNext} />
                 <Card variant="outlined">
                   <CardContent>
                     <Typography variant="subtitle2" gutterBottom>

@@ -2447,13 +2447,14 @@
     },
     "states": {
       "loading": "Loading...",
-      "error": "Queue load failed. Check API access and authentication.",
+      "error": "Queue unavailable. Please sign in with contributor/admin access.",
       "empty": "No data. Run miner or seed queue.",
       "noFiltered": "No cases for current filters."
     },
     "media": {
       "noMedia": "No media available for this case.",
-      "noOverlayData": "No overlay geometry available."
+      "noOverlayData": "No overlay geometry available.",
+      "unavailable": "Media is unavailable for this case. Use Skip."
     },
     "box": {
       "main": "Main",

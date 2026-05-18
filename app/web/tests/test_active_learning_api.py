@@ -16,6 +16,7 @@ def _seed(app):
             end_time=start + timedelta(seconds=20),
             video_path="/tmp/a.mp4",
             behavior_label="alert",
+            behavior_confidence=0.96,
             behavior_shadow_label="feeding",
             behavior_shadow_confidence=0.66,
         )
@@ -26,7 +27,7 @@ def _seed(app):
             species_id=sp.id,
             start_time=0.2,
             end_time=3.2,
-            confidence=0.97,
+            confidence=0.27,
             source="video",
             detection_provider="yolo",
             track_id=11,
@@ -62,6 +63,11 @@ def test_labelling_flow(client, app):
     assert "pre_approved" in first
     assert "suggested_species" in first
     assert "suggested_behavior" in first
+
+    rows_media_only = client.get("/api/ui/labelling/cases?status=all&with_media_only=1")
+    assert rows_media_only.status_code == 200
+    media_body = rows_media_only.get_json()
+    assert media_body["count"] >= 1
 
     patch = client.patch(f"/api/ui/labelling/cases/{first['id']}", json={"status": "approved"})
     assert patch.status_code == 200

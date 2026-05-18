@@ -265,7 +265,7 @@ def mine_hard_examples(
     return {"created": created, "skipped": skipped}
 
 
-def list_cases(*, status: str | None = None, limit: int = 100) -> dict[str, Any]:
+def list_cases(*, status: str | None = None, limit: int = 100, with_media_only: bool = False) -> dict[str, Any]:
     lim = max(1, min(int(limit), 500))
     q = (
         db.session.query(ActiveLearningCase, VideoSpecies, Species, Video)
@@ -292,34 +292,41 @@ def list_cases(*, status: str | None = None, limit: int = 100) -> dict[str, Any]
             (getattr(video, "behavior_label", None) if video else None)
             or (getattr(video, "behavior_shadow_label", None) if video else None)
         )
+        item = {
+            "id": int(case.id),
+            "created_at": case.created_at.astimezone(timezone.utc).isoformat() if case.created_at else None,
+            "updated_at": case.updated_at.astimezone(timezone.utc).isoformat() if case.updated_at else None,
+            "status": case.status,
+            "reason_code": case.reason_code,
+            "camera_id": case.camera_id,
+            "video_id": case.video_id,
+            "video_species_id": case.video_species_id,
+            "species_name": species.name if species else None,
+            "video_path": video.video_path if video else None,
+            "video_stream_url": f"/api/ui/videos/{case.video_id}/stream" if case.video_id else None,
+            "video_details_url": f"/videos/{case.video_id}" if case.video_id else None,
+            "confidence": case.confidence,
+            "blind_score": case.blind_score,
+            "fallback_ratio": case.fallback_ratio,
+            "payload": payload,
+            "bbox": bbox,
+            "track_frames": track_frames,
+            "pre_approved": pre_approved,
+            "suggested_species": suggested_species,
+            "suggested_behavior": suggested_behavior,
+            "behavior_label": getattr(video, "behavior_label", None) if video else None,
+            "behavior_confidence": getattr(video, "behavior_confidence", None) if video else None,
+            "behavior_shadow_label": getattr(video, "behavior_shadow_label", None) if video else None,
+            "behavior_shadow_confidence": getattr(video, "behavior_shadow_confidence", None) if video else None,
+        }
+        if with_media_only:
+            has_media = bool(item["video_stream_url"]) and (
+                bool(item["bbox"]) or bool(item["track_frames"])
+            )
+            if not has_media:
+                continue
         items.append(
-            {
-                "id": int(case.id),
-                "created_at": case.created_at.astimezone(timezone.utc).isoformat() if case.created_at else None,
-                "updated_at": case.updated_at.astimezone(timezone.utc).isoformat() if case.updated_at else None,
-                "status": case.status,
-                "reason_code": case.reason_code,
-                "camera_id": case.camera_id,
-                "video_id": case.video_id,
-                "video_species_id": case.video_species_id,
-                "species_name": species.name if species else None,
-                "video_path": video.video_path if video else None,
-                "video_stream_url": f"/api/ui/videos/{case.video_id}/stream" if case.video_id else None,
-                "video_details_url": f"/videos/{case.video_id}" if case.video_id else None,
-                "confidence": case.confidence,
-                "blind_score": case.blind_score,
-                "fallback_ratio": case.fallback_ratio,
-                "payload": payload,
-                "bbox": bbox,
-                "track_frames": track_frames,
-                "pre_approved": pre_approved,
-                "suggested_species": suggested_species,
-                "suggested_behavior": suggested_behavior,
-                "behavior_label": getattr(video, "behavior_label", None) if video else None,
-                "behavior_confidence": getattr(video, "behavior_confidence", None) if video else None,
-                "behavior_shadow_label": getattr(video, "behavior_shadow_label", None) if video else None,
-                "behavior_shadow_confidence": getattr(video, "behavior_shadow_confidence", None) if video else None,
-            }
+            item
         )
     return {"items": items, "count": len(items)}
 

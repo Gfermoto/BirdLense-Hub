@@ -44,7 +44,8 @@ def register_ui_labelling_routes(app):
             limit = int(request.args.get("limit", "100"))
         except ValueError:
             return {"error": "invalid limit"}, 400
-        return list_cases(status=status, limit=limit), 200
+        with_media_only = str(request.args.get("with_media_only", "0")).strip().lower() in {"1", "true", "yes", "on"}
+        return list_cases(status=status, limit=limit, with_media_only=with_media_only), 200
 
     @app.route("/api/ui/labelling/cases/<int:case_id>", methods=["PATCH"])
     def patch_labelling_case(case_id: int):
