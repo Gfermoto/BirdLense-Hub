@@ -64,7 +64,6 @@ def fetch_review_queue_items(
         .filter(
             Video.end_time >= start_dt,
             Video.start_time <= end_dt,
-            VideoSpecies.manually_corrected.is_(False),
             or_(
                 VideoSpecies.confidence < threshold,
                 VideoSpecies.classifier_needs_review.is_(True),
@@ -80,6 +79,8 @@ def fetch_review_queue_items(
     queue_norm = str(queue or "").strip().lower()
     reason_filter_norm = str(review_reason_filter or "").strip().lower()
     for vs in rows:
+        if queue_norm != "expert" and bool(vs.manually_corrected):
+            continue
         frames = (vs.frames or "").strip() if getattr(vs, "frames", None) else ""
         if (
             vs.detection_provider == "legacy"
