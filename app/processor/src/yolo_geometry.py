@@ -28,6 +28,27 @@ def _resolve_resize_interpolation() -> int:
     return mapping.get(raw, cv2.INTER_LINEAR)
 
 
+def _maybe_enhance_low_res_frame(frame: np.ndarray) -> np.ndarray:
+    """Apply lightweight low-res enhancement before letterbox resize."""
+    import cv2
+    from app_config.app_config import app_config
+
+    if not bool(app_config.get("processor.lowres_enhance_enabled", True)):
+        return frame
+    ih, iw = frame.shape[:2]
+    max_side = int(max(iw, ih))
+    max_input_px = int(app_config.get("processor.lowres_enhance_max_input_px", 800) or 800)
+    if max_side > max_input_px:
+        return frame
+    amount = float(app_config.get("processor.lowres_sharpen_amount", 0.32) or 0.32)
+    amount = max(0.0, min(1.0, amount))
+    if amount <= 0.0:
+        return frame
+    blur = cv2.GaussianBlur(frame, (0, 0), sigmaX=1.0, sigmaY=1.0)
+    enhanced = cv2.addWeighted(frame, 1.0 + amount, blur, -amount, 0)
+    return enhanced
+
+
 def letterbox_bgr_to_wh(frame: np.ndarray, out_wh: tuple[int, int]) -> np.ndarray:
     """Letterbox до ``out_wh=(width,height)``. Сохраняет соотношение сторон, pad 114 BGR."""
     import cv2
@@ -37,6 +58,7 @@ def letterbox_bgr_to_wh(frame: np.ndarray, out_wh: tuple[int, int]) -> np.ndarra
         raise ValueError("letterbox_bgr_to_wh: out_wh must be positive WxH")
 
     ih, iw = frame.shape[:2]
+    frame = _maybe_enhance_low_res_frame(frame)
     r = min(tw / iw, th / ih)
     nw, nh = max(1, int(round(iw * r))), max(1, int(round(ih * r)))
     # Prefer explicit interpolation, but keep fallback for tests that monkeypatch cv2.resize with 2-arg lambda.
