@@ -144,8 +144,16 @@ def main() -> int:
         default=".",
         help="BirdLense repo root (for classifier_openvino probe)",
     )
+    ap.add_argument(
+        "--env",
+        default="",
+        help="app/.env path (default: sibling of app_config parent/.env)",
+    )
     args = ap.parse_args()
-    apply(Path(args.config).resolve(), repo_root=Path(args.repo_root).resolve())
+    cfg = Path(args.config).resolve()
+    root = Path(args.repo_root).resolve()
+    env = Path(args.env).resolve() if args.env else None
+    apply(cfg, repo_root=root, env_path=env)
     return 0
 
 
