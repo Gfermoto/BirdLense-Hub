@@ -47,3 +47,26 @@ Holdout Macro-F1 ≥ 0.7 — gate в `behavior_train_report@v2` (`ok: true`).
 
 - Holdout: `scripts/ml_behavior_eval_harness.py` (train/holdout 80/20 по `tracklet_id`)
 - Canary offline: `make ml-behavior-canary-gate` (поддержка `behavior_train_report@v2`)
+
+## Production Canary Status
+
+**Дата:** 2026-05-18 (VPS `185.218.111.196:8085`)
+
+| Параметр | Значение |
+|----------|----------|
+| Деплой | `make deploy` + патч `scripts/user-config-behavior-canary.partial.yaml` |
+| `engine` | `canary` (`enabled: true`) |
+| IR на сервере | `/app/processor/models/behavior_v1_openvino/behavior_video_model.xml` |
+| verify-stack | PASS (health + readiness GREEN) |
+| OpenVINO infer (warm, GPU.0) | ~1–3 ms / forward (192-d input) |
+| Backfill 12 клипов (≥3 кадра/трек) | 12× `video_v1`, расхождения **7/12 (58%)**, согласие **5/12** |
+
+**Наблюдения:** meta_v1 (logistic) vs video_v1 (RGB-логистика на синтетике) часто расходятся на реальных треках — ожидаемо до переобучения на Hub+WetlandBirds. Решения в проде остаются за **meta_v1**; shadow пишется в `behavior_shadow_*`.
+
+**Патч конфига на сервере:**
+
+```bash
+bash scripts/server-apply-user-config-patch.sh scripts/user-config-behavior-canary.partial.yaml --write --restart
+```
+
+**Логи расхождений:** `behavior canary discrepancy` в `docker logs birdlense` при finalize; в БД — сравнение `behavior_label` vs `behavior_shadow_label`.
