@@ -779,6 +779,7 @@ def finalize_motion_recording(
             video_detections,
             duration_s=duration_behavior_s,
             processor_cwd=proc_root,
+            video_path=video_path_for_api,
         )
         br_cfg = app_config.get("processor.behavior_recognition") or {}
         if not isinstance(br_cfg, dict):

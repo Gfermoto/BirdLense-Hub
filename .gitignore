@@ -147,6 +147,14 @@ app/processor/models/behavior/*
 !app/processor/models/behavior/behavior_logistic_export@v1.json
 !app/processor/models/behavior/behavior_logistic_openvino/
 !app/processor/models/behavior/behavior_logistic_openvino/behavior_logistic.onnx
+!app/processor/models/behavior_v1_openvino/
+app/processor/models/behavior_v1_openvino/*
+!app/processor/models/behavior_v1_openvino/README.md
+!app/processor/models/behavior_v1_openvino/behavior_video_export.json
+!app/processor/models/behavior_v1_openvino/behavior_openvino_export.json
+!app/processor/models/behavior_v1_openvino/behavior_video_model.xml
+!app/processor/models/behavior_v1_openvino/behavior_video_model.bin
+!app/processor/models/behavior_v1_openvino/behavior_video_model.onnx
 
 # Сгенерированная документация (make docs)
 docs/api/

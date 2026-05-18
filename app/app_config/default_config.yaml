@@ -329,7 +329,7 @@ processor:
   # Веса: JSON из `scripts/ml_behavior_train_baseline.py` (schema behavior_logistic_export@v1).
   behavior_recognition:
     enabled: false
-    # meta | video | auto. meta is safe default (video runs as shadow via activity log).
+    # meta | video | auto | canary (meta decides, video_v1 shadow + discrepancy log).
     engine: meta
     # Инференс: logistic_json (numpy+json) | openvino (ONNX/IR через OpenVINO Runtime) | auto.
     inference_backend: auto
@@ -339,10 +339,13 @@ processor:
     weights_path: "models/behavior/behavior_logistic_export@v1.json"
     confidence_store_min: 0.2
     confidence_review_threshold: 0.45
-    # Shadow video model settings (Behavior v2 #459).
-    video_model_kind: "video_v1_shadow"
-    video_model_version: "x3d-s-shadow-v0"
+    # Video model (Behavior v2 #458/#460): OpenVINO IR under processor root.
+    video_model_kind: "video_v1"
+    video_model_version: "video-v1"
+    video_openvino_path: "models/behavior_v1_openvino"
+    video_weights_path: "models/behavior_v1_openvino/behavior_video_export.json"
     video_confidence_store_min: 0.35
+    canary_log_discrepancies: true
     # Ограничение числа треков при расчёте meta-признаков (согласовано с runtime baseline).
     max_runtime_detections: 50
 

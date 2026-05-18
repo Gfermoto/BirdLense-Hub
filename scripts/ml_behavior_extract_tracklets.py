@@ -10,6 +10,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from ml_behavior_crop_core import extract_tracklet_crops
+from ml_behavior_eval_harness import assign_splits
+
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -68,6 +71,11 @@ def build_behavior_tracklet_manifest(
     min_frames: int = 5,
     split: str = "train",
     domain_tag: str = "hub_feeder",
+    crops_dir: Path | None = None,
+    repo_root: Path | None = None,
+    extract_crops: bool = False,
+    holdout_ratio: float | None = None,
+    min_blur_score: float = 8.0,
 ) -> dict[str, Any]:
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -98,6 +106,16 @@ def build_behavior_tracklet_manifest(
             continue
         if int(tr["frame_count"]) < int(min_frames):
             continue
+        if extract_crops and crops_dir is not None:
+            crop_meta = extract_tracklet_crops(
+                tr,
+                crops_root=crops_dir,
+                repo_root=repo_root,
+                min_blur_score=min_blur_score,
+            )
+            if crop_meta is None:
+                continue
+            tr.update(crop_meta)
         tracklets.append(tr)
 
     label_counts: dict[str, int] = {}
@@ -113,7 +131,10 @@ def build_behavior_tracklet_manifest(
         "tracklet_count": len(tracklets),
         "label_counts": label_counts,
         "tracklets": tracklets,
+        "crops_dir": str(crops_dir.resolve()) if crops_dir else None,
     }
+    if holdout_ratio is not None:
+        manifest = assign_splits(manifest, holdout_ratio=float(holdout_ratio))
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     conn.close()
@@ -127,18 +148,31 @@ def main() -> int:
     ap.add_argument("--min-frames", type=int, default=5)
     ap.add_argument("--split", default="train")
     ap.add_argument("--domain-tag", default="hub_feeder")
+    ap.add_argument("--crops-dir", default="", help="Save tracklet crops under this directory")
+    ap.add_argument("--repo-root", default="", help="Repo root for relative video_path")
+    ap.add_argument("--extract-crops", action="store_true")
+    ap.add_argument("--holdout-ratio", type=float, default=-1.0, help="If >=0, assign train/holdout splits")
+    ap.add_argument("--min-blur-score", type=float, default=8.0)
     args = ap.parse_args()
 
     db = Path(args.db).expanduser().resolve()
     if not db.is_file():
         raise SystemExit(f"DB not found: {db}")
     out = Path(args.out).expanduser().resolve()
+    crops_dir = Path(args.crops_dir).expanduser().resolve() if str(args.crops_dir).strip() else None
+    repo_root = Path(args.repo_root).expanduser().resolve() if str(args.repo_root).strip() else None
+    holdout_ratio = float(args.holdout_ratio) if float(args.holdout_ratio) >= 0 else None
     man = build_behavior_tracklet_manifest(
         db_path=db,
         out_path=out,
         min_frames=max(1, int(args.min_frames)),
         split=str(args.split).strip() or "train",
         domain_tag=str(args.domain_tag).strip() or "hub_feeder",
+        crops_dir=crops_dir,
+        repo_root=repo_root,
+        extract_crops=bool(args.extract_crops or crops_dir),
+        holdout_ratio=holdout_ratio,
+        min_blur_score=float(args.min_blur_score),
     )
     print(json.dumps({"ok": True, "out": str(out), "tracklet_count": man["tracklet_count"]}, ensure_ascii=False))
     return 0

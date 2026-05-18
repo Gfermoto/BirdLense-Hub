@@ -10,7 +10,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from ml_behavior_crop_core import extract_tracklet_crops
 from ml_behavior_dataset_manifest import DEFAULT_TAXONOMY
+from ml_behavior_eval_harness import assign_splits
 
 
 def _utc_now() -> str:
@@ -27,6 +29,10 @@ def import_wetlandbirds(
     out_path: Path,
     split: str = "pretrain",
     domain_tag: str = "wetlandbirds",
+    crops_dir: Path | None = None,
+    extract_crops: bool = False,
+    holdout_ratio: float | None = 0.2,
+    min_blur_score: float = 0.0,
 ) -> dict[str, Any]:
     tax = _taxonomy_map()
     tracklets = []
@@ -62,8 +68,7 @@ def import_wetlandbirds(
             label = max(set(labels), key=labels.count) if labels else "unknown"
             t_vals = [float(f.get("t") or 0.0) for f in frames]
             species_name = next((str(f["species_name"]) for f in frames if f.get("species_name")), None)
-            tracklets.append(
-                {
+            tr = {
                     "tracklet_id": f"{video_key}_{subject_id}",
                     "video_id": None,
                     "video_species_id": None,
@@ -82,7 +87,17 @@ def import_wetlandbirds(
                     "split": split,
                     "domain_tag": domain_tag,
                 }
-            )
+            if extract_crops and crops_dir is not None:
+                meta = extract_tracklet_crops(
+                    tr,
+                    crops_root=crops_dir,
+                    min_blur_score=min_blur_score,
+                    min_span=0.0,
+                )
+                if meta is None:
+                    continue
+                tr.update(meta)
+            tracklets.append(tr)
 
     label_counts: dict[str, int] = {}
     for tr in tracklets:
@@ -96,7 +111,10 @@ def import_wetlandbirds(
         "tracklet_count": len(tracklets),
         "label_counts": label_counts,
         "tracklets": tracklets,
+        "crops_dir": str(crops_dir.resolve()) if crops_dir else None,
     }
+    if holdout_ratio is not None:
+        out = assign_splits(out, holdout_ratio=float(holdout_ratio))
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     return out
@@ -108,16 +126,25 @@ def main() -> int:
     ap.add_argument("--out", required=True)
     ap.add_argument("--split", default="pretrain")
     ap.add_argument("--domain-tag", default="wetlandbirds")
+    ap.add_argument("--crops-dir", default="")
+    ap.add_argument("--extract-crops", action="store_true")
+    ap.add_argument("--holdout-ratio", type=float, default=0.2)
+    ap.add_argument("--min-blur-score", type=float, default=0.0)
     args = ap.parse_args()
     root = Path(args.annotations_root).expanduser().resolve()
     if not root.is_dir():
         raise SystemExit(f"annotations root not found: {root}")
     outp = Path(args.out).expanduser().resolve()
+    crops_dir = Path(args.crops_dir).expanduser().resolve() if str(args.crops_dir).strip() else None
     rep = import_wetlandbirds(
         annotations_root=root,
         out_path=outp,
         split=str(args.split).strip() or "pretrain",
         domain_tag=str(args.domain_tag).strip() or "wetlandbirds",
+        crops_dir=crops_dir,
+        extract_crops=bool(args.extract_crops or crops_dir),
+        holdout_ratio=float(args.holdout_ratio),
+        min_blur_score=float(args.min_blur_score),
     )
     print(json.dumps({"ok": True, "tracklet_count": rep["tracklet_count"], "out": str(outp)}, ensure_ascii=False))
     return 0

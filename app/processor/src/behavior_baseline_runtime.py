@@ -258,6 +258,7 @@ def maybe_predict_video_behavior_bundle(
     *,
     duration_s: float,
     processor_cwd: str | None = None,
+    video_path: str | None = None,
 ) -> dict[str, Any]:
     """Main + shadow behavior decision for safe rollout."""
     br = app_config.get("processor.behavior_recognition") or {}
@@ -287,32 +288,68 @@ def maybe_predict_video_behavior_bundle(
         app_config,
         video_detections,
         duration_s=duration_s,
+        processor_cwd=processor_cwd,
+        video_path=video_path,
     )
 
     main_label = meta_label
     main_conf = float(meta_conf or 0.0)
     model_kind = "meta_v1"
     model_version = "behavior_logistic_export@v1"
-    if engine == "video":
-        if vid_label and float(vid_conf or 0.0) >= video_min_conf:
-            main_label = vid_label
-            main_conf = float(vid_conf)
-            model_kind = vid_kind
-            model_version = vid_version
-    elif engine == "auto":
-        if vid_label and float(vid_conf or 0.0) >= max(video_min_conf, main_conf):
-            main_label = vid_label
-            main_conf = float(vid_conf)
-            model_kind = vid_kind
-            model_version = vid_version
+    shadow_label = vid_label
+    shadow_conf = float(vid_conf or 0.0)
+    shadow_kind = vid_kind
+    shadow_version = vid_version
 
-    return {
+    if engine == "video":
+        if vid_label and shadow_conf >= video_min_conf:
+            main_label = vid_label
+            main_conf = shadow_conf
+            model_kind = vid_kind
+            model_version = vid_version
+            shadow_label = meta_label
+            shadow_conf = float(meta_conf or 0.0)
+            shadow_kind = "meta_v1"
+            shadow_version = "behavior_logistic_export@v1"
+    elif engine == "auto":
+        if vid_label and shadow_conf >= max(video_min_conf, main_conf):
+            main_label = vid_label
+            main_conf = shadow_conf
+            model_kind = vid_kind
+            model_version = vid_version
+            shadow_label = meta_label
+            shadow_conf = float(meta_conf or 0.0)
+            shadow_kind = "meta_v1"
+            shadow_version = "behavior_logistic_export@v1"
+    elif engine == "canary":
+        # Production decision stays meta; video_v1 runs in shadow (#460).
+        pass
+
+    bundle = {
         "main_label": main_label,
         "main_confidence": main_conf,
         "model_kind": model_kind,
         "model_version": model_version,
-        "shadow_label": vid_label if model_kind == "meta_v1" else meta_label,
-        "shadow_confidence": float(vid_conf if model_kind == "meta_v1" else meta_conf or 0.0),
-        "shadow_model_kind": vid_kind if model_kind == "meta_v1" else "meta_v1",
-        "shadow_model_version": vid_version if model_kind == "meta_v1" else "behavior_logistic_export@v1",
+        "shadow_label": shadow_label,
+        "shadow_confidence": shadow_conf,
+        "shadow_model_kind": shadow_kind,
+        "shadow_model_version": shadow_version,
     }
+    if engine == "canary" and bool(br.get("canary_log_discrepancies", True)):
+        ml = str(main_label or "").strip().lower()
+        sl = str(shadow_label or "").strip().lower()
+        if ml and sl and ml != sl:
+            bundle["canary_discrepancy"] = {
+                "meta_label": ml,
+                "video_label": sl,
+                "meta_confidence": main_conf,
+                "video_confidence": shadow_conf,
+            }
+            _log.info(
+                "behavior canary discrepancy meta=%s(%.3f) video=%s(%.3f)",
+                ml,
+                main_conf,
+                sl,
+                shadow_conf,
+            )
+    return bundle
