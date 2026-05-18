@@ -61,7 +61,41 @@ Holdout Macro-F1 ≥ 0.7 — gate в `behavior_train_report@v2` (`ok: true`).
 | OpenVINO infer (warm, GPU.0) | ~1–3 ms / forward (192-d input) |
 | Backfill 12 клипов (≥3 кадра/трек) | 12× `video_v1`, расхождения **7/12 (58%)**, согласие **5/12** |
 
-**Наблюдения:** meta_v1 (logistic) vs video_v1 (RGB-логистика на синтетике) часто расходятся на реальных треках — ожидаемо до переобучения на Hub+WetlandBirds. Решения в проде остаются за **meta_v1**; shadow пишется в `behavior_shadow_*`.
+**Наблюдения (v1, синтетика):** meta_v1 vs video_v1 — ~58% расхождений на 12 клипах (rule-fallback / неверная таксономия).
+
+### Retrain v2 (prod crops, 2026-05-18)
+
+| Метрика | Значение |
+|---------|----------|
+| Датасет | 44 tracklet (Hub: approved AL + conf≥0.85), feeding=40, flying=4 |
+| Holdout Macro-F1 | 0.44 (мало flying в выборке) |
+| Canary replay (13 клипов с треками) | **30.8%** discrepancy (было 58%) |
+| Типичная ошибка | meta `flying` → video `feeding` |
+| IR | `app/processor/models/behavior_v2_openvino/` |
+| Конфиг | `video_model_kind: video_v2`, `engine: canary` |
+
+**Сбор prod-кропов на VPS:**
+
+```bash
+docker exec birdlense bash -lc 'cd /app && PYTHONPATH=/app/scripts:/app \
+  python3 scripts/ml_behavior_extract_prod_labeled.py \
+  --db /app/data/db/birdlense.db \
+  --out /app/data/datasets/behavior_prod_v2/manifest.json \
+  --crops-dir /app/data/datasets/behavior_prod_v2/crops \
+  --repo-root /app --min-confidence 0.85 --min-blur-score 4'
+```
+
+**Обучение + OpenVINO + патч:**
+
+```bash
+python3 scripts/ml_behavior_train_video.py --manifest ... --augment-copies 4
+python3 scripts/ml_behavior_export_video_openvino.py --video-export ... --out-dir app/processor/models/behavior_v2_openvino
+bash scripts/server-apply-user-config-patch.sh scripts/user-config-behavior-canary-v2.partial.yaml --write --restart
+```
+
+**Переход в `engine: auto`:** только после ≥48 ч Canary с discrepancy **<20%** на ≥30 клипах и без роста blind-gate. Откат auto → `engine: canary` при discrepancy **>25%** за 24 ч.
+
+**Регулярное переобучение:** еженедельно `ml-extract-behavior-prod-labeled` + train + export v2; не использовать синтетику в финальном blend.
 
 **Патч конфига на сервере:**
 

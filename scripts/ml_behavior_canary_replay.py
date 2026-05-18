@@ -138,7 +138,12 @@ def main() -> int:
         "discrepancies": disc,
         "agreements": agree,
         "discrepancy_rate": round(rate, 4),
-        "label_pairs": dict(Counter((r["meta_label"], r["video_label"]) for r in rows_out if r["discrepancy"])),
+        "label_pairs": {
+            f"{a}|{b}": c
+            for (a, b), c in Counter(
+                (r["meta_label"], r["video_label"]) for r in rows_out if r["discrepancy"]
+            ).items()
+        },
         "samples": rows_out[:50],
     }
     outp = Path(args.out).expanduser().resolve()

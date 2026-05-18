@@ -119,6 +119,7 @@ def train_video_profile(
 
     try:
         from sklearn.linear_model import LogisticRegression
+        from shared.behavior_logistic_train import fit_behavior_logistic_export
     except ImportError as e:
         raise RuntimeError("scikit-learn required") from e
 
@@ -137,19 +138,15 @@ def train_video_profile(
             solver="lbfgs",
         )
         clf.fit(np.asarray(x_train, dtype=np.float64), np.asarray(y_train))
-        classes = [str(c) for c in clf.classes_]
-        coef = clf.coef_.tolist()
-        intercept = clf.intercept_.tolist()
-        export = {
-            "schema": "behavior_video_export@v1",
-            "feature_mode": "tracklet_rgb_v1",
-            "labels": classes,
-            "coef": coef,
-            "intercept": intercept,
-            "feature_dim": FEATURE_DIM,
-            "model_kind": model_kind,
-            "backbone": backbone,
-        }
+        export, _clf = fit_behavior_logistic_export(
+            x_train,
+            y_train,
+            seed=seed,
+            feature_mode="tracklet_rgb_v1",
+            extra={"model_kind": model_kind, "backbone": backbone, "feature_dim": FEATURE_DIM},
+        )
+        export["schema"] = "behavior_video_export@v1"
+        classes = [str(c) for c in export.get("labels") or []]
         if val_rows:
             x_val, y_val = _build_xy(val_rows, augment_copies=0, seed=seed)
             if x_val:
