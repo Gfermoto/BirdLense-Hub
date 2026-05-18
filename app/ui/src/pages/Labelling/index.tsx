@@ -142,7 +142,7 @@ export const LabellingPage: React.FC = () => {
                         muted
                         preload="metadata"
                         sx={{ width: '100%', maxHeight: 220, borderRadius: 1, mt: 0.5 }}
-                        src={item.video_stream_url ? `${BASE_API_URL.replace('/api', '')}${item.video_stream_url}` : `${BASE_API_URL}/videos/${item.video_id}/stream`}
+                        src={item.video_stream_url || `${BASE_API_URL}/videos/${item.video_id}/stream`}
                       />
                     </Box>
                   ) : (
