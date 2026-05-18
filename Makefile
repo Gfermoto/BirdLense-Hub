@@ -104,6 +104,7 @@ ml-proof-local:
 		app/processor/tests/test_ml_fusion_ab_report.py \
 		app/processor/tests/test_ml_action_model_shortlist.py \
 		app/processor/tests/test_ml_behavior_canary_gate.py \
+		app/processor/tests/test_ml_behavior_crop.py \
 		app/processor/tests/test_ml_behavior_export_onnx.py \
 		app/processor/tests/test_processor_runtime_profile_openvino.py \
 		app/processor/tests/test_inference_selector.py
@@ -520,6 +521,23 @@ ml-extract-behavior-tracklets:
 		$$(test -n "$${MIN_FRAMES:-}" && printf -- '--min-frames "%s" ' "$${MIN_FRAMES}") \
 		$$(test -n "$${SPLIT:-}" && printf -- '--split "%s" ' "$${SPLIT}") \
 		$$(test -n "$${DOMAIN_TAG:-}" && printf -- '--domain-tag "%s" ' "$${DOMAIN_TAG}") \
+		$$(test -n "$${CROPS_DIR:-}" && printf -- '--crops-dir "%s" --extract-crops ' "$${CROPS_DIR}") \
+		$$(test -n "$${REPO_ROOT:-}" && printf -- '--repo-root "%s" ' "$${REPO_ROOT}") \
+		$$(test -n "$${HOLDOUT_RATIO:-}" && printf -- '--holdout-ratio "%s" ' "$${HOLDOUT_RATIO}") \
+		$${ARGS:-}
+
+ml-bootstrap-behavior-synthetic:
+	@python3 scripts/ml_behavior_bootstrap_synthetic.py \
+		--out-root "$${OUT_ROOT:-app/data/datasets/behavior_v2_synthetic}" \
+		--per-label "$${PER_LABEL:-24}" \
+		$${ARGS:-}
+
+ml-merge-behavior-manifests:
+	@test -n "$${OUT:-}" || (echo "Set OUT=merged manifest path" >&2; exit 1)
+	@python3 scripts/ml_behavior_merge_manifests.py \
+		--inputs $${INPUTS} \
+		--out "$${OUT}" \
+		--holdout-ratio "$${HOLDOUT_RATIO:-0.2}" \
 		$${ARGS:-}
 
 # Import WetlandBirds annotations into behavior_tracklet_manifest@v1 (#457).

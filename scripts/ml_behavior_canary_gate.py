@@ -24,10 +24,13 @@ def build_behavior_canary_gate_report(
     max_macro_f1_drop: float = 0.03,
     max_accuracy_drop: float = 0.05,
 ) -> dict[str, Any]:
-    if str(baseline_report.get("schema") or "") != "behavior_train_report@v1":
-        raise ValueError("baseline schema must be behavior_train_report@v1")
-    if str(canary_report.get("schema") or "") != "behavior_train_report@v1":
-        raise ValueError("canary schema must be behavior_train_report@v1")
+    base_schema = str(baseline_report.get("schema") or "")
+    can_schema = str(canary_report.get("schema") or "")
+    allowed = {"behavior_train_report@v1", "behavior_train_report@v2"}
+    if base_schema not in allowed:
+        raise ValueError("baseline schema must be behavior_train_report@v1 or @v2")
+    if can_schema not in allowed:
+        raise ValueError("canary schema must be behavior_train_report@v1 or @v2")
 
     bm = baseline_report.get("metrics") or {}
     cm = canary_report.get("metrics") or {}

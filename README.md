@@ -95,7 +95,7 @@ Two components: **detector** (bird or rodent in frame) and **classifier** (bird 
 - Extract tracklets for Behavior v2: `DB=app/data/db/birdlense.db OUT=/tmp/behavior_tracklet_manifest.v1.json make ml-extract-behavior-tracklets`.
 - Train candidate profile: `MANIFEST=/tmp/behavior_tracklet_manifest.v1.json OUT_DIR=/tmp/behavior_v2 make ml-train-behavior-video BACKBONE=x3d`.
 - Verify blind-gate session metrics: `cd app && python3 -m pytest processor/tests/test_recording_session_blind.py -q`.
-- Behavior v2 epic (#454–#460): scaffold merged (manifest/import/train scripts, shadow fields, `engine: meta|video|auto`); production video ONNX + rollout gates tracked in open sub-issues.
+- Behavior v2 (#454): tracklet crops, WetlandBirds import + holdout, train → OpenVINO IR in `app/processor/models/behavior_v1_openvino/`, `engine: canary` — see [docs/ml/BEHAVIOR_MODEL.md](docs/ml/BEHAVIOR_MODEL.md).
 - Full operator flow: [Labelling guide](./docs/user/LABELLING_GUIDE.md).
 
 ## Quick Start
