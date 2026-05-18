@@ -2387,6 +2387,88 @@
       ]
     }
   },
+  "labelling": {
+    "title": "Data Labelling",
+    "description": "Review boxes and model labels. Confirm valid cases for training.",
+    "language": "Language",
+    "progressLabel": "Reviewed {{done}} of {{total}}",
+    "caseTitle": "Case #{{id}}",
+    "minerResult": "Miner: created {{created}}, skipped {{skipped}}",
+    "exportDone": "Export done: {{format}} {{version}} ({{path}})",
+    "status": {
+      "pending": "In review",
+      "approved": "Done",
+      "rejected": "Error"
+    },
+    "filters": {
+      "status": "Status",
+      "workflow": "Workflow",
+      "camera": "Camera",
+      "all": "All",
+      "onlyNew": "Only new",
+      "onlyError": "Detection errors only"
+    },
+    "view": {
+      "snapshot": "Snapshot",
+      "video": "Video"
+    },
+    "meta": {
+      "time": "Time",
+      "camera": "Camera",
+      "reason": "Reason"
+    },
+    "predictions": {
+      "main": "Main model",
+      "shadow": "Shadow model"
+    },
+    "fields": {
+      "behaviorTag": "Behavior",
+      "speciesTag": "Species",
+      "empty": "(empty)",
+      "current": "(current)"
+    },
+    "actions": {
+      "runMiner": "Run miner",
+      "confirm": "Confirm",
+      "reject": "Reject",
+      "skip": "Skip",
+      "prev": "Previous",
+      "next": "Next",
+      "tagSpecies": "Tag species"
+    },
+    "export": {
+      "title": "Export",
+      "approved": "Export approved"
+    },
+    "states": {
+      "loading": "Loading...",
+      "error": "Queue load failed. Check API access and authentication.",
+      "empty": "No data. Run miner or seed queue.",
+      "noFiltered": "No cases for current filters."
+    },
+    "media": {
+      "noMedia": "No media available for this case.",
+      "noOverlayData": "No overlay geometry available."
+    },
+    "box": {
+      "main": "Main",
+      "shadow": "Shadow",
+      "groundTruth": "Ground Truth",
+      "rejected": "Rejected",
+      "detection": "Detection"
+    },
+    "shortcuts": {
+      "confirm": "Enter / Space",
+      "reject": "Esc / Backspace"
+    },
+    "help": {
+      "title": "How to use labelling",
+      "step1": "Check the box: bird should be inside and class should be correct.",
+      "step2": "If correct, click Confirm. If box is wrong, click Reject.",
+      "step3": "Use left/right arrows to move between cases.",
+      "gotIt": "Got it"
+    }
+  },
   "speciesDirectory": {
     "title": "Species",
     "description": "Species already seen at this station: counts from recordings, species page, and links back to clips.",

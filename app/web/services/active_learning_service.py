@@ -34,6 +34,49 @@ def _parse_json_any(raw: str | None) -> Any:
         return None
 
 
+def _bbox_xyxy_to_xywh(raw_bbox: Any) -> list[float] | None:
+    if not isinstance(raw_bbox, list) or len(raw_bbox) != 4:
+        return None
+    try:
+        x1, y1, x2, y2 = [float(x) for x in raw_bbox]
+    except (TypeError, ValueError):
+        return None
+    w = max(0.0, x2 - x1)
+    h = max(0.0, y2 - y1)
+    return [x1, y1, w, h]
+
+
+def _extract_track_frames(vs: VideoSpecies | None, payload: dict[str, Any]) -> list[dict[str, Any]]:
+    raw_frames = None
+    if vs is not None and vs.frames:
+        raw_frames = _parse_json_any(vs.frames)
+    if raw_frames is None:
+        raw_frames = payload.get('frames')
+    if not isinstance(raw_frames, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for row in raw_frames:
+        if not isinstance(row, dict):
+            continue
+        t_raw = row.get('t')
+        bbox_raw = row.get('bbox')
+        bbox_xywh = _bbox_xyxy_to_xywh(bbox_raw)
+        if bbox_xywh is None:
+            continue
+        try:
+            t_val = float(t_raw) if t_raw is not None else None
+        except (TypeError, ValueError):
+            t_val = None
+        out.append(
+            {
+                't': t_val,
+                'bbox': bbox_xywh,
+                'bbox_xyxy': bbox_raw,
+            }
+        )
+    return out
+
+
 def _next_dataset_version(base_dir: Path) -> str:
     versions = []
     for p in base_dir.glob("v*"):
@@ -209,7 +252,7 @@ def mine_hard_examples(
             fallback_ratio=None,
             payload={
                 "track_id": row.get("track_id"),
-                "frames": _parse_payload(row.get("frames")) if row.get("frames") else None,
+                "frames": _parse_json_any(row.get("frames")) if row.get("frames") else None,
                 "detection_provider": row.get("detection_provider"),
             },
         ):
@@ -235,6 +278,9 @@ def list_cases(*, status: str | None = None, limit: int = 100) -> dict[str, Any]
     rows = q.limit(lim).all()
     items = []
     for case, vs, species, video in rows:
+        payload = _parse_payload(case.payload_json)
+        track_frames = _extract_track_frames(vs, payload)
+        bbox = track_frames[0].get('bbox') if track_frames else None
         items.append(
             {
                 "id": int(case.id),
@@ -252,7 +298,9 @@ def list_cases(*, status: str | None = None, limit: int = 100) -> dict[str, Any]
                 "confidence": case.confidence,
                 "blind_score": case.blind_score,
                 "fallback_ratio": case.fallback_ratio,
-                "payload": _parse_payload(case.payload_json),
+                "payload": payload,
+                "bbox": bbox,
+                "track_frames": track_frames,
                 "behavior_label": getattr(video, "behavior_label", None) if video else None,
                 "behavior_confidence": getattr(video, "behavior_confidence", None) if video else None,
                 "behavior_shadow_label": getattr(video, "behavior_shadow_label", None) if video else None,
