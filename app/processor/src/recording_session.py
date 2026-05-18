@@ -280,14 +280,20 @@ class MotionRecordingSession:
             if camera_overrides:
                 self.decision_maker.apply_runtime_overrides(camera_overrides)
 
-            def _accumulate_run_stats(local_stats: dict) -> int:
+            def _raw_boxes_from_stats(local_stats: dict) -> int:
+                return int(local_stats.get("yolo_raw_boxes") or 0)
+
+            def _accumulate_run_stats(local_stats: dict, *, count_frame_metrics: bool = True) -> int:
+                """Session-level YOLO counters; one increment per captured frame (not per quickcheck probe)."""
+                raw_boxes_local = _raw_boxes_from_stats(local_stats)
+                if not count_frame_metrics:
+                    return raw_boxes_local
                 if local_stats.get("yolo_ran"):
                     runtime_signals["yolo_frames_ran"] += 1
                     processor_status["last_yolo_ok_at"] = datetime.now(timezone.utc).isoformat()
                 if local_stats.get("yolo_track_found"):
                     runtime_signals["yolo_frames_with_tracks"] += 1
                     processor_status["last_yolo_detection_at"] = datetime.now(timezone.utc).isoformat()
-                raw_boxes_local = int(local_stats.get("yolo_raw_boxes") or 0)
                 if raw_boxes_local > 0:
                     runtime_signals["yolo_frames_with_raw_boxes"] += 1
                     runtime_signals["yolo_raw_boxes_total"] += raw_boxes_local
@@ -367,7 +373,14 @@ class MotionRecordingSession:
                     camera_id=camera_id,
                     frigate_hold_seconds=frigate_hold_seconds,
                 )
-                if has_detections and not raw_yolo_detections:
+
+                # Primary-path recovery: normal frame_processor.run() produced raw boxes.
+                if raw_boxes > 0:
+                    runtime_signals["yolo_blind_phase"] = "recovered"
+                    blind_suspected_since_monotonic = None
+
+                frigate_only_extension = bool(has_detections and not raw_yolo_detections)
+                if frigate_only_extension:
                     runtime_signals["session_extended_by_frigate_only"] += 1
                     suspicion_ready = (
                         runtime_signals["yolo_frames_ran"] >= max(1, blind_min_frames)
@@ -416,18 +429,14 @@ class MotionRecordingSession:
                                 )
                             runtime_signals["blind_quickcheck_frames"] += 1
                             quick_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
-                            quick_raw = _accumulate_run_stats(quick_stats)
+                            # Probe-only: do not inflate session blind counters (already counted primary run).
+                            quick_raw = _accumulate_run_stats(quick_stats, count_frame_metrics=False)
                             if quick_detect or quick_raw > 0:
                                 runtime_signals["blind_quickcheck_hits"] += 1
                                 runtime_signals["yolo_blind_phase"] = "recovered"
-                                raw_yolo_detections = True
-                                has_detections = True
                                 blind_suspected_since_monotonic = None
                         else:
                             runtime_signals["yolo_blind_phase"] = "confirmed"
-                elif raw_boxes > 0:
-                    runtime_signals["yolo_blind_phase"] = "recovered"
-                    blind_suspected_since_monotonic = None
 
                 self.decision_maker.update_has_detections(has_detections)
                 self.decision_maker.get_first_species_result(
