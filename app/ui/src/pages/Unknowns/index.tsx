@@ -68,9 +68,24 @@ function reviewReasonLabel(t: (key: string) => string, reason?: string) {
     case 'classifier_uncertainty':
       return t('unknowns.reviewReasonClassifierUncertainty');
     case 'semantic_review_required':
-      return t('unknowns.reviewReasonSemanticConflict');
+      return t('unknowns.reviewReasonOperatorFlagged');
+    case 'bbox_rejected':
+      return t('unknowns.reviewReasonBboxRejected');
     default:
-      return reason || '';
+      return '';
+  }
+}
+
+function reviewStateLabel(t: (key: string) => string, state?: string) {
+  switch (state) {
+    case 'pending':
+      return t('unknowns.reviewStatePending');
+    case 'semantic_review_required':
+      return t('unknowns.reviewStateExpert');
+    case 'reviewed':
+      return t('unknowns.reviewStateReviewed');
+    default:
+      return t('unknowns.reviewStatePending');
   }
 }
 
@@ -175,11 +190,7 @@ export function UnknownCard({
               )}
               {detection.review_state && (
                 <Chip
-                  label={
-                    detection.review_state === 'pending'
-                      ? t('unknowns.reviewStatePending')
-                      : detection.review_state
-                  }
+                  label={reviewStateLabel(t, detection.review_state)}
                   size="small"
                   color="info"
                   variant="outlined"
@@ -502,6 +513,10 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
     mutationFn: (detectionId: number) =>
       confirmDetection(detectionId, 'unknowns'),
     onSuccess: (_data, detectionId) => {
+      queryClient.setQueryData<UnknownDetection[] | undefined>(
+        unknownsListKey,
+        (prev) => (prev ?? []).filter((row) => row.id !== detectionId),
+      );
       queryClient.invalidateQueries({ queryKey: queryKeys.unknowns.all });
       queryClient.invalidateQueries({
         queryKey: queryKeys.timeline.unknownsCountAll,
@@ -515,7 +530,11 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       });
       queryClient.invalidateQueries({ queryKey: queryKeys.corrections.recent });
       setSuccessVideoId(resolveVideoIdForDetection(detectionId));
-      setCorrectSuccess(t('unknowns.corrected'));
+      setCorrectSuccess(
+        expertQueueEnabled
+          ? t('unknowns.expertTaskDone')
+          : t('unknowns.corrected'),
+      );
     },
     onError: (err: unknown) => {
       setCorrectError(getApiErrorMessage(err, t('errors.loadSightings')));
