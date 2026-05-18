@@ -493,7 +493,12 @@ detection:
   yolo_blind_required_consecutive_sessions: 1
   yolo_blind_min_duration_seconds: 30
   yolo_blind_min_frames: 180
+  # Учитывать просадку до 2 FPS: для blind-gate берётся min(min_frames, min_duration*min_effective_fps).
+  yolo_blind_min_effective_fps: 2.0
   yolo_blind_min_frigate_only_frames: 120
+  # Self-healing (phase-1): при подтверждённой слепоте запросить мягкий рестарт процессора через flag-файл.
+  yolo_self_heal_restart_enabled: true
+  yolo_self_heal_cooldown_seconds: 300
   # При включении standalone мониторьте баланс провайдеров: fusion_provider_yolo должен оставаться доминирующим.
   # Если ровно один accepted_generic «Bird» от YOLO — НЕ подменять на Frigate standalone по умолчанию.
   # Иначе Frigate начинает доминировать как primary provider даже при наличии визуального YOLO-трека.

@@ -52,6 +52,7 @@ def _base_cfg() -> DummyConfig:
             "detection.yolo_blind_required_consecutive_sessions": 1,
             "detection.yolo_blind_min_duration_seconds": 30,
             "detection.yolo_blind_min_frames": 180,
+            "detection.yolo_blind_min_effective_fps": 2.0,
             "detection.yolo_blind_min_frigate_only_frames": 120,
             "processor.multi_camera_groups": [],
             "processor.birdnet_mqtt_half_life_hours": 6.0,
@@ -197,6 +198,26 @@ def run() -> list[ScenarioResult]:
             )
         )
 
+        # 3b) Long blind at degraded FPS (~2 FPS): still confirm by duration-based floor.
+        repo.save_session_runtime(
+            {
+                "triggered_camera": "BirdBox",
+                "duration_s": 32.0,
+                "yolo_frames_ran": 64,
+                "yolo_raw_boxes_total": 0,
+                "session_extended_by_frigate_only": 160,
+                "video_file_ok": True,
+            }
+        )
+        blind_low_fps = _blind_from_repo(repo, cfg)
+        results.append(
+            ScenarioResult(
+                "Слепота YOLO при деградации до 2 FPS",
+                blind_low_fps,
+                f"blind={blind_low_fps} yolo_frames=64 duration=32s",
+            )
+        )
+
         # 4) Восстановление: после blind снова появляются боксы => blind сброшен.
         repo.save_session_runtime(
             {
@@ -217,7 +238,7 @@ def run() -> list[ScenarioResult]:
             )
         )
 
-        # 5) Рестарт: новый repo instance видит ранее записанное состояние.
+        # 6) Рестарт: новый repo instance видит ранее записанное состояние.
         repo_after_restart = SessionStateRepository(db_path=db_path)
         rows_after_restart = repo_after_restart.recent_blind_sessions(camera_id="BirdBox", limit=10)
         restart_ok = len(rows_after_restart) >= 3

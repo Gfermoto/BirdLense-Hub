@@ -83,12 +83,14 @@ class MotionRecordingSession:
             blind_min_frames = int(app_config.get("detection.yolo_blind_min_frames") or 180)
             blind_min_frigate = int(app_config.get("detection.yolo_blind_min_frigate_only_frames") or 120)
             blind_min_duration_s = float(app_config.get("detection.yolo_blind_min_duration_seconds") or 30.0)
+            blind_min_effective_fps = float(app_config.get("detection.yolo_blind_min_effective_fps") or 2.0)
             self._startup_blind_confirmed = self.session_state_repo.is_blind_confirmed(
                 camera_id=self.default_camera_id,
                 min_recent_sessions=max(1, blind_min_sessions),
                 min_yolo_frames=max(1, blind_min_frames),
                 min_frigate_only_frames=max(1, blind_min_frigate),
                 min_duration_seconds=max(0.0, blind_min_duration_s),
+                min_effective_fps=max(0.1, blind_min_effective_fps),
             )
             if self._startup_blind_confirmed:
                 set_gauge("yolo_blind_restored_state", "1")
