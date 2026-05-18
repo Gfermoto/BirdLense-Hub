@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchReadiness } from '../api/camerasHealth';
 import {
+  fetchQualityHealth,
+  fetchQualityTimeseries,
   fetchProcessorLogs,
   fetchSystemMetricsHistory,
   fetchSystemMetricsLive,
@@ -45,5 +47,21 @@ export function useProcessorLogsQuery(lines: number) {
     queryKey: queryKeys.system.processorLogs(lines),
     queryFn: () => fetchProcessorLogs(lines),
     refetchInterval: 10_000,
+  });
+}
+
+export function useQualityTimeseriesQuery(bucket: 'hour' | 'day') {
+  return useQuery({
+    queryKey: queryKeys.system.qualityTimeseries(bucket),
+    queryFn: () => fetchQualityTimeseries(bucket),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useQualityHealthQuery(hours: number) {
+  return useQuery({
+    queryKey: queryKeys.system.qualityHealth(hours),
+    queryFn: () => fetchQualityHealth(hours),
+    refetchInterval: 15_000,
   });
 }

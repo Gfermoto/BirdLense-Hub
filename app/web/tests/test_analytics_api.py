@@ -75,3 +75,12 @@ def test_analytics_timeseries_contract(client, app):
     body = r.get_json()
     assert body["bucket"] == "hour"
     assert "items" in body
+
+
+def test_analytics_quality_health_contract(client, app):
+    _seed(app)
+    r = client.get("/api/ui/analytics/quality-health?hours=24", headers=_auth_headers())
+    assert r.status_code == 200, r.get_data(as_text=True)
+    body = r.get_json()
+    assert "health_kpis" in body
+    assert "recent_events" in body
