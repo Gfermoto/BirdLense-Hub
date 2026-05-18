@@ -320,6 +320,11 @@ processor:
   reid_max_embedding_age_hours: 8760
   # Optional per-species thresholds (species display name keys).
   reid_species_similarity_thresholds: {}
+  # Auto-link bird profiles by embedding centroid similarity (Stage 6).
+  reid_auto_link_enabled: true
+  reid_auto_link_threshold_high: 0.95
+  reid_auto_link_threshold_low: 0.75
+  reid_auto_link_max_candidates: 8
   # Baseline поведения (#416): логистическая регрессия по 3 признакам (manifest meta ↔ runtime proxy).
   # Веса: JSON из `scripts/ml_behavior_train_baseline.py` (schema behavior_logistic_export@v1).
   behavior_recognition:

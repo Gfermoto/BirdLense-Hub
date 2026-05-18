@@ -345,6 +345,71 @@ export const assignDetectionBirdProfile = async (
   return response.data;
 };
 
+export type BirdProfileLinkCandidate = {
+  profile_id: number;
+  display_name: string;
+  species_id: number | null;
+  avatar_url: string | null;
+  similarity: number;
+  similarity_percent: number;
+  tier: 'auto' | 'suggest';
+  status?: string | null;
+};
+
+export type BirdProfileSuggestLinksResponse = {
+  schema: string;
+  available: boolean;
+  thresholds: { high: number; low: number };
+  candidates: BirdProfileLinkCandidate[];
+  message?: string;
+};
+
+export const fetchBirdProfileSuggestLinks = async (
+  profileId: number | null,
+  body: {
+    video_species_id?: number;
+    species_id?: number;
+    limit?: number;
+  },
+): Promise<BirdProfileSuggestLinksResponse> => {
+  const path =
+    profileId && profileId > 0
+      ? `${BASE_API_URL}/bird-profiles/${profileId}/suggest-links`
+      : `${BASE_API_URL}/bird-profiles/suggest-links`;
+  const response = await axios.post(path, body, { withCredentials: true });
+  return response.data;
+};
+
+export const recordBirdProfileLinkFeedback = async (body: {
+  action: 'confirm' | 'reject';
+  candidate_profile_id: number;
+  anchor_profile_id?: number | null;
+  video_species_id?: number;
+  similarity?: number;
+}): Promise<{ ok: boolean; label: string }> => {
+  const response = await axios.post(`${BASE_API_URL}/bird-profiles/link-feedback`, body, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export const mergeBirdProfiles = async (
+  targetProfileId: number,
+  sourceProfileId: number,
+): Promise<{
+  target_profile_id: number;
+  source_profile_id: number;
+  merged_detections: number;
+  display_name: string;
+}> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/bird-profiles/${targetProfileId}/merge`,
+    { source_profile_id: sourceProfileId },
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
 export const setDetectionSemanticReview = async (
   detectionId: number,
   body: {

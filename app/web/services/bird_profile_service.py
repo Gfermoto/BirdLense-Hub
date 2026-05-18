@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from models import ActiveLearningCase, BirdProfile, VideoSpecies, db
+from services.reid_auto_link_service import auto_link_hook, merge_bird_profiles as _merge_bird_profiles
 
 
 SEMANTIC_REVIEW_STATUS = "semantic_review_required"
@@ -171,11 +172,12 @@ def set_detection_semantic_review(*, detection_id: int, required: bool, note: st
 
 
 def auto_link_profile_candidate(*, video_species_id: int) -> dict[str, Any]:
-    """Hook placeholder for future embedding-driven auto-linking."""
-    return {
-        "video_species_id": int(video_species_id),
-        "candidate_profile_id": None,
-        "strategy": "reid_embedding",
-        "available": False,
-    }
+    return auto_link_hook(video_species_id=int(video_species_id))
+
+
+def merge_bird_profiles(*, target_profile_id: int, source_profile_id: int) -> dict[str, Any]:
+    return _merge_bird_profiles(
+        target_profile_id=int(target_profile_id),
+        source_profile_id=int(source_profile_id),
+    )
 

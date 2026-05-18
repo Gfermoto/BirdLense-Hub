@@ -22,9 +22,11 @@ from services.bird_profile_service import (
     assign_profile_to_detection,
     create_bird_profile,
     list_bird_profiles,
+    merge_bird_profiles,
     set_detection_semantic_review,
     update_bird_profile,
 )
+from services.reid_auto_link_service import record_link_feedback, suggest_profile_links
 
 
 def register_ui_corrections_dataset_routes(app):
@@ -68,6 +70,83 @@ def register_ui_corrections_dataset_routes(app):
                 display_name=data.get("display_name"),
                 avatar_url=data.get("avatar_url"),
                 status=data.get("status"),
+            )
+            return payload, 200
+        except ValueError as exc:
+            return {"error": str(exc)}, 400
+        except LookupError:
+            return {"error": "profile not found"}, 404
+
+    @app.route("/api/ui/bird-profiles/<int:profile_id>/suggest-links", methods=["POST"])
+    def post_bird_profile_suggest_links(profile_id: int):
+        if not contributor_or_admin_access():
+            return {"error": "Password required"}, 403
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
+        try:
+            payload = suggest_profile_links(
+                profile_id=int(profile_id) if int(profile_id) > 0 else None,
+                video_species_id=data.get("video_species_id"),
+                species_id=data.get("species_id"),
+                limit=data.get("limit", 8),
+            )
+            return payload, 200
+        except LookupError:
+            return {"error": "detection not found"}, 404
+
+    @app.route("/api/ui/bird-profiles/suggest-links", methods=["POST"])
+    def post_bird_profile_suggest_links_new():
+        if not contributor_or_admin_access():
+            return {"error": "Password required"}, 403
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
+        try:
+            payload = suggest_profile_links(
+                profile_id=data.get("profile_id"),
+                video_species_id=data.get("video_species_id"),
+                species_id=data.get("species_id"),
+                limit=data.get("limit", 8),
+            )
+            return payload, 200
+        except LookupError:
+            return {"error": "detection not found"}, 404
+
+    @app.route("/api/ui/bird-profiles/link-feedback", methods=["POST"])
+    def post_bird_profile_link_feedback():
+        if not contributor_or_admin_access():
+            return {"error": "Password required"}, 403
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
+        try:
+            payload = record_link_feedback(
+                action=str(data.get("action") or ""),
+                candidate_profile_id=int(data.get("candidate_profile_id")),
+                anchor_profile_id=data.get("anchor_profile_id"),
+                video_species_id=data.get("video_species_id"),
+                similarity=data.get("similarity"),
+                source=str(data.get("source") or "auto_link_ui"),
+            )
+            return payload, 200
+        except ValueError as exc:
+            return {"error": str(exc)}, 400
+
+    @app.route("/api/ui/bird-profiles/<int:target_profile_id>/merge", methods=["POST"])
+    def post_bird_profile_merge(target_profile_id: int):
+        if not contributor_or_admin_access():
+            return {"error": "Password required"}, 403
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
+        source_id = data.get("source_profile_id")
+        if source_id is None:
+            return {"error": "source_profile_id is required"}, 400
+        try:
+            payload = merge_bird_profiles(
+                target_profile_id=int(target_profile_id),
+                source_profile_id=int(source_id),
             )
             return payload, 200
         except ValueError as exc:
