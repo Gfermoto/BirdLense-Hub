@@ -526,6 +526,18 @@ ml-extract-behavior-tracklets:
 		$$(test -n "$${HOLDOUT_RATIO:-}" && printf -- '--holdout-ratio "%s" ' "$${HOLDOUT_RATIO}") \
 		$${ARGS:-}
 
+# Prod labeled tracklets + crops (run on VPS: DB=/app/data/db/birdlense.db).
+ml-extract-behavior-prod-labeled:
+	@test -n "$${DB:-}" || (echo "Set DB=path/to/birdlense.db" >&2; exit 1)
+	@test -n "$${OUT:-}" || (echo "Set OUT=manifest.json" >&2; exit 1)
+	@test -n "$${CROPS_DIR:-}" || (echo "Set CROPS_DIR=data/datasets/behavior_prod_crops" >&2; exit 1)
+	@PYTHONPATH=scripts:app python3 scripts/ml_behavior_extract_prod_labeled.py \
+		--db "$${DB}" \
+		--out "$${OUT}" \
+		--crops-dir "$${CROPS_DIR}" \
+		--repo-root "$${REPO_ROOT:-/app}" \
+		$${ARGS:-}
+
 ml-bootstrap-behavior-synthetic:
 	@python3 scripts/ml_behavior_bootstrap_synthetic.py \
 		--out-root "$${OUT_ROOT:-app/data/datasets/behavior_v2_synthetic}" \

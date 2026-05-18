@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Train Behavior v2 tracklet classifier on crop RGB features + holdout metrics (#458)."""
+"""Train Behavior video classifier on crop RGB + val early-stop (#458 v2)."""
 
 from __future__ import annotations
 
@@ -13,11 +13,12 @@ from typing import Any
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
-
-from ml_behavior_eval_harness import evaluate_predictions
-
 if str(_REPO_ROOT / "app") not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT / "app"))
+
+from ml_behavior_augment import augment_mean_rgb
+from ml_behavior_eval_harness import evaluate_predictions
+
 from shared.behavior_tracklet_crop import (  # noqa: E402
     FEATURE_DIM,
     load_tracklet_mean_rgb,
@@ -36,12 +37,60 @@ def _load_manifest(path: Path) -> dict[str, Any]:
     return payload
 
 
-def tracklet_rgb_features(tracklet: dict[str, Any]) -> list[float] | None:
-    rgb = load_tracklet_mean_rgb(tracklet)
+def _feat_from_tracklet(row: dict[str, Any]) -> list[float] | None:
+    aug = row.get("_mean_rgb_aug")
+    if aug is not None:
+        import numpy as np
+
+        if isinstance(aug, np.ndarray):
+            return rgb_feature_vector_from_mean_rgb(aug)
+    rgb = load_tracklet_mean_rgb(row)
     if rgb is None:
         return None
     vec = rgb_feature_vector_from_mean_rgb(rgb)
     return vec if len(vec) == FEATURE_DIM else None
+
+
+def _build_xy(
+    rows: list[dict[str, Any]],
+    *,
+    augment_copies: int = 0,
+    seed: int = 42,
+) -> tuple[list[list[float]], list[str]]:
+    import random
+
+    x: list[list[float]] = []
+    y: list[str] = []
+    rng = random.Random(seed)
+    for row in rows:
+        feat = _feat_from_tracklet(row)
+        if feat is None:
+            continue
+        lab = str(row.get("label")).strip().lower()
+        x.append(feat)
+        y.append(lab)
+        if int(augment_copies) > 0:
+            rgb = load_tracklet_mean_rgb(row)
+            if rgb is None:
+                continue
+            for _ in range(int(augment_copies)):
+                aug = augment_mean_rgb(rgb, rng=rng)
+                f2 = rgb_feature_vector_from_mean_rgb(aug)
+                if f2:
+                    x.append(f2)
+                    y.append(lab)
+    return x, y
+
+
+def _predict_export(export: dict[str, Any], feat: list[float]) -> str:
+    import numpy as np
+
+    coef = np.asarray(export.get("coef") or [], dtype=np.float64)
+    intercept = np.asarray(export.get("intercept") or [], dtype=np.float64).reshape(-1)
+    classes = [str(c) for c in export.get("labels") or []]
+    x = np.asarray([feat], dtype=np.float64)
+    logits = (x @ coef.T + intercept).reshape(-1)
+    return classes[int(np.argmax(logits))]
 
 
 def train_video_profile(
@@ -50,6 +99,9 @@ def train_video_profile(
     backbone: str,
     out_dir: Path,
     seed: int = 42,
+    augment_copies: int = 2,
+    model_kind: str = "video_v2",
+    min_macro_f1: float = 0.75,
 ) -> dict[str, Any]:
     rows = [r for r in (manifest.get("tracklets") or []) if isinstance(r, dict)]
     labeled = [
@@ -58,102 +110,106 @@ def train_video_profile(
         if str(r.get("label") or "").strip() and str(r.get("label")) not in {"unknown", "unlabeled"}
     ]
     train_rows = [r for r in labeled if str(r.get("split") or "train") == "train"]
+    val_rows = [r for r in labeled if str(r.get("split") or "") == "val"]
     holdout_rows = [r for r in labeled if str(r.get("split") or "") == "holdout"]
 
-    x_train: list[list[float]] = []
-    y_train: list[str] = []
-    for row in train_rows:
-        feat = tracklet_rgb_features(row)
-        if feat is None:
-            continue
-        x_train.append(feat)
-        y_train.append(str(row.get("label")).strip().lower())
-
-    if len(x_train) < 8 or len({y for y in y_train}) < 2:
-        raise ValueError(f"not enough labeled train tracklets with crops: {len(x_train)}")
+    x_train, y_train = _build_xy(train_rows, augment_copies=augment_copies, seed=seed)
+    if len(x_train) < 12 or len({y for y in y_train}) < 2:
+        raise ValueError(f"not enough train samples: {len(x_train)}")
 
     try:
-        from app.shared.behavior_logistic_train import fit_behavior_logistic_export
-    except ImportError:
-        sys.path.insert(0, str(_REPO_ROOT / "app"))
-        from shared.behavior_logistic_train import fit_behavior_logistic_export
-
-    export, _clf = fit_behavior_logistic_export(
-        x_train,
-        y_train,
-        seed=seed,
-        feature_mode="tracklet_rgb_v1",
-        extra={
-            "model_kind": "video_v1",
-            "backbone": backbone,
-            "feature_dim": FEATURE_DIM,
-            "rgb_size": 8,
-        },
-    )
-
-    model_version = f"{backbone}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
-    export["schema"] = "behavior_video_export@v1"
-    export["model_version"] = model_version
-    export["inference_backend"] = "openvino"
-    export["precision"] = "fp16"
-
-    out_dir.mkdir(parents=True, exist_ok=True)
-    export_path = out_dir / f"behavior_video_export@{model_version}.json"
-    export_path.write_text(json.dumps(export, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    preds_holdout: list[dict[str, str]] = []
-    y_true: list[str] = []
-    y_pred: list[str] = []
-    labels_sorted = sorted({str(l) for l in export.get("labels") or []})
+        from sklearn.linear_model import LogisticRegression
+    except ImportError as e:
+        raise RuntimeError("scikit-learn required") from e
 
     import numpy as np
 
-    coef = np.asarray(export.get("coef") or [], dtype=np.float64)
-    intercept = np.asarray(export.get("intercept") or [], dtype=np.float64).reshape(-1)
-    classes = [str(c) for c in export.get("labels") or []]
+    best_export: dict[str, Any] | None = None
+    best_val_f1 = -1.0
+    best_C = 1.0
 
-    def _predict_vec(feat: list[float]) -> str:
-        x = np.asarray([feat], dtype=np.float64)
-        logits = x @ coef.T + intercept
-        if logits.ndim == 2 and logits.shape[0] == 1:
-            logits = logits.reshape(-1)
-        idx = int(np.argmax(logits))
-        return classes[idx]
+    for C in (0.05, 0.1, 0.5, 1.0, 2.0, 5.0):
+        clf = LogisticRegression(
+            C=float(C),
+            max_iter=800,
+            random_state=int(seed),
+            class_weight="balanced",
+            solver="lbfgs",
+        )
+        clf.fit(np.asarray(x_train, dtype=np.float64), np.asarray(y_train))
+        classes = [str(c) for c in clf.classes_]
+        coef = clf.coef_.tolist()
+        intercept = clf.intercept_.tolist()
+        export = {
+            "schema": "behavior_video_export@v1",
+            "feature_mode": "tracklet_rgb_v1",
+            "labels": classes,
+            "coef": coef,
+            "intercept": intercept,
+            "feature_dim": FEATURE_DIM,
+            "model_kind": model_kind,
+            "backbone": backbone,
+        }
+        if val_rows:
+            x_val, y_val = _build_xy(val_rows, augment_copies=0, seed=seed)
+            if x_val:
+                y_pred = [_predict_export(export, f) for f in x_val]
+                val_m = evaluate_predictions(
+                    labels=sorted(set(y_val)),
+                    y_true=y_val,
+                    y_pred=y_pred,
+                )
+                vf1 = float(val_m.get("macro_f1") or 0.0)
+            else:
+                vf1 = 0.0
+        else:
+            vf1 = 1.0
 
+        if vf1 > best_val_f1:
+            best_val_f1 = vf1
+            best_C = float(C)
+            best_export = export
+
+    assert best_export is not None
+    model_version = f"{backbone}-v2-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+    best_export["model_version"] = model_version
+    best_export["inference_backend"] = "openvino"
+    best_export["precision"] = "fp16"
+    best_export["train_C"] = best_C
+    best_export["val_macro_f1"] = round(best_val_f1, 6)
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    export_path = out_dir / f"behavior_video_export@{model_version}.json"
+    export_path.write_text(json.dumps(best_export, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    labels_sorted = sorted({str(l) for l in best_export.get("labels") or []})
+    preds_holdout: list[dict[str, str]] = []
+    y_true: list[str] = []
+    y_pred: list[str] = []
     for row in holdout_rows:
-        feat = tracklet_rgb_features(row)
+        feat = _feat_from_tracklet(row)
         if feat is None:
             continue
         true_lab = str(row.get("label")).strip().lower()
-        pred_lab = _predict_vec(feat)
-        tid = str(row.get("tracklet_id"))
-        preds_holdout.append({"tracklet_id": tid, "label": true_lab, "predicted": pred_lab})
+        pred_lab = _predict_export(best_export, feat)
+        preds_holdout.append(
+            {"tracklet_id": str(row.get("tracklet_id")), "label": true_lab, "predicted": pred_lab}
+        )
         y_true.append(true_lab)
         y_pred.append(pred_lab)
 
     metrics = evaluate_predictions(labels=labels_sorted, y_true=y_true, y_pred=y_pred)
-    if metrics["n_samples"] == 0:
-        # Fallback: evaluate on train if holdout empty (small synthetic sets).
-        for row in train_rows[: max(8, len(train_rows) // 5)]:
-            feat = tracklet_rgb_features(row)
-            if feat is None:
-                continue
-            true_lab = str(row.get("label")).strip().lower()
-            pred_lab = _predict_vec(feat)
-            y_true.append(true_lab)
-            y_pred.append(pred_lab)
-        metrics = evaluate_predictions(labels=labels_sorted, y_true=y_true, y_pred=y_pred)
-        metrics["note"] = "evaluated_on_train_subset_holdout_empty"
+    metrics["val_macro_f1"] = round(best_val_f1, 6)
+    ok = float(metrics.get("macro_f1") or 0.0) >= float(min_macro_f1) and float(metrics.get("accuracy") or 0.0) >= 0.80
 
-    ok = float(metrics.get("macro_f1") or 0.0) >= 0.7
     report = {
         "schema": "behavior_train_report@v2",
         "created_at": _utc_now(),
         "backbone": backbone,
         "model_version": model_version,
+        "model_kind": model_kind,
         "metrics": metrics,
         "artifact": {"export_json": str(export_path)},
-        "holdout_predictions": preds_holdout,
         "ok": ok,
     }
     report_path = out_dir / f"behavior_train_report@{model_version}.json"
@@ -175,6 +231,9 @@ def main() -> int:
     ap.add_argument("--backbone", choices=["tsm", "x3d", "slowfast"], default="x3d")
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--augment-copies", type=int, default=2)
+    ap.add_argument("--model-kind", default="video_v2")
+    ap.add_argument("--min-macro-f1", type=float, default=0.75)
     args = ap.parse_args()
     manifest = _load_manifest(Path(args.manifest).expanduser().resolve())
     result = train_video_profile(
@@ -182,6 +241,9 @@ def main() -> int:
         backbone=str(args.backbone),
         out_dir=Path(args.out_dir).expanduser().resolve(),
         seed=int(args.seed),
+        augment_copies=int(args.augment_copies),
+        model_kind=str(args.model_kind),
+        min_macro_f1=float(args.min_macro_f1),
     )
     print(json.dumps({"ok": True, **result}, ensure_ascii=False))
     return 0 if bool(result["report"].get("ok")) else 2
