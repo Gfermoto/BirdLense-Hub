@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import logging
 import threading
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from app_config.app_config import app_config
 from sqlalchemy import text
-from models import Species, VideoSpecies, db
+
+from models import ActiveLearningCase, Species, VideoSpecies, db
 from services.corrections_activity_service import (
     normalize_apply_scope,
     normalize_correction_source,
@@ -29,6 +30,37 @@ from util import ensure_utc
 _log = logging.getLogger(__name__)
 
 _INLINE_DATASET_CROP_LIMIT = 5
+
+_SEMANTIC_REVIEW_REASON = "semantic_review_required"
+_OPEN_AL_STATUSES = ("pending", "semantic_review_required")
+
+
+def _resolve_review_queue_on_confirm(session, detections: list[VideoSpecies]) -> None:
+    """Clear expert/unknowns review flags so confirmed items leave queue=expert."""
+    if not detections:
+        return
+    now = datetime.now(timezone.utc)
+    vs_ids: list[int] = []
+    for vs in detections:
+        vs.classifier_needs_review = False
+        if vs.review_reason in {
+            _SEMANTIC_REVIEW_REASON,
+            "classifier_uncertainty",
+            "generic_bird",
+            "low_confidence",
+            "bbox_rejected",
+        }:
+            vs.review_reason = None
+        vs_ids.append(int(vs.id))
+    if not vs_ids:
+        return
+    session.query(ActiveLearningCase).filter(
+        ActiveLearningCase.video_species_id.in_(vs_ids),
+        ActiveLearningCase.status.in_(_OPEN_AL_STATUSES),
+    ).update(
+        {"status": "approved", "updated_at": now},
+        synchronize_session=False,
+    )
 
 
 def run_confirm_detection(
@@ -54,6 +86,7 @@ def run_confirm_detection(
         to_confirm = list(vs.species_visit.video_species) if vs.species_visit else [vs]
     for v in to_confirm:
         v.manually_corrected = True
+    _resolve_review_queue_on_confirm(session, to_confirm)
     session.commit()
     bust_response_caches()
     write_correction_activity(

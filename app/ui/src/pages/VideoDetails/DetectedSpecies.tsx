@@ -932,16 +932,17 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                             {t('video.semanticReviewButton')}
                           </Button>
                         </Box>
-                        {bestDet.semantic_conflict || bestDet.semantic_review_history?.length ? (
+                        {bestDet.semantic_conflict ? (
                           <Alert severity="warning" variant="outlined">
-                            <Typography variant="caption" display="block" fontWeight={700}>
-                              {t('video.semanticConflictTitle')}
+                            <Typography variant="caption" display="block">
+                              {bestDet.review_reason === 'semantic_review_required'
+                                ? t('unknowns.reviewReasonOperatorFlagged')
+                                : bestDet.review_reason === 'classifier_uncertainty'
+                                  ? t('unknowns.reviewReasonClassifierUncertainty')
+                                  : bestDet.review_reason === 'low_confidence'
+                                    ? t('unknowns.reviewReasonLowConfidence')
+                                    : t('video.semanticReviewQueued')}
                             </Typography>
-                            {(bestDet.semantic_review_history || []).slice(-3).map((entry, idx) => (
-                              <Typography key={`${key}-history-${idx}`} variant="caption" display="block">
-                                {entry.at || '—'} • {entry.source || 'system'} {entry.note ? `• ${entry.note}` : ''}
-                              </Typography>
-                            ))}
                           </Alert>
                         ) : null}
                       </Stack>
