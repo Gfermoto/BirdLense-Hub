@@ -346,6 +346,60 @@ class BirdnetFifoEvent(db.Model):
     __table_args__ = (Index("ix_birdnet_fifo_event_ts_epoch", "ts_epoch"),)
 
 
+class SessionRuntimeMetrics(db.Model):
+    """Persistent runtime session summaries from processor (survives restarts)."""
+
+    __tablename__ = "session_runtime_metrics"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    camera_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    duration_s: Mapped[float | None] = mapped_column(Float, nullable=True)
+    frames_seen: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_frames_ran: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_frames_with_tracks: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_frames_with_raw_boxes: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_raw_boxes_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_accepted_boxes_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    low_light_blocked_frames: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    session_extended_by_frigate_only: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    bytetrack_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    post_fusion_persisted: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    rejected_decision_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    mqtt_events_in_window: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    yolo_blind_confirmed: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
+    runtime_profile: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    video_file_ok: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
+    payload_json: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    __table_args__ = (
+        Index("ix_session_runtime_metrics_camera_created", "camera_id", desc("created_at")),
+        Index("ix_session_runtime_metrics_created", desc("created_at")),
+    )
+
+
+class DetectorHealthEvent(db.Model):
+    """Health/self-healing events for detector pipeline."""
+
+    __tablename__ = "detector_health_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    camera_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False, default="info", server_default="info")
+    details_json: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    __table_args__ = (
+        Index("ix_detector_health_events_camera_created", "camera_id", desc("created_at")),
+        Index("ix_detector_health_events_type_created", "event_type", desc("created_at")),
+    )
+
+
 class SpeciesVisit(db.Model):
     """Represents a continuous period when a species species was present, groups video and audio detections"""
 

@@ -35,6 +35,7 @@ from recording_video_response import response_video_id
 from recordings_remote_mirror import schedule_recordings_session_mirror
 from recording_spectrogram import maybe_generate_recording_spectrogram
 from reid_runtime import enrich_runtime_reid_detections
+from session_state_repository import SessionStateRepository
 from spectrogram import generate_spectrogram
 from behavior_baseline_runtime import maybe_predict_video_behavior
 
@@ -302,6 +303,20 @@ def finalize_motion_recording(
     triggered_camera = None
     if trigger_source == "frigate" and isinstance(recording_context, dict):
         triggered_camera = session_camera_id
+    rs_ctx = {}
+    if isinstance(recording_context, dict) and isinstance(recording_context.get("runtime_signals"), dict):
+        rs_ctx = dict(recording_context.get("runtime_signals") or {})
+    yolo_blind_confirmed = False
+    try:
+        yolo_ran_now = int(rs_ctx.get("yolo_frames_ran") or 0)
+        yolo_raw_now = int(rs_ctx.get("yolo_raw_boxes_total") or 0)
+        frigate_only_now = int(rs_ctx.get("session_extended_by_frigate_only") or 0)
+        blind_now = yolo_ran_now > 0 and yolo_raw_now == 0 and frigate_only_now > 0
+        repo = SessionStateRepository()
+        blind_recent = repo.is_blind_confirmed(camera_id=session_camera_id, min_recent_sessions=2)
+        yolo_blind_confirmed = bool(blind_now and blind_recent)
+    except Exception:
+        logging.debug("finalize: blind-state probe failed", exc_info=True)
     video_detections = build_fused_video_detections(
         video_detections,
         mqtt_events,
@@ -309,6 +324,7 @@ def finalize_motion_recording(
         end_time=end_time,
         app_config=app_config,
         triggered_camera=triggered_camera,
+        yolo_blind_confirmed=yolo_blind_confirmed,
     )
     rejected_decisions.extend(
         collect_post_fusion_rejections(
@@ -699,10 +715,28 @@ def finalize_motion_recording(
             "mqtt_events_in_window": len(mqtt_events),
             "video_file_ok": bool(video_file_ok),
             "runtime_profile": rs.get("runtime_profile"),
+            "yolo_blind_confirmed": bool(yolo_blind_confirmed),
         }
         logging.info(
             "recording_session_summary %s",
             json.dumps(session_summary, default=str, separators=(",", ":")),
         )
+        try:
+            repo = SessionStateRepository()
+            repo.save_session_runtime(session_summary)
+            if bool(yolo_blind_confirmed):
+                repo.append_detector_health_event(
+                    event_type="yolo_blind_confirmed",
+                    severity="warning",
+                    camera_id=ctx.get("triggered_camera"),
+                    details={
+                        "yolo_frames_ran": session_summary["yolo_frames_ran"],
+                        "yolo_raw_boxes_total": session_summary["yolo_raw_boxes_total"],
+                        "session_extended_by_frigate_only": session_summary["session_extended_by_frigate_only"],
+                        "mqtt_events_in_window": session_summary["mqtt_events_in_window"],
+                    },
+                )
+        except Exception:
+            logging.debug("recording_session_summary persist skipped", exc_info=True)
     except Exception:
         logging.debug("recording_session_summary skipped", exc_info=True)
