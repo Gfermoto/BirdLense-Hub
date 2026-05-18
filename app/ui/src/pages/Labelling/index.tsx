@@ -36,7 +36,7 @@ const statusColor: Record<LabellingCaseStatus, 'default' | 'success' | 'error' |
 
 export const LabellingPage: React.FC = () => {
   useDocumentTitle('Labelling');
-  const [status, setStatus] = React.useState<FilterStatus>('pending');
+  const [status, setStatus] = React.useState<FilterStatus>('all');
   const [exportFormat, setExportFormat] = React.useState<'yolo' | 'coco'>('yolo');
   const q = useLabellingCasesQuery(status, 150);
   const mine = useMineLabellingCasesMutation();
@@ -111,6 +111,12 @@ export const LabellingPage: React.FC = () => {
           </CardContent>
         </Card>
         <Stack spacing={1.5}>
+          {q.isLoading ? <Alert severity="info">Загрузка...</Alert> : null}
+          {q.isError ? (
+            <Alert severity="error">
+              Ошибка загрузки очереди. Проверьте авторизацию и доступность API `/api/ui/labelling/cases`.
+            </Alert>
+          ) : null}
           {(q.data?.items || []).map((item) => (
             <Card key={item.id}>
               <CardContent>
@@ -136,10 +142,15 @@ export const LabellingPage: React.FC = () => {
                         muted
                         preload="metadata"
                         sx={{ width: '100%', maxHeight: 220, borderRadius: 1, mt: 0.5 }}
-                        src={`${BASE_API_URL}/videos/${item.video_id}/stream`}
+                        src={item.video_stream_url ? `${BASE_API_URL.replace('/api', '')}${item.video_stream_url}` : `${BASE_API_URL}/videos/${item.video_id}/stream`}
                       />
                     </Box>
-                  ) : null}
+                  ) : (
+                    <Alert severity="warning">
+                      Нет медиа для этого кейса. Используйте сидирование (`python3 scripts/seed_labelling_queue.py`) или
+                      откройте кейс из последних детекций с `video_id`.
+                    </Alert>
+                  )}
                   <Typography variant="body2" color="text.secondary">
                     Main: {item.behavior_label || '-'}
                     {item.behavior_confidence != null
@@ -241,8 +252,8 @@ export const LabellingPage: React.FC = () => {
               </CardContent>
             </Card>
           ))}
-          {!q.isLoading && (q.data?.count || 0) === 0 ? (
-            <Alert severity="info">No cases yet. Run Hard-Case Miner.</Alert>
+          {!q.isLoading && !q.isError && (q.data?.count || 0) === 0 ? (
+            <Alert severity="info">Нет данных. Запусти Hard-Case Miner или seed: `python3 scripts/seed_labelling_queue.py`.</Alert>
           ) : null}
         </Stack>
       </Stack>

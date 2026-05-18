@@ -13,6 +13,8 @@ export type LabellingCase = {
   video_species_id: number | null;
   species_name: string | null;
   video_path: string | null;
+  video_stream_url?: string | null;
+  video_details_url?: string | null;
   confidence: number | null;
   blind_score: number | null;
   fallback_ratio: number | null;

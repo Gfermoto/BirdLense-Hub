@@ -247,6 +247,8 @@ def list_cases(*, status: str | None = None, limit: int = 100) -> dict[str, Any]
                 "video_species_id": case.video_species_id,
                 "species_name": species.name if species else None,
                 "video_path": video.video_path if video else None,
+                "video_stream_url": f"/api/videos/{case.video_id}/stream" if case.video_id else None,
+                "video_details_url": f"/videos/{case.video_id}" if case.video_id else None,
                 "confidence": case.confidence,
                 "blind_score": case.blind_score,
                 "fallback_ratio": case.fallback_ratio,
