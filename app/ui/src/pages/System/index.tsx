@@ -16,6 +16,7 @@ import { DomainTrustCard } from './DomainTrustCard';
 import { SystemHero } from './SystemHero';
 import { RecognitionImprovementCard } from './RecognitionImprovementCard';
 import { BehaviorBaselineRetrainCard } from './BehaviorBaselineRetrainCard';
+import { DetectionQualityDashboardCard } from './DetectionQualityDashboardCard';
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
@@ -120,6 +121,7 @@ export const System: React.FC = () => {
                 <DomainTrustCard />
               </Box>
               <SystemMonitor showVisitors={isAdvanced} />
+              <DetectionQualityDashboardCard />
               <Box
                 id="recognition-improvement"
                 sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}

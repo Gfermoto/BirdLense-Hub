@@ -22,6 +22,11 @@ def _parse_iso(value: str | None) -> datetime | None:
 
 
 def _as_utc_iso(dt: datetime) -> str:
+    if isinstance(dt, str):
+        parsed = _parse_iso(dt)
+        if parsed is None:
+            return dt
+        dt = parsed
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc).isoformat()
@@ -177,3 +182,102 @@ def fetch_visits_timeseries(*, start_iso: str | None, end_iso: str | None, bucke
             }
         )
     return {"bucket": bucket_norm, "items": items, "count": len(items)}
+
+
+def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str, Any]:
+    h = max(1, min(int(hours), 168))
+    lim = max(1, min(int(events_limit), 200))
+    runtime_rows = db.session.execute(
+        text(
+            """
+            SELECT created_at, payload_json
+            FROM session_runtime_metrics
+            WHERE datetime(created_at) >= datetime('now', :window)
+            ORDER BY id DESC
+            LIMIT 600
+            """
+        ),
+        {"window": f"-{h} hours"},
+    ).mappings()
+    blind_scores: list[float] = []
+    fallback_sessions = 0
+    total_sessions = 0
+    for row in runtime_rows:
+        total_sessions += 1
+        try:
+            payload = json.loads(str(row["payload_json"] or "{}"))
+        except Exception:
+            payload = {}
+        score = payload.get("yolo_blind_score")
+        try:
+            if score is not None:
+                blind_scores.append(float(score))
+        except (TypeError, ValueError):
+            pass
+        if int(payload.get("session_extended_by_frigate_only") or 0) > 0:
+            fallback_sessions += 1
+
+    heal_rows = db.session.execute(
+        text(
+            """
+            SELECT created_at, event_type, severity, details_json
+            FROM detector_health_events
+            WHERE datetime(created_at) >= datetime('now', :window)
+              AND (
+                event_type='yolo_self_heal_action'
+                OR event_type='yolo_blind_confirmed'
+                OR event_type='yolo_blind_recovered'
+              )
+            ORDER BY id DESC
+            LIMIT :lim
+            """
+        ),
+        {"window": f"-{h} hours", "lim": lim},
+    ).mappings()
+    events = []
+    action_counts = {"soft_clear": 0, "reinit": 0, "restart": 0, "alert": 0}
+    infer_p95_samples: list[float] = []
+    for row in heal_rows:
+        details_raw = str(row.get("details_json") or "{}")
+        try:
+            details = json.loads(details_raw)
+        except Exception:
+            details = {}
+        action = str(details.get("action") or "").strip()
+        if action in action_counts:
+            action_counts[action] += 1
+        try:
+            p95 = (
+                details.get("runtime_stats", {})
+                .get("latency_ms", {})
+                .get("frame_processor_detect_p95")
+            )
+            if p95 is not None:
+                infer_p95_samples.append(float(p95))
+        except (TypeError, ValueError, AttributeError):
+            pass
+        events.append(
+            {
+                "created_at": _as_utc_iso(row["created_at"]),
+                "event_type": row["event_type"],
+                "severity": row["severity"],
+                "action": action or None,
+                "dump_refs": details.get("dump_refs"),
+            }
+        )
+
+    blind_score_current = blind_scores[0] if blind_scores else 0.0
+    blind_score_avg = (sum(blind_scores) / float(len(blind_scores))) if blind_scores else 0.0
+    fallback_ratio = (float(fallback_sessions) / float(total_sessions)) if total_sessions > 0 else 0.0
+    infer_p95_avg = (sum(infer_p95_samples) / float(len(infer_p95_samples))) if infer_p95_samples else None
+    return {
+        "window_hours": h,
+        "health_kpis": {
+            "blind_score_current": round(blind_score_current, 4),
+            "blind_score_avg": round(blind_score_avg, 4),
+            "fallback_ratio": round(fallback_ratio, 4),
+            "self_heal_action_counts": action_counts,
+            "inference_latency_p95_ms_avg": round(infer_p95_avg, 2) if infer_p95_avg is not None else None,
+        },
+        "recent_events": events,
+    }

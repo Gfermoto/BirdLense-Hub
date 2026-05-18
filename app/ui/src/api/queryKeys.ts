@@ -42,6 +42,10 @@ export const queryKeys = {
     processorLogs: (lines: number) =>
       ['system', 'processorLogs', lines] as const,
     retentionConfig: ['system', 'retention-config'] as const,
+    qualityTimeseries: (bucket: 'hour' | 'day') =>
+      ['system', 'quality-timeseries', bucket] as const,
+    qualityHealth: (hours: number) =>
+      ['system', 'quality-health', hours] as const,
   },
   /** Карточки страницы «Система» с плоскими ключами кэша (legacy-строки). */
   systemPanels: {

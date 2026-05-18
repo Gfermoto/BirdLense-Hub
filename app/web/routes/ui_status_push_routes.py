@@ -1,6 +1,7 @@
 """Health, Web Push, cameras, component status, feed, weather, sun-times (#198)."""
 
 import os
+import threading
 from datetime import datetime, timezone, timedelta
 
 from flask import request
@@ -28,6 +29,8 @@ from services.web_push_service import (
 from util import fetch_sun_times, fetch_weather
 
 from routes.ui_route_constants import CACHE_STATUS_SEC
+
+_status_cache_lock = threading.Lock()
 
 
 def register_ui_status_push_routes(app):
@@ -90,8 +93,12 @@ def register_ui_status_push_routes(app):
         hit, cached = cache_get("component_status:v1")
         if hit:
             return cached
-        payload = build_component_status_payload_safe(db.session)
-        cache_set("component_status:v1", payload, CACHE_STATUS_SEC)
+        with _status_cache_lock:
+            hit2, cached2 = cache_get("component_status:v1")
+            if hit2:
+                return cached2
+            payload = build_component_status_payload_safe(db.session)
+            cache_set("component_status:v1", payload, CACHE_STATUS_SEC)
         return payload
 
     @app.route("/api/ui/status/debug", methods=["GET"])

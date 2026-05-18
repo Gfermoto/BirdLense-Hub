@@ -187,3 +187,64 @@ export const fetchProcessorLogs = async (
   });
   return response.data;
 };
+
+export type QualityTimeseriesBucket = {
+  bucket: string;
+  detections: number;
+  yolo_rows: number;
+  frigate_rows: number;
+  avg_confidence: number;
+  frigate_ratio: number;
+};
+
+export type QualityTimeseriesResponse = {
+  bucket: 'hour' | 'day';
+  items: QualityTimeseriesBucket[];
+  count: number;
+};
+
+export type QualityHealthResponse = {
+  window_hours: number;
+  health_kpis: {
+    blind_score_current: number;
+    blind_score_avg: number;
+    fallback_ratio: number;
+    self_heal_action_counts: {
+      soft_clear: number;
+      reinit: number;
+      restart: number;
+      alert: number;
+    };
+    inference_latency_p95_ms_avg: number | null;
+  };
+  recent_events: Array<{
+    created_at: string;
+    event_type: string;
+    severity: string;
+    action: string | null;
+    dump_refs?: {
+      diagnostics_json?: string;
+      stack_dump?: string;
+    } | null;
+  }>;
+};
+
+export const fetchQualityTimeseries = async (
+  bucket: 'hour' | 'day' = 'hour',
+): Promise<QualityTimeseriesResponse> => {
+  const response = await axios.get(`${BASE_API_URL}/analytics/visits-timeseries`, {
+    params: { bucket },
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export const fetchQualityHealth = async (
+  hours = 24,
+): Promise<QualityHealthResponse> => {
+  const response = await axios.get(`${BASE_API_URL}/analytics/quality-health`, {
+    params: { hours },
+    withCredentials: true,
+  });
+  return response.data;
+};
