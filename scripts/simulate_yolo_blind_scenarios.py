@@ -100,6 +100,7 @@ def _blind_from_repo(repo: SessionStateRepository, cfg: DummyConfig) -> bool:
         min_yolo_frames=int(cfg.get("detection.yolo_blind_min_frames") or 180),
         min_frigate_only_frames=int(cfg.get("detection.yolo_blind_min_frigate_only_frames") or 120),
         min_duration_seconds=float(cfg.get("detection.yolo_blind_min_duration_seconds") or 30.0),
+        min_effective_fps=float(cfg.get("detection.yolo_blind_min_effective_fps") or 2.0),
     )
 
 
