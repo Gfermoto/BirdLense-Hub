@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from ml_behavior_crop_core import extract_tracklet_crops
-from ml_behavior_eval_harness import assign_splits_by_video
+from ml_behavior_eval_harness import assign_splits_stratified
 
 
 def _utc_now() -> str:
@@ -151,7 +151,7 @@ def build_prod_manifest(
             "min_label_count": min_label_count,
         },
     }
-    manifest = assign_splits_by_video(manifest, val_ratio=val_ratio, holdout_ratio=holdout_ratio)
+    manifest = assign_splits_stratified(manifest, val_ratio=val_ratio, holdout_ratio=holdout_ratio)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return manifest
@@ -164,7 +164,7 @@ def main() -> int:
     ap.add_argument("--crops-dir", required=True)
     ap.add_argument("--repo-root", default="/app")
     ap.add_argument("--min-frames", type=int, default=3)
-    ap.add_argument("--min-blur-score", type=float, default=8.0)
+    ap.add_argument("--min-blur-score", type=float, default=5.0)
     ap.add_argument("--min-confidence", type=float, default=0.85)
     ap.add_argument("--val-ratio", type=float, default=0.1)
     ap.add_argument("--holdout-ratio", type=float, default=0.1)

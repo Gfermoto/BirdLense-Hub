@@ -83,13 +83,14 @@ def rgb_feature_vector_from_mean_rgb(rgb: np.ndarray) -> list[float]:
 
 
 def dominant_tracklet_boxes(video_detections: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    best: dict[str, Any] | None = None
-    best_n = -1
+    """Prefer longest track; merge all tracks if none has >=3 boxes."""
+    best_boxes: list[dict[str, Any]] = []
+    merged: list[dict[str, Any]] = []
     for det in video_detections:
         if not isinstance(det, dict):
             continue
         frames = det.get("frames") or []
-        if not isinstance(frames, list) or len(frames) < 3:
+        if not isinstance(frames, list):
             continue
         boxes = []
         for fr in frames:
@@ -98,10 +99,24 @@ def dominant_tracklet_boxes(video_detections: list[dict[str, Any]]) -> list[dict
             b = fr.get("bbox")
             if isinstance(b, list) and len(b) == 4:
                 boxes.append({"t": float(fr.get("t") or 0.0), "bbox": b})
-        if len(boxes) > best_n:
-            best_n = len(boxes)
-            best = {"boxes": boxes}
-    return (best or {}).get("boxes") or []
+        if len(boxes) > len(best_boxes):
+            best_boxes = boxes
+        merged.extend(boxes)
+    if len(best_boxes) >= 3:
+        return best_boxes
+    merged.sort(key=lambda x: float(x.get("t") or 0.0))
+    return merged if merged else best_boxes
+
+
+def _pad_boxes(boxes: list[dict[str, Any]], *, min_count: int = 3) -> list[dict[str, Any]]:
+    if not boxes:
+        return []
+    if len(boxes) >= min_count:
+        return boxes
+    out = list(boxes)
+    while len(out) < min_count:
+        out.append(out[-1])
+    return out
 
 
 def runtime_tracklet_rgb_features(
@@ -110,9 +125,10 @@ def runtime_tracklet_rgb_features(
     video_path: str | None = None,
     processor_cwd: str | None = None,
     num_frames: int = 16,
+    min_boxes: int = 1,
 ) -> list[float] | None:
-    boxes = dominant_tracklet_boxes(video_detections)
-    if len(boxes) < 3:
+    boxes = _pad_boxes(dominant_tracklet_boxes(video_detections), min_count=max(3, int(min_boxes)))
+    if len(boxes) < max(1, int(min_boxes)):
         return None
     root = Path(processor_cwd) if processor_cwd else None
     vpath = resolve_video_path(video_path, repo_root=root)
@@ -134,7 +150,7 @@ def runtime_tracklet_rgb_features(
                 crop = crop_frame(frame, box["bbox"])
                 rgb_frames.append(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
             cap.release()
-    if len(rgb_frames) < 3:
+    if len(rgb_frames) < 1:
         out_size = 224
         for box in boxes[:num_frames]:
             b = box["bbox"]
@@ -146,7 +162,7 @@ def runtime_tracklet_rgb_features(
                 px = [int(x1), int(y1), int(x2), int(y2)]
             cv2.rectangle(canvas, (px[0], px[1]), (px[2], px[3]), (40, 180, 90), thickness=-1)
             rgb_frames.append(canvas)
-    if len(rgb_frames) < 3:
+    if len(rgb_frames) < 1:
         return None
     stack = np.stack([f.astype(np.float32) for f in rgb_frames], axis=0)
     mean_rgb = np.clip(np.mean(stack, axis=0), 0, 255).astype(np.uint8)

@@ -214,6 +214,10 @@ def maybe_predict_video_behavior_video(
     if ov_label and ov_conf > 0:
         return ov_label, ov_conf, model_kind, model_version
 
+    # When OpenVINO is configured, avoid rule-proxy labels outside training taxonomy.
+    if _resolve_video_openvino_path(br, processor_cwd=processor_cwd) is not None:
+        return None, 0.0, model_kind, model_version
+
     return _predict_video_rules(
         video_detections,
         duration_s=duration_s,

@@ -53,6 +53,38 @@ def assign_splits(manifest: dict[str, Any], *, holdout_ratio: float = 0.2) -> di
     return manifest
 
 
+def assign_splits_stratified(
+    manifest: dict[str, Any],
+    *,
+    val_ratio: float = 0.1,
+    holdout_ratio: float = 0.1,
+) -> dict[str, Any]:
+    """Per-label deterministic split (keeps rare classes in train)."""
+    rows = [r for r in (manifest.get("tracklets") or []) if isinstance(r, dict)]
+    by_label: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        lab = str(row.get("label") or "unknown")
+        by_label.setdefault(lab, []).append(row)
+    for _lab, items in by_label.items():
+        for row in items:
+            if str(row.get("split") or "").strip() in {"train", "holdout", "val", "test"}:
+                continue
+            row["split"] = deterministic_video_split(
+                str(row.get("tracklet_id") or row.get("video_id") or ""),
+                val_ratio=val_ratio,
+                holdout_ratio=holdout_ratio,
+            )
+        trains = [r for r in items if str(r.get("split")) == "train"]
+        if items and not trains:
+            items[0]["split"] = "train"
+        holds = [r for r in items if str(r.get("split")) == "holdout"]
+        if len(items) >= 4 and not holds:
+            items[-1]["split"] = "holdout"
+    manifest["tracklets"] = rows
+    manifest["split_counts"] = dict(Counter(str(r.get("split") or "train") for r in rows))
+    return manifest
+
+
 def assign_splits_by_video(
     manifest: dict[str, Any],
     *,
