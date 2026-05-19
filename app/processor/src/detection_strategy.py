@@ -14,6 +14,58 @@ from roi_super_resolution import build_roi_super_resolution
 logger = logging.getLogger(__name__)
 
 
+def coerce_bgr_frame(
+    frame: Any,
+    *,
+    log_label: str = "classification_frame",
+) -> np.ndarray | None:
+    """Validate/coerce a BGR uint8 frame for classifier crops; None → caller uses detector frame."""
+    if frame is None:
+        return None
+    try:
+        arr = frame if isinstance(frame, np.ndarray) else np.asarray(frame)
+    except Exception:
+        logger.warning("%s: cannot convert to ndarray", log_label)
+        return None
+    if arr.size == 0:
+        logger.warning("%s: empty frame array", log_label)
+        return None
+    try:
+        if arr.ndim == 2:
+            arr = cv2.cvtColor(arr, cv2.COLOR_GRAY2BGR)
+        elif arr.ndim == 3:
+            channels = int(arr.shape[2])
+            if channels == 4:
+                arr = cv2.cvtColor(arr, cv2.COLOR_BGRA2BGR)
+            elif channels == 1:
+                arr = cv2.cvtColor(arr.reshape(arr.shape[0], arr.shape[1]), cv2.COLOR_GRAY2BGR)
+            elif channels != 3:
+                logger.warning(
+                    "%s: expected 1/3/4 channels, got %s (shape=%s)",
+                    log_label,
+                    channels,
+                    arr.shape,
+                )
+                return None
+        else:
+            logger.warning("%s: invalid ndim=%s shape=%s", log_label, arr.ndim, arr.shape)
+            return None
+        if arr.dtype != np.uint8:
+            if np.issubdtype(arr.dtype, np.floating):
+                scale = 255.0 if float(np.nanmax(arr)) <= 1.0 else 1.0
+                arr = np.clip(arr * scale, 0, 255).astype(np.uint8)
+            else:
+                arr = np.clip(arr, 0, 255).astype(np.uint8)
+        h, w = int(arr.shape[0]), int(arr.shape[1])
+        if h < 8 or w < 8:
+            logger.warning("%s: frame too small (%dx%d)", log_label, w, h)
+            return None
+        return np.ascontiguousarray(arr)
+    except Exception:
+        logger.warning("%s: frame validation failed", log_label, exc_info=True)
+        return None
+
+
 def _rodent_binary_threshold_raw(config: Mapping[str, Any]) -> Any:
     """Новый ключ ``min_confidence_binary_rodent``; ``min_confidence_binary_squirrel`` — только совместимость со старым YAML."""
     raw = config.get("processor.min_confidence_binary_rodent")
@@ -871,7 +923,7 @@ class TwoStageStrategy(DetectionStrategy):
         xyxy = _tensor_to_numpy(boxes.xyxy)
 
         h, w, _ = frame.shape
-        cls_frame = classification_frame if isinstance(classification_frame, np.ndarray) else frame
+        cls_frame = coerce_bgr_frame(classification_frame, log_label="classification_frame") or frame
 
         _ov_bird_scale = openvino_binary_bird_score_scale(
             runtime_cfg,

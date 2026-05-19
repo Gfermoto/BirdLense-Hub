@@ -84,7 +84,10 @@ def _compute_blind_score(
 ) -> float:
     frames_ratio = min(1.0, float(yolo_ran_now) / float(max(1, required_frames)))
     raw_signal = 1.0 if int(yolo_raw_now) == 0 else 0.0
-    frigate_ratio = min(1.0, float(frigate_only_now) / float(max(1, min_frigate_frames)))
+    if int(min_frigate_frames) <= 0:
+        frigate_ratio = 1.0
+    else:
+        frigate_ratio = min(1.0, float(frigate_only_now) / float(min_frigate_frames))
     duration_ratio = min(1.0, float(current_duration_s) / float(max(0.1, min_duration_s)))
     score = 0.35 * frames_ratio + 0.35 * raw_signal + 0.2 * frigate_ratio + 0.1 * duration_ratio
     return max(0.0, min(1.0, score))
@@ -470,10 +473,11 @@ def finalize_motion_recording(
             min_frigate_frames=blind_min_frigate,
             min_duration_s=blind_min_duration_s,
         )
+        frigate_blind_gate = blind_min_frigate <= 0 or frigate_only_now >= blind_min_frigate
         blind_now = (
             yolo_ran_now >= required_frames
             and yolo_raw_now == 0
-            and frigate_only_now >= max(1, blind_min_frigate)
+            and frigate_blind_gate
             and current_duration_s >= max(0.0, blind_min_duration_s)
         )
         repo = SessionStateRepository()

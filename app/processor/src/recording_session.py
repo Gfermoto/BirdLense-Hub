@@ -18,6 +18,7 @@ from birdnet_mqtt_confidence import merge_birdnet_mqtt_bias_into_overrides
 from fps_tracker import FPSTracker
 from processor_support import get_output_path, processor_status
 from processor_runtime_stats import inc_counter, observe_timing, set_gauge
+from detection_strategy import coerce_bgr_frame
 from recording_finalize import finalize_motion_recording
 from session_state_repository import SessionStateRepository
 
@@ -332,11 +333,15 @@ class MotionRecordingSession:
                     consecutive_none_frames = 0
                 classifier_source_frame = None
                 if _classifier_use_source_frame():
-                    classifier_source_frame = getattr(
+                    raw_classifier_frame = getattr(
                         self.media_source,
                         "get_classifier_source_frame",
                         lambda: None,
                     )()
+                    classifier_source_frame = coerce_bgr_frame(
+                        raw_classifier_frame,
+                        log_label="classifier_source_frame",
+                    )
                 frame_n += 1
                 runtime_signals["frames_seen"] += 1
                 if self.file_test_runtime:
@@ -378,6 +383,7 @@ class MotionRecordingSession:
                 if raw_boxes > 0:
                     runtime_signals["yolo_blind_phase"] = "recovered"
                     blind_suspected_since_monotonic = None
+                    blind_quickcheck_until_monotonic = 0.0
 
                 frigate_only_extension = bool(has_detections and not raw_yolo_detections)
                 if frigate_only_extension:
@@ -435,7 +441,9 @@ class MotionRecordingSession:
                                 runtime_signals["blind_quickcheck_hits"] += 1
                                 runtime_signals["yolo_blind_phase"] = "recovered"
                                 blind_suspected_since_monotonic = None
-                        else:
+                                blind_quickcheck_until_monotonic = 0.0
+                        elif runtime_signals["yolo_blind_phase"] == "suspected":
+                            # Confirm only after the quickcheck window ends, never on a failed probe.
                             runtime_signals["yolo_blind_phase"] = "confirmed"
 
                 self.decision_maker.update_has_detections(has_detections)
