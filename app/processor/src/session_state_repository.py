@@ -125,6 +125,19 @@ class SessionStateRepository:
                 """
             )
             con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS active_learning_buffer (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    created_at TEXT NOT NULL,
+                    camera_id TEXT,
+                    reason_code TEXT NOT NULL,
+                    severity TEXT NOT NULL DEFAULT 'info',
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    payload_json TEXT
+                )
+                """
+            )
+            con.execute(
                 "CREATE INDEX IF NOT EXISTS ix_srm_camera_created ON session_runtime_metrics(camera_id, created_at DESC)"
             )
             con.execute(
@@ -138,6 +151,12 @@ class SessionStateRepository:
             )
             con.execute(
                 "CREATE UNIQUE INDEX IF NOT EXISTS ux_analytics_visit_hourly_bucket ON analytics_visit_hourly(bucket_hour, camera_id)"
+            )
+            con.execute(
+                "CREATE INDEX IF NOT EXISTS ix_alb_created ON active_learning_buffer(created_at DESC)"
+            )
+            con.execute(
+                "CREATE INDEX IF NOT EXISTS ix_alb_reason_created ON active_learning_buffer(reason_code, created_at DESC)"
             )
             con.commit()
 
@@ -203,6 +222,35 @@ class SessionStateRepository:
                     str(event_type).strip(),
                     str(severity).strip() or "info",
                     json.dumps(details or {}, ensure_ascii=False, separators=(",", ":")),
+                ),
+            )
+            con.commit()
+            return int(cur.lastrowid)
+
+    def append_active_learning_buffer(
+        self,
+        *,
+        reason_code: str,
+        camera_id: str | None = None,
+        severity: str = "info",
+        status: str = "pending",
+        payload: dict[str, Any] | None = None,
+    ) -> int:
+        with self._connect() as con:
+            cur = self._execute_with_retry(
+                con,
+                """
+                INSERT INTO active_learning_buffer(
+                    created_at, camera_id, reason_code, severity, status, payload_json
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    _utc_now_iso(),
+                    (str(camera_id or "").strip() or None),
+                    str(reason_code or "").strip() or "unknown",
+                    str(severity or "info").strip() or "info",
+                    str(status or "pending").strip() or "pending",
+                    json.dumps(payload or {}, ensure_ascii=False, separators=(",", ":")),
                 ),
             )
             con.commit()
