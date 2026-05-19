@@ -26,6 +26,7 @@ import Chip from '@mui/material/Chip';
 import { Link as RouterLink } from 'react-router-dom';
 import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
+import { detectionProviderLabel } from '../../util/detectionProviderLabel';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { UnlinkBirdProfileButton } from '../../components/UnlinkBirdProfileButton';
 import { DeleteBirdProfileButton } from '../../components/DeleteBirdProfileButton';
@@ -595,16 +596,17 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                           .filter(Boolean),
                       ),
                     ];
-                    const providerLabels: Record<string, string> = {
-                      yolo: t('video.detectionProviderYolo'),
-                      frigate: t('video.detectionProviderFrigate'),
-                      birdnet_mqtt: t('video.detectionProviderBirdnetMqtt'),
-                    };
                     return providers.length > 0 ? (
                       <Typography variant="body2" color="text.secondary">
                         {t('video.detectionSource')}:{' '}
                         {providers
-                          .map((p) => (p ? (providerLabels[p] ?? p) : ''))
+                          .map((p) =>
+                            p
+                              ? detectionProviderLabel(t, p, {
+                                  technical: canEdit,
+                                })
+                              : '',
+                          )
                           .filter(Boolean)
                           .join(', ')}
                       </Typography>
@@ -630,7 +632,8 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                             {t('video.similarityPercent', {
                               value: Math.round(match.similarity * 100),
                             })}
-                            {typeof match.effective_threshold === 'number'
+                            {canEdit &&
+                            typeof match.effective_threshold === 'number'
                               ? ` • τ≈${Math.round(match.effective_threshold * 100)}%`
                               : ''}
                             {match.cross_camera ? ` • ${t('video.reidCrossCameraHint')}` : ''}

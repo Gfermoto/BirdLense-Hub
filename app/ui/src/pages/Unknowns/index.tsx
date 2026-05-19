@@ -244,87 +244,86 @@ export function UnknownCard({
                 label={t('unknowns.bulkSelect')}
               />
             )}
-            <FormControl size="small" fullWidth>
-              <InputLabel
-                id={`unknowns-correct-species-${detection.id}`}
-                shrink
-              >
-                {t('unknowns.correctSpecies')}
-              </InputLabel>
-              <Select
-                labelId={`unknowns-correct-species-${detection.id}`}
-                displayEmpty
-                value={selectedSpeciesId === '' ? '' : selectedSpeciesId}
-                label={t('unknowns.correctSpecies')}
-                renderValue={(v: number | string) => {
-                  if (v === '' || v === undefined) {
-                    return (
-                      <Typography
-                        component="span"
-                        variant="body2"
-                        color="text.secondary"
-                      >
-                        {t('unknowns.speciesSelectPlaceholder')}
-                      </Typography>
-                    );
-                  }
-                  const id = Number(v);
-                  const row = speciesList.find((s) => Number(s.id) === id);
-                  return row?.name ?? String(v);
-                }}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setSelectedSpeciesId(v === '' ? '' : Number(v));
-                }}
-                disabled={!canEdit}
-                MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
-              >
-                <MenuItem value="">
-                  <em>{t('unknowns.speciesSelectPlaceholder')}</em>
-                </MenuItem>
-                {speciesList.map((s) => (
-                  <MenuItem key={s.id} value={s.id}>
-                    {s.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <span>
-              <Button
-                variant="contained"
-                size="small"
-                disabled={
-                  selectedSpeciesId === '' ||
-                  !Number.isFinite(Number(selectedSpeciesId)) ||
-                  Number(selectedSpeciesId) === Number(detection.species_id) ||
-                  correcting ||
-                  !canEdit
-                }
-                onClick={handleCorrect}
-              >
-                {correcting ? '...' : t('unknowns.apply')}
-              </Button>
-            </span>
-            <Tooltip
-              title={
-                !canEdit
-                  ? ''
-                  : pendingSpeciesChange
-                    ? t('unknowns.confirmBlockedPendingApply')
-                    : t('unknowns.confirmCorrectHelp')
-              }
-            >
-              <span>
+            {canEdit && (
+              <>
+                <FormControl size="small" fullWidth>
+                  <InputLabel
+                    id={`unknowns-correct-species-${detection.id}`}
+                    shrink
+                  >
+                    {t('unknowns.correctSpecies')}
+                  </InputLabel>
+                  <Select
+                    labelId={`unknowns-correct-species-${detection.id}`}
+                    displayEmpty
+                    value={selectedSpeciesId === '' ? '' : selectedSpeciesId}
+                    label={t('unknowns.correctSpecies')}
+                    renderValue={(v: number | string) => {
+                      if (v === '' || v === undefined) {
+                        return (
+                          <Typography
+                            component="span"
+                            variant="body2"
+                            color="text.secondary"
+                          >
+                            {t('unknowns.speciesSelectPlaceholder')}
+                          </Typography>
+                        );
+                      }
+                      const id = Number(v);
+                      const row = speciesList.find((s) => Number(s.id) === id);
+                      return row?.name ?? String(v);
+                    }}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setSelectedSpeciesId(v === '' ? '' : Number(v));
+                    }}
+                    MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
+                  >
+                    <MenuItem value="">
+                      <em>{t('unknowns.speciesSelectPlaceholder')}</em>
+                    </MenuItem>
+                    {speciesList.map((s) => (
+                      <MenuItem key={s.id} value={s.id}>
+                        {s.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
                 <Button
-                  variant="outlined"
+                  variant="contained"
                   size="small"
-                  disabled={confirming || !canEdit || pendingSpeciesChange}
-                  onClick={handleConfirm}
+                  disabled={
+                    selectedSpeciesId === '' ||
+                    !Number.isFinite(Number(selectedSpeciesId)) ||
+                    Number(selectedSpeciesId) ===
+                      Number(detection.species_id) ||
+                    correcting
+                  }
+                  onClick={handleCorrect}
                 >
-                  {confirming ? '...' : t('unknowns.confirmCorrect')}
+                  {correcting ? '...' : t('unknowns.apply')}
                 </Button>
-              </span>
-            </Tooltip>
+                <Tooltip
+                  title={
+                    pendingSpeciesChange
+                      ? t('unknowns.confirmBlockedPendingApply')
+                      : t('unknowns.confirmCorrectHelp')
+                  }
+                >
+                  <span>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      disabled={confirming || pendingSpeciesChange}
+                      onClick={handleConfirm}
+                    >
+                      {confirming ? '...' : t('unknowns.confirmCorrect')}
+                    </Button>
+                  </span>
+                </Tooltip>
+              </>
+            )}
           </Box>
         </Box>
       </CardContent>
@@ -689,20 +688,26 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
         >
           <Box>
             <Typography variant="body2" fontWeight={600}>
-              {t('unknowns.roleSplitTitle')}
+              {canEdit
+                ? t('unknowns.roleSplitTitle')
+                : t('unknowns.guestBrowseTitle')}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {t('unknowns.roleSplitHint')}
+              {canEdit
+                ? t('unknowns.roleSplitHint')
+                : t('unknowns.guestBrowseHint')}
             </Typography>
           </Box>
-          <Button
-            component={RouterLink}
-            to="/labelling"
-            size="small"
-            variant="outlined"
-          >
-            {t('unknowns.openGeometryQueue')}
-          </Button>
+          {canEdit && (
+            <Button
+              component={RouterLink}
+              to="/labelling"
+              size="small"
+              variant="outlined"
+            >
+              {t('unknowns.openGeometryQueue')}
+            </Button>
+          )}
         </Stack>
       </Alert>
       <Box

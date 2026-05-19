@@ -35,8 +35,8 @@ import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { overviewHelpConfig } from '../../page-help-config';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
-import Tooltip from '@mui/material/Tooltip';
 import type { Weather } from '../../types';
+import { detectionProviderLabel } from '../../util/detectionProviderLabel';
 
 const formatHour = (hour: number) => {
   return `${String(hour).padStart(2, '0')}:00`;
@@ -45,12 +45,10 @@ const formatHour = (hour: number) => {
 export const Overview = () => {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.dashboard'));
-  const { canEdit, unlocked, requiresPassword, role } = useProtectedArea();
+  const { canEdit, requiresPassword } = useProtectedArea();
   /** Подсказка про волонтёров — только для гостей, не после входа админа/оператора. */
-  const showVolunteerDataLabelingHint =
-    !unlocked ||
-    !requiresPassword ||
-    (role !== 'admin' && role !== 'contributor');
+  /** Не обещаем «разметку» гостям на закрытом хабе — пункт меню им недоступен. */
+  const showVolunteerDataLabelingHint = !canEdit && !requiresPassword;
   const [selectedDay, setSelectedDay] = useState<Dayjs>(dayjs());
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
@@ -144,33 +142,26 @@ export const Overview = () => {
                   }}
                 />
               </LocalizationProvider>
-              <Tooltip
-                title={
-                  !canEdit ? t('common.loginRequiredForExport') : undefined
-                }
-              >
-                <span>
-                  <Button
-                    variant="outlined"
-                    size="medium"
-                    startIcon={<DownloadIcon />}
-                    disabled={downloadingPdf || !canEdit}
-                    onClick={async () => {
-                      if (!canEdit) return;
-                      setDownloadingPdf(true);
-                      try {
-                        await downloadReportPdf(selectedDay.format('YYYY-MM'));
-                      } catch (err) {
-                        console.error('PDF download failed:', err);
-                      } finally {
-                        setDownloadingPdf(false);
-                      }
-                    }}
-                  >
-                    {downloadingPdf ? '...' : t('overview.downloadPdf')}
-                  </Button>
-                </span>
-              </Tooltip>
+              {canEdit && (
+                <Button
+                  variant="outlined"
+                  size="medium"
+                  startIcon={<DownloadIcon />}
+                  disabled={downloadingPdf}
+                  onClick={async () => {
+                    setDownloadingPdf(true);
+                    try {
+                      await downloadReportPdf(selectedDay.format('YYYY-MM'));
+                    } catch (err) {
+                      console.error('PDF download failed:', err);
+                    } finally {
+                      setDownloadingPdf(false);
+                    }
+                  }}
+                >
+                  {downloadingPdf ? '...' : t('overview.downloadPdf')}
+                </Button>
+              )}
             </Box>
           }
         />
@@ -323,13 +314,9 @@ export const Overview = () => {
                   ([provider, count]) => (
                     <Typography key={provider} variant="body2">
                       <strong>
-                        {provider === 'yolo'
-                          ? 'YOLO'
-                          : provider === 'frigate'
-                            ? 'Frigate'
-                            : provider === 'birdnet_mqtt'
-                              ? 'BirdNET (MQTT)'
-                              : provider}
+                        {detectionProviderLabel(t, provider, {
+                          technical: canEdit,
+                        })}
                       </strong>
                       : {count}
                     </Typography>
