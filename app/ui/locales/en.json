@@ -1357,15 +1357,16 @@
     "detectionProviderYolo": "YOLO",
     "detectionProviderFrigate": "External MQTT",
     "detectionProviderBirdnetMqtt": "BirdNET",
-    "detectionProviderYoloPublic": "Video camera",
-    "detectionProviderFrigatePublic": "External camera",
-    "detectionProviderBirdnetPublic": "By sound",
+    "detectionProviderYoloPublic": "On-clip detection",
+    "detectionProviderFrigatePublic": "External MQTT",
+    "detectionProviderBirdnetPublic": "Sound recognition",
     "detectionSource": "Source",
     "nickname": "Nickname",
     "editNickname": "Set nickname",
     "nicknameSaved": "Nickname saved",
     "behavior": "Behavior",
     "timelineHint": "Colored bars = species. Hover to see source: YOLO, external MQTT, or BirdNET.",
+    "timelineHintPublic": "Colored bars = species. Hover a bar for how it was detected (clip analysis, external MQTT, or sound).",
     "noTrackFramesHint": "No YOLO bbox on this clip (overlay hidden). Defaults were tightened so birds stay in the recording; use Admin → “Rebuild tracks for this clip” or lower processor.min_track_duration / min_confidence_to_process in Settings.",
     "regenerateTracksThisVideo": "Rebuild tracks for this clip",
     "tracksMissingHint": "This clip has no per-frame boxes in the DB yet — rebuild tracks to make the overlay appear.",
@@ -1685,6 +1686,9 @@
     "heroLoadError": "Could not assemble system summary",
     "heroHealthy": "Healthy",
     "heroNeedsAttention": "Needs attention",
+    "heroInfoDeprecated": "{{count}} deprecated keys in user_config — informational, safe to clean up later.",
+    "heroInfoDeprecated_one": "{{count}} deprecated key in user_config — informational.",
+    "heroInfoDeprecated_other": "{{count}} deprecated keys in user_config — informational.",
     "heroSummaryHealthy": "Core checks look healthy. Use this page to confirm trends, integrations, and admin workflows.",
     "heroSummaryDegraded": "One or more signals need review. Start with the warnings below before running maintenance actions.",
     "heroActionOverview": "Open overview",
@@ -1801,6 +1805,7 @@
     "configAuditRuntimeDetectP95": "Detector p95 latency ≈ {{p95}} ms vs warn threshold {{warnMs}} ms — frames often exceed the slow-frame threshold.",
     "configAuditFrigateStandaloneOff": "External MQTT source is enabled, but detection.frigate_standalone_when_no_yolo=false: when YOLO returns zero tracks, MQTT events do not become final detections.",
     "configAuditNeedsReview": "Needs review",
+    "configAuditInfoOnly": "Info",
     "configAuditLoadError": "Failed to load configuration audit",
     "configAuditWarningsTitle": "Warnings",
     "configAuditRecallHintsTitle": "Recall tuning (informational)",
@@ -1953,6 +1958,23 @@
     "automationBirdnetFifoAgoMinutes": "{{n}} min ago",
     "automationBirdnetFifoAgoHoursOnly": "{{n}} h ago",
     "automationBirdnetFifoAgoHoursMinutes": "{{h}} h {{m}} min ago",
+    "birdnetFifoStatus": {
+      "disabled": "BirdNET MQTT is not configured — FIFO buffer is unused (expected).",
+      "reportingOff": "FIFO snapshot/persist is disabled in processor config.",
+      "unavailable": "BirdNET queue unavailable: no snapshot and no DB rows. Check processor and MQTT.",
+      "stale": "FIFO snapshot is stale — no recent updates (quiet site or MQTT issue).",
+      "mqttDown": "MQTT disconnected — BirdNET events are not arriving.",
+      "empty": "Queue is empty — no events in the TTL window (normal when quiet).",
+      "active": "BirdNET queue is active."
+    },
+    "processorLogsFilter": {
+      "all": "All",
+      "error": "Errors",
+      "warning": "Warn",
+      "info": "INFO",
+      "debug": "DEBUG"
+    },
+    "processorLogsFilterEmpty": "No «{{filter}}» lines in the last {{lines}} log lines (try All).",
     "processorActivityTitle": "Processor heartbeat",
     "processorActivityLoading": "Loading processor heartbeat...",
     "processorActivityLoadFailed": "Failed to load processor heartbeat activity.",
@@ -2107,6 +2129,7 @@
     "domainTrustStatusDegraded": "Snapshot failed",
     "domainTrustSnapshotDegraded": "The snapshot could not be built ({{err}}). Retry later or check DB/logs.",
     "domainTrustChipPass": "pass",
+    "domainTrustChipSkipped": "no 24h sample",
     "domainTrustChipFail": "review",
     "domainTrustMetricsHeading": "Key counters (rolling window)",
     "domainTrustMetricDupClipCandidates": "Near-duplicate clip pairs: {{n}}",
@@ -2796,11 +2819,11 @@
           },
           {
             "title": "Detection Timeline",
-            "content": "Above the player:\n- Current detections shown with bird thumbnail and confidence level\n- Green badge (100%) indicates highest confidence detection\n- Blue badge (95%+) shows high confidence detection\n- Label indicates detection source (video/audio)"
+            "content": "Colored bars under the progress track show species over time. Hover for species, time range, and how it was detected (clip analysis, external MQTT, or sound).\n\nAbove the player: current detections with thumbnail and confidence; green badge (100%) and blue (95%+)."
           },
           {
             "title": "Detected Species",
-            "content": "Detected species: hit counts, confidence, duration, link to the species page. Correcting a species here is the same action as on the review page for that detection."
+            "content": "Species the system found on this clip: how often, confidence, and duration. Link opens the species page."
           },
           {
             "title": "General Information",

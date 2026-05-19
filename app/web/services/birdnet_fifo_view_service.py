@@ -204,7 +204,25 @@ def try_build_birdnet_fifo_snapshot_from_db() -> dict | None:
         return None
 
     if not rows:
-        return None
+        try:
+            recent_limit = int(app_config.get("processor.birdnet_fifo_snapshot_recent_limit") or 80)
+        except (TypeError, ValueError):
+            recent_limit = 80
+        cap = birdnet_fifo_cap_from_config()
+        snapshot = build_birdnet_fifo_snapshot_payload(
+            events=[],
+            fifo_cap=cap,
+            mqtt_connected=False,
+            processor_pid=0,
+            recent_limit=recent_limit,
+        )
+        snapshot["persist_source"] = "sqlite"
+        return {
+            "available": True,
+            "snapshot_source": "sqlite",
+            "db_row_count": 0,
+            "snapshot": snapshot,
+        }
 
     events: list[dict] = []
     for r in rows:

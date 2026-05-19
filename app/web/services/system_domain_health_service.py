@@ -13,6 +13,7 @@ import data_paths
 from app_config.app_config import app_config
 from models import ActivityLog, Species, SpeciesUnresolvedName, Video, VideoSpecies, db
 from services.species_data_quality_service import find_duplicate_name_groups
+from services.system_operational_status import strict_quality_ratio_ok
 from services.species_visit_maintenance_service import (
     _collect_large_gap_visit_splits,
     _collect_orphaned_visits,
@@ -660,6 +661,36 @@ def _processor_runtime_funnel_metrics() -> dict[str, int]:
     return out
 
 
+def _build_strict_quality_block(
+    *,
+    duplicate_video_groups: int,
+    duplicate_detection_groups: int,
+    duplicate_clip_candidates: list,
+    species_sync_actions: list,
+    detection_track_metrics: dict[str, Any],
+) -> dict[str, bool]:
+    total_24h = int(detection_track_metrics.get("video_detections_24h") or 0)
+    frames_ratio = detection_track_metrics.get("video_detections_with_frames_ratio_24h")
+    yolo_ratio = detection_track_metrics.get("video_detections_primary_yolo_ratio_24h")
+    frames_ok = strict_quality_ratio_ok(frames_ratio, sample_count=total_24h, threshold=0.9)
+    yolo_ok = strict_quality_ratio_ok(yolo_ratio, sample_count=total_24h, threshold=0.8)
+    dup_video_ok = duplicate_video_groups == 0
+    dup_det_ok = duplicate_detection_groups == 0
+    dup_clip_ok = len(duplicate_clip_candidates) == 0
+    visit_ok = len(species_sync_actions) == 0
+    return {
+        "duplicate_video_groups_ok": dup_video_ok,
+        "duplicate_detection_groups_ok": dup_det_ok,
+        "duplicate_clip_candidates_ok": dup_clip_ok,
+        "visit_species_mismatches_ok": visit_ok,
+        "video_detections_with_frames_ratio_ok": frames_ok,
+        "video_detections_primary_yolo_ratio_ok": yolo_ok,
+        "strict_quality_ready": (
+            dup_video_ok and dup_det_ok and dup_clip_ok and visit_ok and frames_ok and yolo_ok
+        ),
+    }
+
+
 def build_domain_health_payload() -> tuple[dict[str, Any], int]:
     contract = "2026-04-polish-v1"
     contracts_block = {
@@ -762,38 +793,13 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
             },
             "contracts": contracts_block,
             "reliability_alerts": reliability_alerts,
-            "strict_quality": {
-                "duplicate_video_groups_ok": duplicate_video_groups == 0,
-                "duplicate_detection_groups_ok": duplicate_detection_groups == 0,
-                "duplicate_clip_candidates_ok": len(duplicate_clip_candidates) == 0,
-                "visit_species_mismatches_ok": len(species_sync_actions) == 0,
-                "video_detections_with_frames_ratio_ok": (
-                    (detection_track_metrics.get("video_detections_with_frames_ratio_24h") or 0.0) >= 0.9
-                    if detection_track_metrics.get("video_detections_with_frames_ratio_24h") is not None
-                    else False
-                ),
-                "video_detections_primary_yolo_ratio_ok": (
-                    (detection_track_metrics.get("video_detections_primary_yolo_ratio_24h") or 0.0) >= 0.8
-                    if detection_track_metrics.get("video_detections_primary_yolo_ratio_24h") is not None
-                    else False
-                ),
-                "strict_quality_ready": (
-                    duplicate_video_groups == 0
-                    and duplicate_detection_groups == 0
-                    and len(duplicate_clip_candidates) == 0
-                    and len(species_sync_actions) == 0
-                    and (
-                        (detection_track_metrics.get("video_detections_with_frames_ratio_24h") or 0.0) >= 0.9
-                        if detection_track_metrics.get("video_detections_with_frames_ratio_24h") is not None
-                        else False
-                    )
-                    and (
-                        (detection_track_metrics.get("video_detections_primary_yolo_ratio_24h") or 0.0) >= 0.8
-                        if detection_track_metrics.get("video_detections_primary_yolo_ratio_24h") is not None
-                        else False
-                    )
-                ),
-            },
+            "strict_quality": _build_strict_quality_block(
+                duplicate_video_groups=duplicate_video_groups,
+                duplicate_detection_groups=duplicate_detection_groups,
+                duplicate_clip_candidates=duplicate_clip_candidates,
+                species_sync_actions=species_sync_actions,
+                detection_track_metrics=detection_track_metrics,
+            ),
         }
         return payload, 200
     except Exception as exc:

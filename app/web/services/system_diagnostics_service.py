@@ -396,6 +396,7 @@ def purge_no_species_video_rows(payload) -> tuple[dict, int]:
 
 def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
     from services.birdnet_fifo_view_service import try_build_birdnet_fifo_snapshot_from_db
+    from services.system_operational_status import enrich_birdnet_fifo_response
 
     db_snapshot = try_build_birdnet_fifo_snapshot_from_db()
     if db_snapshot is not None:
@@ -405,12 +406,13 @@ def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
         except (TypeError, ValueError):
             stale_sec = 180
         stale_sec = max(30, min(stale_sec, 86_400))
-        return {
+        body = {
             "snapshot_relative_path": rel,
             "snapshot_stale": False,
             "stale_threshold_sec": stale_sec,
             **db_snapshot,
-        }, 200
+        }
+        return enrich_birdnet_fifo_response(body, app_config_get=app_config.get), 200
 
     rel = os.path.join("diagnostics", "birdnet_fifo_snapshot.json").replace("\\", "/")
     path = os.path.join(data_paths.data_dir(), "diagnostics", "birdnet_fifo_snapshot.json")
@@ -424,7 +426,7 @@ def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
         "file_exists": os.path.isfile(path),
     }
     if not meta["file_exists"]:
-        return {
+        body = {
             **meta,
             "available": False,
             "reason": "snapshot_file_missing",
@@ -432,7 +434,8 @@ def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
                 "Файл ещё не создан: нет процессора/MQTT, нет событий BirdNET, "
                 "или отключено processor.birdnet_fifo_snapshot_enabled."
             ),
-        }, 200
+        }
+        return enrich_birdnet_fifo_response(body, app_config_get=app_config.get), 200
     try:
         st = os.stat(path)
         meta["file_size_bytes"] = st.st_size
@@ -448,11 +451,12 @@ def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
         return {"error": f"Failed to read snapshot: {e}", **meta}, 500
     except json.JSONDecodeError as e:
         return {"error": f"Invalid snapshot JSON: {e}", **meta}, 500
-    return {
+    body = {
         **meta,
         "available": True,
         "snapshot": snapshot,
-    }, 200
+    }
+    return enrich_birdnet_fifo_response(body, app_config_get=app_config.get), 200
 
 
 def build_processor_runtime_snapshot_response() -> tuple[dict, int]:

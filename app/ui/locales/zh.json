@@ -1347,12 +1347,13 @@
     "detectionProviderYolo": "优洛",
     "detectionProviderFrigate": "护卫舰",
     "detectionProviderBirdnetMqtt": "鸟网",
-    "detectionProviderYoloPublic": "视频",
-    "detectionProviderFrigatePublic": "外部摄像头",
-    "detectionProviderBirdnetPublic": "声音",
+    "detectionProviderYoloPublic": "录像检测",
+    "detectionProviderFrigatePublic": "外部 MQTT",
+    "detectionProviderBirdnetPublic": "声音识别",
     "detectionSource": "来源",
     "behavior": "行为",
-    "timelineHint": "彩色条=物种。将鼠标悬停即可查看来源：YOLO、Frigate 或 BirdNET。",
+    "timelineHint": "彩色条=物种。将鼠标悬停即可查看来源：YOLO、外部 MQTT 或 BirdNET。",
+    "timelineHintPublic": "彩色条表示物种。悬停可查看识别方式（录像分析、外部 MQTT 或声音）。",
     "noTrackFramesHint": "此剪辑上没有 YOLO bbox（覆盖层隐藏）。默认值被收紧，以便鸟类保留在记录中；使用管理→“为此剪辑重建轨道”或设置中较低的processor.min_track_duration / min_confidence_to_process。",
     "regenerateTracksThisVideo": "为此剪辑重建轨道",
     "tracksMissingHint": "该剪辑在数据库中还没有每帧框 - 重建轨道以使叠加出现。",
@@ -1890,6 +1891,23 @@
     "automationBirdnetFifoAgoMinutes": "{{n}} 分钟前",
     "automationBirdnetFifoAgoHoursOnly": "{{n}} 小时前",
     "automationBirdnetFifoAgoHoursMinutes": "{{h}} 小时 {{m}} 分钟前",
+    "birdnetFifoStatus": {
+      "disabled": "未配置 BirdNET MQTT — FIFO 缓冲区未使用（正常）。",
+      "reportingOff": "处理器配置中已关闭 FIFO 快照/持久化。",
+      "unavailable": "BirdNET 队列不可用：无快照且无数据库记录。请检查处理器与 MQTT。",
+      "stale": "FIFO 快照已过期 — 长时间未更新（安静或 MQTT 问题）。",
+      "mqttDown": "MQTT 未连接 — 未收到 BirdNET 事件。",
+      "empty": "队列为空 — TTL 窗口内无事件（安静时正常）。",
+      "active": "BirdNET 队列活跃。"
+    },
+    "processorLogsFilter": {
+      "all": "全部",
+      "error": "错误",
+      "warning": "警告",
+      "info": "INFO",
+      "debug": "DEBUG"
+    },
+    "processorLogsFilterEmpty": "在最近 {{lines}} 行中无「{{filter}}」级别日志（请选「全部」）。",
     "processorActivityTitle": "处理器心跳",
     "processorActivityLoading": "正在加载处理器心跳...",
     "processorActivityLoadFailed": "无法加载处理器检测信号活动。",
@@ -2034,6 +2052,7 @@
     "domainTrustStatusDegraded": "快照失败",
     "domainTrustSnapshotDegraded": "快照未生成（{{err}}）。请稍后重试或检查数据库/日志。",
     "domainTrustChipPass": "通过",
+    "domainTrustChipSkipped": "24 小时无样本",
     "domainTrustChipFail": "复查",
     "domainTrustMetricsHeading": "关键计数（滚动窗口）",
     "domainTrustMetricDupClipCandidates": "近似重复片段对：{{n}}",
@@ -2724,11 +2743,11 @@
           },
           {
             "title": "检测时间线",
-            "content": "播放器上方：\n- 当前检测结果以鸟类缩略图和置信度显示\n- 绿色徽章 (100%) 表示最高置信度检测\n- 蓝色徽章 (95%+) 显示高置信度检测\n- 标签指示检测源（视频/音频）"
+            "content": "进度条下方的彩色条表示各物种的时间段。悬停可查看物种、时间范围及识别方式（录像分析、外部 MQTT 或声音）。\n\n播放器上方为当前检测及缩略图与置信度；绿色徽章 (100%)、蓝色 (95%+)。"
           },
           {
             "title": "检测到的物种",
-            "content": "检测到的物种：次数、置信度、时长、物种页链接。在此更正物种与复核页上对同一检测的更正相同。"
+            "content": "本录像上系统识别到的物种：次数、置信度、时长；链接可打开物种页。"
           },
           {
             "title": "一般信息",

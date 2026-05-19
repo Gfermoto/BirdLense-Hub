@@ -527,6 +527,16 @@ def build_system_config_audit_payload(
     processor_runtime_hints = _processor_runtime_hints(app_config_get)
     preflight = _preflight_config_safety(app_config_get)
     runtime_parity = _runtime_parity_snapshot(app_config_get)
+    from services.system_operational_status import filter_runtime_parity_alerts
+
+    if isinstance(runtime_parity.get("parity_alerts"), dict):
+        runtime_parity = {
+            **runtime_parity,
+            "parity_alerts": filter_runtime_parity_alerts(
+                runtime_parity["parity_alerts"],
+                app_config_get=app_config_get,
+            ),
+        }
     return {
         "deprecated_keys_present": deprecated_present,
         "unknown_keys": unknown_keys,
