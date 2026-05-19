@@ -100,7 +100,6 @@ export function SystemHero({ advanced }: SystemHeroProps) {
   const needsAttention =
     !readiness.ready ||
     configWarnings > 0 ||
-    deprecatedKeys > 0 ||
     deliveryFailures > 0 ||
     fallbackEvents > 0 ||
     catalogRunning ||
@@ -110,9 +109,6 @@ export function SystemHero({ advanced }: SystemHeroProps) {
     !readiness.ready ? t('system.heroIssueReadiness') : null,
     configWarnings > 0
       ? t('system.heroIssueWarnings', { count: configWarnings })
-      : null,
-    deprecatedKeys > 0
-      ? t('system.heroIssueDeprecated', { count: deprecatedKeys })
       : null,
     deliveryFailures > 0
       ? t('system.heroIssueDelivery', { count: deliveryFailures })
@@ -125,6 +121,12 @@ export function SystemHero({ advanced }: SystemHeroProps) {
       ? t('system.heroIssueCatalogCoverage', {
           percent: catalogCompletion.toFixed(0),
         })
+      : null,
+  ].filter(Boolean) as string[];
+
+  const infoNotes = [
+    deprecatedKeys > 0
+      ? t('system.heroInfoDeprecated', { count: deprecatedKeys })
       : null,
   ].filter(Boolean) as string[];
 
@@ -264,6 +266,20 @@ export function SystemHero({ advanced }: SystemHeroProps) {
               {t('system.heroNoIssuesHint')}
             </Typography>
           )}
+          {infoNotes.length > 0 ? (
+            <Stack spacing={1} sx={{ mt: 1 }}>
+              {infoNotes.map((note) => (
+                <Alert
+                  key={note}
+                  severity="info"
+                  variant="outlined"
+                  sx={{ py: 0 }}
+                >
+                  {note}
+                </Alert>
+              ))}
+            </Stack>
+          ) : null}
         </Box>
       </CardContent>
     </Card>

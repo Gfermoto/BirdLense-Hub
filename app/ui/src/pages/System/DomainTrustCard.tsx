@@ -60,6 +60,8 @@ export function DomainTrustCard() {
   const dupClipCount = metrics.duplicate_clip_candidates_24h ?? 0;
   const yoloRatio = metrics.video_detections_primary_yolo_ratio_24h;
   const framesRatio = metrics.video_detections_with_frames_ratio_24h;
+  const detections24h = Number(metrics.video_detections_24h ?? 0);
+  const ratioSampleSkipped = detections24h <= 0;
 
   const failingReasons: { slug: string; body: string }[] = [];
   if (sq && !degraded) {
@@ -129,13 +131,25 @@ export function DomainTrustCard() {
               {STRICT_GATE_KEYS.map((key) => {
                 const ok = sq[key];
                 const slug = gateSlug(key);
+                const isRatioGate =
+                  key === 'video_detections_with_frames_ratio_ok' ||
+                  key === 'video_detections_primary_yolo_ratio_ok';
+                const skipped = ratioSampleSkipped && isRatioGate;
+                const chipColor = skipped
+                  ? 'info'
+                  : ok
+                    ? 'success'
+                    : 'warning';
+                const chipLabel = skipped
+                  ? `${t(`system.domainTrustGate.${slug}`)}: ${t('system.domainTrustChipSkipped')}`
+                  : `${t(`system.domainTrustGate.${slug}`)}: ${ok ? t('system.domainTrustChipPass') : t('system.domainTrustChipFail')}`;
                 return (
                   <Chip
                     key={key}
                     size="small"
                     variant="outlined"
-                    color={ok ? 'success' : 'warning'}
-                    label={`${t(`system.domainTrustGate.${slug}`)}: ${ok ? t('system.domainTrustChipPass') : t('system.domainTrustChipFail')}`}
+                    color={chipColor}
+                    label={chipLabel}
                   />
                 );
               })}

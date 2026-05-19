@@ -51,6 +51,7 @@ import {
   startFusionExport,
 } from '../../api/speciesRegistryHub';
 import { queryKeys } from '../../api/queryKeys';
+import { operationalTierSeverity } from '../../util/operationalTier';
 import { SystemCardShell } from './SystemCardShell';
 
 function statusLabel(status?: SystemJobStatus | null): string {
@@ -804,6 +805,16 @@ export function AutomationFusionCard() {
 
 export function AutomationDiagnosticsCard() {
   const { t } = useTranslation();
+  const birdnetStatusQ = useQuery({
+    queryKey: queryKeys.systemPanels.birdnetFifo,
+    queryFn: fetchBirdnetFifoSnapshot,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+  });
+  const birdnetTier = birdnetStatusQ.data?.operational_tier as string | undefined;
+  const birdnetSummaryKey = birdnetStatusQ.data?.operational_summary_key as
+    | string
+    | undefined;
   const [birdnetFifoOpen, setBirdnetFifoOpen] = useState(false);
   const [birdnetFifoRaw, setBirdnetFifoRaw] =
     useState<BirdnetFifoPayload | null>(null);
@@ -831,6 +842,18 @@ export function AutomationDiagnosticsCard() {
       <SystemCardShell
         title={t('system.automationDiagnosticsPanelTitle')}
         description={t('system.automationDiagnosticsPanelHint')}
+        statusLabel={
+          birdnetSummaryKey
+            ? t(birdnetSummaryKey)
+            : birdnetStatusQ.isLoading
+              ? '…'
+              : undefined
+        }
+        statusTone={
+          birdnetTier
+            ? operationalTierSeverity(birdnetTier)
+            : 'default'
+        }
       >
         <Stack spacing={2}>
           <Typography variant="body2" color="text.secondary">
@@ -1082,9 +1105,24 @@ function BirdnetFifoDialog({
             {error}
           </Alert>
         ) : null}
-        {!loading && !error && data && !data.available ? (
-          <Alert severity="warning" variant="outlined">
-            {t('system.automationBirdnetFifoUnavailable')}
+        {!loading && !error && data?.operational_summary_key ? (
+          <Alert
+            severity={operationalTierSeverity(
+              data.operational_tier as string | undefined,
+            )}
+            variant="outlined"
+          >
+            {t(String(data.operational_summary_key))}
+            {typeof data.note === 'string' && data.note.trim() ? (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ mt: 0.75 }}
+              >
+                {data.note}
+              </Typography>
+            ) : null}
           </Alert>
         ) : null}
         {!loading && !error && snapshot ? (

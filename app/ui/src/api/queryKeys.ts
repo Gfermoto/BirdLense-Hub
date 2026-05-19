@@ -65,6 +65,7 @@ export const queryKeys = {
     fusionExportStatus: ['fusion-export-status'] as const,
     fusionEvalStatus: ['fusion-eval-status'] as const,
     domainHealth: ['system-domain-health'] as const,
+    birdnetFifo: ['system-birdnet-fifo'] as const,
   },
   feed: {
     info: ['feed-info'] as const,
