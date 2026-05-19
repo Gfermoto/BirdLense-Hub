@@ -4545,6 +4545,13 @@ components:
             display_unit:
               type: string
               enum: [kg, g]
+            weight_change_grams:
+              type: number
+              description: Signed mass change during the visit window (grams); null when scales data missing
+            weight_trend:
+              type: string
+              enum: [up, down, stable]
+              description: Direction vs noise threshold (~5 g); stable when change is within sensor noise
         behavior_label:
           type: string
           nullable: true

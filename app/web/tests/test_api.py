@@ -867,6 +867,8 @@ class TestTimeline:
         assert sc is not None
         assert abs(float(sc["delta_kg"]) - 0.015) < 1e-6
         assert sc["display_unit"] == "g"
+        assert sc["weight_change_grams"] == 15.0
+        assert sc["weight_trend"] == "up"
 
     def test_timeline_visit_includes_nickname_and_model_behavior(self, app, client):
         """Visit payload keeps individual nickname and model behavior label."""

@@ -681,39 +681,35 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                     >
                       {t('video.learnMore')}
                     </Button>
-                    {!quickCorrectionOnly && (() => {
-                      const bestDet = group.detections
-                        .filter((d) => d.source === 'video' && d.id)
-                        .sort(
-                          (a, b) => (b.confidence || 0) - (a.confidence || 0),
-                        )[0];
-                      return bestDet ? (
-                        <INaturalistButton
-                          detectionId={bestDet.id!}
-                          speciesName={group.species_name}
-                          disabled={!canEdit}
-                        />
-                      ) : null;
-                    })()}
-                    {editingGroupKey !== String(group.species_id) && (
-                      <Tooltip
-                        title={canEdit ? t('unknowns.correctSpecies') : ''}
-                      >
-                        <span>
-                          <Button
-                            size="small"
-                            startIcon={<EditIcon fontSize="small" />}
-                            onClick={() => {
-                              setEditingGroupKey(String(group.species_id));
-                              setSelectedSpeciesId(group.species_id);
-                            }}
-                            disabled={!canEdit}
-                          >
-                            {t('unknowns.correctSpecies')}
-                          </Button>
-                        </span>
-                      </Tooltip>
-                    )}
+                    {!quickCorrectionOnly &&
+                      canEdit &&
+                      (() => {
+                        const bestDet = group.detections
+                          .filter((d) => d.source === 'video' && d.id)
+                          .sort(
+                            (a, b) =>
+                              (b.confidence || 0) - (a.confidence || 0),
+                          )[0];
+                        return bestDet ? (
+                          <INaturalistButton
+                            detectionId={bestDet.id!}
+                            speciesName={group.species_name}
+                          />
+                        ) : null;
+                      })()}
+                    {canEdit &&
+                      editingGroupKey !== String(group.species_id) && (
+                        <Button
+                          size="small"
+                          startIcon={<EditIcon fontSize="small" />}
+                          onClick={() => {
+                            setEditingGroupKey(String(group.species_id));
+                            setSelectedSpeciesId(group.species_id);
+                          }}
+                        >
+                          {t('unknowns.correctSpecies')}
+                        </Button>
+                      )}
                   </Box>
                   {editingGroupKey === String(group.species_id) && (
                     <Stack

@@ -25,7 +25,9 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import MonitorWeightIcon from '@mui/icons-material/MonitorWeight';
+import Tooltip from '@mui/material/Tooltip';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
@@ -47,6 +49,10 @@ import { queryKeys } from '../../api/queryKeys';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { formatLocalDateTime } from '../../util';
 import { BEHAVIOR_TAG_OPTIONS } from '../../constants/behaviorTags';
+import {
+  WeightChangeMetric,
+  hasVisibleWeightChange,
+} from '../../components/WeightChangeMetric';
 
 function safeInternalPath(from: unknown): string | null {
   if (
@@ -156,6 +162,8 @@ export const VideoInfo = ({
   const location = useLocation();
   const queryClient = useQueryClient();
   const { unlocked, canEdit } = useProtectedArea();
+  const theme = useTheme();
+  const weightMetricCompact = useMediaQuery(theme.breakpoints.down('sm'));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [behaviorDialogOpen, setBehaviorDialogOpen] = useState(false);
   const [behaviorDraftLabel, setBehaviorDraftLabel] = useState('');
@@ -385,21 +393,29 @@ export const VideoInfo = ({
         )
       )}
 
-      {(behavior_label || canEdit) && (
+      {(canEdit || behavior_label) && (
         <Paper sx={{ p: 2 }}>
           <Typography variant="h6" gutterBottom>
             {t('videoInfo.behaviorTitle')}
           </Typography>
           {behavior_label ? (
-            <Chip
-              label={`${behaviorLabelText(behavior_label)}${
-                behavior_confidence != null && !Number.isNaN(Number(behavior_confidence))
-                  ? ` (${(Number(behavior_confidence) * 100).toFixed(0)}%)`
-                  : ''
-              }`}
-              size="small"
-              sx={{ mb: 1, alignSelf: 'flex-start' }}
-            />
+            <Tooltip
+              title={canEdit ? t('videoInfo.behaviorEditHint') : ''}
+              disableHoverListener={!canEdit}
+              arrow
+            >
+              <Chip
+                label={`${behaviorLabelText(behavior_label)}${
+                  canEdit &&
+                  behavior_confidence != null &&
+                  !Number.isNaN(Number(behavior_confidence))
+                    ? ` (${(Number(behavior_confidence) * 100).toFixed(0)}%)`
+                    : ''
+                }`}
+                size="small"
+                sx={{ mb: 1, alignSelf: 'flex-start' }}
+              />
+            </Tooltip>
           ) : (
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
               {t('videoInfo.behaviorNone')}
@@ -486,9 +502,11 @@ export const VideoInfo = ({
               </Dialog>
             </>
           )}
-          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-            {t('videoInfo.behaviorTrainingNotInUi')}
-          </Typography>
+          {hasVisibleWeightChange(scales) && (
+            <Box sx={{ mt: 1.5 }}>
+              <WeightChangeMetric scales={scales} compact={weightMetricCompact} />
+            </Box>
+          )}
         </Paper>
       )}
 
@@ -512,9 +530,16 @@ export const VideoInfo = ({
           <Typography variant="body2" color="text.secondary">
             <strong>{t('videoInfo.duration')}:</strong> {duration}s
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            <strong>{t('videoInfo.processor')}:</strong> v{processor_version}
-          </Typography>
+          {!(behavior_label || canEdit) && hasVisibleWeightChange(scales) && (
+            <Box sx={{ mt: 0.5 }}>
+              <WeightChangeMetric scales={scales} compact={weightMetricCompact} />
+            </Box>
+          )}
+          {canEdit && (
+            <Typography variant="body2" color="text.secondary">
+              <strong>{t('videoInfo.processor')}:</strong> v{processor_version}
+            </Typography>
+          )}
           {canEdit && (
             <>
               <Button
@@ -698,30 +723,6 @@ export const VideoInfo = ({
             : undefined
         }
       />
-
-      {scales && (
-        <Paper sx={{ p: 2 }}>
-          <Typography
-            variant="h6"
-            gutterBottom
-            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-          >
-            <MonitorWeightIcon fontSize="small" />
-            {t('videoInfo.scalesEstimateTitle')}
-          </Typography>
-          <Chip
-            label={t('videoInfo.scalesEstimateValue', {
-              value: scales.display_value,
-              unit: scales.display_unit,
-            })}
-            variant="outlined"
-            sx={{ mb: 1 }}
-          />
-          <Typography variant="caption" color="text.secondary" display="block">
-            {t('videoInfo.scalesEstimateHint')}
-          </Typography>
-        </Paper>
-      )}
 
       {/* Food Section */}
       {food.length > 0 && (

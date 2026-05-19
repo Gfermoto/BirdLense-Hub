@@ -8178,6 +8178,8 @@ export interface components {
                 display_value?: number;
                 /** @enum {string} */
                 display_unit?: "kg" | "g";
+                weight_change_grams?: number;
+                weight_trend?: "up" | "down" | "stable";
             } | null;
             /** @description Runtime or manually set behavior taxonomy label (#416) */
             behavior_label?: string | null;
@@ -8256,6 +8258,8 @@ export interface components {
                 display_value?: number;
                 /** @enum {string} */
                 display_unit?: "kg" | "g";
+                weight_change_grams?: number;
+                weight_trend?: "up" | "down" | "stable";
             } | null;
             species?: {
                 id?: number;
