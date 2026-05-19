@@ -136,6 +136,13 @@ def test_bird_profiles_link_and_semantic_queue(client, app):
     assert link_resp.status_code == 200, link_resp.get_data(as_text=True)
     assert int(link_resp.get_json()["bird_profile_id"]) == profile_id
 
+    unlink_resp = client.patch(
+        f"/api/ui/detections/{detection_id}",
+        json={"bird_profile_id": None},
+    )
+    assert unlink_resp.status_code == 200, unlink_resp.get_data(as_text=True)
+    assert unlink_resp.get_json()["bird_profile_id"] is None
+
     semantic_resp = client.patch(
         f"/api/ui/detections/{detection_id}",
         json={"semantic_review_required": True, "semantic_review_note": "species mismatch"},

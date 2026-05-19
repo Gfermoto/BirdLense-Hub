@@ -20,6 +20,7 @@ from services.detection_species_correction_service import (
 )
 from services.bird_profile_service import (
     assign_profile_to_detection,
+    clear_profile_from_detection,
     create_bird_profile,
     list_bird_profiles,
     merge_bird_profiles,
@@ -267,14 +268,21 @@ def register_ui_corrections_dataset_routes(app):
                 app_obj_for_thread=app_obj,
             )
         elif "bird_profile_id" in data:
+            raw_profile_id = data.get("bird_profile_id")
+            if raw_profile_id is None:
+                try:
+                    payload = clear_profile_from_detection(detection_id=detection_id)
+                    return payload, 200
+                except LookupError as exc:
+                    return {"error": str(exc)}, 404
             try:
                 payload = assign_profile_to_detection(
                     detection_id=detection_id,
-                    bird_profile_id=int(data.get("bird_profile_id")),
+                    bird_profile_id=int(raw_profile_id),
                 )
                 return payload, 200
             except (TypeError, ValueError):
-                return {"error": "bird_profile_id must be an integer"}, 400
+                return {"error": "bird_profile_id must be an integer or null"}, 400
             except LookupError as exc:
                 return {"error": str(exc)}, 404
         elif "semantic_review_required" in data:

@@ -16,7 +16,9 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
-import TextField from '@mui/material/TextField';
+import { BirdProfileFilterAutocomplete } from '../../components/filters/BirdProfileFilterAutocomplete';
+import { BehaviorFilterSelect } from '../../components/filters/BehaviorFilterSelect';
+import { fetchBirdProfiles } from '../../api/speciesOverviewDetections';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import DownloadIcon from '@mui/icons-material/Download';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -43,6 +45,12 @@ import { PageHelp } from '../../components/PageHelp';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { timelineHelpConfig } from '../../page-help-config';
 import { type TimeOfDay } from '../../utils/timeUtils';
+import {
+  getVisitNickname,
+  getVisitBehaviorSortValue,
+  visitMatchesBehavior,
+  visitMatchesBirdProfile,
+} from './timelineFilters';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Chip from '@mui/material/Chip';
 import { UnknownsPage } from '../Unknowns';
@@ -76,22 +84,13 @@ function useFilteredVisits(
 
 type TimelineSortBy = 'date_desc' | 'date_asc' | 'species' | 'nickname' | 'behavior';
 
-function getVisitBehaviorLabels(visit: SpeciesVisit): string[] {
-  return [
-    ...new Set(
-      (visit.behavior_events ?? [])
-        .map((event) => String(event.label || '').trim().toLowerCase())
-        .filter((label) => Boolean(label)),
-    ),
-  ];
-}
-
-function getVisitBehaviorSortValue(visit: SpeciesVisit): string {
-  return getVisitBehaviorLabels(visit).join(', ');
-}
-
-function getVisitNickname(visit: SpeciesVisit): string {
-  return String(visit.individual_nickname || '').trim();
+function parseBirdProfileIdFromSearchParams(
+  searchParams: URLSearchParams,
+): number | null {
+  const raw = searchParams.get('bird_profile_id');
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 function parseHourFromSearchParams(
@@ -146,8 +145,12 @@ export function TimelinePage() {
   );
   const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<number[]>([]);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('all');
-  const [nicknameFilter, setNicknameFilter] = useState('');
-  const [behaviorFilter, setBehaviorFilter] = useState('');
+  const [birdProfileFilterId, setBirdProfileFilterId] = useState<number | null>(
+    () => parseBirdProfileIdFromSearchParams(searchParams),
+  );
+  const [behaviorFilter, setBehaviorFilter] = useState(
+    () => searchParams.get('behavior')?.trim() ?? '',
+  );
   const [sortBy, setSortBy] = useState<TimelineSortBy>('date_desc');
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -161,6 +164,50 @@ export function TimelinePage() {
       : dayjs().startOf('date');
     return parsed.isValid() ? parsed : dayjs().startOf('date');
   }, [searchParams]);
+  const { data: birdProfilesForFilter = [] } = useQuery({
+    queryKey: ['bird-profiles', 'timeline-filter-map'],
+    queryFn: async () => (await fetchBirdProfiles({ limit: 200 })).items,
+    staleTime: 1000 * 60 * 5,
+    enabled: !isReviewMode,
+  });
+  const birdProfilesById = useMemo(
+    () => new Map(birdProfilesForFilter.map((profile) => [Number(profile.id), profile])),
+    [birdProfilesForFilter],
+  );
+
+  const updateBirdProfileFilter = useCallback(
+    (profileId: number | null) => {
+      setBirdProfileFilterId(profileId);
+      const next = new URLSearchParams(searchParams);
+      if (profileId) {
+        next.set('bird_profile_id', String(profileId));
+      } else {
+        next.delete('bird_profile_id');
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const updateBehaviorFilter = useCallback(
+    (behavior: string) => {
+      setBehaviorFilter(behavior);
+      const next = new URLSearchParams(searchParams);
+      if (behavior) {
+        next.set('behavior', behavior);
+      } else {
+        next.delete('behavior');
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  useEffect(() => {
+    setBirdProfileFilterId(parseBirdProfileIdFromSearchParams(searchParams));
+    setBehaviorFilter(searchParams.get('behavior')?.trim() ?? '');
+  }, [searchParams]);
+
   const { data: observerOverview } = useQuery({
     queryKey: queryKeys.timeline.observerTimezone,
     queryFn: () => fetchOverviewData(dayjs().format('YYYY-MM-DD')),
@@ -276,15 +323,13 @@ export function TimelinePage() {
   const speciesList = useSpeciesList(visits);
   const selectedBySpeciesVisits = useFilteredVisits(visits, selectedSpeciesIds);
   const filteredVisits = useMemo(() => {
-    const nicknameNeedle = nicknameFilter.trim().toLowerCase();
-    const behaviorNeedle = behaviorFilter.trim().toLowerCase();
     const rows = (selectedBySpeciesVisits ?? []).filter((visit) => {
-      const nickname = getVisitNickname(visit).toLowerCase();
-      const behavior = getVisitBehaviorSortValue(visit).toLowerCase();
-      if (nicknameNeedle && !nickname.includes(nicknameNeedle)) {
+      if (
+        !visitMatchesBirdProfile(visit, birdProfileFilterId, birdProfilesById)
+      ) {
         return false;
       }
-      if (behaviorNeedle && !behavior.includes(behaviorNeedle)) {
+      if (!visitMatchesBehavior(visit, behaviorFilter)) {
         return false;
       }
       return true;
@@ -322,7 +367,8 @@ export function TimelinePage() {
     return sorted;
   }, [
     selectedBySpeciesVisits,
-    nicknameFilter,
+    birdProfileFilterId,
+    birdProfilesById,
     behaviorFilter,
     sortBy,
     i18n.language,
@@ -596,20 +642,14 @@ export function TimelinePage() {
             spacing={2}
             sx={{ mb: 3 }}
           >
-            <TextField
-              size="small"
-              label={t('timeline.nicknameFilter')}
-              value={nicknameFilter}
-              onChange={(event) => setNicknameFilter(event.target.value)}
-              placeholder={t('timeline.nicknameFilterPlaceholder')}
-              sx={{ minWidth: { xs: '100%', md: 240 } }}
+            <BirdProfileFilterAutocomplete
+              value={birdProfileFilterId}
+              onChange={updateBirdProfileFilter}
+              sx={{ minWidth: { xs: '100%', md: 280 } }}
             />
-            <TextField
-              size="small"
-              label={t('timeline.behaviorFilter')}
+            <BehaviorFilterSelect
               value={behaviorFilter}
-              onChange={(event) => setBehaviorFilter(event.target.value)}
-              placeholder={t('timeline.behaviorFilterPlaceholder')}
+              onChange={updateBehaviorFilter}
               sx={{ minWidth: { xs: '100%', md: 240 } }}
             />
             <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>

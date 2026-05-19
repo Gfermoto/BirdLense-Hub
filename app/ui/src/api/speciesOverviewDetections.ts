@@ -280,6 +280,7 @@ export type BirdProfile = {
   id: number;
   display_name: string;
   species_id: number | null;
+  species_name?: string | null;
   avatar_url: string | null;
   status: string;
   created_at?: string | null;
@@ -339,6 +340,24 @@ export const assignDetectionBirdProfile = async (
     `${BASE_API_URL}/detections/${detectionId}`,
     {
       bird_profile_id: birdProfileId,
+    },
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
+export const clearDetectionBirdProfile = async (
+  detectionId: number,
+): Promise<{
+  detection_id: number;
+  video_id: number;
+  bird_profile_id: null;
+  updated_count: number;
+}> => {
+  const response = await axios.patch(
+    `${BASE_API_URL}/detections/${detectionId}`,
+    {
+      bird_profile_id: null,
     },
     { withCredentials: true },
   );

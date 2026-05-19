@@ -32,6 +32,7 @@ import { downloadDetectionCropForINaturalist } from '../api/dataset';
 import { getApiErrorMessage } from '../api/api';
 import { invalidateLocalSpeciesEditCaches } from '../api/invalidateLocalSpeciesCaches';
 import { updateDetectionNickname } from '../api/speciesOverviewDetections';
+import { UnlinkBirdProfileButton } from './UnlinkBirdProfileButton';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { formatDuration } from '../utils/timeUtils';
 import { formatLocalDateTime, formatLocalTime } from '../util';
@@ -273,11 +274,20 @@ export const VisitCard = memo(function VisitCard({
                   {visit.species.name}
                 </Typography>
                 {(nickname || behaviorText) && (
-                  <Typography variant="body2" color="text.secondary">
-                    {nickname ? `${t('video.nickname')}: ${nickname}` : ''}
-                    {nickname && behaviorText ? ' • ' : ''}
-                    {behaviorText ? `${t('video.behavior')}: ${behaviorText}` : ''}
-                  </Typography>
+                  <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
+                    <Typography variant="body2" color="text.secondary">
+                      {nickname ? `${t('video.nickname')}: ${nickname}` : ''}
+                      {nickname && behaviorText ? ' • ' : ''}
+                      {behaviorText ? `${t('video.behavior')}: ${behaviorText}` : ''}
+                    </Typography>
+                    {nickname && firstVideoDetectionId && canEdit ? (
+                      <UnlinkBirdProfileButton
+                        detectionId={Number(firstVideoDetectionId)}
+                        videoId={firstVideoId}
+                        profileName={nickname}
+                      />
+                    ) : null}
+                  </Box>
                 )}
                 {firstVideoDetectionId && canEdit && !quickCorrectionOnly && (
                   <Box mt={0.5}>

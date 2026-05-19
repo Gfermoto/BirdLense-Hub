@@ -82,6 +82,7 @@ def format_visit_for_timeline(visit) -> dict:
     detections = []
     total_recording_seconds = 0.0
     nickname = None
+    bird_profile_id = None
     for vs in sorted(visit.video_species, key=lambda x: x.created_at, reverse=True):
         video_start = ensure_utc(vs.video.start_time)
         seg_dur = max(0, vs.end_time - vs.start_time) if vs.end_time > vs.start_time else 0
@@ -90,6 +91,8 @@ def format_visit_for_timeline(visit) -> dict:
             nn = str(vs.individual_nickname).strip()
             if nn:
                 nickname = nn
+        if bird_profile_id is None and getattr(vs, "bird_profile_id", None):
+            bird_profile_id = int(vs.bird_profile_id)
         det = {
             "id": vs.id,
             "video_id": vs.video_id,
@@ -100,6 +103,8 @@ def format_visit_for_timeline(visit) -> dict:
         }
         if getattr(vs, "individual_nickname", None):
             det["individual_nickname"] = vs.individual_nickname
+        if getattr(vs, "bird_profile_id", None):
+            det["bird_profile_id"] = int(vs.bird_profile_id)
         if vs.detection_provider:
             det["detection_provider"] = vs.detection_provider
         detections.append(det)
@@ -126,6 +131,7 @@ def format_visit_for_timeline(visit) -> dict:
         },
         "detections": detections,
         "individual_nickname": nickname,
+        "bird_profile_id": bird_profile_id,
         "behavior_events": behavior_events,
         "timeline_kind": "visit",
     }
@@ -140,6 +146,7 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
     total_recording_seconds = 0.0
     vss = sorted(video.video_species, key=lambda x: x.created_at, reverse=True)
     nickname = None
+    bird_profile_id = None
     for vs in vss:
         video_start = ensure_utc(vs.video.start_time)
         seg_dur = max(0, vs.end_time - vs.start_time) if vs.end_time > vs.start_time else 0
@@ -148,6 +155,8 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
             nn = str(vs.individual_nickname).strip()
             if nn:
                 nickname = nn
+        if bird_profile_id is None and getattr(vs, "bird_profile_id", None):
+            bird_profile_id = int(vs.bird_profile_id)
         det = {
             "id": vs.id,
             "video_id": vs.video_id,
@@ -158,6 +167,8 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
         }
         if getattr(vs, "individual_nickname", None):
             det["individual_nickname"] = vs.individual_nickname
+        if getattr(vs, "bird_profile_id", None):
+            det["bird_profile_id"] = int(vs.bird_profile_id)
         if vs.detection_provider:
             det["detection_provider"] = vs.detection_provider
         detections.append(det)
@@ -200,6 +211,7 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
         "species": species_block,
         "detections": detections,
         "individual_nickname": nickname,
+        "bird_profile_id": bird_profile_id,
         "behavior_events": _model_behavior_events_from_video(video),
         "timeline_kind": "unlinked_video",
     }

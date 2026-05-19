@@ -27,6 +27,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
+import { UnlinkBirdProfileButton } from '../../components/UnlinkBirdProfileButton';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { getApiErrorMessage, resolveImageUrl } from '../../api/api';
 import { downloadDetectionCropForINaturalist } from '../../api/dataset';
@@ -862,6 +863,24 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                               label={`${selectedProfile.display_name} • ${selectedProfile.status}`}
                               color="info"
                               variant="outlined"
+                            />
+                            <UnlinkBirdProfileButton
+                              detectionId={bestDet.id!}
+                              videoId={
+                                videoId != null ? Number(videoId) : undefined
+                              }
+                              profileName={selectedProfile.display_name}
+                              onUnlinked={() => {
+                                setProfileSelection((prev) => ({
+                                  ...prev,
+                                  [key]: null,
+                                }));
+                                setProfileDraft((prev) => ({
+                                  ...prev,
+                                  [key]: '',
+                                }));
+                                invalidateLocalSpeciesEditCaches(queryClient, videoId);
+                              }}
                             />
                           </Stack>
                         ) : null}

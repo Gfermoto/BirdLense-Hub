@@ -36,9 +36,12 @@ export interface SpeciesVisit {
     confidence: number;
     source: 'video' | 'audio';
     detection_provider?: string;
+    individual_nickname?: string | null;
+    bird_profile_id?: number | null;
   }[];
   /** Re-ID nickname from backend visit payload when present (#390 UI). */
   individual_nickname?: string | null;
+  bird_profile_id?: number | null;
   /** Model-derived behavior events for this visit. */
   behavior_events?: { label?: string }[];
 }
