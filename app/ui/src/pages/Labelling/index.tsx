@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import { useHelpAudience } from '../../hooks/useHelpAudience';
 import { PageHeader } from '../../components/PageHeader';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { AnnotationViewer } from '../../components/AnnotationViewer';
@@ -131,6 +132,8 @@ const MediaCanvas: React.FC<{
 
 export const LabellingPage: React.FC = () => {
   const { t, i18n } = useTranslation();
+  const helpAudience = useHelpAudience();
+  const labellingHelpPrefix = `labelling.help.${helpAudience}`;
   useDocumentTitle(t('labelling.title'));
   const [status, setStatus] = React.useState<FilterStatus>('all');
   const [workflowFilter, setWorkflowFilter] = React.useState<WorkflowFilter>('all');
@@ -350,11 +353,15 @@ export const LabellingPage: React.FC = () => {
         {!q.isLoading && !q.isError && items.length === 0 && (q.data?.count || 0) > 0 ? <Alert severity="warning">{t('labelling.states.noFiltered')}</Alert> : null}
       </Stack>
       <Dialog open={showHelp} onClose={() => setShowHelp(false)}>
-        <DialogTitle>{t('labelling.help.title')}</DialogTitle>
+        <DialogTitle>{t(`${labellingHelpPrefix}.title`)}</DialogTitle>
         <DialogContent>
-          <Typography>{t('labelling.help.step1')}</Typography>
-          <Typography>{t('labelling.help.step2')}</Typography>
-          <Typography>{t('labelling.help.step3')}</Typography>
+          <Typography>{t(`${labellingHelpPrefix}.step1`)}</Typography>
+          {t(`${labellingHelpPrefix}.step2`) ? (
+            <Typography sx={{ mt: 1 }}>{t(`${labellingHelpPrefix}.step2`)}</Typography>
+          ) : null}
+          {t(`${labellingHelpPrefix}.step3`) ? (
+            <Typography sx={{ mt: 1 }}>{t(`${labellingHelpPrefix}.step3`)}</Typography>
+          ) : null}
         </DialogContent>
         <DialogActions>
           <Button

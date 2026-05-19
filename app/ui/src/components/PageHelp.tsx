@@ -10,6 +10,8 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import type { ReactNode } from 'react';
 import { PageHeader } from './PageHeader';
+import { useHelpAudience } from '../hooks/useHelpAudience';
+import { resolvePageHelp } from '../help/resolvePageHelp';
 
 export interface HelpDetail {
   title: string;
@@ -47,6 +49,7 @@ export const PageHelp = (
       }),
 ) => {
   const { t } = useTranslation();
+  const helpAudience = useHelpAudience();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleOpenDialog = () => setDialogOpen(true);
@@ -63,14 +66,10 @@ export const PageHelp = (
   const titleVariant = 'titleVariant' in props ? props.titleVariant : undefined;
 
   if (configKey) {
-    const helpData = t(`help.${configKey}`, { returnObjects: true }) as {
-      title: string;
-      description: string;
-      details: HelpDetail[];
-    };
-    title = helpData?.title ?? '';
-    description = helpData?.description;
-    details = Array.isArray(helpData?.details) ? helpData.details : undefined;
+    const helpData = resolvePageHelp(t, configKey, helpAudience);
+    title = helpData.title;
+    description = helpData.description;
+    details = helpData.details;
   } else {
     title = (props as PageHelpProps).title;
     description = (props as PageHelpProps).description;

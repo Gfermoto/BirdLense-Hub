@@ -20,6 +20,8 @@ export interface SpeciesVisit {
     delta_kg: number;
     display_value: number;
     display_unit: 'kg' | 'g';
+    weight_change_grams?: number;
+    weight_trend?: 'up' | 'down' | 'stable';
   } | null;
   species: {
     id: number;
@@ -112,6 +114,8 @@ export interface Video {
     delta_kg: number;
     display_value: number;
     display_unit: 'kg' | 'g';
+    weight_change_grams?: number;
+    weight_trend?: 'up' | 'down' | 'stable';
   } | null;
   behavior_label?: string | null;
   behavior_confidence?: number | null;
