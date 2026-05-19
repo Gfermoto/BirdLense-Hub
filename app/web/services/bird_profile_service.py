@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
-from models import ActiveLearningCase, BirdProfile, VideoSpecies, db
+from models import ActiveLearningCase, BirdProfile, Species, VideoSpecies, db
 from services.reid_auto_link_service import auto_link_hook, merge_bird_profiles as _merge_bird_profiles
 
 
@@ -46,17 +46,23 @@ def list_bird_profiles(*, query: str | None = None, species_id: int | None = Non
     needle = (query or "").strip()
     if needle:
         q = q.filter(BirdProfile.display_name.ilike(f"%{needle}%"))
-    rows = q.limit(lim).all()
+    rows = (
+        q.outerjoin(Species, BirdProfile.species_id == Species.id)
+        .add_columns(Species.name)
+        .limit(lim)
+        .all()
+    )
     return [
         {
             "id": int(row.id),
             "display_name": row.display_name,
             "species_id": row.species_id,
+            "species_name": species_name,
             "avatar_url": row.avatar_url,
             "status": row.status,
             "created_at": row.created_at.astimezone(timezone.utc).isoformat() if row.created_at else None,
         }
-        for row in rows
+        for row, species_name in rows
     ]
 
 
@@ -107,6 +113,24 @@ def update_bird_profile(*, profile_id: int, display_name: str | None = None, ava
         "species_id": row.species_id,
         "avatar_url": row.avatar_url,
         "status": row.status,
+    }
+
+
+def clear_profile_from_detection(*, detection_id: int) -> dict[str, Any]:
+    """Remove bird profile link from all detections in the same video session."""
+    vs = db.session.get(VideoSpecies, int(detection_id))
+    if vs is None:
+        raise LookupError("detection not found")
+    targets = db.session.query(VideoSpecies).filter(VideoSpecies.video_id == vs.video_id).all()
+    for row in targets:
+        row.bird_profile_id = None
+        row.individual_nickname = None
+    db.session.commit()
+    return {
+        "detection_id": int(vs.id),
+        "video_id": int(vs.video_id),
+        "bird_profile_id": None,
+        "updated_count": len(targets),
     }
 
 
