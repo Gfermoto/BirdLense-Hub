@@ -22,6 +22,7 @@ from services.bird_profile_service import (
     assign_profile_to_detection,
     clear_profile_from_detection,
     create_bird_profile,
+    delete_bird_profile,
     list_bird_profiles,
     merge_bird_profiles,
     set_detection_semantic_review,
@@ -75,6 +76,16 @@ def register_ui_corrections_dataset_routes(app):
             return payload, 200
         except ValueError as exc:
             return {"error": str(exc)}, 400
+        except LookupError:
+            return {"error": "profile not found"}, 404
+
+    @app.route("/api/ui/bird-profiles/<int:profile_id>", methods=["DELETE"])
+    def delete_bird_profile_route(profile_id: int):
+        if not contributor_or_admin_access():
+            return {"error": "Password required"}, 403
+        try:
+            payload = delete_bird_profile(profile_id=profile_id)
+            return payload, 200
         except LookupError:
             return {"error": "profile not found"}, 404
 

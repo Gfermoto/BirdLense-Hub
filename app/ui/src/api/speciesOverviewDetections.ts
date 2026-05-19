@@ -346,6 +346,19 @@ export const assignDetectionBirdProfile = async (
   return response.data;
 };
 
+export const deleteBirdProfile = async (
+  profileId: number,
+): Promise<{
+  id: number;
+  display_name: string;
+  unlinked_detections: number;
+}> => {
+  const response = await axios.delete(`${BASE_API_URL}/bird-profiles/${profileId}`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 export const clearDetectionBirdProfile = async (
   detectionId: number,
 ): Promise<{

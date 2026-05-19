@@ -116,6 +116,29 @@ def update_bird_profile(*, profile_id: int, display_name: str | None = None, ava
     }
 
 
+def delete_bird_profile(*, profile_id: int) -> dict[str, Any]:
+    """Delete profile from catalog and unlink all detections that referenced it."""
+    row = db.session.get(BirdProfile, int(profile_id))
+    if row is None:
+        raise LookupError("profile not found")
+    display_name = row.display_name
+    unlinked = (
+        db.session.query(VideoSpecies)
+        .filter(VideoSpecies.bird_profile_id == row.id)
+        .update(
+            {"bird_profile_id": None, "individual_nickname": None},
+            synchronize_session=False,
+        )
+    )
+    db.session.delete(row)
+    db.session.commit()
+    return {
+        "id": int(profile_id),
+        "display_name": display_name,
+        "unlinked_detections": int(unlinked or 0),
+    }
+
+
 def clear_profile_from_detection(*, detection_id: int) -> dict[str, Any]:
     """Remove bird profile link from all detections in the same video session."""
     vs = db.session.get(VideoSpecies, int(detection_id))

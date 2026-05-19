@@ -18,6 +18,8 @@ import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
 import { BirdProfileFilterAutocomplete } from '../../components/filters/BirdProfileFilterAutocomplete';
 import { BehaviorFilterSelect } from '../../components/filters/BehaviorFilterSelect';
+import { BirdProfilesCatalogDialog } from '../../components/BirdProfilesCatalogDialog';
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import { fetchBirdProfiles } from '../../api/speciesOverviewDetections';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -155,6 +157,7 @@ export function TimelinePage() {
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [birdCatalogOpen, setBirdCatalogOpen] = useState(false);
   const [jumpPending, setJumpPending] = useState(false);
   const jumpRequestSeqRef = useRef(0);
   const selectedDate = useMemo(() => {
@@ -642,11 +645,31 @@ export function TimelinePage() {
             spacing={2}
             sx={{ mb: 3 }}
           >
-            <BirdProfileFilterAutocomplete
-              value={birdProfileFilterId}
-              onChange={updateBirdProfileFilter}
-              sx={{ minWidth: { xs: '100%', md: 280 } }}
-            />
+            <Stack
+              direction="row"
+              spacing={0.5}
+              alignItems="flex-start"
+              sx={{ minWidth: { xs: '100%', md: 320 } }}
+            >
+              <BirdProfileFilterAutocomplete
+                value={birdProfileFilterId}
+                onChange={updateBirdProfileFilter}
+                sx={{ flex: 1, minWidth: 0 }}
+              />
+              {canEdit ? (
+                <Tooltip title={t('birdProfiles.manageButton')}>
+                  <IconButton
+                    size="small"
+                    aria-label={t('birdProfiles.manageButton')}
+                    data-testid="bird-profiles-catalog-open"
+                    onClick={() => setBirdCatalogOpen(true)}
+                    sx={{ mt: 0.5 }}
+                  >
+                    <FormatListBulletedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              ) : null}
+            </Stack>
             <BehaviorFilterSelect
               value={behaviorFilter}
               onChange={updateBehaviorFilter}
@@ -684,6 +707,15 @@ export function TimelinePage() {
           <Timeline visits={filteredVisits ?? []} />
         </>
       )}
+      <BirdProfilesCatalogDialog
+        open={birdCatalogOpen}
+        onClose={() => setBirdCatalogOpen(false)}
+        onDeleted={(profileId) => {
+          if (birdProfileFilterId === profileId) {
+            updateBirdProfileFilter(null);
+          }
+        }}
+      />
       <Snackbar
         open={!!exportError}
         autoHideDuration={8000}

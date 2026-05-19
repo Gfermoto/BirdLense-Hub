@@ -28,6 +28,8 @@ import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { UnlinkBirdProfileButton } from '../../components/UnlinkBirdProfileButton';
+import { DeleteBirdProfileButton } from '../../components/DeleteBirdProfileButton';
+import { formatBirdProfileOptionLabel } from '../../components/filters/BirdProfileFilterAutocomplete';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { getApiErrorMessage, resolveImageUrl } from '../../api/api';
 import { downloadDetectionCropForINaturalist } from '../../api/dataset';
@@ -871,6 +873,23 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                               }
                               profileName={selectedProfile.display_name}
                               onUnlinked={() => {
+                                setProfileSelection((prev) => ({
+                                  ...prev,
+                                  [key]: null,
+                                }));
+                                setProfileDraft((prev) => ({
+                                  ...prev,
+                                  [key]: '',
+                                }));
+                                invalidateLocalSpeciesEditCaches(queryClient, videoId);
+                              }}
+                            />
+                            <DeleteBirdProfileButton
+                              profileId={Number(selectedProfile.id)}
+                              profileName={formatBirdProfileOptionLabel(
+                                selectedProfile,
+                              )}
+                              onDeleted={() => {
                                 setProfileSelection((prev) => ({
                                   ...prev,
                                   [key]: null,
