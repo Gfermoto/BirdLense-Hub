@@ -90,6 +90,21 @@ def _compute_blind_score(
     return max(0.0, min(1.0, score))
 
 
+def _blind_suspected_from_final_stats(
+    *,
+    final_rs: dict[str, Any],
+    blind_score: float,
+    blind_score_threshold: float,
+) -> bool:
+    """Suspected only after final session counters (avoids early-copy race)."""
+    raw_boxes = int(final_rs.get("yolo_raw_boxes_total") or 0)
+    track_frames = int(final_rs.get("yolo_frames_with_tracks") or 0)
+    raw_frame_hits = int(final_rs.get("yolo_frames_with_raw_boxes") or 0)
+    if raw_boxes > 0 or track_frames > 0 or raw_frame_hits > 0:
+        return False
+    return bool(blind_score >= float(blind_score_threshold) * 0.5)
+
+
 def _run_self_heal_escalation(
     *,
     repo: SessionStateRepository,
@@ -455,7 +470,6 @@ def finalize_motion_recording(
             min_frigate_frames=blind_min_frigate,
             min_duration_s=blind_min_duration_s,
         )
-        blind_suspected = bool(blind_score >= float(blind_score_threshold) * 0.5)
         blind_now = (
             yolo_ran_now >= required_frames
             and yolo_raw_now == 0
@@ -822,6 +836,16 @@ def finalize_motion_recording(
                 decision_trace["video_id"] = int(video_id)
             except (TypeError, ValueError):
                 decision_trace["video_id"] = video_id
+            sl = behavior_bundle.get("shadow_label")
+            sc = behavior_bundle.get("shadow_confidence")
+            logging.info(
+                "behavior canary persist video_id=%s shadow=%s(%.3f) saved=%s engine=%s",
+                video_id,
+                sl,
+                float(sc or 0.0),
+                bool(sl and str(sl).strip()),
+                str((br_cfg.get("engine") if isinstance(br_cfg, dict) else "") or ""),
+            )
             try:
                 api.activity_log(
                     type="behavior_shadow_prediction",
@@ -885,6 +909,12 @@ def finalize_motion_recording(
         except Exception:
             duration_s = None
         ctx: dict[str, Any] = recording_context if isinstance(recording_context, dict) else {}
+        blind_score_threshold = float(app_config.get("detection.yolo_blind_score_threshold") or 0.7)
+        blind_suspected = _blind_suspected_from_final_stats(
+            final_rs=rs,
+            blind_score=blind_score,
+            blind_score_threshold=blind_score_threshold,
+        )
         session_summary = {
             "event": "recording_session_summary",
             "duration_s": round(duration_s, 3) if duration_s is not None else None,
