@@ -171,6 +171,51 @@ def test_domain_health_reliability_alerts_for_artifact_failures_and_unknown_reas
     assert alerts.get("unknown_ingest_gate_reasons") is True
 
 
+def test_domain_health_data_stagnation_alert_when_sessions_without_visits(app, client):
+    with app.app_context():
+        now = datetime.now(timezone.utc)
+        db.session.add_all(
+            [
+                ActivityLog(
+                    type="recording_session_summary",
+                    data=json.dumps(
+                        {
+                            "video_file_ok": True,
+                            "post_fusion_persisted": 0,
+                            "frames_seen": 120,
+                            "yolo_frames_ran": 120,
+                        }
+                    ),
+                    created_at=now - timedelta(minutes=2),
+                ),
+                ActivityLog(
+                    type="recording_session_summary",
+                    data=json.dumps(
+                        {
+                            "video_file_ok": True,
+                            "post_fusion_persisted": 0,
+                            "frames_seen": 90,
+                            "yolo_frames_ran": 90,
+                        }
+                    ),
+                    created_at=now - timedelta(minutes=1),
+                ),
+            ]
+        )
+        db.session.commit()
+
+    res = client.get("/api/ui/system/domain-health", headers=_auth_headers())
+    assert res.status_code == 200, res.get_data(as_text=True)
+    payload = res.get_json() or {}
+    reliability = payload.get("reliability_alerts") or {}
+    metrics = reliability.get("metrics") or {}
+    alerts = reliability.get("alerts") or {}
+    assert int(metrics.get("recording_sessions_5m") or 0) >= 2
+    assert int(metrics.get("post_fusion_persisted_sum_5m") or 0) == 0
+    assert int(metrics.get("species_visits_5m") or 0) == 0
+    assert alerts.get("data_stagnation") is True
+
+
 def test_domain_health_includes_parity_diagnostics_daily_split(app, client):
     with app.app_context():
         now = datetime.now(timezone.utc)

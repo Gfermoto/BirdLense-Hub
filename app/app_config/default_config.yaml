@@ -504,6 +504,9 @@ detection:
   # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).
   frigate_standalone_require_blind_yolo: true
   frigate_standalone_blind_score_threshold: 0.7
+  # Fail-safe: если YOLO не дал ни одного ряда в сессии дольше N секунд, включаем standalone
+  # немедленно даже при незавершённом blind-подтверждении (предпочитаем recall > false negatives).
+  frigate_standalone_force_after_no_yolo_seconds: 12
   # 7 FPS режим: blind подтверждаем по времени/кадрам, а не по коротким провалам.
   yolo_blind_required_consecutive_sessions: 1
   yolo_blind_min_duration_seconds: 30
@@ -521,6 +524,12 @@ detection:
   yolo_self_heal_restart_enabled: true
   yolo_self_heal_cooldown_seconds: 300
   yolo_self_heal_escalation_window_seconds: 900
+  # Watchdog инференса: если эффективный FPS упал ниже порога при длительной сессии,
+  # запускаем self-heal без перезапуска всего контейнера.
+  yolo_watchdog_enabled: true
+  yolo_watchdog_min_effective_fps: 1.2
+  yolo_watchdog_min_duration_seconds: 20
+  yolo_watchdog_min_frames: 40
   # При включении standalone мониторьте баланс провайдеров: fusion_provider_yolo должен оставаться доминирующим.
   # Если ровно один accepted_generic «Bird» от YOLO — НЕ подменять на Frigate standalone по умолчанию.
   # Иначе Frigate начинает доминировать как primary provider даже при наличии визуального YOLO-трека.

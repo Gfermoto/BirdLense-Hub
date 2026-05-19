@@ -606,11 +606,28 @@ def build_fused_video_detections(
     standalone_no_species = bool(app_config.get("detection.frigate_standalone_when_no_accepted_species", False))
     require_blind = bool(app_config.get("detection.frigate_standalone_require_blind_yolo", False))
     blind_score_threshold = float(app_config.get("detection.frigate_standalone_blind_score_threshold", 0.7) or 0.7)
+    force_after_no_yolo_s = float(
+        app_config.get("detection.frigate_standalone_force_after_no_yolo_seconds", 12.0) or 12.0
+    )
+    force_after_no_yolo_s = max(1.0, min(force_after_no_yolo_s, 300.0))
     has_accepted_species = _prepared_has_accepted_species(prepared)
     effective_blind_score = float(yolo_blind_score)
     if bool(yolo_blind_confirmed) and effective_blind_score <= 0.0:
         effective_blind_score = 1.0
     blind_gate_ok = bool(yolo_blind_confirmed and effective_blind_score >= blind_score_threshold) if require_blind else True
+    session_duration_s = max(0.0, float((end_time - start_time).total_seconds()))
+    forced_standalone_due_no_yolo = (
+        standalone_on and bool(frigate_events) and not prepared and session_duration_s >= force_after_no_yolo_s
+    )
+    if require_blind and not blind_gate_ok and forced_standalone_due_no_yolo:
+        blind_gate_ok = True
+        logger.warning(
+            "Fusion: forcing Frigate standalone after %.1fs with no YOLO rows "
+            "(require_blind_yolo=true, blind_confirmed=%s, blind_score=%.3f)",
+            session_duration_s,
+            bool(yolo_blind_confirmed),
+            effective_blind_score,
+        )
     want_standalone = (
         standalone_on
         and bool(frigate_events)

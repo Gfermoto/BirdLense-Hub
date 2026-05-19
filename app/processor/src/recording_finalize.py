@@ -955,6 +955,53 @@ def finalize_motion_recording(
         try:
             repo = SessionStateRepository()
             repo.save_session_runtime(session_summary)
+            try:
+                watchdog_enabled = bool(app_config.get("detection.yolo_watchdog_enabled", True))
+                min_fps = float(app_config.get("detection.yolo_watchdog_min_effective_fps") or 1.2)
+                min_duration = float(app_config.get("detection.yolo_watchdog_min_duration_seconds") or 20.0)
+                min_frames = int(app_config.get("detection.yolo_watchdog_min_frames") or 40)
+                duration_now = float(session_summary.get("duration_s") or 0.0)
+                yolo_ran_now = int(session_summary.get("yolo_frames_ran") or 0)
+                yolo_raw_now = int(session_summary.get("yolo_raw_boxes_total") or 0)
+                effective_fps = (yolo_ran_now / duration_now) if duration_now > 0.0 else 0.0
+                watchdog_trip = (
+                    watchdog_enabled
+                    and not bool(yolo_blind_confirmed)
+                    and duration_now >= max(1.0, min_duration)
+                    and yolo_ran_now >= max(1, min_frames)
+                    and yolo_raw_now == 0
+                    and effective_fps < max(0.1, min_fps)
+                )
+                if watchdog_trip:
+                    wd_details = {
+                        "duration_s": round(duration_now, 3),
+                        "yolo_frames_ran": yolo_ran_now,
+                        "yolo_raw_boxes_total": yolo_raw_now,
+                        "effective_fps": round(effective_fps, 3),
+                        "min_effective_fps": max(0.1, min_fps),
+                    }
+                    repo.append_detector_health_event(
+                        event_type="yolo_watchdog_fps_low",
+                        severity="warning",
+                        camera_id=ctx.get("triggered_camera"),
+                        details=wd_details,
+                    )
+                    diag = collect_root_cause_snapshot(mqtt_aggregator=mqtt_aggregator)
+                    dump_refs = write_root_cause_dump(diag, reason="yolo_watchdog_fps_low")
+                    diag["dump_refs"] = dump_refs
+                    action, action_details = _run_self_heal_escalation(
+                        repo=repo,
+                        app_config_obj=app_config,
+                        api=api,
+                        frame_processor=frame_processor,
+                        mqtt_aggregator=mqtt_aggregator,
+                        camera_id=ctx.get("triggered_camera"),
+                        diagnostics=diag,
+                    )
+                    if action:
+                        logging.warning("yolo_watchdog action=%s details=%s", action, action_details)
+            except Exception:
+                logging.debug("yolo watchdog probe skipped", exc_info=True)
             if bool(yolo_blind_confirmed):
                 repo.append_detector_health_event(
                     event_type="yolo_blind_confirmed",
