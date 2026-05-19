@@ -67,6 +67,25 @@ def test_strict_quality_ratio_skips_empty_sample():
     assert strict_quality_ratio_ok(0.5, sample_count=10, threshold=0.9) is False
 
 
+def test_strict_quality_block_skips_ratio_without_24h_sample():
+    from services.system_domain_health_service import _build_strict_quality_block
+
+    block = _build_strict_quality_block(
+        duplicate_video_groups=0,
+        duplicate_detection_groups=0,
+        duplicate_clip_candidates=[],
+        species_sync_actions=[],
+        detection_track_metrics={
+            "video_detections_24h": 0,
+            "video_detections_with_frames_ratio_24h": None,
+            "video_detections_primary_yolo_ratio_24h": None,
+        },
+    )
+    assert block["video_detections_with_frames_ratio_ok"] is True
+    assert block["video_detections_primary_yolo_ratio_ok"] is True
+    assert block["strict_quality_ready"] is True
+
+
 def test_filter_frigate_parity_when_frigate_off():
     alerts = filter_runtime_parity_alerts(
         {

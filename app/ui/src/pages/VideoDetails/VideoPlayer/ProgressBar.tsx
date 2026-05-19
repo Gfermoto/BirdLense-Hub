@@ -7,18 +7,15 @@ import { useTheme } from '@mui/material/styles';
 import { VideoSpecies } from '../../../types';
 import { labelToUniqueHexColor } from '../../../util';
 import { formatTimeMmSs } from '../../../utils/timeUtils';
-
-const providerToKey: Record<string, string> = {
-  yolo: 'detectionProviderYolo',
-  frigate: 'detectionProviderFrigate',
-  birdnet_mqtt: 'detectionProviderBirdnetMqtt',
-};
+import { detectionProviderLabel } from '../../../util/detectionProviderLabel';
 
 interface ProgressBarProps {
   duration: number;
   progress: number;
   onSeek: (time: number) => void;
   detections: VideoSpecies[];
+  /** Operator/admin: YOLO / MQTT product names; guest: plain-language sources */
+  showTechnicalProviderLabels?: boolean;
 }
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({
@@ -26,6 +23,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   progress,
   onSeek,
   detections,
+  showTechnicalProviderLabels = true,
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -139,9 +137,11 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
                       <>
                         <br />
                         {t('video.detectionSource')}:{' '}
-                        {t(
-                          providerToKey[detection.species.detection_provider],
-                        ) || detection.species.detection_provider}
+                        {detectionProviderLabel(
+                          t,
+                          detection.species.detection_provider,
+                          { technical: showTechnicalProviderLabels },
+                        )}
                       </>
                     )}
                   </>
