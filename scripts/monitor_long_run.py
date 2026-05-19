@@ -76,10 +76,10 @@ def _docker_logs_since(since: str, *, container: str = "birdlense") -> str:
     try:
         r = subprocess.run(
             ["docker", "logs", container, "--since", since],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
             timeout=180,
-            stderr=subprocess.STDOUT,
         )
         return r.stdout or ""
     except Exception as exc:
