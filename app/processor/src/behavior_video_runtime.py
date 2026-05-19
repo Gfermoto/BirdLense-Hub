@@ -153,10 +153,21 @@ def _predict_video_openvino(
     ov_out = runtime._compiled({runtime._input_name: x})
     raw_out = ov_out[runtime._compiled.outputs[runtime._output_idx]]
     logits = np.asarray(raw_out, dtype=np.float64).reshape(-1)
-    if logits.shape[0] != len(labels):
+    if logits.shape[0] == 1 and len(labels) == 2:
+        # Binary sklearn export: single logit for labels[1] (e.g. flying vs feeding).
+        p_pos = 1.0 / (1.0 + np.exp(-float(logits[0])))
+        probs = np.array([1.0 - p_pos, p_pos], dtype=np.float64)
+    elif logits.shape[0] != len(labels):
+        _log.warning(
+            "behavior video openvino: logits dim %s != n_labels %s (path=%s)",
+            logits.shape[0],
+            len(labels),
+            ov_path,
+        )
         return None, 0.0
-    logits = logits - np.max(logits)
-    probs = np.exp(logits) / (np.sum(np.exp(logits)) + 1e-12)
+    else:
+        logits = logits - np.max(logits)
+        probs = np.exp(logits) / (np.sum(np.exp(logits)) + 1e-12)
     idx = int(np.argmax(probs))
     return labels[idx], float(probs[idx])
 

@@ -14,11 +14,26 @@ def _video_export_to_logistic(export: dict) -> dict:
         raise ValueError("expected behavior_video_export@v1")
     if not export.get("coef") or not export.get("intercept") or not export.get("labels"):
         raise ValueError("video export missing coef/intercept/labels (train first)")
+    labels = [str(x) for x in (export.get("labels") or []) if str(x)]
+    coef = export["coef"]
+    intercept = export["intercept"]
+    import numpy as np
+
+    w = np.asarray(coef, dtype=np.float64)
+    b = np.asarray(intercept, dtype=np.float64).reshape(-1)
+    if len(labels) == 2 and w.ndim == 2 and w.shape[0] == 1:
+        n_feat = int(w.shape[1])
+        w = np.vstack([np.zeros(n_feat, dtype=np.float64), w.reshape(-1)])
+        b = np.array([0.0, float(b[0])], dtype=np.float64)
+    elif len(labels) == 2 and w.ndim == 1:
+        n_feat = int(w.shape[0])
+        w = np.vstack([np.zeros(n_feat, dtype=np.float64), w.reshape(-1)])
+        b = np.array([0.0, float(b[0]) if b.size else 0.0], dtype=np.float64)
     return {
         "schema": "behavior_logistic_export@v1",
-        "labels": export["labels"],
-        "coef": export["coef"],
-        "intercept": export["intercept"],
+        "labels": labels,
+        "coef": np.asarray(w, dtype=np.float64).tolist(),
+        "intercept": np.asarray(b, dtype=np.float64).reshape(-1).tolist(),
         "feature_mode": export.get("feature_mode") or "tracklet_rgb_v1",
     }
 
