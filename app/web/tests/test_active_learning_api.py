@@ -143,6 +143,16 @@ def test_bird_profiles_link_and_semantic_queue(client, app):
     assert unlink_resp.status_code == 200, unlink_resp.get_data(as_text=True)
     assert unlink_resp.get_json()["bird_profile_id"] is None
 
+    link_resp2 = client.patch(
+        f"/api/ui/detections/{detection_id}",
+        json={"bird_profile_id": profile_id},
+    )
+    assert link_resp2.status_code == 200, link_resp2.get_data(as_text=True)
+
+    delete_resp = client.delete(f"/api/ui/bird-profiles/{profile_id}")
+    assert delete_resp.status_code == 200, delete_resp.get_data(as_text=True)
+    assert int(delete_resp.get_json()["id"]) == profile_id
+
     semantic_resp = client.patch(
         f"/api/ui/detections/{detection_id}",
         json={"semantic_review_required": True, "semantic_review_note": "species mismatch"},

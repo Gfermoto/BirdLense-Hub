@@ -965,6 +965,17 @@
     "modeMjpeg": "MJPEG",
     "streamModeAria": "Live video transport: WebRTC/MSE or MJPEG fallback"
   },
+  "birdProfiles": {
+    "catalogTitle": "Bird nicknames (ReID)",
+    "catalogHint": "Deleting removes the nickname from the catalog and unlinks all visits. Unlink only affects the current recording.",
+    "manageButton": "Manage nicknames",
+    "empty": "No nicknames in the catalog yet.",
+    "deleteAction": "Delete nickname",
+    "deleteTooltip": "Delete nickname from catalog",
+    "deleteConfirm": "Delete \"{{name}}\" from the catalog? All visit links will be removed. This cannot be undone.",
+    "deleteFailed": "Failed to delete nickname",
+    "deletedSuccess": "Nickname \"{{name}}\" deleted ({{count}} detections unlinked)"
+  },
   "timeline": {
     "intro": "Pick a day that has recordings, open a clip, then jump to a species page or review if you need to fix recognition.",
     "reportsAndSharingHint": "eBird, CSV, and JSON export: open the menu from the download icon to the right of the species filter. iNaturalist: Share icon on a video detection row (visit card or recording detail). Monthly PDF report: Overview (home), next to the date picker.",

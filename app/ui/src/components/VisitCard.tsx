@@ -33,6 +33,8 @@ import { getApiErrorMessage } from '../api/api';
 import { invalidateLocalSpeciesEditCaches } from '../api/invalidateLocalSpeciesCaches';
 import { updateDetectionNickname } from '../api/speciesOverviewDetections';
 import { UnlinkBirdProfileButton } from './UnlinkBirdProfileButton';
+import { DeleteBirdProfileButton } from './DeleteBirdProfileButton';
+import { getVisitBirdProfileId } from '../pages/Timeline/timelineFilters';
 import { useProtectedArea } from '../contexts/ProtectedAreaContext';
 import { formatDuration } from '../utils/timeUtils';
 import { formatLocalDateTime, formatLocalTime } from '../util';
@@ -210,6 +212,7 @@ export const VisitCard = memo(function VisitCard({
     (d) => d.source === 'video' && d.id,
   )?.id;
   const firstVideoId = (visit.detections ?? []).find((d) => d.video_id)?.video_id;
+  const birdProfileId = getVisitBirdProfileId(visit);
   const nicknameMutation = useMutation({
     mutationFn: (value: string | null) =>
       updateDetectionNickname(Number(firstVideoDetectionId), value),
@@ -281,11 +284,25 @@ export const VisitCard = memo(function VisitCard({
                       {behaviorText ? `${t('video.behavior')}: ${behaviorText}` : ''}
                     </Typography>
                     {nickname && firstVideoDetectionId && canEdit ? (
-                      <UnlinkBirdProfileButton
-                        detectionId={Number(firstVideoDetectionId)}
-                        videoId={firstVideoId}
-                        profileName={nickname}
-                      />
+                      <>
+                        <UnlinkBirdProfileButton
+                          detectionId={Number(firstVideoDetectionId)}
+                          videoId={firstVideoId}
+                          profileName={nickname}
+                        />
+                        {birdProfileId ? (
+                          <DeleteBirdProfileButton
+                            profileId={birdProfileId}
+                            profileName={nickname}
+                            onDeleted={() =>
+                              invalidateLocalSpeciesEditCaches(
+                                queryClient,
+                                firstVideoId,
+                              )
+                            }
+                          />
+                        ) : null}
+                      </>
                     ) : null}
                   </Box>
                 )}

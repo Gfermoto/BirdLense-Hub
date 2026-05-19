@@ -955,6 +955,17 @@
     "modeMjpeg": "MJPEG",
     "streamModeAria": "直播传输方式：WebRTC/MSE 或 MJPEG 备用"
   },
+  "birdProfiles": {
+    "catalogTitle": "鸟类昵称 (ReID)",
+    "catalogHint": "删除将从目录中移除昵称并解除所有访问关联。仅解除关联只影响当前录像。",
+    "manageButton": "管理昵称",
+    "empty": "目录中暂无昵称。",
+    "deleteAction": "删除昵称",
+    "deleteTooltip": "从目录中删除昵称",
+    "deleteConfirm": "确定从目录中删除「{{name}}」？所有访问关联将被移除，且无法撤销。",
+    "deleteFailed": "删除昵称失败",
+    "deletedSuccess": "已删除昵称「{{name}}」（已解除 {{count}} 处关联）"
+  },
   "timeline": {
     "intro": "选择有录像的日期，打开片段，需要时再进入物种页或识别复核。",
     "reportsAndSharingHint": "eBird、CSV 与 JSON：点击物种筛选右侧下载图标打开菜单。iNaturalist：视频检测行的分享图标（到访卡片或录制详情页）。月度 PDF 报告：总览（首页）日期选择器旁。",
