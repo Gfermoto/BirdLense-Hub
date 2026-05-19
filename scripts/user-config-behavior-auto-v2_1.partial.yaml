@@ -1,0 +1,11 @@
+# Behavior v2.1 Auto — video_v2_1 after WetlandBirds merge + canary validation.
+processor:
+  behavior_recognition:
+    enabled: true
+    engine: auto
+    video_model_kind: video_v2_1
+    video_model_version: video-v2-1
+    video_openvino_path: models/behavior_v2_1_openvino
+    video_weights_path: models/behavior_v2_1_openvino/behavior_video_export.json
+    video_confidence_store_min: 0.35
+    canary_log_discrepancies: true

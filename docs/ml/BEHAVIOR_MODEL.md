@@ -95,6 +95,21 @@ bash scripts/server-apply-user-config-patch.sh scripts/user-config-behavior-cana
 
 **Переход в `engine: auto`:** только после ≥48 ч Canary с discrepancy **<20%** на ≥30 клипах и без роста blind-gate. Откат auto → `engine: canary` при discrepancy **>25%** за 24 ч.
 
+### v2.1 Production Release (2026-05-19)
+
+| Параметр | Значение |
+|----------|----------|
+| Датасет | Hub relaxed (46) + **Visual WetlandBirds** (1469) → merged **1515** tracklets, **flying=100** |
+| Holdout Macro-F1 | **0.37** (8 классов; flying holdout **9/9** correct) |
+| Canary replay (23 видео с треками) | discrepancy **39.1%**; video `flying` **6** клипов (v2: ~31% на 13 клипах, flying почти не предсказывался) |
+| IR | `app/processor/models/behavior_v2_1_openvino/` |
+| Конфиг | `video_model_kind: video_v2_1`, **`engine: auto`** (VPS 2026-05-19) |
+| Патч | `scripts/user-config-behavior-auto-v2_1.partial.yaml` |
+
+**WetlandBirds:** Zenodo [10.5281/zenodo.15696105](https://doi.org/10.5281/zenodo.15696105) — `scripts/download_wetlandbirds_zenodo.sh`, `scripts/convert_wetlandbirds_zenodo_crops.py`. Отчёт: `docs/reports/wetlandbirds_integration_report.md`.
+
+**Откат:** `scripts/user-config-behavior-canary-v2_1.partial.yaml` + restart.
+
 **Регулярное переобучение:** еженедельно `ml-extract-behavior-prod-labeled` + train + export v2; не использовать синтетику в финальном blend.
 
 **Патч конфига на сервере:**

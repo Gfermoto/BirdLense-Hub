@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Behavior v2.1 ([#476](https://github.com/Gfermoto/BirdLense-Hub/issues/476), [#460](https://github.com/Gfermoto/BirdLense-Hub/issues/460)):** обучение на Hub + Visual WetlandBirds (Zenodo); **100** tracklets `flying`; production **`engine: auto`**, `video_model_kind: video_v2_1`, IR `behavior_v2_1_openvino`. Скрипты: `download_wetlandbirds_zenodo.sh`, `convert_wetlandbirds_zenodo_crops.py`, `user-config-behavior-auto-v2_1.partial.yaml`. Доки: `docs/ml/BEHAVIOR_MODEL.md`, `docs/reports/behavior_v2_1_release_20260519.md`.
+
 ### Security
 
 - **A2 / roadmap [#418](https://github.com/Gfermoto/BirdLense-Hub/issues/418):** переменная **`BIRDLENSE_HIDE_DIRECT_RECORDINGS`** (`1`/`true`/`yes`/`on`) — при старте контейнера не добавляется nginx-`location` для **`/data/recordings/`**; анонимный доступ к предсказуемым URL получает **403**, воспроизведение остаётся через **`/api/ui/videos/:id/stream`** (`app/nginx/standalone.conf.template`, `app/scripts/entrypoint.sh`). Доки: **CONFIGURATION**, **SECURITY**, **DEPLOY_SERVER** (EN/RU), **`app/.env.example`**. Публичный VPS — единый чеклист: **`docs/PUBLIC_RECORDINGS*.md`** ([#423](https://github.com/Gfermoto/BirdLense-Hub/issues/423)).

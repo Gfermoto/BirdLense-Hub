@@ -163,6 +163,22 @@ app/processor/models/behavior_v2_openvino/*
 !app/processor/models/behavior_v2_openvino/behavior_video_model.xml
 !app/processor/models/behavior_v2_openvino/behavior_video_model.bin
 !app/processor/models/behavior_v2_openvino/behavior_video_model.onnx
+!app/processor/models/behavior_v2_1_openvino/
+app/processor/models/behavior_v2_1_openvino/*
+!app/processor/models/behavior_v2_1_openvino/behavior_video_export.json
+!app/processor/models/behavior_v2_1_openvino/behavior_openvino_export.json
+!app/processor/models/behavior_v2_1_openvino/behavior_video_model.xml
+!app/processor/models/behavior_v2_1_openvino/behavior_video_model.bin
+!app/processor/models/behavior_v2_1_openvino/behavior_video_model.onnx
+!app/processor/models/behavior_v2_1_openvino/README.md
+
+# Zenodo annotation CSVs (full set via scripts/download_wetlandbirds_zenodo.sh)
+app/data/datasets/Visual-WetlandBirds/annotations/
+
+# Behavior v2.1 — generated manifests/crops (rebuild on VPS via scripts/)
+app/data/datasets/behavior_v2_1/
+app/data/datasets/behavior_v2_1_local/
+app/data/datasets/Visual-WetlandBirds/annotations/
 
 # Сгенерированная документация (make docs)
 docs/api/
