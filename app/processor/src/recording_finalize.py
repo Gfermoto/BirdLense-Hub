@@ -420,12 +420,13 @@ def finalize_motion_recording(
                 dict(sorted(rejected_summary.items())),
             )
     elif mqtt_events:
-        logging.warning(
-            "ByteTrack: 0 YOLO tracks but %s MQTT events. "
-            "Without YOLO, Frigate MQTT does not become a final detection unless "
-            "detection.frigate_standalone_when_no_yolo is enabled (see detection_fusion).",
-            len(mqtt_events),
-        )
+        standalone_on = bool(app_config.get("detection.frigate_standalone_when_no_yolo", False))
+        if not standalone_on:
+            logging.warning(
+                "ByteTrack: 0 YOLO tracks but %s MQTT events. "
+                "Enable detection.frigate_standalone_when_no_yolo for Frigate-only rows.",
+                len(mqtt_events),
+            )
 
     audio_detections: list = []
     spectrogram_path = maybe_generate_recording_spectrogram(
@@ -489,7 +490,13 @@ def finalize_motion_recording(
             min_duration_seconds=max(0.0, blind_min_duration_s),
             min_effective_fps=max(0.1, blind_min_effective_fps),
         )
-        yolo_blind_confirmed = bool(blind_now and blind_recent and blind_score >= blind_score_threshold)
+        score_ok = blind_score >= blind_score_threshold
+        # is_blind_confirmed reads only prior sessions in SQLite; current clip is not
+        # persisted yet, so blind_recent lags by one. Same-session blind_now must count
+        # for Frigate standalone when require_blind_yolo is enabled.
+        yolo_blind_confirmed = bool(
+            score_ok and ((blind_now and blind_recent) or (blind_now and yolo_ran_now >= required_frames))
+        )
         if yolo_raw_now > 0:
             recent = repo.recent_blind_sessions(camera_id=session_camera_id, limit=1)
             if recent and int(recent[0]["yolo_blind_confirmed"] or 0) == 1:
