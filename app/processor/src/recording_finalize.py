@@ -956,6 +956,42 @@ def finalize_motion_recording(
             repo = SessionStateRepository()
             repo.save_session_runtime(session_summary)
             try:
+                if bool(app_config.get("active_learning.enabled", True)):
+                    al_reason = None
+                    al_payload = {
+                        "duration_s": session_summary.get("duration_s"),
+                        "frames_seen": session_summary.get("frames_seen"),
+                        "yolo_frames_ran": session_summary.get("yolo_frames_ran"),
+                        "yolo_raw_boxes_total": session_summary.get("yolo_raw_boxes_total"),
+                        "post_fusion_persisted": session_summary.get("post_fusion_persisted"),
+                        "session_extended_by_frigate_only": session_summary.get(
+                            "session_extended_by_frigate_only"
+                        ),
+                        "blind_score": session_summary.get("yolo_blind_score"),
+                    }
+                    if (
+                        int(session_summary.get("session_extended_by_frigate_only") or 0) > 0
+                        and int(session_summary.get("yolo_raw_boxes_total") or 0) == 0
+                    ):
+                        al_reason = "frigate_only_yolo_silent"
+                    elif (
+                        int(session_summary.get("post_fusion_persisted") or 0) == 0
+                        and int(session_summary.get("frames_seen") or 0) > 0
+                        and bool(session_summary.get("video_file_ok"))
+                    ):
+                        al_reason = "empty_fusion_with_video"
+                    elif float(session_summary.get("yolo_blind_score") or 0.0) >= 0.5:
+                        al_reason = "yolo_blind_suspected"
+                    if al_reason:
+                        repo.append_active_learning_buffer(
+                            reason_code=al_reason,
+                            camera_id=ctx.get("triggered_camera"),
+                            severity="warning",
+                            payload=al_payload,
+                        )
+            except Exception:
+                logging.debug("active learning buffer append skipped", exc_info=True)
+            try:
                 watchdog_enabled = bool(app_config.get("detection.yolo_watchdog_enabled", True))
                 min_fps = float(app_config.get("detection.yolo_watchdog_min_effective_fps") or 1.2)
                 min_duration = float(app_config.get("detection.yolo_watchdog_min_duration_seconds") or 20.0)

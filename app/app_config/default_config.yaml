@@ -837,6 +837,9 @@ experimental:
   active_learning_conf_min: 0.20
   active_learning_conf_max: 0.35
 
+active_learning:
+  enabled: true
+
 # Secrets - use env vars: OPENWEATHER_API_KEY, MQTT_PASSWORD, HA_TOKEN
 secrets:
   openweather_api_key: ""
