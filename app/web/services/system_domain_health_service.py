@@ -11,7 +11,7 @@ from typing import Any
 
 import data_paths
 from app_config.app_config import app_config
-from models import ActivityLog, Species, SpeciesUnresolvedName, Video, VideoSpecies, db
+from models import ActivityLog, Species, SpeciesUnresolvedName, SpeciesVisit, Video, VideoSpecies, db
 from services.species_data_quality_service import find_duplicate_name_groups
 from services.system_operational_status import strict_quality_ratio_ok
 from services.species_visit_maintenance_service import (
@@ -360,6 +360,7 @@ def _build_reliability_alerts(
     *,
     ingest_gate_reason_metrics: dict[str, Any],
     runtime_backend_metrics: dict[str, Any],
+    stagnation_metrics: dict[str, Any],
 ) -> dict[str, Any]:
     reason_counts = ingest_gate_reason_metrics.get("ingest_gate_reason_code_counts_24h") or {}
     rec_file_missing = int(reason_counts.get("REC_FILE_MISSING") or 0)
@@ -367,11 +368,16 @@ def _build_reliability_alerts(
     artifact_failures = rec_file_missing + rec_file_unplayable
     unknown_ingest = int(ingest_gate_reason_metrics.get("ingest_gate_unknown_reason_rows_24h") or 0)
     transitions = int(runtime_backend_metrics.get("video_encoding_transitions_24h") or 0)
+    sessions_5m = int(stagnation_metrics.get("recording_sessions_5m") or 0)
+    persisted_5m = int(stagnation_metrics.get("post_fusion_persisted_sum_5m") or 0)
+    visits_5m = int(stagnation_metrics.get("species_visits_5m") or 0)
+    stagnation_alert = sessions_5m > 0 and persisted_5m == 0 and visits_5m == 0
     return {
         "thresholds": {
             "recording_artifact_failures_24h_max": 0,
             "video_encoding_transitions_24h_warn": 4,
             "unknown_ingest_gate_rows_24h_warn": 0,
+            "data_stagnation_window_minutes_critical": 5,
         },
         "metrics": {
             "recording_artifact_failures_24h": int(artifact_failures),
@@ -379,12 +385,57 @@ def _build_reliability_alerts(
             "recording_file_unplayable_24h": int(rec_file_unplayable),
             "video_encoding_transitions_24h": int(transitions),
             "unknown_ingest_gate_rows_24h": int(unknown_ingest),
+            "recording_sessions_5m": sessions_5m,
+            "post_fusion_persisted_sum_5m": persisted_5m,
+            "species_visits_5m": visits_5m,
         },
         "alerts": {
             "recording_artifact_failures": bool(artifact_failures > 0),
             "video_encoding_flapping": bool(transitions >= 4),
             "unknown_ingest_gate_reasons": bool(unknown_ingest > 0),
+            "data_stagnation": bool(stagnation_alert),
         },
+    }
+
+
+def _recent_data_stagnation_metrics(minutes: int = 5) -> dict[str, int]:
+    window = max(1, int(minutes or 5))
+    cutoff = _utc_now() - timedelta(minutes=window)
+    rows = (
+        db.session.query(ActivityLog)
+        .filter(
+            ActivityLog.type == "recording_session_summary",
+            ActivityLog.created_at >= cutoff,
+        )
+        .order_by(ActivityLog.id.desc())
+        .limit(500)
+        .all()
+    )
+    sessions = 0
+    persisted_sum = 0
+    for row in rows:
+        try:
+            payload = json.loads(row.data or "{}")
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        if not bool(payload.get("video_file_ok", False)):
+            continue
+        sessions += 1
+        try:
+            persisted_sum += int(payload.get("post_fusion_persisted") or 0)
+        except (TypeError, ValueError):
+            continue
+    visits = (
+        db.session.query(SpeciesVisit)
+        .filter(SpeciesVisit.start_time >= cutoff)
+        .count()
+    )
+    return {
+        "recording_sessions_5m": int(sessions),
+        "post_fusion_persisted_sum_5m": int(persisted_sum),
+        "species_visits_5m": int(visits or 0),
     }
 
 
@@ -724,9 +775,11 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
         ingest_gate_reason_metrics = _recent_ingest_gate_reason_metrics()
         parity_diagnostics_metrics = _recent_parity_diagnostics_metrics()
         processor_funnel_metrics = _processor_runtime_funnel_metrics()
+        stagnation_metrics = _recent_data_stagnation_metrics(minutes=5)
         reliability_alerts = _build_reliability_alerts(
             ingest_gate_reason_metrics=ingest_gate_reason_metrics,
             runtime_backend_metrics=runtime_backend_metrics,
+            stagnation_metrics=stagnation_metrics,
         )
 
         payload: dict[str, Any] = {
@@ -772,6 +825,7 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                     "parity_hotspot_count_24h": parity_diagnostics_metrics["parity_hotspot_count_24h"],
                 },
                 **processor_funnel_metrics,
+                **stagnation_metrics,
             },
             "samples": {
                 "duplicate_clip_candidates": duplicate_clip_candidates[:12],
@@ -861,6 +915,7 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                     "recording_artifact_failures_24h_max": 0,
                     "video_encoding_transitions_24h_warn": 4,
                     "unknown_ingest_gate_rows_24h_warn": 0,
+                    "data_stagnation_window_minutes_critical": 5,
                 },
                 "metrics": {
                     "recording_artifact_failures_24h": None,
@@ -868,11 +923,15 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                     "recording_file_unplayable_24h": None,
                     "video_encoding_transitions_24h": None,
                     "unknown_ingest_gate_rows_24h": None,
+                    "recording_sessions_5m": None,
+                    "post_fusion_persisted_sum_5m": None,
+                    "species_visits_5m": None,
                 },
                 "alerts": {
                     "recording_artifact_failures": False,
                     "video_encoding_flapping": False,
                     "unknown_ingest_gate_reasons": False,
+                    "data_stagnation": False,
                 },
             },
             "strict_quality": {
