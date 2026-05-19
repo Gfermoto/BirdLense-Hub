@@ -164,7 +164,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   showTracksRegenHint = false,
 }) => {
   const { t } = useTranslation();
-  const { isAdmin } = useProtectedArea();
+  const { isAdmin, canEdit } = useProtectedArea();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const timeoutRef = useRef<number | undefined>(undefined);
   const [view, setView] = useState<'video' | 'audio'>('video');
@@ -631,7 +631,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           color="text.secondary"
           sx={{ display: 'block', mt: 1 }}
         >
-          {t('video.timelineHint')}
+          {t(canEdit ? 'video.timelineHint' : 'video.timelineHintPublic')}
         </Typography>
       )}
       {showTracksRegenHint && isAdmin && (
@@ -648,6 +648,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         progress={progress}
         detections={filteredDetections}
         onSeek={handleSeek}
+        showTechnicalProviderLabels={canEdit}
       />
     </Box>
   );
