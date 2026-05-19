@@ -20,14 +20,22 @@ FEATURE_DIM = RGB_SIZE * RGB_SIZE * 3
 def resolve_video_path(video_path: str | None, *, repo_root: Path | None = None) -> Path | None:
     if not video_path:
         return None
+    import os
+
     p = Path(str(video_path).strip())
     candidates: list[Path] = []
     if p.is_absolute():
         candidates.append(p)
     else:
+        data_dir = os.environ.get("DATA_DIR", "/app/data")
+        norm = str(p).replace("\\", "/")
+        if norm.startswith("data/"):
+            candidates.append((Path(data_dir) / norm[len("data/") :]).resolve())
         if repo_root is not None:
             candidates.append((repo_root / p).resolve())
+            candidates.append((repo_root.parent / p).resolve())
             candidates.append((repo_root / "app" / p).resolve())
+        candidates.append((Path(data_dir) / p.name).resolve())
         candidates.append((Path.cwd() / p).resolve())
     for cand in candidates:
         if cand.is_file():
