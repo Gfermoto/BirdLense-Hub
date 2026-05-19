@@ -11,6 +11,7 @@ import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Checkbox from '@mui/material/Checkbox';
+import Chip from '@mui/material/Chip';
 import Info from '@mui/icons-material/Info';
 import { resolveImageUrl } from '../../api/api';
 import { fetchBirdFood, toggleBirdFood } from '../../api/birdFoodFeed';
@@ -117,14 +118,25 @@ export const FoodManagement = () => {
                   </Typography>
                 </TableCell>
                 <TableCell align="center" sx={{ width: '100px' }}>
-                  <span>
+                  {isAdmin ? (
                     <Checkbox
                       checked={food.active}
-                      onChange={() => isAdmin && toggleMutation.mutate(food.id)}
+                      onChange={() => toggleMutation.mutate(food.id)}
                       color="primary"
-                      disabled={!isAdmin}
+                      inputProps={{
+                        'aria-label': t('food.activeToggle', { name: food.name }),
+                      }}
                     />
-                  </span>
+                  ) : (
+                    <Chip
+                      size="small"
+                      label={
+                        food.active ? t('food.activeYes') : t('food.activeNo')
+                      }
+                      color={food.active ? 'success' : 'default'}
+                      variant={food.active ? 'filled' : 'outlined'}
+                    />
+                  )}
                 </TableCell>
               </TableRow>
             ))}

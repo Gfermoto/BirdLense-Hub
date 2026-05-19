@@ -603,24 +603,16 @@ export function TimelinePage() {
                 justifySelf: { xs: 'end', md: 'start' },
               }}
             >
-              <Tooltip
-                title={
-                  !canEdit
-                    ? t('common.loginRequiredForExport')
-                    : t('timeline.export')
-                }
-              >
-                <span>
-                  <IconButton
-                    onClick={(e) => setExportAnchor(e.currentTarget)}
-                    disabled={exporting || !canEdit}
-                    aria-label={t('timeline.export')}
-                    data-testid="timeline-export-menu-trigger"
-                  >
-                    <DownloadIcon />
-                  </IconButton>
-                </span>
-              </Tooltip>
+              {canEdit && (
+                <IconButton
+                  onClick={(e) => setExportAnchor(e.currentTarget)}
+                  disabled={exporting}
+                  aria-label={t('timeline.export')}
+                  data-testid="timeline-export-menu-trigger"
+                >
+                  <DownloadIcon />
+                </IconButton>
+              )}
             </Box>
             <Menu
               anchorEl={exportAnchor}

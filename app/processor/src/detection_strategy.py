@@ -668,6 +668,23 @@ class TwoStageStrategy(DetectionStrategy):
             margin,
         )
 
+    def _apply_roi_sr_to_crop(
+        self,
+        crop: np.ndarray,
+        *,
+        min_box_size_px: int,
+    ) -> tuple[np.ndarray, int, float]:
+        """ROI super-resolution when configured; no-op if builder returned None."""
+        roi_sr = self._roi_sr
+        if roi_sr is None:
+            return crop, 0, 0.0
+        if not roi_sr.should_enhance(crop, min_box_size_px=min_box_size_px):
+            return crop, 0, 0.0
+        crop_sr, sr_meta = roi_sr.enhance(crop)
+        applied = 1 if sr_meta.enabled else 0
+        latency = float(sr_meta.latency_ms) if sr_meta.enabled else 0.0
+        return crop_sr, applied, latency
+
     def _priority_score(self, box: dict) -> tuple:
         stats = self._track_stats.get(box["track_id"]) or {}
         classified_count = int(stats.get("classified_count") or 0)
@@ -1135,12 +1152,11 @@ class TwoStageStrategy(DetectionStrategy):
             is_blur, variance = self.is_blurry(crop)
             if is_blur:
                 continue
-            if self._roi_sr.should_enhance(crop, min_box_size_px=min_box_size_px):
-                crop_sr, sr_meta = self._roi_sr.enhance(crop)
-                crop = crop_sr
-                if sr_meta.enabled:
-                    sr_applied += 1
-                    sr_latency_total_ms += float(sr_meta.latency_ms)
+            crop, sr_n, sr_ms = self._apply_roi_sr_to_crop(
+                crop, min_box_size_px=min_box_size_px
+            )
+            sr_applied += sr_n
+            sr_latency_total_ms += sr_ms
             classified_by_track[box["track_id"]] = {
                 "crop": crop.copy(),
                 "blur_variance": variance,
@@ -1156,12 +1172,11 @@ class TwoStageStrategy(DetectionStrategy):
             if mapped is not None:
                 x1, y1, x2, y2 = mapped
                 crop = cls_frame[y1:y2, x1:x2]
-                if self._roi_sr.should_enhance(crop, min_box_size_px=min_box_size_px):
-                    crop_sr, sr_meta = self._roi_sr.enhance(crop)
-                    crop = crop_sr
-                    if sr_meta.enabled:
-                        sr_applied += 1
-                        sr_latency_total_ms += float(sr_meta.latency_ms)
+                crop, sr_n, sr_ms = self._apply_roi_sr_to_crop(
+                    crop, min_box_size_px=min_box_size_px
+                )
+                sr_applied += sr_n
+                sr_latency_total_ms += sr_ms
                 _, variance = self.is_blurry(crop)
                 classified_by_track[fallback_box["track_id"]] = {
                     "crop": crop.copy(),

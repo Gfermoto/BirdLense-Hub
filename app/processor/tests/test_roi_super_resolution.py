@@ -7,12 +7,22 @@ pytest.importorskip("cv2")
 from roi_super_resolution import build_roi_super_resolution
 
 
-def test_sr_disabled_passthrough():
-    sr = build_roi_super_resolution({"experimental.sr_enabled": False})
+def test_sr_disabled_returns_none():
+    assert build_roi_super_resolution({"experimental.sr_enabled": False}) is None
+
+
+def test_sr_enabled_instance_passthrough_when_native_missing():
+    sr = build_roi_super_resolution(
+        {
+            "experimental.sr_enabled": True,
+            "experimental.sr_model": "fsrcnn_x2",
+        }
+    )
+    assert sr is not None
     crop = np.zeros((24, 24, 3), dtype=np.uint8)
     out, meta = sr.enhance(crop)
-    assert out.shape == crop.shape
-    assert meta.enabled is False
+    assert out.shape[0] >= crop.shape[0]
+    assert meta.enabled is True
 
 
 def test_sr_enabled_upscales_small_crop():

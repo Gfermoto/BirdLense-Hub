@@ -121,8 +121,8 @@ export function Navigation() {
   const showSettingsLink = !requiresPassword || !unlocked || isAdmin;
   /** Система/библиотека: гость или админ (оператор после входа не видит). */
   const showAdminOnlyLinks = !requiresPassword || !unlocked || isAdmin;
-  /** Разметка hard-cases: contributor/admin после входа, и гость без пароля. */
-  const showLabellingLink = !requiresPassword || !unlocked || canEdit;
+  /** Разметка: только после входа оператора/админа (гостю не показываем «мёртвый» пункт). */
+  const showLabellingLink = canEdit;
   const gearButtonRef = React.useRef<HTMLButtonElement>(null);
 
   const [mobileMenuAnchor, setMobileMenuAnchor] =

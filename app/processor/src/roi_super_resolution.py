@@ -165,5 +165,8 @@ class RoiSuperResolution:
             return crop, RoiSrMeta(True, self.model, False, elapsed)
 
 
-def build_roi_super_resolution(cfg: Mapping[str, Any]) -> RoiSuperResolution:
+def build_roi_super_resolution(cfg: Mapping[str, Any]) -> RoiSuperResolution | None:
+    """Return None when SR is disabled so callers skip method dispatch entirely."""
+    if not bool(cfg.get("experimental.sr_enabled", False)):
+        return None
     return RoiSuperResolution(cfg)
