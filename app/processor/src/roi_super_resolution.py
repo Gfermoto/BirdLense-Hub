@@ -52,18 +52,21 @@ class RoiSuperResolution:
         self._setup_fsrcnn(cfg)
 
     def _setup_fsrcnn(self, cfg: Mapping[str, Any]) -> None:
+        model_path = str(cfg.get("processor.models.sr_fsrcnn_x2_path") or "").strip()
+        if not model_path:
+            _LOG.warning("SR: FSRCNN disabled — processor.models.sr_fsrcnn_x2_path is not set")
+            return
+        p = Path(model_path)
+        if not p.is_absolute():
+            proc_root = Path(__file__).resolve().parent.parent
+            p = (proc_root / p).resolve()
+        if not p.exists():
+            _LOG.warning("SR: FSRCNN model not found at %s; using fallback upscale", p)
+            return
+        if not hasattr(cv2, "dnn_superres"):
+            _LOG.warning("SR: cv2.dnn_superres unavailable; FSRCNN disabled (fallback upscale)")
+            return
         try:
-            model_path = str(cfg.get("processor.models.sr_fsrcnn_x2_path") or "").strip()
-            if not model_path:
-                return
-            p = Path(model_path)
-            if not p.is_absolute():
-                proc_root = Path(__file__).resolve().parent.parent
-                p = (proc_root / p).resolve()
-            if not p.exists():
-                return
-            if not hasattr(cv2, "dnn_superres"):
-                return
             sr = cv2.dnn_superres.DnnSuperResImpl_create()
             sr.readModel(str(p))
             sr.setModel("fsrcnn", self.scale)
@@ -71,25 +74,27 @@ class RoiSuperResolution:
             self._native = True
         except Exception:
             self._fsrcnn = None
-            _LOG.debug("SR: FSRCNN init failed", exc_info=True)
+            _LOG.warning("SR: FSRCNN init failed; using fallback upscale", exc_info=True)
 
     def _setup_realesrgan(self, cfg: Mapping[str, Any]) -> None:
+        model_path = str(cfg.get("processor.models.sr_realesrgan_x2_path") or "").strip()
+        if not model_path:
+            _LOG.warning("SR: RealESRGAN disabled — processor.models.sr_realesrgan_x2_path is not set")
+            return
+        p = Path(model_path)
+        if not p.is_absolute():
+            proc_root = Path(__file__).resolve().parent.parent
+            p = (proc_root / p).resolve()
+        if not p.exists():
+            _LOG.warning("SR: RealESRGAN model not found at %s; using fallback upscale", p)
+            return
         try:
-            model_path = str(cfg.get("processor.models.sr_realesrgan_x2_path") or "").strip()
-            if not model_path:
-                return
-            p = Path(model_path)
-            if not p.is_absolute():
-                proc_root = Path(__file__).resolve().parent.parent
-                p = (proc_root / p).resolve()
-            if not p.exists():
-                return
             net = cv2.dnn.readNetFromONNX(str(p))
             self._realesrgan_net = net
             self._native = True
         except Exception:
             self._realesrgan_net = None
-            _LOG.debug("SR: RealESRGAN init failed", exc_info=True)
+            _LOG.warning("SR: RealESRGAN init failed; using fallback upscale", exc_info=True)
 
     def should_enhance(self, crop: np.ndarray, *, min_box_size_px: int) -> bool:
         if not self.enabled:

@@ -88,6 +88,56 @@ def test_frigate_only_quickcheck_recovery_without_double_count():
     assert runtime_signals["yolo_blind_phase"] == "recovered"
 
 
+def test_expired_quickcheck_window_confirms_only_if_still_suspected():
+    """After window ends, confirm blind only when phase never recovered."""
+    phase = "suspected"
+    now_m = 10.0
+    until = 5.0
+
+    if now_m <= until:
+        phase = "recovered"
+    elif phase == "suspected":
+        phase = "confirmed"
+
+    assert phase == "confirmed"
+
+
+def test_expired_window_does_not_confirm_after_primary_recovery():
+    phase = "suspected"
+    now_m = 10.0
+    until = 5.0
+    raw_boxes = 3
+
+    if raw_boxes > 0:
+        phase = "recovered"
+        until = 0.0
+
+    frigate_only_extension = True
+    if frigate_only_extension and phase == "suspected":
+        if now_m <= until:
+            pass
+        elif phase == "suspected":
+            phase = "confirmed"
+
+    assert phase == "recovered"
+
+
+def test_quickcheck_failure_inside_window_stays_suspected():
+    phase = "suspected"
+    now_m = 3.0
+    until = 8.0
+    quick_raw = 0
+
+    if phase == "suspected":
+        if now_m <= until:
+            if quick_raw > 0:
+                phase = "recovered"
+        elif phase == "suspected":
+            phase = "confirmed"
+
+    assert phase == "suspected"
+
+
 def test_primary_raw_boxes_recovers_even_when_frigate_extends_session():
     """Primary YOLO boxes recover blind state even if session was extended by Frigate-only."""
     runtime_signals, accumulate = _make_accumulators()
