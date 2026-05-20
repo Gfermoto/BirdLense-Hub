@@ -17,6 +17,8 @@
 
 **От этой точки** начинается Wave 3 — планомерное превосходство (active learning, ReID, UX), а не починка регрессий.
 
+> **Коррекция (2026-05-20, post-audit):** метрики «~17× FP↓» **не гарантируют** отсутствие FN. Инцидент 13:05 UTC: `yolo_raw=478`, `yolo_accepted=0` из‑за `global_frame_static` + static reject, не слепоты модели. См. [`SOTA_DEEP_DIVE_AUDIT_2026.md`](SOTA_DEEP_DIVE_AUDIT_2026.md), [`truth_serum_fp_crisis_20260520.md`](../reports/truth_serum_fp_crisis_20260520.md).
+
 ---
 
 ## 2. Метрики Baseline v1.0 (точка отсчёта)
