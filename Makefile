@@ -688,6 +688,12 @@ generate-golden-v2:
 validate-pipeline-golden:
 	@cd "$(CURDIR)/app/processor" && PYTHONPATH=src python3 -m pytest tests/test_pipeline_golden_gate.py tests/test_scoring_engine.py -q
 
+stress-test-offline:
+	@GOLDEN_GATE_MIN_F1=0.9 STRESS_MAX_SILENCE_ACCEPTED=0 python3 "$(CURDIR)/scripts/stress_test_offline.py" --no-yolo
+
+check-legacy-config:
+	@python3 "$(CURDIR)/scripts/check_legacy_processor_config.py"
+
 # Profile OpenVINO device/hint combos and emit ov_async_profile_report@v1 (#412).
 # Example:
 # VIDEOS_ROOT=app/data/recordings OUT=/tmp/ov_async_profile.json make ml-openvino-async-profile

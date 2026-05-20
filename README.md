@@ -79,6 +79,26 @@ Two components: **detector** (bird or rodent in frame) and **classifier** (bird 
 - **Confidence per species** — lower threshold for rare birds
 - **Research** — dataset collection, model fine-tuning (see [docs](./docs))
 
+### How detection decisions work (SOTA 2.0)
+
+BirdLense uses a **ScoringEngine** instead of a chain of independent filters (motion, MOG2, static square, etc.). For each candidate box the hub computes one score:
+
+`final_score = w_conf×confidence + w_motion×motion + w_shape×shape + w_bg×background (+ Frigate prior boost)`
+
+Three zones:
+
+| Zone | Meaning |
+|------|---------|
+| **Accept** | score ≥ high threshold → bird goes to the timeline |
+| **Review** | between low and high → held internally, not spammed to the UI |
+| **Reject** | below low threshold → dropped as noise |
+
+On stream start the engine **auto-calibrates** for ~60 seconds from empty frames and sets low/high thresholds for that scene (wind, shadows, night). Legacy threshold keys in YAML are ignored when `scoring_engine_enabled: true`.
+
+**Operators:** [Troubleshooting scoring](./docs/user/TROUBLESHOOTING_SCORING.md) · debug API `GET /api/debug/scoring` (settings password) · Black Box JSONL under `data/decision_traces/`.
+
+**CI gates:** `make validate-pipeline-golden` (F1 ≥ 0.9) · `make stress-test-offline` (zero accepts on synthetic silence).
+
 ### SOTA Features & Experiments
 - **ROI Super-Resolution pilot (`#472`)** — optional SR on small crops before classification (`experimental.sr_*`), with synthetic A/B benchmark report in `docs/benchmarks/sr_roi_pilot.md`.
 - **Active Learning hard-case miner** — auto-selects difficult samples (blind score, fallback ratio, borderline confidence) into `/api/ui/labelling/*` queue and `/labelling` UI.

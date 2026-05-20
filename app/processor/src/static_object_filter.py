@@ -1,4 +1,8 @@
-"""Universal static / phantom box suppression (geometry, temporal, scene context)."""
+"""Universal static / phantom box suppression (LEGACY cascade).
+
+Disabled when ``processor.scoring_engine_enabled`` is true — use ``scoring_engine.py``.
+Retained for rollback paths and unit tests.
+"""
 
 from __future__ import annotations
 
