@@ -8,6 +8,7 @@ __pycache__
 # Снимки БД, скачанные scripts/recover-sqlite-from-backups.sh pull-*
 backups-recovered/
 app/data/recordings
+app/data/stress_clips/*.mp4
 app/data/dataset/
 app/data/cache/
 app/data/.ultralytics/

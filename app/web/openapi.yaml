@@ -321,6 +321,26 @@ paths:
             text/plain:
               schema:
                 type: string
+  /api/debug/scoring:
+    get:
+      summary: ScoringEngine debug (thresholds, histogram, Black Box tail)
+      description: |
+        Live SOTA 2.0 scoring telemetry from decision trace JSONL and config.
+        Requires settings password (same as `/api/ui/status/debug`).
+      responses:
+        "200":
+          description: Scoring debug payload
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+        "403":
+          description: Password required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /api/metrics:
     get:
       summary: Prometheus metrics (API alias)

@@ -18,7 +18,7 @@ from scoring_engine import DecisionZone, ScoringEngine, ScoringEngineConfig  # n
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SYNTH_MANIFEST = REPO_ROOT / "app/data/datasets/golden_v2/manifest.synthetic.json"
 REAL_MANIFEST = REPO_ROOT / "app/data/datasets/golden_v2/manifest.json"
-MIN_F1 = float(os.environ.get("GOLDEN_GATE_MIN_F1", "0.7"))
+MIN_F1 = float(os.environ.get("GOLDEN_GATE_MIN_F1", "0.9"))
 
 
 def _probes_for_clip(clip: dict) -> list:

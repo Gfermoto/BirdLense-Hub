@@ -392,4 +392,14 @@ class ScoringEngine:
                     self.last_stats["scoring_giant_reject"] += 1
 
         self._prev_gray = gray
+        try:
+            from scoring_telemetry import get_scoring_telemetry
+
+            get_scoring_telemetry().record_decisions(
+                self.last_decisions,
+                stats=self.last_stats,
+            )
+            get_scoring_telemetry().record_calibration(self._calibration.snapshot())
+        except Exception:
+            logger.debug("scoring telemetry update skipped", exc_info=True)
         return kept

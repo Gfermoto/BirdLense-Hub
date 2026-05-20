@@ -77,6 +77,12 @@
 - **Confidence по виду** — ниже порог для редких птиц
 - **Исследования** — сбор датасетов, дообучение (см. [docs](./docs))
 
+### Как работает детекция (SOTA 2.0)
+
+Вместо цепочки фильтров — **ScoringEngine**: один `final_score` из confidence, motion, shape и фона (+ буст Frigate). Зоны **Accept / Review / Reject**; первые ~60 с — **авто-калибровка** порогов под сцену. При `scoring_engine_enabled: true` старые пороги motion/MOG2/static не используются.
+
+См. [TROUBLESHOOTING_SCORING.md](./docs/user/TROUBLESHOOTING_SCORING.md) · `GET /api/debug/scoring` · CI: `make validate-pipeline-golden` · `make stress-test-offline`.
+
 ## Быстрый старт
 
 **Docker (бесплатный образ):**
