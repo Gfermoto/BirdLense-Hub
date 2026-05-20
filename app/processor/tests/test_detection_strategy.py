@@ -440,6 +440,7 @@ class TestDetectionStrategy(unittest.TestCase):
         strategy.classification_scheduler = "priority"
         strategy.binary_imgsz = 640
         strategy.inference_backend = "torch"
+        strategy._roi_sr = None
         strategy._for_track_regen = False
         strategy.is_blurry = lambda crop: (False, 250.0)
 

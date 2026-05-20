@@ -1,0 +1,1 @@
+{"imgsz": 640, "conf": 0.08, "bird_class_id": 0, "frames": [{"id": "bus_smoke", "image": "/opt/conda/lib/python3.11/site-packages/ultralytics/assets/bus.jpg", "frame_index": 0}]}

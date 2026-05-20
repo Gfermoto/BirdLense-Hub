@@ -1,0 +1,16 @@
+{
+  "pt": "/workspace/app/processor/models/detection/weights/best_NABirds.pt",
+  "out_dir": "/workspace/app/processor/models/detection/weights/best_NABirds_openvino_model",
+  "imgsz": 640,
+  "precision": "fp32",
+  "half": false,
+  "simplify": true,
+  "dynamic": false,
+  "exported_at": "2026-05-20T07:37:32.214704+00:00",
+  "source_bundle": "/workspace/app/processor/models/detection/weights/best_NABirds_openvino_model",
+  "xml_files": [
+    "best.xml",
+    "best_NABirds.xml"
+  ],
+  "next_step": "python3 scripts/validate_ov_parity.py --ov-dir /workspace/app/processor/models/detection/weights/best_NABirds_openvino_model"
+}

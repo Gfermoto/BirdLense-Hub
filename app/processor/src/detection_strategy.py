@@ -67,7 +67,7 @@ def coerce_bgr_frame(
 
 
 def _rodent_binary_threshold_raw(config: Mapping[str, Any]) -> Any:
-    """Новый ключ ``min_confidence_binary_rodent``; ``min_confidence_binary_squirrel`` — только совместимость со старым YAML."""
+    """DEPRECATED (nabirds-pivot): Rodent detection disabled. Kept for legacy YAML only."""
     raw = config.get("processor.min_confidence_binary_rodent")
     if raw is not None:
         return raw
@@ -542,7 +542,7 @@ class TwoStageStrategy(DetectionStrategy):
         from app_config.app_config import app_config
 
         self._roi_sr = build_roi_super_resolution(app_config)
-        raw_scope = detector_scope or ["Bird", "Rodent"]
+        raw_scope = detector_scope or ["Bird"]
         self.detector_scope = {normalize_detector_label(name) for name in raw_scope if str(name or "").strip()}
 
         self.logger.info(
@@ -639,7 +639,7 @@ class TwoStageStrategy(DetectionStrategy):
             _cls_kwargs["device"] = _cls_dev
         result_cls = self.classifier_model(crop, **_cls_kwargs)
 
-        if not result_cls or not result_cls[0].probs:
+        if not result_cls or result_cls[0].probs is None:
             return ClassifierOutput(None, 0.0, 0.0, 0.0)
 
         probs = result_cls[0].probs
@@ -940,7 +940,8 @@ class TwoStageStrategy(DetectionStrategy):
         xyxy = _tensor_to_numpy(boxes.xyxy)
 
         h, w, _ = frame.shape
-        cls_frame = coerce_bgr_frame(classification_frame, log_label="classification_frame") or frame
+        _cls_coerced = coerce_bgr_frame(classification_frame, log_label="classification_frame")
+        cls_frame = frame if _cls_coerced is None else _cls_coerced
 
         _ov_bird_scale = openvino_binary_bird_score_scale(
             runtime_cfg,

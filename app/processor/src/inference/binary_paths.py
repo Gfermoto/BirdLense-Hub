@@ -47,13 +47,18 @@ def resolve_binary_detector_weight_path(
     Для ``openvino`` без конфига/env путь может быть ``''``.
     Для ``auto``: предпочесть OpenVINO при наличии валидного IR и runtime, иначе torch.
     """
-    from inference.selector import openvino_runtime_available, resolve_inference_backend
+    from inference.selector import (
+        openvino_binary_enabled,
+        openvino_runtime_available,
+        resolve_inference_backend,
+    )
 
     root = processor_root if processor_root is not None else processor_package_root()
     requested_backend = resolve_inference_backend(app_config)
     env_ov = os.environ.get("BIRDLENSE_BINARY_OPENVINO_PATH") or ""
     binary_env_ov = env_ov.strip()
-    if requested_backend in ("openvino", "auto"):
+    ov_allowed = openvino_binary_enabled(app_config)
+    if requested_backend in ("openvino", "auto") and ov_allowed:
         if binary_env_ov:
             if os.path.isabs(binary_env_ov):
                 p = binary_env_ov

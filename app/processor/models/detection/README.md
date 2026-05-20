@@ -1,19 +1,31 @@
 # Detection weights (`detection/weights/`)
 
-**Рабочий дефолт Hub:** модель **BRG** — три класса **Bird / Rodent / Background**. В Git закоммичены **`weights/best.pt`**, резерв **`weights/last.pt`** и каталог **`weights/best_openvino_model/`** (OpenVINO IR); пути в рантайме задаются в `processor.models.binary` / `processor.models.binary_openvino` (см. `default_config.yaml`). При сборке образа они попадают через `COPY app/processor`, на площадку — через `make deploy` / rsync.
+## Production default (NABirds pivot, 2026-05)
 
-**OV vs torch scores:** при `processor.inference_backend: openvino` в `default_config.yaml` заданы **`processor.openvino_binary_track_ultralytics_conf`** (нижняя страховка для `YOLO.track(conf=…)`) и **`processor.openvino_binary_bird_score_scale`** (множитель только для сравнения с порогом Bird; сырая `conf` в данных не умножается). Подстройте при росте ложных птиц или наоборот пропусках. На Intel iGPU задайте **`processor.inference_device: intel:gpu`** (или `BIRDLENSE_INFERENCE_DEVICE`) — см. `app/app_config/user_config.openvino-intel.example.yaml`.
+| Артефакт | Путь | Назначение |
+|----------|------|------------|
+| PyTorch | `weights/best_NABirds.pt` | **Единственный** бинарный детектор птиц (класс `bird` → Bird) |
+| OpenVINO | `weights/nabirds_openvino_v1/` | IR после `validate_ov_parity.py` (parity <5%) |
+| Архив BRG | `weights/best.pt`, `weights/best_openvino_model/` | **Deprecated** — слепота на рассвете, несовпадение grid OV |
 
-**Перед заменой весов:** `make snapshot-detector-weights` (или `TAG=mytag make …`) кладёт копию в `weights/snapshots/<tag>/` (каталог в `.gitignore`). Сравнение PT↔IR на mp4: `scripts/compare_detector_bboxes.py` (в образе Hub: `/app/scripts/compare_detector_bboxes.py` после `make deploy`).
+Конфиг: `processor.models.binary`, `processor.models.binary_openvino`, `processor.detector_scope: [Bird]`, `processor.binary_predict_class_allowlist: [0]`.
 
-**Дополнительно в образе:** Ultralytics COCO **[`yolo11n.pt`](https://github.com/ultralytics/assets)** и экспорт **`yolo11n_openvino_model/`** (сборочный шаг в `Dockerfile`). Это не продуктовый дефолт конфига; при явном указании пути на `yolo11n.pt` можно использовать **`processor.binary_predict_class_allowlist: [14]`**, чтобы в пайплайн попадал только класс **bird** — грызуны так не покрываются.
+**Грызуны (Rodent)** больше не детектируются бинарником. EU-классификатор (`classification/weights/best.pt`) — виды птиц.
 
-`scripts/fetch-processor-weights.sh` может стянуть BRG zip из форка и положить `best.pt` (см. ниже).
+## Экспорт OpenVINO
 
-## BRG 3-class (архив форка)
+```bash
+python3 scripts/export_nabirds_to_openvino.py --imgsz 640 --precision fp32
+python3 scripts/validate_ov_parity.py --ov-dir app/processor/models/detection/weights/nabirds_openvino_v1
+```
 
-Пакеты и описание: **[AleksandrRogachev94/BirdLense](https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor)** (`nabirds_yolo11n_binary.zip`). Для ручной подстановки: `processor.models.binary` → **`best.pt`**, `binary_openvino` → свой IR и при необходимости уберите или обнулите `binary_predict_class_allowlist`.
+См. [`docs/ml/MODEL_EXPORT_GUIDE.md`](../../../docs/ml/MODEL_EXPORT_GUIDE.md).
+
+## Совместимость / диагностика
+
+- **`yolo11n.pt`** + `binary_predict_class_allowlist: [14]` — legacy COCO bird, не прод-дефолт.
+- **`compare_detector_bboxes.py`**, **`debug_ov_conversion.py`** — parity и регрессии.
 
 ## EU classifier (отдельно)
 
-**`classification/weights/best.pt`** — [HF `gfermoto/birdlense-birds-eu`](https://huggingface.co/gfermoto/birdlense-birds-eu) (pin в Dockerfile / fetch-скрипте).
+**`classification/weights/best.pt`** — [HF `gfermoto/birdlense-birds-eu`](https://huggingface.co/gfermoto/birdlense-birds-eu).

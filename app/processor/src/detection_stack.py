@@ -63,6 +63,7 @@ def build_detection_stack(
     )
     from inference.selector import (
         assert_backend_supported,
+        openvino_binary_enabled,
         resolve_classifier_inference_backend,
         resolve_classifier_inference_device,
         resolve_inference_backend,
@@ -101,7 +102,11 @@ def build_detection_stack(
     assert_backend_supported(_requested_classifier_backend)
 
     binary_path, _inf_backend = resolve_binary_detector_weight_path(app_config, processor_root)
-    if _requested_backend == "openvino" and not (binary_path or "").strip():
+    if (
+        _requested_backend == "openvino"
+        and openvino_binary_enabled(app_config)
+        and not (binary_path or "").strip()
+    ):
         raise FileNotFoundError(
             "OpenVINO binary detector path missing: set processor.models.binary_openvino "
             "or environment variable BIRDLENSE_BINARY_OPENVINO_PATH "
@@ -200,7 +205,7 @@ def build_detection_stack(
         and not match_live_regen
     ):
         regional_species = []
-    detector_scope = app_config.get("processor.detector_scope") or ["Bird", "Rodent"]
+    detector_scope = app_config.get("processor.detector_scope") or ["Bird"]
     max_classifications_per_frame = app_config.get(
         "processor.max_classifications_per_frame",
         2,
