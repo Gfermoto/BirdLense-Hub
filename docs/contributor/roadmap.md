@@ -2,6 +2,8 @@
 
 Direction of travel and current stack. **Shipped items** are summarized here; details live in [Changelog](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md) and [FEATURES](../user/features.md).
 
+> **CRITICAL PAUSE (2026-05-20):** [SOTA Deep Dive Audit](../strategy/SOTA_DEEP_DIVE_AUDIT_2026.md) · [Wave 3 roadmap](../strategy/SOTA_WAVE3_ROADMAP_2026.md) (frozen) · GitHub [#483](https://github.com/Gfermoto/BirdLense-Hub/issues/483) · [Issues](https://github.com/Gfermoto/BirdLense-Hub/issues) · [Project board](https://github.com/users/Gfermoto/projects/2)
+
 [Русский](../contributor/roadmap.md)
 
 ---
