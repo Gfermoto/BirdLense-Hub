@@ -59,6 +59,7 @@ class StaticObjectFilterConfig:
     static_temporal_max_area_px: float = 120_000.0
     static_temporal_hist_change_max: float = 0.04
     static_giant_box_area_frac: float = 0.5
+    static_giant_box_side_frac: float = 0.42
     log_sample_limit: int = 5
 
     @classmethod
@@ -102,6 +103,9 @@ class StaticObjectFilterConfig:
             ),
             static_giant_box_area_frac=_parse_float(
                 runtime_cfg, "processor.static_giant_box_area_frac", 0.5
+            ),
+            static_giant_box_side_frac=_parse_float(
+                runtime_cfg, "processor.static_giant_box_side_frac", 0.42
             ),
         )
 
@@ -199,9 +203,18 @@ class StaticObjectFilter:
         ar = _box_aspect(box)
         area_norm = float(box.get("box_area_norm") or 0.0)
         area_px = _box_area_px(box)
+        x1, y1, x2, y2 = box["crop_coords"]
+        bw, bh = float(x2 - x1), float(y2 - y1)
 
         if area_norm > cfg.static_giant_box_area_frac:
             return f"phantom_box_giant_area(area_norm={area_norm:.3f})"
+        if frame_bgr is not None:
+            fh, fw = frame_bgr.shape[:2]
+            if max(bw, bh) > cfg.static_giant_box_side_frac * max(fw, fh):
+                return (
+                    f"phantom_box_giant_side(max_side={max(bw, bh):.0f},"
+                    f"limit={cfg.static_giant_box_side_frac:.2f})"
+                )
 
         if conf >= cfg.static_scene_bird_min_confidence:
             return None
