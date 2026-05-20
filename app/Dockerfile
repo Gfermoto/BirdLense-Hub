@@ -63,11 +63,14 @@ COPY scripts/diag_video_detect.py ./scripts/
 COPY scripts/diag_coco_bird_frames.py ./scripts/
 COPY scripts/benchmark-track-regen.py ./scripts/
 COPY scripts/compare_detector_bboxes.py ./scripts/
+COPY scripts/debug_ov_conversion.py ./scripts/
+COPY scripts/export_nabirds_to_openvino.py ./scripts/
+COPY scripts/validate_ov_parity.py ./scripts/
 COPY scripts/benchmark_regen_labels.py ./scripts/
 COPY scripts/reid/run_daily_ssl_cycle.py ./scripts/reid/
 # SHA256 EU-классификатора — синхронизировать с CHECKSUMS (.../classification/weights/best.pt) и fetch-processor-weights.sh.
 ARG CLASSIFIER_SHA256=9e99b6d1b0b7697f671a728bfa887f2f45d574ec932e8a745855e9818aadd46e
-# Рабочий дефолт пайплайна см. ``app_config/default_config.yaml``: BRG ``best.pt`` + ``best_openvino_model/`` (копируются из репозитория выше).
+# Дефолт бинарника: NABirds ``best_NABirds.pt`` + ``best_NABirds_openvino_model/`` (репозиторий + volume в compose).
 # Дополнительно качается Ultralytics COCO ``yolo11n.pt`` и экспорт OpenVINO ниже — артефакт совместимости/диагностики (legacy сценарий с ``binary_predict_class_allowlist: [14]``).
 ARG YOLO11N_PT_URL=https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt
 RUN mkdir -p processor/models/detection/weights processor/models/classification/weights \

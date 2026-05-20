@@ -110,6 +110,7 @@ processor:
   # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
   min_confidence_binary: 0.08  # Дневной дефолт: низкий порог на кормушке; ночь — adaptive_profiles.night
   min_confidence_binary_bird: 0.08
+  # DEPRECATED (nabirds-pivot): грызуны не детектируются; ключ оставлен для старого user_config.
   min_confidence_binary_rodent: 0.24
   # OpenVINO-only: Ultralytics даёт более низкие conf, чем torch на том же IR (#371 field parity).
   # Ниже — без второго инференса: (1) ослабить track(conf), (2) при сравнении с порогом Bird умножить conf.
@@ -203,8 +204,10 @@ processor:
   generate_spectrogram_always: true
   # regional_species: [] — без локального сужения classifier scope; YOLO использует все классы
   regional_species: []
-  # Scope детектора первого уровня. Production path: detector(Bird|Rodent) -> classifier -> fusion.
-  detector_scope: ["Bird", "Rodent"]
+  # Scope бинарного детектора (NABirds: один класс bird → Bird). Rodent/BRG — deprecated (#nabirds-pivot).
+  detector_scope: ["Bird"]
+  # Только класс 0 (bird) у best_NABirds.pt; грызуны не детектируются.
+  binary_predict_class_allowlist: [0]
   # Планировщик классификации species внутри кадра: priority | round_robin.
   classification_scheduler: priority
   max_classifications_per_frame: 4
@@ -256,7 +259,7 @@ processor:
   generic_bird_min_frames: 2
   generic_bird_min_area_frac: 0.006
   generic_bird_min_best_frame_score: 5.0
-  # Generic Rodent: keep only visually plausible rodent tracks (anti full-frame fallback noise).
+  # DEPRECATED (nabirds-pivot): Rodent pipeline отключён.
   generic_rodent_min_frames: 2
   generic_rodent_max_area_frac: 0.60
   generic_rodent_min_best_frame_score: 6.0
@@ -275,20 +278,20 @@ processor:
   # video.source=file: оставить папку сессии с записанным mp4 при 0 детекций (без create_video / кропов из пайплайна)
   keep_recording_when_no_detections: false
   detection_strategy: "two_stage"
-  # CV/ML (#367): бинарник — OpenVINO на Intel GPU (скорость); классификатор — torch/cpu. PT→OV при загрузке в UI (#276).
+  # CV/ML (#367): NABirds + OpenVINO после parity gate (docs/ml/MODEL_EXPORT_GUIDE.md).
   inference_backend: openvino
-  inference_device: intel:gpu
-  classifier_inference_backend: torch
+  inference_device: cpu
+  # false — экстренный стоп OV (вернуть torch + openvino_binary_enabled: false).
+  openvino_binary_enabled: true
+  classifier_inference_backend: openvino
   classifier_inference_device: cpu
-  # Контракт имён классов бинарного детектора при загрузке весов (#368): off | warn | enforce
-  detector_weight_contract: warn
+  # NABirds: один класс bird — контракт Bird-only (#368 off).
+  detector_weight_contract: off
   models:
-    # Бинарный детектор: артефакты из форка (zip в дереве processor/models/detection).
-    # Источник: https://github.com/AleksandrRogachev94/BirdLense/tree/main/app/processor
-    binary: "models/detection/weights/best.pt"
-    # OpenVINO IR (processor.inference_backend=openvino): каталог экспорта или путь к .xml.
-    # Экспорт: yolo export model=... format=openvino. Пусто — задайте BIRDLENSE_BINARY_OPENVINO_PATH.
-    binary_openvino: "models/detection/weights/best_openvino_model"
+    # Бинарный детектор SOTA (NABirds). BRG best.pt / best_openvino_model — архив, не использовать.
+    binary: "models/detection/weights/best_NABirds.pt"
+    # OpenVINO IR (parity gate): scripts/export_nabirds_to_openvino.py → best_NABirds_openvino_model/
+    binary_openvino: "models/detection/weights/best_NABirds_openvino_model"
     # EU-классификатор (~491 вид): скачивать как best.pt с Hugging Face gfermoto/birdlense-birds-eu
     classifier: "models/classification/weights/best.pt"
     # OpenVINO IR для классификатора (processor.classifier_inference_backend=openvino):

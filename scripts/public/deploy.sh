@@ -110,8 +110,14 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.ruff_cache --exclude=app/.pytest_
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=esphome/.esphome"
 # CodeQL CLI, БД и SARIF (scripts/codeql-local.sh) — десятки МБ/ГБ, на хаб не нужны
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.tools"
-# Не удалять на сервере: веса .pt; user_config (exclude + P — двойная страховка от --delete).
-RSYNC_FILTER_PROTECT=(--filter "P app/processor/models/detection/weights/*.pt" --filter "P app/processor/models/classification/weights/*.pt" --filter "P app/app_config/user_config.yaml")
+# Не удалять на сервере: веса .pt, NABirds OpenVINO IR; user_config (exclude + P — двойная страховка от --delete).
+RSYNC_FILTER_PROTECT=(
+  --filter "P app/processor/models/detection/weights/*.pt"
+  --filter "P app/processor/models/detection/weights/best_NABirds_openvino_model/"
+  --filter "P app/processor/models/detection/weights/best_NABirds_openvino_model/***"
+  --filter "P app/processor/models/classification/weights/*.pt"
+  --filter "P app/app_config/user_config.yaml"
+)
 sync_ok=0
 for attempt in $(seq 1 ${SYNC_RETRIES}); do
   if [[ "${HOST}" == "localhost" || "${HOST}" == "127.0.0.1" ]]; then
@@ -127,6 +133,20 @@ if [[ $sync_ok -eq 0 ]]; then
   exit 1
 fi
 # Предупреждения rsync «cannot delete non-empty directory» — часто лишние каталоги на сервере вне дерева репо; при необходимости удалите вручную по SSH.
+
+# 1.1 NABirds + OpenVINO IR (volume ./processor/models/detection/weights — без этого recreate обнуляет IR)
+echo "1.1 Проверка весов бинарного детектора (NABirds)..."
+(cd "${REPO_ROOT}" && bash scripts/sync_detector_weights.sh --check) || {
+  echo "Ошибка: локально нет best_NABirds.pt или best_NABirds_openvino_model/ (best.xml+best.bin)." >&2
+  echo "  make sync-models  или  make export-nabirds-openvino" >&2
+  exit 1
+}
+if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
+  ssh ${SSH_OPTS} "${HOST}" "cd '${REMOTE_DIR}' && bash scripts/sync_detector_weights.sh --check" || {
+    echo "Ошибка: на сервере после rsync нет полного набора весов NABirds OpenVINO." >&2
+    exit 1
+  }
+fi
 
 # 1.5 Секреты в app/.env
 # PROCESSOR_SECRET — всегда задаём (генерируем при отсутствии)

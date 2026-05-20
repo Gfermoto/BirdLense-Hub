@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .selector import (
     assert_backend_supported,
+    openvino_binary_enabled,
     openvino_runtime_available,
     resolve_classifier_inference_backend,
     resolve_classifier_inference_device,
@@ -16,6 +17,7 @@ from .selector import (
 
 __all__ = [
     "assert_backend_supported",
+    "openvino_binary_enabled",
     "openvino_runtime_available",
     "resolve_inference_backend",
     "resolve_classifier_inference_backend",

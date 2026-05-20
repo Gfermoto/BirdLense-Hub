@@ -32,15 +32,39 @@ def _resolve_backend(
     return _BACKEND_ALIASES.get(backend, backend)
 
 
+def openvino_binary_enabled(app_config: Mapping[str, Any] | None = None) -> bool:
+    """
+    Разрешён ли OpenVINO для бинарного детектора.
+
+    При ``false`` / ``BIRDLENSE_OPENVINO_BINARY_ENABLED=0`` резолвер всегда выбирает ``.pt`` (torch),
+    даже если ``inference_backend`` = ``openvino`` или ``auto`` и IR на диске есть.
+    """
+    env = (os.environ.get("BIRDLENSE_OPENVINO_BINARY_ENABLED") or "").strip().lower()
+    if env in ("0", "false", "no", "off"):
+        return False
+    if env in ("1", "true", "yes", "on"):
+        return True
+    if app_config is None:
+        return True
+    raw = app_config.get("processor.openvino_binary_enabled")
+    if raw is None:
+        return True
+    if isinstance(raw, bool):
+        return raw
+    return str(raw).strip().lower() not in ("0", "false", "no", "off")
+
+
 def resolve_inference_backend(app_config: Mapping[str, Any] | None = None) -> str:
     """
-    Приоритет: ``BIRDLENSE_INFERENCE_BACKEND``, затем ``processor.inference_backend``, иначе ``openvino``.
+    Приоритет: ``BIRDLENSE_INFERENCE_BACKEND``, затем ``processor.inference_backend``.
+
+    По умолчанию ``torch`` (стабильный путь, пока OV parity не подтверждён).
     """
     return _resolve_backend(
         app_config,
         env_key="BIRDLENSE_INFERENCE_BACKEND",
         config_key="processor.inference_backend",
-        default="openvino",
+        default="torch",
     )
 
 

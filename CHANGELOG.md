@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **NABirds + OpenVINO GPU (бинарный детектор):** переход с BRG `best.pt` на **`best_NABirds.pt`** + IR **`best_NABirds_openvino_model/`** (parity gate 7/7). Дефолты: `processor.inference_backend=openvino`, `openvino_binary_enabled=true`, `detector_scope: [Bird]`. Персистентность: volume `processor/models/detection/weights` в `docker-compose.yml`, `make sync-models`, проверка в `deploy.sh`. Скрипты: `export_nabirds_to_openvino.py`, `validate_ov_parity.py`, `sync_detector_weights.sh`. Отчёты: `docs/reports/migration_final_report.md`, `docs/reports/nabirds_migration_20260520.md`.
+
 - **Behavior v2.1 ([#476](https://github.com/Gfermoto/BirdLense-Hub/issues/476), [#460](https://github.com/Gfermoto/BirdLense-Hub/issues/460)):** обучение на Hub + Visual WetlandBirds (Zenodo); **100** tracklets `flying`; production **`engine: auto`**, `video_model_kind: video_v2_1`, IR `behavior_v2_1_openvino`. Скрипты: `download_wetlandbirds_zenodo.sh`, `convert_wetlandbirds_zenodo_crops.py`, `user-config-behavior-auto-v2_1.partial.yaml`. Доки: `docs/ml/BEHAVIOR_MODEL.md`, `docs/reports/behavior_v2_1_release_20260519.md`.
 
 ### Security
