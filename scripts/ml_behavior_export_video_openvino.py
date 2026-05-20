@@ -9,6 +9,24 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+def _repo_app_root() -> Path:
+    return Path(__file__).resolve().parents[1] / "app"
+
+
+def _container_app_path(path: Path) -> str:
+    """Stable /app/… paths for birdlense container (WORKDIR /app)."""
+    resolved = path.resolve()
+    app_root = _repo_app_root().resolve()
+    try:
+        rel = resolved.relative_to(app_root)
+    except ValueError:
+        posix = resolved.as_posix()
+        if posix.startswith("/app/"):
+            return posix
+        raise ValueError(f"path not under repo app/: {resolved}") from None
+    return "/app/" + rel.as_posix()
+
+
 def _video_export_to_logistic(export: dict) -> dict:
     if str(export.get("schema") or "") != "behavior_video_export@v1":
         raise ValueError("expected behavior_video_export@v1")
@@ -87,11 +105,11 @@ def export_video_openvino(
         "model_version": export.get("model_version"),
         "model_kind": export.get("model_kind") or "video_v1",
         "precision": precision,
-        "source_export": str(video_export_path.resolve()),
+        "source_export": _container_app_path(video_export_path),
         "files": {
-            "xml": str(xml_path.resolve()),
-            "bin": str(bin_path.resolve()),
-            "onnx": str(onnx_path.resolve()),
+            "xml": _container_app_path(xml_path),
+            "bin": _container_app_path(bin_path),
+            "onnx": _container_app_path(onnx_path),
         },
         "labels": export.get("labels") or [],
         "feature_dim": export.get("feature_dim"),

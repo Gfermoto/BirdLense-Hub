@@ -41,11 +41,18 @@ def _resolve_ov_model_path(ov_dir: Path) -> str:
     return str(p)
 
 
-def _resolve_media(path_str: str, data_root: Path) -> Path:
+def _resolve_media(path_str: str, data_root: Path, *, manifest_dir: Path | None = None) -> Path:
     p = Path(path_str)
     if p.is_absolute():
         return p
-    return (data_root / p).resolve()
+    cand = (data_root / p).resolve()
+    if cand.is_file():
+        return cand
+    if manifest_dir is not None:
+        alt = (manifest_dir / p).resolve()
+        if alt.is_file():
+            return alt
+    return cand
 
 
 def _read_frame(path: Path, frame_index: int):
@@ -199,6 +206,7 @@ def main() -> int:
         print(json.dumps({"error": "manifest_missing", "path": str(args.manifest)}), file=sys.stderr)
         return 2
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+    manifest_dir = args.manifest.resolve().parent
     imgsz = int(args.imgsz if args.imgsz is not None else manifest.get("imgsz", 640))
     conf = float(args.conf if args.conf is not None else manifest.get("conf", 0.08))
     bird_id = int(args.bird_class_id if args.bird_class_id is not None else manifest.get("bird_class_id", 0))
@@ -225,7 +233,11 @@ def main() -> int:
 
     for item in manifest.get("frames") or []:
         fid = str(item.get("id") or "")
-        media = _resolve_media(str(item.get("video") or item.get("image") or ""), args.data_root)
+        media = _resolve_media(
+            str(item.get("video") or item.get("image") or ""),
+            args.data_root,
+            manifest_dir=manifest_dir,
+        )
         fidx = int(item.get("frame_index") or 0)
         try:
             bgr = _read_frame(media, fidx)

@@ -4,11 +4,11 @@
   "model_version": "x3d-20260518T175051Z",
   "model_kind": "video_v1",
   "precision": "fp16",
-  "source_export": "/home/gfer/BirdLense/app/data/datasets/behavior_v2_artifacts/behavior_video_export@x3d-20260518T175051Z.json",
+  "source_export": "/app/data/datasets/behavior_v2_artifacts/behavior_video_export@x3d-20260518T175051Z.json",
   "files": {
-    "xml": "/home/gfer/BirdLense/app/processor/models/behavior_v1_openvino/behavior_video_model.xml",
-    "bin": "/home/gfer/BirdLense/app/processor/models/behavior_v1_openvino/behavior_video_model.bin",
-    "onnx": "/home/gfer/BirdLense/app/processor/models/behavior_v1_openvino/behavior_video_model.onnx"
+    "xml": "/app/processor/models/behavior_v1_openvino/behavior_video_model.xml",
+    "bin": "/app/processor/models/behavior_v1_openvino/behavior_video_model.bin",
+    "onnx": "/app/processor/models/behavior_v1_openvino/behavior_video_model.onnx"
   },
   "labels": [
     "alert",
