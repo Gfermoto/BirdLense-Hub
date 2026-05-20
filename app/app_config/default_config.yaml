@@ -42,9 +42,8 @@ processor:
   # Свежее подтверждение Frigate держит клип «живым» ещё N сек, даже если YOLO на паре кадров молчит.
   # Помогает не обрывать ролик, пока объект ещё реально в кадре.
   frigate_activity_hold_seconds: 6
-  # Мин. длительность трека ByteTrack (сек). Для feeder-сцен с быстрыми посадками держим ниже,
-  # чтобы не терять валидные короткие треки; шум гасится decision/fusion-порогами ниже.
-  min_track_duration: 0.25
+  # Мин. длительность трека ByteTrack (сек). Truth serum: 1s — отсечь мгновенные FP на текстуре корма.
+  min_track_duration: 1.0
   # Только офлайн-перегенерация треков: ниже live, иначе короткие визиты и рваные track_id → rejected_short_track и пустые overlays в UI.
   track_regen_min_track_duration: 0.05
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
@@ -108,15 +107,15 @@ processor:
   # VideoSpecies с frames/оверлеем; виды потом можно поправить. false — прежнее «без конфликтов».
   track_regen_parallel_auto_with_manual: false
   # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
-  min_confidence_binary: 0.28  # NABirds+OV: 0.08 давало сотни FP на кормушке (см. docs/reports/nabirds_fp_forensic_20260520.md)
-  min_confidence_binary_bird: 0.28
+  min_confidence_binary: 0.38  # Truth serum 2026-05-20: 0.28 + salvage = мусор в UI; precision-first
+  min_confidence_binary_bird: 0.38
   # DEPRECATED (nabirds-pivot): Rodent не детектируется; ключ только для legacy user_config (игнорируется при detector_scope: [Bird]).
   # min_confidence_binary_rodent: 0.24
   # OpenVINO NABirds: conf на IR часто ВЫШЕ torch, не ниже — scale 8.5 (legacy BRG) раздувает FP.
   # track(conf) cap — не ниже bird-порога; scale 1.0 = без искусственного завышения при фильтрации.
-  openvino_binary_track_ultralytics_conf: 0.12
+  openvino_binary_track_ultralytics_conf: 0.28
   openvino_binary_bird_score_scale: 1.0
-  openvino_min_confidence_binary_bird: 0.28
+  openvino_min_confidence_binary_bird: 0.38
   # Phantom static objects (feeder, branches, background) — contrastive forensic 2026-05-20.
   static_object_suppression_enabled: true
   static_box_aspect_ratio_min: 0.8
@@ -141,13 +140,17 @@ processor:
   # NVR-style masks (normalized 0..1 polygon vertices). Example ignore top-left branch:
   # detection_ignore_masks:
   #   - [[0.0, 0.0], [0.35, 0.0], [0.35, 0.25], [0.0, 0.25]]
-  detection_ignore_masks: []
+  # Forensic feed-glare patch (contrastive 2026-05-20) — override in user_config per camera.
+  detection_ignore_masks:
+    - [[0.72, 0.55], [0.95, 0.55], [0.95, 0.95], [0.72, 0.95]]
   detection_interest_zones: []
   detection_interest_zones_required: false
   motion_verified_detection_enabled: true
-  motion_verified_min_pixel_change: 6
+  motion_verified_min_pixel_change: 10
   motion_global_static_reject_enabled: true
-  motion_global_max_mean_absdiff: 1.5
+  motion_global_max_mean_absdiff: 2.0
+  motion_strict_consecutive_frames: 3
+  motion_hard_conf_ceiling: 0.55
   detection_texture_filter_enabled: true
   detection_texture_min_laplacian_var: 20
   hard_negatives_enabled: true
@@ -175,11 +178,12 @@ processor:
         # Позволить YOLO работать в сумерках/ИК без полного снятия light gate.
         light_gate_min_brightness: 8
         light_gate_min_contrast: 6
-        # Смягчить бинарный Bird-порог и small-object фильтры на ночных клипах.
-        min_confidence_binary: 0.22
-        min_confidence_binary_bird: 0.22
-        min_track_duration: 0.25
-        min_confidence_to_process: 0.20
+        # Ночь/ИК: ВЫШЕ порог (шум матрицы), не ниже — иначе сотни FP.
+        min_confidence_binary: 0.45
+        min_confidence_binary_bird: 0.45
+        openvino_min_confidence_binary_bird: 0.45
+        min_track_duration: 1.0
+        min_confidence_to_process: 0.35
         min_box_size_px: 14
         min_center_dist: 0.01
         max_classifications_per_frame: 4
@@ -261,7 +265,7 @@ processor:
   min_box_size_px: 14
   # Универсальный fallback для всех камер/доменов: если после базовых фильтров валидных боксов нет,
   # дать второй шанс мелким объектам с мягкими геометрическими/уверенностными порогами.
-  auto_small_object_relax_enabled: true
+  auto_small_object_relax_enabled: false
   auto_small_object_relax_min_box_size_px: 18
   auto_small_object_relax_min_center_dist: 0.01
   auto_small_object_relax_conf_delta: 0.05
@@ -535,7 +539,7 @@ detection:
   track_fragment_merge_max_center_dist: 0.18
   # Ниже порога детекция отбрасывается после fusion; должно быть ≤ processor.min_confidence_to_process.
   # Держим мягче, чтобы YOLO-треки не пропадали до записи в БД/overlay.
-  min_confidence_to_store: 0.08
+  min_confidence_to_store: 0.35
   # Frigate — fallback/подстраховка, не primary: по умолчанию не создаём финальную детекцию
   # только по MQTT без YOLO-трека.
   frigate_standalone_when_no_yolo: true
@@ -597,7 +601,7 @@ detection:
   frigate_standalone_notify: true
   # Если у YOLO есть треки, но после Decision/Fusion всё отклонено — сохранить лучший трек как review_only,
   # чтобы не терять геометрию/overlay на длинных клипах со слабой уверенностью.
-  yolo_weak_track_salvage_enabled: true
+  yolo_weak_track_salvage_enabled: false
   yolo_weak_track_salvage_min_confidence: 0.015
   # Learned fusion: optional learned scorer to blend multimodal signals and produce
   # a calibrated confidence. Disabled by default for safety.
