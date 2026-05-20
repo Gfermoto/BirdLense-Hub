@@ -65,6 +65,8 @@ def analyze_video(
     after = 0
     bird_before = 0
     bird_after = 0
+    rej_static = 0
+    rej_phantom = 0
     while cap.isOpened() and sampled < max_frames:
         ok, frame = cap.read()
         if not ok:
@@ -100,15 +102,17 @@ def analyze_video(
                 ar = (d["crop_coords"][2] - d["crop_coords"][0]) / max(
                     1, d["crop_coords"][3] - d["crop_coords"][1]
                 )
-                if d["conf"] >= 0.5 or ar <= 0.7 or ar >= 1.4:
+                if d["conf"] >= 0.38 or ar <= 0.7 or ar >= 1.4:
                     bird_before += 1
             kept = filt.filter_boxes(acc_dicts, frame_bgr=frame, frame_index=fi)
             after += len(kept)
+            rej_static += int(filt.last_stats.get("rejected_static_objects") or 0)
+            rej_phantom += int(filt.last_stats.get("rejected_phantom_boxes") or 0)
             for d in kept:
                 ar = (d["crop_coords"][2] - d["crop_coords"][0]) / max(
                     1, d["crop_coords"][3] - d["crop_coords"][1]
                 )
-                if d["conf"] >= 0.5 or ar <= 0.7 or ar >= 1.4:
+                if d["conf"] >= 0.38 or ar <= 0.7 or ar >= 1.4:
                     bird_after += 1
             sampled += 1
         fi += 1

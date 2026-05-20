@@ -47,6 +47,14 @@ class TestStaticObjectFilter(unittest.TestCase):
         out = filt.filter_boxes(boxes, frame_bgr=np.zeros((720, 1280, 3), dtype=np.uint8), frame_index=1)
         self.assertEqual(len(out), 1)
 
+    def test_keeps_square_conf_041_without_anchor(self):
+        filt = StaticObjectFilter(
+            StaticObjectFilterConfig(enabled=True, static_square_hard_reject_max_conf=0.38)
+        )
+        boxes = [_bird_box(conf=0.41)]
+        out = filt.filter_boxes(boxes, frame_bgr=np.zeros((720, 1280, 3), dtype=np.uint8), frame_index=1)
+        self.assertEqual(len(out), 1)
+
     def test_keeps_anchor_bird_in_frame_for_square_peer(self):
         filt = StaticObjectFilter(StaticObjectFilterConfig(enabled=True))
         anchor = _bird_box(track_id=1, conf=0.62, x1=400, y1=80, x2=520, y2=420)
