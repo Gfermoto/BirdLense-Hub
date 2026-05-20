@@ -79,6 +79,7 @@ class DetectionQualityConfig:
     static_temporal_min_seconds: float = 8.0
     scene: SceneAdaptiveConfig = field(default_factory=SceneAdaptiveConfig)
     allow_relaxed_small_object: bool = False
+    bird_base_min_confidence: float = 0.12
 
 
     @classmethod
@@ -134,6 +135,11 @@ class DetectionQualityConfig:
             scene=SceneAdaptiveConfig.from_runtime_cfg(runtime_cfg),
             allow_relaxed_small_object=_parse_bool(
                 runtime_cfg, "processor.auto_small_object_relax_enabled", False
+            ),
+            bird_base_min_confidence=_parse_float(
+                runtime_cfg,
+                "processor.min_confidence_binary_bird",
+                _parse_float(runtime_cfg, "processor.min_confidence_binary", 0.12),
             ),
         )
 
@@ -264,6 +270,7 @@ class DetectionQualityPipeline:
         frame_bgr: np.ndarray,
         frame_index: int,
         processor_cwd: str | None = None,
+        bird_trust_floor: float | None = None,
     ) -> list[dict[str, Any]]:
         self.last_stats = {k: 0 for k in self.last_stats}
         self._scene.update(frame_bgr)
@@ -285,6 +292,12 @@ class DetectionQualityPipeline:
 
         if not boxes:
             return boxes
+
+        trust_floor = (
+            float(bird_trust_floor)
+            if bird_trust_floor is not None
+            else self._scene.bird_confidence_floor(self.cfg.bird_base_min_confidence)
+        )
 
         kept: list[dict[str, Any]] = []
         for box in boxes:
@@ -322,9 +335,16 @@ class DetectionQualityPipeline:
                 if roi_prev.size >= 64 and roi_curr.size >= 64:
                     local_diff = float(np.mean(cv2.absdiff(roi_curr, roi_prev)))
 
-            if self.cfg.motion_verified_enabled and global_static and conf < ceil:
+            # Boxes that already passed bird confidence floor must not be zeroed by
+            # global static (RTSP/compression often yields mean_absdiff≈0 on real birds).
+            if (
+                self.cfg.motion_verified_enabled
+                and global_static
+                and conf < ceil
+                and conf < trust_floor
+            ):
                 mreason = f"global_frame_static(mean_absdiff={global_diff:.2f})"
-            elif self.cfg.motion_verified_enabled and conf < ceil and prev_gray is not None:
+            elif self.cfg.motion_verified_enabled and conf < ceil and conf < trust_floor and prev_gray is not None:
                 if local_diff is not None and local_diff < self.cfg.motion_min_mean_absdiff:
                     mreason = f"roi_no_motion(mean_absdiff={local_diff:.2f})"
                 if mreason is None:
@@ -341,7 +361,7 @@ class DetectionQualityPipeline:
                 self._log_reject(box, mreason)
                 continue
 
-            if conf < ceil and self._texture_reject(frame_bgr, box):
+            if conf < ceil and conf < trust_floor and self._texture_reject(frame_bgr, box):
                 reason = "texture_low_edge_energy"
                 self.last_stats["rejected_texture"] += 1
                 self._save_hard_negative(frame_bgr, box, reason, processor_cwd=processor_cwd)
@@ -349,7 +369,7 @@ class DetectionQualityPipeline:
                 continue
 
             bg_reason = self._scene.background_reject_reason(box, frame_shape=frame_bgr.shape)
-            if bg_reason:
+            if bg_reason and conf < trust_floor:
                 self.last_stats["rejected_background_subtraction"] += 1
                 self._save_hard_negative(frame_bgr, box, bg_reason, processor_cwd=processor_cwd)
                 self._log_reject(box, bg_reason)

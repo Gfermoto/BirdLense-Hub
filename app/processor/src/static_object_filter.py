@@ -83,6 +83,19 @@ class StaticObjectFilterConfig:
 
     @classmethod
     def from_runtime_cfg(cls, runtime_cfg: Mapping[str, Any]) -> StaticObjectFilterConfig:
+        bird_min = _parse_float(
+            runtime_cfg,
+            "processor.min_confidence_binary_bird",
+            _parse_float(runtime_cfg, "processor.min_confidence_binary", 0.12),
+        )
+        scene_bird_conf = _parse_float(
+            runtime_cfg, "processor.static_scene_bird_min_confidence", bird_min
+        )
+        square_hard_max = _parse_float(
+            runtime_cfg,
+            "processor.static_square_hard_reject_max_conf",
+            max(0.12, bird_min - 0.02),
+        )
         return cls(
             enabled=_parse_bool(runtime_cfg, "processor.static_object_suppression_enabled", True),
             static_box_aspect_ratio_min=_parse_float(
@@ -94,12 +107,8 @@ class StaticObjectFilterConfig:
             static_box_conf_threshold=_parse_float(
                 runtime_cfg, "processor.static_box_conf_threshold", 0.45
             ),
-            static_square_hard_reject_max_conf=_parse_float(
-                runtime_cfg, "processor.static_square_hard_reject_max_conf", 0.38
-            ),
-            static_scene_bird_min_confidence=_parse_float(
-                runtime_cfg, "processor.static_scene_bird_min_confidence", 0.5
-            ),
+            static_square_hard_reject_max_conf=square_hard_max,
+            static_scene_bird_min_confidence=scene_bird_conf,
             static_scene_bird_like_min_confidence=_parse_float(
                 runtime_cfg, "processor.static_scene_bird_like_min_confidence", 0.4
             ),

@@ -1142,6 +1142,7 @@ class TwoStageStrategy(DetectionStrategy):
             frame_bgr=frame,
             frame_index=int(self._frame_index),
             processor_cwd=proc_cwd,
+            bird_trust_floor=float(scene_bird_floor),
         )
         _quality_reject_stats.update(self._detection_quality.last_stats)
         if pre_quality_n > len(valid_boxes):

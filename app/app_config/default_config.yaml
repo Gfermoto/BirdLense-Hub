@@ -121,8 +121,9 @@ processor:
   static_box_aspect_ratio_min: 0.8
   static_box_aspect_ratio_max: 1.2
   static_box_conf_threshold: 0.45
-  static_square_hard_reject_max_conf: 0.38
-  static_scene_bird_min_confidence: 0.5
+  # Defaults align with min_confidence_binary_bird (code fallback); do not exceed bird floor.
+  static_square_hard_reject_max_conf: 0.22
+  static_scene_bird_min_confidence: 0.32
   static_scene_bird_like_min_confidence: 0.4
   # Не диапазон min..max: OR — вертикальная птица (w/h <= vertical_max) ИЛИ горизонтальная (w/h >= horizontal_min).
   static_scene_bird_like_vertical_max_aspect: 0.7
