@@ -123,6 +123,37 @@ class MotionRecordingSession:
                 cameras.extend(normalized)
         return sorted(set(cameras))
 
+    def _frigate_prior_active(
+        self,
+        *,
+        camera_id: str | None,
+        frigate_hold_seconds: float,
+    ) -> bool:
+        if frigate_hold_seconds <= 0:
+            return False
+        recent_frigate = getattr(self.motion_detector, "has_recent_frigate_activity", None)
+        if callable(recent_frigate):
+            try:
+                return bool(
+                    recent_frigate(camera=camera_id, max_age_seconds=frigate_hold_seconds)
+                )
+            except Exception:
+                pass
+        aggregator_recent = getattr(self.mqtt_aggregator, "has_recent_frigate_activity", None)
+        if callable(aggregator_recent):
+            camera_ids = self._session_activity_camera_ids(camera_id)
+            try:
+                return bool(
+                    aggregator_recent(
+                        camera_ids=camera_ids,
+                        max_age_seconds=frigate_hold_seconds,
+                        min_confidence=0.0,
+                    )
+                )
+            except Exception:
+                pass
+        return False
+
     def _has_session_activity(
         self,
         *,
@@ -213,6 +244,21 @@ class MotionRecordingSession:
             video_output,
         )
         start_time = datetime.now(timezone.utc)
+
+        trace_writer = None
+        try:
+            from frame_decision_trace import open_session_trace, set_session_trace_writer
+
+            if bool(app_config.get("processor.frame_decision_trace_enabled", True)):
+                sk = datetime.now(timezone.utc).strftime("%H%M%S")
+                trace_writer = open_session_trace(
+                    Path(self.data_dir),
+                    session_key=sk,
+                    camera_id=camera_id,
+                )
+                set_session_trace_writer(trace_writer)
+        except Exception:
+            logger.debug("frame decision trace init failed", exc_info=True)
 
         try:
             self.frame_processor.reset()
@@ -356,12 +402,18 @@ class MotionRecordingSession:
                     )
                 processor_status["last_video_ok_at"] = datetime.now(timezone.utc).isoformat()
                 frame_time = getattr(self.media_source, "get_frame_time", lambda: None)()
+                scoring_overrides = dict(camera_overrides or {})
+                if bool(app_config.get("processor.scoring_engine_enabled", False)):
+                    scoring_overrides["_scoring_frigate_prior_active"] = self._frigate_prior_active(
+                        camera_id=camera_id,
+                        frigate_hold_seconds=frigate_hold_seconds,
+                    )
                 with self.fps_tracker:
                     has_detections = self.frame_processor.run(
                         frame,
                         frame_time=frame_time,
                         classification_frame=classifier_source_frame,
-                        camera_overrides=camera_overrides,
+                        camera_overrides=scoring_overrides,
                     )
                 run_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
                 raw_boxes = _accumulate_run_stats(run_stats)
@@ -454,6 +506,14 @@ class MotionRecordingSession:
                     break
             self.fps_tracker.log_summary()
         finally:
+            try:
+                from frame_decision_trace import set_session_trace_writer
+
+                if trace_writer is not None:
+                    trace_writer.close()
+                set_session_trace_writer(None)
+            except Exception:
+                logger.debug("frame decision trace close failed", exc_info=True)
             if self.file_test_runtime:
                 self.file_test_runtime.poll()
                 self.file_test_runtime.abort_session = False
