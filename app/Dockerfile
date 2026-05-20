@@ -66,6 +66,7 @@ COPY scripts/compare_detector_bboxes.py ./scripts/
 COPY scripts/debug_ov_conversion.py ./scripts/
 COPY scripts/export_nabirds_to_openvino.py ./scripts/
 COPY scripts/validate_ov_parity.py ./scripts/
+COPY scripts/patch_prod_nuclear_user_config.py ./scripts/
 COPY scripts/benchmark_regen_labels.py ./scripts/
 COPY scripts/reid/run_daily_ssl_cycle.py ./scripts/reid/
 # SHA256 EU-классификатора — синхронизировать с CHECKSUMS (.../classification/weights/best.pt) и fetch-processor-weights.sh.
