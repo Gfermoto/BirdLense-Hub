@@ -10,6 +10,7 @@ from inference.torch_backend import load_yolo_classifier, load_yolo_detector
 from inference.weight_contract import validate_detector_weight_contract
 from processor_runtime_profile import RuntimeProfileConfigOverlay
 from roi_super_resolution import build_roi_super_resolution
+from static_object_filter import StaticObjectFilter, StaticObjectFilterConfig
 
 logger = logging.getLogger(__name__)
 
@@ -800,6 +801,8 @@ class TwoStageStrategy(DetectionStrategy):
             else _track_maybe_retry(self.binary_model, frame, **_tkw)
         )
 
+        _static_reject_stats = {"rejected_static_objects": 0, "rejected_phantom_boxes": 0}
+
         def _record_detect_metrics(
             *,
             raw_boxes: int,
@@ -808,7 +811,9 @@ class TwoStageStrategy(DetectionStrategy):
             predict_fallback: bool = False,
             sr_applied: int = 0,
             sr_latency_ms: float = 0.0,
+            static_reject: Mapping[str, int] | None = None,
         ) -> None:
+            sr = static_reject or _static_reject_stats
             self.last_detect_metrics = {
                 "raw_boxes": int(raw_boxes),
                 "boxes_with_track_id": int(boxes_with_track_id),
@@ -816,6 +821,8 @@ class TwoStageStrategy(DetectionStrategy):
                 "predict_fallback": bool(predict_fallback),
                 "sr_applied": int(sr_applied),
                 "sr_latency_ms": round(float(sr_latency_ms), 3),
+                "rejected_static_objects": int(sr.get("rejected_static_objects") or 0),
+                "rejected_phantom_boxes": int(sr.get("rejected_phantom_boxes") or 0),
             }
 
         boxes = None
@@ -1099,6 +1106,30 @@ class TwoStageStrategy(DetectionStrategy):
                         self._ultra_weak_salvage_hits,
                     )
 
+        if not hasattr(self, "_static_object_filter") or self._static_object_filter is None:
+            self._static_object_filter = StaticObjectFilter(
+                StaticObjectFilterConfig.from_runtime_cfg(runtime_cfg)
+            )
+        else:
+            self._static_object_filter.cfg = StaticObjectFilterConfig.from_runtime_cfg(runtime_cfg)
+        pre_static_n = len(valid_boxes)
+        valid_boxes = self._static_object_filter.filter_boxes(
+            valid_boxes,
+            frame_bgr=frame,
+            frame_index=int(self._frame_index),
+        )
+        _static_reject_stats.update(self._static_object_filter.last_stats)
+        if pre_static_n > len(valid_boxes) and (
+            self._static_object_filter._log_samples <= self._static_object_filter.cfg.log_sample_limit
+        ):
+            logger.debug(
+                "StaticObjectFilter: %s -> %s boxes (static=%s phantom=%s)",
+                pre_static_n,
+                len(valid_boxes),
+                _static_reject_stats.get("rejected_static_objects"),
+                _static_reject_stats.get("rejected_phantom_boxes"),
+            )
+
         if not valid_boxes:
             _raw_n = len(boxes) if boxes is not None else 0
             _tid_n = len(track_ids) if track_ids else 0
@@ -1107,6 +1138,7 @@ class TwoStageStrategy(DetectionStrategy):
                 boxes_with_track_id=_tid_n,
                 accepted=0,
                 predict_fallback=boxes_from_predict_fallback,
+                static_reject=_static_reject_stats,
             )
             return []
         classification_budget = min(
@@ -1242,12 +1274,15 @@ class TwoStageStrategy(DetectionStrategy):
             predict_fallback=boxes_from_predict_fallback,
             sr_applied=sr_applied,
             sr_latency_ms=sr_latency_total_ms,
+            static_reject=_static_reject_stats,
         )
         return detection_results
 
     def reset(self):
         self._classification_index = 0
         self._frame_index = 0
+        if hasattr(self, "_static_object_filter") and self._static_object_filter is not None:
+            self._static_object_filter.reset()
         self._track_stats = {}
         self._regen_iou_prev_boxes = None
         self._regen_iou_prev_ids = None
@@ -1257,5 +1292,6 @@ class TwoStageStrategy(DetectionStrategy):
         self._live_iou_next_id = 1
         self._track_predict_fallback_hits = 0
         self._ultra_weak_salvage_hits = 0
+        self._static_object_filter: StaticObjectFilter | None = None
         if hasattr(self.binary_model.predictor, "trackers"):
             self.binary_model.predictor.trackers[0].reset()
