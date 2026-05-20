@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
@@ -63,9 +64,11 @@ class DetectionQualityConfig:
     mask: DetectionMaskConfig = field(default_factory=lambda: DetectionMaskConfig([], [], False))
     static: StaticObjectFilterConfig = field(default_factory=StaticObjectFilterConfig)
     motion_verified_enabled: bool = True
-    motion_min_mean_absdiff: float = 6.0
+    motion_min_mean_absdiff: float = 10.0
     motion_global_static_reject: bool = True
-    motion_global_max_mean_absdiff: float = 1.5
+    motion_global_max_mean_absdiff: float = 2.0
+    motion_strict_frames: int = 3
+    motion_hard_conf_ceiling: float = 0.55
     texture_enabled: bool = True
     texture_min_laplacian_var: float = 20.0
     hard_negatives_enabled: bool = True
@@ -94,13 +97,20 @@ class DetectionQualityConfig:
                 runtime_cfg, "processor.motion_verified_detection_enabled", True
             ),
             motion_min_mean_absdiff=_parse_float(
-                runtime_cfg, "processor.motion_verified_min_pixel_change", 6.0
+                runtime_cfg, "processor.motion_verified_min_pixel_change", 10.0
             ),
             motion_global_static_reject=_parse_bool(
                 runtime_cfg, "processor.motion_global_static_reject_enabled", True
             ),
             motion_global_max_mean_absdiff=_parse_float(
-                runtime_cfg, "processor.motion_global_max_mean_absdiff", 1.5
+                runtime_cfg, "processor.motion_global_max_mean_absdiff", 2.0
+            ),
+            motion_strict_frames=max(
+                2,
+                _parse_int(runtime_cfg, "processor.motion_strict_consecutive_frames", 3),
+            ),
+            motion_hard_conf_ceiling=_parse_float(
+                runtime_cfg, "processor.motion_hard_conf_ceiling", 0.55
             ),
             texture_enabled=_parse_bool(runtime_cfg, "processor.detection_texture_filter_enabled", True),
             texture_min_laplacian_var=_parse_float(
@@ -128,6 +138,9 @@ class DetectionQualityPipeline:
         self._mask = DetectionMaskFilter(self.cfg.mask)
         self._static = StaticObjectFilter(self.cfg.static)
         self._prev_gray: np.ndarray | None = None
+        self._track_roi_motion: dict[int, deque[float]] = defaultdict(
+            lambda: deque(maxlen=max(2, int(self.cfg.motion_strict_frames)))
+        )
         self._log_samples = 0
         self.last_stats: dict[str, int] = {
             "rejected_ignore_mask": 0,
@@ -142,6 +155,7 @@ class DetectionQualityPipeline:
 
     def reset(self) -> None:
         self._prev_gray = None
+        self._track_roi_motion.clear()
         self._static.reset()
         self._log_samples = 0
         for k in self.last_stats:
@@ -172,6 +186,18 @@ class DetectionQualityPipeline:
         local = float(np.mean(cv2.absdiff(roi_curr, roi_prev)))
         if local < self.cfg.motion_min_mean_absdiff:
             return f"roi_no_motion(mean_absdiff={local:.2f})"
+        return None
+
+    def _motion_history_reject(self, track_id: int, local_diff: float | None) -> str | None:
+        """Require significant ROI motion on at least one of last N frames (Frigate++)."""
+        n = max(2, int(self.cfg.motion_strict_frames))
+        hist = self._track_roi_motion[int(track_id)]
+        if local_diff is not None:
+            hist.append(float(local_diff))
+        if len(hist) < n:
+            return None
+        if max(hist) < self.cfg.motion_min_mean_absdiff:
+            return f"track_no_motion_history(max={max(hist):.2f},need>={self.cfg.motion_min_mean_absdiff:.1f})"
         return None
 
     def _save_hard_negative(
@@ -250,7 +276,10 @@ class DetectionQualityPipeline:
                 kept.append(box)
                 continue
             if bool(box.get("relaxed_small_object")):
-                kept.append(box)
+                reason = "relaxed_small_object_blocked"
+                self.last_stats["rejected_motion_verified"] += 1
+                self._save_hard_negative(frame_bgr, box, reason, processor_cwd=processor_cwd)
+                self._log_reject(box, reason)
                 continue
             reason = self._mask.reject_reason(box, frame_shape=frame_bgr.shape)
             if reason:
@@ -264,15 +293,29 @@ class DetectionQualityPipeline:
 
             conf = float(box.get("conf") or 0.0)
             mreason = None
-            if self.cfg.motion_verified_enabled and global_static and conf < 0.42:
-                mreason = f"global_frame_static(mean_absdiff={global_diff:.2f})"
-            elif (
+            ceil = float(self.cfg.motion_hard_conf_ceiling)
+            local_diff: float | None = None
+            if (
                 self.cfg.motion_verified_enabled
-                and conf < 0.5
                 and prev_gray is not None
                 and prev_gray.shape == gray.shape
             ):
-                mreason = self._roi_motion_reject(gray, prev_gray, box)
+                x1, y1, x2, y2 = [int(v) for v in box["crop_coords"]]
+                roi_prev = prev_gray[y1:y2, x1:x2]
+                roi_curr = gray[y1:y2, x1:x2]
+                if roi_prev.size >= 64 and roi_curr.size >= 64:
+                    local_diff = float(np.mean(cv2.absdiff(roi_curr, roi_prev)))
+
+            if self.cfg.motion_verified_enabled and global_static and conf < ceil:
+                mreason = f"global_frame_static(mean_absdiff={global_diff:.2f})"
+            elif self.cfg.motion_verified_enabled and conf < ceil and prev_gray is not None:
+                if local_diff is not None and local_diff < self.cfg.motion_min_mean_absdiff:
+                    mreason = f"roi_no_motion(mean_absdiff={local_diff:.2f})"
+                if mreason is None:
+                    mreason = self._motion_history_reject(int(box.get("track_id") or 0), local_diff)
+            elif local_diff is not None:
+                self._motion_history_reject(int(box.get("track_id") or 0), local_diff)
+
             if mreason:
                 if mreason.startswith("global"):
                     self.last_stats["rejected_global_static"] += 1
@@ -282,7 +325,7 @@ class DetectionQualityPipeline:
                 self._log_reject(box, mreason)
                 continue
 
-            if conf < 0.5 and self._texture_reject(frame_bgr, box):
+            if conf < ceil and self._texture_reject(frame_bgr, box):
                 reason = "texture_low_edge_energy"
                 self.last_stats["rejected_texture"] += 1
                 self._save_hard_negative(frame_bgr, box, reason, processor_cwd=processor_cwd)
