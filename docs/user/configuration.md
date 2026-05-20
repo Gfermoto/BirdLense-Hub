@@ -161,7 +161,7 @@ The System page also lists these endpoints under **Notification observability** 
 | `max_inactive_seconds` | Max gap without detections |
 | `post_record_seconds` | Post-roll: added to the no-detection gap before stopping the clip. Effective gap = `max_inactive_seconds` + `post_record_seconds`. See [#157](https://github.com/Gfermoto/BirdLense-Hub/issues/157). |
 | `min_seconds_between_recordings` | Minimum pause after a clip ends before a new one may start. Default `8`. Helps suppress near-duplicate clips when the bird stays in frame or Frigate/OpenCV retrigger immediately. `0` disables the cooldown. |
-| `min_confidence_binary` | Detector threshold: bird vs non-bird. Default **0.30** (`default_config.yaml`) |
+| `min_confidence_binary` | Detector threshold: bird vs non-bird. Default **0.28** (NABirds+OV; см. `docs/reports/nabirds_fp_forensic_20260520.md`) |
 | `min_confidence_binary_bird` | Optional: stricter **Bird-only** threshold after `track()` (Ultralytics uses `min` of all thresholds; per-label filter in Python). Example: **0.48** with `min_confidence_binary_rodent: 0.22` cuts false “birds” (e.g. mouse→tit) without choking rodents. |
 | `min_confidence_binary_rodent` | Optional: threshold for **Rodent** boxes after the binary head normalizes the rodent class (YOLO weights may still use an internal “Squirrel” class name). |
 | `min_confidence_binary_squirrel` | **Deprecated:** if present after merge, its value is **copied into** `min_confidence_binary_rodent` (so legacy YAML keeps working; remove squirrel once you use rodent only). |

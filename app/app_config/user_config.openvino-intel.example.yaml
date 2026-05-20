@@ -1,19 +1,19 @@
-# Пример: Intel iGPU + OpenVINO (скопируйте нужные ключи в user_config.yaml на сервере; сам файл не подхватывается автоматически).
-#
-# Цель: быстрее, чем OV на CPU; чувствительность к «слабым» OV-scores — через openvino_* (см. default_config.yaml).
-
-# Запись MP4: при сбоях h264_vaapi (битый файл / moov) оставьте encoding: intel, но выключите VA-API только для файла записи:
-# video:
-#   encoding: intel
-#   record_with_vaapi: false
-#   capture_backend: auto
+# Пример: Intel iGPU + OpenVINO NABirds (скопируйте в user_config.yaml; файл не подхватывается автоматически).
+# Калибровка FP: docs/reports/nabirds_fp_forensic_20260520.md — не возвращайте scale 8.5 / conf 0.025.
 
 processor:
   inference_backend: openvino
   inference_device: "intel:gpu"
+  openvino_binary_enabled: true
   classifier_inference_backend: openvino
   classifier_inference_device: "intel:gpu"
-  # Подстройка после наблюдений (ложные птицы / пропуски):
-  # openvino_binary_track_ultralytics_conf: 0.04
-  # openvino_binary_bird_score_scale: 7.0
-  # openvino_min_confidence_binary_bird: null
+  models:
+    binary: models/detection/weights/best_NABirds.pt
+    binary_openvino: models/detection/weights/best_NABirds_openvino_model
+  # Дефолты репозитория (2026-05-20 hotfix) — не ослаблять без forensic:
+  min_confidence_binary: 0.28
+  min_confidence_binary_bird: 0.28
+  openvino_min_confidence_binary_bird: 0.28
+  openvino_binary_bird_score_scale: 1.0
+  openvino_binary_track_ultralytics_conf: 0.12
+  binary_track_max_det: 60
