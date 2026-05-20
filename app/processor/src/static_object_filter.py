@@ -48,6 +48,7 @@ class StaticObjectFilterConfig:
     static_box_aspect_ratio_min: float = 0.8
     static_box_aspect_ratio_max: float = 1.2
     static_box_conf_threshold: float = 0.45
+    static_square_hard_reject_max_conf: float = 0.38
     static_scene_bird_min_confidence: float = 0.5
     static_scene_bird_like_min_confidence: float = 0.4
     static_scene_bird_like_max_aspect: float = 0.7
@@ -72,6 +73,9 @@ class StaticObjectFilterConfig:
             ),
             static_box_conf_threshold=_parse_float(
                 runtime_cfg, "processor.static_box_conf_threshold", 0.45
+            ),
+            static_square_hard_reject_max_conf=_parse_float(
+                runtime_cfg, "processor.static_square_hard_reject_max_conf", 0.38
             ),
             static_scene_bird_min_confidence=_parse_float(
                 runtime_cfg, "processor.static_scene_bird_min_confidence", 0.5
@@ -206,18 +210,12 @@ class StaticObjectFilter:
 
         square = _is_squareish(ar, cfg)
 
-        if square and conf < cfg.static_box_conf_threshold:
+        if square and conf < cfg.static_square_hard_reject_max_conf:
             if not has_anchor and not has_bird_like:
                 return (
                     f"static_object_detected(ar={ar:.2f},conf={conf:.2f},"
-                    f"no_birds_in_frame,raised_thr={cfg.static_box_conf_threshold:.2f})"
+                    f"no_birds_in_frame,hard_max={cfg.static_square_hard_reject_max_conf:.2f})"
                 )
-            if not has_anchor:
-                return (
-                    f"static_object_detected(ar={ar:.2f},conf={conf:.2f},"
-                    f"square_low_conf_no_anchor)"
-                )
-
         if not cfg.static_temporal_enabled or frame_bgr is None:
             return None
 
@@ -232,6 +230,8 @@ class StaticObjectFilter:
         if len(hist) < cfg.static_temporal_min_frames or area_px > cfg.static_temporal_max_area_px:
             return None
         if not square or conf >= cfg.static_box_conf_threshold:
+            return None
+        if conf >= cfg.static_square_hard_reject_max_conf:
             return None
 
         recent = hist[-cfg.static_temporal_min_frames :]
