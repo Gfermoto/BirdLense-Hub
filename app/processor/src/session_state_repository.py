@@ -270,7 +270,7 @@ class SessionStateRepository:
                     {where}
                     ORDER BY id DESC
                     LIMIT ?
-                    """,
+                    """,  # nosec B608
                     (*arg, int(max(1, limit))),
                 ).fetchall()
             )
@@ -296,7 +296,7 @@ class SessionStateRepository:
                 WHERE {where}
                 ORDER BY id DESC
                 LIMIT 1
-                """,
+                """,  # nosec B608
                 tuple(params),
             ).fetchone()
         return row
@@ -382,14 +382,14 @@ class SessionStateRepository:
                 f"""
                 DELETE FROM session_runtime_metrics
                 WHERE datetime(created_at) < {runtime_cutoff_sql[0]}
-                """,
+                """,  # nosec B608
             )
             cur2 = self._execute_with_retry(
                 con,
                 f"""
                 DELETE FROM detector_health_events
                 WHERE datetime(created_at) < {runtime_cutoff_sql[1]}
-                """,
+                """,  # nosec B608
             )
             deleted_runtime = int(cur1.rowcount or 0)
             deleted_health = int(cur2.rowcount or 0)

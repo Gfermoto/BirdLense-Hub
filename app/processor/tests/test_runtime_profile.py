@@ -17,7 +17,15 @@ class _DummyStrategy:
     def __init__(self):
         self.calls = []
 
-    def detect(self, frame, tracker_config, *, min_confidence, profile_overrides=None):
+    def detect(
+        self,
+        frame,
+        tracker_config,
+        *,
+        min_confidence,
+        profile_overrides=None,
+        classification_frame=None,
+    ):
         self.calls.append(
             {
                 "tracker_config": tracker_config,

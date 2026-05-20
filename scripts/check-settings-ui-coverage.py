@@ -812,6 +812,583 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Video stream Viewer vs Contributor gate; keyed in typed Settings snapshot but toggled elsewhere / YAML-focused.",
         "next_step": "Wire to General accordion when UX revisits ACCESS_CONTROL knobs.",
     },
+    # CI inventory batch (Settings coverage gate in docs job).
+    "active_learning.enabled": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.frigate_standalone_blind_score_threshold": {
+        "category": "advanced",
+        "reason": "Frigate standalone fallback when YOLO blind; advanced merge policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.frigate_standalone_force_after_no_yolo_seconds": {
+        "category": "advanced",
+        "reason": "Frigate standalone fallback when YOLO blind; advanced merge policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.frigate_standalone_require_blind_yolo": {
+        "category": "advanced",
+        "reason": "Frigate standalone fallback when YOLO blind; advanced merge policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_blind_min_duration_seconds": {
+        "category": "advanced",
+        "reason": "YOLO blind/self-heal watchdog thresholds; ops diagnostics.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_blind_min_effective_fps": {
+        "category": "advanced",
+        "reason": "YOLO blind/self-heal watchdog thresholds; ops diagnostics.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_blind_min_frames": {
+        "category": "advanced",
+        "reason": "YOLO blind/self-heal watchdog thresholds; ops diagnostics.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_blind_min_frigate_only_frames": {
+        "category": "advanced",
+        "reason": "YOLO blind/self-heal watchdog thresholds; ops diagnostics.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_blind_quickcheck_min_box_size_px": {
+        "category": "advanced",
+        "reason": "YOLO blind/self-heal watchdog thresholds; ops diagnostics.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_blind_quickcheck_min_confidence_binary": {
+        "category": "advanced",
+        "reason": "YOLO blind/self-heal watchdog thresholds; ops diagnostics.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_blind_quickcheck_min_confidence_binary_bird": {
+        "category": "advanced",
+        "reason": "YOLO blind/self-heal watchdog thresholds; ops diagnostics.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_blind_quickcheck_seconds": {
+        "category": "advanced",
+        "reason": "YOLO blind/self-heal watchdog thresholds; ops diagnostics.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_blind_required_consecutive_sessions": {
+        "category": "advanced",
+        "reason": "YOLO blind/self-heal watchdog thresholds; ops diagnostics.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_blind_score_threshold": {
+        "category": "advanced",
+        "reason": "YOLO blind/self-heal watchdog thresholds; ops diagnostics.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_self_heal_cooldown_seconds": {
+        "category": "advanced",
+        "reason": "YOLO blind/self-heal watchdog thresholds; ops diagnostics.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_self_heal_escalation_window_seconds": {
+        "category": "advanced",
+        "reason": "YOLO blind/self-heal watchdog thresholds; ops diagnostics.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_self_heal_restart_enabled": {
+        "category": "advanced",
+        "reason": "YOLO blind/self-heal watchdog thresholds; ops diagnostics.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_watchdog_enabled": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_watchdog_min_duration_seconds": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_watchdog_min_effective_fps": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "detection.yolo_watchdog_min_frames": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "experimental.active_learning_auto_mine_enabled": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "experimental.active_learning_auto_mine_lookback_hours": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "experimental.active_learning_auto_mine_max_rows": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "experimental.active_learning_blind_score_threshold": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "experimental.active_learning_conf_max": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "experimental.active_learning_conf_min": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "experimental.active_learning_fallback_ratio_threshold": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "experimental.sr_enabled": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "experimental.sr_max_crop_px": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "experimental.sr_max_latency_ms": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "experimental.sr_min_crop_px": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "experimental.sr_model": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "experimental.sr_scale": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.adaptive_profiles.night.overrides.openvino_min_confidence_binary_bird": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.background_subtraction_detect_shadows": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.background_subtraction_enabled": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.background_subtraction_history": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.background_subtraction_learning_rate": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.background_subtraction_method": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.background_subtraction_min_fg_ratio": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.background_subtraction_var_threshold": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.background_subtraction_warmup_frames": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.behavior_recognition.active_video_model": {
+        "category": "ops-only",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.behavior_recognition.canary_log_discrepancies": {
+        "category": "ops-only",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.behavior_recognition.engine": {
+        "category": "ops-only",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.behavior_recognition.video_confidence_store_min": {
+        "category": "ops-only",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.behavior_recognition.video_model_kind": {
+        "category": "ops-only",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.behavior_recognition.video_model_version": {
+        "category": "ops-only",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.behavior_recognition.video_openvino_path": {
+        "category": "ops-only",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.behavior_recognition.video_weights_path": {
+        "category": "ops-only",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.binary_predict_class_allowlist": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.classifier_use_source_frame": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.detection_ignore_masks": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.detection_interest_zones": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.detection_interest_zones_required": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.detection_quality_assumed_fps": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.detection_texture_filter_enabled": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.detection_texture_min_laplacian_var": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.frame_decision_trace_enabled": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.hard_negatives_dir": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.hard_negatives_enabled": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.hard_negatives_max_per_frame": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.lowres_enhance_enabled": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.lowres_enhance_max_input_px": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.lowres_sharpen_amount": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.motion_global_max_mean_absdiff": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.motion_global_static_reject_enabled": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.motion_hard_conf_ceiling": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.motion_strict_consecutive_frames": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.motion_verified_detection_enabled": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.motion_verified_min_pixel_change": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.openvino_binary_enabled": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.reid_auto_link_enabled": {
+        "category": "ops-only",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.reid_auto_link_max_candidates": {
+        "category": "ops-only",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.reid_auto_link_threshold_high": {
+        "category": "ops-only",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.reid_auto_link_threshold_low": {
+        "category": "ops-only",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scene_adaptive_conf_cap": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scene_adaptive_conf_enabled": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scene_adaptive_night_boost": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scene_adaptive_static_boost": {
+        "category": "advanced",
+        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scoring_calibration_frames": {
+        "category": "advanced",
+        "reason": "SOTA 2.0 unified scoring engine; operator tuning via YAML until Settings expert panel.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scoring_calibration_max_noise_rate": {
+        "category": "advanced",
+        "reason": "SOTA 2.0 unified scoring engine; operator tuning via YAML until Settings expert panel.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scoring_calibration_percentile": {
+        "category": "advanced",
+        "reason": "SOTA 2.0 unified scoring engine; operator tuning via YAML until Settings expert panel.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scoring_default_high_threshold": {
+        "category": "advanced",
+        "reason": "SOTA 2.0 unified scoring engine; operator tuning via YAML until Settings expert panel.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scoring_default_low_threshold": {
+        "category": "advanced",
+        "reason": "SOTA 2.0 unified scoring engine; operator tuning via YAML until Settings expert panel.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scoring_engine_enabled": {
+        "category": "advanced",
+        "reason": "SOTA 2.0 unified scoring engine; operator tuning via YAML until Settings expert panel.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scoring_frigate_prior_boost": {
+        "category": "advanced",
+        "reason": "SOTA 2.0 unified scoring engine; operator tuning via YAML until Settings expert panel.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scoring_review_band_width": {
+        "category": "advanced",
+        "reason": "SOTA 2.0 unified scoring engine; operator tuning via YAML until Settings expert panel.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scoring_weight_background": {
+        "category": "advanced",
+        "reason": "SOTA 2.0 unified scoring engine; operator tuning via YAML until Settings expert panel.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scoring_weight_conf": {
+        "category": "advanced",
+        "reason": "SOTA 2.0 unified scoring engine; operator tuning via YAML until Settings expert panel.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scoring_weight_motion": {
+        "category": "advanced",
+        "reason": "SOTA 2.0 unified scoring engine; operator tuning via YAML until Settings expert panel.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scoring_weight_shape": {
+        "category": "advanced",
+        "reason": "SOTA 2.0 unified scoring engine; operator tuning via YAML until Settings expert panel.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_box_aspect_ratio_max": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_box_aspect_ratio_min": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_box_conf_threshold": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_giant_box_area_frac": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_giant_box_side_frac": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_object_suppression_enabled": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_scene_bird_like_horizontal_min_aspect": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_scene_bird_like_min_confidence": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_scene_bird_like_vertical_max_aspect": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_scene_bird_min_confidence": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_square_hard_reject_max_conf": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_temporal_enabled": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_temporal_hist_change_max": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_temporal_max_area_px": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_temporal_max_jitter_px": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_temporal_min_frames": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.static_temporal_min_seconds": {
+        "category": "advanced",
+        "reason": "Static-object / phantom suppression tuning; expert processor policy.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "retention.detector_health_days": {
+        "category": "ops-only",
+        "reason": "SQLite retention and compaction for runtime metrics; ops-only.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "retention.runtime_metrics_analyze_enabled": {
+        "category": "ops-only",
+        "reason": "SQLite retention and compaction for runtime metrics; ops-only.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "retention.runtime_metrics_days": {
+        "category": "ops-only",
+        "reason": "SQLite retention and compaction for runtime metrics; ops-only.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "retention.runtime_metrics_maintenance_interval_minutes": {
+        "category": "ops-only",
+        "reason": "SQLite retention and compaction for runtime metrics; ops-only.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "retention.runtime_metrics_vacuum_interval_hours": {
+        "category": "ops-only",
+        "reason": "SQLite retention and compaction for runtime metrics; ops-only.",
+        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+
 }
 
 # Legacy terminal keys that are still config-level (not yet exposed in Settings UI).

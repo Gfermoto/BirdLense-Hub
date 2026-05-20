@@ -72,43 +72,59 @@ class TestBinaryPaths(unittest.TestCase):
     def test_openvino_disabled_forces_torch_despite_auto(self):
         from inference.binary_paths import resolve_binary_detector_weight_path
 
-        with tempfile.TemporaryDirectory() as d:
-            ov = os.path.join(d, "openvino")
-            os.makedirs(ov, exist_ok=True)
-            with open(os.path.join(ov, "best.xml"), "w", encoding="utf-8") as f:
-                f.write("<net />")
-            with patch("inference.selector.openvino_runtime_available", return_value=True):
-                path, backend = resolve_binary_detector_weight_path(
-                    {
-                        "processor.inference_backend": "auto",
-                        "processor.openvino_binary_enabled": False,
-                        "processor.models.binary_openvino": ov,
-                        "processor.models.binary": "models/detection/weights/best.pt",
-                    },
-                    "/tmp/processor",
-                )
-        self.assertEqual(backend, "torch")
-        self.assertTrue(path.endswith("best.pt"))
+        old_backend = os.environ.pop("BIRDLENSE_INFERENCE_BACKEND", None)
+        old_ov_path = os.environ.pop("BIRDLENSE_BINARY_OPENVINO_PATH", None)
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                ov = os.path.join(d, "openvino")
+                os.makedirs(ov, exist_ok=True)
+                with open(os.path.join(ov, "best.xml"), "w", encoding="utf-8") as f:
+                    f.write("<net />")
+                with patch("inference.selector.openvino_runtime_available", return_value=True):
+                    path, backend = resolve_binary_detector_weight_path(
+                        {
+                            "processor.inference_backend": "auto",
+                            "processor.openvino_binary_enabled": False,
+                            "processor.models.binary_openvino": ov,
+                            "processor.models.binary": "models/detection/weights/best.pt",
+                        },
+                        "/tmp/processor",
+                    )
+                self.assertEqual(backend, "torch")
+                self.assertTrue(path.endswith("best.pt"))
+        finally:
+            if old_backend is not None:
+                os.environ["BIRDLENSE_INFERENCE_BACKEND"] = old_backend
+            if old_ov_path is not None:
+                os.environ["BIRDLENSE_BINARY_OPENVINO_PATH"] = old_ov_path
 
     def test_auto_falls_back_to_torch_when_openvino_runtime_missing(self):
         from inference.binary_paths import resolve_binary_detector_weight_path
 
-        with tempfile.TemporaryDirectory() as d:
-            ov = os.path.join(d, "openvino")
-            os.makedirs(ov, exist_ok=True)
-            with open(os.path.join(ov, "best.xml"), "w", encoding="utf-8") as f:
-                f.write("<net />")
-            with patch("inference.selector.openvino_runtime_available", return_value=False):
-                path, backend = resolve_binary_detector_weight_path(
-                    {
-                        "processor.inference_backend": "auto",
-                        "processor.models.binary_openvino": ov,
-                        "processor.models.binary": "models/detection/weights/best.pt",
-                    },
-                    "/tmp/processor",
-                )
-        self.assertEqual(backend, "torch")
-        self.assertTrue(path.endswith("best.pt"))
+        old_backend = os.environ.pop("BIRDLENSE_INFERENCE_BACKEND", None)
+        old_ov_path = os.environ.pop("BIRDLENSE_BINARY_OPENVINO_PATH", None)
+        try:
+            with tempfile.TemporaryDirectory() as d:
+                ov = os.path.join(d, "openvino")
+                os.makedirs(ov, exist_ok=True)
+                with open(os.path.join(ov, "best.xml"), "w", encoding="utf-8") as f:
+                    f.write("<net />")
+                with patch("inference.selector.openvino_runtime_available", return_value=False):
+                    path, backend = resolve_binary_detector_weight_path(
+                        {
+                            "processor.inference_backend": "auto",
+                            "processor.models.binary_openvino": ov,
+                            "processor.models.binary": "models/detection/weights/best.pt",
+                        },
+                        "/tmp/processor",
+                    )
+                self.assertEqual(backend, "torch")
+                self.assertTrue(path.endswith("best.pt"))
+        finally:
+            if old_backend is not None:
+                os.environ["BIRDLENSE_INFERENCE_BACKEND"] = old_backend
+            if old_ov_path is not None:
+                os.environ["BIRDLENSE_BINARY_OPENVINO_PATH"] = old_ov_path
 
     def test_openvino_expected_input_size_from_metadata(self):
         from inference.binary_paths import openvino_expected_input_size

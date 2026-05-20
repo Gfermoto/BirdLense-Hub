@@ -52,10 +52,7 @@ def _clip_level_prediction(eng: ScoringEngine, clip: dict) -> bool:
             expect = str(probe.get("expect") or "")
             kept = eng.filter_boxes([box], frame_bgr=frame, frame_index=100 + i)
             accepted = [
-                b
-                for b in kept
-                if str(b.get("detector_label") or "") == "Bird"
-                and not b.get("scoring_review_only")
+                b for b in kept if str(b.get("detector_label") or "") == "Bird" and not b.get("scoring_review_only")
             ]
             if expect == "reject":
                 if accepted:

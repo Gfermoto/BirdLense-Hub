@@ -5,8 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
-import numpy as np
-
 
 def _parse_polygons(raw: Any) -> list[list[tuple[float, float]]]:
     if not raw or not isinstance(raw, (list, tuple)):
