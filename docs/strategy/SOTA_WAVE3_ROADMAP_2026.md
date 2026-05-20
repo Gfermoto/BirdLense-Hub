@@ -3,6 +3,8 @@
 **Старт:** после фиксации [`SOTA_BASELINE_2026_Q2.md`](SOTA_BASELINE_2026_Q2.md) (v1.0 Stable).  
 **Принцип:** не «чинить», а **превосходить** — измеримый прирост от baseline, без возврата хаоса версий.
 
+> **CRITICAL PAUSE (2026-05-20):** Wave 3 **заморожен** до завершения [**SOTA 2.0 Foundation**](SOTA_DEEP_DIVE_AUDIT_2026.md) Phase 0 (Golden Set CI gate + Black Box + Threshold Contract). Инцидент `raw>>0, accepted=0` показал: новые фичи (#479–#482) не устраняют архитектурный разлом фильтров.
+
 ---
 
 ## Цели Wave 3
@@ -98,11 +100,28 @@ flowchart LR
 
 ---
 
+## 0. Prerequisite — SOTA 2.0 Foundation (блокер Wave 3)
+
+См. [`SOTA_DEEP_DIVE_AUDIT_2026.md`](SOTA_DEEP_DIVE_AUDIT_2026.md). Минимум для разморозки Wave 3:
+
+| Phase | Deliverable | Связь с issues |
+|-------|-------------|----------------|
+| 0.1 | Per-frame Black Box trace | новый epic (создать) |
+| 0.2–0.3 | Golden Set v2 + `make validate-pipeline-golden` | #451 tuning → Auto-Calibration |
+| 0.4 | Threshold contract (`store >= process`) | #451 |
+| 1.1 | ScoringEngine вместо filter cascade | — |
+| 1.3 | Frigate prior-only | reliability |
+
+**Issues #479–#482:** не начинать P0-work до зелёного Golden Gate 7 дней на VPS.
+
+---
+
 ## 6. Фазы и вехи
 
 | Фаза | Срок (ориентир) | Фокус |
 |------|-----------------|-------|
-| **3.0** | Q2 2026 W3–W4 | Mask UI + hard negatives curator |
+| **2.0** | Q2 2026 W4+ | Foundation (аудит Phase 0–1) — **сейчас** |
+| **3.0** | Q3 2026 W1–W2 | Mask UI + hard negatives curator |
 | **3.1** | Q3 2026 W1–W4 | Weekly retrain loop + INT8 study |
 | **3.2** | Q3 2026 W5–W8 | ReID profiles MVP |
 | **3.3** | Q4 2026 | Behavior v2 dataset + multi-cam |
