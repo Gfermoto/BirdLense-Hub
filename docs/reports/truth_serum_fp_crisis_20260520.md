@@ -61,7 +61,7 @@
 - Salvage/relax: **off**
 - `min_confidence_to_store: **0.35**`
 - Night: **0.45**, не 0.22
-- Default ignore mask: feed glare polygon
+- ~~Default ignore mask~~ removed — use MOG2 + scene-adaptive conf (universal)
 
 ### Прод-патч
 

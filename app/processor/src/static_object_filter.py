@@ -1,4 +1,4 @@
-"""Universal static / phantom box suppression (feeder, branches, background)."""
+"""Universal static / phantom box suppression (geometry, temporal, scene context)."""
 
 from __future__ import annotations
 

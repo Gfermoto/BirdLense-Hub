@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Merge nuclear FP-suppression overrides into app/app_config/user_config.yaml (prod-safe).
+"""Merge FP-suppression overrides into user_config.yaml (prod-safe, location-agnostic).
 
-Run on VPS inside repo or via:
-  docker exec birdlense python3 /app/scripts/patch_prod_nuclear_user_config.py
+Does NOT add site-specific ignore masks. Clears any detection_ignore_masks left from
+emergency patches. Run on VPS:
+  python3 scripts/patch_prod_nuclear_user_config.py
 """
 
 from __future__ import annotations
@@ -17,9 +18,9 @@ except ImportError:
     raise SystemExit(1)
 
 NUCLEAR_PROCESSOR = {
-    "min_confidence_binary": 0.38,
-    "min_confidence_binary_bird": 0.38,
-    "openvino_min_confidence_binary_bird": 0.38,
+    "min_confidence_binary": 0.32,
+    "min_confidence_binary_bird": 0.32,
+    "openvino_min_confidence_binary_bird": 0.32,
     "openvino_binary_track_ultralytics_conf": 0.28,
     "min_track_duration": 1.0,
     "auto_small_object_relax_enabled": False,
@@ -32,9 +33,9 @@ NUCLEAR_PROCESSOR = {
     "motion_hard_conf_ceiling": 0.55,
     "static_object_suppression_enabled": True,
     "static_temporal_min_seconds": 5,
-    "detection_ignore_masks": [
-        [[0.72, 0.55], [0.95, 0.55], [0.95, 0.95], [0.72, 0.95]],
-    ],
+    "background_subtraction_enabled": True,
+    "scene_adaptive_conf_enabled": True,
+    "detection_ignore_masks": [],
 }
 
 NUCLEAR_DETECTION = {
@@ -92,7 +93,7 @@ def main() -> int:
         yaml.safe_dump(data, allow_unicode=True, sort_keys=False, default_flow_style=False),
         encoding="utf-8",
     )
-    print(f"patched {cfg_path}")
+    print(f"patched {cfg_path} (masks cleared, MOG2 enabled)")
     return 0
 
 

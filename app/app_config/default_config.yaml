@@ -107,16 +107,16 @@ processor:
   # VideoSpecies с frames/оверлеем; виды потом можно поправить. false — прежнее «без конфликтов».
   track_regen_parallel_auto_with_manual: false
   # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
-  min_confidence_binary: 0.38  # Truth serum 2026-05-20: 0.28 + salvage = мусор в UI; precision-first
-  min_confidence_binary_bird: 0.38
+  min_confidence_binary: 0.32
+  min_confidence_binary_bird: 0.32
   # DEPRECATED (nabirds-pivot): Rodent не детектируется; ключ только для legacy user_config (игнорируется при detector_scope: [Bird]).
   # min_confidence_binary_rodent: 0.24
   # OpenVINO NABirds: conf на IR часто ВЫШЕ torch, не ниже — scale 8.5 (legacy BRG) раздувает FP.
   # track(conf) cap — не ниже bird-порога; scale 1.0 = без искусственного завышения при фильтрации.
   openvino_binary_track_ultralytics_conf: 0.28
   openvino_binary_bird_score_scale: 1.0
-  openvino_min_confidence_binary_bird: 0.38
-  # Phantom static objects (feeder, branches, background) — contrastive forensic 2026-05-20.
+  openvino_min_confidence_binary_bird: 0.32
+  # Phantom static objects (branches, glare, background texture) — geometry + temporal, no fixed masks.
   static_object_suppression_enabled: true
   static_box_aspect_ratio_min: 0.8
   static_box_aspect_ratio_max: 1.2
@@ -137,14 +137,24 @@ processor:
   static_temporal_min_seconds: 8
   static_temporal_max_jitter_px: 2
   detection_quality_assumed_fps: 7
-  # NVR-style masks (normalized 0..1 polygon vertices). Example ignore top-left branch:
-  # detection_ignore_masks:
-  #   - [[0.0, 0.0], [0.35, 0.0], [0.35, 0.25], [0.0, 0.25]]
-  # Forensic feed-glare patch (contrastive 2026-05-20) — override in user_config per camera.
-  detection_ignore_masks:
-    - [[0.72, 0.55], [0.95, 0.55], [0.95, 0.95], [0.72, 0.95]]
+  # Optional user-drawn masks (UI); empty by default — core FP control is algorithmic (MOG2 + motion).
+  detection_ignore_masks: []
   detection_interest_zones: []
   detection_interest_zones_required: false
+  # MOG2 background subtraction (OpenCV): reject boxes that sit on learned static background.
+  background_subtraction_enabled: true
+  background_subtraction_method: mog2
+  background_subtraction_history: 400
+  background_subtraction_var_threshold: 16
+  background_subtraction_min_fg_ratio: 0.07
+  background_subtraction_warmup_frames: 45
+  background_subtraction_detect_shadows: true
+  background_subtraction_learning_rate: -1
+  # Scene-adaptive bird confidence floor (static scene / night / low global motion).
+  scene_adaptive_conf_enabled: true
+  scene_adaptive_static_boost: 0.08
+  scene_adaptive_night_boost: 0.10
+  scene_adaptive_conf_cap: 0.48
   motion_verified_detection_enabled: true
   motion_verified_min_pixel_change: 10
   motion_global_static_reject_enabled: true

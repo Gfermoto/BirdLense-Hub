@@ -60,6 +60,8 @@ _DETECT_TEST_QUALITY_OFF = {
     "processor.motion_global_static_reject_enabled": False,
     "processor.detection_texture_filter_enabled": False,
     "processor.hard_negatives_enabled": False,
+    "processor.background_subtraction_enabled": False,
+    "processor.scene_adaptive_conf_enabled": False,
 }
 
 

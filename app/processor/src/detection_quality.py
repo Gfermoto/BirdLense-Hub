@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 
 from detection_masks import DetectionMaskConfig, DetectionMaskFilter
+from scene_adaptive import SceneAdaptiveAnalyzer, SceneAdaptiveConfig
 from static_object_filter import StaticObjectFilter, StaticObjectFilterConfig
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,9 @@ class DetectionQualityConfig:
     hard_negatives_dir: str = "data/hard_negatives"
     assumed_fps: float = 7.0
     static_temporal_min_seconds: float = 8.0
+    scene: SceneAdaptiveConfig = field(default_factory=SceneAdaptiveConfig)
+    allow_relaxed_small_object: bool = False
+
 
     @classmethod
     def from_runtime_cfg(cls, runtime_cfg: Mapping[str, Any]) -> DetectionQualityConfig:
@@ -127,6 +131,10 @@ class DetectionQualityConfig:
             static_temporal_min_seconds=_parse_float(
                 runtime_cfg, "processor.static_temporal_min_seconds", 8.0
             ),
+            scene=SceneAdaptiveConfig.from_runtime_cfg(runtime_cfg),
+            allow_relaxed_small_object=_parse_bool(
+                runtime_cfg, "processor.auto_small_object_relax_enabled", False
+            ),
         )
 
 
@@ -137,6 +145,7 @@ class DetectionQualityPipeline:
         self.cfg = cfg or DetectionQualityConfig()
         self._mask = DetectionMaskFilter(self.cfg.mask)
         self._static = StaticObjectFilter(self.cfg.static)
+        self._scene = SceneAdaptiveAnalyzer(self.cfg.scene)
         self._prev_gray: np.ndarray | None = None
         self._track_roi_motion: dict[int, deque[float]] = defaultdict(
             lambda: deque(maxlen=max(2, int(self.cfg.motion_strict_frames)))
@@ -150,6 +159,7 @@ class DetectionQualityPipeline:
             "rejected_texture": 0,
             "rejected_static_objects": 0,
             "rejected_phantom_boxes": 0,
+            "rejected_background_subtraction": 0,
             "hard_negatives_saved": 0,
         }
 
@@ -157,9 +167,14 @@ class DetectionQualityPipeline:
         self._prev_gray = None
         self._track_roi_motion.clear()
         self._static.reset()
+        self._scene.reset()
         self._log_samples = 0
         for k in self.last_stats:
             self.last_stats[k] = 0
+
+    @property
+    def scene_analyzer(self) -> SceneAdaptiveAnalyzer:
+        return self._scene
 
     def _texture_reject(self, frame_bgr: np.ndarray, box: dict[str, Any]) -> bool:
         if not self.cfg.texture_enabled:
@@ -251,6 +266,7 @@ class DetectionQualityPipeline:
         processor_cwd: str | None = None,
     ) -> list[dict[str, Any]]:
         self.last_stats = {k: 0 for k in self.last_stats}
+        self._scene.update(frame_bgr)
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
         prev_gray = self._prev_gray
         global_static = False
@@ -275,7 +291,7 @@ class DetectionQualityPipeline:
             if str(box.get("detector_label") or "") != "Bird":
                 kept.append(box)
                 continue
-            if bool(box.get("relaxed_small_object")):
+            if bool(box.get("relaxed_small_object")) and not self.cfg.allow_relaxed_small_object:
                 reason = "relaxed_small_object_blocked"
                 self.last_stats["rejected_motion_verified"] += 1
                 self._save_hard_negative(frame_bgr, box, reason, processor_cwd=processor_cwd)
@@ -330,6 +346,13 @@ class DetectionQualityPipeline:
                 self.last_stats["rejected_texture"] += 1
                 self._save_hard_negative(frame_bgr, box, reason, processor_cwd=processor_cwd)
                 self._log_reject(box, reason)
+                continue
+
+            bg_reason = self._scene.background_reject_reason(box, frame_shape=frame_bgr.shape)
+            if bg_reason:
+                self.last_stats["rejected_background_subtraction"] += 1
+                self._save_hard_negative(frame_bgr, box, bg_reason, processor_cwd=processor_cwd)
+                self._log_reject(box, bg_reason)
                 continue
 
             kept.append(box)
