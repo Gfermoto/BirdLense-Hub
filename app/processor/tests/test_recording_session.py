@@ -151,7 +151,7 @@ class _FrameProcessor:
         self.tracks = {}
         self.last_run_stats = {}
 
-    def run(self, frame, frame_time=None, camera_overrides=None):
+    def run(self, frame, frame_time=None, camera_overrides=None, classification_frame=None):
         self.run_calls += 1
         self.last_run_stats = {}
         return False

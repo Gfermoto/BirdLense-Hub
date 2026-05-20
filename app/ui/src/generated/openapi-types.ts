@@ -311,6 +311,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/debug/scoring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ScoringEngine debug (thresholds, histogram, Black Box tail)
+         * @description Live SOTA 2.0 scoring telemetry from decision trace JSONL and config.
+         *     Requires settings password (same as `/api/ui/status/debug`).
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Scoring debug payload */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Password required */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/metrics": {
         parameters: {
             query?: never;
@@ -2484,6 +2535,8 @@ export interface paths {
          * @description Multipart field `file`. Query `role` = `binary` | `classifier` | `class_names`.
          *     For `classifier`, either a readable allowlist file must exist or `acknowledge_classifier_only=1`.
          *     Writes under `DATA_DIR/custom_weights/`, updates `user_config`, reloads app config, sets processor restart flag.
+         *     For `role=binary`, also runs Ultralytics `export(format=openvino)` into `custom_weights/binary_openvino_model/`,
+         *     sets `processor.models.binary_openvino` and `processor.inference_backend=openvino` (export may take minutes).
          *     Admin-only when contributor password is enabled. Max 2 GiB for .pt (zip-style checkpoint), 32 MiB for .txt.
          */
         post: {
@@ -8178,7 +8231,12 @@ export interface components {
                 display_value?: number;
                 /** @enum {string} */
                 display_unit?: "kg" | "g";
+                /** @description Signed mass change during the visit window (grams); null when scales data missing */
                 weight_change_grams?: number;
+                /**
+                 * @description Direction vs noise threshold (~5 g); stable when change is within sensor noise
+                 * @enum {string}
+                 */
                 weight_trend?: "up" | "down" | "stable";
             } | null;
             /** @description Runtime or manually set behavior taxonomy label (#416) */
@@ -8258,8 +8316,6 @@ export interface components {
                 display_value?: number;
                 /** @enum {string} */
                 display_unit?: "kg" | "g";
-                weight_change_grams?: number;
-                weight_trend?: "up" | "down" | "stable";
             } | null;
             species?: {
                 id?: number;

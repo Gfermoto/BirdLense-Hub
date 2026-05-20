@@ -62,7 +62,7 @@ def fetch_trajectories(*, start_iso: str | None, end_iso: str | None, limit: int
             WHERE {' AND '.join(where)}
             ORDER BY v.start_time DESC, vs.id DESC
             LIMIT :limit
-            """
+            """  # nosec B608
         ),
         params,
     ).mappings()
@@ -163,7 +163,7 @@ def fetch_visits_timeseries(*, start_iso: str | None, end_iso: str | None, bucke
             WHERE {' AND '.join(where)}
             GROUP BY bucket_ts
             ORDER BY bucket_ts ASC
-            """
+            """  # nosec B608
         ),
         params,
     ).mappings()

@@ -92,9 +92,7 @@ class StaticObjectFilterConfig:
             "processor.min_confidence_binary_bird",
             _parse_float(runtime_cfg, "processor.min_confidence_binary", 0.12),
         )
-        scene_bird_conf = _parse_float(
-            runtime_cfg, "processor.static_scene_bird_min_confidence", bird_min
-        )
+        scene_bird_conf = _parse_float(runtime_cfg, "processor.static_scene_bird_min_confidence", bird_min)
         square_hard_max = _parse_float(
             runtime_cfg,
             "processor.static_square_hard_reject_max_conf",
@@ -102,15 +100,9 @@ class StaticObjectFilterConfig:
         )
         return cls(
             enabled=_parse_bool(runtime_cfg, "processor.static_object_suppression_enabled", True),
-            static_box_aspect_ratio_min=_parse_float(
-                runtime_cfg, "processor.static_box_aspect_ratio_min", 0.8
-            ),
-            static_box_aspect_ratio_max=_parse_float(
-                runtime_cfg, "processor.static_box_aspect_ratio_max", 1.2
-            ),
-            static_box_conf_threshold=_parse_float(
-                runtime_cfg, "processor.static_box_conf_threshold", 0.45
-            ),
+            static_box_aspect_ratio_min=_parse_float(runtime_cfg, "processor.static_box_aspect_ratio_min", 0.8),
+            static_box_aspect_ratio_max=_parse_float(runtime_cfg, "processor.static_box_aspect_ratio_max", 1.2),
+            static_box_conf_threshold=_parse_float(runtime_cfg, "processor.static_box_conf_threshold", 0.45),
             static_square_hard_reject_max_conf=square_hard_max,
             static_scene_bird_min_confidence=scene_bird_conf,
             static_scene_bird_like_min_confidence=_parse_float(
@@ -130,21 +122,13 @@ class StaticObjectFilterConfig:
             ),
             static_temporal_enabled=_parse_bool(runtime_cfg, "processor.static_temporal_enabled", True),
             static_temporal_min_frames=_parse_int(runtime_cfg, "processor.static_temporal_min_frames", 4),
-            static_temporal_max_jitter_px=_parse_float(
-                runtime_cfg, "processor.static_temporal_max_jitter_px", 5.0
-            ),
-            static_temporal_max_area_px=_parse_float(
-                runtime_cfg, "processor.static_temporal_max_area_px", 120_000.0
-            ),
+            static_temporal_max_jitter_px=_parse_float(runtime_cfg, "processor.static_temporal_max_jitter_px", 5.0),
+            static_temporal_max_area_px=_parse_float(runtime_cfg, "processor.static_temporal_max_area_px", 120_000.0),
             static_temporal_hist_change_max=_parse_float(
                 runtime_cfg, "processor.static_temporal_hist_change_max", 0.04
             ),
-            static_giant_box_area_frac=_parse_float(
-                runtime_cfg, "processor.static_giant_box_area_frac", 0.5
-            ),
-            static_giant_box_side_frac=_parse_float(
-                runtime_cfg, "processor.static_giant_box_side_frac", 0.42
-            ),
+            static_giant_box_area_frac=_parse_float(runtime_cfg, "processor.static_giant_box_area_frac", 0.5),
+            static_giant_box_side_frac=_parse_float(runtime_cfg, "processor.static_giant_box_side_frac", 0.42),
         )
 
 
@@ -171,8 +155,7 @@ def _is_squareish(ar: float, cfg: StaticObjectFilterConfig) -> bool:
 
 def _is_bird_like_shape(ar: float, cfg: StaticObjectFilterConfig) -> bool:
     return (
-        ar <= cfg.static_scene_bird_like_vertical_max_aspect
-        or ar >= cfg.static_scene_bird_like_horizontal_min_aspect
+        ar <= cfg.static_scene_bird_like_vertical_max_aspect or ar >= cfg.static_scene_bird_like_horizontal_min_aspect
     )
 
 
@@ -254,10 +237,7 @@ class StaticObjectFilter:
         if frame_bgr is not None:
             fh, fw = frame_bgr.shape[:2]
             if max(bw, bh) > cfg.static_giant_box_side_frac * max(fw, fh):
-                return (
-                    f"phantom_box_giant_side(max_side={max(bw, bh):.0f},"
-                    f"limit={cfg.static_giant_box_side_frac:.2f})"
-                )
+                return f"phantom_box_giant_side(max_side={max(bw, bh):.0f},limit={cfg.static_giant_box_side_frac:.2f})"
 
         if conf >= cfg.static_scene_bird_min_confidence:
             return None
@@ -293,8 +273,7 @@ class StaticObjectFilter:
         recent = hist[-cfg.static_temporal_min_frames :]
         c0x, c0y = recent[0][1], recent[0][2]
         if any(
-            abs(p[1] - c0x) > cfg.static_temporal_max_jitter_px
-            or abs(p[2] - c0y) > cfg.static_temporal_max_jitter_px
+            abs(p[1] - c0x) > cfg.static_temporal_max_jitter_px or abs(p[2] - c0y) > cfg.static_temporal_max_jitter_px
             for p in recent[1:]
         ):
             return None

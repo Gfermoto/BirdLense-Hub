@@ -88,25 +88,13 @@ class ScoringEngineConfig:
             weight_shape=_parse_float(runtime_cfg, "processor.scoring_weight_shape", 0.15),
             weight_background=_parse_float(runtime_cfg, "processor.scoring_weight_background", 0.15),
             frigate_prior_boost=_parse_float(runtime_cfg, "processor.scoring_frigate_prior_boost", 0.20),
-            default_low_threshold=_parse_float(
-                runtime_cfg, "processor.scoring_default_low_threshold", 0.38
-            ),
-            default_high_threshold=_parse_float(
-                runtime_cfg, "processor.scoring_default_high_threshold", 0.52
-            ),
+            default_low_threshold=_parse_float(runtime_cfg, "processor.scoring_default_low_threshold", 0.38),
+            default_high_threshold=_parse_float(runtime_cfg, "processor.scoring_default_high_threshold", 0.52),
             review_band_width=_parse_float(runtime_cfg, "processor.scoring_review_band_width", 0.14),
-            calibration_frames=max(
-                10, _parse_int(runtime_cfg, "processor.scoring_calibration_frames", 60)
-            ),
-            calibration_max_noise_rate=_parse_float(
-                runtime_cfg, "processor.scoring_calibration_max_noise_rate", 0.01
-            ),
-            calibration_percentile=_parse_float(
-                runtime_cfg, "processor.scoring_calibration_percentile", 0.95
-            ),
-            giant_box_area_frac=_parse_float(
-                runtime_cfg, "processor.scoring_giant_box_area_frac", 0.5
-            ),
+            calibration_frames=max(10, _parse_int(runtime_cfg, "processor.scoring_calibration_frames", 60)),
+            calibration_max_noise_rate=_parse_float(runtime_cfg, "processor.scoring_calibration_max_noise_rate", 0.01),
+            calibration_percentile=_parse_float(runtime_cfg, "processor.scoring_calibration_percentile", 0.95),
+            giant_box_area_frac=_parse_float(runtime_cfg, "processor.scoring_giant_box_area_frac", 0.5),
             scene=SceneAdaptiveConfig.from_runtime_cfg(runtime_cfg),
         )
 
@@ -242,12 +230,7 @@ class ScoringEngine:
         bg = self._bg_score(box, frame_bgr.shape)
         shape = self._shape_score(box)
         w = self.cfg
-        weighted = (
-            w.weight_conf * conf
-            + w.weight_motion * motion
-            + w.weight_background * bg
-            + w.weight_shape * shape
-        )
+        weighted = w.weight_conf * conf + w.weight_motion * motion + w.weight_background * bg + w.weight_shape * shape
         frigate_boost = w.frigate_prior_boost if frigate_prior_active else 0.0
         final = float(np.clip(weighted + frigate_boost, 0.0, 1.0))
         return ScoreBreakdown(
@@ -302,18 +285,14 @@ class ScoringEngine:
     ) -> ScoringDecision:
         area_norm = float(box.get("box_area_norm") or 0.0)
         if area_norm > self.cfg.giant_box_area_frac:
-            bd = self.compute_breakdown(
-                box, frame_bgr=frame_bgr, frigate_prior_active=frigate_prior_active
-            )
+            bd = self.compute_breakdown(box, frame_bgr=frame_bgr, frigate_prior_active=frigate_prior_active)
             return ScoringDecision(
                 zone=DecisionZone.REJECT,
                 breakdown=bd,
                 reject_reason=f"phantom_box_giant_area(area_norm={area_norm:.3f})",
             )
 
-        bd = self.compute_breakdown(
-            box, frame_bgr=frame_bgr, frigate_prior_active=frigate_prior_active
-        )
+        bd = self.compute_breakdown(box, frame_bgr=frame_bgr, frigate_prior_active=frigate_prior_active)
         cal = self._calibration
         if bd.final_score >= cal.high_threshold:
             zone = DecisionZone.ACCEPT
@@ -343,9 +322,7 @@ class ScoringEngine:
         bird_boxes = [b for b in boxes if str(b.get("detector_label") or "") == "Bird"]
         max_score = 0.0
         for box in bird_boxes:
-            bd = self.compute_breakdown(
-                box, frame_bgr=frame_bgr, frigate_prior_active=frigate_prior_active
-            )
+            bd = self.compute_breakdown(box, frame_bgr=frame_bgr, frigate_prior_active=frigate_prior_active)
             max_score = max(max_score, bd.final_score)
 
         self._observe_calibration(max_score, had_bird_candidate=bool(bird_boxes))
@@ -394,12 +371,12 @@ class ScoringEngine:
         self._prev_gray = gray
         try:
             from scoring_telemetry import get_scoring_telemetry
-
+        except ImportError:
+            logger.debug("scoring telemetry module unavailable", exc_info=True)
+        else:
             get_scoring_telemetry().record_decisions(
                 self.last_decisions,
                 stats=self.last_stats,
             )
             get_scoring_telemetry().record_calibration(self._calibration.snapshot())
-        except Exception:
-            logger.debug("scoring telemetry update skipped", exc_info=True)
         return kept
