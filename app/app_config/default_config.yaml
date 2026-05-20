@@ -117,6 +117,21 @@ processor:
   openvino_binary_track_ultralytics_conf: 0.12
   openvino_binary_bird_score_scale: 1.0
   openvino_min_confidence_binary_bird: 0.28
+  # Phantom static objects (feeder, branches, background) — contrastive forensic 2026-05-20.
+  static_object_suppression_enabled: true
+  static_box_aspect_ratio_min: 0.8
+  static_box_aspect_ratio_max: 1.2
+  static_box_conf_threshold: 0.45
+  static_scene_bird_min_confidence: 0.5
+  static_scene_bird_like_min_confidence: 0.4
+  static_scene_bird_like_max_aspect: 0.7
+  static_scene_bird_like_min_aspect: 1.4
+  static_temporal_enabled: true
+  static_temporal_min_frames: 4
+  static_temporal_max_jitter_px: 5
+  static_temporal_max_area_px: 120000
+  static_temporal_hist_change_max: 0.04
+  static_giant_box_area_frac: 0.5
   # Устаревший алиас (читается, если min_confidence_binary_rodent не задан):
   # min_confidence_binary_squirrel: 0.24
   # Доля площади кадра (0..1): Bird с bbox ≤ порога — без видового классификатора. 0 = выкл. (рекомендуется для видов на кормушке).
