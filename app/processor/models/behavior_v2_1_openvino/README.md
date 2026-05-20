@@ -1,9 +1,5 @@
-# Behavior v2.1 OpenVINO (Canary)
+# DEPRECATED — experimental behavior video v2.1
 
-Trained on VPS 2026-05-19: Hub relaxed extract + synthetic WetlandBirds supplement.
+**Not used in production.** Active model: `behavior_v1_openvino`.
 
-- `video_model_kind`: `video_v2_1`
-- Manifest: `behavior_dataset_v2.1_merged.json` (64 tracklets, flying=8 prod+synthetic)
-- Train report: holdout Macro-F1 1.0 (n=8; flying recall on holdout was 0 — experimental)
-
-Config patch: `scripts/user-config-behavior-canary-v2_1.partial.yaml`
+Artifacts retained for audit; runtime config must use `active_video_model: video_v1`.
