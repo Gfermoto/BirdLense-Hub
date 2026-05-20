@@ -125,8 +125,9 @@ processor:
   static_square_hard_reject_max_conf: 0.38
   static_scene_bird_min_confidence: 0.5
   static_scene_bird_like_min_confidence: 0.4
-  static_scene_bird_like_max_aspect: 0.7
-  static_scene_bird_like_min_aspect: 1.4
+  # Не диапазон min..max: OR — вертикальная птица (w/h <= vertical_max) ИЛИ горизонтальная (w/h >= horizontal_min).
+  static_scene_bird_like_vertical_max_aspect: 0.7
+  static_scene_bird_like_horizontal_min_aspect: 1.4
   static_temporal_enabled: true
   static_temporal_min_frames: 4
   static_temporal_max_jitter_px: 5

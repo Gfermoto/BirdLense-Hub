@@ -42,6 +42,24 @@ def _parse_bool(cfg: Mapping[str, Any], key: str, default: bool) -> bool:
     return str(raw).strip().lower() in ("1", "true", "yes", "on")
 
 
+def _parse_aspect_threshold(
+    cfg: Mapping[str, Any],
+    *,
+    new_key: str,
+    legacy_key: str,
+    default: float,
+) -> float:
+    raw = cfg.get(new_key)
+    if raw is None:
+        raw = cfg.get(legacy_key)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return default
+
+
 @dataclass
 class StaticObjectFilterConfig:
     enabled: bool = True
@@ -51,8 +69,9 @@ class StaticObjectFilterConfig:
     static_square_hard_reject_max_conf: float = 0.38
     static_scene_bird_min_confidence: float = 0.5
     static_scene_bird_like_min_confidence: float = 0.4
-    static_scene_bird_like_max_aspect: float = 0.7
-    static_scene_bird_like_min_aspect: float = 1.4
+    # OR semantics: tall bird (w/h <= vertical_max) OR wide bird (w/h >= horizontal_min).
+    static_scene_bird_like_vertical_max_aspect: float = 0.7
+    static_scene_bird_like_horizontal_min_aspect: float = 1.4
     static_temporal_enabled: bool = True
     static_temporal_min_frames: int = 4
     static_temporal_max_jitter_px: float = 5.0
@@ -84,11 +103,17 @@ class StaticObjectFilterConfig:
             static_scene_bird_like_min_confidence=_parse_float(
                 runtime_cfg, "processor.static_scene_bird_like_min_confidence", 0.4
             ),
-            static_scene_bird_like_max_aspect=_parse_float(
-                runtime_cfg, "processor.static_scene_bird_like_max_aspect", 0.7
+            static_scene_bird_like_vertical_max_aspect=_parse_aspect_threshold(
+                runtime_cfg,
+                new_key="processor.static_scene_bird_like_vertical_max_aspect",
+                legacy_key="processor.static_scene_bird_like_max_aspect",
+                default=0.7,
             ),
-            static_scene_bird_like_min_aspect=_parse_float(
-                runtime_cfg, "processor.static_scene_bird_like_min_aspect", 1.4
+            static_scene_bird_like_horizontal_min_aspect=_parse_aspect_threshold(
+                runtime_cfg,
+                new_key="processor.static_scene_bird_like_horizontal_min_aspect",
+                legacy_key="processor.static_scene_bird_like_min_aspect",
+                default=1.4,
             ),
             static_temporal_enabled=_parse_bool(runtime_cfg, "processor.static_temporal_enabled", True),
             static_temporal_min_frames=_parse_int(runtime_cfg, "processor.static_temporal_min_frames", 4),
@@ -132,7 +157,10 @@ def _is_squareish(ar: float, cfg: StaticObjectFilterConfig) -> bool:
 
 
 def _is_bird_like_shape(ar: float, cfg: StaticObjectFilterConfig) -> bool:
-    return ar <= cfg.static_scene_bird_like_max_aspect or ar >= cfg.static_scene_bird_like_min_aspect
+    return (
+        ar <= cfg.static_scene_bird_like_vertical_max_aspect
+        or ar >= cfg.static_scene_bird_like_horizontal_min_aspect
+    )
 
 
 def _crop_hist_signature(frame_bgr: np.ndarray, box: dict[str, Any]) -> np.ndarray | None:
