@@ -110,8 +110,8 @@ processor:
   # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
   min_confidence_binary: 0.28  # NABirds+OV: 0.08 давало сотни FP на кормушке (см. docs/reports/nabirds_fp_forensic_20260520.md)
   min_confidence_binary_bird: 0.28
-  # DEPRECATED (nabirds-pivot): грызуны не детектируются; ключ оставлен для старого user_config.
-  min_confidence_binary_rodent: 0.24
+  # DEPRECATED (nabirds-pivot): Rodent не детектируется; ключ только для legacy user_config (игнорируется при detector_scope: [Bird]).
+  # min_confidence_binary_rodent: 0.24
   # OpenVINO NABirds: conf на IR часто ВЫШЕ torch, не ниже — scale 8.5 (legacy BRG) раздувает FP.
   # track(conf) cap — не ниже bird-порога; scale 1.0 = без искусственного завышения при фильтрации.
   openvino_binary_track_ultralytics_conf: 0.12
