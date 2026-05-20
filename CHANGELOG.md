@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **FP suppression (универсальный):** MOG2 background subtraction + scene-adaptive confidence (`scene_adaptive.py`); убраны site-specific `detection_ignore_masks` из дефолтов; маски — опционально (UI позже). Патч прода: `scripts/patch_prod_nuclear_user_config.py` (очищает emergency-полигоны).
+
 - **NABirds калибровка в репозитории и финальная валидация:** дефолты conf 0.28 / scale 1.0 / max_det 60 закреплены в `default_config.yaml`; deploy + отчёт `docs/reports/nabirds_final_validation.md` (accepted ↓~17×, FP сняты).
 
 - **NABirds OpenVINO ложные срабатывания на кормушке:** снято завышение `openvino_binary_bird_score_scale` (8.5→1.0), пороги Bird 0.08→0.28, `binary_track_max_det` 384→60, отключён `ultra_weak_box_salvage`. Отчёт: `docs/reports/nabirds_fp_forensic_20260520.md`.
