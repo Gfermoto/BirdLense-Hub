@@ -829,6 +829,7 @@ class TwoStageStrategy(DetectionStrategy):
                 "rejected_motion_verified": int(qr.get("rejected_motion_verified") or 0),
                 "rejected_global_static": int(qr.get("rejected_global_static") or 0),
                 "rejected_texture": int(qr.get("rejected_texture") or 0),
+                "rejected_background_subtraction": int(qr.get("rejected_background_subtraction") or 0),
                 "hard_negatives_saved": int(qr.get("hard_negatives_saved") or 0),
             }
 
@@ -962,6 +963,25 @@ class TwoStageStrategy(DetectionStrategy):
             inference_backend=inference_backend,
         )
 
+        if not hasattr(self, "_detection_quality") or self._detection_quality is None:
+            self._detection_quality = DetectionQualityPipeline(
+                DetectionQualityConfig.from_runtime_cfg(runtime_cfg)
+            )
+        else:
+            self._detection_quality.cfg = DetectionQualityConfig.from_runtime_cfg(runtime_cfg)
+        self._detection_quality.scene_analyzer.update(frame)
+        try:
+            base_bird_min = float(
+                runtime_cfg.get("processor.min_confidence_binary_bird")
+                or runtime_cfg.get("processor.min_confidence_binary")
+                or min_confidence
+            )
+        except (TypeError, ValueError):
+            base_bird_min = float(min_confidence)
+        scene_bird_floor = self._detection_quality.scene_analyzer.bird_confidence_floor(
+            base_bird_min
+        )
+
         def _collect_valid_boxes(
             *,
             min_box_px: int,
@@ -982,6 +1002,8 @@ class TwoStageStrategy(DetectionStrategy):
                     inference_backend=inference_backend,
                 )
                 eff_min = max(0.0, float(eff_min) - float(conf_delta))
+                if detector_label == "Bird":
+                    eff_min = max(float(eff_min), float(scene_bird_floor))
                 cmp_conf = float(conf)
                 if detector_label == "Bird" and _ov_bird_scale > 1.0:
                     cmp_conf *= _ov_bird_scale
@@ -1113,12 +1135,6 @@ class TwoStageStrategy(DetectionStrategy):
                         self._ultra_weak_salvage_hits,
                     )
 
-        if not hasattr(self, "_detection_quality") or self._detection_quality is None:
-            self._detection_quality = DetectionQualityPipeline(
-                DetectionQualityConfig.from_runtime_cfg(runtime_cfg)
-            )
-        else:
-            self._detection_quality.cfg = DetectionQualityConfig.from_runtime_cfg(runtime_cfg)
         pre_quality_n = len(valid_boxes)
         proc_cwd = str(Path(__file__).resolve().parents[1])
         valid_boxes = self._detection_quality.filter_boxes(

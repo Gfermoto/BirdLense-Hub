@@ -17,18 +17,11 @@ Session-level prod (post hotfix 0.28): avg `yolo_accepted` dropped ~17× vs 0.08
 
 ## Industry patterns implemented (Frigate / Blue Iris)
 
-### 1. Ignore masks & zones (`detection_masks.py`)
+### 1. Ignore masks & zones (`detection_masks.py`) — optional, not default
 
-- `processor.detection_ignore_masks`: polygons (normalized 0–1), permanent no-detect zones (branches, building corners).
+- `processor.detection_ignore_masks`: **empty by default**; advanced users / future UI editor only.
+- Core rejection: **MOG2** (`scene_adaptive.py`) + motion + texture + static temporal.
 - `processor.detection_interest_zones` + `detection_interest_zones_required`: optional ROI-only detection.
-
-**User setup** in `user_config.yaml`:
-
-```yaml
-processor:
-  detection_ignore_masks:
-    - [[0.72, 0.55], [0.95, 0.55], [0.95, 0.95], [0.72, 0.95]]  # feeder glare patch
-```
 
 ### 2. Motion-verified detection (`detection_quality.py`)
 
