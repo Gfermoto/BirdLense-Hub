@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **NABirds OpenVINO ложные срабатывания на кормушке:** снято завышение `openvino_binary_bird_score_scale` (8.5→1.0), пороги Bird 0.08→0.28, `binary_track_max_det` 384→60, отключён `ultra_weak_box_salvage`. Отчёт: `docs/reports/nabirds_fp_forensic_20260520.md`.
+
 ### Changed
 
 - **NABirds + OpenVINO GPU (бинарный детектор):** переход с BRG `best.pt` на **`best_NABirds.pt`** + IR **`best_NABirds_openvino_model/`** (parity gate 7/7). Дефолты: `processor.inference_backend=openvino`, `openvino_binary_enabled=true`, `detector_scope: [Bird]`. Персистентность: volume `processor/models/detection/weights` в `docker-compose.yml`, `make sync-models`, проверка в `deploy.sh`. Скрипты: `export_nabirds_to_openvino.py`, `validate_ov_parity.py`, `sync_detector_weights.sh`. Отчёты: `docs/reports/migration_final_report.md`, `docs/reports/nabirds_migration_20260520.md`.
