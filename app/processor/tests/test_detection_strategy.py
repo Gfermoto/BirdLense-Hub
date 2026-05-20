@@ -53,6 +53,30 @@ except ImportError:
     per_label_binary_conf_threshold = None  # type: ignore
     should_skip_bird_species_classifier = None  # type: ignore
 
+# Unit tests reuse frozen frames; motion/global-static gates would reject all boxes.
+_DETECT_TEST_QUALITY_OFF = {
+    "processor.static_object_suppression_enabled": False,
+    "processor.motion_verified_detection_enabled": False,
+    "processor.motion_global_static_reject_enabled": False,
+    "processor.detection_texture_filter_enabled": False,
+    "processor.hard_negatives_enabled": False,
+}
+
+
+def _detect_test_cfg_get(key, default=None):
+    if key in _DETECT_TEST_QUALITY_OFF:
+        return _DETECT_TEST_QUALITY_OFF[key]
+    return default
+
+
+def _detect_test_cfg_merge(extra: dict):
+    def _get(key, default=None):
+        if key in _DETECT_TEST_QUALITY_OFF:
+            return _DETECT_TEST_QUALITY_OFF[key]
+        return extra.get(key, default)
+
+    return _get
+
 
 class _FakeTensor:
     def __init__(self, values):
@@ -115,6 +139,18 @@ class TestDetectionStrategy(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger("TestDetectionStrategy")
+        self._cfg_patcher = None
+        try:
+            import app_config.app_config as ac_mod
+        except ImportError:
+            ac_mod = None
+        if ac_mod is not None:
+            self._cfg_patcher = patch.object(
+                ac_mod,
+                "app_config",
+                MagicMock(get=MagicMock(side_effect=_detect_test_cfg_get)),
+            )
+            self._cfg_patcher.start()
 
         # Resolve project root from this file location: app/processor/tests/ -> ../../../
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -137,6 +173,10 @@ class TestDetectionStrategy(unittest.TestCase):
             self.frame = np.zeros((720, 1280, 3), dtype=np.uint8)
         else:
             self.frame = cv2.imread(self.sample_img_path)
+
+    def tearDown(self):
+        if self._cfg_patcher is not None:
+            self._cfg_patcher.stop()
 
     def test_two_stage_strategy_integration(self):
         heavy_skip.maybe_skip_heavy(self)
@@ -444,7 +484,7 @@ class TestDetectionStrategy(unittest.TestCase):
         strategy._for_track_regen = False
         strategy.is_blurry = lambda crop: (False, 250.0)
 
-        mock_cfg = MagicMock(get=MagicMock(side_effect=lambda key, default=None: default))
+        mock_cfg = MagicMock(get=MagicMock(side_effect=_detect_test_cfg_get))
         with patch.object(ac_mod, "app_config", mock_cfg):
             results = strategy.detect(
                 detector_frame,
@@ -563,8 +603,16 @@ class TestTrackIdMissingBehavior(unittest.TestCase):
         strategy.max_classifications_per_frame = 2
         strategy._classification_index = 0
         strategy.is_blurry = lambda crop: (False, 250.0)
+        strategy._roi_sr = None
 
-        results = strategy.detect(frame, "bytetrack.yaml", 0.1)
+        try:
+            import app_config.app_config as ac_mod
+        except ImportError:
+            self.skipTest("app_config not available on PYTHONPATH")
+
+        mock_cfg = MagicMock(get=MagicMock(side_effect=_detect_test_cfg_get))
+        with patch.object(ac_mod, "app_config", mock_cfg):
+            results = strategy.detect(frame, "bytetrack.yaml", 0.1)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].track_id, 1)
 
@@ -655,10 +703,7 @@ class TestRegenSyntheticTrackIds(unittest.TestCase):
             "processor.binary_imgsz": 640,
         }
 
-        def _cfg_get(key, default=None):
-            return cfg_map.get(key, default)
-
-        mock_cfg = MagicMock(get=MagicMock(side_effect=_cfg_get))
+        mock_cfg = MagicMock(get=MagicMock(side_effect=_detect_test_cfg_merge(cfg_map)))
         with patch.object(ac_mod, "app_config", mock_cfg):
             r1 = strategy.detect(frame, "bytetrack.yaml", 0.12)
             r2 = strategy.detect(frame, "bytetrack.yaml", 0.12)
@@ -851,12 +896,13 @@ class TestTwoStageBirdSkipClassifier(unittest.TestCase):
         strategy._classification_index = 0
         strategy.is_blurry = lambda crop: (False, 250.0)
 
-        def _cfg_get(key, default=None):
-            if key == "processor.bird_skip_classifier_max_area_frac":
-                return 0.10
-            return default
-
-        mock_cfg = MagicMock(get=MagicMock(side_effect=_cfg_get))
+        mock_cfg = MagicMock(
+            get=MagicMock(
+                side_effect=_detect_test_cfg_merge(
+                    {"processor.bird_skip_classifier_max_area_frac": 0.10}
+                )
+            )
+        )
         with patch.object(ac_mod, "app_config", mock_cfg):
             results = strategy.detect(frame, "bytetrack.yaml", 0.1)
 
@@ -911,19 +957,17 @@ class TestSmallObjectAutoRelax(unittest.TestCase):
         strategy.classification_scheduler = "priority"
         strategy.binary_imgsz = 640
         strategy._for_track_regen = False
+        strategy._roi_sr = None
 
-        def _cfg_get(key, default=None):
-            mapping = {
-                "processor.auto_small_object_relax_enabled": True,
-                "processor.auto_small_object_relax_min_box_size_px": 12,
-                "processor.auto_small_object_relax_min_center_dist": 0.0,
-                "processor.auto_small_object_relax_conf_delta": 0.08,
-                "processor.auto_small_object_relax_max_candidates": 2,
-                "processor.min_confidence_binary_bird": 0.24,
-            }
-            return mapping.get(key, default)
-
-        mock_cfg = MagicMock(get=MagicMock(side_effect=_cfg_get))
+        relax_map = {
+            "processor.auto_small_object_relax_enabled": True,
+            "processor.auto_small_object_relax_min_box_size_px": 12,
+            "processor.auto_small_object_relax_min_center_dist": 0.0,
+            "processor.auto_small_object_relax_conf_delta": 0.08,
+            "processor.auto_small_object_relax_max_candidates": 2,
+            "processor.min_confidence_binary_bird": 0.24,
+        }
+        mock_cfg = MagicMock(get=MagicMock(side_effect=_detect_test_cfg_merge(relax_map)))
         with patch.object(ac_mod, "app_config", mock_cfg):
             results = strategy.detect(frame, "bytetrack.yaml", 0.24)
 

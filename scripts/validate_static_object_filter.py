@@ -122,8 +122,8 @@ def analyze_video(
         "accepted_after": after,
         "bird_proxy_before": bird_before,
         "bird_proxy_after": bird_after,
-        "rejected_static": filt.last_stats.get("rejected_static_objects", 0),
-        "rejected_phantom": filt.last_stats.get("rejected_phantom_boxes", 0),
+        "rejected_static": rej_static,
+        "rejected_phantom": rej_phantom,
     }
 
 

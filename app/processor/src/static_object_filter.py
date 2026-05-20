@@ -198,6 +198,8 @@ class StaticObjectFilter:
         cfg = self.cfg
         if not cfg.enabled or str(box.get("detector_label") or "") != "Bird":
             return None
+        if bool(box.get("relaxed_small_object")):
+            return None
 
         conf = float(box.get("conf") or 0.0)
         ar = _box_aspect(box)

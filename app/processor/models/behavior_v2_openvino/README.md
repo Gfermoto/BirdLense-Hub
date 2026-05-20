@@ -1,8 +1,5 @@
-# Behavior v2 OpenVINO (prod-retrained)
+# DEPRECATED — experimental behavior video v2
 
-Trained on Hub prod crops (`behavior_prod_v2` manifest), classes: `feeding`, `flying`.
+**Not used in production.** Active model: `behavior_v1_openvino` (`behavior.active_video_model: video_v1`).
 
-- `behavior_video_model.xml` / `.bin` — IR FP16, input `[1, 192]`
-- `behavior_video_export.json` — coef/intercept + labels
-
-Regenerate: `docs/ml/BEHAVIOR_MODEL.md`.
+Kept for reference / re-training only. Do not point `video_openvino_path` here without explicit canary approval.

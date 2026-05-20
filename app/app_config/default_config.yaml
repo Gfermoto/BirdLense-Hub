@@ -134,6 +134,24 @@ processor:
   static_temporal_hist_change_max: 0.04
   static_giant_box_area_frac: 0.5
   static_giant_box_side_frac: 0.42
+  static_temporal_min_seconds: 8
+  static_temporal_max_jitter_px: 2
+  detection_quality_assumed_fps: 7
+  # NVR-style masks (normalized 0..1 polygon vertices). Example ignore top-left branch:
+  # detection_ignore_masks:
+  #   - [[0.0, 0.0], [0.35, 0.0], [0.35, 0.25], [0.0, 0.25]]
+  detection_ignore_masks: []
+  detection_interest_zones: []
+  detection_interest_zones_required: false
+  motion_verified_detection_enabled: true
+  motion_verified_min_pixel_change: 6
+  motion_global_static_reject_enabled: true
+  motion_global_max_mean_absdiff: 1.5
+  detection_texture_filter_enabled: true
+  detection_texture_min_laplacian_var: 20
+  hard_negatives_enabled: true
+  hard_negatives_dir: "data/hard_negatives"
+  hard_negatives_max_per_frame: 8
   # Устаревший алиас (читается, если min_confidence_binary_rodent не задан):
   # min_confidence_binary_squirrel: 0.24
   # Доля площади кадра (0..1): Bird с bbox ≤ порога — без видового классификатора. 0 = выкл. (рекомендуется для видов на кормушке).
@@ -357,7 +375,8 @@ processor:
     weights_path: "models/behavior/behavior_logistic_export@v1.json"
     confidence_store_min: 0.2
     confidence_review_threshold: 0.45
-    # Video model (Behavior v2 #458/#460): OpenVINO IR under processor root.
+    # Active behavior video model (single source of truth). v2/v2_1 dirs are archived experiments.
+    active_video_model: "video_v1"
     video_model_kind: "video_v1"
     video_model_version: "video-v1"
     video_openvino_path: "models/behavior_v1_openvino"
