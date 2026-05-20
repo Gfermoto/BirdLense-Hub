@@ -965,10 +965,18 @@ class TwoStageStrategy(DetectionStrategy):
 
         if not hasattr(self, "_detection_quality") or self._detection_quality is None:
             self._detection_quality = DetectionQualityPipeline(
-                DetectionQualityConfig.from_runtime_cfg(runtime_cfg)
+                DetectionQualityConfig.from_runtime_cfg(runtime_cfg),
+                runtime_cfg=runtime_cfg,
             )
         else:
             self._detection_quality.cfg = DetectionQualityConfig.from_runtime_cfg(runtime_cfg)
+            self._detection_quality._scoring = None
+            if self._detection_quality.cfg.scoring_engine_enabled:
+                from scoring_engine import ScoringEngine, ScoringEngineConfig
+
+                self._detection_quality._scoring = ScoringEngine(
+                    ScoringEngineConfig.from_runtime_cfg(runtime_cfg)
+                )
         self._detection_quality.scene_analyzer.update(frame)
         try:
             base_bird_min = float(
@@ -1137,12 +1145,15 @@ class TwoStageStrategy(DetectionStrategy):
 
         pre_quality_n = len(valid_boxes)
         proc_cwd = str(Path(__file__).resolve().parents[1])
+        _po = profile_overrides if isinstance(profile_overrides, dict) else {}
+        frigate_prior = bool(_po.get("_scoring_frigate_prior_active", False))
         valid_boxes = self._detection_quality.filter_boxes(
             valid_boxes,
             frame_bgr=frame,
             frame_index=int(self._frame_index),
             processor_cwd=proc_cwd,
             bird_trust_floor=float(scene_bird_floor),
+            frigate_prior_active=frigate_prior,
         )
         _quality_reject_stats.update(self._detection_quality.last_stats)
         if pre_quality_n > len(valid_boxes):
@@ -1248,6 +1259,8 @@ class TwoStageStrategy(DetectionStrategy):
                 stats["last_classified_frame"] = self._frame_index
         detection_results = []
         for box in valid_boxes:
+            if bool(box.get("scoring_review_only")):
+                continue
             species_name = None
             crop = None
             blur_variance = None

@@ -116,8 +116,22 @@ processor:
   openvino_binary_track_ultralytics_conf: 0.28
   openvino_binary_bird_score_scale: 1.0
   openvino_min_confidence_binary_bird: 0.32
-  # Phantom static objects (branches, glare, background texture) — geometry + temporal, no fixed masks.
-  static_object_suppression_enabled: true
+  # --- SOTA 2.0: unified ScoringEngine (replaces legacy filter cascade) ---
+  scoring_engine_enabled: true
+  scoring_weight_conf: 0.45
+  scoring_weight_motion: 0.25
+  scoring_weight_shape: 0.15
+  scoring_weight_background: 0.15
+  scoring_frigate_prior_boost: 0.20
+  scoring_default_low_threshold: 0.38
+  scoring_default_high_threshold: 0.52
+  scoring_review_band_width: 0.14
+  scoring_calibration_frames: 60
+  scoring_calibration_max_noise_rate: 0.01
+  scoring_calibration_percentile: 0.95
+  frame_decision_trace_enabled: true
+  # Legacy cascade (ignored when scoring_engine_enabled=true)
+  static_object_suppression_enabled: false
   static_box_aspect_ratio_min: 0.8
   static_box_aspect_ratio_max: 1.2
   static_box_conf_threshold: 0.45
@@ -143,7 +157,7 @@ processor:
   detection_interest_zones: []
   detection_interest_zones_required: false
   # MOG2 background subtraction (OpenCV): reject boxes that sit on learned static background.
-  background_subtraction_enabled: true
+  background_subtraction_enabled: false
   background_subtraction_method: mog2
   background_subtraction_history: 400
   background_subtraction_var_threshold: 16
@@ -156,7 +170,7 @@ processor:
   scene_adaptive_static_boost: 0.08
   scene_adaptive_night_boost: 0.10
   scene_adaptive_conf_cap: 0.48
-  motion_verified_detection_enabled: true
+  motion_verified_detection_enabled: false
   motion_verified_min_pixel_change: 10
   motion_global_static_reject_enabled: true
   motion_global_max_mean_absdiff: 2.0
@@ -553,7 +567,7 @@ detection:
   min_confidence_to_store: 0.35
   # Frigate — fallback/подстраховка, не primary: по умолчанию не создаём финальную детекцию
   # только по MQTT без YOLO-трека.
-  frigate_standalone_when_no_yolo: true
+  frigate_standalone_when_no_yolo: false
   # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).
   frigate_standalone_require_blind_yolo: true
   frigate_standalone_blind_score_threshold: 0.7

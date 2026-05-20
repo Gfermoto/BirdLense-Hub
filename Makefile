@@ -682,6 +682,12 @@ sync-models:
 validate-nabirds-ov-parity:
 	@python3 "$(CURDIR)/scripts/validate_ov_parity.py"
 
+generate-golden-v2:
+	@python3 "$(CURDIR)/scripts/generate_golden_dataset_v2.py"
+
+validate-pipeline-golden:
+	@cd "$(CURDIR)/app/processor" && PYTHONPATH=src python3 -m pytest tests/test_pipeline_golden_gate.py tests/test_scoring_engine.py -q
+
 # Profile OpenVINO device/hint combos and emit ov_async_profile_report@v1 (#412).
 # Example:
 # VIDEOS_ROOT=app/data/recordings OUT=/tmp/ov_async_profile.json make ml-openvino-async-profile

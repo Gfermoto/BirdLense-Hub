@@ -12,7 +12,9 @@ import cv2
 import numpy as np
 
 from detection_masks import DetectionMaskConfig, DetectionMaskFilter
+from frame_decision_trace import log_frame_decisions
 from scene_adaptive import SceneAdaptiveAnalyzer, SceneAdaptiveConfig
+from scoring_engine import ScoringEngine, ScoringEngineConfig
 from static_object_filter import StaticObjectFilter, StaticObjectFilterConfig
 
 logger = logging.getLogger(__name__)
@@ -80,6 +82,7 @@ class DetectionQualityConfig:
     scene: SceneAdaptiveConfig = field(default_factory=SceneAdaptiveConfig)
     allow_relaxed_small_object: bool = False
     bird_base_min_confidence: float = 0.12
+    scoring_engine_enabled: bool = False
 
 
     @classmethod
@@ -141,17 +144,28 @@ class DetectionQualityConfig:
                 "processor.min_confidence_binary_bird",
                 _parse_float(runtime_cfg, "processor.min_confidence_binary", 0.12),
             ),
+            scoring_engine_enabled=_parse_bool(runtime_cfg, "processor.scoring_engine_enabled", False),
         )
 
 
 class DetectionQualityPipeline:
     """Post-NMS quality gate (Frigate/Blue Iris patterns)."""
 
-    def __init__(self, cfg: DetectionQualityConfig | None = None) -> None:
+    def __init__(
+        self,
+        cfg: DetectionQualityConfig | None = None,
+        *,
+        runtime_cfg: Mapping[str, Any] | None = None,
+    ) -> None:
         self.cfg = cfg or DetectionQualityConfig()
         self._mask = DetectionMaskFilter(self.cfg.mask)
         self._static = StaticObjectFilter(self.cfg.static)
         self._scene = SceneAdaptiveAnalyzer(self.cfg.scene)
+        rc = runtime_cfg if runtime_cfg is not None else {}
+        scoring_cfg = ScoringEngineConfig.from_runtime_cfg(rc)
+        if not self.cfg.scoring_engine_enabled:
+            scoring_cfg.enabled = False
+        self._scoring = ScoringEngine(scoring_cfg) if scoring_cfg.enabled else None
         self._prev_gray: np.ndarray | None = None
         self._track_roi_motion: dict[int, deque[float]] = defaultdict(
             lambda: deque(maxlen=max(2, int(self.cfg.motion_strict_frames)))
@@ -167,6 +181,9 @@ class DetectionQualityPipeline:
             "rejected_phantom_boxes": 0,
             "rejected_background_subtraction": 0,
             "hard_negatives_saved": 0,
+            "scoring_accepted": 0,
+            "scoring_review": 0,
+            "scoring_rejected": 0,
         }
 
     def reset(self) -> None:
@@ -175,6 +192,8 @@ class DetectionQualityPipeline:
         self._static.reset()
         self._scene.reset()
         self._log_samples = 0
+        if self._scoring is not None:
+            self._scoring.reset()
         for k in self.last_stats:
             self.last_stats[k] = 0
 
@@ -271,8 +290,30 @@ class DetectionQualityPipeline:
         frame_index: int,
         processor_cwd: str | None = None,
         bird_trust_floor: float | None = None,
+        frigate_prior_active: bool = False,
     ) -> list[dict[str, Any]]:
         self.last_stats = {k: 0 for k in self.last_stats}
+        if self._scoring is not None:
+            pre_n = len(boxes)
+            kept = self._scoring.filter_boxes(
+                boxes,
+                frame_bgr=frame_bgr,
+                frame_index=frame_index,
+                frigate_prior_active=frigate_prior_active,
+            )
+            self.last_stats["scoring_accepted"] = int(self._scoring.last_stats.get("scoring_accepted") or 0)
+            self.last_stats["scoring_review"] = int(self._scoring.last_stats.get("scoring_review") or 0)
+            self.last_stats["scoring_rejected"] = int(self._scoring.last_stats.get("scoring_rejected") or 0)
+            log_frame_decisions(self._scoring.last_decisions, frame_index=frame_index)
+            if pre_n > len(kept):
+                self._save_hard_negative(
+                    frame_bgr,
+                    {"crop_coords": (0, 0, 1, 1), "conf": 0.0, "track_id": -1},
+                    "scoring_engine_rejected",
+                    processor_cwd=processor_cwd,
+                )
+            return kept
+
         self._scene.update(frame_bgr)
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
         prev_gray = self._prev_gray

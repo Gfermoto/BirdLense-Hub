@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "synthetic": true,
+  "generated_at": "2026-05-20T00:00:00+00:00",
+  "clip_count": 24,
+  "clips": [
+    {"clip_id": "syn-bird-01", "is_bird": true, "difficulty": "easy", "category": "bird_confirmed", "probes": [{"raw_conf": 0.62, "expect": "accept"}]},
+    {"clip_id": "syn-bird-02", "is_bird": true, "difficulty": "easy", "category": "bird_confirmed", "probes": [{"raw_conf": 0.55, "expect": "accept"}]},
+    {"clip_id": "syn-bird-03", "is_bird": true, "difficulty": "hard", "category": "hard_scene", "probes": [{"raw_conf": 0.54, "expect": "accept"}]},
+    {"clip_id": "syn-bird-04", "is_bird": true, "difficulty": "hard", "category": "hard_scene", "probes": [{"raw_conf": 0.53, "expect": "accept"}]},
+    {"clip_id": "syn-bird-05", "is_bird": true, "difficulty": "easy", "category": "bird_confirmed", "probes": [{"raw_conf": 0.58, "expect": "accept"}]},
+    {"clip_id": "syn-bird-06", "is_bird": true, "difficulty": "easy", "category": "bird_confirmed", "probes": [{"raw_conf": 0.7, "expect": "accept"}]},
+    {"clip_id": "syn-bird-07", "is_bird": true, "difficulty": "hard", "category": "hard_scene", "probes": [{"raw_conf": 0.56, "expect": "accept"}]},
+    {"clip_id": "syn-bird-08", "is_bird": true, "difficulty": "easy", "category": "bird_confirmed", "probes": [{"raw_conf": 0.6, "expect": "accept"}]},
+    {"clip_id": "syn-bird-09", "is_bird": true, "difficulty": "easy", "category": "bird_confirmed", "probes": [{"raw_conf": 0.59, "expect": "accept"}]},
+    {"clip_id": "syn-bird-10", "is_bird": true, "difficulty": "easy", "category": "bird_confirmed", "probes": [{"raw_conf": 0.57, "expect": "accept"}]},
+    {"clip_id": "syn-bird-11", "is_bird": true, "difficulty": "hard", "category": "hard_scene", "probes": [{"raw_conf": 0.52, "expect": "accept"}]},
+    {"clip_id": "syn-bird-12", "is_bird": true, "difficulty": "easy", "category": "bird_confirmed", "probes": [{"raw_conf": 0.61, "expect": "accept"}]},
+    {"clip_id": "syn-noise-01", "is_bird": false, "difficulty": "easy", "category": "noise_fp", "probes": [{"raw_conf": 0.32, "expect": "reject"}]},
+    {"clip_id": "syn-noise-02", "is_bird": false, "difficulty": "easy", "category": "noise_fp", "probes": [{"raw_conf": 0.28, "expect": "reject"}]},
+    {"clip_id": "syn-noise-03", "is_bird": false, "difficulty": "easy", "category": "noise_fp", "probes": [{"raw_conf": 0.35, "expect": "reject"}]},
+    {"clip_id": "syn-noise-04", "is_bird": false, "difficulty": "hard", "category": "noise_fp", "probes": [{"raw_conf": 0.37, "expect": "reject"}]},
+    {"clip_id": "syn-noise-05", "is_bird": false, "difficulty": "easy", "category": "noise_fp", "probes": [{"raw_conf": 0.25, "expect": "reject"}]},
+    {"clip_id": "syn-noise-06", "is_bird": false, "difficulty": "easy", "category": "noise_fp", "probes": [{"raw_conf": 0.3, "expect": "reject"}]},
+    {"clip_id": "syn-noise-07", "is_bird": false, "difficulty": "hard", "category": "noise_fp", "probes": [{"raw_conf": 0.33, "expect": "reject"}]},
+    {"clip_id": "syn-noise-08", "is_bird": false, "difficulty": "easy", "category": "noise_fp", "probes": [{"raw_conf": 0.29, "expect": "reject"}]},
+    {"clip_id": "syn-noise-09", "is_bird": false, "difficulty": "easy", "category": "noise_fp", "probes": [{"raw_conf": 0.31, "expect": "reject"}]},
+    {"clip_id": "syn-noise-10", "is_bird": false, "difficulty": "easy", "category": "noise_fp", "probes": [{"raw_conf": 0.27, "expect": "reject"}]},
+    {"clip_id": "syn-noise-11", "is_bird": false, "difficulty": "easy", "category": "noise_fp", "probes": [{"raw_conf": 0.34, "expect": "reject"}]},
+    {"clip_id": "syn-noise-12", "is_bird": false, "difficulty": "easy", "category": "noise_fp", "probes": [{"raw_conf": 0.26, "expect": "reject"}]}
+  ]
+}
