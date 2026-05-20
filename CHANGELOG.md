@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **YOLO accepted=0 при raw>>0:** `global_frame_static` и static square reject не режут боксы с `conf >= bird_trust_floor`; дефолты static привязаны к `min_confidence_binary_bird`. Патчи: `patch_prod_recovery_user_config.py` (bypass), `patch_prod_nuclear_user_config.py` (balanced).
+
 - **FP suppression (универсальный):** MOG2 background subtraction + scene-adaptive confidence (`scene_adaptive.py`); убраны site-specific `detection_ignore_masks` из дефолтов; маски — опционально (UI позже). Патч прода: `scripts/patch_prod_nuclear_user_config.py` (очищает emergency-полигоны).
 
 - **NABirds калибровка в репозитории и финальная валидация:** дефолты conf 0.28 / scale 1.0 / max_det 60 закреплены в `default_config.yaml`; deploy + отчёт `docs/reports/nabirds_final_validation.md` (accepted ↓~17×, FP сняты).
