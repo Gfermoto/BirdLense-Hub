@@ -108,17 +108,15 @@ processor:
   # VideoSpecies с frames/оверлеем; виды потом можно поправить. false — прежнее «без конфликтов».
   track_regen_parallel_auto_with_manual: false
   # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
-  min_confidence_binary: 0.08  # Дневной дефолт: низкий порог на кормушке; ночь — adaptive_profiles.night
-  min_confidence_binary_bird: 0.08
+  min_confidence_binary: 0.28  # NABirds+OV: 0.08 давало сотни FP на кормушке (см. docs/reports/nabirds_fp_forensic_20260520.md)
+  min_confidence_binary_bird: 0.28
   # DEPRECATED (nabirds-pivot): грызуны не детектируются; ключ оставлен для старого user_config.
   min_confidence_binary_rodent: 0.24
-  # OpenVINO-only: Ultralytics даёт более низкие conf, чем torch на том же IR (#371 field parity).
-  # Ниже — без второго инференса: (1) ослабить track(conf), (2) при сравнении с порогом Bird умножить conf.
-  # В БД/трейсах остаётся сырая conf; torch-бэкенд ключи не читает. При лишних FP — поднять track или снизить scale.
-  openvino_binary_track_ultralytics_conf: 0.025
-  openvino_binary_bird_score_scale: 8.5
-  # Необязательно: явная подмена YAML-порога Bird только при OV (иначе = min_confidence_binary_bird).
-  openvino_min_confidence_binary_bird: null
+  # OpenVINO NABirds: conf на IR часто ВЫШЕ torch, не ниже — scale 8.5 (legacy BRG) раздувает FP.
+  # track(conf) cap — не ниже bird-порога; scale 1.0 = без искусственного завышения при фильтрации.
+  openvino_binary_track_ultralytics_conf: 0.12
+  openvino_binary_bird_score_scale: 1.0
+  openvino_min_confidence_binary_bird: 0.28
   # Устаревший алиас (читается, если min_confidence_binary_rodent не задан):
   # min_confidence_binary_squirrel: 0.24
   # Доля площади кадра (0..1): Bird с bbox ≤ порога — без видового классификатора. 0 = выкл. (рекомендуется для видов на кормушке).
@@ -142,8 +140,8 @@ processor:
         light_gate_min_brightness: 8
         light_gate_min_contrast: 6
         # Смягчить бинарный Bird-порог и small-object фильтры на ночных клипах.
-        min_confidence_binary: 0.08
-        min_confidence_binary_bird: 0.08
+        min_confidence_binary: 0.22
+        min_confidence_binary_bird: 0.22
         min_track_duration: 0.25
         min_confidence_to_process: 0.20
         min_box_size_px: 14
@@ -222,7 +220,7 @@ processor:
   # NMS в Ultralytics track(): выше — мягче подавление частично перекрывающихся боксов (плотная кормушка).
   binary_track_iou: 0.62
   # Потолок детекций на кадр (по умолчанию у YOLO часто 300).
-  binary_track_max_det: 384
+  binary_track_max_det: 60
   # Detect substream 704×576: птицы далеко — мелкие bbox; не душить как на main 2K.
   min_box_size_px: 14
   # Универсальный fallback для всех камер/доменов: если после базовых фильтров валидных боксов нет,
@@ -230,11 +228,11 @@ processor:
   auto_small_object_relax_enabled: true
   auto_small_object_relax_min_box_size_px: 18
   auto_small_object_relax_min_center_dist: 0.01
-  auto_small_object_relax_conf_delta: 0.10
-  auto_small_object_relax_max_candidates: 4
+  auto_small_object_relax_conf_delta: 0.05
+  auto_small_object_relax_max_candidates: 1
   # Если strict + small-object relax всё ещё пусто, сохранить 1 сверхслабый bird box как последний шанс.
-  ultra_weak_box_salvage_enabled: true
-  ultra_weak_box_salvage_min_confidence: 0.004
+  ultra_weak_box_salvage_enabled: false
+  ultra_weak_box_salvage_min_confidence: 0.20
   ultra_weak_box_salvage_max_candidates: 1
   # Если долго нет треков подряд, временно ослабить binary confidence floor.
   # Универсальный механизм для любых камер/доменов без ручных per-camera правил.
