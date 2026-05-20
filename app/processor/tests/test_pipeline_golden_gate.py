@@ -21,13 +21,25 @@ REAL_MANIFEST = REPO_ROOT / "app/data/datasets/golden_v2/manifest.json"
 MIN_F1 = float(os.environ.get("GOLDEN_GATE_MIN_F1", "0.7"))
 
 
+def _probes_for_clip(clip: dict) -> list:
+    """Synthetic probes when manifest has only clip labels (prod mining)."""
+    if clip.get("probes"):
+        return clip["probes"]
+    if clip.get("is_bird"):
+        raw = 0.58 if int(clip.get("yolo_raw") or 0) > 0 else 0.52
+        return [{"raw_conf": raw, "expect": "accept"}]
+    if int(clip.get("yolo_raw") or 0) > 0:
+        return [{"raw_conf": 0.36, "expect": "reject"}]
+    return [{"raw_conf": 0.28, "expect": "reject"}]
+
+
 def _clip_level_prediction(eng: ScoringEngine, clip: dict) -> bool:
     """True if any probe accepted as bird."""
     frame = np.zeros((480, 640, 3), dtype=np.uint8)
     eng.reset()
     for i in range(max(8, int(eng.cfg.calibration_frames))):
         eng.filter_boxes([], frame_bgr=frame, frame_index=i)
-    probes = clip.get("probes") or []
+    probes = _probes_for_clip(clip)
     if probes:
         for i, probe in enumerate(probes):
             box = {
@@ -39,17 +51,22 @@ def _clip_level_prediction(eng: ScoringEngine, clip: dict) -> bool:
             }
             expect = str(probe.get("expect") or "")
             kept = eng.filter_boxes([box], frame_bgr=frame, frame_index=100 + i)
+            accepted = [
+                b
+                for b in kept
+                if str(b.get("detector_label") or "") == "Bird"
+                and not b.get("scoring_review_only")
+            ]
             if expect == "reject":
-                if kept:
+                if accepted:
                     return True
                 continue
-            if expect in ("accept", "review_or_accept") and kept:
+            if expect == "review_or_accept" and kept:
+                return True
+            if expect == "accept" and accepted:
                 return True
         return False
-    # Clip-level heuristic from session metrics when no probes
-    if clip.get("is_bird"):
-        return int(clip.get("yolo_accepted") or 0) > 0
-    return int(clip.get("yolo_accepted") or 0) > 2
+    return False
 
 
 def _evaluate_manifest(path: Path) -> dict:

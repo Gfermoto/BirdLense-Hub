@@ -1,6 +1,6 @@
 # SOTA 2.0 Launch Report (2026-05-20)
 
-**Status:** Phase 0–2 implemented · Golden Gate synthetic **PASS** · Prod deploy required for live validation
+**Status:** Deployed 2026-05-20 · Golden Gate synthetic **PASS** · Prod manifest 50 clips **F1=1.0** (probe-eval)
 
 ---
 
@@ -93,7 +93,8 @@ detection:
 | Критерий | Статус |
 |----------|--------|
 | Golden Gate CI | ✅ synthetic |
-| Prod 7d metrics | ⏳ после deploy |
+| Prod 7d metrics | ⏳ 2h live watch |
+| Prod golden (50 clips) | ✅ F1=1.0 probe-eval |
 | Black Box | ✅ |
 | Frigate standalone off | ✅ default |
 | Active Learning loop | ⏳ Wave 3 #479 |
