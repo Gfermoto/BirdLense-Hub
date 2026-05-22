@@ -192,6 +192,10 @@ def build_detection_stack(
             "or BIRDLENSE_CLASSIFIER_OPENVINO_PATH).",
         )
 
+    from detector_class_map import apply_class_map_to_config
+
+    apply_class_map_to_config(app_config, processor_root, binary_path)
+
     regional_species = regional_species_override
     if regional_species is None:
         regional_species = app_config.get("processor.regional_species") or []

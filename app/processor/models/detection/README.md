@@ -7,7 +7,7 @@
 | **TrapperAI PyTorch** | `weights/trapper_ai_v02_2024.pt` | Бинарный детектор (Bird + Eurasian Red Squirrel) |
 | **TrapperAI OpenVINO** | `weights/trapper_ai_v02_2024_openvino_model/` | IR FP16 @640 для VPS iGPU |
 
-Конфиг: `processor.models.binary`, `processor.models.binary_openvino`, `detector_scope: []` (все классы), `detector_native_class_labels: true`, `binary_imgsz: 704`.
+Конфиг: `processor.models.binary`, `processor.models.binary_openvino`, `binary_imgsz: 704`. Классы — из `class_maps/trapper_ai_v02_2024.yaml` (allowlist `[0,5]`, scope Bird + Eurasian Red Squirrel); при старте пайплайна карта применяется в `detector_class_map.apply_class_map_to_config`.
 
 **Грызуны (Rodent)** не детектируются бинарником. EU-классификатор — `classification/weights/best.pt`.
 
