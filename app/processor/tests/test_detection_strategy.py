@@ -793,6 +793,19 @@ class TestBinaryConfHelpers(unittest.TestCase):
         self.assertAlmostEqual(binary_track_ultralytics_conf_floor(0.30, cfg, inference_backend="torch"), 0.22)
         self.assertAlmostEqual(binary_track_ultralytics_conf_floor(0.30, cfg, inference_backend="openvino"), 0.05)
 
+    def test_openvino_track_conf_cap_allows_trapper_floor(self):
+        if binary_track_ultralytics_conf_floor is None:
+            self.skipTest("detection_strategy import failed")
+        cfg = {
+            "processor.min_confidence_binary_bird": 0.35,
+            "processor.min_confidence_binary_squirrel": 0.32,
+            "processor.openvino_binary_track_ultralytics_conf": 0.30,
+        }
+        self.assertAlmostEqual(
+            binary_track_ultralytics_conf_floor(0.35, cfg, inference_backend="openvino"),
+            0.30,
+        )
+
     def test_openvino_bird_threshold_override(self):
         if per_label_binary_conf_threshold is None:
             self.skipTest("detection_strategy import failed")
