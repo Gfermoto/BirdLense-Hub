@@ -60,8 +60,10 @@ processor:
   # track_regen_min_confidence_binary_bird: 0.22
   # Отдельная стратегия детекции для batch-перегенерации треков (только two_stage: binary .pt + classifier .pt).
   track_regen_detection_strategy: two_stage
-  # Размер кадра для batch-перегенерации треков (px). Держите ≥ inference_lores_px — иначе YOLO на архиве слабее чем в live.
-  track_regen_lores_px: 640
+  # Размер кадра для batch-перегенерации (квадрат, legacy). При track_regen_lores_wh не используется.
+  track_regen_lores_px: 704
+  # Regen = live detect: 704×576 (как Go2RTC detect substream).
+  track_regen_lores_wh: [704, 576]
   # Offline regen: при boxes.id=None — склейка кадров по IoU; ниже порог терпимее к дрожащим bbox (меньше «рваных» track_id).
   track_regen_iou_id_fallback: true
   track_regen_iou_match_threshold: 0.22
@@ -83,9 +85,10 @@ processor:
   # не сужать YOLO/классификатор по processor.regional_species
   # (иначе пропадают виды вне списка — типично EU-синицы при US-ориентированном регионе).
   track_regen_ignore_regional_species: true
-  # Letterbox для live/file (кратно 32). Держите согласованным с processor.binary_imgsz.
-  # При OpenVINO: вход IR и binary_imgsz (+ night overrides) должны совпадать (bundled yolo11n_openvino — 640).
-  inference_lores_px: 640
+  # Нативный detect substream (Go2RTC/Frigate): без даунскейла в квадрат 640².
+  # Кадр 704×576 → YOLO один раз letterbox до binary_imgsz (704). См. inference_lores_px (legacy max side).
+  inference_lores_wh: [704, 576]
+  inference_lores_px: 704
   # Best-practice split pipeline: YOLO detect/track on lores, classifier/ReID crops from source frame.
   # false — классификатор/ ReID используют тот же lores-кадр (быстрее, но хуже детализация).
   classifier_use_source_frame: true
@@ -107,15 +110,16 @@ processor:
   # VideoSpecies с frames/оверлеем; виды потом можно поправить. false — прежнее «без конфликтов».
   track_regen_parallel_auto_with_manual: false
   # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
-  min_confidence_binary: 0.32
-  min_confidence_binary_bird: 0.32
+  # Trapper @ conf 0.25 на 1816/1819: визуально без ложных (showdown 2026-05).
+  min_confidence_binary: 0.25
+  min_confidence_binary_bird: 0.25
   # DEPRECATED (nabirds-pivot): Rodent не детектируется; ключ только для legacy user_config (игнорируется при detector_scope: [Bird]).
   # min_confidence_binary_rodent: 0.24
   # OpenVINO NABirds: conf на IR часто ВЫШЕ torch, не ниже — scale 8.5 (legacy BRG) раздувает FP.
   # track(conf) cap — не ниже bird-порога; scale 1.0 = без искусственного завышения при фильтрации.
-  openvino_binary_track_ultralytics_conf: 0.28
+  openvino_binary_track_ultralytics_conf: 0.25
   openvino_binary_bird_score_scale: 1.0
-  openvino_min_confidence_binary_bird: 0.32
+  openvino_min_confidence_binary_bird: 0.25
   # --- SOTA 2.0: unified ScoringEngine (replaces legacy filter cascade) ---
   scoring_engine_enabled: true
   scoring_weight_conf: 0.45
@@ -123,8 +127,8 @@ processor:
   scoring_weight_shape: 0.15
   scoring_weight_background: 0.15
   scoring_frigate_prior_boost: 0.20
-  scoring_default_low_threshold: 0.38
-  scoring_default_high_threshold: 0.52
+  scoring_default_low_threshold: 0.32
+  scoring_default_high_threshold: 0.48
   scoring_review_band_width: 0.14
   scoring_calibration_frames: 60
   scoring_calibration_max_noise_rate: 0.01
@@ -137,14 +141,13 @@ processor:
   static_box_conf_threshold: 0.45
   # Defaults align with min_confidence_binary_bird (code fallback); do not exceed bird floor.
   static_square_hard_reject_max_conf: 0.22
-  static_scene_bird_min_confidence: 0.32
+  static_scene_bird_min_confidence: 0.25
   static_scene_bird_like_min_confidence: 0.4
   # Не диапазон min..max: OR — вертикальная птица (w/h <= vertical_max) ИЛИ горизонтальная (w/h >= horizontal_min).
   static_scene_bird_like_vertical_max_aspect: 0.7
   static_scene_bird_like_horizontal_min_aspect: 1.4
   static_temporal_enabled: true
   static_temporal_min_frames: 4
-  static_temporal_max_jitter_px: 5
   static_temporal_max_area_px: 120000
   static_temporal_hist_change_max: 0.04
   static_giant_box_area_frac: 0.5
@@ -212,7 +215,7 @@ processor:
         min_box_size_px: 14
         min_center_dist: 0.01
         max_classifications_per_frame: 4
-        binary_imgsz: 640
+        binary_imgsz: 704
   # Предупреждение и счётчик slow_frame_processor_detect_total, если один detect() занимает дольше.
   frame_processing_warn_ms: 450
   # Offline track regen по mp4 обходит light gate (см. FrameProcessor.run skip_light_gate) — иначе ночные ролики без YOLO.
@@ -267,10 +270,11 @@ processor:
   generate_spectrogram_always: true
   # regional_species: [] — без локального сужения classifier scope; YOLO использует все классы
   regional_species: []
-  # Scope бинарного детектора (NABirds: один класс bird → Bird). Rodent/BRG — deprecated (#nabirds-pivot).
-  detector_scope: ["Bird"]
-  # Только класс 0 (bird) у best_NABirds.pt; грызуны не детектируются.
-  binary_predict_class_allowlist: [0]
+  # TrapperAI: все классы модели (0..17). Пустой scope = без фильтра по метке.
+  detector_scope: []
+  detector_native_class_labels: true
+  # null/[] = все class id в track/predict; список id — только эти классы YOLO.
+  binary_predict_class_allowlist: null
   # Планировщик классификации species внутри кадра: priority | round_robin.
   classification_scheduler: priority
   max_classifications_per_frame: 4
@@ -279,9 +283,8 @@ processor:
   # Центр bbox не ближе этого расстояния к краю кадра (норм. координаты 0..1).
   # Кормушка у кромки: 0.035–0.04; ещё ближе к краю — до 0.03.
   min_center_dist: 0.01
-  # Размер инференса бинарного YOLO (imgsz). Дефолт 640 = вход bundled OpenVINO (models/detection/README.md).
-  # Большее значение без переэкспорта IR при processor.inference_backend=openvino даёт падение процессора при старте.
-  binary_imgsz: 640
+  # Trapper OpenVINO: экспорт imgsz=704 (max side detect 704×576). IR = 704×704 letterbox внутри YOLO.
+  binary_imgsz: 704
   # NMS в Ultralytics track(): выше — мягче подавление частично перекрывающихся боксов (плотная кормушка).
   binary_track_iou: 0.62
   # Потолок детекций на кадр (по умолчанию у YOLO часто 300).
@@ -341,20 +344,19 @@ processor:
   # video.source=file: оставить папку сессии с записанным mp4 при 0 детекций (без create_video / кропов из пайплайна)
   keep_recording_when_no_detections: false
   detection_strategy: "two_stage"
-  # CV/ML (#367): NABirds + OpenVINO после parity gate (docs/ml/MODEL_EXPORT_GUIDE.md).
+  # Detector runtime (OpenVINO primary for production).
   inference_backend: openvino
   inference_device: cpu
   # false — экстренный стоп OV (вернуть torch + openvino_binary_enabled: false).
   openvino_binary_enabled: true
   classifier_inference_backend: openvino
   classifier_inference_device: cpu
-  # NABirds: один класс bird — контракт Bird-only (#368 off).
+  # Детектор-контракт не фиксируется на Bird-only: используем mixed class detector.
   detector_weight_contract: off
   models:
-    # Бинарный детектор SOTA (NABirds). BRG best.pt / best_openvino_model — архив, не использовать.
-    binary: "models/detection/weights/best_NABirds.pt"
-    # OpenVINO IR (parity gate): scripts/export_nabirds_to_openvino.py → best_NABirds_openvino_model/
-    binary_openvino: "models/detection/weights/best_NABirds_openvino_model"
+    # Candidate A (current default): TrapperAI v02.2024.
+    binary: "models/detection/weights/trapper_ai_v02_2024.pt"
+    binary_openvino: "models/detection/weights/trapper_ai_v02_2024_openvino_model"
     # EU-классификатор (~491 вид): скачивать как best.pt с Hugging Face gfermoto/birdlense-birds-eu
     classifier: "models/classification/weights/best.pt"
     # OpenVINO IR для классификатора (processor.classifier_inference_backend=openvino):
@@ -448,7 +450,7 @@ video:
   record_stream_codec: h264
   # Камеры — добавлять по одной. stream_name = имя потока в Go2RTC (main / запись, как Frigate record).
   # detect_stream_name — второй поток Go2RTC для motion + YOLO (как Frigate detect: ниже разрешение и FPS).
-  # Разрешение detect задаётся в go2rtc/Frigate/camera (например 704×576), не в Hub; Hub только подключает второй URL и letterbox в processor.inference_lores_px.
+  # Detect substream в Go2RTC/Frigate: 704×576@~7fps. Hub: inference_lores_wh [704,576] — без даунскейла в 640².
   cameras: []
   # Пример после добавления (ID и имена потоков задаёт пользователь в UI):
   # cameras:

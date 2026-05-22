@@ -212,7 +212,7 @@ def _build_weak_yolo_salvage_row(
     detector_label = "Bird"
     if detector_events:
         detector_label = str(detector_events[-1].get("label") or detector_label).strip() or "Bird"
-    species_name = detector_label if detector_label in {"Bird", "Rodent"} else "Bird"
+    species_name = detector_label if detector_label in {"Bird", "Rodent", "Animal"} else "Bird"
     return {
         "track_id": int(track_id) if str(track_id).lstrip("-").isdigit() else -9999,
         "accepted": True,

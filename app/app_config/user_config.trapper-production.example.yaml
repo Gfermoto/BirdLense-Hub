@@ -1,6 +1,5 @@
-# Устарело: см. user_config.trapper-production.example.yaml (704×576 + пороги Trapper).
-
-# Пример: Intel iGPU + OpenVINO TrapperAI v02.2024 (скопируйте в user_config.yaml).
+# TrapperAI v02.2024 — прод (скопируйте фрагменты в user_config.yaml).
+# Detect substream 704×576: без даунскейла в 640². OpenVINO IR: export --imgsz 704.
 
 processor:
   inference_backend: openvino
@@ -15,10 +14,22 @@ processor:
   detector_native_class_labels: true
   binary_predict_class_allowlist: null
   inference_lores_wh: [704, 576]
+  inference_lores_px: 704
   binary_imgsz: 704
+  track_regen_lores_wh: [704, 576]
   min_confidence_binary: 0.25
   min_confidence_binary_bird: 0.25
   openvino_min_confidence_binary_bird: 0.25
-  openvino_binary_bird_score_scale: 1.0
   openvino_binary_track_ultralytics_conf: 0.25
+  openvino_binary_bird_score_scale: 1.0
+  min_box_size_px: 14
+  min_center_dist: 0.01
+  binary_track_iou: 0.62
   binary_track_max_det: 60
+  min_confidence_to_process: 0.20
+  scoring_default_low_threshold: 0.32
+  scoring_default_high_threshold: 0.48
+
+video:
+  capture_backend: auto
+  encoding: intel

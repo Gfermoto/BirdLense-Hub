@@ -675,6 +675,17 @@ debug-ov-conversion-help:
 export-nabirds-openvino:
 	@python3 "$(CURDIR)/scripts/export_nabirds_to_openvino.py" --imgsz 640 --precision fp32
 
+# TrapperAI v02.2024 → OpenVINO @704 (detect substream 704×576). Нужен ultralytics (Docker: см. scripts/sync_trapper_weights.sh).
+export-trapper-openvino:
+	@cd "$(CURDIR)/app" && docker compose run --rm -T -v "$(CURDIR):/repo:rw" birdlense \
+	  bash -lc 'python3 /repo/scripts/export_trapper_to_openvino.py --skip-download --imgsz 704 --precision fp16'
+
+sync-trapper-weights:
+	@bash "$(CURDIR)/scripts/sync_trapper_weights.sh" --check
+
+sync-trapper-weights-vps: export-trapper-openvino
+	@bash "$(CURDIR)/scripts/sync_trapper_weights.sh" --check --rsync-vps
+
 # Проверка best_NABirds.pt + best_NABirds_openvino_model/ перед деплоем (см. scripts/sync_detector_weights.sh).
 sync-models:
 	@bash "$(CURDIR)/scripts/sync_detector_weights.sh" --check

@@ -49,6 +49,32 @@ def _maybe_enhance_low_res_frame(frame: np.ndarray) -> np.ndarray:
     return enhanced
 
 
+def frame_matches_target_wh(
+    frame: np.ndarray,
+    out_wh: tuple[int, int],
+    *,
+    tolerance_px: int = 2,
+) -> bool:
+    """True when frame already matches target WxH (skip redundant resize)."""
+    tw, th = int(out_wh[0]), int(out_wh[1])
+    ih, iw = frame.shape[:2]
+    tol = max(0, int(tolerance_px))
+    return abs(iw - tw) <= tol and abs(ih - th) <= tol
+
+
+def prepare_detector_frame(
+    frame: np.ndarray,
+    out_wh: tuple[int, int],
+    *,
+    skip_letterbox_when_size_matches: bool = True,
+) -> np.ndarray:
+    """Letterbox to ``out_wh`` unless frame is already native detect size."""
+    if skip_letterbox_when_size_matches and frame_matches_target_wh(frame, out_wh):
+        out = _maybe_enhance_low_res_frame(frame)
+        return np.ascontiguousarray(out)
+    return letterbox_bgr_to_wh(frame, out_wh)
+
+
 def letterbox_bgr_to_wh(frame: np.ndarray, out_wh: tuple[int, int]) -> np.ndarray:
     """Letterbox до ``out_wh=(width,height)``. Сохраняет соотношение сторон, pad 114 BGR."""
     import cv2

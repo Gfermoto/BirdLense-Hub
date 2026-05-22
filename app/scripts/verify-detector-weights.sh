@@ -25,41 +25,48 @@ else
   BASE="${BASE:-$REPO/app/processor/models/detection/weights}"
 fi
 
-if [[ ! -d "$BASE/best_openvino_model" ]]; then
-  echo "ERR: нет каталога $BASE/best_openvino_model" >&2
+PT_FILE="${PT_FILE:-$BASE/trapper_ai_v02_2024.pt}"
+OV_DIR="${OV_DIR:-$BASE/trapper_ai_v02_2024_openvino_model}"
+
+if [[ ! -f "$PT_FILE" ]]; then
+  echo "ERR: нет файла $PT_FILE" >&2
+  exit 1
+fi
+if [[ ! -d "$OV_DIR" ]]; then
+  echo "ERR: нет каталога $OV_DIR" >&2
   exit 1
 fi
 
 echo "=== detector weights BASE=$BASE ==="
-ls -la "$BASE" "$BASE/best_openvino_model/"
+ls -la "$BASE" "$OV_DIR/"
 echo ""
 echo "=== sha256sum ==="
-sha256sum "$BASE/best.pt"
-if [[ -f "$BASE/last.pt" ]]; then
-  sha256sum "$BASE/last.pt"
-fi
+sha256sum "$PT_FILE"
 sha256sum \
-  "$BASE/best_openvino_model/best.bin" \
-  "$BASE/best_openvino_model/best.xml" \
-  "$BASE/best_openvino_model/metadata.yaml"
+  "$OV_DIR/best.bin" \
+  "$OV_DIR/best.xml"
+if [[ -f "$OV_DIR/metadata.yaml" ]]; then
+  sha256sum "$OV_DIR/metadata.yaml"
+fi
 echo ""
 
-for f in best.bin best.xml metadata.yaml; do
-  [[ -f "$BASE/best_openvino_model/$f" ]] || {
+for f in best.bin best.xml; do
+  [[ -f "$OV_DIR/$f" ]] || {
     echo "ERR: отсутствует $f" >&2
     exit 1
   }
 done
 
-grep -qE '^imgsz:|^\- 640' "$BASE/best_openvino_model/metadata.yaml" || true
-
-echo "=== metadata names (YAML) ==="
-grep -E '^(names:|  [0-9]+:|^    - 640)' "$BASE/best_openvino_model/metadata.yaml" || true
-echo ""
+if [[ -f "$OV_DIR/metadata.yaml" ]]; then
+  grep -qE '^imgsz:|^\- 640|^\- 960|^\- 1024' "$OV_DIR/metadata.yaml" || true
+  echo "=== metadata names (YAML) ==="
+  grep -E '^(names:|  [0-9]+:|^    - 640|^    - 960|^    - 1024)' "$OV_DIR/metadata.yaml" || true
+  echo ""
+fi
 
 if [[ -n "$REPO" && -f "$REPO/Makefile" ]]; then
   echo "=== make validate-weights (binary) ==="
-  (cd "$REPO" && make validate-weights BINARY="$BASE/best.pt" 2>&1)
+  (cd "$REPO" && make validate-weights BINARY="$PT_FILE" 2>&1)
 else
   echo "=== validate-weights: пропуск (нет репозитория с Makefile; обычно контейнер) ==="
   echo "    На VPS с полным деревом: запустите с хоста ~/BirdLense/app/scripts/$(basename "$0")"
