@@ -115,6 +115,8 @@ RSYNC_FILTER_PROTECT=(
   --filter "P app/processor/models/detection/weights/*.pt"
   --filter "P app/processor/models/detection/weights/best_NABirds_openvino_model/"
   --filter "P app/processor/models/detection/weights/best_NABirds_openvino_model/***"
+  --filter "P app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/"
+  --filter "P app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/***"
   --filter "P app/processor/models/classification/weights/*.pt"
   --filter "P app/app_config/user_config.yaml"
 )
@@ -134,18 +136,29 @@ if [[ $sync_ok -eq 0 ]]; then
 fi
 # Предупреждения rsync «cannot delete non-empty directory» — часто лишние каталоги на сервере вне дерева репо; при необходимости удалите вручную по SSH.
 
-# 1.1 NABirds + OpenVINO IR (volume ./processor/models/detection/weights — без этого recreate обнуляет IR)
-echo "1.1 Проверка весов бинарного детектора (NABirds)..."
-(cd "${REPO_ROOT}" && bash scripts/sync_detector_weights.sh --check) || {
-  echo "Ошибка: локально нет best_NABirds.pt или best_NABirds_openvino_model/ (best.xml+best.bin)." >&2
-  echo "  make sync-models  или  make export-nabirds-openvino" >&2
-  exit 1
-}
-if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
-  ssh ${SSH_OPTS} "${HOST}" "cd '${REMOTE_DIR}' && bash scripts/sync_detector_weights.sh --check" || {
-    echo "Ошибка: на сервере после rsync нет полного набора весов NABirds OpenVINO." >&2
+# 1.1 Trapper (prod) или legacy NABirds OpenVINO IR
+echo "1.1 Проверка весов бинарного детектора..."
+if (cd "${REPO_ROOT}" && bash scripts/sync_trapper_weights.sh --check); then
+  echo "  TrapperAI @704: OK (локально)"
+  if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
+    ssh ${SSH_OPTS} "${HOST}" "cd '${REMOTE_DIR}' && bash scripts/sync_trapper_weights.sh --check" || {
+      echo "Ошибка: на сервере нет trapper_ai_v02_2024_openvino_model @704." >&2
+      exit 1
+    }
+    echo "  TrapperAI @704: OK (сервер)"
+  fi
+else
+  (cd "${REPO_ROOT}" && bash scripts/sync_detector_weights.sh --check) || {
+    echo "Ошибка: нет Trapper @704 и нет best_NABirds OpenVINO." >&2
+    echo "  make export-trapper-openvino  или  make export-nabirds-openvino" >&2
     exit 1
   }
+  if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
+    ssh ${SSH_OPTS} "${HOST}" "cd '${REMOTE_DIR}' && bash scripts/sync_detector_weights.sh --check" || {
+      echo "Ошибка: на сервере после rsync нет полного набора весов NABirds OpenVINO." >&2
+      exit 1
+    }
+  fi
 fi
 
 # 1.5 Секреты в app/.env

@@ -1,30 +1,34 @@
 # Detection weights (`detection/weights/`)
 
-## Production default (NABirds pivot, 2026-05)
+## Production (2026-05)
 
 | Артефакт | Путь | Назначение |
-|----------|------|------------|
-| PyTorch | `weights/best_NABirds.pt` | **Единственный** бинарный детектор птиц (класс `bird` → Bird) |
-| OpenVINO | `weights/nabirds_openvino_v1/` | IR после `validate_ov_parity.py` (parity <5%) |
-| Архив BRG | `weights/best.pt`, `weights/best_openvino_model/` | **Deprecated** — слепота на рассвете, несовпадение grid OV |
+| -------- | ---- | ---------- |
+| **TrapperAI PyTorch** | `weights/trapper_ai_v02_2024.pt` | Бинарный детектор (Bird + Eurasian Red Squirrel) |
+| **TrapperAI OpenVINO** | `weights/trapper_ai_v02_2024_openvino_model/` | IR FP16 @640 для VPS iGPU |
 
-Конфиг: `processor.models.binary`, `processor.models.binary_openvino`, `processor.detector_scope: [Bird]`, `processor.binary_predict_class_allowlist: [0]`.
+Конфиг: `processor.models.binary`, `processor.models.binary_openvino`, `detector_scope: []` (все классы), `detector_native_class_labels: true`, `binary_imgsz: 704`.
 
-**Грызуны (Rodent)** больше не детектируются бинарником. EU-классификатор (`classification/weights/best.pt`) — виды птиц.
+**Грызуны (Rodent)** не детектируются бинарником. EU-классификатор — `classification/weights/best.pt`.
+
+## Архив (не прод)
+
+| Артефакт | Путь | Примечание |
+| -------- | ---- | ---------- |
+| CTDR Species v3 | `weights/ctdr_species_v3.pt`, `ctdr_species_v3_openvino_model/` | Отклонён после showdown; оставлен для экспериментов |
 
 ## Экспорт OpenVINO
 
 ```bash
-python3 scripts/export_nabirds_to_openvino.py --imgsz 640 --precision fp32
-python3 scripts/validate_ov_parity.py --ov-dir app/processor/models/detection/weights/nabirds_openvino_v1
+python3 scripts/export_trapper_to_openvino.py --imgsz 640 --precision fp16
 ```
 
 См. [`docs/ml/MODEL_EXPORT_GUIDE.md`](../../../docs/ml/MODEL_EXPORT_GUIDE.md).
 
 ## Совместимость / диагностика
 
-- **`yolo11n.pt`** + `binary_predict_class_allowlist: [14]` — legacy COCO bird, не прод-дефолт.
 - **`compare_detector_bboxes.py`**, **`debug_ov_conversion.py`** — parity и регрессии.
+- **`app/scripts/verify-detector-weights.sh`** — sha256 Trapper PT + OV IR.
 
 ## EU classifier (отдельно)
 

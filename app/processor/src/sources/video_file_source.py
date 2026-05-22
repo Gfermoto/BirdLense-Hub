@@ -8,7 +8,7 @@ from pathlib import Path
 
 import cv2
 
-from yolo_geometry import letterbox_bgr_to_wh
+from yolo_geometry import letterbox_bgr_to_wh, prepare_detector_frame
 
 
 class VideoFileSource:
@@ -427,7 +427,10 @@ class VideoPlaylistSource:
                 frame_main = cv2.resize(frame, self.main_size)
                 self.out.write(frame_main)
                 self._recorded_frames += 1
-            return letterbox_bgr_to_wh(frame, (int(self.lores_size[0]), int(self.lores_size[1])))
+            return prepare_detector_frame(
+                frame,
+                (int(self.lores_size[0]), int(self.lores_size[1])),
+            )
 
         if self.realtime_simulation:
             now = time.time()
@@ -471,7 +474,7 @@ class VideoPlaylistSource:
 
         if result_frame is None:
             return None
-        return letterbox_bgr_to_wh(
+        return prepare_detector_frame(
             result_frame,
             (int(self.lores_size[0]), int(self.lores_size[1])),
         )

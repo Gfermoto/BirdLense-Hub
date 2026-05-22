@@ -9,7 +9,10 @@ __pycache__
 backups-recovered/
 app/data/recordings
 app/data/stress_clips/*.mp4
+app/data/audit_clips/*.mp4
 app/data/dataset/
+# Локальные датасеты/артефакты бенчей (не коммитить)
+app/data/datasets/
 app/data/cache/
 app/data/.ultralytics/
 app/data/processor/
@@ -125,24 +128,16 @@ app/processor/models/classification/weights/*
 !app/processor/models/detection/
 app/processor/models/detection/*
 !app/processor/models/detection/README.md
-# BRG binary detector shipped with Hub + matching OpenVINO IR (rest of weights/ — локально).
+!app/processor/models/detection/class_maps/
+!app/processor/models/detection/class_maps/*.yaml
+# Детекторные веса: в git только манифесты IR; .pt/.bin — rsync/deploy (см. scripts/sync_trapper_weights.sh).
 !app/processor/models/detection/weights/
 app/processor/models/detection/weights/*
 app/processor/models/detection/weights/snapshots/**
-!app/processor/models/detection/weights/best.pt
-!app/processor/models/detection/weights/best_NABirds.pt
-!app/processor/models/detection/weights/last.pt
-!app/processor/models/detection/weights/best_openvino_model/
-!app/processor/models/detection/weights/best_NABirds_openvino_model/
-app/processor/models/detection/weights/best_NABirds_openvino_model/*
-!app/processor/models/detection/weights/best_NABirds_openvino_model/best.bin
-!app/processor/models/detection/weights/best_NABirds_openvino_model/best.xml
-!app/processor/models/detection/weights/best_NABirds_openvino_model/metadata.yaml
-!app/processor/models/detection/weights/best_NABirds_openvino_model/export_report.json
-app/processor/models/detection/weights/best_openvino_model/*
-!app/processor/models/detection/weights/best_openvino_model/best.bin
-!app/processor/models/detection/weights/best_openvino_model/best.xml
-!app/processor/models/detection/weights/best_openvino_model/metadata.yaml
+!app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/
+app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/*
+!app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/metadata.yaml
+!app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/export_report.json
 
 # Windows / экспорт мусор рядом с весами
 **/Zone.Identifier
@@ -260,3 +255,13 @@ app/web/instance/
 # Локальный scratch и копии диагностики у корня репо (не путать с app/data/)
 /tmp/
 /data/
+
+# Отчёты и визуализации бенчей (в git — только выбранные .md, см. git add docs/reports/*.md)
+docs/reports/showdown_viz/
+docs/reports/trapper_test_1952/*.jpg
+docs/reports/trapper_test_1952/collage_top10.jpg
+docs/reports/**/*.jpg
+docs/reports/**/*.jpeg
+docs/reports/**/*.png
+docs/reports/**/*.log
+docs/reports/**/results_visual/

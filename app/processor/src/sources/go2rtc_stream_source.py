@@ -13,7 +13,7 @@ import time
 import cv2
 import numpy as np
 
-from yolo_geometry import letterbox_bgr_to_wh
+from yolo_geometry import prepare_detector_frame
 
 from .streaming_server import start_streaming_server
 
@@ -323,7 +323,7 @@ class Go2RTCStreamSource:
         if self._capture_stream_url != self.stream_url:
             self.logger.info(
                 "Go2RTC dual-stream: capture (motion/YOLO/MJPEG) ≠ record (main RTSP). "
-                "YOLO still gets letterbox to inference size after decode."
+                "YOLO uses inference_lores_wh / letterbox only when decode size differs."
             )
 
         self._connect()
@@ -642,7 +642,7 @@ class Go2RTCStreamSource:
             self._last_classifier_source_frame = frame
         else:
             self._last_classifier_source_frame = frame
-            frame_lores = letterbox_bgr_to_wh(
+            frame_lores = prepare_detector_frame(
                 frame,
                 (int(self.lores_size[0]), int(self.lores_size[1])),
             )

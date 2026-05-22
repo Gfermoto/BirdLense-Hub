@@ -49,6 +49,8 @@ def validate_detector_weight_contract(
         m = "warn"
     if m == "off":
         return
+    if not detector_scope:
+        return
 
     nd = coerce_detector_names(names)
     normalized_set = {normalize_detector_label(v) for v in nd.values()}

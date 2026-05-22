@@ -777,6 +777,10 @@ class TestBinaryConfHelpers(unittest.TestCase):
         self.assertAlmostEqual(per_label_binary_conf_threshold("Bird", 0.3, cfg), 0.5)
         self.assertAlmostEqual(per_label_binary_conf_threshold("Rodent", 0.3, cfg), 0.2)
         self.assertAlmostEqual(per_label_binary_conf_threshold("Squirrel", 0.3, cfg), 0.2)
+        self.assertAlmostEqual(
+            per_label_binary_conf_threshold("Eurasian Red Squirrel", 0.3, cfg),
+            0.2,
+        )
 
     def test_openvino_track_conf_cap_lowers_floor(self):
         if binary_track_ultralytics_conf_floor is None:

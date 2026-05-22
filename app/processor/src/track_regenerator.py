@@ -14,7 +14,7 @@ from contextlib import contextmanager
 import cv2
 
 from shared.ctor_kwarg_guard import assert_ctor_kwargs
-from yolo_geometry import letterbox_bgr_to_wh
+from yolo_geometry import prepare_detector_frame
 
 logger = logging.getLogger(__name__)
 _TRACK_REGEN_INFER_LOCK = threading.RLock()
@@ -195,7 +195,10 @@ def process_video_for_tracks(
                         break
                     frame_time_sec = frame_count / fps
                     # Не stretch в lores_size: иначе на 16:9 клипах YOLO+ByteTrack почти пустой (см. yolo_geometry).
-                    frame_resized = letterbox_bgr_to_wh(frame, (int(lores_size[0]), int(lores_size[1])))
+                    frame_resized = prepare_detector_frame(
+                        frame,
+                        (int(lores_size[0]), int(lores_size[1])),
+                    )
                     if serialize_infer:
                         with _TRACK_REGEN_INFER_LOCK:
                             has_detections = frame_processor.run(

@@ -6,7 +6,11 @@ from typing import Any, List, Mapping, Optional, Sequence, Tuple
 from dataclasses import dataclass
 import numpy as np
 import cv2
-from detector_labels import normalize_detector_label
+from detector_labels import (
+    detector_native_class_labels_enabled,
+    normalize_detector_label,
+    resolve_detector_scope_set,
+)
 from inference.torch_backend import load_yolo_classifier, load_yolo_detector
 from inference.weight_contract import validate_detector_weight_contract
 from processor_runtime_profile import RuntimeProfileConfigOverlay
@@ -69,11 +73,19 @@ def coerce_bgr_frame(
 
 
 def _rodent_binary_threshold_raw(config: Mapping[str, Any]) -> Any:
-    """DEPRECATED (nabirds-pivot): Rodent detection disabled. Kept for legacy YAML only."""
+    """Порог для белки/грызунов (legacy Rodent + Trapper ``Eurasian Red Squirrel``)."""
     raw = config.get("processor.min_confidence_binary_rodent")
     if raw is not None:
         return raw
     return config.get("processor.min_confidence_binary_squirrel")
+
+
+def _is_squirrel_detector_label(detector_label: str) -> bool:
+    """Trapper native: ``Eurasian Red Squirrel``; legacy: Rodent / Squirrel."""
+    d = " ".join(str(detector_label or "").strip().lower().split())
+    if d in ("rodent", "squirrel"):
+        return True
+    return "squirrel" in d
 
 
 def _parse_optional_processor_float(config: Mapping[str, Any], key: str) -> float | None:
@@ -200,7 +212,7 @@ def per_label_binary_conf_threshold(
     rod_m = float(s_raw) if s_raw is not None else base
     if detector_label == "Bird":
         return bird_m
-    if detector_label in {"Rodent", "Squirrel"}:
+    if _is_squirrel_detector_label(detector_label):
         return rod_m
     return base
 
@@ -544,15 +556,18 @@ class TwoStageStrategy(DetectionStrategy):
         from app_config.app_config import app_config
 
         self._roi_sr = build_roi_super_resolution(app_config)
-        raw_scope = detector_scope or ["Bird"]
-        self.detector_scope = {normalize_detector_label(name) for name in raw_scope if str(name or "").strip()}
+        self._detector_native_labels = detector_native_class_labels_enabled(app_config)
+        self.detector_scope = resolve_detector_scope_set(detector_scope, app_config)
+        scope_log = "ALL" if self.detector_scope is None else sorted(self.detector_scope)
 
         self.logger.info(
-            "TwoStageStrategy: detector_backend=%s classifier_backend=%s detector_weight_contract=%s detector_scope=%s",
+            "TwoStageStrategy: detector_backend=%s classifier_backend=%s detector_weight_contract=%s "
+            "detector_scope=%s native_class_labels=%s",
             self.inference_backend,
             self.classifier_inference_backend,
             self.weight_contract_mode,
-            sorted(self.detector_scope),
+            scope_log,
+            self._detector_native_labels,
         )
 
         if self.inference_backend in ("torch", "openvino") and self.classifier_inference_backend in (
@@ -616,7 +631,7 @@ class TwoStageStrategy(DetectionStrategy):
         return name.replace("_OR_", "/").replace("_", " ")
 
     def _normalize_detector_label(self, name: str) -> str:
-        return normalize_detector_label(name)
+        return normalize_detector_label(name, native=bool(getattr(self, "_detector_native_labels", False)))
 
     def _binary_class_allowlist(self, runtime_cfg: Mapping[str, Any]) -> set[int] | None:
         """Классы бинарного детектора, которые разрешено передавать в predict/track (пустой конфиг → без фильтра)."""
@@ -793,6 +808,9 @@ class TwoStageStrategy(DetectionStrategy):
             "tracker": tracker_config,
         }
         _tkw.update(build_binary_track_ultralytics_extras(runtime_cfg))
+        _allow = self._binary_class_allowlist(runtime_cfg)
+        if _allow is not None:
+            _tkw["classes"] = sorted(_allow)
         _bdev = getattr(self, "_binary_track_device", None)
         if _bdev:
             _tkw["device"] = _bdev
@@ -850,6 +868,8 @@ class TwoStageStrategy(DetectionStrategy):
                 "imgsz": imgsz,
                 "conf": max(0.001, min(0.20, fallback_conf)),
             }
+            if _allow is not None:
+                _pkw["classes"] = sorted(_allow)
             if _bdev:
                 _pkw["device"] = _bdev
             pred = self.binary_model.predict(frame, **_pkw)
@@ -1023,7 +1043,7 @@ class TwoStageStrategy(DetectionStrategy):
                     max_box_area_norm=max_box_area_norm,
                 ):
                     continue
-                if self.detector_scope and detector_label not in self.detector_scope:
+                if self.detector_scope is not None and detector_label not in self.detector_scope:
                     continue
 
                 x1, y1, x2, y2 = map(int, bbox_abs)
@@ -1101,7 +1121,7 @@ class TwoStageStrategy(DetectionStrategy):
                 detector_label = self._normalize_detector_label(detector_name)
                 if detector_label != "Bird":
                     continue
-                if self.detector_scope and detector_label not in self.detector_scope:
+                if self.detector_scope is not None and detector_label not in self.detector_scope:
                     continue
                 conf_f = float(conf or 0.0)
                 if conf_f < ultra_min_conf:
