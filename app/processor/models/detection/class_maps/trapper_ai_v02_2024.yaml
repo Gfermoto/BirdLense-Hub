@@ -1,13 +1,15 @@
-# TrapperAI v02.2024 (YOLOv8-m) — все 18 классов нативно
+# TrapperAI v02.2024 (YOLOv8-m) — прод: только птица + белка (остальные id в ignore_class_ids).
 model_id: trapper_ai_v02_2024
 weights_pt: models/detection/weights/trapper_ai_v02_2024.pt
 weights_openvino: models/detection/weights/trapper_ai_v02_2024_openvino_model
 export_imgsz: 704
-our_scope: all
+our_scope:
+  - bird
+  - squirrel
 class_to_scope:
   bird: [0]
-  mammal: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
-ignore_class_ids: []
+  squirrel: [5]
+ignore_class_ids: [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 native_names:
   0: Bird
   1: Cat
