@@ -137,7 +137,7 @@ def _openvino_binary_track_ultralytics_conf_cap(
     cap = _parse_optional_processor_float(config, "processor.openvino_binary_track_ultralytics_conf")
     if cap is None:
         return stock_floor
-    cap = max(0.01, min(0.25, float(cap)))
+    cap = max(0.01, min(0.50, float(cap)))
     return min(float(stock_floor), cap)
 
 

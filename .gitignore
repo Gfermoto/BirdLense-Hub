@@ -143,6 +143,7 @@ app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/*
 **/Zone.Identifier
 !app/processor/models/tracker/
 app/processor/models/tracker/*
+!app/processor/models/tracker/README.md
 !app/processor/models/tracker/*.yaml
 !app/processor/models/behavior/
 app/processor/models/behavior/*

@@ -34,7 +34,9 @@ TRAPPER_PROCESSOR = {
     "min_confidence_binary_squirrel": 0.32,
     "min_confidence_binary_rodent": 0.32,
     "openvino_min_confidence_binary_bird": 0.35,
-    "openvino_binary_track_ultralytics_conf": 0.32,
+    "openvino_binary_track_ultralytics_conf": 0.30,
+    "tracker": "models/tracker/bytetrack_birdlense_lowfps.yaml",
+    "auto_unstick_enabled": False,
     "openvino_binary_bird_score_scale": 1.0,
     "min_box_size_px": 18,
     "min_center_dist": 0.01,
@@ -111,6 +113,12 @@ def main() -> int:
                 det["min_confidence_to_store"] = proc_conf
         except (TypeError, ValueError):
             pass
+
+    tp = data["processor"].get("tracker_profiles")
+    if not isinstance(tp, dict):
+        tp = {}
+        data["processor"]["tracker_profiles"] = tp
+    tp["night"] = "models/tracker/bytetrack_birdlense_night.yaml"
 
     profiles = data["processor"].get("adaptive_profiles")
     if isinstance(profiles, dict):

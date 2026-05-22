@@ -22,9 +22,8 @@ general:
 # переопределяют вложенные значения на всех уровнях; отсутствующие ключи берутся из default.
 processor:
   # ByteTrack YAML: имя из Ultralytics («bytetrack.yaml») или путь models/tracker/… под app/processor
-  tracker: "models/tracker/bytetrack_birdlense_unstick.yaml"
-  # Только ключ ``night`` читается runtime (resolve_runtime_profile). Днём всегда ``processor.tracker`` выше.
-  # Ключ ``day`` в YAML игнорируется — не добавляйте его в user_config ожидая смену трекера днём.
+  tracker: "models/tracker/bytetrack_birdlense_lowfps.yaml"
+  # Только ключ ``night`` читается runtime (resolve_runtime_profile). Днём — ``processor.tracker``.
   tracker_profiles:
     night: "models/tracker/bytetrack_birdlense_night.yaml"
   max_record_seconds: 60
@@ -117,7 +116,8 @@ processor:
   # min_confidence_binary_rodent: 0.24
   # OpenVINO NABirds: conf на IR часто ВЫШЕ torch, не ниже — scale 8.5 (legacy BRG) раздувает FP.
   # track(conf) cap — не ниже bird-порога; scale 1.0 = без искусственного завышения при фильтрации.
-  openvino_binary_track_ultralytics_conf: 0.25
+  # conf для YOLO track(); должен быть < min_confidence_binary_bird и > track_high в ByteTrack YAML.
+  openvino_binary_track_ultralytics_conf: 0.30
   openvino_binary_bird_score_scale: 1.0
   openvino_min_confidence_binary_bird: 0.25
   # --- SOTA 2.0: unified ScoringEngine (replaces legacy filter cascade) ---
