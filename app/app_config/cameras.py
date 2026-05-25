@@ -37,12 +37,13 @@ def get_valid_cameras(cameras_config: list) -> list[dict]:
 
 
 def cameras_for_api(valid_cameras: list) -> list[dict]:
-    """Формат для API: id, name, stream_url, stream_url_mjpeg (fallback от процессора)."""
+    """Формат для API: id, name, stream_url, stream_url_mjpeg, go2rtc_src (имя потока в Go2RTC)."""
     return [
         {
             'id': c['id'],
             'name': c['name'],
             'stream_url': f"/go2rtc/stream.html?src={c['stream_name']}",
+            'go2rtc_src': c['stream_name'],
             'stream_url_mjpeg': f"/processor/live/{i}",
         }
         for i, c in enumerate(valid_cameras)

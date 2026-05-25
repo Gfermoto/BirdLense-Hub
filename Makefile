@@ -1,4 +1,4 @@
-.PHONY: install install-pull deploy build start stop logs verify verify-prod-env preflight-deploy verify-strict-quality restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights sync-models export-nabirds-openvino validate-nabirds-ov-parity ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-dedupe-detector-yolo dataset-report-detector-yolo dataset-dedupe-detector-binary dataset-import-cub dataset-import-roboflow-bird-feeder dataset-download-roboflow-bird-feeder dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data bootstrap-rodents-until-verify bootstrap-bird-coco-only report-detector-bird-sources dataset-rebalance-bird-binary dataset-bootstrap-rodent-oid-fast dataset-import-roboflow-rodent dataset-fetch-lila-california-rodents-sample dataset-build-birds-rodents-quick dataset-build-detector-tz detector-etl-verify-birds-rodents detector-etl-progress detector-etl-progress-watch detector-etl-restart detector-etl-supervise detector-etl-supervise-bg active-learning-trace-to-pool active-learning-pool-from-sqlite reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices ml-verify-reid-gates ml-run-reid-execution-report ml-build-eval-dataset ml-build-behavior-dataset ml-export-behavior-onnx ml-build-behavior-train-report ml-verify-behavior-runtime ml-offline-benchmark-gate ml-detector-shortlist snapshot-detector-weights compare-detector-bboxes-help ml-openvino-async-profile ml-decode-path-benchmark ml-track-continuity-eval ml-int8-candidate-eval ml-shadow-rollout-report ml-canary-rollback-report ml-full-rollout-watch-report ml-action-model-shortlist ml-proof ml-proof-local ml-proof-hub ml-fusion-ab-local ml-fusion-ab-hub dedupe-videos-local
+.PHONY: install install-pull deploy build start stop logs verify verify-prod-env preflight-deploy verify-strict-quality restore-config docs docs-site diagnose refresh-telegram-proxy proxy-rotation-install proxy-rotation-status proxy-rotation-remove audit-cards validate-weights sync-models export-nabirds-openvino validate-nabirds-ov-parity ci-local ci-local-docker test-web-contract-local security-gitleaks dataset-merge-three-class dataset-dedupe-detector-yolo dataset-report-detector-yolo dataset-dedupe-detector-binary dataset-import-cub dataset-import-roboflow-bird-feeder dataset-download-roboflow-bird-feeder dataset-validate-yolo-labels dataset-verify-quality-gates dataset-verify-hard-negatives bootstrap-detector-data bootstrap-rodents-until-verify bootstrap-bird-coco-only report-detector-bird-sources dataset-rebalance-bird-binary dataset-bootstrap-rodent-oid-fast dataset-import-roboflow-rodent dataset-fetch-lila-california-rodents-sample dataset-build-birds-rodents-quick dataset-build-detector-tz detector-etl-verify-birds-rodents detector-etl-progress detector-etl-progress-watch detector-etl-restart detector-etl-supervise detector-etl-supervise-bg active-learning-trace-to-pool active-learning-pool-from-sqlite curate-hard-negatives retrain-negatives-weekly reid-import-embeddings ml-check-decode ml-export-decision-traces ml-build-registry-entry ml-verify-registry-entry ml-verify-benchmark-slices ml-verify-reid-gates ml-run-reid-execution-report ml-build-eval-dataset ml-build-behavior-dataset ml-export-behavior-onnx ml-build-behavior-train-report ml-verify-behavior-runtime ml-offline-benchmark-gate ml-detector-shortlist snapshot-detector-weights compare-detector-bboxes-help ml-openvino-async-profile ml-decode-path-benchmark ml-track-continuity-eval ml-int8-candidate-eval ml-shadow-rollout-report ml-canary-rollback-report ml-full-rollout-watch-report ml-action-model-shortlist ml-proof ml-proof-local ml-proof-hub ml-fusion-ab-local ml-fusion-ab-hub dedupe-videos-local ml-int8-parity-gate ml-multi-camera-fps-gate reliability-compare-windows trigger-detector-audit trigger-detector-audit-vps
 
 # Тот же сценарий, что ./install.sh (Docker + .env + стек + verify).
 install:
@@ -24,6 +24,21 @@ test-web-contract-local:
 
 deploy:
 	@./scripts/deploy.sh
+
+# Post-deploy: verify + offline two_stage probes on VPS (needs deploy.local.sh).
+vps-detect-classifier-diagnostic:
+	@bash ./scripts/vps_detection_classifier_diagnostic.sh
+
+# Аудит триггер → детектор по SQLite (пропуски, кто виноват). DAYS=3 CAMERAS=BirdBox,Forest
+trigger-detector-audit:
+	@python3 scripts/trigger_detector_audit.py --days "$${DAYS:-3}" --cameras "$${CAMERAS:-BirdBox,Forest}" \
+	  --db-path "$${DB_PATH:-app/data/db/birdlense.db}"
+
+# То же на VPS (нужен scripts/deploy.local.sh)
+trigger-detector-audit-vps:
+	@set -e; . scripts/deploy.local.sh; \
+	ssh -p "$${DEPLOY_SSH_PORT:-22}" "$${DEPLOY_HOST}" \
+	  "docker exec birdlense python3 /app/scripts/trigger_detector_audit.py --days $${DAYS:-3} --cameras '$${CAMERAS:-BirdBox,Forest}' --db-path /app/data/db/birdlense.db"
 
 # Восстановить настройки: make restore-config (из .bak на сервере) или make restore-config FROM=local
 restore-config:
@@ -72,6 +87,12 @@ perf-gate-runtime:
 	    --out "$${PERF_OUT:-/tmp/runtime_perf_gate.v1.json}"
 
 # A1: локальная копия server app/.env (verify-prod-env) + живой хаб (DEPLOY_URL из deploy.local.sh)
+patch-hub-primary:
+	@python3 scripts/patch_prod_hub_primary.py
+
+patch-hub-primary-dry-run:
+	@python3 scripts/patch_prod_hub_primary.py --dry-run
+
 preflight-deploy: verify-prod-env verify
 	@echo "preflight-deploy: OK"
 
@@ -111,6 +132,33 @@ ml-proof-local:
 
 ml-proof-hub:
 	@./scripts/ml_proof_hub.sh
+
+ml-int8-parity-gate:
+	@test -n "$${FP16_REPORT:-}" || (echo "Set FP16_REPORT=path/to/fp16_report.json" >&2; exit 1)
+	@test -n "$${INT8_REPORT:-}" || (echo "Set INT8_REPORT=path/to/int8_report.json" >&2; exit 1)
+	@python3 scripts/check_int8_parity.py \
+		--fp16 "$${FP16_REPORT}" \
+		--int8 "$${INT8_REPORT}" \
+		--max-f1-drop "$${MAX_F1_DROP:-0.02}" \
+		--max-anchor-drop "$${MAX_ANCHOR_DROP:-0.02}" \
+		$$(test -n "$${OUT:-}" && printf -- '--out "%s" ' "$${OUT}")
+
+ml-multi-camera-fps-gate:
+	@test -n "$${FPS_REPORT:-}" || (echo "Set FPS_REPORT=path/to/runtime_fps_report.json" >&2; exit 1)
+	@python3 scripts/multi_camera_fps_gate.py \
+		--input "$${FPS_REPORT}" \
+		--min-per-camera-fps "$${MIN_PER_CAMERA_FPS:-6.0}" \
+		--min-total-fps "$${MIN_TOTAL_FPS:-18.0}" \
+		$$(test -n "$${OUT:-}" && printf -- '--out "%s" ' "$${OUT}")
+
+reliability-compare-windows:
+	@test -n "$${BASELINE_REPORT:-}" || (echo "Set BASELINE_REPORT=path/to/windowA.jsonl" >&2; exit 1)
+	@test -n "$${CANDIDATE_REPORT:-}" || (echo "Set CANDIDATE_REPORT=path/to/windowB.jsonl" >&2; exit 1)
+	@python3 scripts/reliability_compare_windows.py \
+		--baseline "$${BASELINE_REPORT}" \
+		--candidate "$${CANDIDATE_REPORT}" \
+		--max-sli-fail-increase "$${MAX_SLI_FAIL_INCREASE:-0}" \
+		$$(test -n "$${OUT:-}" && printf -- '--out "%s" ' "$${OUT}")
 
 # Fusion A/B gate:
 # - provider split YOLO vs Frigate
@@ -388,6 +436,27 @@ active-learning-pool-from-sqlite:
 	@test -n "$${OUT:-}" || (echo "Set OUT=pool.jsonl" >&2; exit 1)
 	@python3 scripts/active_learning/export_pool_from_sqlite.py --db "$${DB}" --output "$${OUT}" $${ARGS:-}
 
+# Curate hard negatives into deduped manifest (Wave 3 / #479).
+# Examples:
+#   make curate-hard-negatives
+#   HARD_NEGATIVES_DRY_RUN=0 make curate-hard-negatives
+curate-hard-negatives:
+	@python3 scripts/hard_negatives_curate.py \
+		--root "$${HARD_NEGATIVES_ROOT:-app/data/hard_negatives}" \
+		--output "$${HARD_NEGATIVES_MANIFEST:-datasets/hard_negatives_v1/manifest.json}" \
+		--max-per-reason "$${HARD_NEGATIVES_MAX_PER_REASON:-2000}" \
+		$$(test "$${HARD_NEGATIVES_DRY_RUN:-1}" = "1" && printf -- '--dry-run')
+
+# Weekly retrain orchestrator placeholder: curate + optional downstream retrain hooks.
+# Default is safe dry-run. Set RETRAIN_NEGATIVES_EXECUTE=1 to run non-dry curate.
+retrain-negatives-weekly:
+	@set -e; \
+	if [ "$${RETRAIN_NEGATIVES_EXECUTE:-0}" = "1" ]; then \
+		HARD_NEGATIVES_DRY_RUN=0 $(MAKE) curate-hard-negatives; \
+	else \
+		HARD_NEGATIVES_DRY_RUN=1 $(MAKE) curate-hard-negatives; \
+	fi
+
 # Import DINO JSONL embeddings into local SQLite sidecar table reid_embedding.
 reid-import-embeddings:
 	@test -n "$${DB:-}" || (echo "Set DB=path/to/birdlense.db" >&2; exit 1)
@@ -481,15 +550,15 @@ ml-train-behavior-baseline:
 ml-train-behavior-synthetic-fixture:
 	@python3 scripts/ml_behavior_train_baseline.py \
 		--manifest scripts/fixtures/behavior/synthetic_train_manifest.v1.json \
-		--export-out app/processor/models/behavior/behavior_logistic_export@v1.json \
+		--export-out app/processor/models/behavior/meta/behavior_logistic_export@v1.json \
 		--predictions-out /tmp/behavior_predictions_synthetic.json
 
 # Экспорт behavior_logistic_export@v1.json → ONNX для processor.models.behavior_openvino (#416).
 # Требует: pip install onnx (удобно в app/.venv). Переменные: EXPORT_JSON, OUT_ONNX.
 ml-export-behavior-onnx:
 	@PY="$$(test -x app/.venv/bin/python && echo app/.venv/bin/python || command -v python3)"; \
-	_JSON="$${EXPORT_JSON:-app/processor/models/behavior/behavior_logistic_export@v1.json}"; \
-	_OUT="$${OUT_ONNX:-app/processor/models/behavior/behavior_logistic_openvino/behavior_logistic.onnx}"; \
+	_JSON="$${EXPORT_JSON:-app/processor/models/behavior/meta/behavior_logistic_export@v1.json}"; \
+	_OUT="$${OUT_ONNX:-app/processor/models/behavior/meta/openvino/behavior_logistic.onnx}"; \
 	mkdir -p "$$(dirname "$$_OUT")"; \
 	"$$PY" scripts/ml_behavior_export_onnx.py --export-json "$$_JSON" --out-onnx "$$_OUT"
 
@@ -668,6 +737,16 @@ snapshot-detector-weights:
 compare-detector-bboxes-help:
 	@python3 "$(CURDIR)/scripts/compare_detector_bboxes.py" --help
 
+# EfficientNetB2 species classifier (525 classes) — download HF + ONNX export for processor.
+download-classifier-effnet:
+	@python3 "$(CURDIR)/scripts/download_birds_classifier_efficientnetb2.py"
+
+export-classifier-effnet:
+	@python3 "$(CURDIR)/scripts/export_classifier_to_openvino.py" --benchmark
+
+test-classifier-effnet-smoke:
+	@python3 "$(CURDIR)/scripts/test_classifier_smoke.py" --backend onnxruntime --video "$(CURDIR)/app/data/stress_clips/storm_bird.mp4"
+
 # Parity PyTorch vs OpenVINO на одном кадре (см. docs/ml/MODEL_EXPORT_GUIDE.md).
 debug-ov-conversion-help:
 	@python3 "$(CURDIR)/scripts/debug_ov_conversion.py" --help
@@ -697,7 +776,9 @@ generate-golden-v2:
 	@python3 "$(CURDIR)/scripts/generate_golden_dataset_v2.py"
 
 validate-pipeline-golden:
-	@cd "$(CURDIR)/app/processor" && PYTHONPATH=src python3 -m pytest tests/test_pipeline_golden_gate.py tests/test_scoring_engine.py -q
+	@cd "$(CURDIR)/app/processor" && PYTHONPATH=src python3 -m pytest tests/test_pipeline_golden_gate.py tests/test_scoring_engine.py tests/test_frame_decision_trace.py -q
+	@python3 "$(CURDIR)/scripts/validate_threshold_contract.py"
+	@python3 "$(CURDIR)/scripts/check_legacy_processor_config.py"
 
 stress-test-offline:
 	@GOLDEN_GATE_MIN_F1=0.9 STRESS_MAX_SILENCE_ACCEPTED=0 python3 "$(CURDIR)/scripts/stress_test_offline.py" --no-yolo
