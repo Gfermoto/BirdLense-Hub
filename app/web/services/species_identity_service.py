@@ -5,13 +5,13 @@ from __future__ import annotations
 from typing import Optional
 
 from app_config.app_config import app_config
-from models import Species
+from models import Species, SpeciesAlias
 from services.species_catalog_allowlist_service import (
     load_catalog_allowlist_norm_keys,
     species_matches_allowlist,
 )
 from services.species_registry_service import resolve_species_name
-from species_constants import GENERIC_BIRD_SPECIES
+from species_constants import CATALOG_RODENT_SPECIES, GENERIC_BIRD_SPECIES
 from util import get_parent_name_for_species, load_species_canonical_mapping
 
 
@@ -47,6 +47,8 @@ class SpeciesIdentityService:
         }
         if GENERIC_BIRD_SPECIES.strip().lower() in canonical_candidates:
             return False
+        if CATALOG_RODENT_SPECIES.strip().lower() in canonical_candidates:
+            return False
         if not bool(app_config.get("species.catalog_strict_ingest")):
             return False
         allow = load_catalog_allowlist_norm_keys(app_config.get)
@@ -62,7 +64,60 @@ class SpeciesIdentityService:
         ok_raw = species_matches_allowlist(raw_normalized or "", allow, mapping)
         return not (ok_display or ok_raw)
 
-    def resolve_or_create_species(self, name: str, *, source: str = "ingest") -> Optional[Species]:
+    @staticmethod
+    def _norm_alias_key(name: str) -> str:
+        s = str(name or "").strip().lower()
+        s = s.replace("_", " ").replace("-", " ")
+        return " ".join(s.split())
+
+    def _attach_aliases_to_taxon(
+        self,
+        *,
+        taxon_id: int | None,
+        canonical_name: str,
+        aliases: list[str] | None,
+        source: str,
+    ) -> int:
+        if not taxon_id:
+            return 0
+        created = 0
+        canonical_key = self._norm_alias_key(canonical_name)
+        for raw in aliases or []:
+            alias = str(raw or "").strip()
+            if not alias:
+                continue
+            alias_key = self._norm_alias_key(alias)
+            if not alias_key or alias_key == canonical_key:
+                continue
+            row = SpeciesAlias.query.filter_by(alias_key=alias_key).first()
+            if row:
+                if int(row.taxon_id) != int(taxon_id):
+                    self.logger.warning(
+                        'Alias collision skipped: "%s" -> taxon_id=%s (wanted=%s, source=%s)',
+                        alias,
+                        row.taxon_id,
+                        taxon_id,
+                        source,
+                    )
+                continue
+            self.db.session.add(
+                SpeciesAlias(
+                    alias=alias[:255],
+                    alias_key=alias_key,
+                    taxon_id=int(taxon_id),
+                )
+            )
+            created += 1
+        return created
+
+    def resolve_or_create_species(
+        self,
+        name: str,
+        *,
+        source: str = "ingest",
+        audit_aliases: list[str] | None = None,
+        audit_scientific_names: list[str] | None = None,
+    ) -> Optional[Species]:
         if not name or not isinstance(name, str):
             return None
         normalized = name.strip()
@@ -82,6 +137,20 @@ class SpeciesIdentityService:
                 return self.get_or_create_unknown_species()
             if resolution.found and taxon and species.taxon_id != taxon.id:
                 species.taxon_id = taxon.id
+            taxon_id = species.taxon_id or (taxon.id if taxon else None)
+            alias_count = self._attach_aliases_to_taxon(
+                taxon_id=taxon_id,
+                canonical_name=species.name,
+                aliases=[*(audit_aliases or []), *(audit_scientific_names or [])],
+                source=source,
+            )
+            if alias_count:
+                self.logger.info(
+                    'Attached %s source alias(es) to "%s" (source=%s)',
+                    alias_count,
+                    species.name,
+                    source,
+                )
             return species
 
         if self.ingest_blocked(canonical_name, normalized, taxon_common):
@@ -102,10 +171,17 @@ class SpeciesIdentityService:
         )
         self.db.session.add(species)
         self.db.session.flush()
+        alias_count = self._attach_aliases_to_taxon(
+            taxon_id=species.taxon_id,
+            canonical_name=species.name,
+            aliases=[*(audit_aliases or []), *(audit_scientific_names or [])],
+            source=source,
+        )
         self.logger.info(
-            'Created species "%s" (parent_id=%s, resolver_method=%s)',
+            'Created species "%s" (parent_id=%s, resolver_method=%s, attached_aliases=%s)',
             canonical_name,
             parent_id,
             resolution.method,
+            alias_count,
         )
         return species

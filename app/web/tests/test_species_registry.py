@@ -174,6 +174,44 @@ class TestSpeciesResolverIntegration:
         items = (api.get_json() or {}).get("items") or []
         assert any("Totally Unknown Bird XYZ" in (i.get("raw_name") or "") for i in items)
 
+    def test_species_identity_attaches_external_aliases_to_existing_taxon(self, app):
+        from models import SpeciesAlias, SpeciesTaxon
+        from services.species_identity_service import SpeciesIdentityService
+
+        with app.app_context():
+            taxon = SpeciesTaxon(
+                taxon_key="great-tit-audit",
+                common_name="Great Tit",
+                scientific_name="Parus major",
+            )
+            db.session.add(taxon)
+            db.session.flush()
+            db.session.add(
+                SpeciesAlias(
+                    alias="Great Tit",
+                    alias_key="great tit",
+                    taxon_id=taxon.id,
+                )
+            )
+            species = Species(name="Great Tit", taxon_id=taxon.id)
+            db.session.add(species)
+            db.session.commit()
+
+            svc = SpeciesIdentityService(db, app.logger)
+            resolved = svc.resolve_or_create_species(
+                "Great Tit",
+                source="ingest:frigate",
+                audit_aliases=["great_tit", "Parus major (Great Tit)"],
+                audit_scientific_names=["Parus major"],
+            )
+            db.session.commit()
+
+            assert resolved is not None
+            assert resolved.name == "Great Tit"
+            alias_keys = {row.alias_key for row in SpeciesAlias.query.filter_by(taxon_id=taxon.id).all()}
+            assert "great tit" in alias_keys
+            assert "parus major" in alias_keys
+
 
 class TestSpeciesMetadataRepair:
     def test_enrich_species_metadata_treats_blank_description_as_missing(

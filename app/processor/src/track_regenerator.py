@@ -144,6 +144,7 @@ def process_video_for_tracks(
     progress_hook: вызывается из UI-воркера; meta: phase, yolo_frames_done, yolo_frames_total (оценка).
     """
     from app_config.app_config import app_config
+    from species_mapping_config import build_species_mapping
     from species_normalizer import normalize
 
     if not os.path.isfile(video_path):
@@ -240,7 +241,7 @@ def process_video_for_tracks(
         cap.release()
 
     results = decision_maker.get_results(frame_processor.tracks)
-    species_mapping = app_config.get("detection.species_mapping") or {}
+    species_mapping = build_species_mapping(app_config)
 
     detections = []
     for r in results:

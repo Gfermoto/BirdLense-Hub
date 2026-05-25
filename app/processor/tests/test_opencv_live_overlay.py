@@ -9,6 +9,7 @@ src_path = os.path.abspath(os.path.join(current_dir, "../src"))
 sys.path.append(src_path)
 
 from motion_detectors.opencv_live_overlay import (  # noqa: E402
+    detection_results_to_detector_polygons,
     refresh_all_opencv_live_detectors,
     register_opencv_live_detector,
     set_opencv_live_overlay,
@@ -60,6 +61,16 @@ class TestOpenCVLiveOverlay(unittest.TestCase):
         polys = tracks_to_detector_polygons(tracks)
         self.assertEqual(len(polys), 1)
         self.assertEqual(len(polys[0]), 4)
+
+    def test_detection_results_to_polygons_empty_when_no_results(self):
+        class _Res:
+            def __init__(self, bbox):
+                self.bbox = bbox
+
+        polys = detection_results_to_detector_polygons([_Res([0.2, 0.3, 0.5, 0.7])])
+        self.assertEqual(len(polys), 1)
+        self.assertEqual(detection_results_to_detector_polygons([]), [])
+        self.assertEqual(detection_results_to_detector_polygons(None), [])
 
 
 if __name__ == "__main__":

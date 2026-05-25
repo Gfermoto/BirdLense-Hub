@@ -15,12 +15,13 @@ from fusion_model import FusionScorer
 from hypothesis_arbitration import apply_hypothesis_arbitration
 from runtime_contract import apply_runtime_contract_rows
 from weighted_species_arbiter import apply_weighted_species_arbiter
+from species_mapping_config import build_species_mapping
 
 logger = logging.getLogger(__name__)
 
 
 def _species_mapping(app_config) -> dict:
-    return app_config.get("detection.species_mapping") or {}
+    return build_species_mapping(app_config)
 
 
 def _safe_float(value, default: float = 0.0) -> float:
@@ -305,6 +306,16 @@ def _frigate_standalone_prepared_rows(
             "frigate_standalone": True,
             "frigate_merge_suppressed": suppressed,
         }
+        aliases: list[str] = []
+        for key in ("species", "sub_label", "label"):
+            raw_name = str((pack or {}).get(key) or "").strip()
+            if raw_name and raw_name.lower() not in {"bird", "unknown"} and raw_name not in aliases:
+                aliases.append(raw_name)
+        if aliases:
+            row["source_aliases"] = aliases
+        scientific_name = str((pack or {}).get("scientific_name") or "").strip()
+        if scientific_name:
+            row["source_scientific_names"] = [scientific_name]
         rows.append(row)
     return rows
 
@@ -339,6 +350,10 @@ def prepare_track_results_for_fusion(
     for detection in track_results or []:
         raw_name = detection.get("species_name") or detection.get("species") or detection.get("name") or "unknown"
         normalized_name = normalize(raw_name, species_mapping)
+        source_aliases: list[str] = []
+        raw_clean = str(raw_name or "").strip()
+        if raw_clean and raw_clean != normalized_name:
+            source_aliases.append(raw_clean)
         row = {
             **detection,
             "species_name": normalized_name,
@@ -346,6 +361,8 @@ def prepare_track_results_for_fusion(
             "source": "video",
             "detection_provider": (detection.get("detection_provider") or "yolo"),
         }
+        if source_aliases:
+            row["source_aliases"] = source_aliases
         try:
             row["_pre_fusion_confidence"] = float(row.get("confidence") or 0.0)
         except (TypeError, ValueError):

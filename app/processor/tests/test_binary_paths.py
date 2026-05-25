@@ -57,6 +57,8 @@ class TestBinaryPaths(unittest.TestCase):
             os.makedirs(ov, exist_ok=True)
             with open(os.path.join(ov, "best.xml"), "w", encoding="utf-8") as f:
                 f.write("<net />")
+            with open(os.path.join(ov, "best.bin"), "wb") as f:
+                f.write(b"\x00")
             with patch("inference.selector.openvino_runtime_available", return_value=True):
                 path, backend = resolve_binary_detector_weight_path(
                     {
@@ -80,6 +82,8 @@ class TestBinaryPaths(unittest.TestCase):
                 os.makedirs(ov, exist_ok=True)
                 with open(os.path.join(ov, "best.xml"), "w", encoding="utf-8") as f:
                     f.write("<net />")
+                with open(os.path.join(ov, "best.bin"), "wb") as f:
+                    f.write(b"\x00")
                 with patch("inference.selector.openvino_runtime_available", return_value=True):
                     path, backend = resolve_binary_detector_weight_path(
                         {
@@ -109,6 +113,8 @@ class TestBinaryPaths(unittest.TestCase):
                 os.makedirs(ov, exist_ok=True)
                 with open(os.path.join(ov, "best.xml"), "w", encoding="utf-8") as f:
                     f.write("<net />")
+                with open(os.path.join(ov, "best.bin"), "wb") as f:
+                    f.write(b"\x00")
                 with patch("inference.selector.openvino_runtime_available", return_value=False):
                     path, backend = resolve_binary_detector_weight_path(
                         {

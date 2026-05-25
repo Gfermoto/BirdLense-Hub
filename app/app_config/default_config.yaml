@@ -233,10 +233,11 @@ processor:
         # Позволить YOLO работать в сумерках/ИК без полного снятия light gate.
         light_gate_min_brightness: 8
         light_gate_min_contrast: 6
-        # Ночь/ИК: ВЫШЕ порог (шум матрицы), не ниже — иначе сотни FP.
-        min_confidence_binary: 0.45
-        min_confidence_binary_bird: 0.45
-        openvino_min_confidence_binary_bird: 0.45
+        # Ночь/ИК: не задираем пороги выше дневных, иначе теряем реальные визиты.
+        # Шум/FP режутся scoring/motion/filter-цепочкой, а не агрессивным conf floor.
+        min_confidence_binary: 0.25
+        min_confidence_binary_bird: 0.25
+        openvino_min_confidence_binary_bird: 0.25
         min_track_duration: 1.0
         min_confidence_to_process: 0.35
         min_box_size_px: 14
@@ -380,11 +381,13 @@ processor:
   classifier_engine: efficientnet_b2
   efficientnet_b2_min_confidence: 0.22
   efficientnet_b2_unknown_label: "Unknown Bird"
-  squirrel_species_label: "Eurasian Red Squirrel"
+  # Trapper squirrel → каталог Rodent (не класс EfficientNet 525)
+  squirrel_species_label: "Rodent"
   # auto: OpenVINO IR (birds_classifier_260.xml) if present, else ONNX Runtime
   classifier_inference_backend: auto
-  # VPS/LAN с Intel iGPU: intel:gpu (нужны /dev/dri + override в docker-compose)
-  classifier_inference_device: intel:gpu
+  # Безопасный дефолт: AUTO (CPU fallback без обязательного /dev/dri на VPS/CPU-only).
+  # Для явного Intel iGPU задайте intel:gpu в user_config/.env.
+  classifier_inference_device: auto
   # W1.1: async finalize worker to decouple hot session loop.
   finalize_async_enabled: true
   finalize_queue_maxsize: 2
@@ -395,6 +398,7 @@ processor:
   detector_weight_contract: off
   models:
     # Candidate A (current default): TrapperAI v02.2024.
+    # Fresh clone: перед запуском проверьте наличие весов (make sync-models).
     binary: "models/detection/weights/trapper_ai_v02_2024.pt"
     binary_openvino: "models/detection/weights/trapper_ai_v02_2024_openvino_model"
     # Legacy YOLO EU classifier (~491 вид) — fallback when classifier_engine: yolo
@@ -994,11 +998,12 @@ storage:
     known_hosts_path: ""
     delete_local_after_success: false
 
-# Каталог видов: строго соответствует классам EU классификатора (best.pt, HF birdlense-birds-eu) + Rodent.
-# class_names.txt сгенерирован из best.pt через scripts/datasets/dump_classifier_allowlist.py.
+# Каталог видов: EfficientNetB2 (525 птиц) + Rodent (детектор Trapper, без классификатора).
 species:
-  # Список классов EU классификатора (491 птица + Rodent). Единственный источник истины для каталога.
   catalog_allowlist_file: "models/classification/weights/birds_classifier_efficientnetb2/class_labels.txt"
+  # Вне class_labels.txt; materialize + strict ingest (белка → Rodent).
+  catalog_allowlist_extra:
+    - Rodent
   # true: детекции вне allowlist → Unknown, новые строки каталога не создаются.
   catalog_strict_ingest: true
   tuning_target_species_ids: []

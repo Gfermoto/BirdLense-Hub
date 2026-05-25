@@ -478,21 +478,19 @@ class MotionRecordingSession:
                         classification_frame=classifier_source_frame,
                         camera_overrides=scoring_overrides,
                     )
+                run_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
                 if camera_id:
-                    from motion_detectors.opencv_live_overlay import (
-                        set_yolo_live_overlay,
-                        tracks_to_detector_polygons,
-                    )
+                    from motion_detectors.opencv_live_overlay import set_yolo_live_overlay
 
                     set_yolo_live_overlay(
                         camera_id,
                         {
-                            "detector_polygons": tracks_to_detector_polygons(
-                                getattr(self.frame_processor, "tracks", None)
+                            "detector_polygons": list(
+                                getattr(self.frame_processor, "live_detector_polygons", None)
+                                or []
                             ),
                         },
                     )
-                run_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
                 raw_boxes = _accumulate_run_stats(run_stats)
                 runtime_profile = str(run_stats.get("runtime_profile") or "").strip()
                 if runtime_profile:

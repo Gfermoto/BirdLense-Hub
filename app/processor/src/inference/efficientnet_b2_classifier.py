@@ -15,7 +15,7 @@ _log = logging.getLogger(__name__)
 
 DEFAULT_MIN_CONFIDENCE = 0.3
 UNKNOWN_BIRD_LABEL = "Unknown Bird"
-SQUIRREL_SPECIES_LABEL = "Eurasian Red Squirrel"
+SQUIRREL_SPECIES_LABEL = "Rodent"
 
 
 def resolve_efficientnet_openvino_device(device: str | None) -> str:

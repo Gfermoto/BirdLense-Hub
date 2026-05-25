@@ -55,6 +55,36 @@ def set_yolo_live_overlay(camera_id: str, payload: dict[str, Any]) -> None:
     _merge_camera_payload(camera_id, payload)
 
 
+def _bbox_norm_to_polygon(bbox) -> list[list[float]] | None:
+    if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+        return None
+    try:
+        x1, y1, x2, y2 = [float(v) for v in bbox]
+    except (TypeError, ValueError):
+        return None
+    if not (x2 > x1 and y2 > y1):
+        return None
+    return [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
+
+
+def detection_results_to_detector_polygons(
+    results: list | None,
+    *,
+    limit: int = 20,
+) -> list[list[list[float]]]:
+    """Live UI boxes from the current frame only (no stale track history)."""
+    polys: list[list[list[float]]] = []
+    if not results:
+        return polys
+    for res in results:
+        poly = _bbox_norm_to_polygon(getattr(res, "bbox", None))
+        if poly:
+            polys.append(poly)
+        if len(polys) >= limit:
+            break
+    return polys
+
+
 def tracks_to_detector_polygons(tracks: dict | None, *, limit: int = 20) -> list[list[list[float]]]:
     """Normalized xyxy boxes as 4-point polygons for Live UI."""
     polys: list[list[list[float]]] = []
@@ -69,15 +99,9 @@ def tracks_to_detector_polygons(tracks: dict | None, *, limit: int = 20) -> list
             last = frames[-1]
             if isinstance(last, dict):
                 bbox = last.get("bbox")
-        if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
-            continue
-        try:
-            x1, y1, x2, y2 = [float(v) for v in bbox]
-        except (TypeError, ValueError):
-            continue
-        if not (x2 > x1 and y2 > y1):
-            continue
-        polys.append([[x1, y1], [x2, y1], [x2, y2], [x1, y2]])
+        poly = _bbox_norm_to_polygon(bbox)
+        if poly:
+            polys.append(poly)
         if len(polys) >= limit:
             break
     return polys

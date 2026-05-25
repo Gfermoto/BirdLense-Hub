@@ -9,6 +9,7 @@ from app_config.app_config import app_config
 from processor_runtime_profile import light_gate_allows_frame, resolve_runtime_profile
 from processor_runtime_stats import inc_counter, observe_timing, set_gauge
 from tracker_paths import resolve_tracker_config_path
+from motion_detectors.opencv_live_overlay import detection_results_to_detector_polygons
 
 
 class _LightGateDisabled:
@@ -213,6 +214,7 @@ class FrameProcessor:
             now_m = time.monotonic()
             if now_m < self._low_light_cooldown_until:
                 self.last_run_stats["light_gate_blocked"] = True
+                self.live_detector_polygons = []
                 return False
 
             if not light_gate_allows_frame(
@@ -224,6 +226,7 @@ class FrameProcessor:
                 # Throttle dark-frame handling without blocking the recording thread (#224).
                 self._low_light_cooldown_until = now_m + 1.0
                 self.last_run_stats["light_gate_blocked"] = True
+                self.live_detector_polygons = []
                 return False
 
         st = time.time()
@@ -400,6 +403,7 @@ class FrameProcessor:
                 )
             cv2.imwrite(f"data/test/frame{str(self.cnt)}.jpg", debug_img)
 
+        self.live_detector_polygons = detection_results_to_detector_polygons(results)
         if not results:
             if self.cnt <= 3 or self.cnt % 30 == 0:
                 self.logger.debug(f"No detections (frame {self.cnt})")
@@ -512,3 +516,4 @@ class FrameProcessor:
         self._frames_with_tracks = 0
         self._id_switch_events = 0
         self._previous_track_ids = set()
+        self.live_detector_polygons = []

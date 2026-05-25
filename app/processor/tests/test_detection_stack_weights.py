@@ -75,22 +75,40 @@ class TestDetectorWeightsAvailable(unittest.TestCase):
         finally:
             os.unlink(path)
 
-    def test_openvino_dir_with_xml(self):
+    def test_openvino_dir_with_xml_and_bin(self):
         from inference.binary_paths import detector_weights_available
 
         with tempfile.TemporaryDirectory() as d:
             xm = os.path.join(d, 'model.xml')
+            bn = os.path.join(d, 'model.bin')
             with open(xm, 'w', encoding='utf-8') as f:
                 f.write('<xml />')
+            with open(bn, 'wb') as f:
+                f.write(b'\x00')
             self.assertTrue(detector_weights_available(d))
 
-    def test_openvino_xml_file(self):
+    def test_openvino_xml_file_with_bin(self):
+        from inference.binary_paths import detector_weights_available
+
+        with tempfile.NamedTemporaryFile(suffix='.xml', delete=False) as f:
+            path = f.name
+        bin_path = path[:-4] + '.bin'
+        try:
+            with open(bin_path, 'wb') as f:
+                f.write(b'\x00')
+            self.assertTrue(detector_weights_available(path))
+        finally:
+            os.unlink(path)
+            if os.path.exists(bin_path):
+                os.unlink(bin_path)
+
+    def test_openvino_xml_without_bin_false(self):
         from inference.binary_paths import detector_weights_available
 
         with tempfile.NamedTemporaryFile(suffix='.xml', delete=False) as f:
             path = f.name
         try:
-            self.assertTrue(detector_weights_available(path))
+            self.assertFalse(detector_weights_available(path))
         finally:
             os.unlink(path)
 
