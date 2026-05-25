@@ -1,5 +1,6 @@
 """Health, Web Push, cameras, component status, feed, weather, sun-times (#198)."""
 
+import json
 import os
 import threading
 from datetime import datetime, timezone, timedelta
@@ -34,6 +35,48 @@ _status_cache_lock = threading.Lock()
 
 
 def register_ui_status_push_routes(app):
+    def _bbox_to_polygon(bbox):
+        if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+            return None
+        try:
+            x1, y1, x2, y2 = [float(v) for v in bbox]
+        except (TypeError, ValueError):
+            return None
+        if not (x2 > x1 and y2 > y1):
+            return None
+        return [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
+
+    def _extract_runtime_overlays_from_trace(payload: dict) -> tuple[list, list]:
+        trigger_polygons: list = []
+        detector_polygons: list = []
+        rc = payload.get("recording_context") if isinstance(payload, dict) else {}
+        if not isinstance(rc, dict):
+            rc = {}
+        frigate_ev = rc.get("frigate_trigger_event")
+        if isinstance(frigate_ev, dict):
+            poly = _bbox_to_polygon(frigate_ev.get("frigate_bbox_norm"))
+            if poly:
+                trigger_polygons.append(poly)
+        tracks = payload.get("persisted_tracks")
+        if not isinstance(tracks, list):
+            tracks = payload.get("accepted_tracks")
+        if isinstance(tracks, list):
+            for tr in tracks[:20]:
+                if not isinstance(tr, dict):
+                    continue
+                frames = tr.get("frames") or []
+                if isinstance(frames, list) and frames:
+                    last = frames[-1]
+                    bbox = last.get("bbox") if isinstance(last, dict) else None
+                    poly = _bbox_to_polygon(bbox)
+                    if poly:
+                        detector_polygons.append(poly)
+                else:
+                    poly = _bbox_to_polygon(tr.get("bbox"))
+                    if poly:
+                        detector_polygons.append(poly)
+        return trigger_polygons, detector_polygons
+
     """Маршруты без тяжёлых зависимостей от timeline/species/video."""
 
     @app.route("/api/ui/health", methods=["GET"])
@@ -100,6 +143,48 @@ def register_ui_status_push_routes(app):
             payload = build_component_status_payload_safe(db.session)
             cache_set("component_status:v1", payload, CACHE_STATUS_SEC)
         return payload
+
+    @app.route("/api/ui/live/overlays", methods=["GET"])
+    def live_overlays():
+        camera_id = (request.args.get("camera_id") or "").strip()
+        rows = (
+            ActivityLog.query.filter_by(type="decision_trace")
+            .order_by(ActivityLog.created_at.desc())
+            .limit(60)
+            .all()
+        )
+        for row in rows:
+            try:
+                payload = json.loads(row.data or "{}")
+            except (TypeError, ValueError):
+                continue
+            if not isinstance(payload, dict):
+                continue
+            rc = payload.get("recording_context") or {}
+            if not isinstance(rc, dict):
+                rc = {}
+            row_camera = str(
+                payload.get("camera_id")
+                or rc.get("triggered_camera")
+                or ""
+            ).strip()
+            if camera_id and row_camera != camera_id:
+                continue
+            trigger_polygons, detector_polygons = _extract_runtime_overlays_from_trace(payload)
+            return {
+                "camera_id": row_camera or camera_id or None,
+                "trigger_polygons": trigger_polygons,
+                "detector_polygons": detector_polygons,
+                "source": "decision_trace",
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            }, 200
+        return {
+            "camera_id": camera_id or None,
+            "trigger_polygons": [],
+            "detector_polygons": [],
+            "source": "none",
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }, 200
 
     @app.route("/api/ui/status/debug", methods=["GET"])
     def status_debug():

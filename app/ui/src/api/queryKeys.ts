@@ -76,6 +76,7 @@ export const queryKeys = {
   },
   live: {
     cameras: ['cameras'] as const,
+    overlays: (cameraId: string) => ['live-overlays', cameraId] as const,
   },
   birdFood: {
     all: ['birdFood'] as const,
