@@ -7,7 +7,10 @@ import time
 from datetime import datetime, timezone
 
 from api import API
-from motion_detectors.opencv_live_overlay import snapshot_opencv_live_by_camera
+from motion_detectors.opencv_live_overlay import (
+    refresh_all_opencv_live_detectors,
+    snapshot_opencv_live_by_camera,
+)
 from processor_runtime_stats import flush_runtime_stats_snapshot, runtime_stats_snapshot
 
 # last_video_ok_at / last_yolo_ok_at для статуса (обновляет main loop)
@@ -143,6 +146,7 @@ def _opencv_overlay_heartbeat_loop():
     api = None
     while True:
         try:
+            refresh_all_opencv_live_detectors()
             snap = snapshot_opencv_live_by_camera()
             if snap:
                 _opencv_overlay_empty_since = None

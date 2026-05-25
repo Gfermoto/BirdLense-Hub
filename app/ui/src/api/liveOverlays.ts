@@ -17,6 +17,7 @@ export const fetchLiveRuntimeOverlays = async ({
 }): Promise<LiveRuntimeOverlaysPayload> => {
   const response = await axios.get(`${BASE_API_URL}/live/overlays`, {
     params: { camera_id: cameraId },
+    withCredentials: true,
   });
   return response.data as LiveRuntimeOverlaysPayload;
 };

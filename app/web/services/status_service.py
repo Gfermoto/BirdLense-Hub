@@ -14,31 +14,63 @@ logger = logging.getLogger(__name__)
 # Свежесть: считаем ok если последний успех был в пределах этого интервала
 STATUS_FRESH_SECONDS = 300  # 5 мин
 
+GO2RTC_DEFAULT_BASE = "http://127.0.0.1:1984"
+
+
+def resolve_go2rtc_base_url() -> str:
+    """URL go2rtc для проверок из контейнера (как entrypoint/nginx upstream)."""
+    url = (os.environ.get("GO2RTC_URL") or app_config.get("video.go2rtc_url") or "").strip()
+    if url:
+        return url.rstrip("/")
+    return GO2RTC_DEFAULT_BASE
+
+
+def _go2rtc_auth() -> tuple[str, str] | None:
+    username = os.environ.get("GO2RTC_USERNAME") or app_config.get("video.go2rtc_username")
+    password = os.environ.get("GO2RTC_PASSWORD") or app_config.get("video.go2rtc_password")
+    if username and password:
+        return (str(username), str(password))
+    return None
+
+
+def _hub_go2rtc_frame_url(stream_name: str) -> str | None:
+    """Тот же путь, что в браузере: nginx /go2rtc → upstream."""
+    port = (os.environ.get("BIRDLENSE_PORT") or "8080").strip() or "8080"
+    return f"http://127.0.0.1:{port}/go2rtc/api/frame.jpeg?src={stream_name}"
+
+
+def _probe_frame_url(url: str, auth: tuple[str, str] | None) -> bool:
+    try:
+        r = requests.get(url, auth=auth, timeout=5)
+        return r.status_code == 200
+    except Exception as e:
+        logger.debug("Video frame probe failed (%s): %s", url, e)
+        return False
+
 
 def check_video_reachable() -> str:
     """
     Проверка доступности камер через go2rtc snapshot.
     Returns: 'ok' | 'error' | 'not_configured'
     """
-    go2rtc_url = (os.environ.get("GO2RTC_URL") or app_config.get("video.go2rtc_url") or "").strip()
     cameras_config = app_config.get("video.cameras") or []
     valid = get_valid_cameras(cameras_config)
-    if not go2rtc_url or not valid:
+    if not valid:
         return "not_configured"
-    stream_name = valid[0].get("stream_name") or valid[0].get("id", "")
-    if not stream_name:
-        return "not_configured"
-    base = go2rtc_url.rstrip("/")
-    url = f"{base}/api/frame.jpeg?src={stream_name}"
-    username = os.environ.get("GO2RTC_USERNAME") or app_config.get("video.go2rtc_username")
-    password = os.environ.get("GO2RTC_PASSWORD") or app_config.get("video.go2rtc_password")
-    auth = (username, password) if (username and password) else None
-    try:
-        r = requests.get(url, auth=auth, timeout=5)
-        return "ok" if r.status_code == 200 else "error"
-    except Exception as e:
-        logger.debug("Video check failed: %s", e)
-        return "error"
+    base = resolve_go2rtc_base_url()
+    auth = _go2rtc_auth()
+    for cam in valid:
+        stream_name = (cam.get("stream_name") or cam.get("id") or "").strip()
+        if not stream_name:
+            continue
+        candidates = [
+            f"{base}/api/frame.jpeg?src={stream_name}",
+            _hub_go2rtc_frame_url(stream_name),
+        ]
+        for url in candidates:
+            if url and _probe_frame_url(url, auth):
+                return "ok"
+    return "error"
 
 
 def parse_yolo_status_from_heartbeat(heartbeat_data: dict | None) -> str:

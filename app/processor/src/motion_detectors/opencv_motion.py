@@ -34,8 +34,9 @@ class OpenCVMotionDetector:
         capture_fn,
         threshold=25,
         min_contour_area=500,
-        check_interval=0.1,
+        check_interval=0.12,
         check_every_n_frames=1,
+        motion_max_side_px=512,
         *,
         global_motion_mean_absdiff: float = 2.5,
         min_motion_pixel_fraction: float = 0.0008,
@@ -71,8 +72,9 @@ class OpenCVMotionDetector:
         self._camera_id = str(camera_id or "").strip()
         self.threshold = threshold
         self.min_contour_area = min_contour_area
-        self.check_interval = check_interval
+        self.check_interval = max(0.05, float(check_interval or 0.12))
         self.check_every_n_frames = max(1, int(check_every_n_frames or 1))
+        self.motion_max_side_px = max(160, int(motion_max_side_px or 512))
         self.global_motion_mean_absdiff = float(global_motion_mean_absdiff)
         self.min_motion_pixel_fraction = float(min_motion_pixel_fraction)
         self.max_contour_area_frac = float(max_contour_area_frac)
@@ -173,11 +175,35 @@ class OpenCVMotionDetector:
         self._exclusion_mask = build_exclusion_mask(shape, self._motion_mask_specs)
         return self._exclusion_mask
 
-    def _prepare_gray(self, frame: np.ndarray) -> np.ndarray:
+    def _resize_gray(self, gray: np.ndarray) -> np.ndarray:
+        h, w = int(gray.shape[0]), int(gray.shape[1])
+        side = max(h, w)
+        limit = self.motion_max_side_px
+        if side <= limit:
+            return gray
+        scale = float(limit) / float(side)
+        new_w = max(1, int(round(w * scale)))
+        new_h = max(1, int(round(h * scale)))
+        return cv2.resize(gray, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+    @staticmethod
+    def _blur_kernel(shape: tuple[int, ...]) -> tuple[int, int]:
+        side = max(int(shape[0]), int(shape[1]))
+        if side <= 360:
+            return (5, 5)
+        if side <= 640:
+            return (9, 9)
+        return (15, 15)
+
+    def _gray_from_frame(self, frame: np.ndarray, *, analyze: bool) -> np.ndarray:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = self._resize_gray(gray)
+        if not analyze:
+            return gray
         if self._clahe is not None:
             gray = self._clahe.apply(gray)
-        gray = cv2.GaussianBlur(gray, (21, 21), 0)
+        k = self._blur_kernel(gray.shape)
+        gray = cv2.GaussianBlur(gray, k, 0)
         return gray
 
     def _reset_background_model(self) -> None:
@@ -230,6 +256,16 @@ class OpenCVMotionDetector:
             out.append([[float(x), float(y)] for x, y in poly])
         return out
 
+    @staticmethod
+    def _empty_analysis() -> OpenCVMotionAnalysis:
+        return OpenCVMotionAnalysis(
+            global_mean_absdiff=0.0,
+            motion_pixel_fraction=0.0,
+            max_contour_area=0.0,
+            has_contour_motion=False,
+            motion_contour_polygons=(),
+        )
+
     def _publish_live_overlay(self, analysis: OpenCVMotionAnalysis, *, profile: str) -> None:
         if not self._camera_id:
             return
@@ -243,6 +279,41 @@ class OpenCVMotionDetector:
                 "has_contour_motion": bool(analysis.has_contour_motion),
             },
         )
+
+    def _publish_status_overlay(self, reason: str, *, analysis: OpenCVMotionAnalysis | None = None) -> None:
+        if not self._camera_id:
+            return
+        prev_reason = self._last_decision_reason
+        self._last_decision_reason = reason
+        try:
+            self._publish_live_overlay(
+                analysis if analysis is not None else self._empty_analysis(),
+                profile=self._last_profile or "day",
+            )
+        finally:
+            self._last_decision_reason = prev_reason
+
+    def refresh_live_overlay(self) -> None:
+        """Background Live UI tick: analyze one frame without blocking detect()."""
+        frame = self.capture_fn()
+        if frame is None:
+            self._publish_status_overlay("no_frame")
+            return
+        analyze = self._should_analyze()
+        gray = self._gray_from_frame(frame, analyze=analyze)
+        if self._prev_gray is None:
+            self._prev_gray = gray
+            self._publish_status_overlay("buffering_first_frame")
+            return
+        if not analyze:
+            self._prev_gray = gray
+            if self._last_analysis is not None:
+                self._publish_live_overlay(self._last_analysis, profile=self._last_profile)
+            else:
+                self._publish_status_overlay("skipped_frame")
+            return
+        self._evaluate_motion(self._prev_gray, gray)
+        self._prev_gray = gray
 
     def _evaluate_motion(self, prev_gray, gray) -> bool:
         self._analysis_frame_count += 1
@@ -347,6 +418,8 @@ class OpenCVMotionDetector:
             "consecutive_motion_hits": self._consecutive_motion_hits,
             "min_consecutive_motion_frames": self.min_consecutive_motion_frames,
             "motion_mask_count": len(self._motion_mask_specs),
+            "motion_max_side_px": self.motion_max_side_px,
+            "check_interval_seconds": self.check_interval,
             "reject_reasons": dict(self._reject_reasons),
             "accept_reasons": dict(self._accept_reasons),
         }
@@ -359,14 +432,17 @@ class OpenCVMotionDetector:
         while True:
             frame = self.capture_fn()
             if frame is None:
+                self._publish_status_overlay("no_frame")
                 time.sleep(self.check_interval)
                 continue
-            gray = self._prepare_gray(frame)
+            analyze = self._should_analyze()
+            gray = self._gray_from_frame(frame, analyze=analyze)
             if self._prev_gray is None:
                 self._prev_gray = gray
+                self._publish_status_overlay("buffering_first_frame")
                 time.sleep(self.check_interval)
                 continue
-            if not self._should_analyze():
+            if not analyze:
                 self._prev_gray = gray
                 if self._last_analysis is not None:
                     self._publish_live_overlay(self._last_analysis, profile=self._last_profile)
@@ -383,12 +459,15 @@ class OpenCVMotionDetector:
         """One iteration: returns True if motion detected (for OR with Frigate)."""
         frame = self.capture_fn()
         if frame is None:
+            self._publish_status_overlay("no_frame")
             return False
-        gray = self._prepare_gray(frame)
+        analyze = self._should_analyze()
+        gray = self._gray_from_frame(frame, analyze=analyze)
         if self._prev_gray is None:
             self._prev_gray = gray
+            self._publish_status_overlay("buffering_first_frame")
             return False
-        if not self._should_analyze():
+        if not analyze:
             self._prev_gray = gray
             if self._last_analysis is not None:
                 self._publish_live_overlay(self._last_analysis, profile=self._last_profile)

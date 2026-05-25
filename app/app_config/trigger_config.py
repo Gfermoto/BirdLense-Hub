@@ -263,6 +263,92 @@ def get_birdnet_topic(config_or_get: Any) -> str:
     return topic or "birdnet"
 
 
+def build_opencv_trigger_runtime_config(config_or_get: Any) -> dict[str, Any]:
+    """Полный ``triggers.opencv`` для процессора (не только 4 legacy-ключа UI)."""
+
+    def _oc(path: str, default: Any) -> Any:
+        return _get_from_config(config_or_get, f"triggers.opencv.{path}", default)
+
+    detection_method = str(_oc("detection_method", "frame_diff") or "frame_diff").strip().lower()
+    if detection_method not in {"frame_diff", "mog2", "hybrid"}:
+        detection_method = "frame_diff"
+
+    diff_threshold = max(5, min(80, _as_int(_oc("diff_threshold", 18), 18)))
+    min_contour_area = max(50, min(20000, _as_int(_oc("min_contour_area", 320), 320)))
+
+    return {
+        "enabled": _as_bool(_oc("enabled", True), True),
+        "check_every_n_frames": max(1, min(30, _as_int(_oc("check_every_n_frames", 1), 1))),
+        "check_interval_seconds": max(0.05, min(2.0, _as_float(_oc("check_interval_seconds", 0.12), 0.12))),
+        "motion_max_side_px": max(160, min(1280, _as_int(_oc("motion_max_side_px", 512), 512))),
+        "diff_threshold": diff_threshold,
+        "min_contour_area": min_contour_area,
+        "detection_method": detection_method,
+        "suppress_warmup_frames": max(0, min(600, _as_int(_oc("suppress_warmup_frames", 0), 0))),
+        "auto_profile_enabled": _as_bool(_oc("auto_profile_enabled", True), True),
+        "auto_profile_night_luma_threshold": max(
+            1.0,
+            min(255.0, _as_float(_oc("auto_profile_night_luma_threshold", 58.0), 58.0)),
+        ),
+        "smart_trigger_enabled": _as_bool(_oc("smart_trigger_enabled", True), True),
+        "global_motion_mean_absdiff": max(
+            0.1, min(64.0, _as_float(_oc("global_motion_mean_absdiff", 2.5), 2.5))
+        ),
+        "min_motion_pixel_fraction": max(
+            0.0, min(1.0, _as_float(_oc("min_motion_pixel_fraction", 0.0008), 0.0008))
+        ),
+        "max_contour_area_frac": max(0.01, min(0.99, _as_float(_oc("max_contour_area_frac", 0.38), 0.38))),
+        "day_diff_threshold": max(5, min(80, _as_int(_oc("day_diff_threshold", diff_threshold), diff_threshold))),
+        "day_min_contour_area": max(
+            50, min(20000, _as_int(_oc("day_min_contour_area", min_contour_area), min_contour_area))
+        ),
+        "day_global_motion_mean_absdiff": max(
+            0.1,
+            min(64.0, _as_float(_oc("day_global_motion_mean_absdiff", 2.5), 2.5)),
+        ),
+        "day_min_motion_pixel_fraction": max(
+            0.0,
+            min(1.0, _as_float(_oc("day_min_motion_pixel_fraction", 0.0008), 0.0008)),
+        ),
+        "day_max_contour_area_frac": max(
+            0.01, min(0.99, _as_float(_oc("day_max_contour_area_frac", 0.38), 0.38))
+        ),
+        "night_diff_threshold": max(5, min(80, _as_int(_oc("night_diff_threshold", diff_threshold), diff_threshold))),
+        "night_min_contour_area": max(
+            50, min(20000, _as_int(_oc("night_min_contour_area", min_contour_area), min_contour_area))
+        ),
+        "night_global_motion_mean_absdiff": max(
+            0.1,
+            min(64.0, _as_float(_oc("night_global_motion_mean_absdiff", 2.2), 2.2)),
+        ),
+        "night_min_motion_pixel_fraction": max(
+            0.0,
+            min(1.0, _as_float(_oc("night_min_motion_pixel_fraction", 0.0006), 0.0006)),
+        ),
+        "night_max_contour_area_frac": max(
+            0.01, min(0.99, _as_float(_oc("night_max_contour_area_frac", 0.45), 0.45))
+        ),
+        "mog2_history": max(16, min(2000, _as_int(_oc("mog2_history", 300), 300))),
+        "mog2_var_threshold": max(1.0, min(256.0, _as_float(_oc("mog2_var_threshold", 24.0), 24.0))),
+        "mog2_detect_shadows": _as_bool(_oc("mog2_detect_shadows", False), False),
+        "mog2_min_motion_pixel_fraction": max(
+            0.0,
+            min(1.0, _as_float(_oc("mog2_min_motion_pixel_fraction", 0.0006), 0.0006)),
+        ),
+        "mog2_min_contour_area": max(
+            50, min(20000, _as_int(_oc("mog2_min_contour_area", min_contour_area), min_contour_area))
+        ),
+        "min_consecutive_motion_frames": max(
+            1, min(30, _as_int(_oc("min_consecutive_motion_frames", 2), 2))
+        ),
+        "scene_change_motion_fraction": max(
+            0.1, min(1.0, _as_float(_oc("scene_change_motion_fraction", 0.8), 0.8))
+        ),
+        "improve_contrast": _as_bool(_oc("improve_contrast", False), False),
+        "morphology_open_iterations": max(0, min(5, _as_int(_oc("morphology_open_iterations", 1), 1))),
+    }
+
+
 def get_effective_trigger_config(
     config_or_get: Any,
     *,
@@ -301,40 +387,11 @@ def get_effective_trigger_config(
     raw_per_cam = _get_from_config(config_or_get, "triggers.frigate.min_trigger_score_by_camera")
     per_cam: dict[str, Any] = raw_per_cam if isinstance(raw_per_cam, dict) else {}
 
+    opencv_runtime = build_opencv_trigger_runtime_config(config_or_get)
+    opencv_runtime["enabled"] = opencv_enabled
+
     return {
-        "opencv": {
-            "enabled": opencv_enabled,
-            "check_every_n_frames": max(
-                1,
-                min(
-                    30,
-                    _as_int(
-                        _get_from_config(config_or_get, "triggers.opencv.check_every_n_frames", 1),
-                        1,
-                    ),
-                ),
-            ),
-            "diff_threshold": max(
-                5,
-                min(
-                    80,
-                    _as_int(
-                        _get_from_config(config_or_get, "triggers.opencv.diff_threshold", 18),
-                        18,
-                    ),
-                ),
-            ),
-            "min_contour_area": max(
-                50,
-                min(
-                    20000,
-                    _as_int(
-                        _get_from_config(config_or_get, "triggers.opencv.min_contour_area", 320),
-                        320,
-                    ),
-                ),
-            ),
-        },
+        "opencv": opencv_runtime,
         "frigate": {
             "enabled": frigate_enabled,
             "topic": get_frigate_topic(config_or_get),

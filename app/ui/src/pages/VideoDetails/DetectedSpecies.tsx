@@ -15,6 +15,7 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Share from '@mui/icons-material/Share';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import FormControl from '@mui/material/FormControl';
@@ -44,11 +45,13 @@ import {
   recordBirdProfileLinkFeedback,
   setDetectionSemanticReview,
   updateDetectionSpecies,
+  deleteDetection,
   type BirdProfileLinkCandidate,
 } from '../../api/speciesOverviewDetections';
 import { mergeVideoSpecies, type VideoReidMatchItem } from '../../api/video';
 import { queryKeys } from '../../api/queryKeys';
 import { invalidateLocalSpeciesEditCaches } from '../../api/invalidateLocalSpeciesCaches';
+import { formatTimeMmSs } from '../../utils/timeUtils';
 
 interface GroupedSpecies {
   species_id: number;
@@ -371,6 +374,23 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
     },
   });
 
+  const deleteDetectionMutation = useMutation({
+    mutationFn: (detectionId: number) =>
+      deleteDetection(detectionId, { source: 'video', reason: 'false_positive' }),
+    onSuccess: () => {
+      invalidateLocalSpeciesEditCaches(queryClient, videoId);
+      if (videoId != null) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.video.detectionFrames(String(videoId)),
+        });
+      }
+      setCorrectSuccess(t('video.deleteDetectionSuccess'));
+    },
+    onError: (err) => {
+      setCorrectError(getApiErrorMessage(err, t('errors.loadSightings')));
+    },
+  });
+
   const [editingGroupKey, setEditingGroupKey] = useState<string | null>(null);
   const [selectedSpeciesId, setSelectedSpeciesId] = useState<number | ''>('');
   const [mergeSpeciesId, setMergeSpeciesId] = useState<number | ''>('');
@@ -615,6 +635,76 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     {t('video.confidence')}: {group.confidenceRange}
                   </Typography>
+                  {canEdit &&
+                  group.detections.filter((d) => d.source === 'video' && d.id).length >
+                    0 ? (
+                    <Box sx={{ mt: 1.5, width: '100%' }}>
+                      <Typography variant="subtitle2" gutterBottom>
+                        {t('video.detectionTracksTitle')}
+                      </Typography>
+                      <Stack spacing={0.75}>
+                        {[...group.detections]
+                          .filter((d) => d.source === 'video' && d.id)
+                          .sort((a, b) => a.start_time - b.start_time)
+                          .map((det) => (
+                            <Stack
+                              key={det.id}
+                              direction="row"
+                              alignItems="center"
+                              spacing={1}
+                              flexWrap="wrap"
+                              sx={{
+                                py: 0.5,
+                                px: 1,
+                                borderRadius: 1,
+                                bgcolor: 'action.hover',
+                              }}
+                            >
+                              <Typography variant="body2" sx={{ flex: 1, minWidth: 0 }}>
+                                {t('video.detectionTrackRow', {
+                                  track:
+                                    det.track_id != null ? String(det.track_id) : '—',
+                                  start: formatTimeMmSs(det.start_time),
+                                  end: formatTimeMmSs(det.end_time),
+                                  conf: Math.round((det.confidence || 0) * 100),
+                                })}
+                              </Typography>
+                              <Button
+                                size="small"
+                                color="error"
+                                variant="outlined"
+                                startIcon={<DeleteOutline fontSize="small" />}
+                                disabled={deleteDetectionMutation.isPending}
+                                onClick={() => {
+                                  const did = det.id;
+                                  if (!did) return;
+                                  if (
+                                    !window.confirm(
+                                      t('video.deleteDetectionConfirm', {
+                                        track:
+                                          det.track_id != null
+                                            ? String(det.track_id)
+                                            : '—',
+                                        start: formatTimeMmSs(det.start_time),
+                                        end: formatTimeMmSs(det.end_time),
+                                      }),
+                                    )
+                                  ) {
+                                    return;
+                                  }
+                                  deleteDetectionMutation.mutate(did);
+                                }}
+                              >
+                                {t('video.deleteDetection')}
+                              </Button>
+                            </Stack>
+                          ))}
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                        {t('video.deleteDetectionHint')}
+                      </Typography>
+                    </Box>
+                  ) : null}
                   {(() => {
                     const bestDet = group.detections
                       .filter((d) => d.source === 'video' && d.id)

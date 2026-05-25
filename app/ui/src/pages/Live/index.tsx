@@ -15,7 +15,7 @@ import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import ToggleButton from '@mui/material/ToggleButton';
-import BuildIcon from '@mui/icons-material/Build';
+import TuneIcon from '@mui/icons-material/Tune';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -124,9 +124,11 @@ function pointToSvg([x, y]: Point): string {
 function OverlayPolygons({
   polygons,
   color,
+  strokeWidth = 2,
 }: {
   polygons: Polygon[];
   color: string;
+  strokeWidth?: number;
 }) {
   return (
     <>
@@ -136,9 +138,10 @@ function OverlayPolygons({
           <polygon
             key={`${color}-${idx}`}
             points={points}
-            fill={`${color}33`}
+            fill={`${color}44`}
             stroke={color}
-            strokeWidth={2}
+            strokeWidth={strokeWidth}
+            vectorEffect="non-scaling-stroke"
           />
         );
       })}
@@ -146,16 +149,69 @@ function OverlayPolygons({
   );
 }
 
-/** Go2RTC iframe (RTC/MSE) или MJPEG img — fallback при 502/go2rtc недоступен. */
+function go2rtcMjpegPath(streamSrc: string): string {
+  return `/go2rtc/api/stream.mjpeg?src=${encodeURIComponent(streamSrc)}`;
+}
+
+const FullscreenStream = ({
+  streamSrc,
+  streamUrlMjpeg,
+  name,
+  mode,
+}: {
+  streamSrc: string;
+  streamUrlMjpeg?: string;
+  name: string;
+  mode: StreamMode;
+}) => {
+  const { t } = useTranslation();
+  const [processorMjpegFailed, setProcessorMjpegFailed] = useState(false);
+  const go2rtcSrc = streamSrc ? go2rtcMjpegPath(streamSrc) : '';
+  const useProcessorMjpeg =
+    mode === 'mjpeg' && Boolean(streamUrlMjpeg) && !processorMjpegFailed;
+  const imgSrc = useProcessorMjpeg
+    ? streamUrlMjpeg
+    : go2rtcSrc || streamUrlMjpeg;
+  if (!imgSrc) {
+    return (
+      <Box
+        sx={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Typography color="text.secondary">{t('live.streamUnavailable')}</Typography>
+      </Box>
+    );
+  }
+  return (
+    <Box
+      component="img"
+      src={imgSrc}
+      alt={name}
+      onError={() => {
+        if (useProcessorMjpeg) {
+          setProcessorMjpegFailed(true);
+        }
+      }}
+      sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+    />
+  );
+};
+
+/** go2rtc MJPEG (без красного статуса WebRTC в iframe) или MJPEG процессора с запасным go2rtc. */
 const CameraStream = ({
-  streamUrl,
+  streamSrc,
   streamUrlMjpeg,
   name,
   mode,
   onOpenEditor,
   canEdit,
 }: {
-  streamUrl: string;
+  streamSrc: string;
   streamUrlMjpeg?: string;
   name: string;
   mode: StreamMode;
@@ -163,7 +219,13 @@ const CameraStream = ({
   canEdit?: boolean;
 }) => {
   const { t } = useTranslation();
-  const useMjpeg = mode === 'mjpeg' && streamUrlMjpeg;
+  const [processorMjpegFailed, setProcessorMjpegFailed] = useState(false);
+  const go2rtcSrc = streamSrc ? go2rtcMjpegPath(streamSrc) : '';
+  const useProcessorMjpeg =
+    mode === 'mjpeg' && Boolean(streamUrlMjpeg) && !processorMjpegFailed;
+  const imgSrc = useProcessorMjpeg
+    ? streamUrlMjpeg
+    : go2rtcSrc || streamUrlMjpeg;
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: 280 }}>
       <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
@@ -172,20 +234,26 @@ const CameraStream = ({
           {canEdit ? (
             <IconButton
               size="small"
+              color="secondary"
               onClick={onOpenEditor}
               aria-label={t('live.openEditor')}
               title={t('live.openEditor')}
             >
-              <BuildIcon fontSize="small" />
+              <TuneIcon fontSize="small" />
             </IconButton>
           ) : null}
         </Box>
       </Typography>
-      {useMjpeg ? (
+      {imgSrc ? (
         <Box
           component="img"
-          src={streamUrlMjpeg}
+          src={imgSrc}
           alt={name}
+          onError={() => {
+            if (useProcessorMjpeg) {
+              setProcessorMjpegFailed(true);
+            }
+          }}
           sx={{
             flex: 1,
             minHeight: 200,
@@ -196,17 +264,20 @@ const CameraStream = ({
         />
       ) : (
         <Box
-          component="iframe"
-          src={streamUrl}
-          title={name}
           sx={{
             flex: 1,
             minHeight: 200,
-            border: 'none',
             borderRadius: 1,
             bgcolor: 'black',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
-        />
+        >
+          <Typography variant="body2" color="text.secondary">
+            {t('live.streamUnavailable')}
+          </Typography>
+        </Box>
       )}
     </Box>
   );
@@ -384,7 +455,8 @@ export const LivePage = () => {
           {cams.map((cam) => (
             <Grid key={cam.id} size={{ xs: 12, sm: 6, md: gridSize }}>
               <CameraStream
-                streamUrl={cam.stream_url}
+                key={`${cam.id}-${streamMode}`}
+                streamSrc={cam.id}
                 streamUrlMjpeg={cam.stream_url_mjpeg}
                 name={cam.name}
                 mode={streamMode}
@@ -428,21 +500,12 @@ export const LivePage = () => {
               }}
             >
               {fullscreenCam ? (
-                streamMode === 'mjpeg' && fullscreenCam.stream_url_mjpeg ? (
-                  <Box
-                    component="img"
-                    src={fullscreenCam.stream_url_mjpeg}
-                    alt={fullscreenCam.name}
-                    sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  />
-                ) : (
-                  <Box
-                    component="iframe"
-                    src={fullscreenCam.stream_url}
-                    title={fullscreenCam.name}
-                    sx={{ width: '100%', height: '100%', border: 'none' }}
-                  />
-                )
+                <FullscreenStream
+                  streamSrc={fullscreenCam.id}
+                  streamUrlMjpeg={fullscreenCam.stream_url_mjpeg}
+                  name={fullscreenCam.name}
+                  mode={streamMode}
+                />
               ) : null}
               <Box
                 component="svg"
@@ -465,6 +528,7 @@ export const LivePage = () => {
                   <OverlayPolygons
                     polygons={opencvMotionPolygons}
                     color="#ffb300"
+                    strokeWidth={3}
                   />
                 ) : null}
                 {showYoloDetections ? (
@@ -516,8 +580,11 @@ export const LivePage = () => {
                   }
                   label={t('live.showYoloDetections')}
                 />
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" display="block">
                   {t('live.overlaysHint')}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                  {t('live.overlaysHowTo')}
                 </Typography>
                 {showOpencvMotion && runtimeOverlaysQuery.data?.opencv_last_decision_reason ? (
                   <Typography variant="caption" color="text.secondary" display="block">
@@ -529,8 +596,16 @@ export const LivePage = () => {
                 ) : null}
                 {runtimeOverlaysQuery.isError ? (
                   <Alert severity="warning" variant="outlined">
-                    {t('live.overlayUnavailable')}
+                    {t('live.overlayLoadFailed')}
                   </Alert>
+                ) : null}
+                {!runtimeOverlaysQuery.isError &&
+                showOpencvMotion &&
+                runtimeOverlaysQuery.isSuccess &&
+                runtimeOverlaysQuery.data?.source === 'none' ? (
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {t('live.overlayNoProcessorData')}
+                  </Typography>
                 ) : null}
 
                 <Divider sx={{ my: 0.5 }} />

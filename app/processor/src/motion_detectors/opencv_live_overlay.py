@@ -8,6 +8,32 @@ from typing import Any
 
 _lock = threading.Lock()
 _by_camera: dict[str, dict[str, Any]] = {}
+_live_detectors: dict[str, Any] = {}
+
+
+def register_opencv_live_detector(camera_id: str, detector: Any) -> None:
+    """Register detector for background Live overlay refresh (independent of detect())."""
+    cid = str(camera_id or "").strip()
+    if not cid or detector is None:
+        return
+    with _lock:
+        _live_detectors[cid] = detector
+
+
+def snapshot_opencv_live_detectors() -> dict[str, Any]:
+    with _lock:
+        return dict(_live_detectors)
+
+
+def refresh_all_opencv_live_detectors() -> None:
+    """One overlay tick per registered camera (safe to call from heartbeat thread)."""
+    for detector in snapshot_opencv_live_detectors().values():
+        tick = getattr(detector, "refresh_live_overlay", None)
+        if callable(tick):
+            try:
+                tick()
+            except Exception:
+                pass
 
 
 def _merge_camera_payload(camera_id: str, payload: dict[str, Any]) -> None:

@@ -9,6 +9,8 @@ src_path = os.path.abspath(os.path.join(current_dir, "../src"))
 sys.path.append(src_path)
 
 from motion_detectors.opencv_live_overlay import (  # noqa: E402
+    refresh_all_opencv_live_detectors,
+    register_opencv_live_detector,
     set_opencv_live_overlay,
     set_yolo_live_overlay,
     snapshot_opencv_live_by_camera,
@@ -34,6 +36,22 @@ class TestOpenCVLiveOverlay(unittest.TestCase):
         )
         snap = snapshot_opencv_live_by_camera()
         self.assertEqual(len(snap["Forest"]["detector_polygons"]), 1)
+
+    def test_refresh_registered_detector(self):
+        class _Stub:
+            def refresh_live_overlay(self):
+                set_opencv_live_overlay(
+                    "BirdBox",
+                    {
+                        "trigger_polygons": [[[0.2, 0.2], [0.4, 0.2], [0.4, 0.5], [0.2, 0.5]]],
+                        "last_decision_reason": "stub",
+                    },
+                )
+
+        register_opencv_live_detector("BirdBox", _Stub())
+        refresh_all_opencv_live_detectors()
+        snap = snapshot_opencv_live_by_camera()
+        self.assertEqual(snap["BirdBox"]["last_decision_reason"], "stub")
 
     def test_tracks_to_polygons(self):
         tracks = {

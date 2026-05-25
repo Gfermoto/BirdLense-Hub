@@ -531,8 +531,12 @@ triggers:
   opencv:
     enabled: true
     check_every_n_frames: 1
-    # frame_diff | mog2 | hybrid
-    detection_method: hybrid
+    # Пауза между опросами кадра (снижает CPU; 0.12 ≈ 8 Гц).
+    check_interval_seconds: 0.12
+    # Анализ движения на уменьшенном кадре (px по длинной стороне).
+    motion_max_side_px: 512
+    # frame_diff | mog2 | hybrid — на CPU VPS предпочтительно frame_diff.
+    detection_method: frame_diff
     # Suppress early false positives while background model stabilizes.
     suppress_warmup_frames: 45
     # Auto switch day/night trigger profile by grayscale luma.
