@@ -34,8 +34,14 @@ export function go2rtcMseUrl(go2rtcSrc: string): string {
   return `/go2rtc/api/stream.mp4?src=${encodeURIComponent(go2rtcSrc)}`;
 }
 
+/** go2rtc stream.html player (WebSocket); modes = fallback chain inside player. */
+export function go2rtcStreamHtmlUrl(go2rtcSrc: string, modes: string | string[]): string {
+  const modeParam = Array.isArray(modes) ? modes.join(',') : modes;
+  return `/go2rtc/stream.html?src=${encodeURIComponent(go2rtcSrc)}&mode=${encodeURIComponent(modeParam)}`;
+}
+
 export function go2rtcWebrtcPlayerUrl(go2rtcSrc: string): string {
-  return `/go2rtc/stream.html?src=${encodeURIComponent(go2rtcSrc)}&mode=webrtc`;
+  return go2rtcStreamHtmlUrl(go2rtcSrc, ['webrtc', 'mse', 'mjpeg']);
 }
 
 export type LiveStreamRenderMode = 'img' | 'video' | 'iframe';
@@ -95,7 +101,25 @@ export function resolveLiveStream({
     return null;
   }
 
-  if (kind === 'go2rtc_mjpeg' || (preferOverlayAligned && kind === 'go2rtc_webrtc')) {
+  if (preferOverlayAligned && kind === 'go2rtc_webrtc') {
+    return {
+      mode: 'img',
+      src: go2rtcMjpegUrl(g2),
+      overlayAligned: true,
+      transport: 'go2rtc_mjpeg',
+    };
+  }
+
+  if (kind === 'go2rtc_mjpeg' && !preferOverlayAligned) {
+    return {
+      mode: 'iframe',
+      src: go2rtcStreamHtmlUrl(g2, 'mjpeg'),
+      overlayAligned: false,
+      transport: 'go2rtc_mjpeg',
+    };
+  }
+
+  if (kind === 'go2rtc_mjpeg') {
     return {
       mode: 'img',
       src: go2rtcMjpegUrl(g2),

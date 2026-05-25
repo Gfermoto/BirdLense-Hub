@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 import paho.mqtt.client as mqtt
 
 from app_config.app_config import app_config
+from app_config.trigger_config import get_effective_trigger_config
 from birdnet_merge_key import birdnet_merge_key
 from frigate_bbox import frigate_after_to_normalized_xyxy
 from species_mapping_config import build_species_mapping
@@ -779,9 +780,8 @@ class MQTTEventAggregator:
                         inc_counter("frigate_geometry_fallback_rejected_total")
                     score_ok = trigger_score >= max(0.0, min_trigger_score)
                     ev_type = str(fdata.get("type") or "").strip().lower()
-                    trigger_on_update = bool(
-                        app_config.get("triggers.frigate.trigger_on_update", False)
-                    )
+                    frigate_runtime = get_effective_trigger_config(app_config).get("frigate") or {}
+                    trigger_on_update = bool(frigate_runtime.get("trigger_on_update", False))
                     motion_ok = not ev_type or ev_type == "new" or trigger_on_update
                     if ev_type in ("update", "end") and not trigger_on_update:
                         motion_ok = False
