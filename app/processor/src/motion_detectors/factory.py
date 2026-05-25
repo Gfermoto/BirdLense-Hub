@@ -48,11 +48,16 @@ def build_motion_detector(
                 "topic": mqtt_topic or "__legacy__",
             },
             "motion_sensor": {
-                "enabled": source in {TRIGGER_SOURCE_MQTT, TRIGGER_SOURCE_ESPHOME},
-                "source": source if source in {TRIGGER_SOURCE_MQTT, TRIGGER_SOURCE_ESPHOME} else TRIGGER_SOURCE_MQTT,
+                "enabled": source in {TRIGGER_SOURCE_MQTT, TRIGGER_SOURCE_ESPHOME, "pir"},
+                "source": (
+                    source
+                    if source in {TRIGGER_SOURCE_MQTT, TRIGGER_SOURCE_ESPHOME, "pir"}
+                    else TRIGGER_SOURCE_MQTT
+                ),
                 "mqtt_topic": mqtt_topic,
                 "esphome_url": esphome_url,
                 "esphome_sensor_id": esphome_sensor,
+                "pir_pin": 4,
             },
             "scales": {"enabled": False},
         }
@@ -64,11 +69,69 @@ def build_motion_detector(
     scales_cfg = cfg.get("scales") or {}
     frigate_cfg = cfg.get("frigate") or {}
 
+    def _opencv_float(key: str, default: float) -> float:
+        try:
+            raw = opencv_cfg.get(key)
+            return float(raw) if raw is not None else default
+        except (TypeError, ValueError):
+            return default
+
+    def _opencv_masks(raw) -> list[str]:
+        if raw is None:
+            return []
+        if isinstance(raw, str):
+            return [raw.strip()] if raw.strip() else []
+        if not isinstance(raw, (list, tuple)):
+            return []
+        out: list[str] = []
+        for item in raw:
+            if isinstance(item, str) and item.strip():
+                out.append(item.strip())
+            elif isinstance(item, dict):
+                coords = str(item.get("coordinates") or "").strip()
+                if coords:
+                    out.append(coords)
+        return out
+
     opencv_detector = OpenCVMotionDetector(
         capture_fn=media_source.capture,
         check_every_n_frames=int(opencv_cfg.get("check_every_n_frames") or 1),
         threshold=int(opencv_cfg.get("diff_threshold") or 18),
         min_contour_area=int(opencv_cfg.get("min_contour_area") or 320),
+        global_motion_mean_absdiff=_opencv_float("global_motion_mean_absdiff", 2.5),
+        min_motion_pixel_fraction=_opencv_float("min_motion_pixel_fraction", 0.0008),
+        max_contour_area_frac=_opencv_float("max_contour_area_frac", 0.38),
+        smart_trigger_enabled=bool(opencv_cfg.get("smart_trigger_enabled", True)),
+        detection_method=str(opencv_cfg.get("detection_method") or "frame_diff"),
+        suppress_warmup_frames=int(opencv_cfg.get("suppress_warmup_frames") or 0),
+        auto_profile_enabled=bool(opencv_cfg.get("auto_profile_enabled", False)),
+        auto_profile_night_luma_threshold=_opencv_float("auto_profile_night_luma_threshold", 58.0),
+        day_diff_threshold=int(opencv_cfg.get("day_diff_threshold") or int(opencv_cfg.get("diff_threshold") or 18)),
+        day_min_contour_area=int(
+            opencv_cfg.get("day_min_contour_area") or int(opencv_cfg.get("min_contour_area") or 320)
+        ),
+        day_global_motion_mean_absdiff=_opencv_float("day_global_motion_mean_absdiff", 2.5),
+        day_min_motion_pixel_fraction=_opencv_float("day_min_motion_pixel_fraction", 0.0008),
+        day_max_contour_area_frac=_opencv_float("day_max_contour_area_frac", 0.38),
+        night_diff_threshold=int(opencv_cfg.get("night_diff_threshold") or int(opencv_cfg.get("diff_threshold") or 18)),
+        night_min_contour_area=int(
+            opencv_cfg.get("night_min_contour_area") or int(opencv_cfg.get("min_contour_area") or 320)
+        ),
+        night_global_motion_mean_absdiff=_opencv_float("night_global_motion_mean_absdiff", 2.2),
+        night_min_motion_pixel_fraction=_opencv_float("night_min_motion_pixel_fraction", 0.0006),
+        night_max_contour_area_frac=_opencv_float("night_max_contour_area_frac", 0.45),
+        mog2_history=int(opencv_cfg.get("mog2_history") or 300),
+        mog2_var_threshold=_opencv_float("mog2_var_threshold", 24.0),
+        mog2_detect_shadows=bool(opencv_cfg.get("mog2_detect_shadows", False)),
+        mog2_min_motion_pixel_fraction=_opencv_float("mog2_min_motion_pixel_fraction", 0.0006),
+        mog2_min_contour_area=int(
+            opencv_cfg.get("mog2_min_contour_area") or int(opencv_cfg.get("min_contour_area") or 320)
+        ),
+        motion_masks=_opencv_masks(opencv_cfg.get("masks")),
+        min_consecutive_motion_frames=int(opencv_cfg.get("min_consecutive_motion_frames") or 2),
+        scene_change_motion_fraction=_opencv_float("scene_change_motion_fraction", 0.8),
+        improve_contrast=bool(opencv_cfg.get("improve_contrast", False)),
+        morphology_open_iterations=int(opencv_cfg.get("morphology_open_iterations") or 1),
     )
 
     detectors: list[tuple[str, object]] = []
@@ -122,6 +185,23 @@ def build_motion_detector(
             except (ImportError, ModuleNotFoundError, Exception) as exc:
                 logger.warning(
                     "ESPHome motion detector unavailable, skip grouped motion sensor: %s",
+                    exc,
+                )
+        elif source == "pir":
+            try:
+                from motion_detectors.pir import PIRMotionDetector
+
+                detectors.append(
+                    (
+                        "motion_sensor",
+                        PIRMotionDetector(
+                            pin=int(motion_sensor_cfg.get("pir_pin") or 4)
+                        ),
+                    )
+                )
+            except (ImportError, ModuleNotFoundError, Exception) as exc:
+                logger.warning(
+                    "PIR motion detector unavailable, skip grouped motion sensor: %s",
                     exc,
                 )
 

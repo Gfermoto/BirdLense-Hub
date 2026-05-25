@@ -103,6 +103,17 @@ class OrMotionDetector:
                     return payload
         return None
 
+    def get_opencv_diagnostics(self):
+        for name, detector in self._detectors:
+            if name not in {"opencv", "additional"}:
+                continue
+            fn = getattr(detector, "diagnostics", None)
+            if callable(fn):
+                payload = fn()
+                if isinstance(payload, dict):
+                    return payload
+        return None
+
     def stop(self):
         for _, detector in self._detectors:
             if detector and hasattr(detector, "stop"):

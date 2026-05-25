@@ -17,12 +17,15 @@ from file_test_control import FileTestRuntime, maybe_build_file_test_runtime
 from fps_tracker import FPSTracker
 from media_runtime import ProcessorMediaSetup, setup_processor_media
 from motion_runtime import build_processor_motion_detector
+from detection_scheduler import should_run_probe
 from mqtt_runtime import (
     frigate_filters_for_cameras,
     load_scales_mqtt_topic_config,
     start_mqtt_aggregator_session,
 )
+from processor_runtime_stats import inc_counter, set_gauge
 from processor_support import check_restart_flag
+from recording_finalize_worker import FinalizeWorker, maybe_start_finalize_worker
 from recording_session import MotionRecordingSession
 from reid_runtime import prewarm_runtime_reid_model
 
@@ -55,6 +58,7 @@ class ProcessorRunContext:
 
     session: MotionRecordingSession
     media_setup: ProcessorMediaSetup
+    finalize_worker: Optional[FinalizeWorker] = None
     file_test: Optional[FileTestRuntime] = None
 
 
@@ -130,6 +134,7 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
         save_images=bool(app_config.get("processor.save_images")),
         warn_two_stage_fallback=False,
     )
+    finalize_worker = maybe_start_finalize_worker(app_config)
     _start_runtime_reid_prewarm_async()
     regional_species = app_config.get("processor.regional_species") or []
     if regional_species:
@@ -161,9 +166,15 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
         scales_topic_arg=scales_topic_arg,
         data_dir=_data_dir,
         fps_tracker=fps_tracker,
+        finalize_worker=finalize_worker,
         file_test_runtime=file_test,
     )
-    return ProcessorRunContext(session=session, media_setup=media_setup, file_test=file_test)
+    return ProcessorRunContext(
+        session=session,
+        media_setup=media_setup,
+        finalize_worker=finalize_worker,
+        file_test=file_test,
+    )
 
 
 def run_motion_loop(ctx: ProcessorRunContext) -> None:
@@ -187,6 +198,23 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
             mqtt_aggregator=getattr(ctx.session, "mqtt_aggregator", None),
             default_camera_id=getattr(ctx.session, "default_camera_id", None),
         )
+        trigger_source = str(
+            getattr(ctx.session.motion_detector, "get_triggered_by", lambda: "")() or ""
+        ).strip().lower()
+        if should_run_probe(trigger_source=trigger_source, app_config=app_config):
+            probe_ok = bool(
+                ctx.session.run_detection_probe_window(
+                    camera_id=camera_id,
+                    trigger_source=trigger_source,
+                )
+            )
+            if not probe_ok:
+                logger.info(
+                    "Skipping recording after detect-probe: trigger=%s camera=%s",
+                    trigger_source or "?",
+                    camera_id,
+                )
+                continue
         camera_key = str(camera_id)
         wait = recording_cooldown_remaining(
             last_recording_end=last_recording_end_by_camera.get(camera_key, 0.0),
@@ -205,6 +233,25 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
             )
             time.sleep(wait)
             continue
+        finalize_worker = getattr(ctx, "finalize_worker", None)
+        if finalize_worker is not None and finalize_worker.is_saturated():
+            depth = finalize_worker.queue_depth()
+            requeued = bool(
+                getattr(
+                    ctx.session.motion_detector,
+                    "requeue_last_trigger",
+                    lambda: False,
+                )()
+            )
+            inc_counter("recording_trigger_deferred_finalize_backpressure_total")
+            set_gauge("finalize_queue_depth", depth)
+            logger.info(
+                "Deferring motion trigger: finalize queue saturated (depth=%s, requeued=%s)",
+                depth,
+                requeued,
+            )
+            time.sleep(0.5)
+            continue
         ctx.session.api.notify_motion()
         should_stop = False
         try:
@@ -216,6 +263,8 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
 
 
 def close_processor_media(ctx: ProcessorRunContext) -> None:
+    if ctx.finalize_worker is not None:
+        ctx.finalize_worker.stop(wait=True)
     if app_config.get("video.source") == "go2rtc":
         for src in ctx.media_setup.media_sources_cache.values():
             src.close()

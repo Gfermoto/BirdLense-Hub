@@ -2,6 +2,7 @@ import time
 import math
 import logging
 import cv2
+from frame_context import FrameContext, RoiRef
 from light_level_detector import LightLevelDetector
 from interfaces import DetectionStrategyProtocol
 from app_config.app_config import app_config
@@ -58,7 +59,11 @@ class FrameProcessor:
             self.tracker_raw,
             self.tracker,
         )
+        self._session_context: dict = {}
         self.reset()
+
+    def set_session_context(self, context: dict | None) -> None:
+        self._session_context = dict(context or {})
 
     def _frame_light_metrics(self, img):
         """Яркость/контраст + флаг light detector (для gate и для adaptive profile)."""
@@ -85,6 +90,34 @@ class FrameProcessor:
         out = str(val).strip()
         return resolve_tracker_config_path(out or base)
 
+    def _resolve_tracker_for_fps(self, fallback_tracker: str) -> str:
+        """Optional tracker override by effective stream FPS buckets."""
+        raw = app_config.get("processor.tracker_fps_profiles") or {}
+        if not isinstance(raw, dict):
+            return fallback_tracker
+        try:
+            fps = float((self._session_context or {}).get("stream_fps") or 0.0)
+        except (TypeError, ValueError):
+            fps = 0.0
+        if fps <= 0:
+            return fallback_tracker
+        # First matching bucket wins.
+        for key in ("lte_5", "lte_7", "lte_10", "lte_15", "gt_15"):
+            tracker_name = str(raw.get(key) or "").strip()
+            if not tracker_name:
+                continue
+            if key == "lte_5" and fps <= 5.0:
+                return resolve_tracker_config_path(tracker_name)
+            if key == "lte_7" and fps <= 7.0:
+                return resolve_tracker_config_path(tracker_name)
+            if key == "lte_10" and fps <= 10.0:
+                return resolve_tracker_config_path(tracker_name)
+            if key == "lte_15" and fps <= 15.0:
+                return resolve_tracker_config_path(tracker_name)
+            if key == "gt_15" and fps > 15.0:
+                return resolve_tracker_config_path(tracker_name)
+        return fallback_tracker
+
     def _update_key_frames(self, track: dict, crop, frame_time, bbox, frame_score):
         key_frames = track.setdefault("key_frames", [])
         entry = {
@@ -95,7 +128,7 @@ class FrameProcessor:
         }
         key_frames.append(entry)
         key_frames.sort(key=lambda item: item["score"], reverse=True)
-        del key_frames[self.key_frame_limit :]
+        del key_frames[self.key_frame_limit:]
 
     def run(
         self,
@@ -131,6 +164,14 @@ class FrameProcessor:
         else:
             frame_time = round(float(frame_time), 2)
 
+        self.last_frame_context = FrameContext(
+            frame_index=self.cnt,
+            frame_time=frame_time,
+            runtime_profile=None,
+            light_brightness=None,
+            light_contrast=None,
+        )
+
         metrics = self._frame_light_metrics(img)
         profile_name, profile_overrides = resolve_runtime_profile(
             app_config,
@@ -159,6 +200,9 @@ class FrameProcessor:
         self.last_run_stats["profile_overrides"] = dict(profile_overrides)
         self.last_run_stats["light_brightness"] = metrics.get("brightness")
         self.last_run_stats["light_contrast"] = metrics.get("contrast")
+        self.last_frame_context.runtime_profile = profile_name
+        self.last_frame_context.light_brightness = metrics.get("brightness")
+        self.last_frame_context.light_contrast = metrics.get("contrast")
         set_gauge("last_runtime_profile", profile_name or "none")
         if metrics.get("brightness") is not None:
             set_gauge("light_brightness", round(float(metrics["brightness"]), 3))
@@ -168,8 +212,6 @@ class FrameProcessor:
         if not skip_light_gate:
             now_m = time.monotonic()
             if now_m < self._low_light_cooldown_until:
-                # Не крутить CPU в tight-loop пока действует cooldown (#237 review).
-                time.sleep(min(0.02, self._low_light_cooldown_until - now_m))
                 self.last_run_stats["light_gate_blocked"] = True
                 return False
 
@@ -181,7 +223,6 @@ class FrameProcessor:
             ):
                 # Throttle dark-frame handling without blocking the recording thread (#224).
                 self._low_light_cooldown_until = now_m + 1.0
-                time.sleep(0.02)
                 self.last_run_stats["light_gate_blocked"] = True
                 return False
 
@@ -263,9 +304,11 @@ class FrameProcessor:
             tracker_override = str(camera_overrides.get("tracker") or "").strip()
             if tracker_override:
                 tracker_cfg = resolve_tracker_config_path(tracker_override)
+        tracker_cfg = self._resolve_tracker_for_fps(tracker_cfg)
         self.last_run_stats["tracker_used"] = tracker_cfg
         set_gauge("tracker_config_used", tracker_cfg)
         self.last_run_stats["yolo_ran"] = True
+        self.last_frame_context.yolo_ran = True
         results = self.strategy.detect(
             img,
             tracker_cfg,
@@ -287,12 +330,56 @@ class FrameProcessor:
         self.last_run_stats["yolo_raw_boxes"] = int(dm.get("raw_boxes") or 0)
         self.last_run_stats["yolo_boxes_with_track_id"] = int(dm.get("boxes_with_track_id") or 0)
         self.last_run_stats["yolo_accepted_boxes"] = int(dm.get("accepted") or 0)
+        self.last_frame_context.yolo_raw_boxes = self.last_run_stats["yolo_raw_boxes"]
+        self.last_frame_context.yolo_accepted_boxes = self.last_run_stats["yolo_accepted_boxes"]
+        self.last_frame_context.tracker_used = tracker_cfg
         self.last_run_stats["yolo_predict_fallback"] = bool(dm.get("predict_fallback"))
+        self.last_run_stats["frame_copy_count_per_frame"] = int(
+            dm.get("frame_copy_count_per_frame") or 0
+        )
+        set_gauge(
+            "frame_copy_count_per_frame",
+            self.last_run_stats["frame_copy_count_per_frame"],
+        )
         self.last_run_stats["yolo_track_found"] = bool(results)
         if self.last_run_stats["yolo_track_found"]:
             self._consecutive_no_track_frames = 0
         else:
             self._consecutive_no_track_frames += 1
+        current_track_ids = {int(res.track_id) for res in (results or []) if int(getattr(res, "track_id", 0) or 0) > 0}
+        if self._previous_track_ids and current_track_ids and self._previous_track_ids.isdisjoint(current_track_ids):
+            self._id_switch_events += 1
+        self._previous_track_ids = set(current_track_ids)
+        self._frames_observed_for_tracking += 1
+        if current_track_ids:
+            self._frames_with_tracks += 1
+        lifetimes = []
+        static_like = 0
+        total_tracks = 0
+        for tr in self.tracks.values():
+            frames = tr.get("frames") if isinstance(tr.get("frames"), list) else []
+            if len(frames) < 2:
+                continue
+            total_tracks += 1
+            lifetimes.append(len(frames))
+            first_bbox = frames[0].get("bbox") if isinstance(frames[0], dict) else None
+            last_bbox = frames[-1].get("bbox") if isinstance(frames[-1], dict) else None
+            if isinstance(first_bbox, list) and isinstance(last_bbox, list) and len(first_bbox) == 4 and len(last_bbox) == 4:
+                c1x = (float(first_bbox[0]) + float(first_bbox[2])) * 0.5
+                c1y = (float(first_bbox[1]) + float(first_bbox[3])) * 0.5
+                c2x = (float(last_bbox[0]) + float(last_bbox[2])) * 0.5
+                c2y = (float(last_bbox[1]) + float(last_bbox[3])) * 0.5
+                if math.hypot(c2x - c1x, c2y - c1y) < 0.02:
+                    static_like += 1
+        avg_lifetime = (sum(lifetimes) / len(lifetimes)) if lifetimes else 0.0
+        id_switch_rate = float(self._id_switch_events) / float(max(1, self._frames_with_tracks))
+        static_box_ratio = float(static_like) / float(max(1, total_tracks))
+        self.last_run_stats["avg_track_lifetime_frames"] = round(avg_lifetime, 3)
+        self.last_run_stats["id_switch_rate"] = round(id_switch_rate, 6)
+        self.last_run_stats["static_box_ratio"] = round(static_box_ratio, 6)
+        set_gauge("avg_track_lifetime_frames", self.last_run_stats["avg_track_lifetime_frames"])
+        set_gauge("id_switch_rate", self.last_run_stats["id_switch_rate"])
+        set_gauge("static_box_ratio", self.last_run_stats["static_box_ratio"])
 
         if self.save_images and results:
             debug_img = img.copy()
@@ -319,6 +406,13 @@ class FrameProcessor:
             return False
 
         for res in results:
+            self.last_frame_context.roi_refs.append(
+                RoiRef(
+                    track_id=int(res.track_id),
+                    bbox_norm=tuple(float(b) for b in res.bbox),
+                    source_shape=(int(img.shape[0]), int(img.shape[1])),
+                )
+            )
             self.update_track(
                 res.track_id,
                 res.detector_label,
@@ -413,3 +507,8 @@ class FrameProcessor:
             "result_count": 0,
         }
         self._consecutive_no_track_frames = 0
+        self.last_frame_context = None
+        self._frames_observed_for_tracking = 0
+        self._frames_with_tracks = 0
+        self._id_switch_events = 0
+        self._previous_track_ids = set()

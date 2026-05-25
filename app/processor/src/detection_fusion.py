@@ -14,6 +14,7 @@ from species_normalizer import merge_detections, normalize
 from fusion_model import FusionScorer
 from hypothesis_arbitration import apply_hypothesis_arbitration
 from runtime_contract import apply_runtime_contract_rows
+from weighted_species_arbiter import apply_weighted_species_arbiter
 
 logger = logging.getLogger(__name__)
 
@@ -583,6 +584,9 @@ def build_fused_video_detections(
     merge_window = app_config.get("detection.merge_window_seconds", 5)
     dedup_window = app_config.get("detection.dedup_window_seconds", 45)
     one_per_species = app_config.get("detection.one_per_species", True)
+    one_per_species_keep_distinct_tracks = bool(
+        app_config.get("detection.one_per_species_keep_distinct_tracks", False)
+    )
     source_priority_cfg = app_config.get("detection.source_priority") or [
         "yolo",
         "frigate",
@@ -669,6 +673,7 @@ def build_fused_video_detections(
         merge_window,
         dedup_window,
         one_per_species=one_per_species,
+        one_per_species_keep_distinct_tracks=one_per_species_keep_distinct_tracks,
         source_priority=source_priority,
         cross_source_confidence_bonus=cross_bonus,
         species_mapping=_species_mapping(app_config),
@@ -690,6 +695,11 @@ def build_fused_video_detections(
         fused,
         mqtt_events,
         end_time=end_time,
+        app_config=app_config,
+    )
+    fused = apply_weighted_species_arbiter(
+        fused,
+        mqtt_events=mqtt_events,
         app_config=app_config,
     )
     fused = apply_hypothesis_arbitration(fused)

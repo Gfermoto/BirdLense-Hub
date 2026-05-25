@@ -8,6 +8,7 @@ import os
 import time
 from collections import Counter
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 from api import API
@@ -108,6 +109,57 @@ def _blind_suspected_from_final_stats(
     return bool(blind_score >= float(blind_score_threshold) * 0.5)
 
 
+def _emit_frigate_hub_panic_if_needed(
+    *,
+    session_summary: dict[str, Any],
+    ctx: dict[str, Any],
+    recording_context: dict[str, Any] | None,
+    mqtt_events: list[dict],
+    output_path_physical: str,
+) -> None:
+    """Raise panic signal when Frigate saw sustained activity and Hub accepted none."""
+    enabled = bool(app_config.get("detection.panic_gate_enabled", True))
+    if not enabled:
+        return
+    min_frigate_events = int(app_config.get("detection.panic_gate_min_frigate_events") or 8)
+    min_duration = float(app_config.get("detection.panic_gate_min_duration_seconds") or 20.0)
+    duration_s = float(session_summary.get("duration_s") or 0.0)
+    accepted = int(session_summary.get("yolo_accepted_boxes_total") or 0)
+    frigate_events = [
+        ev for ev in (mqtt_events or []) if str((ev or {}).get("source") or "").strip().lower() == "frigate"
+    ]
+    frigate_count = len(frigate_events)
+    if not (
+        duration_s >= max(1.0, min_duration)
+        and accepted == 0
+        and frigate_count >= max(1, min_frigate_events)
+    ):
+        return
+    panic_payload = {
+        "event": "frigate_hub_panic",
+        "camera_id": ctx.get("triggered_camera"),
+        "duration_s": round(duration_s, 3),
+        "frigate_events": frigate_count,
+        "yolo_raw_boxes_total": int(session_summary.get("yolo_raw_boxes_total") or 0),
+        "yolo_accepted_boxes_total": accepted,
+        "session_extended_by_frigate_only": int(session_summary.get("session_extended_by_frigate_only") or 0),
+        "runtime_profile": session_summary.get("runtime_profile"),
+        "video_dir": output_path_physical,
+    }
+    inc_counter("detection_panic_frigate_without_hub_total")
+    logging.error("detection_panic %s", json.dumps(panic_payload, default=str, separators=(",", ":")))
+    try:
+        diagnostics = collect_root_cause_snapshot(
+            output_path_physical,
+            include_dmesg=False,
+        )
+        diagnostics["panic_payload"] = panic_payload
+        diagnostics["recording_context"] = dict(recording_context or {})
+        write_root_cause_dump(Path(get_data_dir()), diagnostics, "panic_frigate_without_hub")
+    except Exception:
+        logging.debug("panic root-cause dump skipped", exc_info=True)
+
+
 def _run_self_heal_escalation(
     *,
     repo: SessionStateRepository,
@@ -182,32 +234,12 @@ def _run_self_heal_escalation(
     return action, details
 
 
-def _build_weak_yolo_salvage_row(
-    tracks: dict[str, Any] | dict[int, Any],
+def _weak_yolo_salvage_row_from_track(
+    track_id: Any,
+    track: dict[str, Any],
     *,
-    min_confidence: float = 0.10,
-) -> dict[str, Any] | None:
-    best_track = None
-    best_score = -1.0
-    for track_id, track in (tracks or {}).items():
-        frames = list(track.get("frames") or [])
-        if not frames:
-            continue
-        detector_events = list(track.get("detector_events") or [])
-        max_det_conf = max((float(ev.get("confidence") or 0.0) for ev in detector_events), default=0.0)
-        if max_det_conf < float(min_confidence):
-            continue
-        try:
-            duration = max(0.0, float(track.get("end_time") or 0.0) - float(track.get("start_time") or 0.0))
-        except (TypeError, ValueError):
-            duration = 0.0
-        score = float(len(frames)) + duration * 5.0 + max_det_conf * 3.0
-        if score > best_score:
-            best_score = score
-            best_track = (track_id, track, max_det_conf)
-    if not best_track:
-        return None
-    track_id, track, max_det_conf = best_track
+    max_det_conf: float,
+) -> dict[str, Any]:
     detector_events = list(track.get("detector_events") or [])
     detector_label = "Bird"
     if detector_events:
@@ -235,6 +267,46 @@ def _build_weak_yolo_salvage_row(
         "best_frame_score": float(track.get("best_frame_score") or 0.0),
         "yolo_weak_track_salvage": True,
     }
+
+
+def _build_weak_yolo_salvage_row(
+    tracks: dict[str, Any] | dict[int, Any],
+    *,
+    min_confidence: float = 0.10,
+) -> dict[str, Any] | None:
+    rows = _build_weak_yolo_salvage_rows(tracks, min_confidence=min_confidence, max_rows=1)
+    return rows[0] if rows else None
+
+
+def _build_weak_yolo_salvage_rows(
+    tracks: dict[str, Any] | dict[int, Any],
+    *,
+    min_confidence: float = 0.10,
+    max_rows: int = 5,
+) -> list[dict[str, Any]]:
+    scored: list[tuple[float, Any, dict[str, Any], float]] = []
+    for track_id, track in (tracks or {}).items():
+        frames = list(track.get("frames") or [])
+        if not frames:
+            continue
+        detector_events = list(track.get("detector_events") or [])
+        max_det_conf = max((float(ev.get("confidence") or 0.0) for ev in detector_events), default=0.0)
+        if max_det_conf < float(min_confidence):
+            continue
+        try:
+            duration = max(0.0, float(track.get("end_time") or 0.0) - float(track.get("start_time") or 0.0))
+        except (TypeError, ValueError):
+            duration = 0.0
+        score = float(len(frames)) + duration * 5.0 + max_det_conf * 3.0
+        scored.append((score, track_id, track, max_det_conf))
+    if not scored:
+        return []
+    scored.sort(key=lambda item: item[0], reverse=True)
+    limit = max(1, int(max_rows))
+    return [
+        _weak_yolo_salvage_row_from_track(track_id, track, max_det_conf=max_det_conf)
+        for _, track_id, track, max_det_conf in scored[:limit]
+    ]
 
 
 def _pick_frigate_evidence_for_salvage(
@@ -313,20 +385,42 @@ def _build_frigate_trigger_review_salvage_row(
     }
 
 
+def _yolo_anchor_row_score(row: dict[str, Any]) -> tuple[float, float, int]:
+    return (
+        float(row.get("confidence") or 0.0),
+        float(row.get("best_frame_score") or 0.0),
+        len(row.get("frames") or []),
+    )
+
+
 def _best_yolo_anchor_row(rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    anchors = _best_yolo_anchor_rows(rows, max_rows=1)
+    return anchors[0] if anchors else None
+
+
+def _best_yolo_anchor_rows(rows: list[dict[str, Any]], *, max_rows: int = 3) -> list[dict[str, Any]]:
     yolo_rows = [
         row for row in (rows or []) if str((row or {}).get("detection_provider") or "").strip().lower() == "yolo"
     ]
     if not yolo_rows:
-        return None
-    return max(
-        yolo_rows,
-        key=lambda row: (
-            float(row.get("confidence") or 0.0),
-            float(row.get("best_frame_score") or 0.0),
-            len(row.get("frames") or []),
-        ),
-    )
+        return []
+    seen_track_ids: set[int] = set()
+    ordered = sorted(yolo_rows, key=_yolo_anchor_row_score, reverse=True)
+    out: list[dict[str, Any]] = []
+    for row in ordered:
+        tid = row.get("track_id")
+        try:
+            tid_int = int(tid) if tid is not None else None
+        except (TypeError, ValueError):
+            tid_int = None
+        if tid_int is not None:
+            if tid_int in seen_track_ids:
+                continue
+            seen_track_ids.add(tid_int)
+        out.append(row)
+        if len(out) >= max(1, int(max_rows)):
+            break
+    return out
 
 
 def finalize_motion_recording(
@@ -522,23 +616,28 @@ def finalize_motion_recording(
     )
     yolo_core_anchor_enabled = bool(app_config.get("detection.yolo_core_anchor_enabled", True))
     if yolo_core_anchor_enabled:
-        pre_fusion_yolo_anchor = _best_yolo_anchor_row(accepted_pre_fusion)
+        try:
+            anchor_max = int(app_config.get("detection.yolo_core_anchor_max_rows") or 3)
+        except (TypeError, ValueError):
+            anchor_max = 3
+        pre_fusion_yolo_anchors = _best_yolo_anchor_rows(accepted_pre_fusion, max_rows=anchor_max)
         has_fused_yolo = any(
             str((row or {}).get("detection_provider") or "").strip().lower() == "yolo" for row in video_detections
         )
-        # Keep YOLO as pipeline core, but do not disable fallback: we only restore
-        # a single anchor row when YOLO had accepted rows and fusion dropped them all.
-        if yolo_tracks_count > 0 and pre_fusion_yolo_anchor and not has_fused_yolo:
-            anchor_row = dict(pre_fusion_yolo_anchor)
-            anchor_row["yolo_core_anchor_forced"] = True
-            if not str(anchor_row.get("decision_reason") or "").strip():
-                anchor_row["decision_reason"] = "yolo_core_anchor_forced"
-            if not str(anchor_row.get("decision_kind") or "").strip():
-                anchor_row["decision_kind"] = "accepted_species"
-            video_detections.append(anchor_row)
+        # Keep YOLO as pipeline core: restore top pre-fusion YOLO rows when fusion dropped them all.
+        if yolo_tracks_count > 0 and pre_fusion_yolo_anchors and not has_fused_yolo:
+            for pre_fusion_yolo_anchor in pre_fusion_yolo_anchors:
+                anchor_row = dict(pre_fusion_yolo_anchor)
+                anchor_row["yolo_core_anchor_forced"] = True
+                if not str(anchor_row.get("decision_reason") or "").strip():
+                    anchor_row["decision_reason"] = "yolo_core_anchor_forced"
+                if not str(anchor_row.get("decision_kind") or "").strip():
+                    anchor_row["decision_kind"] = "accepted_species"
+                video_detections.append(anchor_row)
             logging.warning(
-                "Finalize safeguard: restored one YOLO anchor row after fusion removed all YOLO rows "
+                "Finalize safeguard: restored %s YOLO anchor row(s) after fusion removed all YOLO rows "
                 "(tracks=%s, pre_fusion_accepted=%s).",
+                len(pre_fusion_yolo_anchors),
                 yolo_tracks_count,
                 len(accepted_pre_fusion),
             )
@@ -607,16 +706,22 @@ def finalize_motion_recording(
             salvage_min_conf = float(app_config.get("detection.yolo_weak_track_salvage_min_confidence") or 0.10)
         except (TypeError, ValueError):
             salvage_min_conf = 0.10
-        salvage = _build_weak_yolo_salvage_row(
+        try:
+            salvage_max_rows = int(app_config.get("detection.yolo_weak_track_salvage_max_rows") or 5)
+        except (TypeError, ValueError):
+            salvage_max_rows = 5
+        salvage_rows = _build_weak_yolo_salvage_rows(
             frame_processor.tracks,
             min_confidence=salvage_min_conf,
+            max_rows=salvage_max_rows,
         )
-        if salvage is not None:
-            video_detections = [salvage]
+        if salvage_rows:
+            video_detections = salvage_rows
             logging.warning(
-                "Finalize safeguard: recovered weak YOLO track as review-only (track_id=%s, conf=%.3f).",
-                salvage.get("track_id"),
-                float(salvage.get("confidence") or 0.0),
+                "Finalize safeguard: recovered %s weak YOLO track(s) as review-only (top track_id=%s, conf=%.3f).",
+                len(salvage_rows),
+                salvage_rows[0].get("track_id"),
+                float(salvage_rows[0].get("confidence") or 0.0),
             )
     salvage_enabled = bool(app_config.get("detection.frigate_trigger_review_salvage_enabled", False))
     salvage_allow_without_yolo = bool(
@@ -948,6 +1053,13 @@ def finalize_motion_recording(
             "yolo_blind_confirmed": bool(yolo_blind_confirmed),
             "yolo_blind_score": round(float(blind_score), 4),
         }
+        _emit_frigate_hub_panic_if_needed(
+            session_summary=session_summary,
+            ctx=ctx,
+            recording_context=recording_context if isinstance(recording_context, dict) else {},
+            mqtt_events=mqtt_events,
+            output_path_physical=output_path_physical,
+        )
         logging.info(
             "recording_session_summary %s",
             json.dumps(session_summary, default=str, separators=(",", ":")),
