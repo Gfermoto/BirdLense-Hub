@@ -4,8 +4,10 @@ import logging
 import os
 import threading
 import time
+from datetime import datetime, timezone
 
 from api import API
+from motion_detectors.opencv_live_overlay import snapshot_opencv_live_by_camera
 from processor_runtime_stats import flush_runtime_stats_snapshot, runtime_stats_snapshot
 
 # last_video_ok_at / last_yolo_ok_at для статуса (обновляет main loop)
@@ -127,5 +129,52 @@ def heartbeat():
 def start_heartbeat_daemon():
     """Запустить поток heartbeat в фоне."""
     t = threading.Thread(target=heartbeat, daemon=True)
+    t.start()
+    return t
+
+
+_opencv_overlay_row_id = None
+_opencv_overlay_empty_since: float | None = None
+
+
+def _opencv_overlay_heartbeat_loop():
+    """Публикует live-контуры OpenCV для UI (≈1.5 с)."""
+    global _opencv_overlay_row_id, _opencv_overlay_empty_since
+    api = None
+    while True:
+        try:
+            snap = snapshot_opencv_live_by_camera()
+            if snap:
+                _opencv_overlay_empty_since = None
+                if api is None:
+                    api = API()
+                payload = {
+                    "by_camera": snap,
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                _opencv_overlay_row_id = api.activity_log(
+                    type="opencv_live",
+                    data=payload,
+                    id=_opencv_overlay_row_id,
+                )
+            else:
+                now = time.time()
+                if _opencv_overlay_empty_since is None:
+                    _opencv_overlay_empty_since = now
+                elif now - _opencv_overlay_empty_since >= 45:
+                    logging.warning(
+                        "OpenCV live overlay snapshot empty for %.0fs "
+                        "(processor not analyzing frames?)",
+                        now - _opencv_overlay_empty_since,
+                    )
+                    _opencv_overlay_empty_since = now
+        except Exception as e:
+            logging.error("OpenCV overlay heartbeat failed: %s (retry in 1.5s)", e)
+        time.sleep(1.5)
+
+
+def start_opencv_overlay_daemon():
+    """Фоновая публикация opencv_live в activity_log для Live-оверлея."""
+    t = threading.Thread(target=_opencv_overlay_heartbeat_loop, daemon=True)
     t.start()
     return t

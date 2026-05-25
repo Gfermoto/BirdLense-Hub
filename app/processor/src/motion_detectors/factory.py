@@ -25,9 +25,11 @@ def _build_opencv_motion_detector(
     capture_fn,
     motion_masks: list[str],
     opencv_cfg: dict,
+    camera_id: str = "",
 ) -> OpenCVMotionDetector:
     return OpenCVMotionDetector(
         capture_fn=capture_fn,
+        camera_id=camera_id,
         check_every_n_frames=int(opencv_cfg.get("check_every_n_frames") or 1),
         threshold=int(opencv_cfg.get("diff_threshold") or 18),
         min_contour_area=int(opencv_cfg.get("min_contour_area") or 320),
@@ -113,6 +115,7 @@ def _build_opencv_detector_bundle(
                         capture_fn=src.capture,
                         motion_masks=masks,
                         opencv_cfg=opencv_cfg,
+                        camera_id=cid,
                     ),
                 )
             )
@@ -130,6 +133,7 @@ def _build_opencv_detector_bundle(
         capture_fn=media_source.capture,
         motion_masks=masks,
         opencv_cfg=opencv_cfg,
+        camera_id=primary_id or "",
     )
 
 

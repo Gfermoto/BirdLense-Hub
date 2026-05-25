@@ -15,7 +15,7 @@ import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import ToggleButton from '@mui/material/ToggleButton';
-import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import BuildIcon from '@mui/icons-material/Build';
 import CloseIcon from '@mui/icons-material/Close';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -35,6 +35,7 @@ import {
 type StreamMode = 'go2rtc' | 'mjpeg';
 type Point = [number, number];
 type Polygon = Point[];
+type EditorLayer = 'opencv_masks' | 'detector_zones';
 
 function clamp01(v: number): number {
   if (v < 0) return 0;
@@ -50,6 +51,20 @@ function parseTriggerMasks(raw: unknown): Polygon[] {
   if (!Array.isArray(raw)) return [];
   const out: Polygon[] = [];
   raw.forEach((item) => {
+    if (Array.isArray(item)) {
+      const poly: Polygon = [];
+      item.forEach((p) => {
+        if (Array.isArray(p) && p.length >= 2) {
+          const x = Number(p[0]);
+          const y = Number(p[1]);
+          if (Number.isFinite(x) && Number.isFinite(y)) {
+            poly.push([toNorm(x), toNorm(y)]);
+          }
+        }
+      });
+      if (poly.length >= 3) out.push(poly);
+      return;
+    }
     if (typeof item === 'string') {
       const nums = item
         .split(/[\s,;]+/)
@@ -137,29 +152,31 @@ const CameraStream = ({
   streamUrlMjpeg,
   name,
   mode,
-  onFullscreen,
-  canFullscreen,
+  onOpenEditor,
+  canEdit,
 }: {
   streamUrl: string;
   streamUrlMjpeg?: string;
   name: string;
   mode: StreamMode;
-  onFullscreen?: () => void;
-  canFullscreen?: boolean;
+  onOpenEditor?: () => void;
+  canEdit?: boolean;
 }) => {
+  const { t } = useTranslation();
   const useMjpeg = mode === 'mjpeg' && streamUrlMjpeg;
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: 280 }}>
       <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>{name}</span>
-          {canFullscreen ? (
+          {canEdit ? (
             <IconButton
               size="small"
-              onClick={onFullscreen}
-              title="Развернуть и настроить"
+              onClick={onOpenEditor}
+              aria-label={t('live.openEditor')}
+              title={t('live.openEditor')}
             >
-              <FullscreenIcon fontSize="small" />
+              <BuildIcon fontSize="small" />
             </IconButton>
           ) : null}
         </Box>
@@ -200,9 +217,9 @@ export const LivePage = () => {
   useDocumentTitle(t('nav.liveView'));
   const [streamMode, setStreamMode] = useState<StreamMode>('go2rtc');
   const [fullscreenCamId, setFullscreenCamId] = useState<string | null>(null);
-  const [showMasks, setShowMasks] = useState(true);
-  const [showTriggerRegions, setShowTriggerRegions] = useState(true);
-  const [showDetectorRegions, setShowDetectorRegions] = useState(true);
+  const [editorLayer, setEditorLayer] = useState<EditorLayer>('opencv_masks');
+  const [showOpencvMotion, setShowOpencvMotion] = useState(true);
+  const [showYoloDetections, setShowYoloDetections] = useState(true);
   const [draftPolygons, setDraftPolygons] = useState<Polygon[]>([]);
   const [draftCurrent, setDraftCurrent] = useState<Polygon>([]);
   const { isAdmin } = useProtectedArea();
@@ -238,23 +255,20 @@ export const LivePage = () => {
     refetchInterval: fullscreenCamId ? 2000 : false,
   });
 
-  const getCameraMasks = (cameraId: string | null): Polygon[] => {
+  const getCameraLayerPolygons = (cameraId: string | null, layer: EditorLayer): Polygon[] => {
     const all = (
       (settings as { video?: { cameras?: Array<Record<string, unknown>> } } | undefined)
         ?.video?.cameras || []
     );
     const camera = all.find((c) => String(c.id || '') === String(cameraId || ''));
-    return parseTriggerMasks(camera?.opencv_masks);
+    const key = layer === 'detector_zones' ? 'detection_interest_zones' : 'opencv_masks';
+    return parseTriggerMasks(camera?.[key]);
   };
 
-  const cameraMaskPolygons: Polygon[] = useMemo(() => {
-    return getCameraMasks(fullscreenCamId);
-  }, [fullscreenCamId, settings]);
-
-  const runtimeTriggerPolygons = parsePolygonList(
+  const opencvMotionPolygons = parsePolygonList(
     runtimeOverlaysQuery.data?.trigger_polygons,
   );
-  const runtimeDetectorPolygons = parsePolygonList(
+  const yoloDetectionPolygons = parsePolygonList(
     runtimeOverlaysQuery.data?.detector_polygons,
   );
 
@@ -275,9 +289,20 @@ export const LivePage = () => {
     setDraftCurrent([]);
   };
 
+  const removeMaskAt = (index: number) => {
+    setDraftPolygons((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const switchEditorLayer = (next: EditorLayer) => {
+    setEditorLayer(next);
+    setDraftPolygons(getCameraLayerPolygons(fullscreenCamId, next));
+    setDraftCurrent([]);
+  };
+
   const savePolygons = async () => {
     if (!fullscreenCamId) return;
     const polygonsToSave = [...draftPolygons];
+    const isDetectorZones = editorLayer === 'detector_zones';
     const all = (
       (settings as { video?: { cameras?: Array<Record<string, unknown>> } } | undefined)
         ?.video?.cameras || []
@@ -288,7 +313,14 @@ export const LivePage = () => {
       }
       return {
         ...camera,
-        opencv_masks: formatTriggerMasks(polygonsToSave),
+        ...(isDetectorZones
+          ? {
+              detection_interest_zones: polygonsToSave,
+              detection_interest_zones_required: polygonsToSave.length > 0,
+            }
+          : {
+              opencv_masks: formatTriggerMasks(polygonsToSave),
+            }),
       };
     });
     await patchMutation.mutateAsync({
@@ -296,7 +328,6 @@ export const LivePage = () => {
     });
   };
 
-  // Адаптивная сетка: 1 камера — на всю ширину, 2 — в 2 колонки, 3–4 — в 4, 5+ — в 6
   const numCols =
     cams.length <= 1 ? 1 : cams.length <= 2 ? 2 : cams.length <= 4 ? 4 : 6;
   const gridSize = 12 / numCols;
@@ -357,10 +388,11 @@ export const LivePage = () => {
                 streamUrlMjpeg={cam.stream_url_mjpeg}
                 name={cam.name}
                 mode={streamMode}
-                canFullscreen={isAdmin}
-                onFullscreen={() => {
-                  const initialMasks = getCameraMasks(cam.id);
+                canEdit={isAdmin}
+                onOpenEditor={() => {
+                  const initialMasks = getCameraLayerPolygons(cam.id, 'opencv_masks');
                   setFullscreenCamId(cam.id);
+                  setEditorLayer('opencv_masks');
                   setDraftPolygons(initialMasks.map((poly) => [...poly]));
                   setDraftCurrent([]);
                 }}
@@ -375,10 +407,12 @@ export const LivePage = () => {
         fullScreen
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>{fullscreenCam?.name ?? 'Камера'} — Live Editor</span>
+          <span>
+            {t('live.editorTitle', { name: fullscreenCam?.name ?? '' })}
+          </span>
           <IconButton
             onClick={() => setFullscreenCamId(null)}
-            aria-label="Close fullscreen editor"
+            aria-label={t('live.exitFullscreen')}
           >
             <CloseIcon />
           </IconButton>
@@ -423,30 +457,27 @@ export const LivePage = () => {
                   pointerEvents: isAdmin ? 'auto' : 'none',
                 }}
               >
-                {showMasks ? (
+                <OverlayPolygons
+                  polygons={draftPolygons}
+                  color={editorLayer === 'detector_zones' ? '#03a9f4' : '#ff5252'}
+                />
+                {showOpencvMotion ? (
                   <OverlayPolygons
-                    polygons={cameraMaskPolygons}
-                    color="#ff5252"
-                  />
-                ) : null}
-                {showTriggerRegions ? (
-                  <OverlayPolygons
-                    polygons={runtimeTriggerPolygons}
+                    polygons={opencvMotionPolygons}
                     color="#ffb300"
                   />
                 ) : null}
-                {showDetectorRegions ? (
+                {showYoloDetections ? (
                   <OverlayPolygons
-                    polygons={runtimeDetectorPolygons}
+                    polygons={yoloDetectionPolygons}
                     color="#00c853"
                   />
                 ) : null}
-                <OverlayPolygons polygons={draftPolygons} color="#40c4ff" />
                 {draftCurrent.length > 1 ? (
                   <polyline
                     points={draftCurrent.map(pointToSvg).join(' ')}
                     fill="none"
-                    stroke="#40c4ff"
+                    stroke={editorLayer === 'detector_zones' ? '#03a9f4' : '#ff5252'}
                     strokeWidth={2}
                     strokeDasharray="4 3"
                   />
@@ -457,44 +488,111 @@ export const LivePage = () => {
                     cx={Math.round(x * 10000) / 100}
                     cy={Math.round(y * 10000) / 100}
                     r="0.8"
-                    fill="#40c4ff"
+                    fill={editorLayer === 'detector_zones' ? '#03a9f4' : '#ff5252'}
                   />
                 ))}
               </Box>
             </Box>
             <Box sx={{ p: 2, borderLeft: { md: '1px solid' }, borderColor: 'divider' }}>
-              <Stack spacing={1}>
+              <Stack spacing={1.5}>
+                <Typography variant="overline" color="text.secondary">
+                  {t('live.overlaysSection')}
+                </Typography>
                 <FormControlLabel
-                  control={<Switch checked={showMasks} onChange={(e) => setShowMasks(e.target.checked)} />}
-                  label="Показать маски OpenCV (редактор)"
+                  control={
+                    <Switch
+                      checked={showOpencvMotion}
+                      onChange={(e) => setShowOpencvMotion(e.target.checked)}
+                    />
+                  }
+                  label={t('live.showOpencvMotion')}
                 />
                 <FormControlLabel
-                  control={<Switch checked={showTriggerRegions} onChange={(e) => setShowTriggerRegions(e.target.checked)} />}
-                  label="Показать runtime триггер"
+                  control={
+                    <Switch
+                      checked={showYoloDetections}
+                      onChange={(e) => setShowYoloDetections(e.target.checked)}
+                    />
+                  }
+                  label={t('live.showYoloDetections')}
                 />
-                <FormControlLabel
-                  control={<Switch checked={showDetectorRegions} onChange={(e) => setShowDetectorRegions(e.target.checked)} />}
-                  label="Показать runtime детектор"
-                />
-                <Divider sx={{ my: 1 }} />
-                <Alert severity="info" variant="outlined">
-                  Маски OpenCV-триггера — только для этой камеры (не YOLO).
-                  Runtime триггер/детектор — read-only оверлей последней записи.
-                </Alert>
+                <Typography variant="caption" color="text.secondary">
+                  {t('live.overlaysHint')}
+                </Typography>
+                {showOpencvMotion && runtimeOverlaysQuery.data?.opencv_last_decision_reason ? (
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    OpenCV: {runtimeOverlaysQuery.data.opencv_last_decision_reason}
+                    {opencvMotionPolygons.length === 0
+                      ? ` — ${t('live.opencvNoContours')}`
+                      : ` — ${t('live.opencvContourCount', { count: opencvMotionPolygons.length })}`}
+                  </Typography>
+                ) : null}
+                {runtimeOverlaysQuery.isError ? (
+                  <Alert severity="warning" variant="outlined">
+                    {t('live.overlayUnavailable')}
+                  </Alert>
+                ) : null}
+
+                <Divider sx={{ my: 0.5 }} />
+                <Typography variant="overline" color="text.secondary">
+                  {t('live.masksSection')}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {editorLayer === 'detector_zones' ? t('live.detectorZonesHint') : t('live.masksHint')}
+                </Typography>
+                <ToggleButtonGroup
+                  value={editorLayer}
+                  exclusive
+                  onChange={(_, v: EditorLayer | null) => v && switchEditorLayer(v)}
+                  size="small"
+                >
+                  <ToggleButton value="opencv_masks">{t('live.layerTriggerMask')}</ToggleButton>
+                  <ToggleButton value="detector_zones">{t('live.layerDetectorZone')}</ToggleButton>
+                </ToggleButtonGroup>
+                {draftPolygons.length > 0 ? (
+                  <Stack spacing={0.5}>
+                    {draftPolygons.map((poly, idx) => (
+                      <Stack
+                        key={`mask-${idx}`}
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        spacing={1}
+                      >
+                        <Typography variant="caption" color="text.secondary">
+                          {t('live.maskItem', { n: idx + 1, points: poly.length })}
+                        </Typography>
+                        <Button
+                          size="small"
+                          color="error"
+                          variant="text"
+                          onClick={() => removeMaskAt(idx)}
+                          disabled={!isAdmin}
+                        >
+                          {t('live.deleteMask')}
+                        </Button>
+                      </Stack>
+                    ))}
+                  </Stack>
+                ) : (
+                  <Typography variant="caption" color="text.secondary">
+                    {t('live.noMasksYet')}
+                  </Typography>
+                )}
                 <Stack direction="row" spacing={1}>
                   <Button
                     variant="outlined"
                     onClick={closeCurrentPolygon}
                     disabled={!isAdmin || draftCurrent.length < 3}
                   >
-                    Замкнуть полигон
+                    {t('live.closePolygon')}
                   </Button>
                   <Button
                     variant="outlined"
                     onClick={() => setDraftCurrent((prev) => prev.slice(0, -1))}
                     disabled={!isAdmin || draftCurrent.length === 0}
                   >
-                    Отменить точку
+                    {t('live.undoPoint')}
                   </Button>
                 </Stack>
                 <Stack direction="row" spacing={1}>
@@ -507,37 +605,26 @@ export const LivePage = () => {
                     }}
                     disabled={!isAdmin}
                   >
-                    Очистить слой
+                    {t('live.clearLayer')}
                   </Button>
                   <Button
                     variant="contained"
                     onClick={savePolygons}
                     disabled={!isAdmin || patchMutation.isPending || draftCurrent.length > 0}
                   >
-                    Сохранить
+                    {t('live.saveLayer')}
                   </Button>
                 </Stack>
                 {patchMutation.isError ? (
                   <Alert severity="error" variant="outlined">
-                    Не удалось сохранить изменения.
+                    {t('live.saveFailed')}
                   </Alert>
                 ) : null}
                 {patchMutation.isSuccess ? (
                   <Alert severity="success" variant="outlined">
-                    Слой сохранен.
+                    {t('live.saveOk')}
                   </Alert>
                 ) : null}
-                {runtimeOverlaysQuery.isError ? (
-                  <Alert severity="warning" variant="outlined">
-                    Runtime оверлей временно недоступен.
-                  </Alert>
-                ) : null}
-                <Typography variant="caption" color="text.secondary">
-                  Маски OpenCV камеры: {cameraMaskPolygons.length}. Черновик:{' '}
-                  {draftPolygons.length}. Runtime trigger:{' '}
-                  {runtimeTriggerPolygons.length}, detector:{' '}
-                  {runtimeDetectorPolygons.length}.
-                </Typography>
               </Stack>
             </Box>
           </Box>
@@ -548,7 +635,7 @@ export const LivePage = () => {
             startIcon={<CloseIcon />}
             onClick={() => setFullscreenCamId(null)}
           >
-            Выйти из полноэкранного режима
+            {t('live.exitFullscreen')}
           </Button>
         </DialogActions>
       </Dialog>

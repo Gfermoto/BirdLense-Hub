@@ -18,6 +18,7 @@ import VideoCall from '@mui/icons-material/VideoCall';
 import Mic from '@mui/icons-material/Mic';
 import Share from '@mui/icons-material/Share';
 import MonitorWeightIcon from '@mui/icons-material/MonitorWeight';
+import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import Tooltip from '@mui/material/Tooltip';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
@@ -32,6 +33,7 @@ import { downloadDetectionCropForINaturalist } from '../api/dataset';
 import { getApiErrorMessage } from '../api/api';
 import { invalidateLocalSpeciesEditCaches } from '../api/invalidateLocalSpeciesCaches';
 import { updateDetectionNickname } from '../api/speciesOverviewDetections';
+import { deleteDetection, deleteVisit } from '../api/speciesOverviewDetections';
 import { UnlinkBirdProfileButton } from './UnlinkBirdProfileButton';
 import { DeleteBirdProfileButton } from './DeleteBirdProfileButton';
 import { getVisitBirdProfileId } from '../pages/Timeline/timelineFilters';
@@ -45,12 +47,16 @@ const DetectionItem = ({
   onClick,
   isLastInGroup,
   inaturalistShareEnabled,
+  canDelete,
+  onDelete,
 }: {
   detection: SpeciesVisit['detections'][0];
   speciesName: string;
   onClick: () => void;
   isLastInGroup: boolean;
   inaturalistShareEnabled: boolean;
+  canDelete?: boolean;
+  onDelete?: () => void;
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -148,6 +154,24 @@ const DetectionItem = ({
               </span>
             </Tooltip>
           )}
+          {canDelete && detection.id ? (
+            <Tooltip title={t('visitCard.deleteDetection')}>
+              <span>
+                <IconButton
+                  size="small"
+                  color="error"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete?.();
+                  }}
+                  sx={{ p: 0.5 }}
+                  aria-label={t('visitCard.deleteDetection')}
+                >
+                  <DeleteOutline fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          ) : null}
         </Box>
       </CardActionArea>
       <Snackbar
@@ -219,6 +243,27 @@ export const VisitCard = memo(function VisitCard({
     onSuccess: () => {
       invalidateLocalSpeciesEditCaches(queryClient, firstVideoId);
       setSaveSuccess(t('video.nicknameSaved'));
+    },
+  });
+  const deleteDetectionMutation = useMutation({
+    mutationFn: (detectionId: number) =>
+      deleteDetection(detectionId, { source: 'timeline' }),
+    onSuccess: (payload) => {
+      invalidateLocalSpeciesEditCaches(queryClient, payload.video_id);
+      setSaveSuccess(t('visitCard.deleteDetectionSuccess'));
+    },
+    onError: (err) => {
+      setSaveError(getApiErrorMessage(err, t('errors.loadSightings')));
+    },
+  });
+  const deleteVisitMutation = useMutation({
+    mutationFn: () => deleteVisit(Number(visit.id), { source: 'timeline' }),
+    onSuccess: () => {
+      invalidateLocalSpeciesEditCaches(queryClient, firstVideoId);
+      setSaveSuccess(t('visitCard.deleteVisitSuccess'));
+    },
+    onError: (err) => {
+      setSaveError(getApiErrorMessage(err, t('errors.loadSightings')));
     },
   });
   const behaviorLabels = [
@@ -404,6 +449,29 @@ export const VisitCard = memo(function VisitCard({
                   sx={{ height: 28 }}
                 />
               )}
+              {canEdit && visit.timeline_kind !== 'unlinked_video' && visit.id > 0 ? (
+                <Button
+                  size="small"
+                  color="error"
+                  variant="outlined"
+                  startIcon={<DeleteOutline fontSize="small" />}
+                  disabled={deleteVisitMutation.isPending}
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        t('visitCard.deleteVisitConfirm', {
+                          name: visit.species.name,
+                        }),
+                      )
+                    ) {
+                      return;
+                    }
+                    deleteVisitMutation.mutate();
+                  }}
+                >
+                  {t('visitCard.deleteVisit')}
+                </Button>
+              ) : null}
               {(() => {
                 const sec =
                   visit.video_duration_seconds != null &&
@@ -469,6 +537,21 @@ export const VisitCard = memo(function VisitCard({
                         detection={detection}
                         speciesName={visit.species.name}
                         inaturalistShareEnabled={canEdit}
+                        canDelete={canEdit && Boolean(detection.id)}
+                        onDelete={() => {
+                          const did = detection.id;
+                          if (!did) return;
+                          if (
+                            !window.confirm(
+                              t('visitCard.deleteDetectionConfirm', {
+                                time: formatLocalTime(detection.start_time),
+                              }),
+                            )
+                          ) {
+                            return;
+                          }
+                          deleteDetectionMutation.mutate(did);
+                        }}
                         onClick={() =>
                           navigate(`/videos/${detection.video_id}`, {
                             state: {
