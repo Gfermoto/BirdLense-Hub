@@ -32,8 +32,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { downloadDetectionCropForINaturalist } from '../api/dataset';
 import { getApiErrorMessage } from '../api/api';
 import { invalidateLocalSpeciesEditCaches } from '../api/invalidateLocalSpeciesCaches';
-import { updateDetectionNickname } from '../api/speciesOverviewDetections';
-import { deleteDetection, deleteVisit } from '../api/speciesOverviewDetections';
+import {
+  deleteVisit,
+  updateDetectionNickname,
+} from '../api/speciesOverviewDetections';
 import { UnlinkBirdProfileButton } from './UnlinkBirdProfileButton';
 import { DeleteBirdProfileButton } from './DeleteBirdProfileButton';
 import { getVisitBirdProfileId } from '../pages/Timeline/timelineFilters';
@@ -47,16 +49,12 @@ const DetectionItem = ({
   onClick,
   isLastInGroup,
   inaturalistShareEnabled,
-  canDelete,
-  onDelete,
 }: {
   detection: SpeciesVisit['detections'][0];
   speciesName: string;
   onClick: () => void;
   isLastInGroup: boolean;
   inaturalistShareEnabled: boolean;
-  canDelete?: boolean;
-  onDelete?: () => void;
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -154,24 +152,6 @@ const DetectionItem = ({
               </span>
             </Tooltip>
           )}
-          {canDelete && detection.id ? (
-            <Tooltip title={t('visitCard.deleteDetection')}>
-              <span>
-                <IconButton
-                  size="small"
-                  color="error"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete?.();
-                  }}
-                  sx={{ p: 0.5 }}
-                  aria-label={t('visitCard.deleteDetection')}
-                >
-                  <DeleteOutline fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-          ) : null}
         </Box>
       </CardActionArea>
       <Snackbar
@@ -243,17 +223,6 @@ export const VisitCard = memo(function VisitCard({
     onSuccess: () => {
       invalidateLocalSpeciesEditCaches(queryClient, firstVideoId);
       setSaveSuccess(t('video.nicknameSaved'));
-    },
-  });
-  const deleteDetectionMutation = useMutation({
-    mutationFn: (detectionId: number) =>
-      deleteDetection(detectionId, { source: 'timeline' }),
-    onSuccess: (payload) => {
-      invalidateLocalSpeciesEditCaches(queryClient, payload.video_id);
-      setSaveSuccess(t('visitCard.deleteDetectionSuccess'));
-    },
-    onError: (err) => {
-      setSaveError(getApiErrorMessage(err, t('errors.loadSightings')));
     },
   });
   const deleteVisitMutation = useMutation({
@@ -537,21 +506,6 @@ export const VisitCard = memo(function VisitCard({
                         detection={detection}
                         speciesName={visit.species.name}
                         inaturalistShareEnabled={canEdit}
-                        canDelete={canEdit && Boolean(detection.id)}
-                        onDelete={() => {
-                          const did = detection.id;
-                          if (!did) return;
-                          if (
-                            !window.confirm(
-                              t('visitCard.deleteDetectionConfirm', {
-                                time: formatLocalTime(detection.start_time),
-                              }),
-                            )
-                          ) {
-                            return;
-                          }
-                          deleteDetectionMutation.mutate(did);
-                        }}
                         onClick={() =>
                           navigate(`/videos/${detection.video_id}`, {
                             state: {

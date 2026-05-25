@@ -4,6 +4,7 @@ import logging
 
 from app_config.trigger_config import TRIGGER_SOURCE_ESPHOME, TRIGGER_SOURCE_MQTT
 from motion_detectors.opencv_camera_masks import resolve_opencv_mask_specs
+from motion_detectors.opencv_live_overlay import register_opencv_live_detector
 from motion_detectors.opencv_motion import OpenCVMotionDetector
 from motion_detectors.opencv_multi_camera import OpenCVMultiCameraMotionDetector
 from motion_detectors.or_motion import OrMotionDetector
@@ -27,10 +28,12 @@ def _build_opencv_motion_detector(
     opencv_cfg: dict,
     camera_id: str = "",
 ) -> OpenCVMotionDetector:
-    return OpenCVMotionDetector(
+    detector = OpenCVMotionDetector(
         capture_fn=capture_fn,
         camera_id=camera_id,
         check_every_n_frames=int(opencv_cfg.get("check_every_n_frames") or 1),
+        check_interval=float(opencv_cfg.get("check_interval_seconds") or 0.12),
+        motion_max_side_px=int(opencv_cfg.get("motion_max_side_px") or 512),
         threshold=int(opencv_cfg.get("diff_threshold") or 18),
         min_contour_area=int(opencv_cfg.get("min_contour_area") or 320),
         global_motion_mean_absdiff=_opencv_float(opencv_cfg, "global_motion_mean_absdiff", 2.5),
@@ -84,6 +87,9 @@ def _build_opencv_motion_detector(
         improve_contrast=bool(opencv_cfg.get("improve_contrast", False)),
         morphology_open_iterations=int(opencv_cfg.get("morphology_open_iterations") or 1),
     )
+    if camera_id:
+        register_opencv_live_detector(camera_id, detector)
+    return detector
 
 
 def _build_opencv_detector_bundle(
@@ -195,6 +201,18 @@ def build_motion_detector(
         if primary is not None and or_extras:
             scales_detector = next((item for item in or_extras if item is not None), None)
     opencv_cfg = cfg.get("opencv") or {}
+    if bool(opencv_cfg.get("enabled")):
+        logger.info(
+            "OpenCV trigger runtime: method=%s auto_profile=%s warmup=%s "
+            "every_n=%s max_side=%spx interval=%.2fs smart=%s",
+            opencv_cfg.get("detection_method"),
+            opencv_cfg.get("auto_profile_enabled"),
+            opencv_cfg.get("suppress_warmup_frames"),
+            opencv_cfg.get("check_every_n_frames"),
+            opencv_cfg.get("motion_max_side_px"),
+            float(opencv_cfg.get("check_interval_seconds") or 0.12),
+            opencv_cfg.get("smart_trigger_enabled"),
+        )
     motion_sensor_cfg = cfg.get("motion_sensor") or {}
     scales_cfg = cfg.get("scales") or {}
     frigate_cfg = cfg.get("frigate") or {}

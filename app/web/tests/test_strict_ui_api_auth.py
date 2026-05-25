@@ -48,6 +48,14 @@ def test_production_strict_allows_public_status_and_feed(client, _strict_prod_en
     assert client.get("/api/ui/feed/info").status_code == 200
 
 
+def test_production_strict_allows_public_live_overlays(client, _strict_prod_env):
+    r = client.get("/api/ui/live/overlays", query_string={"camera_id": "BirdBox"})
+    assert r.status_code == 200
+    body = r.get_json()
+    assert "trigger_polygons" in body
+    assert "detector_polygons" in body
+
+
 def test_production_strict_allows_public_storage_read_endpoints(client, _strict_prod_env):
     assert client.get("/api/ui/storage/stats").status_code == 200
     assert (

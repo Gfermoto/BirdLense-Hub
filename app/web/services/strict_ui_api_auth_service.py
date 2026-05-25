@@ -80,6 +80,7 @@ _PUBLIC_GET_EXACT: frozenset[str] = frozenset(
     {
         "/api/ui/status",
         "/api/ui/cameras",
+        "/api/ui/live/overlays",
         "/api/ui/feed/info",
         "/api/ui/weather",
         "/api/ui/sun-times",
