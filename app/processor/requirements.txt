@@ -15,3 +15,15 @@ matplotlib==3.8.4
 
 # OpenVINO runtime для processor.inference_backend=openvino (Ultralytics IR).
 openvino>=2024.0
+
+# EfficientNetB2 species classifier runtime (HF preprocessing + ONNX/OpenVINO bundles).
+transformers>=4.40,<5
+timm>=0.9,<2
+onnxruntime>=1.17,<2
+safetensors>=0.4
+
+# EfficientNetB2 species classifier (dennisjooo/Birds-Classifier-EfficientNetB2).
+transformers>=4.40,<5
+timm>=0.9,<2
+onnxruntime>=1.17,<2
+safetensors>=0.4

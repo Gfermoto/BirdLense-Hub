@@ -181,9 +181,9 @@ def build_detection_stack(
     if not detector_weights_available(binary_path):
         raise FileNotFoundError(
             f"YOLO binary detector weights missing or invalid path: {binary_path}. "
-            "For torch set processor.models.binary (.pt); for OpenVINO use a directory or .xml "
-            "from yolo export format=openvino (processor.models.binary_openvino or "
-            "BIRDLENSE_BINARY_OPENVINO_PATH).",
+            "For torch set processor.models.binary (.pt); for OpenVINO provide a complete IR "
+            "bundle (.xml + matching .bin) via processor.models.binary_openvino or "
+            "BIRDLENSE_BINARY_OPENVINO_PATH. Fresh clone/deploy: run `make sync-models`.",
         )
     if not classifier_weights_available(classifier_path):
         _eng = classifier_engine(app_config)

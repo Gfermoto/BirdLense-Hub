@@ -31,8 +31,8 @@ import {
   fetchLiveRuntimeOverlays,
   LiveRuntimeOverlaysPayload,
 } from '../../api/liveOverlays';
-
-type StreamMode = 'go2rtc' | 'mjpeg';
+import { LiveStreamTile, LiveStreamView } from './LiveStreamView';
+import { defaultLiveStreamKind, resolveGo2rtcSrc, type LiveStreamKind } from './liveStream';
 type Point = [number, number];
 type Polygon = Point[];
 type EditorLayer = 'opencv_masks' | 'detector_zones';
@@ -141,7 +141,6 @@ function OverlayPolygons({
             fill={`${color}44`}
             stroke={color}
             strokeWidth={strokeWidth}
-            vectorEffect="non-scaling-stroke"
           />
         );
       })}
@@ -149,119 +148,22 @@ function OverlayPolygons({
   );
 }
 
-function resolveGo2rtcSrc(cam: { id: string; stream_url?: string; go2rtc_src?: string }): string {
-  const explicit = (cam.go2rtc_src || '').trim();
-  if (explicit) return explicit;
-  const m = (cam.stream_url || '').match(/[?&]src=([^&]+)/);
-  if (m?.[1]) {
-    try {
-      return decodeURIComponent(m[1]);
-    } catch {
-      return m[1];
-    }
-  }
-  return cam.id;
-}
-
-function go2rtcMjpegPath(go2rtcSrc: string): string {
-  return `/go2rtc/api/stream.mjpeg?src=${encodeURIComponent(go2rtcSrc)}`;
-}
-
-type StreamFallback = 'primary' | 'alternate' | 'none';
-
-function resolveStreamSrc({
-  mode,
-  go2rtcSrc,
-  streamUrlMjpeg,
-  fallback,
-}: {
-  mode: StreamMode;
-  go2rtcSrc: string;
-  streamUrlMjpeg?: string;
-  fallback: StreamFallback;
-}): string {
-  const go2rtc = go2rtcSrc ? go2rtcMjpegPath(go2rtcSrc) : '';
-  const processor = streamUrlMjpeg || '';
-  if (fallback === 'none') return '';
-  if (mode === 'mjpeg') {
-    if (fallback === 'primary') return processor || go2rtc;
-    return go2rtc || processor;
-  }
-  if (fallback === 'primary') return go2rtc || processor;
-  return processor || go2rtc;
-}
-
-const FullscreenStream = ({
+const CameraTile = ({
   go2rtcSrc,
   streamUrlMjpeg,
   name,
-  mode,
-}: {
-  go2rtcSrc: string;
-  streamUrlMjpeg?: string;
-  name: string;
-  mode: StreamMode;
-}) => {
-  const { t } = useTranslation();
-  const [fallback, setFallback] = useState<StreamFallback>('primary');
-  const imgSrc = resolveStreamSrc({
-    mode,
-    go2rtcSrc,
-    streamUrlMjpeg,
-    fallback,
-  });
-  if (!imgSrc) {
-    return (
-      <Box
-        sx={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <Typography color="text.secondary">{t('live.streamUnavailable')}</Typography>
-      </Box>
-    );
-  }
-  return (
-    <Box
-      component="img"
-      src={imgSrc}
-      alt={name}
-      onError={() => {
-        setFallback((prev) => (prev === 'primary' ? 'alternate' : 'none'));
-      }}
-      sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
-    />
-  );
-};
-
-/** MJPEG процессора (по умолчанию) или Go2RTC MJPEG по stream_name с взаимным fallback. */
-const CameraStream = ({
-  go2rtcSrc,
-  streamUrlMjpeg,
-  name,
-  mode,
+  streamKind,
   onOpenEditor,
   canEdit,
 }: {
   go2rtcSrc: string;
   streamUrlMjpeg?: string;
   name: string;
-  mode: StreamMode;
+  streamKind: LiveStreamKind;
   onOpenEditor?: () => void;
   canEdit?: boolean;
 }) => {
   const { t } = useTranslation();
-  const [fallback, setFallback] = useState<StreamFallback>('primary');
-  const imgSrc = resolveStreamSrc({
-    mode,
-    go2rtcSrc,
-    streamUrlMjpeg,
-    fallback,
-  });
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: 280 }}>
       <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
@@ -280,39 +182,15 @@ const CameraStream = ({
           ) : null}
         </Box>
       </Typography>
-      {imgSrc ? (
-        <Box
-          component="img"
-          src={imgSrc}
-          alt={name}
-          onError={() => {
-            setFallback((prev) => (prev === 'primary' ? 'alternate' : 'none'));
-          }}
-          sx={{
-            flex: 1,
-            minHeight: 200,
-            objectFit: 'contain',
-            borderRadius: 1,
-            bgcolor: 'black',
-          }}
+      <Box sx={{ flex: 1, minHeight: 200, borderRadius: 1, overflow: 'hidden' }}>
+        <LiveStreamTile
+          name={name}
+          streamKind={streamKind}
+          go2rtcSrc={go2rtcSrc}
+          streamUrlMjpeg={streamUrlMjpeg}
+          sx={{ minHeight: 200, borderRadius: 1 }}
         />
-      ) : (
-        <Box
-          sx={{
-            flex: 1,
-            minHeight: 200,
-            borderRadius: 1,
-            bgcolor: 'black',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Typography variant="body2" color="text.secondary">
-            {t('live.streamUnavailable')}
-          </Typography>
-        </Box>
-      )}
+      </Box>
     </Box>
   );
 };
@@ -320,7 +198,7 @@ const CameraStream = ({
 export const LivePage = () => {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.liveView'));
-  const [streamMode, setStreamMode] = useState<StreamMode>('mjpeg');
+  const [streamKind, setStreamKind] = useState<LiveStreamKind>(() => defaultLiveStreamKind());
   const [fullscreenCamId, setFullscreenCamId] = useState<string | null>(null);
   const [editorLayer, setEditorLayer] = useState<EditorLayer>('opencv_masks');
   const [showOpencvMotion, setShowOpencvMotion] = useState(true);
@@ -351,7 +229,8 @@ export const LivePage = () => {
     () => cams.find((c) => c.id === fullscreenCamId) ?? null,
     [cams, fullscreenCamId],
   );
-  const hasMjpeg = cams.some((c) => c.stream_url_mjpeg);
+  const hasProcessorMjpeg = cams.some((c) => c.stream_url_mjpeg);
+  const showProcessorStream = hasProcessorMjpeg;
   const runtimeOverlaysQuery = useQuery<LiveRuntimeOverlaysPayload>({
     queryKey: queryKeys.live.overlays(fullscreenCamId || '__none__'),
     queryFn: () =>
@@ -462,23 +341,45 @@ export const LivePage = () => {
         title={t('live.title')}
         description={t('live.streamTitle')}
         actions={
-          hasMjpeg ? (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <ToggleButtonGroup
-              value={streamMode}
+              value={streamKind === 'processor_detect' ? 'processor' : 'go2rtc'}
               exclusive
-              onChange={(_, v: StreamMode | null) =>
-                v != null && setStreamMode(v)
-              }
-              size="medium"
-              aria-label={t('live.streamModeAria')}
-              sx={{
-                '& .MuiToggleButton-root': { minHeight: 40, px: 1.75 },
+              onChange={(_, v: 'go2rtc' | 'processor' | null) => {
+                if (v == null) return;
+                if (v === 'processor' && showProcessorStream) {
+                  setStreamKind('processor_detect');
+                } else {
+                  setStreamKind((prev) =>
+                    prev === 'processor_detect' ? 'go2rtc_auto' : prev,
+                  );
+                }
               }}
+              size="medium"
+              aria-label={t('live.streamSourceAria')}
+              sx={{ '& .MuiToggleButton-root': { minHeight: 40, px: 1.75 } }}
             >
-              <ToggleButton value="go2rtc">{t('live.modeGo2rtc')}</ToggleButton>
-              <ToggleButton value="mjpeg">{t('live.modeMjpeg')}</ToggleButton>
+              <ToggleButton value="go2rtc">{t('live.sourceGo2rtc')}</ToggleButton>
+              {showProcessorStream ? (
+                <ToggleButton value="processor">{t('live.sourceProcessorDetect')}</ToggleButton>
+              ) : null}
             </ToggleButtonGroup>
-          ) : null
+            {streamKind !== 'processor_detect' ? (
+              <ToggleButtonGroup
+                value={streamKind}
+                exclusive
+                onChange={(_, v: LiveStreamKind | null) => v != null && setStreamKind(v)}
+                size="medium"
+                aria-label={t('live.streamGo2rtcProtocolAria')}
+                sx={{ '& .MuiToggleButton-root': { minHeight: 40, px: 1.25 } }}
+              >
+                <ToggleButton value="go2rtc_auto">{t('live.streamGo2rtcAuto')}</ToggleButton>
+                <ToggleButton value="go2rtc_webrtc">{t('live.streamGo2rtcWebrtc')}</ToggleButton>
+                <ToggleButton value="go2rtc_mse">{t('live.streamGo2rtcMse')}</ToggleButton>
+                <ToggleButton value="go2rtc_mjpeg">{t('live.streamGo2rtcMjpeg')}</ToggleButton>
+              </ToggleButtonGroup>
+            ) : null}
+          </Stack>
         }
         sx={{ mb: 3 }}
       />
@@ -488,12 +389,12 @@ export const LivePage = () => {
         <Grid container spacing={2}>
           {cams.map((cam) => (
             <Grid key={cam.id} size={{ xs: 12, sm: 6, md: gridSize }}>
-              <CameraStream
-                key={`${cam.id}-${streamMode}`}
+              <CameraTile
+                key={`${cam.id}-${streamKind}`}
                 go2rtcSrc={resolveGo2rtcSrc(cam)}
                 streamUrlMjpeg={cam.stream_url_mjpeg}
                 name={cam.name}
-                mode={streamMode}
+                streamKind={streamKind}
                 canEdit={isAdmin}
                 onOpenEditor={() => {
                   const initialMasks = getCameraLayerPolygons(cam.id, 'opencv_masks');
@@ -527,69 +428,61 @@ export const LivePage = () => {
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 340px' }, minHeight: 'calc(100vh - 120px)' }}>
             <Box
               sx={{
-                position: 'relative',
-                bgcolor: 'black',
                 minHeight: 420,
                 cursor: isAdmin ? 'crosshair' : 'default',
               }}
             >
               {fullscreenCam ? (
-                <FullscreenStream
+                <LiveStreamView
+                  name={fullscreenCam.name}
+                  streamKind={streamKind}
                   go2rtcSrc={resolveGo2rtcSrc(fullscreenCam)}
                   streamUrlMjpeg={fullscreenCam.stream_url_mjpeg}
-                  name={fullscreenCam.name}
-                  mode={streamMode}
+                  preferOverlayAligned
+                  onOverlayClick={onOverlayClick}
+                  overlayPointerEvents={isAdmin ? 'auto' : 'none'}
+                  sx={{ minHeight: 420 }}
+                  overlay={
+                    <>
+                      <OverlayPolygons
+                        polygons={draftPolygons}
+                        color={editorLayer === 'detector_zones' ? '#03a9f4' : '#ff5252'}
+                      />
+                      {showOpencvMotion ? (
+                        <OverlayPolygons
+                          polygons={opencvMotionPolygons}
+                          color="#ffb300"
+                          strokeWidth={3}
+                        />
+                      ) : null}
+                      {showYoloDetections ? (
+                        <OverlayPolygons
+                          polygons={yoloDetectionPolygons}
+                          color="#00c853"
+                        />
+                      ) : null}
+                      {draftCurrent.length > 1 ? (
+                        <polyline
+                          points={draftCurrent.map(pointToSvg).join(' ')}
+                          fill="none"
+                          stroke={editorLayer === 'detector_zones' ? '#03a9f4' : '#ff5252'}
+                          strokeWidth={2}
+                          strokeDasharray="4 3"
+                        />
+                      ) : null}
+                      {draftCurrent.map(([x, y], idx) => (
+                        <circle
+                          key={`p-${idx}`}
+                          cx={Math.round(x * 10000) / 100}
+                          cy={Math.round(y * 10000) / 100}
+                          r="0.8"
+                          fill={editorLayer === 'detector_zones' ? '#03a9f4' : '#ff5252'}
+                        />
+                      ))}
+                    </>
+                  }
                 />
               ) : null}
-              <Box
-                component="svg"
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-                onClick={onOverlayClick}
-                sx={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  pointerEvents: isAdmin ? 'auto' : 'none',
-                }}
-              >
-                <OverlayPolygons
-                  polygons={draftPolygons}
-                  color={editorLayer === 'detector_zones' ? '#03a9f4' : '#ff5252'}
-                />
-                {showOpencvMotion ? (
-                  <OverlayPolygons
-                    polygons={opencvMotionPolygons}
-                    color="#ffb300"
-                    strokeWidth={3}
-                  />
-                ) : null}
-                {showYoloDetections ? (
-                  <OverlayPolygons
-                    polygons={yoloDetectionPolygons}
-                    color="#00c853"
-                  />
-                ) : null}
-                {draftCurrent.length > 1 ? (
-                  <polyline
-                    points={draftCurrent.map(pointToSvg).join(' ')}
-                    fill="none"
-                    stroke={editorLayer === 'detector_zones' ? '#03a9f4' : '#ff5252'}
-                    strokeWidth={2}
-                    strokeDasharray="4 3"
-                  />
-                ) : null}
-                {draftCurrent.map(([x, y], idx) => (
-                  <circle
-                    key={`p-${idx}`}
-                    cx={Math.round(x * 10000) / 100}
-                    cy={Math.round(y * 10000) / 100}
-                    r="0.8"
-                    fill={editorLayer === 'detector_zones' ? '#03a9f4' : '#ff5252'}
-                  />
-                ))}
-              </Box>
             </Box>
             <Box sx={{ p: 2, borderLeft: { md: '1px solid' }, borderColor: 'divider' }}>
               <Stack spacing={1.5}>

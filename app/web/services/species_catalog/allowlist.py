@@ -61,6 +61,20 @@ def _norm_key(name: str) -> str:
     return s
 
 
+def _catalog_allowlist_extra_names(app_config_get) -> tuple[str, ...]:
+    """Классы вне EfficientNet (напр. Rodent из детектора Trapper), не в class_labels.txt."""
+    raw = app_config_get("species.catalog_allowlist_extra") or ["Rodent"]
+    if isinstance(raw, str):
+        raw = [raw]
+    names: list[str] = []
+    if isinstance(raw, (list, tuple)):
+        for item in raw:
+            line = str(item or "").split("#", 1)[0].strip()
+            if line:
+                names.append(line)
+    return tuple(names)
+
+
 def resolve_allowlist_path(app_config_get) -> str | None:
     """Абсолютный путь к файлу allowlist классификатора или None, если не задан."""
     rel = (app_config_get("species.catalog_allowlist_file") or "").strip()
@@ -97,8 +111,14 @@ def load_catalog_allowlist_norm_keys(app_config_get) -> frozenset[str] | None:
     """Множество нормализованных ключей или None, если allowlist не задан / файла нет."""
     path = resolve_allowlist_path(app_config_get)
     if not path or not os.path.isfile(path):
-        return None
-    return _load_allowlist_norm_keys_cached(os.path.abspath(path))
+        extras = _catalog_allowlist_extra_names(app_config_get)
+        if not extras:
+            return None
+        return frozenset(_norm_key(n) for n in extras)
+    keys = set(_load_allowlist_norm_keys_cached(os.path.abspath(path)))
+    for extra in _catalog_allowlist_extra_names(app_config_get):
+        keys.add(_norm_key(extra))
+    return frozenset(keys)
 
 
 def clear_allowlist_cache() -> None:
@@ -159,11 +179,18 @@ def _load_allowlist_names_cached(abspath: str) -> tuple[str, ...]:
 
 
 def load_catalog_allowlist_names(app_config_get) -> tuple[str, ...] | None:
-    """Список имён классов из allowlist-файла или None, если не задан."""
+    """Список имён классов из allowlist-файла + extras (525 птиц + Rodent) или None."""
     path = resolve_allowlist_path(app_config_get)
+    extras = _catalog_allowlist_extra_names(app_config_get)
     if not path or not os.path.isfile(path):
-        return None
-    return _load_allowlist_names_cached(os.path.abspath(path))
+        return extras or None
+    names = list(_load_allowlist_names_cached(os.path.abspath(path)))
+    seen = {_norm_key(n) for n in names}
+    for extra in extras:
+        if _norm_key(extra) not in seen:
+            names.append(extra)
+            seen.add(_norm_key(extra))
+    return tuple(names)
 
 
 def allowlist_scientific_name_for_display_name(

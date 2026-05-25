@@ -173,47 +173,50 @@ def register_ui_status_push_routes(app):
         generated_at = datetime.now(timezone.utc).isoformat()
 
         opencv_cam = _opencv_live_for_camera(camera_id) if camera_id else None
+        detector_from_opencv_live = False
         if isinstance(opencv_cam, dict):
             raw_trigger = opencv_cam.get("trigger_polygons")
             if isinstance(raw_trigger, list):
                 trigger_polygons = raw_trigger
             raw_detector = opencv_cam.get("detector_polygons")
-            if isinstance(raw_detector, list) and raw_detector:
+            if isinstance(raw_detector, list):
                 detector_polygons = raw_detector
+                detector_from_opencv_live = True
             source = "opencv_live"
             generated_at = str(
                 opencv_cam.get("updated_at") or generated_at
             )
 
-        rows = (
-            ActivityLog.query.filter_by(type="decision_trace")
-            .order_by(ActivityLog.created_at.desc())
-            .limit(60)
-            .all()
-        )
-        for row in rows:
-            try:
-                payload = json.loads(row.data or "{}")
-            except (TypeError, ValueError):
-                continue
-            if not isinstance(payload, dict):
-                continue
-            rc = payload.get("recording_context") or {}
-            if not isinstance(rc, dict):
-                rc = {}
-            row_camera = str(
-                payload.get("camera_id")
-                or rc.get("triggered_camera")
-                or ""
-            ).strip()
-            if camera_id and row_camera != camera_id:
-                continue
-            _, trace_detector = _extract_runtime_overlays_from_trace(payload)
-            if trace_detector:
-                detector_polygons = trace_detector
-                if source == "none":
-                    source = "decision_trace"
-            break
+        if not detector_from_opencv_live:
+            rows = (
+                ActivityLog.query.filter_by(type="decision_trace")
+                .order_by(ActivityLog.created_at.desc())
+                .limit(60)
+                .all()
+            )
+            for row in rows:
+                try:
+                    payload = json.loads(row.data or "{}")
+                except (TypeError, ValueError):
+                    continue
+                if not isinstance(payload, dict):
+                    continue
+                rc = payload.get("recording_context") or {}
+                if not isinstance(rc, dict):
+                    rc = {}
+                row_camera = str(
+                    payload.get("camera_id")
+                    or rc.get("triggered_camera")
+                    or ""
+                ).strip()
+                if camera_id and row_camera != camera_id:
+                    continue
+                _, trace_detector = _extract_runtime_overlays_from_trace(payload)
+                if trace_detector:
+                    detector_polygons = trace_detector
+                    if source == "none":
+                        source = "decision_trace"
+                break
 
         return {
             "camera_id": camera_id or None,

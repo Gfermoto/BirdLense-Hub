@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_path = os.path.abspath(os.path.join(current_dir, '../src'))
 sys.path.insert(0, src_path)
-from species_normalizer import merge_detections
+from species_normalizer import merge_detections, normalize
 
 
 class TestMergeDetections(unittest.TestCase):
@@ -217,6 +217,45 @@ class TestMergeDetections(unittest.TestCase):
         self.assertEqual(result[0]['species_name'], 'Garrulus glandarius (Eurasian Jay)')
         self.assertEqual(result[0]['contributing_providers'], ['frigate', 'yolo'])
 
+    def test_normalize_supports_scientific_or_common_mapping_keys(self):
+        mapping = {
+            "Parus major (Great Tit)": "Great Tit",
+        }
+        self.assertEqual(normalize("Parus major", mapping), "Great Tit")
+        self.assertEqual(normalize("great_tit", mapping), "Great Tit")
+
+    def test_mqtt_merge_keeps_raw_aliases_for_audit(self):
+        yolo = [{
+            'species_name': 'Bird',
+            'confidence': 0.58,
+            'start_time': 0,
+            'end_time': 12,
+            'detection_provider': 'yolo',
+            'decision_reason': 'fallback_bird',
+            'detector_label': 'Bird',
+        }]
+        mqtt = [{
+            'species': 'Parus major',
+            'sub_label': 'great_tit',
+            'label': 'bird',
+            'scientific_name': 'Parus major',
+            'source': 'frigate',
+            'confidence': 0.91,
+            'timestamp': (self.video_start + timedelta(seconds=2)).isoformat(),
+        }]
+        result = merge_detections(
+            yolo,
+            mqtt,
+            self.video_start,
+            self.video_end,
+            species_mapping={'Parus major (Great Tit)': 'Great Tit'},
+        )
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['species_name'], 'Great Tit')
+        self.assertIn('Parus major', result[0].get('source_aliases', []))
+        self.assertIn('great_tit', result[0].get('source_aliases', []))
+        self.assertIn('Parus major', result[0].get('source_scientific_names', []))
+
     def test_one_per_species_preserves_all_contributing_providers(self):
         yolo = [{
             'species_name': 'Eurasian Jay',
@@ -316,3 +355,43 @@ class TestMergeDetections(unittest.TestCase):
         )
         self.assertEqual(len(result), 2)
         self.assertEqual({row['species_name'] for row in result}, {'Great Tit', 'Blue Tit'})
+
+    def test_one_per_species_keeps_distinct_track_ids(self):
+        yolo = [
+            {
+                'species_name': 'Great Tit',
+                'confidence': 0.55,
+                'start_time': 0,
+                'end_time': 8,
+                'track_id': 1,
+                'detection_provider': 'yolo',
+            },
+            {
+                'species_name': 'Great Tit',
+                'confidence': 0.52,
+                'start_time': 20,
+                'end_time': 28,
+                'track_id': 7,
+                'detection_provider': 'yolo',
+            },
+        ]
+        collapsed = merge_detections(
+            yolo,
+            [],
+            self.video_start,
+            self.video_end,
+            one_per_species=True,
+            one_per_species_keep_distinct_tracks=False,
+        )
+        self.assertEqual(len(collapsed), 1)
+
+        separate = merge_detections(
+            yolo,
+            [],
+            self.video_start,
+            self.video_end,
+            one_per_species=True,
+            one_per_species_keep_distinct_tracks=True,
+        )
+        self.assertEqual(len(separate), 2)
+        self.assertEqual({row['track_id'] for row in separate}, {1, 7})

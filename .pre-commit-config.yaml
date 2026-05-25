@@ -9,6 +9,6 @@ repos:
         pass_filenames: false
       - id: validate-pipeline-golden-quick
         name: Golden Gate (synthetic)
-        entry: bash -c 'cd app/processor && PYTHONPATH=src python3 -m pytest tests/test_pipeline_golden_gate.py tests/test_scoring_engine.py -q'
+        entry: bash -c 'cd app/processor && PYTHONPATH=src:../.. python3 -m pytest tests/test_pipeline_golden_gate.py tests/test_scoring_engine.py -q'
         language: system
         pass_filenames: false

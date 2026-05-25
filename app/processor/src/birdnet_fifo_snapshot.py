@@ -15,6 +15,7 @@ from app_config.birdnet_fifo_hearing_state import (
     build_species_fifo_table_rows,
     build_species_hearing_state,
 )
+from species_mapping_config import build_species_mapping
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +112,7 @@ def build_birdnet_fifo_snapshot_payload(
         active_within_hours=hearing_active_hours,
     )
     counts_dict = dict(species_counter.most_common())
-    species_mapping = app_config.get("detection.species_mapping") or {}
+    species_mapping = build_species_mapping(app_config)
     species_fifo_table = build_species_fifo_table_rows(
         events,
         now=now_utc,

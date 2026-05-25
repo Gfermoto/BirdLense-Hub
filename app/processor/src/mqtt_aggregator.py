@@ -28,6 +28,7 @@ import paho.mqtt.client as mqtt
 from app_config.app_config import app_config
 from birdnet_merge_key import birdnet_merge_key
 from frigate_bbox import frigate_after_to_normalized_xyxy
+from species_mapping_config import build_species_mapping
 from mqtt_event_parsers import (
     _frigate_after_has_tracked_geometry,
     _frigate_labels_match_exclude,
@@ -1280,7 +1281,7 @@ class MQTTEventAggregator:
         low_epoch = now.timestamp() - (window_hours * 3600.0)
         decay_base = 0.5
         out: dict[str, dict] = {}
-        species_mapping = app_config.get("detection.species_mapping") or {}
+        species_mapping = build_species_mapping(app_config)
 
         with self._lock:
             self._prune_birdnet_events_locked(now=now, ttl_hours=ttl_hours)

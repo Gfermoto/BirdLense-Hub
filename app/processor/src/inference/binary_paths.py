@@ -1,4 +1,7 @@
-"""Резолв пути к весам бинарного детектора (torch ``.pt`` vs OpenVINO IR, #371)."""
+"""Резолв пути к весам бинарного детектора.
+
+torch ``.pt`` vs OpenVINO IR (#371).
+"""
 
 from __future__ import annotations
 
@@ -16,7 +19,10 @@ def processor_package_root() -> str:
     return os.path.dirname(src_dir)
 
 
-def resolve_relative_to_processor_root(rel_or_abs: str, processor_root: str) -> str:
+def resolve_relative_to_processor_root(
+    rel_or_abs: str,
+    processor_root: str,
+) -> str:
     """Абсолютный путь: как есть или относительно корня пакета процессора."""
     if os.path.isabs(rel_or_abs):
         return rel_or_abs
@@ -24,17 +30,36 @@ def resolve_relative_to_processor_root(rel_or_abs: str, processor_root: str) -> 
 
 
 def detector_weights_available(path: str) -> bool:
-    """``.pt`` файл или каталог/IR OpenVINO (есть ``*.xml``)."""
+    """``.pt`` файл или валидный OpenVINO IR (xml+bin)."""
+    if not path:
+        return False
     if os.path.isfile(path):
-        return True
+        if path.endswith(".pt"):
+            return True
+        if path.endswith(".xml"):
+            return _xml_has_companion_bin(path)
+        return False
     if os.path.isdir(path):
         try:
-            for fn in os.listdir(path):
-                if fn.endswith(".xml"):
-                    return True
+            xml_names = [fn for fn in os.listdir(path) if fn.endswith(".xml")]
         except OSError:
             return False
+        if not xml_names:
+            return False
+        for fn in xml_names:
+            if _xml_has_companion_bin(os.path.join(path, fn)):
+                return True
     return False
+
+
+def _xml_has_companion_bin(xml_path: str) -> bool:
+    """OpenVINO IR completeness: model.xml + model.bin with same basename."""
+    if not xml_path.endswith(".xml"):
+        return False
+    if not os.path.isfile(xml_path):
+        return False
+    bin_path = xml_path[:-4] + ".bin"
+    return os.path.isfile(bin_path)
 
 
 def resolve_binary_detector_weight_path(
@@ -45,7 +70,8 @@ def resolve_binary_detector_weight_path(
     Вернуть ``(абсолютный_путь, inference_backend)``.
 
     Для ``openvino`` без конфига/env путь может быть ``''``.
-    Для ``auto``: предпочесть OpenVINO при наличии валидного IR и runtime, иначе torch.
+    Для ``auto``: предпочесть OpenVINO при наличии валидного IR и runtime,
+    иначе torch.
     """
     from inference.selector import (
         openvino_binary_enabled,
@@ -53,7 +79,11 @@ def resolve_binary_detector_weight_path(
         resolve_inference_backend,
     )
 
-    root = processor_root if processor_root is not None else processor_package_root()
+    root = (
+        processor_root
+        if processor_root is not None
+        else processor_package_root()
+    )
     requested_backend = resolve_inference_backend(app_config)
     env_ov = os.environ.get("BIRDLENSE_BINARY_OPENVINO_PATH") or ""
     binary_env_ov = env_ov.strip()
@@ -74,7 +104,11 @@ def resolve_binary_detector_weight_path(
         if requested_backend == "openvino":
             if p and detector_weights_available(p):
                 return (p, "openvino")
-        if p and detector_weights_available(p) and openvino_runtime_available():
+        if (
+            p
+            and detector_weights_available(p)
+            and openvino_runtime_available()
+        ):
             return (p, "openvino")
     default_bin = "models/detection/weights/yolo11n.pt"
     rel = app_config.get("processor.models.binary", default_bin)
@@ -97,7 +131,9 @@ def openvino_bundle_fingerprint(path: str | None) -> str | None:
     if not os.path.isdir(path):
         return None
     try:
-        xml_names = sorted(fn for fn in os.listdir(path) if fn.endswith(".xml"))
+        xml_names = sorted(
+            fn for fn in os.listdir(path) if fn.endswith(".xml")
+        )
     except OSError:
         return None
     if not xml_names:

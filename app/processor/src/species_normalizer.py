@@ -10,6 +10,78 @@ import re
 logger = logging.getLogger(__name__)
 
 
+def _normalize_lookup_key(value: str) -> str:
+    s = str(value or "").strip().lower()
+    s = s.replace("_", " ").replace("-", " ")
+    s = re.sub(r"\s+", " ", s)
+    return s
+
+
+def _split_scientific_common(value: str) -> tuple[str | None, str | None]:
+    s = str(value or "").strip()
+    if not s:
+        return None, None
+    m = re.match(r"^(.+?)\s*\(([^)]+)\)\s*$", s)
+    if not m:
+        return None, s
+    left = (m.group(1) or "").strip() or None
+    right = (m.group(2) or "").strip() or None
+    return left, right
+
+
+def _normalize_candidates(value: str) -> list[str]:
+    scientific, common = _split_scientific_common(value)
+    out: list[str] = []
+    for candidate in (value, common, scientific):
+        key = _normalize_lookup_key(candidate or "")
+        if key and key not in out:
+            out.append(key)
+    return out
+
+
+def _mapping_lookup(species: str, mapping: dict) -> str | None:
+    if not mapping:
+        return None
+    value = str(species or "").strip()
+    if not value:
+        return None
+    index: dict[str, str] = {}
+    for mk, mv in mapping.items():
+        mapped = str(mv or "").strip()
+        if not mapped:
+            continue
+        for candidate in _normalize_candidates(str(mk or "")):
+            index.setdefault(candidate, mapped)
+    for candidate in _normalize_candidates(value):
+        resolved = index.get(candidate)
+        if resolved:
+            return resolved
+    return None
+
+
+def _append_unique_str_list(row: dict, key: str, values) -> None:
+    bucket = [str(x).strip() for x in (row.get(key) or []) if str(x).strip()]
+    for v in values or []:
+        s = str(v or "").strip()
+        if s and s not in bucket:
+            bucket.append(s)
+    if bucket:
+        row[key] = bucket
+
+
+def _event_aliases(ev: dict) -> tuple[list[str], list[str]]:
+    aliases: list[str] = []
+    scientific: list[str] = []
+    for k in ("species", "sub_label", "label"):
+        v = str((ev or {}).get(k) or "").strip()
+        if v and v.lower() not in {"bird", "unknown"} and v not in aliases:
+            aliases.append(v)
+    sci = str((ev or {}).get("scientific_name") or "").strip()
+    if sci:
+        scientific.append(sci)
+    return aliases, scientific
+
+
 def _is_frigate_standalone_row(row: dict) -> bool:
     provider = str(row.get("detection_provider") or "").strip().lower()
     kind = str(row.get("decision_kind") or "").strip().lower()
@@ -59,14 +131,9 @@ def normalize(species: str, mapping: dict = None) -> str:
     if not s:
         return "unknown"
     mapping = mapping or {}
-    key = s.lower().replace(" ", "_").replace("-", "_")
-    if key in mapping:
-        return mapping[key]
-    # Deterministic fallback over mapping aliases: stable key order.
-    for k in sorted(mapping.keys(), key=lambda item: str(item)):
-        v = mapping[k]
-        if key == k.lower().replace(" ", "_"):
-            return v
+    hit = _mapping_lookup(s, mapping)
+    if hit:
+        return hit
     return _to_title_case(s)
 
 
@@ -283,6 +350,8 @@ def merge_detections(
         new_frames=None,
         new_provider=None,
         new_providers=None,
+        new_aliases=None,
+        new_scientific_names=None,
     ):
         old_conf = existing.get("confidence", 0)
         existing["confidence"] = max(old_conf, new_conf)
@@ -298,6 +367,8 @@ def merge_detections(
                 providers.add(new_provider)
             providers.update(p for p in (new_providers or []) if p)
             existing["contributing_providers"] = sorted(providers)
+        _append_unique_str_list(existing, "source_aliases", new_aliases)
+        _append_unique_str_list(existing, "source_scientific_names", new_scientific_names)
 
     def _is_rodent_like_ev_label(name: str) -> bool:
         key = _extract_common_for_merge(name)
@@ -379,6 +450,8 @@ def merge_detections(
                 d.get("frames"),
                 new_provider=provider,
                 new_providers=d.get("contributing_providers"),
+                new_aliases=d.get("source_aliases"),
+                new_scientific_names=d.get("source_scientific_names"),
             )
             logger.debug("merge: YOLO %s into existing (gap=%.1fs)", species, best_gap)
         else:
@@ -394,6 +467,12 @@ def merge_detections(
             row["track_id"] = d.get("track_id")
             row["frames"] = d.get("frames")
             row["contributing_providers"] = sorted({provider, *(d.get("contributing_providers") or [])})
+            _append_unique_str_list(row, "source_aliases", d.get("source_aliases"))
+            _append_unique_str_list(
+                row,
+                "source_scientific_names",
+                d.get("source_scientific_names"),
+            )
             by_key[(key, visit_id)] = row
 
     # MQTT: мержим в существующую детекцию с наибольшим перекрытием по времени
@@ -408,6 +487,7 @@ def merge_detections(
             # Excluded labels (cat/dog): keep out of species merge / promotion only.
             continue
         species = normalize(ev.get("species", "unknown"), species_mapping)
+        ev_aliases, ev_scientific = _event_aliases(ev)
         conf = ev.get("confidence", 0)
         key = _canonical_key(species)
         offset = _event_offset_seconds(ev, video_start)
@@ -453,6 +533,8 @@ def merge_detections(
                 ev_end,
                 new_provider=provider,
                 new_providers=ev.get("contributing_providers"),
+                new_aliases=ev_aliases,
+                new_scientific_names=ev_scientific,
             )
             if cross_source_confidence_bonus and cross_source_confidence_bonus > 0:
                 n = int(merged.get("_cross_mqtt_merges") or 0) + 1
@@ -480,6 +562,12 @@ def merge_detections(
                 generic_candidate["species"] = species
                 generic_candidate["decision_reason"] = "promoted_by_frigate"
                 generic_candidate["frigate_promoted_label"] = species
+                _append_unique_str_list(generic_candidate, "source_aliases", ev_aliases)
+                _append_unique_str_list(
+                    generic_candidate,
+                    "source_scientific_names",
+                    ev_scientific,
+                )
                 _merge_into(
                     generic_candidate,
                     conf,
@@ -487,6 +575,8 @@ def merge_detections(
                     ev_end,
                     new_provider=provider,
                     new_providers=ev.get("contributing_providers"),
+                    new_aliases=ev_aliases,
+                    new_scientific_names=ev_scientific,
                 )
                 if cross_source_confidence_bonus and cross_source_confidence_bonus > 0:
                     generic_candidate["confidence"] = min(
@@ -538,6 +628,8 @@ def merge_detections(
                     d.get("frames"),
                     new_provider=d.get("detection_provider"),
                     new_providers=d.get("contributing_providers"),
+                    new_aliases=d.get("source_aliases"),
+                    new_scientific_names=d.get("source_scientific_names"),
                 )
                 # Сохраняем имя с frames (YOLO) приоритетнее
                 if d.get("frames") or d.get("best_frame"):

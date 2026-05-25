@@ -261,7 +261,19 @@ class VisitProcessor:
         # First pass: Process all detections
         for det in deduped_detections:
             visit_eligible = bool(det.get("visit_eligible", True))
-            species = self.get_or_create_species(det["species_name"])
+            provider = str(det.get("detection_provider") or det.get("source") or "ingest").strip().lower()
+            raw_aliases = [
+                *(det.get("source_aliases") or []),
+                det.get("species_name_raw"),
+                det.get("species"),
+            ]
+            scientific_aliases = list(det.get("source_scientific_names") or [])
+            species = self.species_identity.resolve_or_create_species(
+                det["species_name"],
+                source=f"ingest:{provider}" if provider else "ingest",
+                audit_aliases=[str(x).strip() for x in raw_aliases if str(x or "").strip()],
+                audit_scientific_names=[str(x).strip() for x in scientific_aliases if str(x or "").strip()],
+            )
             if not species:
                 self.logger.warning(f'Could not create species "{det["species_name"]}"')
                 continue
