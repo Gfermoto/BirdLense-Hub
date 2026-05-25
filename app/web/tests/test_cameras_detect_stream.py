@@ -53,3 +53,18 @@ def test_cameras_for_processor_omits_detect_when_absent():
     valid = get_valid_cameras([{"id": "y", "stream_name": "only_y"}])
     proc = cameras_for_processor(valid)
     assert proc == [{"id": "y", "stream_name": "only_y"}]
+
+
+def test_cameras_preserve_opencv_masks():
+    """Per-camera OpenCV masks survive valid/processor filtering."""
+    raw = [
+        {
+            "id": "BirdBox",
+            "stream_name": "bird",
+            "opencv_masks": ["0,0,1,0,1,0.1,0,0.1"],
+        },
+    ]
+    valid = get_valid_cameras(raw)
+    proc = cameras_for_processor(valid)
+    assert valid[0]["opencv_masks"] == ["0,0,1,0,1,0.1,0,0.1"]
+    assert proc[0]["opencv_masks"] == ["0,0,1,0,1,0.1,0,0.1"]

@@ -562,8 +562,7 @@ triggers:
     mog2_detect_shadows: false
     mog2_min_motion_pixel_fraction: 0.0006
     mog2_min_contour_area: 220
-    # Frigate-style motion masks: normalized polygon "x,y,..." — exclude timestamp/trees/static feeder.
-    # Example: masks: ["0.0,0.0,1.0,0.0,1.0,0.08,0.0,0.08"]
+    # Deprecated: use video.cameras[].opencv_masks per camera (Live Editor). Not read by processor.
     masks: []
     # Require N consecutive motion frames before starting recording (debounce).
     min_consecutive_motion_frames: 2

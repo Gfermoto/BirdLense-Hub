@@ -46,6 +46,42 @@ function toNorm(value: number): number {
   return Math.round(clamp01(value) * 10000) / 10000;
 }
 
+function parseTriggerMasks(raw: unknown): Polygon[] {
+  if (!Array.isArray(raw)) return [];
+  const out: Polygon[] = [];
+  raw.forEach((item) => {
+    if (typeof item === 'string') {
+      const nums = item
+        .split(/[\s,;]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => Number(s))
+        .filter((n) => Number.isFinite(n));
+      if (nums.length >= 6 && nums.length % 2 === 0) {
+        const poly: Polygon = [];
+        for (let i = 0; i < nums.length; i += 2) {
+          poly.push([toNorm(nums[i]), toNorm(nums[i + 1])]);
+        }
+        if (poly.length >= 3) out.push(poly);
+      }
+      return;
+    }
+    if (item && typeof item === 'object') {
+      const coords = (item as { coordinates?: unknown }).coordinates;
+      if (typeof coords === 'string') {
+        out.push(...parseTriggerMasks([coords]));
+      }
+    }
+  });
+  return out;
+}
+
+function formatTriggerMasks(polygons: Polygon[]): string[] {
+  return polygons.map((poly) =>
+    poly.map(([x, y]) => `${toNorm(x)},${toNorm(y)}`).join(','),
+  );
+}
+
 function parsePolygonList(raw: unknown): Polygon[] {
   if (!Array.isArray(raw)) return [];
   const out: Polygon[] = [];
@@ -188,25 +224,6 @@ export const LivePage = () => {
     queryFn: fetchCameras,
   });
 
-  if (isLoading) {
-    return <PageLoadingState label={t('live.loading')} />;
-  }
-
-  if (error) {
-    return (
-      <PageMessageState
-        title={t('nav.liveView')}
-        message={t('live.errorLoad')}
-        severity="error"
-        action={
-          <Button variant="outlined" onClick={() => refetch()}>
-            {t('common.retry')}
-          </Button>
-        }
-      />
-    );
-  }
-
   const cams = cameras ?? [];
   const fullscreenCam = useMemo(
     () => cams.find((c) => c.id === fullscreenCamId) ?? null,
@@ -227,12 +244,7 @@ export const LivePage = () => {
         ?.video?.cameras || []
     );
     const camera = all.find((c) => String(c.id || '') === String(cameraId || ''));
-    const fromCamera = parsePolygonList(camera?.detection_ignore_masks);
-    if (fromCamera.length > 0) return fromCamera;
-    const global = (
-      settings as { processor?: { detection_ignore_masks?: unknown } } | undefined
-    )?.processor?.detection_ignore_masks;
-    return parsePolygonList(global);
+    return parseTriggerMasks(camera?.opencv_masks);
   };
 
   const cameraMaskPolygons: Polygon[] = useMemo(() => {
@@ -276,7 +288,7 @@ export const LivePage = () => {
       }
       return {
         ...camera,
-        detection_ignore_masks: polygonsToSave,
+        opencv_masks: formatTriggerMasks(polygonsToSave),
       };
     });
     await patchMutation.mutateAsync({
@@ -288,6 +300,25 @@ export const LivePage = () => {
   const numCols =
     cams.length <= 1 ? 1 : cams.length <= 2 ? 2 : cams.length <= 4 ? 4 : 6;
   const gridSize = 12 / numCols;
+
+  if (isLoading) {
+    return <PageLoadingState label={t('live.loading')} />;
+  }
+
+  if (error) {
+    return (
+      <PageMessageState
+        title={t('nav.liveView')}
+        message={t('live.errorLoad')}
+        severity="error"
+        action={
+          <Button variant="outlined" onClick={() => refetch()}>
+            {t('common.retry')}
+          </Button>
+        }
+      />
+    );
+  }
 
   return (
     <Box>
@@ -435,7 +466,7 @@ export const LivePage = () => {
               <Stack spacing={1}>
                 <FormControlLabel
                   control={<Switch checked={showMasks} onChange={(e) => setShowMasks(e.target.checked)} />}
-                  label="Показать маски (редактор)"
+                  label="Показать маски OpenCV (редактор)"
                 />
                 <FormControlLabel
                   control={<Switch checked={showTriggerRegions} onChange={(e) => setShowTriggerRegions(e.target.checked)} />}
@@ -447,8 +478,8 @@ export const LivePage = () => {
                 />
                 <Divider sx={{ my: 1 }} />
                 <Alert severity="info" variant="outlined">
-                  Маски редактируются по камерам (только текущая камера). Runtime
-                  триггер/детектор — read-only оверлей.
+                  Маски OpenCV-триггера — только для этой камеры (не YOLO).
+                  Runtime триггер/детектор — read-only оверлей последней записи.
                 </Alert>
                 <Stack direction="row" spacing={1}>
                   <Button
@@ -502,7 +533,7 @@ export const LivePage = () => {
                   </Alert>
                 ) : null}
                 <Typography variant="caption" color="text.secondary">
-                  Маски камеры: {cameraMaskPolygons.length}. Черновик:{' '}
+                  Маски OpenCV камеры: {cameraMaskPolygons.length}. Черновик:{' '}
                   {draftPolygons.length}. Runtime trigger:{' '}
                   {runtimeTriggerPolygons.length}, detector:{' '}
                   {runtimeDetectorPolygons.length}.
