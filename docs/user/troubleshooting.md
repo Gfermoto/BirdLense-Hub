@@ -216,7 +216,17 @@ Expected output: `ok`.
 
 go2rtc must listen on `0.0.0.0:1984`. Test from host/container: `curl -s -o /dev/null -w "%{http_code}" http://...:1984/api/streams` → `200`.
 
-**Workaround:** On **Live**, use **MJPEG** — stream is proxied through the processor.
+**Black screen on Live → Go2RTC → MJPEG:** RTSP is often **H264-only**; go2rtc then returns **empty** `/api/stream.mjpeg`. Fix on the go2rtc host — add per stream:
+
+```yaml
+  BirdBox:
+    - rtsp://...
+    - ffmpeg:BirdBox#video=mjpeg
+```
+
+(Same pattern for `Forest`, etc.) Full example: [`docs/examples/go2rtc-streams.example.yaml`](../examples/go2rtc-streams.example.yaml). Hub without this still shows ~4 fps via **`frame.jpeg`** polling; for overlays use **Detection stream** (`/processor/live/N`).
+
+**WebRTC “falls back” to MSE:** go2rtc player needs reachable UDP/TURN from the browser; on VPS prefer **MSE** or configured **MJPEG** above.
 
 ---
 
