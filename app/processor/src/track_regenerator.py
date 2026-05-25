@@ -205,12 +205,14 @@ def process_video_for_tracks(
                                 frame_resized,
                                 frame_time=frame_time_sec,
                                 skip_light_gate=True,
+                                classification_frame=frame,
                             )
                     else:
                         has_detections = frame_processor.run(
                             frame_resized,
                             frame_time=frame_time_sec,
                             skip_light_gate=True,
+                            classification_frame=frame,
                         )
                     decision_maker.update_has_detections(has_detections)
                     runs_done += 1

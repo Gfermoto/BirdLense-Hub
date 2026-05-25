@@ -90,7 +90,12 @@ class DetectionQualityConfig:
         static = StaticObjectFilterConfig.from_runtime_cfg(runtime_cfg)
         min_frames_override = _parse_int(runtime_cfg, "processor.static_temporal_min_frames", 0)
         if min_frames_override <= 0:
-            fps = max(1.0, _parse_float(runtime_cfg, "processor.detection_quality_assumed_fps", 7.0))
+            try:
+                from pipeline_config import resolve_detection_quality_fps
+
+                fps = max(1.0, resolve_detection_quality_fps(runtime_cfg))
+            except ImportError:
+                fps = max(1.0, _parse_float(runtime_cfg, "processor.detection_quality_assumed_fps", 15.0))
             sec = _parse_float(runtime_cfg, "processor.static_temporal_min_seconds", 8.0)
             static.static_temporal_min_frames = max(4, int(sec * fps))
         else:
@@ -131,7 +136,10 @@ class DetectionQualityConfig:
             hard_negatives_dir=str(
                 runtime_cfg.get("processor.hard_negatives_dir") or "data/hard_negatives"
             ),
-            assumed_fps=_parse_float(runtime_cfg, "processor.detection_quality_assumed_fps", 7.0),
+            assumed_fps=max(
+                1.0,
+                _parse_float(runtime_cfg, "processor.detection_quality_assumed_fps", 15.0),
+            ),
             static_temporal_min_seconds=_parse_float(
                 runtime_cfg, "processor.static_temporal_min_seconds", 8.0
             ),
@@ -282,6 +290,29 @@ class DetectionQualityPipeline:
             reason,
         )
 
+    def _apply_mask_gate(
+        self,
+        boxes: list[dict[str, Any]],
+        *,
+        frame_bgr: np.ndarray,
+        processor_cwd: str | None,
+    ) -> list[dict[str, Any]]:
+        if not boxes:
+            return boxes
+        kept: list[dict[str, Any]] = []
+        for box in boxes:
+            reason = self._mask.reject_reason(box, frame_shape=frame_bgr.shape)
+            if reason:
+                if "ignore_mask" in reason:
+                    self.last_stats["rejected_ignore_mask"] += 1
+                else:
+                    self.last_stats["rejected_interest_zone"] += 1
+                self._save_hard_negative(frame_bgr, box, reason, processor_cwd=processor_cwd)
+                self._log_reject(box, reason)
+                continue
+            kept.append(box)
+        return kept
+
     def filter_boxes(
         self,
         boxes: list[dict[str, Any]],
@@ -293,6 +324,9 @@ class DetectionQualityPipeline:
         frigate_prior_active: bool = False,
     ) -> list[dict[str, Any]]:
         self.last_stats = {k: 0 for k in self.last_stats}
+        boxes = self._apply_mask_gate(boxes, frame_bgr=frame_bgr, processor_cwd=processor_cwd)
+        if not boxes:
+            return boxes
         if self._scoring is not None:
             pre_n = len(boxes)
             kept = self._scoring.filter_boxes(

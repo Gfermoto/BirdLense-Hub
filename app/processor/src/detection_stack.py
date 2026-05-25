@@ -58,6 +58,7 @@ def build_detection_stack(
         resolve_relative_to_processor_root,
     )
     from inference.classifier_paths import (
+        classifier_engine,
         classifier_weights_available,
         resolve_classifier_weight_path,
     )
@@ -185,11 +186,12 @@ def build_detection_stack(
             "BIRDLENSE_BINARY_OPENVINO_PATH).",
         )
     if not classifier_weights_available(classifier_path):
+        _eng = classifier_engine(app_config)
         raise FileNotFoundError(
-            f"YOLO classifier weights missing or invalid path: {classifier_path}. "
-            "For torch set processor.models.classifier (.pt); for OpenVINO use a directory "
-            "or .xml from yolo export format=openvino (processor.models.classifier_openvino "
-            "or BIRDLENSE_CLASSIFIER_OPENVINO_PATH).",
+            f"Classifier weights missing for engine={_eng!r}: {classifier_path}. "
+            "EfficientNetB2: run scripts/download_birds_classifier_efficientnetb2.py and "
+            "scripts/export_classifier_to_openvino.py (ONNX Runtime bundle). "
+            "Legacy YOLO: processor.models.classifier (.pt) or classifier_openvino.",
         )
 
     from detector_class_map import apply_class_map_to_config
@@ -267,6 +269,7 @@ def build_detection_stack(
             "classifier_inference_backend": _cls_backend,
             "binary_inference_device": _binary_inference_device,
             "classifier_inference_device": _classifier_inference_device,
+            "classifier_engine": classifier_engine(app_config),
         }
 
     try:
@@ -294,16 +297,27 @@ def build_detection_stack(
             binary_path = torch_binary_path
             _inf_backend = "torch"
         if can_fallback_classifier:
-            torch_classifier_path = resolve_relative_to_processor_root(
-                str(
-                    app_config.get(
-                        "processor.models.classifier",
-                        "models/classification/weights/best.pt",
-                    ),
-                ).strip(),
-                processor_root,
-            )
-            if not os.path.isfile(torch_classifier_path):
+            if classifier_engine(app_config) == "efficientnet_b2":
+                torch_classifier_path = resolve_relative_to_processor_root(
+                    str(
+                        app_config.get(
+                            "processor.models.classifier_efficientnet_b2",
+                            "models/classification/weights/birds_classifier_efficientnetb2",
+                        ),
+                    ).strip(),
+                    processor_root,
+                )
+            else:
+                torch_classifier_path = resolve_relative_to_processor_root(
+                    str(
+                        app_config.get(
+                            "processor.models.classifier",
+                            "models/classification/weights/best.pt",
+                        ),
+                    ).strip(),
+                    processor_root,
+                )
+            if not classifier_weights_available(torch_classifier_path):
                 raise
             classifier_path = torch_classifier_path
             _cls_backend = "torch"

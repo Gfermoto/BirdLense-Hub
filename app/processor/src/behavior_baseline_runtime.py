@@ -67,7 +67,9 @@ def runtime_meta_features(
 
 
 def _resolve_weights_path(raw: str, *, processor_cwd: str | None) -> Path | None:
-    p = (raw or "").strip()
+    from behavior_model_paths import normalize_behavior_model_path
+
+    p = normalize_behavior_model_path((raw or "").strip())
     if not p:
         return None
     path = Path(p)

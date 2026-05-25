@@ -29,18 +29,31 @@ def parse_inference_lores_wh(raw: Any) -> LoResSize | None:
     return None
 
 
-def resolve_inference_lores_size(app_config: Mapping[str, Any]) -> LoResSize:
+def resolve_inference_lores_size(app_config: Mapping[str, Any]) -> LoResSize | None:
     """
     Target WxH for detect-stream frames before YOLO.
 
-    ``processor.inference_lores_wh: [704, 576]`` — native detect substream (no square downscale).
-    Fallback: square ``processor.inference_lores_px`` (legacy).
+    ``processor.detect_use_native_resolution: true`` → None (letterbox only inside detector).
+    ``processor.inference_lores_wh`` — explicit detect substream size from UI/config.
+    Fallback: square ``processor.inference_lores_px`` (legacy, default 640).
     """
-    wh = parse_inference_lores_wh(app_config.get("processor.inference_lores_wh"))
+    try:
+        from pipeline_config import detect_use_native_resolution
+
+        if detect_use_native_resolution(app_config):
+            return None
+    except ImportError:
+        pass
+    try:
+        from pipeline_config import _cfg_get
+    except ImportError:
+        _cfg_get = lambda c, k, d=None: c.get(k, d) if hasattr(c, "get") else d  # type: ignore
+
+    wh = parse_inference_lores_wh(_cfg_get(app_config, "processor.inference_lores_wh"))
     if wh is not None:
         return wh
     try:
-        lpx = int(app_config.get("processor.inference_lores_px") or 640)
+        lpx = int(_cfg_get(app_config, "processor.inference_lores_px") or 640)
     except (TypeError, ValueError):
         lpx = 640
     side = _clamp_side(lpx)

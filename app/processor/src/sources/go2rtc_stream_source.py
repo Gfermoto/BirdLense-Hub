@@ -13,7 +13,6 @@ import time
 import cv2
 import numpy as np
 
-from yolo_geometry import prepare_detector_frame
 
 from .streaming_server import start_streaming_server
 
@@ -279,7 +278,8 @@ class Go2RTCStreamSource:
         # Optional second RTSP (e.g. Go2RTC name for camera sub / Frigate detect) — lower res & FPS.
         self._capture_stream_url = (capture_stream_url or "").strip() or stream_url
         self.main_size = main_size
-        self.lores_size = lores_size
+        self.lores_size = lores_size  # None = native RTSP resolution for detect/YOLO
+        self._detect_native = lores_size is None
         self.auto_reconnect = auto_reconnect
         self._encoding_mode = (encoding_mode or "cpu").strip().lower()
         if self._encoding_mode not in ("cpu", "intel"):
@@ -365,6 +365,8 @@ class Go2RTCStreamSource:
 
     def _should_use_ffmpeg_vaapi_capture(self) -> bool:
         """Whether live inference capture should try FFmpeg VA-API."""
+        if self._detect_native or not self.lores_size:
+            return False
         if time.time() < float(self._force_opencv_until_ts or 0.0):
             return False
         if self._capture_backend == "ffmpeg_vaapi":
@@ -612,8 +614,9 @@ class Go2RTCStreamSource:
 
     def capture(self):
         """
-        Get next frame for processing.
-        Returns BGR frame resized to lores_size, or None on error.
+        Get next frame for processing (native BGR from stream).
+
+        Letterbox/resize for YOLO runs in ``detection_strategy`` via ``prepare_yolo_detector_frame``.
         """
         # One reconnect attempt per capture call: avoid recursive stack growth
         # and keep motion loop responsive when stream stays unavailable.
@@ -637,17 +640,9 @@ class Go2RTCStreamSource:
             return None
         self._frame_count += 1
         self._last_frame_time = time.time()
-        if self._capture_backend_used == "ffmpeg_vaapi":
-            frame_lores = frame
-            self._last_classifier_source_frame = frame
-        else:
-            self._last_classifier_source_frame = frame
-            frame_lores = prepare_detector_frame(
-                frame,
-                (int(self.lores_size[0]), int(self.lores_size[1])),
-            )
+        self._last_classifier_source_frame = frame
         self._update_streaming_output(frame)
-        return frame_lores
+        return frame
 
     def get_classifier_source_frame(self):
         """Best-effort source frame for classifier/ReID crops (pre-letterbox when available)."""

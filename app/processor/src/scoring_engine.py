@@ -77,6 +77,12 @@ class ScoringEngineConfig:
     calibration_max_noise_rate: float = 0.01
     calibration_percentile: float = 0.95
     giant_box_area_frac: float = 0.5
+    static_phantom_reject_enabled: bool = True
+    static_phantom_max_motion_score: float = 0.22
+    static_phantom_max_shape_score: float = 0.38
+    static_phantom_square_aspect_min: float = 0.82
+    static_phantom_square_aspect_max: float = 1.22
+    static_phantom_max_conf: float = 0.52
     scene: SceneAdaptiveConfig = field(default_factory=SceneAdaptiveConfig)
 
     @classmethod
@@ -95,6 +101,24 @@ class ScoringEngineConfig:
             calibration_max_noise_rate=_parse_float(runtime_cfg, "processor.scoring_calibration_max_noise_rate", 0.01),
             calibration_percentile=_parse_float(runtime_cfg, "processor.scoring_calibration_percentile", 0.95),
             giant_box_area_frac=_parse_float(runtime_cfg, "processor.scoring_giant_box_area_frac", 0.5),
+            static_phantom_reject_enabled=_parse_bool(
+                runtime_cfg, "processor.scoring_static_phantom_reject_enabled", True
+            ),
+            static_phantom_max_motion_score=_parse_float(
+                runtime_cfg, "processor.scoring_static_phantom_max_motion_score", 0.22
+            ),
+            static_phantom_max_shape_score=_parse_float(
+                runtime_cfg, "processor.scoring_static_phantom_max_shape_score", 0.38
+            ),
+            static_phantom_square_aspect_min=_parse_float(
+                runtime_cfg, "processor.scoring_static_phantom_square_aspect_min", 0.82
+            ),
+            static_phantom_square_aspect_max=_parse_float(
+                runtime_cfg, "processor.scoring_static_phantom_square_aspect_max", 1.22
+            ),
+            static_phantom_max_conf=_parse_float(
+                runtime_cfg, "processor.scoring_static_phantom_max_conf", 0.52
+            ),
             scene=SceneAdaptiveConfig.from_runtime_cfg(runtime_cfg),
         )
 
@@ -293,6 +317,23 @@ class ScoringEngine:
             )
 
         bd = self.compute_breakdown(box, frame_bgr=frame_bgr, frigate_prior_active=frigate_prior_active)
+        if self.cfg.static_phantom_reject_enabled:
+            ar = self._box_aspect(box)
+            conf = float(box.get("conf") or 0.0)
+            if (
+                conf <= self.cfg.static_phantom_max_conf
+                and self.cfg.static_phantom_square_aspect_min <= ar <= self.cfg.static_phantom_square_aspect_max
+                and bd.motion_score <= self.cfg.static_phantom_max_motion_score
+                and bd.shape_score <= self.cfg.static_phantom_max_shape_score
+            ):
+                return ScoringDecision(
+                    zone=DecisionZone.REJECT,
+                    breakdown=bd,
+                    reject_reason=(
+                        f"static_phantom_square(motion={bd.motion_score:.2f},"
+                        f"shape={bd.shape_score:.2f},conf={conf:.2f})"
+                    ),
+                )
         cal = self._calibration
         if bd.final_score >= cal.high_threshold:
             zone = DecisionZone.ACCEPT
@@ -319,20 +360,15 @@ class ScoringEngine:
         self._scene.update(frame_bgr)
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
 
-        bird_boxes = [b for b in boxes if str(b.get("detector_label") or "") == "Bird"]
         max_score = 0.0
-        for box in bird_boxes:
+        for box in boxes:
             bd = self.compute_breakdown(box, frame_bgr=frame_bgr, frigate_prior_active=frigate_prior_active)
             max_score = max(max_score, bd.final_score)
 
-        self._observe_calibration(max_score, had_bird_candidate=bool(bird_boxes))
+        self._observe_calibration(max_score, had_bird_candidate=bool(boxes))
 
         kept: list[dict[str, Any]] = []
         for box in boxes:
-            label = str(box.get("detector_label") or "")
-            if label != "Bird":
-                kept.append(box)
-                continue
             decision = self.decide(
                 box,
                 frame_bgr=frame_bgr,
@@ -341,6 +377,7 @@ class ScoringEngine:
             trace = {
                 "frame_index": frame_index,
                 "track_id": int(box.get("track_id") or 0),
+                "decision_source": "scoring_engine",
                 "raw_conf": decision.breakdown.raw_conf,
                 "motion_score": decision.breakdown.motion_score,
                 "bg_score": decision.breakdown.bg_score,
@@ -350,9 +387,16 @@ class ScoringEngine:
                 "final_score": decision.breakdown.final_score,
                 "final_decision": decision.zone.value,
                 "reject_reason": decision.reject_reason,
+                "reason_code": (
+                    str(decision.reject_reason).split("(", 1)[0]
+                    if decision.reject_reason
+                    else "accepted"
+                ),
+                "box_area_norm": float(box.get("box_area_norm") or 0.0),
                 "low_threshold": self._calibration.low_threshold,
                 "high_threshold": self._calibration.high_threshold,
                 "calibrated": self._calibration.calibrated,
+                "calibration_frame_count": int(self._calibration.frame_count),
             }
             self.last_decisions.append(trace)
             if decision.zone == DecisionZone.ACCEPT:
@@ -378,5 +422,7 @@ class ScoringEngine:
                 self.last_decisions,
                 stats=self.last_stats,
             )
-            get_scoring_telemetry().record_calibration(self._calibration.snapshot())
+            get_scoring_telemetry().record_calibration(
+                self._calibration.snapshot()
+            )
         return kept

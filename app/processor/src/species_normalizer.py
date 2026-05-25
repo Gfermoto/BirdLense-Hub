@@ -197,6 +197,22 @@ def _should_keep_generic_bird_fragments_separate(group: list[dict]) -> bool:
     return len(group) > 1 and all(_is_pure_yolo_generic_bird_fragment(det) for det in group)
 
 
+def _should_keep_distinct_track_fragments_separate(group: list[dict]) -> bool:
+    """Same species, different ByteTrack ids — keep separate visits in one clip."""
+    if len(group) <= 1:
+        return False
+    track_ids: list[int] = []
+    for det in group:
+        tid = det.get("track_id")
+        if tid is None:
+            return False
+        try:
+            track_ids.append(int(tid))
+        except (TypeError, ValueError):
+            return False
+    return len(set(track_ids)) == len(track_ids) > 1
+
+
 def _event_offset_seconds(ev, video_start):
     """Смещение MQTT-события от начала видео (сек). None если нет timestamp."""
     from datetime import datetime, timezone
@@ -221,6 +237,7 @@ def merge_detections(
     merge_window_seconds=5,
     dedup_window_seconds=45,
     one_per_species=True,
+    one_per_species_keep_distinct_tracks=False,
     source_priority=None,
     cross_source_confidence_bonus=0.0,
     species_mapping=None,
@@ -344,6 +361,14 @@ def merge_detections(
                 best_gap = gap
                 best = det
 
+        if best is not None and one_per_species_keep_distinct_tracks:
+            best_tid = best.get("track_id")
+            cur_tid = d.get("track_id")
+            try:
+                if best_tid is not None and cur_tid is not None and int(best_tid) != int(cur_tid):
+                    best = None
+            except (TypeError, ValueError):
+                pass
         if best is not None:
             _merge_into(
                 best,
@@ -487,6 +512,10 @@ def merge_detections(
             if _should_keep_generic_bird_fragments_separate(group):
                 collapsed.extend(sorted(group, key=lambda item: item.get("start_time", 0)))
                 logger.debug("merge: preserved %d fragmented generic bird visits", len(group))
+                continue
+            if one_per_species_keep_distinct_tracks and _should_keep_distinct_track_fragments_separate(group):
+                collapsed.extend(sorted(group, key=lambda item: item.get("start_time", 0)))
+                logger.debug("merge: preserved %d distinct-track visits for species %s", len(group), key)
                 continue
             group_sorted = sorted(
                 group,

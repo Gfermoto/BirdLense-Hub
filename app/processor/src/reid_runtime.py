@@ -22,6 +22,8 @@ _LOG = logging.getLogger(__name__)
 _MODEL_LOCK = threading.Lock()
 _MODEL_STATE: dict[str, Any] | None = None
 _MODEL_FAILED = False
+_CANDIDATE_CACHE_LOCK = threading.Lock()
+_CANDIDATE_CACHE: dict[str, tuple[float, list[tuple[np.ndarray, str]]]] = {}
 
 
 def _cfg_get(key: str, default: Any) -> Any:
@@ -122,7 +124,9 @@ def _hub_cache_dir() -> str:
     if env:
         return env
     cfg = str(_cfg_get("processor.reid.hub_cache_dir", "") or "").strip()
-    return cfg
+    if cfg:
+        return cfg
+    return "models/reid/hub_cache"
 
 
 def _hub_repo_local_path() -> str:
@@ -430,6 +434,28 @@ def _load_species_candidates(species_name: str) -> list[tuple[np.ndarray, str]]:
     return out
 
 
+def _load_species_candidates_cached(species_name: str) -> list[tuple[np.ndarray, str]]:
+    key = str(species_name or "").strip()
+    if not key:
+        return []
+    try:
+        ttl_s = float(_cfg_get("processor.reid.candidate_cache_ttl_seconds", 120.0))
+    except (TypeError, ValueError):
+        ttl_s = 120.0
+    ttl_s = max(1.0, ttl_s)
+    now = time.time()
+    with _CANDIDATE_CACHE_LOCK:
+        hit = _CANDIDATE_CACHE.get(key)
+        if hit and now - float(hit[0]) <= ttl_s:
+            inc_counter("reid_runtime_candidate_cache_hit_total", 1)
+            return list(hit[1])
+    rows = _load_species_candidates(key)
+    with _CANDIDATE_CACHE_LOCK:
+        _CANDIDATE_CACHE[key] = (now, list(rows))
+    inc_counter("reid_runtime_candidate_cache_miss_total", 1)
+    return rows
+
+
 def _best_match_nickname(
     embedding: np.ndarray,
     candidates: list[tuple[np.ndarray, str]],
@@ -472,7 +498,23 @@ def apply_runtime_reid_metadata(
     candidate_cache: dict[str, list[tuple[np.ndarray, str]]] = {}
     known_names_cache: dict[str, set[str]] = {}
     auto_generate_nickname = _cfg_bool("processor.reid.auto_generate_nickname_enabled", True)
+    include_embedding_payload = _cfg_bool(
+        "processor.reid.include_embedding_payload",
+        True,
+    )
+    try:
+        max_runtime_ms = float(_cfg_get("processor.reid.max_runtime_ms", 250.0))
+    except (TypeError, ValueError):
+        max_runtime_ms = 250.0
+    max_runtime_ms = max(1.0, max_runtime_ms)
+    started = time.perf_counter()
+    timed_out = False
     for det in detections:
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        if elapsed_ms >= max_runtime_ms:
+            timed_out = True
+            inc_counter("reid_runtime_timeout_total", 1)
+            break
         if processed >= max(0, int(max_detections)):
             break
         if str(det.get("source") or "").strip().lower() != "video":
@@ -508,7 +550,8 @@ def apply_runtime_reid_metadata(
         crop_key = f"runtime://{video_path}#track={track_id if track_id is not None else 'na'}:{st:.3f}-{et:.3f}"
         det["reid_model"] = model_name
         det["reid_dim"] = int(emb.shape[0])
-        det["reid_embedding"] = [round(float(v), 6) for v in emb.tolist()]
+        if include_embedding_payload:
+            det["reid_embedding"] = [round(float(v), 6) for v in emb.tolist()]
         det["reid_crop_key"] = crop_key
         det["reid_similarity"] = round(float(score), 4)
 
@@ -536,6 +579,10 @@ def apply_runtime_reid_metadata(
 
     inc_counter("reid_runtime_embeddings_total", processed)
     inc_counter("reid_runtime_auto_nickname_total", auto_named)
+    if timed_out:
+        set_gauge("reid.runtime.last_timeout", True)
+    else:
+        set_gauge("reid.runtime.last_timeout", False)
     set_gauge("reid.runtime.last_processed_count", processed)
     set_gauge("reid.runtime.last_auto_named_count", auto_named)
     return detections
@@ -556,7 +603,7 @@ def enrich_runtime_reid_detections(
     out = apply_runtime_reid_metadata(
         detections,
         embed_crop=lambda crop: _to_embedding(crop, state=state),
-        load_candidates=_load_species_candidates,
+        load_candidates=_load_species_candidates_cached,
         model_name=str(state["model_name"]),
         similarity_threshold=_cfg_float("processor.reid.nickname_similarity_threshold", 0.9),
         max_detections=_cfg_int("processor.reid.max_detections_per_recording", 6),

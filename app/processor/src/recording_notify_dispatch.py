@@ -10,6 +10,7 @@ from recording_notify_errors import notify_error_hint
 from recording_notify_policy import (
     notify_suppression_reason,
     resolve_min_confidence_to_notify,
+    smart_alert_suppression_reason,
 )
 from recording_notify_preview_log import write_notify_preview_activity
 
@@ -26,14 +27,27 @@ def notify_unique_species(
     """Notify once per species with eligible detections and generated previews."""
     encode = encode_notify_preview_base64 if encode_func is None else encode_func
     seen = set()
+    seen_profiles = set()
     for detection in video_detections:
         species = detection.get("species_name") or detection.get("species") or ""
         if not species or species in seen:
             continue
         seen.add(species)
+        nickname = str(detection.get("individual_nickname") or "").strip().lower()
+        first_profile_in_clip = False
+        if nickname:
+            if nickname not in seen_profiles:
+                first_profile_in_clip = True
+            seen_profiles.add(nickname)
         image_base64, preview_source = encode(detection, video_output)
         min_notify = resolve_min_confidence_to_notify(config)
         suppress_reason = notify_suppression_reason(detection, min_notify)
+        if suppress_reason is None:
+            suppress_reason = smart_alert_suppression_reason(
+                config,
+                species=species,
+                first_profile_in_clip=first_profile_in_clip,
+            )
         if suppress_reason == "ineligible":
             logging.info(
                 "Notify suppressed for %s (eligible=false, kind=%s, reason=%s)",
@@ -41,6 +55,12 @@ def notify_unique_species(
                 detection.get("decision_kind"),
                 detection.get("decision_reason"),
             )
+            continue
+        if suppress_reason in {
+            "smart_alert_not_rare",
+            "smart_alert_not_first_profile",
+        }:
+            logging.info("Notify suppressed for %s: %s", species, suppress_reason)
             continue
         if image_base64 is None:
             logging.info(

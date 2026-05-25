@@ -19,6 +19,7 @@ import queue
 import random
 import threading
 import time
+from copy import deepcopy
 from collections import deque
 from datetime import datetime, timezone
 
@@ -433,10 +434,10 @@ class MQTTEventAggregator:
             ttl_h = max(1.0, min(ttl_h, 168.0))
             self._prune_birdnet_events_locked(now=prune_now, ttl_hours=ttl_h, sync_persist=True)
             if self._birdnet_fifo_persist is not None and any(e is ev for e in self._birdnet_events):
-                try:
-                    frozen = json.loads(json.dumps(ev, default=str))
-                except (TypeError, ValueError):
-                    frozen = dict(ev)
+                frozen = deepcopy(ev)
+                for key, value in list(frozen.items()):
+                    if isinstance(value, datetime):
+                        frozen[key] = value.isoformat()
                 self._birdnet_fifo_persist.enqueue_insert(frozen)
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
@@ -776,7 +777,14 @@ class MQTTEventAggregator:
                     elif not lbl_ok and relaxed and has_geometry and geometry_blocked_reason:
                         inc_counter("frigate_geometry_fallback_rejected_total")
                     score_ok = trigger_score >= max(0.0, min_trigger_score)
-                    if cam_ok and lbl_ok and score_ok:
+                    ev_type = str(fdata.get("type") or "").strip().lower()
+                    trigger_on_update = bool(
+                        app_config.get("triggers.frigate.trigger_on_update", False)
+                    )
+                    motion_ok = not ev_type or ev_type == "new" or trigger_on_update
+                    if ev_type in ("update", "end") and not trigger_on_update:
+                        motion_ok = False
+                    if cam_ok and lbl_ok and score_ok and motion_ok:
                         logger.info(
                             "Frigate trigger accepted: reason=%s camera=%s label=%s sub_label=%s "
                             "score=%.3f min_score=%.3f merge_suppressed=%s has_geometry=%s filter_empty=%s",
