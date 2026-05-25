@@ -25,8 +25,14 @@ export function resolveGo2rtcSrc(cam: {
   return cam.id;
 }
 
+/** Native MJPEG from go2rtc — only when upstream already has MJPEG codec (often empty for H264 RTSP). */
 export function go2rtcMjpegUrl(go2rtcSrc: string): string {
   return `/go2rtc/api/stream.mjpeg?src=${encodeURIComponent(go2rtcSrc)}`;
+}
+
+/** JPEG snapshot — works for H264/H265 RTSP (go2rtc transcodes one frame). */
+export function go2rtcFrameJpegUrl(go2rtcSrc: string): string {
+  return `/go2rtc/api/frame.jpeg?src=${encodeURIComponent(go2rtcSrc)}`;
 }
 
 /** fMP4 / MSE (go2rtc). */
@@ -34,14 +40,14 @@ export function go2rtcMseUrl(go2rtcSrc: string): string {
   return `/go2rtc/api/stream.mp4?src=${encodeURIComponent(go2rtcSrc)}`;
 }
 
-/** go2rtc stream.html player (WebSocket); modes = fallback chain inside player. */
+/** go2rtc stream.html player (WebSocket). */
 export function go2rtcStreamHtmlUrl(go2rtcSrc: string, modes: string | string[]): string {
   const modeParam = Array.isArray(modes) ? modes.join(',') : modes;
   return `/go2rtc/stream.html?src=${encodeURIComponent(go2rtcSrc)}&mode=${encodeURIComponent(modeParam)}`;
 }
 
 export function go2rtcWebrtcPlayerUrl(go2rtcSrc: string): string {
-  return go2rtcStreamHtmlUrl(go2rtcSrc, ['webrtc', 'mse', 'mjpeg']);
+  return go2rtcStreamHtmlUrl(go2rtcSrc, 'webrtc');
 }
 
 export type LiveStreamRenderMode = 'img' | 'video' | 'iframe';
@@ -57,10 +63,24 @@ export type LiveStreamTransport =
 export type ResolvedLiveStream = {
   mode: LiveStreamRenderMode;
   src: string;
-  /** When UI picked WebRTC iframe but editor needs aligned overlays — use MJPEG instead. */
+  /** Poll frame.jpeg when go2rtc has no native MJPEG (H264-only RTSP). */
+  framePollMs?: number;
   overlayAligned: boolean;
   transport: LiveStreamTransport;
 };
+
+function go2rtcMjpegLikeStream(
+  go2rtcSrc: string,
+  transport: LiveStreamTransport,
+): ResolvedLiveStream {
+  return {
+    mode: 'img',
+    src: go2rtcFrameJpegUrl(go2rtcSrc),
+    framePollMs: 250,
+    overlayAligned: true,
+    transport,
+  };
+}
 
 export function resolveLiveStream({
   kind,
@@ -73,7 +93,7 @@ export function resolveLiveStream({
   go2rtcSrc: string;
   streamUrlMjpeg?: string;
   preferOverlayAligned?: boolean;
-  /** MSE/video failed — auto and explicit MSE fall back to Go2RTC MJPEG. */
+  /** MSE/video failed — auto and explicit MSE fall back to Go2RTC frame poll. */
   mseFallback?: boolean;
 }): ResolvedLiveStream | null {
   const processor = (streamUrlMjpeg || '').trim();
@@ -102,30 +122,11 @@ export function resolveLiveStream({
   }
 
   if (preferOverlayAligned && kind === 'go2rtc_webrtc') {
-    return {
-      mode: 'img',
-      src: go2rtcMjpegUrl(g2),
-      overlayAligned: true,
-      transport: 'go2rtc_mjpeg',
-    };
-  }
-
-  if (kind === 'go2rtc_mjpeg' && !preferOverlayAligned) {
-    return {
-      mode: 'iframe',
-      src: go2rtcStreamHtmlUrl(g2, 'mjpeg'),
-      overlayAligned: false,
-      transport: 'go2rtc_mjpeg',
-    };
+    return go2rtcMjpegLikeStream(g2, 'go2rtc_mjpeg');
   }
 
   if (kind === 'go2rtc_mjpeg') {
-    return {
-      mode: 'img',
-      src: go2rtcMjpegUrl(g2),
-      overlayAligned: true,
-      transport: 'go2rtc_mjpeg',
-    };
+    return go2rtcMjpegLikeStream(g2, 'go2rtc_mjpeg');
   }
 
   if (kind === 'go2rtc_webrtc' && !preferOverlayAligned) {
@@ -147,12 +148,7 @@ export function resolveLiveStream({
   }
 
   const fallback = mseFallback && (kind === 'go2rtc_auto' || kind === 'go2rtc_mse');
-  return {
-    mode: 'img',
-    src: go2rtcMjpegUrl(g2),
-    overlayAligned: true,
-    transport: fallback ? 'go2rtc_mjpeg_fallback' : 'go2rtc_mjpeg',
-  };
+  return go2rtcMjpegLikeStream(g2, fallback ? 'go2rtc_mjpeg_fallback' : 'go2rtc_mjpeg');
 }
 
 export function defaultLiveStreamKind(): LiveStreamKind {

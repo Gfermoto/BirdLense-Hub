@@ -124,6 +124,7 @@ export function LiveStreamView({
     <LiveMediaStage
       kind={resolved.mode === 'video' ? 'video' : 'img'}
       src={resolved.src}
+      framePollMs={resolved.framePollMs}
       alt={name}
       frameLabel={frameLabel}
       onMediaError={() => {

@@ -47,6 +47,7 @@ export function LiveMediaStage({
   onOverlayClick,
   overlayPointerEvents = 'none',
   frameLabel,
+  framePollMs,
   sx,
 }: {
   kind: MediaKind;
@@ -58,11 +59,14 @@ export function LiveMediaStage({
   overlayPointerEvents?: 'auto' | 'none';
   /** Транспорт потока (MSE, MJPEG, …) — в углу кадра. */
   frameLabel?: string;
+  /** Poll go2rtc frame.jpeg (H264 RTSP has no native /api/stream.mjpeg). */
+  framePollMs?: number;
   sx?: SxProps<Theme>;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLImageElement | HTMLVideoElement>(null);
   const [layout, setLayout] = useState<MediaLayoutRect | null>(null);
+  const [pollTick, setPollTick] = useState(0);
 
   const updateLayout = useCallback(() => {
     const container = containerRef.current;
@@ -80,6 +84,17 @@ export function LiveMediaStage({
     ro.observe(container);
     return () => ro.disconnect();
   }, [updateLayout, src, kind]);
+
+  useEffect(() => {
+    if (!framePollMs || framePollMs <= 0 || kind !== 'img') return;
+    const id = window.setInterval(() => setPollTick((t) => t + 1), framePollMs);
+    return () => window.clearInterval(id);
+  }, [framePollMs, kind, src]);
+
+  const mediaSrc =
+    framePollMs && framePollMs > 0 && kind === 'img'
+      ? `${src}${src.includes('?') ? '&' : '?'}_t=${pollTick}`
+      : src;
 
   const mediaSx = {
     position: 'absolute',
@@ -118,7 +133,7 @@ export function LiveMediaStage({
         <Box
           component="img"
           ref={mediaRef as RefObject<HTMLImageElement>}
-          src={src}
+          src={mediaSrc}
           alt={alt}
           onLoad={updateLayout}
           onError={onMediaError}
