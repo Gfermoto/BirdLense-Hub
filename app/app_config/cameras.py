@@ -9,8 +9,9 @@ def get_valid_cameras(cameras_config: list) -> list[dict]:
     """
     Возвращает список камер с непустым stream_name.
 
-    Каждая камера: {id, stream_name, name, detect_stream_name?}.
+    Каждая камера: {id, stream_name, name, detect_stream_name?, opencv_masks?}.
     ``detect_stream_name`` — второй поток Go2RTC для motion/YOLO (как detect в Frigate);
+    ``opencv_masks`` — Frigate-style полигоны для OpenCV-триггера на этой камере.
     запись по-прежнему с ``stream_name`` (main).
     """
     if not cameras_config:
@@ -28,6 +29,9 @@ def get_valid_cameras(cameras_config: list) -> list[dict]:
         }
         if dsn:
             row['detect_stream_name'] = dsn
+        masks = c.get('opencv_masks')
+        if masks:
+            row['opencv_masks'] = masks
         out.append(row)
     return out
 
@@ -53,5 +57,8 @@ def cameras_for_processor(valid_cameras: list) -> list[dict]:
         dsn = (c.get('detect_stream_name') or '').strip()
         if dsn:
             row['detect_stream_name'] = dsn
+        masks = c.get('opencv_masks')
+        if masks:
+            row['opencv_masks'] = masks
         rows.append(row)
     return rows

@@ -16,6 +16,8 @@ def build_processor_motion_detector(
     args: Any,
     *,
     media_source: Any,
+    get_media_source: Any = None,
+    processor_cameras: Optional[list] = None,
     mqtt_broker: Optional[str],
     mqtt_aggregator: Any,
     frigate_detector: Any,
@@ -69,6 +71,9 @@ def build_processor_motion_detector(
     motion_detector = build_motion_detector(
         trigger_config=trigger_config,
         media_source=media_source,
+        get_media_source=get_media_source,
+        processor_cameras=processor_cameras,
+        cameras_config=app_config.get("video.cameras") or [],
         frigate_detector=active_frigate_detector,
         mqtt_broker=mqtt_broker,
         mqtt_port=app_config.get("mqtt.port", 1883),

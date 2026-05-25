@@ -120,6 +120,8 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
     motion_detector = build_processor_motion_detector(
         args,
         media_source=media_setup.media_source,
+        get_media_source=media_setup.get_media_source,
+        processor_cameras=media_setup.cameras,
         mqtt_broker=mqtt_broker,
         mqtt_aggregator=mqtt_aggregator,
         frigate_detector=frigate_detector,
