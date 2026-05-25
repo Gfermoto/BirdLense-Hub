@@ -38,7 +38,7 @@ trigger-detector-audit:
 trigger-detector-audit-vps:
 	@set -e; . scripts/deploy.local.sh; \
 	ssh -p "$${DEPLOY_SSH_PORT:-22}" "$${DEPLOY_HOST}" \
-	  "docker exec birdlense python3 /app/scripts/trigger_detector_audit.py --days $${DAYS:-3} --cameras '$${CAMERAS:-BirdBox,Forest}' --db-path /app/data/db/birdlense.db"
+	  "python3 $${DEPLOY_REMOTE_DIR:-/root/BirdLense}/scripts/trigger_detector_audit.py --days $${DAYS:-3} --cameras '$${CAMERAS:-BirdBox,Forest}' --db-path $${DEPLOY_REMOTE_DIR:-/root/BirdLense}/app/data/db/birdlense.db"
 
 # Восстановить настройки: make restore-config (из .bak на сервере) или make restore-config FROM=local
 restore-config:
