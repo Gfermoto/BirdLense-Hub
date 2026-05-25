@@ -235,7 +235,7 @@ def main() -> int:
             if ta.get("error"):
                 alerts.append("audit_fail")
             else:
-                for cam, block in (ta.get("by_camera") or {}).items():
+                for cam, block in (ta.get("cameras") or ta.get("by_camera") or {}).items():
                     samples = (block.get("sample_sessions") or [])[:3]
                     ok_n = sum(1 for s in samples if s.get("verdict") == "ok")
                     rec.setdefault("audit_snapshot", {})[cam] = {
