@@ -40,6 +40,11 @@ trigger-detector-audit-vps:
 	ssh -p "$${DEPLOY_SSH_PORT:-22}" "$${DEPLOY_HOST}" \
 	  "python3 $${DEPLOY_REMOTE_DIR:-/root/BirdLense}/scripts/trigger_detector_audit.py --days $${DAYS:-3} --cameras '$${CAMERAS:-BirdBox,Forest}' --db-path $${DEPLOY_REMOTE_DIR:-/root/BirdLense}/app/data/db/birdlense.db"
 
+# Долгий прогон до 07:10 МСК: триггер, детектор, классификатор, ReID, behavior (VPS)
+overnight-pipeline-watch:
+	@set -e; . scripts/deploy.local.sh; \
+	python3 scripts/overnight-pipeline-watch.py --end-msk "$${END_MSK:-07:10}" --interval-sec "$${INTERVAL_SEC:-600}" --label "$${LABEL:-msk0710}"
+
 # Восстановить настройки: make restore-config (из .bak на сервере) или make restore-config FROM=local
 restore-config:
 	@[ "$(FROM)" = "local" ] && ./scripts/restore-config.sh from-local || ./scripts/restore-config.sh
