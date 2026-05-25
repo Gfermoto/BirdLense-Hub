@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
@@ -41,6 +41,10 @@ export function LiveStreamView({
 }) {
   const { t } = useTranslation();
   const [mseFailed, setMseFailed] = useState(false);
+
+  useEffect(() => {
+    setMseFailed(false);
+  }, [streamKind, go2rtcSrc]);
 
   const resolved = useMemo(() => {
     let kind = streamKind;

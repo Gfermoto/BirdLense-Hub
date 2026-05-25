@@ -410,6 +410,10 @@ def get_effective_trigger_config(
                 ),
             ),
             "min_trigger_score_by_camera": per_cam,
+            "trigger_on_update": _as_bool(
+                _get_from_config(config_or_get, "triggers.frigate.trigger_on_update"),
+                False,
+            ),
         },
         "motion_sensor": {
             "enabled": motion_sensor_enabled,
@@ -423,6 +427,10 @@ def get_effective_trigger_config(
             "esphome_sensor_id": str(
                 _get_from_config(config_or_get, "triggers.motion_sensor.esphome_sensor_id") or ""
             ).strip(),
+            "pir_pin": max(
+                0,
+                _as_int(_get_from_config(config_or_get, "triggers.motion_sensor.pir_pin"), 4),
+            ),
         },
         "scales": {
             "enabled": scales_enabled,
