@@ -3,7 +3,7 @@
 from flask import Response, current_app, request
 
 from auth import contributor_or_admin_access
-from models import db
+from models import SpeciesVisit, VideoSpecies, db
 from services.corrections_activity_service import fetch_recent_species_corrections
 from services.dataset_export_request_service import (
     dataset_export_zip_filename,
@@ -28,6 +28,7 @@ from services.bird_profile_service import (
     set_detection_semantic_review,
     update_bird_profile,
 )
+from services.http_response_cache import bust_response_caches
 from services.reid_auto_link_service import record_link_feedback, suggest_profile_links
 
 
@@ -348,3 +349,49 @@ def register_ui_corrections_dataset_routes(app):
         if err:
             return err, 404
         return ok, 200
+
+    @app.route("/api/ui/visits/<int:visit_id>", methods=["DELETE"])
+    def delete_visit(visit_id: int):
+        if not contributor_or_admin_access():
+            return {"error": "Password required"}, 403
+        data, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
+        visit = db.session.get(SpeciesVisit, visit_id)
+        if not visit:
+            return {"error": "Visit not found"}, 404
+        detection_ids = [
+            int(row.id)
+            for row in db.session.query(VideoSpecies.id)
+            .filter(VideoSpecies.species_visit_id == int(visit_id))
+            .order_by(VideoSpecies.id.asc())
+            .all()
+        ]
+        deleted = 0
+        try:
+            for det_id in detection_ids:
+                err, _ok = delete_detection_with_feedback(
+                    db.session,
+                    app.logger,
+                    det_id,
+                    data,
+                    commit=False,
+                    bust_cache=False,
+                )
+                if err:
+                    db.session.rollback()
+                    return err, 404
+                deleted += 1
+            visit_after = db.session.get(SpeciesVisit, visit_id)
+            if visit_after and deleted == 0:
+                db.session.delete(visit_after)
+            db.session.commit()
+            bust_response_caches()
+        except Exception:
+            db.session.rollback()
+            raise
+        return {
+            "message": "Visit deleted",
+            "visit_id": int(visit_id),
+            "deleted_detections": int(deleted),
+        }, 200

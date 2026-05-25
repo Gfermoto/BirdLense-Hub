@@ -16,6 +16,7 @@ class OpenCVMotionAnalysis:
     motion_pixel_fraction: float
     max_contour_area: float
     has_contour_motion: bool
+    motion_contour_polygons: tuple[tuple[tuple[float, float], ...], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,39 @@ class OpenCVTriggerDecision:
     triggered: bool
     reason: str
     profile: str = "day"
+
+
+def motion_contour_polygons_normalized(
+    contours,
+    min_contour_area: int,
+    frame_h: int,
+    frame_w: int,
+    *,
+    max_polygons: int = 16,
+) -> tuple[tuple[tuple[float, float], ...], ...]:
+    """Axis-aligned contour boxes as normalized 4-point polygons for UI overlay."""
+    fw = max(1, int(frame_w))
+    fh = max(1, int(frame_h))
+    min_area = max(1, int(min_contour_area))
+    polys: list[tuple[tuple[float, float], ...]] = []
+    for contour in contours:
+        area = float(cv2.contourArea(contour))
+        if area < min_area:
+            continue
+        x, y, w, h = cv2.boundingRect(contour)
+        if w < 2 or h < 2:
+            continue
+        polys.append(
+            (
+                (x / fw, y / fh),
+                ((x + w) / fw, y / fh),
+                ((x + w) / fw, (y + h) / fh),
+                (x / fw, (y + h) / fh),
+            )
+        )
+        if len(polys) >= max_polygons:
+            break
+    return tuple(polys)
 
 
 def analyze_frame_pair(
@@ -68,11 +102,16 @@ def analyze_frame_pair(
             max_area = area
         if area >= min_area:
             has_motion = True
+    fh, fw = int(gray.shape[0]), int(gray.shape[1])
+    overlay_min_area = max(40, min_area // 4)
     return OpenCVMotionAnalysis(
         global_mean_absdiff=global_mean,
         motion_pixel_fraction=motion_frac,
         max_contour_area=max_area,
         has_contour_motion=has_motion,
+        motion_contour_polygons=motion_contour_polygons_normalized(
+            contours, overlay_min_area, fh, fw
+        ),
     )
 
 

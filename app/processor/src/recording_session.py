@@ -33,7 +33,20 @@ def _camera_processor_overrides(camera_id: str | None) -> dict:
     if not cam:
         return {}
     raw = app_config.get(f"processor.camera_overrides.{cam}")
-    return dict(raw) if isinstance(raw, dict) else {}
+    merged = dict(raw) if isinstance(raw, dict) else {}
+    cameras = app_config.get("video.cameras") or []
+    if isinstance(cameras, list):
+        for row in cameras:
+            if not isinstance(row, dict):
+                continue
+            if str(row.get("id") or "").strip() != cam:
+                continue
+            zones = row.get("detection_interest_zones")
+            if zones is not None:
+                merged["processor.detection_interest_zones"] = zones
+                merged["processor.detection_interest_zones_required"] = bool(zones)
+            break
+    return merged
 
 
 def _classifier_use_source_frame() -> bool:
@@ -465,6 +478,20 @@ class MotionRecordingSession:
                         classification_frame=classifier_source_frame,
                         camera_overrides=scoring_overrides,
                     )
+                if camera_id:
+                    from motion_detectors.opencv_live_overlay import (
+                        set_yolo_live_overlay,
+                        tracks_to_detector_polygons,
+                    )
+
+                    set_yolo_live_overlay(
+                        camera_id,
+                        {
+                            "detector_polygons": tracks_to_detector_polygons(
+                                getattr(self.frame_processor, "tracks", None)
+                            ),
+                        },
+                    )
                 run_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
                 raw_boxes = _accumulate_run_stats(run_stats)
                 runtime_profile = str(run_stats.get("runtime_profile") or "").strip()
@@ -514,6 +541,13 @@ class MotionRecordingSession:
                     break
             self.fps_tracker.log_summary()
         finally:
+            if camera_id:
+                try:
+                    from motion_detectors.opencv_live_overlay import set_yolo_live_overlay
+
+                    set_yolo_live_overlay(camera_id, {"detector_polygons": []})
+                except Exception:
+                    logger.debug("yolo live overlay clear failed", exc_info=True)
             try:
                 from frame_decision_trace import set_session_trace_writer
 

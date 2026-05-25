@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { TimeOfDay } from '../utils/timeUtils';
 import type { OverviewData, Species, SpeciesSummary } from '../types';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, csrfFetch } from './client';
 
 export const fetchBirdDirectory = async (): Promise<Species[]> => {
   const response = await axios.get(`${BASE_API_URL}/species`);
@@ -286,6 +286,26 @@ export type BirdProfile = {
   created_at?: string | null;
 };
 
+export type BirdProfileSummary = {
+  profile_id: number;
+  display_name: string;
+  status: string;
+  total_detections: number;
+  unique_video_count: number;
+  first_seen?: string | null;
+  last_seen?: string | null;
+  top_species: Array<{ name: string; count: number }>;
+  top_behaviors: Array<{ label: string; count: number }>;
+  recent_detections: Array<{
+    detection_id: number;
+    video_id: number;
+    species_name?: string | null;
+    confidence: number;
+    individual_nickname?: string | null;
+    behavior_label?: string | null;
+  }>;
+};
+
 export const fetchBirdProfiles = async (params?: {
   query?: string;
   speciesId?: number;
@@ -356,6 +376,20 @@ export const deleteBirdProfile = async (
   const response = await axios.delete(`${BASE_API_URL}/bird-profiles/${profileId}`, {
     withCredentials: true,
   });
+  return response.data;
+};
+
+export const fetchBirdProfileSummary = async (
+  profileId: number,
+  recentLimit = 8,
+): Promise<BirdProfileSummary> => {
+  const response = await axios.get(
+    `${BASE_API_URL}/bird-profiles/${profileId}/summary`,
+    {
+      params: { recent_limit: recentLimit },
+      withCredentials: true,
+    },
+  );
   return response.data;
 };
 
@@ -469,6 +503,50 @@ export const confirmDetection = async (
     { withCredentials: true },
   );
   return response.data;
+};
+
+export const deleteDetection = async (
+  detectionId: number,
+  body?: { source?: 'unknowns' | 'video' | 'timeline'; reason?: string },
+): Promise<{
+  message: string;
+  detection_id: number;
+  video_id: number;
+  track_id: number | null;
+  removed_dataset_crops: number;
+}> => {
+  const res = await csrfFetch(`${BASE_API_URL}/detections/${detectionId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  return res.json();
+};
+
+export const deleteVisit = async (
+  visitId: number,
+  body?: { source?: 'unknowns' | 'video' | 'timeline'; reason?: string },
+): Promise<{
+  message: string;
+  visit_id: number;
+  deleted_detections: number;
+}> => {
+  const res = await csrfFetch(`${BASE_API_URL}/visits/${visitId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || res.statusText);
+  }
+  return res.json();
 };
 
 export const previewReviewQueueDelete = async (params: {

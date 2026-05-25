@@ -346,6 +346,9 @@ def delete_detection_with_feedback(
     app_logger,
     detection_id: int,
     data: dict,
+    *,
+    commit: bool = True,
+    bust_cache: bool = True,
 ) -> tuple[dict | None, dict | None]:
     """Delete one detection row and emit feedback-loop/audit events (#397)."""
     source = normalize_correction_source(data.get("source"))
@@ -386,8 +389,12 @@ def delete_detection_with_feedback(
                 visit.end_time = max(ends)
             visit.max_simultaneous = max(1, int(getattr(visit, "max_simultaneous", 1) or 1))
 
-    session.commit()
-    bust_response_caches()
+    if commit:
+        session.commit()
+        if bust_cache:
+            bust_response_caches()
+    else:
+        session.flush()
 
     try:
         data_dir = str(app_config.get("directories.data") or "data")

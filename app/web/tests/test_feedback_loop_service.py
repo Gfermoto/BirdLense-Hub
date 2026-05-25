@@ -236,3 +236,62 @@ def test_delete_detection_writes_background_feedback(app, client):
         assert row is not None
         assert row.action == "delete_as_background"
         assert row.to_species_name == "Background"
+
+
+def test_delete_visit_removes_all_detections(app, client):
+    from models import Species, SpeciesVisit, Video, VideoSpecies, db
+
+    with app.app_context():
+        species = Species(name="Crow")
+        video = Video(
+            processor_version="t",
+            start_time=datetime(2026, 5, 2, 10, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 5, 2, 10, 1, 0, tzinfo=timezone.utc),
+            video_path="data/recordings/fb/visit.mp4",
+        )
+        db.session.add_all([species, video])
+        db.session.flush()
+        visit = SpeciesVisit(
+            species_id=species.id,
+            start_time=video.start_time,
+            end_time=video.end_time,
+            max_simultaneous=1,
+        )
+        db.session.add(visit)
+        db.session.flush()
+        dets = []
+        for i in range(2):
+            dets.append(
+                VideoSpecies(
+                    video_id=video.id,
+                    species_id=species.id,
+                    species_visit_id=visit.id,
+                    start_time=float(i),
+                    end_time=float(i) + 0.5,
+                    confidence=0.6,
+                    source="video",
+                    detection_provider="yolo",
+                    track_id=10 + i,
+                )
+            )
+        db.session.add_all(dets)
+        db.session.commit()
+        visit_id = visit.id
+        video_id = video.id
+        det_ids = [d.id for d in dets]
+
+    with client.session_transaction() as sess:
+        sess["access_role"] = "contributor"
+    r = client.delete(
+        f"/api/ui/visits/{visit_id}",
+        json={"source": "timeline"},
+    )
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["deleted_detections"] == 2
+
+    with app.app_context():
+        assert db.session.get(SpeciesVisit, visit_id) is None
+        for det_id in det_ids:
+            assert db.session.get(VideoSpecies, det_id) is None
+        assert db.session.get(Video, video_id) is not None

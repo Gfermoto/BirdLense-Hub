@@ -12,12 +12,13 @@ from processor_bootstrap import (
     parse_processor_args,
     run_motion_loop,
 )
-from processor_support import start_heartbeat_daemon
+from processor_support import start_heartbeat_daemon, start_opencv_overlay_daemon
 
 
 def main() -> None:
     """Запуск фонового heartbeat, сборка пайплайна и главный цикл до выхода."""
     start_heartbeat_daemon()
+    start_opencv_overlay_daemon()
     args = parse_processor_args()
     ctx = build_processor_run_context(args)
     try:

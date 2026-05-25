@@ -20,6 +20,7 @@ import { ServiceBlock } from '../shared/ServiceBlock';
 import { ScalesIntegrationFields } from '../shared/scalesIntegrationFields';
 import { FeederRelayFields } from '../shared/feederRelayFields';
 import { FrigateTriggerBlock } from '../shared/FrigateTriggerBlock';
+import { ProcessorOpencvMaskHint } from './processor/ProcessorOpencvMaskHint';
 import type { Settings } from '../../../types';
 
 type Props = {
@@ -161,6 +162,7 @@ export function CaptureFeederSection({ form }: Props) {
                       ) : null
                     }
                   </form.Subscribe>
+                  <ProcessorOpencvMaskHint />
                 </ServiceBlock>
               </Grid>
 

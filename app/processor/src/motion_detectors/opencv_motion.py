@@ -11,7 +11,9 @@ from motion_detectors.opencv_frame_motion import (
     OpenCVMotionAnalysis,
     analyze_frame_pair,
     decide_trigger_recording,
+    motion_contour_polygons_normalized,
 )
+from motion_detectors.opencv_live_overlay import set_opencv_live_overlay
 from motion_detectors.opencv_motion_mask import (
     apply_exclusion_mask,
     build_exclusion_mask,
@@ -63,8 +65,10 @@ class OpenCVMotionDetector:
         scene_change_motion_fraction: float = 0.8,
         improve_contrast: bool = False,
         morphology_open_iterations: int = 1,
+        camera_id: str = "",
     ):
         self.capture_fn = capture_fn
+        self._camera_id = str(camera_id or "").strip()
         self.threshold = threshold
         self.min_contour_area = min_contour_area
         self.check_interval = check_interval
@@ -142,6 +146,7 @@ class OpenCVMotionDetector:
         self._accept_reasons: Counter[str] = Counter()
         self._last_decision_reason = "bootstrap"
         self._last_profile = "day"
+        self._last_analysis: OpenCVMotionAnalysis | None = None
         self.logger = logging.getLogger(__name__)
 
     def _should_analyze(self):
@@ -206,11 +211,37 @@ class OpenCVMotionDetector:
                 max_area = area
             if area >= int(max(1, min_contour_area)):
                 has_motion = True
+        fh, fw = int(gray.shape[0]), int(gray.shape[1])
+        min_area = int(max(1, min_contour_area))
+        overlay_min_area = max(40, min_area // 4)
         return OpenCVMotionAnalysis(
             global_mean_absdiff=float(np.mean(fg_mask) / 255.0 * 32.0),
             motion_pixel_fraction=motion_frac,
             max_contour_area=max_area,
             has_contour_motion=has_motion,
+            motion_contour_polygons=motion_contour_polygons_normalized(
+                contours, overlay_min_area, fh, fw
+            ),
+        )
+
+    def _polygons_for_overlay(self, analysis: OpenCVMotionAnalysis) -> list[list[list[float]]]:
+        out: list[list[list[float]]] = []
+        for poly in analysis.motion_contour_polygons:
+            out.append([[float(x), float(y)] for x, y in poly])
+        return out
+
+    def _publish_live_overlay(self, analysis: OpenCVMotionAnalysis, *, profile: str) -> None:
+        if not self._camera_id:
+            return
+        set_opencv_live_overlay(
+            self._camera_id,
+            {
+                "trigger_polygons": self._polygons_for_overlay(analysis),
+                "motion_pixel_fraction": round(float(analysis.motion_pixel_fraction), 6),
+                "last_decision_reason": self._last_decision_reason,
+                "profile": profile,
+                "has_contour_motion": bool(analysis.has_contour_motion),
+            },
         )
 
     def _evaluate_motion(self, prev_gray, gray) -> bool:
@@ -240,28 +271,37 @@ class OpenCVMotionDetector:
                     min_contour_area=cfg["min_contour_area"],
                     exclusion_mask=exclusion_mask,
                 )
+                merged_polys = list(analysis.motion_contour_polygons)
+                for poly in mog2_analysis.motion_contour_polygons:
+                    if poly not in merged_polys:
+                        merged_polys.append(poly)
                 analysis = OpenCVMotionAnalysis(
                     global_mean_absdiff=max(analysis.global_mean_absdiff, mog2_analysis.global_mean_absdiff),
                     motion_pixel_fraction=max(analysis.motion_pixel_fraction, mog2_analysis.motion_pixel_fraction),
                     max_contour_area=max(analysis.max_contour_area, mog2_analysis.max_contour_area),
                     has_contour_motion=analysis.has_contour_motion or mog2_analysis.has_contour_motion,
+                    motion_contour_polygons=tuple(merged_polys[:16]),
                 )
+        self._last_analysis = analysis
         if analysis.motion_pixel_fraction >= self.scene_change_motion_fraction:
             self._last_decision_reason = "scene_change_recalibrate"
             self._reject_reasons[self._last_decision_reason] += 1
             self._consecutive_motion_hits = 0
             if self.detection_method in {"mog2", "hybrid"}:
                 self._reset_background_model()
+            self._publish_live_overlay(analysis, profile=profile)
             return False
         if self._analysis_frame_count <= self.suppress_warmup_frames:
             self._last_decision_reason = "warmup_suppressed"
             self._reject_reasons[self._last_decision_reason] += 1
             self._consecutive_motion_hits = 0
+            self._publish_live_overlay(analysis, profile=profile)
             return False
         if not self.smart_trigger_enabled:
             self._last_decision_reason = "smart_trigger_disabled"
             self._accept_reasons[self._last_decision_reason] += 1
             self._consecutive_motion_hits = self.min_consecutive_motion_frames
+            self._publish_live_overlay(analysis, profile=profile)
             return True
         decision = decide_trigger_recording(
             analysis,
@@ -278,13 +318,16 @@ class OpenCVMotionDetector:
             self._consecutive_motion_hits += 1
             if self._consecutive_motion_hits >= self.min_consecutive_motion_frames:
                 self._accept_reasons[decision.reason] += 1
+                self._publish_live_overlay(analysis, profile=profile)
                 return True
             self._last_decision_reason = "await_consecutive_frames"
             self._reject_reasons[self._last_decision_reason] += 1
+            self._publish_live_overlay(analysis, profile=profile)
             return False
         self._consecutive_motion_hits = 0
         self._reject_reasons[decision.reason] += 1
         self._suppressed_static_total += 1
+        self._publish_live_overlay(analysis, profile=profile)
         if self._suppressed_static_total <= 5 or self._suppressed_static_total % 120 == 0:
             self.logger.debug(
                 "OpenCV motion suppressed: profile=%s reason=%s "
@@ -325,6 +368,8 @@ class OpenCVMotionDetector:
                 continue
             if not self._should_analyze():
                 self._prev_gray = gray
+                if self._last_analysis is not None:
+                    self._publish_live_overlay(self._last_analysis, profile=self._last_profile)
                 time.sleep(self.check_interval)
                 continue
             motion = self._evaluate_motion(self._prev_gray, gray)
@@ -345,6 +390,8 @@ class OpenCVMotionDetector:
             return False
         if not self._should_analyze():
             self._prev_gray = gray
+            if self._last_analysis is not None:
+                self._publish_live_overlay(self._last_analysis, profile=self._last_profile)
             return False
         motion = self._evaluate_motion(self._prev_gray, gray)
         self._prev_gray = gray

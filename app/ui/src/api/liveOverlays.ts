@@ -7,6 +7,7 @@ export type LiveRuntimeOverlaysPayload = {
   detector_polygons: number[][][];
   source?: string;
   generated_at?: string;
+  opencv_last_decision_reason?: string | null;
 };
 
 export const fetchLiveRuntimeOverlays = async ({

@@ -45,6 +45,7 @@ class TestOpenCVFrameMotion(unittest.TestCase):
                 min_motion_pixel_fraction=0.0005,
             )
         )
+        self.assertGreater(len(analysis.motion_contour_polygons), 0)
 
     def test_compression_noise_suppressed(self):
         prev = np.random.randint(0, 255, (480, 704), dtype=np.uint8)

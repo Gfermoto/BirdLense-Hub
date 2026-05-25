@@ -144,9 +144,47 @@ def register_ui_status_push_routes(app):
             cache_set("component_status:v1", payload, CACHE_STATUS_SEC)
         return payload
 
+    def _opencv_live_for_camera(camera_id: str) -> dict | None:
+        row = (
+            ActivityLog.query.filter_by(type="opencv_live")
+            .order_by(ActivityLog.updated_at.desc())
+            .first()
+        )
+        if not row:
+            return None
+        try:
+            payload = json.loads(row.data or "{}")
+        except (TypeError, ValueError):
+            return None
+        if not isinstance(payload, dict):
+            return None
+        by_camera = payload.get("by_camera")
+        if not isinstance(by_camera, dict):
+            return None
+        cam = by_camera.get(camera_id)
+        return cam if isinstance(cam, dict) else None
+
     @app.route("/api/ui/live/overlays", methods=["GET"])
     def live_overlays():
         camera_id = (request.args.get("camera_id") or "").strip()
+        trigger_polygons: list = []
+        detector_polygons: list = []
+        source = "none"
+        generated_at = datetime.now(timezone.utc).isoformat()
+
+        opencv_cam = _opencv_live_for_camera(camera_id) if camera_id else None
+        if isinstance(opencv_cam, dict):
+            raw_trigger = opencv_cam.get("trigger_polygons")
+            if isinstance(raw_trigger, list):
+                trigger_polygons = raw_trigger
+            raw_detector = opencv_cam.get("detector_polygons")
+            if isinstance(raw_detector, list) and raw_detector:
+                detector_polygons = raw_detector
+            source = "opencv_live"
+            generated_at = str(
+                opencv_cam.get("updated_at") or generated_at
+            )
+
         rows = (
             ActivityLog.query.filter_by(type="decision_trace")
             .order_by(ActivityLog.created_at.desc())
@@ -170,20 +208,22 @@ def register_ui_status_push_routes(app):
             ).strip()
             if camera_id and row_camera != camera_id:
                 continue
-            trigger_polygons, detector_polygons = _extract_runtime_overlays_from_trace(payload)
-            return {
-                "camera_id": row_camera or camera_id or None,
-                "trigger_polygons": trigger_polygons,
-                "detector_polygons": detector_polygons,
-                "source": "decision_trace",
-                "generated_at": datetime.now(timezone.utc).isoformat(),
-            }, 200
+            _, trace_detector = _extract_runtime_overlays_from_trace(payload)
+            if trace_detector:
+                detector_polygons = trace_detector
+                if source == "none":
+                    source = "decision_trace"
+            break
+
         return {
             "camera_id": camera_id or None,
-            "trigger_polygons": [],
-            "detector_polygons": [],
-            "source": "none",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "trigger_polygons": trigger_polygons,
+            "detector_polygons": detector_polygons,
+            "source": source,
+            "generated_at": generated_at,
+            "opencv_last_decision_reason": (
+                opencv_cam.get("last_decision_reason") if isinstance(opencv_cam, dict) else None
+            ),
         }, 200
 
     @app.route("/api/ui/status/debug", methods=["GET"])
