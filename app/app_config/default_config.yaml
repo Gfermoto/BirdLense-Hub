@@ -26,10 +26,17 @@ processor:
   # Только ключ ``night`` читается runtime (resolve_runtime_profile). Днём — ``processor.tracker``.
   tracker_profiles:
     night: "models/tracker/bytetrack_birdlense_night.yaml"
+  # Optional tracker presets by effective stream FPS (probe/video.detect_fps).
+  tracker_fps_profiles:
+    lte_5: "models/tracker/bytetrack_birdlense_lowfps.yaml"
+    lte_7: "models/tracker/bytetrack_birdlense_lowfps.yaml"
+    lte_10: "models/tracker/bytetrack_birdlense.yaml"
+    lte_15: "models/tracker/bytetrack_birdlense.yaml"
+    gt_15: "models/tracker/bytetrack_birdlense.yaml"
   max_record_seconds: 60
   # video.source=file: нижняя граница max_record_seconds (сек). Большое значение при playlist+split по файлам — не резать длинный клип по таймеру.
   file_max_record_floor_seconds: 86400
-  max_inactive_seconds: 12
+  max_inactive_seconds: 8
   # Readiness guardrail: максимальный возраст heartbeat процессора (сек) в production.
   readiness_heartbeat_max_age_seconds: 180
   # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
@@ -37,7 +44,13 @@ processor:
   # Мин. пауза после окончания записи до следующего старта (сек). 0 = выкл.
   # Уменьшает почти совпадающие по времени дубли-клипы при Frigate+OpenCV или объекте, всё ещё в кадре.
   # Второй клип «эхо» с bbox на том же месте без птицы: поднимите паузу и/или ужесточите OpenCV и бинарные пороги.
-  min_seconds_between_recordings: 14
+  min_seconds_between_recordings: 8
+  # Trigger -> bounded detect-only window before recording (scheduler gate).
+  detect_scheduler_enabled: true
+  detect_scheduler_triggers: ["frigate", "motion_sensor", "scales"]
+  detect_probe_window_seconds: 2.5
+  detect_probe_max_frames: 30
+  detect_probe_start_recording_on_positive: true
   # Свежее подтверждение Frigate держит клип «живым» ещё N сек, даже если YOLO на паре кадров молчит.
   # Помогает не обрывать ролик, пока объект ещё реально в кадре.
   frigate_activity_hold_seconds: 6
@@ -86,6 +99,9 @@ processor:
   track_regen_ignore_regional_species: true
   # Нативный detect substream (Go2RTC/Frigate): без даунскейла в квадрат 640².
   # Кадр 704×576 → YOLO один раз letterbox до binary_imgsz (704). См. inference_lores_px (legacy max side).
+  # Родное разрешение камеры: true — без принудительного letterbox на capture (YOLO готовит кадр в detect).
+  detect_use_native_resolution: false
+  # Опционально: WxH detect-потока (если не native). Пусто — video_width×video_height или inference_lores_px.
   inference_lores_wh: [704, 576]
   inference_lores_px: 704
   # Best-practice split pipeline: YOLO detect/track on lores, classifier/ReID crops from source frame.
@@ -104,6 +120,8 @@ processor:
   # тот же lores (inference_lores_px), каждый кадр,
   # без обнуления regional_species и без remap детекций по «локальному» scope (#263).
   track_regen_match_live_pipeline: false
+  # Пересчёт оверлея в UI: binary+ByteTrack без классификатора (боксы как Trapper, ~3–5× быстрее two_stage).
+  track_regen_binary_only: true
   # При ручной коррекции на ролике: не отбрасывать авто-детекции, пересекающиеся по времени
   # с ручными строками (например Bird рядом с исправленной сорокой) — появятся параллельные
   # VideoSpecies с frames/оверлеем; виды потом можно поправить. false — прежнее «без конфликтов».
@@ -112,8 +130,9 @@ processor:
   # Trapper @ conf 0.25 на 1816/1819: визуально без ложных (showdown 2026-05).
   min_confidence_binary: 0.25
   min_confidence_binary_bird: 0.25
+  # Trapper class 5 (белка): отдельный порог после track(); калибровать по val-клипам (не ниже bird без причины).
+  min_confidence_binary_rodent: 0.35
   # DEPRECATED (nabirds-pivot): Rodent не детектируется; ключ только для legacy user_config (игнорируется при detector_scope: [Bird]).
-  # min_confidence_binary_rodent: 0.24
   # OpenVINO NABirds: conf на IR часто ВЫШЕ torch, не ниже — scale 8.5 (legacy BRG) раздувает FP.
   # track(conf) cap — не ниже bird-порога; scale 1.0 = без искусственного завышения при фильтрации.
   # conf для YOLO track(); должен быть < min_confidence_binary_bird и > track_high в ByteTrack YAML.
@@ -133,6 +152,13 @@ processor:
   scoring_calibration_frames: 60
   scoring_calibration_max_noise_rate: 0.01
   scoring_calibration_percentile: 0.95
+  # Квадратные низко-motion боксы (кормушка/автомат) — hard reject до score band.
+  scoring_static_phantom_reject_enabled: true
+  scoring_static_phantom_max_motion_score: 0.22
+  scoring_static_phantom_max_shape_score: 0.38
+  scoring_static_phantom_square_aspect_min: 0.82
+  scoring_static_phantom_square_aspect_max: 1.22
+  scoring_static_phantom_max_conf: 0.52
   frame_decision_trace_enabled: true
   # Legacy cascade (ignored when scoring_engine_enabled=true)
   static_object_suppression_enabled: false
@@ -154,13 +180,14 @@ processor:
   static_giant_box_side_frac: 0.42
   static_temporal_min_seconds: 8
   static_temporal_max_jitter_px: 2
-  detection_quality_assumed_fps: 7
+  # Fallback FPS для static/temporal фильтров, если поток не отдаёт FPS (0 = только probe потока).
+  detection_quality_assumed_fps: 15
   # Optional user-drawn masks (UI); empty by default — core FP control is algorithmic (MOG2 + motion).
   detection_ignore_masks: []
   detection_interest_zones: []
   detection_interest_zones_required: false
   # MOG2 background subtraction (OpenCV): reject boxes that sit on learned static background.
-  background_subtraction_enabled: false
+  background_subtraction_enabled: true
   background_subtraction_method: mog2
   background_subtraction_history: 400
   background_subtraction_var_threshold: 16
@@ -349,22 +376,36 @@ processor:
   inference_device: cpu
   # false — экстренный стоп OV (вернуть torch + openvino_binary_enabled: false).
   openvino_binary_enabled: true
-  classifier_inference_backend: openvino
-  classifier_inference_device: cpu
+  # efficientnet_b2 (525 species, HF dennisjooo/Birds-Classifier-EfficientNetB2) | yolo (legacy best.pt)
+  classifier_engine: efficientnet_b2
+  efficientnet_b2_min_confidence: 0.22
+  efficientnet_b2_unknown_label: "Unknown Bird"
+  squirrel_species_label: "Eurasian Red Squirrel"
+  # auto: OpenVINO IR (birds_classifier_260.xml) if present, else ONNX Runtime
+  classifier_inference_backend: auto
+  # VPS/LAN с Intel iGPU: intel:gpu (нужны /dev/dri + override в docker-compose)
+  classifier_inference_device: intel:gpu
+  # W1.1: async finalize worker to decouple hot session loop.
+  finalize_async_enabled: true
+  finalize_queue_maxsize: 2
+  finalize_enqueue_timeout_ms: 1500
+  finalize_shutdown_grace_seconds: 120
+  classifier_task_queue_maxsize: 8
   # Детектор-контракт не фиксируется на Bird-only: используем mixed class detector.
   detector_weight_contract: off
   models:
     # Candidate A (current default): TrapperAI v02.2024.
     binary: "models/detection/weights/trapper_ai_v02_2024.pt"
     binary_openvino: "models/detection/weights/trapper_ai_v02_2024_openvino_model"
-    # EU-классификатор (~491 вид): скачивать как best.pt с Hugging Face gfermoto/birdlense-birds-eu
+    # Legacy YOLO EU classifier (~491 вид) — fallback when classifier_engine: yolo
     classifier: "models/classification/weights/best.pt"
-    # OpenVINO IR для классификатора (processor.classifier_inference_backend=openvino):
-    # каталог экспорта или путь к .xml.
     classifier_openvino: "models/classification/weights/best_openvino_model"
+    # EfficientNetB2 (525 species): download + ONNX export scripts in repo scripts/
+    classifier_efficientnet_b2: "models/classification/weights/birds_classifier_efficientnetb2"
+    classifier_efficientnet_b2_onnx: "models/classification/weights/birds_classifier_efficientnetb2_openvino"
     # ONNX logistic baseline поведения (Gemm → softmax в коде). Дефолт: экспорт из demos JSON в дереве.
     # Перегенерация: `make ml-export-behavior-onnx` (нужен pip-пакет onnx в app/.venv).
-    behavior_openvino: "models/behavior/behavior_logistic_openvino"
+    behavior_openvino: "models/behavior/meta/openvino"
   # Неопределённость YOLO-cls (#370): энтропия (наты) и margin top1−top2 по полному вектору probs.
   # null — не выставлять classifier_needs_review в decision rows; задайте пороги для AL/аналитики.
   classifier_uncertainty_entropy_ge: null
@@ -393,6 +434,19 @@ processor:
   reid_auto_link_threshold_high: 0.95
   reid_auto_link_threshold_low: 0.75
   reid_auto_link_max_candidates: 8
+  # Runtime DINOv2 (finalize) — веса/кэш: models/reid/ (см. models/reid/README.md)
+  reid:
+    model: dinov2_vits14
+    hub_cache_dir: models/reid/hub_cache
+    hub_repo_local_path: ""
+    runtime_enabled: true
+    preload_on_start: true
+    device: auto
+    inference_backend: auto
+    hub_download_timeout_seconds: 15
+    candidate_cache_ttl_seconds: 120
+    include_embedding_payload: false
+    max_runtime_ms: 250
   # Baseline поведения (#416): логистическая регрессия по 3 признакам (manifest meta ↔ runtime proxy).
   # Веса: JSON из `scripts/ml_behavior_train_baseline.py` (schema behavior_logistic_export@v1).
   behavior_recognition:
@@ -404,15 +458,15 @@ processor:
     # Если OpenVINO не загрузился/ошибка — вернуться к logistic_json из weights_path.
     openvino_fallback_logistic: true
     # Относительно корня app/processor/; в образе лежит стартовый JSON (см. models/behavior/README.md).
-    weights_path: "models/behavior/behavior_logistic_export@v1.json"
+    weights_path: "models/behavior/meta/behavior_logistic_export@v1.json"
     confidence_store_min: 0.2
     confidence_review_threshold: 0.45
-    # Active behavior video model (single source of truth). v2/v2_1 dirs are archived experiments.
-    active_video_model: "video_v1"
-    video_model_kind: "video_v1"
-    video_model_version: "video-v1"
-    video_openvino_path: "models/behavior_v1_openvino"
-    video_weights_path: "models/behavior_v1_openvino/behavior_video_export.json"
+    # Active behavior video model (production). v1/v2 — _archive/experiments_*.
+    active_video_model: "video_v2_1"
+    video_model_kind: "video_v2_1"
+    video_model_version: "video-v2-1"
+    video_openvino_path: "models/behavior/video"
+    video_weights_path: "models/behavior/video/behavior_video_export.json"
     video_confidence_store_min: 0.35
     canary_log_discrepancies: true
     # Ограничение числа треков при расчёте meta-признаков (согласовано с runtime baseline).
@@ -465,6 +519,8 @@ video:
   auto_reconnect: true
   video_width: 1280
   video_height: 720
+  # 0 = авто из RTSP/файла; иначе фиксированный FPS для таймингов офлайн/симуляции.
+  detect_fps: 0
 
 # Триггеры записи — только ``triggers.*`` (см. ``trigger_config``). Устаревший блок ``motion:``
 # в user YAML при загрузке мигрирует в ``triggers`` и удаляется; GET /api/ui/settings
@@ -475,9 +531,47 @@ triggers:
   opencv:
     enabled: true
     check_every_n_frames: 1
-    diff_threshold: 17
+    # frame_diff | mog2 | hybrid
+    detection_method: hybrid
+    # Suppress early false positives while background model stabilizes.
+    suppress_warmup_frames: 45
+    # Auto switch day/night trigger profile by grayscale luma.
+    auto_profile_enabled: true
+    auto_profile_night_luma_threshold: 58.0
+    diff_threshold: 20
+    day_diff_threshold: 20
+    night_diff_threshold: 16
     # Выше — меньше ложных стартов записи (ветка, автоэкспозиция) при Frigate+OpenCV.
-    min_contour_area: 280
+    min_contour_area: 360
+    day_min_contour_area: 320
+    night_min_contour_area: 220
+    # Умный триггер: не стартовать на AE/компрессии и «качании» крупной статики (кормушка).
+    smart_trigger_enabled: true
+    global_motion_mean_absdiff: 2.5
+    day_global_motion_mean_absdiff: 2.5
+    night_global_motion_mean_absdiff: 2.2
+    min_motion_pixel_fraction: 0.0008
+    day_min_motion_pixel_fraction: 0.0008
+    night_min_motion_pixel_fraction: 0.0006
+    max_contour_area_frac: 0.38
+    day_max_contour_area_frac: 0.38
+    night_max_contour_area_frac: 0.45
+    # MOG2 knobs (used in mog2/hybrid mode).
+    mog2_history: 300
+    mog2_var_threshold: 24.0
+    mog2_detect_shadows: false
+    mog2_min_motion_pixel_fraction: 0.0006
+    mog2_min_contour_area: 220
+    # Frigate-style motion masks: normalized polygon "x,y,..." — exclude timestamp/trees/static feeder.
+    # Example: masks: ["0.0,0.0,1.0,0.0,1.0,0.08,0.0,0.08"]
+    masks: []
+    # Require N consecutive motion frames before starting recording (debounce).
+    min_consecutive_motion_frames: 2
+    # Frigate lightning_threshold analog: recalibrate MOG2 when almost whole frame moves (IR/AE jump).
+    scene_change_motion_fraction: 0.8
+    # Optional CLAHE before motion (Frigate "improve contrast" tuning path).
+    improve_contrast: false
+    morphology_open_iterations: 1
   frigate:
     enabled: true
     topic: "frigate/events"
@@ -499,18 +593,21 @@ triggers:
     trigger_on_tracked_object: true
     # Мин. top_score события внешнего MQTT-детектора до старта клипа (0 = без порога).
     min_trigger_score: 0.43
+    # false: старт записи только на Frigate type=new (не на каждый update/end).
+    trigger_on_update: false
     # Разрешать fallback-триггер по geometry (когда label не в filter, но есть tracked box/region).
-    geometry_fallback_enabled: true
+    geometry_fallback_enabled: false
     # Анти-шум: эти метки не должны запускать geometry-fallback запись.
     geometry_fallback_label_exclude: ["person", "car", "vehicle", "truck", "bus"]
     # Анти-дребезг: подавить повтор geometry-fallback для camera+label в пределах окна.
     geometry_fallback_cooldown_seconds: 5.0
   motion_sensor:
     enabled: false
-    source: mqtt  # mqtt | esphome
+    source: mqtt  # mqtt | esphome | pir
     mqtt_topic: ""
     esphome_url: ""
     esphome_sensor_id: ""
+    pir_pin: 4
   scales:
     enabled: false
     source: mqtt  # mqtt | esphome
@@ -548,6 +645,8 @@ detection:
   dedup_window_seconds: 60
   # Гарантированно один результат на вид (устраняет дубликаты к одному посещению)
   one_per_species: true
+  # Один вид — несколько ByteTrack id в одном ролике: не сливать в одну строку (кормушка, стая).
+  one_per_species_keep_distinct_tracks: true
   # Generic «Bird» + тот же ролик с уверенным видом (YOLO classifier / accepted_species) → один результат
   absorb_generic_bird: true
   absorb_generic_bird_overlap_min_sec: 0.1
@@ -556,6 +655,14 @@ detection:
   fusion_non_species_confidence_slack: 0.02
   # При конфликте разных sources: YOLO track остаётся primary, Frigate помогает promotion/boost.
   source_priority: ["yolo", "frigate"]
+  # Weighted signal arbiter (BirdNET/regional/multi-camera priors).
+  weighted_arbiter_enabled: true
+  weighted_arbiter_conf_weight: 0.55
+  weighted_arbiter_detector_weight: 0.15
+  weighted_arbiter_classifier_weight: 0.12
+  weighted_arbiter_birdnet_weight: 0.08
+  weighted_arbiter_regional_weight: 0.05
+  weighted_arbiter_multicamera_weight: 0.05
   # При первом совпадении YOLO track и Frigate species в окне ролика — разово +bonus к confidence (потолок 1.0)
   cross_source_confidence_bonus: 0.02
   # Склейка соседних YOLO-фрагментов (ID switch) в один визит: одинаковый вид, малый gap и
@@ -566,10 +673,9 @@ detection:
   track_fragment_merge_max_center_dist: 0.18
   # Ниже порога детекция отбрасывается после fusion; должно быть ≤ processor.min_confidence_to_process.
   # Держим мягче, чтобы YOLO-треки не пропадали до записи в БД/overlay.
-  min_confidence_to_store: 0.35
-  # Frigate — fallback/подстраховка, не primary: по умолчанию не создаём финальную детекцию
-  # только по MQTT без YOLO-трека.
-  frigate_standalone_when_no_yolo: false
+  min_confidence_to_store: 0.20
+  # Frigate — fallback при пустых YOLO-треках (blind-gate и force_after_no_yolo остаются).
+  frigate_standalone_when_no_yolo: true
   # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).
   frigate_standalone_require_blind_yolo: true
   frigate_standalone_blind_score_threshold: 0.7
@@ -626,14 +732,21 @@ detection:
   frigate_standalone_excluded_missing_score_fallback: 0.58
   # false — standalone-визиты в БД без фото в Telegram (min_confidence_to_notify всё равно для остальных).
   frigate_standalone_notify: true
+  # Panic gate: Frigate sees sustained activity but Hub accepts zero boxes.
+  panic_gate_enabled: true
+  panic_gate_min_frigate_events: 8
+  panic_gate_min_duration_seconds: 20
   # Если у YOLO есть треки, но после Decision/Fusion всё отклонено — сохранить лучший трек как review_only,
   # чтобы не терять геометрию/overlay на длинных клипах со слабой уверенностью.
-  yolo_weak_track_salvage_enabled: false
-  yolo_weak_track_salvage_min_confidence: 0.015
+  yolo_weak_track_salvage_enabled: true
+  yolo_weak_track_salvage_min_confidence: 0.012
+  yolo_weak_track_salvage_max_rows: 5
+  # После fusion: до N лучших YOLO-рядов, если fusion убрал все YOLO (разные track_id).
+  yolo_core_anchor_max_rows: 5
   # Learned fusion: optional learned scorer to blend multimodal signals and produce
   # a calibrated confidence. Disabled by default for safety.
   use_learned_fusion: false
-  fusion_model_path: ""  # optional path to serialized PyTorch model for fusion scorer
+  fusion_model_path: ""  # optional: models/fusion/weights/<scorer>.pt (см. models/fusion/README.md)
   fusion_alpha: 0.6      # blend weight for learned score (alpha * learned + (1-alpha) * base)
   # Варианты -> каноническое (Common name). Слияние в один вид для проекта.
   species_mapping:
@@ -779,6 +892,9 @@ notifications:
   custom_emoji_id_open_live: ""
   paid_media_view_star_count: 0    # Stars за просмотр фото (0=бесплатно, 1-25000)
   paid_media_forward_star_count: 0  # Stars за пересылку/копирование (0=разрешить, >0=запретить при бесплатном просмотре)
+  smart_alert_rare_species_only: false
+  smart_alert_first_profile_sighting: false
+  smart_alert_rare_species_list: []
 
 # Web Push: push-уведомления в браузере (дополнение к Telegram)
 web_push:
@@ -879,7 +995,7 @@ storage:
 # class_names.txt сгенерирован из best.pt через scripts/datasets/dump_classifier_allowlist.py.
 species:
   # Список классов EU классификатора (491 птица + Rodent). Единственный источник истины для каталога.
-  catalog_allowlist_file: "models/classification/weights/class_names.txt"
+  catalog_allowlist_file: "models/classification/weights/birds_classifier_efficientnetb2/class_labels.txt"
   # true: детекции вне allowlist → Unknown, новые строки каталога не создаются.
   catalog_strict_ingest: true
   tuning_target_species_ids: []

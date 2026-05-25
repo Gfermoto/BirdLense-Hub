@@ -9,6 +9,7 @@ import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Alert from '@mui/material/Alert';
 import type { Settings } from '../../../types';
 import { ProcessorConfidenceBlock } from './processor/ProcessorConfidenceBlock';
 import { ProcessorSessionTimingBlock } from './processor/ProcessorSessionTimingBlock';
@@ -16,6 +17,7 @@ import { ProcessorMultiCameraBirdnetBlock } from './processor/ProcessorMultiCame
 import { ProcessorConfidenceAdvancedBlock } from './processor/ProcessorConfidenceAdvancedBlock';
 import { ProcessorFalsePositiveGuardrailsBlock } from './processor/ProcessorFalsePositiveGuardrailsBlock';
 import { ProcessorLightGateBlock } from './processor/ProcessorLightGateBlock';
+import { ProcessorDetectionMaskBlock } from './processor/ProcessorDetectionMaskBlock';
 import { ProcessorSpectrogramDatasetBlock } from './processor/ProcessorSpectrogramDatasetBlock';
 import { ProcessorFrigateFusionBlock } from './processor/ProcessorFrigateFusionBlock';
 import { ProcessorAdaptiveProfilesBlock } from './processor/ProcessorAdaptiveProfilesBlock';
@@ -94,57 +96,63 @@ export function ProcessorSection({ form, simpleMode = true }: Props) {
             {t('settings.accordionProcessorDesc')}
           </Typography>
 
-          <SectionHeading first>
-            {t('settings.processorSectionHeadingDetection')}
-          </SectionHeading>
-          <ProcessorConfidenceBlock form={form} />
+          <SectionHeading first>1. Триггеры</SectionHeading>
+          <Alert severity="info" variant="outlined" sx={{ mb: 1.5 }}>
+            OpenCV/Frigate/motion/scales триггеры настраиваются в разделе «Захват и
+            кормушка». Здесь — логика обработки после старта сессии.
+          </Alert>
           <ProcessorSessionTimingBlock form={form} />
-
-          <Divider sx={{ my: 2 }} />
-
-          <SectionHeading>
-            {t('settings.processorSectionHeadingScene')}
-          </SectionHeading>
+          {!simpleMode ? <ProcessorFrigateFusionBlock form={form} /> : null}
           <ProcessorLightGateBlock form={form} />
           <ProcessorAdaptiveProfilesBlock form={form} />
-          <ProcessorDetectorPipelineBlock form={form} />
 
           <Divider sx={{ my: 2 }} />
 
-          <SectionHeading>
-            {t('settings.processorSectionHeadingBehavior')}
-          </SectionHeading>
+          <SectionHeading>2. Детектор</SectionHeading>
+          <ProcessorDetectorPipelineBlock form={form} />
+          <ProcessorDetectionMaskBlock form={form} />
+          {!simpleMode ? (
+            <>
+              <ProcessorModelsScopeBlock form={form} />
+              <ProcessorTrackRegenBlock form={form} />
+            </>
+          ) : null}
+
+          <Divider sx={{ my: 2 }} />
+
+          <SectionHeading>3. Классификатор и ReID</SectionHeading>
+          <ProcessorConfidenceBlock form={form} />
+          <ProcessorMultiCameraBirdnetBlock form={form} />
+          <ProcessorBirdnetExtendedBlock form={form} />
+          {!simpleMode ? (
+            <>
+              <ProcessorConfidenceAdvancedBlock form={form} />
+              <ProcessorFalsePositiveGuardrailsBlock form={form} />
+            </>
+          ) : null}
+
+          <Divider sx={{ my: 2 }} />
+
+          <SectionHeading>4. Поведение</SectionHeading>
           <Box id="processor-behavior">
             <ProcessorBehaviorRecognitionBlock form={form} />
           </Box>
 
-          <Divider sx={{ my: 2 }} />
-
-          <SectionHeading>
-            {t('settings.processorSectionHeadingAudio')}
-          </SectionHeading>
-          <ProcessorMultiCameraBirdnetBlock form={form} />
-          <ProcessorBirdnetExtendedBlock form={form} />
-
-          <Divider sx={{ my: 2 }} />
+          {!simpleMode ? (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <SectionHeading>{t('settings.processorSectionHeadingData')}</SectionHeading>
+              <ProcessorSpectrogramDatasetBlock form={form} />
+            </>
+          ) : null}
 
           {!simpleMode ? (
             <>
-              <SectionHeading>
-                {t('settings.processorSectionHeadingQuality')}
-              </SectionHeading>
-              <ProcessorConfidenceAdvancedBlock form={form} />
-              <ProcessorFalsePositiveGuardrailsBlock form={form} />
-
               <Divider sx={{ my: 2 }} />
-
-              <SectionHeading>
-                {t('settings.processorSectionHeadingData')}
-              </SectionHeading>
-              <ProcessorSpectrogramDatasetBlock form={form} />
-              <ProcessorModelsScopeBlock form={form} />
-              <ProcessorTrackRegenBlock form={form} />
-              <ProcessorFrigateFusionBlock form={form} />
+              <SectionHeading>{t('settings.processorSectionHeadingQuality')}</SectionHeading>
+              <Typography variant="body2" color="text.secondary">
+                Диагностические и quality-gate параметры.
+              </Typography>
             </>
           ) : null}
         </Box>

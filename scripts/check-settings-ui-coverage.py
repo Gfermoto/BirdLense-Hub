@@ -1098,6 +1098,76 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
         "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
     },
+    "triggers.opencv.global_motion_mean_absdiff": {
+        "category": "advanced",
+        "reason": "Smart OpenCV trigger tuning; enabled via smart_trigger_enabled in UI.",
+        "next_step": "Expose in OpenCV advanced panel when operators need AE/feeder tuning.",
+    },
+    "triggers.opencv.min_motion_pixel_fraction": {
+        "category": "advanced",
+        "reason": "Smart OpenCV trigger tuning; paired with global_motion_mean_absdiff.",
+        "next_step": "YAML-only or OpenCV advanced panel.",
+    },
+    "triggers.opencv.max_contour_area_frac": {
+        "category": "advanced",
+        "reason": "Smart OpenCV trigger: max contour area fraction for feeder/static rejection.",
+        "next_step": "YAML-only or OpenCV advanced panel.",
+    },
+    "triggers.opencv.masks": {
+        "category": "advanced",
+        "reason": "Frigate-style motion exclusion polygons; draw from debug overlay.",
+        "next_step": "YAML-only until mask editor in Settings.",
+    },
+    "triggers.opencv.min_consecutive_motion_frames": {
+        "category": "advanced",
+        "reason": "Temporal debounce: require N motion frames before record start.",
+        "next_step": "YAML-only or OpenCV advanced panel.",
+    },
+    "triggers.opencv.scene_change_motion_fraction": {
+        "category": "advanced",
+        "reason": "Frigate lightning_threshold analog for MOG2 recalibration.",
+        "next_step": "YAML-only or OpenCV advanced panel.",
+    },
+    "triggers.opencv.improve_contrast": {
+        "category": "advanced",
+        "reason": "Optional CLAHE path from Frigate motion tuning workflow.",
+        "next_step": "YAML-only until contrast toggle is in UI.",
+    },
+    "triggers.opencv.morphology_open_iterations": {
+        "category": "advanced",
+        "reason": "Morphology open on frame-diff mask (OpenCV tutorial pipeline).",
+        "next_step": "YAML-only or OpenCV advanced panel.",
+    },
+    "processor.scoring_static_phantom_reject_enabled": {
+        "category": "advanced",
+        "reason": "ScoringEngine static phantom filter; production tuned via patch script / YAML.",
+        "next_step": "Diagnostics panel when phantom tuning is operator-facing.",
+    },
+    "processor.scoring_static_phantom_max_conf": {
+        "category": "advanced",
+        "reason": "Phantom reject confidence ceiling.",
+        "next_step": "YAML-only with scoring_static_phantom_reject_enabled.",
+    },
+    "processor.scoring_static_phantom_max_motion_score": {
+        "category": "advanced",
+        "reason": "Phantom reject motion score ceiling.",
+        "next_step": "YAML-only with scoring_static_phantom_reject_enabled.",
+    },
+    "processor.scoring_static_phantom_max_shape_score": {
+        "category": "advanced",
+        "reason": "Phantom reject shape score ceiling.",
+        "next_step": "YAML-only with scoring_static_phantom_reject_enabled.",
+    },
+    "processor.scoring_static_phantom_square_aspect_min": {
+        "category": "advanced",
+        "reason": "Phantom reject square bbox aspect min.",
+        "next_step": "YAML-only with scoring_static_phantom_reject_enabled.",
+    },
+    "processor.scoring_static_phantom_square_aspect_max": {
+        "category": "advanced",
+        "reason": "Phantom reject square bbox aspect max.",
+        "next_step": "YAML-only with scoring_static_phantom_reject_enabled.",
+    },
     "processor.detection_texture_filter_enabled": {
         "category": "advanced",
         "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",

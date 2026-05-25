@@ -20,7 +20,9 @@ from processor_support import get_output_path, processor_status
 from processor_runtime_stats import inc_counter, observe_timing, set_gauge
 from detection_strategy import coerce_bgr_frame
 from recording_finalize import finalize_motion_recording
+from recording_finalize_worker import FinalizeWorker
 from session_state_repository import SessionStateRepository
+from detection_scheduler import build_probe_config
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +63,7 @@ class MotionRecordingSession:
         scales_topic_arg: Optional[str],
         data_dir: str,
         fps_tracker: FPSTracker,
+        finalize_worker: FinalizeWorker | None = None,
         file_test_runtime: Any = None,
     ) -> None:
         self.args = args
@@ -76,6 +79,7 @@ class MotionRecordingSession:
         self.scales_topic_arg = scales_topic_arg
         self.data_dir = data_dir
         self.fps_tracker = fps_tracker
+        self.finalize_worker = finalize_worker
         self.file_test_runtime = file_test_runtime
         self.session_state_repo = SessionStateRepository()
         self._startup_blind_confirmed = False
@@ -209,6 +213,41 @@ class MotionRecordingSession:
                 return False
         return False
 
+    def run_detection_probe_window(self, *, camera_id: str | None, trigger_source: str | None) -> bool:
+        """Run bounded detect-only loop before recording for non-OpenCV triggers."""
+        cfg = build_probe_config(app_config)
+        if not cfg.enabled:
+            return True
+        trigger = str(trigger_source or "").strip().lower()
+        if trigger not in set(cfg.triggers):
+            return True
+        if not self.args.input and app_config.get("video.source") == "go2rtc":
+            self.media_source = self.get_media_source(camera_id or self.default_camera_id)
+        start = time.monotonic()
+        frames = 0
+        hits = 0
+        # Isolate probe from regular track accumulation.
+        self.frame_processor.reset()
+        while frames < cfg.max_frames and (time.monotonic() - start) <= cfg.window_seconds:
+            frame = self.media_source.capture()
+            if frame is None:
+                time.sleep(0.03)
+                continue
+            frames += 1
+            if self.frame_processor.run(frame, frame_time=None, skip_light_gate=False):
+                hits += 1
+                break
+        self.frame_processor.reset()
+        logger.info(
+            "detection_probe: trigger=%s camera=%s frames=%s hits=%s window=%.2fs",
+            trigger or "?",
+            camera_id or "?",
+            frames,
+            hits,
+            cfg.window_seconds,
+        )
+        return (hits > 0) if cfg.start_recording_on_positive else True
+
     def run(self) -> bool:
         """Выполнить одну запись. Возвращает True, если внешний цикл main должен завершиться (режим --input)."""
         session_overrides = merge_birdnet_mqtt_bias_into_overrides(
@@ -261,6 +300,31 @@ class MotionRecordingSession:
             logger.debug("frame decision trace init failed", exc_info=True)
 
         try:
+            from pipeline_config import build_motion_trigger_context
+
+            trigger_ctx = build_motion_trigger_context(
+                self.motion_detector,
+                app_config,
+                media_source=self.media_source,
+            )
+            self.frame_processor.set_session_context(trigger_ctx.as_dict())
+            main_size = getattr(self.media_source, "main_size", None)
+            if main_size and len(main_size) >= 2:
+                try:
+                    pw, ph = int(main_size[0]), int(main_size[1])
+                    if pw > 0 and ph > 0:
+                        self.frame_processor.strategy.set_playback_frame_shape((ph, pw))
+                except (TypeError, ValueError):
+                    pass
+            set_gauge("recording_trigger_source", trigger_ctx.triggered_by or "unknown")
+            set_gauge("recording_stream_fps", float(trigger_ctx.stream_fps))
+            logger.info(
+                "recording_session: trigger=%s stream_fps=%.2f model_imgsz=%s native_detect=%s",
+                trigger_ctx.triggered_by or "?",
+                trigger_ctx.stream_fps,
+                trigger_ctx.model_imgsz,
+                trigger_ctx.use_native_resolution,
+            )
             self.frame_processor.reset()
             self.decision_maker.reset()
             self.fps_tracker.reset()
@@ -307,20 +371,6 @@ class MotionRecordingSession:
                 quickcheck_seconds = float(app_config.get("detection.yolo_blind_quickcheck_seconds") or 2.0)
             except (TypeError, ValueError):
                 quickcheck_seconds = 2.0
-            try:
-                quickcheck_min_conf = float(app_config.get("detection.yolo_blind_quickcheck_min_confidence_binary") or 0.05)
-            except (TypeError, ValueError):
-                quickcheck_min_conf = 0.05
-            try:
-                quickcheck_min_bird_conf = float(
-                    app_config.get("detection.yolo_blind_quickcheck_min_confidence_binary_bird") or 0.03
-                )
-            except (TypeError, ValueError):
-                quickcheck_min_bird_conf = 0.03
-            try:
-                quickcheck_min_box = int(app_config.get("detection.yolo_blind_quickcheck_min_box_size_px") or 10)
-            except (TypeError, ValueError):
-                quickcheck_min_box = 10
             runtime_profile_counts: Counter[str] = Counter()
             runtime_profile_overrides: dict[str, dict] = {}
             camera_overrides = _camera_processor_overrides(camera_id)
@@ -452,49 +502,7 @@ class MotionRecordingSession:
 
                     if runtime_signals["yolo_blind_phase"] == "suspected":
                         now_m = time.monotonic()
-                        if now_m <= blind_quickcheck_until_monotonic:
-                            burst_overrides = dict(camera_overrides or {})
-                            curr_conf = burst_overrides.get(
-                                "min_confidence_binary",
-                                app_config.get("processor.min_confidence_binary"),
-                            )
-                            curr_bird_conf = burst_overrides.get(
-                                "min_confidence_binary_bird",
-                                app_config.get("processor.min_confidence_binary_bird"),
-                            )
-                            curr_box = burst_overrides.get("min_box_size_px", app_config.get("processor.min_box_size_px"))
-                            try:
-                                burst_overrides["min_confidence_binary"] = min(float(curr_conf), quickcheck_min_conf)
-                            except (TypeError, ValueError):
-                                burst_overrides["min_confidence_binary"] = quickcheck_min_conf
-                            try:
-                                burst_overrides["min_confidence_binary_bird"] = min(
-                                    float(curr_bird_conf), quickcheck_min_bird_conf
-                                )
-                            except (TypeError, ValueError):
-                                burst_overrides["min_confidence_binary_bird"] = quickcheck_min_bird_conf
-                            try:
-                                burst_overrides["min_box_size_px"] = min(int(curr_box), quickcheck_min_box)
-                            except (TypeError, ValueError):
-                                burst_overrides["min_box_size_px"] = quickcheck_min_box
-
-                            with self.fps_tracker:
-                                quick_detect = self.frame_processor.run(
-                                    frame,
-                                    frame_time=frame_time,
-                                    classification_frame=classifier_source_frame,
-                                    camera_overrides=burst_overrides,
-                                )
-                            runtime_signals["blind_quickcheck_frames"] += 1
-                            quick_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
-                            # Probe-only: do not inflate session blind counters (already counted primary run).
-                            quick_raw = _accumulate_run_stats(quick_stats, count_frame_metrics=False)
-                            if quick_detect or quick_raw > 0:
-                                runtime_signals["blind_quickcheck_hits"] += 1
-                                runtime_signals["yolo_blind_phase"] = "recovered"
-                                blind_suspected_since_monotonic = None
-                                blind_quickcheck_until_monotonic = 0.0
-                        elif runtime_signals["yolo_blind_phase"] == "suspected":
+                        if now_m > blind_quickcheck_until_monotonic:
                             # Confirm only after the quickcheck window ends, never on a failed probe.
                             runtime_signals["yolo_blind_phase"] = "confirmed"
 
@@ -537,21 +545,21 @@ class MotionRecordingSession:
             set_gauge("last_session_low_light_blocked_frames", runtime_signals["low_light_blocked_frames"])
             if dominant_runtime_profile:
                 set_gauge("last_session_runtime_profile", dominant_runtime_profile)
-            finalize_motion_recording(
-                self.api,
-                self.motion_detector,
-                self.mqtt_aggregator,
-                self.frame_processor,
-                self.decision_maker,
-                start_time=start_time,
-                end_time=end_time,
-                output_path_physical=output_path_physical,
-                output_path_logical=output_path_logical,
-                video_output=video_output,
-                video_path_for_api=video_path_for_api,
-                scales_topic_arg=self.scales_topic_arg,
-                data_dir=self.data_dir,
-                recording_context={
+            finalize_kwargs = {
+                "api": self.api,
+                "motion_detector": self.motion_detector,
+                "mqtt_aggregator": self.mqtt_aggregator,
+                "frame_processor": self.frame_processor,
+                "decision_maker": self.decision_maker,
+                "start_time": start_time,
+                "end_time": end_time,
+                "output_path_physical": output_path_physical,
+                "output_path_logical": output_path_logical,
+                "video_output": video_output,
+                "video_path_for_api": video_path_for_api,
+                "scales_topic_arg": self.scales_topic_arg,
+                "data_dir": self.data_dir,
+                "recording_context": {
                     "triggered_camera": camera_id,
                     "frigate_trigger_event": frigate_trigger_event,
                     "frigate_activity_hold_seconds": frigate_hold_seconds,
@@ -567,7 +575,25 @@ class MotionRecordingSession:
                         "runtime_profile_frames": dict(runtime_profile_counts),
                     },
                 },
-            )
+            }
+            opencv_diag = getattr(self.motion_detector, "get_opencv_diagnostics", lambda: None)()
+            if opencv_diag is None:
+                opencv_diag = getattr(self.motion_detector, "diagnostics", lambda: None)()
+            if isinstance(opencv_diag, dict):
+                finalize_kwargs["recording_context"]["runtime_signals"]["opencv_trigger_diagnostics"] = opencv_diag
+            if self.finalize_worker is not None:
+                if self.finalize_worker.enqueue(finalize_kwargs):
+                    logger.info(
+                        "recording_session: finalize task enqueued (async worker mode)"
+                    )
+                else:
+                    # Backpressure fallback: never drop finalized clip; run sync as safety net.
+                    logger.warning(
+                        "recording_session: finalize queue full, fallback to synchronous finalize"
+                    )
+                    finalize_motion_recording(**finalize_kwargs)
+            else:
+                finalize_motion_recording(**finalize_kwargs)
         except Exception as e:
             inc_counter("recording_finalize_failures_total")
             logger.error(e)
