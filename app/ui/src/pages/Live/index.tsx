@@ -149,29 +149,67 @@ function OverlayPolygons({
   );
 }
 
-function go2rtcMjpegPath(streamSrc: string): string {
-  return `/go2rtc/api/stream.mjpeg?src=${encodeURIComponent(streamSrc)}`;
+function resolveGo2rtcSrc(cam: { id: string; stream_url?: string; go2rtc_src?: string }): string {
+  const explicit = (cam.go2rtc_src || '').trim();
+  if (explicit) return explicit;
+  const m = (cam.stream_url || '').match(/[?&]src=([^&]+)/);
+  if (m?.[1]) {
+    try {
+      return decodeURIComponent(m[1]);
+    } catch {
+      return m[1];
+    }
+  }
+  return cam.id;
+}
+
+function go2rtcMjpegPath(go2rtcSrc: string): string {
+  return `/go2rtc/api/stream.mjpeg?src=${encodeURIComponent(go2rtcSrc)}`;
+}
+
+type StreamFallback = 'primary' | 'alternate' | 'none';
+
+function resolveStreamSrc({
+  mode,
+  go2rtcSrc,
+  streamUrlMjpeg,
+  fallback,
+}: {
+  mode: StreamMode;
+  go2rtcSrc: string;
+  streamUrlMjpeg?: string;
+  fallback: StreamFallback;
+}): string {
+  const go2rtc = go2rtcSrc ? go2rtcMjpegPath(go2rtcSrc) : '';
+  const processor = streamUrlMjpeg || '';
+  if (fallback === 'none') return '';
+  if (mode === 'mjpeg') {
+    if (fallback === 'primary') return processor || go2rtc;
+    return go2rtc || processor;
+  }
+  if (fallback === 'primary') return go2rtc || processor;
+  return processor || go2rtc;
 }
 
 const FullscreenStream = ({
-  streamSrc,
+  go2rtcSrc,
   streamUrlMjpeg,
   name,
   mode,
 }: {
-  streamSrc: string;
+  go2rtcSrc: string;
   streamUrlMjpeg?: string;
   name: string;
   mode: StreamMode;
 }) => {
   const { t } = useTranslation();
-  const [processorMjpegFailed, setProcessorMjpegFailed] = useState(false);
-  const go2rtcSrc = streamSrc ? go2rtcMjpegPath(streamSrc) : '';
-  const useProcessorMjpeg =
-    mode === 'mjpeg' && Boolean(streamUrlMjpeg) && !processorMjpegFailed;
-  const imgSrc = useProcessorMjpeg
-    ? streamUrlMjpeg
-    : go2rtcSrc || streamUrlMjpeg;
+  const [fallback, setFallback] = useState<StreamFallback>('primary');
+  const imgSrc = resolveStreamSrc({
+    mode,
+    go2rtcSrc,
+    streamUrlMjpeg,
+    fallback,
+  });
   if (!imgSrc) {
     return (
       <Box
@@ -193,25 +231,23 @@ const FullscreenStream = ({
       src={imgSrc}
       alt={name}
       onError={() => {
-        if (useProcessorMjpeg) {
-          setProcessorMjpegFailed(true);
-        }
+        setFallback((prev) => (prev === 'primary' ? 'alternate' : 'none'));
       }}
       sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
     />
   );
 };
 
-/** go2rtc MJPEG (без красного статуса WebRTC в iframe) или MJPEG процессора с запасным go2rtc. */
+/** MJPEG процессора (по умолчанию) или Go2RTC MJPEG по stream_name с взаимным fallback. */
 const CameraStream = ({
-  streamSrc,
+  go2rtcSrc,
   streamUrlMjpeg,
   name,
   mode,
   onOpenEditor,
   canEdit,
 }: {
-  streamSrc: string;
+  go2rtcSrc: string;
   streamUrlMjpeg?: string;
   name: string;
   mode: StreamMode;
@@ -219,13 +255,13 @@ const CameraStream = ({
   canEdit?: boolean;
 }) => {
   const { t } = useTranslation();
-  const [processorMjpegFailed, setProcessorMjpegFailed] = useState(false);
-  const go2rtcSrc = streamSrc ? go2rtcMjpegPath(streamSrc) : '';
-  const useProcessorMjpeg =
-    mode === 'mjpeg' && Boolean(streamUrlMjpeg) && !processorMjpegFailed;
-  const imgSrc = useProcessorMjpeg
-    ? streamUrlMjpeg
-    : go2rtcSrc || streamUrlMjpeg;
+  const [fallback, setFallback] = useState<StreamFallback>('primary');
+  const imgSrc = resolveStreamSrc({
+    mode,
+    go2rtcSrc,
+    streamUrlMjpeg,
+    fallback,
+  });
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: 280 }}>
       <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
@@ -250,9 +286,7 @@ const CameraStream = ({
           src={imgSrc}
           alt={name}
           onError={() => {
-            if (useProcessorMjpeg) {
-              setProcessorMjpegFailed(true);
-            }
+            setFallback((prev) => (prev === 'primary' ? 'alternate' : 'none'));
           }}
           sx={{
             flex: 1,
@@ -286,7 +320,7 @@ const CameraStream = ({
 export const LivePage = () => {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.liveView'));
-  const [streamMode, setStreamMode] = useState<StreamMode>('go2rtc');
+  const [streamMode, setStreamMode] = useState<StreamMode>('mjpeg');
   const [fullscreenCamId, setFullscreenCamId] = useState<string | null>(null);
   const [editorLayer, setEditorLayer] = useState<EditorLayer>('opencv_masks');
   const [showOpencvMotion, setShowOpencvMotion] = useState(true);
@@ -456,7 +490,7 @@ export const LivePage = () => {
             <Grid key={cam.id} size={{ xs: 12, sm: 6, md: gridSize }}>
               <CameraStream
                 key={`${cam.id}-${streamMode}`}
-                streamSrc={cam.id}
+                go2rtcSrc={resolveGo2rtcSrc(cam)}
                 streamUrlMjpeg={cam.stream_url_mjpeg}
                 name={cam.name}
                 mode={streamMode}
@@ -501,7 +535,7 @@ export const LivePage = () => {
             >
               {fullscreenCam ? (
                 <FullscreenStream
-                  streamSrc={fullscreenCam.id}
+                  go2rtcSrc={resolveGo2rtcSrc(fullscreenCam)}
                   streamUrlMjpeg={fullscreenCam.stream_url_mjpeg}
                   name={fullscreenCam.name}
                   mode={streamMode}
