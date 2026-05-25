@@ -26,10 +26,14 @@ class FrameDecisionRecord:
     shape_score: float
     final_score: float
     final_decision: str
+    decision_source: str | None = None
     reject_reason: str | None = None
+    reason_code: str | None = None
+    box_area_norm: float | None = None
     low_threshold: float | None = None
     high_threshold: float | None = None
     calibrated: bool | None = None
+    calibration_frame_count: int | None = None
     weighted_score: float | None = None
     frigate_boost: float | None = None
 
@@ -54,7 +58,11 @@ class FrameDecisionTraceWriter:
         self._fh.flush()
 
     def write(self, record: FrameDecisionRecord | dict[str, Any]) -> None:
-        payload = record.to_dict() if isinstance(record, FrameDecisionRecord) else dict(record)
+        payload = (
+            record.to_dict()
+            if isinstance(record, FrameDecisionRecord)
+            else dict(record)
+        )
         payload.setdefault("ts", datetime.now(timezone.utc).isoformat())
         with _lock:
             self._fh.write(json.dumps(payload, ensure_ascii=False) + "\n")
@@ -86,7 +94,11 @@ def get_session_trace_writer() -> FrameDecisionTraceWriter | None:
     return _session_writer
 
 
-def log_frame_decisions(decisions: list[dict[str, Any]], *, frame_index: int) -> None:
+def log_frame_decisions(
+    decisions: list[dict[str, Any]],
+    *,
+    frame_index: int,
+) -> None:
     writer = _session_writer
     if writer is None or not decisions:
         return
@@ -100,10 +112,14 @@ def log_frame_decisions(decisions: list[dict[str, Any]], *, frame_index: int) ->
             shape_score=float(d.get("shape_score") or 0.0),
             final_score=float(d.get("final_score") or 0.0),
             final_decision=str(d.get("final_decision") or ""),
+            decision_source=d.get("decision_source"),
             reject_reason=d.get("reject_reason"),
+            reason_code=d.get("reason_code"),
+            box_area_norm=d.get("box_area_norm"),
             low_threshold=d.get("low_threshold"),
             high_threshold=d.get("high_threshold"),
             calibrated=d.get("calibrated"),
+            calibration_frame_count=d.get("calibration_frame_count"),
             weighted_score=d.get("weighted_score"),
             frigate_boost=d.get("frigate_boost"),
         )

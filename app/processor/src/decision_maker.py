@@ -35,9 +35,11 @@ def _classifier_needs_review_flag(entropy, margin, entropy_ge, margin_le):
 
 
 def _is_rodent_detector_label(detector_label: str) -> bool:
-    """Канон в пайплайне — ``Rodent``; ``squirrel`` только для старых событий/логов."""
-    d = str(detector_label or "").strip().lower()
-    return d in {"rodent", "squirrel"}
+    """Канон Rodent + Trapper native ``Eurasian Red Squirrel`` (см. detection_strategy._is_squirrel_detector_label)."""
+    d = " ".join(str(detector_label or "").strip().lower().split())
+    if d in {"rodent", "squirrel"}:
+        return True
+    return "squirrel" in d
 
 
 def _normalized_species_keys(species_name):

@@ -23,7 +23,9 @@ def _softmax(logits: np.ndarray) -> np.ndarray:
 
 def _resolve_behavior_openvino_path(raw: str, *, processor_cwd: str | None) -> Path | None:
     """Resolve ONNX/XML path or first *.xml under directory."""
-    p = (raw or "").strip()
+    from behavior_model_paths import normalize_behavior_model_path
+
+    p = normalize_behavior_model_path((raw or "").strip())
     if not p:
         return None
     path = Path(p)
@@ -183,5 +185,7 @@ def resolve_behavior_openvino_model_path(
     """Resolve from processor.models.behavior_openvino."""
     raw = ""
     if app_config is not None:
-        raw = str(app_config.get("processor.models.behavior_openvino") or "").strip()
+        from behavior_model_paths import META_OPENVINO_DIR
+
+        raw = str(app_config.get("processor.models.behavior_openvino") or META_OPENVINO_DIR).strip()
     return _resolve_behavior_openvino_path(raw, processor_cwd=processor_cwd)

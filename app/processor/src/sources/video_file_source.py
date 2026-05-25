@@ -427,10 +427,7 @@ class VideoPlaylistSource:
                 frame_main = cv2.resize(frame, self.main_size)
                 self.out.write(frame_main)
                 self._recorded_frames += 1
-            return prepare_detector_frame(
-                frame,
-                (int(self.lores_size[0]), int(self.lores_size[1])),
-            )
+            return frame
 
         if self.realtime_simulation:
             now = time.time()
@@ -474,10 +471,7 @@ class VideoPlaylistSource:
 
         if result_frame is None:
             return None
-        return prepare_detector_frame(
-            result_frame,
-            (int(self.lores_size[0]), int(self.lores_size[1])),
-        )
+        return result_frame
 
     def get_frame_time(self):
         if self.frame_count <= 0:

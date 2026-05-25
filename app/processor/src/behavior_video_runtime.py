@@ -62,9 +62,12 @@ def _tracklet_stats(video_detections: list[dict[str, Any]]) -> dict[str, float]:
 
 
 def _resolve_video_openvino_path(br: dict[str, Any], *, processor_cwd: str | None) -> Path | None:
+    from behavior_model_paths import VIDEO_DIR, normalize_behavior_model_path
+
     raw = str(br.get("video_openvino_path") or os.environ.get("BIRDLENSE_BEHAVIOR_VIDEO_OPENVINO_PATH") or "").strip()
     if not raw:
-        raw = "models/behavior_v1_openvino"
+        raw = VIDEO_DIR
+    raw = normalize_behavior_model_path(raw)
     p = Path(raw)
     if p.is_file() and p.suffix.lower() in (".xml", ".onnx"):
         return p.resolve()
@@ -96,9 +99,12 @@ def _resolve_video_openvino_path(br: dict[str, Any], *, processor_cwd: str | Non
 
 
 def _load_video_export_labels(br: dict[str, Any], *, processor_cwd: str | None) -> list[str]:
+    from behavior_model_paths import normalize_behavior_model_path
+
     raw = str(br.get("video_weights_path") or br.get("video_export_path") or "").strip()
     if not raw:
         return []
+    raw = normalize_behavior_model_path(raw)
     p = Path(raw)
     if not p.is_file() and processor_cwd:
         cand = (Path(processor_cwd) / raw).resolve()

@@ -6,7 +6,7 @@ import importlib.util
 import os
 from typing import Any, Mapping
 
-_IMPLEMENTED = frozenset({"torch", "openvino", "auto"})
+_IMPLEMENTED = frozenset({"torch", "openvino", "onnxruntime", "auto"})
 _PLANNED = frozenset({"onnxruntime", "tensorrt"})
 _BACKEND_ALIASES = {"onnx": "onnxruntime"}
 
@@ -137,6 +137,11 @@ def assert_backend_supported(backend: str) -> None:
 def openvino_runtime_available() -> bool:
     """Проверить, установлен ли runtime OpenVINO (для auto-fallback)."""
     return importlib.util.find_spec("openvino") is not None
+
+
+def onnxruntime_classifier_available() -> bool:
+    """ONNX Runtime для EfficientNetB2 (production path when OpenVINO IR fails)."""
+    return importlib.util.find_spec("onnxruntime") is not None
 
 
 def resolve_openvino_device_policy(device: str) -> list[str]:

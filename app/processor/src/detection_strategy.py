@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections import deque
 import logging
 import math
 from pathlib import Path
@@ -373,45 +374,82 @@ def _crop_coords_from_letterboxed_bbox_norm(
     classification_frame_shape: Sequence[int],
 ) -> tuple[int, int, int, int] | None:
     """Map normalized bbox from detector letterbox space to classification frame space."""
-    if len(bbox_norm) != 4:
+    from yolo_geometry import unmap_letterbox_norm_xyxy_to_source_norm_xyxy
+
+    mapped = unmap_letterbox_norm_xyxy_to_source_norm_xyxy(
+        bbox_norm,
+        source_shape=classification_frame_shape[:2],
+        letterbox_shape=detector_frame_shape[:2],
+    )
+    if mapped is None:
         return None
     try:
-        det_h, det_w = int(detector_frame_shape[0]), int(detector_frame_shape[1])
         cls_h, cls_w = int(classification_frame_shape[0]), int(classification_frame_shape[1])
     except Exception:
         return None
-    if det_h <= 0 or det_w <= 0 or cls_h <= 0 or cls_w <= 0:
+    if cls_h <= 0 or cls_w <= 0:
         return None
-
-    x1d = float(bbox_norm[0]) * float(det_w)
-    y1d = float(bbox_norm[1]) * float(det_h)
-    x2d = float(bbox_norm[2]) * float(det_w)
-    y2d = float(bbox_norm[3]) * float(det_h)
-
-    if det_w == cls_w and det_h == cls_h:
-        x1 = int(max(0, min(cls_w, round(x1d))))
-        y1 = int(max(0, min(cls_h, round(y1d))))
-        x2 = int(max(0, min(cls_w, round(x2d))))
-        y2 = int(max(0, min(cls_h, round(y2d))))
-        if x2 <= x1 or y2 <= y1:
-            return None
-        return x1, y1, x2, y2
-
-    # Inverse of letterbox_bgr_to_wh(frame, (det_w, det_h))
-    r = min(float(det_w) / float(cls_w), float(det_h) / float(cls_h))
-    if r <= 0:
-        return None
-    nw = float(cls_w) * r
-    nh = float(cls_h) * r
-    pad_x = (float(det_w) - nw) / 2.0
-    pad_y = (float(det_h) - nh) / 2.0
-    x1 = int(max(0, min(cls_w, round((x1d - pad_x) / r))))
-    y1 = int(max(0, min(cls_h, round((y1d - pad_y) / r))))
-    x2 = int(max(0, min(cls_w, round((x2d - pad_x) / r))))
-    y2 = int(max(0, min(cls_h, round((y2d - pad_y) / r))))
+    x1 = int(max(0, min(cls_w, round(float(mapped[0]) * cls_w))))
+    y1 = int(max(0, min(cls_h, round(float(mapped[1]) * cls_h))))
+    x2 = int(max(0, min(cls_w, round(float(mapped[2]) * cls_w))))
+    y2 = int(max(0, min(cls_h, round(float(mapped[3]) * cls_h))))
     if x2 <= x1 or y2 <= y1:
         return None
     return x1, y1, x2, y2
+
+
+def _storage_bbox_norm_for_overlay(
+    bbox_norm: Sequence[float],
+    *,
+    detector_frame_shape: Sequence[int],
+    overlay_frame_shape: Sequence[int],
+    playback_frame_shape: Sequence[int] | None = None,
+) -> list[float]:
+    """Bbox для UI/БД: xyxy norm на кадре записи (main stream), не detect/letterbox."""
+    from yolo_geometry import (
+        map_norm_bbox_xyxy_between_frame_shapes,
+        unmap_letterbox_norm_xyxy_to_source_norm_xyxy,
+    )
+
+    capture_norm: list[float]
+    if (
+        len(detector_frame_shape) >= 2
+        and len(overlay_frame_shape) >= 2
+        and (
+            int(detector_frame_shape[0]) != int(overlay_frame_shape[0])
+            or int(detector_frame_shape[1]) != int(overlay_frame_shape[1])
+        )
+    ):
+        mapped = unmap_letterbox_norm_xyxy_to_source_norm_xyxy(
+            bbox_norm,
+            source_shape=overlay_frame_shape[:2],
+            letterbox_shape=detector_frame_shape[:2],
+        )
+        capture_norm = (
+            [round(float(v), 6) for v in mapped]
+            if mapped is not None
+            else [round(float(b), 6) for b in bbox_norm]
+        )
+    else:
+        capture_norm = [round(float(b), 6) for b in bbox_norm]
+
+    if (
+        playback_frame_shape
+        and len(playback_frame_shape) >= 2
+        and len(overlay_frame_shape) >= 2
+        and (
+            int(playback_frame_shape[0]) != int(overlay_frame_shape[0])
+            or int(playback_frame_shape[1]) != int(overlay_frame_shape[1])
+        )
+    ):
+        remapped = map_norm_bbox_xyxy_between_frame_shapes(
+            capture_norm,
+            from_shape_hw=overlay_frame_shape[:2],
+            to_shape_hw=playback_frame_shape[:2],
+        )
+        if remapped is not None:
+            return [round(float(v), 6) for v in remapped]
+    return capture_norm
 
 
 @dataclass
@@ -439,6 +477,16 @@ class DetectionResult:
     classifier_top1_top2_margin: Optional[float] = None
     blur_variance: Optional[float] = None
     crop: Optional[np.ndarray] = None
+    scoring_review_only: bool = False
+
+
+@dataclass
+class ClassificationTask:
+    track_id: int
+    detector_label: str
+    box_area_norm: float
+    crop: np.ndarray
+    blur_variance: float | None
 
 
 class DetectionStrategy(ABC):
@@ -453,6 +501,25 @@ class DetectionStrategy(ABC):
         self.min_box_size_px = min_box_size_px
         self.blur_threshold = blur_threshold
         self.max_blur_checks = max_blur_checks
+        self._playback_frame_shape_hw: tuple[int, int] | None = None
+
+    def set_playback_frame_shape(self, shape_hw: tuple[int, int] | None) -> None:
+        """Recorded MP4 dimensions (H, W) for bbox storage when detect ≠ record stream."""
+        if shape_hw is None:
+            self._playback_frame_shape_hw = None
+            return
+        try:
+            h, w = int(shape_hw[0]), int(shape_hw[1])
+        except (TypeError, ValueError, IndexError):
+            self._playback_frame_shape_hw = None
+            return
+        if h > 0 and w > 0:
+            self._playback_frame_shape_hw = (h, w)
+        else:
+            self._playback_frame_shape_hw = None
+
+    def _playback_shape_for_storage(self) -> tuple[int, int] | None:
+        return getattr(self, "_playback_frame_shape_hw", None)
 
     def is_blurry(self, image: np.ndarray) -> Tuple[bool, float]:
         """Лапласиан: выше variance — резче. (is_blur, variance)."""
@@ -537,6 +604,7 @@ class TwoStageStrategy(DetectionStrategy):
         classifier_inference_backend: str = "torch",
         binary_inference_device: str | None = None,
         classifier_inference_device: str | None = None,
+        classifier_engine: str = "efficientnet_b2",
     ):
         super().__init__(min_center_dist, min_box_size_px, blur_threshold, max_blur_checks)
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -560,33 +628,53 @@ class TwoStageStrategy(DetectionStrategy):
         self.detector_scope = resolve_detector_scope_set(detector_scope, app_config)
         scope_log = "ALL" if self.detector_scope is None else sorted(self.detector_scope)
 
+        self._classifier_engine = (classifier_engine or "efficientnet_b2").strip().lower()
         self.logger.info(
-            "TwoStageStrategy: detector_backend=%s classifier_backend=%s detector_weight_contract=%s "
-            "detector_scope=%s native_class_labels=%s",
+            "TwoStageStrategy: detector_backend=%s classifier_engine=%s classifier_backend=%s "
+            "detector_weight_contract=%s detector_scope=%s native_class_labels=%s",
             self.inference_backend,
+            self._classifier_engine,
             self.classifier_inference_backend,
             self.weight_contract_mode,
             scope_log,
             self._detector_native_labels,
         )
 
-        if self.inference_backend in ("torch", "openvino") and self.classifier_inference_backend in (
-            "torch",
-            "openvino",
-        ):
-            self.binary_model = load_yolo_detector(
-                binary_model_path,
-                backend=self.inference_backend,
+        if self.inference_backend not in ("torch", "openvino"):
+            raise NotImplementedError(
+                f"Detector backend {self.inference_backend!r} is not implemented (#371).",
             )
+
+        self.binary_model = load_yolo_detector(
+            binary_model_path,
+            backend=self.inference_backend,
+        )
+
+        _cls_backends = ("torch", "openvino", "onnxruntime")
+        if self.classifier_inference_backend not in _cls_backends:
+            raise NotImplementedError(
+                f"Classifier backend {self.classifier_inference_backend!r} is not implemented (#371).",
+            )
+
+        if self._classifier_engine == "efficientnet_b2":
+            from inference.efficientnet_b2_classifier import load_efficientnet_b2_classifier
+
+            self._classifier_is_efficientnet = True
+            self.classifier_model = load_efficientnet_b2_classifier(
+                classifier_model_path,
+                backend=self.classifier_inference_backend,
+                regional_species=self.regional_species,
+                app_config=app_config,
+            )
+        else:
+            self._classifier_is_efficientnet = False
+            if self.classifier_inference_backend not in ("torch", "openvino"):
+                raise NotImplementedError(
+                    "YOLO legacy classifier supports only torch/openvino backends.",
+                )
             self.classifier_model = load_yolo_classifier(
                 classifier_model_path,
                 backend=self.classifier_inference_backend,
-            )
-        else:
-            raise NotImplementedError(
-                "inference backend is not implemented (#371): "
-                f"detector={self.inference_backend!r}, "
-                f"classifier={self.classifier_inference_backend!r}.",
             )
 
         validate_detector_weight_contract(
@@ -600,10 +688,20 @@ class TwoStageStrategy(DetectionStrategy):
         self._classification_index = 0
         self._frame_index = 0
         self._track_stats = {}
+        try:
+            self._classification_task_queue_maxsize = int(
+                app_config.get("processor.classifier_task_queue_maxsize") or 8
+            )
+        except (TypeError, ValueError):
+            self._classification_task_queue_maxsize = 8
+        self._classification_task_queue_maxsize = max(1, self._classification_task_queue_maxsize)
+        self._classification_task_queue: deque[ClassificationTask] = deque()
+        self._classification_task_drops_total = 0
+        self._latest_cls_by_track: dict[int, ClassifierOutput] = {}
 
-        # Pre-calculate allowed class IDs for regional species
+        # Pre-calculate allowed class IDs for regional species (YOLO-cls path only).
         self.classes = None
-        if self.regional_species:
+        if self.regional_species and not getattr(self, "_classifier_is_efficientnet", False):
             self.logger.info(
                 "Initializing with regional species filters: %s",
                 self.regional_species,
@@ -615,16 +713,24 @@ class TwoStageStrategy(DetectionStrategy):
                 len(self.classes),
             )
             self.logger.info("Enabled classes: %s", enabled_classes)
+        elif self.regional_species and getattr(self, "_classifier_is_efficientnet", False):
+            self.logger.info(
+                "Regional species filter delegated to EfficientNetB2 (%s entries).",
+                len(self.regional_species),
+            )
 
         # Warmup
         _warm: dict = {"tracker": "bytetrack.yaml", "persist": True, "verbose": False}
         if self._binary_track_device:
             _warm["device"] = self._binary_track_device
         self.binary_model.track(np.zeros((320, 320, 3), dtype=np.uint8), **_warm)
-        _cls_warm: dict = {"verbose": False}
-        if self._classifier_predict_device:
-            _cls_warm["device"] = self._classifier_predict_device
-        self.classifier_model(np.zeros((224, 224, 3), dtype=np.uint8), **_cls_warm)
+        if getattr(self, "_classifier_is_efficientnet", False):
+            self.classifier_model.warmup()
+        else:
+            _cls_warm: dict = {"verbose": False}
+            if self._classifier_predict_device:
+                _cls_warm["device"] = self._classifier_predict_device
+            self.classifier_model(np.zeros((224, 224, 3), dtype=np.uint8), **_cls_warm)
 
     def _normalize_class_name(self, name: str) -> str:
         """Blue_Jay → Blue Jay, Winter_OR_juvenile → Winter/juvenile."""
@@ -648,8 +754,46 @@ class TwoStageStrategy(DetectionStrategy):
                 continue
         return out if out else None
 
+    def _classify_valid_box_crop(
+        self,
+        box: dict[str, Any],
+        *,
+        frame: np.ndarray,
+        cls_frame: np.ndarray,
+        min_box_size_px: int,
+    ) -> tuple[ClassifierOutput | None, np.ndarray | None, float | None]:
+        """Классификатор по боксу (если не попал в очередь кадра)."""
+        det_shape = getattr(self, "_detector_frame_shape", frame.shape[:2])
+        mapped = _crop_coords_from_letterboxed_bbox_norm(
+            bbox_norm=box["bbox_norm"],
+            detector_frame_shape=det_shape,
+            classification_frame_shape=cls_frame.shape,
+        )
+        if mapped is None:
+            return None, None, None
+        x1, y1, x2, y2 = mapped
+        crop = cls_frame[y1:y2, x1:x2]
+        if crop.size == 0:
+            return None, None, None
+        is_blur, variance = self.is_blurry(crop)
+        if is_blur:
+            return None, None, variance
+        crop, _, _ = self._apply_roi_sr_to_crop(crop, min_box_size_px=min_box_size_px)
+        if not crop.flags["C_CONTIGUOUS"]:
+            crop = np.ascontiguousarray(crop)
+        return self._classify_crop(crop), crop, variance
+
     def _classify_crop(self, crop: np.ndarray) -> ClassifierOutput:
         """Классификация кропа: вид, top1 conf, энтропия и top1−top2 margin по полному вектору probs."""
+        if getattr(self, "_classifier_is_efficientnet", False):
+            out = self.classifier_model.classify_crop_bgr(crop)
+            return ClassifierOutput(
+                out.species_name,
+                float(out.top1_confidence),
+                float(out.entropy),
+                float(out.top1_top2_margin),
+            )
+
         _cls_kwargs: dict = {"verbose": False}
         _cls_dev = getattr(self, "_classifier_predict_device", None)
         if _cls_dev:
@@ -738,9 +882,31 @@ class TwoStageStrategy(DetectionStrategy):
             self._track_stats = {}
         if not hasattr(self, "classification_scheduler"):
             self.classification_scheduler = "priority"
+        if not hasattr(self, "_classification_task_queue_maxsize"):
+            self._classification_task_queue_maxsize = 8
+        if not hasattr(self, "_classification_task_queue"):
+            self._classification_task_queue = deque()
+        if not hasattr(self, "_classification_task_drops_total"):
+            self._classification_task_drops_total = 0
+        if not hasattr(self, "_latest_cls_by_track"):
+            self._latest_cls_by_track = {}
         self._frame_index += 1
         inference_backend = str(getattr(self, "inference_backend", "torch") or "torch").strip().lower()
-        imgsz = int(runtime_cfg.resolve_strategy_field("processor.binary_imgsz", self, "binary_imgsz", 320) or 320)
+        from yolo_geometry import prepare_yolo_detector_frame, resolve_binary_track_imgsz
+
+        det_frame, det_shape_hw, overlay_shape_hw = prepare_yolo_detector_frame(frame, runtime_cfg)
+        self._detector_frame_shape = det_shape_hw
+        self._overlay_frame_shape = overlay_shape_hw
+        frame = det_frame
+
+        imgsz = resolve_binary_track_imgsz(
+            frame,
+            runtime_cfg,
+            inference_backend=inference_backend,
+            default_square=int(
+                runtime_cfg.resolve_strategy_field("processor.binary_imgsz", self, "binary_imgsz", 320) or 320
+            ),
+        )
         min_center_dist = float(
             runtime_cfg.resolve_strategy_field("processor.min_center_dist", self, "min_center_dist", 0.1) or 0.1
         )
@@ -821,6 +987,7 @@ class TwoStageStrategy(DetectionStrategy):
         )
 
         _quality_reject_stats: dict[str, int] = {}
+        frame_copy_count = 0
 
         def _record_detect_metrics(
             *,
@@ -849,6 +1016,9 @@ class TwoStageStrategy(DetectionStrategy):
                 "rejected_texture": int(qr.get("rejected_texture") or 0),
                 "rejected_background_subtraction": int(qr.get("rejected_background_subtraction") or 0),
                 "hard_negatives_saved": int(qr.get("hard_negatives_saved") or 0),
+                "frame_copy_count_per_frame": int(frame_copy_count),
+                "classification_queue_depth": int(len(self._classification_task_queue)),
+                "classification_queue_drops_total": int(self._classification_task_drops_total),
             }
 
         boxes = None
@@ -959,10 +1129,12 @@ class TwoStageStrategy(DetectionStrategy):
                 )
             if track_regen_ctx:
                 self._regen_iou_prev_boxes = curr_xyxy.copy()
+                frame_copy_count += 1
                 self._regen_iou_prev_ids = list(synth)
                 self._regen_iou_next_id = int(nid_next)
             else:
                 self._live_iou_prev_boxes = curr_xyxy.copy()
+                frame_copy_count += 1
                 self._live_iou_prev_ids = list(synth)
                 self._live_iou_next_id = int(nid_next)
             track_ids = synth
@@ -1195,6 +1367,43 @@ class TwoStageStrategy(DetectionStrategy):
                 quality_reject=_quality_reject_stats,
             )
             return []
+        # Overlay regen: только Trapper bbox+track (как тест OV), без NABirds — иначе Bird→сорока и «херня в бою».
+        overlay_shape = getattr(self, "_overlay_frame_shape", None) or cls_frame.shape[:2]
+        detector_shape = getattr(self, "_detector_frame_shape", None) or frame.shape[:2]
+        if getattr(self, "_for_track_regen", False) and bool(
+            runtime_cfg.get("processor.track_regen_binary_only", False),
+        ):
+            detection_results = []
+            for box in valid_boxes:
+                label = str(box.get("detector_label") or "Bird").strip() or "Bird"
+                storage_bbox = _storage_bbox_norm_for_overlay(
+                    box["bbox_norm"],
+                    detector_frame_shape=detector_shape,
+                    overlay_frame_shape=overlay_shape,
+                    playback_frame_shape=self._playback_shape_for_storage(),
+                )
+                detection_results.append(
+                    DetectionResult(
+                        track_id=box["track_id"],
+                        detector_label=label,
+                        class_name=label,
+                        confidence=float(box["conf"]),
+                        detector_confidence=box["conf"],
+                        classifier_confidence=None,
+                        bbox=storage_bbox,
+                        scoring_review_only=bool(box.get("scoring_review_only")),
+                    )
+                )
+            _raw_n = len(boxes) if boxes is not None else 0
+            _tid_n = len(track_ids) if track_ids else 0
+            _record_detect_metrics(
+                raw_boxes=_raw_n,
+                boxes_with_track_id=_tid_n,
+                accepted=len(detection_results),
+                predict_fallback=boxes_from_predict_fallback,
+                quality_reject=_quality_reject_stats,
+            )
+            return detection_results
         classification_budget = min(
             len(valid_boxes),
             max(1, classification_budget_limit),
@@ -1214,7 +1423,8 @@ class TwoStageStrategy(DetectionStrategy):
             len(scheduled_boxes),
             max(1, int(getattr(self, "max_blur_checks", 1) or 1)),
         )
-        classified_by_track = {}
+        classified_by_track: dict[int, ClassificationTask] = {}
+        scheduled_for_classifier: set[int] = set()
         sr_applied = 0
         sr_latency_total_ms = 0.0
         fallback_box = None
@@ -1225,11 +1435,12 @@ class TwoStageStrategy(DetectionStrategy):
                 runtime_cfg,
             ):
                 continue
+            scheduled_for_classifier.add(int(box["track_id"]))
             if fallback_box is None:
                 fallback_box = box
             mapped = _crop_coords_from_letterboxed_bbox_norm(
                 bbox_norm=box["bbox_norm"],
-                detector_frame_shape=frame.shape,
+                detector_frame_shape=detector_shape,
                 classification_frame_shape=cls_frame.shape,
             )
             if mapped is None:
@@ -1244,16 +1455,27 @@ class TwoStageStrategy(DetectionStrategy):
             )
             sr_applied += sr_n
             sr_latency_total_ms += sr_ms
-            classified_by_track[box["track_id"]] = {
-                "crop": crop.copy(),
-                "blur_variance": variance,
-            }
-            if len(classified_by_track) >= classification_budget:
-                break
-        if not classified_by_track and fallback_box is not None:
+            if crop.flags["C_CONTIGUOUS"]:
+                crop_ref = crop
+            else:
+                crop_ref = np.ascontiguousarray(crop)
+                frame_copy_count += 1
+            if len(self._classification_task_queue) >= self._classification_task_queue_maxsize:
+                self._classification_task_queue.popleft()
+                self._classification_task_drops_total += 1
+            self._classification_task_queue.append(
+                ClassificationTask(
+                    track_id=int(box["track_id"]),
+                    detector_label=str(box["detector_label"]),
+                    box_area_norm=float(box["box_area_norm"]),
+                    crop=crop_ref,
+                    blur_variance=variance,
+                )
+            )
+        if not self._classification_task_queue and fallback_box is not None:
             mapped = _crop_coords_from_letterboxed_bbox_norm(
                 bbox_norm=fallback_box["bbox_norm"],
-                detector_frame_shape=frame.shape,
+                detector_frame_shape=detector_shape,
                 classification_frame_shape=cls_frame.shape,
             )
             if mapped is not None:
@@ -1265,10 +1487,23 @@ class TwoStageStrategy(DetectionStrategy):
                 sr_applied += sr_n
                 sr_latency_total_ms += sr_ms
                 _, variance = self.is_blurry(crop)
-                classified_by_track[fallback_box["track_id"]] = {
-                    "crop": crop.copy(),
-                    "blur_variance": variance,
-                }
+                if crop.flags["C_CONTIGUOUS"]:
+                    crop_ref = crop
+                else:
+                    crop_ref = np.ascontiguousarray(crop)
+                    frame_copy_count += 1
+                self._classification_task_queue.append(
+                    ClassificationTask(
+                        track_id=int(fallback_box["track_id"]),
+                        detector_label=str(fallback_box["detector_label"]),
+                        box_area_norm=float(fallback_box["box_area_norm"]),
+                        crop=crop_ref,
+                        blur_variance=variance,
+                    )
+                )
+        while self._classification_task_queue and len(classified_by_track) < classification_budget:
+            task = self._classification_task_queue.popleft()
+            classified_by_track[int(task.track_id)] = task
         for box in valid_boxes:
             stats = self._track_stats.setdefault(
                 box["track_id"],
@@ -1279,8 +1514,6 @@ class TwoStageStrategy(DetectionStrategy):
                 stats["last_classified_frame"] = self._frame_index
         detection_results = []
         for box in valid_boxes:
-            if bool(box.get("scoring_review_only")):
-                continue
             species_name = None
             crop = None
             blur_variance = None
@@ -1289,21 +1522,37 @@ class TwoStageStrategy(DetectionStrategy):
 
             classified = classified_by_track.get(box["track_id"])
             if classified and should_skip_bird_species_classifier(
-                box["detector_label"],
-                box["box_area_norm"],
+                classified.detector_label,
+                classified.box_area_norm,
                 runtime_cfg,
             ):
                 classified = None
             co: ClassifierOutput | None = None
-            if classified:
-                co = self._classify_crop(classified["crop"])
+            storage_bbox = _storage_bbox_norm_for_overlay(
+                box["bbox_norm"],
+                detector_frame_shape=detector_shape,
+                overlay_frame_shape=overlay_shape,
+                playback_frame_shape=self._playback_shape_for_storage(),
+            )
+            if classified is not None:
+                co = self._classify_crop(classified.crop)
+                crop = classified.crop
+                blur_variance = classified.blur_variance
+            elif int(box["track_id"]) in scheduled_for_classifier and str(
+                box.get("detector_label") or ""
+            ).strip() != "Bird":
+                # Не-Bird в scope (Trapper squirrel и т.д.): один проход классификатора даже при tight budget.
+                co, crop, blur_variance = self._classify_valid_box_crop(
+                    box,
+                    frame=frame,
+                    cls_frame=cls_frame,
+                    min_box_size_px=min_box_size_px,
+                )
+            if co is not None:
                 species_name = co.species_name
-                cls_conf = co.top1_confidence
-                classifier_conf = cls_conf
-                combined_conf = box["conf"] * cls_conf
-
-                crop = classified["crop"]
-                blur_variance = classified["blur_variance"]
+                classifier_conf = co.top1_confidence
+                combined_conf = float(box["conf"]) * float(co.top1_confidence)
+                self._latest_cls_by_track[int(box["track_id"])] = co
 
             detection_results.append(
                 DetectionResult(
@@ -1315,9 +1564,10 @@ class TwoStageStrategy(DetectionStrategy):
                     classifier_confidence=classifier_conf,
                     classifier_entropy=(co.entropy if co else None),
                     classifier_top1_top2_margin=(co.top1_top2_margin if co else None),
-                    bbox=box["bbox_norm"],
+                    bbox=storage_bbox,
                     blur_variance=blur_variance,
                     crop=crop,
+                    scoring_review_only=bool(box.get("scoring_review_only")),
                 )
             )
 
@@ -1348,6 +1598,8 @@ class TwoStageStrategy(DetectionStrategy):
         self._live_iou_next_id = 1
         self._track_predict_fallback_hits = 0
         self._ultra_weak_salvage_hits = 0
+        self._classification_task_queue.clear()
+        self._latest_cls_by_track.clear()
         self._detection_quality: DetectionQualityPipeline | None = None
         if hasattr(self.binary_model.predictor, "trackers"):
             self.binary_model.predictor.trackers[0].reset()
