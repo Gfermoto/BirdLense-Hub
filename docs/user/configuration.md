@@ -212,6 +212,28 @@ The System page also lists these endpoints under **Notification observability** 
 | `auto_reconnect` | Auto-reconnect to stream |
 | `video_width`, `video_height` | Resolution |
 
+### Go2RTC streams and MJPEG (Live view)
+
+Most IP cameras expose **H264** on the main RTSP substream. go2rtc serves that for **MSE** (`/api/stream.mp4`) and recording; **`/api/stream.mjpeg` is empty** unless the stream also has an **MJPEG** track ([go2rtc MJPEG docs](https://go2rtc.org/internal/mjpeg/)).
+
+For **Live → Go2RTC → MJPEG** (native multipart MJPEG, not processor detection), add an **`ffmpeg:`** producer on the **same stream name** as in BirdLense (`video.cameras[].stream_name` / `go2rtc_src`):
+
+```yaml
+streams:
+  Forest:
+    - rtsp://USER:PASSWORD@192.168.1.101:554/cam/realmonitor?channel=1&subtype=0
+    - ffmpeg:Forest#video=mjpeg
+  BirdBox:
+    - rtsp://USER:PASSWORD@192.168.1.129:554/cam/realmonitor?channel=1&subtype=0
+    - ffmpeg:BirdBox#video=mjpeg
+```
+
+- Edit this in **Frigate** `go2rtc` config or standalone **go2rtc.yaml**, then restart go2rtc / Frigate.
+- Copy-paste template: [`docs/examples/go2rtc-streams.example.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/examples/go2rtc-streams.example.yaml).
+- **Verify:** `curl -sI "http://GO2RTC:1984/api/stream.mjpeg?src=BirdBox"` should **not** show `Content-Length: 0`; first bytes of the body should be JPEG (`ff d8`).
+- **Without ffmpeg MJPEG:** Hub Live still shows a picture via **`/api/frame.jpeg`** polling (~4 fps) or use **Detection stream** (`/processor/live/N`) for overlay-aligned MJPEG from the processor.
+- **WebRTC** on Live uses go2rtc `stream.html?mode=webrtc` only; over the public internet it often fails without TURN — use **MSE** or **MJPEG** on VPS.
+
 ---
 
 ## Motion

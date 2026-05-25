@@ -9,7 +9,7 @@
 **Goal:** Bird detection from one camera, no MQTT or notifications.
 
 1. Install Go2RTC (standalone or inside Frigate).
-2. Add the camera in Go2RTC.
+2. Add cameras in go2rtc `streams` (names must match BirdLense `stream_name`). For **H264 RTSP**, add **`ffmpeg:STREAM#video=mjpeg`** on each stream if you need **Live → MJPEG** — see [Configuration → Go2RTC streams and MJPEG](./configuration.md#go2rtc-streams-and-mjpeg-live-view) and [`docs/examples/go2rtc-streams.example.yaml`](../examples/go2rtc-streams.example.yaml).
 3. Start BirdLense: `make pull` in `app/`.
 4. Settings → Video: Go2RTC URL (`http://YOUR_GO2RTC_HOST:1984`).
 5. Settings → Cameras: add stream name.

@@ -205,7 +205,17 @@ sqlite3 "/path/to/backup.db" "PRAGMA integrity_check;"
 
 go2rtc должен слушать `0.0.0.0:1984`. Проверка: `curl -s -o /dev/null -w "%{http_code}" http://172.17.0.1:1984/api/streams` → 200.
 
-**Обход:** на странице Live нажать **«MJPEG»** — поток через процессор.
+**Чёрный экран Live → Go2RTC → MJPEG:** RTSP часто только **H264** — тогда `/api/stream.mjpeg` у go2rtc **пустой**. На хосте go2rtc добавьте к потоку:
+
+```yaml
+  BirdBox:
+    - rtsp://...
+    - ffmpeg:BirdBox#video=mjpeg
+```
+
+(аналогично `Forest` и др.) Пример: [`docs/examples/go2rtc-streams.example.yaml`](../examples/go2rtc-streams.example.yaml). Без ffmpeg Hub всё равно крутит кадры через **`frame.jpeg`** (~4 fps); для оверлеев — **«Поток детекции»** (`/processor/live/N`).
+
+**WebRTC «переходит» на MSE:** без TURN/UDP с браузера до go2rtc WebRTC не поднимается — на VPS надёжнее **MSE** или **MJPEG** с `ffmpeg:…#video=mjpeg`.
 
 ---
 

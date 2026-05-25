@@ -212,6 +212,28 @@
 | `auto_reconnect` | Автопереподключение к потоку |
 | `video_width`, `video_height` | Разрешение |
 
+### Потоки Go2RTC и MJPEG (страница Live)
+
+Типичная камера отдаёт на RTSP **H264**. go2rtc отдаёт его в **MSE** (`/api/stream.mp4`) и в запись; **`/api/stream.mjpeg` без MJPEG-кодека пустой** ([документация go2rtc MJPEG](https://go2rtc.org/internal/mjpeg/)).
+
+Чтобы в **Live → Go2RTC → MJPEG** работал **нативный** multipart MJPEG (не «Поток детекции» процессора), добавьте второй источник **`ffmpeg:`** с тем же **именем потока**, что в BirdLense (`video.cameras[].stream_name` / `go2rtc_src`):
+
+```yaml
+streams:
+  Forest:
+    - rtsp://USER:PASSWORD@192.168.1.101:554/cam/realmonitor?channel=1&subtype=0
+    - ffmpeg:Forest#video=mjpeg
+  BirdBox:
+    - rtsp://USER:PASSWORD@192.168.1.129:554/cam/realmonitor?channel=1&subtype=0
+    - ffmpeg:BirdBox#video=mjpeg
+```
+
+- Правится в **go2rtc** внутри Frigate или в **go2rtc.yaml** standalone; после изменения — перезапуск go2rtc / Frigate.
+- Шаблон: [`docs/examples/go2rtc-streams.example.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/docs/examples/go2rtc-streams.example.yaml).
+- **Проверка:** `curl -sI "http://GO2RTC:1984/api/stream.mjpeg?src=BirdBox"` — не должно быть `Content-Length: 0`; тело начинается с JPEG (`ff d8`).
+- **Без ffmpeg MJPEG:** Hub на Live всё равно показывает кадр через опрос **`/api/frame.jpeg`** (~4 fps) или включите **«Поток детекции»** (`/processor/live/N`) для MJPEG с оверлеями от процессора.
+- **WebRTC** на Live — только `mode=webrtc` в плеере go2rtc; с VPS без TURN часто не поднимается — используйте **MSE** или **MJPEG**.
+
 ---
 
 ## Motion
