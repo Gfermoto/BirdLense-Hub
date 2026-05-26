@@ -65,7 +65,7 @@ const heartbeat = keyframes`
 const NAV_KEYS = [
   { key: 'dashboard', path: '/' },
   { key: 'timeline', path: '/timeline' },
-  { key: 'species', path: '/species-directory' },
+  { key: 'species', path: '/species' },
   { key: 'food', path: '/food' },
 ] as const;
 

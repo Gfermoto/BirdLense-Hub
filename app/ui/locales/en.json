@@ -1895,6 +1895,7 @@
     "catalogRepairTitle": "Catalog cards polish",
     "catalogRepairLoadError": "Failed to load catalog polish status",
     "catalogRepairStart": "Start polish",
+    "catalogRepairOpenQualityList": "Problem cards list",
     "catalogRepairStartFailed": "Could not start catalog polish",
     "catalogRepairRunning": "Polish running",
     "catalogRepairReady": "Ready",
@@ -3118,8 +3119,12 @@
     }
   },
   "speciesDirectory": {
-    "title": "Species",
-    "description": "Species already seen at this station: counts from recordings, species page, and links back to clips.",
+    "title": "Card quality",
+    "description": "Service list for polishing photos and descriptions. The catalog index (observed, dataset, EU) is under the “Species” nav item.",
+    "backToCatalog": "← Back to catalog index (observed, dataset, EU)",
+    "colSpecies": "Species",
+    "colStatus": "Status",
+    "colActions": "Actions",
     "search": "Search species",
     "searchPlaceholder": "Type a species name or note",
     "loadError": "Could not load the species directory",
