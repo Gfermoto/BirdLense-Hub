@@ -3299,6 +3299,28 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Bbox parity debug metrics
+  /analytics/trigger-graph:
+    get:
+      description: Aggregated trigger graph FP/FN metrics by source (session_runtime_metrics).
+      parameters:
+        - in: query
+          name: hours
+          schema:
+            type: integer
+            default: 24
+        - in: query
+          name: camera_id
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+      summary: Trigger graph and source FP/FN metrics
   /system/fusion/eval:
     post:
       description: 'Admin: run eval job on traces.'

@@ -1729,6 +1729,25 @@
     "noon": "Noon"
   },
   "system": {
+    "triggerGraph": {
+      "title": "Trigger graph",
+      "description": "Who started recording, who assigned species, FP/FN per source (Frigate, OpenCV, YOLO, BirdNET, Scale).",
+      "loadError": "Failed to load trigger graph metrics.",
+      "noData": "No sessions with trigger_graph in window — appear after recordings with updated processor.",
+      "bySource": "By source",
+      "sessions": "sessions",
+      "init": "init",
+      "species": "species",
+      "fpEmpty": "empty rec",
+      "fpReject": "noise",
+      "fnSilent": "silent det",
+      "fnNoSpecies": "no species",
+      "recentSessions": "Recent sessions",
+      "colTime": "Time",
+      "colCamera": "Camera",
+      "colInit": "Trigger",
+      "colSpecies": "Species"
+    },
     "yoloDetector": {
       "title": "YOLO detector",
       "description": "Live detector status: blind when Frigate extends sessions without YOLO tracks. See runbook when Blind.",

@@ -1729,6 +1729,25 @@
     "noon": "Полдень"
   },
   "system": {
+    "triggerGraph": {
+      "title": "Граф триггеров",
+      "description": "Кто запустил запись, кто определил вид, FP/FN по источнику (Frigate, OpenCV, YOLO, BirdNET, Scale).",
+      "loadError": "Не удалось загрузить метрики триггеров.",
+      "noData": "Нет сессий с trigger_graph в окне — новые появятся после записей с обновлённым процессором.",
+      "bySource": "По источнику",
+      "sessions": "сессий",
+      "init": "старт",
+      "species": "виды",
+      "fpEmpty": "пустая запись",
+      "fpReject": "шум",
+      "fnSilent": "детектор молчит",
+      "fnNoSpecies": "без вида",
+      "recentSessions": "Последние сессии",
+      "colTime": "Время",
+      "colCamera": "Камера",
+      "colInit": "Триггер",
+      "colSpecies": "Виды"
+    },
     "yoloDetector": {
       "title": "YOLO — детектор",
       "description": "Живой статус детектора: слепота при движении Frigate без треков YOLO. См. runbook при Blind.",

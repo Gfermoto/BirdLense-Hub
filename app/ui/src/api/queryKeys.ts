@@ -48,6 +48,7 @@ export const queryKeys = {
       ['system', 'quality-health', hours] as const,
     yoloDetectorHealth: (hours: number) =>
       ['system', 'yolo-detector-health', hours] as const,
+    triggerGraph: (hours: number) => ['system', 'trigger-graph', hours] as const,
   },
   /** Карточки страницы «Система» с плоскими ключами кэша (legacy-строки). */
   systemPanels: {

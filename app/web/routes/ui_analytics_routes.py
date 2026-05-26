@@ -12,6 +12,7 @@ from services.analytics_api_service import (
     fetch_trajectories,
     fetch_visits_timeseries,
 )
+from services.trigger_graph_api_service import fetch_trigger_graph_metrics
 from services.cache import cache_get, cache_set
 from routes.ui_route_constants import CACHE_ANALYTICS_SEC
 
@@ -69,6 +70,20 @@ def register_ui_analytics_routes(app):
         payload = _cached_payload(
             key,
             lambda: fetch_visits_timeseries(start_iso=start, end_iso=end, bucket=bucket),
+        )
+        return jsonify(payload)
+
+    @app.route("/api/ui/analytics/trigger-graph", methods=["GET"])
+    def ui_analytics_trigger_graph():
+        try:
+            hours = int(request.args.get("hours", 24))
+        except (TypeError, ValueError):
+            hours = 24
+        camera_id = (request.args.get("camera_id") or "").strip() or None
+        key = f"analytics:trigger-graph:v1:{hours}:{camera_id or '*'}"
+        payload = _cached_payload(
+            key,
+            lambda: fetch_trigger_graph_metrics(hours=hours, camera_id=camera_id),
         )
         return jsonify(payload)
 

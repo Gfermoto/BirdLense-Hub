@@ -18,6 +18,7 @@ import { RecognitionImprovementCard } from './RecognitionImprovementCard';
 import { BehaviorBaselineRetrainCard } from './BehaviorBaselineRetrainCard';
 import { DetectionQualityDashboardCard } from './DetectionQualityDashboardCard';
 import { YoloDetectorHealthCard } from './YoloDetectorHealthCard';
+import { TriggerGraphDashboardCard } from './TriggerGraphDashboardCard';
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
@@ -124,6 +125,7 @@ export const System: React.FC = () => {
               <SystemMonitor showVisitors={isAdvanced} />
               <DetectionQualityDashboardCard />
               <YoloDetectorHealthCard />
+              <TriggerGraphDashboardCard />
               <Box
                 id="recognition-improvement"
                 sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}

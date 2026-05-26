@@ -271,6 +271,47 @@ export interface YoloDetectorHealthResponse {
   runbook_path?: string;
 }
 
+export interface TriggerSourceMetricsBlock {
+  recordings_initiated?: number;
+  session_extensions?: number;
+  species_persisted?: number;
+  candidates_rejected?: number;
+  mqtt_events?: number;
+  fp_empty_recording?: number;
+  fp_rejected_noise?: number;
+  fn_detector_silent?: number;
+  fn_no_persisted_species?: number;
+}
+
+export interface TriggerGraphResponse {
+  window_hours: number;
+  camera_filter?: string | null;
+  session_count: number;
+  nodes: string[];
+  recordings_initiated_by_source: Record<string, number>;
+  metrics_by_source: Record<string, TriggerSourceMetricsBlock>;
+  decision_reason_counts: Record<string, number>;
+  by_camera: Record<string, Record<string, TriggerSourceMetricsBlock>>;
+  recent_sessions: Array<{
+    created_at?: string;
+    camera_id?: string;
+    init_source?: string;
+    trigger_display?: string;
+    post_fusion_persisted?: number;
+    fp_empty_recording?: number;
+    fn_detector_silent?: number;
+    species_persisted?: number;
+  }>;
+}
+
+export const fetchTriggerGraph = async (hours = 24): Promise<TriggerGraphResponse> => {
+  const response = await axios.get(`${BASE_API_URL}/analytics/trigger-graph`, {
+    params: { hours },
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 export const fetchYoloDetectorHealth = async (
   hours = 24,
 ): Promise<YoloDetectorHealthResponse> => {
