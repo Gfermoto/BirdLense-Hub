@@ -5,6 +5,11 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Host benchmarks need ultralytics/pydantic (app venv), not system python3.
+if [[ -x "$REPO_ROOT/app/.venv/bin/python" ]]; then
+  export PATH="$REPO_ROOT/app/.venv/bin:$PATH"
+fi
+
 # Public DEPLOY_URL for browser/MCP; on VPS itself use loopback (hairpin to public IP often times out).
 : "${DEPLOY_URL:?Set DEPLOY_URL (e.g. http://185.218.111.196:8085)}"
 VERIFY_URL="${VPS_VERIFY_URL:-${DEPLOY_URL}}"
