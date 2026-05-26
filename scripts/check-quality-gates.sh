@@ -11,6 +11,8 @@ MAX_ALL_CAPS_MATCHED="${MAX_ALL_CAPS_MATCHED:-0}"
 SKIP_TRIGGER_AUDIT="${SKIP_TRIGGER_AUDIT:-0}"
 SKIP_YOLO_GOLDEN="${SKIP_YOLO_GOLDEN:-0}"
 SKIP_BBOX_PARITY="${SKIP_BBOX_PARITY:-0}"
+SKIP_SOTA_BENCHMARK="${SKIP_SOTA_BENCHMARK:-0}"
+SOTA_BENCHMARK_SKIP_IF_MISSING="${SOTA_BENCHMARK_SKIP_IF_MISSING:-0}"
 AUDIT_DAYS="${AUDIT_DAYS:-1}"
 AUDIT_CAMERAS="${AUDIT_CAMERAS:-BirdBox,Forest}"
 FAIL_ON_PARITY_HOTSPOT="${FAIL_ON_PARITY_HOTSPOT:-0}"
@@ -39,6 +41,10 @@ Environment:
   YOLO_GOLDEN_CLIP_1819               mp4 path for regen gate (optional)
   BIRDLENSE_DB                        sqlite path for video 1819 session metrics
   SKIP_BBOX_PARITY                    1 to skip validate_bbox_parity.sh (default 0)
+  SKIP_SOTA_BENCHMARK                 1 to skip benchmark_sota.py golden clips (default 0)
+  SOTA_GOLDEN_CLIP_1816               mp4 path for noise/FP clip (optional)
+  SOTA_GOLDEN_CLIP_1819               mp4 path for birds/recall clip (optional)
+  SOTA_BENCHMARK_SKIP_IF_MISSING      1 to skip (not fail) when clips absent (default 0)
 EOF
 }
 
@@ -175,6 +181,24 @@ if [[ "${SKIP_BBOX_PARITY}" != "1" ]]; then
   else
     echo "quality-gate: bbox-parity FAIL" >&2
     exit 1
+  fi
+fi
+
+if [[ "${SKIP_SOTA_BENCHMARK}" != "1" ]]; then
+  sota_args=()
+  if [[ "${SOTA_BENCHMARK_SKIP_IF_MISSING}" == "1" ]]; then
+    sota_args+=(--skip-if-missing)
+  fi
+  if python3 "${BASH_SOURCE%/*}/benchmark_sota.py" "${sota_args[@]}"; then
+    echo "quality-gate: sota-benchmark PASS"
+  else
+    rc=$?
+    if [[ "${rc}" -eq 2 ]] && [[ "${SOTA_BENCHMARK_SKIP_IF_MISSING}" == "1" ]]; then
+      echo "quality-gate: sota-benchmark SKIP (clips missing)"
+    else
+      echo "quality-gate: sota-benchmark FAIL" >&2
+      exit 1
+    fi
   fi
 fi
 

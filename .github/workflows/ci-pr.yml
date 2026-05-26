@@ -122,6 +122,7 @@ jobs:
           python3 scripts/compare_benchmark_reports.py --help
           python3 scripts/verify_benchmark_report_schema.py --help
           python3 scripts/benchmark_video_decode_resize.py --help
+          python3 scripts/benchmark_sota.py --validate-config-only
           python3 scripts/federated/simulate_fedavg.py --clients 3 --samples-per-client 50 --dim 6 --seed 0
 
       - name: Benchmark report helpers (pytest, no Docker)
@@ -134,6 +135,7 @@ jobs:
             processor/tests/test_reference_smoke_compare.py \
             processor/tests/test_merge_three_class_dataset.py \
             processor/tests/test_auto_benchmark.py \
+            processor/tests/test_benchmark_sota_gate.py \
             processor/tests/test_inference_weight_contract.py \
             -q --tb=short
 

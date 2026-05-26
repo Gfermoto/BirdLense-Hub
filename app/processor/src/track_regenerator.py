@@ -136,6 +136,7 @@ def process_video_for_tracks(
     max_runtime_sec: int | None = None,
     progress_hook=None,
     progress_hook_interval: int = 20,
+    metrics_out: dict | None = None,
 ):
     """
     Run YOLO+ByteTrack on video file. Returns list of detections with frames.
@@ -186,6 +187,19 @@ def process_video_for_tracks(
         yolo_runs_est = max(1, yolo_runs_est)
     frame_count = 0
     runs_done = 0
+    if metrics_out is not None:
+        metrics_out.clear()
+        metrics_out.update(
+            {
+                "total_frames": 0,
+                "yolo_frames_ran": 0,
+                "yolo_raw_boxes_total": 0,
+                "yolo_accepted_boxes_total": 0,
+                "yolo_boxes_with_track_id_total": 0,
+                "frames_with_tracks": 0,
+                "processing_seconds": 0.0,
+            }
+        )
     try:
         _hi = max(1, int(progress_hook_interval or 20))
     except (TypeError, ValueError):
@@ -225,6 +239,22 @@ def process_video_for_tracks(
                         )
                     decision_maker.update_has_detections(has_detections)
                     runs_done += 1
+                    if metrics_out is not None:
+                        run_stats = getattr(frame_processor, "last_run_stats", None) or {}
+                        metrics_out["yolo_frames_ran"] = int(metrics_out.get("yolo_frames_ran") or 0) + 1
+                        metrics_out["yolo_raw_boxes_total"] = int(
+                            metrics_out.get("yolo_raw_boxes_total") or 0
+                        ) + int(run_stats.get("yolo_raw_boxes") or 0)
+                        metrics_out["yolo_accepted_boxes_total"] = int(
+                            metrics_out.get("yolo_accepted_boxes_total") or 0
+                        ) + int(run_stats.get("yolo_accepted_boxes") or 0)
+                        metrics_out["yolo_boxes_with_track_id_total"] = int(
+                            metrics_out.get("yolo_boxes_with_track_id_total") or 0
+                        ) + int(run_stats.get("yolo_boxes_with_track_id") or 0)
+                        if bool(run_stats.get("yolo_track_found")):
+                            metrics_out["frames_with_tracks"] = int(
+                                metrics_out.get("frames_with_tracks") or 0
+                            ) + 1
                     if progress_hook is not None and (
                         runs_done == 1
                         or runs_done % _hi == 0
@@ -247,6 +277,16 @@ def process_video_for_tracks(
                 frame_count += 1
     finally:
         cap.release()
+        if metrics_out is not None:
+            metrics_out["total_frames"] = int(frame_count)
+            metrics_out["processing_seconds"] = round(max(0.0, time.monotonic() - started), 4)
+            if metrics_out["processing_seconds"] > 0 and metrics_out.get("yolo_frames_ran"):
+                metrics_out["processing_fps"] = round(
+                    float(metrics_out["yolo_frames_ran"]) / float(metrics_out["processing_seconds"]),
+                    3,
+                )
+            else:
+                metrics_out["processing_fps"] = 0.0
 
     results = decision_maker.get_results(frame_processor.tracks)
     species_mapping = build_species_mapping(app_config)
@@ -285,6 +325,17 @@ def process_video_for_tracks(
                 row[copy_key] = r[copy_key]
         detections.append(row)
     detections = _dedupe_track_detections(detections)
+    if metrics_out is not None:
+        species = sorted(
+            {
+                str(d.get("species_name") or "").strip()
+                for d in detections
+                if str(d.get("species_name") or "").strip()
+            }
+        )
+        metrics_out["fused_track_count"] = len(detections)
+        metrics_out["species_detected"] = species
+        metrics_out["species_detected_count"] = len(species)
     logger.info(
         "Track regen: %s -> %s detections, %s frames, frame_step=%s",
         video_path,

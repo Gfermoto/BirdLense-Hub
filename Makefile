@@ -625,8 +625,17 @@ ml-bootstrap-behavior-synthetic:
 		--per-label "$${PER_LABEL:-24}" \
 		$${ARGS:-}
 
+# SOTA-09: golden clips 1816/1819 regression benchmark (set SOTA_GOLDEN_CLIP_* or fixtures)
+benchmark-sota:
+	@python3 scripts/benchmark_sota.py \
+		$$(test -n "$${WRITE_REPORT:-}" && printf -- '--write-report "%s" ' "$${WRITE_REPORT}") \
+		$$(test "$${SKIP_IF_MISSING:-0}" = "1" && printf -- '--skip-if-missing ') \
+		$$(test "$${SMOKE:-0}" = "1" && printf -- '--smoke ') \
+		$${ARGS:-}
+
 ml-merge-behavior-manifests:
 	@test -n "$${OUT:-}" || (echo "Set OUT=merged manifest path" >&2; exit 1)
+	@test -n "$${INPUTS:-}" || (echo "Set INPUTS=space-separated manifest paths" >&2; exit 1)
 	@python3 scripts/ml_behavior_merge_manifests.py \
 		--inputs $${INPUTS} \
 		--out "$${OUT}" \
