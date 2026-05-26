@@ -350,23 +350,27 @@ class AppConfig:
 
         user_config = {}
         if os.path.exists(self.user_config_file):
+            user_yaml_ok = False
             try:
                 with open(self.user_config_file, "r") as file:
                     user_config = yaml.safe_load(file) or {}
+                user_yaml_ok = True
             except yaml.YAMLError as e:
                 logger.error("Invalid YAML in %s: %s", self.user_config_file, e)
-            from app_config.config_migrations import run_user_config_migrations
+                user_config = {}
+            if user_yaml_ok:
+                from app_config.config_migrations import run_user_config_migrations
 
-            if run_user_config_migrations(user_config):
-                try:
-                    self._persist_raw_user_config(user_config)
-                    logger.info(
-                        "Applied user_config migrations (schema v%s) to %s",
-                        user_config.get("_meta", {}).get("schema_version"),
-                        self.user_config_file,
-                    )
-                except OSError as e:
-                    logger.warning("Could not persist user_config migrations: %s", e)
+                if run_user_config_migrations(user_config):
+                    try:
+                        self._persist_raw_user_config(user_config)
+                        logger.info(
+                            "Applied user_config migrations (schema v%s) to %s",
+                            user_config.get("_meta", {}).get("schema_version"),
+                            self.user_config_file,
+                        )
+                    except OSError as e:
+                        logger.warning("Could not persist user_config migrations: %s", e)
 
         # Merge configs (user_config overrides default_config)
         merged = self.merge_dicts(default_config, user_config)

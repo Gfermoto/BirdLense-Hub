@@ -155,6 +155,13 @@ class SceneAdaptiveAnalyzer:
                 varThreshold=float(self.cfg.bg_var_threshold),
                 detectShadows=bool(self.cfg.bg_detect_shadows),
             )
+        else:
+            self._mog = None
+
+    def reconfigure(self, cfg: SceneAdaptiveConfig) -> None:
+        """Apply new MOG2/adaptive settings and reset background state."""
+        self.cfg = cfg
+        self.reset()
 
     def update(self, frame_bgr: np.ndarray) -> SceneFrameState:
         self._frame_index += 1

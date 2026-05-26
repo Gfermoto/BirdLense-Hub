@@ -26,7 +26,7 @@ import { ProcessorModelsScopeBlock } from './processor/ProcessorModelsScopeBlock
 import { ProcessorTrackRegenBlock } from './processor/ProcessorTrackRegenBlock';
 import { ProcessorStreamGeometryBlock } from './processor/ProcessorStreamGeometryBlock';
 import { ProcessorOpenVinoBlock } from './processor/ProcessorOpenVinoBlock';
-import { ProcessorBackgroundSubtractionBlock } from './processor/ProcessorBackgroundSubtractionBlock';
+import { ProcessorMotionCalibrationBlock } from './processor/ProcessorMotionCalibrationBlock';
 import { ProcessorBehaviorRecognitionBlock } from './processor/ProcessorBehaviorRecognitionBlock';
 
 type Props = {
@@ -117,7 +117,7 @@ export function ProcessorSection({ form, simpleMode = true }: Props) {
             <>
               <ProcessorModelsScopeBlock form={form} />
               <ProcessorOpenVinoBlock form={form} />
-              <ProcessorBackgroundSubtractionBlock form={form} />
+              <ProcessorMotionCalibrationBlock form={form} />
             </>
           ) : null}
 

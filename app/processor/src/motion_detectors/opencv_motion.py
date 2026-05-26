@@ -213,6 +213,35 @@ class OpenCVMotionDetector:
             detectShadows=self._mog2_detect_shadows,
         )
 
+    def apply_opencv_trigger_config(self, opencv_cfg: dict) -> None:
+        """Hot-update MOG2 / frame-diff trigger knobs without rebuilding the detector."""
+        if not isinstance(opencv_cfg, dict):
+            return
+        method = str(opencv_cfg.get("detection_method") or self.detection_method).strip().lower()
+        if method in {"frame_diff", "mog2", "hybrid"}:
+            self.detection_method = method
+        if "diff_threshold" in opencv_cfg:
+            self.threshold = int(opencv_cfg.get("diff_threshold") or self.threshold)
+        if "min_contour_area" in opencv_cfg:
+            self.min_contour_area = int(opencv_cfg.get("min_contour_area") or self.min_contour_area)
+        if "mog2_history" in opencv_cfg:
+            self._mog2_history = max(30, int(opencv_cfg.get("mog2_history") or self._mog2_history))
+        if "mog2_var_threshold" in opencv_cfg:
+            self._mog2_var_threshold = max(
+                4.0, float(opencv_cfg.get("mog2_var_threshold") or self._mog2_var_threshold)
+            )
+        if "mog2_detect_shadows" in opencv_cfg:
+            self._mog2_detect_shadows = bool(opencv_cfg.get("mog2_detect_shadows"))
+        if "mog2_min_contour_area" in opencv_cfg:
+            self.mog2_min_contour_area = int(
+                opencv_cfg.get("mog2_min_contour_area") or self.mog2_min_contour_area
+            )
+        if "mog2_min_motion_pixel_fraction" in opencv_cfg:
+            self.mog2_min_motion_pixel_fraction = float(
+                opencv_cfg.get("mog2_min_motion_pixel_fraction") or self.mog2_min_motion_pixel_fraction
+            )
+        self._reset_background_model()
+
     def _analysis_from_mog2(
         self,
         gray: np.ndarray,
