@@ -53,14 +53,23 @@ def resolve_inference_lores_size(app_config: Mapping[str, Any]) -> LoResSize | N
     if wh is not None:
         return wh
     try:
-        lpx = int(_cfg_get(app_config, "processor.inference_lores_px") or 640)
+        lpx = int(_cfg_get(app_config, "processor.inference_lores_px") or 0)
     except (TypeError, ValueError):
-        lpx = 640
-    side = _clamp_side(lpx)
-    return (side, side)
+        lpx = 0
+    if lpx > 0:
+        side = _clamp_side(lpx)
+        return (side, side)
+    try:
+        vw = int(_cfg_get(app_config, "video.video_width") or 0)
+        vh = int(_cfg_get(app_config, "video.video_height") or 0)
+    except (TypeError, ValueError):
+        vw, vh = 0, 0
+    if vw > 0 and vh > 0:
+        return (_clamp_side(vw), _clamp_side(vh))
+    return None
 
 
-def resolve_track_regen_lores_size(app_config: Mapping[str, Any]) -> LoResSize:
+def resolve_track_regen_lores_size(app_config: Mapping[str, Any]) -> LoResSize | None:
     """Regen lores: ``track_regen_lores_wh`` > ``track_regen_lores_px`` > live inference size."""
     wh = parse_inference_lores_wh(app_config.get("processor.track_regen_lores_wh"))
     if wh is not None:

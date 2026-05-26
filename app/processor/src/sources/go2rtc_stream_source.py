@@ -260,8 +260,8 @@ class Go2RTCStreamSource:
     def __init__(
         self,
         stream_url: str,
-        main_size=(1280, 720),
-        lores_size=(640, 640),
+        main_size: tuple[int, int],
+        lores_size: tuple[int, int] | None,
         auto_reconnect=True,
         pre_record_seconds=0,
         mjpeg_port=8082,
@@ -301,7 +301,8 @@ class Go2RTCStreamSource:
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
         self._last_frame_time = 0
         self._frame_count = 0
-        self._source_fps = 15.0
+        self._source_fps = 0.0
+        self.stream_capabilities = None
         self._read_lock = threading.Lock()
         self._vaapi_checked = False
         self._vaapi_available = True
@@ -352,11 +353,11 @@ class Go2RTCStreamSource:
         if not cap.isOpened():
             self.logger.error("Failed to open stream")
             return False
-        # Probe FPS
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps and fps > 0:
-            self._source_fps = fps
         self._cap = cap
+        self._apply_stream_probe()
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if fps and fps > 0 and (self._source_fps or 0) <= 0.5:
+            self._source_fps = float(fps)
         self._capture_backend_used = "opencv"
         _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
@@ -394,8 +395,30 @@ class Go2RTCStreamSource:
         self._capture_backend_used = "ffmpeg_vaapi"
         _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
+        self._apply_stream_probe()
         self.logger.info("Connected. Capture backend: FFmpeg VA-API")
         return True
+
+    def _apply_stream_probe(self) -> None:
+        """Probe detect/capture stream and attach StreamCapabilities."""
+        try:
+            from stream_probe import attach_stream_capabilities, probe_stream_url, publish_probe_gauges
+
+            caps = probe_stream_url(self._capture_stream_url)
+            if caps is not None:
+                attach_stream_capabilities(self, caps)
+                if caps.fps > 0.5:
+                    self._source_fps = float(caps.fps)
+                publish_probe_gauges(caps)
+                self.logger.info(
+                    "Stream probe: %sx%s @ %.2f fps (%s)",
+                    caps.width,
+                    caps.height,
+                    caps.fps or self._source_fps,
+                    caps.source,
+                )
+        except Exception as exc:
+            self.logger.debug("stream probe skipped: %s", exc)
 
     def _disconnect(self):
         """Close RTSP connection."""
