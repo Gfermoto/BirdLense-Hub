@@ -52,6 +52,27 @@ def _processor_root() -> str:
     return os.path.abspath(os.path.join(web_dir, "..", "processor"))
 
 
+def _classifier_engine_allowlist_path(app_config_get) -> str | None:
+    engine = str(app_config_get("processor.classifier_engine", "efficientnet_b2") or "efficientnet_b2").strip().lower()
+    if engine != "efficientnet_b2":
+        return None
+
+    rel = (
+        app_config_get(
+            "processor.models.classifier_efficientnet_b2",
+            "models/classification/weights/birds_classifier_efficientnetb2",
+        )
+        or "models/classification/weights/birds_classifier_efficientnetb2"
+    )
+    base = rel if os.path.isabs(rel) else os.path.join(_processor_root(), rel)
+    if os.path.isdir(base):
+        candidate = os.path.join(base, "class_labels.txt")
+        return candidate
+    if base.endswith(".txt"):
+        return base
+    return os.path.join(base, "class_labels.txt")
+
+
 def _norm_key(name: str) -> str:
     if not name:
         return ""
@@ -77,6 +98,14 @@ def _catalog_allowlist_extra_names(app_config_get) -> tuple[str, ...]:
 
 def resolve_allowlist_path(app_config_get) -> str | None:
     """Абсолютный путь к файлу allowlist классификатора или None, если не задан."""
+    follow_engine = str(
+        app_config_get("species.catalog_allowlist_follow_classifier_engine", True)
+    ).strip().lower() in ("1", "true", "yes", "on")
+    if follow_engine:
+        engine_path = _classifier_engine_allowlist_path(app_config_get)
+        if engine_path and os.path.isfile(engine_path):
+            return engine_path
+
     rel = (app_config_get("species.catalog_allowlist_file") or "").strip()
     if not rel:
         return None

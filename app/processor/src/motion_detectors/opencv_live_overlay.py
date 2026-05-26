@@ -9,6 +9,7 @@ from typing import Any
 _lock = threading.Lock()
 _by_camera: dict[str, dict[str, Any]] = {}
 _live_detectors: dict[str, Any] = {}
+_DETECTOR_POLYGONS_STALE_TTL_SEC = 1.0
 
 
 def register_opencv_live_detector(camera_id: str, detector: Any) -> None:
@@ -36,23 +37,39 @@ def refresh_all_opencv_live_detectors() -> None:
                 pass
 
 
-def _merge_camera_payload(camera_id: str, payload: dict[str, Any]) -> None:
+def _merge_camera_payload(camera_id: str, payload: dict[str, Any], *, source: str) -> None:
     cid = str(camera_id or "").strip()
     if not cid:
         return
     with _lock:
         cur = dict(_by_camera.get(cid, {}))
+        prev_updated = cur.get("updated_at")
+        try:
+            prev_updated_f = float(prev_updated) if prev_updated is not None else None
+        except (TypeError, ValueError):
+            prev_updated_f = None
+        now_ts = time.time()
+        prev_age = (now_ts - prev_updated_f) if prev_updated_f is not None else None
+
+        if (
+            source == "opencv"
+            and "detector_polygons" not in payload
+            and isinstance(cur.get("detector_polygons"), list)
+            and (prev_age is None or prev_age > _DETECTOR_POLYGONS_STALE_TTL_SEC)
+        ):
+            # OpenCV heartbeat should not preserve stale YOLO boxes forever.
+            cur["detector_polygons"] = []
         cur.update(payload)
-        cur["updated_at"] = time.time()
+        cur["updated_at"] = now_ts
         _by_camera[cid] = cur
 
 
 def set_opencv_live_overlay(camera_id: str, payload: dict[str, Any]) -> None:
-    _merge_camera_payload(camera_id, payload)
+    _merge_camera_payload(camera_id, payload, source="opencv")
 
 
 def set_yolo_live_overlay(camera_id: str, payload: dict[str, Any]) -> None:
-    _merge_camera_payload(camera_id, payload)
+    _merge_camera_payload(camera_id, payload, source="yolo")
 
 
 def _bbox_norm_to_polygon(bbox) -> list[list[float]] | None:

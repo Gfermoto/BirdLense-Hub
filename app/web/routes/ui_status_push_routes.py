@@ -77,6 +77,27 @@ def register_ui_status_push_routes(app):
                         detector_polygons.append(poly)
         return trigger_polygons, detector_polygons
 
+    def _parse_overlay_updated_at(value):
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            try:
+                return datetime.fromtimestamp(float(value), timezone.utc)
+            except (TypeError, ValueError, OSError):
+                return None
+        text = str(value or "").strip()
+        if not text:
+            return None
+        if text.endswith("Z"):
+            text = f"{text[:-1]}+00:00"
+        try:
+            dt = datetime.fromisoformat(text)
+        except ValueError:
+            return None
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+
     """Маршруты без тяжёлых зависимостей от timeline/species/video."""
 
     @app.route("/api/ui/health", methods=["GET"])
@@ -170,31 +191,68 @@ def register_ui_status_push_routes(app):
         trigger_polygons: list = []
         detector_polygons: list = []
         source = "none"
-        generated_at = datetime.now(timezone.utc).isoformat()
+        now_utc = datetime.now(timezone.utc)
+        generated_at = now_utc.isoformat()
+        detector_overlay_fresh = False
+        detector_overlay_age_sec: float | None = None
 
         opencv_cam = _opencv_live_for_camera(camera_id) if camera_id else None
         detector_from_opencv_live = False
         if isinstance(opencv_cam, dict):
+            updated_dt = _parse_overlay_updated_at(opencv_cam.get("updated_at"))
+            if updated_dt is not None:
+                detector_overlay_age_sec = max(
+                    0.0,
+                    (now_utc - updated_dt).total_seconds(),
+                )
+                generated_at = updated_dt.isoformat()
             raw_trigger = opencv_cam.get("trigger_polygons")
             if isinstance(raw_trigger, list):
                 trigger_polygons = raw_trigger
             raw_detector = opencv_cam.get("detector_polygons")
             if isinstance(raw_detector, list):
-                detector_polygons = raw_detector
+                try:
+                    ttl_cfg = float(
+                        app_config.get(
+                            "ui.live_detector_overlay_ttl_seconds",
+                            4.0,
+                        )
+                        or 4.0
+                    )
+                except (TypeError, ValueError):
+                    ttl_cfg = 4.0
+                ttl_sec = max(0.5, ttl_cfg)
+                is_fresh = detector_overlay_age_sec is None or detector_overlay_age_sec <= ttl_sec
+                detector_polygons = raw_detector if is_fresh else []
                 detector_from_opencv_live = True
+                detector_overlay_fresh = is_fresh
             source = "opencv_live"
-            generated_at = str(
-                opencv_cam.get("updated_at") or generated_at
-            )
 
-        if not detector_from_opencv_live:
+        trace_fallback_enabled = bool(
+            app_config.get("ui.live_overlay_trace_fallback_enabled", False)
+        )
+        if not detector_from_opencv_live and trace_fallback_enabled:
             rows = (
                 ActivityLog.query.filter_by(type="decision_trace")
                 .order_by(ActivityLog.created_at.desc())
-                .limit(60)
+                .limit(30)
                 .all()
             )
+            try:
+                trace_ttl = float(app_config.get("ui.live_overlay_trace_fallback_ttl_seconds", 1.5) or 1.5)
+            except (TypeError, ValueError):
+                trace_ttl = 1.5
+            trace_ttl = min(10.0, max(0.2, trace_ttl))
             for row in rows:
+                created_at = row.created_at
+                if created_at is not None:
+                    created_at_utc = (
+                        created_at.replace(tzinfo=timezone.utc)
+                        if created_at.tzinfo is None
+                        else created_at.astimezone(timezone.utc)
+                    )
+                    if (now_utc - created_at_utc).total_seconds() > trace_ttl:
+                        continue
                 try:
                     payload = json.loads(row.data or "{}")
                 except (TypeError, ValueError):
@@ -211,12 +269,13 @@ def register_ui_status_push_routes(app):
                 ).strip()
                 if camera_id and row_camera != camera_id:
                     continue
-                _, trace_detector = _extract_runtime_overlays_from_trace(payload)
+                trace_trigger, trace_detector = _extract_runtime_overlays_from_trace(payload)
+                if trace_trigger and not trigger_polygons:
+                    trigger_polygons = trace_trigger
                 if trace_detector:
                     detector_polygons = trace_detector
-                    if source == "none":
-                        source = "decision_trace"
-                break
+                    source = "decision_trace"
+                    break
 
         return {
             "camera_id": camera_id or None,
@@ -224,6 +283,9 @@ def register_ui_status_push_routes(app):
             "detector_polygons": detector_polygons,
             "source": source,
             "generated_at": generated_at,
+            "detector_overlay_fresh": detector_overlay_fresh,
+            "detector_overlay_age_sec": detector_overlay_age_sec,
+            "trace_fallback_enabled": trace_fallback_enabled,
             "opencv_last_decision_reason": (
                 opencv_cam.get("last_decision_reason") if isinstance(opencv_cam, dict) else None
             ),

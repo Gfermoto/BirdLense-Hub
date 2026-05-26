@@ -7,6 +7,7 @@ import time
 from datetime import datetime, timezone
 
 from api import API
+from app_config.app_config import app_config
 from motion_detectors.opencv_live_overlay import (
     refresh_all_opencv_live_detectors,
     snapshot_opencv_live_by_camera,
@@ -141,9 +142,14 @@ _opencv_overlay_empty_since: float | None = None
 
 
 def _opencv_overlay_heartbeat_loop():
-    """Публикует live-контуры OpenCV для UI (≈1.5 с)."""
+    """Публикует live-контуры OpenCV для UI в near-realtime."""
     global _opencv_overlay_row_id, _opencv_overlay_empty_since
     api = None
+    try:
+        tick_sec = float(app_config.get("ui.live_overlay_tick_seconds") or 0.12)
+    except (TypeError, ValueError):
+        tick_sec = 0.12
+    tick_sec = min(0.5, max(0.05, tick_sec))
     while True:
         try:
             refresh_all_opencv_live_detectors()
@@ -173,8 +179,8 @@ def _opencv_overlay_heartbeat_loop():
                     )
                     _opencv_overlay_empty_since = now
         except Exception as e:
-            logging.error("OpenCV overlay heartbeat failed: %s (retry in 1.5s)", e)
-        time.sleep(1.5)
+            logging.error("OpenCV overlay heartbeat failed: %s (retry in %.2fs)", e, tick_sec)
+        time.sleep(tick_sec)
 
 
 def start_opencv_overlay_daemon():

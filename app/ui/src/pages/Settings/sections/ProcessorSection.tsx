@@ -61,7 +61,6 @@ export function ProcessorSection({ form, simpleMode = true }: Props) {
   const { t } = useTranslation();
   const location = useLocation();
   const expandProcessor =
-    location.hash === '#processor-weights' ||
     location.hash === '#processor-models' ||
     location.hash === '#processor-behavior';
 

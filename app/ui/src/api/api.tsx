@@ -157,20 +157,12 @@ export {
   trackSiteVisitor,
 } from './systemAuditMetrics';
 
-export type {
-  ProcessorWeightsAllowlistStatus,
-  ProcessorWeightsSlotStatus,
-  ProcessorWeightsStatusResponse,
-} from './notificationsProcessor';
 export {
-  fetchProcessorWeightsStatus,
   fetchVapidPublicKey,
   refreshTelegramProxy,
-  resetProcessorWeights,
   restartProcessor,
   sendTestNotification,
   subscribePush,
-  uploadProcessorWeight,
 } from './notificationsProcessor';
 
 export type { PurgeStorageBody } from './settingsYamlDb';

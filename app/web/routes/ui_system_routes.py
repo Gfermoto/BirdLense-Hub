@@ -60,12 +60,6 @@ def register_routes(app):
     from routes.ui_system_file_test_routes import register_ui_system_file_test_routes
 
     register_ui_system_file_test_routes(app)
-    from routes.ui_system_processor_weights_routes import (
-        register_ui_system_processor_weights_routes,
-    )
-
-    register_ui_system_processor_weights_routes(app)
-
     @app.route("/api/ui/system/config-audit", methods=["GET"])
     @require_ui_settings_unauthorized
     def system_config_audit():

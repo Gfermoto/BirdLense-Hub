@@ -3353,6 +3353,20 @@ class TestConfigAudit:
                 "species_confidence_overrides": {
                     "Bird": 0.2,
                 },
+                "camera_overrides": {
+                    "BirdBox": {
+                        "min_box_size_px": 10,
+                        "definitely_unknown_camera_override_key": 1,
+                    }
+                },
+                "adaptive_profiles": {
+                    "night": {
+                        "overrides": {
+                            "max_box_area_norm": 0.9,
+                            "definitely_unknown_profile_override_key": 1,
+                        }
+                    }
+                },
             },
             "secrets": {"zip": "12345"},
         }
@@ -3380,6 +3394,16 @@ class TestConfigAudit:
         assert "species.tuning_target_species_ids" not in data["unknown_keys"]
         assert "ebird.species_mapping.Gray-headed Woodpecker" not in data["unknown_keys"]
         assert "processor.species_confidence_overrides.Bird" not in data["unknown_keys"]
+        assert "processor.camera_overrides.BirdBox.min_box_size_px" not in data["unknown_keys"]
+        assert "processor.adaptive_profiles.night.overrides.max_box_area_norm" not in data["unknown_keys"]
+        assert (
+            "processor.camera_overrides.BirdBox.definitely_unknown_camera_override_key"
+            in data["unknown_keys"]
+        )
+        assert (
+            "processor.adaptive_profiles.night.overrides.definitely_unknown_profile_override_key"
+            in data["unknown_keys"]
+        )
         assert "secrets.zip" not in data["unknown_keys"]
 
     def test_config_audit_preflight_and_runtime_parity(self, client, tmp_path, monkeypatch):

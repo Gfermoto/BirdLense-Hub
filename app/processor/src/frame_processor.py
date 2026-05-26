@@ -9,7 +9,7 @@ from app_config.app_config import app_config
 from processor_runtime_profile import light_gate_allows_frame, resolve_runtime_profile
 from processor_runtime_stats import inc_counter, observe_timing, set_gauge
 from tracker_paths import resolve_tracker_config_path
-from motion_detectors.opencv_live_overlay import detection_results_to_detector_polygons
+from motion_detectors.opencv_live_overlay import tracks_to_detector_polygons
 
 
 class _LightGateDisabled:
@@ -130,6 +130,25 @@ class FrameProcessor:
         key_frames.append(entry)
         key_frames.sort(key=lambda item: item["score"], reverse=True)
         del key_frames[self.key_frame_limit:]
+
+    def _overlay_tracks_for_live(self, frame_time: float) -> dict:
+        try:
+            max_age_sec = float(app_config.get("ui.live_overlay_track_ttl_seconds") or 0.6)
+        except (TypeError, ValueError):
+            max_age_sec = 0.6
+        max_age_sec = min(2.0, max(0.1, max_age_sec))
+        out: dict = {}
+        for track_id, track in self.tracks.items():
+            if not isinstance(track, dict):
+                continue
+            end_time = track.get("end_time")
+            try:
+                age = float(frame_time) - float(end_time)
+            except (TypeError, ValueError):
+                continue
+            if age <= max_age_sec:
+                out[track_id] = track
+        return out
 
     def run(
         self,
@@ -403,8 +422,10 @@ class FrameProcessor:
                 )
             cv2.imwrite(f"data/test/frame{str(self.cnt)}.jpg", debug_img)
 
-        self.live_detector_polygons = detection_results_to_detector_polygons(results)
         if not results:
+            self.live_detector_polygons = tracks_to_detector_polygons(
+                self._overlay_tracks_for_live(frame_time)
+            )
             if self.cnt <= 3 or self.cnt % 30 == 0:
                 self.logger.debug(f"No detections (frame {self.cnt})")
             return False
@@ -430,6 +451,9 @@ class FrameProcessor:
                 classifier_entropy=getattr(res, "classifier_entropy", None),
                 classifier_top1_top2_margin=getattr(res, "classifier_top1_top2_margin", None),
             )
+        self.live_detector_polygons = tracks_to_detector_polygons(
+            self._overlay_tracks_for_live(frame_time)
+        )
 
         self.logger.debug(f"Detection Time: {(time.time() - st) * 1000:.0f} msec | Valid: {len(results)}")
 

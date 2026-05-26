@@ -321,6 +321,32 @@ def test_catalog_cards_coverage_counts_per_allowlist_line(app, monkeypatch):
         assert snap["completion_percent"] == round((2.0 / 3.0) * 100.0, 2)
 
 
+def test_materialize_allowlist_normalizes_caps_common_name(app, monkeypatch):
+    from services.species_registry_service import ensure_allowlist_species_materialized
+
+    with app.app_context():
+        monkeypatch.setattr(
+            registry_mod,
+            "load_catalog_allowlist_names",
+            lambda _get: ("PARUS MAJOR (GREAT TIT)",),
+        )
+        monkeypatch.setattr(
+            registry_mod,
+            "normalize_species_to_canonical",
+            lambda value, _mapping: "Great Tit" if str(value).strip().upper() == "GREAT TIT" else value,
+        )
+
+        out = ensure_allowlist_species_materialized(
+            app_config.get,
+            fill_metadata=False,
+            dry_run=False,
+            limit=10,
+        )
+        row = Species.query.filter_by(name="Great Tit").first()
+        assert out["allowlist_total"] == 1
+        assert row is not None
+
+
 def test_update_species_info_from_wiki_whitespace_image_counts_as_empty(
     app,
     monkeypatch,

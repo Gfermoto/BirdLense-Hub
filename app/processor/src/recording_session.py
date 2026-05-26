@@ -482,13 +482,13 @@ class MotionRecordingSession:
                 if camera_id:
                     from motion_detectors.opencv_live_overlay import set_yolo_live_overlay
 
+                    live_polygons = list(
+                        getattr(self.frame_processor, "live_detector_polygons", None) or []
+                    )
                     set_yolo_live_overlay(
                         camera_id,
                         {
-                            "detector_polygons": list(
-                                getattr(self.frame_processor, "live_detector_polygons", None)
-                                or []
-                            ),
+                            "detector_polygons": live_polygons,
                         },
                     )
                 raw_boxes = _accumulate_run_stats(run_stats)

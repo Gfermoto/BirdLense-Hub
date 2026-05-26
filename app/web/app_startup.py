@@ -9,11 +9,13 @@ import threading
 from flask import Flask
 from flask_migrate import upgrade
 
+from app_config.app_config import app_config
 from models import Species, db
 from services.legacy_import_cleanup_service import cleanup_legacy_import_placeholders
 from seed.seed import seed
 from services.species_registry_service import (
     backfill_species_taxa,
+    ensure_allowlist_species_materialized,
     enrich_species_metadata_with_status,
     ensure_species_registry_seeded,
     repair_recently_reset_species_metadata,
@@ -59,6 +61,24 @@ def bootstrap_species_registry() -> None:
                 "species_registry backfill skipped "
                 "(set BIRDLENSE_STARTUP_BACKFILL_SPECIES_TAXA=1 or POST "
                 "/api/ui/system/species-registry/backfill)",
+            )
+        if _env_truthy("BIRDLENSE_STARTUP_MATERIALIZE_ALLOWLIST", "1"):
+            materialize = ensure_allowlist_species_materialized(
+                app_config.get,
+                fill_metadata=False,
+                dry_run=False,
+                limit=6000,
+            )
+            _log.info(
+                "species_registry materialize_allowlist: total=%s created=%s matched=%s",
+                materialize.get("allowlist_total", 0),
+                materialize.get("created", 0),
+                materialize.get("matched_existing", 0),
+            )
+        else:
+            _log.info(
+                "species_registry allowlist materialize skipped "
+                "(set BIRDLENSE_STARTUP_MATERIALIZE_ALLOWLIST=1 or run API materialize).",
             )
     except Exception as e:
         db.session.rollback()

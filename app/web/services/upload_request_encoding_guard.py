@@ -13,7 +13,6 @@ from flask import Flask, jsonify, request
 # Пути: multipart / файлы (см. routes/* upload, yaml-import).
 _UPLOAD_PATHS: frozenset[str] = frozenset(
     {
-        "/api/ui/system/processor-weights/upload",
         "/api/ui/system/file-test/upload",
         "/api/ui/system/db/restore",
         "/api/ui/settings/yaml-import",

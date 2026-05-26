@@ -26,6 +26,7 @@ from species_metadata import (
     wikipedia_extract_rejects_wrong_topic,
 )
 from util import load_species_canonical_mapping
+from util import normalize_species_to_canonical
 from util import (
     _extract_wiki_search_title,
     infer_metadata_source_fields,
@@ -77,6 +78,18 @@ def _parse_scientific_and_common(name: str) -> tuple[str | None, str]:
     scientific = m.group(1).strip() or None
     common = m.group(2).strip() or (name or "").strip()
     return scientific, common
+
+
+def _normalize_materialized_common_name(raw_common: str, mapping: dict[str, str] | None) -> str:
+    clean = " ".join(str(raw_common or "").strip().split())
+    if not clean:
+        return clean
+    canonical = normalize_species_to_canonical(clean, mapping or {})
+    if canonical and str(canonical).strip():
+        return str(canonical).strip()
+    if clean.isupper():
+        return clean.title()
+    return clean
 
 
 @dataclass
@@ -629,6 +642,7 @@ def ensure_allowlist_species_materialized(
             "dry_run": dry_run,
         }
 
+    mapping = load_species_canonical_mapping() or {}
     existing_rows = Species.query.order_by(Species.id.asc()).all()
     by_norm: dict[str, Species] = {}
     for sp in existing_rows:
@@ -672,11 +686,12 @@ def ensure_allowlist_species_materialized(
             target = by_norm.get(k)
             if target:
                 break
+        m = sci_common.match((raw or "").strip())
+        common_name_raw = (m.group(2).strip() if m else (raw or "").strip()) or (raw or "").strip()
+        common_name = _normalize_materialized_common_name(common_name_raw, mapping)
         if target:
             matched_existing += 1
         else:
-            m = sci_common.match((raw or "").strip())
-            common_name = (m.group(2).strip() if m else (raw or "").strip()) or (raw or "").strip()
             target = Species(name=common_name)
             db.session.add(target)
             db.session.flush()
