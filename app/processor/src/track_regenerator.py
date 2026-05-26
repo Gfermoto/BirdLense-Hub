@@ -176,6 +176,14 @@ def process_video_for_tracks(
     if fps <= 0.5:
         raw_fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
         fps = raw_fps if raw_fps > 0.5 else resolve_stream_fps(None, app_config)
+    effective_fps = float(fps) / float(frame_step) if frame_step > 1 else float(fps)
+    frame_processor.set_session_context(
+        {
+            "stream_fps": effective_fps,
+            "source_fps": float(fps),
+            "frame_step": int(frame_step),
+        }
+    )
     # Canvas geometry resolved per-frame via prepare_detector_pipeline_frame (mode=regen).
     frame_total_guess = cap.get(cv2.CAP_PROP_FRAME_COUNT)
     try:
@@ -336,6 +344,7 @@ def process_video_for_tracks(
         metrics_out["fused_track_count"] = len(detections)
         metrics_out["species_detected"] = species
         metrics_out["species_detected_count"] = len(species)
+        metrics_out.update(frame_processor.get_tracking_stability_stats())
     logger.info(
         "Track regen: %s -> %s detections, %s frames, frame_step=%s",
         video_path,

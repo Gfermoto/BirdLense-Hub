@@ -9,6 +9,8 @@ from app_config.app_config import app_config
 from processor_runtime_profile import light_gate_allows_frame, resolve_runtime_profile
 from processor_runtime_stats import inc_counter, observe_timing, set_gauge
 from tracker_paths import resolve_tracker_config_path
+from tracker_low_fps import resolve_adaptive_tracker_path
+from track_stability import TrackStabilityMonitor, summarize_tracks_stability
 from motion_detectors.opencv_live_overlay import tracks_to_detector_polygons
 
 
@@ -61,6 +63,11 @@ class FrameProcessor:
             self.tracker,
         )
         self._session_context: dict = {}
+        try:
+            iou_thr = float(app_config.get("processor.track_id_switch_iou_threshold") or 0.25)
+        except (TypeError, ValueError):
+            iou_thr = 0.25
+        self._stability_monitor = TrackStabilityMonitor(iou_threshold=iou_thr)
         self.reset()
 
     def set_session_context(self, context: dict | None) -> None:
@@ -94,30 +101,45 @@ class FrameProcessor:
     def _resolve_tracker_for_fps(self, fallback_tracker: str) -> str:
         """Optional tracker override by effective stream FPS buckets."""
         raw = app_config.get("processor.tracker_fps_profiles") or {}
-        if not isinstance(raw, dict):
-            return fallback_tracker
+        picked = fallback_tracker
         try:
             fps = float((self._session_context or {}).get("stream_fps") or 0.0)
         except (TypeError, ValueError):
             fps = 0.0
-        if fps <= 0:
-            return fallback_tracker
-        # First matching bucket wins.
-        for key in ("lte_5", "lte_7", "lte_10", "lte_15", "gt_15"):
-            tracker_name = str(raw.get(key) or "").strip()
-            if not tracker_name:
-                continue
-            if key == "lte_5" and fps <= 5.0:
-                return resolve_tracker_config_path(tracker_name)
-            if key == "lte_7" and fps <= 7.0:
-                return resolve_tracker_config_path(tracker_name)
-            if key == "lte_10" and fps <= 10.0:
-                return resolve_tracker_config_path(tracker_name)
-            if key == "lte_15" and fps <= 15.0:
-                return resolve_tracker_config_path(tracker_name)
-            if key == "gt_15" and fps > 15.0:
-                return resolve_tracker_config_path(tracker_name)
-        return fallback_tracker
+        if isinstance(raw, dict) and fps > 0:
+            for key in ("lte_5", "lte_7", "lte_10", "lte_15", "gt_15"):
+                tracker_name = str(raw.get(key) or "").strip()
+                if not tracker_name:
+                    continue
+                if key == "lte_5" and fps <= 5.0:
+                    picked = resolve_tracker_config_path(tracker_name)
+                    break
+                if key == "lte_7" and fps <= 7.0:
+                    picked = resolve_tracker_config_path(tracker_name)
+                    break
+                if key == "lte_10" and fps <= 10.0:
+                    picked = resolve_tracker_config_path(tracker_name)
+                    break
+                if key == "lte_15" and fps <= 15.0:
+                    picked = resolve_tracker_config_path(tracker_name)
+                    break
+                if key == "gt_15" and fps > 15.0:
+                    picked = resolve_tracker_config_path(tracker_name)
+                    break
+        return resolve_adaptive_tracker_path(picked, fps)
+
+    def get_tracking_stability_stats(self) -> dict:
+        try:
+            fps = float((self._session_context or {}).get("stream_fps") or 0.0)
+        except (TypeError, ValueError):
+            fps = 0.0
+        out = summarize_tracks_stability(
+            self.tracks,
+            stream_fps=fps,
+            id_switches_increment=int(self._stability_monitor.track_id_switches_count),
+        )
+        out["id_switch_rate"] = self.last_run_stats.get("id_switch_rate", 0.0)
+        return out
 
     def _update_key_frames(self, track: dict, crop, frame_time, bbox, frame_score):
         key_frames = track.setdefault("key_frames", [])
@@ -327,7 +349,12 @@ class FrameProcessor:
             if tracker_override:
                 tracker_cfg = resolve_tracker_config_path(tracker_override)
         tracker_cfg = self._resolve_tracker_for_fps(tracker_cfg)
+        try:
+            eff_fps = float((self._session_context or {}).get("stream_fps") or 0.0)
+        except (TypeError, ValueError):
+            eff_fps = 0.0
         self.last_run_stats["tracker_used"] = tracker_cfg
+        self.last_run_stats["stream_fps"] = round(eff_fps, 3) if eff_fps > 0 else 0.0
         set_gauge("tracker_config_used", tracker_cfg)
         self.last_run_stats["yolo_ran"] = True
         self.last_frame_context.yolo_ran = True
@@ -364,6 +391,10 @@ class FrameProcessor:
             self.last_run_stats["frame_copy_count_per_frame"],
         )
         self.last_run_stats["yolo_track_found"] = bool(results)
+        self._stability_monitor.observe_detections(results)
+        stability = self.get_tracking_stability_stats()
+        self.last_run_stats["track_id_switches_count"] = int(stability.get("track_id_switches_count") or 0)
+        self.last_run_stats["avg_track_duration_sec"] = float(stability.get("avg_track_duration_sec") or 0.0)
         if self.last_run_stats["yolo_track_found"]:
             self._consecutive_no_track_frames = 0
         else:
@@ -540,4 +571,5 @@ class FrameProcessor:
         self._frames_with_tracks = 0
         self._id_switch_events = 0
         self._previous_track_ids = set()
+        self._stability_monitor.reset()
         self.live_detector_polygons = []

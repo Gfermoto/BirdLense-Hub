@@ -12,7 +12,9 @@
       "min_fused_track_count": 1,
       "min_frames_with_tracks": 1,
       "min_recall_ratio": 0.9,
-      "min_species_detected_count": 1
+      "min_species_detected_count": 1,
+      "max_track_id_switches": 8,
+      "min_avg_track_duration_sec": 0.2
     }
   },
   "metrics": {
@@ -34,7 +36,9 @@
       "fused_track_count": 1,
       "species_detected_count": 1,
       "frames_with_tracks": 1,
-      "processing_fps": 0.0
+      "processing_fps": 0.0,
+      "track_id_switches_count": 0,
+      "avg_track_duration_sec": 0.5
     }
   }
 }

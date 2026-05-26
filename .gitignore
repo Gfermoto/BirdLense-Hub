@@ -10,6 +10,7 @@ backups-recovered/
 app/data/recordings
 app/data/stress_clips/*.mp4
 app/data/audit_clips/*.mp4
+app/processor/models/tracker/.adaptive_tracker_cache/
 app/data/dataset/
 # Локальные датасеты/артефакты бенчей (не коммитить)
 app/data/datasets/
