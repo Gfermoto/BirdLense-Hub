@@ -14,7 +14,8 @@
       "min_recall_ratio": 0.9,
       "min_species_detected_count": 1,
       "max_track_id_switches": 8,
-      "min_avg_track_duration_sec": 0.2
+      "min_avg_track_duration_sec": 0.2,
+      "require_tracking_unified_with_live": true
     }
   },
   "metrics": {

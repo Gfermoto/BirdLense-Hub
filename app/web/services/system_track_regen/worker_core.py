@@ -105,7 +105,7 @@ def run_regenerate_tracks_worker(
             from detection_fusion import build_fused_video_detections
 
             match_live = bool(
-                app_config.get("processor.track_regen_match_live_pipeline", False),
+                app_config.get("processor.track_regen_match_live_pipeline", True),
             )
             single_video_mode = len(target_video_ids) == 1
             profile = "match_live" if match_live else "batch"

@@ -99,6 +99,11 @@ def evaluate_clip(
             failures.append(
                 f"1819 stability: avg_track_duration_sec={dur:.3f} < min {min_dur}"
             )
+    require_unified = bool(th.get("require_tracking_unified_with_live", False))
+    if require_unified and not bool(metrics.get("tracking_unified_with_live")):
+        failures.append(
+            f"{clip_id} parity: tracking_unified_with_live=false (enable processor.track_regen_match_live_pipeline)"
+        )
     return failures
 
 

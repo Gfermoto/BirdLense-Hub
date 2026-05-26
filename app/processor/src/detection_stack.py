@@ -202,17 +202,29 @@ def build_detection_stack(
 
     apply_class_map_to_config(app_config, processor_root, binary_path)
 
+    from tracking_policy import (
+        attach_tracking_policy_to_strategy,
+        build_unified_tracking_policy,
+    )
+
+    tracking_mode = "regen" if for_track_regen else "live"
+    tracking_policy = build_unified_tracking_policy(
+        app_config.config if hasattr(app_config, "config") else app_config,
+        mode=tracking_mode,
+        regional_species_override=regional_species_override,
+        strategy_override=strategy_override,
+        min_center_dist_override=min_center_dist_override,
+    )
     regional_species = regional_species_override
     if regional_species is None:
         regional_species = app_config.get("processor.regional_species") or []
-    match_live_regen = bool(
-        app_config.get("processor.track_regen_match_live_pipeline", False),
-    )
-    if (
+    if tracking_policy.regional_species_override is not None:
+        regional_species = list(tracking_policy.regional_species_override)
+    elif (
         for_track_regen
         and app_config.get("processor.track_regen_ignore_regional_species", True)
         and regional_species_override is None
-        and not match_live_regen
+        and not tracking_policy.unified_with_live
     ):
         regional_species = []
     detector_scope = app_config.get("processor.detector_scope")
@@ -229,7 +241,7 @@ def build_detection_stack(
         min_box_size_px = int(min_box_size_px)
     except (TypeError, ValueError):
         min_box_size_px = 64
-    if for_track_regen:
+    if for_track_regen and not tracking_policy.unified_with_live:
         raw_mb = app_config.get("processor.track_regen_min_box_size_px")
         if raw_mb is not None:
             try:
@@ -395,15 +407,9 @@ def build_detection_stack(
     }
     assert_ctor_kwargs(FrameProcessor.__init__, _fp_kw, label="FrameProcessor")
     frame_processor = FrameProcessor(**_fp_kw)
-    frame_processor.strategy._for_track_regen = bool(for_track_regen)
-    _pp_kw = {
-        "for_track_regen": for_track_regen,
-        "strategy_override": strategy_override,
-        "regional_species_override": regional_species_override,
-        "min_center_dist_override": min_center_dist_override,
-    }
-    assert_ctor_kwargs(build_pipeline_policy_snapshot, _pp_kw, label="build_pipeline_policy_snapshot")
-    policy_snapshot = build_pipeline_policy_snapshot(app_config, **_pp_kw)
+    frame_processor.tracking_policy = tracking_policy
+    attach_tracking_policy_to_strategy(frame_processor.strategy, tracking_policy)
+    policy_snapshot = dict(tracking_policy.pipeline_policy)
     frame_processor.pipeline_policy = dict(policy_snapshot)
     merged_overrides = merge_species_confidence_overrides_with_ebird_top(app_config)
     min_store = app_config.get("detection.min_confidence_to_store")
@@ -442,46 +448,29 @@ def build_detection_stack(
             max_record_seconds,
             max_inactive_seconds,
         )
-    try:
-        min_track_duration_val = float(app_config.get("processor.min_track_duration", 1.0))
-    except (TypeError, ValueError):
-        min_track_duration_val = 1.0
-    min_conf_proc_val = app_config.get("processor.min_confidence_to_process")
-    dm_detector_store_val = min_confidence_to_store
-    if for_track_regen:
-        v = app_config.get("processor.track_regen_min_track_duration")
-        if v is not None:
-            try:
-                min_track_duration_val = float(v)
-            except (TypeError, ValueError):
-                pass
-        v = app_config.get("processor.track_regen_min_confidence_to_process")
-        if v is not None:
-            try:
-                min_conf_proc_val = float(v)
-            except (TypeError, ValueError):
-                pass
-        v = app_config.get("processor.track_regen_decision_detector_store_floor")
-        if v is not None:
-            try:
-                dm_detector_store_val = float(v)
-            except (TypeError, ValueError):
-                pass
-        if any(
-            app_config.get(k) is not None
-            for k in (
-                "processor.track_regen_min_track_duration",
-                "processor.track_regen_min_confidence_to_process",
-                "processor.track_regen_decision_detector_store_floor",
-            )
-        ):
-            logger.info(
-                "track_regen DecisionMaker thresholds: min_track_duration=%s "
-                "min_confidence_to_process=%s detector_store_floor=%s",
-                min_track_duration_val,
-                min_conf_proc_val,
-                dm_detector_store_val,
-            )
+    min_track_duration_val = float(tracking_policy.min_track_duration)
+    min_conf_proc_val = tracking_policy.min_confidence_to_process
+    dm_detector_store_val = (
+        float(tracking_policy.min_confidence_to_store)
+        if tracking_policy.min_confidence_to_store is not None
+        else min_confidence_to_store
+    )
+    if for_track_regen and not tracking_policy.unified_with_live:
+        logger.info(
+            "track_regen DecisionMaker thresholds (legacy regen policy): min_track_duration=%s "
+            "min_confidence_to_process=%s detector_store_floor=%s unified_with_live=false",
+            min_track_duration_val,
+            min_conf_proc_val,
+            dm_detector_store_val,
+        )
+    elif for_track_regen:
+        logger.info(
+            "track_regen DecisionMaker thresholds (unified with live): min_track_duration=%s "
+            "min_confidence_to_process=%s detector_store_floor=%s",
+            min_track_duration_val,
+            min_conf_proc_val,
+            dm_detector_store_val,
+        )
 
     _dm_kw = {
         "max_record_seconds": max_record_seconds,
