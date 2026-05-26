@@ -1,0 +1,633 @@
+{
+  "$defs": {
+    "DetectionConfig": {
+      "additionalProperties": true,
+      "properties": {
+        "min_confidence_to_store": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Confidence To Store"
+        },
+        "dedup_window_seconds": {
+          "anyOf": [
+            {
+              "maximum": 86400,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dedup Window Seconds"
+        }
+      },
+      "title": "DetectionConfig",
+      "type": "object"
+    },
+    "GeneralConfig": {
+      "additionalProperties": true,
+      "properties": {
+        "app_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "App Name"
+        },
+        "session_idle_minutes": {
+          "anyOf": [
+            {
+              "maximum": 1440,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Session Idle Minutes"
+        },
+        "require_auth_for_video_stream": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Require Auth For Video Stream"
+        }
+      },
+      "title": "GeneralConfig",
+      "type": "object"
+    },
+    "MqttConfig": {
+      "additionalProperties": true,
+      "properties": {
+        "broker": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Broker"
+        },
+        "port": {
+          "anyOf": [
+            {
+              "maximum": 65535,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Port"
+        }
+      },
+      "title": "MqttConfig",
+      "type": "object"
+    },
+    "ProcessorConfig": {
+      "additionalProperties": true,
+      "properties": {
+        "detection_strategy": {
+          "anyOf": [
+            {
+              "const": "two_stage",
+              "type": "string"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detection Strategy"
+        },
+        "inference_backend": {
+          "anyOf": [
+            {
+              "enum": [
+                "torch",
+                "openvino",
+                "auto"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inference Backend"
+        },
+        "inference_device": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inference Device"
+        },
+        "detection_device": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detection Device"
+        },
+        "binary_imgsz": {
+          "anyOf": [
+            {
+              "maximum": 4096,
+              "minimum": 32,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Binary Imgsz"
+        },
+        "min_confidence_binary": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Confidence Binary"
+        },
+        "min_confidence_binary_bird": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Confidence Binary Bird"
+        },
+        "min_confidence_binary_rodent": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Confidence Binary Rodent"
+        },
+        "min_confidence_to_process": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Confidence To Process"
+        },
+        "min_confidence_to_notify": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Confidence To Notify"
+        },
+        "min_track_duration": {
+          "anyOf": [
+            {
+              "maximum": 600.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Track Duration"
+        },
+        "min_box_size_px": {
+          "anyOf": [
+            {
+              "maximum": 4096,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Box Size Px"
+        },
+        "max_record_seconds": {
+          "anyOf": [
+            {
+              "maximum": 86400,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Record Seconds"
+        },
+        "max_inactive_seconds": {
+          "anyOf": [
+            {
+              "maximum": 3600.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Inactive Seconds"
+        },
+        "detect_use_native_resolution": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detect Use Native Resolution"
+        },
+        "inference_lores_px": {
+          "anyOf": [
+            {
+              "maximum": 4096,
+              "minimum": 32,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inference Lores Px"
+        },
+        "inference_lores_wh": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inference Lores Wh"
+        },
+        "track_regen_lores_wh": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Track Regen Lores Wh"
+        },
+        "track_regen_frame_step": {
+          "anyOf": [
+            {
+              "maximum": 120,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Track Regen Frame Step"
+        },
+        "scoring_engine_enabled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scoring Engine Enabled"
+        }
+      },
+      "title": "ProcessorConfig",
+      "type": "object"
+    },
+    "SpeciesConfig": {
+      "additionalProperties": true,
+      "properties": {
+        "catalog_allowlist_file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Catalog Allowlist File"
+        },
+        "catalog_strict_ingest": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Catalog Strict Ingest"
+        },
+        "catalog_filter_off_allowlist": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Catalog Filter Off Allowlist"
+        },
+        "catalog_probe_audio_on_coverage": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Catalog Probe Audio On Coverage"
+        }
+      },
+      "title": "SpeciesConfig",
+      "type": "object"
+    },
+    "VideoConfig": {
+      "additionalProperties": true,
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source"
+        },
+        "video_width": {
+          "anyOf": [
+            {
+              "maximum": 7680,
+              "minimum": 64,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Video Width"
+        },
+        "video_height": {
+          "anyOf": [
+            {
+              "maximum": 4320,
+              "minimum": 64,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Video Height"
+        },
+        "detect_fps": {
+          "anyOf": [
+            {
+              "maximum": 120.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "0 = auto/probe from stream",
+          "title": "Detect Fps"
+        },
+        "go2rtc_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Go2Rtc Url"
+        }
+      },
+      "title": "VideoConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": true,
+  "description": "Top-level merged config (default + user).",
+  "properties": {
+    "general": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/GeneralConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "detection": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DetectionConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "video": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VideoConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "processor": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProcessorConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "species": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SpeciesConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "mqtt": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MqttConfig"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "title": "BirdlenseMergedConfig",
+  "type": "object"
+}

@@ -6,6 +6,7 @@ import shutil
 import yaml
 
 from app_config.secret_env import apply_secret_env_overrides
+from app_config.config_schema import validate_merged_config_pydantic
 from app_config.trigger_config import (
     build_motion_settings_mirror_for_api,
     copy_legacy_topic_if_missing,
@@ -408,6 +409,7 @@ class AppConfig:
         apply_secret_env_overrides(merged)
         config_issues = validate_merged_config(merged)
         config_issues.extend(validate_merged_config_semantics(merged))
+        config_issues.extend(validate_merged_config_pydantic(merged))
         for msg in config_issues:
             logger.error("Config structure validation: %s", msg)
         strict = (os.environ.get("BIRDLENSE_STRICT_CONFIG") or "").strip().lower() in (
@@ -660,6 +662,7 @@ class AppConfig:
         self._cleanup_legacy_processor_keys(merged)
         issues = validate_merged_config(merged)
         issues.extend(validate_merged_config_semantics(merged))
+        issues.extend(validate_merged_config_pydantic(merged))
         return issues
 
     def _persist_raw_user_config(self, data: dict) -> None:
