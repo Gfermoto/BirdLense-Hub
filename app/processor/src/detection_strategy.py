@@ -894,7 +894,11 @@ class TwoStageStrategy(DetectionStrategy):
         inference_backend = str(getattr(self, "inference_backend", "torch") or "torch").strip().lower()
         from frame_geometry import prepare_yolo_detector_frame, resolve_binary_track_imgsz
 
-        _geom_mode = "regen" if bool(getattr(self, "_for_track_regen", False)) else "live"
+        _pol = getattr(self, "_tracking_policy", None)
+        if _pol is not None:
+            _geom_mode = _pol.geometry_mode_for_frame()
+        else:
+            _geom_mode = "regen" if bool(getattr(self, "_for_track_regen", False)) else "live"
         det_frame, det_shape_hw, overlay_shape_hw = prepare_yolo_detector_frame(
             frame,
             runtime_cfg,
@@ -970,7 +974,11 @@ class TwoStageStrategy(DetectionStrategy):
         accept_min_confidence = min(float(min_confidence), float(track_conf))
         boxes_from_predict_fallback = False
         track_regen_ctx = bool(getattr(self, "_for_track_regen", False))
-        iou_fb = bool(runtime_cfg.get("processor.track_regen_iou_id_fallback", False))
+        if _pol is not None:
+            track_regen_ctx = bool(_pol.for_track_regen)
+            iou_fb = bool(_pol.use_regen_direct_track_call)
+        else:
+            iou_fb = bool(runtime_cfg.get("processor.track_regen_iou_id_fallback", False))
         _tkw: dict = {
             "persist": True,
             "conf": track_conf,
@@ -1085,7 +1093,20 @@ class TwoStageStrategy(DetectionStrategy):
         # Without stable ByteTrack IDs, per-frame indexes create fake tracks.
         # В live-камере и тестах без track-regen — пустой кадр; в офлайне — IoU-синтез id (#201).
         if boxes.id is None:
-            live_iou_fb = bool(runtime_cfg.get("processor.iou_id_fallback_live_enabled", True))
+            if _pol is not None:
+                live_iou_fb = bool(_pol.iou_id_fallback)
+                iou_thr = float(_pol.iou_match_threshold)
+            else:
+                live_iou_fb = bool(runtime_cfg.get("processor.iou_id_fallback_live_enabled", True))
+                iou_thr_raw = (
+                    runtime_cfg.get("processor.track_regen_iou_match_threshold")
+                    if track_regen_ctx
+                    else runtime_cfg.get("processor.iou_id_fallback_live_match_threshold")
+                )
+                try:
+                    iou_thr = float(iou_thr_raw) if iou_thr_raw is not None else (0.22 if track_regen_ctx else 0.20)
+                except (TypeError, ValueError):
+                    iou_thr = 0.22 if track_regen_ctx else 0.20
             if not (track_regen_ctx and iou_fb) and not live_iou_fb:
                 _record_detect_metrics(
                     raw_boxes=len(boxes),
@@ -1094,15 +1115,6 @@ class TwoStageStrategy(DetectionStrategy):
                     predict_fallback=boxes_from_predict_fallback,
                 )
                 return []
-            iou_thr_raw = (
-                runtime_cfg.get("processor.track_regen_iou_match_threshold")
-                if track_regen_ctx
-                else runtime_cfg.get("processor.iou_id_fallback_live_match_threshold")
-            )
-            try:
-                iou_thr = float(iou_thr_raw) if iou_thr_raw is not None else (0.22 if track_regen_ctx else 0.20)
-            except (TypeError, ValueError):
-                iou_thr = 0.22 if track_regen_ctx else 0.20
             try:
                 curr_xyxy = np.reshape(_tensor_to_numpy(boxes.xyxy), (-1, 4))
             except Exception:
@@ -1393,9 +1405,11 @@ class TwoStageStrategy(DetectionStrategy):
         # Overlay regen: только Trapper bbox+track (как тест OV), без NABirds — иначе Bird→сорока и «херня в бою».
         overlay_shape = getattr(self, "_overlay_frame_shape", None) or cls_frame.shape[:2]
         detector_shape = getattr(self, "_detector_frame_shape", None) or frame.shape[:2]
-        if getattr(self, "_for_track_regen", False) and bool(
-            runtime_cfg.get("processor.track_regen_binary_only", False),
-        ):
+        _binary_only = bool(_pol.binary_only) if _pol is not None else bool(
+            getattr(self, "_for_track_regen", False)
+            and bool(runtime_cfg.get("processor.track_regen_binary_only", False))
+        )
+        if _binary_only:
             detection_results = []
             for box in valid_boxes:
                 label = str(box.get("detector_label") or "Bird").strip() or "Bird"

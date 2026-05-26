@@ -225,7 +225,14 @@ class FrameProcessor:
         # profile values and applies even outside night profile.
         if isinstance(camera_overrides, dict) and camera_overrides:
             profile_overrides.update(camera_overrides)
-        if getattr(self.strategy, "_for_track_regen", False):
+        policy = getattr(self, "tracking_policy", None) or getattr(
+            self.strategy, "_tracking_policy", None
+        )
+        if policy is not None and not policy.unified_with_live and policy.for_track_regen:
+            from tracking_policy import apply_policy_profile_overrides
+
+            profile_overrides = apply_policy_profile_overrides(profile_overrides, policy)
+        elif getattr(self.strategy, "_for_track_regen", False):
             raw_mc = app_config.get("processor.track_regen_min_confidence_binary")
             if raw_mc is not None:
                 try:
@@ -348,7 +355,11 @@ class FrameProcessor:
             tracker_override = str(camera_overrides.get("tracker") or "").strip()
             if tracker_override:
                 tracker_cfg = resolve_tracker_config_path(tracker_override)
-        tracker_cfg = self._resolve_tracker_for_fps(tracker_cfg)
+        _tp = getattr(self, "tracking_policy", None)
+        if _tp is not None:
+            tracker_cfg = _tp.resolve_tracker_path(tracker_cfg)
+        else:
+            tracker_cfg = self._resolve_tracker_for_fps(tracker_cfg)
         try:
             eff_fps = float((self._session_context or {}).get("stream_fps") or 0.0)
         except (TypeError, ValueError):

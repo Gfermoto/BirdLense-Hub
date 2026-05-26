@@ -134,8 +134,9 @@ processor:
   # Regen policy scope_strategy=match_live_pipeline:
   # тот же lores (inference_lores_px), каждый кадр,
   # без обнуления regional_species и без remap детекций по «локальному» scope (#263).
-  track_regen_match_live_pipeline: false
-  # Пересчёт оверлея в UI: binary+ByteTrack без классификатора (боксы как Trapper, ~3–5× быстрее two_stage).
+  # SOTA-11: true — regen = live (пороги, geometry, regional scope, min_track_duration, IoU fallback).
+  track_regen_match_live_pipeline: true
+  # Пересчёт оверлея: binary_only только при track_regen_match_live_pipeline: false (legacy).
   track_regen_binary_only: true
   # При ручной коррекции на ролике: не отбрасывать авто-детекции, пересекающиеся по времени
   # с ручными строками (например Bird рядом с исправленной сорокой) — появятся параллельные
