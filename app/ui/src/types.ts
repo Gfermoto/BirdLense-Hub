@@ -285,7 +285,16 @@ export interface Settings {
     adaptive_profiles?: ProcessorAdaptiveProfiles;
     frame_processing_warn_ms?: number;
     inference_lores_px?: number;
+    inference_lores_wh?: [number, number];
+    detect_use_native_resolution?: boolean;
+    detection_quality_assumed_fps?: number;
     binary_imgsz?: number;
+    background_subtraction_enabled?: boolean;
+    background_subtraction_history?: number;
+    background_subtraction_var_threshold?: number;
+    background_subtraction_min_fg_ratio?: number;
+    background_subtraction_warmup_frames?: number;
+    background_subtraction_detect_shadows?: boolean;
     classification_scheduler?: string;
     max_classifications_per_frame?: number;
     max_blur_checks?: number;
@@ -336,6 +345,8 @@ export interface Settings {
     track_regen_frame_step?: number;
     track_regen_detection_strategy?: string;
     track_regen_lores_px?: number;
+    track_regen_lores_wh?: [number, number];
+    track_regen_binary_only?: boolean;
     track_regen_iou_id_fallback?: boolean;
     track_regen_iou_match_threshold?: number | null;
     track_regen_video_timeout_sec?: number;
@@ -393,6 +404,8 @@ export interface Settings {
     record_stream_codec?: 'h264' | 'copy' | string;
     video_width?: number;
     video_height?: number;
+    /** 0 = auto/probe from stream (SOTA-02). */
+    detect_fps?: number;
   };
   mqtt?: {
     broker?: string;

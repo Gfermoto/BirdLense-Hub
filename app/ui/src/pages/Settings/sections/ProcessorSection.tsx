@@ -24,6 +24,9 @@ import { ProcessorDetectorPipelineBlock } from './processor/ProcessorDetectorPip
 import { ProcessorBirdnetExtendedBlock } from './processor/ProcessorBirdnetExtendedBlock';
 import { ProcessorModelsScopeBlock } from './processor/ProcessorModelsScopeBlock';
 import { ProcessorTrackRegenBlock } from './processor/ProcessorTrackRegenBlock';
+import { ProcessorStreamGeometryBlock } from './processor/ProcessorStreamGeometryBlock';
+import { ProcessorOpenVinoBlock } from './processor/ProcessorOpenVinoBlock';
+import { ProcessorBackgroundSubtractionBlock } from './processor/ProcessorBackgroundSubtractionBlock';
 import { ProcessorBehaviorRecognitionBlock } from './processor/ProcessorBehaviorRecognitionBlock';
 
 type Props = {
@@ -108,10 +111,13 @@ export function ProcessorSection({ form, simpleMode = true }: Props) {
 
           <SectionHeading>2. Детектор</SectionHeading>
           <ProcessorDetectorPipelineBlock form={form} />
+          <ProcessorStreamGeometryBlock form={form} />
+          <ProcessorTrackRegenBlock form={form} />
           {!simpleMode ? (
             <>
               <ProcessorModelsScopeBlock form={form} />
-              <ProcessorTrackRegenBlock form={form} />
+              <ProcessorOpenVinoBlock form={form} />
+              <ProcessorBackgroundSubtractionBlock form={form} />
             </>
           ) : null}
 

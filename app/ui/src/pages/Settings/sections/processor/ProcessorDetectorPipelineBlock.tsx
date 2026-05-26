@@ -1,13 +1,14 @@
 import { useTranslation } from 'react-i18next';
 import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import Grid from '@mui/material/Grid2';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
+import TextField from '@mui/material/TextField';
 import { ServiceBlock } from '../../shared/ServiceBlock';
+import { ProcessorNumberField } from '../../shared/ProcessorNumberField';
 import type { Settings } from '../../../../types';
 
 type Props = {
@@ -26,14 +27,11 @@ export function ProcessorDetectorPipelineBlock({ form }: Props) {
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="processor.binary_imgsz">
             {(field) => (
-              <TextField
-                fullWidth
-                type="number"
+              <ProcessorNumberField
+                defaultKey="binary_imgsz"
+                value={field.state.value}
+                onValueChange={(n) => field.handleChange(n)}
                 inputProps={{ min: 320, max: 1280, step: 32 }}
-                value={field.state.value ?? 640}
-                onChange={(e) =>
-                  field.handleChange(Number(e.target.value) || 640)
-                }
                 label={t('settings.processorBinaryImgsz')}
                 helperText={t('settings.processorBinaryImgszHint')}
               />
@@ -43,14 +41,11 @@ export function ProcessorDetectorPipelineBlock({ form }: Props) {
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="processor.inference_lores_px">
             {(field) => (
-              <TextField
-                fullWidth
-                type="number"
+              <ProcessorNumberField
+                defaultKey="inference_lores_px"
+                value={field.state.value}
+                onValueChange={(n) => field.handleChange(n)}
                 inputProps={{ min: 320, max: 1280, step: 32 }}
-                value={field.state.value ?? 640}
-                onChange={(e) =>
-                  field.handleChange(Number(e.target.value) || 640)
-                }
                 label={t('settings.processorInferenceLoresPx')}
                 helperText={t('settings.processorInferenceLoresPxHint')}
               />
@@ -60,14 +55,11 @@ export function ProcessorDetectorPipelineBlock({ form }: Props) {
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="processor.frame_processing_warn_ms">
             {(field) => (
-              <TextField
-                fullWidth
-                type="number"
+              <ProcessorNumberField
+                defaultKey="frame_processing_warn_ms"
+                value={field.state.value}
+                onValueChange={(n) => field.handleChange(n)}
                 inputProps={{ min: 50, max: 5000, step: 50 }}
-                value={field.state.value ?? 450}
-                onChange={(e) =>
-                  field.handleChange(Number(e.target.value) || 450)
-                }
                 label={t('settings.processorFrameProcessingWarnMs')}
                 helperText={t('settings.processorFrameProcessingWarnMsHint')}
               />
@@ -101,18 +93,13 @@ export function ProcessorDetectorPipelineBlock({ form }: Props) {
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="processor.max_classifications_per_frame">
             {(field) => (
-              <TextField
-                fullWidth
-                type="number"
+              <ProcessorNumberField
+                defaultKey="max_classifications_per_frame"
+                value={field.state.value}
+                onValueChange={(n) => field.handleChange(n)}
                 inputProps={{ min: 1, max: 16, step: 1 }}
-                value={field.state.value ?? 3}
-                onChange={(e) =>
-                  field.handleChange(Number(e.target.value) || 1)
-                }
                 label={t('settings.processorMaxClassificationsPerFrame')}
-                helperText={t(
-                  'settings.processorMaxClassificationsPerFrameHint',
-                )}
+                helperText={t('settings.processorMaxClassificationsPerFrameHint')}
               />
             )}
           </form.Field>
@@ -120,14 +107,11 @@ export function ProcessorDetectorPipelineBlock({ form }: Props) {
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="processor.max_blur_checks">
             {(field) => (
-              <TextField
-                fullWidth
-                type="number"
+              <ProcessorNumberField
+                defaultKey="max_blur_checks"
+                value={field.state.value}
+                onValueChange={(n) => field.handleChange(n)}
                 inputProps={{ min: 1, max: 20, step: 1 }}
-                value={field.state.value ?? 3}
-                onChange={(e) =>
-                  field.handleChange(Number(e.target.value) || 1)
-                }
                 label={t('settings.processorMaxBlurChecks')}
                 helperText={t('settings.processorMaxBlurChecksHint')}
               />
@@ -137,14 +121,11 @@ export function ProcessorDetectorPipelineBlock({ form }: Props) {
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="processor.blur_threshold">
             {(field) => (
-              <TextField
-                fullWidth
-                type="number"
+              <ProcessorNumberField
+                defaultKey="blur_threshold"
+                value={field.state.value}
+                onValueChange={(n) => field.handleChange(n)}
                 inputProps={{ min: 1, max: 500, step: 1 }}
-                value={field.state.value ?? 100}
-                onChange={(e) =>
-                  field.handleChange(Number(e.target.value) || 100)
-                }
                 label={t('settings.processorBlurThreshold')}
                 helperText={t('settings.processorBlurThresholdHint')}
               />
