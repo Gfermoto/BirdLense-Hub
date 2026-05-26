@@ -86,12 +86,12 @@ def parse_processor_args(argv: list[str] | None = None) -> Namespace:
 
 def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
     api = API()
-    main_size = (
-        app_config.get("video.video_width", 1280),
-        app_config.get("video.video_height", 720),
-    )
     from inference_lores import resolve_inference_lores_size
+    from stream_probe import probe_processor_startup, publish_probe_gauges, resolve_main_size
 
+    startup_probe = probe_processor_startup(app_config, input_path=args.input)
+    publish_probe_gauges(startup_probe)
+    main_size = resolve_main_size(app_config, startup_probe)
     lores_size = resolve_inference_lores_size(app_config)
 
     media_setup = setup_processor_media(args, main_size, lores_size, api)

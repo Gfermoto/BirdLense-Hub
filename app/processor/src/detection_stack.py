@@ -141,9 +141,13 @@ def build_detection_stack(
                 continue
         if not configured_imgsz_values:
             try:
-                configured_imgsz_values.add(int(app_config.get("processor.binary_imgsz", 640) or 640))
+                from pipeline_config import resolve_binary_model_imgsz
+
+                configured_imgsz_values.add(resolve_binary_model_imgsz(app_config))
             except (TypeError, ValueError):
-                configured_imgsz_values.add(640)
+                from pipeline_config import DEFAULT_MODEL_IMGSZ
+
+                configured_imgsz_values.add(DEFAULT_MODEL_IMGSZ)
 
         if expected_ov_imgsz and any(v != expected_ov_imgsz for v in configured_imgsz_values):
             mismatch = ",".join(str(v) for v in sorted(configured_imgsz_values))
@@ -249,9 +253,13 @@ def build_detection_stack(
 
     def _two_stage_kwargs() -> Dict[str, Any]:
         try:
-            _imgsz = int(app_config.get("processor.binary_imgsz", 640) or 640)
+            from pipeline_config import resolve_binary_model_imgsz
+
+            _imgsz = resolve_binary_model_imgsz(app_config)
         except (TypeError, ValueError):
-            _imgsz = 640
+            from pipeline_config import DEFAULT_MODEL_IMGSZ
+
+            _imgsz = DEFAULT_MODEL_IMGSZ
         return {
             "binary_model_path": binary_path,
             "classifier_model_path": classifier_path,
@@ -354,10 +362,14 @@ def build_detection_stack(
     if raw_auto in ("1", "true", "yes", "on"):
         from inference.auto_benchmark import measure_binary_detector_predict_ms
 
+        from pipeline_config import resolve_binary_model_imgsz
+
         try:
-            _isz = int(app_config.get("processor.binary_imgsz", 640) or 640)
+            _isz = resolve_binary_model_imgsz(app_config)
         except (TypeError, ValueError):
-            _isz = 640
+            from pipeline_config import DEFAULT_MODEL_IMGSZ
+
+            _isz = DEFAULT_MODEL_IMGSZ
         _ms = measure_binary_detector_predict_ms(
             detection_strategy.binary_model,
             imgsz=max(320, _isz),

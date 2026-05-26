@@ -17,8 +17,9 @@ class VideoFileSource:
     def __init__(
         self,
         video_path,
-        main_size=(1280, 720),
-        lores_size=(640, 640),
+        *,
+        main_size: tuple[int, int],
+        lores_size: tuple[int, int] | None,
         loop=False,
         realtime_simulation=False,
         record_stream_codec="h264",
@@ -37,13 +38,28 @@ class VideoFileSource:
         self._record_output = None
         self._recorded_frames = 0
         self._fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        self.stream_capabilities = None
+        self.source_fps = 0.0
 
-        self.source_fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
-        self.frame_interval = 1.0 / self.source_fps
+        self._init_fps_from_probe()
+        self.frame_interval = 1.0 / max(self.source_fps, 1.0)
         self.last_capture_time = None
         self.frame_count = 0
 
         self.logger.info(f"VideoFileSource: {self.source_fps} FPS")
+
+    def _init_fps_from_probe(self) -> None:
+        from app_config.app_config import app_config
+        from pipeline_config import resolve_stream_fps
+        from stream_probe import attach_stream_capabilities, probe_video_file, publish_probe_gauges
+
+        caps = probe_video_file(str(self.video_path))
+        attach_stream_capabilities(self, caps)
+        publish_probe_gauges(caps)
+        self.source_fps = resolve_stream_fps(self, app_config)
+        if self.source_fps <= 0.5:
+            raw = float(self.cap.get(cv2.CAP_PROP_FPS) or 0.0)
+            self.source_fps = raw if raw > 0.5 else resolve_stream_fps(None, app_config)
 
     def start_recording(self, output):
         """Start writing recorded output video to disk."""
@@ -210,8 +226,11 @@ class VideoFileSource:
 
             result_frame = frame
 
-        res = cv2.resize(result_frame, self.lores_size) if result_frame is not None else None
-        return res
+        if result_frame is None:
+            return None
+        if self.lores_size is None:
+            return result_frame
+        return cv2.resize(result_frame, self.lores_size)
 
     def get_frame_time(self):
         """Timestamp in seconds for last frame returned by `capture()`."""
@@ -232,11 +251,11 @@ class VideoPlaylistSource:
     def __init__(
         self,
         video_paths,
-        main_size=(1280, 720),
-        lores_size=(640, 640),
+        *,
+        main_size: tuple[int, int],
+        lores_size: tuple[int, int] | None,
         loop=True,
         advance_on_start=True,
-        *,
         split_session_per_file=False,
         realtime_simulation=False,
         record_stream_codec="h264",
@@ -262,8 +281,9 @@ class VideoPlaylistSource:
         self._fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         self._record_output = None
         self._recorded_frames = 0
-        self.source_fps = 30.0
-        self.frame_interval = 1.0 / self.source_fps
+        self.source_fps = 0.0
+        self.stream_capabilities = None
+        self.frame_interval = 1.0
         self.last_capture_time = None
         self.frame_count = 0
         self._open_current_video()
@@ -278,9 +298,18 @@ class VideoPlaylistSource:
             self.cap.release()
         self.video_path = self.video_paths[self.video_index]
         self.cap = cv2.VideoCapture(self.video_path)
-        fps = self.cap.get(cv2.CAP_PROP_FPS) if self.cap.isOpened() else 0.0
-        self.source_fps = fps or 30.0
-        self.frame_interval = 1.0 / self.source_fps
+        from app_config.app_config import app_config
+        from pipeline_config import resolve_stream_fps
+        from stream_probe import attach_stream_capabilities, probe_video_file, publish_probe_gauges
+
+        caps = probe_video_file(str(self.video_path)) if self.cap.isOpened() else None
+        attach_stream_capabilities(self, caps)
+        publish_probe_gauges(caps)
+        self.source_fps = resolve_stream_fps(self, app_config)
+        if self.source_fps <= 0.5:
+            raw = float(self.cap.get(cv2.CAP_PROP_FPS) or 0.0) if self.cap.isOpened() else 0.0
+            self.source_fps = raw if raw > 0.5 else resolve_stream_fps(None, app_config)
+        self.frame_interval = 1.0 / max(self.source_fps, 1.0)
         self.frame_count = 0
         self.last_capture_time = None
         self.logger.info(
@@ -487,12 +516,15 @@ class VideoPlaylistSource:
 class FileTestIdleSource:
     """Плейсхолдер, когда video.source=file и в каталоге ещё нет роликов (#270)."""
 
-    def __init__(self, main_size=(1280, 720), lores_size=(640, 640)):
+    def __init__(self, *, main_size: tuple[int, int], lores_size: tuple[int, int] | None):
         self.logger = logging.getLogger(__name__)
         self.main_size = main_size
         self.lores_size = lores_size
         self.video_path = ""
-        self.source_fps = 30.0
+        from app_config.app_config import app_config
+        from pipeline_config import resolve_stream_fps
+
+        self.source_fps = resolve_stream_fps(None, app_config)
         self.frame_count = 0
 
     def start_recording(self, output):

@@ -129,7 +129,7 @@ def build_detection_pipeline(
 
 def process_video_for_tracks(
     video_path: str,
-    lores_size=(640, 640),
+    lores_size: tuple[int, int] | None = None,
     frame_processor=None,
     decision_maker=None,
     frame_step: int = 1,
@@ -144,8 +144,11 @@ def process_video_for_tracks(
     progress_hook: вызывается из UI-воркера; meta: phase, yolo_frames_done, yolo_frames_total (оценка).
     """
     from app_config.app_config import app_config
+    from inference_lores import resolve_track_regen_lores_size
+    from pipeline_config import resolve_detector_letterbox_wh, resolve_stream_fps
     from species_mapping_config import build_species_mapping
     from species_normalizer import normalize
+    from stream_probe import attach_stream_capabilities, probe_video_file, publish_probe_gauges
 
     if not os.path.isfile(video_path):
         logger.warning(f"Video not found: {video_path}")
@@ -167,7 +170,28 @@ def process_video_for_tracks(
         logger.warning(f"Cannot open video: {video_path}")
         return []
 
-    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    probe_caps = probe_video_file(video_path)
+    publish_probe_gauges(probe_caps)
+    fps = float(probe_caps.fps) if probe_caps and probe_caps.fps > 0.5 else 0.0
+    if fps <= 0.5:
+        raw_fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
+        fps = raw_fps if raw_fps > 0.5 else resolve_stream_fps(None, app_config)
+    if lores_size is None:
+        lores_size = resolve_track_regen_lores_size(app_config)
+    if lores_size is None:
+        ret0, frame0 = cap.read()
+        if ret0 and frame0 is not None:
+            lores_size = resolve_detector_letterbox_wh(
+                app_config,
+                frame0.shape[:2],
+            )
+            if lores_size is None:
+                h0, w0 = int(frame0.shape[0]), int(frame0.shape[1])
+                lores_size = (max(320, w0), max(320, h0))
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        elif probe_caps is not None:
+            lores_size = (probe_caps.width, probe_caps.height)
+    assert lores_size is not None
     frame_total_guess = cap.get(cv2.CAP_PROP_FRAME_COUNT)
     try:
         fcg = float(frame_total_guess)

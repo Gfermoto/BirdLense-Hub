@@ -7,8 +7,16 @@ from typing import Any, Mapping
 
 from inference_lores import LoResSize, parse_inference_lores_wh, resolve_inference_lores_size
 
+try:
+    from stream_probe import StreamCapabilities, get_stream_capabilities
+except ImportError:
+    StreamCapabilities = None  # type: ignore[misc, assignment]
+    get_stream_capabilities = None  # type: ignore[assignment]
+
+# YOLO/OpenVINO export square size when config omits processor.binary_imgsz (not stream resolution).
 DEFAULT_MODEL_IMGSZ = 640
-DEFAULT_FALLBACK_FPS = 15.0
+# Mirrors default_config.yaml processor.detection_quality_assumed_fps (last resort for FPS only).
+DEFAULT_ASSUMED_FPS_CONFIG_KEY = "processor.detection_quality_assumed_fps"
 
 
 def _cfg_get(cfg: Mapping[str, Any], key: str, default: Any = None) -> Any:
@@ -73,6 +81,8 @@ def resolve_binary_model_imgsz(
 def resolve_detector_letterbox_wh(
     runtime_cfg: Mapping[str, Any],
     frame_shape: tuple[int, int] | None = None,
+    *,
+    media_source: Any | None = None,
 ) -> LoResSize | None:
     """
     Target WxH for letterbox before YOLO, or None to use frame as-is.
@@ -104,6 +114,13 @@ def resolve_detector_letterbox_wh(
         h, w = int(frame_shape[0]), int(frame_shape[1])
         if w > 0 and h > 0:
             return (max(320, min(1280, w)), max(320, min(1280, h)))
+    if get_stream_capabilities is not None and media_source is not None:
+        caps = get_stream_capabilities(media_source)
+        if caps is not None and caps.width > 0 and caps.height > 0:
+            return (
+                max(320, min(1280, int(caps.width))),
+                max(320, min(1280, int(caps.height))),
+            )
     return resolve_inference_lores_size(runtime_cfg)
 
 
@@ -112,8 +129,12 @@ def resolve_stream_fps(
     runtime_cfg: Mapping[str, Any],
 ) -> float:
     """
-    Effective FPS: stream probe > ``video.detect_fps`` > ``processor.detection_quality_assumed_fps``.
+    Effective FPS: StreamCapabilities > source attrs > ``video.detect_fps`` > assumed_fps config.
     """
+    if get_stream_capabilities is not None and media_source is not None:
+        caps = get_stream_capabilities(media_source)
+        if caps is not None and caps.fps > 0.5:
+            return float(caps.fps)
     if media_source is not None:
         for attr in ("source_fps", "_source_fps"):
             try:
@@ -125,7 +146,9 @@ def resolve_stream_fps(
     cfg_fps = _parse_float(runtime_cfg, "video.detect_fps", 0.0)
     if cfg_fps > 0.5:
         return cfg_fps
-    assumed = _parse_float(runtime_cfg, "processor.detection_quality_assumed_fps", DEFAULT_FALLBACK_FPS)
+    assumed = _parse_float(runtime_cfg, DEFAULT_ASSUMED_FPS_CONFIG_KEY, 0.0)
+    if assumed <= 0.5:
+        assumed = 1.0
     return max(1.0, assumed)
 
 
@@ -171,7 +194,11 @@ def build_motion_trigger_context(
     return MotionTriggerContext(
         triggered_by=triggered_by,
         stream_fps=resolve_stream_fps(media_source, runtime_cfg),
-        detector_letterbox_wh=resolve_detector_letterbox_wh(runtime_cfg, frame_shape),
+        detector_letterbox_wh=resolve_detector_letterbox_wh(
+            runtime_cfg,
+            frame_shape,
+            media_source=media_source,
+        ),
         model_imgsz=resolve_binary_model_imgsz(runtime_cfg),
         use_native_resolution=detect_use_native_resolution(runtime_cfg),
     )
