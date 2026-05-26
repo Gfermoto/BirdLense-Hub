@@ -99,6 +99,9 @@ class ProcessorConfig(_SectionBase):
     )
     background_subtraction_warmup_frames: int | None = Field(default=None, ge=0, le=10000)
     background_subtraction_detect_shadows: bool | None = None
+    static_object_suppression_enabled: bool | None = None
+    static_scene_bird_min_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    static_temporal_max_jitter_px: float | None = Field(default=None, ge=0.0, le=64.0)
     scoring_engine_enabled: bool | None = None
 
     @field_validator("inference_lores_wh", "track_regen_lores_wh", mode="before")

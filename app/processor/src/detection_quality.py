@@ -209,6 +209,26 @@ class DetectionQualityPipeline:
     def scene_analyzer(self) -> SceneAdaptiveAnalyzer:
         return self._scene
 
+    def sync_from_runtime_cfg(self, runtime_cfg: Mapping[str, Any]) -> None:
+        """Hot-reload quality/static/MOG2 settings for the active session."""
+        new_cfg = DetectionQualityConfig.from_runtime_cfg(runtime_cfg)
+        if new_cfg.scene != self.cfg.scene:
+            self._scene.reconfigure(new_cfg.scene)
+        if new_cfg.static != self.cfg.static:
+            self._static = StaticObjectFilter(new_cfg.static)
+        if new_cfg.mask != self.cfg.mask:
+            self._mask = DetectionMaskFilter(new_cfg.mask)
+        self.cfg = new_cfg
+        if self.cfg.scoring_engine_enabled:
+            from scoring_engine import ScoringEngine, ScoringEngineConfig
+
+            scoring_cfg = ScoringEngineConfig.from_runtime_cfg(runtime_cfg)
+            if not self.cfg.scoring_engine_enabled:
+                scoring_cfg.enabled = False
+            self._scoring = ScoringEngine(scoring_cfg) if scoring_cfg.enabled else None
+        else:
+            self._scoring = None
+
     def _texture_reject(self, frame_bgr: np.ndarray, box: dict[str, Any]) -> bool:
         if not self.cfg.texture_enabled:
             return False

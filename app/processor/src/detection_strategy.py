@@ -1191,14 +1191,7 @@ class TwoStageStrategy(DetectionStrategy):
                 runtime_cfg=runtime_cfg,
             )
         else:
-            self._detection_quality.cfg = DetectionQualityConfig.from_runtime_cfg(runtime_cfg)
-            self._detection_quality._scoring = None
-            if self._detection_quality.cfg.scoring_engine_enabled:
-                from scoring_engine import ScoringEngine, ScoringEngineConfig
-
-                self._detection_quality._scoring = ScoringEngine(
-                    ScoringEngineConfig.from_runtime_cfg(runtime_cfg)
-                )
+            self._detection_quality.sync_from_runtime_cfg(runtime_cfg)
         self._detection_quality.scene_analyzer.update(frame)
         try:
             base_bird_min = float(

@@ -45,6 +45,20 @@ def test_pydantic_rejects_store_gt_process():
     assert any("min_confidence_to_store" in msg for msg in issues)
 
 
+def test_pydantic_static_motion_calibration_fields():
+    merged = {
+        "processor": {
+            "static_object_suppression_enabled": True,
+            "static_scene_bird_min_confidence": 0.3,
+            "static_temporal_max_jitter_px": 2.5,
+            "background_subtraction_var_threshold": 18.0,
+        },
+        "detection": {"min_confidence_to_store": 0.1},
+    }
+    issues = validate_merged_config_pydantic(merged)
+    assert issues == [], issues
+
+
 def test_pydantic_accepts_extra_unknown_processor_keys():
     merged = {
         "processor": {

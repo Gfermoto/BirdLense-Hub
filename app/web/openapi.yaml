@@ -3299,6 +3299,48 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Bbox parity debug metrics
+  /api/debug/motion-preview:
+    get:
+      description: MOG2 / static calibration preview with mask overlay (settings password).
+      parameters:
+        - in: query
+          name: camera_id
+          schema:
+            type: string
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum:
+              - detection_mog2
+              - trigger_mog2
+              - static
+        - in: query
+          name: overrides
+          schema:
+            type: string
+            description: JSON overrides for processor/triggers.opencv (unsaved form values).
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Frame unavailable
+      summary: Motion / static calibration preview
   /analytics/trigger-graph:
     get:
       description: Aggregated trigger graph FP/FN metrics by source (session_runtime_metrics).
