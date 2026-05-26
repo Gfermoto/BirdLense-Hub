@@ -19,6 +19,7 @@ if str(PROC_SRC) not in sys.path:
 
 from app_config.app_config import app_config  # noqa: E402
 from session_state_repository import SessionStateRepository  # noqa: E402
+from trigger_graph import build_session_trigger_graph  # noqa: E402
 
 
 @dataclass
@@ -66,6 +67,19 @@ def _simulate_session(rng: random.Random, cam: str, scenario: str) -> dict:
         "yolo_blind_confirmed": blind_score >= 0.7,
         "yolo_blind_score": round(blind_score, 4),
     }
+    init = "frigate" if scenario in {"yolo_blind", "fallback_spike"} else "opencv"
+    ctx = {
+        "triggered_by": init,
+        "triggered_camera": cam,
+        "runtime_signals": summary,
+    }
+    summary["trigger_graph"] = build_session_trigger_graph(
+        session_summary=summary,
+        recording_context=ctx,
+        persisted_tracks=[],
+        rejected_tracks=[],
+        mqtt_events=[{"source": "frigate"}] if scenario != "healthy" else [],
+    )
     return summary
 
 

@@ -4,6 +4,7 @@ import {
   fetchQualityHealth,
   fetchQualityTimeseries,
   fetchYoloDetectorHealth,
+  fetchTriggerGraph,
   fetchProcessorLogs,
   fetchSystemMetricsHistory,
   fetchSystemMetricsLive,
@@ -72,5 +73,13 @@ export function useYoloDetectorHealthQuery(hours: number) {
     queryKey: queryKeys.system.yoloDetectorHealth(hours),
     queryFn: () => fetchYoloDetectorHealth(hours),
     refetchInterval: 10_000,
+  });
+}
+
+export function useTriggerGraphQuery(hours: number) {
+  return useQuery({
+    queryKey: queryKeys.system.triggerGraph(hours),
+    queryFn: () => fetchTriggerGraph(hours),
+    refetchInterval: 30_000,
   });
 }

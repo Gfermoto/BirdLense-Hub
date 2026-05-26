@@ -1031,7 +1031,7 @@ def finalize_motion_recording(
             blind_score=blind_score,
             blind_score_threshold=blind_score_threshold,
         )
-        session_summary = {
+        session_summary: dict[str, Any] = {
             "event": "recording_session_summary",
             "duration_s": round(duration_s, 3) if duration_s is not None else None,
             "triggered_camera": ctx.get("triggered_camera"),
@@ -1053,6 +1053,18 @@ def finalize_motion_recording(
             "yolo_blind_confirmed": bool(yolo_blind_confirmed),
             "yolo_blind_score": round(float(blind_score), 4),
         }
+        try:
+            from trigger_graph import build_session_trigger_graph
+
+            session_summary["trigger_graph"] = build_session_trigger_graph(
+                session_summary=session_summary,
+                recording_context=ctx,
+                persisted_tracks=video_detections,
+                rejected_tracks=rejected_decisions,
+                mqtt_events=mqtt_events,
+            )
+        except Exception:
+            logging.debug("trigger_graph build failed", exc_info=True)
         _emit_frigate_hub_panic_if_needed(
             session_summary=session_summary,
             ctx=ctx,
