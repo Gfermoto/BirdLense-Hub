@@ -7,6 +7,9 @@ import logging
 import requests
 
 from app_config.app_config import app_config
+from services.species_catalog.allowlist import load_catalog_allowlist_norm_keys
+from services.species_catalog.canon import audio_search_term_for_species_name
+from util import load_species_canonical_mapping
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +39,15 @@ def fetch_recordings(species_name: str, limit: int = 5) -> list[dict]:
     """Fetch bird recordings from Xeno-canto API v3.
     Returns list of {id, file, en, type, rec, cnt} or empty list on error.
     """
-    term = _search_term_from_species_name(species_name)
+    allow = load_catalog_allowlist_norm_keys(app_config.get)
+    mapping = load_species_canonical_mapping()
+    term = audio_search_term_for_species_name(
+        species_name,
+        allowlist_norm_keys=allow,
+        mapping=mapping,
+    )
+    if not term:
+        term = _search_term_from_species_name(species_name)
     if not term:
         return []
 

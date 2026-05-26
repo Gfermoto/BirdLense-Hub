@@ -148,6 +148,33 @@ export function CatalogRepairCard() {
               n: cov.with_description,
             })}
           />
+          {typeof cov.missing_image_lines === 'number' &&
+          cov.missing_image_lines > 0 ? (
+            <Chip
+              size="small"
+              color="warning"
+              variant="outlined"
+              label={`−img ${cov.missing_image_lines}`}
+            />
+          ) : null}
+          {typeof cov.missing_description_lines === 'number' &&
+          cov.missing_description_lines > 0 ? (
+            <Chip
+              size="small"
+              color="warning"
+              variant="outlined"
+              label={`−desc ${cov.missing_description_lines}`}
+            />
+          ) : null}
+          {typeof cov.all_caps_matched_species === 'number' &&
+          cov.all_caps_matched_species > 0 ? (
+            <Chip
+              size="small"
+              color="warning"
+              variant="outlined"
+              label={`CAPS ${cov.all_caps_matched_species}`}
+            />
+          ) : null}
           {data.schedule?.autorun_enabled && (
             <Chip
               size="small"

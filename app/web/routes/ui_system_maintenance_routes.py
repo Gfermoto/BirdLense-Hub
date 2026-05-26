@@ -10,6 +10,7 @@ from services.system_maintenance_service import (
     post_clean_orphaned_visits,
     post_merge_duplicate_species,
     post_realign_visit_times,
+    post_species_catalog_deep_reconcile,
     post_species_catalog_reconcile,
     post_split_large_gap_visits,
     run_recordings_scan,
@@ -93,4 +94,18 @@ def register_ui_system_maintenance_routes(app):
         if v_err is not None:
             return v_err, 400
         body, code = post_species_catalog_reconcile(payload)
+        return body, code
+
+    @app.route("/api/ui/system/species-catalog/deep-reconcile", methods=["POST"])
+    @require_ui_settings_password
+    def species_catalog_deep_reconcile():
+        """
+        Глубокий reconcile каталога: merge дубликатов + канонизация display names.
+
+        body JSON: dry_run (default true), duplicate_group_limit, rename_limit.
+        """
+        payload, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
+        body, code = post_species_catalog_deep_reconcile(payload)
         return body, code

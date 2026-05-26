@@ -1025,6 +1025,8 @@ species:
   # Optional UI/catalog hygiene filter: hide observed species outside allowlist.
   # Keep false to avoid dropping valid species due naming mismatches.
   catalog_filter_off_allowlist: false
+  # Probe Xeno-canto sample in coverage snapshot (slow; off by default).
+  catalog_probe_audio_on_coverage: false
   tuning_target_species_ids: []
 
 # R&D / feature flags

@@ -12,6 +12,7 @@ from services.species_catalog_allowlist_service import (
 )
 from services.species_registry_service import resolve_species_name
 from species_constants import CATALOG_RODENT_SPECIES, GENERIC_BIRD_SPECIES
+from services.species_catalog.canon import normalize_catalog_display_name
 from util import get_parent_name_for_species, load_species_canonical_mapping
 
 
@@ -128,7 +129,9 @@ class SpeciesIdentityService:
         resolution = resolve_species_name(normalized, source=source)
         taxon = resolution.taxon if resolution.found else None
         taxon_common = taxon.common_name if taxon else None
-        canonical_name = taxon_common if taxon else normalized
+        mapping = load_species_canonical_mapping()
+        raw_canonical = taxon_common if taxon else normalized
+        canonical_name = normalize_catalog_display_name(raw_canonical, mapping)
 
         species = Species.query.filter_by(name=canonical_name).first()
         if species:

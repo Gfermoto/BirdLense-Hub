@@ -8,6 +8,8 @@ import Card from '@mui/material/Card';
 import CardActions from '@mui/material/CardActions';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Grid from '@mui/material/Grid2';
 import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
@@ -21,9 +23,12 @@ import { PageHeader } from '../../components/PageHeader';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
+type CatalogQualityFilter = 'all' | 'no_image' | 'no_description' | 'incomplete';
+
 export function SpeciesDirectoryPage() {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
+  const [qualityFilter, setQualityFilter] = useState<CatalogQualityFilter>('all');
   useDocumentTitle(t('nav.species'));
 
   const speciesQ = useQuery({
@@ -47,13 +52,22 @@ export function SpeciesDirectoryPage() {
       if (bCount !== aCount) return bCount - aCount;
       return a.name.localeCompare(b.name);
     });
-    if (!needle) return sorted;
-    return sorted.filter((row) => {
-      const name = normalizeNeedle(String(row.name || ''));
-      const desc = normalizeNeedle(String(row.description || ''));
-      return name.includes(needle) || desc.includes(needle);
+    const bySearch = !needle
+      ? sorted
+      : sorted.filter((row) => {
+          const name = normalizeNeedle(String(row.name || ''));
+          const desc = normalizeNeedle(String(row.description || ''));
+          return name.includes(needle) || desc.includes(needle);
+        });
+    if (qualityFilter === 'all') return bySearch;
+    return bySearch.filter((row) => {
+      const hasImage = Boolean(String(row.image_url || '').trim());
+      const hasDesc = Boolean(String(row.description || '').trim());
+      if (qualityFilter === 'no_image') return !hasImage;
+      if (qualityFilter === 'no_description') return !hasDesc;
+      return !hasImage || !hasDesc;
     });
-  }, [query, speciesQ.data]);
+  }, [query, qualityFilter, speciesQ.data]);
 
   return (
     <Box display="grid" gap={3} sx={{ pb: 5 }}>
@@ -62,6 +76,25 @@ export function SpeciesDirectoryPage() {
         description={t('speciesDirectory.description')}
         titleVariant="h3"
       />
+
+      <ToggleButtonGroup
+        exclusive
+        size="small"
+        value={qualityFilter}
+        onChange={(_e, value: CatalogQualityFilter | null) => {
+          if (value) setQualityFilter(value);
+        }}
+        sx={{ flexWrap: 'wrap' }}
+      >
+        <ToggleButton value="all">{t('speciesDirectory.filterAll')}</ToggleButton>
+        <ToggleButton value="no_image">{t('speciesDirectory.filterNoImage')}</ToggleButton>
+        <ToggleButton value="no_description">
+          {t('speciesDirectory.filterNoDescription')}
+        </ToggleButton>
+        <ToggleButton value="incomplete">
+          {t('speciesDirectory.filterIncomplete')}
+        </ToggleButton>
+      </ToggleButtonGroup>
 
       <TextField
         type="search"
@@ -162,6 +195,22 @@ export function SpeciesDirectoryPage() {
                                 label={t('speciesDirectory.recordsCount', {
                                   count: species.count,
                                 })}
+                              />
+                            ) : null}
+                            {!species.image_url ? (
+                              <Chip
+                                size="small"
+                                color="warning"
+                                variant="outlined"
+                                label={t('speciesDirectory.badgeNoImage')}
+                              />
+                            ) : null}
+                            {!species.description ? (
+                              <Chip
+                                size="small"
+                                color="warning"
+                                variant="outlined"
+                                label={t('speciesDirectory.badgeNoDescription')}
                               />
                             ) : null}
                           </Stack>

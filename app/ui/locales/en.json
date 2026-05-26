@@ -3132,6 +3132,12 @@
     "openSpecies": "Open species card",
     "openRecordingsForSpecies": "Open recordings",
     "openSpeciesTooltip": "Species detail: notes, frequency, related recordings.",
-    "openRecordingsTooltip": "Recordings view filtered to this species only."
+    "openRecordingsTooltip": "Recordings view filtered to this species only.",
+    "filterAll": "All",
+    "filterNoImage": "No photo",
+    "filterNoDescription": "No description",
+    "filterIncomplete": "Incomplete",
+    "badgeNoImage": "No photo",
+    "badgeNoDescription": "No description"
   }
 }

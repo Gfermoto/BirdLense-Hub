@@ -26,7 +26,10 @@ from species_metadata import (
     wikipedia_extract_rejects_wrong_topic,
 )
 from util import load_species_canonical_mapping
-from util import normalize_species_to_canonical
+from services.species_catalog.canon import (
+    normalize_catalog_display_name,
+    parse_scientific_and_common,
+)
 from util import (
     _extract_wiki_search_title,
     infer_metadata_source_fields,
@@ -69,27 +72,6 @@ def _next_unique_taxon_key(base_name: str, fallback_suffix: str = "") -> str:
             candidate = f"{base}-{idx}"
         idx += 1
     return candidate
-
-
-def _parse_scientific_and_common(name: str) -> tuple[str | None, str]:
-    m = re.match(r"^(.+?)\s*\(([^)]+)\)\s*$", (name or "").strip())
-    if not m:
-        return None, (name or "").strip()
-    scientific = m.group(1).strip() or None
-    common = m.group(2).strip() or (name or "").strip()
-    return scientific, common
-
-
-def _normalize_materialized_common_name(raw_common: str, mapping: dict[str, str] | None) -> str:
-    clean = " ".join(str(raw_common or "").strip().split())
-    if not clean:
-        return clean
-    canonical = normalize_species_to_canonical(clean, mapping or {})
-    if canonical and str(canonical).strip():
-        return str(canonical).strip()
-    if clean.isupper():
-        return clean.title()
-    return clean
 
 
 @dataclass
@@ -149,9 +131,9 @@ def ensure_species_registry_seeded() -> dict:
             continue
         taxon = SpeciesTaxon.query.filter_by(common_name=canonical).first()
         if not taxon:
-            scientific, _ = _parse_scientific_and_common(variant)
+            scientific, _ = parse_scientific_and_common(variant)
             if not scientific:
-                scientific, _ = _parse_scientific_and_common(canonical)
+                scientific, _ = parse_scientific_and_common(canonical)
             taxon = SpeciesTaxon(
                 taxon_key=_next_unique_taxon_key(canonical),
                 scientific_name=scientific,
@@ -187,7 +169,7 @@ def ensure_species_registry_seeded() -> dict:
     for sp in Species.query.order_by(Species.id.asc()).all():
         existing_taxon = SpeciesTaxon.query.filter_by(common_name=sp.name).first()
         if not existing_taxon:
-            scientific, common = _parse_scientific_and_common(sp.name)
+            scientific, common = parse_scientific_and_common(sp.name)
             canonical = common or sp.name
             existing_taxon = SpeciesTaxon.query.filter_by(common_name=canonical).first()
             if not existing_taxon:
@@ -688,7 +670,7 @@ def ensure_allowlist_species_materialized(
                 break
         m = sci_common.match((raw or "").strip())
         common_name_raw = (m.group(2).strip() if m else (raw or "").strip()) or (raw or "").strip()
-        common_name = _normalize_materialized_common_name(common_name_raw, mapping)
+        common_name = normalize_catalog_display_name(common_name_raw, mapping)
         if target:
             matched_existing += 1
         else:
@@ -1030,6 +1012,41 @@ def catalog_cards_coverage_snapshot(app_config_get) -> dict:
         1 for sp in matched_per_line if (sp.image_url or "").strip() and (sp.description or "").strip()
     )
     completion_percent = round((complete_cards / max(1, len(allowlist_names))) * 100.0, 2)
+    missing_image = max(0, allowlist_lines_matched - with_image)
+    missing_description = max(0, allowlist_lines_matched - with_description)
+    from services.species_catalog.canon import is_all_caps_display_name
+
+    all_caps_matched = sum(
+        1 for sp in uniq_ids.values() if is_all_caps_display_name(sp.name or "")
+    )
+    audio_with_source = 0
+    audio_probed = 0
+    audio_coverage_percent = None
+    if bool(app_config_get("species.catalog_probe_audio_on_coverage", False)):
+        try:
+            from services.xeno_canto_service import fetch_recordings
+            from services.species_catalog.allowlist import load_catalog_allowlist_norm_keys
+            from services.species_catalog.canon import audio_search_term_for_species_name
+
+            allow_keys = load_catalog_allowlist_norm_keys(app_config_get)
+            mapping = load_species_canonical_mapping()
+            for sp in list(uniq_ids.values())[:40]:
+                term = audio_search_term_for_species_name(
+                    sp.name or "",
+                    allowlist_norm_keys=allow_keys,
+                    mapping=mapping,
+                )
+                if not term:
+                    continue
+                audio_probed += 1
+                if fetch_recordings(term, limit=1):
+                    audio_with_source += 1
+            audio_coverage_percent = round(
+                (audio_with_source / max(1, audio_probed)) * 100.0,
+                2,
+            )
+        except Exception:
+            _log.debug("catalog audio probe skipped", exc_info=True)
     return {
         "allowlist_total": len(allowlist_names),
         "allowlist_lines_matched": allowlist_lines_matched,
@@ -1038,6 +1055,12 @@ def catalog_cards_coverage_snapshot(app_config_get) -> dict:
         "with_description": with_description,
         "complete_cards": complete_cards,
         "completion_percent": completion_percent,
+        "missing_image_lines": missing_image,
+        "missing_description_lines": missing_description,
+        "all_caps_matched_species": all_caps_matched,
+        "audio_probed_sample": audio_probed,
+        "audio_with_source_sample": audio_with_source,
+        "audio_coverage_percent_sample": audio_coverage_percent,
     }
 
 

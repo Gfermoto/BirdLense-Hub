@@ -3151,6 +3151,12 @@
     "openSpecies": "Открыть карточку вида",
     "openRecordingsForSpecies": "Открыть записи",
     "openSpeciesTooltip": "Страница вида: описание, частота, связанные записи.",
-    "openRecordingsTooltip": "Записи и детекции с фильтром только по этому виду."
+    "openRecordingsTooltip": "Записи и детекции с фильтром только по этому виду.",
+    "filterAll": "Все",
+    "filterNoImage": "Без фото",
+    "filterNoDescription": "Без описания",
+    "filterIncomplete": "Неполные",
+    "badgeNoImage": "Нет фото",
+    "badgeNoDescription": "Нет описания"
   }
 }
