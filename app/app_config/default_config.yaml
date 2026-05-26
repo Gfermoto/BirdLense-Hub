@@ -454,6 +454,14 @@ processor:
   reid_auto_link_threshold_high: 0.95
   reid_auto_link_threshold_low: 0.75
   reid_auto_link_max_candidates: 8
+  # SOTA-13: ReID gallery + expert queue (off until VPS validation of SOTA-10..12).
+  reid_gallery_enabled: false
+  reid_track_clustering_enabled: false
+  reid_expert_queue_enabled: false
+  reid_gallery_merge_cosine_threshold: 0.92
+  reid_gallery_duplicate_threshold_low: 0.82
+  reid_gallery_min_track_duration_sec: 0.6
+  reid_gallery_max_cluster_members: 24
   # Runtime DINOv2 (finalize) — веса/кэш: models/reid/ (см. models/reid/README.md)
   reid:
     model: dinov2_vits14
