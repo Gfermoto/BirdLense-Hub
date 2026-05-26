@@ -73,6 +73,32 @@ class ProcessorConfig(_SectionBase):
     inference_lores_wh: list[int] | tuple[int, int] | None = None
     track_regen_lores_wh: list[int] | tuple[int, int] | None = None
     track_regen_frame_step: int | None = Field(default=None, ge=1, le=120)
+    detection_quality_assumed_fps: float | None = Field(default=None, ge=0.0, le=120.0)
+    openvino_binary_track_ultralytics_conf: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+    )
+    openvino_binary_bird_score_scale: float | None = Field(default=None, ge=0.0, le=32.0)
+    openvino_min_confidence_binary_bird: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+    )
+    background_subtraction_enabled: bool | None = None
+    background_subtraction_history: int | None = Field(default=None, ge=1, le=10000)
+    background_subtraction_var_threshold: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=256.0,
+    )
+    background_subtraction_min_fg_ratio: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+    )
+    background_subtraction_warmup_frames: int | None = Field(default=None, ge=0, le=10000)
+    background_subtraction_detect_shadows: bool | None = None
     scoring_engine_enabled: bool | None = None
 
     @field_validator("inference_lores_wh", "track_regen_lores_wh", mode="before")

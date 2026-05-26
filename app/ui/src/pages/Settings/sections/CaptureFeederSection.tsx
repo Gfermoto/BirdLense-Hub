@@ -36,6 +36,7 @@ export function CaptureFeederSection({ form }: Props) {
   const resolutions = [
     { label: t('settings.resolutionFullHD'), width: 1920, height: 1080 },
     { label: t('settings.resolutionHD'), width: 1280, height: 720 },
+    { label: t('settings.resolutionDetect704'), width: 704, height: 576 },
     { label: t('settings.resolutionVGA'), width: 640, height: 480 },
   ];
 
@@ -413,6 +414,23 @@ export function CaptureFeederSection({ form }: Props) {
               {t('settings.serviceRecordingDesc')}
             </Typography>
             <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="video.detect_fps">
+                  {(field) => (
+                    <TextField
+                      fullWidth
+                      type="number"
+                      inputProps={{ min: 0, max: 60, step: 0.5 }}
+                      value={field.state.value ?? 0}
+                      onChange={(e) =>
+                        field.handleChange(Number(e.target.value) || 0)
+                      }
+                      label={t('settings.videoDetectFps')}
+                      helperText={t('settings.videoDetectFpsHint')}
+                    />
+                  )}
+                </form.Field>
+              </Grid>
               <Grid size={{ xs: 12 }}>
                 <form.Field name="video.video_width">
                   {(widthField) => (

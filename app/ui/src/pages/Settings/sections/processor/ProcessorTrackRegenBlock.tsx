@@ -7,6 +7,11 @@ import Typography from '@mui/material/Typography';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
 import { ServiceBlock } from '../../shared/ServiceBlock';
+import { ProcessorNumberField } from '../../shared/ProcessorNumberField';
+import {
+  TRACK_REGEN_LORES_WH_DEFAULT,
+  whPairOrDefault,
+} from '../../shared/processorFieldDefaults';
 import type { Settings } from '../../../../types';
 
 type Props = {
@@ -57,16 +62,75 @@ export function ProcessorTrackRegenBlock({ form }: Props) {
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="processor.track_regen_lores_px">
             {(field) => (
-              <TextField
-                fullWidth
-                type="number"
+              <ProcessorNumberField
+                defaultKey="track_regen_lores_px"
+                value={field.state.value}
+                onValueChange={(n) => field.handleChange(n)}
                 inputProps={{ min: 320, max: 1280, step: 32 }}
-                value={field.state.value ?? 640}
-                onChange={(e) =>
-                  field.handleChange(Number(e.target.value) || 640)
-                }
                 label={t('settings.processorTrackRegenLoresPx')}
                 helperText={t('settings.processorTrackRegenLoresPxHint')}
+              />
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 3 }}>
+          <form.Field name="processor.track_regen_lores_wh">
+            {(field) => {
+              const [w, h] = whPairOrDefault(
+                field.state.value,
+                TRACK_REGEN_LORES_WH_DEFAULT,
+              );
+              return (
+                <TextField
+                  fullWidth
+                  type="number"
+                  inputProps={{ min: 320, max: 1920, step: 1 }}
+                  label={t('settings.processorTrackRegenLoresWidth')}
+                  value={w}
+                  onChange={(e) => {
+                    const nw = Number(e.target.value) || w;
+                    field.handleChange([nw, h]);
+                  }}
+                />
+              );
+            }}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 3 }}>
+          <form.Field name="processor.track_regen_lores_wh">
+            {(field) => {
+              const [w, h] = whPairOrDefault(
+                field.state.value,
+                TRACK_REGEN_LORES_WH_DEFAULT,
+              );
+              return (
+                <TextField
+                  fullWidth
+                  type="number"
+                  inputProps={{ min: 240, max: 1080, step: 1 }}
+                  label={t('settings.processorTrackRegenLoresHeight')}
+                  value={h}
+                  onChange={(e) => {
+                    const nh = Number(e.target.value) || h;
+                    field.handleChange([w, nh]);
+                  }}
+                  helperText={t('settings.processorTrackRegenLoresWhHint')}
+                />
+              );
+            }}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12 }}>
+          <form.Field name="processor.track_regen_binary_only">
+            {(field) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={field.state.value !== false}
+                    onChange={(e) => field.handleChange(e.target.checked)}
+                  />
+                }
+                label={t('settings.processorTrackRegenBinaryOnly')}
               />
             )}
           </form.Field>
