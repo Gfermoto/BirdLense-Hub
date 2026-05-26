@@ -1,4 +1,5 @@
-import { apiClient } from './client';
+import axios from 'axios';
+import { BASE_API_URL } from './client';
 
 export type ExpertQueueItem = {
   id: number;
@@ -26,12 +27,14 @@ export type ReidGalleryCluster = {
   }>;
 };
 
+const withCreds = { withCredentials: true as const };
+
 export async function fetchReidGalleryStatus() {
-  const { data } = await apiClient.get<{
+  const { data } = await axios.get<{
     reid_gallery_enabled: boolean;
     reid_track_clustering_enabled: boolean;
     reid_expert_queue_enabled: boolean;
-  }>('/reid/gallery/status');
+  }>(`${BASE_API_URL}/reid/gallery/status`, withCreds);
   return data;
 }
 
@@ -40,18 +43,21 @@ export async function fetchReidGallery(params?: {
   species_id?: number;
   limit?: number;
 }) {
-  const { data } = await apiClient.get<{
+  const { data } = await axios.get<{
     enabled: boolean;
     clusters: ReidGalleryCluster[];
     message?: string;
-  }>('/reid/gallery', { params });
+  }>(`${BASE_API_URL}/reid/gallery`, { ...withCreds, params });
   return data;
 }
 
 export async function fetchExpertQueue(params?: { status?: string; limit?: number; sync?: boolean }) {
-  const { data } = await apiClient.get<{ enabled: boolean; items: ExpertQueueItem[]; count: number }>(
-    '/expert/queue',
-    { params: { sync: params?.sync === false ? 0 : 1, ...params } },
+  const { data } = await axios.get<{ enabled: boolean; items: ExpertQueueItem[]; count: number }>(
+    `${BASE_API_URL}/expert/queue`,
+    {
+      ...withCreds,
+      params: { sync: params?.sync === false ? 0 : 1, ...params },
+    },
   );
   return data;
 }
@@ -64,6 +70,6 @@ export async function resolveExpertTask(body: {
   source_profile_id?: number;
   note?: string;
 }) {
-  const { data } = await apiClient.post('/expert/resolve', body);
+  const { data } = await axios.post(`${BASE_API_URL}/expert/resolve`, body, withCreds);
   return data;
 }
