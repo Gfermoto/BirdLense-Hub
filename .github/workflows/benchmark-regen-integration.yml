@@ -99,6 +99,22 @@ jobs:
                 --max-runtime-sec 300 \
                 --write-report /workspace/.artifacts/benchmark_smoke_report.json'
 
+      - name: Run SOTA golden benchmark harness (smoke)
+        env:
+          WS: ${{ github.workspace }}
+        run: |
+          docker compose run --rm \
+            -v "${WS}:/workspace:rw" \
+            birdlense \
+            bash -lc 'export PYTHONPATH=/app:/app/web:/app/processor/src && \
+              python3 /workspace/scripts/benchmark_sota.py \
+                --smoke \
+                --clip-1816 /workspace/.artifacts/smoke_clip.mp4 \
+                --clip-1819 /workspace/.artifacts/smoke_clip.mp4 \
+                --frame-step 24 \
+                --max-runtime-sec 300 \
+                --write-report /workspace/.artifacts/benchmark_sota_smoke.json'
+
       - name: Verify benchmark report schema
         working-directory: ${{ github.workspace }}
         run: |

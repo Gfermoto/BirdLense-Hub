@@ -1,0 +1,20 @@
+{
+  "schema": "sota_golden_clips@v1",
+  "description": "Golden regression clips: 1816 noise/FP, 1819 birds/recall. Paths via env or benchmarks/fixtures/.",
+  "clips": {
+    "1816": {
+      "role": "noise_fp",
+      "video_id": 1816,
+      "env_var": "SOTA_GOLDEN_CLIP_1816",
+      "legacy_env_var": "YOLO_GOLDEN_CLIP_1816",
+      "fixture_path": "benchmarks/fixtures/clip_1816.mp4"
+    },
+    "1819": {
+      "role": "birds_recall",
+      "video_id": 1819,
+      "env_var": "SOTA_GOLDEN_CLIP_1819",
+      "legacy_env_var": "YOLO_GOLDEN_CLIP_1819",
+      "fixture_path": "benchmarks/fixtures/clip_1819.mp4"
+    }
+  }
+}

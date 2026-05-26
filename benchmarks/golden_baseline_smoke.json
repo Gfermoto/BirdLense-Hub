@@ -1,0 +1,30 @@
+{
+  "schema": "sota_golden_baseline@v1",
+  "updated_at": "2026-05-26",
+  "notes": "CI smoke profile (synthetic clip). Real gates use golden_baseline.json + hub mp4 paths.",
+  "thresholds": {
+    "1816": {
+      "max_fused_track_count": 999,
+      "max_yolo_accepted_boxes_total": 999,
+      "max_species_detected_count": 999
+    },
+    "1819": {
+      "min_fused_track_count": 0,
+      "min_frames_with_tracks": 0,
+      "min_recall_ratio": 0.0,
+      "min_species_detected_count": 0
+    }
+  },
+  "metrics": {
+    "1816": {
+      "fused_track_count": 0,
+      "yolo_accepted_boxes_total": 0,
+      "species_detected_count": 0
+    },
+    "1819": {
+      "fused_track_count": 0,
+      "species_detected_count": 0,
+      "frames_with_tracks": 0
+    }
+  }
+}
