@@ -16,6 +16,7 @@ from services.species_catalog.allowlist import (
 from services.species_data_quality_service import find_duplicate_name_groups
 from services.species_merge_service import merge_species_into
 from services.species_catalog.canon import (
+    _hierarchy_seed_path,
     is_hierarchy_taxon_label,
     normalize_catalog_display_name,
 )
@@ -234,6 +235,81 @@ def reconcile_catalog_display_names(
     return report
 
 
+def restore_plumage_variant_display_names(
+    *,
+    dry_run: bool = True,
+) -> dict[str, Any]:
+    """Восстановить имена вида ``Species (plumage)`` после ошибочного rename только суффикса."""
+    import re
+
+    report: dict[str, Any] = {
+        "dry_run": dry_run,
+        "restored": 0,
+        "skipped_no_parent": 0,
+        "skipped_ambiguous": 0,
+        "details": [],
+    }
+    path = _hierarchy_seed_path()
+    if not path.is_file():
+        report["errors"] = [f"hierarchy seed missing: {path}"]
+        return report
+
+    def _norm(s: str) -> str:
+        return " ".join(str(s or "").strip().lower().split())
+
+    variants: list[tuple[str, str, str]] = []
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "|" not in line:
+            continue
+        child, parent_base = [p.strip() for p in line.split("|", 1)]
+        m = re.match(r"^(.+?)\s*\(([^)]+)\)\s*$", child)
+        if not m:
+            continue
+        suffix = m.group(2).strip()
+        variants.append((child, parent_base, suffix))
+
+    by_parent_suffix: dict[tuple[str, str], list[str]] = {}
+    for child, parent_base, suffix in variants:
+        key = (_norm(parent_base), _norm(suffix))
+        by_parent_suffix.setdefault(key, []).append(child)
+
+    for sp in Species.query.order_by(Species.id.asc()).all():
+        current = str(sp.name or "").strip()
+        if not current or "(" in current:
+            continue
+        parent = Species.query.get(sp.parent_id) if sp.parent_id else None
+        if not parent:
+            report["skipped_no_parent"] += 1
+            continue
+        key = (_norm(parent.name or ""), _norm(current))
+        children = by_parent_suffix.get(key) or []
+        if len(children) != 1:
+            if children:
+                report["skipped_ambiguous"] += 1
+            continue
+        new_name = normalize_catalog_display_name(children[0])
+        if not new_name or new_name == current:
+            continue
+        existing = Species.query.filter_by(name=new_name).first()
+        if existing and int(existing.id) != int(sp.id):
+            report["skipped_ambiguous"] += 1
+            report["details"].append(
+                f"collision restore: {sp.id} {current!r} -> {new_name!r} (id={existing.id})",
+            )
+            continue
+        report["details"].append(f"restore plumage: {sp.id} {current!r} -> {new_name!r}")
+        report["restored"] += 1
+        if not dry_run:
+            sp.name = new_name
+
+    if dry_run:
+        db.session.rollback()
+    else:
+        db.session.commit()
+    return report
+
+
 def deep_reconcile_species_catalog(
     *,
     dry_run: bool = True,
@@ -253,6 +329,7 @@ def deep_reconcile_species_catalog(
         rename_limit=rename_limit,
         app_config_get=app_config_get,
     )
+    plumage = restore_plumage_variant_display_names(dry_run=dry_run)
     from services.species_data_quality_service import build_catalog_polish_report
 
     polish = build_catalog_polish_report(db.session)
@@ -260,6 +337,7 @@ def deep_reconcile_species_catalog(
         "dry_run": dry_run,
         "duplicates": base,
         "display_names": names,
+        "plumage_restore": plumage,
         "polish_after": polish,
     }
 
@@ -268,4 +346,5 @@ __all__ = [
     "deep_reconcile_species_catalog",
     "reconcile_catalog_display_names",
     "reconcile_species_catalog",
+    "restore_plumage_variant_display_names",
 ]

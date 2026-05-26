@@ -64,13 +64,30 @@ def load_hierarchy_taxon_labels() -> frozenset[str]:
     return frozenset(labels)
 
 
+_LATIN_EPITHET_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+
+
+def _looks_like_latin_scientific_name(text: str) -> bool:
+    """``Genus species`` (эпитеты в нижнем регистре), не ``Common Goldeneye``."""
+    parts = [p for p in str(text or "").strip().split() if p]
+    if len(parts) < 2:
+        return False
+    if not re.match(r"^[A-Z][a-z]+$", parts[0]):
+        return False
+    return all(_LATIN_EPITHET_RE.match(p) for p in parts[1:])
+
+
 def parse_scientific_and_common(name: str) -> tuple[str | None, str]:
-    m = re.match(r"^(.+?)\s*\(([^)]+)\)\s*$", (name or "").strip())
+    """``Scientific (Common)`` только для латинского бинома; plumage-варианты — целиком."""
+    clean = (name or "").strip()
+    m = re.match(r"^(.+?)\s*\(([^)]+)\)\s*$", clean)
     if not m:
-        return None, (name or "").strip()
-    scientific = m.group(1).strip() or None
-    common = m.group(2).strip() or (name or "").strip()
-    return scientific, common
+        return None, clean
+    left = m.group(1).strip()
+    right = m.group(2).strip()
+    if _looks_like_latin_scientific_name(left):
+        return left or None, right or clean
+    return None, clean
 
 
 def format_display_casing(value: str) -> str:

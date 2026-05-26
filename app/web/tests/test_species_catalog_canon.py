@@ -4,7 +4,17 @@ from services.species_catalog.canon import (
     audio_search_term_for_species_name,
     is_hierarchy_taxon_label,
     normalize_catalog_display_name,
+    parse_scientific_and_common,
 )
+
+
+def test_parse_scientific_and_common_keeps_plumage_variants():
+    sci, common = parse_scientific_and_common("Common Goldeneye (Female/Eclipse male)")
+    assert sci is None
+    assert common == "Common Goldeneye (Female/Eclipse male)"
+    sci2, common2 = parse_scientific_and_common("Aythya fuligula (Tufted Duck)")
+    assert sci2 == "Aythya fuligula"
+    assert common2 == "Tufted Duck"
 
 
 def test_normalize_catalog_display_name_title_cases_all_caps(monkeypatch):
@@ -17,6 +27,10 @@ def test_normalize_catalog_display_name_title_cases_all_caps(monkeypatch):
         lambda value, _mapping: "Great Tit" if str(value).upper() == "GREAT TIT" else value,
     )
     assert normalize_catalog_display_name("GREAT TIT") == "Great Tit"
+    assert (
+        normalize_catalog_display_name("COMMON GOLDENEYE (FEMALE/ECLIPSE MALE)")
+        == "Common Goldeneye (Female/Eclipse Male)"
+    )
 
 
 def test_is_hierarchy_taxon_label_detects_group_names():
