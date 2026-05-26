@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BASE_URL="${BASE_URL:-${DEPLOY_URL:-http://127.0.0.1:8085}}"
+TIMEOUT_SEC="${TIMEOUT_SEC:-20}"
+REQUIRE_STRICT_QUALITY_READY="${REQUIRE_STRICT_QUALITY_READY:-0}"
+MIN_SPECIES_MATCHED="${MIN_SPECIES_MATCHED:-520}"
+EXPECTED_ALLOWLIST_TOTAL="${EXPECTED_ALLOWLIST_TOTAL:-526}"
+SKIP_TRIGGER_AUDIT="${SKIP_TRIGGER_AUDIT:-0}"
+AUDIT_DAYS="${AUDIT_DAYS:-1}"
+AUDIT_CAMERAS="${AUDIT_CAMERAS:-BirdBox,Forest}"
+FAIL_ON_PARITY_HOTSPOT="${FAIL_ON_PARITY_HOTSPOT:-0}"
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/check-quality-gates.sh [--base-url URL]
+
+Quality gate for production smoke:
+  - /api/ui/status, /api/ui/readiness
+  - /api/ui/system/domain-health
+  - /api/ui/system/species-registry/repair-cards/status
+  - optional trigger-detector-audit on VPS host
+
+Environment:
+  BASE_URL / DEPLOY_URL               API base URL
+  BIRDLENSE_UI_API_KEY / MCP_TOKEN    auth for protected API
+  REQUIRE_STRICT_QUALITY_READY        1 to fail when strict_quality_ready=false
+  MIN_SPECIES_MATCHED                 default 520
+  EXPECTED_ALLOWLIST_TOTAL            default 526
+  SKIP_TRIGGER_AUDIT                  default 0
+  AUDIT_DAYS                          default 1
+  AUDIT_CAMERAS                       default BirdBox,Forest
+  FAIL_ON_PARITY_HOTSPOT              1 to fail when parity hotspots > 0
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --base-url)
+      BASE_URL="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+curl_args=("-sS" "--max-time" "${TIMEOUT_SEC}")
+if [[ -n "${BIRDLENSE_UI_API_KEY:-}" ]]; then
+  curl_args+=("-H" "X-Birdlense-Api-Key: ${BIRDLENSE_UI_API_KEY}")
+elif [[ -n "${MCP_TOKEN:-}" ]]; then
+  curl_args+=("-H" "Authorization: Bearer ${MCP_TOKEN}")
+fi
+
+status_json="$(curl "${curl_args[@]}" "${BASE_URL}/api/ui/status")"
+readiness_json="$(curl "${curl_args[@]}" "${BASE_URL}/api/ui/readiness")"
+domain_json="$(curl "${curl_args[@]}" "${BASE_URL}/api/ui/system/domain-health")"
+coverage_json="$(curl "${curl_args[@]}" "${BASE_URL}/api/ui/system/species-registry/repair-cards/status")"
+
+export STATUS_JSON="$status_json"
+export READINESS_JSON="$readiness_json"
+export DOMAIN_JSON="$domain_json"
+export COVERAGE_JSON="$coverage_json"
+export REQUIRE_STRICT_QUALITY_READY FAIL_ON_PARITY_HOTSPOT
+export MIN_SPECIES_MATCHED EXPECTED_ALLOWLIST_TOTAL
+
+python3 - <<'PY'
+import json
+import os
+import sys
+
+status = json.loads(os.environ["STATUS_JSON"])
+readiness = json.loads(os.environ["READINESS_JSON"])
+domain = json.loads(os.environ["DOMAIN_JSON"])
+coverage = json.loads(os.environ["COVERAGE_JSON"])
+
+require_strict = os.environ.get("REQUIRE_STRICT_QUALITY_READY", "0") == "1"
+fail_parity_hotspot = os.environ.get("FAIL_ON_PARITY_HOTSPOT", "0") == "1"
+min_species_matched = int(os.environ.get("MIN_SPECIES_MATCHED", "520"))
+expected_allow = int(os.environ.get("EXPECTED_ALLOWLIST_TOTAL", "526"))
+
+errors: list[str] = []
+warnings: list[str] = []
+
+for comp in ("processor", "video", "web"):
+    if str(status.get(comp) or "").lower() != "ok":
+        errors.append(f"status.{comp} != ok ({status.get(comp)!r})")
+if "opencv" not in [str(x) for x in (status.get("active_triggers") or [])]:
+    warnings.append(f"active_triggers={status.get('active_triggers')!r}")
+
+if not bool(readiness.get("ready")):
+    errors.append("readiness.ready=false")
+
+metrics = (domain.get("metrics") or {})
+strict_quality = (domain.get("strict_quality") or {})
+if require_strict and not bool(strict_quality.get("strict_quality_ready")):
+    errors.append("domain.strict_quality.strict_quality_ready=false")
+hotspots = int(metrics.get("parity_hotspot_count_24h") or 0)
+if hotspots > 0:
+    msg = f"parity_hotspot_count_24h={hotspots}"
+    (errors if fail_parity_hotspot else warnings).append(msg)
+
+cov = (coverage.get("coverage_now") or {})
+allow_total = int(cov.get("allowlist_total") or 0)
+species_matched = int(cov.get("species_matched") or 0)
+if allow_total < expected_allow:
+    errors.append(f"allowlist_total={allow_total} < {expected_allow}")
+if species_matched < min_species_matched:
+    errors.append(f"species_matched={species_matched} < {min_species_matched}")
+
+print("quality-gate: status processor/video/web =", status.get("processor"), status.get("video"), status.get("web"))
+print("quality-gate: readiness.ready =", readiness.get("ready"))
+print("quality-gate: strict_quality_ready =", strict_quality.get("strict_quality_ready"))
+print("quality-gate: parity_hotspot_count_24h =", hotspots)
+print("quality-gate: coverage allowlist_total/species_matched =", allow_total, species_matched)
+if warnings:
+    print("quality-gate: WARN")
+    for w in warnings:
+        print(" -", w)
+if errors:
+    print("quality-gate: FAIL")
+    for e in errors:
+        print(" -", e)
+    sys.exit(1)
+print("quality-gate: PASS")
+PY
+
+if [[ "${SKIP_TRIGGER_AUDIT}" != "1" ]] && [[ -n "${DEPLOY_HOST:-}" ]]; then
+  ssh_port="${DEPLOY_SSH_PORT:-22}"
+  remote_dir="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
+  audit_raw="$(ssh -p "${ssh_port}" "${DEPLOY_HOST}" \
+    "python3 ${remote_dir}/scripts/trigger_detector_audit.py --days ${AUDIT_DAYS} --cameras '${AUDIT_CAMERAS}' --db-path ${remote_dir}/app/data/db/birdlense.db")"
+  export AUDIT_JSON="$audit_raw"
+  python3 - <<'PY'
+import json
+import os
+import sys
+
+audit = json.loads(os.environ["AUDIT_JSON"])
+cameras = audit.get("cameras") or {}
+bad = []
+for cam, block in cameras.items():
+    dominant = str(block.get("dominant_miss_reason") or "none")
+    if dominant not in ("none", "trigger_or_schedule"):
+        bad.append(f"{cam}:{dominant}")
+print("quality-gate: trigger-audit cameras =", ",".join(sorted(cameras.keys())) if cameras else "none")
+if bad:
+    print("quality-gate: FAIL trigger-audit dominant_miss_reason:", ", ".join(bad))
+    sys.exit(1)
+print("quality-gate: trigger-audit PASS")
+PY
+fi
