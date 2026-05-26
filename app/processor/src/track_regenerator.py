@@ -14,7 +14,7 @@ from contextlib import contextmanager
 import cv2
 
 from shared.ctor_kwarg_guard import assert_ctor_kwargs
-from yolo_geometry import prepare_detector_frame
+from frame_geometry import prepare_detector_pipeline_frame
 
 logger = logging.getLogger(__name__)
 _TRACK_REGEN_INFER_LOCK = threading.RLock()
@@ -144,8 +144,7 @@ def process_video_for_tracks(
     progress_hook: вызывается из UI-воркера; meta: phase, yolo_frames_done, yolo_frames_total (оценка).
     """
     from app_config.app_config import app_config
-    from inference_lores import resolve_track_regen_lores_size
-    from pipeline_config import resolve_detector_letterbox_wh, resolve_stream_fps
+    from pipeline_config import resolve_stream_fps
     from species_mapping_config import build_species_mapping
     from species_normalizer import normalize
     from stream_probe import attach_stream_capabilities, probe_video_file, publish_probe_gauges
@@ -176,22 +175,7 @@ def process_video_for_tracks(
     if fps <= 0.5:
         raw_fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0)
         fps = raw_fps if raw_fps > 0.5 else resolve_stream_fps(None, app_config)
-    if lores_size is None:
-        lores_size = resolve_track_regen_lores_size(app_config)
-    if lores_size is None:
-        ret0, frame0 = cap.read()
-        if ret0 and frame0 is not None:
-            lores_size = resolve_detector_letterbox_wh(
-                app_config,
-                frame0.shape[:2],
-            )
-            if lores_size is None:
-                h0, w0 = int(frame0.shape[0]), int(frame0.shape[1])
-                lores_size = (max(320, w0), max(320, h0))
-            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-        elif probe_caps is not None:
-            lores_size = (probe_caps.width, probe_caps.height)
-    assert lores_size is not None
+    # Canvas geometry resolved per-frame via prepare_detector_pipeline_frame (mode=regen).
     frame_total_guess = cap.get(cv2.CAP_PROP_FRAME_COUNT)
     try:
         fcg = float(frame_total_guess)
@@ -219,10 +203,10 @@ def process_video_for_tracks(
                     if not ret:
                         break
                     frame_time_sec = frame_count / fps
-                    # Не stretch в lores_size: иначе на 16:9 клипах YOLO+ByteTrack почти пустой (см. yolo_geometry).
-                    frame_resized = prepare_detector_frame(
+                    frame_resized, _det_hw, _overlay_hw, _lb_meta = prepare_detector_pipeline_frame(
                         frame,
-                        (int(lores_size[0]), int(lores_size[1])),
+                        app_config,
+                        mode="regen",
                     )
                     if serialize_infer:
                         with _TRACK_REGEN_INFER_LOCK:

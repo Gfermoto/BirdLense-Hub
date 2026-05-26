@@ -115,6 +115,9 @@ processor:
   # Interpolation for OpenCV resize during letterbox preprocessing.
   # linear|cubic|area|nearest|lanczos
   letterbox_resize_interpolation: linear
+  # Debug: save overlay frames (green=raw, red=accepted) under data/diagnostics/bbox_parity/
+  bbox_parity_debug_enabled: false
+  bbox_parity_debug_max_frames: 20
   # 7 FPS low-res detect stream: мягкий enhance перед letterbox для мелких объектов.
   lowres_enhance_enabled: true
   # Применять enhance только к входу <= N px по большей стороне (чтобы не трогать HD).
@@ -699,6 +702,10 @@ detection:
   yolo_blind_min_duration_seconds: 30
   # Live System Health alert: Frigate-only extension without YOLO tracks (defaults to min_duration_seconds).
   yolo_blind_alert_seconds: 30
+  # Bbox geometry IoU gate (letterbox roundtrip); see docs/ru/detection-geometry.ru.md
+  bbox_iou_gate_enabled: true
+  bbox_iou_gate_min: 0.85
+  bbox_iou_gate_action: warn  # warn | reject
   yolo_blind_min_frames: 180
   # Учитывать просадку до 2 FPS: для blind-gate берётся min(min_frames, min_duration*min_effective_fps).
   yolo_blind_min_effective_fps: 2.0

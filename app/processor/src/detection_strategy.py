@@ -892,9 +892,14 @@ class TwoStageStrategy(DetectionStrategy):
             self._latest_cls_by_track = {}
         self._frame_index += 1
         inference_backend = str(getattr(self, "inference_backend", "torch") or "torch").strip().lower()
-        from yolo_geometry import prepare_yolo_detector_frame, resolve_binary_track_imgsz
+        from frame_geometry import prepare_yolo_detector_frame, resolve_binary_track_imgsz
 
-        det_frame, det_shape_hw, overlay_shape_hw = prepare_yolo_detector_frame(frame, runtime_cfg)
+        _geom_mode = "regen" if bool(getattr(self, "_for_track_regen", False)) else "live"
+        det_frame, det_shape_hw, overlay_shape_hw = prepare_yolo_detector_frame(
+            frame,
+            runtime_cfg,
+            mode=_geom_mode,
+        )
         self._detector_frame_shape = det_shape_hw
         self._overlay_frame_shape = overlay_shape_hw
         frame = det_frame
@@ -1144,7 +1149,32 @@ class TwoStageStrategy(DetectionStrategy):
         class_indexes = boxes.cls.int().cpu().tolist()
         confidences = boxes.conf.cpu().tolist()
         xyxyn = _tensor_to_numpy(boxes.xyxyn)
-        xyxy = _tensor_to_numpy(boxes.xyxy)
+        xyxy = np.reshape(_tensor_to_numpy(boxes.xyxy), (-1, 4))
+        overlay_hw = tuple(getattr(self, "_overlay_frame_shape", frame.shape[:2]))
+        det_hw = tuple(getattr(self, "_detector_frame_shape", frame.shape[:2]))
+        if len(xyxy) > 0:
+            from bbox_iou_gate import apply_bbox_geometry_iou_gate
+
+            xyxy, self._bbox_iou_gate_stats, keep_idx = apply_bbox_geometry_iou_gate(
+                xyxy,
+                detector_shape_hw=det_hw,
+                overlay_shape_hw=overlay_hw,
+                runtime_cfg=runtime_cfg,
+            )
+            if len(xyxy) == 0:
+                _record_detect_metrics(
+                    raw_boxes=len(boxes),
+                    boxes_with_track_id=0,
+                    accepted=0,
+                    predict_fallback=boxes_from_predict_fallback,
+                    quality_reject={"rejected_geometry_iou": len(boxes)},
+                )
+                return []
+            if len(keep_idx) != len(track_ids):
+                track_ids = [track_ids[i] for i in keep_idx]
+                class_indexes = [class_indexes[i] for i in keep_idx]
+                confidences = [confidences[i] for i in keep_idx]
+                xyxyn = xyxyn[keep_idx]
 
         h, w, _ = frame.shape
         _cls_coerced = coerce_bgr_frame(classification_frame, log_label="classification_frame")
@@ -1582,6 +1612,36 @@ class TwoStageStrategy(DetectionStrategy):
             sr_latency_ms=sr_latency_total_ms,
             quality_reject=_quality_reject_stats,
         )
+        try:
+            from bbox_parity_debug import maybe_save_parity_overlay
+            from frame_geometry import unpad_boxes
+
+            if cls_frame is not None and len(xyxyn) > 0:
+                raw_overlay: list[tuple[float, float, float, float]] = []
+                for bn in xyxyn:
+                    mapped = unpad_boxes(
+                        bn,
+                        source_shape_hw=overlay_hw,
+                        letterbox_shape_hw=det_hw,
+                    )
+                    if mapped is not None:
+                        raw_overlay.append(mapped)
+                accepted_overlay = [
+                    (float(d.bbox[0]), float(d.bbox[1]), float(d.bbox[2]), float(d.bbox[3]))
+                    for d in detection_results
+                    if d.bbox and len(d.bbox) == 4
+                ]
+                maybe_save_parity_overlay(
+                    cls_frame,
+                    raw_boxes_overlay_norm=raw_overlay,
+                    accepted_boxes_overlay_norm=accepted_overlay,
+                    runtime_cfg=runtime_cfg,
+                    session_id=str(getattr(self, "_parity_session_id", "") or "") or None,
+                    frame_index=int(getattr(self, "_frame_index", 0)),
+                    geometry_stats=getattr(self, "_bbox_iou_gate_stats", None),
+                )
+        except Exception:
+            logger.debug("bbox parity overlay save failed", exc_info=True)
         return detection_results
 
     def reset(self):

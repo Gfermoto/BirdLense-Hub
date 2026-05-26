@@ -3276,6 +3276,29 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: YOLO detector blind/healthy status
+  /debug/bbox-parity:
+    get:
+      description: Bbox parity debug sessions and geometry gate metrics (settings password).
+      parameters:
+        - in: query
+          name: session_id
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+      summary: Bbox parity debug metrics
   /system/fusion/eval:
     post:
       description: 'Admin: run eval job on traces.'
