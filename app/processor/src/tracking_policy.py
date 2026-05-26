@@ -10,6 +10,7 @@ from app_config.app_config import app_config
 from pipeline_policy import build_pipeline_policy_snapshot
 from tracker_low_fps import resolve_adaptive_tracker_path
 from tracker_paths import resolve_tracker_config_path
+from tracker_registry import resolve_tracker_preset
 
 _LOG = logging.getLogger(__name__)
 Mode = Literal["live", "regen"]
@@ -91,7 +92,7 @@ class UnifiedTrackingPolicy:
 
     def resolve_tracker_path(self, profile_tracker: str | None = None) -> str:
         """FPS buckets + adaptive MOG2 buffer (SOTA-10)."""
-        picked = resolve_tracker_config_path(profile_tracker or self.base_tracker)
+        picked = resolve_tracker_preset(profile_tracker or self.base_tracker)
         cfg = app_config.config or {}
         raw = cfg.get("processor.tracker_fps_profiles") or {}
         fps = self.effective_stream_fps()
@@ -104,12 +105,12 @@ class UnifiedTrackingPolicy:
             ):
                 name = str(raw.get(key) or "").strip()
                 if name and fps <= limit:
-                    picked = resolve_tracker_config_path(name)
+                    picked = resolve_tracker_preset(name)
                     break
             else:
                 gt = str(raw.get("gt_15") or "").strip()
                 if gt and fps > 15.0:
-                    picked = resolve_tracker_config_path(gt)
+                    picked = resolve_tracker_preset(gt)
         return resolve_adaptive_tracker_path(picked, fps)
 
     def geometry_mode_for_frame(self) -> Mode:
