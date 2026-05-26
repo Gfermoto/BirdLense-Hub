@@ -27,6 +27,9 @@ export const Settings: React.FC = () => {
   useDocumentTitle(t('nav.settings'));
   const queryClient = useQueryClient();
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [deprecatedKeysAlert, setDeprecatedKeysAlert] = useState<string[] | null>(
+    null,
+  );
   const [mode, setMode] = useState<PageMode>('simple');
   const [restartMessage, setRestartMessage] = useState<{
     type: 'success' | 'error';
@@ -44,7 +47,14 @@ export const Settings: React.FC = () => {
 
   const updateMutation = useMutation({
     mutationFn: updateSettings,
-    onSuccess: async () => {
+    onSuccess: async (data: Record<string, unknown> | undefined) => {
+      const warnings = data?._settings_warnings as
+        | { deprecated_keys_present?: string[] }
+        | undefined;
+      const deprecated = warnings?.deprecated_keys_present;
+      setDeprecatedKeysAlert(
+        Array.isArray(deprecated) && deprecated.length > 0 ? deprecated : null,
+      );
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
       setShowSuccessAlert(true);
       const result = await restartProcessor();
@@ -129,6 +139,19 @@ export const Settings: React.FC = () => {
               onClose={() => setRestartMessage(null)}
             >
               {restartMessage.apiMessage || t(restartMessage.textKey)}
+            </Alert>
+          )}
+          {deprecatedKeysAlert && deprecatedKeysAlert.length > 0 && (
+            <Alert
+              severity="warning"
+              variant="outlined"
+              sx={{ mb: 2 }}
+              onClose={() => setDeprecatedKeysAlert(null)}
+            >
+              {t('settings.deprecatedKeysAfterSave', {
+                count: deprecatedKeysAlert.length,
+                keys: deprecatedKeysAlert.join(', '),
+              })}
             </Alert>
           )}
           <SettingsForm

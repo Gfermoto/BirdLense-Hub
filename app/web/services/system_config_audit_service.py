@@ -20,20 +20,7 @@ DOCUMENTED_SCALES_MQTT_PREFIX = "birdlense/scale"
 
 _log = logging.getLogger(__name__)
 
-DEPRECATED_USER_CONFIG_KEYS = (
-    "gallery.enabled",
-    "gallery.min_confidence",
-    "gallery.only_manually_corrected",
-    "gallery.upload_url",
-    "general.heimdall_url",
-    "notifications.enabled",
-    "notifications.excluded_species",
-    "notifications.rate_limit_per_minute",
-    "processor.detection_device",
-    "processor.detection_frame_interval",
-    "weather.ha_token",
-    "weather.ha_url",
-)
+from app_config.deprecated_keys import DEPRECATED_USER_CONFIG_KEYS
 
 TERMINAL_CONFIG_MAP_KEYS = frozenset(
     {

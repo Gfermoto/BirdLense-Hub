@@ -73,6 +73,20 @@ def validate_settings_patch_updates(normalized_updates: dict) -> None:
         raise SettingsPatchValidationError(issues)
 
 
+def _load_raw_user_config_dict() -> dict:
+    import os
+    import yaml
+
+    path = app_config.user_config_file
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return yaml.safe_load(fh) or {}
+    except yaml.YAMLError:
+        return {}
+
+
 def apply_settings_patch_and_refresh_caches(normalized_updates: dict) -> dict:
     """Смержить в live config, save, сброс кэшей. Возвращает payload для ответа API."""
     validate_settings_patch_updates(normalized_updates)
@@ -90,7 +104,13 @@ def apply_settings_patch_and_refresh_caches(normalized_updates: dict) -> dict:
     cache_delete_prefix("ebird_region_comparison:")
     reset_redis_client()
 
-    return app_config.prepare_settings_for_api(app_config.config)
+    payload = app_config.prepare_settings_for_api(app_config.config)
+    from app_config.config_migrations import deprecated_keys_present
+
+    deprecated = deprecated_keys_present(_load_raw_user_config_dict())
+    if deprecated:
+        payload["_settings_warnings"] = {"deprecated_keys_present": deprecated}
+    return payload
 
 
 def apply_settings_patch_from_request(
