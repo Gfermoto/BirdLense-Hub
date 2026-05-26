@@ -273,8 +273,10 @@ def build_opencv_trigger_runtime_config(config_or_get: Any) -> dict[str, Any]:
     if detection_method not in {"frame_diff", "mog2", "hybrid"}:
         detection_method = "frame_diff"
 
-    diff_threshold = max(5, min(80, _as_int(_oc("diff_threshold", 18), 18)))
-    min_contour_area = max(50, min(20000, _as_int(_oc("min_contour_area", 320), 320)))
+    raw_diff_threshold = _as_int(_oc("diff_threshold", 18), 18)
+    raw_min_contour_area = _as_int(_oc("min_contour_area", 320), 320)
+    diff_threshold = max(5, min(80, raw_diff_threshold))
+    min_contour_area = max(50, min(20000, raw_min_contour_area))
 
     return {
         "enabled": _as_bool(_oc("enabled", True), True),
@@ -298,9 +300,13 @@ def build_opencv_trigger_runtime_config(config_or_get: Any) -> dict[str, Any]:
             0.0, min(1.0, _as_float(_oc("min_motion_pixel_fraction", 0.0008), 0.0008))
         ),
         "max_contour_area_frac": max(0.01, min(0.99, _as_float(_oc("max_contour_area_frac", 0.38), 0.38))),
-        "day_diff_threshold": max(5, min(80, _as_int(_oc("day_diff_threshold", diff_threshold), diff_threshold))),
+        "day_diff_threshold": max(
+            5,
+            min(80, _as_int(_oc("day_diff_threshold", raw_diff_threshold), raw_diff_threshold)),
+        ),
         "day_min_contour_area": max(
-            50, min(20000, _as_int(_oc("day_min_contour_area", min_contour_area), min_contour_area))
+            50,
+            min(20000, _as_int(_oc("day_min_contour_area", raw_min_contour_area), raw_min_contour_area)),
         ),
         "day_global_motion_mean_absdiff": max(
             0.1,
@@ -313,9 +319,13 @@ def build_opencv_trigger_runtime_config(config_or_get: Any) -> dict[str, Any]:
         "day_max_contour_area_frac": max(
             0.01, min(0.99, _as_float(_oc("day_max_contour_area_frac", 0.38), 0.38))
         ),
-        "night_diff_threshold": max(5, min(80, _as_int(_oc("night_diff_threshold", diff_threshold), diff_threshold))),
+        "night_diff_threshold": max(
+            5,
+            min(80, _as_int(_oc("night_diff_threshold", raw_diff_threshold), raw_diff_threshold)),
+        ),
         "night_min_contour_area": max(
-            50, min(20000, _as_int(_oc("night_min_contour_area", min_contour_area), min_contour_area))
+            50,
+            min(20000, _as_int(_oc("night_min_contour_area", raw_min_contour_area), raw_min_contour_area)),
         ),
         "night_global_motion_mean_absdiff": max(
             0.1,
@@ -336,7 +346,8 @@ def build_opencv_trigger_runtime_config(config_or_get: Any) -> dict[str, Any]:
             min(1.0, _as_float(_oc("mog2_min_motion_pixel_fraction", 0.0006), 0.0006)),
         ),
         "mog2_min_contour_area": max(
-            50, min(20000, _as_int(_oc("mog2_min_contour_area", min_contour_area), min_contour_area))
+            50,
+            min(20000, _as_int(_oc("mog2_min_contour_area", raw_min_contour_area), raw_min_contour_area)),
         ),
         "min_consecutive_motion_frames": max(
             1, min(30, _as_int(_oc("min_consecutive_motion_frames", 2), 2))

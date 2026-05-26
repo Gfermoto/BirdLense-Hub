@@ -358,6 +358,7 @@ class AppConfig:
             except yaml.YAMLError as e:
                 logger.error("Invalid YAML in %s: %s", self.user_config_file, e)
                 user_config = {}
+                user_yaml_ok = False
             if user_yaml_ok:
                 from app_config.config_migrations import run_user_config_migrations
 
