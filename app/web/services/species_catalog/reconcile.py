@@ -15,6 +15,10 @@ from services.species_catalog.allowlist import (
 )
 from services.species_data_quality_service import find_duplicate_name_groups
 from services.species_merge_service import merge_species_into
+from services.species_catalog.canon import (
+    is_hierarchy_taxon_label,
+    normalize_catalog_display_name,
+)
 from util import load_species_canonical_mapping
 
 
@@ -176,4 +180,92 @@ def reconcile_species_catalog(
     return report
 
 
-__all__ = ["reconcile_species_catalog"]
+def reconcile_catalog_display_names(
+    *,
+    dry_run: bool = True,
+    rename_limit: int = 5000,
+    app_config_get=None,
+) -> dict[str, Any]:
+    """Переименовать Species.name в канон eBird/Clements (без merge)."""
+    if app_config_get is None:
+        from app_config.app_config import app_config
+
+        app_config_get = app_config.get
+
+    mapping = load_species_canonical_mapping()
+    allow_keys = load_catalog_allowlist_norm_keys(app_config_get)
+    protected = {"Bird", "Birds", "Unknown", "Rodent", "Squirrel"}
+    report: dict[str, Any] = {
+        "dry_run": dry_run,
+        "renamed": 0,
+        "skipped_taxon_nodes": 0,
+        "skipped_collision": 0,
+        "errors": [],
+        "details": [],
+    }
+    cap = max(1, min(int(rename_limit or 5000), 20000))
+    renamed = 0
+    for sp in Species.query.order_by(Species.id.asc()).all():
+        if renamed >= cap:
+            break
+        old = str(sp.name or "").strip()
+        if not old or old in protected:
+            continue
+        if is_hierarchy_taxon_label(old, allowlist_norm_keys=allow_keys, mapping=mapping):
+            report["skipped_taxon_nodes"] += 1
+            continue
+        new_name = normalize_catalog_display_name(old, mapping)
+        if not new_name or new_name == old:
+            continue
+        existing = Species.query.filter_by(name=new_name).first()
+        if existing and int(existing.id) != int(sp.id):
+            report["skipped_collision"] += 1
+            report["details"].append(f"collision: {sp.id} {old!r} -> {new_name!r} (id={existing.id})")
+            continue
+        report["details"].append(f"rename: {sp.id} {old!r} -> {new_name!r}")
+        report["renamed"] += 1
+        renamed += 1
+        if not dry_run:
+            sp.name = new_name
+    if dry_run:
+        db.session.rollback()
+    else:
+        db.session.commit()
+    return report
+
+
+def deep_reconcile_species_catalog(
+    *,
+    dry_run: bool = True,
+    duplicate_group_limit: int = 500,
+    rename_limit: int = 5000,
+    app_config_get=None,
+) -> dict[str, Any]:
+    """Полный проход: дубликаты + канонизация имён."""
+    base = reconcile_species_catalog(
+        dry_run=dry_run,
+        merge_normalized_duplicate_names=True,
+        duplicate_group_limit=duplicate_group_limit,
+        app_config_get=app_config_get,
+    )
+    names = reconcile_catalog_display_names(
+        dry_run=dry_run,
+        rename_limit=rename_limit,
+        app_config_get=app_config_get,
+    )
+    from services.species_data_quality_service import build_catalog_polish_report
+
+    polish = build_catalog_polish_report(db.session)
+    return {
+        "dry_run": dry_run,
+        "duplicates": base,
+        "display_names": names,
+        "polish_after": polish,
+    }
+
+
+__all__ = [
+    "deep_reconcile_species_catalog",
+    "reconcile_catalog_display_names",
+    "reconcile_species_catalog",
+]

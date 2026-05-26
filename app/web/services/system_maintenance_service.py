@@ -296,3 +296,38 @@ def post_species_catalog_reconcile(payload: dict) -> tuple[dict, int]:
         db.session.rollback()
         _log.exception("Species catalog reconcile failed: %s", e)
         return {"error": str(e)}, 500
+
+
+def post_species_catalog_deep_reconcile(payload: dict) -> tuple[dict, int]:
+    from services.species_catalog_allowlist_service import clear_allowlist_cache
+    from services.species_catalog_reconcile_service import deep_reconcile_species_catalog
+    from util import bust_feeder_species_filter_cache
+
+    try:
+        dry_run = bool(payload.get("dry_run", True))
+        dup_limit, err = coerce_duplicate_group_limit(
+            payload.get("duplicate_group_limit", 500),
+        )
+        if err:
+            return {"error": err}, 400
+        rename_limit = payload.get("rename_limit", 5000)
+        try:
+            rename_limit = int(rename_limit)
+        except (TypeError, ValueError):
+            return {"error": "rename_limit must be int"}, 400
+
+        body = deep_reconcile_species_catalog(
+            dry_run=dry_run,
+            duplicate_group_limit=dup_limit,
+            rename_limit=rename_limit,
+            app_config_get=app_config.get,
+        )
+        if not dry_run:
+            clear_allowlist_cache()
+            bust_response_caches()
+            bust_feeder_species_filter_cache()
+        return body, 200
+    except Exception as e:
+        db.session.rollback()
+        _log.exception("Species catalog deep reconcile failed: %s", e)
+        return {"error": str(e)}, 500

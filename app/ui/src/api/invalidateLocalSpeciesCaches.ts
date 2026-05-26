@@ -12,6 +12,7 @@ const AFTER_LOCAL_SPECIES_EDIT_KEYS = [
   queryKeys.calendar.migration,
   queryKeys.birdDirectory.all,
   queryKeys.species.directory,
+  queryKeys.speciesDirectory.list,
   queryKeys.speciesSummary.all,
 ] as const;
 

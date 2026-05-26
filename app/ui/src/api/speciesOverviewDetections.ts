@@ -4,7 +4,9 @@ import type { OverviewData, Species, SpeciesSummary } from '../types';
 import { BASE_API_URL, csrfFetch } from './client';
 
 export const fetchBirdDirectory = async (): Promise<Species[]> => {
-  const response = await axios.get(`${BASE_API_URL}/species`);
+  const response = await axios.get(`${BASE_API_URL}/species`, {
+    params: { exclude_suspects: 1 },
+  });
   return response.data;
 };
 

@@ -6,6 +6,8 @@ TIMEOUT_SEC="${TIMEOUT_SEC:-20}"
 REQUIRE_STRICT_QUALITY_READY="${REQUIRE_STRICT_QUALITY_READY:-0}"
 MIN_SPECIES_MATCHED="${MIN_SPECIES_MATCHED:-520}"
 EXPECTED_ALLOWLIST_TOTAL="${EXPECTED_ALLOWLIST_TOTAL:-526}"
+REQUIRE_COMPLETE_CARDS="${REQUIRE_COMPLETE_CARDS:-0}"
+MAX_ALL_CAPS_MATCHED="${MAX_ALL_CAPS_MATCHED:-0}"
 SKIP_TRIGGER_AUDIT="${SKIP_TRIGGER_AUDIT:-0}"
 AUDIT_DAYS="${AUDIT_DAYS:-1}"
 AUDIT_CAMERAS="${AUDIT_CAMERAS:-BirdBox,Forest}"
@@ -69,7 +71,7 @@ export READINESS_JSON="$readiness_json"
 export DOMAIN_JSON="$domain_json"
 export COVERAGE_JSON="$coverage_json"
 export REQUIRE_STRICT_QUALITY_READY FAIL_ON_PARITY_HOTSPOT
-export MIN_SPECIES_MATCHED EXPECTED_ALLOWLIST_TOTAL
+export MIN_SPECIES_MATCHED EXPECTED_ALLOWLIST_TOTAL REQUIRE_COMPLETE_CARDS MAX_ALL_CAPS_MATCHED
 
 python3 - <<'PY'
 import json
@@ -85,6 +87,8 @@ require_strict = os.environ.get("REQUIRE_STRICT_QUALITY_READY", "0") == "1"
 fail_parity_hotspot = os.environ.get("FAIL_ON_PARITY_HOTSPOT", "0") == "1"
 min_species_matched = int(os.environ.get("MIN_SPECIES_MATCHED", "520"))
 expected_allow = int(os.environ.get("EXPECTED_ALLOWLIST_TOTAL", "526"))
+require_complete = os.environ.get("REQUIRE_COMPLETE_CARDS", "0") == "1"
+max_all_caps = int(os.environ.get("MAX_ALL_CAPS_MATCHED", "0"))
 
 errors: list[str] = []
 warnings: list[str] = []
@@ -114,12 +118,30 @@ if allow_total < expected_allow:
     errors.append(f"allowlist_total={allow_total} < {expected_allow}")
 if species_matched < min_species_matched:
     errors.append(f"species_matched={species_matched} < {min_species_matched}")
+complete_cards = int(cov.get("complete_cards") or 0)
+missing_image = int(cov.get("missing_image_lines") or 0)
+missing_desc = int(cov.get("missing_description_lines") or 0)
+all_caps = int(cov.get("all_caps_matched_species") or 0)
+if require_complete and complete_cards < allow_total:
+    errors.append(
+        f"complete_cards={complete_cards} < allowlist_total={allow_total} "
+        f"(missing_image_lines={missing_image}, missing_description_lines={missing_desc})"
+    )
+if all_caps > max_all_caps:
+    errors.append(f"all_caps_matched_species={all_caps} > {max_all_caps}")
 
 print("quality-gate: status processor/video/web =", status.get("processor"), status.get("video"), status.get("web"))
 print("quality-gate: readiness.ready =", readiness.get("ready"))
 print("quality-gate: strict_quality_ready =", strict_quality.get("strict_quality_ready"))
 print("quality-gate: parity_hotspot_count_24h =", hotspots)
 print("quality-gate: coverage allowlist_total/species_matched =", allow_total, species_matched)
+print(
+    "quality-gate: complete_cards/missing_image/missing_desc/all_caps =",
+    complete_cards,
+    missing_image,
+    missing_desc,
+    all_caps,
+)
 if warnings:
     print("quality-gate: WARN")
     for w in warnings:

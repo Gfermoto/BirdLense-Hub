@@ -14,9 +14,14 @@ from sqlalchemy import func
 
 from app_config.app_config import app_config
 from models import Species, SpeciesVisit
-from services.species_catalog_allowlist_service import (
+from services.species_catalog.allowlist import (
     load_catalog_allowlist_norm_keys,
     species_matches_allowlist,
+)
+from services.species_catalog.canon import (
+    is_all_caps_display_name,
+    is_hierarchy_taxon_label,
+    normalize_catalog_display_name,
 )
 from species_constants import GENERIC_BIRD_SPECIES
 from util import load_species_canonical_mapping
@@ -107,9 +112,8 @@ def species_ids_to_exclude_from_bird_catalog(session) -> frozenset[int]:
     filter_off_allowlist = bool(
         app_config.get("species.catalog_filter_off_allowlist", False)
     )
-    allow = load_catalog_allowlist_norm_keys(app_config.get) if filter_off_allowlist else None
-
     mapping = load_species_canonical_mapping()
+    allow_keys = load_catalog_allowlist_norm_keys(app_config.get)
     service_names = {
         GENERIC_BIRD_SPECIES.strip().lower(),
         "unknown",
@@ -132,11 +136,56 @@ def species_ids_to_exclude_from_bird_catalog(session) -> frozenset[int]:
         if clean_name.lower() in service_names:
             excluded.add(int(sid))
             continue
+        if is_hierarchy_taxon_label(
+            clean_name,
+            allowlist_norm_keys=allow_keys,
+            mapping=mapping,
+        ):
+            excluded.add(int(sid))
+            continue
         if filter_off_allowlist:
             if int(visit_count or 0) <= 0:
                 continue
-            if not allow:
+            if not allow_keys:
                 continue
-            if not species_matches_allowlist(clean_name, allow, mapping):
+            if not species_matches_allowlist(clean_name, allow_keys, mapping):
                 excluded.add(int(sid))
     return frozenset(excluded)
+
+
+def build_catalog_polish_report(session, *, limit: int = 2000) -> dict[str, Any]:
+    """Сводка для глубокой полировки каталога: CAPS, таксон-узлы, неполные карточки."""
+    mapping = load_species_canonical_mapping()
+    allow_keys = load_catalog_allowlist_norm_keys(app_config.get)
+    rows = session.query(Species.id, Species.name, Species.image_url, Species.description).all()
+    caps_ids: list[int] = []
+    taxon_ids: list[int] = []
+    rename_candidates: list[dict[str, str]] = []
+    missing_image = 0
+    missing_description = 0
+    for sid, name, image_url, description in rows:
+        clean = str(name or "").strip()
+        if not clean:
+            continue
+        if is_all_caps_display_name(clean):
+            caps_ids.append(int(sid))
+        if is_hierarchy_taxon_label(clean, allowlist_norm_keys=allow_keys, mapping=mapping):
+            taxon_ids.append(int(sid))
+        normalized = normalize_catalog_display_name(clean, mapping)
+        if normalized and normalized != clean:
+            rename_candidates.append({"id": str(sid), "from": clean, "to": normalized})
+        if not str(image_url or "").strip():
+            missing_image += 1
+        if not str(description or "").strip():
+            missing_description += 1
+    return {
+        "species_total": len(rows),
+        "all_caps_count": len(caps_ids),
+        "taxon_node_count": len(taxon_ids),
+        "rename_candidate_count": len(rename_candidates),
+        "missing_image_count": missing_image,
+        "missing_description_count": missing_description,
+        "rename_candidates_sample": rename_candidates[: min(limit, 40)],
+        "all_caps_ids_sample": caps_ids[:20],
+        "taxon_node_ids_sample": taxon_ids[:20],
+    }

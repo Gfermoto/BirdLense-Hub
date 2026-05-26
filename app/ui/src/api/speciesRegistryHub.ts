@@ -72,6 +72,12 @@ export interface CatalogCardsCoverageSnapshot {
   with_description: number;
   complete_cards: number;
   completion_percent: number;
+  missing_image_lines?: number;
+  missing_description_lines?: number;
+  all_caps_matched_species?: number;
+  audio_probed_sample?: number;
+  audio_with_source_sample?: number;
+  audio_coverage_percent_sample?: number | null;
 }
 
 export interface CatalogRepairStatus {
