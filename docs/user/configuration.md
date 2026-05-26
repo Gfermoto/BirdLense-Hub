@@ -188,7 +188,7 @@ The System page also lists these endpoints under **Notification observability** 
 | `detection_strategy` | Production runtime uses `two_stage` only. Other values (including old `single_stage`) are ignored with a warning; remove them from `user_config.yaml` before CV / ML rollout work. |
 | `models.binary` | Binary detector path (`.pt`) |
 | `models.classifier` | Classifier path (`.pt`) |
-| *(custom weights)* | **System → Processor weights** ([#276](https://github.com/Gfermoto/BirdLense-Hub/issues/276)): upload writes `binary.pt` / `classifier.pt` / `class_names.txt` under **`DATA_DIR/custom_weights/`** and sets **absolute** paths in `user_config` (relative paths here resolve from `app/processor`, not from `DATA_DIR`). After upload/reset the hub sets the processor restart flag. |
+| *(custom weights)* | Runtime upload/reset API is removed. Model changes are done only through deploy artifacts (`models/**`) and config (`processor.models.*`). |
 | `file_max_record_floor_seconds` | **`video.source=file` only:** minimum wall-clock segment (seconds) before finalize can split a long clip; default **86400**. See **Video** behaviour row. |
 | `keep_recording_when_no_detections` | **`video.source=file` only** (default **false**). If **true**, keep the finalized session (valid mp4) when there were **zero** stored detections — useful for offline pipelines. For **`go2rtc` / live** this key has **no effect**; empty sessions are still deleted. |
 | `track_regen_parallel_auto_with_manual` | Advanced track-regeneration parallelism when mixing auto and manual scope; ops tuning, YAML-only (see System → track regen docs in UI). |

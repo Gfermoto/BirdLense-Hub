@@ -52,6 +52,32 @@ IGNORED_CONFIG_AUDIT_KEYS = frozenset(
     }
 )
 
+# Ветки с динамическими leaf-ключами: audit не должен помечать их как unknown.
+IGNORED_CONFIG_AUDIT_PREFIXES = (
+    "processor.camera_overrides.",
+)
+
+
+def _is_known_dynamic_config_key(path: str, *, default_keys: set[str]) -> bool:
+    key = str(path or "").strip()
+    if not key:
+        return False
+    if any(key.startswith(prefix) for prefix in IGNORED_CONFIG_AUDIT_PREFIXES):
+        suffix = key.split(".", 3)[-1]
+        if not suffix:
+            return False
+        return f"processor.{suffix}" in default_keys
+    if key.startswith("processor.adaptive_profiles.") and ".overrides." in key:
+        suffix = key.split(".overrides.", 1)[-1].strip()
+        if not suffix:
+            return False
+        return f"processor.{suffix}" in default_keys
+    if key.startswith("processor.adaptive_profiles."):
+        # profile container itself is dynamic.
+        return True
+    return False
+
+
 # Совпадает с `triggers.opencv.*` в `default_config.yaml`.
 RECOMMENDED_OPENCV_DIFF_THRESHOLD = 18
 RECOMMENDED_OPENCV_MIN_CONTOUR_AREA = 320
@@ -504,7 +530,10 @@ def build_system_config_audit_payload(
         [
             k
             for k in user_keys
-            if k not in default_keys and k not in IGNORED_CONFIG_AUDIT_KEYS and not k.startswith("camera.")
+            if k not in default_keys
+            and k not in IGNORED_CONFIG_AUDIT_KEYS
+            and not k.startswith("camera.")
+            and not _is_known_dynamic_config_key(k, default_keys=default_keys)
         ]
     )
     deprecated_present = sorted([k for k in DEPRECATED_USER_CONFIG_KEYS if k in user_keys])
@@ -523,7 +552,12 @@ def build_system_config_audit_payload(
     )
     recall_tuning, recall_hints, recall_blocking = _recall_audit(app_config_get)
     scales_tuning, scales_warnings = _scales_mqtt_audit(app_config_get, user_cfg)
-    combined_warnings = [*recall_blocking, *scales_warnings]
+    scales_blocking = [
+        w
+        for w in scales_warnings
+        if "mqtt.broker is empty" in w or "no weight MQTT topic" in w
+    ]
+    combined_warnings = [*recall_blocking, *scales_blocking]
     processor_runtime_hints = _processor_runtime_hints(app_config_get)
     preflight = _preflight_config_safety(app_config_get)
     runtime_parity = _runtime_parity_snapshot(app_config_get)
@@ -549,6 +583,7 @@ def build_system_config_audit_payload(
         "processor_runtime_hints": processor_runtime_hints,
         "scales_mqtt": scales_tuning,
         "scales_warnings": scales_warnings,
+        "scales_blocking_warnings": scales_blocking,
         "config_warnings": combined_warnings,
         "config_presets": _config_presets(),
         "preflight": preflight,

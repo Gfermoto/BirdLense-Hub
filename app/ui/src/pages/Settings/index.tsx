@@ -79,9 +79,8 @@ export const Settings: React.FC = () => {
 
   useEffect(() => {
     const h = location.hash.replace(/^#/, '');
-    if (h !== 'processor-weights' && h !== 'processor-models') return;
-    const id =
-      h === 'processor-models' ? 'processor-models' : 'processor-weights';
+    if (h !== 'processor-models') return;
+    const id = 'processor-models';
     requestAnimationFrame(() => {
       document
         .getElementById(id)

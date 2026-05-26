@@ -26,6 +26,30 @@ def test_normalize_classifier_label_matches_processor_style():
     assert normalize_classifier_label("Blue_OR_Jay") == "Blue/Jay"
 
 
+def test_resolve_classifier_weights_prefers_efficientnet_engine(monkeypatch):
+    from services.species_dataset_alignment_service import resolve_classifier_weights_path
+
+    cfg = {
+        "processor.classifier_engine": "efficientnet_b2",
+        "processor.models.classifier_efficientnet_b2": "models/classification/weights/custom_b2",
+    }
+    abs_path, log_path = resolve_classifier_weights_path(lambda key, default=None: cfg.get(key, default))
+    assert log_path == "models/classification/weights/custom_b2"
+    assert abs_path.endswith("/app/processor/models/classification/weights/custom_b2")
+
+
+def test_load_classifier_labels_reads_class_labels_txt(tmp_path):
+    from services.species_dataset_alignment_service import load_classifier_labels_or_error
+
+    model_dir = tmp_path / "birds_classifier_efficientnetb2"
+    model_dir.mkdir(parents=True)
+    (model_dir / "class_labels.txt").write_text("Bird A\nBird B\n", encoding="utf-8")
+
+    labels, err = load_classifier_labels_or_error(str(model_dir))
+    assert err is None
+    assert labels == ["Bird A", "Bird B"]
+
+
 def test_alignment_when_weights_unreadable(app, monkeypatch):
     import services.species_dataset_alignment_service as mod
 

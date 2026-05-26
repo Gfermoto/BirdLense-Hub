@@ -103,10 +103,11 @@ def build_data_quality_report(
 
 
 def species_ids_to_exclude_from_bird_catalog(session) -> frozenset[int]:
-    """Return active off-allowlist species IDs for optional catalog filtering."""
-    allow = load_catalog_allowlist_norm_keys(app_config.get)
-    if not allow:
-        return frozenset()
+    """Return species IDs to hide in bird catalogs (service labels + optional off-allowlist)."""
+    filter_off_allowlist = bool(
+        app_config.get("species.catalog_filter_off_allowlist", False)
+    )
+    allow = load_catalog_allowlist_norm_keys(app_config.get) if filter_off_allowlist else None
 
     mapping = load_species_canonical_mapping()
     service_names = {
@@ -131,8 +132,11 @@ def species_ids_to_exclude_from_bird_catalog(session) -> frozenset[int]:
         if clean_name.lower() in service_names:
             excluded.add(int(sid))
             continue
-        if int(visit_count or 0) <= 0:
-            continue
-        if not species_matches_allowlist(clean_name, allow, mapping):
-            excluded.add(int(sid))
+        if filter_off_allowlist:
+            if int(visit_count or 0) <= 0:
+                continue
+            if not allow:
+                continue
+            if not species_matches_allowlist(clean_name, allow, mapping):
+                excluded.add(int(sid))
     return frozenset(excluded)

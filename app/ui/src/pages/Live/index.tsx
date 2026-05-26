@@ -236,7 +236,7 @@ export const LivePage = () => {
     queryFn: () =>
       fetchLiveRuntimeOverlays({ cameraId: fullscreenCamId || '' }),
     enabled: Boolean(fullscreenCamId),
-    refetchInterval: fullscreenCamId ? 2000 : false,
+    refetchInterval: fullscreenCamId ? 120 : false,
   });
 
   const getCameraLayerPolygons = (cameraId: string | null, layer: EditorLayer): Polygon[] => {

@@ -299,18 +299,10 @@ class OpenCVMotionDetector:
         if frame is None:
             self._publish_status_overlay("no_frame")
             return
-        analyze = self._should_analyze()
-        gray = self._gray_from_frame(frame, analyze=analyze)
+        gray = self._gray_from_frame(frame, analyze=True)
         if self._prev_gray is None:
             self._prev_gray = gray
             self._publish_status_overlay("buffering_first_frame")
-            return
-        if not analyze:
-            self._prev_gray = gray
-            if self._last_analysis is not None:
-                self._publish_live_overlay(self._last_analysis, profile=self._last_profile)
-            else:
-                self._publish_status_overlay("skipped_frame")
             return
         self._evaluate_motion(self._prev_gray, gray)
         self._prev_gray = gray

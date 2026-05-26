@@ -1,4 +1,6 @@
 general:
+  # UI branding title (legacy key from older installs; optional).
+  app_name: "BirdLense"
   # Поток видео в UI (/api/ui/videos/:id/stream): false — гости могут смотреть (см. ACCESS_CONTROL Viewer).
   # true — только Contributor/Admin (старое поведение).
   require_auth_for_video_stream: false
@@ -21,6 +23,9 @@ general:
 # Важно: user_config.yaml мержится с дефолтами рекурсивно (merge_dicts): заданные ключи
 # переопределяют вложенные значения на всех уровнях; отсутствующие ключи берутся из default.
 processor:
+  # Legacy compatibility toggles (kept for older user_config keys; runtime may ignore).
+  adaptive_preprocess_enabled: false
+  binary_rescue_enabled: false
   # ByteTrack YAML: имя из Ultralytics («bytetrack.yaml») или путь models/tracker/… под app/processor
   tracker: "models/tracker/bytetrack_birdlense_lowfps.yaml"
   # Только ключ ``night`` читается runtime (resolve_runtime_profile). Днём — ``processor.tracker``.
@@ -55,7 +60,7 @@ processor:
   # Помогает не обрывать ролик, пока объект ещё реально в кадре.
   frigate_activity_hold_seconds: 6
   # Мин. длительность трека ByteTrack (сек). Truth serum: 1s — отсечь мгновенные FP на текстуре корма.
-  min_track_duration: 1.0
+  min_track_duration: 0.6
   # Только офлайн-перегенерация треков: ниже live, иначе короткие визиты и рваные track_id → rejected_short_track и пустые overlays в UI.
   track_regen_min_track_duration: 0.05
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
@@ -334,11 +339,11 @@ processor:
   # Универсальный механизм для любых камер/доменов без ручных per-camera правил.
   auto_unstick_enabled: true
   # ~4 с при detect ~7 FPS (60 кадров ≈ 8.5 с — поздно для коротких визитов).
-  auto_unstick_no_track_frames: 28
-  auto_unstick_min_confidence_binary: 0.05
-  auto_unstick_min_confidence_binary_bird: 0.015
-  auto_unstick_min_box_size_px: 10
-  auto_unstick_min_center_dist: 0.0
+  auto_unstick_no_track_frames: 40
+  auto_unstick_min_confidence_binary: 0.08
+  auto_unstick_min_confidence_binary_bird: 0.03
+  auto_unstick_min_box_size_px: 14
+  auto_unstick_min_center_dist: 0.01
   auto_unstick_tracker: "bytetrack_birdlense_unstick.yaml"
   auto_unstick_tracker_night: "bytetrack_birdlense_night_unstick.yaml"
   # Guardrail against detector collapse into near full-frame boxes.
@@ -935,6 +940,8 @@ integrations:
     esphome_weight_sensor_id: "weight_live_internal"
     esphome_bird_present_sensor_id: "bird_present"
     esphome_tare_button_id: "manual_tare"
+    # Legacy HA sensor id key used by feeder_scale fallback path.
+    homeassistant_entity_id: ""
     unit: g
     # Журнал MQTT-показаний (JSONL) и оценка дельты за интервал записи (#167).
     # Работает только для mqtt, не для прямого ESPHome API.
@@ -956,6 +963,13 @@ performance:
 # UI: порог confidence для списка «Неизвестные» (детекции ниже — для ручной проверки)
 ui:
   unknown_confidence_threshold: 0.48  # чуть строже отбор в «Неизвестные» при новых порогах детектора
+  # Live overlay freshness and near-realtime tick.
+  live_detector_overlay_ttl_seconds: 1.0
+  live_overlay_tick_seconds: 0.12
+  live_overlay_track_ttl_seconds: 0.6
+  # Optional safety fallback for temporary overlay gaps (strict TTL).
+  live_overlay_trace_fallback_enabled: false
+  live_overlay_trace_fallback_ttl_seconds: 1.5
 
 # MCP (Model Context Protocol) — внешние ИИ-ассистенты / MCP-хосты вызывают инструменты хаба по токену (см. docs/MCP_SETUP)
 mcp:
@@ -1000,12 +1014,17 @@ storage:
 
 # Каталог видов: EfficientNetB2 (525 птиц) + Rodent (детектор Trapper, без классификатора).
 species:
+  # true: follow active classifier engine path (EfficientNetB2 => class_labels.txt).
+  catalog_allowlist_follow_classifier_engine: true
   catalog_allowlist_file: "models/classification/weights/birds_classifier_efficientnetb2/class_labels.txt"
   # Вне class_labels.txt; materialize + strict ingest (белка → Rodent).
   catalog_allowlist_extra:
     - Rodent
   # true: детекции вне allowlist → Unknown, новые строки каталога не создаются.
   catalog_strict_ingest: true
+  # Optional UI/catalog hygiene filter: hide observed species outside allowlist.
+  # Keep false to avoid dropping valid species due naming mismatches.
+  catalog_filter_off_allowlist: false
   tuning_target_species_ids: []
 
 # R&D / feature flags

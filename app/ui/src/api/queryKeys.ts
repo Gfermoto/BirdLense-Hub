@@ -59,7 +59,6 @@ export const queryKeys = {
     speciesDataQuality: ['species-data-quality'] as const,
     catalogCoverageMetrics: ['catalog-coverage-metrics'] as const,
     classifierDatasetAlignment: ['classifier-dataset-alignment'] as const,
-    processorWeightsStatus: ['processor-weights-status'] as const,
     mlRuntimeStatus: ['ml-runtime-status'] as const,
     feedbackLoopStatus: ['feedback-loop-status'] as const,
     fusionExportStatus: ['fusion-export-status'] as const,

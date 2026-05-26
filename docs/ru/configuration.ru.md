@@ -188,7 +188,7 @@
 | `detection_strategy` | В production используется только `two_stage`; другие значения (включая старый `single_stage`) игнорируются с warning. Перед CV / ML rollout удалите их из `user_config.yaml`. |
 | `models.binary` | Путь к бинарному детектору (.pt) |
 | `models.classifier` | Путь к классификатору (.pt) |
-| *(свои веса)* | **Система → Веса процессора** ([#276](https://github.com/Gfermoto/BirdLense-Hub/issues/276)): загрузка кладёт `binary.pt` / `classifier.pt` / `class_names.txt` в **`DATA_DIR/custom_weights/`** и прописывает в `user_config` **абсолютные** пути (относительные пути здесь резолвятся от `app/processor`, не от `DATA_DIR`). После загрузки/сброса выставляется флаг перезапуска процессора. |
+| *(свои веса)* | Runtime API загрузки/сброса удалён. Смена моделей — только через артефакты деплоя (`models/**`) и конфиг (`processor.models.*`). |
 | `file_max_record_floor_seconds` | Только **`video.source=file`:** минимальный отрезок по «настенным часам» (сек) до возможного split длинного клипа; по умолчанию **86400**. См. *(поведение)* в **Video**. |
 | `keep_recording_when_no_detections` | Только **`video.source=file`** (по умолчанию **false**). Если **true** — оставлять финализированную сессию (валидный mp4) при **нуле** сохранённых детекций (офлайн-пайплайны). Для **`go2rtc` / live** ключ **не действует**; пустые сессии удаляются. |
 | `track_regen_parallel_auto_with_manual` | Продвинутая параллельность перегенерации треков (auto + manual scope); тюнинг для ops, только YAML (см. System → track regen в UI). |
