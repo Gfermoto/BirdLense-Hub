@@ -40,7 +40,8 @@ docker_benchmark_setup() {
   docker cp "$REPO_ROOT/scripts/benchmark_sota.py" "$BIRDLENSE_CONTAINER:/tmp/benchmark_sota.py"
   docker cp "$REPO_ROOT/scripts/benchmark_trackers.py" "$BIRDLENSE_CONTAINER:/tmp/benchmark_trackers.py"
   docker cp "$REPO_ROOT/scripts/fetch_golden_clips.py" "$BIRDLENSE_CONTAINER:/tmp/fetch_golden_clips.py"
-  docker cp "$REPO_ROOT/benchmarks" "$BIRDLENSE_CONTAINER:/tmp/benchmarks"
+  docker exec "$BIRDLENSE_CONTAINER" mkdir -p /benchmarks
+  docker cp "$REPO_ROOT/benchmarks/." "$BIRDLENSE_CONTAINER:/benchmarks/"
 }
 
 echo "== BirdLense VPS SOTA validation =="
@@ -61,8 +62,8 @@ docker exec \
   -e SOTA_BENCHMARK_MAX_RUNTIME_SEC="$MAX_RUNTIME" \
   "$BIRDLENSE_CONTAINER" \
   python /tmp/benchmark_sota.py \
-    --manifest /tmp/benchmarks/golden_clips.json \
-    --baseline /tmp/benchmarks/golden_baseline.json \
+    --manifest /benchmarks/golden_clips.json \
+    --baseline /benchmarks/golden_baseline.json \
     --db /app/data/db/birdlense.db \
     --clip-1816 "$CLIP_1816_C" \
     --clip-1819 "$CLIP_1819_C" \
