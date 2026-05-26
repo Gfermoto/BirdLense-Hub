@@ -12,6 +12,43 @@ logger = logging.getLogger(__name__)
 TRIGGER_SOURCE_MQTT = "mqtt"
 TRIGGER_SOURCE_ESPHOME = "esphome"
 
+# Keep in sync with ``default_config.yaml`` → ``triggers.opencv`` (fallback when key absent).
+_OPENCV_TRIGGER_DEFAULTS: dict[str, Any] = {
+    "enabled": True,
+    "check_every_n_frames": 1,
+    "check_interval_seconds": 0.12,
+    "motion_max_side_px": 512,
+    "detection_method": "frame_diff",
+    "suppress_warmup_frames": 45,
+    "auto_profile_enabled": True,
+    "auto_profile_night_luma_threshold": 58.0,
+    "diff_threshold": 20,
+    "day_diff_threshold": 20,
+    "night_diff_threshold": 16,
+    "min_contour_area": 360,
+    "day_min_contour_area": 320,
+    "night_min_contour_area": 220,
+    "smart_trigger_enabled": True,
+    "global_motion_mean_absdiff": 2.5,
+    "day_global_motion_mean_absdiff": 2.5,
+    "night_global_motion_mean_absdiff": 2.2,
+    "min_motion_pixel_fraction": 0.0008,
+    "day_min_motion_pixel_fraction": 0.0008,
+    "night_min_motion_pixel_fraction": 0.0006,
+    "max_contour_area_frac": 0.38,
+    "day_max_contour_area_frac": 0.38,
+    "night_max_contour_area_frac": 0.45,
+    "mog2_history": 300,
+    "mog2_var_threshold": 24.0,
+    "mog2_detect_shadows": False,
+    "mog2_min_motion_pixel_fraction": 0.0006,
+    "mog2_min_contour_area": 220,
+    "min_consecutive_motion_frames": 2,
+    "scene_change_motion_fraction": 0.8,
+    "improve_contrast": False,
+    "morphology_open_iterations": 1,
+}
+
 
 def _get_from_config(config_or_get: Any, path: str, default: Any = None) -> Any:
     if callable(config_or_get):
@@ -201,14 +238,28 @@ def build_motion_settings_mirror_for_api(cfg: dict[str, Any]) -> dict[str, Any]:
             5,
             min(
                 80,
-                _as_int(_get_from_config(cfg, "triggers.opencv.diff_threshold", 18), 18),
+                _as_int(
+                    _get_from_config(
+                        cfg,
+                        "triggers.opencv.diff_threshold",
+                        _OPENCV_TRIGGER_DEFAULTS["diff_threshold"],
+                    ),
+                    _OPENCV_TRIGGER_DEFAULTS["diff_threshold"],
+                ),
             ),
         ),
         "opencv_min_contour_area": max(
             50,
             min(
                 20000,
-                _as_int(_get_from_config(cfg, "triggers.opencv.min_contour_area", 320), 320),
+                _as_int(
+                    _get_from_config(
+                        cfg,
+                        "triggers.opencv.min_contour_area",
+                        _OPENCV_TRIGGER_DEFAULTS["min_contour_area"],
+                    ),
+                    _OPENCV_TRIGGER_DEFAULTS["min_contour_area"],
+                ),
             ),
         ),
         "frigate_camera_filter": [str(x) for x in cam_f if str(x).strip()],
@@ -266,97 +317,289 @@ def get_birdnet_topic(config_or_get: Any) -> str:
 def build_opencv_trigger_runtime_config(config_or_get: Any) -> dict[str, Any]:
     """Полный ``triggers.opencv`` для процессора (не только 4 legacy-ключа UI)."""
 
-    def _oc(path: str, default: Any) -> Any:
-        return _get_from_config(config_or_get, f"triggers.opencv.{path}", default)
+    def _oc(path: str) -> Any:
+        fallback = _OPENCV_TRIGGER_DEFAULTS.get(path)
+        return _get_from_config(config_or_get, f"triggers.opencv.{path}", fallback)
 
-    detection_method = str(_oc("detection_method", "frame_diff") or "frame_diff").strip().lower()
+    def _oc_optional(path: str) -> Any:
+        missing = object()
+        val = _get_from_config(config_or_get, f"triggers.opencv.{path}", missing)
+        return None if val is missing else val
+
+    def _oc_int_inherit(
+        path: str,
+        parent_raw: int,
+        *,
+        yaml_default_key: str,
+        parent_path: str,
+    ) -> int:
+        val = _oc_optional(path)
+        if val is not None:
+            return _as_int(val, int(_OPENCV_TRIGGER_DEFAULTS[yaml_default_key]))
+        if _oc_optional(parent_path) is None:
+            return int(_OPENCV_TRIGGER_DEFAULTS[yaml_default_key])
+        return int(parent_raw)
+
+    detection_method = str(_oc("detection_method") or "frame_diff").strip().lower()
     if detection_method not in {"frame_diff", "mog2", "hybrid"}:
         detection_method = "frame_diff"
 
-    raw_diff_threshold = _as_int(_oc("diff_threshold", 18), 18)
-    raw_min_contour_area = _as_int(_oc("min_contour_area", 320), 320)
+    raw_diff_threshold = _as_int(_oc("diff_threshold"), int(_OPENCV_TRIGGER_DEFAULTS["diff_threshold"]))
+    raw_min_contour_area = _as_int(
+        _oc("min_contour_area"),
+        int(_OPENCV_TRIGGER_DEFAULTS["min_contour_area"]),
+    )
     diff_threshold = max(5, min(80, raw_diff_threshold))
     min_contour_area = max(50, min(20000, raw_min_contour_area))
 
     return {
-        "enabled": _as_bool(_oc("enabled", True), True),
-        "check_every_n_frames": max(1, min(30, _as_int(_oc("check_every_n_frames", 1), 1))),
-        "check_interval_seconds": max(0.05, min(2.0, _as_float(_oc("check_interval_seconds", 0.12), 0.12))),
-        "motion_max_side_px": max(160, min(1280, _as_int(_oc("motion_max_side_px", 512), 512))),
+        "enabled": _as_bool(_oc("enabled"), bool(_OPENCV_TRIGGER_DEFAULTS["enabled"])),
+        "check_every_n_frames": max(
+            1,
+            min(30, _as_int(_oc("check_every_n_frames"), int(_OPENCV_TRIGGER_DEFAULTS["check_every_n_frames"]))),
+        ),
+        "check_interval_seconds": max(
+            0.05,
+            min(2.0, _as_float(_oc("check_interval_seconds"), float(_OPENCV_TRIGGER_DEFAULTS["check_interval_seconds"]))),
+        ),
+        "motion_max_side_px": max(
+            160,
+            min(1280, _as_int(_oc("motion_max_side_px"), int(_OPENCV_TRIGGER_DEFAULTS["motion_max_side_px"]))),
+        ),
         "diff_threshold": diff_threshold,
         "min_contour_area": min_contour_area,
         "detection_method": detection_method,
-        "suppress_warmup_frames": max(0, min(600, _as_int(_oc("suppress_warmup_frames", 0), 0))),
-        "auto_profile_enabled": _as_bool(_oc("auto_profile_enabled", True), True),
+        "suppress_warmup_frames": max(
+            0,
+            min(600, _as_int(_oc("suppress_warmup_frames"), int(_OPENCV_TRIGGER_DEFAULTS["suppress_warmup_frames"]))),
+        ),
+        "auto_profile_enabled": _as_bool(
+            _oc("auto_profile_enabled"),
+            bool(_OPENCV_TRIGGER_DEFAULTS["auto_profile_enabled"]),
+        ),
         "auto_profile_night_luma_threshold": max(
             1.0,
-            min(255.0, _as_float(_oc("auto_profile_night_luma_threshold", 58.0), 58.0)),
+            min(
+                255.0,
+                _as_float(
+                    _oc("auto_profile_night_luma_threshold"),
+                    float(_OPENCV_TRIGGER_DEFAULTS["auto_profile_night_luma_threshold"]),
+                ),
+            ),
         ),
-        "smart_trigger_enabled": _as_bool(_oc("smart_trigger_enabled", True), True),
+        "smart_trigger_enabled": _as_bool(
+            _oc("smart_trigger_enabled"),
+            bool(_OPENCV_TRIGGER_DEFAULTS["smart_trigger_enabled"]),
+        ),
         "global_motion_mean_absdiff": max(
-            0.1, min(64.0, _as_float(_oc("global_motion_mean_absdiff", 2.5), 2.5))
+            0.1,
+            min(
+                64.0,
+                _as_float(
+                    _oc("global_motion_mean_absdiff"),
+                    float(_OPENCV_TRIGGER_DEFAULTS["global_motion_mean_absdiff"]),
+                ),
+            ),
         ),
         "min_motion_pixel_fraction": max(
-            0.0, min(1.0, _as_float(_oc("min_motion_pixel_fraction", 0.0008), 0.0008))
+            0.0,
+            min(
+                1.0,
+                _as_float(
+                    _oc("min_motion_pixel_fraction"),
+                    float(_OPENCV_TRIGGER_DEFAULTS["min_motion_pixel_fraction"]),
+                ),
+            ),
         ),
-        "max_contour_area_frac": max(0.01, min(0.99, _as_float(_oc("max_contour_area_frac", 0.38), 0.38))),
+        "max_contour_area_frac": max(
+            0.01,
+            min(
+                0.99,
+                _as_float(
+                    _oc("max_contour_area_frac"),
+                    float(_OPENCV_TRIGGER_DEFAULTS["max_contour_area_frac"]),
+                ),
+            ),
+        ),
         "day_diff_threshold": max(
             5,
-            min(80, _as_int(_oc("day_diff_threshold", raw_diff_threshold), raw_diff_threshold)),
+            min(
+                80,
+                _oc_int_inherit(
+                    "day_diff_threshold",
+                    raw_diff_threshold,
+                    yaml_default_key="day_diff_threshold",
+                    parent_path="diff_threshold",
+                ),
+            ),
         ),
         "day_min_contour_area": max(
             50,
-            min(20000, _as_int(_oc("day_min_contour_area", raw_min_contour_area), raw_min_contour_area)),
+            min(
+                20000,
+                _oc_int_inherit(
+                    "day_min_contour_area",
+                    raw_min_contour_area,
+                    yaml_default_key="day_min_contour_area",
+                    parent_path="min_contour_area",
+                ),
+            ),
         ),
         "day_global_motion_mean_absdiff": max(
             0.1,
-            min(64.0, _as_float(_oc("day_global_motion_mean_absdiff", 2.5), 2.5)),
+            min(
+                64.0,
+                _as_float(
+                    _oc("day_global_motion_mean_absdiff"),
+                    float(_OPENCV_TRIGGER_DEFAULTS["day_global_motion_mean_absdiff"]),
+                ),
+            ),
         ),
         "day_min_motion_pixel_fraction": max(
             0.0,
-            min(1.0, _as_float(_oc("day_min_motion_pixel_fraction", 0.0008), 0.0008)),
+            min(
+                1.0,
+                _as_float(
+                    _oc("day_min_motion_pixel_fraction"),
+                    float(_OPENCV_TRIGGER_DEFAULTS["day_min_motion_pixel_fraction"]),
+                ),
+            ),
         ),
         "day_max_contour_area_frac": max(
-            0.01, min(0.99, _as_float(_oc("day_max_contour_area_frac", 0.38), 0.38))
+            0.01,
+            min(
+                0.99,
+                _as_float(
+                    _oc("day_max_contour_area_frac"),
+                    float(_OPENCV_TRIGGER_DEFAULTS["day_max_contour_area_frac"]),
+                ),
+            ),
         ),
         "night_diff_threshold": max(
             5,
-            min(80, _as_int(_oc("night_diff_threshold", raw_diff_threshold), raw_diff_threshold)),
+            min(
+                80,
+                _oc_int_inherit(
+                    "night_diff_threshold",
+                    raw_diff_threshold,
+                    yaml_default_key="night_diff_threshold",
+                    parent_path="diff_threshold",
+                ),
+            ),
         ),
         "night_min_contour_area": max(
             50,
-            min(20000, _as_int(_oc("night_min_contour_area", raw_min_contour_area), raw_min_contour_area)),
+            min(
+                20000,
+                _oc_int_inherit(
+                    "night_min_contour_area",
+                    raw_min_contour_area,
+                    yaml_default_key="night_min_contour_area",
+                    parent_path="min_contour_area",
+                ),
+            ),
         ),
         "night_global_motion_mean_absdiff": max(
             0.1,
-            min(64.0, _as_float(_oc("night_global_motion_mean_absdiff", 2.2), 2.2)),
+            min(
+                64.0,
+                _as_float(
+                    _oc("night_global_motion_mean_absdiff"),
+                    float(_OPENCV_TRIGGER_DEFAULTS["night_global_motion_mean_absdiff"]),
+                ),
+            ),
         ),
         "night_min_motion_pixel_fraction": max(
             0.0,
-            min(1.0, _as_float(_oc("night_min_motion_pixel_fraction", 0.0006), 0.0006)),
+            min(
+                1.0,
+                _as_float(
+                    _oc("night_min_motion_pixel_fraction"),
+                    float(_OPENCV_TRIGGER_DEFAULTS["night_min_motion_pixel_fraction"]),
+                ),
+            ),
         ),
         "night_max_contour_area_frac": max(
-            0.01, min(0.99, _as_float(_oc("night_max_contour_area_frac", 0.45), 0.45))
+            0.01,
+            min(
+                0.99,
+                _as_float(
+                    _oc("night_max_contour_area_frac"),
+                    float(_OPENCV_TRIGGER_DEFAULTS["night_max_contour_area_frac"]),
+                ),
+            ),
         ),
-        "mog2_history": max(16, min(2000, _as_int(_oc("mog2_history", 300), 300))),
-        "mog2_var_threshold": max(1.0, min(256.0, _as_float(_oc("mog2_var_threshold", 24.0), 24.0))),
-        "mog2_detect_shadows": _as_bool(_oc("mog2_detect_shadows", False), False),
+        "mog2_history": max(
+            16,
+            min(2000, _as_int(_oc("mog2_history"), int(_OPENCV_TRIGGER_DEFAULTS["mog2_history"]))),
+        ),
+        "mog2_var_threshold": max(
+            1.0,
+            min(
+                256.0,
+                _as_float(_oc("mog2_var_threshold"), float(_OPENCV_TRIGGER_DEFAULTS["mog2_var_threshold"])),
+            ),
+        ),
+        "mog2_detect_shadows": _as_bool(
+            _oc("mog2_detect_shadows"),
+            bool(_OPENCV_TRIGGER_DEFAULTS["mog2_detect_shadows"]),
+        ),
         "mog2_min_motion_pixel_fraction": max(
             0.0,
-            min(1.0, _as_float(_oc("mog2_min_motion_pixel_fraction", 0.0006), 0.0006)),
+            min(
+                1.0,
+                _as_float(
+                    _oc("mog2_min_motion_pixel_fraction"),
+                    float(_OPENCV_TRIGGER_DEFAULTS["mog2_min_motion_pixel_fraction"]),
+                ),
+            ),
         ),
         "mog2_min_contour_area": max(
             50,
-            min(20000, _as_int(_oc("mog2_min_contour_area", raw_min_contour_area), raw_min_contour_area)),
+            min(
+                20000,
+                _oc_int_inherit(
+                    "mog2_min_contour_area",
+                    raw_min_contour_area,
+                    yaml_default_key="mog2_min_contour_area",
+                    parent_path="min_contour_area",
+                ),
+            ),
         ),
         "min_consecutive_motion_frames": max(
-            1, min(30, _as_int(_oc("min_consecutive_motion_frames", 2), 2))
+            1,
+            min(
+                30,
+                _as_int(
+                    _oc("min_consecutive_motion_frames"),
+                    int(_OPENCV_TRIGGER_DEFAULTS["min_consecutive_motion_frames"]),
+                ),
+            ),
         ),
         "scene_change_motion_fraction": max(
-            0.1, min(1.0, _as_float(_oc("scene_change_motion_fraction", 0.8), 0.8))
+            0.1,
+            min(
+                1.0,
+                _as_float(
+                    _oc("scene_change_motion_fraction"),
+                    float(_OPENCV_TRIGGER_DEFAULTS["scene_change_motion_fraction"]),
+                ),
+            ),
         ),
-        "improve_contrast": _as_bool(_oc("improve_contrast", False), False),
-        "morphology_open_iterations": max(0, min(5, _as_int(_oc("morphology_open_iterations", 1), 1))),
+        "improve_contrast": _as_bool(
+            _oc("improve_contrast"),
+            bool(_OPENCV_TRIGGER_DEFAULTS["improve_contrast"]),
+        ),
+        "morphology_open_iterations": max(
+            0,
+            min(
+                5,
+                _as_int(
+                    _oc("morphology_open_iterations"),
+                    int(_OPENCV_TRIGGER_DEFAULTS["morphology_open_iterations"]),
+                ),
+            ),
+        ),
     }
 
 
