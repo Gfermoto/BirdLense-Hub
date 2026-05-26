@@ -22,6 +22,7 @@ from services.system_admin_api_service import (
     start_single_video_track_regeneration,
 )
 from services.system_domain_health_service import build_domain_health_payload
+from services.yolo_detector_health_service import build_yolo_detector_health_payload
 from services.system_metrics_constants import _CACHE_SYSTEM_ACTIVITY_SEC
 from services.system_metrics_sampler_service import start_system_metrics_sampler
 
@@ -78,6 +79,16 @@ def register_routes(app):
     def system_domain_health():
         """Domain-level integrity snapshot for recordings, visits and species registry."""
         return build_domain_health_payload()
+
+    @app.route("/api/ui/system/yolo-detector-health", methods=["GET"])
+    @require_ui_settings_password
+    def system_yolo_detector_health():
+        """Live YOLO blind/healthy status from processor gauges and recent sessions."""
+        try:
+            hours = int(request.args.get("hours", 24))
+        except (TypeError, ValueError):
+            hours = 24
+        return build_yolo_detector_health_payload(hours=hours)
 
     @app.route("/api/ui/system/activity", methods=["GET"])
     def get_activity():

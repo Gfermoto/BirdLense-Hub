@@ -46,6 +46,8 @@ export const queryKeys = {
       ['system', 'quality-timeseries', bucket] as const,
     qualityHealth: (hours: number) =>
       ['system', 'quality-health', hours] as const,
+    yoloDetectorHealth: (hours: number) =>
+      ['system', 'yolo-detector-health', hours] as const,
   },
   /** Карточки страницы «Система» с плоскими ключами кэша (legacy-строки). */
   systemPanels: {

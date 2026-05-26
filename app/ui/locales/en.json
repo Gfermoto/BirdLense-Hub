@@ -1729,6 +1729,21 @@
     "noon": "Noon"
   },
   "system": {
+    "yoloDetector": {
+      "title": "YOLO detector",
+      "description": "Live detector status: blind when Frigate extends sessions without YOLO tracks. See runbook when Blind.",
+      "statusHealthy": "Healthy",
+      "statusDegraded": "Degraded",
+      "statusBlind": "Blind",
+      "phase": "phase",
+      "tracksSession": "frames with tracks",
+      "frigateOnly": "Frigate-only",
+      "alertActive": "yolo_blind_alert active: Frigate activity without YOLO longer than threshold.",
+      "noSnapshot": "No processor_runtime_stats.json — processor gauges missing or different DATA_DIR.",
+      "loadError": "Failed to load detector health.",
+      "reasons": "Reasons",
+      "runbookHint": "Runbook:"
+    },
     "pageDescription": "Health summary, catalog, and diagnostics. Advanced mode is for logs, maintenance, and rare operations.",
     "pageModeToggleHint": "You opened this from the hub «Service» entry. Tabs switch layout only: Overview (compact digest) or Workspace (diagnostics, automation, logs, and model tools).",
     "modeOverview": "Overview",

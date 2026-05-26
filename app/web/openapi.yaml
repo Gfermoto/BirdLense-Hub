@@ -3252,6 +3252,30 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Domain health check
+  /system/yolo-detector-health:
+    get:
+      description: Live YOLO detector health (blind alert, phase, stream probe gauges).
+      parameters:
+        - in: query
+          name: hours
+          schema:
+            type: integer
+            default: 24
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: OK
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+      summary: YOLO detector blind/healthy status
   /system/fusion/eval:
     post:
       description: 'Admin: run eval job on traces.'
