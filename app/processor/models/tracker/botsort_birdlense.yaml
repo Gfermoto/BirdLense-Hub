@@ -1,0 +1,15 @@
+# BoT-SORT preset for BirdLense wildlife (SOTA-12 benchmark).
+# Same conf gates as bytetrack_birdlense; ReID off for CPU/low-FPS hosts.
+# upstream: ultralytics/cfg/trackers/botsort.yaml
+tracker_type: botsort
+track_high_thresh: 0.12
+track_low_thresh: 0.05
+new_track_thresh: 0.12
+track_buffer: 32
+match_thresh: 0.82
+fuse_score: true
+gmc_method: sparseOptFlow
+proximity_thresh: 0.5
+appearance_thresh: 0.8
+with_reid: false
+model: auto

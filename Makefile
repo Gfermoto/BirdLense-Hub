@@ -633,6 +633,15 @@ benchmark-sota:
 		$$(test "$${SMOKE:-0}" = "1" && printf -- '--smoke ') \
 		$${ARGS:-}
 
+# SOTA-12: compare tracker presets on one clip (SOTA_GOLDEN_CLIP_1819 or --clip)
+benchmark-trackers:
+	@python3 scripts/benchmark_trackers.py \
+		--clip "$${CLIP:-$${SOTA_GOLDEN_CLIP_1819:-benchmarks/fixtures/golden_1819.mp4}}" \
+		--presets "$${TRACKER_PRESETS:-bytetrack_birdlense,botsort_birdlense}" \
+		--frame-step "$${FRAME_STEP:-6}" \
+		$$(test -n "$${WRITE_REPORT:-}" && printf -- '--write-report "%s" ' "$${WRITE_REPORT}") \
+		$${ARGS:-}
+
 ml-merge-behavior-manifests:
 	@test -n "$${OUT:-}" || (echo "Set OUT=merged manifest path" >&2; exit 1)
 	@test -n "$${INPUTS:-}" || (echo "Set INPUTS=space-separated manifest paths" >&2; exit 1)
