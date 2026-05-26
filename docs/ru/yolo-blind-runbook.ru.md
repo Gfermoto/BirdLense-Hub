@@ -36,6 +36,10 @@
 - `static_object_filter` — может убрать «застывшие» объекты; при нуле raw boxes проблема **до** фильтров.
 - Interest zones — `detection_interest_zones_required` отсекает кадры вне ROI.
 
+## Геометрия боксов (letterbox / смещение рамок)
+
+См. **`docs/ru/detection-geometry.ru.md`**: единый `frame_geometry`, IoU gate, parity overlay, `validate_bbox_parity.py`.
+
 ## Torch vs OpenVINO (один клип)
 
 ```bash

@@ -10,6 +10,7 @@ REQUIRE_COMPLETE_CARDS="${REQUIRE_COMPLETE_CARDS:-0}"
 MAX_ALL_CAPS_MATCHED="${MAX_ALL_CAPS_MATCHED:-0}"
 SKIP_TRIGGER_AUDIT="${SKIP_TRIGGER_AUDIT:-0}"
 SKIP_YOLO_GOLDEN="${SKIP_YOLO_GOLDEN:-0}"
+SKIP_BBOX_PARITY="${SKIP_BBOX_PARITY:-0}"
 AUDIT_DAYS="${AUDIT_DAYS:-1}"
 AUDIT_CAMERAS="${AUDIT_CAMERAS:-BirdBox,Forest}"
 FAIL_ON_PARITY_HOTSPOT="${FAIL_ON_PARITY_HOTSPOT:-0}"
@@ -37,6 +38,7 @@ Environment:
   SKIP_YOLO_GOLDEN                    1 to skip yolo golden clips gate (default 0)
   YOLO_GOLDEN_CLIP_1819               mp4 path for regen gate (optional)
   BIRDLENSE_DB                        sqlite path for video 1819 session metrics
+  SKIP_BBOX_PARITY                    1 to skip validate_bbox_parity.sh (default 0)
 EOF
 }
 
@@ -163,6 +165,15 @@ if [[ "${SKIP_YOLO_GOLDEN}" != "1" ]]; then
     echo "quality-gate: yolo-golden PASS"
   else
     echo "quality-gate: yolo-golden FAIL" >&2
+    exit 1
+  fi
+fi
+
+if [[ "${SKIP_BBOX_PARITY}" != "1" ]]; then
+  if python3 "${BASH_SOURCE%/*}/validate_bbox_parity.py"; then
+    echo "quality-gate: bbox-parity PASS"
+  else
+    echo "quality-gate: bbox-parity FAIL" >&2
     exit 1
   fi
 fi
