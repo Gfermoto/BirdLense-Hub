@@ -42,6 +42,7 @@ const Library = lazy(() =>
   import('./pages/Library').then((m) => ({ default: m.Library })),
 );
 const LabellingPage = lazy(() => import('./pages/Labelling'));
+const ReidGalleryPage = lazy(() => import('./pages/ReidGallery'));
 const MigrationCalendar = lazy(() =>
   import('./pages/MigrationCalendar').then((m) => ({
     default: m.MigrationCalendar,
@@ -407,6 +408,7 @@ function App() {
                         <Route path="/system" element={<System />} />
                         <Route path="/library" element={<Library />} />
                         <Route path="/labelling" element={<LabellingPage />} />
+                        <Route path="/reid-gallery" element={<ReidGalleryPage />} />
                         <Route
                           path="/review"
                           element={<Navigate to="/timeline?review=1&queue=expert" replace />}

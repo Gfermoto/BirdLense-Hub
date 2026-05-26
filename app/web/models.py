@@ -103,6 +103,35 @@ class Species(db.Model):
     )
 
 
+class ExpertReviewQueue(db.Model):
+    """Expert tasks: ReID duplicates, species confirm, profile merge (SOTA-13)."""
+
+    __tablename__ = "expert_review_queue"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    task_type: Mapped[str] = mapped_column(String(48), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", server_default="pending")
+    video_species_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("video_species.id", ondelete="CASCADE"), nullable=True
+    )
+    related_video_species_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("video_species.id", ondelete="SET NULL"), nullable=True
+    )
+    cluster_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    similarity: Mapped[float | None] = mapped_column(nullable=True)
+    species_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("species.id", ondelete="SET NULL"), nullable=True)
+    payload_json: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    resolved_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_expert_review_queue_status_created", "status", "created_at"),
+        Index("ix_expert_review_queue_cluster_key", "cluster_key"),
+    )
+
+
 class ReidTrainingPair(db.Model):
     """Operator feedback for ReID triplet mining (auto-link confirm/reject)."""
 
