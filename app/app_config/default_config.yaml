@@ -697,6 +697,8 @@ detection:
   # 7 FPS режим: blind подтверждаем по времени/кадрам, а не по коротким провалам.
   yolo_blind_required_consecutive_sessions: 1
   yolo_blind_min_duration_seconds: 30
+  # Live System Health alert: Frigate-only extension without YOLO tracks (defaults to min_duration_seconds).
+  yolo_blind_alert_seconds: 30
   yolo_blind_min_frames: 180
   # Учитывать просадку до 2 FPS: для blind-gate берётся min(min_frames, min_duration*min_effective_fps).
   yolo_blind_min_effective_fps: 2.0

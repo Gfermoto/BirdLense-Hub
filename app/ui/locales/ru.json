@@ -1729,6 +1729,21 @@
     "noon": "Полдень"
   },
   "system": {
+    "yoloDetector": {
+      "title": "YOLO — детектор",
+      "description": "Живой статус детектора: слепота при движении Frigate без треков YOLO. См. runbook при Blind.",
+      "statusHealthy": "Healthy",
+      "statusDegraded": "Degraded",
+      "statusBlind": "Blind",
+      "phase": "фаза",
+      "tracksSession": "кадры с треками",
+      "frigateOnly": "Frigate-only",
+      "alertActive": "Активен алерт yolo_blind_alert: Frigate без YOLO дольше порога.",
+      "noSnapshot": "Нет processor_runtime_stats.json — процессор не писал gauges или другой DATA_DIR.",
+      "loadError": "Не удалось загрузить статус детектора.",
+      "reasons": "Причины",
+      "runbookHint": "Runbook:"
+    },
     "pageDescription": "Сводка состояния, каталог и диагностика. Расширенный режим — для логов, обслуживания и редких операций.",
     "pageModeToggleHint": "Эта страница открыта из пункта меню «Сервис». Вкладки меняют только плотность: «Обзор» — сжатый вид; «Рабочая область» — диагностика, автоматизация, журналы и инструменты моделей.",
     "modeOverview": "Обзор",

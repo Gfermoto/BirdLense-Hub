@@ -23,6 +23,7 @@ from recording_finalize import finalize_motion_recording
 from recording_finalize_worker import FinalizeWorker
 from session_state_repository import SessionStateRepository
 from detection_scheduler import build_probe_config
+from yolo_blind_monitor import YoloBlindLiveMonitor, run_blind_quickcheck
 
 logger = logging.getLogger(__name__)
 
@@ -384,6 +385,15 @@ class MotionRecordingSession:
                 quickcheck_seconds = float(app_config.get("detection.yolo_blind_quickcheck_seconds") or 2.0)
             except (TypeError, ValueError):
                 quickcheck_seconds = 2.0
+            try:
+                blind_alert_seconds = float(
+                    app_config.get("detection.yolo_blind_alert_seconds")
+                    or app_config.get("detection.yolo_blind_min_duration_seconds")
+                    or 30.0
+                )
+            except (TypeError, ValueError):
+                blind_alert_seconds = 30.0
+            blind_live_monitor = YoloBlindLiveMonitor(alert_seconds=blind_alert_seconds)
             runtime_profile_counts: Counter[str] = Counter()
             runtime_profile_overrides: dict[str, dict] = {}
             camera_overrides = _camera_processor_overrides(camera_id)
@@ -523,13 +533,36 @@ class MotionRecordingSession:
                     if suspicion_ready and runtime_signals["yolo_blind_phase"] == "none":
                         runtime_signals["yolo_blind_phase"] = "suspected"
                         blind_suspected_since_monotonic = time.monotonic()
-                        blind_quickcheck_until_monotonic = blind_suspected_since_monotonic + max(0.2, quickcheck_seconds)
+                        blind_quickcheck_until_monotonic = blind_suspected_since_monotonic + max(
+                            0.2, quickcheck_seconds
+                        )
 
-                    if runtime_signals["yolo_blind_phase"] == "suspected":
-                        now_m = time.monotonic()
-                        if now_m > blind_quickcheck_until_monotonic:
-                            # Confirm only after the quickcheck window ends, never on a failed probe.
-                            runtime_signals["yolo_blind_phase"] = "confirmed"
+                if runtime_signals["yolo_blind_phase"] == "suspected":
+                    now_m = time.monotonic()
+                    if now_m <= blind_quickcheck_until_monotonic:
+                        runtime_signals["blind_quickcheck_frames"] += 1
+                        qc_stats = run_blind_quickcheck(
+                            self.frame_processor,
+                            frame,
+                            cfg=app_config,
+                            frame_time=frame_time,
+                            classification_frame=classifier_source_frame,
+                        )
+                        quick_raw = _accumulate_run_stats(qc_stats, count_frame_metrics=False)
+                        if quick_raw > 0:
+                            runtime_signals["blind_quickcheck_hits"] += 1
+                            runtime_signals["yolo_blind_phase"] = "recovered"
+                            blind_suspected_since_monotonic = None
+                            blind_quickcheck_until_monotonic = 0.0
+                    elif runtime_signals["yolo_blind_phase"] == "suspected":
+                        runtime_signals["yolo_blind_phase"] = "confirmed"
+
+                blind_live_monitor.on_frame(
+                    frigate_only_extension=frigate_only_extension,
+                    yolo_track_found=bool(run_stats.get("yolo_track_found")),
+                    yolo_raw_boxes=raw_boxes,
+                    runtime_signals=runtime_signals,
+                )
 
                 self.decision_maker.update_has_detections(has_detections)
                 self.decision_maker.get_first_species_result(

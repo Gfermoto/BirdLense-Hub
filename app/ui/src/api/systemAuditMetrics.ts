@@ -248,3 +248,35 @@ export const fetchQualityHealth = async (
   });
   return response.data;
 };
+
+export type YoloDetectorHealthStatus = 'healthy' | 'degraded' | 'blind';
+
+export interface YoloDetectorHealthResponse {
+  window_hours: number;
+  updated_at?: string | null;
+  processor_snapshot_present: boolean;
+  health: {
+    status: YoloDetectorHealthStatus;
+    yolo_blind_alert: boolean;
+    yolo_blind_phase: string;
+    yolo_frames_with_tracks_session: number;
+    session_extended_by_frigate_only: number;
+    stream_probe_width?: number | null;
+    stream_probe_height?: number | null;
+    stream_probe_fps?: number | null;
+    reasons: string[];
+  };
+  gauges: Record<string, unknown>;
+  config_hints: Record<string, unknown>;
+  runbook_path?: string;
+}
+
+export const fetchYoloDetectorHealth = async (
+  hours = 24,
+): Promise<YoloDetectorHealthResponse> => {
+  const response = await axios.get(`${BASE_API_URL}/system/yolo-detector-health`, {
+    params: { hours },
+    withCredentials: true,
+  });
+  return response.data;
+};

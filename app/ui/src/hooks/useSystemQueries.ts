@@ -3,6 +3,7 @@ import { fetchReadiness } from '../api/camerasHealth';
 import {
   fetchQualityHealth,
   fetchQualityTimeseries,
+  fetchYoloDetectorHealth,
   fetchProcessorLogs,
   fetchSystemMetricsHistory,
   fetchSystemMetricsLive,
@@ -63,5 +64,13 @@ export function useQualityHealthQuery(hours: number) {
     queryKey: queryKeys.system.qualityHealth(hours),
     queryFn: () => fetchQualityHealth(hours),
     refetchInterval: 15_000,
+  });
+}
+
+export function useYoloDetectorHealthQuery(hours: number) {
+  return useQuery({
+    queryKey: queryKeys.system.yoloDetectorHealth(hours),
+    queryFn: () => fetchYoloDetectorHealth(hours),
+    refetchInterval: 10_000,
   });
 }

@@ -9,6 +9,7 @@ EXPECTED_ALLOWLIST_TOTAL="${EXPECTED_ALLOWLIST_TOTAL:-526}"
 REQUIRE_COMPLETE_CARDS="${REQUIRE_COMPLETE_CARDS:-0}"
 MAX_ALL_CAPS_MATCHED="${MAX_ALL_CAPS_MATCHED:-0}"
 SKIP_TRIGGER_AUDIT="${SKIP_TRIGGER_AUDIT:-0}"
+SKIP_YOLO_GOLDEN="${SKIP_YOLO_GOLDEN:-0}"
 AUDIT_DAYS="${AUDIT_DAYS:-1}"
 AUDIT_CAMERAS="${AUDIT_CAMERAS:-BirdBox,Forest}"
 FAIL_ON_PARITY_HOTSPOT="${FAIL_ON_PARITY_HOTSPOT:-0}"
@@ -33,6 +34,9 @@ Environment:
   AUDIT_DAYS                          default 1
   AUDIT_CAMERAS                       default BirdBox,Forest
   FAIL_ON_PARITY_HOTSPOT              1 to fail when parity hotspots > 0
+  SKIP_YOLO_GOLDEN                    1 to skip yolo golden clips gate (default 0)
+  YOLO_GOLDEN_CLIP_1819               mp4 path for regen gate (optional)
+  BIRDLENSE_DB                        sqlite path for video 1819 session metrics
 EOF
 }
 
@@ -153,6 +157,15 @@ if errors:
     sys.exit(1)
 print("quality-gate: PASS")
 PY
+
+if [[ "${SKIP_YOLO_GOLDEN}" != "1" ]]; then
+  if python3 "${BASH_SOURCE%/*}/yolo-golden-clips-gate.py"; then
+    echo "quality-gate: yolo-golden PASS"
+  else
+    echo "quality-gate: yolo-golden FAIL" >&2
+    exit 1
+  fi
+fi
 
 if [[ "${SKIP_TRIGGER_AUDIT}" != "1" ]] && [[ -n "${DEPLOY_HOST:-}" ]]; then
   ssh_port="${DEPLOY_SSH_PORT:-22}"
