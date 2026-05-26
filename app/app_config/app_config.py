@@ -355,51 +355,18 @@ class AppConfig:
                     user_config = yaml.safe_load(file) or {}
             except yaml.YAMLError as e:
                 logger.error("Invalid YAML in %s: %s", self.user_config_file, e)
-            if migrate_legacy_scales_source(user_config):
+            from app_config.config_migrations import run_user_config_migrations
+
+            if run_user_config_migrations(user_config):
                 try:
                     self._persist_raw_user_config(user_config)
                     logger.info(
-                        "Migrated integrations.scales.source legacy values in %s",
+                        "Applied user_config migrations (schema v%s) to %s",
+                        user_config.get("_meta", {}).get("schema_version"),
                         self.user_config_file,
                     )
                 except OSError as e:
-                    logger.warning("Could not persist scales source migration: %s", e)
-            if migrate_legacy_trigger_topics(user_config):
-                try:
-                    self._persist_raw_user_config(user_config)
-                    logger.info(
-                        "Migrated legacy mqtt.frigate_topic / mqtt.birdnet_topic into grouped/domain config in %s",
-                        self.user_config_file,
-                    )
-                except OSError as e:
-                    logger.warning("Could not persist trigger topic migration: %s", e)
-            if migrate_legacy_homeassistant_from_weather(user_config):
-                try:
-                    self._persist_raw_user_config(user_config)
-                    logger.info(
-                        "Migrated weather.ha_url / weather.ha_token to homeassistant.* in %s",
-                        self.user_config_file,
-                    )
-                except OSError as e:
-                    logger.warning("Could not persist HA legacy key migration: %s", e)
-            if migrate_processor_classifier_best_eu_path(user_config):
-                try:
-                    self._persist_raw_user_config(user_config)
-                    logger.info(
-                        "Migrated processor.models.classifier best_EU.pt → best.pt in %s",
-                        self.user_config_file,
-                    )
-                except OSError as e:
-                    logger.warning("Could not persist classifier path migration: %s", e)
-            if migrate_legacy_motion_block(user_config):
-                try:
-                    self._persist_raw_user_config(user_config)
-                    logger.info(
-                        "Persisted motion→triggers migration to %s",
-                        self.user_config_file,
-                    )
-                except OSError as e:
-                    logger.warning("Could not persist motion→triggers migration: %s", e)
+                    logger.warning("Could not persist user_config migrations: %s", e)
 
         # Merge configs (user_config overrides default_config)
         merged = self.merge_dicts(default_config, user_config)
@@ -558,6 +525,8 @@ class AppConfig:
             w.pop("ha_url", None)
             w.pop("ha_token", None)
         out["motion"] = build_motion_settings_mirror_for_api(out)
+        out.pop("_meta", None)
+        out.pop("_settings_warnings", None)
         return cls.mask_config_for_api(out)
 
     @classmethod

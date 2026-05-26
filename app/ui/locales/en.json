@@ -960,6 +960,7 @@
     "updateTitle": "Station settings",
     "restartInfo": "After saving, the processor restarts automatically to apply changes.",
     "pageDescription": "Options are grouped by topic: general station, connections and video, capture and feeder, notifications, integrations, and recognition. Open the section you need and use the hints next to each field.",
+    "deprecatedKeysAfterSave": "Saved, but user_config still has deprecated keys ({{count}}): {{keys}}. Clean them up under System → Config audit.",
     "savedRestart": "Settings saved. Processor will restart within ~60 seconds.",
     "restartFailed": "Failed to restart processor",
     "savedRestarting": "Settings saved. Processor is restarting.",
