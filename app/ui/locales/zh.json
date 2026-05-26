@@ -1837,6 +1837,7 @@
     "catalogRepairTitle": "目录卡抛光",
     "catalogRepairLoadError": "无法加载目录抛光状态",
     "catalogRepairStart": "开始抛光",
+    "catalogRepairOpenQualityList": "问题卡片列表",
     "catalogRepairRunning": "波兰跑步",
     "catalogRepairCompletion": "已填字段：{{p}}%",
     "catalogRepairSpeciesMatched": "Allowlist → 数据库：{{lines}} / {{total}} 行（唯一物种 {{unique}}）",
@@ -3042,8 +3043,12 @@
     }
   },
   "speciesDirectory": {
-    "title": "物种",
-    "description": "本站点已出现过的鸟类：按录像统计、物种卡片并可回到原片段。",
+    "title": "卡片质量",
+    "description": "用于完善照片与说明的服务列表。目录索引（已观测、数据集、EU）在导航「物种」中。",
+    "backToCatalog": "← 返回目录索引（已观测、数据集、EU）",
+    "colSpecies": "物种",
+    "colStatus": "状态",
+    "colActions": "操作",
     "search": "搜索物种",
     "searchPlaceholder": "输入物种名称或说明",
     "loadError": "无法加载物种目录",

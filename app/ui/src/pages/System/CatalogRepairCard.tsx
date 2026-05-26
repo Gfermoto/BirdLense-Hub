@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useLayoutEffect, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -99,16 +100,26 @@ export function CatalogRepairCard() {
       statusLabel={statusLabel}
       statusTone={hasIssue ? 'error' : running ? 'warning' : 'success'}
       actions={
-        <Button
-          size="small"
-          variant="contained"
-          disabled={running || startMutation.isPending}
-          onClick={() => startMutation.mutate(6000)}
-        >
-          {running
-            ? t('system.catalogRepairRunning')
-            : t('system.catalogRepairStart')}
-        </Button>
+        <>
+          <Button
+            component={RouterLink}
+            to="/species-directory"
+            size="small"
+            variant="outlined"
+          >
+            {t('system.catalogRepairOpenQualityList')}
+          </Button>
+          <Button
+            size="small"
+            variant="contained"
+            disabled={running || startMutation.isPending}
+            onClick={() => startMutation.mutate(6000)}
+          >
+            {running
+              ? t('system.catalogRepairRunning')
+              : t('system.catalogRepairStart')}
+          </Button>
+        </>
       }
     >
       <Box>
