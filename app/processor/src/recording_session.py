@@ -367,6 +367,8 @@ class MotionRecordingSession:
                 "yolo_accepted_boxes_total": 0,
                 "low_light_blocked_frames": 0,
                 "session_extended_by_frigate_only": 0,
+                "track_id_switches_count": 0,
+                "avg_track_duration_sec": 0.0,
                 "yolo_blind_phase": "none",
                 "blind_quickcheck_frames": 0,
                 "blind_quickcheck_hits": 0,
@@ -418,6 +420,10 @@ class MotionRecordingSession:
                     runtime_signals["yolo_frames_with_raw_boxes"] += 1
                     runtime_signals["yolo_raw_boxes_total"] += raw_boxes_local
                 runtime_signals["yolo_accepted_boxes_total"] += int(local_stats.get("yolo_accepted_boxes") or 0)
+                runtime_signals["track_id_switches_count"] = max(
+                    int(runtime_signals.get("track_id_switches_count") or 0),
+                    int(local_stats.get("track_id_switches_count") or 0),
+                )
                 if local_stats.get("light_gate_blocked"):
                     runtime_signals["low_light_blocked_frames"] += 1
                 return raw_boxes_local
@@ -610,6 +616,16 @@ class MotionRecordingSession:
             set_gauge("last_session_low_light_blocked_frames", runtime_signals["low_light_blocked_frames"])
             if dominant_runtime_profile:
                 set_gauge("last_session_runtime_profile", dominant_runtime_profile)
+            try:
+                stability = self.frame_processor.get_tracking_stability_stats()
+                runtime_signals["track_id_switches_count"] = int(
+                    stability.get("track_id_switches_count") or 0
+                )
+                runtime_signals["avg_track_duration_sec"] = float(
+                    stability.get("avg_track_duration_sec") or 0.0
+                )
+            except Exception:
+                logging.debug("track stability summary failed", exc_info=True)
             finalize_kwargs = {
                 "api": self.api,
                 "motion_detector": self.motion_detector,

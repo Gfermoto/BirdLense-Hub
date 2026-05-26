@@ -87,6 +87,18 @@ def evaluate_clip(
                 )
         elif fused < min_tracks:
             failures.append("1819 recall: no baseline fused_track_count and current below min")
+        max_switches = int(th.get("max_track_id_switches", 999999))
+        switches = _metric_int(metrics, "track_id_switches_count")
+        if switches > max_switches:
+            failures.append(
+                f"1819 stability: track_id_switches_count={switches} > max {max_switches}"
+            )
+        min_dur = float(th.get("min_avg_track_duration_sec", 0.0))
+        dur = float(metrics.get("avg_track_duration_sec") or 0.0)
+        if min_dur > 0 and dur < min_dur:
+            failures.append(
+                f"1819 stability: avg_track_duration_sec={dur:.3f} < min {min_dur}"
+            )
     return failures
 
 

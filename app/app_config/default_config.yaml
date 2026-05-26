@@ -38,6 +38,13 @@ processor:
     lte_10: "models/tracker/bytetrack_birdlense.yaml"
     lte_15: "models/tracker/bytetrack_birdlense.yaml"
     gt_15: "models/tracker/bytetrack_birdlense.yaml"
+  # SOTA-10: scale ByteTrack track_buffer = stream_fps * remember_seconds on low-FPS (≤10).
+  tracker_adaptive_low_fps_enabled: true
+  tracker_low_fps_threshold: 10.0
+  tracker_remember_seconds: 8.0
+  tracker_adaptive_min_buffer: 24
+  tracker_adaptive_max_buffer: 120
+  track_id_switch_iou_threshold: 0.25
   max_record_seconds: 60
   # video.source=file: нижняя граница max_record_seconds (сек). Большое значение при playlist+split по файлам — не резать длинный клип по таймеру.
   file_max_record_floor_seconds: 86400

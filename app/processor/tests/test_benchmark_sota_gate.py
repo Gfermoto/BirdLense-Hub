@@ -36,6 +36,8 @@ class TestBenchmarkSotaGate(unittest.TestCase):
             "fused_track_count": 2,
             "frames_with_tracks": 2,
             "species_detected_count": 1,
+            "track_id_switches_count": 0,
+            "avg_track_duration_sec": 0.5,
         }
         self.assertEqual(
             evaluate_clip("1819", metrics, thresholds=self.thresholds, baseline_metrics=self.baseline_metrics),
@@ -46,6 +48,17 @@ class TestBenchmarkSotaGate(unittest.TestCase):
         metrics = {"fused_track_count": 0, "frames_with_tracks": 0, "species_detected_count": 0}
         fails = evaluate_clip("1819", metrics, thresholds=self.thresholds, baseline_metrics=self.baseline_metrics)
         self.assertTrue(any("1819 recall" in f for f in fails))
+
+    def test_1819_fail_stability_switches(self):
+        metrics = {
+            "fused_track_count": 2,
+            "frames_with_tracks": 2,
+            "species_detected_count": 1,
+            "track_id_switches_count": 20,
+            "avg_track_duration_sec": 1.0,
+        }
+        fails = evaluate_clip("1819", metrics, thresholds=self.thresholds, baseline_metrics=self.baseline_metrics)
+        self.assertTrue(any("stability" in f for f in fails))
 
     def test_manifest_and_baseline_schema(self):
         manifest = json.loads((REPO / "benchmarks" / "golden_clips.json").read_text(encoding="utf-8"))

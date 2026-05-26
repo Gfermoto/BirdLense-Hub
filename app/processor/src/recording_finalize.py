@@ -1052,6 +1052,8 @@ def finalize_motion_recording(
             "yolo_blind_suspected": bool(blind_suspected),
             "yolo_blind_confirmed": bool(yolo_blind_confirmed),
             "yolo_blind_score": round(float(blind_score), 4),
+            "track_id_switches_count": int(rs.get("track_id_switches_count") or 0),
+            "avg_track_duration_sec": round(float(rs.get("avg_track_duration_sec") or 0.0), 4),
         }
         try:
             from trigger_graph import build_session_trigger_graph
