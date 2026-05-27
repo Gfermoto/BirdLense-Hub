@@ -41,9 +41,7 @@ export const MigrationCalendar = () => {
   const [endYear, setEndYear] = useState<number | ''>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [catalogMode, setCatalogMode] = useState<
-    'observed' | 'dataset' | 'full_eu'
-  >('observed');
+  const [catalogMode, setCatalogMode] = useState<'observed' | 'all'>('observed');
 
   const handlePeriodMode = (
     _: React.MouseEvent<HTMLElement>,
@@ -66,7 +64,7 @@ export const MigrationCalendar = () => {
       end_year?: number;
       start_date?: string;
       end_date?: string;
-      catalog?: 'observed' | 'dataset' | 'full_eu';
+      catalog?: 'observed' | 'all';
     } = {
       catalog: catalogMode,
     };
@@ -269,37 +267,29 @@ export const MigrationCalendar = () => {
             mt: 1,
           }}
         >
-          <TextField
-            select
+          <ToggleButtonGroup
+            exclusive
             size="small"
-            label={t('migrationCalendar.catalogLabel')}
+            color="primary"
             value={catalogMode}
-            onChange={(e) =>
-              setCatalogMode(
-                e.target.value as 'observed' | 'dataset' | 'full_eu',
-              )
-            }
-            sx={{ minWidth: 220 }}
+            onChange={(_e, value: 'observed' | 'all' | null) => {
+              if (value) setCatalogMode(value);
+            }}
+            aria-label={t('migrationCalendar.catalogLabel')}
           >
-            <MenuItem
+            <ToggleButton
               value="observed"
               title={t('migrationCalendar.catalogMenuHintObserved')}
             >
               {t('migrationCalendar.catalogObserved')}
-            </MenuItem>
-            <MenuItem
-              value="dataset"
-              title={t('migrationCalendar.catalogMenuHintDataset')}
+            </ToggleButton>
+            <ToggleButton
+              value="all"
+              title={t('migrationCalendar.catalogMenuHintAll')}
             >
-              {t('migrationCalendar.catalogDataset')}
-            </MenuItem>
-            <MenuItem
-              value="full_eu"
-              title={t('migrationCalendar.catalogMenuHintFullEu')}
-            >
-              {t('migrationCalendar.catalogFullEu')}
-            </MenuItem>
-          </TextField>
+              {t('migrationCalendar.catalogAll')}
+            </ToggleButton>
+          </ToggleButtonGroup>
         </Box>
         <Typography
           variant="caption"
@@ -313,11 +303,9 @@ export const MigrationCalendar = () => {
       {species.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary">
-            {catalogMode === 'full_eu'
+            {catalogMode === 'all'
               ? t('migrationCalendar.noSpeciesInDb')
-              : catalogMode === 'dataset'
-                ? t('migrationCalendar.noDataset')
-                : t('migrationCalendar.noObserved')}
+              : t('migrationCalendar.noObserved')}
           </Typography>
         </Paper>
       ) : (

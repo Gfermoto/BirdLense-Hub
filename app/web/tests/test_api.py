@@ -2913,6 +2913,11 @@ class TestMigrationCalendar:
         r = client.get("/api/ui/migration-calendar", query_string={"catalog": "maybe"})
         assert r.status_code == 400
 
+    def test_migration_calendar_accepts_catalog_all_alias(self, client):
+        r = client.get("/api/ui/migration-calendar", query_string={"catalog": "all"})
+        assert r.status_code == 200
+        assert r.json.get("catalog") == "full_eu"
+
     def test_migration_calendar_rejects_bad_metric(self, client):
         r = client.get("/api/ui/migration-calendar", query_string={"metric": "events"})
         assert r.status_code == 400

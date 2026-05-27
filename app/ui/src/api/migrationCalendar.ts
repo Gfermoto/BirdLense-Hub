@@ -11,7 +11,7 @@ export interface MigrationCalendarData {
     total: number;
   }>;
   month_labels: string[];
-  catalog?: 'observed' | 'dataset' | 'full_eu';
+  catalog?: 'observed' | 'all';
 }
 
 export type MigrationCalendarParams = {
@@ -19,7 +19,7 @@ export type MigrationCalendarParams = {
   end_year?: number;
   start_date?: string;
   end_date?: string;
-  catalog?: 'observed' | 'dataset' | 'full_eu' | 'active' | 'full';
+  catalog?: 'observed' | 'all' | 'dataset' | 'full_eu' | 'active' | 'full';
 };
 
 export const fetchMigrationCalendar = async (
