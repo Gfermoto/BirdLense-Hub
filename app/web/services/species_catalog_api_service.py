@@ -10,6 +10,7 @@ from services.species_catalog.api import (
     fetch_bird_families_list_safe,
     fetch_observed_species_list,
     fetch_species_catalog_list,
+    fetch_species_catalog_meta,
     fetch_track_regen_species_options,
 )
 
@@ -18,5 +19,6 @@ __all__ = [
     "fetch_bird_families_list_safe",
     "fetch_observed_species_list",
     "fetch_species_catalog_list",
+    "fetch_species_catalog_meta",
     "fetch_track_regen_species_options",
 ]

@@ -4,6 +4,7 @@ tracker_type: bytetrack
 track_high_thresh: 0.10
 track_low_thresh: 0.05
 new_track_thresh: 0.10
-track_buffer: 56
+# ~3.5s @ 7 FPS; adaptive tracker may scale up to processor.tracker_adaptive_max_buffer.
+track_buffer: 28
 match_thresh: 0.80
 fuse_score: true
