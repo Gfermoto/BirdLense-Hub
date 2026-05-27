@@ -341,6 +341,27 @@ def merge_detections(
     def _canonical_key(s):
         return _extract_common_for_merge(s) or (s or "").lower()
 
+    def _merge_track_frames(existing: dict, new_frames: list) -> None:
+        cur = [fr for fr in (existing.get("frames") or []) if isinstance(fr, dict)]
+        seen: set[tuple] = set()
+        for fr in cur:
+            ts = fr.get("timestamp")
+            bbox = fr.get("bbox")
+            key = (ts, tuple(bbox) if isinstance(bbox, (list, tuple)) else bbox)
+            seen.add(key)
+        for fr in new_frames or []:
+            if not isinstance(fr, dict):
+                continue
+            ts = fr.get("timestamp")
+            bbox = fr.get("bbox")
+            key = (ts, tuple(bbox) if isinstance(bbox, (list, tuple)) else bbox)
+            if key in seen:
+                continue
+            seen.add(key)
+            cur.append(fr)
+        cur.sort(key=lambda x: float(x.get("timestamp") or 0))
+        existing["frames"] = cur
+
     def _merge_into(
         existing,
         new_conf,
@@ -359,8 +380,8 @@ def merge_detections(
         existing["end_time"] = max(existing.get("end_time", 0), new_end)
         if new_best_frame is not None and new_conf >= old_conf:
             existing["best_frame"] = new_best_frame
-        if new_frames and not existing.get("frames"):
-            existing["frames"] = new_frames
+        if new_frames:
+            _merge_track_frames(existing, new_frames)
         if new_provider or new_providers:
             providers = set(existing.get("contributing_providers") or [])
             if new_provider:

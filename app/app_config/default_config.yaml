@@ -41,9 +41,16 @@ processor:
   # SOTA-10: scale ByteTrack track_buffer = stream_fps * remember_seconds on low-FPS (≤10).
   tracker_adaptive_low_fps_enabled: true
   tracker_low_fps_threshold: 10.0
-  tracker_remember_seconds: 8.0
-  tracker_adaptive_min_buffer: 24
-  tracker_adaptive_max_buffer: 120
+  # Длинный buffer → «залипший» bbox на весь клип при ~7 FPS (ByteTrack держит lost track).
+  tracker_remember_seconds: 3.5
+  tracker_adaptive_min_buffer: 18
+  tracker_adaptive_max_buffer: 42
+  # Отклонить трек, если центр bbox почти не двигается дольше N сек (кормушка / phantom).
+  track_static_reject_enabled: true
+  track_static_reject_min_duration_sec: 4.0
+  track_static_reject_min_frames: 8
+  track_static_reject_max_center_dispersion_norm: 0.028
+  track_static_reject_max_bbox_iou_first_last_min: 0.72
   track_id_switch_iou_threshold: 0.25
   max_record_seconds: 60
   # video.source=file: нижняя граница max_record_seconds (сек). Большое значение при playlist+split по файлам — не резать длинный клип по таймеру.

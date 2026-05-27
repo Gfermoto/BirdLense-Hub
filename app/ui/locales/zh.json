@@ -3046,7 +3046,14 @@
   },
   "speciesDirectory": {
     "title": "卡片质量",
-    "description": "用于完善照片与说明的服务列表。目录索引（已观测、数据集、EU）在导航「物种」中。",
+    "description": "用于完善照片与说明的服务列表（模型类别 525+1）。目录索引在导航「物种」中。",
+    "scopeHint": "分类器：{{allowlist}} 个名称。SQLite 共 {{db}} 条 Species（历史、分类、重复）。Allowlist 不完整卡片：{{incomplete}}。",
+    "scopeAllowlist": "模型类别",
+    "scopeObserved": "已观测",
+    "scopeAllDb": "全库（管理）",
+    "allowlistModelCount": "模型：{{count}}",
+    "incompleteAllowlistCount": "不完整（allowlist）：{{count}}",
+    "badgeIncomplete": "卡片不完整",
     "backToCatalog": "← 返回目录索引（已观测、数据集、EU）",
     "colSpecies": "物种",
     "colStatus": "状态",
@@ -3054,7 +3061,7 @@
     "search": "搜索物种",
     "searchPlaceholder": "输入物种名称或说明",
     "loadError": "无法加载物种目录",
-    "totalCount": "目录中共有 {{count}} 个物种",
+    "totalCount": "列表中 {{count}} 条",
     "filteredCount": "显示 {{count}} 个",
     "empty": "当前搜索没有匹配的物种。",
     "activeNow": "最近见过",
@@ -3063,6 +3070,8 @@
     "openSpecies": "打开物种卡片",
     "openRecordingsForSpecies": "打开记录",
     "openSpeciesTooltip": "物种详情：说明、出现频率、相关录像。",
-    "openRecordingsTooltip": "仅筛选该物种的录像与检测。"
+    "openRecordingsTooltip": "仅筛选该物种的录像与检测。",
+    "filterAll": "全部",
+    "filterIncomplete": "不完整"
   }
 }

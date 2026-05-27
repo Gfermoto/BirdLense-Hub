@@ -10,14 +10,55 @@ import logging
 
 from sqlalchemy import distinct, func
 
+from app_config.app_config import app_config
 from models import Species, SpeciesVisit, VideoSpecies
+from services.species_catalog.allowlist import (
+    load_catalog_allowlist_names,
+    load_catalog_allowlist_norm_keys,
+    species_matches_allowlist,
+)
+from util import load_species_canonical_mapping
+from services.species_catalog.registry import species_card_needs_full_metadata_refresh
 from services.species_data_quality_service import species_ids_to_exclude_from_bird_catalog
 from services.species_regional_scope import compute_regional_scope_species_ids
+
+CatalogScope = str  # "allowlist" | "observed" | "all"
 
 logger = logging.getLogger(__name__)
 
 
-def fetch_species_catalog_list(session, *, exclude_suspects: bool) -> list[dict]:
+def _normalize_catalog_scope(scope: str | None) -> CatalogScope:
+    raw = (scope or "allowlist").strip().lower()
+    if raw in ("allowlist", "observed", "all"):
+        return raw
+    return "allowlist"
+
+
+def _species_row_dict(row, *, regional_scope_ids: set[int]) -> dict:
+    sp = row.Species
+    return {
+        "id": sp.id,
+        "name": sp.name,
+        "parent_id": sp.parent_id,
+        "created_at": sp.created_at.isoformat(),
+        "image_url": sp.image_url,
+        "description": sp.description,
+        "metadata_source": sp.metadata_source,
+        "metadata_source_url": sp.metadata_source_url,
+        "active": sp.active,
+        "regional_scope": sp.id in regional_scope_ids,
+        "count": int(row.count or 0),
+        "catalog_card_incomplete": species_card_needs_full_metadata_refresh(sp),
+    }
+
+
+def fetch_species_catalog_list(
+    session,
+    *,
+    exclude_suspects: bool,
+    scope: str | None = "allowlist",
+) -> list[dict]:
+    catalog_scope = _normalize_catalog_scope(scope)
     query = (
         session.query(
             Species,
@@ -31,23 +72,41 @@ def fetch_species_catalog_list(session, *, exclude_suspects: bool) -> list[dict]
     if exclude_suspects:
         bad_ids = species_ids_to_exclude_from_bird_catalog(session)
         species_list = [s for s in species_list if s.Species.id not in bad_ids]
+
+    allow_keys = load_catalog_allowlist_norm_keys(app_config.get)
+    mapping = load_species_canonical_mapping()
+    if catalog_scope == "allowlist" and allow_keys:
+        species_list = [
+            s for s in species_list if species_matches_allowlist(s.Species.name, allow_keys, mapping)
+        ]
+    elif catalog_scope == "observed":
+        species_list = [s for s in species_list if int(s.count or 0) > 0]
+        if allow_keys:
+            species_list = [
+                s for s in species_list if species_matches_allowlist(s.Species.name, allow_keys, mapping)
+            ]
+
     regional_scope_ids = compute_regional_scope_species_ids()
-    return [
-        {
-            "id": row.Species.id,
-            "name": row.Species.name,
-            "parent_id": row.Species.parent_id,
-            "created_at": row.Species.created_at.isoformat(),
-            "image_url": row.Species.image_url,
-            "description": row.Species.description,
-            "metadata_source": row.Species.metadata_source,
-            "metadata_source_url": row.Species.metadata_source_url,
-            "active": row.Species.active,
-            "regional_scope": row.Species.id in regional_scope_ids,
-            "count": row.count,
-        }
-        for row in species_list
-    ]
+    rows = [_species_row_dict(row, regional_scope_ids=regional_scope_ids) for row in species_list]
+    if catalog_scope != "all":
+        for item in rows:
+            item["catalog_scope"] = catalog_scope
+    return rows
+
+
+def fetch_species_catalog_meta(session, *, exclude_suspects: bool) -> dict:
+    """Counts for UI: allowlist (classifier) vs full SQLite catalog."""
+    total_db = session.query(func.count(Species.id)).scalar() or 0
+    allowlist_names = load_catalog_allowlist_names(app_config.get)
+    allowlist_total = len(allowlist_names) if allowlist_names else 0
+    listed = fetch_species_catalog_list(session, exclude_suspects=exclude_suspects, scope="allowlist")
+    incomplete = sum(1 for row in listed if row.get("catalog_card_incomplete"))
+    return {
+        "db_species_total": int(total_db),
+        "allowlist_total": int(allowlist_total),
+        "listed_allowlist": len(listed),
+        "allowlist_incomplete": incomplete,
+    }
 
 
 def fetch_observed_species_list(session) -> list[dict]:
@@ -110,5 +169,6 @@ __all__ = [
     "fetch_bird_families_list_safe",
     "fetch_observed_species_list",
     "fetch_species_catalog_list",
+    "fetch_species_catalog_meta",
     "fetch_track_regen_species_options",
 ]

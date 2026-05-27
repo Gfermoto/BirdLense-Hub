@@ -21,25 +21,45 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 import { resolveImageUrl } from '../../api/api';
-import { fetchBirdDirectory } from '../../api/speciesOverviewDetections';
+import {
+  fetchBirdDirectory,
+  type SpeciesCatalogScope,
+  type SpeciesDirectoryResponse,
+} from '../../api/speciesOverviewDetections';
 import { queryKeys } from '../../api/queryKeys';
 import { PageHeader } from '../../components/PageHeader';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import type { Species } from '../../types';
 
-type CatalogQualityFilter = 'all' | 'no_image' | 'no_description' | 'incomplete';
+type CatalogQualityFilter = 'all' | 'incomplete';
+
+function isDirectoryPayload(
+  data: Species[] | SpeciesDirectoryResponse | undefined,
+): data is SpeciesDirectoryResponse {
+  return Boolean(data && typeof data === 'object' && 'items' in data);
+}
 
 export function SpeciesDirectoryPage() {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [qualityFilter, setQualityFilter] = useState<CatalogQualityFilter>('all');
+  const [scope, setScope] = useState<SpeciesCatalogScope>('allowlist');
   useDocumentTitle(t('nav.species'));
 
   const speciesQ = useQuery({
-    queryKey: queryKeys.speciesDirectory.list,
-    queryFn: fetchBirdDirectory,
+    queryKey: [...queryKeys.speciesDirectory.list, scope],
+    queryFn: () => fetchBirdDirectory({ scope, meta: true }),
     staleTime: 5 * 60 * 1000,
   });
+
+  const rows = useMemo(() => {
+    const data = speciesQ.data;
+    if (isDirectoryPayload(data)) return data.items;
+    return (data as Species[] | undefined) ?? [];
+  }, [speciesQ.data]);
+
+  const meta = isDirectoryPayload(speciesQ.data) ? speciesQ.data.meta : undefined;
 
   const filtered = useMemo(() => {
     const normalizeNeedle = (value: string) =>
@@ -49,7 +69,6 @@ export function SpeciesDirectoryPage() {
         .replace(/\s+/g, ' ')
         .trim();
     const needle = normalizeNeedle(query);
-    const rows = speciesQ.data ?? [];
     const sorted = [...rows].sort((a, b) => {
       const aCount = Number(a.count ?? 0);
       const bCount = Number(b.count ?? 0);
@@ -64,14 +83,8 @@ export function SpeciesDirectoryPage() {
           return name.includes(needle) || desc.includes(needle);
         });
     if (qualityFilter === 'all') return bySearch;
-    return bySearch.filter((row) => {
-      const hasImage = Boolean(String(row.image_url || '').trim());
-      const hasDesc = Boolean(String(row.description || '').trim());
-      if (qualityFilter === 'no_image') return !hasImage;
-      if (qualityFilter === 'no_description') return !hasDesc;
-      return !hasImage || !hasDesc;
-    });
-  }, [query, qualityFilter, speciesQ.data]);
+    return bySearch.filter((row) => Boolean(row.catalog_card_incomplete));
+  }, [query, qualityFilter, rows]);
 
   return (
     <Box display="grid" gap={3} sx={{ pb: 5 }}>
@@ -87,6 +100,36 @@ export function SpeciesDirectoryPage() {
         </Link>
       </Typography>
 
+      {meta ? (
+        <Alert severity="info" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+          {t('speciesDirectory.scopeHint', {
+            allowlist: meta.allowlist_total,
+            db: meta.db_species_total,
+            incomplete: meta.allowlist_incomplete,
+          })}
+        </Alert>
+      ) : null}
+
+      <ToggleButtonGroup
+        exclusive
+        size="small"
+        value={scope}
+        onChange={(_e, value: SpeciesCatalogScope | null) => {
+          if (value) setScope(value);
+        }}
+        sx={{ flexWrap: 'wrap' }}
+      >
+        <ToggleButton value="allowlist">
+          {t('speciesDirectory.scopeAllowlist')}
+        </ToggleButton>
+        <ToggleButton value="observed">
+          {t('speciesDirectory.scopeObserved')}
+        </ToggleButton>
+        <ToggleButton value="all">
+          {t('speciesDirectory.scopeAllDb')}
+        </ToggleButton>
+      </ToggleButtonGroup>
+
       <ToggleButtonGroup
         exclusive
         size="small"
@@ -97,10 +140,6 @@ export function SpeciesDirectoryPage() {
         sx={{ flexWrap: 'wrap' }}
       >
         <ToggleButton value="all">{t('speciesDirectory.filterAll')}</ToggleButton>
-        <ToggleButton value="no_image">{t('speciesDirectory.filterNoImage')}</ToggleButton>
-        <ToggleButton value="no_description">
-          {t('speciesDirectory.filterNoDescription')}
-        </ToggleButton>
         <ToggleButton value="incomplete">
           {t('speciesDirectory.filterIncomplete')}
         </ToggleButton>
@@ -126,11 +165,20 @@ export function SpeciesDirectoryPage() {
           <Stack direction="row" flexWrap="wrap" gap={1}>
             <Chip
               label={t('speciesDirectory.totalCount', {
-                count: speciesQ.data?.length ?? 0,
+                count: rows.length,
               })}
               size="small"
               color="primary"
             />
+            {scope === 'allowlist' && meta ? (
+              <Chip
+                label={t('speciesDirectory.allowlistModelCount', {
+                  count: meta.allowlist_total,
+                })}
+                size="small"
+                variant="outlined"
+              />
+            ) : null}
             <Chip
               label={t('speciesDirectory.filteredCount', {
                 count: filtered.length,
@@ -138,6 +186,16 @@ export function SpeciesDirectoryPage() {
               size="small"
               variant="outlined"
             />
+            {qualityFilter === 'incomplete' && meta && scope === 'allowlist' ? (
+              <Chip
+                label={t('speciesDirectory.incompleteAllowlistCount', {
+                  count: meta.allowlist_incomplete,
+                })}
+                size="small"
+                color="warning"
+                variant="outlined"
+              />
+            ) : null}
           </Stack>
 
           {filtered.length === 0 ? (
@@ -212,20 +270,12 @@ export function SpeciesDirectoryPage() {
                               })}
                             />
                           ) : null}
-                          {!species.image_url ? (
+                          {species.catalog_card_incomplete ? (
                             <Chip
                               size="small"
                               color="warning"
                               variant="outlined"
-                              label={t('speciesDirectory.badgeNoImage')}
-                            />
-                          ) : null}
-                          {!species.description ? (
-                            <Chip
-                              size="small"
-                              color="warning"
-                              variant="outlined"
-                              label={t('speciesDirectory.badgeNoDescription')}
+                              label={t('speciesDirectory.badgeIncomplete')}
                             />
                           ) : null}
                         </Stack>

@@ -5,6 +5,7 @@ import re
 
 from decision_outcome import compute_outcome_bucket
 from runtime_contract import apply_runtime_contract
+from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
 
 logger = logging.getLogger(__name__)
 
@@ -172,6 +173,7 @@ class DecisionMaker:
         if decision_reason in {
             "rejected_short_track",
             "rejected_missing_detector_candidate",
+            "rejected_static_pinned_track",
         }:
             return "insufficient_frames"
         if decision_reason in {
@@ -433,9 +435,32 @@ class DecisionMaker:
         store_floor = float(self.min_confidence_to_store)
         entropy_ge = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_entropy_ge"))
         margin_le = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_margin_le"))
+        static_cfg = StaticPinnedTrackConfig.from_runtime_cfg(app_config.config or {})
         for track_id, track in tracks.items():
             detector_events = track.get("detector_events") or []
             if not detector_events:
+                continue
+
+            static_reason = static_pinned_track_reason(track, static_cfg)
+            if static_reason:
+                decisions.append(
+                    apply_runtime_contract(
+                        {
+                            "track_id": track_id,
+                            "accepted": False,
+                            "outcome_bucket": "rejected",
+                            "decision_reason": "rejected_static_pinned_track",
+                            "decision_kind": "rejected",
+                            "trust_band": "red",
+                            "start_time": track["start_time"],
+                            "end_time": track["end_time"],
+                            "confidence": 0.0,
+                            "detection_provider": "yolo",
+                            "reject_reason_code": "insufficient_frames",
+                            "reject_detail": static_reason,
+                        }
+                    )
+                )
                 continue
 
             dur = track["end_time"] - track["start_time"]

@@ -3,11 +3,41 @@ import type { TimeOfDay } from '../utils/timeUtils';
 import type { OverviewData, Species, SpeciesSummary } from '../types';
 import { BASE_API_URL, csrfFetch } from './client';
 
-export const fetchBirdDirectory = async (): Promise<Species[]> => {
+export type SpeciesCatalogScope = 'allowlist' | 'observed' | 'all';
+
+export type SpeciesCatalogMeta = {
+  db_species_total: number;
+  allowlist_total: number;
+  listed_allowlist: number;
+  allowlist_incomplete: number;
+};
+
+export type SpeciesDirectoryResponse = {
+  items: Species[];
+  meta: SpeciesCatalogMeta;
+};
+
+export const fetchBirdDirectory = async (options?: {
+  scope?: SpeciesCatalogScope;
+  meta?: boolean;
+}): Promise<Species[] | SpeciesDirectoryResponse> => {
   const response = await axios.get(`${BASE_API_URL}/species`, {
-    params: { exclude_suspects: 1 },
+    params: {
+      exclude_suspects: 1,
+      scope: options?.scope ?? 'allowlist',
+      ...(options?.meta ? { meta: 1 } : {}),
+    },
   });
-  return response.data;
+  const data = response.data;
+  if (
+    options?.meta &&
+    data &&
+    typeof data === 'object' &&
+    Array.isArray((data as SpeciesDirectoryResponse).items)
+  ) {
+    return data as SpeciesDirectoryResponse;
+  }
+  return data as Species[];
 };
 
 /** Lightweight: only species with count > 0 (for Settings exclude list). */

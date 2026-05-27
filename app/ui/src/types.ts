@@ -578,6 +578,8 @@ export interface Species {
   /** eBird regional top ∪ BirdNET-heard (Bird Directory filter). */
   regional_scope?: boolean;
   count?: number;
+  /** Allowlist card missing photo/description (species-directory API). */
+  catalog_card_incomplete?: boolean;
 }
 
 export interface OverviewTopSpecies {

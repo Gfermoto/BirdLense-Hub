@@ -11,7 +11,8 @@ const memoryRouterFuture = {
 } as const;
 
 const fetchBirdDirectory = vi.hoisted(() =>
-  vi.fn().mockResolvedValue([
+  vi.fn().mockResolvedValue({
+    items: [
     {
       id: 1,
       name: 'Great Tit',
@@ -42,7 +43,14 @@ const fetchBirdDirectory = vi.hoisted(() =>
       active: true,
       count: 2,
     },
-  ]),
+    ],
+    meta: {
+      db_species_total: 1214,
+      allowlist_total: 526,
+      listed_allowlist: 3,
+      allowlist_incomplete: 0,
+    },
+  }),
 );
 
 vi.mock('../../api/speciesOverviewDetections', async (importOriginal) => {
