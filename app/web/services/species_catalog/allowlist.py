@@ -274,10 +274,16 @@ def load_catalog_allowlist_norm_keys(app_config_get) -> frozenset[str] | None:
 
 
 def clear_allowlist_cache() -> None:
-    """Очистить lru_cache загрузки allowlist (после смены файла или конфига)."""
+    """Очистить lru_cache загрузки allowlist (после смене файла или конфига)."""
     _load_allowlist_norm_keys_cached.cache_clear()
     _load_allowlist_names_cached.cache_clear()
     _load_efficientnet_id2label_cached.cache_clear()
+    try:
+        from services.species_catalog.vocabulary import clear_species_vocabulary_cache
+
+        clear_species_vocabulary_cache()
+    except ImportError:
+        pass
 
 
 def species_name_match_norm_keys(name: str, mapping: dict[str, str] | None = None) -> set[str]:

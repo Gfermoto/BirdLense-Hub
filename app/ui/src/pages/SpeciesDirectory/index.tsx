@@ -44,7 +44,7 @@ export function SpeciesDirectoryPage() {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [qualityFilter, setQualityFilter] = useState<CatalogQualityFilter>('all');
-  const [scope, setScope] = useState<SpeciesCatalogScope>('allowlist');
+  const [scope, setScope] = useState<SpeciesCatalogScope>('project');
   useDocumentTitle(t('nav.species'));
 
   const speciesQ = useQuery({
@@ -112,6 +112,7 @@ export function SpeciesDirectoryPage() {
           {t('speciesDirectory.scopeHint', {
             engine: meta.classifier_engine ?? '—',
             classCount: meta.classifier_class_count ?? meta.allowlist_total,
+            arbCount: meta.arbitration_vocabulary_total ?? 0,
             db: meta.db_species_total,
             incomplete: meta.allowlist_incomplete,
           })}
@@ -127,6 +128,9 @@ export function SpeciesDirectoryPage() {
         }}
         sx={{ flexWrap: 'wrap' }}
       >
+        <ToggleButton value="project">
+          {t('speciesDirectory.scopeProject')}
+        </ToggleButton>
         <ToggleButton value="allowlist">
           {t('speciesDirectory.scopeAllowlist')}
         </ToggleButton>

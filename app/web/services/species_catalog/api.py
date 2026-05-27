@@ -19,22 +19,23 @@ from services.species_catalog.allowlist import (
     species_matches_allowlist,
     species_name_match_norm_keys,
 )
+from services.species_catalog.vocabulary import get_species_vocabulary_snapshot
 from util import load_species_canonical_mapping
 from services.species_catalog.canon import normalize_catalog_display_name, parse_scientific_and_common
 from services.species_catalog.registry import species_card_needs_full_metadata_refresh
 from services.species_data_quality_service import species_ids_to_exclude_from_bird_catalog
 from services.species_regional_scope import compute_regional_scope_species_ids
 
-CatalogScope = str  # "allowlist" | "observed" | "all"
+CatalogScope = str  # "allowlist" | "project" | "observed" | "all"
 
 logger = logging.getLogger(__name__)
 
 
 def _normalize_catalog_scope(scope: str | None) -> CatalogScope:
-    raw = (scope or "allowlist").strip().lower()
-    if raw in ("allowlist", "observed", "all"):
+    raw = (scope or "project").strip().lower()
+    if raw in ("allowlist", "project", "observed", "all"):
         return raw
-    return "allowlist"
+    return "project"
 
 
 def _allowlist_row_score(row) -> tuple:
@@ -120,11 +121,25 @@ def fetch_species_catalog_list(
 
     allow_keys = load_catalog_allowlist_norm_keys(app_config.get)
     mapping = load_species_canonical_mapping()
+    vocab = get_species_vocabulary_snapshot()
     if catalog_scope == "allowlist" and allow_keys:
         species_list = [
             s for s in species_list if species_matches_allowlist(s.Species.name, allow_keys, mapping)
         ]
         species_list = _dedupe_allowlist_species_rows(species_list, allow_keys=allow_keys, mapping=mapping)
+    elif catalog_scope == "project":
+        project_keys = vocab.project_norm_keys
+        species_list = [
+            s
+            for s in species_list
+            if int(s.count or 0) > 0
+            or species_matches_allowlist(s.Species.name, project_keys, mapping)
+        ]
+        species_list = _dedupe_allowlist_species_rows(
+            species_list,
+            allow_keys=project_keys,
+            mapping=mapping,
+        )
     elif catalog_scope == "observed":
         species_list = [s for s in species_list if int(s.count or 0) > 0]
         if allow_keys:
@@ -156,11 +171,20 @@ def fetch_species_catalog_meta(session, *, exclude_suspects: bool) -> dict:
     allowlist_total = len(allowlist_names) if allowlist_names else 0
     listed = fetch_species_catalog_list(session, exclude_suspects=exclude_suspects, scope="allowlist")
     incomplete = sum(1 for row in listed if row.get("catalog_card_incomplete"))
+    vocab = get_species_vocabulary_snapshot()
+    project_listed = fetch_species_catalog_list(
+        session,
+        exclude_suspects=exclude_suspects,
+        scope="project",
+    )
     meta = {
         "db_species_total": int(total_db),
         "allowlist_total": int(allowlist_total),
         "listed_allowlist": len(listed),
         "allowlist_incomplete": incomplete,
+        "project_vocabulary_total": len(vocab.project_norm_keys),
+        "listed_project": len(project_listed),
+        "arbitration_vocabulary_total": len(vocab.arbitration_norm_keys),
     }
     meta.update(catalog_classifier_meta(app_config.get))
     return meta

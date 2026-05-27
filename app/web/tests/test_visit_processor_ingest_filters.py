@@ -31,6 +31,19 @@ def test_no_strict_allows_any_name(app, monkeypatch):
         assert sp.name != "Unknown"
 
 
+def _narrow_vocab_snapshot(*, classifier_keys: frozenset[str] | None = None):
+    from services.species_catalog.vocabulary import SpeciesVocabularySnapshot
+
+    keys = classifier_keys or frozenset({"parus major (great tit)"})
+    return SpeciesVocabularySnapshot(
+        classifier_engine="test",
+        classifier_class_count=len(keys),
+        classifier_norm_keys=keys,
+        arbitration_norm_keys=frozenset(),
+        project_norm_keys=keys,
+    )
+
+
 def test_strict_allowlist_routes_unknown_placeholder_to_bird_review(app, monkeypatch):
     """Classifier Unknown placeholder must become generic Bird for manual review."""
     import services.species_identity_service as identity_mod
@@ -39,8 +52,8 @@ def test_strict_allowlist_routes_unknown_placeholder_to_bird_review(app, monkeyp
         app_config.set("species.catalog_strict_ingest", True)
         monkeypatch.setattr(
             identity_mod,
-            "load_catalog_allowlist_norm_keys",
-            lambda _get: frozenset({"parus major (great tit)"}),
+            "get_species_vocabulary_snapshot",
+            lambda: _narrow_vocab_snapshot(),
         )
         if not Species.query.filter_by(name="Birds").first():
             db.session.add(Species(name="Birds"))
@@ -68,8 +81,8 @@ def test_strict_allowlist_fails_closed_when_allowlist_missing(app, monkeypatch):
         app_config.set("species.catalog_strict_ingest", True)
         monkeypatch.setattr(
             identity_mod,
-            "load_catalog_allowlist_norm_keys",
-            lambda _get: None,
+            "get_species_vocabulary_snapshot",
+            lambda: _narrow_vocab_snapshot(classifier_keys=frozenset()),
         )
         if not Species.query.filter_by(name="Birds").first():
             db.session.add(Species(name="Birds"))
@@ -97,8 +110,8 @@ def test_strict_allowlist_still_blocks_real_off_allowlist_species(app, monkeypat
         app_config.set("species.catalog_strict_ingest", True)
         monkeypatch.setattr(
             identity_mod,
-            "load_catalog_allowlist_norm_keys",
-            lambda _get: frozenset({"parus major (great tit)"}),
+            "get_species_vocabulary_snapshot",
+            lambda: _narrow_vocab_snapshot(),
         )
         if not Species.query.filter_by(name="Birds").first():
             db.session.add(Species(name="Birds"))

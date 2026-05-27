@@ -3219,8 +3219,9 @@
   "speciesDirectory": {
     "title": "Card quality",
     "description": "Service list for polishing photos and descriptions (model classes 525+1). Catalog index is under the “Species” nav item.",
-    "scopeHint": "Active classifier ({{engine}}, {{classCount}} classes): «Model classes» lists only species the model can label on crops. SQLite: {{db}} Species rows. Incomplete cards: {{incomplete}}. Species outside the model (e.g. Eurasian Jay on EfficientNet) — use «Observed».",
-    "scopeAllowlist": "Model classes",
+    "scopeHint": "Project vocabulary: classifier ({{engine}}, {{classCount}}) + arbitration (Frigate/BirdNET/mapping, ~{{arbCount}} keys). «Project» = pipeline participants and already observed species. «Classifier only» = EfficientNet outputs. SQLite: {{db}}.",
+    "scopeProject": "Project (classifier + arbitration)",
+    "scopeAllowlist": "Classifier only",
     "scopeObserved": "Observed",
     "scopeAllDb": "Full DB (admin)",
     "allowlistModelCount": "Model: {{count}}",
