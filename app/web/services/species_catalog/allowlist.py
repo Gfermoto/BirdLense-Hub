@@ -96,22 +96,77 @@ def _catalog_allowlist_extra_names(app_config_get) -> tuple[str, ...]:
     return tuple(names)
 
 
-def resolve_allowlist_path(app_config_get) -> str | None:
-    """Абсолютный путь к файлу allowlist классификатора или None, если не задан."""
-    follow_engine = str(
-        app_config_get("species.catalog_allowlist_follow_classifier_engine", True)
-    ).strip().lower() in ("1", "true", "yes", "on")
-    if follow_engine:
-        engine_path = _classifier_engine_allowlist_path(app_config_get)
-        if engine_path and os.path.isfile(engine_path):
-            return engine_path
-
+def _resolve_configured_allowlist_path(app_config_get) -> str | None:
     rel = (app_config_get("species.catalog_allowlist_file") or "").strip()
     if not rel:
         return None
     if os.path.isabs(rel):
         return rel
     return os.path.join(_processor_root(), rel)
+
+
+def _resolve_supplement_allowlist_paths(app_config_get) -> list[str]:
+    """Доп. файлы allowlist (EU YOLO class_names и явный supplement)."""
+    out: list[str] = []
+    seen: set[str] = set()
+
+    def add(path: str | None) -> None:
+        if not path:
+            return
+        abspath = os.path.abspath(path)
+        if not os.path.isfile(abspath) or abspath in seen:
+            return
+        seen.add(abspath)
+        out.append(abspath)
+
+    rel = (app_config_get("species.catalog_allowlist_supplement_file") or "").strip()
+    if rel:
+        add(rel if os.path.isabs(rel) else os.path.join(_processor_root(), rel))
+
+    follow_engine = str(
+        app_config_get("species.catalog_allowlist_follow_classifier_engine", True)
+    ).strip().lower() in ("1", "true", "yes", "on")
+    configured = _resolve_configured_allowlist_path(app_config_get)
+    if follow_engine and configured:
+        # user_config часто задаёт class_names.txt (EU ~491), а engine — class_labels.txt (EfficientNet).
+        add(configured)
+    return out
+
+
+def resolve_all_allowlist_paths(app_config_get) -> list[str]:
+    """Все файлы allowlist: engine (если follow) + supplement + catalog_allowlist_file."""
+    paths: list[str] = []
+    seen: set[str] = set()
+
+    def add(path: str | None) -> None:
+        if not path:
+            return
+        abspath = os.path.abspath(path)
+        if not os.path.isfile(abspath) or abspath in seen:
+            return
+        seen.add(abspath)
+        paths.append(abspath)
+
+    follow_engine = str(
+        app_config_get("species.catalog_allowlist_follow_classifier_engine", True)
+    ).strip().lower() in ("1", "true", "yes", "on")
+    if follow_engine:
+        add(_classifier_engine_allowlist_path(app_config_get))
+    else:
+        add(_resolve_configured_allowlist_path(app_config_get))
+
+    for sup in _resolve_supplement_allowlist_paths(app_config_get):
+        add(sup)
+
+    if not paths:
+        add(_resolve_configured_allowlist_path(app_config_get))
+    return paths
+
+
+def resolve_allowlist_path(app_config_get) -> str | None:
+    """Первичный файл allowlist (обратная совместимость)."""
+    paths = resolve_all_allowlist_paths(app_config_get)
+    return paths[0] if paths else None
 
 
 @lru_cache(maxsize=4)
@@ -138,13 +193,15 @@ def _load_allowlist_norm_keys_cached(abspath: str) -> frozenset[str]:
 
 def load_catalog_allowlist_norm_keys(app_config_get) -> frozenset[str] | None:
     """Множество нормализованных ключей или None, если allowlist не задан / файла нет."""
-    path = resolve_allowlist_path(app_config_get)
-    if not path or not os.path.isfile(path):
+    paths = resolve_all_allowlist_paths(app_config_get)
+    if not paths:
         extras = _catalog_allowlist_extra_names(app_config_get)
         if not extras:
             return None
         return frozenset(_norm_key(n) for n in extras)
-    keys = set(_load_allowlist_norm_keys_cached(os.path.abspath(path)))
+    keys: set[str] = set()
+    for path in paths:
+        keys |= set(_load_allowlist_norm_keys_cached(path))
     for extra in _catalog_allowlist_extra_names(app_config_get):
         keys.add(_norm_key(extra))
     return frozenset(keys)
@@ -208,18 +265,25 @@ def _load_allowlist_names_cached(abspath: str) -> tuple[str, ...]:
 
 
 def load_catalog_allowlist_names(app_config_get) -> tuple[str, ...] | None:
-    """Список имён классов из allowlist-файла + extras (525 птиц + Rodent) или None."""
-    path = resolve_allowlist_path(app_config_get)
+    """Список имён классов из всех allowlist-файлов + extras (дедуп по norm key)."""
+    paths = resolve_all_allowlist_paths(app_config_get)
     extras = _catalog_allowlist_extra_names(app_config_get)
-    if not path or not os.path.isfile(path):
-        return extras or None
-    names = list(_load_allowlist_names_cached(os.path.abspath(path)))
-    seen = {_norm_key(n) for n in names}
+    if not paths and not extras:
+        return None
+    names: list[str] = []
+    seen: set[str] = set()
+    for path in paths:
+        for raw in _load_allowlist_names_cached(path):
+            nk = _norm_key(raw)
+            if nk and nk not in seen:
+                names.append(raw)
+                seen.add(nk)
     for extra in extras:
-        if _norm_key(extra) not in seen:
+        nk = _norm_key(extra)
+        if nk and nk not in seen:
             names.append(extra)
-            seen.add(_norm_key(extra))
-    return tuple(names)
+            seen.add(nk)
+    return tuple(names) if names else None
 
 
 def allowlist_scientific_name_for_display_name(
@@ -237,22 +301,19 @@ def allowlist_scientific_name_for_display_name(
     target_keys = species_name_match_norm_keys(display_name)
     if not target_keys:
         return None
-    path = resolve_allowlist_path(app_config_get)
-    if not path or not os.path.isfile(path):
-        return None
-    abspath = os.path.abspath(path)
-    for raw in _load_allowlist_names_cached(abspath):
-        pair = _split_scientific_common_display(raw)
-        if not pair:
-            continue
-        sci, common = pair
-        line_keys = {
-            _norm_key(raw),
-            _norm_key(sci),
-            _norm_key(common),
-        }
-        if target_keys & line_keys:
-            return sci.strip()
+    for abspath in resolve_all_allowlist_paths(app_config_get):
+        for raw in _load_allowlist_names_cached(abspath):
+            pair = _split_scientific_common_display(raw)
+            if not pair:
+                continue
+            sci, common = pair
+            line_keys = {
+                _norm_key(raw),
+                _norm_key(sci),
+                _norm_key(common),
+            }
+            if target_keys & line_keys:
+                return sci.strip()
     return None
 
 
@@ -262,6 +323,7 @@ __all__ = [
     "ingest_name_matches_allowlist",
     "load_catalog_allowlist_names",
     "load_catalog_allowlist_norm_keys",
+    "resolve_all_allowlist_paths",
     "resolve_allowlist_path",
     "species_matches_allowlist",
     "species_name_match_norm_keys",

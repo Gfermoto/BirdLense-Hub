@@ -79,8 +79,15 @@ export function SpeciesDirectoryPage() {
       ? sorted
       : sorted.filter((row) => {
           const name = normalizeNeedle(String(row.name || ''));
+          const dbName = normalizeNeedle(String((row as { db_name?: string }).db_name || ''));
+          const sci = normalizeNeedle(String((row as { scientific_name?: string }).scientific_name || ''));
           const desc = normalizeNeedle(String(row.description || ''));
-          return name.includes(needle) || desc.includes(needle);
+          return (
+            name.includes(needle) ||
+            dbName.includes(needle) ||
+            sci.includes(needle) ||
+            desc.includes(needle)
+          );
         });
     if (qualityFilter === 'all') return bySearch;
     return bySearch.filter((row) => Boolean(row.catalog_card_incomplete));

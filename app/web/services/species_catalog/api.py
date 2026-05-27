@@ -19,6 +19,7 @@ from services.species_catalog.allowlist import (
     species_name_match_norm_keys,
 )
 from util import load_species_canonical_mapping
+from services.species_catalog.canon import normalize_catalog_display_name, parse_scientific_and_common
 from services.species_catalog.registry import species_card_needs_full_metadata_refresh
 from services.species_data_quality_service import species_ids_to_exclude_from_bird_catalog
 from services.species_regional_scope import compute_regional_scope_species_ids
@@ -61,11 +62,17 @@ def _dedupe_allowlist_species_rows(
     return sorted(best_by_key.values(), key=lambda r: (r.Species.name or "").lower())
 
 
-def _species_row_dict(row, *, regional_scope_ids: set[int]) -> dict:
+def _species_row_dict(row, *, regional_scope_ids: set[int], mapping: dict | None = None) -> dict:
     sp = row.Species
+    mapping = mapping or load_species_canonical_mapping()
+    raw_name = sp.name or ""
+    display_name = normalize_catalog_display_name(raw_name, mapping) or raw_name
+    scientific_name, _common = parse_scientific_and_common(raw_name)
     return {
         "id": sp.id,
-        "name": sp.name,
+        "name": display_name,
+        "db_name": raw_name,
+        "scientific_name": scientific_name,
         "parent_id": sp.parent_id,
         "created_at": sp.created_at.isoformat(),
         "image_url": sp.image_url,
@@ -116,7 +123,10 @@ def fetch_species_catalog_list(
             species_list = _dedupe_allowlist_species_rows(species_list, allow_keys=allow_keys, mapping=mapping)
 
     regional_scope_ids = compute_regional_scope_species_ids()
-    rows = [_species_row_dict(row, regional_scope_ids=regional_scope_ids) for row in species_list]
+    rows = [
+        _species_row_dict(row, regional_scope_ids=regional_scope_ids, mapping=mapping)
+        for row in species_list
+    ]
     if catalog_scope != "all":
         for item in rows:
             item["catalog_scope"] = catalog_scope
