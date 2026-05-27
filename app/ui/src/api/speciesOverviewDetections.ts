@@ -10,6 +10,8 @@ export type SpeciesCatalogMeta = {
   allowlist_total: number;
   listed_allowlist: number;
   allowlist_incomplete: number;
+  classifier_engine?: string;
+  classifier_class_count?: number;
 };
 
 export type SpeciesDirectoryResponse = {

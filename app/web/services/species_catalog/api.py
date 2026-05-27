@@ -13,6 +13,7 @@ from sqlalchemy import distinct, func
 from app_config.app_config import app_config
 from models import Species, SpeciesVisit, VideoSpecies
 from services.species_catalog.allowlist import (
+    catalog_classifier_meta,
     load_catalog_allowlist_names,
     load_catalog_allowlist_norm_keys,
     species_matches_allowlist,
@@ -62,17 +63,27 @@ def _dedupe_allowlist_species_rows(
     return sorted(best_by_key.values(), key=lambda r: (r.Species.name or "").lower())
 
 
-def _species_row_dict(row, *, regional_scope_ids: set[int], mapping: dict | None = None) -> dict:
+def _species_row_dict(
+    row,
+    *,
+    regional_scope_ids: set[int],
+    mapping: dict | None = None,
+    allow_keys: frozenset[str] | None = None,
+) -> dict:
     sp = row.Species
     mapping = mapping or load_species_canonical_mapping()
     raw_name = sp.name or ""
     display_name = normalize_catalog_display_name(raw_name, mapping) or raw_name
     scientific_name, _common = parse_scientific_and_common(raw_name)
+    classifier_predictable = (
+        species_matches_allowlist(raw_name, allow_keys, mapping) if allow_keys else True
+    )
     return {
         "id": sp.id,
         "name": display_name,
         "db_name": raw_name,
         "scientific_name": scientific_name,
+        "classifier_predictable": classifier_predictable,
         "parent_id": sp.parent_id,
         "created_at": sp.created_at.isoformat(),
         "image_url": sp.image_url,
@@ -124,7 +135,12 @@ def fetch_species_catalog_list(
 
     regional_scope_ids = compute_regional_scope_species_ids()
     rows = [
-        _species_row_dict(row, regional_scope_ids=regional_scope_ids, mapping=mapping)
+        _species_row_dict(
+            row,
+            regional_scope_ids=regional_scope_ids,
+            mapping=mapping,
+            allow_keys=allow_keys,
+        )
         for row in species_list
     ]
     if catalog_scope != "all":
@@ -140,12 +156,14 @@ def fetch_species_catalog_meta(session, *, exclude_suspects: bool) -> dict:
     allowlist_total = len(allowlist_names) if allowlist_names else 0
     listed = fetch_species_catalog_list(session, exclude_suspects=exclude_suspects, scope="allowlist")
     incomplete = sum(1 for row in listed if row.get("catalog_card_incomplete"))
-    return {
+    meta = {
         "db_species_total": int(total_db),
         "allowlist_total": int(allowlist_total),
         "listed_allowlist": len(listed),
         "allowlist_incomplete": incomplete,
     }
+    meta.update(catalog_classifier_meta(app_config.get))
+    return meta
 
 
 def fetch_observed_species_list(session) -> list[dict]:
