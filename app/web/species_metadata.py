@@ -38,6 +38,30 @@ _DISAMBIG_WIKI_TITLE_BY_COMMON_KEY: dict[str, str] = {
 
 # Строки каталога с ALL CAPS / опечатками (нет совпадения с allowlist) — подставляем стабильный заголовок en.wikipedia.
 _TYPO_SPECIES_WIKI_TITLE_BY_KEY: dict[str, str] = {
+    "african oyster catcher": "African oystercatcher",
+    "alberts towhee": "Albert's towhee",
+    "ashy thrushbird": "Ashy thrush",
+    "asian dollard bird": "Asian dollarbird",
+    "auckland shaq": "Auckland shag",
+    "banded pita": "Banded pitta",
+    "black headed caique": "Black-headed caique",
+    "blackburniam warbler": "Blackburnian warbler",
+    "blonde crested woodpecker": "Blond-crested woodpecker",
+    "blue coau": "Blue coua",
+    "brandt cormarant": "Brandt's cormorant",
+    "brown crepper": "Brown creeper",
+    "brown noody": "Brown noddy",
+    "chestnet bellied euphonia": "Chestnut-bellied euphonia",
+    "crested nuthatch": "Velvet-fronted nuthatch",
+    "curl crested aracuri": "Curl-crested aracari",
+    "d-arnauds barbet": "D'Arnaud's barbet",
+    "double brested cormarant": "Double-crested cormorant",
+    "eared pita": "Eared pitta",
+    "eastern towhee": "Eastern towhee",
+    "eastern towee": "Eastern towhee",
+    "eastern wip poor will": "Eastern whip-poor-will",
+    "fire tailled myzornis": "Fire-tailed myzornis",
+    "frill back pigeon": "Frillback pigeon",
     "golden bower bird": "Golden bowerbird",
     "greator sage grouse": "Greater sage-grouse",
     "green winged dove": "Pacific emerald dove",
@@ -69,6 +93,8 @@ _TYPO_SPECIES_WIKI_TITLE_BY_KEY: dict[str, str] = {
     "vermilion flycather": "Vermilion flycatcher",
     "wall creaper": "Wallcreeper",
     "wilsons bird of paradise": "Wilson's bird-of-paradise",
+    # Gag / non-species label in legacy class_labels.txt — stable placeholder art.
+    "looney birds": "Rock dove",
 }
 
 # Intro extracts that clearly belong to non-bird encyclopedia articles (e.g. human genetics / hair).
