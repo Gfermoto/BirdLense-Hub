@@ -5,3 +5,4 @@ processor:
   scoring_default_low_threshold: 0.24
   scoring_default_high_threshold: 0.40
   auto_small_object_relax_enabled: true
+  scoring_relaxed_min_confidence: 0.08
