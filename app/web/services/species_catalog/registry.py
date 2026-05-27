@@ -895,8 +895,9 @@ def repair_catalog_cards(
             try:
                 # Placeholder text blocks honest coverage but not enrich early-return;
                 # full refresh matches UI «Обновить карточку» (Wikipedia → iNat, commit).
-                use_refresh = not before_img and (
-                    not before_desc
+                use_refresh = (
+                    not before_img
+                    or not before_desc
                     or _catalog_description_is_placeholder(sp.description or "")
                 )
                 if dry_run:
