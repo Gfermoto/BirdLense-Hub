@@ -26,9 +26,9 @@ def main() -> int:
     from app_config.app_config import app_config
     from models import Species, db
     from services.species_catalog.registry import (
-        _catalog_description_is_placeholder,
         catalog_cards_coverage_snapshot,
         load_catalog_allowlist_names,
+        species_card_needs_full_metadata_refresh,
         species_name_match_norm_keys,
     )
     from species_metadata import refresh_species_metadata_from_sources
@@ -50,13 +50,7 @@ def main() -> int:
                     targets.append(sp)
                     break
         uniq: dict[int, Species] = {int(sp.id): sp for sp in targets}
-        def _needs_refresh(sp: Species) -> bool:
-            if not (sp.image_url or "").strip():
-                return True
-            desc = (sp.description or "").strip()
-            return not desc or _catalog_description_is_placeholder(desc)
-
-        missing = [sp for sp in uniq.values() if _needs_refresh(sp)][
+        missing = [sp for sp in uniq.values() if species_card_needs_full_metadata_refresh(sp)][
             : max(1, int(args.limit))
         ]
 
@@ -65,8 +59,7 @@ def main() -> int:
             if args.dry_run:
                 continue
             refresh_species_metadata_from_sources(sp)
-            desc = (sp.description or "").strip()
-            if (sp.image_url or "").strip() and desc and not _catalog_description_is_placeholder(desc):
+            if not species_card_needs_full_metadata_refresh(sp):
                 fixed += 1
 
         if args.dry_run:

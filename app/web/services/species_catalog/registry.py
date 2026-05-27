@@ -51,6 +51,16 @@ def _catalog_description_is_placeholder(desc: str) -> bool:
     return bool(_PLACEHOLDER_CATALOG_DESC.search((desc or "").strip()))
 
 
+def species_card_needs_full_metadata_refresh(sp: Species) -> bool:
+    """Same completeness rule as coverage + UI «Обновить карточку» (clear then re-fetch)."""
+    if not (sp.image_url or "").strip():
+        return True
+    desc = (sp.description or "").strip()
+    if not desc or _catalog_description_is_placeholder(desc):
+        return True
+    return bool(desc and wikipedia_extract_rejects_wrong_topic(desc))
+
+
 def _norm_key(name: str) -> str:
     if not name:
         return ""
@@ -889,24 +899,14 @@ def repair_catalog_cards(
         before_img = bool((sp.image_url or "").strip())
         before_desc = bool((sp.description or "").strip())
 
-        if not before_img or not before_desc or _catalog_description_is_placeholder(
-            sp.description or ""
-        ):
+        if species_card_needs_full_metadata_refresh(sp):
             try:
-                # Placeholder text blocks honest coverage but not enrich early-return;
-                # full refresh matches UI «Обновить карточку» (Wikipedia → iNat, commit).
-                use_refresh = (
-                    not before_img
-                    or not before_desc
-                    or _catalog_description_is_placeholder(sp.description or "")
-                )
+                # Always clear + re-fetch like POST …/refresh-metadata (not enrich early-return).
                 if dry_run:
-                    changed = bool(use_refresh or not before_img or not before_desc)
-                elif use_refresh:
-                    changed = bool(refresh_species_metadata_from_sources(sp))
+                    changed = True
                 else:
-                    changed = bool(enrich_species_card_metadata(sp))
-                if changed and (not before_img or not before_desc or use_refresh):
+                    changed = bool(refresh_species_metadata_from_sources(sp))
+                if changed:
                     metadata_fixed += 1
             except Exception as e:
                 enrich_exceptions += 1

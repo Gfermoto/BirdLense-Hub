@@ -463,6 +463,8 @@ def test_typo_catalog_wikipedia_title_maps_misspellings():
     assert sm._typo_catalog_wikipedia_title("MANDRIN DUCK") == "Mandarin duck"
     assert sm._typo_catalog_wikipedia_title("AUCKLAND SHAQ") == "Auckland shag"
     assert sm._typo_catalog_wikipedia_title("ASIAN DOLLARD BIRD") == "Asian dollarbird"
+    assert sm._typo_catalog_wikipedia_title("Go Away Bird") == "Gray go-away-bird"
+    assert sm._typo_catalog_wikipedia_title("Black Cockato") == "Red-tailed black cockatoo"
     assert sm._typo_catalog_wikipedia_title("Unknown Typo Bird") is None
 
 
