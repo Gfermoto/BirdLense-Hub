@@ -24,7 +24,7 @@ def register_ui_species_catalog_routes(app):
     @app.route("/api/ui/species", methods=["GET"])
     def get_all_species():
         exclude_suspects = request.args.get("exclude_suspects", "").strip().lower() in ("1", "true", "yes")
-        scope = (request.args.get("scope") or "allowlist").strip().lower()
+        scope = (request.args.get("scope") or "project").strip().lower()
         include_meta = request.args.get("meta", "").strip().lower() in ("1", "true", "yes")
         cache_key = f"species_list:v4:ex{1 if exclude_suspects else 0}:sc{scope}"
         hit, scached = cache_get(cache_key)

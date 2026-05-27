@@ -5,11 +5,8 @@ from __future__ import annotations
 from typing import Optional
 
 from app_config.app_config import app_config
-from models import Species, SpeciesAlias
-from services.species_catalog_allowlist_service import (
-    load_catalog_allowlist_norm_keys,
-    species_matches_allowlist,
-)
+from models import Species, SpeciesAlias, SpeciesVisit, VideoSpecies
+from services.species_catalog.vocabulary import get_species_vocabulary_snapshot
 from services.species_registry_service import resolve_species_name
 from species_constants import CATALOG_RODENT_SPECIES, GENERIC_BIRD_SPECIES
 from services.species_catalog.canon import normalize_catalog_display_name
@@ -35,11 +32,20 @@ class SpeciesIdentityService:
         self.logger.info('Created species "Unknown" for blocked/off-allowlist ingest')
         return row
 
+    def _species_has_observed_activity(self, species_id: int) -> bool:
+        if VideoSpecies.query.filter_by(species_id=species_id).first():
+            return True
+        if SpeciesVisit.query.filter_by(species_id=species_id).first():
+            return True
+        return False
+
     def ingest_blocked(
         self,
         display_name: str,
         raw_normalized: str,
         taxon_common_name: str | None,
+        *,
+        species_id: int | None = None,
     ) -> bool:
         canonical_candidates = {
             str(display_name or "").strip().lower(),
@@ -50,20 +56,17 @@ class SpeciesIdentityService:
             return False
         if CATALOG_RODENT_SPECIES.strip().lower() in canonical_candidates:
             return False
+        if species_id is not None and self._species_has_observed_activity(int(species_id)):
+            return False
         if not bool(app_config.get("species.catalog_strict_ingest")):
             return False
-        allow = load_catalog_allowlist_norm_keys(app_config.get)
-        if allow is None:
-            self.logger.warning(
-                "Strict catalog ingest is enabled but allowlist is unavailable; "
-                'blocking species "%s" until allowlist is restored.',
-                display_name or raw_normalized or taxon_common_name or "unknown",
-            )
-            return True
-        mapping = load_species_canonical_mapping()
-        ok_display = species_matches_allowlist(display_name or "", allow, mapping)
-        ok_raw = species_matches_allowlist(raw_normalized or "", allow, mapping)
-        return not (ok_display or ok_raw)
+        vocab = get_species_vocabulary_snapshot()
+        if vocab.allows_ingest_name(display_name, raw_normalized, taxon_common_name):
+            return False
+        for candidate in (display_name, raw_normalized, taxon_common_name):
+            if candidate and resolve_species_name(str(candidate).strip(), source="ingest_gate").found:
+                return False
+        return True
 
     @staticmethod
     def _norm_alias_key(name: str) -> str:
@@ -136,7 +139,12 @@ class SpeciesIdentityService:
         species = Species.query.filter_by(name=canonical_name).first()
         if species:
             current_common = species.taxon.common_name if species.taxon else None
-            if self.ingest_blocked(species.name or "", normalized, current_common):
+            if self.ingest_blocked(
+                species.name or "",
+                normalized,
+                current_common,
+                species_id=int(species.id),
+            ):
                 return self.get_or_create_unknown_species()
             if resolution.found and taxon and species.taxon_id != taxon.id:
                 species.taxon_id = taxon.id

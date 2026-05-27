@@ -3,7 +3,7 @@ import type { TimeOfDay } from '../utils/timeUtils';
 import type { OverviewData, Species, SpeciesSummary } from '../types';
 import { BASE_API_URL, csrfFetch } from './client';
 
-export type SpeciesCatalogScope = 'allowlist' | 'observed' | 'all';
+export type SpeciesCatalogScope = 'allowlist' | 'project' | 'observed' | 'all';
 
 export type SpeciesCatalogMeta = {
   db_species_total: number;
@@ -12,6 +12,9 @@ export type SpeciesCatalogMeta = {
   allowlist_incomplete: number;
   classifier_engine?: string;
   classifier_class_count?: number;
+  project_vocabulary_total?: number;
+  listed_project?: number;
+  arbitration_vocabulary_total?: number;
 };
 
 export type SpeciesDirectoryResponse = {
@@ -26,7 +29,7 @@ export const fetchBirdDirectory = async (options?: {
   const response = await axios.get(`${BASE_API_URL}/species`, {
     params: {
       exclude_suspects: 1,
-      scope: options?.scope ?? 'allowlist',
+      scope: options?.scope ?? 'project',
       ...(options?.meta ? { meta: 1 } : {}),
     },
   });
