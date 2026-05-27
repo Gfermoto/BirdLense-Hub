@@ -777,6 +777,16 @@ export-classifier-effnet:
 test-classifier-effnet-smoke:
 	@python3 "$(CURDIR)/scripts/test_classifier_smoke.py" --backend onnxruntime --video "$(CURDIR)/app/data/stress_clips/storm_bird.mp4"
 
+# Birder EU-common (707 Collins species) — default classifier (#516).
+download-classifier-birder-eu:
+	@python3 "$(CURDIR)/scripts/download_birder_classifier.py"
+
+export-classifier-birder-eu:
+	@python3 "$(CURDIR)/scripts/export_birder_classifier_to_openvino.py" --benchmark
+
+test-classifier-birder-eu-smoke:
+	@python3 "$(CURDIR)/scripts/test_birder_classifier_smoke.py" --backend openvino --video "$(CURDIR)/app/data/stress_clips/storm_bird.mp4"
+
 # Parity PyTorch vs OpenVINO на одном кадре (см. docs/ml/MODEL_EXPORT_GUIDE.md).
 debug-ov-conversion-help:
 	@python3 "$(CURDIR)/scripts/debug_ov_conversion.py" --help

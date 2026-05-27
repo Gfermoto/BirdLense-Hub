@@ -193,9 +193,10 @@ def build_detection_stack(
         _eng = classifier_engine(app_config)
         raise FileNotFoundError(
             f"Classifier weights missing for engine={_eng!r}: {classifier_path}. "
-            "EfficientNetB2: run scripts/download_birds_classifier_efficientnetb2.py and "
-            "scripts/export_classifier_to_openvino.py (ONNX Runtime bundle). "
-            "Legacy YOLO: processor.models.classifier (.pt) or classifier_openvino.",
+            "Birder EU: scripts/download_birder_classifier.py + "
+            "scripts/export_birder_classifier_to_openvino.py. "
+            "EfficientNetB2: scripts/download_birds_classifier_efficientnetb2.py. "
+            "Legacy YOLO: processor.models.classifier (.pt).",
         )
 
     from detector_class_map import apply_class_map_to_config
@@ -317,7 +318,19 @@ def build_detection_stack(
             binary_path = torch_binary_path
             _inf_backend = "torch"
         if can_fallback_classifier:
-            if classifier_engine(app_config) == "efficientnet_b2":
+            eng = classifier_engine(app_config)
+            if eng == "birder_eu":
+                from inference.classifier_paths import _birder_weights_subdir
+
+                sub = _birder_weights_subdir(app_config)
+                torch_classifier_path = resolve_relative_to_processor_root(
+                    str(
+                        app_config.get("processor.models.classifier_birder_eu")
+                        or f"models/classification/weights/{sub}",
+                    ).strip(),
+                    processor_root,
+                )
+            elif eng == "efficientnet_b2":
                 torch_classifier_path = resolve_relative_to_processor_root(
                     str(
                         app_config.get(

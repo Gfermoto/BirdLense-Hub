@@ -604,7 +604,7 @@ class TwoStageStrategy(DetectionStrategy):
         classifier_inference_backend: str = "torch",
         binary_inference_device: str | None = None,
         classifier_inference_device: str | None = None,
-        classifier_engine: str = "efficientnet_b2",
+        classifier_engine: str = "birder_eu",
     ):
         super().__init__(min_center_dist, min_box_size_px, blur_threshold, max_blur_checks)
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -628,7 +628,7 @@ class TwoStageStrategy(DetectionStrategy):
         self.detector_scope = resolve_detector_scope_set(detector_scope, app_config)
         scope_log = "ALL" if self.detector_scope is None else sorted(self.detector_scope)
 
-        self._classifier_engine = (classifier_engine or "efficientnet_b2").strip().lower()
+        self._classifier_engine = (classifier_engine or "birder_eu").strip().lower()
         self.logger.info(
             "TwoStageStrategy: detector_backend=%s classifier_engine=%s classifier_backend=%s "
             "detector_weight_contract=%s detector_scope=%s native_class_labels=%s",
@@ -656,7 +656,19 @@ class TwoStageStrategy(DetectionStrategy):
                 f"Classifier backend {self.classifier_inference_backend!r} is not implemented (#371).",
             )
 
-        if self._classifier_engine == "efficientnet_b2":
+        self._classifier_is_efficientnet = False
+        self._classifier_is_birder_eu = False
+        if self._classifier_engine == "birder_eu":
+            from inference.birder_eu_classifier import load_birder_eu_classifier
+
+            self._classifier_is_birder_eu = True
+            self.classifier_model = load_birder_eu_classifier(
+                classifier_model_path,
+                backend=self.classifier_inference_backend,
+                regional_species=self.regional_species,
+                app_config=app_config,
+            )
+        elif self._classifier_engine == "efficientnet_b2":
             from inference.efficientnet_b2_classifier import load_efficientnet_b2_classifier
 
             self._classifier_is_efficientnet = True
@@ -667,7 +679,6 @@ class TwoStageStrategy(DetectionStrategy):
                 app_config=app_config,
             )
         else:
-            self._classifier_is_efficientnet = False
             if self.classifier_inference_backend not in ("torch", "openvino"):
                 raise NotImplementedError(
                     "YOLO legacy classifier supports only torch/openvino backends.",
@@ -713,9 +724,12 @@ class TwoStageStrategy(DetectionStrategy):
                 len(self.classes),
             )
             self.logger.info("Enabled classes: %s", enabled_classes)
-        elif self.regional_species and getattr(self, "_classifier_is_efficientnet", False):
+        elif self.regional_species and (
+            getattr(self, "_classifier_is_efficientnet", False)
+            or getattr(self, "_classifier_is_birder_eu", False)
+        ):
             self.logger.info(
-                "Regional species filter delegated to EfficientNetB2 (%s entries).",
+                "Regional species filter delegated to neural classifier (%s entries).",
                 len(self.regional_species),
             )
 
@@ -724,7 +738,9 @@ class TwoStageStrategy(DetectionStrategy):
         if self._binary_track_device:
             _warm["device"] = self._binary_track_device
         self.binary_model.track(np.zeros((320, 320, 3), dtype=np.uint8), **_warm)
-        if getattr(self, "_classifier_is_efficientnet", False):
+        if getattr(self, "_classifier_is_efficientnet", False) or getattr(
+            self, "_classifier_is_birder_eu", False
+        ):
             self.classifier_model.warmup()
         else:
             _cls_warm: dict = {"verbose": False}
@@ -785,7 +801,9 @@ class TwoStageStrategy(DetectionStrategy):
 
     def _classify_crop(self, crop: np.ndarray) -> ClassifierOutput:
         """Классификация кропа: вид, top1 conf, энтропия и top1−top2 margin по полному вектору probs."""
-        if getattr(self, "_classifier_is_efficientnet", False):
+        if getattr(self, "_classifier_is_efficientnet", False) or getattr(
+            self, "_classifier_is_birder_eu", False
+        ):
             out = self.classifier_model.classify_crop_bgr(crop)
             return ClassifierOutput(
                 out.species_name,

@@ -8,12 +8,21 @@ from typing import Any, Mapping
 
 
 def classifier_engine(app_config: Mapping[str, Any]) -> str:
-    """``yolo`` (legacy best.pt) or ``efficientnet_b2`` (HF 525-species, default)."""
+    """``birder_eu`` (707 EU, default) | ``efficientnet_b2`` (global 525) | ``yolo`` (legacy)."""
     raw = app_config.get("processor.classifier_engine")
-    eng = str(raw).strip().lower() if raw is not None else "efficientnet_b2"
+    eng = str(raw).strip().lower() if raw is not None else "birder_eu"
+    if eng in ("birder", "birder_eu", "birder-eu", "eu-common", "eu_common"):
+        return "birder_eu"
     if eng in ("efficientnet", "efficientnet_b2", "hf_efficientnet_b2", "birds_efficientnet_b2"):
         return "efficientnet_b2"
     return "yolo"
+
+
+def _birder_weights_subdir(app_config: Mapping[str, Any]) -> str:
+    from inference.birder_eu_classifier import default_birder_variant
+
+    variant = default_birder_variant(app_config)
+    return f"birder_{variant.replace('-', '_')}"
 
 
 def classifier_weights_available(path: str) -> bool:
@@ -120,6 +129,52 @@ def _resolve_efficientnet_paths(
     return (p_torch, "torch")
 
 
+def _resolve_birder_eu_paths(
+    app_config: Mapping[str, Any],
+    processor_root: str,
+    requested_backend: str,
+) -> tuple[str, str]:
+    from inference.binary_paths import resolve_relative_to_processor_root
+    from inference.selector import openvino_runtime_available, resolve_classifier_inference_backend
+
+    backend = resolve_classifier_inference_backend(app_config)
+    subdir = _birder_weights_subdir(app_config)
+    default_torch = f"models/classification/weights/{subdir}"
+    default_bundle = f"models/classification/weights/{subdir}_openvino"
+
+    cfg_torch = str(app_config.get("processor.models.classifier_birder_eu") or default_torch).strip()
+    p_torch = resolve_relative_to_processor_root(cfg_torch, processor_root)
+
+    cfg_ov = str(
+        app_config.get("processor.models.classifier_birder_eu_openvino") or default_bundle,
+    ).strip()
+    p_ov = resolve_relative_to_processor_root(cfg_ov, processor_root)
+
+    bundle = Path(p_ov)
+    ov_xml = bundle / "openvino_model.xml"
+    ov_ready = bool(bundle.is_dir() and ov_xml.is_file() and openvino_runtime_available())
+
+    if requested_backend == "openvino":
+        if ov_ready:
+            return (p_ov, "openvino")
+        raise FileNotFoundError(
+            f"Birder EU OpenVINO IR missing: {ov_xml}. "
+            "Run scripts/export_birder_classifier_to_openvino.py",
+        )
+
+    if requested_backend == "auto":
+        if ov_ready:
+            return (p_ov, "openvino")
+        if classifier_weights_available(p_torch):
+            return (p_torch, "torch")
+
+    if ov_ready:
+        return (p_ov, "openvino")
+    if classifier_weights_available(p_torch):
+        return (p_torch, "torch")
+    return (p_torch, "torch")
+
+
 def resolve_classifier_weight_path(
     app_config: Mapping[str, Any],
     processor_root: str,
@@ -127,6 +182,7 @@ def resolve_classifier_weight_path(
     """
     Return ``(absolute_path, classifier_backend)``.
 
+    - ``birder_eu``: Birder eu-common 707 species (Collins).
     - ``efficientnet_b2``: HF dir or OpenVINO IR export.
     - ``yolo``: legacy Ultralytics classify ``best.pt`` / ``best_openvino_model``.
     """
@@ -137,7 +193,10 @@ def resolve_classifier_weight_path(
     )
 
     requested_backend = resolve_classifier_inference_backend(app_config)
-    if classifier_engine(app_config) == "efficientnet_b2":
+    eng = classifier_engine(app_config)
+    if eng == "birder_eu":
+        return _resolve_birder_eu_paths(app_config, processor_root, requested_backend)
+    if eng == "efficientnet_b2":
         return _resolve_efficientnet_paths(app_config, processor_root, requested_backend)
 
     env_ov = (os.environ.get("BIRDLENSE_CLASSIFIER_OPENVINO_PATH") or "").strip()

@@ -55,7 +55,17 @@ def _processor_root() -> str:
 
 
 def _classifier_engine_name(app_config_get) -> str:
-    return str(app_config_get("processor.classifier_engine", "efficientnet_b2") or "efficientnet_b2").strip().lower()
+    return str(app_config_get("processor.classifier_engine", "birder_eu") or "birder_eu").strip().lower()
+
+
+def _birder_weights_dir(app_config_get) -> str:
+    variant = str(app_config_get("processor.birder_eu_variant") or "convnext_v2_tiny_eu-common256px").strip()
+    sub = f"birder_{variant.replace('-', '_')}"
+    rel = (
+        app_config_get("processor.models.classifier_birder_eu")
+        or f"models/classification/weights/{sub}"
+    )
+    return rel if os.path.isabs(rel) else os.path.join(_processor_root(), rel)
 
 
 def _efficientnet_weights_dir(app_config_get) -> str:
@@ -70,7 +80,11 @@ def _efficientnet_weights_dir(app_config_get) -> str:
 
 
 def _classifier_engine_allowlist_path(app_config_get) -> str | None:
-    if _classifier_engine_name(app_config_get) != "efficientnet_b2":
+    engine = _classifier_engine_name(app_config_get)
+    if engine == "birder_eu":
+        base = _birder_weights_dir(app_config_get)
+        return os.path.join(base, "class_labels.txt")
+    if engine != "efficientnet_b2":
         return None
     base = _efficientnet_weights_dir(app_config_get)
     if os.path.isdir(base):
@@ -111,6 +125,11 @@ def _load_efficientnet_id2label_cached(weights_dir: str) -> tuple[str, ...]:
 def load_active_classifier_label_names(app_config_get) -> tuple[str, ...] | None:
     """Имена классов, которые активный классификатор может выдать на кропе."""
     engine = _classifier_engine_name(app_config_get)
+    if engine == "birder_eu":
+        path = os.path.join(_birder_weights_dir(app_config_get), "class_labels.txt")
+        if os.path.isfile(path):
+            return _load_allowlist_names_cached(os.path.abspath(path))
+        return None
     if engine == "efficientnet_b2":
         labels = _load_efficientnet_id2label_cached(_efficientnet_weights_dir(app_config_get))
         return labels if labels else None
