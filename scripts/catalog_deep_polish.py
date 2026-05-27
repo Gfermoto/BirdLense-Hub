@@ -14,8 +14,10 @@ import sys
 
 # Container layout: /app = app/, scripts copied to /app/scripts/
 _APP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app"))
-if os.path.isdir(os.path.join(_APP_ROOT, "web")):
-    for p in (_APP_ROOT, os.path.join(_APP_ROOT, "web"), os.path.join(_APP_ROOT, "processor", "src")):
+_WEB_ROOT = os.path.join(_APP_ROOT, "web")
+_PROCESSOR_SRC = os.path.join(_APP_ROOT, "processor", "src")
+if os.path.isdir(_WEB_ROOT):
+    for p in (_WEB_ROOT, _APP_ROOT, _PROCESSOR_SRC):
         if p not in sys.path:
             sys.path.insert(0, p)
 

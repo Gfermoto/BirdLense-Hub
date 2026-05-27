@@ -179,6 +179,18 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
     )
 
 
+def requeue_motion_trigger(motion_detector) -> bool:
+    """Re-arm deferred trigger (OrMotionDetector, OpenCV-only, Frigate, …)."""
+    fn = getattr(motion_detector, "requeue_last_trigger", None)
+    if callable(fn):
+        return bool(fn())
+    fn = getattr(motion_detector, "mark_pending", None)
+    if callable(fn):
+        fn()
+        return True
+    return False
+
+
 def run_motion_loop(ctx: ProcessorRunContext) -> None:
     """Бесконечный цикл движения; выход при ``session.run()`` → True (режим файла) или SystemExit."""
     last_recording_end_by_camera: dict[str, float] = {}
@@ -224,7 +236,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
         )
         if wait > 0:
             elapsed = cooldown - wait
-            requeued = bool(getattr(ctx.session.motion_detector, "requeue_last_trigger", lambda: False)())
+            requeued = requeue_motion_trigger(ctx.session.motion_detector)
             logger.info(
                 "Skipping motion trigger for camera=%s: processor.min_seconds_between_recordings=%.1fs "
                 "(%.1fs since last clip on this camera, requeued=%s)",
@@ -238,13 +250,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
         finalize_worker = getattr(ctx, "finalize_worker", None)
         if finalize_worker is not None and finalize_worker.is_saturated():
             depth = finalize_worker.queue_depth()
-            requeued = bool(
-                getattr(
-                    ctx.session.motion_detector,
-                    "requeue_last_trigger",
-                    lambda: False,
-                )()
-            )
+            requeued = requeue_motion_trigger(ctx.session.motion_detector)
             inc_counter("recording_trigger_deferred_finalize_backpressure_total")
             set_gauge("finalize_queue_depth", depth)
             logger.info(
