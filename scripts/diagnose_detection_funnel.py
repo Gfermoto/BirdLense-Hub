@@ -50,8 +50,8 @@ def main() -> int:
         return 2
 
     fp, _dm = build_detection_pipeline(app_config, for_track_regen=False)
-    strategy = fp.detection_strategy
-    binary_model = fp.binary_model
+    strategy = fp.strategy
+    binary_model = strategy.binary_model
     tracker = str(app_config.get("processor.tracker") or "bytetrack.yaml")
     min_conf = float(app_config.get("processor.min_confidence_binary") or 0.28)
     track_conf = min(
