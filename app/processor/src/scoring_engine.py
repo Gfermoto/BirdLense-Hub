@@ -83,6 +83,7 @@ class ScoringEngineConfig:
     static_phantom_square_aspect_min: float = 0.82
     static_phantom_square_aspect_max: float = 1.22
     static_phantom_max_conf: float = 0.52
+    relaxed_scoring_min_confidence: float = 0.08
     scene: SceneAdaptiveConfig = field(default_factory=SceneAdaptiveConfig)
 
     @classmethod
@@ -118,6 +119,9 @@ class ScoringEngineConfig:
             ),
             static_phantom_max_conf=_parse_float(
                 runtime_cfg, "processor.scoring_static_phantom_max_conf", 0.52
+            ),
+            relaxed_scoring_min_confidence=_parse_float(
+                runtime_cfg, "processor.scoring_relaxed_min_confidence", 0.08
             ),
             scene=SceneAdaptiveConfig.from_runtime_cfg(runtime_cfg),
         )
@@ -400,7 +404,11 @@ class ScoringEngine:
             }
             self.last_decisions.append(trace)
             # Salvage/relax paths already passed detector label+size gates; do not zero live recall.
-            if decision.zone == DecisionZone.REJECT and bool(box.get("relaxed_small_object")):
+            if (
+                decision.zone == DecisionZone.REJECT
+                and bool(box.get("relaxed_small_object"))
+                and float(box.get("conf") or 0.0) >= self.cfg.relaxed_scoring_min_confidence
+            ):
                 decision = ScoringDecision(
                     zone=DecisionZone.REVIEW,
                     breakdown=decision.breakdown,

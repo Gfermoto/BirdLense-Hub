@@ -63,6 +63,23 @@ class TestScoringEngine(unittest.TestCase):
         self.assertTrue(kept[0].get("scoring_review_only"))
         self.assertEqual(eng.last_stats["scoring_review"], 1)
 
+    def test_relaxed_below_floor_still_rejected(self):
+        cfg = ScoringEngineConfig(
+            enabled=True,
+            default_low_threshold=0.38,
+            default_high_threshold=0.52,
+            calibration_frames=5,
+            relaxed_scoring_min_confidence=0.08,
+        )
+        eng = ScoringEngine(cfg)
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        for i in range(6):
+            eng.filter_boxes([], frame_bgr=frame, frame_index=i)
+        box = self._box(0.04)
+        box["relaxed_small_object"] = True
+        kept = eng.filter_boxes([box], frame_bgr=frame, frame_index=7)
+        self.assertEqual(len(kept), 0)
+
     def test_frigate_prior_boost(self):
         eng = self._engine()
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
