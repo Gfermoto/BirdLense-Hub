@@ -26,6 +26,7 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 ## In progress (May 2026 — live tracking / overlay)
 
 - **Sticky bbox / phantom tracks** — `track_geometry` (sparse 3-frame rule), strip `review_only` overlay frames before persist, VPS `tracker_remember_seconds: 3.5` (was 8 in `user_config`). Aligns with [SOTA Wave 3](../strategy/SOTA_WAVE3_ROADMAP_2026.md) P0 hard-negatives / threshold contract.
+- **Species vocabulary (#506)** — `services/species_catalog/vocabulary.py`: classifier id2label + arbitration (`species_mapping`, registry). Catalog `scope=project` (default); `scope=allowlist` = только EfficientNet. Ingest не сбрасывает уже наблюдаемые виды в Unknown.
 - **Next:** track regen on affected clips; golden-set gate (`recording_session_summary.yolo_frames_with_tracks`).
 
 ## Recently delivered (high level)
