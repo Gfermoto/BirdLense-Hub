@@ -47,10 +47,13 @@ processor:
   tracker_adaptive_max_buffer: 42
   # Отклонить трек, если центр bbox почти не двигается дольше N сек (кормушка / phantom).
   track_static_reject_enabled: true
-  track_static_reject_min_duration_sec: 4.0
-  track_static_reject_min_frames: 8
-  track_static_reject_max_center_dispersion_norm: 0.028
-  track_static_reject_max_bbox_iou_first_last_min: 0.72
+  track_static_reject_min_duration_sec: 3.0
+  track_static_reject_min_frames: 6
+  track_static_reject_min_frames_sparse: 3
+  track_static_reject_min_duration_sparse_sec: 2.5
+  track_static_reject_max_center_dispersion_norm: 0.085
+  track_static_reject_max_relative_center_dispersion: 0.16
+  track_static_reject_max_bbox_iou_first_last_min: 0.68
   track_id_switch_iou_threshold: 0.25
   max_record_seconds: 60
   # video.source=file: нижняя граница max_record_seconds (сек). Большое значение при playlist+split по файлам — не резать длинный клип по таймеру.
@@ -712,6 +715,8 @@ detection:
   # Ниже порога детекция отбрасывается после fusion; должно быть ≤ processor.min_confidence_to_process.
   # Держим мягче, чтобы YOLO-треки не пропадали до записи в БД/overlay.
   min_confidence_to_store: 0.20
+  # Не писать bbox в БД для review-only (фантомные кормушки в UI).
+  strip_review_only_overlay_frames: true
   # Frigate — fallback при пустых YOLO-треках (blind-gate и force_after_no_yolo остаются).
   frigate_standalone_when_no_yolo: true
   # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).

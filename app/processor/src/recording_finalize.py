@@ -40,10 +40,44 @@ from processor_diagnostics import collect_root_cause_snapshot, write_root_cause_
 from session_state_repository import SessionStateRepository
 from spectrogram import generate_spectrogram
 from behavior_baseline_runtime import maybe_predict_video_behavior_bundle
+from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
 
 # Пустые сессии без детекций — частое событие; не засоряем лог (раз в интервал — WARNING, иначе DEBUG).
 _NO_DETECTIONS_WARN_INTERVAL_S = 120.0
 _no_detections_warn_next_monotonic = 0.0
+
+
+def _sanitize_persisted_overlay_frames(
+    video_detections: list[dict[str, Any]],
+    *,
+    runtime_cfg: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Drop phantom/sticky bbox series from DB overlay (UI reads VideoSpecies.frames)."""
+    cfg = StaticPinnedTrackConfig.from_runtime_cfg(runtime_cfg or app_config.config or {})
+    strip_review = bool(app_config.get("detection.strip_review_only_overlay_frames", True))
+    out: list[dict[str, Any]] = []
+    for row in video_detections or []:
+        d = dict(row)
+        kind = str(d.get("decision_kind") or "").strip().lower()
+        if strip_review and kind in {"review_only_generic", "review_only"}:
+            if d.get("frames"):
+                d["frames"] = []
+                d["overlay_suppressed"] = "review_only_no_overlay"
+            out.append(d)
+            continue
+        frames = d.get("frames") or []
+        if frames and cfg.enabled:
+            pseudo = {
+                "start_time": d.get("start_time", 0),
+                "end_time": d.get("end_time", 0),
+                "frames": frames,
+            }
+            static_reason = static_pinned_track_reason(pseudo, cfg)
+            if static_reason:
+                d["frames"] = []
+                d["overlay_suppressed"] = static_reason
+        out.append(d)
+    return out
 
 
 def _blind_required_frames(
@@ -620,7 +654,13 @@ def finalize_motion_recording(
             anchor_max = int(app_config.get("detection.yolo_core_anchor_max_rows") or 3)
         except (TypeError, ValueError):
             anchor_max = 3
-        pre_fusion_yolo_anchors = _best_yolo_anchor_rows(accepted_pre_fusion, max_rows=anchor_max)
+        pre_fusion_yolo_anchors = [
+            row
+            for row in _best_yolo_anchor_rows(accepted_pre_fusion, max_rows=anchor_max)
+            if str(row.get("decision_kind") or "").strip().lower()
+            not in {"review_only_generic", "review_only"}
+            and str(row.get("decision_reason") or "").strip().lower() != "review_only_generic_bird"
+        ]
         has_fused_yolo = any(
             str((row or {}).get("detection_provider") or "").strip().lower() == "yolo" for row in video_detections
         )
@@ -697,6 +737,7 @@ def finalize_motion_recording(
                 dropped_no_frames_frigate_when_yolo,
             )
         video_detections = kept_rows
+    video_detections = _sanitize_persisted_overlay_frames(video_detections)
     if (
         not video_detections
         and yolo_tracks_count > 0
