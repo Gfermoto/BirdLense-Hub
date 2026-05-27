@@ -1,0 +1,3 @@
+# Align OpenVINO bird gate with min_confidence_binary_bird (prod recall fix).
+processor:
+  openvino_min_confidence_binary_bird: 0.22
