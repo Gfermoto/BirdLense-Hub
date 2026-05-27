@@ -403,8 +403,11 @@ processor:
   inference_device: cpu
   # false — экстренный стоп OV (вернуть torch + openvino_binary_enabled: false).
   openvino_binary_enabled: true
-  # efficientnet_b2 (525 species, HF dennisjooo/Birds-Classifier-EfficientNetB2) | yolo (legacy best.pt)
-  classifier_engine: efficientnet_b2
+  # birder_eu (707 EU, Collins / birder-project eu-common) | efficientnet_b2 (global 525) | yolo (legacy)
+  classifier_engine: birder_eu
+  birder_eu_variant: convnext_v2_tiny_eu-common256px
+  birder_eu_min_confidence: 0.22
+  birder_eu_unknown_label: "Unknown Bird"
   efficientnet_b2_min_confidence: 0.22
   efficientnet_b2_unknown_label: "Unknown Bird"
   # Trapper squirrel → каталог Rodent (не класс EfficientNet 525)
@@ -430,7 +433,10 @@ processor:
     # Legacy YOLO EU classifier (~491 вид) — fallback when classifier_engine: yolo
     classifier: "models/classification/weights/best.pt"
     classifier_openvino: "models/classification/weights/best_openvino_model"
-    # EfficientNetB2 (525 species): download + ONNX export scripts in repo scripts/
+    # Birder EU (707 species): scripts/download_birder_classifier.py + export_birder_classifier_to_openvino.py
+    classifier_birder_eu: "models/classification/weights/birder_convnext_v2_tiny_eu_common256px"
+    classifier_birder_eu_openvino: "models/classification/weights/birder_convnext_v2_tiny_eu_common256px_openvino"
+    # EfficientNetB2 (525 global, opt-in): scripts/download_birds_classifier_efficientnetb2.py
     classifier_efficientnet_b2: "models/classification/weights/birds_classifier_efficientnetb2"
     classifier_efficientnet_b2_onnx: "models/classification/weights/birds_classifier_efficientnetb2_openvino"
     # ONNX logistic baseline поведения (Gemm → softmax в коде). Дефолт: экспорт из demos JSON в дереве.

@@ -1,0 +1,50 @@
+{
+  "video": "/home/gfer/BirdLense/app/data/stress_clips/storm_bird.mp4",
+  "n_crops": 20,
+  "results": [
+    {
+      "engine": "birder_eu",
+      "backend": "openvino",
+      "ms_per_crop": 90.8802629011916,
+      "top1": "Unknown Bird",
+      "conf": 0.05467269942164421,
+      "entropy": 5.260682075637725,
+      "margin": 0.01750928900522282,
+      "jay_rank": null,
+      "jay_conf": null
+    },
+    {
+      "engine": "birder_eu",
+      "backend": "torch",
+      "ms_per_crop": 112.8419329499593,
+      "top1": "Unknown Bird",
+      "conf": 0.05308578908443451,
+      "entropy": 5.138043306683674,
+      "margin": 0.0023673623827665177,
+      "jay_rank": null,
+      "jay_conf": null
+    },
+    {
+      "engine": "efficientnet_b2",
+      "backend": "openvino",
+      "ms_per_crop": 23.895744801848195,
+      "top1": "LAUGHING GULL",
+      "conf": 0.978548619977935,
+      "entropy": 0.1498084401907787,
+      "margin": 0.9659704399266004,
+      "jay_rank": null,
+      "jay_conf": null
+    },
+    {
+      "engine": "efficientnet_b2",
+      "backend": "torch",
+      "ms_per_crop": 42.22636554914061,
+      "top1": "LAUGHING GULL",
+      "conf": 0.9785929322242737,
+      "entropy": 0.1496274310439456,
+      "margin": 0.9660606523660837,
+      "jay_rank": null,
+      "jay_conf": null
+    }
+  ]
+}

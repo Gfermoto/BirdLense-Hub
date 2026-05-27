@@ -19,7 +19,10 @@ class TestClassifierPaths(unittest.TestCase):
         from inference.classifier_paths import resolve_classifier_weight_path
 
         path, backend = resolve_classifier_weight_path(
-            {"processor.classifier_inference_backend": "torch"},
+            {
+                "processor.classifier_engine": "yolo",
+                "processor.classifier_inference_backend": "torch",
+            },
             "/tmp/processor",
         )
         self.assertEqual(backend, "torch")

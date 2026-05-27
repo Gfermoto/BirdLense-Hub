@@ -15,7 +15,7 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 | **Ultralytics** | **8.4.33** at runtime (`app/processor/requirements.txt`, installed via pip in the image). Base image remains **`ultralytics/ultralytics:8.4.21`** (newer base tags broke ngx_brotli build against nginx in CI; see [CHANGELOG](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md) **0.3.1**). |
 | **Platform** | **x86/amd64 only** (Intel or AMD 64-bit). ARM / Apple Silicon / aarch64 — **not supported, not planned** |
 | **Detection** | `two_stage`: binary `.pt` + YOLO11n-cls (EU); `single_stage` fallback if weights missing |
-| **EU classifier** | `best.pt` — birds-525 + iNaturalist (~491 species) |
+| **EU classifier** | **Birder eu-common 707** (`birder_eu`, #516) — `convnext_v2_tiny_eu-common256px`; legacy YOLO `best.pt` opt-in |
 | **US classifier** | `best_US.pt` — NABirds (fallback) |
 | **React** | **19.x** (`^19.0.0` in `app/ui/package.json`; resolved lock may pin a patch) |
 | **Vite** | **6.x** (`^6.4.2` in `app/ui/package.json`) |
@@ -26,7 +26,7 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 ## In progress (May 2026 — live tracking / overlay)
 
 - **Sticky bbox / phantom tracks** — `track_geometry` (sparse 3-frame rule), strip `review_only` overlay frames before persist, VPS `tracker_remember_seconds: 3.5` (was 8 in `user_config`). Aligns with [SOTA Wave 3](../strategy/SOTA_WAVE3_ROADMAP_2026.md) P0 hard-negatives / threshold contract.
-- **Species vocabulary (#506)** — `services/species_catalog/vocabulary.py`: classifier id2label + arbitration (`species_mapping`, registry). Catalog `scope=project` (default); `scope=allowlist` = только EfficientNet. Ingest не сбрасывает уже наблюдаемые виды в Unknown.
+- **Species vocabulary (#506)** — `services/species_catalog/vocabulary.py`: classifier labels + arbitration. Catalog `scope=project` (default); `scope=allowlist` = активный классификатор (Birder 707 / EfficientNet 525). Ingest не сбрасывает уже наблюдаемые виды в Unknown.
 - **Next:** track regen on affected clips; golden-set gate (`recording_session_summary.yolo_frames_with_tracks`).
 
 ## Recently delivered (high level)
