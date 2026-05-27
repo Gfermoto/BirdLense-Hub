@@ -110,7 +110,8 @@ export function SpeciesDirectoryPage() {
       {meta ? (
         <Alert severity="info" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
           {t('speciesDirectory.scopeHint', {
-            allowlist: meta.allowlist_total,
+            engine: meta.classifier_engine ?? '—',
+            classCount: meta.classifier_class_count ?? meta.allowlist_total,
             db: meta.db_species_total,
             incomplete: meta.allowlist_incomplete,
           })}

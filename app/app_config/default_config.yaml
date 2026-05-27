@@ -1053,8 +1053,10 @@ storage:
 species:
   # true: follow active classifier engine path (EfficientNetB2 => class_labels.txt).
   catalog_allowlist_follow_classifier_engine: true
+  # Каталог «Классы модели» = id2label активного классификатора (525+Rodent), не union с legacy YOLO EU.
+  catalog_allowlist_use_active_classifier: true
   catalog_allowlist_file: "models/classification/weights/birds_classifier_efficientnetb2/class_labels.txt"
-  # При follow_classifier_engine=true файл выше (если задан) сливается с engine allowlist — EU YOLO class_names.txt.
+  # Явный доп. файл (опционально); catalog_allowlist_file при follow_engine НЕ подмешивается автоматически.
   # catalog_allowlist_supplement_file: "models/classification/weights/class_names.txt"
   # Вне class_labels.txt; materialize + strict ingest (белка → Rodent).
   catalog_allowlist_extra:
