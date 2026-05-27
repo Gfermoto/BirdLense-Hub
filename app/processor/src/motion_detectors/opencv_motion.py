@@ -129,6 +129,7 @@ class OpenCVMotionDetector:
         self.improve_contrast = bool(improve_contrast)
         self.morphology_open_iterations = max(0, int(morphology_open_iterations or 0))
         self._consecutive_motion_hits = 0
+        self._pending_trigger = False
         self._clahe = (
             cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)) if self.improve_contrast else None
         )
@@ -448,9 +449,23 @@ class OpenCVMotionDetector:
     def get_triggered_by(self):
         return "opencv"
 
+    def mark_pending(self) -> None:
+        """Re-arm motion when recording was deferred (e.g. min_seconds_between_recordings)."""
+        self._pending_trigger = True
+
+    def _consume_pending_trigger(self) -> bool:
+        if not self._pending_trigger:
+            return False
+        self._pending_trigger = False
+        self._last_decision_reason = "pending_requeued"
+        return True
+
     def detect(self):
         """Block until motion detected. Returns True when motion found."""
         while True:
+            if self._consume_pending_trigger():
+                self.logger.debug("Motion detected (pending requeue)")
+                return True
             frame = self.capture_fn()
             if frame is None:
                 self._publish_status_overlay("no_frame")
@@ -478,6 +493,9 @@ class OpenCVMotionDetector:
 
     def check(self):
         """One iteration: returns True if motion detected (for OR with Frigate)."""
+        if self._consume_pending_trigger():
+            self.logger.debug("Motion detected (pending requeue)")
+            return True
         frame = self.capture_fn()
         if frame is None:
             self._publish_status_overlay("no_frame")
