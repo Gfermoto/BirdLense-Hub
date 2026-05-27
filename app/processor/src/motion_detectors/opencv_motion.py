@@ -453,6 +453,11 @@ class OpenCVMotionDetector:
         """Re-arm motion when recording was deferred (e.g. min_seconds_between_recordings)."""
         self._pending_trigger = True
 
+    def requeue_last_trigger(self) -> bool:
+        """Same contract as OrMotionDetector when OpenCV is the sole motion source."""
+        self.mark_pending()
+        return True
+
     def _consume_pending_trigger(self) -> bool:
         if not self._pending_trigger:
             return False

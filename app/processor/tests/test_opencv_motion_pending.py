@@ -7,6 +7,13 @@ import numpy as np
 from motion_detectors.opencv_motion import OpenCVMotionDetector
 
 
+def test_requeue_last_trigger_delegates_to_mark_pending():
+    det = OpenCVMotionDetector.__new__(OpenCVMotionDetector)
+    det._pending_trigger = False
+    assert det.requeue_last_trigger() is True
+    assert det._pending_trigger is True
+
+
 def test_mark_pending_rearms_check():
     frame = np.zeros((64, 64, 3), dtype=np.uint8)
     det = OpenCVMotionDetector(
