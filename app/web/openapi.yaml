@@ -954,8 +954,10 @@ paths:
     get:
       summary: List all species
       description: |
-        Retrieve a list of all bird species that have been detected by the system. This includes summary information like name, parent species, and detection count. Useful for managing species data and monitoring diversity.
-        With ``exclude_suspects=1``, rows matching ``species_suspect_blocklist.txt`` (objects / non-bird COCO labels) are omitted for the Bird Directory UI.
+        Retrieve species rows for catalog UIs. Default ``scope=allowlist`` returns one row per classifier
+        class (~526), not every legacy SQLite row. Use ``scope=all`` for the full DB catalog.
+        With ``exclude_suspects=1``, rows matching ``species_suspect_blocklist.txt`` are omitted.
+        With ``meta=1``, response is ``{items, meta}`` with allowlist vs DB totals.
       parameters:
         - in: query
           name: exclude_suspects
@@ -963,15 +965,31 @@ paths:
           schema:
             type: boolean
           description: If true, filter out catalog rows flagged by the data-quality blocklist.
+        - in: query
+          name: scope
+          required: false
+          schema:
+            type: string
+            enum: [allowlist, observed, all]
+            default: allowlist
+          description: Catalog slice (default allowlist = classifier classes).
+        - in: query
+          name: meta
+          required: false
+          schema:
+            type: boolean
+          description: If true, wrap list in `{items, meta}` with coverage counters.
       responses:
         "200":
-          description: List of species
+          description: List of species (array) or wrapped payload when meta=1
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SpeciesSummary"
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: "#/components/schemas/SpeciesSummary"
+                  - $ref: "#/components/schemas/SpeciesCatalogListResponse"
   /bird_families:
     get:
       summary: Get all bird families
@@ -4801,6 +4819,33 @@ components:
             or has any BirdNET MQTT detection (detection_provider birdnet_mqtt). Used for Bird Directory «Regional» filter.
         count:
           type: integer
+        catalog_card_incomplete:
+          type: boolean
+          description: True when photo or description is missing or placeholder (card-quality UI).
+        catalog_scope:
+          type: string
+          enum: [allowlist, observed, all]
+          description: Present when the row was returned under a scoped catalog query.
+    SpeciesCatalogMeta:
+      type: object
+      properties:
+        db_species_total:
+          type: integer
+        allowlist_total:
+          type: integer
+        listed_allowlist:
+          type: integer
+        allowlist_incomplete:
+          type: integer
+    SpeciesCatalogListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpeciesSummary"
+        meta:
+          $ref: "#/components/schemas/SpeciesCatalogMeta"
     BirdFamily:
       type: object
       properties:

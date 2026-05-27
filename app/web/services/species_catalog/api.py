@@ -16,6 +16,7 @@ from services.species_catalog.allowlist import (
     load_catalog_allowlist_names,
     load_catalog_allowlist_norm_keys,
     species_matches_allowlist,
+    species_name_match_norm_keys,
 )
 from util import load_species_canonical_mapping
 from services.species_catalog.registry import species_card_needs_full_metadata_refresh
@@ -32,6 +33,32 @@ def _normalize_catalog_scope(scope: str | None) -> CatalogScope:
     if raw in ("allowlist", "observed", "all"):
         return raw
     return "allowlist"
+
+
+def _allowlist_row_score(row) -> tuple:
+    sp = row.Species
+    complete = 0 if species_card_needs_full_metadata_refresh(sp) else 1
+    return (complete, int(row.count or 0), 1 if sp.active else 0, -int(sp.id))
+
+
+def _dedupe_allowlist_species_rows(
+    species_list: list,
+    *,
+    allow_keys: frozenset[str],
+    mapping: dict[str, str],
+) -> list:
+    """One SQLite row per allowlist class (526), not per duplicate legacy name."""
+    best_by_key: dict[str, object] = {}
+    for row in species_list:
+        sp = row.Species
+        match_keys = species_name_match_norm_keys(sp.name or "", mapping) & allow_keys
+        if not match_keys:
+            continue
+        canon_key = min(match_keys)
+        prev = best_by_key.get(canon_key)
+        if prev is None or _allowlist_row_score(row) > _allowlist_row_score(prev):
+            best_by_key[canon_key] = row
+    return sorted(best_by_key.values(), key=lambda r: (r.Species.name or "").lower())
 
 
 def _species_row_dict(row, *, regional_scope_ids: set[int]) -> dict:
@@ -79,12 +106,14 @@ def fetch_species_catalog_list(
         species_list = [
             s for s in species_list if species_matches_allowlist(s.Species.name, allow_keys, mapping)
         ]
+        species_list = _dedupe_allowlist_species_rows(species_list, allow_keys=allow_keys, mapping=mapping)
     elif catalog_scope == "observed":
         species_list = [s for s in species_list if int(s.count or 0) > 0]
         if allow_keys:
             species_list = [
                 s for s in species_list if species_matches_allowlist(s.Species.name, allow_keys, mapping)
             ]
+            species_list = _dedupe_allowlist_species_rows(species_list, allow_keys=allow_keys, mapping=mapping)
 
     regional_scope_ids = compute_regional_scope_species_ids()
     rows = [_species_row_dict(row, regional_scope_ids=regional_scope_ids) for row in species_list]

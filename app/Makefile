@@ -110,7 +110,7 @@ venv-web-reset:
 # Pytest на хосте (без sqlalchemy в системном python тесты падают — используйте этот таргет или Docker test-web).
 # PYTHONNOUSERSITE=1 — не подмешивать пакеты из ~/.local (иначе версии Flask и др. отличаются от venv).
 test-web-local: venv-web
-	$(WEB_VENV_ENV) PYTHONPATH=$(CURDIR):$(CURDIR)/web "$(VENV)/bin/python" -m pytest web/tests/ -q --tb=line
+	$(WEB_VENV_ENV) PYTHONPATH=$(CURDIR)/web:$(CURDIR):$(CURDIR)/processor/src "$(VENV)/bin/python" -m pytest web/tests/ -q --tb=line
 
 # Тесты с измерением покрытия (processor + web)
 # -v монтирует локальный код (см. test выше). Требует make build (coverage в web/requirements.txt)

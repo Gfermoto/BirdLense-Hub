@@ -23,7 +23,11 @@ def test_species_meta_payload(client):
     assert r.status_code == 200
     body = r.json
     assert isinstance(body, dict)
-    assert isinstance(body.get("items"), list)
+    items = body.get("items")
+    assert isinstance(items, list)
     meta = body.get("meta") or {}
     assert "allowlist_total" in meta
     assert "db_species_total" in meta
+    if meta.get("allowlist_total"):
+        assert len(items) <= int(meta["allowlist_total"])
+        assert int(meta["listed_allowlist"]) == len(items)

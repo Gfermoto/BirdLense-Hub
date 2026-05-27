@@ -49,6 +49,8 @@ scripts/datasets/birds_rodent_background_yolo/
 scripts/datasets/coco_birds_yolo/
 scripts/datasets/.venv-detector/
 .venv-datasets/
+# Local ReID/torch hub cache — must not shadow web/models.py when PYTHONPATH includes app/
+app/models/
 app/.venv/
 app/.ruff_cache/
 app/.pytest_cache/
