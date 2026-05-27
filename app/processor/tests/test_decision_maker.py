@@ -6,7 +6,10 @@ from unittest.mock import patch
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_path = os.path.abspath(os.path.join(current_dir, '../src'))
+app_root = os.path.abspath(os.path.join(current_dir, '../..'))
 sys.path.append(src_path)
+if app_root not in sys.path:
+    sys.path.insert(0, app_root)
 
 from decision_maker import DecisionMaker
 
