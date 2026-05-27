@@ -399,6 +399,16 @@ class ScoringEngine:
                 "calibration_frame_count": int(self._calibration.frame_count),
             }
             self.last_decisions.append(trace)
+            # Salvage/relax paths already passed detector label+size gates; do not zero live recall.
+            if decision.zone == DecisionZone.REJECT and bool(box.get("relaxed_small_object")):
+                decision = ScoringDecision(
+                    zone=DecisionZone.REVIEW,
+                    breakdown=decision.breakdown,
+                    reject_reason="relaxed_small_object_scoring_floor",
+                )
+                trace["final_decision"] = decision.zone.value
+                trace["reject_reason"] = decision.reject_reason
+                trace["reason_code"] = "relaxed_small_object_scoring_floor"
             if decision.zone == DecisionZone.ACCEPT:
                 kept.append(box)
                 self.last_stats["scoring_accepted"] += 1

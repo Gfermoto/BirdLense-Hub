@@ -72,6 +72,9 @@ docker exec \
     --write-report /tmp/benchmark_sota_report.json
 docker cp "$BIRDLENSE_CONTAINER:/tmp/benchmark_sota_report.json" "$ARTIFACTS/benchmark_sota.json"
 
+if [[ "${SOTA_SKIP_TRACKER_BENCH:-0}" == "1" ]]; then
+  echo "== 3/4 benchmark trackers: SKIP (SOTA_SKIP_TRACKER_BENCH=1) =="
+else
 echo "== 3/4 benchmark trackers (ByteTrack vs BoT-SORT) =="
 docker exec \
   -e SOTA_BENCHMARK_FRAME_STEP="$FRAME_STEP" \
@@ -83,8 +86,9 @@ docker exec \
     --frame-step "$FRAME_STEP" \
     --write-report /tmp/benchmark_trackers_report.json
 docker cp "$BIRDLENSE_CONTAINER:/tmp/benchmark_trackers_report.json" "$ARTIFACTS/benchmark_trackers.json"
+fi
 
-echo "== 4/4 ReID gallery API smoke (flags still off in yaml) =="
+echo "== 4/4 ReID gallery API smoke =="
 curl -sf "$VERIFY_URL/api/ui/health" >/dev/null
 curl -sf "$VERIFY_URL/api/ui/reid/gallery/status" -H "Cookie: ${BIRDLENSE_SESSION_COOKIE:-}" || true
 
