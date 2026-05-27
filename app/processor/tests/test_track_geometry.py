@@ -17,6 +17,17 @@ def test_static_pinned_track_rejected_when_bbox_frozen():
     assert "rejected_static_pinned_track" in reason
 
 
+def test_sparse_three_frame_feeder_phantom_rejected():
+    """Regression: clip 2132 — 3 keyframes, low abs dispersion, frozen feeder bbox."""
+    frames = [
+        {"t": 11.74, "bbox": [0.2168, 0.0471, 0.6028, 0.3768]},
+        {"t": 12.52, "bbox": [0.2042, 0.0678, 0.5934, 0.3824]},
+        {"t": 19.06, "bbox": [0.1463, 0.0082, 0.5362, 0.4314]},
+    ]
+    reason = static_pinned_track_reason(_track(frames, start=11.74, end=19.06), StaticPinnedTrackConfig())
+    assert reason is not None
+
+
 def test_moving_track_not_rejected():
     frames = [
         {"timestamp": 0.0, "bbox": [0.10, 0.30, 0.18, 0.38]},

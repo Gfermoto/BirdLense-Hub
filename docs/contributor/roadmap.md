@@ -23,6 +23,11 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 
 ---
 
+## In progress (May 2026 — live tracking / overlay)
+
+- **Sticky bbox / phantom tracks** — `track_geometry` (sparse 3-frame rule), strip `review_only` overlay frames before persist, VPS `tracker_remember_seconds: 3.5` (was 8 in `user_config`). Aligns with [SOTA Wave 3](../strategy/SOTA_WAVE3_ROADMAP_2026.md) P0 hard-negatives / threshold contract.
+- **Next:** track regen on affected clips; golden-set gate (`recording_session_summary.yolo_frames_with_tracks`).
+
 ## Recently delivered (high level)
 
 - **Home Assistant** — MQTT discovery (e.g. last species, bird-detected). See [CONFIGURATION](../user/configuration.md) → MQTT.
