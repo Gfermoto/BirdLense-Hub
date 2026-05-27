@@ -40,6 +40,16 @@ from util import (
 
 _log = logging.getLogger(__name__)
 
+_PLACEHOLDER_CATALOG_DESC = re.compile(
+    r"\brepresented in the BirdLense registry\.?\s*$",
+    re.I,
+)
+
+
+def _catalog_description_is_placeholder(desc: str) -> bool:
+    """Synthetic fallback from ``update_species_info_from_wiki`` — not a real card blurb."""
+    return bool(_PLACEHOLDER_CATALOG_DESC.search((desc or "").strip()))
+
 
 def _norm_key(name: str) -> str:
     if not name:
@@ -879,15 +889,28 @@ def repair_catalog_cards(
         before_img = bool((sp.image_url or "").strip())
         before_desc = bool((sp.description or "").strip())
 
-        if not before_img or not before_desc:
+        if not before_img or not before_desc or _catalog_description_is_placeholder(
+            sp.description or ""
+        ):
             try:
-                changed = enrich_species_card_metadata(sp)
-                if changed and (not before_img or not before_desc):
+                # Placeholder text blocks honest coverage but not enrich early-return;
+                # full refresh matches UI «Обновить карточку» (Wikipedia → iNat, commit).
+                use_refresh = not before_img and (
+                    not before_desc
+                    or _catalog_description_is_placeholder(sp.description or "")
+                )
+                if dry_run:
+                    changed = bool(use_refresh or not before_img or not before_desc)
+                elif use_refresh:
+                    changed = bool(refresh_species_metadata_from_sources(sp))
+                else:
+                    changed = bool(enrich_species_card_metadata(sp))
+                if changed and (not before_img or not before_desc or use_refresh):
                     metadata_fixed += 1
             except Exception as e:
                 enrich_exceptions += 1
                 _log.warning(
-                    "repair_catalog_cards: enrich failed for species id=%s name=%r: %s",
+                    "repair_catalog_cards: metadata refresh failed for species id=%s name=%r: %s",
                     getattr(sp, "id", None),
                     getattr(sp, "name", None),
                     e,
@@ -1007,9 +1030,14 @@ def catalog_cards_coverage_snapshot(app_config_get) -> dict:
     species_matched = len(uniq_ids)
 
     with_image = sum(1 for sp in matched_per_line if (sp.image_url or "").strip())
-    with_description = sum(1 for sp in matched_per_line if (sp.description or "").strip())
+
+    def _real_description(sp: Species) -> bool:
+        desc = (sp.description or "").strip()
+        return bool(desc) and not _catalog_description_is_placeholder(desc)
+
+    with_description = sum(1 for sp in matched_per_line if _real_description(sp))
     complete_cards = sum(
-        1 for sp in matched_per_line if (sp.image_url or "").strip() and (sp.description or "").strip()
+        1 for sp in matched_per_line if (sp.image_url or "").strip() and _real_description(sp)
     )
     completion_percent = round((complete_cards / max(1, len(allowlist_names))) * 100.0, 2)
     missing_image = max(0, allowlist_lines_matched - with_image)

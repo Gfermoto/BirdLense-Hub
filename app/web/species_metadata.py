@@ -683,6 +683,23 @@ def _en_wikipedia_bird_title_variant(display_name: str) -> str | None:
     return f"{parts[0]} {' '.join(p.lower() for p in parts[1:])}"
 
 
+def _wikipedia_title_variants_for_allowlist_common(display_name: str) -> list[str]:
+    """class_labels.txt часто без апострофов (ANNAS HUMMINGBIRD) — добавляем enwiki-варианты."""
+    raw = (display_name or "").strip()
+    if not raw or "'" in raw or "(" in raw:
+        return []
+    out: list[str] = []
+    m = re.match(r"^([A-Za-z]+)s\s+(.+)$", raw)
+    if m:
+        out.append(f"{m.group(1)}'s {m.group(2)}")
+    parts = raw.split()
+    if len(parts) >= 2:
+        titled = f"{parts[0].title()} {' '.join(p.title() for p in parts[1:])}"
+        if titled not in out:
+            out.append(titled)
+    return out
+
+
 def _wikipedia_query_titles_for_species(sp) -> list[str]:
     """Порядок заголовков: taxon wiki → taxon binomial → allowlist binomial → дизамб. common → enwiki → БД."""
     titles: list[str] = []
@@ -734,6 +751,9 @@ def _wikipedia_query_titles_for_species(sp) -> list[str]:
         for extra in ("Columba livia domestica", "Rock Dove"):
             if extra not in titles:
                 titles.append(extra)
+
+    for variant in _wikipedia_title_variants_for_allowlist_common(sp.name or ""):
+        titles.append(variant)
 
     seen: set[str] = set()
     out: list[str] = []
