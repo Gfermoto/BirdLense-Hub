@@ -29,3 +29,13 @@ export const libraryHelpConfig: PageHelpConfig = {
   configKey: 'library',
   dialogMaxWidth: 'md',
 } as const;
+
+export const speciesDirectoryHelpConfig: PageHelpConfig = {
+  configKey: 'speciesDirectory',
+  dialogMaxWidth: 'md',
+} as const;
+
+export const speciesCatalogHelpConfig: PageHelpConfig = {
+  configKey: 'speciesCatalog',
+  dialogMaxWidth: 'md',
+} as const;

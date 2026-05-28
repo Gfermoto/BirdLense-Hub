@@ -767,6 +767,10 @@ snapshot-detector-weights:
 compare-detector-bboxes-help:
 	@python3 "$(CURDIR)/scripts/compare_detector_bboxes.py" --help
 
+# Confusion pairs + threshold hints from species_correction log (#507).
+classifier-confusion-report:
+	@python3 "$(CURDIR)/scripts/classifier_confusion_report.py" --db "$(CURDIR)/app/data/db/birdlense.db"
+
 # EfficientNetB2 species classifier (525 classes) — download HF + ONNX export for processor.
 download-classifier-effnet:
 	@python3 "$(CURDIR)/scripts/download_birds_classifier_efficientnetb2.py"

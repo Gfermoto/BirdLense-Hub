@@ -377,6 +377,22 @@ def run_regenerate_tracks_worker(
                 return False
 
             for video in videos:
+                if job_state._regenerate_tracks_cancel_requested:
+                    job_state._regenerate_tracks_status = {
+                        "status": "cancelled",
+                        "result": {
+                            "generated": generated,
+                            "failed": failed,
+                            "skipped": skipped,
+                            "frames_updated": frames_updated,
+                            "cancelled": True,
+                        },
+                        "error": None,
+                        "progress": job_state._regenerate_tracks_status.get("progress"),
+                    }
+                    job_state._regenerate_tracks_cancel_requested = False
+                    return
+
                 species_name_to_id_cache.clear()
 
                 def _regen_progress(meta: dict):

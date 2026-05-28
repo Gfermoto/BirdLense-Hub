@@ -49,7 +49,15 @@ def _timeline_entry_sort_key(item: dict):
     return parsed
 
 
-def build_merged_timeline_items(session, start_dt, end_dt, favorite_only: bool = False) -> list:
+def build_merged_timeline_items(
+    session,
+    start_dt,
+    end_dt,
+    favorite_only: bool = False,
+    *,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list | dict:
     """Визиты за интервал + ролики, которые ни в один визит не попали.
 
     favorite_only: только визиты с избранным роликом и «осиротевшие» ролики с favorite=true.
@@ -102,4 +110,16 @@ def build_merged_timeline_items(session, start_dt, end_dt, favorite_only: bool =
     ]
     merged = visit_payloads + unlinked_payloads
     merged.sort(key=_timeline_entry_sort_key, reverse=True)
+    total = len(merged)
+    if limit is not None:
+        off = max(0, int(offset or 0))
+        lim = max(1, min(int(limit), 500))
+        page = merged[off : off + lim]
+        return {
+            "items": page,
+            "total": total,
+            "limit": lim,
+            "offset": off,
+            "has_more": off + lim < total,
+        }
     return merged

@@ -459,6 +459,37 @@ def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
     return enrich_birdnet_fifo_response(body, app_config_get=app_config.get), 200
 
 
+def build_processor_backpressure_response() -> tuple[dict, int]:
+    """Queue depths and drop counters from processor runtime snapshot (#510)."""
+    body, code = build_processor_runtime_snapshot_response()
+    if code != 200:
+        return body, code
+    snap = body.get("snapshot") if isinstance(body, dict) else None
+    gauges = (snap or {}).get("gauges") if isinstance(snap, dict) else {}
+    counters = (snap or {}).get("counters") if isinstance(snap, dict) else {}
+    keys_g = (
+        "finalize_queue_depth",
+        "finalize_queue_maxsize",
+        "finalize_queue_saturated",
+        "classification_queue_depth",
+        "classification_queue_maxsize",
+        "classification_task_drops_total",
+        "mqtt_events_queue_depth",
+        "mqtt_outbound_queue_depth",
+    )
+    keys_c = (
+        "recording_trigger_deferred_finalize_backpressure_total",
+        "classification_task_drops_total",
+    )
+    return {
+        "available": bool(body.get("available")),
+        "generated_at": (snap or {}).get("generated_at"),
+        "gauges": {k: gauges[k] for k in keys_g if k in gauges},
+        "counters": {k: counters[k] for k in keys_c if k in counters},
+        "snapshot_stale": body.get("file_age_sec", 0) > 120 if body.get("file_age_sec") else None,
+    }, 200
+
+
 def build_processor_runtime_snapshot_response() -> tuple[dict, int]:
     rel = os.path.join("diagnostics", "processor_runtime_stats.json").replace("\\", "/")
     path = os.path.join(data_paths.data_dir(), "diagnostics", "processor_runtime_stats.json")

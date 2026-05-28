@@ -28,11 +28,13 @@ import {
 } from '../../api/speciesOverviewDetections';
 import { queryKeys } from '../../api/queryKeys';
 import { PageHeader } from '../../components/PageHeader';
+import { PageHelp } from '../../components/PageHelp';
+import { speciesDirectoryHelpConfig } from '../../page-help-config';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import type { Species } from '../../types';
 
-type CatalogQualityFilter = 'all' | 'incomplete';
+type CatalogQualityFilter = 'all' | 'incomplete' | 'missing_audio';
 
 function isDirectoryPayload(
   data: Species[] | SpeciesDirectoryResponse | undefined,
@@ -48,8 +50,18 @@ export function SpeciesDirectoryPage() {
   useDocumentTitle(t('nav.species'));
 
   const speciesQ = useQuery({
-    queryKey: [...queryKeys.speciesDirectory.list, scope],
-    queryFn: () => fetchBirdDirectory({ scope, meta: true }),
+    queryKey: [
+      ...queryKeys.speciesDirectory.list,
+      scope,
+      qualityFilter === 'missing_audio' ? 'ma' : qualityFilter,
+    ],
+    queryFn: () =>
+      fetchBirdDirectory({
+        scope,
+        meta: true,
+        missing_audio: qualityFilter === 'missing_audio',
+        catalog_incomplete: qualityFilter === 'incomplete',
+      }),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -89,8 +101,15 @@ export function SpeciesDirectoryPage() {
             desc.includes(needle)
           );
         });
-    if (qualityFilter === 'all') return bySearch;
-    return bySearch.filter((row) => Boolean(row.catalog_card_incomplete));
+    if (qualityFilter === 'incomplete') {
+      return bySearch.filter((row) => Boolean(row.catalog_card_incomplete));
+    }
+    if (qualityFilter === 'missing_audio') {
+      return bySearch.filter(
+        (row) => !(row as { catalog_has_audio?: boolean }).catalog_has_audio,
+      );
+    }
+    return bySearch;
   }, [query, qualityFilter, rows]);
 
   return (
@@ -99,6 +118,7 @@ export function SpeciesDirectoryPage() {
         title={t('speciesDirectory.title')}
         description={t('speciesDirectory.description')}
         titleVariant="h3"
+        actions={<PageHelp {...speciesDirectoryHelpConfig} />}
       />
 
       <Typography variant="body2" color="text.secondary">
@@ -155,6 +175,9 @@ export function SpeciesDirectoryPage() {
         <ToggleButton value="incomplete">
           {t('speciesDirectory.filterIncomplete')}
         </ToggleButton>
+        <ToggleButton value="missing_audio">
+          {t('speciesDirectory.filterMissingAudio')}
+        </ToggleButton>
       </ToggleButtonGroup>
 
       <TextField
@@ -182,6 +205,16 @@ export function SpeciesDirectoryPage() {
               size="small"
               color="primary"
             />
+            {meta?.catalog_missing_audio != null ? (
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t('speciesDirectory.audioKpi', {
+                  withAudio: meta.catalog_with_audio ?? 0,
+                  missing: meta.catalog_missing_audio ?? 0,
+                })}
+              />
+            ) : null}
             {scope === 'allowlist' && meta ? (
               <Chip
                 label={t('speciesDirectory.allowlistModelCount', {

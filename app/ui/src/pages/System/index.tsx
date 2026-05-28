@@ -8,6 +8,7 @@ import { ObservabilityCard } from './ObservabilityCard';
 import { MlRuntimeCard } from './MlRuntimeCard';
 import { CatalogDiagnosticsAccordion } from './CatalogDiagnosticsAccordion';
 import { CatalogRepairCard } from './CatalogRepairCard';
+import { CatalogOpsHubCard } from './CatalogOpsHubCard';
 import { AutomationCard } from './AutomationCard';
 import { AutomationDangerZoneCard } from './AutomationPanels';
 import { ProcessorLogs } from './ProcessorLogs';
@@ -152,6 +153,7 @@ export const System: React.FC = () => {
             dividerTop
           >
             <Stack spacing={2} sx={systemStackSx}>
+              <CatalogOpsHubCard />
               <CatalogRepairCard />
               {isAdvanced ? <CatalogDiagnosticsAccordion /> : null}
             </Stack>

@@ -47,6 +47,7 @@ import {
   confirmDetection,
   deleteReviewQueueVideos,
   fetchBirdDirectory,
+  speciesDirectoryItems,
   fetchRecentCorrections,
   previewReviewQueueDelete,
   updateDetectionSpecies,
@@ -396,7 +397,7 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
 
   const { data: speciesList = [] } = useQuery({
     queryKey: queryKeys.species.directory,
-    queryFn: () => fetchBirdDirectory(),
+    queryFn: async () => speciesDirectoryItems(await fetchBirdDirectory()),
     staleTime: 5 * 60 * 1000,
   });
   const { data: recentCorrections = [] } = useQuery({

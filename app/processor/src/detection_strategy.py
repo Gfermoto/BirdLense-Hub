@@ -17,6 +17,11 @@ from inference.weight_contract import validate_detector_weight_contract
 from processor_runtime_profile import RuntimeProfileConfigOverlay
 from roi_super_resolution import build_roi_super_resolution
 from detection_quality import DetectionQualityConfig, DetectionQualityPipeline
+from processor_backpressure import (
+    record_classification_queue_drop,
+    record_classification_queue_state,
+)
+from roi_crop import RoiCropRef, crop_for_classifier, roi_crop_ref_from_norm_bbox
 
 logger = logging.getLogger(__name__)
 
@@ -485,7 +490,7 @@ class ClassificationTask:
     track_id: int
     detector_label: str
     box_area_norm: float
-    crop: np.ndarray
+    crop: "np.ndarray | RoiCropRef"
     blur_variance: float | None
 
 
@@ -777,7 +782,7 @@ class TwoStageStrategy(DetectionStrategy):
         frame: np.ndarray,
         cls_frame: np.ndarray,
         min_box_size_px: int,
-    ) -> tuple[ClassifierOutput | None, np.ndarray | None, float | None]:
+    ) -> tuple[ClassifierOutput | None, np.ndarray | RoiCropRef | None, float | None]:
         """Классификатор по боксу (если не попал в очередь кадра)."""
         det_shape = getattr(self, "_detector_frame_shape", frame.shape[:2])
         mapped = _crop_coords_from_letterboxed_bbox_norm(
@@ -788,23 +793,28 @@ class TwoStageStrategy(DetectionStrategy):
         if mapped is None:
             return None, None, None
         x1, y1, x2, y2 = mapped
-        crop = cls_frame[y1:y2, x1:x2]
-        if crop.size == 0:
+        crop_ref = roi_crop_ref_from_norm_bbox(cls_frame, x1=x1, y1=y1, x2=x2, y2=y2)
+        if crop_ref is None:
             return None, None, None
-        is_blur, variance = self.is_blurry(crop)
+        crop_view = crop_ref.view()
+        is_blur, variance = self.is_blurry(crop_view)
         if is_blur:
             return None, None, variance
-        crop, _, _ = self._apply_roi_sr_to_crop(crop, min_box_size_px=min_box_size_px)
-        if not crop.flags["C_CONTIGUOUS"]:
-            crop = np.ascontiguousarray(crop)
-        return self._classify_crop(crop), crop, variance
+        crop_sr, _, _ = self._apply_roi_sr_to_crop(crop_view, min_box_size_px=min_box_size_px)
+        crop_payload: np.ndarray | RoiCropRef = crop_ref
+        if crop_sr is not crop_view:
+            crop_payload = crop_sr
+        return self._classify_crop(crop_payload), crop_payload, variance
 
-    def _classify_crop(self, crop: np.ndarray) -> ClassifierOutput:
+    def _classify_crop(self, crop: np.ndarray | RoiCropRef) -> ClassifierOutput:
         """Классификация кропа: вид, top1 conf, энтропия и top1−top2 margin по полному вектору probs."""
+        crop_bgr, _copied = crop_for_classifier(crop)
+        if crop_bgr.size == 0:
+            return ClassifierOutput(None, 0.0, 0.0, 0.0)
         if getattr(self, "_classifier_is_efficientnet", False) or getattr(
             self, "_classifier_is_birder_eu", False
         ):
-            out = self.classifier_model.classify_crop_bgr(crop)
+            out = self.classifier_model.classify_crop_bgr(crop_bgr)
             return ClassifierOutput(
                 out.species_name,
                 float(out.top1_confidence),
@@ -816,7 +826,7 @@ class TwoStageStrategy(DetectionStrategy):
         _cls_dev = getattr(self, "_classifier_predict_device", None)
         if _cls_dev:
             _cls_kwargs["device"] = _cls_dev
-        result_cls = self.classifier_model(crop, **_cls_kwargs)
+        result_cls = self.classifier_model(crop_bgr, **_cls_kwargs)
 
         if not result_cls or result_cls[0].probs is None:
             return ClassifierOutput(None, 0.0, 0.0, 0.0)
@@ -1051,6 +1061,11 @@ class TwoStageStrategy(DetectionStrategy):
                 "classification_queue_depth": int(len(self._classification_task_queue)),
                 "classification_queue_drops_total": int(self._classification_task_drops_total),
             }
+            record_classification_queue_state(
+                depth=len(self._classification_task_queue),
+                maxsize=self._classification_task_queue_maxsize,
+                drops_total=self._classification_task_drops_total,
+            )
 
         boxes = None
         if results and len(results[0].boxes) > 0:
@@ -1501,29 +1516,39 @@ class TwoStageStrategy(DetectionStrategy):
             if mapped is None:
                 continue
             x1, y1, x2, y2 = mapped
-            crop = cls_frame[y1:y2, x1:x2]
-            is_blur, variance = self.is_blurry(crop)
+            roi_ref = roi_crop_ref_from_norm_bbox(cls_frame, x1=x1, y1=y1, x2=x2, y2=y2)
+            if roi_ref is None:
+                continue
+            crop_view = roi_ref.view()
+            is_blur, variance = self.is_blurry(crop_view)
             if is_blur:
                 continue
-            crop, sr_n, sr_ms = self._apply_roi_sr_to_crop(
-                crop, min_box_size_px=min_box_size_px
+            crop_sr, sr_n, sr_ms = self._apply_roi_sr_to_crop(
+                crop_view, min_box_size_px=min_box_size_px
             )
             sr_applied += sr_n
             sr_latency_total_ms += sr_ms
-            if crop.flags["C_CONTIGUOUS"]:
-                crop_ref = crop
+            crop_payload: np.ndarray | RoiCropRef = roi_ref
+            if crop_sr is not crop_view:
+                crop_payload = crop_sr
             else:
-                crop_ref = np.ascontiguousarray(crop)
-                frame_copy_count += 1
+                _, copied = crop_for_classifier(roi_ref)
+                if copied:
+                    frame_copy_count += 1
             if len(self._classification_task_queue) >= self._classification_task_queue_maxsize:
                 self._classification_task_queue.popleft()
                 self._classification_task_drops_total += 1
+                record_classification_queue_drop(
+                    depth=len(self._classification_task_queue),
+                    maxsize=self._classification_task_queue_maxsize,
+                    drops_total=self._classification_task_drops_total,
+                )
             self._classification_task_queue.append(
                 ClassificationTask(
                     track_id=int(box["track_id"]),
                     detector_label=str(box["detector_label"]),
                     box_area_norm=float(box["box_area_norm"]),
-                    crop=crop_ref,
+                    crop=crop_payload,
                     blur_variance=variance,
                 )
             )
@@ -1535,27 +1560,27 @@ class TwoStageStrategy(DetectionStrategy):
             )
             if mapped is not None:
                 x1, y1, x2, y2 = mapped
-                crop = cls_frame[y1:y2, x1:x2]
-                crop, sr_n, sr_ms = self._apply_roi_sr_to_crop(
-                    crop, min_box_size_px=min_box_size_px
-                )
-                sr_applied += sr_n
-                sr_latency_total_ms += sr_ms
-                _, variance = self.is_blurry(crop)
-                if crop.flags["C_CONTIGUOUS"]:
-                    crop_ref = crop
-                else:
-                    crop_ref = np.ascontiguousarray(crop)
-                    frame_copy_count += 1
-                self._classification_task_queue.append(
-                    ClassificationTask(
-                        track_id=int(fallback_box["track_id"]),
-                        detector_label=str(fallback_box["detector_label"]),
-                        box_area_norm=float(fallback_box["box_area_norm"]),
-                        crop=crop_ref,
-                        blur_variance=variance,
+                roi_ref = roi_crop_ref_from_norm_bbox(cls_frame, x1=x1, y1=y1, x2=x2, y2=y2)
+                if roi_ref is not None:
+                    crop_view = roi_ref.view()
+                    crop_sr, sr_n, sr_ms = self._apply_roi_sr_to_crop(
+                        crop_view, min_box_size_px=min_box_size_px
                     )
-                )
+                    sr_applied += sr_n
+                    sr_latency_total_ms += sr_ms
+                    _, variance = self.is_blurry(crop_view)
+                    crop_payload: np.ndarray | RoiCropRef = (
+                        crop_sr if crop_sr is not crop_view else roi_ref
+                    )
+                    self._classification_task_queue.append(
+                        ClassificationTask(
+                            track_id=int(fallback_box["track_id"]),
+                            detector_label=str(fallback_box["detector_label"]),
+                            box_area_norm=float(fallback_box["box_area_norm"]),
+                            crop=crop_payload,
+                            blur_variance=variance,
+                        )
+                    )
         while self._classification_task_queue and len(classified_by_track) < classification_budget:
             task = self._classification_task_queue.popleft()
             classified_by_track[int(task.track_id)] = task

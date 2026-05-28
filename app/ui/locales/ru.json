@@ -1514,6 +1514,8 @@
     "regenerateSpectrogramThisVideoFailed": "Не удалось запустить пересборку спектрограммы",
     "specRegenDone": "Спектрограмма: задача завершена.",
     "confidence": "Уверенность",
+    "scoringWhySpecies": "Почему этот вид?",
+    "scoringHintTooltip": "Провайдер: {{provider}}. Веса арбитра: {{weights}}. Полная трассировка — «Fusion» в карточке ролика.",
     "learnMore": "Подробнее",
     "correctedInVideos": "Вид исправлен в {{count}} видео",
     "speciesUnchanged": "Этот вид уже выбран — обновлять нечего.",
@@ -2001,6 +2003,15 @@
     "catalogFullEuCount": "Allowlist: {{n}}",
     "catalogTuningCandidates": "К тюнингу: {{n}}",
     "catalogTuningHint": "Кандидаты на дообучение считаются автоматически: вид наблюдался, но отсутствует в реальных локальных папках dataset.",
+    "catalogOpsHubTitle": "Каталог и детекция",
+    "catalogOpsHubDescription": "Сводка: полнота карточек allowlist, аудио, YOLO health и фоновые задачи.",
+    "catalogOpsCompletion": "Карточки: {{complete}}/{{total}} ({{pct}}%)",
+    "catalogOpsAudio": "Аудио в каталоге: {{with}} / без: {{missing}}",
+    "catalogOpsRunningJobs": "Выполняются задачи: {{jobs}}",
+    "catalogOpsOpenCatalog": "Оглавление каталога",
+    "catalogOpsOpenQuality": "Качество карточек",
+    "backpressureClassifierQueue": "Classifier queue: {{depth}}/{{max}}",
+    "backpressureFinalizeQueue": "Finalize queue: {{depth}}",
     "catalogRepairTitle": "Полировка карточек каталога",
     "catalogRepairLoadError": "Не удалось загрузить статус полировки каталога",
     "catalogRepairStart": "Запустить полировку",
@@ -3108,6 +3119,25 @@
           }
         ]
       }
+    },
+    "speciesDirectory": {
+      "operator": {
+        "title": "Качество карточек каталога",
+        "description": "Служебный список для полировки фото и описаний. Оглавление с наблюдениями — «Каталог» (/species).",
+        "details": [
+          {
+            "title": "Фильтры",
+            "content": "«Неполные» — без фото или описания. «Без аудио» — нет ссылки на Xeno-canto в метаданных."
+          }
+        ]
+      }
+    },
+    "speciesCatalog": {
+      "operator": {
+        "title": "Каталог видов",
+        "description": "Оглавление: наблюдаемые виды и EU allowlist. Полировка карточек — «Качество карточек» (/species-directory).",
+        "details": []
+      }
     }
   },
   "labelling": {
@@ -3267,6 +3297,8 @@
     "filterNoImage": "Без фото",
     "filterNoDescription": "Без описания",
     "filterIncomplete": "Неполные",
+    "filterMissingAudio": "Без аудио (каталог)",
+    "audioKpi": "Аудио: {{withAudio}} с источником, {{missing}} без",
     "badgeNoImage": "Нет фото",
     "badgeNoDescription": "Нет описания"
   }

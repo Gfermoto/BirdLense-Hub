@@ -57,6 +57,21 @@ export type ObservabilityPayload = {
   };
 };
 
+export type ProcessorBackpressurePayload = {
+  available?: boolean;
+  generated_at?: string;
+  gauges?: Record<string, number | boolean | string>;
+  counters?: Record<string, number>;
+  snapshot_stale?: boolean | null;
+};
+
+export const fetchProcessorBackpressure = async (): Promise<ProcessorBackpressurePayload> => {
+  const response = await axios.get(`${BASE_API_URL}/system/diagnostics/backpressure`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
 export const fetchObservability = async (): Promise<ObservabilityPayload> => {
   const response = await axios.get(`${BASE_API_URL}/system/observability`, {
     withCredentials: true,

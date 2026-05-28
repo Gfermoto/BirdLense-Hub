@@ -7,6 +7,7 @@ from datetime import timezone
 
 from typing import Any
 
+from app_config.app_config import app_config
 from services.feeder_scale import video_scales_estimate_payload
 
 
@@ -31,7 +32,42 @@ def _species_row(vs) -> dict:
     }
     if vs.detection_provider:
         data["detection_provider"] = vs.detection_provider
+    ent = getattr(vs, "classifier_entropy", None)
+    if ent is not None:
+        data["classifier_entropy"] = round(float(ent), 4)
+    margin = getattr(vs, "classifier_top1_top2_margin", None)
+    if margin is not None:
+        data["classifier_top1_top2_margin"] = round(float(margin), 4)
+    data["scoring_hint"] = _detection_scoring_hint(vs)
     return data
+
+
+def _weighted_arbiter_weights() -> dict[str, float]:
+    det = app_config.get("detection") or {}
+    return {
+        "confidence": float(det.get("weighted_arbiter_conf_weight") or 0.55),
+        "detector": float(det.get("weighted_arbiter_detector_weight") or 0.15),
+        "classifier": float(det.get("weighted_arbiter_classifier_weight") or 0.12),
+        "birdnet": float(det.get("weighted_arbiter_birdnet_weight") or 0.08),
+        "regional": float(det.get("weighted_arbiter_regional_weight") or 0.05),
+        "multicamera": float(det.get("weighted_arbiter_multicamera_weight") or 0.05),
+    }
+
+
+def _detection_scoring_hint(vs) -> dict[str, Any]:
+    """Compact breakdown for UI tooltips (SOTA-17); full trace via fusion-trace API."""
+    provider = (vs.detection_provider or vs.source or "unknown").strip()
+    hint: dict[str, Any] = {
+        "primary_provider": provider,
+        "confidence": round(float(vs.confidence or 0.0), 4),
+        "source": vs.source,
+        "weighted_arbiter_enabled": bool(app_config.get("detection.weighted_arbiter_enabled", True)),
+        "arbiter_weights": _weighted_arbiter_weights(),
+    }
+    if getattr(vs, "classifier_needs_review", False):
+        hint["needs_review"] = True
+        hint["review_reason"] = getattr(vs, "review_reason", None)
+    return hint
 
 
 def build_video_detail_dict(video) -> dict:
