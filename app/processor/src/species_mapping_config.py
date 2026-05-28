@@ -28,12 +28,14 @@ def _birder_eu_label_mapping(app_config: Any) -> dict[str, str]:
     engine = str(app_config.get("processor.classifier_engine", "birder_eu") or "birder_eu").strip().lower()
     if engine not in ("birder", "birder_eu", "birder-eu", "eu-common", "eu_common"):
         return {}
-    from inference.classifier_paths import _birder_weights_subdir
+    from inference.classifier_model_layout import birder_variant_name, classifier_openvino_rel_dir
 
     processor_root = Path(__file__).resolve().parents[1]
-    subdir = _birder_weights_subdir(app_config)
-    rel = app_config.get("processor.models.classifier_birder_eu") or (
-        f"models/classification/weights/{subdir}"
+    variant = birder_variant_name(app_config)
+    rel = (
+        app_config.get("processor.models.classifier_openvino")
+        or app_config.get("processor.models.classifier_birder_eu_openvino")
+        or classifier_openvino_rel_dir(variant)
     )
     base = Path(rel) if os.path.isabs(str(rel)) else processor_root / str(rel)
     labels_path = base / "class_labels.txt"
@@ -58,9 +60,9 @@ def _efficientnet_id2label_mapping(app_config: Any) -> dict[str, str]:
     rel = (
         app_config.get(
             "processor.models.classifier_efficientnet_b2",
-            "models/classification/weights/birds_classifier_efficientnetb2",
+            "models/classification/weights/efficientnet_b2_global",
         )
-        or "models/classification/weights/birds_classifier_efficientnetb2"
+        or "models/classification/weights/efficientnet_b2_global"
     )
     processor_root = Path(__file__).resolve().parents[1]
     base = Path(rel) if os.path.isabs(str(rel)) else processor_root / str(rel)

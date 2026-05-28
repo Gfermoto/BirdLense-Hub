@@ -17,8 +17,8 @@ _LEGACY_ALIASES: dict[str, str] = {
     "models/behavior/behavior_video_model.bin": f"{VIDEO_DIR}/behavior_video_model.bin",
     "models/behavior/behavior_video_model.onnx": f"{VIDEO_DIR}/behavior_video_model.onnx",
     "models/behavior": VIDEO_DIR,
-    "models/behavior_v1_openvino": "models/behavior/_archive/experiments_v1_openvino",
-    "models/behavior_v2_openvino": "models/behavior/_archive/experiments_v2_openvino",
+    "models/behavior_v1_openvino": VIDEO_DIR,
+    "models/behavior_v2_openvino": VIDEO_DIR,
     "models/behavior_v2_1_openvino": VIDEO_DIR,
 }
 

@@ -1,10 +1,10 @@
 # Прод: 7 FPS substream + Trapper track(conf) ~0.28–0.32, пост-фильтр Bird ~0.35.
 # track_high/new_track ДОЛЖНЫ быть ниже openvino_binary_track_ultralytics_conf (см. detection_strategy).
 tracker_type: bytetrack
-track_high_thresh: 0.10
-track_low_thresh: 0.05
-new_track_thresh: 0.10
-# ~3.5s @ 7 FPS; adaptive tracker may scale up to processor.tracker_adaptive_max_buffer.
-track_buffer: 28
-match_thresh: 0.80
+track_high_thresh: 0.06
+track_low_thresh: 0.03
+new_track_thresh: 0.06
+# ~1.7s @ 7 FPS; tuned for realtime anti-sticky tracking.
+track_buffer: 12
+match_thresh: 0.86
 fuse_score: true

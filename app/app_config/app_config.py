@@ -296,12 +296,7 @@ def migrate_legacy_trigger_topics(user_config: dict) -> bool:
 
 
 def migrate_processor_classifier_best_eu_path(user_config: dict) -> bool:
-    """Заменяет ошибочный путь best_EU.pt на канонический best.pt.
-
-    В образе и в HF EU-веса лежат как models/classification/weights/best.pt.
-    Старые подсказки UI упоминали best_EU.pt как «пример» — часть user_config
-    могла сохраниться с этим именем.
-    """
+    """Migrate legacy classifier paths (best.pt, birder_*, old keys) to #516 layout."""
     if not isinstance(user_config, dict):
         return False
     processor = user_config.get("processor")
@@ -310,20 +305,57 @@ def migrate_processor_classifier_best_eu_path(user_config: dict) -> bool:
     models = processor.get("models")
     if not isinstance(models, dict):
         return False
-    cur = models.get("classifier")
-    if not isinstance(cur, str):
-        return False
-    s = cur.strip()
-    if not s:
-        return False
-    canon = "models/classification/weights/best.pt"
-    if s == "models/classification/weights/best_EU.pt":
-        models["classifier"] = canon
-        return True
-    if s.replace("\\", "/").endswith("/models/classification/weights/best_EU.pt"):
-        models["classifier"] = canon
-        return True
-    return False
+
+    variant = str(processor.get("birder_eu_variant") or "convnext_v2_tiny_eu-common256px").strip()
+    canon_torch = f"models/classification/weights/{variant}.pt"
+    canon_ov = f"models/classification/weights/{variant}_openvino_model"
+
+    replacements = {
+        "models/classification/weights/best.pt": canon_torch,
+        f"models/classification/weights/{variant}": canon_torch,
+        f"models/classification/weights/birder_{variant.replace('-', '_')}": canon_torch,
+        f"models/classification/weights/birder_{variant.replace('-', '_')}_openvino": canon_ov,
+        f"models/classification/weights/{variant}_openvino": canon_ov,
+        "models/classification/weights/best_openvino_model": canon_ov,
+    }
+
+    changed = False
+    for key in ("classifier", "classifier_openvino", "classifier_birder_eu", "classifier_birder_eu_openvino"):
+        cur = models.get(key)
+        if not isinstance(cur, str) or not cur.strip():
+            continue
+        s = cur.strip().replace("\\", "/")
+        if s.endswith("/best_EU.pt") or s.endswith("best_EU.pt"):
+            models["classifier"] = canon_torch
+            if key != "classifier":
+                models.pop(key, None)
+            changed = True
+            continue
+        if s in replacements:
+            new_key = "classifier" if key.startswith("classifier_birder") and "openvino" not in key else key
+            if "openvino" in key or "birder_eu_openvino" in key:
+                models["classifier_openvino"] = replacements[s]
+                if key != "classifier_openvino":
+                    models.pop(key, None)
+            else:
+                models["classifier"] = replacements[s]
+                if key != "classifier":
+                    models.pop(key, None)
+            changed = True
+
+    eng = str(processor.get("classifier_engine") or "birder_eu").strip().lower()
+    if eng in ("birder", "birder_eu", "birder-eu", "eu-common", "eu_common"):
+        cur_cls = str(models.get("classifier") or "").strip().replace("\\", "/")
+        if not cur_cls or cur_cls in (
+            "models/classification/weights/best.pt",
+            f"models/classification/weights/{variant}",
+        ) or "birder_convnext" in cur_cls:
+            models["classifier"] = canon_torch
+            changed = True
+        if not models.get("classifier_openvino"):
+            models["classifier_openvino"] = canon_ov
+            changed = True
+    return changed
 
 
 class AppConfig:

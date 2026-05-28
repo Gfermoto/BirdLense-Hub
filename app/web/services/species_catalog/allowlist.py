@@ -4,7 +4,7 @@
 как после нормализации процессора: ``Scientific (Common)`` с пробелами.
 
 Типичный источник: ``scripts/datasets/dump_classifier_allowlist.py`` →
-``processor/models/classification/weights/class_names.txt`` рядом с ``best.pt``.
+``{variant}/class_labels.txt`` активного Birder EU классификатора (#516).
 
 Ключ конфигурации: ``species.catalog_allowlist_file`` (путь относительно корня
 ``app/processor`` или абсолютный). Пусто — allowlist выключен.
@@ -58,12 +58,12 @@ def _classifier_engine_name(app_config_get) -> str:
     return str(app_config_get("processor.classifier_engine", "birder_eu") or "birder_eu").strip().lower()
 
 
-def _birder_weights_dir(app_config_get) -> str:
+def _birder_labels_dir(app_config_get) -> str:
     variant = str(app_config_get("processor.birder_eu_variant") or "convnext_v2_tiny_eu-common256px").strip()
-    sub = f"birder_{variant.replace('-', '_')}"
     rel = (
-        app_config_get("processor.models.classifier_birder_eu")
-        or f"models/classification/weights/{sub}"
+        app_config_get("processor.models.classifier_openvino")
+        or app_config_get("processor.models.classifier_birder_eu_openvino")
+        or f"models/classification/weights/{variant}_openvino_model"
     )
     return rel if os.path.isabs(rel) else os.path.join(_processor_root(), rel)
 
@@ -72,9 +72,9 @@ def _efficientnet_weights_dir(app_config_get) -> str:
     rel = (
         app_config_get(
             "processor.models.classifier_efficientnet_b2",
-            "models/classification/weights/birds_classifier_efficientnetb2",
+            "models/classification/weights/efficientnet_b2_global",
         )
-        or "models/classification/weights/birds_classifier_efficientnetb2"
+        or "models/classification/weights/efficientnet_b2_global"
     )
     return rel if os.path.isabs(rel) else os.path.join(_processor_root(), rel)
 
@@ -82,7 +82,7 @@ def _efficientnet_weights_dir(app_config_get) -> str:
 def _classifier_engine_allowlist_path(app_config_get) -> str | None:
     engine = _classifier_engine_name(app_config_get)
     if engine == "birder_eu":
-        base = _birder_weights_dir(app_config_get)
+        base = _birder_labels_dir(app_config_get)
         return os.path.join(base, "class_labels.txt")
     if engine != "efficientnet_b2":
         return None
@@ -126,7 +126,7 @@ def load_active_classifier_label_names(app_config_get) -> tuple[str, ...] | None
     """Имена классов, которые активный классификатор может выдать на кропе."""
     engine = _classifier_engine_name(app_config_get)
     if engine == "birder_eu":
-        path = os.path.join(_birder_weights_dir(app_config_get), "class_labels.txt")
+        path = os.path.join(_birder_labels_dir(app_config_get), "class_labels.txt")
         if os.path.isfile(path):
             return _load_allowlist_names_cached(os.path.abspath(path))
         return None

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export Birder EU classifier to OpenVINO IR (FP16) for BirdLense processor."""
+"""Export Birder EU classifier to OpenVINO IR (FP16) — flat weights layout."""
 
 from __future__ import annotations
 
@@ -14,37 +14,32 @@ REPO = Path(__file__).resolve().parents[1]
 DEFAULT_VARIANT = "convnext_v2_tiny_eu-common256px"
 
 
-def _weights_dir(variant: str, base: Path) -> Path:
-    return base / f"birder_{variant.replace('-', '_')}"
-
-
 def export_openvino(variant: str, base: Path, benchmark: bool = False) -> Path:
     import birder
     import openvino as ov
     import torch
 
-    wdir = _weights_dir(variant, base)
-    if not wdir.is_dir():
-        raise FileNotFoundError(f"Missing weights dir {wdir}; run download_birder_classifier.py first")
+    pt_path = base / f"{variant}.pt"
+    if not pt_path.is_file():
+        raise FileNotFoundError(f"Missing {pt_path}; run scripts/download_birder_classifier.py first")
+
+    out_dir = base / f"{variant}_openvino_model"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     net, info, _transform = birder.load_pretrained_model_and_transform(variant, inference=True)
     net.eval()
     size = int(info.signature["inputs"][0]["data_shape"][-1])
     dummy = torch.zeros(1, 3, size, size)
-    out_dir = Path(f"{wdir}_openvino")
-    out_dir.mkdir(parents=True, exist_ok=True)
 
     ov_model = ov.convert_model(net, example_input=dummy)
     ov.save_model(ov_model, str(out_dir / "openvino_model.xml"), compress_to_fp16=True)
 
-    for fname in ("class_labels.txt", "birdlense_manifest.json"):
-        src = wdir / fname
-        if src.is_file():
-            (out_dir / fname).write_bytes(src.read_bytes())
-
-    meta_src = wdir / f"{variant}.json"
-    if meta_src.is_file():
-        (out_dir / meta_src.name).write_bytes(meta_src.read_bytes())
+    for fname in ("class_labels.txt", "birdlense_manifest.json", f"{variant}.json"):
+        src = out_dir / fname
+        if not src.is_file():
+            alt = base / fname if fname.endswith(".json") else None
+            if alt and alt.is_file():
+                (out_dir / fname).write_bytes(alt.read_bytes())
 
     manifest_path = out_dir / "birdlense_manifest.json"
     if manifest_path.is_file():
@@ -59,7 +54,6 @@ def export_openvino(variant: str, base: Path, benchmark: bool = False) -> Path:
     if benchmark:
         compiled = ov.Core().compile_model(str(out_dir / "openvino_model.xml"), "CPU")
         inp = np.random.rand(1, 3, size, size).astype(np.float32)
-        # warmup
         for _ in range(3):
             compiled([inp])
         t0 = time.perf_counter()

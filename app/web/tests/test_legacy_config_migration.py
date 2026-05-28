@@ -250,7 +250,9 @@ def test_migrate_processor_classifier_best_eu_relative_path():
         },
     }
     assert migrate_processor_classifier_best_eu_path(user) is True
-    assert user["processor"]["models"]["classifier"] == ("models/classification/weights/best.pt")
+    assert user["processor"]["models"]["classifier"] == (
+        "models/classification/weights/convnext_v2_tiny_eu-common256px.pt"
+    )
 
 
 def test_migrate_processor_classifier_best_eu_absolute_path():
@@ -262,16 +264,22 @@ def test_migrate_processor_classifier_best_eu_absolute_path():
         },
     }
     assert migrate_processor_classifier_best_eu_path(user) is True
-    assert user["processor"]["models"]["classifier"] == ("models/classification/weights/best.pt")
+    assert user["processor"]["models"]["classifier"] == (
+        "models/classification/weights/convnext_v2_tiny_eu-common256px.pt"
+    )
 
 
-def test_migrate_processor_classifier_unchanged_for_canonical():
+def test_migrate_processor_classifier_best_pt_to_birder_layout():
     user = {
         "processor": {
+            "classifier_engine": "birder_eu",
             "models": {"classifier": "models/classification/weights/best.pt"},
         },
     }
-    assert migrate_processor_classifier_best_eu_path(user) is False
+    assert migrate_processor_classifier_best_eu_path(user) is True
+    assert user["processor"]["models"]["classifier"] == (
+        "models/classification/weights/convnext_v2_tiny_eu-common256px.pt"
+    )
 
 
 def test_fold_motion_settings_patch_into_triggers():

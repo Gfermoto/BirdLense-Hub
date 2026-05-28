@@ -71,8 +71,47 @@ def adaptive_track_buffer_frames(
 def adaptive_match_thresh(stream_fps: float, base_thresh: float, low_fps_threshold: float) -> float:
     if stream_fps <= 0.5 or stream_fps > float(low_fps_threshold):
         return float(base_thresh)
-    # Softer association when detections are sparse.
-    return max(0.55, float(base_thresh) - 0.08)
+    # Slight tighten on low FPS; large bumps break small-motion association.
+    return min(0.88, max(0.68, float(base_thresh) + 0.02))
+
+
+def _track_conf_cap_from_config(cfg: Mapping[str, Any]) -> float | None:
+    """Upper bound for ByteTrack high/new thresholds (must stay below YOLO track conf)."""
+    try:
+        bird = float(cfg.get("processor.min_confidence_binary_bird") or 0.22)
+    except (TypeError, ValueError):
+        bird = 0.22
+    cap: float | None = bird
+    backend = str(cfg.get("processor.inference_backend") or "").strip().lower()
+    if backend == "openvino":
+        raw = cfg.get("processor.openvino_binary_track_ultralytics_conf")
+        if raw is not None:
+            try:
+                ov = float(raw)
+                cap = min(cap, ov) if cap is not None else ov
+            except (TypeError, ValueError):
+                pass
+    if cap is None:
+        return None
+    return max(0.05, min(0.45, float(cap)))
+
+
+def clamp_bytetrack_track_thresholds(doc: dict[str, Any], track_conf_cap: float | None) -> None:
+    """Ensure track_high_thresh/new_track_thresh < Ultralytics track(conf)."""
+    if track_conf_cap is None or str(doc.get("tracker_type") or "").strip().lower() != "bytetrack":
+        return
+    ceiling = max(0.01, float(track_conf_cap) - 0.04)
+    for key in ("track_high_thresh", "new_track_thresh"):
+        try:
+            cur = float(doc.get(key) or 0.1)
+        except (TypeError, ValueError):
+            cur = 0.1
+        doc[key] = round(min(cur, ceiling), 4)
+    try:
+        low = float(doc.get("track_low_thresh") or 0.05)
+    except (TypeError, ValueError):
+        low = 0.05
+    doc["track_low_thresh"] = round(min(low, doc["track_high_thresh"] * 0.75), 4)
 
 
 def resolve_adaptive_tracker_path(
@@ -120,11 +159,15 @@ def resolve_adaptive_tracker_path(
         adaptive_match_thresh(stream_fps, base_thresh, low_fps_threshold),
         3,
     )
+    track_conf_cap = _track_conf_cap_from_config(cfg)
+    clamp_bytetrack_track_thresholds(doc, track_conf_cap)
 
     cache_root = Path(processor_package_root()) / "models" / "tracker" / _CACHE_DIR_NAME
     cache_root.mkdir(parents=True, exist_ok=True)
+    cap_tag = f"{track_conf_cap:.3f}" if track_conf_cap is not None else "na"
     key = hashlib.sha256(
-        f"{base_path}|fps={stream_fps:.3f}|buf={buffer_frames}|mt={doc['match_thresh']}".encode()
+        f"{base_path}|fps={stream_fps:.3f}|buf={buffer_frames}|mt={doc['match_thresh']}|cap={cap_tag}|"
+        f"th={doc.get('track_high_thresh')}|{doc.get('new_track_thresh')}".encode()
     ).hexdigest()[:16]
     out_path = cache_root / f"bytetrack_adaptive_{key}.yaml"
     if not out_path.is_file():

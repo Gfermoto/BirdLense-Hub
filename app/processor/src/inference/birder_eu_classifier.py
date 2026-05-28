@@ -139,7 +139,17 @@ class BirderEuClassifier:
         ov_dev = resolve_efficientnet_openvino_device(self.device)
         core = ov.Core()
         self._ov_model = core.read_model(str(xml))
-        self._ov_compiled = core.compile_model(self._ov_model, ov_dev)
+        try:
+            self._ov_compiled = core.compile_model(self._ov_model, ov_dev)
+        except Exception as exc:
+            if str(ov_dev).upper() == "CPU":
+                raise
+            _log.warning(
+                "Birder OpenVINO compile failed on %s, fallback to CPU: %s",
+                ov_dev,
+                exc,
+            )
+            self._ov_compiled = core.compile_model(self._ov_model, "CPU")
 
     def _build_regional_filter(self) -> None:
         if not self.regional_species:
@@ -237,6 +247,19 @@ def default_birder_variant(app_config: Mapping[str, Any] | None) -> str:
     return str(raw or "convnext_v2_tiny_eu-common256px").strip()
 
 
+def _normalize_weights_bundle(weights_dir: str, variant: str) -> Path:
+    """Always use ``{variant}_openvino_model/`` for labels + IR (``.pt`` is sibling on disk)."""
+    from inference.classifier_model_layout import resolve_birder_bundle_dir
+
+    ref = Path(weights_dir)
+    root = ref.parent
+    if ref.is_file() and ref.suffix == ".pt":
+        root = ref.parent
+    elif ref.is_dir() and ref.name == variant:
+        root = ref.parent
+    return resolve_birder_bundle_dir(root, variant, ref if ref.is_dir() else None)
+
+
 def load_birder_eu_classifier(
     weights_dir: str,
     *,
@@ -265,8 +288,9 @@ def load_birder_eu_classifier(
             device = str(ov_dev)
     if min_confidence is not None:
         min_conf = float(min_confidence)
+    bundle = _normalize_weights_bundle(weights_dir, var)
     return BirderEuClassifier(
-        weights_dir=weights_dir,
+        weights_dir=str(bundle),
         variant=var,
         backend=backend,
         min_confidence=min_conf,
