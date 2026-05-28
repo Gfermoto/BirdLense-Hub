@@ -389,6 +389,28 @@ def load_catalog_allowlist_names(app_config_get) -> tuple[str, ...] | None:
     return tuple(names) if names else None
 
 
+def scientific_name_from_canonical_mapping(
+    display_name: str,
+    mapping: dict[str, str] | None = None,
+) -> str | None:
+    """Бином из строки mapping ``Scientific (Common)|Canonical`` при совпадении common name."""
+    if not (display_name or "").strip():
+        return None
+    mapping = mapping or load_species_canonical_mapping()
+    target_keys = species_name_match_norm_keys(display_name, mapping)
+    if not target_keys:
+        return None
+    for variant, canonical in mapping.items():
+        if not (variant or "").strip() or not (canonical or "").strip():
+            continue
+        if not (species_name_match_norm_keys(canonical, mapping) & target_keys):
+            continue
+        pair = _split_scientific_common_display(str(variant).strip())
+        if pair:
+            return pair[0].strip()
+    return None
+
+
 def allowlist_scientific_name_for_display_name(
     display_name: str,
     app_config_get,
@@ -421,6 +443,7 @@ def allowlist_scientific_name_for_display_name(
 
 __all__ = [
     "allowlist_scientific_name_for_display_name",
+    "scientific_name_from_canonical_mapping",
     "catalog_classifier_meta",
     "clear_allowlist_cache",
     "ingest_name_matches_allowlist",

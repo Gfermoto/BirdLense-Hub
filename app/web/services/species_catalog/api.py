@@ -9,13 +9,16 @@ from __future__ import annotations
 import logging
 
 from sqlalchemy import distinct, func
+from sqlalchemy.orm import joinedload
 
 from app_config.app_config import app_config
 from models import Species, SpeciesVisit, VideoSpecies
 from services.species_catalog.allowlist import (
+    allowlist_scientific_name_for_display_name,
     catalog_classifier_meta,
     load_catalog_allowlist_names,
     load_catalog_allowlist_norm_keys,
+    scientific_name_from_canonical_mapping,
     species_matches_allowlist,
     species_name_match_norm_keys,
 )
@@ -76,6 +79,14 @@ def _species_row_dict(
     raw_name = sp.name or ""
     display_name = normalize_catalog_display_name(raw_name, mapping) or raw_name
     scientific_name, _common = parse_scientific_and_common(raw_name)
+    if not scientific_name:
+        taxon = getattr(sp, "taxon", None)
+        if taxon is not None:
+            scientific_name = (taxon.scientific_name or "").strip() or None
+    if not scientific_name:
+        scientific_name = allowlist_scientific_name_for_display_name(display_name, app_config.get)
+    if not scientific_name:
+        scientific_name = scientific_name_from_canonical_mapping(display_name, mapping)
     classifier_predictable = (
         species_matches_allowlist(raw_name, allow_keys, mapping) if allow_keys else True
     )
@@ -110,6 +121,7 @@ def fetch_species_catalog_list(
             Species,
             func.coalesce(func.sum(SpeciesVisit.max_simultaneous), 0).label("count"),
         )
+        .options(joinedload(Species.taxon))
         .outerjoin(SpeciesVisit)
         .group_by(Species.id)
         .order_by(Species.name.asc())

@@ -25,6 +25,17 @@ if os.path.isdir(_WEB_ROOT):
 def main() -> int:
     parser = argparse.ArgumentParser(description="Deep catalog polish")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--materialize",
+        action="store_true",
+        help="Create Species rows for every allowlist class (707+Rodent) before reconcile",
+    )
+    parser.add_argument("--materialize-limit", type=int, default=8000)
+    parser.add_argument(
+        "--skip-repair",
+        action="store_true",
+        help="Skip metadata repair (avoids sqlite locked while hub is writing)",
+    )
     parser.add_argument("--rename-limit", type=int, default=6000)
     parser.add_argument("--repair-limit", type=int, default=6000)
     parser.add_argument("--duplicate-limit", type=int, default=500)
@@ -37,9 +48,19 @@ def main() -> int:
     with app.app_context():
         from services.species_catalog.registry import (
             catalog_cards_coverage_snapshot,
+            ensure_allowlist_species_materialized,
             repair_catalog_cards,
         )
         from services.species_catalog_reconcile_service import deep_reconcile_species_catalog
+
+        materialize_out = None
+        if args.materialize:
+            materialize_out = ensure_allowlist_species_materialized(
+                app_config.get,
+                fill_metadata=False,
+                dry_run=bool(args.dry_run),
+                limit=int(args.materialize_limit),
+            )
 
         before = catalog_cards_coverage_snapshot(app_config.get)
         out = deep_reconcile_species_catalog(
@@ -48,15 +69,18 @@ def main() -> int:
             duplicate_group_limit=int(args.duplicate_limit),
             app_config_get=app_config.get,
         )
-        repair = repair_catalog_cards(
-            app_config.get,
-            dry_run=bool(args.dry_run),
-            limit=int(args.repair_limit),
-            priority_rotate=0,
-        )
+        repair = None
+        if not args.skip_repair:
+            repair = repair_catalog_cards(
+                app_config.get,
+                dry_run=bool(args.dry_run),
+                limit=int(args.repair_limit),
+                priority_rotate=0,
+            )
         after = catalog_cards_coverage_snapshot(app_config.get)
         payload = {
             "dry_run": bool(args.dry_run),
+            "materialize": materialize_out,
             "before": before,
             "deep_reconcile": out,
             "repair": repair,
