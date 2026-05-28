@@ -9,6 +9,7 @@ SOTA-01 (#492): валидация объединённого конфига (`d
 | Pydantic-модели | `app/app_config/config_schema.py` |
 | JSON Schema (генерация) | `app/app_config/schema/birdlense_config.schema.json` |
 | Интеграция при merge | `app/app_config/app_config.py` → `load_and_merge_configs` |
+| Fail-fast guard | `app/app_config/config_guard.py` — Hub `create_app`, processor `main()` |
 | PATCH настроек | `app/web/services/settings_patch_service.py` |
 
 ## Секции с типизацией
@@ -22,7 +23,8 @@ SOTA-01 (#492): валидация объединённого конфига (`d
 | Переменная | Значение |
 |------------|----------|
 | `BIRDLENSE_PYDANTIC_CONFIG_VALIDATE` | `1` (по умолчанию) — Pydantic-валидация; `0` — выкл. |
-| `BIRDLENSE_STRICT_CONFIG` | `1` — падение при любой ошибке структуры/семантики/Pydantic |
+| `BIRDLENSE_STRICT_CONFIG` | `1` — падение Hub при ошибке (в production по умолчанию) |
+| `BIRDLENSE_PROCESSOR_STRICT_CONFIG` | `1` (дефолт) — процессор не стартует при невалидном YAML; `0` — только лог |
 
 ## Экспорт JSON Schema
 

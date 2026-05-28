@@ -67,6 +67,14 @@ def _dedupe_allowlist_species_rows(
     return sorted(best_by_key.values(), key=lambda r: (r.Species.name or "").lower())
 
 
+def _species_has_catalog_audio(sp) -> bool:
+    src = (sp.metadata_source or "").strip().lower()
+    url = (sp.metadata_source_url or "").strip().lower()
+    if "xeno" in src or "xeno-canto" in url:
+        return True
+    return False
+
+
 def _species_row_dict(
     row,
     *,
@@ -106,6 +114,7 @@ def _species_row_dict(
         "regional_scope": sp.id in regional_scope_ids,
         "count": int(row.count or 0),
         "catalog_card_incomplete": species_card_needs_full_metadata_refresh(sp),
+        "catalog_has_audio": _species_has_catalog_audio(sp),
     }
 
 
@@ -114,6 +123,8 @@ def fetch_species_catalog_list(
     *,
     exclude_suspects: bool,
     scope: str | None = "allowlist",
+    missing_audio: bool = False,
+    catalog_incomplete: bool = False,
 ) -> list[dict]:
     catalog_scope = _normalize_catalog_scope(scope)
     query = (
@@ -173,6 +184,10 @@ def fetch_species_catalog_list(
     if catalog_scope != "all":
         for item in rows:
             item["catalog_scope"] = catalog_scope
+    if missing_audio:
+        rows = [r for r in rows if not r.get("catalog_has_audio")]
+    if catalog_incomplete:
+        rows = [r for r in rows if r.get("catalog_card_incomplete")]
     return rows
 
 
@@ -199,6 +214,23 @@ def fetch_species_catalog_meta(session, *, exclude_suspects: bool) -> dict:
         "arbitration_vocabulary_total": len(vocab.arbitration_norm_keys),
     }
     meta.update(catalog_classifier_meta(app_config.get))
+    try:
+        from services.species_catalog.registry import catalog_cards_coverage_snapshot
+
+        cov = catalog_cards_coverage_snapshot(app_config.get)
+        meta["catalog_cards"] = {
+            "complete_cards": cov.get("complete_cards"),
+            "allowlist_total": cov.get("allowlist_total"),
+            "completion_percent": cov.get("completion_percent"),
+            "missing_image_lines": cov.get("missing_image_lines"),
+            "audio_probed_sample": cov.get("audio_probed_sample"),
+            "audio_with_source_sample": cov.get("audio_with_source_sample"),
+            "audio_coverage_percent_sample": cov.get("audio_coverage_percent_sample"),
+        }
+        meta["catalog_with_audio"] = sum(1 for row in listed if row.get("catalog_has_audio"))
+        meta["catalog_missing_audio"] = max(0, len(listed) - meta["catalog_with_audio"])
+    except Exception:
+        logger.debug("catalog_cards snapshot for meta failed", exc_info=True)
     return meta
 
 

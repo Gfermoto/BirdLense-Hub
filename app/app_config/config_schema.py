@@ -62,6 +62,12 @@ class ProcessorConfig(_SectionBase):
     min_confidence_binary: float | None = Field(default=None, ge=0.0, le=1.0)
     min_confidence_binary_bird: float | None = Field(default=None, ge=0.0, le=1.0)
     min_confidence_binary_rodent: float | None = Field(default=None, ge=0.0, le=1.0)
+    bird_skip_classifier_max_area_frac: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=0.5,
+        description="Skip classifier when generic Bird box area fraction exceeds threshold; 0 disables",
+    )
     min_confidence_to_process: float | None = Field(default=None, ge=0.0, le=1.0)
     min_confidence_to_notify: float | None = Field(default=None, ge=0.0, le=1.0)
     min_track_duration: float | None = Field(default=None, ge=0.0, le=600.0)

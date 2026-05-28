@@ -26,14 +26,25 @@ def register_ui_species_catalog_routes(app):
         exclude_suspects = request.args.get("exclude_suspects", "").strip().lower() in ("1", "true", "yes")
         scope = (request.args.get("scope") or "project").strip().lower()
         include_meta = request.args.get("meta", "").strip().lower() in ("1", "true", "yes")
-        cache_key = f"species_list:v4:ex{1 if exclude_suspects else 0}:sc{scope}"
+        missing_audio = request.args.get("missing_audio", "").strip().lower() in ("1", "true", "yes")
+        catalog_incomplete = request.args.get("catalog_incomplete", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        cache_key = (
+            f"species_list:v5:ex{1 if exclude_suspects else 0}:sc{scope}"
+            f":ma{1 if missing_audio else 0}:ci{1 if catalog_incomplete else 0}"
+        )
         hit, scached = cache_get(cache_key)
-        if hit and not include_meta:
+        if hit and not include_meta and not missing_audio and not catalog_incomplete:
             return scached
         result = fetch_species_catalog_list(
             db.session,
             exclude_suspects=exclude_suspects,
             scope=scope,
+            missing_audio=missing_audio,
+            catalog_incomplete=catalog_incomplete,
         )
         if include_meta:
             meta = fetch_species_catalog_meta(db.session, exclude_suspects=exclude_suspects)

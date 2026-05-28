@@ -70,6 +70,17 @@ export interface VideoSpecies {
   bird_profile_status?: string | null;
   classifier_needs_review?: boolean;
   review_reason?: string | null;
+  classifier_entropy?: number | null;
+  classifier_top1_top2_margin?: number | null;
+  scoring_hint?: {
+    primary_provider?: string;
+    confidence?: number;
+    source?: string;
+    weighted_arbiter_enabled?: boolean;
+    arbiter_weights?: Record<string, number>;
+    needs_review?: boolean;
+    review_reason?: string | null;
+  };
   semantic_conflict?: boolean;
   semantic_review_history?: Array<{
     at?: string | null;

@@ -154,6 +154,7 @@ def start_single_video_track_regeneration(
                 "error": "Track regeneration already in progress",
                 "status": job_state._regenerate_tracks_status,
             }, 409
+        job_state._regenerate_tracks_cancel_requested = False
         job_state._regenerate_tracks_status = {
             "status": "running",
             "result": None,

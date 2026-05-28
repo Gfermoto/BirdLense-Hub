@@ -3253,6 +3253,41 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Review-only noise candidates
+  /system/diagnostics/backpressure:
+    get:
+      summary: Processor W1 queue depths and drop counters
+      description: |
+        Live backpressure snapshot from ``processor_runtime_stats.json``:
+        finalize/classifier/MQTT queue gauges and deferred-trigger counters.
+        Requires settings password.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /system/diagnostics/processor-runtime:
+    get:
+      summary: Processor runtime stats snapshot (JSON file on disk)
+      description: Full counters/gauges/latency snapshot written by the processor process.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /system/domain-health:
     get:
       description: External domain reachability; may require UI API key in strict mode.
@@ -3755,6 +3790,99 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Track batch status
+  /jobs:
+    get:
+      summary: List async background jobs
+      description: Unified status for catalog repair, regen, fusion export, etc. Requires settings password.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Start async job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - track_regen
+                    - spectrogram_regen
+                    - catalog_repair
+                    - species_metadata
+                    - fusion_export
+                    - fusion_eval
+                    - telegram_proxy_refresh
+                payload:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '202':
+          description: Job started
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Job already running
+  /jobs/{job_id}:
+    get:
+      summary: Get async job status
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Request job cancel (track_regen only)
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cancel requested
+        '409':
+          description: Job not running
   /system/review-queue/delete:
     post:
       description: 'Admin: apply bulk delete.'

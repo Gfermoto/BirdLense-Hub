@@ -39,6 +39,7 @@ import {
   assignDetectionBirdProfile,
   createBirdProfile,
   fetchBirdDirectory,
+  speciesDirectoryItems,
   fetchBirdProfileSuggestLinks,
   fetchBirdProfiles,
   mergeBirdProfiles,
@@ -289,7 +290,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
 
   const { data: speciesList = [] } = useQuery({
     queryKey: queryKeys.species.directory,
-    queryFn: () => fetchBirdDirectory(),
+    queryFn: async () => speciesDirectoryItems(await fetchBirdDirectory()),
     staleTime: 5 * 60 * 1000,
   });
   const { data: birdProfilesResponse } = useQuery({
@@ -635,6 +636,31 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     {t('video.confidence')}: {group.confidenceRange}
                   </Typography>
+                  {group.detections[0]?.scoring_hint ? (
+                    <Tooltip
+                      title={
+                        <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
+                          {t('video.scoringHintTooltip', {
+                            provider:
+                              group.detections[0].scoring_hint?.primary_provider ?? '—',
+                            weights: Object.entries(
+                              group.detections[0].scoring_hint?.arbiter_weights ?? {},
+                            )
+                              .map(([k, v]) => `${k}=${v}`)
+                              .join(', '),
+                          })}
+                        </Box>
+                      }
+                    >
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ textDecoration: 'underline', cursor: 'help' }}
+                      >
+                        {t('video.scoringWhySpecies')}
+                      </Typography>
+                    </Tooltip>
+                  ) : null}
                   {canEdit &&
                   group.detections.filter((d) => d.source === 'video' && d.id).length >
                     0 ? (

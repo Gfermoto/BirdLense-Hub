@@ -232,6 +232,21 @@
           "default": null,
           "title": "Min Confidence Binary Rodent"
         },
+        "bird_skip_classifier_max_area_frac": {
+          "anyOf": [
+            {
+              "maximum": 0.5,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Skip classifier when generic Bird box area fraction exceeds threshold; 0 disables",
+          "title": "Bird Skip Classifier Max Area Frac"
+        },
         "min_confidence_to_process": {
           "anyOf": [
             {
@@ -411,6 +426,182 @@
           ],
           "default": null,
           "title": "Track Regen Frame Step"
+        },
+        "detection_quality_assumed_fps": {
+          "anyOf": [
+            {
+              "maximum": 120.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detection Quality Assumed Fps"
+        },
+        "openvino_binary_track_ultralytics_conf": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Openvino Binary Track Ultralytics Conf"
+        },
+        "openvino_binary_bird_score_scale": {
+          "anyOf": [
+            {
+              "maximum": 32.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Openvino Binary Bird Score Scale"
+        },
+        "openvino_min_confidence_binary_bird": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Openvino Min Confidence Binary Bird"
+        },
+        "background_subtraction_enabled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Background Subtraction Enabled"
+        },
+        "background_subtraction_history": {
+          "anyOf": [
+            {
+              "maximum": 10000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Background Subtraction History"
+        },
+        "background_subtraction_var_threshold": {
+          "anyOf": [
+            {
+              "maximum": 256.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Background Subtraction Var Threshold"
+        },
+        "background_subtraction_min_fg_ratio": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Background Subtraction Min Fg Ratio"
+        },
+        "background_subtraction_warmup_frames": {
+          "anyOf": [
+            {
+              "maximum": 10000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Background Subtraction Warmup Frames"
+        },
+        "background_subtraction_detect_shadows": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Background Subtraction Detect Shadows"
+        },
+        "static_object_suppression_enabled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Static Object Suppression Enabled"
+        },
+        "static_scene_bird_min_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Static Scene Bird Min Confidence"
+        },
+        "static_temporal_max_jitter_px": {
+          "anyOf": [
+            {
+              "maximum": 64.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Static Temporal Max Jitter Px"
         },
         "scoring_engine_enabled": {
           "anyOf": [

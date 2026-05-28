@@ -15,6 +15,13 @@ export type SpeciesCatalogMeta = {
   project_vocabulary_total?: number;
   listed_project?: number;
   arbitration_vocabulary_total?: number;
+  catalog_with_audio?: number;
+  catalog_missing_audio?: number;
+  catalog_cards?: {
+    complete_cards?: number;
+    allowlist_total?: number;
+    completion_percent?: number;
+  };
 };
 
 export type SpeciesDirectoryResponse = {
@@ -22,15 +29,26 @@ export type SpeciesDirectoryResponse = {
   meta: SpeciesCatalogMeta;
 };
 
+export function speciesDirectoryItems(
+  data: Species[] | SpeciesDirectoryResponse | undefined,
+): Species[] {
+  if (!data) return [];
+  return Array.isArray(data) ? data : data.items;
+}
+
 export const fetchBirdDirectory = async (options?: {
   scope?: SpeciesCatalogScope;
   meta?: boolean;
+  missing_audio?: boolean;
+  catalog_incomplete?: boolean;
 }): Promise<Species[] | SpeciesDirectoryResponse> => {
   const response = await axios.get(`${BASE_API_URL}/species`, {
     params: {
       exclude_suspects: 1,
       scope: options?.scope ?? 'project',
       ...(options?.meta ? { meta: 1 } : {}),
+      ...(options?.missing_audio ? { missing_audio: 1 } : {}),
+      ...(options?.catalog_incomplete ? { catalog_incomplete: 1 } : {}),
     },
   });
   const data = response.data;

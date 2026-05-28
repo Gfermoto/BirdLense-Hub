@@ -237,14 +237,27 @@ def register_ui_overview_timeline_routes(app):
             tck = f"timeline:local:{date_param}:{time_of_day}:{hour_param}:f{fav}"
         else:
             tck = f"timeline:{start_time}:{end_time}:f{fav}"
-        hit, tcached = cache_get(tck)
-        if hit:
-            return tcached
 
         if end_dt - start_dt > timedelta(days=1):
             return {"error": "The interval between start_time and end_time must not exceed 1 day"}, 400
 
-        response = build_merged_timeline_items(db.session, start_dt, end_dt, favorite_only=bool(fav))
+        limit_raw = request.args.get("limit", type=int)
+        offset_raw = request.args.get("offset", type=int) or 0
+        paginated = limit_raw is not None
+        if paginated:
+            tck = f"{tck}:l{limit_raw}:o{offset_raw}"
+        hit, tcached = cache_get(tck)
+        if hit:
+            return tcached
+
+        response = build_merged_timeline_items(
+            db.session,
+            start_dt,
+            end_dt,
+            favorite_only=bool(fav),
+            limit=limit_raw,
+            offset=offset_raw,
+        )
         cache_set(tck, response, CACHE_TIMELINE_SEC)
         return response
 

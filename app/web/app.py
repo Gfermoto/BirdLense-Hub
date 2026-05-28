@@ -30,6 +30,12 @@ def create_app():
         "create_app() invoked (pid=%s)",
         os.getpid(),
     )
+    if os.environ.get("FLASK_TESTING"):
+        pass
+    else:
+        from app_config.config_guard import ensure_config_valid_or_raise
+
+        ensure_config_valid_or_raise(for_processor=False)
     app = Flask(__name__)
     app.config.from_object("config.Config")
     init_extensions(app)

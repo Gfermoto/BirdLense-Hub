@@ -17,6 +17,9 @@ from processor_support import start_heartbeat_daemon, start_opencv_overlay_daemo
 
 def main() -> None:
     """Запуск фонового heartbeat, сборка пайплайна и главный цикл до выхода."""
+    from processor_config_guard import assert_processor_config_valid
+
+    assert_processor_config_valid()
     start_heartbeat_daemon()
     start_opencv_overlay_daemon()
     args = parse_processor_args()

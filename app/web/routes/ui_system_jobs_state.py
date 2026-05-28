@@ -18,6 +18,7 @@ _regenerate_tracks_status = {
     "progress": None,
 }
 _regenerate_tracks_lock = threading.Lock()
+_regenerate_tracks_cancel_requested = False
 _species_metadata_status = {
     "status": "idle",
     "result": None,
