@@ -22,10 +22,43 @@ type AnnotationViewerProps = {
   interactive?: boolean;
 };
 
-function pickFrame(frames: AnnotationFrame[], currentTime: number | null): AnnotationFrame | null {
+/** Bbox only while `currentTime` is inside stored keyframes; linear interp between keys. */
+export function resolveFrameAtTime(
+  frames: AnnotationFrame[],
+  currentTime: number | null,
+): AnnotationFrame | null {
   if (!frames.length) return null;
-  if (currentTime == null) return frames[0];
-  return [...frames].sort((a, b) => Math.abs((a.t ?? 0) - currentTime) - Math.abs((b.t ?? 0) - currentTime))[0];
+
+  const sorted = [...frames]
+    .filter((f) => f.t != null && Number.isFinite(f.t))
+    .sort((a, b) => (a.t as number) - (b.t as number));
+  if (!sorted.length) return null;
+
+  if (currentTime == null) return sorted[0];
+
+  const tMin = sorted[0].t as number;
+  const tMax = sorted[sorted.length - 1].t as number;
+  if (currentTime < tMin || currentTime > tMax) return null;
+
+  if (currentTime <= tMin) return sorted[0];
+  if (currentTime >= tMax) return sorted[sorted.length - 1];
+
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const a = sorted[i];
+    const b = sorted[i + 1];
+    const ta = a.t as number;
+    const tb = b.t as number;
+    if (currentTime < ta || currentTime > tb) continue;
+    if (tb - ta < 1e-6) return a;
+    const u = (currentTime - ta) / (tb - ta);
+    const bbox = a.bbox.map((v, j) => {
+      const next = b.bbox[j] ?? v;
+      return v + u * (next - v);
+    }) as [number, number, number, number];
+    return { t: currentTime, bbox };
+  }
+
+  return sorted[sorted.length - 1];
 }
 
 export const AnnotationViewer: React.FC<AnnotationViewerProps> = ({
@@ -61,7 +94,7 @@ export const AnnotationViewer: React.FC<AnnotationViewerProps> = ({
       if (!canvas || !ctx) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       for (const track of tracks) {
-        const frame = pickFrame(track.frames, currentTime);
+        const frame = resolveFrameAtTime(track.frames, currentTime);
         if (!frame) continue;
         const [x, y, w, h] = frame.bbox;
         const bx = x * canvas.width;
@@ -102,7 +135,7 @@ export const AnnotationViewer: React.FC<AnnotationViewerProps> = ({
     const px = ev.clientX - rect.left;
     const py = ev.clientY - rect.top;
     for (const track of tracks) {
-      const frame = pickFrame(track.frames, currentTime);
+      const frame = resolveFrameAtTime(track.frames, currentTime);
       if (!frame) continue;
       const [x, y, w, h] = frame.bbox;
       const bx = x * canvas.width;

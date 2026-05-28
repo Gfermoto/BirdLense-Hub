@@ -43,8 +43,9 @@ services:
     volumes:
       - ./data:/app/data
       - ./app_config:/app/app_config
-      # NABirds PT + OpenVINO IR на хосте: переживают recreate/deploy (см. scripts/sync_detector_weights.sh, make sync-models).
+      # Детектор + классификатор на хосте: переживают recreate/deploy (sync-models / migrate_classifier_weights_layout.sh).
       - ./processor/models/detection/weights:/app/processor/models/detection/weights
+      - ./processor/models/classification/weights:/app/processor/models/classification/weights
     env_file:
       - .env
     environment:

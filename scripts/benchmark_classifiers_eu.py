@@ -67,13 +67,15 @@ def _jay_stats(names: dict[int, str], probs: np.ndarray | None, top1: str | None
 
 
 def bench_birder(crops: list[np.ndarray], backend: str) -> BenchRow | None:
-    ov_dir = WEIGHTS / "birder_convnext_v2_tiny_eu_common256px_openvino"
+    variant = "convnext_v2_tiny_eu-common256px"
+    ov_dir = WEIGHTS / f"{variant}_openvino_model"
+    torch_dir = WEIGHTS / f"{variant}.pt"
     if backend == "openvino" and not (ov_dir / "openvino_model.xml").is_file():
         return None
     from inference.birder_eu_classifier import load_birder_eu_classifier
 
     clf = load_birder_eu_classifier(
-        str(ov_dir if backend == "openvino" else WEIGHTS / "birder_convnext_v2_tiny_eu_common256px"),
+        str(ov_dir if backend == "openvino" else str(WEIGHTS / f"{variant}_openvino_model")),
         backend=backend,
         variant="convnext_v2_tiny_eu-common256px",
         min_confidence=0.1,
@@ -90,13 +92,13 @@ def bench_birder(crops: list[np.ndarray], backend: str) -> BenchRow | None:
 
 
 def bench_efficientnet(crops: list[np.ndarray], backend: str) -> BenchRow | None:
-    base = WEIGHTS / "birds_classifier_efficientnetb2_openvino"
+    base = WEIGHTS / "efficientnet_b2_global_openvino_model"
     if backend == "openvino" and not (base / "openvino_model.xml").is_file() and not (base / "birds_classifier_260.xml").is_file():
         return None
     from inference.efficientnet_b2_classifier import load_efficientnet_b2_classifier
 
     clf = load_efficientnet_b2_classifier(
-        str(base if backend == "openvino" else WEIGHTS / "birds_classifier_efficientnetb2"),
+        str(base if backend == "openvino" else WEIGHTS),
         backend=backend,
         min_confidence=0.1,
     )
@@ -112,7 +114,7 @@ def bench_efficientnet(crops: list[np.ndarray], backend: str) -> BenchRow | None
 
 
 def bench_yolo(crops: list[np.ndarray]) -> BenchRow | None:
-    pt = WEIGHTS / "best.pt"
+    pt = WEIGHTS / "yolo_eu_best.pt"
     if not pt.is_file():
         return None
     from inference.torch_backend import load_yolo_classifier

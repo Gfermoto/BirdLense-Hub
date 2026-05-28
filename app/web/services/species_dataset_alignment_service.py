@@ -56,12 +56,14 @@ def resolve_classifier_weights_path(app_config_get) -> tuple[str, str]:
     if engine == "efficientnet_b2":
         rel = app_config_get(
             "processor.models.classifier_efficientnet_b2",
-            "models/classification/weights/birds_classifier_efficientnetb2",
+            "models/classification/weights/efficientnet_b2_global",
         )
-        rel = rel or "models/classification/weights/birds_classifier_efficientnetb2"
+        rel = rel or "models/classification/weights/efficientnet_b2_global"
     else:
-        rel = app_config_get("processor.models.classifier", "models/classification/weights/best.pt")
-        rel = rel or "models/classification/weights/best.pt"
+        rel = app_config_get(
+            "processor.models.classifier",
+            "models/classification/weights/convnext_v2_tiny_eu-common256px.pt",
+        )
     if os.path.isabs(rel):
         return rel, rel
     abs_path = os.path.join(_processor_root(), rel)

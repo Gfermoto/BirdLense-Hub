@@ -9,7 +9,7 @@
 
 Конфиг: `processor.models.binary`, `processor.models.binary_openvino`, `binary_imgsz: 704`. Классы — из `class_maps/trapper_ai_v02_2024.yaml` (allowlist `[0,5]`, scope Bird + Eurasian Red Squirrel); при старте пайплайна карта применяется в `detector_class_map.apply_class_map_to_config`.
 
-**Грызуны (Rodent)** не детектируются бинарником. EU-классификатор — `classification/weights/best.pt`.
+**Грызуны (Rodent)** не детектируются бинарником. EU-классификатор — см. [`classification/README.md`](../classification/README.md).
 
 ## Архив (не прод)
 
@@ -32,4 +32,4 @@ python3 scripts/export_trapper_to_openvino.py --imgsz 640 --precision fp16
 
 ## EU classifier (отдельно)
 
-**`classification/weights/best.pt`** — [HF `gfermoto/birdlense-birds-eu`](https://huggingface.co/gfermoto/birdlense-birds-eu).
+**`classification/weights/convnext_v2_tiny_eu-common256px.pt`** — Birder eu-common 707 (#516).

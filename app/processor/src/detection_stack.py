@@ -319,37 +319,7 @@ def build_detection_stack(
             _inf_backend = "torch"
         if can_fallback_classifier:
             eng = classifier_engine(app_config)
-            if eng == "birder_eu":
-                from inference.classifier_paths import _birder_weights_subdir
-
-                sub = _birder_weights_subdir(app_config)
-                torch_classifier_path = resolve_relative_to_processor_root(
-                    str(
-                        app_config.get("processor.models.classifier_birder_eu")
-                        or f"models/classification/weights/{sub}",
-                    ).strip(),
-                    processor_root,
-                )
-            elif eng == "efficientnet_b2":
-                torch_classifier_path = resolve_relative_to_processor_root(
-                    str(
-                        app_config.get(
-                            "processor.models.classifier_efficientnet_b2",
-                            "models/classification/weights/birds_classifier_efficientnetb2",
-                        ),
-                    ).strip(),
-                    processor_root,
-                )
-            else:
-                torch_classifier_path = resolve_relative_to_processor_root(
-                    str(
-                        app_config.get(
-                            "processor.models.classifier",
-                            "models/classification/weights/best.pt",
-                        ),
-                    ).strip(),
-                    processor_root,
-                )
+            torch_classifier_path, _ = resolve_classifier_weight_path(app_config, processor_root)
             if not classifier_weights_available(torch_classifier_path):
                 raise
             classifier_path = torch_classifier_path

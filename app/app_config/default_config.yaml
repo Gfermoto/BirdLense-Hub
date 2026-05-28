@@ -42,18 +42,18 @@ processor:
   tracker_adaptive_low_fps_enabled: true
   tracker_low_fps_threshold: 10.0
   # Длинный buffer → «залипший» bbox на весь клип при ~7 FPS (ByteTrack держит lost track).
-  tracker_remember_seconds: 3.5
-  tracker_adaptive_min_buffer: 18
-  tracker_adaptive_max_buffer: 42
+  tracker_remember_seconds: 1.6
+  tracker_adaptive_min_buffer: 6
+  tracker_adaptive_max_buffer: 16
   # Отклонить трек, если центр bbox почти не двигается дольше N сек (кормушка / phantom).
   track_static_reject_enabled: true
-  track_static_reject_min_duration_sec: 3.0
-  track_static_reject_min_frames: 6
+  track_static_reject_min_duration_sec: 2.0
+  track_static_reject_min_frames: 4
   track_static_reject_min_frames_sparse: 3
   track_static_reject_min_duration_sparse_sec: 2.5
   track_static_reject_max_center_dispersion_norm: 0.085
   track_static_reject_max_relative_center_dispersion: 0.16
-  track_static_reject_max_bbox_iou_first_last_min: 0.68
+  track_static_reject_max_bbox_iou_first_last_min: 0.74
   track_id_switch_iou_threshold: 0.25
   max_record_seconds: 60
   # video.source=file: нижняя граница max_record_seconds (сек). Большое значение при playlist+split по файлам — не резать длинный клип по таймеру.
@@ -103,12 +103,12 @@ processor:
   track_regen_iou_match_threshold: 0.22
   # Live/file pipeline: если ByteTrack не отдал id, не терять бокс — присвоить временный id по IoU.
   iou_id_fallback_live_enabled: true
-  iou_id_fallback_live_match_threshold: 0.20
+  iou_id_fallback_live_match_threshold: 0.18
   # Если track() вернул 0 боксов, сделать predict() с мягким conf как аварийный fallback.
   track_to_predict_fallback_enabled: true
   track_to_predict_fallback_confidence: 0.002
   # Таймаут на одно видео при batch-перегенерации треков (сек): защита от «зависшего» файла.
-  track_regen_video_timeout_sec: 300
+  track_regen_video_timeout_sec: 900
   # Отдельный таймаут для точного fallback-прохода: не даём одному ролику блокировать весь recovery.
   track_regen_precise_timeout_sec: 420
   # Точный fallback-проход (другой lores/frame_step/min_center_dist); стратегия та же — two_stage.
@@ -430,15 +430,9 @@ processor:
     # Fresh clone: перед запуском проверьте наличие весов (make sync-models).
     binary: "models/detection/weights/trapper_ai_v02_2024.pt"
     binary_openvino: "models/detection/weights/trapper_ai_v02_2024_openvino_model"
-    # Legacy YOLO EU classifier (~491 вид) — fallback when classifier_engine: yolo
-    classifier: "models/classification/weights/best.pt"
-    classifier_openvino: "models/classification/weights/best_openvino_model"
-    # Birder EU (707 species): scripts/download_birder_classifier.py + export_birder_classifier_to_openvino.py
-    classifier_birder_eu: "models/classification/weights/birder_convnext_v2_tiny_eu_common256px"
-    classifier_birder_eu_openvino: "models/classification/weights/birder_convnext_v2_tiny_eu_common256px_openvino"
-    # EfficientNetB2 (525 global, opt-in): scripts/download_birds_classifier_efficientnetb2.py
-    classifier_efficientnet_b2: "models/classification/weights/birds_classifier_efficientnetb2"
-    classifier_efficientnet_b2_onnx: "models/classification/weights/birds_classifier_efficientnetb2_openvino"
+    # EU classifier (Birder 707): как trapper — .pt в корне weights + *_openvino_model/
+    classifier: "models/classification/weights/convnext_v2_tiny_eu-common256px.pt"
+    classifier_openvino: "models/classification/weights/convnext_v2_tiny_eu-common256px_openvino_model"
     # ONNX logistic baseline поведения (Gemm → softmax в коде). Дефолт: экспорт из demos JSON в дереве.
     # Перегенерация: `make ml-export-behavior-onnx` (нужен pip-пакет onnx в app/.venv).
     behavior_openvino: "models/behavior/meta/openvino"
@@ -1055,14 +1049,14 @@ storage:
     known_hosts_path: ""
     delete_local_after_success: false
 
-# Каталог видов: EfficientNetB2 (525 птиц) + Rodent (детектор Trapper, без классификатора).
+# Каталог видов: Birder EU (707 птиц) + Rodent (детектор Trapper, без классификатора).
 species:
-  # true: follow active classifier engine path (EfficientNetB2 => class_labels.txt).
+  # true: follow active classifier engine path (Birder EU => class_labels.txt).
   catalog_allowlist_follow_classifier_engine: true
   # Каталог: scope=project (по умолчанию) = классификатор + арбитраж (species_mapping, registry).
-  # scope=allowlist = только id2label активного классификатора (525+Rodent).
+  # scope=allowlist = только id2label активного классификатора (707+Rodent).
   catalog_allowlist_use_active_classifier: true
-  catalog_allowlist_file: "models/classification/weights/birds_classifier_efficientnetb2/class_labels.txt"
+  catalog_allowlist_file: "models/classification/weights/convnext_v2_tiny_eu-common256px_openvino_model/class_labels.txt"
   # Явный доп. файл (опционально); catalog_allowlist_file при follow_engine НЕ подмешивается автоматически.
   # catalog_allowlist_supplement_file: "models/classification/weights/class_names.txt"
   # Вне class_labels.txt; materialize + strict ingest (белка → Rodent).

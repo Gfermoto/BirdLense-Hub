@@ -82,7 +82,7 @@ def current_model_lineage_snapshot() -> dict:
             app_config.get("processor.models.classifier")
             or app_config.get("processor.classifier_model_path")
             or app_config.get("classification.model_path")
-            or "models/classification/weights/best.pt"
+            or "models/classification/weights/convnext_v2_tiny_eu-common256px.pt"
         )
         cls_path = resolve_artifact_path(classifier_rel)
     artifacts = {
