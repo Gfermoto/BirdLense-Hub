@@ -21,7 +21,7 @@
 
 ## Wave C — Каталог
 
-- [ ] Reconcile Collins 707 → каталог Hub — **отдельно** ([#506](https://github.com/Gfermoto/BirdLense-Hub/issues/506) scope), не блокер #516  
+- [x] Reconcile Collins 707 → каталог Hub — [#506](https://github.com/Gfermoto/BirdLense-Hub/issues/506) (`4ef04f895`)  
 - [x] Allowlist 707 + `Rodent` в `default_config.yaml`, `catalog_allowlist_follow_classifier_engine: true`
 
 ## Wave D — Валидация
