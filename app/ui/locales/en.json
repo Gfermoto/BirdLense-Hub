@@ -1135,6 +1135,8 @@
     "sortBehavior": "Behavior",
     "minConfidence": "Min confidence",
     "minConfidenceAny": "Any confidence",
+    "minDuration": "Min duration",
+    "minDurationAny": "Any duration",
     "runtimeCpu": "CPU {{value}}%",
     "runtimeMemory": "RAM {{value}}%",
     "runtimeGpu": "GPU {{value}}%",

@@ -1135,6 +1135,8 @@
     "sortBehavior": "Поведение",
     "minConfidence": "Мин. уверенность",
     "minConfidenceAny": "Любая уверенность",
+    "minDuration": "Мин. длительность",
+    "minDurationAny": "Любая длительность",
     "runtimeCpu": "CPU {{value}}%",
     "runtimeMemory": "RAM {{value}}%",
     "runtimeGpu": "GPU {{value}}%",

@@ -6,20 +6,28 @@ from sqlalchemy.orm import joinedload
 
 from models import Species, SpeciesVisit, Video, VideoSpecies
 from species_constants import GENERIC_BIRD_SPECIES
-from util import ensure_utc, format_unlinked_video_for_timeline, format_visit_for_timeline
+from util import (
+    ensure_utc,
+    format_unlinked_video_for_timeline,
+    format_visit_for_timeline,
+)
 
 
 def _visit_has_favorite_active_video(visit) -> bool:
     """Есть ли у визита связанный ролик с favorite и без soft-delete."""
     for vs in visit.video_species or []:
         vid = getattr(vs, "video", None)
-        if vid is not None and bool(getattr(vid, "favorite", False)) and getattr(vid, "deleted_at", None) is None:
+        if (
+            vid is not None
+            and bool(getattr(vid, "favorite", False))
+            and getattr(vid, "deleted_at", None) is None
+        ):
             return True
     return False
 
 
 def _timeline_visits_deduped_ordered(visits_raw):
-    """JOIN с VideoSpecies даёт дубликаты SpeciesVisit при нескольких роликах в одном визите."""
+    """JOIN с VideoSpecies даёт дубликаты SpeciesVisit при множестве роликов."""
     seen = set()
     visits = []
     for v in visits_raw:
@@ -49,18 +57,44 @@ def _timeline_entry_sort_key(item: dict):
     return parsed
 
 
+def _timeline_item_best_confidence(item: dict) -> float:
+    detections = item.get("detections") or []
+    if not isinstance(detections, list) or not detections:
+        return 0.0
+    best = 0.0
+    for detection in detections:
+        if not isinstance(detection, dict):
+            continue
+        try:
+            best = max(best, float(detection.get("confidence") or 0.0))
+        except (TypeError, ValueError):
+            continue
+    return best
+
+
+def _timeline_item_duration_seconds(item: dict) -> float:
+    for key in ("video_duration_seconds", "total_recording_seconds"):
+        value = item.get(key)
+        if isinstance(value, (int, float)) and value > 0:
+            return float(value)
+    return 0.0
+
+
 def build_merged_timeline_items(
     session,
     start_dt,
     end_dt,
     favorite_only: bool = False,
     *,
+    min_confidence: float | None = None,
+    min_duration_sec: int | None = None,
     limit: int | None = None,
     offset: int = 0,
 ) -> list | dict:
     """Визиты за интервал + ролики, которые ни в один визит не попали.
 
-    favorite_only: только визиты с избранным роликом и «осиротевшие» ролики с favorite=true.
+    favorite_only: только визиты с избранным роликом и «осиротевшие»
+    ролики с favorite=true.
     """
     visits_raw = (
         session.query(SpeciesVisit)
@@ -88,7 +122,9 @@ def build_merged_timeline_items(
             vid = d.get("video_id")
             if vid is not None:
                 video_ids_in_visits.add(int(vid))
-    fallback_species = session.query(Species).filter(Species.name == GENERIC_BIRD_SPECIES).first()
+    fallback_species = (
+        session.query(Species).filter(Species.name == GENERIC_BIRD_SPECIES).first()
+    )
     uq = (
         session.query(Video)
         .options(
@@ -110,11 +146,23 @@ def build_merged_timeline_items(
     ]
     merged = visit_payloads + unlinked_payloads
     merged.sort(key=_timeline_entry_sort_key, reverse=True)
+    if min_confidence is not None:
+        merged = [
+            item
+            for item in merged
+            if _timeline_item_best_confidence(item) >= float(min_confidence)
+        ]
+    if min_duration_sec is not None:
+        merged = [
+            item
+            for item in merged
+            if _timeline_item_duration_seconds(item) >= int(min_duration_sec)
+        ]
     total = len(merged)
     if limit is not None:
         off = max(0, int(offset or 0))
         lim = max(1, min(int(limit), 500))
-        page = merged[off : off + lim]
+        page = merged[off:off + lim]
         return {
             "items": page,
             "total": total,

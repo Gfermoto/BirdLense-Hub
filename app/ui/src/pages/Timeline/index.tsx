@@ -175,6 +175,7 @@ export function TimelinePage() {
     () => searchParams.get('behavior')?.trim() ?? '',
   );
   const [minConfidence, setMinConfidence] = useState<number>(0);
+  const [minDurationSec, setMinDurationSec] = useState<number>(0);
   const [sortBy, setSortBy] = useState<TimelineSortBy>('date_desc');
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -280,6 +281,8 @@ export function TimelinePage() {
       timeOfDay,
       filterHour,
       isFavoritesMode,
+      minConfidence,
+      minDurationSec,
     ),
     queryFn: () => {
       if (!selectedDate) return [];
@@ -287,6 +290,8 @@ export function TimelinePage() {
       return fetchTimelineForObserverDate(selectedDate.format('YYYY-MM-DD'), {
         ...base,
         favoritesOnly: isFavoritesMode,
+        minConfidence: minConfidence > 0 ? minConfidence : undefined,
+        minDurationSec: minDurationSec > 0 ? minDurationSec : undefined,
       });
     },
     enabled: !isReviewMode,
@@ -445,6 +450,8 @@ export function TimelinePage() {
         {
           ...(filterHour !== null ? { hour: filterHour } : { timeOfDay }),
           favoritesOnly: isFavoritesMode,
+          minConfidence: minConfidence > 0 ? minConfidence : undefined,
+          minDurationSec: minDurationSec > 0 ? minDurationSec : undefined,
         },
       );
     } catch (err) {
@@ -762,6 +769,25 @@ export function TimelinePage() {
                 <MenuItem value="0.6">≥ 60%</MenuItem>
                 <MenuItem value="0.7">≥ 70%</MenuItem>
                 <MenuItem value="0.8">≥ 80%</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
+              <InputLabel id="timeline-min-duration-label">
+                {t('timeline.minDuration')}
+              </InputLabel>
+              <Select
+                labelId="timeline-min-duration-label"
+                value={String(minDurationSec)}
+                label={t('timeline.minDuration')}
+                onChange={(event) =>
+                  setMinDurationSec(Number(event.target.value) || 0)
+                }
+              >
+                <MenuItem value="0">{t('timeline.minDurationAny')}</MenuItem>
+                <MenuItem value="5">≥ 5s</MenuItem>
+                <MenuItem value="10">≥ 10s</MenuItem>
+                <MenuItem value="20">≥ 20s</MenuItem>
+                <MenuItem value="30">≥ 30s</MenuItem>
               </Select>
             </FormControl>
             <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>
