@@ -1063,6 +1063,8 @@
     "sortBehavior": "行为",
     "minConfidence": "最小置信度",
     "minConfidenceAny": "任意置信度",
+    "minDuration": "最小时长",
+    "minDurationAny": "任意时长",
     "runtimeCpu": "CPU {{value}}%",
     "runtimeMemory": "内存 {{value}}%",
     "runtimeGpu": "GPU {{value}}%",

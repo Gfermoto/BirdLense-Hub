@@ -24,6 +24,8 @@ export const fetchTimelineForObserverDate = async (
     timeOfDay?: TimeOfDay;
     hour?: number | null;
     favoritesOnly?: boolean;
+    minConfidence?: number;
+    minDurationSec?: number;
   },
 ): Promise<SpeciesVisit[]> => {
   const response = await axios.get(`${BASE_API_URL}/timeline`, {
@@ -33,6 +35,12 @@ export const fetchTimelineForObserverDate = async (
         ? { hour: options.hour }
         : { time_of_day: options?.timeOfDay ?? 'all' }),
       ...(options?.favoritesOnly ? { favorite_only: 1 } : {}),
+      ...(options?.minConfidence != null
+        ? { min_confidence: options.minConfidence }
+        : {}),
+      ...(options?.minDurationSec != null
+        ? { min_duration_sec: options.minDurationSec }
+        : {}),
     },
   });
   return response.data;
@@ -73,6 +81,8 @@ export const exportTimelineForObserverDate = async (
     timeOfDay?: TimeOfDay;
     hour?: number | null;
     favoritesOnly?: boolean;
+    minConfidence?: number;
+    minDurationSec?: number;
   },
 ): Promise<void> => {
   const params = new URLSearchParams({
@@ -82,6 +92,12 @@ export const exportTimelineForObserverDate = async (
       ? { hour: String(options.hour) }
       : { time_of_day: options?.timeOfDay ?? 'all' }),
     ...(options?.favoritesOnly ? { favorite_only: '1' } : {}),
+    ...(options?.minConfidence != null
+      ? { min_confidence: String(options.minConfidence) }
+      : {}),
+    ...(options?.minDurationSec != null
+      ? { min_duration_sec: String(options.minDurationSec) }
+      : {}),
   });
   const url = `${BASE_API_URL}/timeline/export?${params}`;
   const res = await fetch(url);
