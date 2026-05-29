@@ -303,6 +303,144 @@ def test_video_reid_match_returns_candidate(app, client):
     assert body["matches"][0]["candidate_video_id"] != vid
 
 
+def test_similarity_behavior_summary_endpoint(app, client):
+    from models import Species, Video, VideoSpecies, db
+
+    with app.app_context():
+        species = Species(name="Blue Tit")
+        v1 = Video(
+            processor_version="t",
+            start_time=datetime(2026, 4, 29, 12, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 4, 29, 12, 0, 20, tzinfo=timezone.utc),
+            video_path="data/recordings/reid/s1.mp4",
+            behavior_label="feeding",
+            behavior_shadow_label="feeding",
+        )
+        v2 = Video(
+            processor_version="t",
+            start_time=datetime(2026, 4, 29, 12, 5, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 4, 29, 12, 5, 20, tzinfo=timezone.utc),
+            video_path="data/recordings/reid/s2.mp4",
+            behavior_label="feeding",
+            behavior_shadow_label="foraging",
+        )
+        db.session.add_all([species, v1, v2])
+        db.session.flush()
+        d1 = VideoSpecies(
+            video_id=v1.id,
+            species_id=species.id,
+            start_time=1.0,
+            end_time=3.0,
+            confidence=0.9,
+            source="video",
+            track_id=101,
+            individual_nickname="Bird-A",
+        )
+        d2 = VideoSpecies(
+            video_id=v2.id,
+            species_id=species.id,
+            start_time=1.5,
+            end_time=3.5,
+            confidence=0.92,
+            source="video",
+            track_id=102,
+            individual_nickname="Bird-A",
+        )
+        db.session.add_all([d1, d2])
+        db.session.flush()
+        db.session.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS reid_embedding (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    video_species_id INTEGER,
+                    video_id INTEGER,
+                    species_id INTEGER,
+                    track_id INTEGER,
+                    crop_path TEXT NOT NULL UNIQUE,
+                    model TEXT NOT NULL,
+                    dim INTEGER NOT NULL,
+                    embedding_json TEXT NOT NULL,
+                    species_name TEXT,
+                    individual_label TEXT,
+                    embedding_schema TEXT,
+                    embedding_model_id TEXT,
+                    embedding_model_sha16 TEXT,
+                    crop_fingerprint_sha16 TEXT,
+                    jsonl_created_at_utc TEXT,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+        )
+        db.session.execute(
+            text(
+                "INSERT INTO reid_embedding "
+                "(video_species_id, video_id, species_id, track_id, crop_path, model, dim, embedding_json, species_name, individual_label, "
+                "embedding_schema, embedding_model_id, embedding_model_sha16, crop_fingerprint_sha16, jsonl_created_at_utc) "
+                "VALUES (:vsid,:vid,:sid,:tid,:crop,:model,:dim,:emb,:name,:label,:schema,:mid,:msha,:cfp,:cat)"
+            ),
+            [
+                {
+                    "vsid": d1.id,
+                    "vid": v1.id,
+                    "sid": species.id,
+                    "tid": d1.track_id,
+                    "crop": f"/tmp/s1-{d1.id}.jpg",
+                    "model": "dinov2",
+                    "dim": 4,
+                    "emb": json.dumps([1.0, 0.0, 0.0, 0.0]),
+                    "name": species.name,
+                    "label": "bird-a",
+                    "schema": "embedding_schema@v1",
+                    "mid": "torchhub:facebookresearch/dinov2:dinov2_vits14",
+                    "msha": "abcdabcdabcdabcd",
+                    "cfp": "1111111111111111",
+                    "cat": "2026-04-29T12:00:00Z",
+                },
+                {
+                    "vsid": d2.id,
+                    "vid": v2.id,
+                    "sid": species.id,
+                    "tid": d2.track_id,
+                    "crop": f"/tmp/s2-{d2.id}.jpg",
+                    "model": "dinov2",
+                    "dim": 4,
+                    "emb": json.dumps([0.99, 0.01, 0.0, 0.0]),
+                    "name": species.name,
+                    "label": "bird-a",
+                    "schema": "embedding_schema@v1",
+                    "mid": "torchhub:facebookresearch/dinov2:dinov2_vits14",
+                    "msha": "abcdabcdabcdabcd",
+                    "cfp": "2222222222222222",
+                    "cat": "2026-04-29T12:05:00Z",
+                },
+            ],
+        )
+        db.session.commit()
+
+    with client.session_transaction() as sess:
+        sess["access_role"] = "contributor"
+    r = client.get("/api/ui/system/similarity-behavior/summary?top_k=5&max_rows=200")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["schema"] == "similarity_behavior_summary@v1"
+    assert body["similarity"]["available"] is True
+    assert body["similarity"]["anchors_evaluated"] >= 1
+    assert body["behavior"]["rows_evaluated"] >= 1
+    assert "macro_f1" in body["behavior"]
+
+
+def test_similarity_behavior_summary_without_reid_table(client):
+    with client.session_transaction() as sess:
+        sess["access_role"] = "contributor"
+    r = client.get("/api/ui/system/similarity-behavior/summary")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["schema"] == "similarity_behavior_summary@v1"
+    assert body["similarity"]["available"] is False
+
+
 def test_detection_patch_updates_nickname(app, client):
     from models import Species, Video, VideoSpecies, db
 

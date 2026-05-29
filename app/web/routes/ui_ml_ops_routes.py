@@ -15,6 +15,7 @@ from services.ml_ops_service import (
     build_feedback_loop_export_payload,
     build_feedback_loop_status_payload,
     build_ml_runtime_status,
+    build_similarity_behavior_summary_payload,
     build_video_reid_match_payload,
     build_reid_summary,
 )
@@ -41,6 +42,15 @@ def register_ui_ml_ops_routes(app):
     @require_ui_contributor_or_admin
     def reid_summary():
         return build_reid_summary(db.session)
+
+    @app.route("/api/ui/system/similarity-behavior/summary", methods=["GET"])
+    @require_ui_contributor_or_admin
+    def similarity_behavior_summary():
+        return build_similarity_behavior_summary_payload(
+            db.session,
+            top_k=request.args.get("top_k", 5, type=int),
+            max_rows=request.args.get("max_rows", 500, type=int),
+        )
 
     @app.route("/api/ui/system/feedback-loop/status", methods=["GET"])
     @require_ui_contributor_or_admin

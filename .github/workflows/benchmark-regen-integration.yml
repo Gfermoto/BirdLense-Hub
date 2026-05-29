@@ -293,6 +293,34 @@ jobs:
             --out .artifacts/feedback_effect_smoke.json \
             --summary-out .artifacts/feedback_effect_smoke.md
           cat .artifacts/feedback_effect_smoke.md >> "$GITHUB_STEP_SUMMARY"
+          cat <<'EOF' > .artifacts/similarity_behavior_summary_smoke.json
+          {
+            "schema": "similarity_behavior_summary@v1",
+            "similarity": {
+              "topk_hit_rate": 0.81,
+              "p95_query_ms": 22.4
+            },
+            "behavior": {
+              "macro_f1": 0.63
+            },
+            "runtime_cost": {
+              "retrieval_p95_ok": true
+            }
+          }
+          EOF
+          python3 scripts/verify_similarity_behavior_summary.py \
+            --report .artifacts/similarity_behavior_summary_smoke.json \
+            --min-topk-hit-rate 0.6 \
+            --min-behavior-macro-f1 0.4 \
+            --max-retrieval-p95-ms 50.0 \
+            --out .artifacts/similarity_behavior_verify_smoke.json
+          echo "## Similarity/Behavior smoke gate" >> "$GITHUB_STEP_SUMMARY"
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          data = json.load(open(".artifacts/similarity_behavior_verify_smoke.json", "r", encoding="utf-8"))
+          print(f"- ok: **{data.get('ok')}**")
+          print(f"- errors: `{data.get('errors')}`")
+          PY
 
       - name: Verify benchmark report schema
         working-directory: ${{ github.workspace }}
@@ -337,4 +365,6 @@ jobs:
             .artifacts/quality_cycle_comparison_smoke.json
             .artifacts/feedback_effect_smoke.json
             .artifacts/feedback_effect_smoke.md
+            .artifacts/similarity_behavior_summary_smoke.json
+            .artifacts/similarity_behavior_verify_smoke.json
           if-no-files-found: ignore
