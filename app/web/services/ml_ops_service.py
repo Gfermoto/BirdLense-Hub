@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -27,6 +28,48 @@ from services.classifier_calibration_report import (
 )
 
 _log = logging.getLogger(__name__)
+
+
+def _safe_div(n: float, d: float) -> float:
+    if d <= 0.0:
+        return 0.0
+    return float(n / d)
+
+
+def _p95(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    arr = sorted(float(v) for v in values)
+    idx = int(math.ceil(0.95 * len(arr))) - 1
+    idx = min(max(idx, 0), len(arr) - 1)
+    return float(arr[idx])
+
+
+def _macro_f1_from_rows(rows: list[tuple[str, str]]) -> tuple[float, list[dict[str, Any]]]:
+    if not rows:
+        return 0.0, []
+    labels = sorted({truth for truth, _ in rows})
+    out: list[dict[str, Any]] = []
+    f1_vals: list[float] = []
+    for label in labels:
+        tp = sum(1 for truth, pred in rows if truth == label and pred == label)
+        fp = sum(1 for truth, pred in rows if truth != label and pred == label)
+        fn = sum(1 for truth, pred in rows if truth == label and pred != label)
+        precision = _safe_div(float(tp), float(tp + fp))
+        recall = _safe_div(float(tp), float(tp + fn))
+        f1 = _safe_div(2.0 * precision * recall, precision + recall)
+        f1_vals.append(f1)
+        out.append(
+            {
+                "label": label,
+                "support": int(sum(1 for truth, _ in rows if truth == label)),
+                "precision": round(precision, 6),
+                "recall": round(recall, 6),
+                "f1": round(f1, 6),
+            }
+        )
+    macro = _safe_div(sum(f1_vals), float(len(f1_vals)))
+    return round(macro, 6), out
 
 
 def build_active_learning_pool_preview(session, *, limit: int = 100) -> tuple[dict[str, Any], int]:
@@ -269,6 +312,177 @@ def build_reid_summary(session) -> tuple[dict[str, Any], int]:
         "recent": [dict(r) for r in rows],
         "contract": contract,
     }, 200
+
+
+def build_similarity_behavior_summary_payload(
+    session,
+    *,
+    top_k: int = 5,
+    max_rows: int = 500,
+) -> tuple[dict[str, Any], int]:
+    """Track-level similarity + behavior quality snapshot (S7)."""
+    k = max(1, min(int(top_k or 5), 20))
+    lim = max(20, min(int(max_rows or 500), 5000))
+    has_reid = bool(
+        session.execute(
+            text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")
+        ).scalar()
+    )
+    payload: dict[str, Any] = {
+        "schema": "similarity_behavior_summary@v1",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "top_k": k,
+        "max_rows": lim,
+        "similarity": {
+            "available": bool(has_reid),
+            "backend": "cosine_flat_track_level_v1",
+            "embedding_rows": 0,
+            "anchors_evaluated": 0,
+            "top1_hit_rate": 0.0,
+            "topk_hit_rate": 0.0,
+            "p95_query_ms": 0.0,
+        },
+        "behavior": {
+            "rows_evaluated": 0,
+            "macro_f1": 0.0,
+            "per_label": [],
+            "top_confusions": [],
+        },
+        "runtime_cost": {
+            "guardrail_p95_query_ms": 50.0,
+            "retrieval_p95_ok": True,
+        },
+    }
+    if has_reid:
+        rows = (
+            session.execute(
+                text(
+                    """
+                    SELECT
+                        video_species_id,
+                        species_id,
+                        individual_label,
+                        embedding_json
+                    FROM reid_embedding
+                    WHERE embedding_json IS NOT NULL
+                    ORDER BY id DESC
+                    LIMIT :lim
+                    """
+                ),
+                {"lim": lim},
+            )
+            .mappings()
+            .all()
+        )
+        parsed: list[dict[str, Any]] = []
+        for row in rows:
+            emb = _parse_embedding(row.get("embedding_json"))
+            if not emb:
+                continue
+            parsed.append(
+                {
+                    "video_species_id": int(row["video_species_id"]),
+                    "species_id": int(row["species_id"]) if row.get("species_id") is not None else None,
+                    "individual_label": str(row.get("individual_label") or "").strip().lower(),
+                    "embedding": emb,
+                }
+            )
+        label_support: dict[str, int] = {}
+        for row in parsed:
+            lbl = row["individual_label"]
+            if lbl:
+                label_support[lbl] = label_support.get(lbl, 0) + 1
+        eval_rows = [
+            row
+            for row in parsed
+            if row["individual_label"] and label_support.get(row["individual_label"], 0) >= 2
+        ]
+        latencies: list[float] = []
+        top1 = 0
+        topk = 0
+        for anchor in eval_rows:
+            t0 = time.perf_counter()
+            scored: list[tuple[float, str]] = []
+            for cand in parsed:
+                if cand["video_species_id"] == anchor["video_species_id"]:
+                    continue
+                if cand["species_id"] != anchor["species_id"]:
+                    continue
+                score = _cosine(anchor["embedding"], cand["embedding"])
+                if score < 0:
+                    continue
+                scored.append((score, cand["individual_label"]))
+            scored.sort(key=lambda x: x[0], reverse=True)
+            elapsed_ms = (time.perf_counter() - t0) * 1000.0
+            latencies.append(elapsed_ms)
+            if not scored:
+                continue
+            if scored[0][1] == anchor["individual_label"]:
+                top1 += 1
+            if any(lbl == anchor["individual_label"] for _, lbl in scored[:k]):
+                topk += 1
+        n = len(eval_rows)
+        p95_ms = _p95(latencies)
+        payload["similarity"] = {
+            "available": True,
+            "backend": "cosine_flat_track_level_v1",
+            "embedding_rows": len(parsed),
+            "anchors_evaluated": n,
+            "top1_hit_rate": round(_safe_div(float(top1), float(n)), 6),
+            "topk_hit_rate": round(_safe_div(float(topk), float(n)), 6),
+            "p95_query_ms": round(p95_ms, 3),
+        }
+        payload["runtime_cost"]["retrieval_p95_ok"] = bool(p95_ms <= 50.0)
+
+    behavior_rows_raw = (
+        session.execute(
+            text(
+                """
+                SELECT
+                    lower(trim(behavior_label)) AS truth,
+                    lower(trim(behavior_shadow_label)) AS pred
+                FROM video
+                WHERE deleted_at IS NULL
+                  AND behavior_label IS NOT NULL
+                  AND trim(behavior_label) != ''
+                  AND behavior_shadow_label IS NOT NULL
+                  AND trim(behavior_shadow_label) != ''
+                ORDER BY id DESC
+                LIMIT :lim
+                """
+            ),
+            {"lim": lim},
+        )
+        .mappings()
+        .all()
+    )
+    behavior_pairs = [
+        (str(r["truth"]), str(r["pred"]))
+        for r in behavior_rows_raw
+        if str(r.get("truth") or "").strip() and str(r.get("pred") or "").strip()
+    ]
+    macro_f1, per_label = _macro_f1_from_rows(behavior_pairs)
+    confusion: dict[str, int] = {}
+    for truth, pred in behavior_pairs:
+        if truth == pred:
+            continue
+        key = f"{truth}->{pred}"
+        confusion[key] = confusion.get(key, 0) + 1
+    top_confusions = sorted(
+        (
+            {"pair": pair, "count": int(count)}
+            for pair, count in confusion.items()
+        ),
+        key=lambda item: item["count"],
+        reverse=True,
+    )[:10]
+    payload["behavior"] = {
+        "rows_evaluated": len(behavior_pairs),
+        "macro_f1": macro_f1,
+        "per_label": per_label,
+        "top_confusions": top_confusions,
+    }
+    return payload, 200
 
 
 def build_ml_runtime_status() -> tuple[dict[str, Any], int]:

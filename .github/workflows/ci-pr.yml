@@ -135,6 +135,7 @@ jobs:
           python3 scripts/build_weekly_quality_cycle_playbook.py --help
           python3 scripts/compare_quality_cycle_reports.py --help
           python3 scripts/report_feedback_effect.py --help
+          python3 scripts/verify_similarity_behavior_summary.py --help
           python3 scripts/benchmark_sota.py --validate-config-only
           python3 scripts/federated/simulate_fedavg.py --clients 3 --samples-per-client 50 --dim 6 --seed 0
 
@@ -159,6 +160,7 @@ jobs:
             processor/tests/test_build_weekly_quality_cycle_playbook.py \
             processor/tests/test_compare_quality_cycle_reports.py \
             processor/tests/test_report_feedback_effect.py \
+            processor/tests/test_verify_similarity_behavior_summary.py \
             processor/tests/test_merge_three_class_dataset.py \
             processor/tests/test_auto_benchmark.py \
             processor/tests/test_benchmark_sota_gate.py \
