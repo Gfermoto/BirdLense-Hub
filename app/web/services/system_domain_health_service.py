@@ -12,7 +12,17 @@ import math
 
 import data_paths
 from app_config.app_config import app_config
-from models import ActivityLog, Species, SpeciesUnresolvedName, SpeciesVisit, Video, VideoSpecies, db
+from models import (
+    ActivityLog,
+    DetectorHealthEvent,
+    SessionRuntimeMetrics,
+    Species,
+    SpeciesUnresolvedName,
+    SpeciesVisit,
+    Video,
+    VideoSpecies,
+    db,
+)
 from services.species_data_quality_service import find_duplicate_name_groups
 from services.system_operational_status import strict_quality_ratio_ok
 from services.species_visit_maintenance_service import (
@@ -27,6 +37,28 @@ logger = logging.getLogger(__name__)
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _safe_div(n: float, d: float) -> float | None:
+    if d <= 0.0:
+        return None
+    return float(n / d)
+
+
+def _percentile(values: list[float], p: float) -> float | None:
+    if not values:
+        return None
+    vals = sorted(float(v) for v in values)
+    if p <= 0:
+        return vals[0]
+    if p >= 100:
+        return vals[-1]
+    idx = (len(vals) - 1) * (p / 100.0)
+    lo = int(math.floor(idx))
+    hi = int(math.ceil(idx))
+    if lo == hi:
+        return vals[lo]
+    return vals[lo] * (hi - idx) + vals[hi] * (idx - lo)
 
 
 def _norm_path(path: str | None) -> str:
@@ -722,6 +754,254 @@ def _recent_runtime_backend_metrics(hours: int = 24, limit: int = 1000) -> dict[
     }
 
 
+def _recent_runtime_session_slo_metrics(
+    hours: int = 24,
+    *,
+    limit: int = 4000,
+) -> dict[str, Any]:
+    cutoff = _utc_now() - timedelta(hours=max(1, int(hours or 24)))
+    rows = (
+        db.session.query(SessionRuntimeMetrics)
+        .filter(SessionRuntimeMetrics.created_at >= cutoff)
+        .order_by(SessionRuntimeMetrics.created_at.desc(), SessionRuntimeMetrics.id.desc())
+        .limit(max(1, int(limit or 4000)))
+        .all()
+    )
+    total = len(rows)
+    fps_values: list[float] = []
+    skipped_ratios: list[float] = []
+    latency_values: list[float] = []
+    by_camera: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {
+            "sessions": 0,
+            "fps_values": [],
+            "skipped_ratios": [],
+            "latency_values": [],
+            "video_file_not_ok": 0,
+        }
+    )
+    for row in rows:
+        camera = str(row.camera_id or "unknown").strip() or "unknown"
+        cam = by_camera[camera]
+        cam["sessions"] += 1
+        duration_s = float(row.duration_s or 0.0)
+        yolo_frames_ran = int(row.yolo_frames_ran or 0)
+        frames_seen = int(row.frames_seen or 0)
+        if duration_s > 0.0:
+            fps = float(yolo_frames_ran) / duration_s
+            fps_values.append(fps)
+            cam["fps_values"].append(fps)
+        if frames_seen > 0:
+            skipped = max(0, frames_seen - yolo_frames_ran)
+            ratio = skipped / float(frames_seen)
+            skipped_ratios.append(ratio)
+            cam["skipped_ratios"].append(ratio)
+        if not bool(row.video_file_ok):
+            cam["video_file_not_ok"] += 1
+        payload = {}
+        try:
+            payload = json.loads(row.payload_json or "{}")
+        except Exception:
+            payload = {}
+        if isinstance(payload, dict):
+            raw_latency = payload.get("pipeline_latency_ms")
+            if raw_latency is None:
+                raw_latency = payload.get("pipeline_p95_ms")
+            if raw_latency is None:
+                raw_latency = payload.get("frame_processing_ms")
+            if raw_latency is None:
+                raw_latency = payload.get("avg_pipeline_latency_ms")
+            try:
+                if raw_latency is not None:
+                    val = float(raw_latency)
+                    if val >= 0:
+                        latency_values.append(val)
+                        cam["latency_values"].append(val)
+            except (TypeError, ValueError):
+                pass
+
+    detector_events = (
+        db.session.query(DetectorHealthEvent)
+        .filter(DetectorHealthEvent.created_at >= cutoff)
+        .all()
+    )
+    reconnect_events = 0
+    backpressure_events = 0
+    for evt in detector_events:
+        et = str(evt.event_type or "").strip().lower()
+        if "reconnect" in et:
+            reconnect_events += 1
+        if "backpressure" in et or "queue" in et:
+            backpressure_events += 1
+
+    per_camera: list[dict[str, Any]] = []
+    for camera, data in by_camera.items():
+        sessions = int(data["sessions"] or 0)
+        fps_avg = _safe_div(sum(data["fps_values"]), float(len(data["fps_values"])))
+        skipped_avg = _safe_div(
+            sum(data["skipped_ratios"]),
+            float(len(data["skipped_ratios"])),
+        )
+        latency_p95 = _percentile(data["latency_values"], 95.0)
+        fps_ok = (fps_avg is None) or (fps_avg >= 7.0)
+        skip_ok = (skipped_avg is None) or (skipped_avg <= 0.05)
+        lat_ok = (latency_p95 is None) or (latency_p95 <= 2500.0)
+        file_ok = int(data["video_file_not_ok"] or 0) == 0
+        status = "ok" if fps_ok and skip_ok and lat_ok and file_ok else "warn"
+        per_camera.append(
+            {
+                "camera": camera,
+                "sessions_24h": sessions,
+                "sustained_fps_avg_24h": (
+                    round(float(fps_avg), 3) if fps_avg is not None else None
+                ),
+                "skipped_ratio_avg_24h": (
+                    round(float(skipped_avg), 4)
+                    if skipped_avg is not None
+                    else None
+                ),
+                "pipeline_latency_p95_ms_24h": (
+                    round(float(latency_p95), 3)
+                    if latency_p95 is not None
+                    else None
+                ),
+                "video_file_not_ok_24h": int(data["video_file_not_ok"] or 0),
+                "status": status,
+            }
+        )
+    per_camera = sorted(
+        per_camera,
+        key=lambda item: (
+            item.get("status") != "warn",
+            -(item.get("sessions_24h") or 0),
+            item.get("camera") or "",
+        ),
+    )
+
+    return {
+        "metrics": {
+            "runtime_sessions_24h": int(total),
+            "runtime_sustained_fps_avg_24h": (
+                round(sum(fps_values) / len(fps_values), 3)
+                if fps_values
+                else None
+            ),
+            "runtime_sustained_fps_p50_24h": _percentile(fps_values, 50.0),
+            "runtime_skipped_ratio_avg_24h": (
+                round(sum(skipped_ratios) / len(skipped_ratios), 4)
+                if skipped_ratios
+                else None
+            ),
+            "runtime_pipeline_latency_p95_ms_24h": _percentile(latency_values, 95.0),
+            "runtime_reconnect_events_24h": int(reconnect_events),
+            "runtime_backpressure_events_24h": int(backpressure_events),
+        },
+        "samples": {
+            "runtime_slo_per_camera_24h": per_camera[:20],
+        },
+    }
+
+
+def _build_slo_dashboard(
+    *,
+    metrics: dict[str, Any],
+    samples: dict[str, Any],
+    reliability_alerts: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    fps_avg = metrics.get("runtime_sustained_fps_avg_24h")
+    skipped_avg = metrics.get("runtime_skipped_ratio_avg_24h")
+    latency_p95 = metrics.get("runtime_pipeline_latency_p95_ms_24h")
+    reconnect_events = int(metrics.get("runtime_reconnect_events_24h") or 0)
+    backpressure_events = int(metrics.get("runtime_backpressure_events_24h") or 0)
+    per_camera = samples.get("runtime_slo_per_camera_24h") or []
+    per_camera_warn = sum(
+        1 for row in per_camera
+        if str((row or {}).get("status") or "") == "warn"
+    )
+    alerts = (reliability_alerts.get("alerts") or {}) if isinstance(reliability_alerts, dict) else {}
+    alerting_rules = [
+        {
+            "id": "sustained_fps_floor",
+            "severity": "critical",
+            "metric": "runtime_sustained_fps_avg_24h",
+            "operator": ">=",
+            "threshold": 7.0,
+            "value": fps_avg,
+            "breach": (fps_avg is not None and float(fps_avg) < 7.0),
+            "runbook": "docs/runbooks/runtime-slo-stability.md#sustained-fps-floor",
+        },
+        {
+            "id": "skipped_ratio_ceiling",
+            "severity": "warning",
+            "metric": "runtime_skipped_ratio_avg_24h",
+            "operator": "<=",
+            "threshold": 0.05,
+            "value": skipped_avg,
+            "breach": (skipped_avg is not None and float(skipped_avg) > 0.05),
+            "runbook": "docs/runbooks/runtime-slo-stability.md#skipped-ratio",
+        },
+        {
+            "id": "pipeline_latency_p95",
+            "severity": "warning",
+            "metric": "runtime_pipeline_latency_p95_ms_24h",
+            "operator": "<=",
+            "threshold": 2500.0,
+            "value": latency_p95,
+            "breach": (
+                latency_p95 is not None and float(latency_p95) > 2500.0
+            ),
+            "runbook": "docs/runbooks/runtime-slo-stability.md#pipeline-latency-p95",
+        },
+        {
+            "id": "reconnect_resilience",
+            "severity": "warning",
+            "metric": "runtime_reconnect_events_24h",
+            "operator": "<=",
+            "threshold": 25,
+            "value": reconnect_events,
+            "breach": reconnect_events > 25,
+            "runbook": "docs/runbooks/runtime-slo-stability.md#reconnect-resilience",
+        },
+        {
+            "id": "backpressure_control",
+            "severity": "warning",
+            "metric": "runtime_backpressure_events_24h",
+            "operator": "<=",
+            "threshold": 25,
+            "value": backpressure_events,
+            "breach": backpressure_events > 25,
+            "runbook": "docs/runbooks/runtime-slo-stability.md#backpressure-control",
+        },
+    ]
+    breaches = [rule["id"] for rule in alerting_rules if rule.get("breach")]
+    if bool(alerts.get("data_stagnation")):
+        breaches.append("data_stagnation")
+    if bool(alerts.get("recording_artifact_failures")):
+        breaches.append("recording_artifact_failures")
+    dashboard = {
+        "schema": "runtime_slo_dashboard@v1",
+        "targets": {
+            "sustained_fps_min": 7.0,
+            "skipped_ratio_max": 0.05,
+            "pipeline_latency_p95_ms_max": 2500.0,
+        },
+        "snapshot": {
+            "runtime_sessions_24h": int(metrics.get("runtime_sessions_24h") or 0),
+            "sustained_fps_avg_24h": fps_avg,
+            "skipped_ratio_avg_24h": skipped_avg,
+            "pipeline_latency_p95_ms_24h": latency_p95,
+            "reconnect_events_24h": reconnect_events,
+            "backpressure_events_24h": backpressure_events,
+            "per_camera_warn_count_24h": int(per_camera_warn),
+        },
+        "status": {
+            "ok": len(breaches) == 0,
+            "breaches": breaches,
+        },
+    }
+    return dashboard, alerting_rules
+
+
 def _build_reliability_alerts(
     *,
     ingest_gate_reason_metrics: dict[str, Any],
@@ -1141,6 +1421,7 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
         lifecycle_metrics = _recent_event_lifecycle_metrics()
         trigger_camera_metrics = _recent_trigger_camera_metrics()
         runtime_backend_metrics = _recent_runtime_backend_metrics()
+        runtime_slo_metrics = _recent_runtime_session_slo_metrics()
         ingest_gate_reason_metrics = _recent_ingest_gate_reason_metrics()
         parity_diagnostics_metrics = _recent_parity_diagnostics_metrics()
         processor_funnel_metrics = _processor_runtime_funnel_metrics()
@@ -1149,6 +1430,83 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
             ingest_gate_reason_metrics=ingest_gate_reason_metrics,
             runtime_backend_metrics=runtime_backend_metrics,
             stagnation_metrics=stagnation_metrics,
+        )
+        metric_snapshot = {
+            "orphaned_visits": len(orphaned_visits),
+            "visit_species_mismatches": len(species_sync_actions),
+            "duplicate_species_name_groups": len(duplicate_groups),
+            "large_gap_visits": len(large_gap_plans),
+            "review_only_video_detections": int(review_only_count or 0),
+            "unresolved_species_names": SpeciesUnresolvedName.query.count(),
+            "duplicate_clip_candidates_24h": len(duplicate_clip_candidates),
+            "duplicate_video_groups": duplicate_video_groups,
+            "duplicate_detection_groups": duplicate_detection_groups,
+            **detection_track_metrics,
+            **(track_quality_metrics.get("metrics") or {}),
+            **(track_quality_regression.get("metrics") or {}),
+            **(lifecycle_metrics.get("metrics") or {}),
+            **{
+                "decision_trace_rows_24h": trigger_camera_metrics["decision_trace_rows_24h"],
+                "session_extended_by_frigate_only_sum_24h": trigger_camera_metrics[
+                    "session_extended_by_frigate_only_sum_24h"
+                ],
+                "decision_trace_rows_runtime_backend_24h": runtime_backend_metrics[
+                    "decision_trace_rows_runtime_backend_24h"
+                ],
+                "ingest_gate_rows_24h": ingest_gate_reason_metrics["ingest_gate_rows_24h"],
+                "ingest_gate_known_reason_rows_24h": ingest_gate_reason_metrics[
+                    "ingest_gate_known_reason_rows_24h"
+                ],
+                "ingest_gate_unknown_reason_rows_24h": ingest_gate_reason_metrics[
+                    "ingest_gate_unknown_reason_rows_24h"
+                ],
+                "parity_frigate_windows_24h": parity_diagnostics_metrics["parity_frigate_windows_24h"],
+                "parity_hub_matched_windows_24h": parity_diagnostics_metrics["parity_hub_matched_windows_24h"],
+                "parity_mismatched_windows_24h": parity_diagnostics_metrics["parity_mismatched_windows_24h"],
+                "parity_mismatch_rate_24h": parity_diagnostics_metrics["parity_mismatch_rate_24h"],
+                "parity_hotspot_count_24h": parity_diagnostics_metrics["parity_hotspot_count_24h"],
+            },
+            **(runtime_slo_metrics.get("metrics") or {}),
+            **processor_funnel_metrics,
+            **stagnation_metrics,
+        }
+        sample_snapshot = {
+            "duplicate_clip_candidates": duplicate_clip_candidates[:12],
+            "recent_unresolved_species": _recent_unresolved_names(),
+            "recent_review_only_video_detections": _recent_review_only_detections(),
+            "triggered_camera_counts_24h": trigger_camera_metrics["triggered_camera_counts_24h"],
+            "active_trigger_counts_24h": trigger_camera_metrics["active_trigger_counts_24h"],
+            "binary_backend_counts_24h": runtime_backend_metrics["binary_backend_counts_24h"],
+            "classifier_backend_counts_24h": runtime_backend_metrics["classifier_backend_counts_24h"],
+            "inference_device_counts_24h": runtime_backend_metrics["inference_device_counts_24h"],
+            "video_encoding_counts_24h": runtime_backend_metrics["video_encoding_counts_24h"],
+            "capture_backend_counts_24h": runtime_backend_metrics["capture_backend_counts_24h"],
+            "reid_device_counts_24h": runtime_backend_metrics["reid_device_counts_24h"],
+            "reid_model_counts_24h": runtime_backend_metrics["reid_model_counts_24h"],
+            "ingest_gate_reason_code_counts_24h": ingest_gate_reason_metrics["ingest_gate_reason_code_counts_24h"],
+            "parity_top_mismatch_reasons_24h": parity_diagnostics_metrics["parity_top_mismatch_reasons_24h"],
+            "parity_camera_split_24h": parity_diagnostics_metrics["parity_camera_split_24h"],
+            "parity_hotspots_24h": parity_diagnostics_metrics["parity_hotspots_24h"],
+            "track_unstable_examples_24h": (
+                track_quality_metrics.get("samples") or {}
+            ).get("track_unstable_examples_24h", []),
+            "track_quality_regression_24h": (
+                track_quality_regression.get("samples") or {}
+            ).get("track_quality_regression_24h", {}),
+            "lifecycle_outcome_counts_24h": (
+                lifecycle_metrics.get("samples") or {}
+            ).get("lifecycle_outcome_counts_24h", {}),
+            "lifecycle_top_reject_reasons_24h": (
+                lifecycle_metrics.get("samples") or {}
+            ).get("lifecycle_top_reject_reasons_24h", {}),
+            "runtime_slo_per_camera_24h": (
+                runtime_slo_metrics.get("samples") or {}
+            ).get("runtime_slo_per_camera_24h", []),
+        }
+        slo_dashboard, alerting_rules = _build_slo_dashboard(
+            metrics=metric_snapshot,
+            samples=sample_snapshot,
+            reliability_alerts=reliability_alerts,
         )
 
         payload: dict[str, Any] = {
@@ -1161,76 +1519,12 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                     app_config.get("processor.min_seconds_between_recordings") or 0
                 ),
             },
-            "metrics": {
-                "orphaned_visits": len(orphaned_visits),
-                "visit_species_mismatches": len(species_sync_actions),
-                "duplicate_species_name_groups": len(duplicate_groups),
-                "large_gap_visits": len(large_gap_plans),
-                "review_only_video_detections": int(review_only_count or 0),
-                "unresolved_species_names": SpeciesUnresolvedName.query.count(),
-                "duplicate_clip_candidates_24h": len(duplicate_clip_candidates),
-                "duplicate_video_groups": duplicate_video_groups,
-                "duplicate_detection_groups": duplicate_detection_groups,
-                **detection_track_metrics,
-                **(track_quality_metrics.get("metrics") or {}),
-                **(track_quality_regression.get("metrics") or {}),
-                **(lifecycle_metrics.get("metrics") or {}),
-                **{
-                    "decision_trace_rows_24h": trigger_camera_metrics["decision_trace_rows_24h"],
-                    "session_extended_by_frigate_only_sum_24h": trigger_camera_metrics[
-                        "session_extended_by_frigate_only_sum_24h"
-                    ],
-                    "decision_trace_rows_runtime_backend_24h": runtime_backend_metrics[
-                        "decision_trace_rows_runtime_backend_24h"
-                    ],
-                    "ingest_gate_rows_24h": ingest_gate_reason_metrics["ingest_gate_rows_24h"],
-                    "ingest_gate_known_reason_rows_24h": ingest_gate_reason_metrics[
-                        "ingest_gate_known_reason_rows_24h"
-                    ],
-                    "ingest_gate_unknown_reason_rows_24h": ingest_gate_reason_metrics[
-                        "ingest_gate_unknown_reason_rows_24h"
-                    ],
-                    "parity_frigate_windows_24h": parity_diagnostics_metrics["parity_frigate_windows_24h"],
-                    "parity_hub_matched_windows_24h": parity_diagnostics_metrics["parity_hub_matched_windows_24h"],
-                    "parity_mismatched_windows_24h": parity_diagnostics_metrics["parity_mismatched_windows_24h"],
-                    "parity_mismatch_rate_24h": parity_diagnostics_metrics["parity_mismatch_rate_24h"],
-                    "parity_hotspot_count_24h": parity_diagnostics_metrics["parity_hotspot_count_24h"],
-                },
-                **processor_funnel_metrics,
-                **stagnation_metrics,
-            },
-            "samples": {
-                "duplicate_clip_candidates": duplicate_clip_candidates[:12],
-                "recent_unresolved_species": _recent_unresolved_names(),
-                "recent_review_only_video_detections": _recent_review_only_detections(),
-                "triggered_camera_counts_24h": trigger_camera_metrics["triggered_camera_counts_24h"],
-                "active_trigger_counts_24h": trigger_camera_metrics["active_trigger_counts_24h"],
-                "binary_backend_counts_24h": runtime_backend_metrics["binary_backend_counts_24h"],
-                "classifier_backend_counts_24h": runtime_backend_metrics["classifier_backend_counts_24h"],
-                "inference_device_counts_24h": runtime_backend_metrics["inference_device_counts_24h"],
-                "video_encoding_counts_24h": runtime_backend_metrics["video_encoding_counts_24h"],
-                "capture_backend_counts_24h": runtime_backend_metrics["capture_backend_counts_24h"],
-                "reid_device_counts_24h": runtime_backend_metrics["reid_device_counts_24h"],
-                "reid_model_counts_24h": runtime_backend_metrics["reid_model_counts_24h"],
-                "ingest_gate_reason_code_counts_24h": ingest_gate_reason_metrics["ingest_gate_reason_code_counts_24h"],
-                "parity_top_mismatch_reasons_24h": parity_diagnostics_metrics["parity_top_mismatch_reasons_24h"],
-                "parity_camera_split_24h": parity_diagnostics_metrics["parity_camera_split_24h"],
-                "parity_hotspots_24h": parity_diagnostics_metrics["parity_hotspots_24h"],
-                "track_unstable_examples_24h": (
-                    track_quality_metrics.get("samples") or {}
-                ).get("track_unstable_examples_24h", []),
-                "track_quality_regression_24h": (
-                    track_quality_regression.get("samples") or {}
-                ).get("track_quality_regression_24h", {}),
-                "lifecycle_outcome_counts_24h": (
-                    lifecycle_metrics.get("samples") or {}
-                ).get("lifecycle_outcome_counts_24h", {}),
-                "lifecycle_top_reject_reasons_24h": (
-                    lifecycle_metrics.get("samples") or {}
-                ).get("lifecycle_top_reject_reasons_24h", {}),
-            },
+            "metrics": metric_snapshot,
+            "samples": sample_snapshot,
             "contracts": contracts_block,
             "reliability_alerts": reliability_alerts,
+            "slo_dashboard": slo_dashboard,
+            "alerting_rules": alerting_rules,
             "strict_quality": _build_strict_quality_block(
                 duplicate_video_groups=duplicate_video_groups,
                 duplicate_detection_groups=duplicate_detection_groups,
@@ -1299,6 +1593,13 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "parity_mismatched_windows_24h": None,
                 "parity_mismatch_rate_24h": None,
                 "parity_hotspot_count_24h": None,
+                "runtime_sessions_24h": None,
+                "runtime_sustained_fps_avg_24h": None,
+                "runtime_sustained_fps_p50_24h": None,
+                "runtime_skipped_ratio_avg_24h": None,
+                "runtime_pipeline_latency_p95_ms_24h": None,
+                "runtime_reconnect_events_24h": None,
+                "runtime_backpressure_events_24h": None,
             },
             "samples": {
                 "duplicate_clip_candidates": [],
@@ -1321,6 +1622,7 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "track_quality_regression_24h": {},
                 "lifecycle_outcome_counts_24h": {},
                 "lifecycle_top_reject_reasons_24h": {},
+                "runtime_slo_per_camera_24h": [],
             },
             "contracts": contracts_block,
             "reliability_alerts": {
@@ -1347,6 +1649,28 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                     "data_stagnation": False,
                 },
             },
+            "slo_dashboard": {
+                "schema": "runtime_slo_dashboard@v1",
+                "targets": {
+                    "sustained_fps_min": 7.0,
+                    "skipped_ratio_max": 0.05,
+                    "pipeline_latency_p95_ms_max": 2500.0,
+                },
+                "snapshot": {
+                    "runtime_sessions_24h": 0,
+                    "sustained_fps_avg_24h": None,
+                    "skipped_ratio_avg_24h": None,
+                    "pipeline_latency_p95_ms_24h": None,
+                    "reconnect_events_24h": None,
+                    "backpressure_events_24h": None,
+                    "per_camera_warn_count_24h": 0,
+                },
+                "status": {
+                    "ok": False,
+                    "breaches": ["snapshot_degraded"],
+                },
+            },
+            "alerting_rules": [],
             "strict_quality": {
                 "duplicate_video_groups_ok": False,
                 "duplicate_detection_groups_ok": False,
