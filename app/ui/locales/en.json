@@ -1130,7 +1130,15 @@
     "sortDateAsc": "Date/time: oldest first",
     "sortSpecies": "Species name",
     "sortNickname": "Nickname",
+    "sortConfidence": "Confidence: highest first",
+    "sortDuration": "Duration: longest first",
     "sortBehavior": "Behavior",
+    "minConfidence": "Min confidence",
+    "minConfidenceAny": "Any confidence",
+    "runtimeCpu": "CPU {{value}}%",
+    "runtimeMemory": "RAM {{value}}%",
+    "runtimeGpu": "GPU {{value}}%",
+    "runtimeEncoding": "Encoding: {{value}}",
     "hourFilterChip": "Hour: {{from}}–{{to}}",
     "expandVisitDetails": "Expand visit details",
     "collapseVisitDetails": "Collapse visit details"
@@ -1633,7 +1641,11 @@
     "adminRegenFailed": "Could not start job",
     "deleteVisit": "Delete visit",
     "deleteVisitConfirm": "Delete the whole “{{name}}” visit? Videos stay, only visit detections are removed.",
-    "deleteVisitSuccess": "Visit deleted"
+    "deleteVisitSuccess": "Visit deleted",
+    "bestConfidence": "Best: {{value}}%",
+    "detectionsCount": "Detections: {{count}}",
+    "sourceMix": "Video {{video}} · Audio {{audio}}",
+    "sourceVideoOnly": "Video: {{count}}"
   },
   "fusionTrace": {
     "openButton": "Fusion trace",

@@ -1130,7 +1130,15 @@
     "sortDateAsc": "Дата/время: сначала старые",
     "sortSpecies": "Название вида",
     "sortNickname": "Кличка",
+    "sortConfidence": "Уверенность: сначала выше",
+    "sortDuration": "Длительность: сначала длинные",
     "sortBehavior": "Поведение",
+    "minConfidence": "Мин. уверенность",
+    "minConfidenceAny": "Любая уверенность",
+    "runtimeCpu": "CPU {{value}}%",
+    "runtimeMemory": "RAM {{value}}%",
+    "runtimeGpu": "GPU {{value}}%",
+    "runtimeEncoding": "Кодек: {{value}}",
     "hourFilterChip": "Час: {{from}}–{{to}}",
     "expandVisitDetails": "Развернуть детали визита",
     "collapseVisitDetails": "Свернуть детали визита"
@@ -1633,7 +1641,11 @@
     "adminRegenFailed": "Не удалось запустить задачу",
     "deleteVisit": "Удалить визит",
     "deleteVisitConfirm": "Удалить визит «{{name}}» целиком? Видео останутся, удалятся только детекции визита.",
-    "deleteVisitSuccess": "Визит удалён"
+    "deleteVisitSuccess": "Визит удалён",
+    "bestConfidence": "Лучший: {{value}}%",
+    "detectionsCount": "Детекций: {{count}}",
+    "sourceMix": "Видео {{video}} · Аудио {{audio}}",
+    "sourceVideoOnly": "Видео: {{count}}"
   },
   "fusionTrace": {
     "openButton": "Трассировка fusion",
