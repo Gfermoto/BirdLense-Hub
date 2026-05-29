@@ -12,6 +12,101 @@ export const fetchConfigAudit = async (): Promise<ConfigAudit> => {
   return response.data;
 };
 
+export type TuningEstimate = {
+  estimated_recall: number;
+  estimated_precision: number;
+  estimated_runtime_cost: number;
+};
+
+export type TuningWorkbenchPayload = {
+  schema: string;
+  generated_at: string;
+  global: {
+    estimated: TuningEstimate;
+    guardrails: {
+      errors: string[];
+      warnings: string[];
+    };
+  };
+  presets: Array<{
+    id: string;
+    title: string;
+    overrides: Record<string, unknown>;
+    estimated: TuningEstimate;
+    delta_vs_current: {
+      recall_delta: number;
+      precision_delta: number;
+      runtime_cost_delta: number;
+    };
+  }>;
+  camera_profiles: Array<{
+    camera_id: string;
+    overrides: Record<string, unknown>;
+    effective: TuningEstimate;
+    delta_vs_global: {
+      recall_delta: number;
+      precision_delta: number;
+      runtime_cost_delta: number;
+    };
+  }>;
+  available_cameras: string[];
+  last_change?: {
+    action?: string;
+    preset_id?: string;
+    camera_id?: string;
+    guardrails?: { errors?: string[]; warnings?: string[] };
+    auto_eval?: {
+      baseline: TuningEstimate;
+      current: TuningEstimate;
+      delta: {
+        recall_delta: number;
+        precision_delta: number;
+        runtime_cost_delta: number;
+      };
+      ok: boolean;
+    };
+  } | null;
+};
+
+export const fetchTuningWorkbench = async (): Promise<TuningWorkbenchPayload> => {
+  const response = await axios.get(`${BASE_API_URL}/system/tuning-workbench`, {
+    withCredentials: true,
+  });
+  return response.data;
+};
+
+export const applyTuningPreset = async (
+  presetId: string,
+): Promise<Record<string, unknown>> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/system/tuning-workbench/apply-preset`,
+    { preset_id: presetId },
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
+export const saveCameraTuningProfile = async (
+  cameraId: string,
+  overrides: Record<string, unknown>,
+): Promise<Record<string, unknown>> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/system/tuning-workbench/camera-profile`,
+    { camera_id: cameraId, overrides },
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
+export const rollbackTuningProfile = async (): Promise<Record<string, unknown>> => {
+  const response = await axios.post(
+    `${BASE_API_URL}/system/tuning-workbench/rollback`,
+    {},
+    { withCredentials: true },
+  );
+  return response.data;
+};
+
 export type ObservabilityPayload = {
   notify_preview_generated_24h: Record<string, number>;
   notify_preview_24h: Record<string, number>;

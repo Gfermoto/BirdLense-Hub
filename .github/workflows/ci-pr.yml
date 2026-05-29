@@ -163,6 +163,7 @@ jobs:
             processor/tests/test_report_feedback_effect.py \
             processor/tests/test_verify_similarity_behavior_summary.py \
             processor/tests/test_verify_runtime_slo_dashboard.py \
+            processor/tests/test_tuning_workbench_service.py \
             processor/tests/test_merge_three_class_dataset.py \
             processor/tests/test_auto_benchmark.py \
             processor/tests/test_benchmark_sota_gate.py \

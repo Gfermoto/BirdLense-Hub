@@ -64,6 +64,7 @@ export const queryKeys = {
     classifierDatasetAlignment: ['classifier-dataset-alignment'] as const,
     mlRuntimeStatus: ['ml-runtime-status'] as const,
     classifierCalibrationReport: ['classifier-calibration-report'] as const,
+    tuningWorkbench: ['tuning-workbench'] as const,
     feedbackLoopStatus: ['feedback-loop-status'] as const,
     fusionExportStatus: ['fusion-export-status'] as const,
     fusionEvalStatus: ['fusion-eval-status'] as const,
