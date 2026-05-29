@@ -94,6 +94,14 @@ type TimelineSortBy =
   | 'duration'
   | 'behavior';
 type TimelineDetectionSource = 'all' | 'video_only' | 'audio_only' | 'mixed';
+type TimelineDetectionProvider =
+  | 'all'
+  | 'yolo'
+  | 'frigate'
+  | 'birdnet'
+  | 'audio'
+  | 'video'
+  | 'unknown';
 
 function getVisitMaxConfidence(visit: SpeciesVisit): number {
   const detections = visit.detections ?? [];
@@ -177,6 +185,8 @@ export function TimelinePage() {
   );
   const [detectionSource, setDetectionSource] =
     useState<TimelineDetectionSource>('all');
+  const [detectionProvider, setDetectionProvider] =
+    useState<TimelineDetectionProvider>('all');
   const [minConfidence, setMinConfidence] = useState<number>(0);
   const [minDurationSec, setMinDurationSec] = useState<number>(0);
   const [sortBy, setSortBy] = useState<TimelineSortBy>('date_desc');
@@ -287,6 +297,7 @@ export function TimelinePage() {
       minConfidence,
       minDurationSec,
       detectionSource,
+      detectionProvider,
     ),
     queryFn: () => {
       if (!selectedDate) return [];
@@ -297,6 +308,7 @@ export function TimelinePage() {
         minConfidence: minConfidence > 0 ? minConfidence : undefined,
         minDurationSec: minDurationSec > 0 ? minDurationSec : undefined,
         detectionSource,
+        detectionProvider,
       });
     },
     enabled: !isReviewMode,
@@ -458,6 +470,7 @@ export function TimelinePage() {
           minConfidence: minConfidence > 0 ? minConfidence : undefined,
           minDurationSec: minDurationSec > 0 ? minDurationSec : undefined,
           detectionSource,
+          detectionProvider,
         },
       );
     } catch (err) {
@@ -779,6 +792,43 @@ export function TimelinePage() {
                 </MenuItem>
                 <MenuItem value="mixed">
                   {t('timeline.detectionSourceMixed')}
+                </MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>
+              <InputLabel id="timeline-detection-provider-label">
+                {t('timeline.detectionProvider')}
+              </InputLabel>
+              <Select
+                labelId="timeline-detection-provider-label"
+                value={detectionProvider}
+                label={t('timeline.detectionProvider')}
+                onChange={(event) =>
+                  setDetectionProvider(
+                    event.target.value as TimelineDetectionProvider,
+                  )
+                }
+              >
+                <MenuItem value="all">
+                  {t('timeline.detectionProviderAll')}
+                </MenuItem>
+                <MenuItem value="yolo">
+                  {t('timeline.detectionProviderYolo')}
+                </MenuItem>
+                <MenuItem value="frigate">
+                  {t('timeline.detectionProviderFrigate')}
+                </MenuItem>
+                <MenuItem value="birdnet">
+                  {t('timeline.detectionProviderBirdnet')}
+                </MenuItem>
+                <MenuItem value="audio">
+                  {t('timeline.detectionProviderAudio')}
+                </MenuItem>
+                <MenuItem value="video">
+                  {t('timeline.detectionProviderVideo')}
+                </MenuItem>
+                <MenuItem value="unknown">
+                  {t('timeline.detectionProviderUnknown')}
                 </MenuItem>
               </Select>
             </FormControl>

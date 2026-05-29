@@ -27,6 +27,14 @@ export const fetchTimelineForObserverDate = async (
     minConfidence?: number;
     minDurationSec?: number;
     detectionSource?: 'all' | 'video_only' | 'audio_only' | 'mixed';
+    detectionProvider?:
+      | 'all'
+      | 'yolo'
+      | 'frigate'
+      | 'birdnet'
+      | 'audio'
+      | 'video'
+      | 'unknown';
   },
 ): Promise<SpeciesVisit[]> => {
   const response = await axios.get(`${BASE_API_URL}/timeline`, {
@@ -44,6 +52,9 @@ export const fetchTimelineForObserverDate = async (
         : {}),
       ...(options?.detectionSource && options.detectionSource !== 'all'
         ? { detection_source: options.detectionSource }
+        : {}),
+      ...(options?.detectionProvider && options.detectionProvider !== 'all'
+        ? { detection_provider: options.detectionProvider }
         : {}),
     },
   });
@@ -88,6 +99,14 @@ export const exportTimelineForObserverDate = async (
     minConfidence?: number;
     minDurationSec?: number;
     detectionSource?: 'all' | 'video_only' | 'audio_only' | 'mixed';
+    detectionProvider?:
+      | 'all'
+      | 'yolo'
+      | 'frigate'
+      | 'birdnet'
+      | 'audio'
+      | 'video'
+      | 'unknown';
   },
 ): Promise<void> => {
   const params = new URLSearchParams({
@@ -105,6 +124,9 @@ export const exportTimelineForObserverDate = async (
       : {}),
     ...(options?.detectionSource && options.detectionSource !== 'all'
       ? { detection_source: options.detectionSource }
+      : {}),
+    ...(options?.detectionProvider && options.detectionProvider !== 'all'
+      ? { detection_provider: options.detectionProvider }
       : {}),
   });
   const url = `${BASE_API_URL}/timeline/export?${params}`;
