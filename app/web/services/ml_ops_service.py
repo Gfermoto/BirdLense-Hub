@@ -323,6 +323,12 @@ def build_similarity_behavior_summary_payload(
     """Track-level similarity + behavior quality snapshot (S7)."""
     k = max(1, min(int(top_k or 5), 20))
     lim = max(20, min(int(max_rows or 500), 5000))
+    try:
+        guardrail_ms = float(
+            app_config.get("processor.reid_similarity_p95_guardrail_ms") or 500.0
+        )
+    except (TypeError, ValueError):
+        guardrail_ms = 500.0
     has_reid = bool(
         session.execute(
             text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")
@@ -349,7 +355,7 @@ def build_similarity_behavior_summary_payload(
             "top_confusions": [],
         },
         "runtime_cost": {
-            "guardrail_p95_query_ms": 50.0,
+            "guardrail_p95_query_ms": guardrail_ms,
             "retrieval_p95_ok": True,
         },
     }
@@ -432,7 +438,7 @@ def build_similarity_behavior_summary_payload(
             "topk_hit_rate": round(_safe_div(float(topk), float(n)), 6),
             "p95_query_ms": round(p95_ms, 3),
         }
-        payload["runtime_cost"]["retrieval_p95_ok"] = bool(p95_ms <= 50.0)
+        payload["runtime_cost"]["retrieval_p95_ok"] = bool(p95_ms <= guardrail_ms)
 
     behavior_rows_raw = (
         session.execute(
