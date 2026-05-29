@@ -27,7 +27,7 @@ def _visit_has_favorite_active_video(visit) -> bool:
 
 
 def _timeline_visits_deduped_ordered(visits_raw):
-    """JOIN с VideoSpecies даёт дубликаты SpeciesVisit при множестве роликов."""
+    """JOIN с VideoSpecies даёт дубликаты SpeciesVisit."""
     seen = set()
     visits = []
     for v in visits_raw:
@@ -103,6 +103,38 @@ def _timeline_item_matches_source(item: dict, source_filter: str) -> bool:
     return True
 
 
+def _normalize_timeline_provider(detection: dict) -> str:
+    provider_raw = (
+        str(detection.get("detection_provider") or "").strip().lower()
+    )
+    source_raw = str(detection.get("source") or "").strip().lower()
+    if "birdnet" in provider_raw:
+        return "birdnet"
+    if "frigate" in provider_raw:
+        return "frigate"
+    if "yolo" in provider_raw:
+        return "yolo"
+    if provider_raw:
+        return provider_raw
+    if source_raw in {"audio", "video"}:
+        return source_raw
+    return "unknown"
+
+
+def _timeline_item_matches_provider(item: dict, provider_filter: str) -> bool:
+    if provider_filter == "all":
+        return True
+    detections = item.get("detections") or []
+    if not isinstance(detections, list) or not detections:
+        return False
+    providers = {
+        _normalize_timeline_provider(d)
+        for d in detections
+        if isinstance(d, dict)
+    }
+    return provider_filter in providers
+
+
 def build_merged_timeline_items(
     session,
     start_dt,
@@ -112,6 +144,7 @@ def build_merged_timeline_items(
     min_confidence: float | None = None,
     min_duration_sec: int | None = None,
     detection_source: str = "all",
+    detection_provider: str = "all",
     limit: int | None = None,
     offset: int = 0,
 ) -> list | dict:
@@ -126,7 +159,9 @@ def build_merged_timeline_items(
         .join(VideoSpecies)
         .join(Video)
         .options(
-            joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
+            joinedload(SpeciesVisit.video_species).joinedload(
+                VideoSpecies.video
+            ),
             joinedload(SpeciesVisit.species),
         )
         .filter(
@@ -147,7 +182,9 @@ def build_merged_timeline_items(
             if vid is not None:
                 video_ids_in_visits.add(int(vid))
     fallback_species = (
-        session.query(Species).filter(Species.name == GENERIC_BIRD_SPECIES).first()
+        session.query(Species)
+        .filter(Species.name == GENERIC_BIRD_SPECIES)
+        .first()
     )
     uq = (
         session.query(Video)
@@ -164,7 +201,9 @@ def build_merged_timeline_items(
         uq = uq.filter(Video.favorite.is_(True))
     unlinked_videos = uq.order_by(Video.start_time.desc()).all()
     unlinked_payloads = [
-        format_unlinked_video_for_timeline(v, fallback_species=fallback_species)
+        format_unlinked_video_for_timeline(
+            v, fallback_species=fallback_species
+        )
         for v in unlinked_videos
         if v.id not in video_ids_in_visits
     ]
@@ -187,6 +226,12 @@ def build_merged_timeline_items(
             item
             for item in merged
             if _timeline_item_matches_source(item, detection_source)
+        ]
+    if detection_provider != "all":
+        merged = [
+            item
+            for item in merged
+            if _timeline_item_matches_provider(item, detection_provider)
         ]
     total = len(merged)
     if limit is not None:

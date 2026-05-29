@@ -226,6 +226,9 @@ def register_ui_overview_timeline_routes(app):
         detection_source = (
             request.args.get("detection_source", "all").strip().lower()
         )
+        detection_provider = (
+            request.args.get("detection_provider", "all").strip().lower()
+        )
         if detection_source not in {
             "all",
             "video_only",
@@ -233,6 +236,16 @@ def register_ui_overview_timeline_routes(app):
             "mixed",
         }:
             return {"error": "detection_source is invalid"}, 400
+        if detection_provider not in {
+            "all",
+            "yolo",
+            "frigate",
+            "birdnet",
+            "audio",
+            "video",
+            "unknown",
+        }:
+            return {"error": "detection_provider is invalid"}, 400
         if min_confidence is not None and (
             min_confidence < 0 or min_confidence > 1
         ):
@@ -254,12 +267,14 @@ def register_ui_overview_timeline_routes(app):
         if date_param:
             tck = (
                 f"timeline:local:{date_param}:{time_of_day}:{hour_param}:"
-                f"f{fav}:c{min_confidence}:d{min_duration_sec}:s{detection_source}"
+                f"f{fav}:c{min_confidence}:d{min_duration_sec}:"
+                f"s{detection_source}:p{detection_provider}"
             )
         else:
             tck = (
                 f"timeline:{start_time}:{end_time}:"
-                f"f{fav}:c{min_confidence}:d{min_duration_sec}:s{detection_source}"
+                f"f{fav}:c{min_confidence}:d{min_duration_sec}:"
+                f"s{detection_source}:p{detection_provider}"
             )
 
         if end_dt - start_dt > timedelta(days=1):
@@ -287,6 +302,7 @@ def register_ui_overview_timeline_routes(app):
             min_confidence=min_confidence,
             min_duration_sec=min_duration_sec,
             detection_source=detection_source,
+            detection_provider=detection_provider,
             limit=limit_raw,
             offset=offset_raw,
         )
@@ -308,6 +324,9 @@ def register_ui_overview_timeline_routes(app):
         detection_source = (
             request.args.get("detection_source", "all").strip().lower()
         )
+        detection_provider = (
+            request.args.get("detection_provider", "all").strip().lower()
+        )
         if detection_source not in {
             "all",
             "video_only",
@@ -315,6 +334,16 @@ def register_ui_overview_timeline_routes(app):
             "mixed",
         }:
             return {"error": "detection_source is invalid"}, 400
+        if detection_provider not in {
+            "all",
+            "yolo",
+            "frigate",
+            "birdnet",
+            "audio",
+            "video",
+            "unknown",
+        }:
+            return {"error": "detection_provider is invalid"}, 400
         if min_confidence is not None and (
             min_confidence < 0 or min_confidence > 1
         ):
@@ -349,6 +378,7 @@ def register_ui_overview_timeline_routes(app):
             min_confidence=min_confidence,
             min_duration_sec=min_duration_sec,
             detection_source=detection_source,
+            detection_provider=detection_provider,
         )
         rows = build_timeline_export_rows(merged)
         body, mimetype, headers = build_timeline_export_response_parts(

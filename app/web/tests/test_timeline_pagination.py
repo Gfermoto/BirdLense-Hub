@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from routes.ui_timeline_helpers import (
+    _timeline_item_matches_provider,
     _timeline_item_matches_source,
     build_merged_timeline_items,
 )
@@ -16,7 +17,9 @@ def test_timeline_pagination_envelope(app):
 
         start = datetime(2099, 1, 1, tzinfo=timezone.utc)
         end = start + timedelta(hours=23)
-        out = build_merged_timeline_items(db.session, start, end, limit=10, offset=0)
+        out = build_merged_timeline_items(
+            db.session, start, end, limit=10, offset=0
+        )
         assert isinstance(out, dict)
         assert "items" in out
         assert "total" in out
@@ -40,3 +43,21 @@ def test_timeline_source_filter_matcher():
 
     assert _timeline_item_matches_source(item_mixed, "mixed") is True
     assert _timeline_item_matches_source(item_mixed, "video_only") is False
+
+
+def test_timeline_provider_filter_matcher():
+    item_yolo = {
+        "detections": [{"source": "video", "detection_provider": "yolo"}]
+    }
+    item_audio = {"detections": [{"source": "audio"}]}
+    item_birdnet = {
+        "detections": [{"source": "audio", "detection_provider": "birdnet_mqtt"}]
+    }
+
+    assert _timeline_item_matches_provider(item_yolo, "all") is True
+    assert _timeline_item_matches_provider(item_yolo, "yolo") is True
+    assert (
+        _timeline_item_matches_provider(item_yolo, "frigate") is False
+    )
+    assert _timeline_item_matches_provider(item_audio, "audio") is True
+    assert _timeline_item_matches_provider(item_birdnet, "birdnet") is True

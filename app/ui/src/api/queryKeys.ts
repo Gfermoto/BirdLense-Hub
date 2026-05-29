@@ -105,6 +105,7 @@ export const queryKeys = {
       minConfidence: number,
       minDurationSec: number,
       detectionSource: string,
+      detectionProvider: string,
     ) =>
       [
         'speciesVisits',
@@ -115,6 +116,7 @@ export const queryKeys = {
         minConfidence,
         minDurationSec,
         detectionSource,
+        detectionProvider,
       ] as const,
     /** Префикс для invalidateQueries — все окна таймлайна. */
     speciesVisitsAll: ['speciesVisits'] as const,
