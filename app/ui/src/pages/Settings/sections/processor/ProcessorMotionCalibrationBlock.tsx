@@ -17,7 +17,6 @@ import Typography from '@mui/material/Typography';
 import { fetchMotionPreview, type MotionPreviewMode } from '../../../../api/motionPreview';
 import type { Settings } from '../../../../types';
 import { ServiceBlock } from '../../shared/ServiceBlock';
-import { ProcessorNumberField } from '../../shared/ProcessorNumberField';
 import { ProcessorBackgroundSubtractionBlock } from './ProcessorBackgroundSubtractionBlock';
 
 type Props = {
