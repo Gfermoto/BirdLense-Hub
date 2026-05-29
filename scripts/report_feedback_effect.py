@@ -7,7 +7,7 @@ import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 
 def _load_json(path: str) -> dict[str, Any]:
@@ -18,7 +18,7 @@ def _load_json(path: str) -> dict[str, Any]:
     return payload
 
 
-def _f(value: Any) -> float | None:
+def _f(value: Any) -> Optional[float]:
     try:
         if value is None:
             return None
@@ -27,7 +27,7 @@ def _f(value: Any) -> float | None:
         return None
 
 
-def _delta(cur: float | None, base: float | None) -> float | None:
+def _delta(cur: Optional[float], base: Optional[float]) -> Optional[float]:
     if cur is None or base is None:
         return None
     return float(cur - base)
