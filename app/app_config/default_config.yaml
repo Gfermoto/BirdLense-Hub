@@ -83,7 +83,7 @@ processor:
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
   # Между обрабатываемыми кадрами декодирование не делается (OpenCV grab), иначе ускорения почти нет.
   # На слабом/прерывистом бинарнике шаг 4+ часто даёт пустой regen или короткий трек — для качества одного ролика ставьте 1–2.
-  track_regen_frame_step: 6
+  track_regen_frame_step: 5
   # Защитный mutex внутри процесса для OpenVINO track regen: снижает риск segfault при конкурентных regen-запросах.
   track_regen_serialize_inference: true
   # Доп. межпроцессный lock (/tmp/birdlense_track_regen.lock): не даёт нескольким воркерам/CLI
@@ -155,16 +155,16 @@ processor:
   # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
   # Trapper @ conf 0.25 на 1816/1819: визуально без ложных (showdown 2026-05).
   min_confidence_binary: 0.25
-  min_confidence_binary_bird: 0.25
+  min_confidence_binary_bird: 0.23
   # Trapper class 5 (белка): отдельный порог после track(); калибровать по val-клипам (не ниже bird без причины).
-  min_confidence_binary_rodent: 0.35
+  min_confidence_binary_rodent: 0.30
   # DEPRECATED (nabirds-pivot): Rodent не детектируется; ключ только для legacy user_config (игнорируется при detector_scope: [Bird]).
   # OpenVINO NABirds: conf на IR часто ВЫШЕ torch, не ниже — scale 8.5 (legacy BRG) раздувает FP.
   # track(conf) cap — не ниже bird-порога; scale 1.0 = без искусственного завышения при фильтрации.
   # conf для YOLO track(); должен быть < min_confidence_binary_bird и > track_high в ByteTrack YAML.
-  openvino_binary_track_ultralytics_conf: 0.30
+  openvino_binary_track_ultralytics_conf: 0.24
   openvino_binary_bird_score_scale: 1.0
-  openvino_min_confidence_binary_bird: 0.25
+  openvino_min_confidence_binary_bird: 0.23
   # --- SOTA 2.0: unified ScoringEngine (replaces legacy filter cascade) ---
   scoring_engine_enabled: true
   scoring_weight_conf: 0.45
@@ -240,7 +240,7 @@ processor:
   # Устаревший алиас (читается, если min_confidence_binary_rodent не задан):
   # min_confidence_binary_squirrel: 0.24
   # Доля площади кадра (0..1): Bird с bbox ≤ порога — без видового классификатора. 0 = выкл. (рекомендуется для видов на кормушке).
-  bird_skip_classifier_max_area_frac: 0
+  bird_skip_classifier_max_area_frac: 0.015
   min_confidence_to_process: 0.20  # combined для БД; detect 704×576@7fps — слабые YOLO conf ~0.08–0.15
   # Отдельный порог для Telegram: только уверенные визиты (может быть > min_confidence_to_process).
   min_confidence_to_notify: 0.46
@@ -262,8 +262,8 @@ processor:
         # Ночь/ИК: не задираем пороги выше дневных, иначе теряем реальные визиты.
         # Шум/FP режутся scoring/motion/filter-цепочкой, а не агрессивным conf floor.
         min_confidence_binary: 0.25
-        min_confidence_binary_bird: 0.25
-        openvino_min_confidence_binary_bird: 0.25
+        min_confidence_binary_bird: 0.23
+        openvino_min_confidence_binary_bird: 0.23
         min_track_duration: 1.0
         min_confidence_to_process: 0.35
         min_box_size_px: 14
@@ -406,7 +406,7 @@ processor:
   # birder_eu (707 EU, Collins / birder-project eu-common) | efficientnet_b2 (global 525) | yolo (legacy)
   classifier_engine: birder_eu
   birder_eu_variant: convnext_v2_tiny_eu-common256px
-  birder_eu_min_confidence: 0.22
+  birder_eu_min_confidence: 0.18
   birder_eu_unknown_label: "Unknown Bird"
   efficientnet_b2_min_confidence: 0.22
   efficientnet_b2_unknown_label: "Unknown Bird"
