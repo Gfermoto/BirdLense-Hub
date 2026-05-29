@@ -3,7 +3,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 
-from models import ActivityLog, Species, Video, VideoSpecies, db
+from models import ActivityLog, SessionRuntimeMetrics, Species, Video, VideoSpecies, db
 
 
 def _auth_headers() -> dict[str, str]:
@@ -29,6 +29,9 @@ def test_domain_health_includes_strict_quality_block(client):
     assert "thresholds" in reliability
     assert "metrics" in reliability
     assert "alerts" in reliability
+    assert "slo_dashboard" in payload
+    assert "alerting_rules" in payload
+    assert "runtime_slo_per_camera_24h" in samples
 
 
 def test_domain_health_flags_duplicate_detection_groups(app, client):
@@ -194,6 +197,55 @@ def test_domain_health_includes_lifecycle_and_regression_metrics(app, client):
     assert "rejected_only" in lifecycle_counts
     assert isinstance(reject_reasons, dict)
     assert "current_sample" in regression
+
+
+def test_domain_health_builds_runtime_slo_dashboard(app, client):
+    with app.app_context():
+        now = datetime.now(timezone.utc)
+        db.session.add_all(
+            [
+                SessionRuntimeMetrics(
+                    camera_id="cam-a",
+                    created_at=now - timedelta(minutes=8),
+                    duration_s=12.0,
+                    frames_seen=120,
+                    yolo_frames_ran=96,
+                    yolo_frames_with_tracks=50,
+                    post_fusion_persisted=6,
+                    video_file_ok=True,
+                    payload_json=json.dumps({"pipeline_latency_ms": 900.0}),
+                ),
+                SessionRuntimeMetrics(
+                    camera_id="cam-b",
+                    created_at=now - timedelta(minutes=5),
+                    duration_s=10.0,
+                    frames_seen=110,
+                    yolo_frames_ran=55,
+                    yolo_frames_with_tracks=20,
+                    post_fusion_persisted=3,
+                    video_file_ok=False,
+                    payload_json=json.dumps({"pipeline_latency_ms": 3200.0}),
+                ),
+            ]
+        )
+        db.session.commit()
+
+    res = client.get("/api/ui/system/domain-health", headers=_auth_headers())
+    assert res.status_code == 200, res.get_data(as_text=True)
+    payload = res.get_json() or {}
+    metrics = payload.get("metrics") or {}
+    samples = payload.get("samples") or {}
+    dashboard = payload.get("slo_dashboard") or {}
+    rules = payload.get("alerting_rules") or []
+
+    assert metrics.get("runtime_sessions_24h") is not None
+    assert metrics.get("runtime_sustained_fps_avg_24h") is not None
+    assert metrics.get("runtime_skipped_ratio_avg_24h") is not None
+    assert isinstance(samples.get("runtime_slo_per_camera_24h"), list)
+    assert dashboard.get("schema") == "runtime_slo_dashboard@v1"
+    assert "status" in dashboard
+    assert isinstance(rules, list)
+    assert len(rules) >= 3
 
 
 def test_domain_health_includes_ingest_gate_reason_metrics(app, client):

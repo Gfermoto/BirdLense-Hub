@@ -314,6 +314,25 @@ jobs:
             --min-behavior-macro-f1 0.4 \
             --max-retrieval-p95-ms 50.0 \
             --out .artifacts/similarity_behavior_verify_smoke.json
+          cat <<'EOF' > .artifacts/runtime_slo_domain_health_smoke.json
+          {
+            "slo_dashboard": {
+              "schema": "runtime_slo_dashboard@v1",
+              "snapshot": {
+                "sustained_fps_avg_24h": 8.4,
+                "skipped_ratio_avg_24h": 0.018,
+                "pipeline_latency_p95_ms_24h": 1100.0,
+                "per_camera_warn_count_24h": 0
+              },
+              "status": {
+                "ok": true,
+                "breaches": []
+              }
+            }
+          }
+          EOF
+          python3 scripts/verify_runtime_slo_dashboard.py \
+            --report .artifacts/runtime_slo_domain_health_smoke.json
           echo "## Similarity/Behavior smoke gate" >> "$GITHUB_STEP_SUMMARY"
           python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
@@ -321,6 +340,8 @@ jobs:
           print(f"- ok: **{data.get('ok')}**")
           print(f"- errors: `{data.get('errors')}`")
           PY
+          echo "## Runtime SLO smoke gate" >> "$GITHUB_STEP_SUMMARY"
+          echo "- verify_runtime_slo_dashboard.py: **PASS**" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify benchmark report schema
         working-directory: ${{ github.workspace }}
@@ -367,4 +388,5 @@ jobs:
             .artifacts/feedback_effect_smoke.md
             .artifacts/similarity_behavior_summary_smoke.json
             .artifacts/similarity_behavior_verify_smoke.json
+            .artifacts/runtime_slo_domain_health_smoke.json
           if-no-files-found: ignore
