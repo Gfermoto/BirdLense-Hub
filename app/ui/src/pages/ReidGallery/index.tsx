@@ -1,4 +1,3 @@
-import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -45,7 +44,10 @@ export function ReidGalleryPage() {
 
   return (
     <Box>
-      <PageHeader title="ReID Gallery" subtitle="Кластеры треков и экспертная очередь (SOTA-13)" />
+      <PageHeader
+        title="ReID Gallery"
+        description="Кластеры треков и экспертная очередь (SOTA-13)"
+      />
       {disabled ? (
         <Alert severity="info" sx={{ mb: 2 }}>
           ReID Gallery выключена. Включите{' '}

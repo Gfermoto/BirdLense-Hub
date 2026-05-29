@@ -35,7 +35,9 @@ export interface PageHelpConfig {
     | 'videoDetails'
     | 'unknowns'
     | 'migrationCalendar'
-    | 'library';
+    | 'library'
+    | 'speciesDirectory'
+    | 'speciesCatalog';
   dialogMaxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 }
 

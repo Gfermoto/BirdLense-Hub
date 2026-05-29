@@ -306,6 +306,9 @@ export interface Settings {
     background_subtraction_min_fg_ratio?: number;
     background_subtraction_warmup_frames?: number;
     background_subtraction_detect_shadows?: boolean;
+    static_object_suppression_enabled?: boolean;
+    static_scene_bird_min_confidence?: number;
+    static_temporal_max_jitter_px?: number;
     classification_scheduler?: string;
     max_classifications_per_frame?: number;
     max_blur_checks?: number;
@@ -501,6 +504,10 @@ export interface Settings {
   triggers?: {
     opencv?: {
       enabled?: boolean;
+      detection_method?: 'frame_diff' | 'mog2' | 'hybrid' | string;
+      mog2_var_threshold?: number;
+      mog2_min_contour_area?: number;
+      mog2_detect_shadows?: boolean;
       check_every_n_frames?: number;
       diff_threshold?: number;
       min_contour_area?: number;

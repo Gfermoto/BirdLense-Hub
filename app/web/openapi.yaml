@@ -3262,12 +3262,14 @@ paths:
         Requires settings password.
       responses:
         '200':
+          description: Backpressure snapshot
           content:
             application/json:
               schema:
                 type: object
                 additionalProperties: true
         '403':
+          description: Error
           content:
             application/json:
               schema:
@@ -3278,12 +3280,14 @@ paths:
       description: Full counters/gauges/latency snapshot written by the processor process.
       responses:
         '200':
+          description: Processor runtime snapshot
           content:
             application/json:
               schema:
                 type: object
                 additionalProperties: true
         '403':
+          description: Error
           content:
             application/json:
               schema:
@@ -3796,6 +3800,7 @@ paths:
       description: Unified status for catalog repair, regen, fusion export, etc. Requires settings password.
       responses:
         '200':
+          description: Jobs list
           content:
             application/json:
               schema:
@@ -3807,6 +3812,7 @@ paths:
                       type: object
                       additionalProperties: true
         '403':
+          description: Error
           content:
             application/json:
               schema:
@@ -3838,11 +3844,13 @@ paths:
         '202':
           description: Job started
         '400':
+          description: Error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
+          description: Error
           content:
             application/json:
               schema:
@@ -3860,12 +3868,14 @@ paths:
             type: string
       responses:
         '200':
+          description: Job status
           content:
             application/json:
               schema:
                 type: object
                 additionalProperties: true
         '404':
+          description: Error
           content:
             application/json:
               schema:
