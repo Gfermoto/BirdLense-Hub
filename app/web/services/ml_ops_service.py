@@ -22,6 +22,9 @@ from services.feedback_loop_service import (
     build_feedback_loop_status as _build_feedback_loop_status,
     export_feedback_learning_dataset as _export_feedback_learning_dataset,
 )
+from services.classifier_calibration_report import (
+    build_report as _build_classifier_calibration_report,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -285,6 +288,47 @@ def build_ml_runtime_status() -> tuple[dict[str, Any], int]:
             "frame_processing_warn_ms": app_config.get("processor.frame_processing_warn_ms"),
         },
     }, 200
+
+
+def build_classifier_calibration_report_payload(
+    *,
+    pair_limit: int = 15,
+) -> tuple[dict[str, Any], int]:
+    """Classifier confusion/calibration summary from operator corrections."""
+    data_dir = str(app_config.get("directories.data") or "data")
+    db_path = Path(data_dir) / "db" / "birdlense.db"
+    limit = max(1, min(int(pair_limit or 15), 100))
+    if not db_path.exists():
+        return {
+            "schema": "classifier_calibration_report@v1",
+            "available": False,
+            "db": str(db_path),
+            "message": "db_not_found",
+            "corrections_analyzed": 0,
+            "top_confusion_pairs": [],
+            "corrections_by_source": {},
+            "threshold_recommendations": {},
+        }, 200
+    try:
+        report = _build_classifier_calibration_report(db_path, pair_limit=limit)
+        return {
+            "schema": "classifier_calibration_report@v1",
+            "available": True,
+            **report,
+        }, 200
+    except Exception as exc:
+        _log.exception("classifier calibration report build failed")
+        return {
+            "schema": "classifier_calibration_report@v1",
+            "available": False,
+            "db": str(db_path),
+            "message": "report_build_failed",
+            "error": str(exc),
+            "corrections_analyzed": 0,
+            "top_confusion_pairs": [],
+            "corrections_by_source": {},
+            "threshold_recommendations": {},
+        }, 200
 
 
 def build_feedback_loop_status_payload(session) -> tuple[dict[str, Any], int]:

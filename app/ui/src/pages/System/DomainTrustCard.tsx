@@ -60,6 +60,11 @@ export function DomainTrustCard() {
   const dupClipCount = metrics.duplicate_clip_candidates_24h ?? 0;
   const yoloRatio = metrics.video_detections_primary_yolo_ratio_24h;
   const framesRatio = metrics.video_detections_with_frames_ratio_24h;
+  const trackStability = metrics.track_stability_score_avg_24h;
+  const trackFragmentedRatio = metrics.track_rows_fragmented_ratio_24h;
+  const lifecycleEnterRate = metrics.lifecycle_enter_rate_24h;
+  const lifecycleRejectedOnlyRate = metrics.lifecycle_rejected_only_rate_24h;
+  const trackRegression = Boolean(metrics.track_quality_regression_24h);
   const detections24h = Number(metrics.video_detections_24h ?? 0);
   const ratioSampleSkipped = detections24h <= 0;
 
@@ -180,7 +185,41 @@ export function DomainTrustCard() {
                   pct: pct(framesRatio),
                 })}
               />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t('system.domainTrustMetricTrackStability', {
+                  pct: pct(trackStability),
+                })}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t('system.domainTrustMetricTrackFragmentation', {
+                  pct: pct(trackFragmentedRatio),
+                })}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t('system.domainTrustMetricLifecycleEnterRate', {
+                  pct: pct(lifecycleEnterRate),
+                })}
+              />
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t('system.domainTrustMetricLifecycleRejectedRate', {
+                  pct: pct(lifecycleRejectedOnlyRate),
+                })}
+              />
             </Box>
+
+            {trackRegression ? (
+              <Alert severity="warning" variant="outlined">
+                {t('system.domainTrustTrackRegressionAlert')}
+              </Alert>
+            ) : null}
 
             {failingReasons.length > 0 ? (
               <Alert severity="warning" variant="outlined">

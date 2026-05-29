@@ -12,6 +12,7 @@ from tracker_paths import resolve_tracker_config_path
 from tracker_low_fps import resolve_adaptive_tracker_path
 from track_stability import TrackStabilityMonitor, summarize_tracks_stability
 from motion_detectors.opencv_live_overlay import tracks_to_detector_polygons
+from roi_crop import crop_for_classifier
 
 
 class _LightGateDisabled:
@@ -552,16 +553,35 @@ class FrameProcessor:
         self.tracks[track_id]["frames"].append({"t": frame_time, "bbox": [round(float(b), 4) for b in bbox]})
 
         if crop is not None:
+            # Zero-copy ROI path may pass RoiCropRef; convert to ndarray for scoring/keyframes.
+            try:
+                crop_arr, _ = crop_for_classifier(crop)
+            except Exception:
+                crop_arr = None
+            if crop_arr is None or getattr(crop_arr, "size", 0) <= 0:
+                return
             if blur_variance is not None:
-                pixel_count = crop.shape[0] * crop.shape[1]
+                pixel_count = crop_arr.shape[0] * crop_arr.shape[1]
                 frame_score = 1.5 * math.log(blur_variance + 1) + math.log(pixel_count + 1)
-                self._update_key_frames(self.tracks[track_id], crop, frame_time, bbox, frame_score)
+                self._update_key_frames(
+                    self.tracks[track_id],
+                    crop_arr,
+                    frame_time,
+                    bbox,
+                    frame_score,
+                )
                 if frame_score > self.tracks[track_id]["best_frame_score"]:
-                    self.tracks[track_id]["best_frame"] = crop
+                    self.tracks[track_id]["best_frame"] = crop_arr
                     self.tracks[track_id]["best_frame_score"] = frame_score
             elif self.tracks[track_id]["best_frame"] is None:
-                self.tracks[track_id]["best_frame"] = crop
-                self._update_key_frames(self.tracks[track_id], crop, frame_time, bbox, 0.0)
+                self.tracks[track_id]["best_frame"] = crop_arr
+                self._update_key_frames(
+                    self.tracks[track_id],
+                    crop_arr,
+                    frame_time,
+                    bbox,
+                    0.0,
+                )
 
     def reset(self):
         self.tracks = {}

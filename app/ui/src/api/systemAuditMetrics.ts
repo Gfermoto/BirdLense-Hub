@@ -126,6 +126,35 @@ export const fetchFeedbackLoopStatus = async (): Promise<FeedbackLoopStatus> => 
   return response.data;
 };
 
+export type ClassifierCalibrationReport = {
+  schema: string;
+  available: boolean;
+  db?: string;
+  message?: string;
+  error?: string;
+  corrections_analyzed: number;
+  top_confusion_pairs: Array<{ from: string; to: string; count: number }>;
+  corrections_by_source: Record<string, number>;
+  threshold_recommendations: {
+    sample_corrections?: number;
+    recommended_processor_yaml?: Record<string, number>;
+    correction_confidence_p75?: number | null;
+  };
+};
+
+export const fetchClassifierCalibrationReport = async (
+  pairLimit = 15,
+): Promise<ClassifierCalibrationReport> => {
+  const response = await axios.get(
+    `${BASE_API_URL}/system/classifier-calibration-report`,
+    {
+      params: { pair_limit: pairLimit },
+      withCredentials: true,
+    },
+  );
+  return response.data;
+};
+
 export const trackSiteVisitor = async (browserId: string): Promise<void> => {
   await axios.post(`${BASE_API_URL}/system/visitors/track`, {
     browser_id: browserId,

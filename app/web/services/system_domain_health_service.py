@@ -8,6 +8,7 @@ import os
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
+import math
 
 import data_paths
 from app_config.app_config import app_config
@@ -242,6 +243,371 @@ def _recent_detection_track_metrics(hours: int = 24) -> dict[str, Any]:
         "video_detections_with_frames_ratio_24h": (with_frames / total) if total else None,
         "video_detections_primary_yolo_24h": yolo_provider,
         "video_detections_primary_yolo_ratio_24h": (yolo_provider / total) if total else None,
+    }
+
+
+def _parse_track_frames(raw: Any) -> list[dict[str, Any]]:
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(str(raw))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [frame for frame in parsed if isinstance(frame, dict)]
+
+
+def _frame_center_diag(frame: dict[str, Any]) -> tuple[float, float, float, float] | None:
+    bbox = frame.get("bbox")
+    if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+        return None
+    try:
+        x1, y1, x2, y2 = [float(v) for v in bbox]
+    except (TypeError, ValueError):
+        return None
+    w = max(0.0, x2 - x1)
+    h = max(0.0, y2 - y1)
+    diag = math.sqrt((w * w) + (h * h))
+    return ((x1 + x2) / 2.0, (y1 + y2) / 2.0, max(diag, 1.0), 1.0)
+
+
+def _track_row_quality(row: VideoSpecies, *, gap_sec: float = 0.8) -> dict[str, Any]:
+    frames = _parse_track_frames(getattr(row, "frames", None))
+    if not frames:
+        return {
+            "frame_count": 0,
+            "gap_count": 0,
+            "avg_jitter": 0.0,
+            "stability_score": 0.35,
+        }
+
+    gap_count = 0
+    jitter_sum = 0.0
+    jitter_steps = 0
+    prev_t: float | None = None
+    prev_center: tuple[float, float, float] | None = None
+    for idx, frame in enumerate(frames):
+        t_raw = frame.get("t")
+        t_curr: float | None = None
+        try:
+            t_curr = float(t_raw) if t_raw is not None else float(idx)
+        except (TypeError, ValueError):
+            t_curr = float(idx)
+
+        center_raw = _frame_center_diag(frame)
+        center_curr = (
+            (center_raw[0], center_raw[1], center_raw[2])
+            if center_raw is not None
+            else None
+        )
+
+        if prev_t is not None and (t_curr - prev_t) > float(gap_sec):
+            gap_count += 1
+        if prev_center is not None and center_curr is not None:
+            dx = center_curr[0] - prev_center[0]
+            dy = center_curr[1] - prev_center[1]
+            disp = math.sqrt((dx * dx) + (dy * dy))
+            norm = min(1.0, disp / max(prev_center[2], 1.0))
+            jitter_sum += norm
+            jitter_steps += 1
+
+        prev_t = t_curr
+        prev_center = center_curr
+
+    avg_jitter = (jitter_sum / jitter_steps) if jitter_steps > 0 else 0.0
+    frame_count = len(frames)
+    score = 1.0
+    score -= min(0.5, float(gap_count) * 0.2)
+    score -= min(0.35, float(avg_jitter) * 0.7)
+    if frame_count <= 1:
+        score -= 0.35
+    elif frame_count >= 6:
+        score += 0.05
+    score = max(0.0, min(1.0, score))
+    return {
+        "frame_count": frame_count,
+        "gap_count": int(gap_count),
+        "avg_jitter": float(round(avg_jitter, 4)),
+        "stability_score": float(round(score, 4)),
+    }
+
+
+def _recent_track_quality_metrics(hours: int = 24) -> dict[str, Any]:
+    cutoff = _utc_now() - timedelta(hours=max(1, int(hours or 24)))
+    return _track_quality_metrics_between(cutoff)
+
+
+def _track_quality_metrics_between(
+    start_ts: datetime,
+    end_ts: datetime | None = None,
+    *,
+    limit: int = 4000,
+) -> dict[str, Any]:
+    q = db.session.query(VideoSpecies).filter(
+        VideoSpecies.source == "video",
+        VideoSpecies.track_id.isnot(None),
+        VideoSpecies.created_at >= start_ts,
+    )
+    if end_ts is not None:
+        q = q.filter(VideoSpecies.created_at < end_ts)
+    rows = (
+        q.order_by(VideoSpecies.created_at.desc(), VideoSpecies.id.desc())
+        .limit(max(1, int(limit or 4000)))
+        .all()
+    )
+
+    total = len(rows)
+    with_frames = 0
+    fragmented = 0
+    with_gaps = 0
+    low_stability = 0
+    scores: list[float] = []
+    jitter_values: list[float] = []
+    unstable_examples: list[dict[str, Any]] = []
+
+    for row in rows:
+        quality = _track_row_quality(row)
+        frame_count = int(quality["frame_count"])
+        gap_count = int(quality["gap_count"])
+        avg_jitter = float(quality["avg_jitter"])
+        score = float(quality["stability_score"])
+        if frame_count > 0:
+            with_frames += 1
+        if frame_count <= 1 or gap_count > 0:
+            fragmented += 1
+        if gap_count > 0:
+            with_gaps += 1
+        if score < 0.55:
+            low_stability += 1
+        if frame_count > 0:
+            scores.append(score)
+            jitter_values.append(avg_jitter)
+        unstable_examples.append(
+            {
+                "detection_id": int(row.id),
+                "video_id": int(row.video_id),
+                "track_id": (
+                    int(row.track_id) if row.track_id is not None else None
+                ),
+                "detection_provider": row.detection_provider,
+                "frame_count": frame_count,
+                "gap_count": gap_count,
+                "avg_jitter": avg_jitter,
+                "stability_score": score,
+            }
+        )
+
+    scores_sorted = sorted(scores)
+    p50 = None
+    if scores_sorted:
+        mid = (len(scores_sorted) - 1) // 2
+        p50 = float(scores_sorted[mid])
+    top_unstable = sorted(
+        unstable_examples,
+        key=lambda item: (
+            float(item.get("stability_score") or 0.0),
+            -int(item.get("gap_count") or 0),
+            int(item.get("frame_count") or 0),
+        ),
+    )[:8]
+
+    return {
+        "metrics": {
+            "track_rows_with_id_24h": int(total),
+            "track_rows_with_frame_series_24h": int(with_frames),
+            "track_rows_fragmented_24h": int(fragmented),
+            "track_rows_fragmented_ratio_24h": (
+                (fragmented / total) if total else None
+            ),
+            "track_rows_with_gaps_24h": int(with_gaps),
+            "track_rows_with_gaps_ratio_24h": (
+                (with_gaps / total) if total else None
+            ),
+            "track_avg_jitter_24h": (
+                round(sum(jitter_values) / len(jitter_values), 4)
+                if jitter_values
+                else None
+            ),
+            "track_stability_score_avg_24h": (
+                round(sum(scores) / len(scores), 4) if scores else None
+            ),
+            "track_stability_score_p50_24h": p50,
+            "track_stability_low_count_24h": int(low_stability),
+            "track_stability_low_ratio_24h": (
+                (low_stability / total) if total else None
+            ),
+        },
+        "samples": {
+            "track_unstable_examples_24h": top_unstable,
+        },
+    }
+
+
+def _track_quality_regression_metrics(hours: int = 24) -> dict[str, Any]:
+    cutoff = _utc_now() - timedelta(hours=max(1, int(hours or 24)))
+    prev_start = cutoff - timedelta(hours=max(1, int(hours or 24)))
+    current = _track_quality_metrics_between(cutoff)
+    previous = _track_quality_metrics_between(prev_start, cutoff)
+    cm = current.get("metrics") or {}
+    pm = previous.get("metrics") or {}
+
+    def _delta(key: str) -> float | None:
+        cur = cm.get(key)
+        prv = pm.get(key)
+        if cur is None or prv is None:
+            return None
+        try:
+            return round(float(cur) - float(prv), 4)
+        except (TypeError, ValueError):
+            return None
+
+    sample_cur = int(cm.get("track_rows_with_id_24h") or 0)
+    sample_prev = int(pm.get("track_rows_with_id_24h") or 0)
+    stability_delta = _delta("track_stability_score_avg_24h")
+    fragmented_delta = _delta("track_rows_fragmented_ratio_24h")
+    gaps_delta = _delta("track_rows_with_gaps_ratio_24h")
+    regression_reasons: list[str] = []
+    if (
+        sample_cur >= 30
+        and sample_prev >= 30
+        and stability_delta is not None
+        and stability_delta <= -0.05
+    ):
+        regression_reasons.append("stability_drop")
+    if (
+        sample_cur >= 30
+        and sample_prev >= 30
+        and fragmented_delta is not None
+        and fragmented_delta >= 0.05
+    ):
+        regression_reasons.append("fragmentation_rise")
+    if (
+        sample_cur >= 30
+        and sample_prev >= 30
+        and gaps_delta is not None
+        and gaps_delta >= 0.05
+    ):
+        regression_reasons.append("gap_rise")
+
+    return {
+        "metrics": {
+            "track_stability_score_delta_prev_24h": stability_delta,
+            "track_fragmented_ratio_delta_prev_24h": fragmented_delta,
+            "track_gaps_ratio_delta_prev_24h": gaps_delta,
+            "track_quality_regression_24h": bool(regression_reasons),
+        },
+        "samples": {
+            "track_quality_regression_24h": {
+                "current_sample": sample_cur,
+                "previous_sample": sample_prev,
+                "stability_delta": stability_delta,
+                "fragmented_delta": fragmented_delta,
+                "gaps_delta": gaps_delta,
+                "reasons": regression_reasons,
+            },
+        },
+    }
+
+
+def _recent_event_lifecycle_metrics(
+    hours: int = 24,
+    *,
+    limit: int = 1000,
+) -> dict[str, Any]:
+    cutoff = _utc_now() - timedelta(hours=max(1, int(hours or 24)))
+    rows = (
+        db.session.query(ActivityLog)
+        .filter(
+            ActivityLog.type == "decision_trace",
+            ActivityLog.created_at >= cutoff,
+        )
+        .order_by(ActivityLog.id.desc())
+        .limit(max(1, int(limit or 1000)))
+        .all()
+    )
+    windows = 0
+    detected = 0
+    entered = 0
+    rejected_only = 0
+    no_tracks = 0
+    persisted_total = 0
+    rejected_total = 0
+    top_reject_reasons: dict[str, int] = defaultdict(int)
+    for row in rows:
+        try:
+            payload = json.loads(row.data or "{}")
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        windows += 1
+        persisted_rows = payload.get("persisted_tracks")
+        if not isinstance(persisted_rows, list):
+            persisted_rows = payload.get("accepted_tracks")
+        if not isinstance(persisted_rows, list):
+            persisted_rows = []
+        rejected_rows = payload.get("rejected_tracks")
+        if not isinstance(rejected_rows, list):
+            rejected_rows = []
+
+        p_count = len(persisted_rows)
+        r_count = len(rejected_rows)
+        total_rows = p_count + r_count
+        if total_rows > 0:
+            detected += 1
+        if p_count > 0:
+            entered += 1
+        elif r_count > 0:
+            rejected_only += 1
+        else:
+            no_tracks += 1
+        persisted_total += p_count
+        rejected_total += r_count
+
+        for rr in rejected_rows:
+            if not isinstance(rr, dict):
+                continue
+            reason = (
+                str(rr.get("reject_reason_code") or rr.get("decision_reason") or "UNKNOWN")
+                .strip()
+                .upper()
+            )
+            if reason:
+                top_reject_reasons[reason] += 1
+
+    return {
+        "metrics": {
+            "lifecycle_windows_24h": windows,
+            "lifecycle_detected_windows_24h": detected,
+            "lifecycle_entered_windows_24h": entered,
+            "lifecycle_rejected_only_windows_24h": rejected_only,
+            "lifecycle_no_tracks_windows_24h": no_tracks,
+            "lifecycle_detect_rate_24h": (detected / windows) if windows else None,
+            "lifecycle_enter_rate_24h": (entered / windows) if windows else None,
+            "lifecycle_rejected_only_rate_24h": (
+                (rejected_only / windows) if windows else None
+            ),
+            "lifecycle_avg_persisted_tracks_per_window_24h": (
+                round(persisted_total / windows, 3) if windows else None
+            ),
+            "lifecycle_avg_rejected_tracks_per_window_24h": (
+                round(rejected_total / windows, 3) if windows else None
+            ),
+        },
+        "samples": {
+            "lifecycle_outcome_counts_24h": {
+                "entered": entered,
+                "rejected_only": rejected_only,
+                "no_tracks": no_tracks,
+            },
+            "lifecycle_top_reject_reasons_24h": dict(
+                sorted(
+                    top_reject_reasons.items(),
+                    key=lambda x: (-x[1], x[0]),
+                )[:10]
+            ),
+        },
     }
 
 
@@ -770,6 +1136,9 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
         duplicate_video_groups = _duplicate_video_groups_count()
         duplicate_detection_groups = _duplicate_detection_groups_count()
         detection_track_metrics = _recent_detection_track_metrics()
+        track_quality_metrics = _recent_track_quality_metrics()
+        track_quality_regression = _track_quality_regression_metrics()
+        lifecycle_metrics = _recent_event_lifecycle_metrics()
         trigger_camera_metrics = _recent_trigger_camera_metrics()
         runtime_backend_metrics = _recent_runtime_backend_metrics()
         ingest_gate_reason_metrics = _recent_ingest_gate_reason_metrics()
@@ -803,6 +1172,9 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "duplicate_video_groups": duplicate_video_groups,
                 "duplicate_detection_groups": duplicate_detection_groups,
                 **detection_track_metrics,
+                **(track_quality_metrics.get("metrics") or {}),
+                **(track_quality_regression.get("metrics") or {}),
+                **(lifecycle_metrics.get("metrics") or {}),
                 **{
                     "decision_trace_rows_24h": trigger_camera_metrics["decision_trace_rows_24h"],
                     "session_extended_by_frigate_only_sum_24h": trigger_camera_metrics[
@@ -844,6 +1216,18 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "parity_top_mismatch_reasons_24h": parity_diagnostics_metrics["parity_top_mismatch_reasons_24h"],
                 "parity_camera_split_24h": parity_diagnostics_metrics["parity_camera_split_24h"],
                 "parity_hotspots_24h": parity_diagnostics_metrics["parity_hotspots_24h"],
+                "track_unstable_examples_24h": (
+                    track_quality_metrics.get("samples") or {}
+                ).get("track_unstable_examples_24h", []),
+                "track_quality_regression_24h": (
+                    track_quality_regression.get("samples") or {}
+                ).get("track_quality_regression_24h", {}),
+                "lifecycle_outcome_counts_24h": (
+                    lifecycle_metrics.get("samples") or {}
+                ).get("lifecycle_outcome_counts_24h", {}),
+                "lifecycle_top_reject_reasons_24h": (
+                    lifecycle_metrics.get("samples") or {}
+                ).get("lifecycle_top_reject_reasons_24h", {}),
             },
             "contracts": contracts_block,
             "reliability_alerts": reliability_alerts,
@@ -879,6 +1263,31 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "video_detections_with_frames_ratio_24h": None,
                 "video_detections_primary_yolo_24h": None,
                 "video_detections_primary_yolo_ratio_24h": None,
+                "track_rows_with_id_24h": None,
+                "track_rows_with_frame_series_24h": None,
+                "track_rows_fragmented_24h": None,
+                "track_rows_fragmented_ratio_24h": None,
+                "track_rows_with_gaps_24h": None,
+                "track_rows_with_gaps_ratio_24h": None,
+                "track_avg_jitter_24h": None,
+                "track_stability_score_avg_24h": None,
+                "track_stability_score_p50_24h": None,
+                "track_stability_low_count_24h": None,
+                "track_stability_low_ratio_24h": None,
+                "track_stability_score_delta_prev_24h": None,
+                "track_fragmented_ratio_delta_prev_24h": None,
+                "track_gaps_ratio_delta_prev_24h": None,
+                "track_quality_regression_24h": None,
+                "lifecycle_windows_24h": None,
+                "lifecycle_detected_windows_24h": None,
+                "lifecycle_entered_windows_24h": None,
+                "lifecycle_rejected_only_windows_24h": None,
+                "lifecycle_no_tracks_windows_24h": None,
+                "lifecycle_detect_rate_24h": None,
+                "lifecycle_enter_rate_24h": None,
+                "lifecycle_rejected_only_rate_24h": None,
+                "lifecycle_avg_persisted_tracks_per_window_24h": None,
+                "lifecycle_avg_rejected_tracks_per_window_24h": None,
                 "decision_trace_rows_24h": None,
                 "session_extended_by_frigate_only_sum_24h": None,
                 "decision_trace_rows_runtime_backend_24h": None,
@@ -908,6 +1317,10 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "parity_top_mismatch_reasons_24h": {},
                 "parity_camera_split_24h": [],
                 "parity_hotspots_24h": [],
+                "track_unstable_examples_24h": [],
+                "track_quality_regression_24h": {},
+                "lifecycle_outcome_counts_24h": {},
+                "lifecycle_top_reject_reasons_24h": {},
             },
             "contracts": contracts_block,
             "reliability_alerts": {
