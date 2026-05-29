@@ -22,6 +22,12 @@ from services.system_admin_api_service import (
     start_single_video_track_regeneration,
 )
 from services.system_domain_health_service import build_domain_health_payload
+from services.system_tuning_workbench_service import (
+    apply_tuning_preset,
+    build_tuning_workbench_payload,
+    rollback_tuning_workbench_profile,
+    upsert_camera_tuning_profile,
+)
 from services.yolo_detector_health_service import build_yolo_detector_health_payload
 from services.system_metrics_constants import _CACHE_SYSTEM_ACTIVITY_SEC
 from services.system_metrics_sampler_service import start_system_metrics_sampler
@@ -92,6 +98,35 @@ def register_routes(app):
         except (TypeError, ValueError):
             hours = 24
         return build_yolo_detector_health_payload(hours=hours)
+
+    @app.route("/api/ui/system/tuning-workbench", methods=["GET"])
+    @require_ui_settings_password
+    def system_tuning_workbench():
+        return build_tuning_workbench_payload()
+
+    @app.route("/api/ui/system/tuning-workbench/apply-preset", methods=["POST"])
+    @require_ui_settings_password
+    def system_tuning_workbench_apply_preset():
+        body, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
+        return apply_tuning_preset(preset_id=str((body or {}).get("preset_id") or ""))
+
+    @app.route("/api/ui/system/tuning-workbench/camera-profile", methods=["POST"])
+    @require_ui_settings_password
+    def system_tuning_workbench_camera_profile():
+        body, v_err = parse_request_json_object_allow_empty(request)
+        if v_err is not None:
+            return v_err, 400
+        return upsert_camera_tuning_profile(
+            camera_id=str((body or {}).get("camera_id") or ""),
+            overrides=(body or {}).get("overrides"),
+        )
+
+    @app.route("/api/ui/system/tuning-workbench/rollback", methods=["POST"])
+    @require_ui_settings_password
+    def system_tuning_workbench_rollback():
+        return rollback_tuning_workbench_profile()
 
     @app.route("/api/ui/system/activity", methods=["GET"])
     def get_activity():
