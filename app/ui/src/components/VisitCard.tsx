@@ -243,6 +243,19 @@ export const VisitCard = memo(function VisitCard({
     ),
   ];
   const behaviorText = behaviorLabels.join(', ');
+  const detections = visit.detections ?? [];
+  const bestConfidence = detections.length
+    ? Math.max(...detections.map((d) => Number(d.confidence) || 0))
+    : null;
+  const videoDetections = detections.filter((d) => d.source === 'video').length;
+  const audioDetections = detections.filter((d) => d.source === 'audio').length;
+  const detectionSourcesLabel =
+    audioDetections > 0
+      ? t('visitCard.sourceMix', {
+          video: videoDetections,
+          audio: audioDetections,
+        })
+      : t('visitCard.sourceVideoOnly', { count: videoDetections });
 
   const startDateTime = new Date(visit.start_time);
   const isToday = new Date().toDateString() === startDateTime.toDateString();
@@ -398,6 +411,30 @@ export const VisitCard = memo(function VisitCard({
               </Tooltip>
             </Box>
             <Box display="flex" gap={1.5} mt={1.5} flexWrap="wrap">
+              {bestConfidence != null ? (
+                <Chip
+                  label={t('visitCard.bestConfidence', {
+                    value: Math.round(bestConfidence * 100),
+                  })}
+                  size="small"
+                  color={bestConfidence >= 0.7 ? 'success' : 'default'}
+                  sx={{ height: 28 }}
+                />
+              ) : null}
+              <Chip
+                label={t('visitCard.detectionsCount', {
+                  count: detections.length,
+                })}
+                size="small"
+                variant="outlined"
+                sx={{ height: 28 }}
+              />
+              <Chip
+                label={detectionSourcesLabel}
+                size="small"
+                variant="outlined"
+                sx={{ height: 28 }}
+              />
               {visit.timeline_kind !== 'unlinked_video' ? (
                 <Chip
                   icon={

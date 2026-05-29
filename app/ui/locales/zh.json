@@ -1058,7 +1058,15 @@
     "sortDateAsc": "日期/时间：最早优先",
     "sortSpecies": "物种名称",
     "sortNickname": "昵称",
+    "sortConfidence": "置信度：高到低",
+    "sortDuration": "时长：长到短",
     "sortBehavior": "行为",
+    "minConfidence": "最小置信度",
+    "minConfidenceAny": "任意置信度",
+    "runtimeCpu": "CPU {{value}}%",
+    "runtimeMemory": "内存 {{value}}%",
+    "runtimeGpu": "GPU {{value}}%",
+    "runtimeEncoding": "编码：{{value}}",
     "hourFilterChip": "小时：{{from}}–{{to}}",
     "expandVisitDetails": "展开参观详情",
     "collapseVisitDetails": "折叠访问详情"
@@ -1550,7 +1558,11 @@
     "adminRegenFailed": "无法开始工作",
     "deleteVisit": "删除整个访问",
     "deleteVisitConfirm": "删除“{{name}}”整个访问？视频保留，仅删除该访问的检测。",
-    "deleteVisitSuccess": "访问已删除"
+    "deleteVisitSuccess": "访问已删除",
+    "bestConfidence": "最佳：{{value}}%",
+    "detectionsCount": "检测数：{{count}}",
+    "sourceMix": "视频 {{video}} · 音频 {{audio}}",
+    "sourceVideoOnly": "视频：{{count}}"
   },
   "fusionTrace": {
     "openButton": "融合痕迹",

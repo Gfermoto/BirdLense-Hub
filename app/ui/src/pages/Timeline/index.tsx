@@ -38,6 +38,7 @@ import {
 } from '../../api/timeline';
 import { fetchNearestRecordingDay } from '../../api/video';
 import { fetchOverviewData } from '../../api/speciesOverviewDetections';
+import { fetchSystemMetricsLive } from '../../api/systemAuditMetrics';
 import { queryKeys } from '../../api/queryKeys';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Checkbox from '@mui/material/Checkbox';
@@ -84,7 +85,27 @@ function useFilteredVisits(
   );
 }
 
-type TimelineSortBy = 'date_desc' | 'date_asc' | 'species' | 'nickname' | 'behavior';
+type TimelineSortBy =
+  | 'date_desc'
+  | 'date_asc'
+  | 'species'
+  | 'nickname'
+  | 'confidence'
+  | 'duration'
+  | 'behavior';
+
+function getVisitMaxConfidence(visit: SpeciesVisit): number {
+  const detections = visit.detections ?? [];
+  if (detections.length === 0) return 0;
+  return Math.max(...detections.map((d) => Number(d.confidence) || 0));
+}
+
+function getVisitDurationSeconds(visit: SpeciesVisit): number {
+  if (visit.video_duration_seconds != null && visit.video_duration_seconds > 0) {
+    return visit.video_duration_seconds;
+  }
+  return visit.total_recording_seconds ?? 0;
+}
 
 function parseBirdProfileIdFromSearchParams(
   searchParams: URLSearchParams,
@@ -153,6 +174,7 @@ export function TimelinePage() {
   const [behaviorFilter, setBehaviorFilter] = useState(
     () => searchParams.get('behavior')?.trim() ?? '',
   );
+  const [minConfidence, setMinConfidence] = useState<number>(0);
   const [sortBy, setSortBy] = useState<TimelineSortBy>('date_desc');
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -215,6 +237,13 @@ export function TimelinePage() {
     queryKey: queryKeys.timeline.observerTimezone,
     queryFn: () => fetchOverviewData(dayjs().format('YYYY-MM-DD')),
     staleTime: 1000 * 60 * 30,
+  });
+  const { data: systemMetricsLive } = useQuery({
+    queryKey: queryKeys.system.metricsLive,
+    queryFn: fetchSystemMetricsLive,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+    retry: 1,
   });
   const observerToday = useMemo(() => {
     const timezone = observerOverview?.observer_timezone;
@@ -335,6 +364,9 @@ export function TimelinePage() {
       if (!visitMatchesBehavior(visit, behaviorFilter)) {
         return false;
       }
+      if (getVisitMaxConfidence(visit) < minConfidence) {
+        return false;
+      }
       return true;
     });
     const sorted = [...rows];
@@ -361,6 +393,14 @@ export function TimelinePage() {
         );
         return cmp !== 0 ? cmp : bStart - aStart;
       }
+      if (sortBy === 'confidence') {
+        const confDiff = getVisitMaxConfidence(b) - getVisitMaxConfidence(a);
+        return confDiff !== 0 ? confDiff : bStart - aStart;
+      }
+      if (sortBy === 'duration') {
+        const durDiff = getVisitDurationSeconds(b) - getVisitDurationSeconds(a);
+        return durDiff !== 0 ? durDiff : bStart - aStart;
+      }
       const cmp = getVisitBehaviorSortValue(a).localeCompare(
         getVisitBehaviorSortValue(b),
         i18n.language,
@@ -373,6 +413,7 @@ export function TimelinePage() {
     birdProfileFilterId,
     birdProfilesById,
     behaviorFilter,
+    minConfidence,
     sortBy,
     i18n.language,
   ]);
@@ -453,6 +494,43 @@ export function TimelinePage() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               {t('timeline.reportsAndSharingHint')}
             </Typography>
+          ) : null}
+          {systemMetricsLive ? (
+            <Stack
+              direction="row"
+              spacing={1}
+              useFlexGap
+              flexWrap="wrap"
+              sx={{ mb: 2 }}
+            >
+              <Chip
+                size="small"
+                label={t('timeline.runtimeCpu', {
+                  value: Math.round(systemMetricsLive.cpu.percent),
+                })}
+              />
+              <Chip
+                size="small"
+                label={t('timeline.runtimeMemory', {
+                  value: Math.round(systemMetricsLive.memory.percent),
+                })}
+              />
+              {systemMetricsLive.gpu_percent != null ? (
+                <Chip
+                  size="small"
+                  label={t('timeline.runtimeGpu', {
+                    value: Math.round(systemMetricsLive.gpu_percent),
+                  })}
+                />
+              ) : null}
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t('timeline.runtimeEncoding', {
+                  value: systemMetricsLive.encoding || 'auto',
+                })}
+              />
+            </Stack>
           ) : null}
           {filterHour !== null && (
             <Chip
@@ -667,6 +745,25 @@ export function TimelinePage() {
               onChange={updateBehaviorFilter}
               sx={{ minWidth: { xs: '100%', md: 240 } }}
             />
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
+              <InputLabel id="timeline-min-confidence-label">
+                {t('timeline.minConfidence')}
+              </InputLabel>
+              <Select
+                labelId="timeline-min-confidence-label"
+                value={String(minConfidence)}
+                label={t('timeline.minConfidence')}
+                onChange={(event) =>
+                  setMinConfidence(Number(event.target.value) || 0)
+                }
+              >
+                <MenuItem value="0">{t('timeline.minConfidenceAny')}</MenuItem>
+                <MenuItem value="0.5">≥ 50%</MenuItem>
+                <MenuItem value="0.6">≥ 60%</MenuItem>
+                <MenuItem value="0.7">≥ 70%</MenuItem>
+                <MenuItem value="0.8">≥ 80%</MenuItem>
+              </Select>
+            </FormControl>
             <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>
               <InputLabel id="timeline-sort-by-label">
                 {t('timeline.sortBy')}
@@ -686,6 +783,12 @@ export function TimelinePage() {
                 <MenuItem value="species">{t('timeline.sortSpecies')}</MenuItem>
                 <MenuItem value="nickname">
                   {t('timeline.sortNickname')}
+                </MenuItem>
+                <MenuItem value="confidence">
+                  {t('timeline.sortConfidence')}
+                </MenuItem>
+                <MenuItem value="duration">
+                  {t('timeline.sortDuration')}
                 </MenuItem>
                 <MenuItem value="behavior">
                   {t('timeline.sortBehavior')}
