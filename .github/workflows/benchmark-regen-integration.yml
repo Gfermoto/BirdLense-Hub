@@ -115,6 +115,185 @@ jobs:
                 --max-runtime-sec 300 \
                 --write-report /workspace/.artifacts/benchmark_sota_smoke.json'
 
+      - name: Run benchmark_trackers on smoke clip
+        env:
+          WS: ${{ github.workspace }}
+        run: |
+          docker compose run --rm \
+            -v "${WS}:/workspace:rw" \
+            birdlense \
+            bash -lc 'export PYTHONPATH=/app:/app/web:/app/processor/src && \
+              python3 /workspace/scripts/benchmark_trackers.py \
+                --clip /workspace/.artifacts/smoke_clip.mp4 \
+                --presets "bytetrack_birdlense,botsort_birdlense" \
+                --frame-step 24 \
+                --max-runtime-sec 300 \
+                --write-report /workspace/.artifacts/benchmark_trackers_smoke.json'
+
+      - name: Build tracker A/B summary report
+        working-directory: ${{ github.workspace }}
+        run: |
+          python3 scripts/benchmark_trackers_report.py \
+            --trackers-report .artifacts/benchmark_trackers_smoke.json \
+            --baseline-preset bytetrack_birdlense \
+            --out .artifacts/benchmark_trackers_ab_smoke.json \
+            --summary-out .artifacts/benchmark_trackers_ab_smoke.md
+          cat .artifacts/benchmark_trackers_ab_smoke.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build track quality core metrics report (HOTA/IDF1/IDSW/fragmentation)
+        working-directory: ${{ github.workspace }}
+        run: |
+          python3 scripts/report_track_quality_core_metrics.py \
+            --benchmark-sota-report .artifacts/benchmark_sota_smoke.json \
+            --baseline benchmarks/golden_baseline.json \
+            --out .artifacts/track_quality_core_metrics_smoke.json \
+            --summary-out .artifacts/track_quality_core_metrics_smoke.md
+          cat .artifacts/track_quality_core_metrics_smoke.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build truth-set before/after delta report
+        working-directory: ${{ github.workspace }}
+        run: |
+          python3 scripts/report_track_quality_truthset_delta.py \
+            --baseline benchmarks/golden_baseline.json \
+            --benchmark-sota-report .artifacts/benchmark_sota_smoke.json \
+            --out .artifacts/track_quality_truthset_delta_smoke.json \
+            --summary-out .artifacts/track_quality_truthset_delta_smoke.md
+          cat .artifacts/track_quality_truthset_delta_smoke.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build failure modes + mitigation report
+        working-directory: ${{ github.workspace }}
+        run: |
+          python3 scripts/report_track_failure_modes.py \
+            --benchmark-sota-report .artifacts/benchmark_sota_smoke.json \
+            --benchmark-trackers-ab-report .artifacts/benchmark_trackers_ab_smoke.json \
+            --track-quality-core-report .artifacts/track_quality_core_metrics_smoke.json \
+            --out .artifacts/track_failure_modes_smoke.json \
+            --summary-out .artifacts/track_failure_modes_smoke.md
+          cat .artifacts/track_failure_modes_smoke.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build unified parity report (daily)
+        working-directory: ${{ github.workspace }}
+        run: |
+          python3 scripts/parity_runner.py \
+            --benchmark-sota-report .artifacts/benchmark_sota_smoke.json \
+            --core-metrics-report .artifacts/track_quality_core_metrics_smoke.json \
+            --truthset-delta-report .artifacts/track_quality_truthset_delta_smoke.json \
+            --failure-modes-report .artifacts/track_failure_modes_smoke.json \
+            --tracker-ab-report .artifacts/benchmark_trackers_ab_smoke.json \
+            --period daily \
+            --out .artifacts/parity_report_daily_smoke.json \
+            --summary-out .artifacts/parity_report_daily_smoke.md
+          cat .artifacts/parity_report_daily_smoke.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify parity report gate
+        working-directory: ${{ github.workspace }}
+        run: |
+          python3 scripts/verify_parity_report.py \
+            --report .artifacts/parity_report_daily_smoke.json \
+            --min-precision-proxy 0.5 \
+            --min-recall-proxy 0.1 \
+            --max-unknown-share 0.95 \
+            --out .artifacts/parity_report_gate_smoke.json
+
+      - name: Freeze truth-set splits (smoke contract)
+        working-directory: ${{ github.workspace }}
+        run: |
+          cat <<'EOF' > .artifacts/truthset_seed_smoke.json
+          {
+            "clips": [
+              {"clip_id":"c1","day_night":"day","weather":"clear"},
+              {"clip_id":"c2","day_night":"night","weather":"rain"},
+              {"clip_id":"c3","day_night":"day","weather":"cloudy"},
+              {"clip_id":"c4","day_night":"night","weather":"rain"},
+              {"clip_id":"c5","day_night":"day","weather":"clear"},
+              {"clip_id":"c6","day_night":"night","weather":"clear"}
+            ]
+          }
+          EOF
+          python3 scripts/freeze_truthset_splits.py \
+            --input .artifacts/truthset_seed_smoke.json \
+            --min-clips 6 \
+            --out .artifacts/truthset_splits_smoke.json
+
+      - name: Build active-learning backlog + weekly playbook + comparison (smoke)
+        working-directory: ${{ github.workspace }}
+        run: |
+          cat <<'EOF' > .artifacts/track_quality_regression_smoke.json
+          {
+            "schema": "track_quality_regression_report@v1",
+            "metrics": {
+              "parity_mismatch_rate_24h": 0.31,
+              "track_id_switch_rate_24h": 0.06
+            }
+          }
+          EOF
+          cat <<'EOF' > .artifacts/species_calibration_baseline_smoke.json
+          {
+            "schema": "classifier_calibration_report@v1",
+            "topk_metrics": {
+              "top1_before": 0.56,
+              "top3_proxy_before": 0.70,
+              "false_species_rate_before": 0.44
+            },
+            "calibration_metrics": {"ece": 0.22},
+            "unknown_ood_dashboard": {
+              "unknown_policy": {"unknown_share_after_policy": 0.33}
+            },
+            "top_confusion_pairs": [
+              {"from":"Wood Mouse","to":"Great Tit","count":6}
+            ]
+          }
+          EOF
+          cat <<'EOF' > .artifacts/species_calibration_current_smoke.json
+          {
+            "schema": "classifier_calibration_report@v1",
+            "topk_metrics": {
+              "top1_before": 0.61,
+              "top3_proxy_before": 0.76,
+              "false_species_rate_before": 0.35
+            },
+            "calibration_metrics": {"ece": 0.18},
+            "unknown_ood_dashboard": {
+              "unknown_policy": {"unknown_share_after_policy": 0.29}
+            },
+            "top_confusion_pairs": [
+              {"from":"Wood Mouse","to":"Great Tit","count":4}
+            ]
+          }
+          EOF
+          cat <<'EOF' > .artifacts/feedback_loop_status_smoke.json
+          {
+            "schema": "feedback_loop_status@v1",
+            "events_total": 42
+          }
+          EOF
+          python3 scripts/report_active_learning_backlog.py \
+            --track-regression-report .artifacts/track_quality_regression_smoke.json \
+            --species-calibration-report .artifacts/species_calibration_current_smoke.json \
+            --truthset-delta-report .artifacts/track_quality_truthset_delta_smoke.json \
+            --out .artifacts/active_learning_backlog_smoke.json \
+            --summary-out .artifacts/active_learning_backlog_smoke.md
+          cat .artifacts/active_learning_backlog_smoke.md >> "$GITHUB_STEP_SUMMARY"
+          python3 scripts/build_weekly_quality_cycle_playbook.py \
+            --backlog-report .artifacts/active_learning_backlog_smoke.json \
+            --feedback-loop-status .artifacts/feedback_loop_status_smoke.json \
+            --out .artifacts/weekly_quality_cycle_playbook_smoke.json \
+            --summary-out .artifacts/weekly_quality_cycle_playbook_smoke.md
+          cat .artifacts/weekly_quality_cycle_playbook_smoke.md >> "$GITHUB_STEP_SUMMARY"
+          python3 scripts/compare_quality_cycle_reports.py \
+            --baseline-report .artifacts/species_calibration_baseline_smoke.json \
+            --current-report .artifacts/species_calibration_current_smoke.json \
+            --min-top1-gain 0.0 \
+            --min-top3-gain 0.0 \
+            --max-ece-delta 0.0 \
+            --out .artifacts/quality_cycle_comparison_smoke.json
+          python3 scripts/report_feedback_effect.py \
+            --baseline-report .artifacts/species_calibration_baseline_smoke.json \
+            --current-report .artifacts/species_calibration_current_smoke.json \
+            --out .artifacts/feedback_effect_smoke.json \
+            --summary-out .artifacts/feedback_effect_smoke.md
+          cat .artifacts/feedback_effect_smoke.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Verify benchmark report schema
         working-directory: ${{ github.workspace }}
         run: |
@@ -130,10 +309,32 @@ jobs:
             --match-by-basename \
             --tolerance 0
 
-      - name: Upload benchmark JSON artifact
+      - name: Upload benchmark JSON artifacts
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: benchmark-smoke-report
-          path: .artifacts/benchmark_smoke_report.json
+          name: benchmark-smoke-reports
+          path: |
+            .artifacts/benchmark_smoke_report.json
+            .artifacts/benchmark_sota_smoke.json
+            .artifacts/benchmark_trackers_smoke.json
+            .artifacts/benchmark_trackers_ab_smoke.json
+            .artifacts/benchmark_trackers_ab_smoke.md
+            .artifacts/track_quality_core_metrics_smoke.json
+            .artifacts/track_quality_core_metrics_smoke.md
+            .artifacts/track_quality_truthset_delta_smoke.json
+            .artifacts/track_quality_truthset_delta_smoke.md
+            .artifacts/track_failure_modes_smoke.json
+            .artifacts/track_failure_modes_smoke.md
+            .artifacts/parity_report_daily_smoke.json
+            .artifacts/parity_report_daily_smoke.md
+            .artifacts/parity_report_gate_smoke.json
+            .artifacts/truthset_splits_smoke.json
+            .artifacts/active_learning_backlog_smoke.json
+            .artifacts/active_learning_backlog_smoke.md
+            .artifacts/weekly_quality_cycle_playbook_smoke.json
+            .artifacts/weekly_quality_cycle_playbook_smoke.md
+            .artifacts/quality_cycle_comparison_smoke.json
+            .artifacts/feedback_effect_smoke.json
+            .artifacts/feedback_effect_smoke.md
           if-no-files-found: ignore

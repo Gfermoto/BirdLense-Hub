@@ -24,6 +24,7 @@ from services.feedback_loop_service import (
     delete_dataset_crops_for_track,
     record_feedback_event,
 )
+from services.active_learning_service import enqueue_feedback_case
 from services.visit_processor import VisitProcessor
 from util import ensure_utc
 
@@ -105,6 +106,37 @@ def run_confirm_detection(
         from_species_id=vs.species_id,
         to_species_id=vs.species_id,
     )
+    try:
+        record_feedback_event(
+            session,
+            action_override="confirm_species",
+            video_species_id=detection_id,
+            video_id=vs.video_id,
+            track_id=vs.track_id,
+            from_species_id=vs.species_id,
+            to_species_id=vs.species_id,
+            from_species_name=vs.species.name,
+            to_species_name=vs.species.name,
+            trigger_source=source,
+            apply_scope=apply_scope,
+            reason=reason,
+            detection_provider=getattr(vs, "detection_provider", None),
+            confidence=getattr(vs, "confidence", None),
+            frames_json=getattr(vs, "frames", None),
+        )
+        enqueue_feedback_case(
+            feedback_kind="unknown_confirmed",
+            video_id=vs.video_id,
+            video_species_id=detection_id,
+            confidence=getattr(vs, "confidence", None),
+            trigger_source=source,
+            apply_scope=apply_scope,
+            reason=reason,
+            from_species_name=vs.species.name,
+            to_species_name=vs.species.name,
+        )
+    except Exception:
+        _log.exception("Failed to persist confirm feedback event for #%s", detection_id)
 
     return None, {
         "message": "Confirmed",
@@ -283,6 +315,17 @@ def apply_detection_species_patch(
             confidence=getattr(vs, "confidence", None),
             frames_json=getattr(vs, "frames", None),
         )
+        enqueue_feedback_case(
+            feedback_kind="hard_positive",
+            video_id=log_video_id,
+            video_species_id=detection_id,
+            confidence=getattr(vs, "confidence", None),
+            trigger_source=source,
+            apply_scope=apply_scope,
+            reason=reason,
+            from_species_name=old_species_name,
+            to_species_name=species.name,
+        )
     except Exception:
         _log.exception("Failed to persist detection feedback event for #%s", detection_id)
     return None, {
@@ -439,6 +482,17 @@ def delete_detection_with_feedback(
             detection_provider=detection_provider,
             confidence=confidence,
             frames_json=frames_json,
+        )
+        enqueue_feedback_case(
+            feedback_kind="hard_negative",
+            video_id=video_id,
+            video_species_id=detection_id,
+            confidence=confidence,
+            trigger_source=source,
+            apply_scope="single_track",
+            reason=reason,
+            from_species_name=old_species_name,
+            to_species_name="Background",
         )
     except Exception:
         _log.exception("Failed to persist delete feedback event for #%s", detection_id)

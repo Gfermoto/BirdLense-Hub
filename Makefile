@@ -767,6 +767,21 @@ snapshot-detector-weights:
 compare-detector-bboxes-help:
 	@python3 "$(CURDIR)/scripts/compare_detector_bboxes.py" --help
 
+# Deep pipeline replay for videos created today on VPS.
+# Example:
+#   source scripts/deploy.local.sh && \
+#   make deep-pipeline-today-vps DAY=2026-05-28 SAMPLE_LIMIT=24 FRAME_STEP=4
+deep-pipeline-today-vps:
+	@mkdir -p "$(CURDIR)/.artifacts/deep-pipeline"
+	@python3 "$(CURDIR)/scripts/deep_pipeline_today_vps.py" \
+		$$(test -n "$${DAY:-}" && printf -- '--day %s ' "$${DAY}") \
+		$$(test -n "$${SAMPLE_LIMIT:-}" && printf -- '--sample-limit %s ' "$${SAMPLE_LIMIT}") \
+		$$(test -n "$${FRAME_STEP:-}" && printf -- '--frame-step %s ' "$${FRAME_STEP}") \
+		$$(test -n "$${MAX_RUNTIME_SEC:-}" && printf -- '--max-runtime-sec %s ' "$${MAX_RUNTIME_SEC}") \
+		$$(test -n "$${LOG_HOURS:-}" && printf -- '--log-hours %s ' "$${LOG_HOURS}") \
+		--json-out ".artifacts/deep-pipeline/deep_pipeline_today.$$(date -u +%F).json" \
+		--md-out ".artifacts/deep-pipeline/deep_pipeline_today.$$(date -u +%F).md"
+
 # Confusion pairs + threshold hints from species_correction log (#507).
 classifier-confusion-report:
 	@python3 "$(CURDIR)/scripts/classifier_confusion_report.py" --db "$(CURDIR)/app/data/db/birdlense.db"

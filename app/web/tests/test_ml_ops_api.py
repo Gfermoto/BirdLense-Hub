@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+from pathlib import Path
 
 from sqlalchemy import text
 
@@ -89,6 +90,83 @@ def test_ml_runtime_reports_config_state(client):
     assert "record_with_vaapi" in body["video"]
     assert "inference_backend" in body["processor"]
     assert "classifier_inference_backend" in body["processor"]
+
+
+def test_classifier_calibration_report_endpoint(app, client):
+    import sqlite3
+    from app_config.app_config import app_config
+
+    with app.app_context():
+        prev_data_dir = app_config.get("directories.data")
+        test_data_dir = app.instance_path
+        app_config.set("directories.data", test_data_dir)
+        db_dir = Path(test_data_dir) / "db"
+        db_dir.mkdir(parents=True, exist_ok=True)
+        db_path = db_dir / "birdlense.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS video_species (
+                id INTEGER PRIMARY KEY,
+                video_id INTEGER,
+                track_id INTEGER,
+                confidence REAL,
+                detection_provider TEXT,
+                classifier_entropy REAL,
+                classifier_top1_top2_margin REAL,
+                classifier_needs_review INTEGER,
+                review_reason TEXT
+            );
+            CREATE TABLE IF NOT EXISTS activity_log (
+                id INTEGER PRIMARY KEY,
+                type TEXT,
+                data TEXT,
+                created_at TEXT DEFAULT '2026-01-01'
+            );
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO video_species (
+              id, video_id, track_id, confidence, detection_provider,
+              classifier_entropy, classifier_top1_top2_margin,
+              classifier_needs_review, review_reason
+            )
+            VALUES (10, 2001, 77, 0.41, 'yolo', 1.2, 0.01, 1, 'classifier_uncertainty')
+            """
+        )
+        conn.execute(
+            "INSERT INTO activity_log (type, data) VALUES ('species_correction', ?)",
+            (
+                json.dumps(
+                    {
+                        "detection_id": 10,
+                        "from_species_name": "Wood Mouse",
+                        "to_species_name": "Bird",
+                        "source": "unknowns",
+                    }
+                ),
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+    with client.session_transaction() as sess:
+        sess["access_role"] = "contributor"
+    r = client.get("/api/ui/system/classifier-calibration-report?pair_limit=5")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["schema"] == "classifier_calibration_report@v1"
+    assert body["available"] is True
+    assert body["corrections_analyzed"] >= 1
+    assert isinstance(body["top_confusion_pairs"], list)
+    assert "calibration_metrics" in body
+    assert "topk_metrics" in body
+    assert "session_consensus" in body
+    assert "unknown_ood_dashboard" in body
+    assert "long_tail_report" in body
+    with app.app_context():
+        app_config.set("directories.data", prev_data_dir)
 
 
 def test_video_reid_match_handles_missing_table(client):

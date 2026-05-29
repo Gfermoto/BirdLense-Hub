@@ -122,6 +122,19 @@ jobs:
           python3 scripts/compare_benchmark_reports.py --help
           python3 scripts/verify_benchmark_report_schema.py --help
           python3 scripts/benchmark_video_decode_resize.py --help
+          python3 scripts/benchmark_trackers.py --help
+          python3 scripts/benchmark_trackers_report.py --help
+          python3 scripts/report_track_quality_core_metrics.py --help
+          python3 scripts/report_track_quality_truthset_delta.py --help
+          python3 scripts/report_track_failure_modes.py --help
+          python3 scripts/parity_runner.py --help
+          python3 scripts/verify_parity_report.py --help
+          python3 scripts/freeze_truthset_splits.py --help
+          python3 scripts/verify_classifier_calibration_report.py --help
+          python3 scripts/report_active_learning_backlog.py --help
+          python3 scripts/build_weekly_quality_cycle_playbook.py --help
+          python3 scripts/compare_quality_cycle_reports.py --help
+          python3 scripts/report_feedback_effect.py --help
           python3 scripts/benchmark_sota.py --validate-config-only
           python3 scripts/federated/simulate_fedavg.py --clients 3 --samples-per-client 50 --dim 6 --seed 0
 
@@ -133,6 +146,19 @@ jobs:
             processor/tests/test_compare_benchmark_reports.py \
             processor/tests/test_verify_benchmark_report_schema.py \
             processor/tests/test_reference_smoke_compare.py \
+            processor/tests/test_report_track_quality_regression.py \
+            processor/tests/test_benchmark_trackers_report.py \
+            processor/tests/test_report_track_quality_core_metrics.py \
+            processor/tests/test_report_track_quality_truthset_delta.py \
+            processor/tests/test_report_track_failure_modes.py \
+            processor/tests/test_parity_runner.py \
+            processor/tests/test_verify_parity_report.py \
+            processor/tests/test_freeze_truthset_splits.py \
+            processor/tests/test_verify_classifier_calibration_report.py \
+            processor/tests/test_report_active_learning_backlog.py \
+            processor/tests/test_build_weekly_quality_cycle_playbook.py \
+            processor/tests/test_compare_quality_cycle_reports.py \
+            processor/tests/test_report_feedback_effect.py \
             processor/tests/test_merge_three_class_dataset.py \
             processor/tests/test_auto_benchmark.py \
             processor/tests/test_benchmark_sota_gate.py \
@@ -339,6 +365,34 @@ jobs:
           cd ..
           make verify-strict-quality BASE_URL="${BASE}"
         working-directory: app
+
+      - name: Track quality regression report (local stack)
+        continue-on-error: true
+        env:
+          BIRDLENSE_PORT: "8085"
+        run: |
+          set -euo pipefail
+          docker compose up -d
+          cleanup() { (cd "${GITHUB_WORKSPACE}/app" && docker compose down); }
+          trap cleanup EXIT
+          BASE="http://127.0.0.1:${BIRDLENSE_PORT}"
+          bash ../scripts/wait-hub-http.sh "$BASE"
+          python3 ../scripts/report_track_quality_regression.py \
+            --base-url "${BASE}" \
+            --out ../.artifacts/track-quality-regression.local.json \
+            --summary-out ../.artifacts/track-quality-regression.local.md
+          cat ../.artifacts/track-quality-regression.local.md >> "$GITHUB_STEP_SUMMARY"
+        working-directory: app
+
+      - name: Upload track quality regression artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: track-quality-regression-local
+          path: |
+            .artifacts/track-quality-regression.local.json
+            .artifacts/track-quality-regression.local.md
+          if-no-files-found: ignore
 
       - name: Catalog cards audit (local stack)
         env:

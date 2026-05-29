@@ -20,6 +20,7 @@ import { BehaviorBaselineRetrainCard } from './BehaviorBaselineRetrainCard';
 import { DetectionQualityDashboardCard } from './DetectionQualityDashboardCard';
 import { YoloDetectorHealthCard } from './YoloDetectorHealthCard';
 import { TriggerGraphDashboardCard } from './TriggerGraphDashboardCard';
+import { ClassifierCalibrationCard } from './ClassifierCalibrationCard';
 import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
@@ -125,6 +126,7 @@ export const System: React.FC = () => {
               </Box>
               <SystemMonitor showVisitors={isAdvanced} />
               <DetectionQualityDashboardCard />
+              <ClassifierCalibrationCard />
               <YoloDetectorHealthCard />
               <TriggerGraphDashboardCard />
               <Box

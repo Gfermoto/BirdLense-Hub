@@ -16,6 +16,9 @@ _REASON_BLIND = "blind_score_high"
 _REASON_FALLBACK = "fallback_ratio_high"
 _REASON_LOWCONF = "confidence_borderline"
 _REASON_SEMANTIC = "semantic_review_required"
+_REASON_HARD_NEGATIVE = "hard_negative_ui"
+_REASON_HARD_POSITIVE = "hard_positive_ui"
+_REASON_UNKNOWN_CONFIRMED = "unknown_confirmed_ui"
 _ALLOWED_STATUS = {"pending", "approved", "rejected", "semantic_review_required"}
 _ALLOWED_FEEDBACK_ACTION = {"confirm_behavior", "reject_box", "tag_species", "flag_semantic_error"}
 _ALLOWED_BATCH_OP = {"feedback", "status"}
@@ -156,6 +159,68 @@ def _insert_case(
     )
     db.session.add(row)
     return True
+
+
+def _reason_from_feedback_kind(feedback_kind: str) -> str:
+    normalized = str(feedback_kind or "").strip().lower()
+    if normalized == "hard_negative":
+        return _REASON_HARD_NEGATIVE
+    if normalized == "unknown_confirmed":
+        return _REASON_UNKNOWN_CONFIRMED
+    return _REASON_HARD_POSITIVE
+
+
+def enqueue_feedback_case(
+    *,
+    feedback_kind: str,
+    video_id: int | None,
+    video_species_id: int | None,
+    camera_id: str | None = None,
+    confidence: float | None = None,
+    trigger_source: str | None = None,
+    apply_scope: str | None = None,
+    reason: str | None = None,
+    from_species_name: str | None = None,
+    to_species_name: str | None = None,
+    export_tag: str | None = None,
+) -> dict[str, Any]:
+    """Append UI feedback into ActiveLearningCase queue with dedupe."""
+    reason_code = _reason_from_feedback_kind(feedback_kind)
+    payload = {
+        "feedback_kind": str(feedback_kind or "").strip().lower(),
+        "trigger_source": (trigger_source or "").strip() or None,
+        "apply_scope": (apply_scope or "").strip() or None,
+        "reason": (reason or "").strip() or None,
+        "from_species_name": (from_species_name or "").strip() or None,
+        "to_species_name": (to_species_name or "").strip() or None,
+        "queued_at": datetime.now(timezone.utc).isoformat(),
+    }
+    inserted = _insert_case(
+        video_id=video_id,
+        video_species_id=video_species_id,
+        camera_id=camera_id,
+        reason_code=reason_code,
+        confidence=confidence,
+        blind_score=None,
+        fallback_ratio=None,
+        payload=payload,
+    )
+    if inserted:
+        if export_tag:
+            db.session.flush()
+            row = (
+                db.session.query(ActiveLearningCase)
+                .filter(
+                    ActiveLearningCase.video_species_id == video_species_id,
+                    ActiveLearningCase.reason_code == reason_code,
+                )
+                .order_by(ActiveLearningCase.id.desc())
+                .first()
+            )
+            if row is not None:
+                row.export_tag = str(export_tag).strip()[:64] or None
+        db.session.commit()
+    return {"queued": bool(inserted), "reason_code": reason_code}
 
 
 def mine_hard_examples(

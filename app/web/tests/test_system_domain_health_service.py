@@ -71,6 +71,131 @@ def test_domain_health_flags_duplicate_detection_groups(app, client):
     assert strict.get("strict_quality_ready") is False
 
 
+def test_domain_health_includes_track_stability_metrics(app, client):
+    with app.app_context():
+        now = datetime.now(timezone.utc)
+        species = Species(name="DomainHealth Track Stability Finch")
+        db.session.add(species)
+        db.session.flush()
+        video = Video(
+            processor_version="pytest",
+            start_time=now,
+            end_time=now + timedelta(seconds=12),
+            video_path="data/recordings/2026/05/03/151000/video.mp4",
+            idempotency_key="pytest-domain-health-track-stability-key",
+        )
+        db.session.add(video)
+        db.session.flush()
+        db.session.add_all(
+            [
+                VideoSpecies(
+                    video_id=video.id,
+                    species_id=species.id,
+                    species_visit_id=None,
+                    start_time=0.0,
+                    end_time=3.0,
+                    confidence=0.91,
+                    source="video",
+                    detection_provider="yolo",
+                    track_id=101,
+                    frames=json.dumps(
+                        [
+                            {"t": 0.0, "bbox": [10, 10, 20, 20]},
+                            {"t": 0.2, "bbox": [10.5, 10.1, 20.5, 20.1]},
+                            {"t": 0.4, "bbox": [11.0, 10.2, 21.0, 20.2]},
+                        ]
+                    ),
+                ),
+                VideoSpecies(
+                    video_id=video.id,
+                    species_id=species.id,
+                    species_visit_id=None,
+                    start_time=4.0,
+                    end_time=6.0,
+                    confidence=0.74,
+                    source="video",
+                    detection_provider="yolo",
+                    track_id=102,
+                    frames=json.dumps(
+                        [
+                            {"t": 0.0, "bbox": [100, 100, 120, 120]},
+                            {"t": 1.9, "bbox": [170, 170, 190, 190]},
+                        ]
+                    ),
+                ),
+            ]
+        )
+        db.session.commit()
+
+    res = client.get("/api/ui/system/domain-health", headers=_auth_headers())
+    assert res.status_code == 200, res.get_data(as_text=True)
+    payload = res.get_json() or {}
+    metrics = payload.get("metrics") or {}
+    samples = payload.get("samples") or {}
+    assert int(metrics.get("track_rows_with_id_24h") or 0) >= 2
+    assert int(metrics.get("track_rows_fragmented_24h") or 0) >= 1
+    assert metrics.get("track_stability_score_avg_24h") is not None
+    assert isinstance(samples.get("track_unstable_examples_24h"), list)
+
+
+def test_domain_health_includes_lifecycle_and_regression_metrics(app, client):
+    with app.app_context():
+        now = datetime.now(timezone.utc)
+        prev_trace = {
+            "video_id": 9001,
+            "persisted_tracks": [
+                {"track_id": 1, "species_name": "Bird", "confidence": 0.9}
+            ],
+            "rejected_tracks": [],
+        }
+        current_trace = {
+            "video_id": 9002,
+            "persisted_tracks": [],
+            "rejected_tracks": [
+                {
+                    "track_id": 2,
+                    "species_name": "Bird",
+                    "reject_reason_code": "FUSION_NO_ACCEPTED",
+                }
+            ],
+        }
+        db.session.add_all(
+            [
+                ActivityLog(
+                    type="decision_trace",
+                    data=json.dumps(prev_trace),
+                    created_at=now - timedelta(hours=30),
+                ),
+                ActivityLog(
+                    type="decision_trace",
+                    data=json.dumps(current_trace),
+                    created_at=now - timedelta(minutes=20),
+                ),
+            ]
+        )
+        db.session.commit()
+
+    res = client.get("/api/ui/system/domain-health", headers=_auth_headers())
+    assert res.status_code == 200, res.get_data(as_text=True)
+    payload = res.get_json() or {}
+    metrics = payload.get("metrics") or {}
+    samples = payload.get("samples") or {}
+
+    assert int(metrics.get("lifecycle_windows_24h") or 0) >= 1
+    assert metrics.get("lifecycle_enter_rate_24h") is not None
+    assert metrics.get("lifecycle_rejected_only_rate_24h") is not None
+    assert "track_stability_score_delta_prev_24h" in metrics
+    assert "track_quality_regression_24h" in metrics
+
+    lifecycle_counts = samples.get("lifecycle_outcome_counts_24h") or {}
+    reject_reasons = samples.get("lifecycle_top_reject_reasons_24h") or {}
+    regression = samples.get("track_quality_regression_24h") or {}
+    assert "entered" in lifecycle_counts
+    assert "rejected_only" in lifecycle_counts
+    assert isinstance(reject_reasons, dict)
+    assert "current_sample" in regression
+
+
 def test_domain_health_includes_ingest_gate_reason_metrics(app, client):
     with app.app_context():
         now = datetime.now(timezone.utc)

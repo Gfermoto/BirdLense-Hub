@@ -13,7 +13,7 @@ from typing import Any
 
 from sqlalchemy import func
 
-from models import DetectionFeedbackEvent
+from models import ActiveLearningCase, DetectionFeedbackEvent
 
 
 logger = logging.getLogger(__name__)
@@ -29,6 +29,7 @@ def _is_background_label(name: str | None) -> bool:
 def record_feedback_event(
     session,
     *,
+    action_override: str | None = None,
     video_species_id: int | None,
     video_id: int | None,
     track_id: int | None,
@@ -43,7 +44,14 @@ def record_feedback_event(
     confidence: float | None,
     frames_json: str | None,
 ) -> None:
-    action = "delete_as_background" if _is_background_label(to_species_name) else "relabel"
+    action = (
+        str(action_override or "").strip()
+        or (
+            "delete_as_background"
+            if _is_background_label(to_species_name)
+            else "relabel"
+        )
+    )
     row = DetectionFeedbackEvent(
         action=action,
         trigger_source=(trigger_source or "").strip() or None,
@@ -81,6 +89,37 @@ def build_feedback_loop_status(session, *, data_dir: str = "app/data") -> dict[s
         .order_by(DetectionFeedbackEvent.created_at.desc(), DetectionFeedbackEvent.id.desc())
         .first()
     )
+    by_action_rows = (
+        session.query(
+            DetectionFeedbackEvent.action,
+            func.count(DetectionFeedbackEvent.id),
+        )
+        .group_by(DetectionFeedbackEvent.action)
+        .all()
+    )
+    action_counts = {
+        str(action or "unknown"): int(count or 0)
+        for action, count in by_action_rows
+    }
+    queue_rows = (
+        session.query(
+            ActiveLearningCase.status,
+            func.count(ActiveLearningCase.id),
+        )
+        .group_by(ActiveLearningCase.status)
+        .all()
+    )
+    queue_counts = {
+        str(status or "unknown"): int(count or 0)
+        for status, count in queue_rows
+    }
+    latest_tag = (
+        session.query(ActiveLearningCase.export_tag)
+        .filter(ActiveLearningCase.export_tag.isnot(None))
+        .order_by(ActiveLearningCase.updated_at.desc(), ActiveLearningCase.id.desc())
+        .limit(1)
+        .scalar()
+    )
     status_path = Path(data_dir) / "feedback_exports" / "latest_status.json"
     export_status: dict[str, Any] | None = None
     if status_path.is_file():
@@ -100,6 +139,11 @@ def build_feedback_loop_status(session, *, data_dir: str = "app/data") -> dict[s
         "events_relabel": relabel,
         "events_delete_as_background": bg,
         "latest_event_at": latest.created_at.isoformat() if latest and latest.created_at else None,
+        "actions": action_counts,
+        "queue": {
+            "counts": queue_counts,
+            "latest_export_tag": str(latest_tag or "").strip() or None,
+        },
         "latest_export": export_status,
     }
 

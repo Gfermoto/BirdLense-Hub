@@ -63,6 +63,7 @@ export const queryKeys = {
     catalogCoverageMetrics: ['catalog-coverage-metrics'] as const,
     classifierDatasetAlignment: ['classifier-dataset-alignment'] as const,
     mlRuntimeStatus: ['ml-runtime-status'] as const,
+    classifierCalibrationReport: ['classifier-calibration-report'] as const,
     feedbackLoopStatus: ['feedback-loop-status'] as const,
     fusionExportStatus: ['fusion-export-status'] as const,
     fusionEvalStatus: ['fusion-eval-status'] as const,
