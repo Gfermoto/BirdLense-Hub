@@ -104,6 +104,7 @@ export const queryKeys = {
       favoritesOnly: boolean,
       minConfidence: number,
       minDurationSec: number,
+      detectionSource: string,
     ) =>
       [
         'speciesVisits',
@@ -113,6 +114,7 @@ export const queryKeys = {
         favoritesOnly ? 1 : 0,
         minConfidence,
         minDurationSec,
+        detectionSource,
       ] as const,
     /** Префикс для invalidateQueries — все окна таймлайна. */
     speciesVisitsAll: ['speciesVisits'] as const,

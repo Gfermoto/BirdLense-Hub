@@ -223,6 +223,16 @@ def register_ui_overview_timeline_routes(app):
         end_time = request.args.get("end_time")
         min_confidence = request.args.get("min_confidence", type=float)
         min_duration_sec = request.args.get("min_duration_sec", type=int)
+        detection_source = (
+            request.args.get("detection_source", "all").strip().lower()
+        )
+        if detection_source not in {
+            "all",
+            "video_only",
+            "audio_only",
+            "mixed",
+        }:
+            return {"error": "detection_source is invalid"}, 400
         if min_confidence is not None and (
             min_confidence < 0 or min_confidence > 1
         ):
@@ -244,12 +254,12 @@ def register_ui_overview_timeline_routes(app):
         if date_param:
             tck = (
                 f"timeline:local:{date_param}:{time_of_day}:{hour_param}:"
-                f"f{fav}:c{min_confidence}:d{min_duration_sec}"
+                f"f{fav}:c{min_confidence}:d{min_duration_sec}:s{detection_source}"
             )
         else:
             tck = (
                 f"timeline:{start_time}:{end_time}:"
-                f"f{fav}:c{min_confidence}:d{min_duration_sec}"
+                f"f{fav}:c{min_confidence}:d{min_duration_sec}:s{detection_source}"
             )
 
         if end_dt - start_dt > timedelta(days=1):
@@ -276,6 +286,7 @@ def register_ui_overview_timeline_routes(app):
             favorite_only=bool(fav),
             min_confidence=min_confidence,
             min_duration_sec=min_duration_sec,
+            detection_source=detection_source,
             limit=limit_raw,
             offset=offset_raw,
         )
@@ -294,6 +305,16 @@ def register_ui_overview_timeline_routes(app):
         end_time = request.args.get("end_time")
         min_confidence = request.args.get("min_confidence", type=float)
         min_duration_sec = request.args.get("min_duration_sec", type=int)
+        detection_source = (
+            request.args.get("detection_source", "all").strip().lower()
+        )
+        if detection_source not in {
+            "all",
+            "video_only",
+            "audio_only",
+            "mixed",
+        }:
+            return {"error": "detection_source is invalid"}, 400
         if min_confidence is not None and (
             min_confidence < 0 or min_confidence > 1
         ):
@@ -327,6 +348,7 @@ def register_ui_overview_timeline_routes(app):
             favorite_only=_favorite_only_from_request(),
             min_confidence=min_confidence,
             min_duration_sec=min_duration_sec,
+            detection_source=detection_source,
         )
         rows = build_timeline_export_rows(merged)
         body, mimetype, headers = build_timeline_export_response_parts(
