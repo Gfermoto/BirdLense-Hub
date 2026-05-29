@@ -93,6 +93,7 @@ type TimelineSortBy =
   | 'confidence'
   | 'duration'
   | 'behavior';
+type TimelineDetectionSource = 'all' | 'video_only' | 'audio_only' | 'mixed';
 
 function getVisitMaxConfidence(visit: SpeciesVisit): number {
   const detections = visit.detections ?? [];
@@ -174,6 +175,8 @@ export function TimelinePage() {
   const [behaviorFilter, setBehaviorFilter] = useState(
     () => searchParams.get('behavior')?.trim() ?? '',
   );
+  const [detectionSource, setDetectionSource] =
+    useState<TimelineDetectionSource>('all');
   const [minConfidence, setMinConfidence] = useState<number>(0);
   const [minDurationSec, setMinDurationSec] = useState<number>(0);
   const [sortBy, setSortBy] = useState<TimelineSortBy>('date_desc');
@@ -283,6 +286,7 @@ export function TimelinePage() {
       isFavoritesMode,
       minConfidence,
       minDurationSec,
+      detectionSource,
     ),
     queryFn: () => {
       if (!selectedDate) return [];
@@ -292,6 +296,7 @@ export function TimelinePage() {
         favoritesOnly: isFavoritesMode,
         minConfidence: minConfidence > 0 ? minConfidence : undefined,
         minDurationSec: minDurationSec > 0 ? minDurationSec : undefined,
+        detectionSource,
       });
     },
     enabled: !isReviewMode,
@@ -452,6 +457,7 @@ export function TimelinePage() {
           favoritesOnly: isFavoritesMode,
           minConfidence: minConfidence > 0 ? minConfidence : undefined,
           minDurationSec: minDurationSec > 0 ? minDurationSec : undefined,
+          detectionSource,
         },
       );
     } catch (err) {
@@ -752,6 +758,30 @@ export function TimelinePage() {
               onChange={updateBehaviorFilter}
               sx={{ minWidth: { xs: '100%', md: 240 } }}
             />
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>
+              <InputLabel id="timeline-detection-source-label">
+                {t('timeline.detectionSource')}
+              </InputLabel>
+              <Select
+                labelId="timeline-detection-source-label"
+                value={detectionSource}
+                label={t('timeline.detectionSource')}
+                onChange={(event) =>
+                  setDetectionSource(event.target.value as TimelineDetectionSource)
+                }
+              >
+                <MenuItem value="all">{t('timeline.detectionSourceAll')}</MenuItem>
+                <MenuItem value="video_only">
+                  {t('timeline.detectionSourceVideoOnly')}
+                </MenuItem>
+                <MenuItem value="audio_only">
+                  {t('timeline.detectionSourceAudioOnly')}
+                </MenuItem>
+                <MenuItem value="mixed">
+                  {t('timeline.detectionSourceMixed')}
+                </MenuItem>
+              </Select>
+            </FormControl>
             <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
               <InputLabel id="timeline-min-confidence-label">
                 {t('timeline.minConfidence')}

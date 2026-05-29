@@ -26,6 +26,7 @@ export const fetchTimelineForObserverDate = async (
     favoritesOnly?: boolean;
     minConfidence?: number;
     minDurationSec?: number;
+    detectionSource?: 'all' | 'video_only' | 'audio_only' | 'mixed';
   },
 ): Promise<SpeciesVisit[]> => {
   const response = await axios.get(`${BASE_API_URL}/timeline`, {
@@ -40,6 +41,9 @@ export const fetchTimelineForObserverDate = async (
         : {}),
       ...(options?.minDurationSec != null
         ? { min_duration_sec: options.minDurationSec }
+        : {}),
+      ...(options?.detectionSource && options.detectionSource !== 'all'
+        ? { detection_source: options.detectionSource }
         : {}),
     },
   });
@@ -83,6 +87,7 @@ export const exportTimelineForObserverDate = async (
     favoritesOnly?: boolean;
     minConfidence?: number;
     minDurationSec?: number;
+    detectionSource?: 'all' | 'video_only' | 'audio_only' | 'mixed';
   },
 ): Promise<void> => {
   const params = new URLSearchParams({
@@ -97,6 +102,9 @@ export const exportTimelineForObserverDate = async (
       : {}),
     ...(options?.minDurationSec != null
       ? { min_duration_sec: String(options.minDurationSec) }
+      : {}),
+    ...(options?.detectionSource && options.detectionSource !== 'all'
+      ? { detection_source: options.detectionSource }
       : {}),
   });
   const url = `${BASE_API_URL}/timeline/export?${params}`;

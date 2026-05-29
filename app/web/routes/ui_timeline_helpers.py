@@ -80,6 +80,29 @@ def _timeline_item_duration_seconds(item: dict) -> float:
     return 0.0
 
 
+def _timeline_item_matches_source(item: dict, source_filter: str) -> bool:
+    detections = item.get("detections") or []
+    if source_filter == "all":
+        return True
+    if not isinstance(detections, list) or not detections:
+        return False
+    sources = {
+        str(d.get("source") or "").strip().lower()
+        for d in detections
+        if isinstance(d, dict)
+    }
+    sources.discard("")
+    if not sources:
+        return False
+    if source_filter == "video_only":
+        return sources == {"video"}
+    if source_filter == "audio_only":
+        return sources == {"audio"}
+    if source_filter == "mixed":
+        return "video" in sources and "audio" in sources
+    return True
+
+
 def build_merged_timeline_items(
     session,
     start_dt,
@@ -88,6 +111,7 @@ def build_merged_timeline_items(
     *,
     min_confidence: float | None = None,
     min_duration_sec: int | None = None,
+    detection_source: str = "all",
     limit: int | None = None,
     offset: int = 0,
 ) -> list | dict:
@@ -157,6 +181,12 @@ def build_merged_timeline_items(
             item
             for item in merged
             if _timeline_item_duration_seconds(item) >= int(min_duration_sec)
+        ]
+    if detection_source != "all":
+        merged = [
+            item
+            for item in merged
+            if _timeline_item_matches_source(item, detection_source)
         ]
     total = len(merged)
     if limit is not None:
