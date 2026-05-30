@@ -91,6 +91,14 @@ verify-runtime-sli:
 	MCP_TOKEN="$${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="$${BIRDLENSE_UI_API_KEY:-}" \
 	  bash ./scripts/check-runtime-sli.sh --base-url "$$_url"
 
+error-budget-gate:
+	@set -e; cd "$(CURDIR)"; \
+	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
+	_url="$${BASE_URL:-$${DEPLOY_URL:-http://127.0.0.1:8085}}"; \
+	MCP_TOKEN="$${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="$${BIRDLENSE_UI_API_KEY:-}" \
+	BIRDLENSE_ERROR_BUDGET_OVERRIDE_REASON="$${BIRDLENSE_ERROR_BUDGET_OVERRIDE_REASON:-}" \
+	  python3 ./scripts/error_budget_gate.py --base-url "$$_url"
+
 perf-gate-runtime:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
