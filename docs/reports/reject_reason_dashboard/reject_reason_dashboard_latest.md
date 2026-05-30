@@ -1,6 +1,6 @@
 # Reject Reason Dashboard
 
-- generated_at: `2026-05-30T18:00:17Z`
+- generated_at: `2026-05-30T18:35:54Z`
 - input_rows: `52`
 
 ## Stage totals

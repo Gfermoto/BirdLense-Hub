@@ -485,6 +485,7 @@ class DecisionMaker:
                             "end_time": track["end_time"],
                             "confidence": 0.0,
                             "detection_provider": "yolo",
+                            "reject_reason_code": "insufficient_frames",
                         }
                     )
                 )
@@ -505,6 +506,7 @@ class DecisionMaker:
                             "end_time": track["end_time"],
                             "confidence": 0.0,
                             "detection_provider": "yolo",
+                            "reject_reason_code": "insufficient_frames",
                         }
                     )
                 )

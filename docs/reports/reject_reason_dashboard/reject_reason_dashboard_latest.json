@@ -1,6 +1,6 @@
 {
   "schema": "reject_reason_dashboard@v1",
-  "generated_at": "2026-05-30T18:00:17Z",
+  "generated_at": "2026-05-30T18:35:54Z",
   "input_rows": 52,
   "stage_totals": {
     "detect_tracks_total": 12,
