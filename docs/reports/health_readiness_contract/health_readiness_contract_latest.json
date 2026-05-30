@@ -1,0 +1,111 @@
+{
+  "schema": "health_readiness_contract@v1",
+  "generated_at": "2026-05-30T20:21:02Z",
+  "checks": {
+    "health_ok": true,
+    "readiness_ok": true,
+    "status_web_ok": true,
+    "status_processor_ok": true,
+    "false_green_detected": false
+  },
+  "ok": true,
+  "base_url": "http://185.218.111.196:8085",
+  "responses": {
+    "health": {
+      "status_code": 200,
+      "payload": {
+        "status": "ok"
+      }
+    },
+    "readiness": {
+      "status_code": 200,
+      "payload": {
+        "checked_at": "2026-05-30T20:21:00.534173+00:00",
+        "checks": {
+          "app_config_dir": {
+            "exists": true,
+            "is_dir": true,
+            "path": "app_config/",
+            "status": "ok",
+            "writable": true
+          },
+          "cache_backend": {
+            "backend": "redis",
+            "configured": true,
+            "status": "ok"
+          },
+          "data_dir": {
+            "exists": true,
+            "is_dir": true,
+            "path": "data/",
+            "status": "ok",
+            "writable": true
+          },
+          "database": {
+            "status": "ok"
+          },
+          "processor_heartbeat": {
+            "age_seconds": 15.699,
+            "last_heartbeat_utc": "2026-05-30T20:20:44.835369+00:00",
+            "max_age_seconds": 180,
+            "reason": "ok",
+            "status": "ok"
+          }
+        },
+        "components": {
+          "active_triggers": [
+            "opencv",
+            "frigate"
+          ],
+          "birdnet_url": "https://birdnet.eyera.info",
+          "esphome": "ok",
+          "motion_source": "opencv,frigate",
+          "mqtt": "ok",
+          "processor": "ok",
+          "trigger_display": "opencv + frigate",
+          "video": "ok",
+          "web": "ok",
+          "yolo": "unknown"
+        },
+        "ready": true,
+        "security_gates": {
+          "items": [
+            {
+              "id": "strict_api_auth",
+              "status": "ok"
+            },
+            {
+              "id": "flask_secret_key",
+              "status": "ok"
+            },
+            {
+              "id": "processor_secret",
+              "status": "ok"
+            }
+          ],
+          "runtime": "production"
+        },
+        "status": "ok"
+      }
+    },
+    "status": {
+      "status_code": 200,
+      "payload": {
+        "active_triggers": [
+          "opencv",
+          "frigate"
+        ],
+        "birdnet_url": "https://birdnet.eyera.info",
+        "esphome": "ok",
+        "motion_source": "opencv,frigate",
+        "mqtt": "ok",
+        "processor": "ok",
+        "trigger_display": "opencv + frigate",
+        "video": "ok",
+        "web": "ok",
+        "yolo": "unknown"
+      }
+    }
+  },
+  "errors": []
+}

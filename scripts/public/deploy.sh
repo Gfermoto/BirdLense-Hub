@@ -86,6 +86,23 @@ if [[ ! "${BIRDLENSE_SKIP_ERROR_BUDGET_GATE:-}" =~ ^(1|true|yes)$ ]]; then
   fi
 fi
 
+# 0.47 Health/readiness/status consistency gate (#530).
+if [[ ! "${BIRDLENSE_SKIP_HEALTH_READINESS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  _hr_json="docs/reports/health_readiness_contract/health_readiness_contract_latest.json"
+  _hr_md="docs/reports/health_readiness_contract/health_readiness_contract_latest.md"
+  echo "0.47 Health Readiness Contract Gate..."
+  (cd "${REPO_ROOT}" && \
+    MCP_TOKEN="${MCP_TOKEN:-}" \
+    BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
+    python3 ./scripts/verify_health_readiness_contract.py \
+      --base-url "${DEPLOY_URL}" \
+      --out-json "${_hr_json}" \
+      --out-md "${_hr_md}") || {
+        echo "Ошибка: Health/Readiness Contract не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
