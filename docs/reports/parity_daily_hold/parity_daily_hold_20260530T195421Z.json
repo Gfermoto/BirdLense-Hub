@@ -1,0 +1,720 @@
+{
+  "schema": "parity_daily_hold@v1",
+  "generated_at": "2026-05-30T19:54:21Z",
+  "base_url": "http://185.218.111.196:8085",
+  "git": {
+    "branch": "dev",
+    "commit": "c67576dc262109bb445866816bf832027ed57fe8",
+    "commit_short": "c67576dc2"
+  },
+  "config_fingerprint": {
+    "schema": "config_fingerprint@v1",
+    "material_sha256": "827566c38cd63cfebaca6b48a1f3b8b649cbdeea9b991804493a3eb9eaa6c392",
+    "files": {
+      "version": {
+        "path": "VERSION",
+        "sha256": "2e376439ec341f14ae018b8aa4796b9336702e6a59d6c42b91f61d84baac9807"
+      },
+      "default_config": {
+        "path": "app/app_config/default_config.yaml",
+        "sha256": "94f9486e4433c860b5c02af79733a638498b615e64de4c4f8ffd3d90f16eeb2b"
+      },
+      "user_config": {
+        "path": "app/app_config/user_config.yaml",
+        "sha256": "2c97e7e38c82e499fa5c91b609e8e750a2baa9d7d2020bcf45a588052fd7169f"
+      },
+      "openapi": {
+        "path": "app/web/openapi.yaml",
+        "sha256": "a07fb87d2c0d7dfc4488b45f64eb393566c28edbcacf489be10fb58dc850f057"
+      }
+    }
+  },
+  "trigger_graph": {
+    "schema": "trigger_graph_snapshot@v1",
+    "available": true,
+    "active_triggers": [
+      "opencv",
+      "frigate"
+    ]
+  },
+  "checks": {
+    "health": {
+      "status": "ok"
+    },
+    "readiness": {
+      "checked_at": "2026-05-30T19:54:18.179254+00:00",
+      "checks": {
+        "app_config_dir": {
+          "exists": true,
+          "is_dir": true,
+          "path": "app_config/",
+          "status": "ok",
+          "writable": true
+        },
+        "cache_backend": {
+          "backend": "redis",
+          "configured": true,
+          "status": "ok"
+        },
+        "data_dir": {
+          "exists": true,
+          "is_dir": true,
+          "path": "data/",
+          "status": "ok",
+          "writable": true
+        },
+        "database": {
+          "status": "ok"
+        },
+        "processor_heartbeat": {
+          "age_seconds": 5.924,
+          "last_heartbeat_utc": "2026-05-30T19:54:12.254847+00:00",
+          "max_age_seconds": 180,
+          "reason": "ok",
+          "status": "ok"
+        }
+      },
+      "components": {
+        "active_triggers": [
+          "opencv",
+          "frigate"
+        ],
+        "birdnet_url": "https://birdnet.eyera.info",
+        "esphome": "ok",
+        "motion_source": "opencv,frigate",
+        "mqtt": "ok",
+        "processor": "ok",
+        "trigger_display": "opencv + frigate",
+        "video": "ok",
+        "web": "ok",
+        "yolo": "unknown"
+      },
+      "ready": true,
+      "security_gates": {
+        "items": [
+          {
+            "id": "strict_api_auth",
+            "status": "ok"
+          },
+          {
+            "id": "flask_secret_key",
+            "status": "ok"
+          },
+          {
+            "id": "processor_secret",
+            "status": "ok"
+          }
+        ],
+        "runtime": "production"
+      },
+      "status": "ok"
+    },
+    "status": {
+      "active_triggers": [
+        "opencv",
+        "frigate"
+      ],
+      "birdnet_url": "https://birdnet.eyera.info",
+      "esphome": "ok",
+      "motion_source": "opencv,frigate",
+      "mqtt": "ok",
+      "processor": "ok",
+      "trigger_display": "opencv + frigate",
+      "video": "ok",
+      "web": "ok",
+      "yolo": "unknown"
+    },
+    "domain_health": {
+      "alerting_rules": [
+        {
+          "breach": true,
+          "id": "sustained_fps_floor",
+          "metric": "runtime_sustained_fps_avg_24h",
+          "operator": ">=",
+          "runbook": "docs/runbooks/runtime-slo-stability.md#sustained-fps-floor",
+          "severity": "critical",
+          "threshold": 7.0,
+          "value": 1.856
+        },
+        {
+          "breach": false,
+          "id": "skipped_ratio_ceiling",
+          "metric": "runtime_skipped_ratio_avg_24h",
+          "operator": "<=",
+          "runbook": "docs/runbooks/runtime-slo-stability.md#skipped-ratio",
+          "severity": "warning",
+          "threshold": 0.05,
+          "value": 0.0
+        },
+        {
+          "breach": false,
+          "id": "pipeline_latency_p95",
+          "metric": "runtime_pipeline_latency_p95_ms_24h",
+          "operator": "<=",
+          "runbook": "docs/runbooks/runtime-slo-stability.md#pipeline-latency-p95",
+          "severity": "warning",
+          "threshold": 2500.0,
+          "value": null
+        },
+        {
+          "breach": false,
+          "id": "reconnect_resilience",
+          "metric": "runtime_reconnect_events_24h",
+          "operator": "<=",
+          "runbook": "docs/runbooks/runtime-slo-stability.md#reconnect-resilience",
+          "severity": "warning",
+          "threshold": 25,
+          "value": 0
+        },
+        {
+          "breach": false,
+          "id": "backpressure_control",
+          "metric": "runtime_backpressure_events_24h",
+          "operator": "<=",
+          "runbook": "docs/runbooks/runtime-slo-stability.md#backpressure-control",
+          "severity": "warning",
+          "threshold": 25,
+          "value": 0
+        }
+      ],
+      "contracts": {
+        "duplicate_clip_candidates_are_gap_based": true,
+        "review_only_detection_has_no_visit": true,
+        "species_visit_is_derived_from_video_species": true
+      },
+      "domain_contract_version": "2026-04-polish-v1",
+      "metrics": {
+        "decision_trace_rows_24h": 350,
+        "decision_trace_rows_runtime_backend_24h": 350,
+        "duplicate_clip_candidates_24h": 0,
+        "duplicate_detection_groups": 0,
+        "duplicate_species_name_groups": 0,
+        "duplicate_video_groups": 0,
+        "ingest_gate_known_reason_rows_24h": 257,
+        "ingest_gate_rows_24h": 257,
+        "ingest_gate_unknown_reason_rows_24h": 0,
+        "large_gap_visits": 0,
+        "lifecycle_avg_persisted_tracks_per_window_24h": 0.357,
+        "lifecycle_avg_rejected_tracks_per_window_24h": 3.851,
+        "lifecycle_detect_rate_24h": 1.0,
+        "lifecycle_detected_windows_24h": 350,
+        "lifecycle_enter_rate_24h": 0.3028571428571429,
+        "lifecycle_entered_windows_24h": 106,
+        "lifecycle_no_tracks_windows_24h": 0,
+        "lifecycle_rejected_only_rate_24h": 0.6971428571428572,
+        "lifecycle_rejected_only_windows_24h": 244,
+        "lifecycle_windows_24h": 350,
+        "orphaned_visits": 1,
+        "parity_frigate_windows_24h": 227,
+        "parity_hotspot_count_24h": 2,
+        "parity_hub_matched_windows_24h": 92,
+        "parity_mismatch_rate_24h": 0.5947136563876652,
+        "parity_mismatched_windows_24h": 135,
+        "post_fusion_persisted_sum_5m": 0,
+        "recording_clips_deleted_empty_total": 0,
+        "recording_frigate_trigger_salvage_total": 0,
+        "recording_persisted_total": 0,
+        "recording_session_total": 0,
+        "recording_sessions_5m": 0,
+        "review_only_video_detections": 64,
+        "runtime_backpressure_events_24h": 0,
+        "runtime_pipeline_latency_p95_ms_24h": null,
+        "runtime_reconnect_events_24h": 0,
+        "runtime_sessions_24h": 962,
+        "runtime_skipped_ratio_avg_24h": 0.0,
+        "runtime_sustained_fps_avg_24h": 1.856,
+        "runtime_sustained_fps_p50_24h": 1.7533848116433712,
+        "session_extended_by_frigate_only_sum_24h": 1342,
+        "species_visits_5m": 0,
+        "track_avg_jitter_24h": 0.047,
+        "track_fragmented_ratio_delta_prev_24h": -0.0435,
+        "track_gaps_ratio_delta_prev_24h": 0.0082,
+        "track_quality_regression_24h": false,
+        "track_rows_fragmented_24h": 102,
+        "track_rows_fragmented_ratio_24h": 0.8947368421052632,
+        "track_rows_with_frame_series_24h": 52,
+        "track_rows_with_gaps_24h": 40,
+        "track_rows_with_gaps_ratio_24h": 0.3508771929824561,
+        "track_rows_with_id_24h": 114,
+        "track_stability_low_count_24h": 75,
+        "track_stability_low_ratio_24h": 0.6578947368421053,
+        "track_stability_score_avg_24h": 0.7537,
+        "track_stability_score_delta_prev_24h": 0.0689,
+        "track_stability_score_p50_24h": 0.7782,
+        "unresolved_species_names": 13,
+        "video_detections_24h": 119,
+        "video_detections_primary_yolo_24h": 64,
+        "video_detections_primary_yolo_ratio_24h": 0.5378151260504201,
+        "video_detections_with_frames_24h": 52,
+        "video_detections_with_frames_ratio_24h": 0.4369747899159664,
+        "visit_species_mismatches": 1
+      },
+      "reliability_alerts": {
+        "alerts": {
+          "data_stagnation": false,
+          "recording_artifact_failures": true,
+          "unknown_ingest_gate_reasons": false,
+          "video_encoding_flapping": false
+        },
+        "metrics": {
+          "post_fusion_persisted_sum_5m": 0,
+          "recording_artifact_failures_24h": 6,
+          "recording_file_missing_24h": 0,
+          "recording_file_unplayable_24h": 6,
+          "recording_sessions_5m": 0,
+          "species_visits_5m": 0,
+          "unknown_ingest_gate_rows_24h": 0,
+          "video_encoding_transitions_24h": 0
+        },
+        "thresholds": {
+          "data_stagnation_window_minutes_critical": 5,
+          "recording_artifact_failures_24h_max": 0,
+          "unknown_ingest_gate_rows_24h_warn": 0,
+          "video_encoding_transitions_24h_warn": 4
+        }
+      },
+      "samples": {
+        "active_trigger_counts_24h": {
+          "frigate": 227,
+          "opencv": 350
+        },
+        "binary_backend_counts_24h": {
+          "openvino": 350
+        },
+        "capture_backend_counts_24h": {
+          "auto": 350
+        },
+        "classifier_backend_counts_24h": {
+          "openvino": 350
+        },
+        "duplicate_clip_candidates": [],
+        "inference_device_counts_24h": {
+          "intel:gpu": 350
+        },
+        "ingest_gate_reason_code_counts_24h": {
+          "FUSION_NO_ACCEPTED": 236,
+          "FUSION_NO_ACCEPTED_LOW_CONFIDENCE": 1,
+          "FUSION_NO_ACCEPTED_SHORT_TRACK": 3,
+          "FUSION_NO_YOLO_NO_FALLBACK": 11,
+          "REC_FILE_UNPLAYABLE": 6
+        },
+        "lifecycle_outcome_counts_24h": {
+          "entered": 106,
+          "no_tracks": 0,
+          "rejected_only": 244
+        },
+        "lifecycle_top_reject_reasons_24h": {
+          "CONFLICTING_EVIDENCE": 3,
+          "INSUFFICIENT_FRAMES": 830,
+          "LOW_CONFIDENCE": 45,
+          "REJECTED_SHORT_TRACK": 470
+        },
+        "parity_camera_split_24h": [
+          {
+            "camera": "Forest",
+            "day_mismatched": 95,
+            "day_windows": 149,
+            "matched": 54,
+            "mismatch_rate": 0.6746987951807228,
+            "mismatched": 112,
+            "night_mismatched": 17,
+            "night_windows": 17,
+            "unknown_mismatched": 0,
+            "unknown_windows": 0,
+            "windows": 166
+          },
+          {
+            "camera": "BirdBox",
+            "day_mismatched": 22,
+            "day_windows": 60,
+            "matched": 38,
+            "mismatch_rate": 0.3770491803278688,
+            "mismatched": 23,
+            "night_mismatched": 1,
+            "night_windows": 1,
+            "unknown_mismatched": 0,
+            "unknown_windows": 0,
+            "windows": 61
+          }
+        ],
+        "parity_hotspots_24h": [
+          {
+            "camera": "Forest",
+            "day_mismatched": 95,
+            "day_windows": 149,
+            "matched": 54,
+            "mismatch_rate": 0.6746987951807228,
+            "mismatched": 112,
+            "night_mismatched": 17,
+            "night_windows": 17,
+            "unknown_mismatched": 0,
+            "unknown_windows": 0,
+            "windows": 166
+          },
+          {
+            "camera": "BirdBox",
+            "day_mismatched": 22,
+            "day_windows": 60,
+            "matched": 38,
+            "mismatch_rate": 0.3770491803278688,
+            "mismatched": 23,
+            "night_mismatched": 1,
+            "night_windows": 1,
+            "unknown_mismatched": 0,
+            "unknown_windows": 0,
+            "windows": 61
+          }
+        ],
+        "parity_top_mismatch_reasons_24h": {
+          "FUSION_NO_ACCEPTED": 124,
+          "FUSION_NO_ACCEPTED_LOW_CONFIDENCE": 1,
+          "FUSION_NO_ACCEPTED_SHORT_TRACK": 3,
+          "FUSION_NO_YOLO_NO_FALLBACK": 6,
+          "INSUFFICIENT_FRAMES": 1
+        },
+        "recent_review_only_video_detections": [
+          {
+            "confidence": 0.126414,
+            "created_at": "2026-05-30T17:30:04.168964",
+            "detection_id": 2834,
+            "detection_provider": "yolo",
+            "species_name": "Bird",
+            "video_id": 2470,
+            "video_path": "data/recordings/2026/05/30/172941/video.mp4"
+          },
+          {
+            "confidence": 0.208727,
+            "created_at": "2026-05-30T16:13:08.051720",
+            "detection_id": 2828,
+            "detection_provider": "yolo",
+            "species_name": "Bird",
+            "video_id": 2465,
+            "video_path": "data/recordings/2026/05/30/161251/video.mp4"
+          },
+          {
+            "confidence": 0.795806,
+            "created_at": "2026-05-30T16:12:51.261720",
+            "detection_id": 2827,
+            "detection_provider": "yolo",
+            "species_name": "Bird",
+            "video_id": 2465,
+            "video_path": "data/recordings/2026/05/30/161251/video.mp4"
+          },
+          {
+            "confidence": 0.157073,
+            "created_at": "2026-05-30T16:08:33.511816",
+            "detection_id": 2825,
+            "detection_provider": "yolo",
+            "species_name": "Bird",
+            "video_id": 2463,
+            "video_path": "data/recordings/2026/05/30/160828/video.mp4"
+          },
+          {
+            "confidence": 0.696245,
+            "created_at": "2026-05-30T15:36:22.728960",
+            "detection_id": 2817,
+            "detection_provider": "arbitration",
+            "species_name": "Bird",
+            "video_id": 2455,
+            "video_path": "data/recordings/2026/05/30/153622/video.mp4"
+          },
+          {
+            "confidence": 0.184622,
+            "created_at": "2026-05-30T14:59:30.568055",
+            "detection_id": 2811,
+            "detection_provider": "yolo",
+            "species_name": "Bird",
+            "video_id": 2449,
+            "video_path": "data/recordings/2026/05/30/145912/video.mp4"
+          },
+          {
+            "confidence": 0.309258,
+            "created_at": "2026-05-30T14:59:12.688055",
+            "detection_id": 2810,
+            "detection_provider": "yolo",
+            "species_name": "Bird",
+            "video_id": 2449,
+            "video_path": "data/recordings/2026/05/30/145912/video.mp4"
+          },
+          {
+            "confidence": 0.148297,
+            "created_at": "2026-05-30T14:57:14.338798",
+            "detection_id": 2809,
+            "detection_provider": "yolo",
+            "species_name": "Bird",
+            "video_id": 2448,
+            "video_path": "data/recordings/2026/05/30/145627/video.mp4"
+          },
+          {
+            "confidence": 0.717573,
+            "created_at": "2026-05-30T13:53:45.319722",
+            "detection_id": 2795,
+            "detection_provider": "arbitration",
+            "species_name": "Bird",
+            "video_id": 2436,
+            "video_path": "data/recordings/2026/05/30/135345/video.mp4"
+          },
+          {
+            "confidence": 0.715796,
+            "created_at": "2026-05-30T13:49:10.373561",
+            "detection_id": 2789,
+            "detection_provider": "arbitration",
+            "species_name": "Bird",
+            "video_id": 2432,
+            "video_path": "data/recordings/2026/05/30/134910/video.mp4"
+          }
+        ],
+        "recent_unresolved_species": [
+          {
+            "last_seen_at": "2026-05-30T14:52:28.173174",
+            "normalized_key": "unknown bird",
+            "raw_name": "Unknown Bird",
+            "reason": "no_match",
+            "seen_count": 33,
+            "source": "ingest:yolo"
+          },
+          {
+            "last_seen_at": "2026-05-26T04:09:26.314418",
+            "normalized_key": "go away bird",
+            "raw_name": "Go Away Bird",
+            "reason": "no_match",
+            "seen_count": 5,
+            "source": "ingest"
+          },
+          {
+            "last_seen_at": "2026-05-26T04:08:13.895926",
+            "normalized_key": "demoiselle crane",
+            "raw_name": "Demoiselle Crane",
+            "reason": "no_match",
+            "seen_count": 3,
+            "source": "ingest"
+          },
+          {
+            "last_seen_at": "2026-05-25T05:37:56.272984",
+            "normalized_key": "new zealand pigeon",
+            "raw_name": "New Zealand Pigeon",
+            "reason": "no_match",
+            "seen_count": 5,
+            "source": "ingest"
+          },
+          {
+            "last_seen_at": "2026-05-23T07:49:08.648449",
+            "normalized_key": "crow",
+            "raw_name": "Crow",
+            "reason": "no_match",
+            "seen_count": 2,
+            "source": "ingest"
+          },
+          {
+            "last_seen_at": "2026-05-19T04:16:30",
+            "normalized_key": "california scrub jay",
+            "raw_name": "California Scrub-Jay",
+            "reason": "no_match",
+            "seen_count": 1,
+            "source": "ingest"
+          },
+          {
+            "last_seen_at": "2026-05-17T07:03:33",
+            "normalized_key": "calamospiza melanocorys (lark bunting)",
+            "raw_name": "Calamospiza Melanocorys (lark Bunting)",
+            "reason": "no_match",
+            "seen_count": 1,
+            "source": "ingest"
+          },
+          {
+            "last_seen_at": "2026-05-16T03:01:17",
+            "normalized_key": "paradise shelduck",
+            "raw_name": "Paradise Shelduck",
+            "reason": "no_match",
+            "seen_count": 1,
+            "source": "ingest"
+          },
+          {
+            "last_seen_at": "2026-05-14T03:13:05",
+            "normalized_key": "common myna",
+            "raw_name": "Common Myna",
+            "reason": "no_match",
+            "seen_count": 1,
+            "source": "ingest"
+          },
+          {
+            "last_seen_at": "2026-05-13T22:03:34",
+            "normalized_key": "strix nebulosa (great gray owl)",
+            "raw_name": "Strix Nebulosa (great Gray Owl)",
+            "reason": "no_match",
+            "seen_count": 1,
+            "source": "ingest"
+          }
+        ],
+        "reid_device_counts_24h": {
+          "cpu": 350
+        },
+        "reid_model_counts_24h": {},
+        "runtime_slo_per_camera_24h": [
+          {
+            "camera": "Forest",
+            "pipeline_latency_p95_ms_24h": null,
+            "sessions_24h": 733,
+            "skipped_ratio_avg_24h": 0.0,
+            "status": "warn",
+            "sustained_fps_avg_24h": 1.814,
+            "video_file_not_ok_24h": 24
+          },
+          {
+            "camera": "BirdBox",
+            "pipeline_latency_p95_ms_24h": null,
+            "sessions_24h": 229,
+            "skipped_ratio_avg_24h": 0.0,
+            "status": "warn",
+            "sustained_fps_avg_24h": 1.989,
+            "video_file_not_ok_24h": 11
+          }
+        ],
+        "track_quality_regression_24h": {
+          "current_sample": 114,
+          "fragmented_delta": -0.0435,
+          "gaps_delta": 0.0082,
+          "previous_sample": 178,
+          "reasons": [],
+          "stability_delta": 0.0689
+        },
+        "track_unstable_examples_24h": [
+          {
+            "avg_jitter": 0.0,
+            "detection_id": 2834,
+            "detection_provider": "yolo",
+            "frame_count": 0,
+            "gap_count": 0,
+            "stability_score": 0.35,
+            "track_id": 57,
+            "video_id": 2470
+          },
+          {
+            "avg_jitter": 0.0,
+            "detection_id": 2832,
+            "detection_provider": "frigate",
+            "frame_count": 0,
+            "gap_count": 0,
+            "stability_score": 0.35,
+            "track_id": -1,
+            "video_id": 2468
+          },
+          {
+            "avg_jitter": 0.0,
+            "detection_id": 2829,
+            "detection_provider": "yolo",
+            "frame_count": 0,
+            "gap_count": 0,
+            "stability_score": 0.35,
+            "track_id": 1,
+            "video_id": 2466
+          },
+          {
+            "avg_jitter": 0.0,
+            "detection_id": 2828,
+            "detection_provider": "yolo",
+            "frame_count": 0,
+            "gap_count": 0,
+            "stability_score": 0.35,
+            "track_id": 27,
+            "video_id": 2465
+          },
+          {
+            "avg_jitter": 0.0,
+            "detection_id": 2827,
+            "detection_provider": "yolo",
+            "frame_count": 0,
+            "gap_count": 0,
+            "stability_score": 0.35,
+            "track_id": 1,
+            "video_id": 2465
+          },
+          {
+            "avg_jitter": 0.0,
+            "detection_id": 2826,
+            "detection_provider": "frigate",
+            "frame_count": 0,
+            "gap_count": 0,
+            "stability_score": 0.35,
+            "track_id": -1,
+            "video_id": 2464
+          },
+          {
+            "avg_jitter": 0.0,
+            "detection_id": 2825,
+            "detection_provider": "yolo",
+            "frame_count": 0,
+            "gap_count": 0,
+            "stability_score": 0.35,
+            "track_id": 17,
+            "video_id": 2463
+          },
+          {
+            "avg_jitter": 0.0,
+            "detection_id": 2824,
+            "detection_provider": "frigate",
+            "frame_count": 0,
+            "gap_count": 0,
+            "stability_score": 0.35,
+            "track_id": -1,
+            "video_id": 2462
+          }
+        ],
+        "triggered_camera_counts_24h": {
+          "BirdBox": 67,
+          "Forest": 283
+        },
+        "video_encoding_counts_24h": {
+          "intel": 350
+        }
+      },
+      "slo_dashboard": {
+        "schema": "runtime_slo_dashboard@v1",
+        "snapshot": {
+          "backpressure_events_24h": 0,
+          "per_camera_warn_count_24h": 2,
+          "pipeline_latency_p95_ms_24h": null,
+          "reconnect_events_24h": 0,
+          "runtime_sessions_24h": 962,
+          "skipped_ratio_avg_24h": 0.0,
+          "sustained_fps_avg_24h": 1.856
+        },
+        "status": {
+          "breaches": [
+            "sustained_fps_floor",
+            "recording_artifact_failures"
+          ],
+          "ok": false
+        },
+        "targets": {
+          "pipeline_latency_p95_ms_max": 2500.0,
+          "skipped_ratio_max": 0.05,
+          "sustained_fps_min": 7.0
+        }
+      },
+      "strict_quality": {
+        "duplicate_clip_candidates_ok": true,
+        "duplicate_detection_groups_ok": true,
+        "duplicate_video_groups_ok": true,
+        "strict_quality_ready": false,
+        "video_detections_primary_yolo_ratio_ok": false,
+        "video_detections_with_frames_ratio_ok": false,
+        "visit_species_mismatches_ok": false
+      },
+      "thresholds": {
+        "clip_duplicate_gap_seconds": 5,
+        "min_seconds_between_recordings": 5.0,
+        "visit_large_gap_seconds": 300,
+        "visit_timeout_seconds": 60
+      }
+    }
+  },
+  "errors": [],
+  "epoch_fingerprint": "c0befc0673ae503d91208164d95bc3f6399af2d7a1368a8cf4cfdaef04ca3198",
+  "core_contract": {
+    "health_ok": true,
+    "readiness_ok": true,
+    "status_web_ok": true,
+    "ok": true
+  }
+}
