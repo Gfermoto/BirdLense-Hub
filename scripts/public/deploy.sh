@@ -133,6 +133,19 @@ if [[ ! "${BIRDLENSE_SKIP_SSDF_MAP_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.50 Secrets & vulnerability response gate (#552).
+if [[ ! "${BIRDLENSE_SKIP_SECRETS_VULN_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.50 Secrets & Vulnerability Response Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_sec_vuln_response.py \
+      --vuln-register "docs/reports/security/vulnerability_register.json" \
+      --out-json "docs/reports/security/sec_vuln_response_latest.json" \
+      --out-md "docs/reports/security/sec_vuln_response_latest.md") || {
+        echo "Ошибка: Secrets & Vulnerability gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"

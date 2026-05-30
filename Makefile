@@ -113,6 +113,10 @@ ssdf-control-map:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/verify_ssdf_control_map.py
 
+secrets-vuln-response-gate:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/verify_sec_vuln_response.py
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
