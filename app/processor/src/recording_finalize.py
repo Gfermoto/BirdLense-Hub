@@ -47,6 +47,14 @@ _NO_DETECTIONS_WARN_INTERVAL_S = 120.0
 _no_detections_warn_next_monotonic = 0.0
 
 
+def _rejected_reason_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
+    counts = Counter(
+        str(item.get("reject_reason_code") or item.get("decision_reason") or "rejected_unknown")
+        for item in (rows or [])
+    )
+    return dict(sorted(counts.items()))
+
+
 def _sanitize_persisted_overlay_frames(
     video_detections: list[dict[str, Any]],
     *,
@@ -539,13 +547,10 @@ def finalize_motion_recording(
                     classifier_events,
                 )
         if rejected_decisions:
-            rejected_summary = Counter(
-                str(item.get("reject_reason_code") or item.get("decision_reason") or "rejected_unknown")
-                for item in rejected_decisions
-            )
+            rejected_summary = _rejected_reason_counts(rejected_decisions)
             logging.info(
                 "DecisionMaker rejected tracks: %s",
-                dict(sorted(rejected_summary.items())),
+                rejected_summary,
             )
     elif mqtt_events:
         standalone_on = bool(app_config.get("detection.frigate_standalone_when_no_yolo", False))
@@ -905,6 +910,7 @@ def finalize_motion_recording(
             next_warn_monotonic=_no_detections_warn_next_monotonic,
             warn_interval_seconds=_NO_DETECTIONS_WARN_INTERVAL_S,
         )
+    final_rejected_reason_counts = _rejected_reason_counts(rejected_decisions)
     if len(video_detections) == 0:
         log_no_detection_activity(
             api,
@@ -914,6 +920,7 @@ def finalize_motion_recording(
             video_path_for_api=video_path_for_api,
             trigger_source=trigger_source,
             triggered_camera=session_camera_id,
+            rejected_reason_counts=final_rejected_reason_counts,
         )
 
     video_file_ok = _is_playable_video_file(video_output)
@@ -1087,6 +1094,7 @@ def finalize_motion_recording(
             "bytetrack_rows": yolo_tracks_count,
             "post_fusion_persisted": len(video_detections),
             "rejected_decision_rows": len(rejected_decisions),
+            "rejected_reason_counts": final_rejected_reason_counts,
             "mqtt_events_in_window": len(mqtt_events),
             "video_file_ok": bool(video_file_ok),
             "runtime_profile": rs.get("runtime_profile"),

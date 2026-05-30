@@ -35,6 +35,27 @@ def _no_detection_reason_code(*, track_count: int, mqtt_event_count: int) -> str
     return "UNKNOWN"
 
 
+def _fusion_no_accepted_reason_code(
+    rejected_reason_counts: dict[str, int] | None,
+) -> str | None:
+    if (
+        not isinstance(rejected_reason_counts, dict)
+        or not rejected_reason_counts
+    ):
+        return None
+    counts = {
+        str(k or "").strip().lower(): int(v or 0)
+        for k, v in rejected_reason_counts.items()
+    }
+    if counts.get("rejected_static_pinned_track", 0) > 0:
+        return "FUSION_NO_ACCEPTED_STATIC_PINNED"
+    if counts.get("rejected_short_track", 0) > 0:
+        return "FUSION_NO_ACCEPTED_SHORT_TRACK"
+    if counts.get("low_confidence", 0) > 0:
+        return "FUSION_NO_ACCEPTED_LOW_CONFIDENCE"
+    return None
+
+
 def log_no_detection_activity(
     api: Any,
     *,
@@ -44,6 +65,7 @@ def log_no_detection_activity(
     video_path_for_api: str,
     trigger_source: str | None = None,
     triggered_camera: str | None = None,
+    rejected_reason_counts: dict[str, int] | None = None,
 ) -> None:
     """Write structured ingest_gate activity for empty persisted detections."""
     if not api:
@@ -52,6 +74,11 @@ def log_no_detection_activity(
         track_count=int(track_count),
         mqtt_event_count=int(mqtt_event_count),
     )
+    if reason_code == "FUSION_NO_ACCEPTED":
+        reason_code = (
+            _fusion_no_accepted_reason_code(rejected_reason_counts)
+            or reason_code
+        )
     if reason_code == "UNKNOWN":
         return
     try:
@@ -62,11 +89,16 @@ def log_no_detection_activity(
                 "reason_code": reason_code,
                 "stage": "processor_finalize",
                 "video_path": video_path_for_api,
-                "trigger_source": (str(trigger_source or "").strip().lower() or None),
-                "triggered_camera": (str(triggered_camera or "").strip() or None),
+                "trigger_source": (
+                    str(trigger_source or "").strip().lower() or None
+                ),
+                "triggered_camera": (
+                    str(triggered_camera or "").strip() or None
+                ),
                 "yolo_track_count": int(track_count),
                 "mqtt_event_count": int(mqtt_event_count),
                 "rejected_count": int(rejected_count),
+                "rejected_reason_counts": dict(rejected_reason_counts or {}),
             },
         )
     except Exception:
