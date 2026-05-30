@@ -1,0 +1,41 @@
+{
+  "schema": "decision_engine_parity_ledger@v1",
+  "generated_at": "2026-05-30T18:35:54Z",
+  "row_count": 3,
+  "rows": [
+    {
+      "sessions_total": 26,
+      "frigate_window_sessions": 0,
+      "persisted_sessions": 16,
+      "fusion_no_accepted_sessions": 0,
+      "fusion_no_accepted_static_pinned": 0,
+      "fusion_no_accepted_short_track": 0,
+      "fusion_no_accepted_low_confidence": 0,
+      "day": "2026-05-20",
+      "fusion_no_accepted_share_vs_frigate": 0.0
+    },
+    {
+      "sessions_total": 13,
+      "frigate_window_sessions": 0,
+      "persisted_sessions": 8,
+      "fusion_no_accepted_sessions": 0,
+      "fusion_no_accepted_static_pinned": 0,
+      "fusion_no_accepted_short_track": 0,
+      "fusion_no_accepted_low_confidence": 0,
+      "day": "2026-05-22",
+      "fusion_no_accepted_share_vs_frigate": 0.0
+    },
+    {
+      "sessions_total": 13,
+      "frigate_window_sessions": 0,
+      "persisted_sessions": 8,
+      "fusion_no_accepted_sessions": 0,
+      "fusion_no_accepted_static_pinned": 0,
+      "fusion_no_accepted_short_track": 0,
+      "fusion_no_accepted_low_confidence": 0,
+      "day": "2026-05-28",
+      "fusion_no_accepted_share_vs_frigate": 0.0
+    }
+  ],
+  "ok": true
+}

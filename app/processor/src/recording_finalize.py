@@ -1083,6 +1083,8 @@ def finalize_motion_recording(
             "event": "recording_session_summary",
             "duration_s": round(duration_s, 3) if duration_s is not None else None,
             "triggered_camera": ctx.get("triggered_camera"),
+            "trigger_source": trigger_source,
+            "video_path": video_path_for_api,
             "frames_seen": int(rs.get("frames_seen") or 0),
             "yolo_frames_ran": int(rs.get("yolo_frames_ran") or 0),
             "yolo_frames_with_tracks": int(rs.get("yolo_frames_with_tracks") or 0),
