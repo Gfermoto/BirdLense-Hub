@@ -105,6 +105,10 @@ owasp-api-controls:
 	MCP_TOKEN="$${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="$${BIRDLENSE_UI_API_KEY:-}" \
 	  python3 ./scripts/verify_owasp_api_controls.py --base-url "$$_url"
 
+dora-metrics:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/report_dora_metrics.py --window-days "$${DORA_WINDOW_DAYS:-28}"
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
