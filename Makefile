@@ -835,9 +835,10 @@ generate-golden-v2:
 	@python3 "$(CURDIR)/scripts/generate_golden_dataset_v2.py"
 
 validate-pipeline-golden:
-	@cd "$(CURDIR)/app/processor" && PYTHONPATH=src python3 -m pytest tests/test_pipeline_golden_gate.py tests/test_scoring_engine.py tests/test_frame_decision_trace.py -q
-	@python3 "$(CURDIR)/scripts/validate_threshold_contract.py"
-	@python3 "$(CURDIR)/scripts/check_legacy_processor_config.py"
+	@cd "$(CURDIR)/app/processor" && PYTHONPATH=src python3 -m pytest tests/test_pipeline_golden_gate.py tests/test_scoring_engine.py tests/test_decision_trace_builder.py tests/test_recording_decision_trace_log.py -q
+
+ml-golden-set-gate:
+	@python3 "$(CURDIR)/scripts/enforce_golden_set_gate.py" --enforce
 
 stress-test-offline:
 	@GOLDEN_GATE_MIN_F1=0.9 STRESS_MAX_SILENCE_ACCEPTED=0 python3 "$(CURDIR)/scripts/stress_test_offline.py" --no-yolo

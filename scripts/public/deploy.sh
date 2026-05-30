@@ -43,6 +43,29 @@ if [[ "${RUN_VERIFY_PROD_BEFORE_DEPLOY:-}" =~ ^(1|true|yes)$ ]]; then
   }
 fi
 
+# 0.45 Mandatory golden-set gate for model/config changes (#534).
+# Gate runs only when changed files hit model/detection-config patterns.
+if [[ ! "${BIRDLENSE_SKIP_GOLDEN_SET_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  _gate_base="${GOLDEN_GATE_BASE_REF:-HEAD~1}"
+  _gate_head="${GOLDEN_GATE_HEAD_REF:-HEAD}"
+  _gate_json="docs/reports/golden_set_gate/golden_set_gate_latest.json"
+  _gate_md="docs/reports/golden_set_gate/golden_set_gate_latest.md"
+  echo "0.45 Golden Set Mandatory Gate (${_gate_base}..${_gate_head})..."
+  (cd "${REPO_ROOT}" && \
+    GOLDEN_GATE_MIN_F1="${GOLDEN_GATE_MIN_F1:-0.9}" \
+    STRESS_MAX_SILENCE_ACCEPTED="${STRESS_MAX_SILENCE_ACCEPTED:-0}" \
+    STRESS_MIN_STORM_RECALL="${STRESS_MIN_STORM_RECALL:-1.0}" \
+    python3 ./scripts/enforce_golden_set_gate.py \
+      --base-ref "${_gate_base}" \
+      --head-ref "${_gate_head}" \
+      --out-json "${_gate_json}" \
+      --out-md "${_gate_md}" \
+      --enforce) || {
+        echo "Ошибка: Golden Set Mandatory Gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
