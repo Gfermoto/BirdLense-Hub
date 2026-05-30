@@ -103,6 +103,23 @@ if [[ ! "${BIRDLENSE_SKIP_HEALTH_READINESS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.48 OWASP API controls gate (#531).
+if [[ ! "${BIRDLENSE_SKIP_OWASP_API_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  _owasp_json="docs/reports/owasp_api_controls/owasp_api_controls_latest.json"
+  _owasp_md="docs/reports/owasp_api_controls/owasp_api_controls_latest.md"
+  echo "0.48 OWASP API Controls Gate..."
+  (cd "${REPO_ROOT}" && \
+    MCP_TOKEN="${MCP_TOKEN:-}" \
+    BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
+    python3 ./scripts/verify_owasp_api_controls.py \
+      --base-url "${DEPLOY_URL}" \
+      --out-json "${_owasp_json}" \
+      --out-md "${_owasp_md}") || {
+        echo "Ошибка: OWASP API Controls gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
