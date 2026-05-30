@@ -120,6 +120,19 @@ if [[ ! "${BIRDLENSE_SKIP_OWASP_API_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.49 SSDF control map gate (#551).
+if [[ ! "${BIRDLENSE_SKIP_SSDF_MAP_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.49 SSDF Control Map Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_ssdf_control_map.py \
+      --map-file "docs/reports/ssdf/ssdf_control_map.json" \
+      --out-json "docs/reports/ssdf/ssdf_control_map_latest.json" \
+      --out-md "docs/reports/ssdf/ssdf_control_map_latest.md") || {
+        echo "Ошибка: SSDF Control Map gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
