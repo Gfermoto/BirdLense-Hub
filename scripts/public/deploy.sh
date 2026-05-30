@@ -400,6 +400,16 @@ BASE_URL="${DEPLOY_URL}" \
     --max-p95-ms "${PERF_MAX_P95_MS:-3000}" \
     --max-p99-ms "${PERF_MAX_P99_MS:-5000}" \
     --out "${PERF_OUT:-/tmp/runtime_perf_gate.deploy.v1.json}"
+echo "  - DORA snapshot refresh:"
+(cd "${REPO_ROOT}" && \
+  python3 ./scripts/report_dora_metrics.py \
+    --record-deploy \
+    --deploy-status success \
+    --skip-report && \
+  python3 ./scripts/report_dora_metrics.py \
+    --window-days "${DORA_WINDOW_DAYS:-28}" \
+    --out-json "docs/reports/dora/dora_metrics_latest.json" \
+    --out-md "docs/reports/dora/dora_metrics_latest.md")
 echo ""
 echo "=== Готово. UI: ${DEPLOY_URL} ==="
 echo "Записи и БД не трогаем; user_config.yaml не синхронизируем (есть бэкап .bak.deploy-* перед rsync)."
