@@ -1092,7 +1092,12 @@ def finalize_motion_recording(
             "low_light_blocked_frames": int(rs.get("low_light_blocked_frames") or 0),
             "session_extended_by_frigate_only": int(rs.get("session_extended_by_frigate_only") or 0),
             "bytetrack_rows": yolo_tracks_count,
+            "pre_fusion_accepted_rows": len(accepted_pre_fusion),
             "post_fusion_persisted": len(video_detections),
+            "fusion_dropped_rows": max(
+                0,
+                int(len(accepted_pre_fusion) - len(video_detections)),
+            ),
             "rejected_decision_rows": len(rejected_decisions),
             "rejected_reason_counts": final_rejected_reason_counts,
             "mqtt_events_in_window": len(mqtt_events),
