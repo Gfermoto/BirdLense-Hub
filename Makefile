@@ -59,6 +59,17 @@ verify:
 	MCP_TOKEN="$${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="$${BIRDLENSE_UI_API_KEY:-}" \
 	  ./scripts/verify-stack.sh --base-url "$$_url"
 
+baseline-snapshot-contract:
+	@set -e; cd "$(CURDIR)"; \
+	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
+	_url="$${BASE_URL:-$${DEPLOY_URL:-http://127.0.0.1:8085}}"; \
+	MCP_TOKEN="$${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="$${BIRDLENSE_UI_API_KEY:-}" \
+	  python3 ./scripts/parity_daily_hold.py --base-url "$$_url"; \
+	sleep 2; \
+	MCP_TOKEN="$${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="$${BIRDLENSE_UI_API_KEY:-}" \
+	  python3 ./scripts/parity_daily_hold.py --base-url "$$_url"; \
+	python3 ./scripts/verify_baseline_snapshot_contract.py --snapshot-dir docs/reports/parity_daily_hold
+
 quality-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \

@@ -1,0 +1,58 @@
+{
+  "schema": "baseline_snapshot_contract@v1",
+  "generated_at": "2026-05-30T19:54:21Z",
+  "tolerance": 0.01,
+  "checks": {
+    "schema_ok": true,
+    "base_url_match": true,
+    "material_match": true,
+    "require_same_material": true
+  },
+  "baseline_epoch_fingerprint": "c0befc0673ae503d91208164d95bc3f6399af2d7a1368a8cf4cfdaef04ca3198",
+  "current_epoch_fingerprint": "c0befc0673ae503d91208164d95bc3f6399af2d7a1368a8cf4cfdaef04ca3198",
+  "deltas": {
+    "errors_total": {
+      "baseline": 0,
+      "current": 0,
+      "relative_delta": 0.0,
+      "within_tolerance": true
+    },
+    "active_triggers_count": {
+      "baseline": 2,
+      "current": 2,
+      "relative_delta": 0.0,
+      "within_tolerance": true
+    },
+    "core_ok": {
+      "baseline": 1,
+      "current": 1,
+      "relative_delta": 0.0,
+      "within_tolerance": true
+    },
+    "health_ok": {
+      "baseline": 1,
+      "current": 1,
+      "relative_delta": 0.0,
+      "within_tolerance": true
+    },
+    "readiness_ok": {
+      "baseline": 1,
+      "current": 1,
+      "relative_delta": 0.0,
+      "within_tolerance": true
+    },
+    "status_web_ok": {
+      "baseline": 1,
+      "current": 1,
+      "relative_delta": 0.0,
+      "within_tolerance": true
+    },
+    "status_ok_components": {
+      "baseline": 5,
+      "current": 5,
+      "relative_delta": 0.0,
+      "within_tolerance": true
+    }
+  },
+  "ok": true
+}
