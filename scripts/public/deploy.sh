@@ -66,6 +66,26 @@ if [[ ! "${BIRDLENSE_SKIP_GOLDEN_SET_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.46 Error budget release gate (#529).
+# Blocks deploy only when budget is exhausted. Override requires reason.
+if [[ ! "${BIRDLENSE_SKIP_ERROR_BUDGET_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  _error_budget_json="docs/reports/error_budget_gate/error_budget_gate_latest.json"
+  _error_budget_md="docs/reports/error_budget_gate/error_budget_gate_latest.md"
+  echo "0.46 Error Budget Gate..."
+  if ! (cd "${REPO_ROOT}" && \
+    MCP_TOKEN="${MCP_TOKEN:-}" \
+    BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
+    BIRDLENSE_ERROR_BUDGET_OVERRIDE_REASON="${BIRDLENSE_ERROR_BUDGET_OVERRIDE_REASON:-}" \
+    python3 ./scripts/error_budget_gate.py \
+      --base-url "${DEPLOY_URL}" \
+      --out-json "${_error_budget_json}" \
+      --out-md "${_error_budget_md}"); then
+    echo "Ошибка: Error Budget Gate не пройден. Деплой остановлен."
+    echo "Подсказка: для аварийного обхода задайте BIRDLENSE_ERROR_BUDGET_OVERRIDE_REASON."
+    exit 1
+  fi
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
