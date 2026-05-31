@@ -150,6 +150,10 @@ docs-diataxis-gate:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/verify_docs_diataxis.py
 
+docs-drift-gate:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/verify_docs_drift_gate.py
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
