@@ -1,0 +1,14 @@
+{
+  "schema": "release_policy_contract@v1",
+  "required_policies": [
+    "golden_set_gate",
+    "error_budget_gate",
+    "security_vuln_response_gate",
+    "review_board_governance_gate",
+    "ml_technical_debt_scorecard_gate"
+  ],
+  "min_release_events": 4,
+  "min_policy_coverage_ratio": 1.0,
+  "max_manual_override_ratio": 0.5,
+  "require_override_audit_trail": true
+}

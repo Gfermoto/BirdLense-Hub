@@ -343,6 +343,18 @@ if [[ ! "${BIRDLENSE_SKIP_REVIEW_BOARD_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.67 Release policy-as-code gate (#554).
+if [[ ! "${BIRDLENSE_SKIP_RELEASE_POLICY_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.67 Release Policy As-Code Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_release_policy_as_code.py \
+      --out-json "docs/reports/governance/release_policy_latest.json" \
+      --out-md "docs/reports/governance/release_policy_latest.md") || {
+        echo "Ошибка: Release policy-as-code gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
