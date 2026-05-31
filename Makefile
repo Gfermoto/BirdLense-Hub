@@ -162,6 +162,10 @@ integration-contract-registry-gate:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/verify_integration_contract_registry.py
 
+event-burst-reconnect-gate:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/verify_event_burst_reconnect.py
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \

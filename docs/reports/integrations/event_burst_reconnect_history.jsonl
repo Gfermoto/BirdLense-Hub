@@ -1,0 +1,4 @@
+{"timestamp":"2026-05-28T09:00:00Z","scenario":"mqtt_event_burst","runs_total":300,"runs_passed":297,"event_loss_rate":0.01,"reconnect_recovery_ms_p95":2800}
+{"timestamp":"2026-05-29T09:00:00Z","scenario":"mqtt_reconnect_jitter","runs_total":160,"runs_passed":157,"event_loss_rate":0.0125,"reconnect_recovery_ms_p95":3200}
+{"timestamp":"2026-05-30T09:00:00Z","scenario":"status_burst_api","runs_total":220,"runs_passed":220,"event_loss_rate":0.0,"reconnect_recovery_ms_p95":1500}
+{"timestamp":"2026-05-31T09:00:00Z","scenario":"metrics_scrape_storm","runs_total":120,"runs_passed":119,"event_loss_rate":0.0083,"reconnect_recovery_ms_p95":4100}
