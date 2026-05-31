@@ -271,6 +271,18 @@ if [[ ! "${BIRDLENSE_SKIP_SLSA_BUILD_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.61 Integration contract registry gate (#547).
+if [[ ! "${BIRDLENSE_SKIP_INTEGRATION_REGISTRY_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.61 Integration Contract Registry Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_integration_contract_registry.py \
+      --out-json "docs/reports/integrations/integration_contract_registry_latest.json" \
+      --out-md "docs/reports/integrations/integration_contract_registry_latest.md") || {
+        echo "Ошибка: Integration Contract Registry gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"

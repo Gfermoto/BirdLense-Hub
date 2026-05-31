@@ -158,6 +158,10 @@ slsa-build-track-gate:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/verify_slsa_build_track.py
 
+integration-contract-registry-gate:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/verify_integration_contract_registry.py
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \

@@ -1,0 +1,74 @@
+{
+  "schema": "integration_contract_registry_report@v1",
+  "generated_at": "2026-05-31T11:34:35Z",
+  "checks": {
+    "registry_size_ok": true,
+    "required_ids_ok": true,
+    "duplicates_ok": true,
+    "docs_ok": true,
+    "endpoints_ok": true,
+    "channel_ok": true,
+    "auth_ok": true
+  },
+  "summary": {
+    "registry_total": 5,
+    "required_total": 5,
+    "min_registry_size": 5
+  },
+  "drift": {
+    "missing_required_ids": [],
+    "duplicate_ids": [],
+    "missing_docs": [],
+    "missing_endpoints": [],
+    "invalid_channels": [],
+    "invalid_auth": []
+  },
+  "contracts": [
+    {
+      "id": "mqtt_frigate_events",
+      "channel": "mqtt",
+      "auth_mode": "internal",
+      "contract_doc_ok": true,
+      "endpoint_ok": true,
+      "channel_ok": true,
+      "auth_ok": true
+    },
+    {
+      "id": "mqtt_birdnet_events",
+      "channel": "mqtt",
+      "auth_mode": "internal",
+      "contract_doc_ok": true,
+      "endpoint_ok": true,
+      "channel_ok": true,
+      "auth_ok": true
+    },
+    {
+      "id": "mqtt_esphome_state",
+      "channel": "mqtt",
+      "auth_mode": "internal",
+      "contract_doc_ok": true,
+      "endpoint_ok": true,
+      "channel_ok": true,
+      "auth_ok": true
+    },
+    {
+      "id": "http_status_endpoint",
+      "channel": "http",
+      "auth_mode": "mcp_token",
+      "contract_doc_ok": true,
+      "endpoint_ok": true,
+      "channel_ok": true,
+      "auth_ok": true
+    },
+    {
+      "id": "http_domain_health_endpoint",
+      "channel": "http",
+      "auth_mode": "mcp_token",
+      "contract_doc_ok": true,
+      "endpoint_ok": true,
+      "channel_ok": true,
+      "auth_ok": true
+    }
+  ],
+  "ok": true
+}

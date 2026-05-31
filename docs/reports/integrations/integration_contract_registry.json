@@ -1,0 +1,58 @@
+{
+  "schema": "integration_contract_registry@v1",
+  "required_ids": [
+    "mqtt_frigate_events",
+    "mqtt_birdnet_events",
+    "mqtt_esphome_state",
+    "http_status_endpoint",
+    "http_domain_health_endpoint"
+  ],
+  "min_registry_size": 5,
+  "contracts": [
+    {
+      "id": "mqtt_frigate_events",
+      "channel": "mqtt",
+      "provider": "frigate",
+      "topic_pattern": "frigate/+/events",
+      "contract_doc": "docs/user/runbooks.md",
+      "owner": "integrations-team",
+      "auth_mode": "internal"
+    },
+    {
+      "id": "mqtt_birdnet_events",
+      "channel": "mqtt",
+      "provider": "birdnet",
+      "topic_pattern": "birdnet/#",
+      "contract_doc": "docs/user/configuration.md",
+      "owner": "integrations-team",
+      "auth_mode": "internal"
+    },
+    {
+      "id": "mqtt_esphome_state",
+      "channel": "mqtt",
+      "provider": "esphome",
+      "topic_pattern": "birdlense/esphome/#",
+      "contract_doc": "docs/user/configuration.md",
+      "owner": "integrations-team",
+      "auth_mode": "internal"
+    },
+    {
+      "id": "http_status_endpoint",
+      "channel": "http",
+      "provider": "web-api",
+      "status_endpoint": "/api/ui/status",
+      "contract_doc": "docs/user/troubleshooting.md",
+      "owner": "web-team",
+      "auth_mode": "mcp_token"
+    },
+    {
+      "id": "http_domain_health_endpoint",
+      "channel": "http",
+      "provider": "web-api",
+      "status_endpoint": "/api/ui/system/domain-health",
+      "contract_doc": "docs/runbooks/runtime-slo-stability.md",
+      "owner": "web-team",
+      "auth_mode": "mcp_token"
+    }
+  ]
+}
