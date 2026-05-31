@@ -146,6 +146,21 @@ if [[ ! "${BIRDLENSE_SKIP_SECRETS_VULN_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.51 Runbook coverage gate (#543).
+if [[ ! "${BIRDLENSE_SKIP_RUNBOOK_COVERAGE_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.51 Runbook Coverage Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_runbook_coverage.py \
+      --catalog "docs/reports/runbook_coverage/incident_catalog.json" \
+      --history "docs/reports/runbook_coverage/validation_history.jsonl" \
+      --record-validation \
+      --out-json "docs/reports/runbook_coverage/runbook_coverage_latest.json" \
+      --out-md "docs/reports/runbook_coverage/runbook_coverage_latest.md") || {
+        echo "Ошибка: Runbook Coverage gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
