@@ -199,6 +199,18 @@ if [[ ! "${BIRDLENSE_SKIP_ML_DRIFT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.55 OpenAPI governance gate (#532).
+if [[ ! "${BIRDLENSE_SKIP_OPENAPI_GOV_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.55 OpenAPI Governance Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_openapi_governance.py \
+      --out-json "docs/reports/openapi_governance/openapi_governance_latest.json" \
+      --out-md "docs/reports/openapi_governance/openapi_governance_latest.md") || {
+        echo "Ошибка: OpenAPI Governance gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"

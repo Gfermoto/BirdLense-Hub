@@ -230,6 +230,10 @@ jobs:
       - name: Install UI dependencies
         run: npm ci
 
+      - name: OpenAPI Spectral governance lint
+        working-directory: ${{ github.workspace }}
+        run: python3 scripts/verify_openapi_governance.py
+
       - name: OpenAPI → TypeScript (drift check vs committed file)
         working-directory: ${{ github.workspace }}
         run: |
