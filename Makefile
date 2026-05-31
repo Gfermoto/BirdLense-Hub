@@ -190,6 +190,10 @@ cli-contract-standardization-gate:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/verify_cli_contract_standardization.py
 
+nas-storage-contract-gate:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/verify_nas_storage_contract.py
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
