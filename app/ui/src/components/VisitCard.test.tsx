@@ -61,7 +61,46 @@ describe('VisitCard', () => {
       screen.getByText(/(feeding|кормление)/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /(Set nickname|Задать кличку)/i }),
+      screen.getByRole('button', {
+        name: /(Set nickname|Задать кличку|Unlink bird)/i,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows delete detection action for unlinked video items', () => {
+    const qc = new QueryClient();
+    const visit: SpeciesVisit = {
+      id: -1,
+      start_time: '2026-03-25T15:00:00Z',
+      end_time: '2026-03-25T15:05:00Z',
+      max_simultaneous: 1,
+      timeline_kind: 'unlinked_video',
+      species: {
+        id: 11,
+        name: 'Sparrow',
+      },
+      detections: [
+        {
+          id: 101,
+          video_id: 201,
+          start_time: '2026-03-25T15:00:01Z',
+          end_time: '2026-03-25T15:00:04Z',
+          confidence: 0.71,
+          source: 'video',
+        },
+      ],
+    };
+
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter future={memoryRouterFuture}>
+          <VisitCard visit={visit} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(
+      screen.getByRole('button', { name: /(Delete detection|Удалить детекцию)/i }),
     ).toBeInTheDocument();
   });
 });
