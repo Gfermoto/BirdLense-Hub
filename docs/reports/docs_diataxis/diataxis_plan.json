@@ -1,0 +1,47 @@
+{
+  "schema": "docs_diataxis_plan@v1",
+  "targets": [
+    {
+      "path": "docs/user/install.md",
+      "diataxis_type": "tutorial"
+    },
+    {
+      "path": "docs/user/deploy-server.md",
+      "diataxis_type": "how-to"
+    },
+    {
+      "path": "docs/user/runbooks.md",
+      "diataxis_type": "how-to"
+    },
+    {
+      "path": "docs/user/configuration.md",
+      "diataxis_type": "reference"
+    },
+    {
+      "path": "docs/user/features.md",
+      "diataxis_type": "reference"
+    },
+    {
+      "path": "docs/user/troubleshooting.md",
+      "diataxis_type": "how-to"
+    },
+    {
+      "path": "docs/contributor/architecture.md",
+      "diataxis_type": "explanation"
+    },
+    {
+      "path": "docs/contributor/testing.md",
+      "diataxis_type": "reference"
+    },
+    {
+      "path": "docs/contributor/documentation.md",
+      "diataxis_type": "explanation"
+    },
+    {
+      "path": "docs/admin/SYSTEM_MONITORING.md",
+      "diataxis_type": "how-to"
+    }
+  ],
+  "min_coverage_pct": 100.0,
+  "max_cross_type_bleed_pct": 30.0
+}

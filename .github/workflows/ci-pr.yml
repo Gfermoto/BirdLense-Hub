@@ -267,6 +267,9 @@ jobs:
       - name: Check docs version vs VERSION file
         run: python3 scripts/check-docs-version.py
 
+      - name: Docs Diataxis governance gate
+        run: python3 scripts/verify_docs_diataxis.py
+
       - name: Check SITE_MAP vs mkdocs Meta/Repository
         run: python3 scripts/check_site_map_meta_paths.py
 

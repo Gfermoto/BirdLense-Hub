@@ -235,6 +235,18 @@ if [[ ! "${BIRDLENSE_SKIP_CRITICAL_UX_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.58 Docs Diataxis gate (#541).
+if [[ ! "${BIRDLENSE_SKIP_DOCS_DIATAXIS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.58 Docs Diataxis Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_docs_diataxis.py \
+      --out-json "docs/reports/docs_diataxis/docs_diataxis_latest.json" \
+      --out-md "docs/reports/docs_diataxis/docs_diataxis_latest.md") || {
+        echo "Ошибка: Docs Diataxis gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"

@@ -1,0 +1,98 @@
+{
+  "schema": "docs_diataxis_report@v1",
+  "generated_at": "2026-05-31T09:22:11Z",
+  "policy": {
+    "allowed_types": [
+      "tutorial",
+      "how-to",
+      "reference",
+      "explanation"
+    ],
+    "min_coverage_pct": 100.0,
+    "max_cross_type_bleed_pct": 30.0
+  },
+  "coverage": {
+    "classified": 10,
+    "total": 10,
+    "coverage_pct": 100.0,
+    "ok": true
+  },
+  "cross_type_bleed": {
+    "flagged": 0,
+    "bleed_pct": 0.0,
+    "ok": true
+  },
+  "targets": [
+    {
+      "path": "docs/user/install.md",
+      "diataxis_type": "tutorial",
+      "exists": true,
+      "type_ok": true,
+      "bleed_flag": false
+    },
+    {
+      "path": "docs/user/deploy-server.md",
+      "diataxis_type": "how-to",
+      "exists": true,
+      "type_ok": true,
+      "bleed_flag": false
+    },
+    {
+      "path": "docs/user/runbooks.md",
+      "diataxis_type": "how-to",
+      "exists": true,
+      "type_ok": true,
+      "bleed_flag": false
+    },
+    {
+      "path": "docs/user/configuration.md",
+      "diataxis_type": "reference",
+      "exists": true,
+      "type_ok": true,
+      "bleed_flag": false
+    },
+    {
+      "path": "docs/user/features.md",
+      "diataxis_type": "reference",
+      "exists": true,
+      "type_ok": true,
+      "bleed_flag": false
+    },
+    {
+      "path": "docs/user/troubleshooting.md",
+      "diataxis_type": "how-to",
+      "exists": true,
+      "type_ok": true,
+      "bleed_flag": false
+    },
+    {
+      "path": "docs/contributor/architecture.md",
+      "diataxis_type": "explanation",
+      "exists": true,
+      "type_ok": true,
+      "bleed_flag": false
+    },
+    {
+      "path": "docs/contributor/testing.md",
+      "diataxis_type": "reference",
+      "exists": true,
+      "type_ok": true,
+      "bleed_flag": false
+    },
+    {
+      "path": "docs/contributor/documentation.md",
+      "diataxis_type": "explanation",
+      "exists": true,
+      "type_ok": true,
+      "bleed_flag": false
+    },
+    {
+      "path": "docs/admin/SYSTEM_MONITORING.md",
+      "diataxis_type": "how-to",
+      "exists": true,
+      "type_ok": true,
+      "bleed_flag": false
+    }
+  ],
+  "ok": true
+}
