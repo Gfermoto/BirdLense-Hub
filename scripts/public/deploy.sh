@@ -283,6 +283,18 @@ if [[ ! "${BIRDLENSE_SKIP_INTEGRATION_REGISTRY_GATE:-}" =~ ^(1|true|yes)$ ]]; th
       }
 fi
 
+# 0.62 Event burst/reconnect resilience gate (#548).
+if [[ ! "${BIRDLENSE_SKIP_EVENT_BURST_RECONNECT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.62 Event Burst Reconnect Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_event_burst_reconnect.py \
+      --out-json "docs/reports/integrations/event_burst_reconnect_latest.json" \
+      --out-md "docs/reports/integrations/event_burst_reconnect_latest.md") || {
+        echo "Ошибка: Event Burst/Reconnect gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
