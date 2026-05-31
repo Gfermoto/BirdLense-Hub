@@ -221,37 +221,19 @@ def register_ui_overview_timeline_routes(app):
         hour_param = request.args.get("hour", type=int)
         start_time = request.args.get("start_time")
         end_time = request.args.get("end_time")
-        min_confidence = request.args.get("min_confidence", type=float)
-        min_duration_sec = request.args.get("min_duration_sec", type=int)
-        detection_source = (
-            request.args.get("detection_source", "all").strip().lower()
+        trigger_source = (
+            request.args.get("trigger_source", "all").strip().lower()
         )
-        detection_provider = (
-            request.args.get("detection_provider", "all").strip().lower()
-        )
-        if detection_source not in {
+        if trigger_source not in {
             "all",
-            "video_only",
-            "audio_only",
-            "mixed",
-        }:
-            return {"error": "detection_source is invalid"}, 400
-        if detection_provider not in {
-            "all",
-            "yolo",
+            "opencv",
             "frigate",
-            "birdnet",
-            "audio",
-            "video",
+            "motion_sensor",
+            "scales",
+            "track_regen",
             "unknown",
         }:
-            return {"error": "detection_provider is invalid"}, 400
-        if min_confidence is not None and (
-            min_confidence < 0 or min_confidence > 1
-        ):
-            return {"error": "min_confidence must be within [0, 1]"}, 400
-        if min_duration_sec is not None and min_duration_sec < 0:
-            return {"error": "min_duration_sec must be >= 0"}, 400
+            return {"error": "trigger_source is invalid"}, 400
 
         try:
             start_dt, end_dt = resolve_timeline_utc_window(
@@ -267,14 +249,12 @@ def register_ui_overview_timeline_routes(app):
         if date_param:
             tck = (
                 f"timeline:local:{date_param}:{time_of_day}:{hour_param}:"
-                f"f{fav}:c{min_confidence}:d{min_duration_sec}:"
-                f"s{detection_source}:p{detection_provider}"
+                f"f{fav}:t{trigger_source}"
             )
         else:
             tck = (
                 f"timeline:{start_time}:{end_time}:"
-                f"f{fav}:c{min_confidence}:d{min_duration_sec}:"
-                f"s{detection_source}:p{detection_provider}"
+                f"f{fav}:t{trigger_source}"
             )
 
         if end_dt - start_dt > timedelta(days=1):
@@ -299,10 +279,7 @@ def register_ui_overview_timeline_routes(app):
             start_dt,
             end_dt,
             favorite_only=bool(fav),
-            min_confidence=min_confidence,
-            min_duration_sec=min_duration_sec,
-            detection_source=detection_source,
-            detection_provider=detection_provider,
+            trigger_source=trigger_source,
             limit=limit_raw,
             offset=offset_raw,
         )
@@ -319,37 +296,19 @@ def register_ui_overview_timeline_routes(app):
         hour_param = request.args.get("hour", type=int)
         start_time = request.args.get("start_time")
         end_time = request.args.get("end_time")
-        min_confidence = request.args.get("min_confidence", type=float)
-        min_duration_sec = request.args.get("min_duration_sec", type=int)
-        detection_source = (
-            request.args.get("detection_source", "all").strip().lower()
+        trigger_source = (
+            request.args.get("trigger_source", "all").strip().lower()
         )
-        detection_provider = (
-            request.args.get("detection_provider", "all").strip().lower()
-        )
-        if detection_source not in {
+        if trigger_source not in {
             "all",
-            "video_only",
-            "audio_only",
-            "mixed",
-        }:
-            return {"error": "detection_source is invalid"}, 400
-        if detection_provider not in {
-            "all",
-            "yolo",
+            "opencv",
             "frigate",
-            "birdnet",
-            "audio",
-            "video",
+            "motion_sensor",
+            "scales",
+            "track_regen",
             "unknown",
         }:
-            return {"error": "detection_provider is invalid"}, 400
-        if min_confidence is not None and (
-            min_confidence < 0 or min_confidence > 1
-        ):
-            return {"error": "min_confidence must be within [0, 1]"}, 400
-        if min_duration_sec is not None and min_duration_sec < 0:
-            return {"error": "min_duration_sec must be >= 0"}, 400
+            return {"error": "trigger_source is invalid"}, 400
         fmt = request.args.get("format", "json").lower()
 
         fmt_err = validate_timeline_export_format(fmt)
@@ -375,10 +334,7 @@ def register_ui_overview_timeline_routes(app):
             start_dt,
             end_dt,
             favorite_only=_favorite_only_from_request(),
-            min_confidence=min_confidence,
-            min_duration_sec=min_duration_sec,
-            detection_source=detection_source,
-            detection_provider=detection_provider,
+            trigger_source=trigger_source,
         )
         rows = build_timeline_export_rows(merged)
         body, mimetype, headers = build_timeline_export_response_parts(

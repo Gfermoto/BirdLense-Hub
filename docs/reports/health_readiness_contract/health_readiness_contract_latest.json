@@ -1,6 +1,6 @@
 {
   "schema": "health_readiness_contract@v1",
-  "generated_at": "2026-05-30T20:21:02Z",
+  "generated_at": "2026-05-31T19:02:33Z",
   "checks": {
     "health_ok": true,
     "readiness_ok": true,
@@ -20,7 +20,7 @@
     "readiness": {
       "status_code": 200,
       "payload": {
-        "checked_at": "2026-05-30T20:21:00.534173+00:00",
+        "checked_at": "2026-05-31T19:02:33.541598+00:00",
         "checks": {
           "app_config_dir": {
             "exists": true,
@@ -45,8 +45,8 @@
             "status": "ok"
           },
           "processor_heartbeat": {
-            "age_seconds": 15.699,
-            "last_heartbeat_utc": "2026-05-30T20:20:44.835369+00:00",
+            "age_seconds": 144.542,
+            "last_heartbeat_utc": "2026-05-31T19:00:09+00:00",
             "max_age_seconds": 180,
             "reason": "ok",
             "status": "ok"

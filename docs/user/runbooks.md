@@ -158,6 +158,27 @@ Decision log template:
   - #<id> <title> (owner: <name>, due: <date>)
 ```
 
+## Weekly SOTA reality check (mandatory while #517 is open)
+
+Use this ritual until acceptance epic [#517](https://github.com/Gfermoto/BirdLense-Hub/issues/517) is closed.
+
+1. Generate/refresh artifacts:
+   - `docs/reports/error_budget_gate/error_budget_gate_latest.json`
+   - `docs/reports/golden_set_gate/golden_set_gate_latest.json`
+   - `docs/reports/quality_outcome/quality_outcome_metrics_latest.json`
+   - `docs/reports/sota_reality/sota_reality_check_latest.md`
+2. Validate P0 blockers status:
+   - [#555](https://github.com/Gfermoto/BirdLense-Hub/issues/555)
+   - [#556](https://github.com/Gfermoto/BirdLense-Hub/issues/556)
+   - [#557](https://github.com/Gfermoto/BirdLense-Hub/issues/557)
+3. Confirm no skipped critical ML gates (unless explicit override ticket is attached).
+4. Attach one weekly comment to the governance issue with:
+   - outcome metrics trend (blind_rate, tracks_coverage, empty_bbox_rate),
+   - backend+ui parity verification notes,
+   - decision (`hold` / `go` / `rollback`) and linked issues.
+
+Hard rule: `warning` error budget state does not pass release check without override reason containing issue token (`#<id>`).
+
 ## Slow frame processing in logs (`Slow frame processing: … ms >= … ms`)
 
 Symptom: processor log or FPS summary shows **YOLO / frame pipeline** taking longer than `processor.frame_processing_warn_ms` (default **450** ms). High-resolution video + VA-API still has a hard latency budget.

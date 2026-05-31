@@ -24,16 +24,13 @@ export const fetchTimelineForObserverDate = async (
     timeOfDay?: TimeOfDay;
     hour?: number | null;
     favoritesOnly?: boolean;
-    minConfidence?: number;
-    minDurationSec?: number;
-    detectionSource?: 'all' | 'video_only' | 'audio_only' | 'mixed';
-    detectionProvider?:
+    triggerSource?:
       | 'all'
-      | 'yolo'
+      | 'opencv'
       | 'frigate'
-      | 'birdnet'
-      | 'audio'
-      | 'video'
+      | 'motion_sensor'
+      | 'scales'
+      | 'track_regen'
       | 'unknown';
   },
 ): Promise<SpeciesVisit[]> => {
@@ -44,17 +41,8 @@ export const fetchTimelineForObserverDate = async (
         ? { hour: options.hour }
         : { time_of_day: options?.timeOfDay ?? 'all' }),
       ...(options?.favoritesOnly ? { favorite_only: 1 } : {}),
-      ...(options?.minConfidence != null
-        ? { min_confidence: options.minConfidence }
-        : {}),
-      ...(options?.minDurationSec != null
-        ? { min_duration_sec: options.minDurationSec }
-        : {}),
-      ...(options?.detectionSource && options.detectionSource !== 'all'
-        ? { detection_source: options.detectionSource }
-        : {}),
-      ...(options?.detectionProvider && options.detectionProvider !== 'all'
-        ? { detection_provider: options.detectionProvider }
+      ...(options?.triggerSource && options.triggerSource !== 'all'
+        ? { trigger_source: options.triggerSource }
         : {}),
     },
   });
@@ -96,16 +84,13 @@ export const exportTimelineForObserverDate = async (
     timeOfDay?: TimeOfDay;
     hour?: number | null;
     favoritesOnly?: boolean;
-    minConfidence?: number;
-    minDurationSec?: number;
-    detectionSource?: 'all' | 'video_only' | 'audio_only' | 'mixed';
-    detectionProvider?:
+    triggerSource?:
       | 'all'
-      | 'yolo'
+      | 'opencv'
       | 'frigate'
-      | 'birdnet'
-      | 'audio'
-      | 'video'
+      | 'motion_sensor'
+      | 'scales'
+      | 'track_regen'
       | 'unknown';
   },
 ): Promise<void> => {
@@ -116,17 +101,8 @@ export const exportTimelineForObserverDate = async (
       ? { hour: String(options.hour) }
       : { time_of_day: options?.timeOfDay ?? 'all' }),
     ...(options?.favoritesOnly ? { favorite_only: '1' } : {}),
-    ...(options?.minConfidence != null
-      ? { min_confidence: String(options.minConfidence) }
-      : {}),
-    ...(options?.minDurationSec != null
-      ? { min_duration_sec: String(options.minDurationSec) }
-      : {}),
-    ...(options?.detectionSource && options.detectionSource !== 'all'
-      ? { detection_source: options.detectionSource }
-      : {}),
-    ...(options?.detectionProvider && options.detectionProvider !== 'all'
-      ? { detection_provider: options.detectionProvider }
+    ...(options?.triggerSource && options.triggerSource !== 'all'
+      ? { trigger_source: options.triggerSource }
       : {}),
   });
   const url = `${BASE_API_URL}/timeline/export?${params}`;

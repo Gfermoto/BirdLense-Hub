@@ -46,6 +46,8 @@ export interface SpeciesVisit {
   bird_profile_id?: number | null;
   /** Model-derived behavior events for this visit. */
   behavior_events?: { label?: string }[];
+  /** Trigger semantics for timeline filtering (opencv/frigate/motion_sensor/scales/unknown). */
+  trigger_source?: string;
 }
 
 export interface TrackFrame {

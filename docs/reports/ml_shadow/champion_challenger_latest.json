@@ -1,6 +1,6 @@
 {
   "schema": "champion_challenger_shadow_report@v1",
-  "generated_at": "2026-05-31T14:22:05Z",
+  "generated_at": "2026-05-31T19:02:52Z",
   "checks": {
     "required_candidates_ok": true,
     "shadow_coverage_ok": true,

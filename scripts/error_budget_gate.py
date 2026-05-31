@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -53,6 +54,7 @@ def evaluate_gate(
     report: dict[str, Any],
     *,
     override_reason: str,
+    warning_requires_override: bool = True,
 ) -> dict[str, Any]:
     alerting_rules = report.get("alerting_rules")
     if not isinstance(alerting_rules, list):
@@ -105,8 +107,15 @@ def evaluate_gate(
     remaining_pct = int(max(0, 100 - consumed_pct))
     exhausted = bool(consumed_pct >= 100)
     warning_state = bool(not exhausted and consumed_pct >= 80)
-    override_used = bool(override_reason.strip())
-    block_release = bool(exhausted and not override_used)
+    override_reason_clean = override_reason.strip()
+    override_used = bool(override_reason_clean)
+    override_has_ticket = bool(
+        re.search(r"#\d+", override_reason_clean)
+    )
+    warning_override_active = bool(warning_state and warning_requires_override)
+    requires_override = bool(exhausted or warning_override_active)
+    override_valid = bool(override_used and override_has_ticket)
+    block_release = bool(requires_override and not override_valid)
     policy_state = (
         "exhausted"
         if exhausted
@@ -143,7 +152,11 @@ def evaluate_gate(
         },
         "gate": {
             "override_used": bool(override_used),
-            "override_reason": override_reason.strip(),
+            "override_reason": override_reason_clean,
+            "override_has_ticket": bool(override_has_ticket),
+            "warning_requires_override": bool(warning_requires_override),
+            "requires_override": bool(requires_override),
+            "warning_override_active": bool(warning_override_active),
             "block_release": bool(block_release),
             "ok": bool(not block_release),
         },
@@ -227,6 +240,16 @@ def _args() -> argparse.Namespace:
         default=os.environ.get("BIRDLENSE_ERROR_BUDGET_OVERRIDE_REASON", ""),
     )
     parser.add_argument(
+        "--warning-requires-override",
+        action="store_true",
+        default=_truthy(
+            os.environ.get(
+                "BIRDLENSE_ERROR_BUDGET_WARNING_REQUIRES_OVERRIDE",
+                "1",
+            )
+        ),
+    )
+    parser.add_argument(
         "--out-json",
         default="docs/reports/error_budget_gate/error_budget_gate_latest.json",
     )
@@ -256,6 +279,7 @@ def main() -> int:
     payload = evaluate_gate(
         report,
         override_reason=str(args.override_reason or ""),
+        warning_requires_override=bool(args.warning_requires_override),
     )
     out_json = Path(args.out_json).expanduser()
     if not out_json.is_absolute():

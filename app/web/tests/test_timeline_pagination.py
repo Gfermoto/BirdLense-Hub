@@ -5,8 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from routes.ui_timeline_helpers import (
-    _timeline_item_matches_provider,
-    _timeline_item_matches_source,
+    _timeline_item_matches_trigger,
     build_merged_timeline_items,
 )
 
@@ -28,36 +27,13 @@ def test_timeline_pagination_envelope(app):
         assert "has_more" in out
 
 
-def test_timeline_source_filter_matcher():
-    item_video = {"detections": [{"source": "video"}, {"source": "video"}]}
-    item_audio = {"detections": [{"source": "audio"}]}
-    item_mixed = {"detections": [{"source": "video"}, {"source": "audio"}]}
+def test_timeline_trigger_filter_matcher():
+    item_opencv = {"trigger_source": "opencv"}
+    item_frigate = {"trigger_source": "frigate"}
+    item_empty = {}
 
-    assert _timeline_item_matches_source(item_video, "all") is True
-    assert _timeline_item_matches_source(item_video, "video_only") is True
-    assert _timeline_item_matches_source(item_video, "audio_only") is False
-    assert _timeline_item_matches_source(item_video, "mixed") is False
-
-    assert _timeline_item_matches_source(item_audio, "audio_only") is True
-    assert _timeline_item_matches_source(item_audio, "video_only") is False
-
-    assert _timeline_item_matches_source(item_mixed, "mixed") is True
-    assert _timeline_item_matches_source(item_mixed, "video_only") is False
-
-
-def test_timeline_provider_filter_matcher():
-    item_yolo = {
-        "detections": [{"source": "video", "detection_provider": "yolo"}]
-    }
-    item_audio = {"detections": [{"source": "audio"}]}
-    item_birdnet = {
-        "detections": [{"source": "audio", "detection_provider": "birdnet_mqtt"}]
-    }
-
-    assert _timeline_item_matches_provider(item_yolo, "all") is True
-    assert _timeline_item_matches_provider(item_yolo, "yolo") is True
-    assert (
-        _timeline_item_matches_provider(item_yolo, "frigate") is False
-    )
-    assert _timeline_item_matches_provider(item_audio, "audio") is True
-    assert _timeline_item_matches_provider(item_birdnet, "birdnet") is True
+    assert _timeline_item_matches_trigger(item_opencv, "all") is True
+    assert _timeline_item_matches_trigger(item_opencv, "opencv") is True
+    assert _timeline_item_matches_trigger(item_opencv, "frigate") is False
+    assert _timeline_item_matches_trigger(item_frigate, "frigate") is True
+    assert _timeline_item_matches_trigger(item_empty, "unknown") is True

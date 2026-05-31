@@ -1,6 +1,6 @@
 {
   "schema": "docs_drift_gate@v1",
-  "generated_at": "2026-05-31T10:47:26Z",
+  "generated_at": "2026-05-31T19:02:52Z",
   "checks": {
     "nav_inventory_sync_ok": true,
     "redirect_inventory_sync_ok": true,

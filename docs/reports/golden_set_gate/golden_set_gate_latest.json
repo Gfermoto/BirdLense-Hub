@@ -1,33 +1,22 @@
 {
   "schema": "golden_set_mandatory_gate@v1",
-  "generated_at": "2026-05-30T19:36:27Z",
+  "generated_at": "2026-05-31T19:02:31Z",
   "base_ref": "HEAD~1",
   "head_ref": "HEAD",
-  "changed_files_count": 1,
+  "changed_files_count": 9,
   "changed_files": [
-    "app/app_config/default_config.yaml"
+    ".github/workflows/ci-pr.yml",
+    "Makefile",
+    "app/processor/tests/test_verify_nas_storage_contract.py",
+    "docs/reports/storage/nas_storage_contract.json",
+    "docs/reports/storage/nas_storage_contract_latest.json",
+    "docs/reports/storage/nas_storage_contract_latest.md",
+    "docs/runbooks/nas-storage-contract-gate.md",
+    "scripts/public/deploy.sh",
+    "scripts/verify_nas_storage_contract.py"
   ],
-  "gate_required": true,
-  "gate_trigger_files": [
-    "app/app_config/default_config.yaml"
-  ],
-  "runs": [
-    {
-      "command": "make validate-pipeline-golden",
-      "exit_code": 0,
-      "ok": true,
-      "elapsed_sec": 1.185,
-      "stdout_tail": "s...........                                                             [100%]\n11 passed, 1 skipped in 0.85s",
-      "stderr_tail": ""
-    },
-    {
-      "command": "python3 scripts/stress_test_offline.py --no-yolo",
-      "exit_code": 0,
-      "ok": true,
-      "elapsed_sec": 3.147,
-      "stdout_tail": "          \"passed\": true,\n          \"accepted_boxes\": 0,\n          \"frames_sampled\": 400,\n          \"mode\": \"phantom_boxes\",\n          \"calibrated\": false\n        },\n        {\n          \"scenario\": \"storm_golden\",\n          \"passed\": true,\n          \"accepted_boxes\": 12,\n          \"frames_sampled\": 12,\n          \"recall\": 1.0,\n          \"missed\": 0\n        }\n      ]\n    }\n  ],\n  \"ok\": true,\n  \"winning_cfg\": {}\n}",
-      "stderr_tail": ""
-    }
-  ],
+  "gate_required": false,
+  "gate_trigger_files": [],
+  "runs": [],
   "ok": true
 }

@@ -1,6 +1,6 @@
 {
   "schema": "critical_ux_suite_report@v1",
-  "generated_at": "2026-05-31T08:25:26Z",
+  "generated_at": "2026-05-31T19:02:51Z",
   "coverage": {
     "flows_total": 5,
     "flows_covered": 5,

@@ -88,6 +88,32 @@ def _sanitize_persisted_overlay_frames(
     return out
 
 
+def _is_valid_track_bbox(bbox: Any) -> bool:
+    if not isinstance(bbox, (list, tuple)) or len(bbox) < 4:
+        return False
+    try:
+        x1, y1, x2, y2 = [float(v) for v in bbox[:4]]
+    except (TypeError, ValueError):
+        return False
+    if not (x2 > x1 and y2 > y1):
+        return False
+    # Stored frames are normalized; keep a small margin for rounding noise.
+    low, high = -0.05, 1.05
+    return all(low <= v <= high for v in (x1, y1, x2, y2))
+
+
+def _valid_track_frames(frames: Any) -> list[dict[str, Any]]:
+    if not isinstance(frames, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for frame in frames:
+        if not isinstance(frame, dict):
+            continue
+        if _is_valid_track_bbox(frame.get("bbox")):
+            out.append(frame)
+    return out
+
+
 def _blind_required_frames(
     *,
     min_duration_s: float,
@@ -686,60 +712,62 @@ def finalize_motion_recording(
                 yolo_tracks_count,
                 len(accepted_pre_fusion),
             )
-    require_frames_for_video_rows = bool(app_config.get("detection.persist_video_detections_require_frames", True))
-    if require_frames_for_video_rows and video_detections:
-        has_yolo_rows_with_frames_in_final = any(
-            str((row or {}).get("detection_provider") or "").strip().lower() == "yolo"
-            and bool((row or {}).get("frames"))
-            for row in video_detections
-        )
-        had_yolo_rows_with_frames_pre_fusion = any(
-            str((row or {}).get("detection_provider") or "").strip().lower() == "yolo"
-            and bool((row or {}).get("frames"))
-            for row in accepted_pre_fusion
-        )
-        has_yolo_rows_with_frames = has_yolo_rows_with_frames_in_final or had_yolo_rows_with_frames_pre_fusion
+    require_bbox_tracks = bool(
+        app_config.get("detection.require_bbox_tracks_for_persisted_rows", True)
+    )
+    if require_bbox_tracks and video_detections:
         kept_rows: list[dict[str, Any]] = []
-        dropped_no_frames = 0
-        kept_no_frames_frigate = 0
-        dropped_no_frames_frigate_when_yolo = 0
+        dropped_missing_frames = 0
+        dropped_empty_bbox = 0
+        dropped_bad_bbox_frames = 0
         for row in video_detections:
             row_source = str((row or {}).get("source") or "").strip().lower()
-            row_provider = str((row or {}).get("detection_provider") or "").strip().lower()
-            row_kind = str((row or {}).get("decision_kind") or "").strip().lower()
-            keep_without_frames = (
-                bool((row or {}).get("frigate_standalone"))
-                or row_kind
-                in {
-                    "frigate_standalone",
-                    "frigate_standalone_excluded",
-                }
-            ) and not has_yolo_rows_with_frames
-            if row_source == "video" and not row.get("frames") and not keep_without_frames:
-                if row_provider == "frigate" and row_kind in {"frigate_standalone", "frigate_standalone_excluded"}:
-                    dropped_no_frames_frigate_when_yolo += 1
-                dropped_no_frames += 1
+            if row_source != "video":
+                kept_rows.append(row)
                 continue
-            if row_source == "video" and not row.get("frames") and keep_without_frames:
-                kept_no_frames_frigate += 1
+            frames = row.get("frames")
+            if not isinstance(frames, list) or not frames:
+                dropped_missing_frames += 1
+                rejected_decisions.append(
+                    {
+                        "species_name": row.get("species_name") or row.get("species"),
+                        "detection_provider": row.get("detection_provider"),
+                        "reject_reason_code": "missing_track_frames",
+                        "decision_reason": "rejected_missing_track_frames",
+                    }
+                )
+                continue
+            valid_frames = _valid_track_frames(frames)
+            if not valid_frames:
+                dropped_empty_bbox += 1
+                rejected_decisions.append(
+                    {
+                        "species_name": row.get("species_name") or row.get("species"),
+                        "detection_provider": row.get("detection_provider"),
+                        "reject_reason_code": "empty_bbox_frames",
+                        "decision_reason": "rejected_empty_bbox_frames",
+                    }
+                )
+                continue
+            if len(valid_frames) != len(frames):
+                row = dict(row)
+                row["frames"] = valid_frames
+                row["dropped_invalid_bbox_frames"] = int(len(frames) - len(valid_frames))
+                dropped_bad_bbox_frames += int(len(frames) - len(valid_frames))
             kept_rows.append(row)
-        if dropped_no_frames:
+        dropped_total = dropped_missing_frames + dropped_empty_bbox
+        if dropped_total:
+            inc_counter("recording_rejected_bbox_track_contract_total", dropped_total)
             logging.warning(
-                "Finalize safeguard: dropped %s video row(s) without frames "
-                "(detection.persist_video_detections_require_frames=true).",
-                dropped_no_frames,
+                "Finalize contract: dropped %s row(s) (missing_frames=%s empty_bbox=%s)",
+                dropped_total,
+                dropped_missing_frames,
+                dropped_empty_bbox,
             )
-        if kept_no_frames_frigate:
+        if dropped_bad_bbox_frames:
             logging.info(
-                "Finalize safeguard: kept %s Frigate standalone video row(s) without frames "
-                "(event persistence fallback).",
-                kept_no_frames_frigate,
-            )
-        if dropped_no_frames_frigate_when_yolo:
-            logging.info(
-                "Finalize safeguard: dropped %s Frigate standalone row(s) without frames "
-                "because YOLO rows with frames are present (YOLO-priority).",
-                dropped_no_frames_frigate_when_yolo,
+                "Finalize contract: pruned %s invalid bbox frame(s) across persisted rows",
+                dropped_bad_bbox_frames,
             )
         video_detections = kept_rows
     video_detections = _sanitize_persisted_overlay_frames(video_detections)

@@ -1,0 +1,30 @@
+{
+  "schema": "quality_outcome_metrics@v1",
+  "generated_at": "2026-05-31T20:38:14Z",
+  "window_hours": 24,
+  "metrics": {
+    "sessions_total": 0,
+    "sessions_with_yolo": 0,
+    "sessions_with_tracks": 0,
+    "blind_rate": 1.0,
+    "yolo_frames_with_tracks": 0,
+    "empty_bbox_rate": 0.0,
+    "tracks_coverage": 0.0,
+    "trigger_to_first_bbox_latency_p95_s": null
+  },
+  "thresholds": {
+    "max_blind_rate": 0.3,
+    "min_tracks_coverage": 0.5,
+    "max_empty_bbox_rate": 0.2,
+    "min_yolo_frames_with_tracks": 1
+  },
+  "gate": {
+    "ok": false,
+    "errors": [
+      "no session_runtime_metrics rows in lookback window",
+      "blind_rate=1.0000 > max_blind_rate=0.3000",
+      "tracks_coverage=0.0000 < min_tracks_coverage=0.5000",
+      "yolo_frames_with_tracks_sum=0 < min_yolo_frames_with_tracks=1"
+    ]
+  }
+}

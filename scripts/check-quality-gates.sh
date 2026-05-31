@@ -13,9 +13,17 @@ SKIP_YOLO_GOLDEN="${SKIP_YOLO_GOLDEN:-0}"
 SKIP_BBOX_PARITY="${SKIP_BBOX_PARITY:-0}"
 SKIP_SOTA_BENCHMARK="${SKIP_SOTA_BENCHMARK:-0}"
 SOTA_BENCHMARK_SKIP_IF_MISSING="${SOTA_BENCHMARK_SKIP_IF_MISSING:-0}"
+REQUIRE_NO_SKIPPED_CRITICAL_ML_CHECKS="${REQUIRE_NO_SKIPPED_CRITICAL_ML_CHECKS:-1}"
+QUALITY_GATE_OVERRIDE_TICKET="${QUALITY_GATE_OVERRIDE_TICKET:-}"
 AUDIT_DAYS="${AUDIT_DAYS:-1}"
 AUDIT_CAMERAS="${AUDIT_CAMERAS:-BirdBox,Forest}"
 FAIL_ON_PARITY_HOTSPOT="${FAIL_ON_PARITY_HOTSPOT:-0}"
+OUTCOME_DB_PATH="${OUTCOME_DB_PATH:-${BIRDLENSE_DB:-app/data/db/birdlense.db}}"
+OUTCOME_LOOKBACK_HOURS="${OUTCOME_LOOKBACK_HOURS:-24}"
+OUTCOME_MAX_BLIND_RATE="${OUTCOME_MAX_BLIND_RATE:-0.30}"
+OUTCOME_MIN_TRACKS_COVERAGE="${OUTCOME_MIN_TRACKS_COVERAGE:-0.50}"
+OUTCOME_MAX_EMPTY_BBOX_RATE="${OUTCOME_MAX_EMPTY_BBOX_RATE:-0.20}"
+OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS="${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS:-1}"
 
 usage() {
   cat <<'EOF'
@@ -45,6 +53,8 @@ Environment:
   SOTA_GOLDEN_CLIP_1816               mp4 path for noise/FP clip (optional)
   SOTA_GOLDEN_CLIP_1819               mp4 path for birds/recall clip (optional)
   SOTA_BENCHMARK_SKIP_IF_MISSING      1 to skip (not fail) when clips absent (default 0)
+  REQUIRE_NO_SKIPPED_CRITICAL_ML_CHECKS 1 to fail on skipped critical ML gates (default 1)
+  QUALITY_GATE_OVERRIDE_TICKET        required issue token (e.g. #555) for emergency skip/override
 EOF
 }
 
@@ -65,6 +75,24 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ "${REQUIRE_NO_SKIPPED_CRITICAL_ML_CHECKS}" == "1" ]]; then
+  skipped_checks=()
+  [[ "${SKIP_YOLO_GOLDEN}" == "1" ]] && skipped_checks+=("SKIP_YOLO_GOLDEN")
+  [[ "${SKIP_BBOX_PARITY}" == "1" ]] && skipped_checks+=("SKIP_BBOX_PARITY")
+  [[ "${SKIP_SOTA_BENCHMARK}" == "1" ]] && skipped_checks+=("SKIP_SOTA_BENCHMARK")
+  [[ "${SOTA_BENCHMARK_SKIP_IF_MISSING}" == "1" ]] && skipped_checks+=("SOTA_BENCHMARK_SKIP_IF_MISSING")
+  if [[ "${#skipped_checks[@]}" -gt 0 ]]; then
+    if [[ ! "${QUALITY_GATE_OVERRIDE_TICKET}" =~ ^#[0-9]+$ ]]; then
+      echo "quality-gate: FAIL skipped critical ML checks without override ticket" >&2
+      printf ' - %s\n' "${skipped_checks[@]}" >&2
+      echo "Set QUALITY_GATE_OVERRIDE_TICKET=#<issue> for explicit emergency override." >&2
+      exit 1
+    fi
+    echo "quality-gate: WARN skipped critical ML checks with override ${QUALITY_GATE_OVERRIDE_TICKET}"
+    printf ' - %s\n' "${skipped_checks[@]}"
+  fi
+fi
 
 curl_args=("-sS" "--max-time" "${TIMEOUT_SEC}")
 if [[ -n "${BIRDLENSE_UI_API_KEY:-}" ]]; then
@@ -165,6 +193,21 @@ if errors:
     sys.exit(1)
 print("quality-gate: PASS")
 PY
+
+if python3 "${BASH_SOURCE%/*}/report_quality_outcome_metrics.py" \
+  --db-path "${OUTCOME_DB_PATH}" \
+  --lookback-hours "${OUTCOME_LOOKBACK_HOURS}" \
+  --max-blind-rate "${OUTCOME_MAX_BLIND_RATE}" \
+  --min-tracks-coverage "${OUTCOME_MIN_TRACKS_COVERAGE}" \
+  --max-empty-bbox-rate "${OUTCOME_MAX_EMPTY_BBOX_RATE}" \
+  --min-yolo-frames-with-tracks "${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS}" \
+  --out-json "docs/reports/quality_outcome/quality_outcome_metrics_latest.json" \
+  --out-md "docs/reports/quality_outcome/quality_outcome_metrics_latest.md"; then
+  echo "quality-gate: outcome-metrics PASS"
+else
+  echo "quality-gate: outcome-metrics FAIL" >&2
+  exit 1
+fi
 
 if [[ "${SKIP_YOLO_GOLDEN}" != "1" ]]; then
   if python3 "${BASH_SOURCE%/*}/yolo-golden-clips-gate.py"; then

@@ -415,7 +415,11 @@ def delete_detection_with_feedback(
     session.flush()
 
     if visit:
-        remaining = list(visit.video_species)
+        remaining = (
+            session.query(VideoSpecies)
+            .filter(VideoSpecies.species_visit_id == visit.id)
+            .all()
+        )
         if not remaining:
             session.delete(visit)
         else:

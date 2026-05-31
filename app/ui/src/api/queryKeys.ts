@@ -104,10 +104,7 @@ export const queryKeys = {
       timeOfDay: string,
       filterHour: number | null,
       favoritesOnly: boolean,
-      minConfidence: number,
-      minDurationSec: number,
-      detectionSource: string,
-      detectionProvider: string,
+      triggerSource: string,
     ) =>
       [
         'speciesVisits',
@@ -115,10 +112,7 @@ export const queryKeys = {
         timeOfDay,
         filterHour,
         favoritesOnly ? 1 : 0,
-        minConfidence,
-        minDurationSec,
-        detectionSource,
-        detectionProvider,
+        triggerSource,
       ] as const,
     /** Префикс для invalidateQueries — все окна таймлайна. */
     speciesVisitsAll: ['speciesVisits'] as const,

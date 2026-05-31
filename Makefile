@@ -194,6 +194,20 @@ nas-storage-contract-gate:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/verify_nas_storage_contract.py
 
+outcome-metrics-gate:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/report_quality_outcome_metrics.py \
+	  --db-path "$${OUTCOME_DB_PATH:-app/data/db/birdlense.db}" \
+	  --lookback-hours "$${OUTCOME_LOOKBACK_HOURS:-24}" \
+	  --max-blind-rate "$${OUTCOME_MAX_BLIND_RATE:-0.30}" \
+	  --min-tracks-coverage "$${OUTCOME_MIN_TRACKS_COVERAGE:-0.50}" \
+	  --max-empty-bbox-rate "$${OUTCOME_MAX_EMPTY_BBOX_RATE:-0.20}" \
+	  --min-yolo-frames-with-tracks "$${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS:-1}"
+
+sota-reality-check:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/report_sota_reality_check.py
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \

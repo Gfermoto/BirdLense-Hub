@@ -893,6 +893,13 @@ paths:
           schema:
             type: string
           description: Same as `favorite_only` (either may be used).
+        - in: query
+          name: trigger_source
+          required: false
+          schema:
+            type: string
+            enum: [all, opencv, frigate, motion_sensor, scales, track_regen, unknown]
+          description: Trigger-layer filter only (not detection provider/source).
       responses:
         "200":
           description: Timeline data
@@ -4812,6 +4819,10 @@ components:
         timeline_kind:
           type: string
           enum: [visit, unlinked_video]
+        trigger_source:
+          type: string
+          nullable: true
+          description: Trigger semantics for the visit item (opencv/frigate/motion_sensor/scales/unknown).
         individual_nickname:
           type: string
           nullable: true

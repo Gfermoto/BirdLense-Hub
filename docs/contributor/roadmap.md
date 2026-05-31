@@ -2,7 +2,7 @@
 
 Direction of travel and current stack. **Shipped items** are summarized here; details live in [Changelog](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md) and [FEATURES](../user/features.md).
 
-> **CRITICAL PAUSE (2026-05-20):** [SOTA Deep Dive Audit](../strategy/SOTA_DEEP_DIVE_AUDIT_2026.md) · [Wave 3 roadmap](../strategy/SOTA_WAVE3_ROADMAP_2026.md) (frozen) · GitHub [#483](https://github.com/Gfermoto/BirdLense-Hub/issues/483) · [Issues](https://github.com/Gfermoto/BirdLense-Hub/issues) · [Project board](https://github.com/users/Gfermoto/projects/2)
+> **SOTA Reality Status (2026-05-31):** wave-controls (`program:sota` #528–#554) закрыты, но customer acceptance остаётся **blocked** до закрытия [#555](https://github.com/Gfermoto/BirdLense-Hub/issues/555), [#556](https://github.com/Gfermoto/BirdLense-Hub/issues/556), [#557](https://github.com/Gfermoto/BirdLense-Hub/issues/557) и hard-gates эпика [#517](https://github.com/Gfermoto/BirdLense-Hub/issues/517). Правило исполнения: **Backend + UI parity**.
 
 [Русский](../contributor/roadmap.md)
 
@@ -24,6 +24,15 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 ---
 
 ## In progress (May 2026 — live tracking / overlay)
+
+### Acceptance-critical (current)
+
+- **Primary epic:** [#517](https://github.com/Gfermoto/BirdLense-Hub/issues/517) (`[EPIC][P0→P2] BirdLense > Frigate`).
+- **Release blockers (P0):**
+  - [#555](https://github.com/Gfermoto/BirdLense-Hub/issues/555) — корректный trigger/support/fusion contract + moratorium + bbox/tracks/empty-bbox path.
+  - [#556](https://github.com/Gfermoto/BirdLense-Hub/issues/556) — orphan visit/delete path, timeline filter scope, sources=triggers, non-empty bird dropdown.
+  - [#557](https://github.com/Gfermoto/BirdLense-Hub/issues/557) — консилиум: раздельные dataset-контуры (`detector/classifier/behavior/ReID`) + export policy + domain retrain loop.
+- **Execution guardrail:** закрытие stream/task допускается только при доказанном **backend+ui parity** и field evidence (не только `*_latest.md` compliance-отчёты).
 
 - **Sticky bbox / phantom tracks** — `track_geometry` (sparse 3-frame rule), strip `review_only` overlay frames before persist, VPS `tracker_remember_seconds: 3.5` (was 8 in `user_config`). Aligns with [SOTA Wave 3](../strategy/SOTA_WAVE3_ROADMAP_2026.md) P0 hard-negatives / threshold contract.
 - **Species vocabulary (#506)** — `services/species_catalog/vocabulary.py`: classifier labels + arbitration. Catalog `scope=project` (default); `scope=allowlist` = активный классификатор (Birder 707 / EfficientNet 525). Ingest не сбрасывает уже наблюдаемые виды в Unknown.

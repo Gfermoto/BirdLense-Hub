@@ -1,6 +1,6 @@
 {
   "schema": "release_policy_as_code_report@v1",
-  "generated_at": "2026-05-31T18:24:31Z",
+  "generated_at": "2026-05-31T19:02:52Z",
   "checks": {
     "min_release_events_ok": true,
     "required_policies_ok": true,

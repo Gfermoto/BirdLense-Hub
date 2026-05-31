@@ -1,6 +1,6 @@
 {
   "schema": "integration_contract_registry_report@v1",
-  "generated_at": "2026-05-31T11:34:35Z",
+  "generated_at": "2026-05-31T19:02:52Z",
   "checks": {
     "registry_size_ok": true,
     "required_ids_ok": true,

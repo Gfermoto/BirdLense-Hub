@@ -1,29 +1,32 @@
-# SOTA Roadmap — статус (#491)
+# SOTA Roadmap — текущий статус (2026-05-31)
 
-Эпик: порядок областей 1→6. Закрытие области — код + тесты + полевой smoke.
+## Program vs acceptance
 
-## Область 1 — Конфигурация
+- `program:sota` wave (`#528–#554`): **27/27 CLOSED**
+- Acceptance epic: [#517](https://github.com/Gfermoto/BirdLense-Hub/issues/517) — **OPEN**
+- Current P0 blockers:
+  - [#555](https://github.com/Gfermoto/BirdLense-Hub/issues/555)
+  - [#556](https://github.com/Gfermoto/BirdLense-Hub/issues/556)
+  - [#557](https://github.com/Gfermoto/BirdLense-Hub/issues/557)
 
-| Issue | Статус | Примечание |
-|-------|--------|------------|
-| #492 SOTA-01 | **Done** | Pydantic `config_schema.py`, `config_guard.py`, strict processor + hub prod |
-| SOTA-02…04 | Open | probe pipeline, migrations UI, settings gaps |
+## Hard rule
 
-## Область 5 — Потоки
+Ни один поток не считается завершённым без:
 
-| Issue | Статус | Примечание |
-|-------|--------|------------|
-| #510 SOTA-19 | **Done** | gauges, `/diagnostics/backpressure`, runbook OOM 137 |
-| #511 SOTA-20 | **Done** | `roi_crop.py`, `RoiCropRef` в classifier queue |
-| #512 SOTA-21 | Done (prior) | jobs API + regen cancel |
+1. **Backend + UI parity** (исправления в обоих слоях, если затронут пользовательский workflow),
+2. evidence по доменным quality outcome-метрикам,
+3. verify/deploy и rollback-пути без критичных регрессий.
 
-## Область 6 — API/UI
+## Acceptance path (priority order)
 
-| Issue | Статус |
-|-------|--------|
-| #513–#515 | Done (prior session) |
+| Priority | Issue | Focus |
+|---------|-------|-------|
+| P0 | #555 | Trigger/support/fusion contract, moratorium, bbox/tracks, empty-bbox fix |
+| P0 | #556 | Orphan visit + timeline semantics/filters + bird dropdown |
+| P0 | #557 | Dataset policy (detector/classifier/behavior/ReID), export governance, domain retrain loop |
+| Gate | #517 | 14-day parity hold + superiority KPI + stability/perf gates |
 
-## Следующие открытые (вне этой волны)
+## Operational note
 
-- #507 калибровка confidence (скрипт `classifier_confusion_report.py` — старт)
-- SOTA-02…04, SOTA-05…18 по приоритету полевых болей
+SOTA-control artifacts (gates/runbooks/reports) считаются foundation-layer.  
+До закрытия `#555/#556/#557` и hard acceptance `#517` состояние релиза: **NO-GO**.
