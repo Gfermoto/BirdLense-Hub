@@ -1253,14 +1253,20 @@ export interface paths {
         };
         /**
          * List all species
-         * @description Retrieve a list of all bird species that have been detected by the system. This includes summary information like name, parent species, and detection count. Useful for managing species data and monitoring diversity.
-         *     With ``exclude_suspects=1``, rows matching ``species_suspect_blocklist.txt`` (objects / non-bird COCO labels) are omitted for the Bird Directory UI.
+         * @description Retrieve species rows for catalog UIs. Default ``scope=allowlist`` returns one row per classifier
+         *     class (~526), not every legacy SQLite row. Use ``scope=all`` for the full DB catalog.
+         *     With ``exclude_suspects=1``, rows matching ``species_suspect_blocklist.txt`` are omitted.
+         *     With ``meta=1``, response is ``{items, meta}`` with allowlist vs DB totals.
          */
         get: {
             parameters: {
                 query?: {
                     /** @description If true, filter out catalog rows flagged by the data-quality blocklist. */
                     exclude_suspects?: boolean;
+                    /** @description Catalog slice (default allowlist = classifier classes). */
+                    scope?: "allowlist" | "observed" | "all";
+                    /** @description If true, wrap list in `{items, meta}` with coverage counters. */
+                    meta?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -1268,13 +1274,13 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description List of species */
+                /** @description List of species (array) or wrapped payload when meta=1 */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["SpeciesSummary"][];
+                        "application/json": components["schemas"]["SpeciesSummary"][] | components["schemas"]["SpeciesCatalogListResponse"];
                     };
                 };
             };
@@ -4031,13 +4037,13 @@ export interface paths {
         };
         /**
          * Migration calendar
-         * @description Species visits aggregated by calendar month (heatmap). catalog selects rows: observed = species with activity in range; dataset = class folders under data/dataset; full_eu = EU allowlist catalog. Legacy aliases: active -> observed; full -> full_eu. evidence is accepted for compatibility but ignored.
+         * @description Species visits aggregated by calendar month (heatmap). catalog selects rows: observed = species with activity in range; all (alias full, full_eu) = full classifier allowlist catalog; dataset = class folders under data/dataset (admin/API only). Legacy aliases: active -> observed. evidence is accepted for compatibility but ignored.
          */
         get: {
             parameters: {
                 query?: {
                     /** @description Catalog mode; active and full are legacy aliases. */
-                    catalog?: "observed" | "dataset" | "full_eu" | "active" | "full";
+                    catalog?: "observed" | "all" | "dataset" | "full_eu" | "active" | "full";
                     /** @description Inclusive filter on visit year (optional). */
                     start_year?: number;
                     /** @description Inclusive filter on visit year (optional). */
@@ -5903,6 +5909,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/system/diagnostics/backpressure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Processor W1 queue depths and drop counters
+         * @description Live backpressure snapshot from ``processor_runtime_stats.json``:
+         *     finalize/classifier/MQTT queue gauges and deferred-trigger counters.
+         *     Requires settings password.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Backpressure snapshot */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/diagnostics/processor-runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Processor runtime stats snapshot (JSON file on disk)
+         * @description Full counters/gauges/latency snapshot written by the processor process.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Processor runtime snapshot */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/system/domain-health": {
         parameters: {
             query?: never;
@@ -5941,6 +6049,217 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/system/yolo-detector-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * YOLO detector blind/healthy status
+         * @description Live YOLO detector health (blind alert, phase, stream probe gauges).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    hours?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/debug/bbox-parity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bbox parity debug metrics
+         * @description Bbox parity debug sessions and geometry gate metrics (settings password).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    session_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/debug/motion-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Motion / static calibration preview
+         * @description MOG2 / static calibration preview with mask overlay (settings password).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    camera_id?: string;
+                    mode?: "detection_mog2" | "trigger_mog2" | "static";
+                    overrides?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Frame unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analytics/trigger-graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Trigger graph and source FP/FN metrics
+         * @description Aggregated trigger graph FP/FN metrics by source (session_runtime_metrics).
+         */
+        get: {
+            parameters: {
+                query?: {
+                    hours?: number;
+                    camera_id?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
                     };
                 };
             };
@@ -6785,6 +7104,187 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List async background jobs
+         * @description Unified status for catalog repair, regen, fusion export, etc. Requires settings password.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Jobs list */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            jobs?: {
+                                [key: string]: unknown;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Start async job */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        type: "track_regen" | "spectrogram_regen" | "catalog_repair" | "species_metadata" | "fusion_export" | "fusion_eval" | "telegram_proxy_refresh";
+                        payload?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description Job started */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Job already running */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get async job status */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    job_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Job status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                /** @description Error */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Request job cancel (track_regen only) */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    job_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Cancel requested */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Job not running */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -8169,6 +8669,23 @@ export interface components {
             /** @description True if species is in the eBird regional top (same source as Migration comparison) or has any BirdNET MQTT detection (detection_provider birdnet_mqtt). Used for Bird Directory «Regional» filter. */
             regional_scope?: boolean;
             count?: number;
+            /** @description True when photo or description is missing or placeholder (card-quality UI). */
+            catalog_card_incomplete?: boolean;
+            /**
+             * @description Present when the row was returned under a scoped catalog query.
+             * @enum {string}
+             */
+            catalog_scope?: "allowlist" | "observed" | "all";
+        };
+        SpeciesCatalogMeta: {
+            db_species_total?: number;
+            allowlist_total?: number;
+            listed_allowlist?: number;
+            allowlist_incomplete?: number;
+        };
+        SpeciesCatalogListResponse: {
+            items?: components["schemas"]["SpeciesSummary"][];
+            meta?: components["schemas"]["SpeciesCatalogMeta"];
         };
         BirdFamily: {
             id?: number;
