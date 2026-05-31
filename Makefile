@@ -121,6 +121,10 @@ runbook-coverage-gate:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/verify_runbook_coverage.py --record-validation
 
+deploy-contract-gate:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/report_deploy_contract.py
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \

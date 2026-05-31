@@ -1,0 +1,18 @@
+{
+  "schema": "deploy_contract@v1",
+  "generated_at": "2026-05-31T06:33:21Z",
+  "idempotency": {
+    "repeated_deploy_samples": 2,
+    "repeated_success_samples": 2,
+    "pass_rate": 1.0,
+    "ok": true
+  },
+  "rollback_readiness": {
+    "restore_script_present": true,
+    "rollback_runbook_present": true,
+    "deploy_has_backup_step": true,
+    "deploy_mentions_restore": true,
+    "ok": true
+  },
+  "ok": true
+}
