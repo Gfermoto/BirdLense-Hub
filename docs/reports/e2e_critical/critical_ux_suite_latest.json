@@ -1,0 +1,50 @@
+{
+  "schema": "critical_ux_suite_report@v1",
+  "generated_at": "2026-05-31T08:25:26Z",
+  "coverage": {
+    "flows_total": 5,
+    "flows_covered": 5,
+    "missing_total": 0,
+    "ok": true
+  },
+  "reliability": {
+    "suite_pass_rate": 0.972222,
+    "suite_total": 36,
+    "suite_passed": 35,
+    "min_pass_rate": 0.95,
+    "ok": true
+  },
+  "flows": [
+    {
+      "id": "timeline",
+      "path": "/timeline",
+      "test_name_pattern": "Timeline page loads",
+      "covered": true
+    },
+    {
+      "id": "settings",
+      "path": "/settings",
+      "test_name_pattern": "Settings page loads",
+      "covered": true
+    },
+    {
+      "id": "live",
+      "path": "/live",
+      "test_name_pattern": "Live page loads",
+      "covered": true
+    },
+    {
+      "id": "system",
+      "path": "/system",
+      "test_name_pattern": "System page loads",
+      "covered": true
+    },
+    {
+      "id": "overview",
+      "path": "/",
+      "test_name_pattern": "Overview page loads",
+      "covered": true
+    }
+  ],
+  "ok": true
+}
