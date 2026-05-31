@@ -154,6 +154,10 @@ docs-drift-gate:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/verify_docs_drift_gate.py
 
+slsa-build-track-gate:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/verify_slsa_build_track.py
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \

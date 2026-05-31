@@ -1,0 +1,13 @@
+{
+  "schema": "slsa_build_track@v1",
+  "current_level": "L2",
+  "target_level": "L3",
+  "required_controls": [
+    "workflow_dispatch",
+    "concurrency",
+    "bandit_scan",
+    "pip_audit_scan",
+    "no_self_hosted_runner"
+  ],
+  "min_control_adoption_pct": 100.0
+}
