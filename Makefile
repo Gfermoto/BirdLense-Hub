@@ -170,6 +170,10 @@ scripts-ownership-gate:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/verify_scripts_ownership.py
 
+champion-challenger-shadow-gate:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/verify_champion_challenger_shadow.py
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \

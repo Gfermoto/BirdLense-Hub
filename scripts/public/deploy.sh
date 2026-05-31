@@ -307,6 +307,18 @@ if [[ ! "${BIRDLENSE_SKIP_SCRIPTS_OWNERSHIP_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.64 Champion/challenger shadow gate (#536).
+if [[ ! "${BIRDLENSE_SKIP_CHAMPION_SHADOW_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.64 Champion Challenger Shadow Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_champion_challenger_shadow.py \
+      --out-json "docs/reports/ml_shadow/champion_challenger_latest.json" \
+      --out-md "docs/reports/ml_shadow/champion_challenger_latest.md") || {
+        echo "Ошибка: Champion/challenger shadow gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
