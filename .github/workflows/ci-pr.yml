@@ -291,6 +291,9 @@ jobs:
       - name: ML technical debt scorecard gate
         run: python3 scripts/verify_ml_technical_debt_scorecard.py
 
+      - name: Review board governance gate
+        run: python3 scripts/verify_review_board_governance.py
+
       - name: Check SITE_MAP vs mkdocs Meta/Repository
         run: python3 scripts/check_site_map_meta_paths.py
 
