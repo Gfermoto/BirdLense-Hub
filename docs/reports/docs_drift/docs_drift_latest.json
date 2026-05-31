@@ -1,0 +1,17 @@
+{
+  "schema": "docs_drift_gate@v1",
+  "generated_at": "2026-05-31T10:47:26Z",
+  "checks": {
+    "nav_inventory_sync_ok": true,
+    "redirect_inventory_sync_ok": true,
+    "redirect_snippet_sync_ok": true,
+    "inventory_keep_files_exist_ok": true
+  },
+  "drift": {
+    "missing_nav_inventory": [],
+    "missing_redirect_inventory": [],
+    "redirect_snippet_drift": {},
+    "missing_keep_files": []
+  },
+  "ok": true
+}

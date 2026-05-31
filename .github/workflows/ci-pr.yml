@@ -270,6 +270,9 @@ jobs:
       - name: Docs Diataxis governance gate
         run: python3 scripts/verify_docs_diataxis.py
 
+      - name: Docs drift CI gate
+        run: python3 scripts/verify_docs_drift_gate.py
+
       - name: Check SITE_MAP vs mkdocs Meta/Repository
         run: python3 scripts/check_site_map_meta_paths.py
 
