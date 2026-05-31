@@ -1,6 +1,6 @@
 {
   "schema": "error_budget_gate@v1",
-  "generated_at": "2026-05-30T20:05:30Z",
+  "generated_at": "2026-05-31T19:02:32Z",
   "policy": {
     "window": "rolling_28d",
     "budget_pct_total": 100,

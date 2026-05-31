@@ -1,6 +1,6 @@
 # Scripts Ownership & Lifecycle Report
 
-- generated_at: `2026-05-31T13:41:49Z`
+- generated_at: `2026-05-31T19:02:52Z`
 - scripts_total: `6`
 - owner_coverage_ratio: `1.0`
 - owner_coverage_target: `1.0`

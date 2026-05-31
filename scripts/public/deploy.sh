@@ -379,6 +379,24 @@ if [[ ! "${BIRDLENSE_SKIP_NAS_STORAGE_CONTRACT_GATE:-}" =~ ^(1|true|yes)$ ]]; th
       }
 fi
 
+# 0.70 Outcome quality metrics gate (#555/#556).
+if [[ ! "${BIRDLENSE_SKIP_OUTCOME_METRICS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.70 Outcome Quality Metrics Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/report_quality_outcome_metrics.py \
+      --db-path "${OUTCOME_DB_PATH:-app/data/db/birdlense.db}" \
+      --lookback-hours "${OUTCOME_LOOKBACK_HOURS:-24}" \
+      --max-blind-rate "${OUTCOME_MAX_BLIND_RATE:-0.30}" \
+      --min-tracks-coverage "${OUTCOME_MIN_TRACKS_COVERAGE:-0.50}" \
+      --max-empty-bbox-rate "${OUTCOME_MAX_EMPTY_BBOX_RATE:-0.20}" \
+      --min-yolo-frames-with-tracks "${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS:-1}" \
+      --out-json "docs/reports/quality_outcome/quality_outcome_metrics_latest.json" \
+      --out-md "docs/reports/quality_outcome/quality_outcome_metrics_latest.md") || {
+        echo "Ошибка: Outcome quality metrics gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"

@@ -213,6 +213,35 @@ This removes the mandatory intermediate `scripts/datasets/export_birdlense_to_yo
 
 ---
 
+## Council loop #557 (weekly mandatory)
+
+Issue: [#557](https://github.com/Gfermoto/BirdLense-Hub/issues/557)
+
+Weekly review must produce one evidence pack across four independent dataset streams:
+
+1. **Detector** (`bird/rodent/background`) — public/community-ready export allowed.
+2. **Classifier** (species classes) — public/community-ready export allowed.
+3. **Behavior** (action labels on clips/tracks) — public/community-ready export allowed.
+4. **ReID** (individual identity) — **private backup only**, not for community exchange.
+
+### Export policy-as-code
+
+- ReID artifacts must be tagged `reid_private_backup=true` and excluded from community export bundles.
+- Detector/classifier/behavior exports must include quality passport (`dataset_info.json`) and split integrity checks.
+- Every related issue DoD requires **Backend + UI parity** plus field evidence artifact links.
+
+### Weekly evidence checklist
+
+- data deltas by stream (new samples, rejected samples, dedupe impact),
+- quality metrics by stream (coverage, class balance, leakage/duplication checks),
+- training/eval decision (promote / hold / rollback),
+- explicit export decision by stream (`community` vs `private_backup`),
+- follow-up issue links with owner and due date.
+
+Without this package, #557 sub-tasks are not eligible for closure.
+
+---
+
 ## 1. Models
 
 | Component | Version | Trained on |

@@ -194,7 +194,13 @@ def requeue_motion_trigger(motion_detector) -> bool:
 def run_motion_loop(ctx: ProcessorRunContext) -> None:
     """Бесконечный цикл движения; выход при ``session.run()`` → True (режим файла) или SystemExit."""
     last_recording_end_by_camera: dict[str, float] = {}
+    last_trigger_start_by_camera: dict[str, float] = {}
     cooldown = float(app_config.get("processor.min_seconds_between_recordings") or 0)
+    trigger_moratorium = float(
+        app_config.get("detection.trigger_moratorium_seconds")
+        or app_config.get("processor.trigger_moratorium_seconds")
+        or 0
+    )
     while True:
         check_restart_flag()
         ft = ctx.file_test
@@ -230,6 +236,22 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                 )
                 continue
         camera_key = str(camera_id)
+        moratorium_wait = recording_cooldown_remaining(
+            last_recording_end=last_trigger_start_by_camera.get(camera_key, 0.0),
+            cooldown=trigger_moratorium,
+        )
+        if moratorium_wait > 0:
+            requeued = requeue_motion_trigger(ctx.session.motion_detector)
+            inc_counter("recording_trigger_deferred_moratorium_total")
+            logger.info(
+                "Skipping competing trigger for camera=%s: trigger moratorium %.2fs (requeued=%s, source=%s)",
+                camera_key,
+                trigger_moratorium,
+                requeued,
+                trigger_source or "?",
+            )
+            time.sleep(moratorium_wait)
+            continue
         wait = recording_cooldown_remaining(
             last_recording_end=last_recording_end_by_camera.get(camera_key, 0.0),
             cooldown=cooldown,
@@ -262,6 +284,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
             continue
         ctx.session.api.notify_motion()
         should_stop = False
+        last_trigger_start_by_camera[camera_key] = time.monotonic()
         try:
             should_stop = bool(ctx.session.run())
         finally:

@@ -1,6 +1,6 @@
 {
   "schema": "review_board_governance_report@v1",
-  "generated_at": "2026-05-31T18:10:11Z",
+  "generated_at": "2026-05-31T19:02:52Z",
   "checks": {
     "min_sessions_total_ok": true,
     "required_domains_ok": true,

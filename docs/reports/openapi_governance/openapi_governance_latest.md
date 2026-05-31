@@ -1,6 +1,6 @@
 # OpenAPI Governance Report
 
-- generated_at: `2026-05-31T06:57:20Z`
+- generated_at: `2026-05-31T19:02:51Z`
 - spectral_ruleset_present: `True`
 - spectral_ran: `True`
 - spectral_error_count: `0`

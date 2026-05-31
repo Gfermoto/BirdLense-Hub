@@ -85,7 +85,7 @@ class TestProcessorBootstrapCooldown(unittest.TestCase):
         ), patch.object(
             bootstrap_mod,
             "recording_cooldown_remaining",
-            side_effect=[2.0, 0.0],
+            side_effect=[2.0, 0.0, 0.0],
         ), patch.object(
             bootstrap_mod.time,
             "sleep",

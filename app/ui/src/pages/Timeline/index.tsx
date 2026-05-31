@@ -37,7 +37,11 @@ import {
   fetchTimelineForObserverDate,
 } from '../../api/timeline';
 import { fetchNearestRecordingDay } from '../../api/video';
-import { fetchOverviewData } from '../../api/speciesOverviewDetections';
+import {
+  fetchBirdDirectory,
+  fetchOverviewData,
+  speciesDirectoryItems,
+} from '../../api/speciesOverviewDetections';
 import { fetchSystemMetricsLive } from '../../api/systemAuditMetrics';
 import { queryKeys } from '../../api/queryKeys';
 import OutlinedInput from '@mui/material/OutlinedInput';
@@ -61,7 +65,13 @@ import { RecordingsModeSwitcher } from '../../components/RecordingsModeSwitcher'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import Snackbar from '@mui/material/Snackbar';
 
-function useSpeciesList(visits: SpeciesVisit[] | undefined) {
+function useSpeciesList(
+  catalogSpecies: Partial<Species>[] | undefined,
+  visits: SpeciesVisit[] | undefined,
+) {
+  if (catalogSpecies && catalogSpecies.length > 0) {
+    return catalogSpecies;
+  }
   return visits
     ? visits.reduce((acc: Partial<Species>[], visit) => {
         const sp = visit.species;
@@ -93,14 +103,13 @@ type TimelineSortBy =
   | 'confidence'
   | 'duration'
   | 'behavior';
-type TimelineDetectionSource = 'all' | 'video_only' | 'audio_only' | 'mixed';
-type TimelineDetectionProvider =
+type TimelineTriggerSource =
   | 'all'
-  | 'yolo'
+  | 'opencv'
   | 'frigate'
-  | 'birdnet'
-  | 'audio'
-  | 'video'
+  | 'motion_sensor'
+  | 'scales'
+  | 'track_regen'
   | 'unknown';
 
 function getVisitMaxConfidence(visit: SpeciesVisit): number {
@@ -183,12 +192,8 @@ export function TimelinePage() {
   const [behaviorFilter, setBehaviorFilter] = useState(
     () => searchParams.get('behavior')?.trim() ?? '',
   );
-  const [detectionSource, setDetectionSource] =
-    useState<TimelineDetectionSource>('all');
-  const [detectionProvider, setDetectionProvider] =
-    useState<TimelineDetectionProvider>('all');
-  const [minConfidence, setMinConfidence] = useState<number>(0);
-  const [minDurationSec, setMinDurationSec] = useState<number>(0);
+  const [triggerSource, setTriggerSource] =
+    useState<TimelineTriggerSource>('all');
   const [sortBy, setSortBy] = useState<TimelineSortBy>('date_desc');
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -282,6 +287,18 @@ export function TimelinePage() {
       return dayjs().startOf('day');
     }
   }, [observerOverview?.observer_timezone]);
+  const { data: timelineSpeciesCatalog = [] } = useQuery({
+    queryKey: queryKeys.species.directory,
+    queryFn: async () =>
+      speciesDirectoryItems(
+        await fetchBirdDirectory({
+          scope: 'observed',
+          meta: false,
+        }),
+      ),
+    staleTime: 1000 * 60 * 5,
+    enabled: !isReviewMode,
+  });
 
   const {
     data: visits,
@@ -294,10 +311,7 @@ export function TimelinePage() {
       timeOfDay,
       filterHour,
       isFavoritesMode,
-      minConfidence,
-      minDurationSec,
-      detectionSource,
-      detectionProvider,
+      triggerSource,
     ),
     queryFn: () => {
       if (!selectedDate) return [];
@@ -305,10 +319,7 @@ export function TimelinePage() {
       return fetchTimelineForObserverDate(selectedDate.format('YYYY-MM-DD'), {
         ...base,
         favoritesOnly: isFavoritesMode,
-        minConfidence: minConfidence > 0 ? minConfidence : undefined,
-        minDurationSec: minDurationSec > 0 ? minDurationSec : undefined,
-        detectionSource,
-        detectionProvider,
+        triggerSource,
       });
     },
     enabled: !isReviewMode,
@@ -374,7 +385,7 @@ export function TimelinePage() {
     [jumpPending, selectedDate, updateSelectedDate],
   );
 
-  const speciesList = useSpeciesList(visits);
+  const speciesList = useSpeciesList(timelineSpeciesCatalog, visits);
   const selectedBySpeciesVisits = useFilteredVisits(visits, selectedSpeciesIds);
   const filteredVisits = useMemo(() => {
     const rows = (selectedBySpeciesVisits ?? []).filter((visit) => {
@@ -384,9 +395,6 @@ export function TimelinePage() {
         return false;
       }
       if (!visitMatchesBehavior(visit, behaviorFilter)) {
-        return false;
-      }
-      if (getVisitMaxConfidence(visit) < minConfidence) {
         return false;
       }
       return true;
@@ -435,7 +443,6 @@ export function TimelinePage() {
     birdProfileFilterId,
     birdProfilesById,
     behaviorFilter,
-    minConfidence,
     sortBy,
     i18n.language,
   ]);
@@ -467,10 +474,7 @@ export function TimelinePage() {
         {
           ...(filterHour !== null ? { hour: filterHour } : { timeOfDay }),
           favoritesOnly: isFavoritesMode,
-          minConfidence: minConfidence > 0 ? minConfidence : undefined,
-          minDurationSec: minDurationSec > 0 ? minDurationSec : undefined,
-          detectionSource,
-          detectionProvider,
+          triggerSource,
         },
       );
     } catch (err) {
@@ -772,102 +776,33 @@ export function TimelinePage() {
               sx={{ minWidth: { xs: '100%', md: 240 } }}
             />
             <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>
-              <InputLabel id="timeline-detection-source-label">
-                {t('timeline.detectionSource')}
+              <InputLabel id="timeline-trigger-source-label">
+                {t('timeline.triggerSource')}
               </InputLabel>
               <Select
-                labelId="timeline-detection-source-label"
-                value={detectionSource}
-                label={t('timeline.detectionSource')}
+                labelId="timeline-trigger-source-label"
+                value={triggerSource}
+                label={t('timeline.triggerSource')}
                 onChange={(event) =>
-                  setDetectionSource(event.target.value as TimelineDetectionSource)
+                  setTriggerSource(event.target.value as TimelineTriggerSource)
                 }
               >
-                <MenuItem value="all">{t('timeline.detectionSourceAll')}</MenuItem>
-                <MenuItem value="video_only">
-                  {t('timeline.detectionSourceVideoOnly')}
-                </MenuItem>
-                <MenuItem value="audio_only">
-                  {t('timeline.detectionSourceAudioOnly')}
-                </MenuItem>
-                <MenuItem value="mixed">
-                  {t('timeline.detectionSourceMixed')}
-                </MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>
-              <InputLabel id="timeline-detection-provider-label">
-                {t('timeline.detectionProvider')}
-              </InputLabel>
-              <Select
-                labelId="timeline-detection-provider-label"
-                value={detectionProvider}
-                label={t('timeline.detectionProvider')}
-                onChange={(event) =>
-                  setDetectionProvider(
-                    event.target.value as TimelineDetectionProvider,
-                  )
-                }
-              >
-                <MenuItem value="all">
-                  {t('timeline.detectionProviderAll')}
-                </MenuItem>
-                <MenuItem value="yolo">
-                  {t('timeline.detectionProviderYolo')}
+                <MenuItem value="all">{t('timeline.triggerSourceAll')}</MenuItem>
+                <MenuItem value="opencv">
+                  {t('timeline.triggerSourceOpencv')}
                 </MenuItem>
                 <MenuItem value="frigate">
-                  {t('timeline.detectionProviderFrigate')}
+                  {t('timeline.triggerSourceFrigate')}
                 </MenuItem>
-                <MenuItem value="birdnet">
-                  {t('timeline.detectionProviderBirdnet')}
+                <MenuItem value="motion_sensor">
+                  {t('timeline.triggerSourceMotionSensor')}
                 </MenuItem>
-                <MenuItem value="audio">
-                  {t('timeline.detectionProviderAudio')}
-                </MenuItem>
-                <MenuItem value="video">
-                  {t('timeline.detectionProviderVideo')}
+                <MenuItem value="scales">
+                  {t('timeline.triggerSourceScales')}
                 </MenuItem>
                 <MenuItem value="unknown">
-                  {t('timeline.detectionProviderUnknown')}
+                  {t('timeline.triggerSourceUnknown')}
                 </MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
-              <InputLabel id="timeline-min-confidence-label">
-                {t('timeline.minConfidence')}
-              </InputLabel>
-              <Select
-                labelId="timeline-min-confidence-label"
-                value={String(minConfidence)}
-                label={t('timeline.minConfidence')}
-                onChange={(event) =>
-                  setMinConfidence(Number(event.target.value) || 0)
-                }
-              >
-                <MenuItem value="0">{t('timeline.minConfidenceAny')}</MenuItem>
-                <MenuItem value="0.5">≥ 50%</MenuItem>
-                <MenuItem value="0.6">≥ 60%</MenuItem>
-                <MenuItem value="0.7">≥ 70%</MenuItem>
-                <MenuItem value="0.8">≥ 80%</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 200 } }}>
-              <InputLabel id="timeline-min-duration-label">
-                {t('timeline.minDuration')}
-              </InputLabel>
-              <Select
-                labelId="timeline-min-duration-label"
-                value={String(minDurationSec)}
-                label={t('timeline.minDuration')}
-                onChange={(event) =>
-                  setMinDurationSec(Number(event.target.value) || 0)
-                }
-              >
-                <MenuItem value="0">{t('timeline.minDurationAny')}</MenuItem>
-                <MenuItem value="5">≥ 5s</MenuItem>
-                <MenuItem value="10">≥ 10s</MenuItem>
-                <MenuItem value="20">≥ 20s</MenuItem>
-                <MenuItem value="30">≥ 30s</MenuItem>
               </Select>
             </FormControl>
             <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>

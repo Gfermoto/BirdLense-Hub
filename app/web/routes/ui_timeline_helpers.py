@@ -57,82 +57,13 @@ def _timeline_entry_sort_key(item: dict):
     return parsed
 
 
-def _timeline_item_best_confidence(item: dict) -> float:
-    detections = item.get("detections") or []
-    if not isinstance(detections, list) or not detections:
-        return 0.0
-    best = 0.0
-    for detection in detections:
-        if not isinstance(detection, dict):
-            continue
-        try:
-            best = max(best, float(detection.get("confidence") or 0.0))
-        except (TypeError, ValueError):
-            continue
-    return best
-
-
-def _timeline_item_duration_seconds(item: dict) -> float:
-    for key in ("video_duration_seconds", "total_recording_seconds"):
-        value = item.get(key)
-        if isinstance(value, (int, float)) and value > 0:
-            return float(value)
-    return 0.0
-
-
-def _timeline_item_matches_source(item: dict, source_filter: str) -> bool:
-    detections = item.get("detections") or []
-    if source_filter == "all":
+def _timeline_item_matches_trigger(item: dict, trigger_filter: str) -> bool:
+    if trigger_filter == "all":
         return True
-    if not isinstance(detections, list) or not detections:
-        return False
-    sources = {
-        str(d.get("source") or "").strip().lower()
-        for d in detections
-        if isinstance(d, dict)
-    }
-    sources.discard("")
-    if not sources:
-        return False
-    if source_filter == "video_only":
-        return sources == {"video"}
-    if source_filter == "audio_only":
-        return sources == {"audio"}
-    if source_filter == "mixed":
-        return "video" in sources and "audio" in sources
-    return True
-
-
-def _normalize_timeline_provider(detection: dict) -> str:
-    provider_raw = (
-        str(detection.get("detection_provider") or "").strip().lower()
-    )
-    source_raw = str(detection.get("source") or "").strip().lower()
-    if "birdnet" in provider_raw:
-        return "birdnet"
-    if "frigate" in provider_raw:
-        return "frigate"
-    if "yolo" in provider_raw:
-        return "yolo"
-    if provider_raw:
-        return provider_raw
-    if source_raw in {"audio", "video"}:
-        return source_raw
-    return "unknown"
-
-
-def _timeline_item_matches_provider(item: dict, provider_filter: str) -> bool:
-    if provider_filter == "all":
-        return True
-    detections = item.get("detections") or []
-    if not isinstance(detections, list) or not detections:
-        return False
-    providers = {
-        _normalize_timeline_provider(d)
-        for d in detections
-        if isinstance(d, dict)
-    }
-    return provider_filter in providers
+    trigger = str(item.get("trigger_source") or "").strip().lower()
+    if not trigger:
+        return trigger_filter == "unknown"
+    return trigger == trigger_filter
 
 
 def build_merged_timeline_items(
@@ -141,10 +72,7 @@ def build_merged_timeline_items(
     end_dt,
     favorite_only: bool = False,
     *,
-    min_confidence: float | None = None,
-    min_duration_sec: int | None = None,
-    detection_source: str = "all",
-    detection_provider: str = "all",
+    trigger_source: str = "all",
     limit: int | None = None,
     offset: int = 0,
 ) -> list | dict:
@@ -209,29 +137,11 @@ def build_merged_timeline_items(
     ]
     merged = visit_payloads + unlinked_payloads
     merged.sort(key=_timeline_entry_sort_key, reverse=True)
-    if min_confidence is not None:
+    if trigger_source != "all":
         merged = [
             item
             for item in merged
-            if _timeline_item_best_confidence(item) >= float(min_confidence)
-        ]
-    if min_duration_sec is not None:
-        merged = [
-            item
-            for item in merged
-            if _timeline_item_duration_seconds(item) >= int(min_duration_sec)
-        ]
-    if detection_source != "all":
-        merged = [
-            item
-            for item in merged
-            if _timeline_item_matches_source(item, detection_source)
-        ]
-    if detection_provider != "all":
-        merged = [
-            item
-            for item in merged
-            if _timeline_item_matches_provider(item, detection_provider)
+            if _timeline_item_matches_trigger(item, trigger_source)
         ]
     total = len(merged)
     if limit is not None:

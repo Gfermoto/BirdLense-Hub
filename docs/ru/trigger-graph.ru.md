@@ -2,15 +2,24 @@
 
 Модуль: `app/processor/src/trigger_graph.py`. Данные пишутся в `recording_session_summary` → `session_runtime_metrics.payload_json.trigger_graph`.
 
-## Узлы
+## Узлы: trigger vs support
+
+### Trigger-слой (источники старта записи)
 
 | Узел | Роль |
 |------|------|
 | **frigate** | MQTT Frigate (движение / standalone species) |
 | **opencv** | Локальный motion (MOG2 / ROI) |
-| **yolo** | Бинарный детектор + треки |
-| **birdnet** | MQTT BirdNET в окне записи |
 | **scale** | MQTT весов / motion по кормушке |
+
+### Support/Fusion-слой (не trigger-источники)
+
+| Узел | Роль |
+|------|------|
+| **yolo** | Бинарный детектор + треки (визуальная опора) |
+| **birdnet** | MQTT BirdNET в окне записи (аудио-prior/поддержка) |
+
+Важно: arbitration — результат fusion/decision шага, а не самостоятельный trigger/source.
 
 ## Рёбра (типы)
 

@@ -247,15 +247,17 @@ export const VisitCard = memo(function VisitCard({
   const bestConfidence = detections.length
     ? Math.max(...detections.map((d) => Number(d.confidence) || 0))
     : null;
-  const videoDetections = detections.filter((d) => d.source === 'video').length;
-  const audioDetections = detections.filter((d) => d.source === 'audio').length;
-  const detectionSourcesLabel =
-    audioDetections > 0
-      ? t('visitCard.sourceMix', {
-          video: videoDetections,
-          audio: audioDetections,
-        })
-      : t('visitCard.sourceVideoOnly', { count: videoDetections });
+  const triggerSource = String(visit.trigger_source || 'unknown').toLowerCase();
+  const triggerLabel =
+    triggerSource === 'opencv'
+      ? t('timeline.triggerSourceOpencv')
+      : triggerSource === 'frigate'
+        ? t('timeline.triggerSourceFrigate')
+        : triggerSource === 'motion_sensor'
+          ? t('timeline.triggerSourceMotionSensor')
+          : triggerSource === 'scales'
+            ? t('timeline.triggerSourceScales')
+            : t('timeline.triggerSourceUnknown');
 
   const startDateTime = new Date(visit.start_time);
   const isToday = new Date().toDateString() === startDateTime.toDateString();
@@ -430,7 +432,7 @@ export const VisitCard = memo(function VisitCard({
                 sx={{ height: 28 }}
               />
               <Chip
-                label={detectionSourcesLabel}
+                label={t('timeline.triggerSource') + ': ' + triggerLabel}
                 size="small"
                 variant="outlined"
                 sx={{ height: 28 }}

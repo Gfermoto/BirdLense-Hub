@@ -150,13 +150,10 @@ def _tag_row(row: dict, reason: str) -> None:
 
 def _mark_arbitrated_primary_provider(row: dict) -> None:
     provider = str(row.get("detection_provider") or "").strip()
-    if provider and provider.lower() != "arbitration":
+    if provider:
         row["arbitrated_primary_provider"] = provider
-    lineage = _merge_provider_sets([row])
-    if "arbitration" not in lineage:
-        lineage.append("arbitration")
-    row["contributing_providers"] = sorted(set(lineage))
-    row["detection_provider"] = "arbitration"
+    row["fusion_stage"] = "arbitrated"
+    row["contributing_providers"] = _merge_provider_sets([row])
 
 
 def _sync_outcome_bucket(row: dict) -> dict:

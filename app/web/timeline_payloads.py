@@ -32,6 +32,34 @@ def _model_behavior_events_from_video(video) -> list[dict]:
     ]
 
 
+def _infer_trigger_source_from_detections(detections: list[dict]) -> str:
+    """Best-effort trigger source for timeline semantics.
+
+    Timeline payload historically has detection source/provider only. To keep
+    trigger semantics explicit for UI filters we derive a stable trigger tag
+    from detection lineage.
+    """
+    providers = {
+        str(d.get("detection_provider") or "").strip().lower()
+        for d in (detections or [])
+        if isinstance(d, dict)
+    }
+    if any("frigate" in p for p in providers):
+        return "frigate"
+    if any(p in {"yolo", "detector", "binary"} for p in providers):
+        return "opencv"
+    if any(p in {"scale", "scales"} for p in providers):
+        return "scales"
+    sources = {
+        str(d.get("source") or "").strip().lower()
+        for d in (detections or [])
+        if isinstance(d, dict)
+    }
+    if "audio" in sources:
+        return "motion_sensor"
+    return "unknown"
+
+
 def get_primary_video_for_visit(visit) -> object | None:
     """Deterministically pick the earliest video for a SpeciesVisit."""
     return get_primary_video_for_visit_in_window(visit)
@@ -134,6 +162,7 @@ def format_visit_for_timeline(visit) -> dict:
         "bird_profile_id": bird_profile_id,
         "behavior_events": behavior_events,
         "timeline_kind": "visit",
+        "trigger_source": _infer_trigger_source_from_detections(detections),
     }
 
 
@@ -214,4 +243,5 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
         "bird_profile_id": bird_profile_id,
         "behavior_events": _model_behavior_events_from_video(video),
         "timeline_kind": "unlinked_video",
+        "trigger_source": _infer_trigger_source_from_detections(detections),
     }

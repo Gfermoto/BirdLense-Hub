@@ -1,6 +1,6 @@
 # Docs Diataxis Report
 
-- generated_at: `2026-05-31T09:22:11Z`
+- generated_at: `2026-05-31T19:02:51Z`
 - plan_file: `/home/gfer/BirdLense/docs/reports/docs_diataxis/diataxis_plan.json`
 - coverage_pct: `100.0`
 - classified: `10/10`
