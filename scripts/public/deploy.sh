@@ -319,6 +319,18 @@ if [[ ! "${BIRDLENSE_SKIP_CHAMPION_SHADOW_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.65 ML technical debt scorecard gate (#537).
+if [[ ! "${BIRDLENSE_SKIP_ML_TECH_DEBT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.65 ML Technical Debt Scorecard Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_ml_technical_debt_scorecard.py \
+      --out-json "docs/reports/ml_debt/ml_technical_debt_scorecard_latest.json" \
+      --out-md "docs/reports/ml_debt/ml_technical_debt_scorecard_latest.md") || {
+        echo "Ошибка: ML technical debt scorecard gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"

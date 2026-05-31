@@ -1,0 +1,45 @@
+{
+  "schema": "ml_technical_debt_scorecard@v1",
+  "min_checks_total": 28,
+  "allowed_status": [
+    "closed",
+    "in_progress",
+    "open"
+  ],
+  "allowed_risk": [
+    "high",
+    "medium",
+    "low"
+  ],
+  "max_high_risk_open": 3,
+  "checks": [
+    {"id":"ml_debt_01","title":"Feature parity across pipelines","owner":"ml-quality-lead","status":"closed","risk":"high"},
+    {"id":"ml_debt_02","title":"Training-serving skew control","owner":"mlops-lead","status":"closed","risk":"high"},
+    {"id":"ml_debt_03","title":"Golden-set gate automation","owner":"ml-quality-lead","status":"closed","risk":"high"},
+    {"id":"ml_debt_04","title":"Rollback-ready candidate packages","owner":"release-lead","status":"closed","risk":"high"},
+    {"id":"ml_debt_05","title":"Shadow promotion evidence policy","owner":"mlops-lead","status":"closed","risk":"high"},
+    {"id":"ml_debt_06","title":"Drift detection thresholds governance","owner":"ml-quality-lead","status":"closed","risk":"high"},
+    {"id":"ml_debt_07","title":"Inference profile guardrails","owner":"runtime-lead","status":"closed","risk":"medium"},
+    {"id":"ml_debt_08","title":"Latency budget contract","owner":"runtime-lead","status":"closed","risk":"medium"},
+    {"id":"ml_debt_09","title":"Model registry schema versioning","owner":"mlops-lead","status":"closed","risk":"medium"},
+    {"id":"ml_debt_10","title":"Candidate benchmark slice checks","owner":"ml-quality-lead","status":"closed","risk":"medium"},
+    {"id":"ml_debt_11","title":"Calibration refresh cadence","owner":"ml-quality-lead","status":"in_progress","risk":"medium"},
+    {"id":"ml_debt_12","title":"Error taxonomy for false positives","owner":"ml-quality-lead","status":"in_progress","risk":"medium"},
+    {"id":"ml_debt_13","title":"ReID production contract checks","owner":"reid-lead","status":"closed","risk":"medium"},
+    {"id":"ml_debt_14","title":"Behavior model runtime gate","owner":"behavior-lead","status":"closed","risk":"medium"},
+    {"id":"ml_debt_15","title":"Data quality gate for detector dataset","owner":"dataset-lead","status":"closed","risk":"medium"},
+    {"id":"ml_debt_16","title":"Hard negatives lifecycle","owner":"dataset-lead","status":"in_progress","risk":"medium"},
+    {"id":"ml_debt_17","title":"Canary rollback report pipeline","owner":"mlops-lead","status":"closed","risk":"high"},
+    {"id":"ml_debt_18","title":"Full rollout watch report","owner":"mlops-lead","status":"closed","risk":"medium"},
+    {"id":"ml_debt_19","title":"Detector continuity report quality","owner":"tracker-lead","status":"closed","risk":"medium"},
+    {"id":"ml_debt_20","title":"Action model shortlist governance","owner":"research-lead","status":"open","risk":"low"},
+    {"id":"ml_debt_21","title":"OpenVINO async profile evidence","owner":"runtime-lead","status":"closed","risk":"medium"},
+    {"id":"ml_debt_22","title":"Decode-path benchmark policy","owner":"runtime-lead","status":"closed","risk":"low"},
+    {"id":"ml_debt_23","title":"Track continuity eval thresholds","owner":"tracker-lead","status":"closed","risk":"medium"},
+    {"id":"ml_debt_24","title":"INT8 candidate parity gate","owner":"ml-quality-lead","status":"closed","risk":"high"},
+    {"id":"ml_debt_25","title":"Offline benchmark comparator governance","owner":"ml-quality-lead","status":"closed","risk":"medium"},
+    {"id":"ml_debt_26","title":"Retraining decision ledger","owner":"mlops-lead","status":"open","risk":"high"},
+    {"id":"ml_debt_27","title":"Model card drift audit","owner":"mlops-lead","status":"open","risk":"high"},
+    {"id":"ml_debt_28","title":"Weekly debt review ceremony","owner":"ml-quality-lead","status":"in_progress","risk":"low"}
+  ]
+}

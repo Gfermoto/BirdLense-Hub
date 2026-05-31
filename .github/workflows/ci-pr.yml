@@ -288,6 +288,9 @@ jobs:
       - name: Champion challenger shadow gate
         run: python3 scripts/verify_champion_challenger_shadow.py
 
+      - name: ML technical debt scorecard gate
+        run: python3 scripts/verify_ml_technical_debt_scorecard.py
+
       - name: Check SITE_MAP vs mkdocs Meta/Repository
         run: python3 scripts/check_site_map_meta_paths.py
 

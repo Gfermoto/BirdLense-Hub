@@ -1,0 +1,205 @@
+{
+  "schema": "ml_technical_debt_scorecard_report@v1",
+  "generated_at": "2026-05-31T17:55:25Z",
+  "checks": {
+    "min_checks_total_ok": true,
+    "duplicates_ok": true,
+    "owner_coverage_ok": true,
+    "status_values_ok": true,
+    "risk_values_ok": true,
+    "high_risk_open_ok": true
+  },
+  "summary": {
+    "checks_total": 28,
+    "min_checks_total": 28,
+    "high_risk_open": 2,
+    "max_high_risk_open": 3,
+    "status_counts": {
+      "closed": 21,
+      "in_progress": 4,
+      "open": 3
+    },
+    "risk_counts": {
+      "high": 10,
+      "medium": 15,
+      "low": 3
+    }
+  },
+  "drift": {
+    "duplicate_ids": [],
+    "missing_owner": [],
+    "invalid_status": [],
+    "invalid_risk": []
+  },
+  "scorecard": [
+    {
+      "id": "ml_debt_01",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "high"
+    },
+    {
+      "id": "ml_debt_02",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "high"
+    },
+    {
+      "id": "ml_debt_03",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "high"
+    },
+    {
+      "id": "ml_debt_04",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "high"
+    },
+    {
+      "id": "ml_debt_05",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "high"
+    },
+    {
+      "id": "ml_debt_06",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "high"
+    },
+    {
+      "id": "ml_debt_07",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_08",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_09",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_10",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_11",
+      "owner_present": true,
+      "status": "in_progress",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_12",
+      "owner_present": true,
+      "status": "in_progress",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_13",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_14",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_15",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_16",
+      "owner_present": true,
+      "status": "in_progress",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_17",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "high"
+    },
+    {
+      "id": "ml_debt_18",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_19",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_20",
+      "owner_present": true,
+      "status": "open",
+      "risk": "low"
+    },
+    {
+      "id": "ml_debt_21",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_22",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "low"
+    },
+    {
+      "id": "ml_debt_23",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_24",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "high"
+    },
+    {
+      "id": "ml_debt_25",
+      "owner_present": true,
+      "status": "closed",
+      "risk": "medium"
+    },
+    {
+      "id": "ml_debt_26",
+      "owner_present": true,
+      "status": "open",
+      "risk": "high"
+    },
+    {
+      "id": "ml_debt_27",
+      "owner_present": true,
+      "status": "open",
+      "risk": "high"
+    },
+    {
+      "id": "ml_debt_28",
+      "owner_present": true,
+      "status": "in_progress",
+      "risk": "low"
+    }
+  ],
+  "ok": true
+}
