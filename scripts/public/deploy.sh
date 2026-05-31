@@ -355,6 +355,18 @@ if [[ ! "${BIRDLENSE_SKIP_RELEASE_POLICY_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.68 CLI contract standardization gate (#550).
+if [[ ! "${BIRDLENSE_SKIP_CLI_CONTRACT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.68 CLI Contract Standardization Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_cli_contract_standardization.py \
+      --out-json "docs/reports/tooling/cli_contract_latest.json" \
+      --out-md "docs/reports/tooling/cli_contract_latest.md") || {
+        echo "Ошибка: CLI contract standardization gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
