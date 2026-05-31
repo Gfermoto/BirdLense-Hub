@@ -138,6 +138,10 @@ openapi-governance-gate:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/verify_openapi_governance.py
 
+playwright-anti-flake-gate:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/verify_playwright_antiflake.py
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \

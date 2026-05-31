@@ -211,6 +211,18 @@ if [[ ! "${BIRDLENSE_SKIP_OPENAPI_GOV_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.56 Playwright anti-flake gate (#539).
+if [[ ! "${BIRDLENSE_SKIP_PLAYWRIGHT_ANTIFLAKE_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.56 Playwright Anti-Flake Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_playwright_antiflake.py \
+      --out-json "docs/reports/e2e_flake/playwright_antiflake_latest.json" \
+      --out-md "docs/reports/e2e_flake/playwright_antiflake_latest.md") || {
+        echo "Ошибка: Playwright anti-flake gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
@@ -481,6 +493,7 @@ BASE_URL="${DEPLOY_URL}" \
   MCP_TOKEN="${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
   python3 ./scripts/perf_gate_runtime.py \
     --base-url "${DEPLOY_URL}" \
+    --timeout-sec "${PERF_TIMEOUT_SEC:-20}" \
     --burst-requests "${PERF_BURST_REQUESTS:-120}" \
     --burst-concurrency "${PERF_BURST_CONCURRENCY:-12}" \
     --metrics-scrapes "${PERF_METRICS_SCRAPES:-60}" \
