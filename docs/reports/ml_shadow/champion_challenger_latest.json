@@ -1,0 +1,41 @@
+{
+  "schema": "champion_challenger_shadow_report@v1",
+  "generated_at": "2026-05-31T14:22:05Z",
+  "checks": {
+    "required_candidates_ok": true,
+    "shadow_coverage_ok": true,
+    "shadow_pass_rate_ok": true,
+    "documented_evidence_ok": true,
+    "safe_promotion_only_ok": true
+  },
+  "summary": {
+    "required_candidates_total": 2,
+    "covered_candidates_total": 2,
+    "shadow_coverage_ratio": 1.0,
+    "shadow_coverage_target": 1.0,
+    "history_rows": 2,
+    "shadow_pass_rate": 1.0
+  },
+  "drift": {
+    "missing_required_candidates": [],
+    "unsafe_promotions": [],
+    "missing_evidence": []
+  },
+  "history": [
+    {
+      "candidate_id": "detector_candidate_2026_05_24",
+      "champion_id": "detector_champion_2026_05_18",
+      "shadow_passed": true,
+      "unsafe_promotion": false,
+      "evidence_ok": true
+    },
+    {
+      "candidate_id": "detector_candidate_2026_05_29",
+      "champion_id": "detector_champion_2026_05_24",
+      "shadow_passed": true,
+      "unsafe_promotion": false,
+      "evidence_ok": true
+    }
+  ],
+  "ok": true
+}
