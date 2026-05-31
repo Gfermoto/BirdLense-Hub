@@ -295,6 +295,18 @@ if [[ ! "${BIRDLENSE_SKIP_EVENT_BURST_RECONNECT_GATE:-}" =~ ^(1|true|yes)$ ]]; t
       }
 fi
 
+# 0.63 Scripts ownership/lifecycle gate (#549).
+if [[ ! "${BIRDLENSE_SKIP_SCRIPTS_OWNERSHIP_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.63 Scripts Ownership Lifecycle Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_scripts_ownership.py \
+      --out-json "docs/reports/tooling/scripts_ownership_latest.json" \
+      --out-md "docs/reports/tooling/scripts_ownership_latest.md") || {
+        echo "Ошибка: Scripts ownership/lifecycle gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
