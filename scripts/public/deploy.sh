@@ -367,6 +367,18 @@ if [[ ! "${BIRDLENSE_SKIP_CLI_CONTRACT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.69 NAS storage contract gate (#350).
+if [[ ! "${BIRDLENSE_SKIP_NAS_STORAGE_CONTRACT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.69 NAS Storage Contract Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_nas_storage_contract.py \
+      --out-json "docs/reports/storage/nas_storage_contract_latest.json" \
+      --out-md "docs/reports/storage/nas_storage_contract_latest.md") || {
+        echo "Ошибка: NAS storage contract gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"

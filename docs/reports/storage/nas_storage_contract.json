@@ -1,0 +1,20 @@
+{
+  "schema": "nas_storage_contract@v1",
+  "required_modes": [
+    "local_plus_background_sync",
+    "offload_after_success"
+  ],
+  "required_components": [
+    "processor_remote_mirror",
+    "ui_storage_card",
+    "ui_api_test_endpoint",
+    "default_config_block",
+    "user_docs"
+  ],
+  "required_docs_keywords": [
+    "NAS",
+    "SFTP",
+    "recordings_mirror",
+    "delete_local_after_success"
+  ]
+}
