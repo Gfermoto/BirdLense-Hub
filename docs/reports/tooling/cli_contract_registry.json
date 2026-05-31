@@ -1,0 +1,46 @@
+{
+  "schema": "cli_contract_registry@v1",
+  "required_cli_ids": [
+    "verify_openapi_governance",
+    "verify_integration_contract_registry",
+    "verify_event_burst_reconnect",
+    "verify_review_board_governance",
+    "verify_release_policy_as_code"
+  ],
+  "min_cli_total": 5,
+  "require_help_exit_zero": true,
+  "require_invalid_arg_nonzero": true,
+  "require_structured_json_output": true,
+  "tools": [
+    {
+      "id": "verify_openapi_governance",
+      "path": "scripts/verify_openapi_governance.py",
+      "runner": "python3",
+      "owner": "api-governance-lead"
+    },
+    {
+      "id": "verify_integration_contract_registry",
+      "path": "scripts/verify_integration_contract_registry.py",
+      "runner": "python3",
+      "owner": "integrations-lead"
+    },
+    {
+      "id": "verify_event_burst_reconnect",
+      "path": "scripts/verify_event_burst_reconnect.py",
+      "runner": "python3",
+      "owner": "runtime-integrations-lead"
+    },
+    {
+      "id": "verify_review_board_governance",
+      "path": "scripts/verify_review_board_governance.py",
+      "runner": "python3",
+      "owner": "governance-lead"
+    },
+    {
+      "id": "verify_release_policy_as_code",
+      "path": "scripts/verify_release_policy_as_code.py",
+      "runner": "python3",
+      "owner": "release-governance-lead"
+    }
+  ]
+}

@@ -297,6 +297,9 @@ jobs:
       - name: Release policy as code gate
         run: python3 scripts/verify_release_policy_as_code.py
 
+      - name: CLI contract standardization gate
+        run: python3 scripts/verify_cli_contract_standardization.py
+
       - name: Check SITE_MAP vs mkdocs Meta/Repository
         run: python3 scripts/check_site_map_meta_paths.py
 
