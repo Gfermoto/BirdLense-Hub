@@ -349,6 +349,7 @@ jobs:
           set -euo pipefail
           cd ..
           python3 ./scripts/verify_playwright_antiflake.py
+          python3 ./scripts/verify_critical_ux_suite.py
           cd app
           docker compose up -d
           # После cd e2e / cd .. trap иначе вызывает compose не из app/ → «no configuration file provided».
