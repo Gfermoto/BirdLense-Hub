@@ -182,6 +182,10 @@ review-board-governance-gate:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/verify_review_board_governance.py
 
+release-policy-as-code-gate:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/verify_release_policy_as_code.py
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \

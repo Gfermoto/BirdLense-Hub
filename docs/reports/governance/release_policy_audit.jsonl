@@ -1,0 +1,5 @@
+{"release_id":"rel-2026-05-10","policy_id":"golden_set_gate","gate_enforced":true,"manual_override":false}
+{"release_id":"rel-2026-05-17","policy_id":"error_budget_gate","gate_enforced":true,"manual_override":false}
+{"release_id":"rel-2026-05-24","policy_id":"security_vuln_response_gate","gate_enforced":true,"manual_override":false}
+{"release_id":"rel-2026-05-31","policy_id":"review_board_governance_gate","gate_enforced":true,"manual_override":false}
+{"release_id":"rel-2026-05-31","policy_id":"ml_technical_debt_scorecard_gate","gate_enforced":true,"manual_override":false}

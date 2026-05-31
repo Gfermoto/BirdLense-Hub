@@ -294,6 +294,9 @@ jobs:
       - name: Review board governance gate
         run: python3 scripts/verify_review_board_governance.py
 
+      - name: Release policy as code gate
+        run: python3 scripts/verify_release_policy_as_code.py
+
       - name: Check SITE_MAP vs mkdocs Meta/Repository
         run: python3 scripts/check_site_map_meta_paths.py
 
