@@ -185,6 +185,20 @@ if [[ ! "${BIRDLENSE_SKIP_UI_CONTRACT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.54 ML drift monitoring + retrain trigger gate (#535).
+if [[ ! "${BIRDLENSE_SKIP_ML_DRIFT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.54 ML Drift Trigger Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/report_ml_drift_triggers.py \
+      --override-reason "${BIRDLENSE_ML_DRIFT_OVERRIDE_REASON:-}" \
+      --out-json "docs/reports/ml_drift/ml_drift_trigger_latest.json" \
+      --out-md "docs/reports/ml_drift/ml_drift_trigger_latest.md") || {
+        echo "Ошибка: ML Drift Trigger gate не пройден. Деплой остановлен."
+        echo "Подсказка: для осознанного bypass задайте BIRDLENSE_ML_DRIFT_OVERRIDE_REASON."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"

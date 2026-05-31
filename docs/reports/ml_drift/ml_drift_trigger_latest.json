@@ -1,0 +1,45 @@
+{
+  "schema": "ml_drift_trigger@v1",
+  "generated_at": "2026-05-31T06:46:15Z",
+  "window": {
+    "observations_total": 5,
+    "min_observations_required": 5,
+    "enough_data": true,
+    "first_observation": "2026-05-31T00:00:00Z",
+    "last_observation": "2026-05-31T00:20:00Z"
+  },
+  "metrics": [
+    {
+      "metric": "binary_positive_rate",
+      "baseline": 0.42,
+      "current": 0.418,
+      "abs_delta": 0.002,
+      "threshold": 0.12,
+      "drift": false
+    },
+    {
+      "metric": "mean_confidence",
+      "baseline": 0.78,
+      "current": 0.778,
+      "abs_delta": 0.002,
+      "threshold": 0.08,
+      "drift": false
+    },
+    {
+      "metric": "species_entropy",
+      "baseline": 1.36,
+      "current": 1.348,
+      "abs_delta": 0.012,
+      "threshold": 0.22,
+      "drift": false
+    }
+  ],
+  "trigger": {
+    "retrain_required": false,
+    "override_used": false,
+    "override_reason": "",
+    "block_release": false,
+    "ok": true
+  },
+  "ok": true
+}
