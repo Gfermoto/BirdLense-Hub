@@ -174,6 +174,10 @@ champion-challenger-shadow-gate:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/verify_champion_challenger_shadow.py
 
+ml-technical-debt-scorecard-gate:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/verify_ml_technical_debt_scorecard.py
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
