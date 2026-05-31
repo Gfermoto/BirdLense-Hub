@@ -1,0 +1,45 @@
+{
+  "schema": "incident_runbook_catalog@v1",
+  "incidents": [
+    {
+      "id": "runtime_slo_breach",
+      "title": "Runtime SLO breach",
+      "runbook": "docs/runbooks/runtime-slo-stability.md"
+    },
+    {
+      "id": "health_readiness_false_green",
+      "title": "Health/readiness contract mismatch",
+      "runbook": "docs/runbooks/health-readiness-contract.md"
+    },
+    {
+      "id": "decision_engine_regression",
+      "title": "Decision engine contract regression",
+      "runbook": "docs/runbooks/decision-engine-contract.md"
+    },
+    {
+      "id": "golden_gate_failure",
+      "title": "Golden set gate failure on release",
+      "runbook": "docs/runbooks/golden-set-gate.md"
+    },
+    {
+      "id": "api_security_gate_failure",
+      "title": "OWASP API controls gate failure",
+      "runbook": "docs/runbooks/owasp-api-controls-gate.md"
+    },
+    {
+      "id": "secrets_vuln_gate_failure",
+      "title": "Secrets/vulnerability response gate failure",
+      "runbook": "docs/runbooks/sec-vuln-response.md"
+    },
+    {
+      "id": "processor_oom",
+      "title": "Processor OOM / crash loop",
+      "runbook": "docs/runbooks/processor-oom-137.md"
+    },
+    {
+      "id": "deploy_dora_regression",
+      "title": "Deployment quality regression (DORA)",
+      "runbook": "docs/runbooks/dora-metrics-instrumentation.md"
+    }
+  ]
+}
