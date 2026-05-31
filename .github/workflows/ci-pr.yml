@@ -273,6 +273,9 @@ jobs:
       - name: Docs drift CI gate
         run: python3 scripts/verify_docs_drift_gate.py
 
+      - name: SLSA build-track gate
+        run: python3 scripts/verify_slsa_build_track.py
+
       - name: Check SITE_MAP vs mkdocs Meta/Repository
         run: python3 scripts/check_site_map_meta_paths.py
 

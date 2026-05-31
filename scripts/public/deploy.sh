@@ -259,6 +259,18 @@ if [[ ! "${BIRDLENSE_SKIP_DOCS_DRIFT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.60 SLSA build track gate (#546).
+if [[ ! "${BIRDLENSE_SKIP_SLSA_BUILD_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.60 SLSA Build Track Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_slsa_build_track.py \
+      --out-json "docs/reports/slsa/slsa_build_track_latest.json" \
+      --out-md "docs/reports/slsa/slsa_build_track_latest.md") || {
+        echo "Ошибка: SLSA Build Track gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
