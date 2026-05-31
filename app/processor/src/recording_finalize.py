@@ -102,6 +102,13 @@ def _is_valid_track_bbox(bbox: Any) -> bool:
     return all(low <= v <= high for v in (x1, y1, x2, y2))
 
 
+def _safe_float(value: Any, *, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float(default)
+
+
 def _valid_track_frames(frames: Any) -> list[dict[str, Any]]:
     if not isinstance(frames, list):
         return []
@@ -112,6 +119,34 @@ def _valid_track_frames(frames: Any) -> list[dict[str, Any]]:
         if _is_valid_track_bbox(frame.get("bbox")):
             out.append(frame)
     return out
+
+
+def _first_bbox_and_track_latency_seconds(
+    video_detections: list[dict[str, Any]],
+) -> tuple[float | None, float | None]:
+    """Return (first_bbox_latency_s, first_track_latency_s) from persisted rows."""
+    bbox_candidates: list[float] = []
+    track_candidates: list[float] = []
+    for row in video_detections or []:
+        if str((row or {}).get("source") or "").strip().lower() != "video":
+            continue
+        start_time = _safe_float(row.get("start_time"), default=-1.0)
+        if start_time >= 0.0:
+            track_candidates.append(start_time)
+        frames = row.get("frames")
+        if not isinstance(frames, list):
+            continue
+        for frame in frames:
+            if not isinstance(frame, dict):
+                continue
+            if not _is_valid_track_bbox(frame.get("bbox")):
+                continue
+            ft = _safe_float(frame.get("t"), default=-1.0)
+            if ft >= 0.0:
+                bbox_candidates.append(ft)
+    first_bbox = min(bbox_candidates) if bbox_candidates else None
+    first_track = min(track_candidates) if track_candidates else None
+    return first_bbox, first_track
 
 
 def _blind_required_frames(
@@ -1011,6 +1046,7 @@ def finalize_motion_recording(
             end_time,
             video_path_for_api,
             spectrogram_path,
+            trigger_source=trigger_source,
             scales_weight_delta_kg=scales_delta_kg,
             behavior_label=behavior_label_kw,
             behavior_confidence=behavior_conf_kw,
@@ -1107,6 +1143,9 @@ def finalize_motion_recording(
             blind_score=blind_score,
             blind_score_threshold=blind_score_threshold,
         )
+        first_bbox_latency_s, first_track_latency_s = (
+            _first_bbox_and_track_latency_seconds(video_detections)
+        )
         session_summary: dict[str, Any] = {
             "event": "recording_session_summary",
             "duration_s": round(duration_s, 3) if duration_s is not None else None,
@@ -1138,6 +1177,21 @@ def finalize_motion_recording(
             "yolo_blind_score": round(float(blind_score), 4),
             "track_id_switches_count": int(rs.get("track_id_switches_count") or 0),
             "avg_track_duration_sec": round(float(rs.get("avg_track_duration_sec") or 0.0), 4),
+            "trigger_to_first_bbox_latency_s": (
+                None
+                if first_bbox_latency_s is None
+                else round(float(first_bbox_latency_s), 6)
+            ),
+            "first_bbox_latency_s": (
+                None
+                if first_bbox_latency_s is None
+                else round(float(first_bbox_latency_s), 6)
+            ),
+            "first_track_latency_s": (
+                None
+                if first_track_latency_s is None
+                else round(float(first_track_latency_s), 6)
+            ),
         }
         try:
             from trigger_graph import build_session_trigger_graph

@@ -33,6 +33,7 @@ import { downloadDetectionCropForINaturalist } from '../api/dataset';
 import { getApiErrorMessage } from '../api/api';
 import { invalidateLocalSpeciesEditCaches } from '../api/invalidateLocalSpeciesCaches';
 import {
+  deleteDetection,
   deleteVisit,
   updateDetectionNickname,
 } from '../api/speciesOverviewDetections';
@@ -225,11 +226,22 @@ export const VisitCard = memo(function VisitCard({
       setSaveSuccess(t('video.nicknameSaved'));
     },
   });
-  const deleteVisitMutation = useMutation({
-    mutationFn: () => deleteVisit(Number(visit.id), { source: 'timeline' }),
+  const deleteVisitMutation = useMutation<unknown, unknown, void>({
+    mutationFn: () => {
+      if (visit.timeline_kind === 'unlinked_video' && firstVideoDetectionId) {
+        return deleteDetection(Number(firstVideoDetectionId), {
+          source: 'timeline',
+        });
+      }
+      return deleteVisit(Number(visit.id), { source: 'timeline' });
+    },
     onSuccess: () => {
       invalidateLocalSpeciesEditCaches(queryClient, firstVideoId);
-      setSaveSuccess(t('visitCard.deleteVisitSuccess'));
+      setSaveSuccess(
+        visit.timeline_kind === 'unlinked_video'
+          ? t('visitCard.deleteDetectionSuccess')
+          : t('visitCard.deleteVisitSuccess'),
+      );
     },
     onError: (err) => {
       setSaveError(getApiErrorMessage(err, t('errors.loadSightings')));
@@ -457,7 +469,10 @@ export const VisitCard = memo(function VisitCard({
                   sx={{ height: 28 }}
                 />
               )}
-              {canEdit && visit.timeline_kind !== 'unlinked_video' && visit.id > 0 ? (
+              {canEdit &&
+              ((visit.timeline_kind !== 'unlinked_video' && visit.id > 0) ||
+                (visit.timeline_kind === 'unlinked_video' &&
+                  !!firstVideoDetectionId)) ? (
                 <Button
                   size="small"
                   color="error"
@@ -467,9 +482,13 @@ export const VisitCard = memo(function VisitCard({
                   onClick={() => {
                     if (
                       !window.confirm(
-                        t('visitCard.deleteVisitConfirm', {
-                          name: visit.species.name,
-                        }),
+                        visit.timeline_kind === 'unlinked_video'
+                          ? t('visitCard.deleteDetectionConfirm', {
+                              name: visit.species.name,
+                            })
+                          : t('visitCard.deleteVisitConfirm', {
+                              name: visit.species.name,
+                            }),
                       )
                     ) {
                       return;
@@ -477,7 +496,9 @@ export const VisitCard = memo(function VisitCard({
                     deleteVisitMutation.mutate();
                   }}
                 >
-                  {t('visitCard.deleteVisit')}
+                  {visit.timeline_kind === 'unlinked_video'
+                    ? t('visitCard.deleteDetection')
+                    : t('visitCard.deleteVisit')}
                 </Button>
               ) : null}
               {(() => {
