@@ -347,6 +347,9 @@ jobs:
           BIRDLENSE_PORT: "8085"
         run: |
           set -euo pipefail
+          cd ..
+          python3 ./scripts/verify_playwright_antiflake.py
+          cd app
           docker compose up -d
           # После cd e2e / cd .. trap иначе вызывает compose не из app/ → «no configuration file provided».
           cleanup() { (cd "${GITHUB_WORKSPACE}/app" && docker compose down); }
