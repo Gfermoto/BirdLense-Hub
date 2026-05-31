@@ -125,6 +125,10 @@ deploy-contract-gate:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/report_deploy_contract.py
 
+ui-contract-guard:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/verify_ui_contract_guard.py
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \

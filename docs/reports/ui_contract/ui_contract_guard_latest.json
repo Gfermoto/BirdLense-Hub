@@ -1,0 +1,10 @@
+{
+  "schema": "ui_contract_guard@v1",
+  "generated_at": "2026-05-31T06:36:47Z",
+  "checks": {
+    "codegen_ok": true,
+    "generated_file_changed": false,
+    "typecheck_ok": true
+  },
+  "ok": true
+}

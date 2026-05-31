@@ -173,6 +173,18 @@ if [[ ! "${BIRDLENSE_SKIP_DEPLOY_CONTRACT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.53 UI contract integrity gate (#538).
+if [[ ! "${BIRDLENSE_SKIP_UI_CONTRACT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.53 UI Contract Guard..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_ui_contract_guard.py \
+      --out-json "docs/reports/ui_contract/ui_contract_guard_latest.json" \
+      --out-md "docs/reports/ui_contract/ui_contract_guard_latest.md") || {
+        echo "Ошибка: UI Contract Guard не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
