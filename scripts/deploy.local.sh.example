@@ -37,6 +37,9 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 # export VERIFY_PROD_ENV_FILE=/path/to/copy-of-server.env   # по умолчанию: app/.env в корне репо
 # По умолчанию strict-quality не блокирует deploy (только отчёт в логах).
 # export DEPLOY_STRICT_QUALITY_REQUIRED=1  # включить blocking режим для strict-quality
+# Защита от частых деплоев (снижает пропуски визитов из-за частых restart-окон).
+# export DEPLOY_MIN_INTERVAL_MINUTES=20
+# export DEPLOY_MIN_INTERVAL_BYPASS=1  # только для аварийного исключения
 
 # Куда rsync заливает код на сервере (по умолчанию в deploy.sh: /root/BirdLense)
 # export DEPLOY_REMOTE_DIR="/root/BirdLense"
