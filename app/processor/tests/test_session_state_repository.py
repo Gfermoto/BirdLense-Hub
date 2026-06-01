@@ -30,6 +30,7 @@ def test_session_state_repository_persists_runtime_and_health_events():
                 'yolo_blind_confirmed': True,
                 'trigger_to_first_bbox_latency_s': 0.42,
                 'first_track_latency_s': 0.31,
+                'finalize_duration_ms': 184.5,
                 'video_file_ok': True,
             }
         )
@@ -47,6 +48,7 @@ def test_session_state_repository_persists_runtime_and_health_events():
         assert int(rows[0]['yolo_raw_boxes_total']) == 0
         assert float(rows[0]['trigger_to_first_bbox_latency_s']) == 0.42
         assert float(rows[0]['first_track_latency_s']) == 0.31
+        assert float(rows[0]['finalize_duration_ms']) == 184.5
     finally:
         tmp.cleanup()
 

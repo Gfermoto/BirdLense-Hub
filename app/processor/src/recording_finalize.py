@@ -544,6 +544,11 @@ def finalize_motion_recording(
     recording_context: Optional[dict[str, Any]] = None,
 ) -> None:
     """Свести YOLO+MQTT, сохранить видео в API, уведомления; без детекций — удалить папку."""
+    finalize_started_ts = time.perf_counter()
+    fusion_started_ts: float | None = None
+    fusion_finished_ts: float | None = None
+    persist_started_ts: float | None = None
+    persist_finished_ts: float | None = None
     merge_window = int(app_config.get("detection.merge_window_seconds") or 5)
     yolo_tracks_count = len(frame_processor.tracks)
     decisions = decision_maker.get_decisions(frame_processor.tracks)
@@ -697,6 +702,7 @@ def finalize_motion_recording(
                 blind_recovered = True
     except Exception:
         logging.debug("finalize: blind-state probe failed", exc_info=True)
+    fusion_started_ts = time.perf_counter()
     video_detections = build_fused_video_detections(
         video_detections,
         mqtt_events,
@@ -880,6 +886,7 @@ def finalize_motion_recording(
         except Exception as exc:
             inc_counter("reid_runtime_enrich_fail_total")
             logging.warning("Runtime ReID enrich failed; keep fused detections: %s", exc)
+    fusion_finished_ts = time.perf_counter()
 
     fusion_fs = sum(1 for d in video_detections if d.get("frigate_standalone"))
     fusion_yolo = 0
@@ -1000,6 +1007,7 @@ def finalize_motion_recording(
             video_output=video_output,
         )
 
+    persist_started_ts = time.perf_counter()
     if len(video_detections) > 0 and video_file_ok:
         scales_delta_kg, scales_evidence_update = estimate_recording_scales_delta(
             app_config,
@@ -1106,6 +1114,7 @@ def finalize_motion_recording(
             video_id=video_id,
             encode_func=encode_notify_preview_base64,
         )
+    persist_finished_ts = time.perf_counter()
     write_decision_trace_activity(api, decision_trace)
     if not video_file_ok:
         remove_session_dir(output_path_physical, reason="bad")
@@ -1177,6 +1186,25 @@ def finalize_motion_recording(
             "yolo_blind_score": round(float(blind_score), 4),
             "track_id_switches_count": int(rs.get("track_id_switches_count") or 0),
             "avg_track_duration_sec": round(float(rs.get("avg_track_duration_sec") or 0.0), 4),
+            "finalize_duration_ms": round(
+                max(0.0, (time.perf_counter() - finalize_started_ts) * 1000.0), 3
+            ),
+            "fusion_duration_ms": (
+                None
+                if fusion_started_ts is None or fusion_finished_ts is None
+                else round(
+                    max(0.0, (fusion_finished_ts - fusion_started_ts) * 1000.0),
+                    3,
+                )
+            ),
+            "persist_duration_ms": (
+                None
+                if persist_started_ts is None or persist_finished_ts is None
+                else round(
+                    max(0.0, (persist_finished_ts - persist_started_ts) * 1000.0),
+                    3,
+                )
+            ),
             "trigger_to_first_bbox_latency_s": (
                 None
                 if first_bbox_latency_s is None

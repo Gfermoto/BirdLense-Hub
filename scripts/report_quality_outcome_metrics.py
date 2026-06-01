@@ -56,6 +56,11 @@ def _load_rows(db_path: Path, lookback_hours: int) -> list[sqlite3.Row]:
             if "first_track_latency_s" in cols
             else "NULL AS first_track_latency_s"
         )
+        finalize_col = (
+            "finalize_duration_ms"
+            if "finalize_duration_ms" in cols
+            else "NULL AS finalize_duration_ms"
+        )
         return list(
             conn.execute(
                 f"""
@@ -67,6 +72,7 @@ def _load_rows(db_path: Path, lookback_hours: int) -> list[sqlite3.Row]:
                   rejected_decision_rows,
                   {latency_col},
                   {track_col},
+                  {finalize_col},
                   payload_json
                 FROM session_runtime_metrics
                 WHERE created_at >= datetime('now', ?)
@@ -90,6 +96,7 @@ def evaluate(
     empty_bbox_rejections = 0
     rejected_rows_total = 0
     latency_samples: list[float] = []
+    finalize_duration_samples: list[float] = []
 
     for row in rows:
         yolo_ran = _safe_int(row["yolo_frames_ran"])
@@ -134,6 +141,15 @@ def evaluate(
                     if latency > 0:
                         latency_samples.append(latency)
                     break
+        finalize_duration_ms = _safe_float(row["finalize_duration_ms"])
+        if finalize_duration_ms > 0:
+            finalize_duration_samples.append(finalize_duration_ms)
+        elif payload:
+            payload_finalize_ms = _safe_float(
+                payload.get("finalize_duration_ms")
+            )
+            if payload_finalize_ms > 0:
+                finalize_duration_samples.append(payload_finalize_ms)
 
     blind_rate = (
         (blind_confirmed / sessions_total) if sessions_total > 0 else 1.0
@@ -149,6 +165,7 @@ def evaluate(
         else 0.0
     )
     latency_p95 = _percentile(latency_samples, 95.0)
+    finalize_duration_p95_ms = _percentile(finalize_duration_samples, 95.0)
 
     errors: list[str] = []
     if sessions_total <= 0:
@@ -197,6 +214,11 @@ def evaluate(
             "trigger_to_first_bbox_latency_p95_s": (
                 None if latency_p95 is None else float(round(latency_p95, 6))
             ),
+            "finalize_duration_p95_ms": (
+                None
+                if finalize_duration_p95_ms is None
+                else float(round(finalize_duration_p95_ms, 6))
+            ),
         },
         "thresholds": {
             "max_blind_rate": float(thresholds["max_blind_rate"]),
@@ -233,6 +255,8 @@ def _to_md(report: dict[str, Any]) -> str:
         f"- tracks_coverage: `{metrics.get('tracks_coverage')}`",
         "- trigger_to_first_bbox_latency_p95_s: "
         f"`{metrics.get('trigger_to_first_bbox_latency_p95_s')}`",
+        "- finalize_duration_p95_ms: "
+        f"`{metrics.get('finalize_duration_p95_ms')}`",
         "",
         "## Thresholds",
         "",

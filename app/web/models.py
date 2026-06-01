@@ -467,6 +467,7 @@ class SessionRuntimeMetrics(db.Model):
     yolo_blind_confirmed: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
     trigger_to_first_bbox_latency_s: Mapped[float | None] = mapped_column(Float, nullable=True)
     first_track_latency_s: Mapped[float | None] = mapped_column(Float, nullable=True)
+    finalize_duration_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
     runtime_profile: Mapped[str | None] = mapped_column(String(32), nullable=True)
     video_file_ok: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
     payload_json: Mapped[str | None] = mapped_column(String, nullable=True)
