@@ -104,6 +104,12 @@ def _to_md(report: dict[str, Any]) -> str:
     metrics = report.get("outcome_metrics") or {}
     critical = report.get("critical_path") or {}
     issues = list(critical.get("issues") or [])
+    ingest_rows_per_hour_7d = metrics.get(
+        "ingest_bbox_contract_pruned_rows_per_hour_7d_baseline"
+    )
+    ingest_rows_per_hour_delta = metrics.get(
+        "ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d"
+    )
     lines = [
         "# SOTA Reality Check (weekly)",
         "",
@@ -134,6 +140,16 @@ def _to_md(report: dict[str, Any]) -> str:
         f"`{metrics.get('ingest_bbox_contract_empty_events')}`",
         "- ingest_bbox_contract_pruned_rows_per_session: "
         f"`{metrics.get('ingest_bbox_contract_pruned_rows_per_session')}`",
+        "- ingest_bbox_contract_pruned_rows_per_hour: "
+        f"`{metrics.get('ingest_bbox_contract_pruned_rows_per_hour')}`",
+        "- ingest_bbox_contract_pruned_rows_per_hour_7d_baseline: "
+        f"`{ingest_rows_per_hour_7d}`",
+        "- ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d: "
+        f"`{ingest_rows_per_hour_delta}`",
+        "- frigate_catches_missed_birds_sessions: "
+        f"`{metrics.get('frigate_catches_missed_birds_sessions')}`",
+        "- frigate_catches_missed_birds_rate: "
+        f"`{metrics.get('frigate_catches_missed_birds_rate')}`",
         "",
         "## Critical issues",
         "",
