@@ -116,12 +116,43 @@ def _load_ingest_gate_rows(
         conn.close()
 
 
+def _load_trigger_moratorium_rows(
+    db_path: Path,
+    lookback_hours: int,
+) -> list[sqlite3.Row]:
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        table = conn.execute(
+            "SELECT 1 FROM sqlite_master "
+            "WHERE type='table' AND name='activity_log' LIMIT 1"
+        ).fetchone()
+        if table is None:
+            return []
+        return list(
+            conn.execute(
+                """
+                SELECT created_at, data
+                FROM activity_log
+                WHERE type = 'trigger_moratorium'
+                  AND created_at >= datetime('now', ?)
+                ORDER BY created_at DESC
+                """,
+                (f"-{max(1, int(lookback_hours))} hours",),
+            )
+        )
+    finally:
+        conn.close()
+
+
 def evaluate(
     rows: list[sqlite3.Row],
     thresholds: dict[str, float],
     *,
     ingest_gate_rows: list[sqlite3.Row] | None = None,
     ingest_gate_rows_7d: list[sqlite3.Row] | None = None,
+    trigger_moratorium_rows: list[sqlite3.Row] | None = None,
+    trigger_moratorium_rows_7d: list[sqlite3.Row] | None = None,
     rows_7d: list[sqlite3.Row] | None = None,
 ) -> dict[str, Any]:
     sessions_total = len(rows)
@@ -137,6 +168,9 @@ def evaluate(
     ingest_empty_contract_events = 0
     ingest_pruned_rows_total = 0
     ingest_pruned_frames_total = 0
+    trigger_moratorium_events = 0
+    trigger_moratorium_events_7d = 0
+    trigger_moratorium_by_source: dict[str, int] = {}
     frigate_catches_missed_birds_sessions = 0
     frigate_catches_missed_birds_by_trigger_source: dict[str, int] = {}
 
@@ -256,6 +290,24 @@ def evaluate(
         ingest_pruned_rows_total_7d += _safe_int(
             payload.get("dropped_missing_frames")
         ) + _safe_int(payload.get("dropped_empty_bbox"))
+    for row in trigger_moratorium_rows or []:
+        trigger_moratorium_events += 1
+        payload = {}
+        raw_data = row["data"]
+        if isinstance(raw_data, str) and raw_data.strip():
+            try:
+                parsed = json.loads(raw_data)
+                if isinstance(parsed, dict):
+                    payload = parsed
+            except json.JSONDecodeError:
+                payload = {}
+        source = str(payload.get("trigger_source") or "unknown").strip()
+        source_key = source.lower() if source else "unknown"
+        trigger_moratorium_by_source[source_key] = (
+            int(trigger_moratorium_by_source.get(source_key) or 0)
+            + 1
+        )
+    trigger_moratorium_events_7d = len(trigger_moratorium_rows_7d or [])
 
     blind_rate = (
         (blind_confirmed / sessions_total) if sessions_total > 0 else 1.0
@@ -298,6 +350,16 @@ def evaluate(
     )
     ingest_pruned_rows_per_hour_delta_vs_7d = (
         current_pruned_rows_per_hour - baseline_pruned_rows_per_hour_7d
+    )
+    current_moratorium_events_per_hour = (
+        float(trigger_moratorium_events) / float(max(1, lookback_hours))
+    )
+    baseline_moratorium_events_per_hour_7d = (
+        float(trigger_moratorium_events_7d) / float(24 * 7)
+    )
+    trigger_moratorium_events_per_hour_delta_vs_7d = (
+        current_moratorium_events_per_hour
+        - baseline_moratorium_events_per_hour_7d
     )
     max_frigate_rate_delta = thresholds[
         "max_frigate_catches_missed_birds_rate_delta_vs_7d"
@@ -409,6 +471,25 @@ def evaluate(
             "ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d": float(
                 round(ingest_pruned_rows_per_hour_delta_vs_7d, 6)
             ),
+            "trigger_moratorium_events": int(trigger_moratorium_events),
+            "trigger_moratorium_by_source": {
+                k: int(v)
+                for k, v in sorted(
+                    trigger_moratorium_by_source.items()
+                )
+            },
+            "trigger_moratorium_events_per_hour": float(
+                round(current_moratorium_events_per_hour, 6)
+            ),
+            "trigger_moratorium_events_per_hour_7d_baseline": float(
+                round(baseline_moratorium_events_per_hour_7d, 6)
+            ),
+            "trigger_moratorium_events_per_hour_delta_vs_7d": float(
+                round(
+                    trigger_moratorium_events_per_hour_delta_vs_7d,
+                    6,
+                )
+            ),
             "frigate_catches_missed_birds_sessions": int(
                 frigate_catches_missed_birds_sessions
             ),
@@ -484,6 +565,13 @@ def _to_md(report: dict[str, Any]) -> str:
     ingest_rows_per_hour_delta = metrics.get(
         "ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d"
     )
+    moratorium_by_source = metrics.get("trigger_moratorium_by_source")
+    moratorium_per_hour_7d = metrics.get(
+        "trigger_moratorium_events_per_hour_7d_baseline"
+    )
+    moratorium_per_hour_delta = metrics.get(
+        "trigger_moratorium_events_per_hour_delta_vs_7d"
+    )
     frigate_by_source_rate = metrics.get(
         "frigate_catches_missed_birds_by_trigger_source_rate"
     )
@@ -521,6 +609,16 @@ def _to_md(report: dict[str, Any]) -> str:
         f"`{ingest_rows_per_hour_7d}`",
         "- ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d: "
         f"`{ingest_rows_per_hour_delta}`",
+        "- trigger_moratorium_events: "
+        f"`{metrics.get('trigger_moratorium_events')}`",
+        "- trigger_moratorium_by_source: "
+        f"`{moratorium_by_source}`",
+        "- trigger_moratorium_events_per_hour: "
+        f"`{metrics.get('trigger_moratorium_events_per_hour')}`",
+        "- trigger_moratorium_events_per_hour_7d_baseline: "
+        f"`{moratorium_per_hour_7d}`",
+        "- trigger_moratorium_events_per_hour_delta_vs_7d: "
+        f"`{moratorium_per_hour_delta}`",
         "- frigate_catches_missed_birds_sessions: "
         f"`{metrics.get('frigate_catches_missed_birds_sessions')}`",
         "- frigate_catches_missed_birds_rate: "
@@ -639,11 +737,21 @@ def main() -> int:
         int(thresholds["lookback_hours"]),
     )
     ingest_gate_rows_7d = _load_ingest_gate_rows(db_path, 24 * 7)
+    trigger_moratorium_rows = _load_trigger_moratorium_rows(
+        db_path,
+        int(thresholds["lookback_hours"]),
+    )
+    trigger_moratorium_rows_7d = _load_trigger_moratorium_rows(
+        db_path,
+        24 * 7,
+    )
     report = evaluate(
         rows,
         thresholds,
         ingest_gate_rows=ingest_gate_rows,
         ingest_gate_rows_7d=ingest_gate_rows_7d,
+        trigger_moratorium_rows=trigger_moratorium_rows,
+        trigger_moratorium_rows_7d=trigger_moratorium_rows_7d,
         rows_7d=rows_7d,
     )
 

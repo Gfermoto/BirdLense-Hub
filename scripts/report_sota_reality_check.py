@@ -113,6 +113,13 @@ def _to_md(report: dict[str, Any]) -> str:
     frigate_by_source_rate = metrics.get(
         "frigate_catches_missed_birds_by_trigger_source_rate"
     )
+    moratorium_by_source = metrics.get("trigger_moratorium_by_source")
+    moratorium_per_hour_7d = metrics.get(
+        "trigger_moratorium_events_per_hour_7d_baseline"
+    )
+    moratorium_per_hour_delta = metrics.get(
+        "trigger_moratorium_events_per_hour_delta_vs_7d"
+    )
     lines = [
         "# SOTA Reality Check (weekly)",
         "",
@@ -149,6 +156,16 @@ def _to_md(report: dict[str, Any]) -> str:
         f"`{ingest_rows_per_hour_7d}`",
         "- ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d: "
         f"`{ingest_rows_per_hour_delta}`",
+        "- trigger_moratorium_events: "
+        f"`{metrics.get('trigger_moratorium_events')}`",
+        "- trigger_moratorium_by_source: "
+        f"`{moratorium_by_source}`",
+        "- trigger_moratorium_events_per_hour: "
+        f"`{metrics.get('trigger_moratorium_events_per_hour')}`",
+        "- trigger_moratorium_events_per_hour_7d_baseline: "
+        f"`{moratorium_per_hour_7d}`",
+        "- trigger_moratorium_events_per_hour_delta_vs_7d: "
+        f"`{moratorium_per_hour_delta}`",
         "- frigate_catches_missed_birds_sessions: "
         f"`{metrics.get('frigate_catches_missed_birds_sessions')}`",
         "- frigate_catches_missed_birds_rate: "
