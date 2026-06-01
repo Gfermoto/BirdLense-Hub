@@ -79,7 +79,6 @@ def build_video_detail_dict(video) -> dict:
         "start_time": video.start_time.astimezone(timezone.utc).isoformat(),
         "end_time": video.end_time.astimezone(timezone.utc).isoformat(),
         "video_path": video.video_path,
-        "spectrogram_path": video.spectrogram_path,
         "favorite": video.favorite,
         "weather": {
             "main": video.weather_main,

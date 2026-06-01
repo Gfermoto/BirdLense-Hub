@@ -17,8 +17,6 @@ from services.system_admin_api_service import (
     build_config_audit_payload,
     compute_system_activity_uptime,
     processor_logs_tail_http_response,
-    start_bulk_spectrogram_regeneration,
-    start_single_video_spectrogram_regeneration,
     start_single_video_track_regeneration,
 )
 from services.system_domain_health_service import build_domain_health_payload
@@ -121,6 +119,12 @@ def register_routes(app):
         return upsert_camera_tuning_profile(
             camera_id=str((body or {}).get("camera_id") or ""),
             overrides=(body or {}).get("overrides"),
+            experiment_tag=str((body or {}).get("experiment_tag") or ""),
+            max_runtime_cost_delta=(
+                (body or {}).get("max_runtime_cost_delta")
+                if isinstance(body, dict)
+                else None
+            ),
         )
 
     @app.route("/api/ui/system/tuning-workbench/rollback", methods=["POST"])
@@ -142,37 +146,6 @@ def register_routes(app):
         if code == 200:
             cache_set(ack, out, _CACHE_SYSTEM_ACTIVITY_SEC)
         return out, code
-
-    @app.route("/api/ui/system/regenerate-spectrograms", methods=["POST"])
-    @require_ui_settings_password
-    def regenerate_spectrograms():
-        """
-        Start spectrogram regeneration in background. Returns immediately.
-        Processes videos without spectrograms (or all if force=true).
-        Only available when BirdNET is configured (MQTT broker + birdnet_topic).
-        Poll GET .../status to get result.
-        """
-        body, v_err = parse_request_json_object_allow_empty(request)
-        if v_err is not None:
-            return v_err, 400
-        return start_bulk_spectrogram_regeneration(
-            current_app._get_current_object(),
-            body,
-        )
-
-    @app.route("/api/ui/videos/<int:video_id>/regenerate-spectrogram", methods=["POST"])
-    @require_admin_track_regen
-    def regenerate_spectrogram_single_video(video_id):
-        """Перегенерация спектрограммы для одной записи (админ при двухуровневом доступе)."""
-        return start_single_video_spectrogram_regeneration(
-            current_app._get_current_object(),
-            video_id,
-        )
-
-    @app.route("/api/ui/system/regenerate-spectrograms/status", methods=["GET"])
-    def regenerate_spectrograms_status():
-        """Return last regeneration result: {status, result: {generated, failed, skipped}, error}."""
-        return job_state._regenerate_status, 200
 
     @app.route("/api/ui/system/regenerate-tracks/status", methods=["GET"])
     def regenerate_tracks_status():

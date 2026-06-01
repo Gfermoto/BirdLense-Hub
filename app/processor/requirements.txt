@@ -8,10 +8,8 @@ paho-mqtt==2.1.0
 requests==2.33.0
 paramiko>=4,<5
 
-# numpy 2.x — совместим с opencv, librosa, ultralytics
+# numpy 2.x — совместим с opencv, ultralytics
 numpy>=2.0,<3
-librosa==0.11.0
-matplotlib==3.8.4
 
 # OpenVINO runtime для processor.inference_backend=openvino (Ultralytics IR).
 openvino>=2024.0

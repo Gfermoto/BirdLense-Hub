@@ -1,10 +1,11 @@
-"""Финал сессии записи: merge, spectrogram, API, MQTT, уведомления (tech debt #201)."""
+"""Финал сессии записи: merge, API, MQTT, уведомления (tech debt #201)."""
 
 from __future__ import annotations
 
 import json
 import logging
 import os
+import threading
 import time
 from collections import Counter
 from datetime import datetime, timezone
@@ -34,11 +35,9 @@ from recording_scales_evidence import estimate_recording_scales_delta
 from recording_session_cleanup import remove_session_dir
 from recording_video_response import response_video_id
 from recordings_remote_mirror import schedule_recordings_session_mirror
-from recording_spectrogram import maybe_generate_recording_spectrogram
 from reid_runtime import enrich_runtime_reid_detections
 from processor_diagnostics import collect_root_cause_snapshot, write_root_cause_dump
 from session_state_repository import SessionStateRepository
-from spectrogram import generate_spectrogram
 from behavior_baseline_runtime import maybe_predict_video_behavior_bundle
 from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
 
@@ -147,6 +146,66 @@ def _first_bbox_and_track_latency_seconds(
     first_bbox = min(bbox_candidates) if bbox_candidates else None
     first_track = min(track_candidates) if track_candidates else None
     return first_bbox, first_track
+
+
+def _latency_budget_breaches(
+    *,
+    trigger_to_first_bbox_latency_s: float | None,
+    finalize_duration_ms: float | None,
+    fusion_duration_ms: float | None,
+    persist_duration_ms: float | None,
+) -> list[dict[str, Any]]:
+    checks = [
+        (
+            "trigger_to_first_bbox_latency_s",
+            trigger_to_first_bbox_latency_s,
+            float(app_config.get("processor.latency_budget_trigger_to_first_bbox_warn_s") or 5.0),
+            float(app_config.get("processor.latency_budget_trigger_to_first_bbox_critical_s") or 8.0),
+        ),
+        (
+            "finalize_duration_ms",
+            finalize_duration_ms,
+            float(app_config.get("processor.latency_budget_finalize_warn_ms") or 5000.0),
+            float(app_config.get("processor.latency_budget_finalize_critical_ms") or 15000.0),
+        ),
+        (
+            "fusion_duration_ms",
+            fusion_duration_ms,
+            float(app_config.get("processor.latency_budget_fusion_warn_ms") or 1200.0),
+            float(app_config.get("processor.latency_budget_fusion_critical_ms") or 3500.0),
+        ),
+        (
+            "persist_duration_ms",
+            persist_duration_ms,
+            float(app_config.get("processor.latency_budget_persist_warn_ms") or 1500.0),
+            float(app_config.get("processor.latency_budget_persist_critical_ms") or 5000.0),
+        ),
+    ]
+    breaches: list[dict[str, Any]] = []
+    for metric, value, warn_thr, crit_thr in checks:
+        try:
+            metric_value = float(value) if value is not None else None
+        except (TypeError, ValueError):
+            metric_value = None
+        if metric_value is None or metric_value <= 0:
+            continue
+        severity = None
+        if metric_value >= max(warn_thr, crit_thr):
+            severity = "critical"
+        elif metric_value >= min(warn_thr, crit_thr):
+            severity = "warning"
+        if severity is None:
+            continue
+        breaches.append(
+            {
+                "metric": metric,
+                "value": round(metric_value, 6),
+                "warn_threshold": round(float(warn_thr), 6),
+                "critical_threshold": round(float(crit_thr), 6),
+                "severity": severity,
+            },
+        )
+    return breaches
 
 
 def _blind_required_frames(
@@ -584,6 +643,8 @@ def finalize_motion_recording(
     fusion_finished_ts: float | None = None
     persist_started_ts: float | None = None
     persist_finished_ts: float | None = None
+    decision_trace_started_ts: float | None = None
+    decision_trace_finished_ts: float | None = None
     merge_window = int(app_config.get("detection.merge_window_seconds") or 5)
     yolo_tracks_count = len(frame_processor.tracks)
     decisions = decision_maker.get_decisions(frame_processor.tracks)
@@ -663,14 +724,7 @@ def finalize_motion_recording(
             )
 
     audio_detections: list = []
-    spectrogram_path = maybe_generate_recording_spectrogram(
-        app_config,
-        mqtt_events=mqtt_events,
-        video_output=video_output,
-        output_path_physical=output_path_physical,
-        output_path_logical=output_path_logical,
-        generate_func=generate_spectrogram,
-    )
+    pre_fusion_finished_ts = time.perf_counter()
 
     accepted_pre_fusion = list(video_detections)
     triggered_camera = None
@@ -992,6 +1046,7 @@ def finalize_motion_recording(
         )
     decision_trace: dict[str, Any] | None = None
     if video_detections or rejected_decisions:
+        decision_trace_started_ts = time.perf_counter()
         decision_trace = build_decision_trace_payload(
             app_config=app_config,
             start_time=start_time,
@@ -1002,6 +1057,7 @@ def finalize_motion_recording(
             recording_context=recording_context,
             scales_topic_arg=scales_topic_arg,
         )
+        decision_trace_finished_ts = time.perf_counter()
         scales_evidence = decision_trace["scales_evidence"]
     else:
         scales_evidence = _default_scales_evidence_snapshot(
@@ -1095,7 +1151,6 @@ def finalize_motion_recording(
             start_time,
             end_time,
             video_path_for_api,
-            spectrogram_path,
             trigger_source=trigger_source,
             scales_weight_delta_kg=scales_delta_kg,
             behavior_label=behavior_label_kw,
@@ -1199,10 +1254,55 @@ def finalize_motion_recording(
         first_bbox_latency_s, first_track_latency_s = (
             _first_bbox_and_track_latency_seconds(video_detections)
         )
+        finalize_duration_ms = round(
+            max(0.0, (time.perf_counter() - finalize_started_ts) * 1000.0),
+            3,
+        )
+        fusion_duration_ms = (
+            None
+            if fusion_started_ts is None or fusion_finished_ts is None
+            else round(
+                max(0.0, (fusion_finished_ts - fusion_started_ts) * 1000.0),
+                3,
+            )
+        )
+        persist_duration_ms = (
+            None
+            if persist_started_ts is None or persist_finished_ts is None
+            else round(
+                max(0.0, (persist_finished_ts - persist_started_ts) * 1000.0),
+                3,
+            )
+        )
+        pre_fusion_duration_ms = round(
+            max(0.0, (pre_fusion_finished_ts - finalize_started_ts) * 1000.0),
+            3,
+        )
+        decision_trace_duration_ms = (
+            None
+            if decision_trace_started_ts is None or decision_trace_finished_ts is None
+            else round(
+                max(
+                    0.0,
+                    (decision_trace_finished_ts - decision_trace_started_ts) * 1000.0,
+                ),
+                3,
+            )
+        )
+        finalize_critical_path_ms = round(
+            max(
+                0.0,
+                float(finalize_duration_ms or 0.0)
+                - float(pre_fusion_duration_ms or 0.0)
+                - float(decision_trace_duration_ms or 0.0),
+            ),
+            3,
+        )
         session_summary: dict[str, Any] = {
             "event": "recording_session_summary",
             "duration_s": round(duration_s, 3) if duration_s is not None else None,
             "triggered_camera": ctx.get("triggered_camera"),
+            "camera_slot": ctx.get("camera_slot"),
             "trigger_source": trigger_source,
             "video_path": video_path_for_api,
             "frames_seen": int(rs.get("frames_seen") or 0),
@@ -1230,25 +1330,12 @@ def finalize_motion_recording(
             "yolo_blind_score": round(float(blind_score), 4),
             "track_id_switches_count": int(rs.get("track_id_switches_count") or 0),
             "avg_track_duration_sec": round(float(rs.get("avg_track_duration_sec") or 0.0), 4),
-            "finalize_duration_ms": round(
-                max(0.0, (time.perf_counter() - finalize_started_ts) * 1000.0), 3
-            ),
-            "fusion_duration_ms": (
-                None
-                if fusion_started_ts is None or fusion_finished_ts is None
-                else round(
-                    max(0.0, (fusion_finished_ts - fusion_started_ts) * 1000.0),
-                    3,
-                )
-            ),
-            "persist_duration_ms": (
-                None
-                if persist_started_ts is None or persist_finished_ts is None
-                else round(
-                    max(0.0, (persist_finished_ts - persist_started_ts) * 1000.0),
-                    3,
-                )
-            ),
+            "finalize_duration_ms": finalize_duration_ms,
+            "finalize_critical_path_ms": finalize_critical_path_ms,
+            "pre_fusion_duration_ms": pre_fusion_duration_ms,
+            "decision_trace_duration_ms": decision_trace_duration_ms,
+            "fusion_duration_ms": fusion_duration_ms,
+            "persist_duration_ms": persist_duration_ms,
             "trigger_to_first_bbox_latency_s": (
                 None
                 if first_bbox_latency_s is None
@@ -1265,6 +1352,29 @@ def finalize_motion_recording(
                 else round(float(first_track_latency_s), 6)
             ),
         }
+        latency_breaches = _latency_budget_breaches(
+            trigger_to_first_bbox_latency_s=(
+                None
+                if first_bbox_latency_s is None
+                else float(first_bbox_latency_s)
+            ),
+            finalize_duration_ms=(
+                None
+                if finalize_duration_ms is None
+                else float(finalize_duration_ms)
+            ),
+            fusion_duration_ms=(
+                None
+                if fusion_duration_ms is None
+                else float(fusion_duration_ms)
+            ),
+            persist_duration_ms=(
+                None
+                if persist_duration_ms is None
+                else float(persist_duration_ms)
+            ),
+        )
+        session_summary["latency_budget_breaches"] = latency_breaches
         try:
             from trigger_graph import build_session_trigger_graph
 
@@ -1327,6 +1437,28 @@ def finalize_motion_recording(
                         )
             except Exception:
                 logging.debug("active learning buffer append skipped", exc_info=True)
+            try:
+                breaches = session_summary.get("latency_budget_breaches") or []
+                if isinstance(breaches, list) and breaches:
+                    severity = "warning"
+                    if any(
+                        str((b or {}).get("severity") or "").lower() == "critical"
+                        for b in breaches
+                        if isinstance(b, dict)
+                    ):
+                        severity = "critical"
+                    repo.append_detector_health_event(
+                        event_type="runtime_latency_budget_breach",
+                        severity=severity,
+                        camera_id=ctx.get("triggered_camera"),
+                        details={
+                            "camera_slot": ctx.get("camera_slot"),
+                            "trigger_source": trigger_source,
+                            "breaches": breaches,
+                        },
+                    )
+            except Exception:
+                logging.debug("latency budget event append skipped", exc_info=True)
             try:
                 watchdog_enabled = bool(app_config.get("detection.yolo_watchdog_enabled", True))
                 min_fps = float(app_config.get("detection.yolo_watchdog_min_effective_fps") or 1.2)
@@ -1411,14 +1543,38 @@ def finalize_motion_recording(
                         "yolo_raw_boxes_total": session_summary["yolo_raw_boxes_total"],
                     },
                 )
-            maintenance_res = repo.run_maintenance_if_due(app_config_obj=app_config)
-            if maintenance_res:
-                repo.append_detector_health_event(
-                    event_type="runtime_metrics_maintenance",
-                    severity="info",
-                    camera_id=ctx.get("triggered_camera"),
-                    details=maintenance_res,
-                )
+            if bool(app_config.get("processor.runtime_metrics_maintenance_async", True)):
+                def _deferred_maintenance() -> None:
+                    try:
+                        maint_repo = SessionStateRepository()
+                        res = maint_repo.run_maintenance_if_due(app_config_obj=app_config)
+                        if res:
+                            maint_repo.append_detector_health_event(
+                                event_type="runtime_metrics_maintenance",
+                                severity="info",
+                                camera_id=ctx.get("triggered_camera"),
+                                details=res,
+                            )
+                    except Exception:
+                        logging.debug(
+                            "deferred runtime metrics maintenance skipped",
+                            exc_info=True,
+                        )
+
+                threading.Thread(
+                    target=_deferred_maintenance,
+                    daemon=True,
+                    name="birdlense-runtime-metrics-maintenance",
+                ).start()
+            else:
+                maintenance_res = repo.run_maintenance_if_due(app_config_obj=app_config)
+                if maintenance_res:
+                    repo.append_detector_health_event(
+                        event_type="runtime_metrics_maintenance",
+                        severity="info",
+                        camera_id=ctx.get("triggered_camera"),
+                        details=maintenance_res,
+                    )
         except Exception:
             logging.debug("recording_session_summary persist skipped", exc_info=True)
     except Exception:

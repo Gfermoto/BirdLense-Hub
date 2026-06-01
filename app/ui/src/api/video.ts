@@ -187,18 +187,6 @@ export const regenerateTracksForSingleVideo = async (
   return response.data;
 };
 
-/** Пересборка спектрограммы для одной записи (только админ при двух паролях). */
-export const regenerateSpectrogramForSingleVideo = async (
-  videoId: number,
-): Promise<{ message: string; started: boolean; video_id: number }> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/videos/${videoId}/regenerate-spectrogram`,
-    {},
-    { withCredentials: true, timeout: JOB_STATUS_POLL_TIMEOUT_MS },
-  );
-  return response.data;
-};
-
 export const mergeVideoSpecies = async (
   videoId: string | number,
   speciesId: number,

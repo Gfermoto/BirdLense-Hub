@@ -114,34 +114,6 @@ export const fetchTrackRegenerationStatus =
     return response.data;
   };
 
-export interface SpectrogramRegenProgress {
-  processed?: number;
-  total?: number;
-  generated?: number;
-  failed?: number;
-  skipped?: number;
-  current_video?: string | null;
-  current_video_id?: number | null;
-  active_request_video_id?: number | null;
-  phase?: string | null;
-}
-
-export interface SpectrogramRegenerationJobStatus {
-  status: string;
-  result?: unknown;
-  error?: string | null;
-  progress?: SpectrogramRegenProgress | null;
-}
-
-export const fetchSpectrogramRegenerationStatus =
-  async (): Promise<SpectrogramRegenerationJobStatus> => {
-    const response = await axios.get(
-      `${BASE_API_URL}/system/regenerate-spectrograms/status`,
-      { withCredentials: true },
-    );
-    return response.data;
-  };
-
 export const fetchOverviewData = async (
   date: string,
 ): Promise<OverviewData> => {

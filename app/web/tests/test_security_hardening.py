@@ -359,7 +359,3 @@ class TestSingleVideoTrackRegenAuth:
         r = client.post("/api/ui/videos/1/regenerate-tracks", json={})
         assert r.status_code == 403
         assert "Access denied" in (r.get_json() or {}).get("error", "")
-
-        r2 = client.post("/api/ui/videos/1/regenerate-spectrogram", json={})
-        assert r2.status_code == 403
-        assert "Access denied" in (r2.get_json() or {}).get("error", "")

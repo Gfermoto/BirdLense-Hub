@@ -898,7 +898,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [all, opencv, frigate, motion_sensor, scales, track_regen, unknown]
+            enum: [all, opencv, frigate, motion_sensor, scales, unknown]
           description: Trigger-layer filter only (not detection provider/source).
       responses:
         "200":
@@ -3734,55 +3734,6 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Scan and import recordings
-  /system/regenerate-spectrograms:
-    post:
-      description: 'Admin: start batch spectrogram job.'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              additionalProperties: true
-              type: object
-        required: false
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                additionalProperties: true
-                type: object
-          description: OK
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Error
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Error
-      summary: Bulk regenerate spectrograms
-  /system/regenerate-spectrograms/status:
-    get:
-      description: Poll batch spectrogram job.
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                additionalProperties: true
-                type: object
-          description: OK
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Error
-      summary: Spectrogram batch status
   /system/regenerate-tracks/status:
     get:
       description: Poll batch track regeneration job.
@@ -3838,7 +3789,6 @@ paths:
                   type: string
                   enum:
                     - track_regen
-                    - spectrogram_regen
                     - catalog_repair
                     - species_metadata
                     - fusion_export
@@ -4180,30 +4130,6 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: Error
       summary: Merge species on recording
-  /videos/{video_id}/regenerate-spectrogram:
-    post:
-      description: 'Admin: queue spectrogram regeneration for one recording.'
-      parameters:
-      - in: path
-        name: video_id
-        required: true
-        schema:
-          type: integer
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                additionalProperties: true
-                type: object
-          description: OK
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Error
-      summary: Regenerate spectrogram
   /videos/{video_id}/regenerate-tracks:
     post:
       description: 'Admin: queue track regeneration for one recording.'
@@ -4640,8 +4566,6 @@ components:
           type: string
           format: date-time
         video_path:
-          type: string
-        spectrogram_path:
           type: string
         favorite:
           type: boolean
@@ -5434,11 +5358,6 @@ components:
               type: number
             classifier_fallback_bird:
               type: boolean
-            spectrogram_px_per_sec:
-              type: integer
-            generate_spectrogram_always:
-              type: boolean
-              description: If true, generate spectrogram after every recording; if false, only when BirdNET MQTT in window
             included_bird_families:
               type: array
               items:

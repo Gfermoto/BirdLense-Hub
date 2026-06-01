@@ -17,7 +17,7 @@ import { ProcessorMultiCameraBirdnetBlock } from './processor/ProcessorMultiCame
 import { ProcessorConfidenceAdvancedBlock } from './processor/ProcessorConfidenceAdvancedBlock';
 import { ProcessorFalsePositiveGuardrailsBlock } from './processor/ProcessorFalsePositiveGuardrailsBlock';
 import { ProcessorLightGateBlock } from './processor/ProcessorLightGateBlock';
-import { ProcessorSpectrogramDatasetBlock } from './processor/ProcessorSpectrogramDatasetBlock';
+import { ProcessorDatasetBlock } from './processor/ProcessorDatasetBlock';
 import { ProcessorFrigateFusionBlock } from './processor/ProcessorFrigateFusionBlock';
 import { ProcessorAdaptiveProfilesBlock } from './processor/ProcessorAdaptiveProfilesBlock';
 import { ProcessorDetectorPipelineBlock } from './processor/ProcessorDetectorPipelineBlock';
@@ -145,7 +145,7 @@ export function ProcessorSection({ form, simpleMode = true }: Props) {
             <>
               <Divider sx={{ my: 2 }} />
               <SectionHeading>{t('settings.processorSectionHeadingData')}</SectionHeading>
-              <ProcessorSpectrogramDatasetBlock form={form} />
+              <ProcessorDatasetBlock form={form} />
             </>
           ) : null}
 
