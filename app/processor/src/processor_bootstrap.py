@@ -250,6 +250,22 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                 requeued,
                 trigger_source or "?",
             )
+            try:
+                ctx.session.api.activity_log(
+                    "trigger_moratorium",
+                    {
+                        "camera": camera_key,
+                        "trigger_source": trigger_source or None,
+                        "moratorium_seconds": float(trigger_moratorium),
+                        "wait_seconds": float(round(moratorium_wait, 3)),
+                        "requeued": bool(requeued),
+                    },
+                )
+            except Exception:
+                logger.debug(
+                    "Failed to write trigger_moratorium activity log",
+                    exc_info=True,
+                )
             time.sleep(moratorium_wait)
             continue
         wait = recording_cooldown_remaining(
