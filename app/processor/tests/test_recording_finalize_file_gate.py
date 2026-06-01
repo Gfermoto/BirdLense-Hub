@@ -1161,7 +1161,9 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
-            ):
+            ), patch(
+                'recording_finalize.build_decision_trace_payload',
+            ) as build_trace:
                 finalize_motion_recording(
                     api,
                     motion_detector,
@@ -1191,6 +1193,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                 )
 
         api.create_video.assert_not_called()
+        build_trace.assert_not_called()
 
 
 if __name__ == '__main__':
