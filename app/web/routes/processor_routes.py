@@ -27,6 +27,7 @@ from services.processor_ingest.gateway import (
     check_processor_secret_token,
     fire_webhook,
     is_safe_webhook_url,
+    log_ingest_activity,
 )
 from services.runtime_env import is_production_runtime
 from services.processor_ingest.activity_log_ingest import upsert_activity_log_from_processor
@@ -300,6 +301,22 @@ def register_routes(app):
                 int(prune_stats.get("dropped_missing_frames") or 0),
                 int(prune_stats.get("dropped_empty_bbox") or 0),
                 int(prune_stats.get("pruned_invalid_bbox_frames") or 0),
+            )
+            log_ingest_activity(
+                "ingest_gate",
+                {
+                    "reason": "video_bbox_track_contract_pruned",
+                    "video_path": str(pv.video_path or "").strip(),
+                    "dropped_missing_frames": int(
+                        prune_stats.get("dropped_missing_frames") or 0
+                    ),
+                    "dropped_empty_bbox": int(
+                        prune_stats.get("dropped_empty_bbox") or 0
+                    ),
+                    "pruned_invalid_bbox_frames": int(
+                        prune_stats.get("pruned_invalid_bbox_frames") or 0
+                    ),
+                },
             )
         clip_key = _build_clip_idempotency_key(
             processor_version=data["processor_version"],
