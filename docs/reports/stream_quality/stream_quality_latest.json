@@ -1,6 +1,6 @@
 {
   "schema": "stream_quality_metrics@v1",
-  "generated_at": "2026-06-01T12:07:13Z",
+  "generated_at": "2026-06-01T12:08:31Z",
   "streams": {
     "detector": {
       "precision": 0.302857,
