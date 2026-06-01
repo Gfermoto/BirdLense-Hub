@@ -60,18 +60,28 @@ class TestProcessorBootstrapCooldown(unittest.TestCase):
                 self.pending += 1
                 return True
 
+            def get_triggered_by(self):
+                return "frigate"
+
         class _API:
             def __init__(self):
                 self.notify_calls = 0
+                self.activity_calls = []
 
             def notify_motion(self):
                 self.notify_calls += 1
+
+            def activity_log(self, event_type, data):
+                self.activity_calls.append((event_type, dict(data or {})))
 
         class _Session:
             def __init__(self):
                 self.motion_detector = _Detector()
                 self.api = _API()
                 self.run_calls = 0
+
+            def run_detection_probe_window(self, *, camera_id, trigger_source):
+                return True
 
             def run(self):
                 self.run_calls += 1
@@ -96,6 +106,11 @@ class TestProcessorBootstrapCooldown(unittest.TestCase):
         self.assertEqual(ctx.session.motion_detector.requeue_calls, 1)
         self.assertEqual(ctx.session.api.notify_calls, 1)
         self.assertEqual(ctx.session.run_calls, 1)
+        self.assertEqual(len(ctx.session.api.activity_calls), 1)
+        event_type, payload = ctx.session.api.activity_calls[0]
+        self.assertEqual(event_type, "trigger_moratorium")
+        self.assertEqual(payload.get("trigger_source"), "frigate")
+        self.assertEqual(payload.get("requeued"), True)
 
 
 if __name__ == '__main__':
