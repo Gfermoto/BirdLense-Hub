@@ -109,6 +109,9 @@ def test_dataset_streams_summary_endpoint(client):
     assert "reid" in stream_index
     assert stream_index["reid"]["export_policy"]["community_export_allowed"] is False
     assert stream_index["reid"]["export_policy"]["private_backup_only"] is True
+    job_index = {item["stream"]: item for item in body["api_jobs"]}
+    assert "export_to_community" in job_index["detector"]["operations"]
+    assert "private_backup_only" in job_index["reid"]["operations"]
 
 
 def test_classifier_calibration_report_endpoint(app, client):

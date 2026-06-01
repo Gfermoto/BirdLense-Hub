@@ -217,6 +217,10 @@ export type DatasetStreamsSummaryResponse = {
   schema: string;
   required_streams: string[];
   streams: DatasetStreamSummary[];
+  api_jobs: Array<{
+    stream: string;
+    operations: string[];
+  }>;
   gate: {
     ok: boolean;
     generated_at?: string | null;
