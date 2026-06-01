@@ -122,6 +122,7 @@ def evaluate(
     *,
     ingest_gate_rows: list[sqlite3.Row] | None = None,
     ingest_gate_rows_7d: list[sqlite3.Row] | None = None,
+    rows_7d: list[sqlite3.Row] | None = None,
 ) -> dict[str, Any]:
     sessions_total = len(rows)
     sessions_with_yolo = 0
@@ -195,6 +196,15 @@ def evaluate(
             if payload_finalize_ms > 0:
                 finalize_duration_samples.append(payload_finalize_ms)
 
+    frigate_catches_missed_birds_sessions_7d = 0
+    sessions_total_7d = 0
+    for row in rows_7d or []:
+        sessions_total_7d += 1
+        yolo_raw_total = _safe_int(row["yolo_raw_boxes_total"])
+        frigate_only = _safe_int(row["session_extended_by_frigate_only"])
+        if frigate_only > 0 and yolo_raw_total == 0:
+            frigate_catches_missed_birds_sessions_7d += 1
+
     for row in ingest_gate_rows or []:
         payload = {}
         raw_data = row["data"]
@@ -255,6 +265,18 @@ def evaluate(
         if sessions_total > 0
         else 0.0
     )
+    frigate_catches_missed_birds_rate_7d_baseline = (
+        (
+            frigate_catches_missed_birds_sessions_7d
+            / max(1, sessions_total_7d)
+        )
+        if sessions_total_7d > 0
+        else 0.0
+    )
+    frigate_catches_missed_birds_rate_delta_vs_7d = (
+        frigate_catches_missed_birds_rate
+        - frigate_catches_missed_birds_rate_7d_baseline
+    )
     lookback_hours = int(thresholds["lookback_hours"])
     current_pruned_rows_per_hour = (
         float(ingest_pruned_rows_total) / float(max(1, lookback_hours))
@@ -265,6 +287,9 @@ def evaluate(
     ingest_pruned_rows_per_hour_delta_vs_7d = (
         current_pruned_rows_per_hour - baseline_pruned_rows_per_hour_7d
     )
+    max_frigate_rate_delta = thresholds[
+        "max_frigate_catches_missed_birds_rate_delta_vs_7d"
+    ]
 
     errors: list[str] = []
     if sessions_total <= 0:
@@ -306,6 +331,26 @@ def evaluate(
             f"{ingest_pruned_rows_per_hour_delta_vs_7d:.6f} > "
             "max_ingest_pruned_rows_per_hour_delta_vs_7d="
             f"{thresholds['max_ingest_pruned_rows_per_hour_delta_vs_7d']:.6f}"
+        )
+    if (
+        frigate_catches_missed_birds_rate
+        > thresholds["max_frigate_catches_missed_birds_rate"]
+    ):
+        errors.append(
+            "frigate_catches_missed_birds_rate="
+            f"{frigate_catches_missed_birds_rate:.6f} > "
+            "max_frigate_catches_missed_birds_rate="
+            f"{thresholds['max_frigate_catches_missed_birds_rate']:.6f}"
+        )
+    if (
+        frigate_catches_missed_birds_rate_delta_vs_7d
+        > max_frigate_rate_delta
+    ):
+        errors.append(
+            "frigate_catches_missed_birds_rate_delta_vs_7d="
+            f"{frigate_catches_missed_birds_rate_delta_vs_7d:.6f} > "
+            "max_frigate_catches_missed_birds_rate_delta_vs_7d="
+            f"{max_frigate_rate_delta:.6f}"
         )
 
     return {
@@ -358,6 +403,12 @@ def evaluate(
             "frigate_catches_missed_birds_rate": float(
                 round(frigate_catches_missed_birds_rate, 6)
             ),
+            "frigate_catches_missed_birds_rate_7d_baseline": float(
+                round(frigate_catches_missed_birds_rate_7d_baseline, 6)
+            ),
+            "frigate_catches_missed_birds_rate_delta_vs_7d": float(
+                round(frigate_catches_missed_birds_rate_delta_vs_7d, 6)
+            ),
         },
         "thresholds": {
             "max_blind_rate": float(thresholds["max_blind_rate"]),
@@ -368,6 +419,14 @@ def evaluate(
             ),
             "max_ingest_pruned_rows_per_hour_delta_vs_7d": float(
                 thresholds["max_ingest_pruned_rows_per_hour_delta_vs_7d"]
+            ),
+            "max_frigate_catches_missed_birds_rate": float(
+                thresholds["max_frigate_catches_missed_birds_rate"]
+            ),
+            "max_frigate_catches_missed_birds_rate_delta_vs_7d": float(
+                thresholds[
+                    "max_frigate_catches_missed_birds_rate_delta_vs_7d"
+                ]
             ),
         },
         "gate": {
@@ -381,6 +440,12 @@ def _to_md(report: dict[str, Any]) -> str:
     metrics = report.get("metrics") or {}
     gate = report.get("gate") or {}
     thresholds = report.get("thresholds") or {}
+    max_frigate_miss_rate = thresholds.get(
+        "max_frigate_catches_missed_birds_rate"
+    )
+    max_frigate_miss_rate_delta = thresholds.get(
+        "max_frigate_catches_missed_birds_rate_delta_vs_7d"
+    )
     ingest_rows_per_hour_7d = metrics.get(
         "ingest_bbox_contract_pruned_rows_per_hour_7d_baseline"
     )
@@ -425,6 +490,10 @@ def _to_md(report: dict[str, Any]) -> str:
         f"`{metrics.get('frigate_catches_missed_birds_sessions')}`",
         "- frigate_catches_missed_birds_rate: "
         f"`{metrics.get('frigate_catches_missed_birds_rate')}`",
+        "- frigate_catches_missed_birds_rate_7d_baseline: "
+        f"`{metrics.get('frigate_catches_missed_birds_rate_7d_baseline')}`",
+        "- frigate_catches_missed_birds_rate_delta_vs_7d: "
+        f"`{metrics.get('frigate_catches_missed_birds_rate_delta_vs_7d')}`",
         "",
         "## Thresholds",
         "",
@@ -435,6 +504,10 @@ def _to_md(report: dict[str, Any]) -> str:
         f"`{thresholds.get('min_yolo_frames_with_tracks')}`",
         "- max_ingest_pruned_rows_per_hour_delta_vs_7d: "
         f"`{thresholds.get('max_ingest_pruned_rows_per_hour_delta_vs_7d')}`",
+        "- max_frigate_catches_missed_birds_rate: "
+        f"`{max_frigate_miss_rate}`",
+        "- max_frigate_catches_missed_birds_rate_delta_vs_7d: "
+        f"`{max_frigate_miss_rate_delta}`",
     ]
     errors = list((gate.get("errors") or []))
     if errors:
@@ -459,6 +532,16 @@ def _args() -> argparse.Namespace:
     parser.add_argument("--min-yolo-frames-with-tracks", type=int, default=1)
     parser.add_argument(
         "--max-ingest-pruned-rows-per-hour-delta-vs-7d",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
+        "--max-frigate-catches-missed-birds-rate",
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
+        "--max-frigate-catches-missed-birds-rate-delta-vs-7d",
         type=float,
         default=0.0,
     )
@@ -500,8 +583,18 @@ def main() -> int:
         "max_ingest_pruned_rows_per_hour_delta_vs_7d": float(
             max(0.0, args.max_ingest_pruned_rows_per_hour_delta_vs_7d)
         ),
+        "max_frigate_catches_missed_birds_rate": float(
+            max(0.0, args.max_frigate_catches_missed_birds_rate)
+        ),
+        "max_frigate_catches_missed_birds_rate_delta_vs_7d": float(
+            max(
+                0.0,
+                args.max_frigate_catches_missed_birds_rate_delta_vs_7d,
+            )
+        ),
     }
     rows = _load_rows(db_path, int(thresholds["lookback_hours"]))
+    rows_7d = _load_rows(db_path, 24 * 7)
     ingest_gate_rows = _load_ingest_gate_rows(
         db_path,
         int(thresholds["lookback_hours"]),
@@ -512,6 +605,7 @@ def main() -> int:
         thresholds,
         ingest_gate_rows=ingest_gate_rows,
         ingest_gate_rows_7d=ingest_gate_rows_7d,
+        rows_7d=rows_7d,
     )
 
     out_json = Path(args.out_json).expanduser()
