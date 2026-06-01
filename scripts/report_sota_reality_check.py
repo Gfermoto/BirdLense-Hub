@@ -128,6 +128,12 @@ def _to_md(report: dict[str, Any]) -> str:
         f"`{metrics.get('trigger_to_first_bbox_latency_p95_s')}`",
         "- finalize_duration_p95_ms: "
         f"`{metrics.get('finalize_duration_p95_ms')}`",
+        "- ingest_bbox_contract_pruned_events: "
+        f"`{metrics.get('ingest_bbox_contract_pruned_events')}`",
+        "- ingest_bbox_contract_empty_events: "
+        f"`{metrics.get('ingest_bbox_contract_empty_events')}`",
+        "- ingest_bbox_contract_pruned_rows_per_session: "
+        f"`{metrics.get('ingest_bbox_contract_pruned_rows_per_session')}`",
         "",
         "## Critical issues",
         "",

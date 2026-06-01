@@ -85,8 +85,40 @@ def _load_rows(db_path: Path, lookback_hours: int) -> list[sqlite3.Row]:
         conn.close()
 
 
+def _load_ingest_gate_rows(
+    db_path: Path,
+    lookback_hours: int,
+) -> list[sqlite3.Row]:
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        table = conn.execute(
+            "SELECT 1 FROM sqlite_master "
+            "WHERE type='table' AND name='activity_log' LIMIT 1"
+        ).fetchone()
+        if table is None:
+            return []
+        return list(
+            conn.execute(
+                """
+                SELECT created_at, data
+                FROM activity_log
+                WHERE type = 'ingest_gate'
+                  AND created_at >= datetime('now', ?)
+                ORDER BY created_at DESC
+                """,
+                (f"-{max(1, int(lookback_hours))} hours",),
+            )
+        )
+    finally:
+        conn.close()
+
+
 def evaluate(
-    rows: list[sqlite3.Row], thresholds: dict[str, float]
+    rows: list[sqlite3.Row],
+    thresholds: dict[str, float],
+    *,
+    ingest_gate_rows: list[sqlite3.Row] | None = None,
 ) -> dict[str, Any]:
     sessions_total = len(rows)
     sessions_with_yolo = 0
@@ -97,6 +129,10 @@ def evaluate(
     rejected_rows_total = 0
     latency_samples: list[float] = []
     finalize_duration_samples: list[float] = []
+    ingest_pruned_events = 0
+    ingest_empty_contract_events = 0
+    ingest_pruned_rows_total = 0
+    ingest_pruned_frames_total = 0
 
     for row in rows:
         yolo_ran = _safe_int(row["yolo_frames_ran"])
@@ -150,6 +186,28 @@ def evaluate(
             )
             if payload_finalize_ms > 0:
                 finalize_duration_samples.append(payload_finalize_ms)
+
+    for row in ingest_gate_rows or []:
+        payload = {}
+        raw_data = row["data"]
+        if isinstance(raw_data, str) and raw_data.strip():
+            try:
+                parsed = json.loads(raw_data)
+                if isinstance(parsed, dict):
+                    payload = parsed
+            except json.JSONDecodeError:
+                payload = {}
+        reason = str(payload.get("reason") or "").strip().lower()
+        if reason == "video_bbox_track_contract_pruned":
+            ingest_pruned_events += 1
+            ingest_pruned_rows_total += _safe_int(
+                payload.get("dropped_missing_frames")
+            ) + _safe_int(payload.get("dropped_empty_bbox"))
+            ingest_pruned_frames_total += _safe_int(
+                payload.get("pruned_invalid_bbox_frames")
+            )
+        elif reason == "video_bbox_track_contract_empty":
+            ingest_empty_contract_events += 1
 
     blind_rate = (
         (blind_confirmed / sessions_total) if sessions_total > 0 else 1.0
@@ -219,6 +277,21 @@ def evaluate(
                 if finalize_duration_p95_ms is None
                 else float(round(finalize_duration_p95_ms, 6))
             ),
+            "ingest_bbox_contract_pruned_events": int(ingest_pruned_events),
+            "ingest_bbox_contract_empty_events": int(
+                ingest_empty_contract_events
+            ),
+            "ingest_bbox_contract_pruned_rows_total": int(
+                ingest_pruned_rows_total
+            ),
+            "ingest_bbox_contract_pruned_frames_total": int(
+                ingest_pruned_frames_total
+            ),
+            "ingest_bbox_contract_pruned_rows_per_session": (
+                None
+                if sessions_total <= 0
+                else float(round(ingest_pruned_rows_total / sessions_total, 6))
+            ),
         },
         "thresholds": {
             "max_blind_rate": float(thresholds["max_blind_rate"]),
@@ -257,6 +330,16 @@ def _to_md(report: dict[str, Any]) -> str:
         f"`{metrics.get('trigger_to_first_bbox_latency_p95_s')}`",
         "- finalize_duration_p95_ms: "
         f"`{metrics.get('finalize_duration_p95_ms')}`",
+        "- ingest_bbox_contract_pruned_events: "
+        f"`{metrics.get('ingest_bbox_contract_pruned_events')}`",
+        "- ingest_bbox_contract_empty_events: "
+        f"`{metrics.get('ingest_bbox_contract_empty_events')}`",
+        "- ingest_bbox_contract_pruned_rows_total: "
+        f"`{metrics.get('ingest_bbox_contract_pruned_rows_total')}`",
+        "- ingest_bbox_contract_pruned_frames_total: "
+        f"`{metrics.get('ingest_bbox_contract_pruned_frames_total')}`",
+        "- ingest_bbox_contract_pruned_rows_per_session: "
+        f"`{metrics.get('ingest_bbox_contract_pruned_rows_per_session')}`",
         "",
         "## Thresholds",
         "",
@@ -324,7 +407,11 @@ def main() -> int:
         ),
     }
     rows = _load_rows(db_path, int(thresholds["lookback_hours"]))
-    report = evaluate(rows, thresholds)
+    ingest_gate_rows = _load_ingest_gate_rows(
+        db_path,
+        int(thresholds["lookback_hours"]),
+    )
+    report = evaluate(rows, thresholds, ingest_gate_rows=ingest_gate_rows)
 
     out_json = Path(args.out_json).expanduser()
     if not out_json.is_absolute():
