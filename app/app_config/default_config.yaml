@@ -67,6 +67,9 @@ processor:
   # Уменьшает почти совпадающие по времени дубли-клипы при Frigate+OpenCV или объекте, всё ещё в кадре.
   # Второй клип «эхо» с bbox на том же месте без птицы: поднимите паузу и/или ужесточите OpenCV и бинарные пороги.
   min_seconds_between_recordings: 8
+  # Анти-конкуренция trigger-веток: окно (сек) после первого fire, в котором
+  # конкурирующие триггеры не стартуют новую запись (логируются как trigger_moratorium).
+  trigger_moratorium_seconds: 2
   # Trigger -> bounded detect-only window before recording (scheduler gate).
   detect_scheduler_enabled: true
   detect_scheduler_triggers: ["frigate", "motion_sensor", "scales"]
