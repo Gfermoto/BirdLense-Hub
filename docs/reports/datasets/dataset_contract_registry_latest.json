@@ -1,0 +1,19 @@
+{
+  "schema": "dataset_contract_registry_report@v1",
+  "generated_at": "2026-06-01T10:27:57Z",
+  "checks": {
+    "required_streams_present_ok": true,
+    "all_stream_contracts_valid_ok": true,
+    "streams_count_ok": true
+  },
+  "summary": {
+    "required_streams_total": 4,
+    "contracts_total": 4,
+    "valid_streams_total": 4
+  },
+  "drift": {
+    "missing_streams": [],
+    "stream_errors": {}
+  },
+  "ok": true
+}

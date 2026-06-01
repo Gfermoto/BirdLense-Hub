@@ -429,9 +429,22 @@ if [[ ! "${BIRDLENSE_SKIP_NAS_STORAGE_CONTRACT_GATE:-}" =~ ^(1|true|yes)$ ]]; th
       }
 fi
 
-# 0.70 Outcome quality metrics gate (#555/#556).
+# 0.70 Dataset contract registry gate (#557 Stream A).
+if [[ ! "${BIRDLENSE_SKIP_DATASET_CONTRACT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.70 Dataset Contract Registry Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_dataset_contract_registry.py \
+      --contract "docs/reports/datasets/dataset_contract_registry.json" \
+      --out-json "docs/reports/datasets/dataset_contract_registry_latest.json" \
+      --out-md "docs/reports/datasets/dataset_contract_registry_latest.md") || {
+        echo "Ошибка: Dataset contract registry gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
+# 0.71 Outcome quality metrics gate (#555/#556).
 if [[ ! "${BIRDLENSE_SKIP_OUTCOME_METRICS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
-  echo "0.70 Outcome Quality Metrics Gate..."
+  echo "0.71 Outcome Quality Metrics Gate..."
   (cd "${REPO_ROOT}" && \
     python3 ./scripts/report_quality_outcome_metrics.py \
       --db-path "${OUTCOME_DB_PATH:-app/data/db/birdlense.db}" \
