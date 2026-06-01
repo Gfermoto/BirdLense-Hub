@@ -40,20 +40,38 @@ def _load_rows(db_path: Path, lookback_hours: int) -> list[sqlite3.Row]:
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     try:
+        cols = {
+            str(r["name"])
+            for r in conn.execute(
+                "PRAGMA table_info(session_runtime_metrics)"
+            ).fetchall()
+        }
+        latency_col = (
+            "trigger_to_first_bbox_latency_s"
+            if "trigger_to_first_bbox_latency_s" in cols
+            else "NULL AS trigger_to_first_bbox_latency_s"
+        )
+        track_col = (
+            "first_track_latency_s"
+            if "first_track_latency_s" in cols
+            else "NULL AS first_track_latency_s"
+        )
         return list(
             conn.execute(
-                """
+                f"""
                 SELECT
                   created_at,
                   yolo_blind_confirmed,
                   yolo_frames_ran,
                   yolo_frames_with_tracks,
                   rejected_decision_rows,
+                  {latency_col},
+                  {track_col},
                   payload_json
                 FROM session_runtime_metrics
                 WHERE created_at >= datetime('now', ?)
                 ORDER BY created_at DESC
-                """,
+                """,  # nosec B608
                 (f"-{max(1, int(lookback_hours))} hours",),
             )
         )
@@ -100,23 +118,35 @@ def evaluate(
                 reason_counts.get("empty_bbox_frames")
             )
 
-        for key in (
-            "trigger_to_first_bbox_latency_s",
-            "first_bbox_latency_s",
-            "first_track_latency_s",
-        ):
-            if key in payload:
-                latency = _safe_float(payload.get(key))
-                if latency > 0:
-                    latency_samples.append(latency)
-                break
+        latency_from_columns = _safe_float(
+            row["trigger_to_first_bbox_latency_s"]
+        )
+        if latency_from_columns > 0:
+            latency_samples.append(latency_from_columns)
+        else:
+            for key in (
+                "trigger_to_first_bbox_latency_s",
+                "first_bbox_latency_s",
+                "first_track_latency_s",
+            ):
+                if key in payload:
+                    latency = _safe_float(payload.get(key))
+                    if latency > 0:
+                        latency_samples.append(latency)
+                    break
 
-    blind_rate = (blind_confirmed / sessions_total) if sessions_total > 0 else 1.0
+    blind_rate = (
+        (blind_confirmed / sessions_total) if sessions_total > 0 else 1.0
+    )
     tracks_coverage = (
-        sessions_with_tracks / sessions_with_yolo if sessions_with_yolo > 0 else 0.0
+        sessions_with_tracks / sessions_with_yolo
+        if sessions_with_yolo > 0
+        else 0.0
     )
     empty_bbox_rate = (
-        empty_bbox_rejections / rejected_rows_total if rejected_rows_total > 0 else 0.0
+        empty_bbox_rejections / rejected_rows_total
+        if rejected_rows_total > 0
+        else 0.0
     )
     latency_p95 = _percentile(latency_samples, 95.0)
 
@@ -235,11 +265,17 @@ def _args() -> argparse.Namespace:
     parser.add_argument("--min-yolo-frames-with-tracks", type=int, default=1)
     parser.add_argument(
         "--out-json",
-        default="docs/reports/quality_outcome/quality_outcome_metrics_latest.json",
+        default=(
+            "docs/reports/quality_outcome/"
+            "quality_outcome_metrics_latest.json"
+        ),
     )
     parser.add_argument(
         "--out-md",
-        default="docs/reports/quality_outcome/quality_outcome_metrics_latest.md",
+        default=(
+            "docs/reports/quality_outcome/"
+            "quality_outcome_metrics_latest.md"
+        ),
     )
     return parser.parse_args()
 
@@ -255,7 +291,9 @@ def main() -> int:
     thresholds = {
         "lookback_hours": int(max(1, args.lookback_hours)),
         "max_blind_rate": float(max(0.0, args.max_blind_rate)),
-        "min_tracks_coverage": float(max(0.0, min(1.0, args.min_tracks_coverage))),
+        "min_tracks_coverage": float(
+            max(0.0, min(1.0, args.min_tracks_coverage))
+        ),
         "max_empty_bbox_rate": float(max(0.0, args.max_empty_bbox_rate)),
         "min_yolo_frames_with_tracks": float(
             max(0, args.min_yolo_frames_with_tracks)

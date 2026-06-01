@@ -70,7 +70,10 @@ def test_analytics_heatmap_contract(client, app):
 
 def test_analytics_timeseries_contract(client, app):
     _seed(app)
-    r = client.get("/api/ui/analytics/visits-timeseries?bucket=hour", headers=_auth_headers())
+    r = client.get(
+        "/api/ui/analytics/visits-timeseries?bucket=hour",
+        headers=_auth_headers(),
+    )
     assert r.status_code == 200, r.get_data(as_text=True)
     body = r.get_json()
     assert body["bucket"] == "hour"
@@ -79,8 +82,12 @@ def test_analytics_timeseries_contract(client, app):
 
 def test_analytics_quality_health_contract(client, app):
     _seed(app)
-    r = client.get("/api/ui/analytics/quality-health?hours=24", headers=_auth_headers())
+    r = client.get(
+        "/api/ui/analytics/quality-health?hours=24",
+        headers=_auth_headers(),
+    )
     assert r.status_code == 200, r.get_data(as_text=True)
     body = r.get_json()
     assert "health_kpis" in body
+    assert "trigger_to_first_bbox_latency_p95_s" in body["health_kpis"]
     assert "recent_events" in body
