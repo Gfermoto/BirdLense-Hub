@@ -280,6 +280,7 @@ def register_ui_overview_timeline_routes(app):
             end_dt,
             favorite_only=bool(fav),
             trigger_source=trigger_source,
+            active_trigger_sources=_allowed_timeline_trigger_sources() - {"all"},
             limit=limit_raw,
             offset=offset_raw,
         )
@@ -327,6 +328,7 @@ def register_ui_overview_timeline_routes(app):
             end_dt,
             favorite_only=_favorite_only_from_request(),
             trigger_source=trigger_source,
+            active_trigger_sources=_allowed_timeline_trigger_sources() - {"all"},
         )
         rows = build_timeline_export_rows(merged)
         body, mimetype, headers = build_timeline_export_response_parts(

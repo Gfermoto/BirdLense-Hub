@@ -73,6 +73,7 @@ def build_merged_timeline_items(
     favorite_only: bool = False,
     *,
     trigger_source: str = "all",
+    active_trigger_sources: set[str] | None = None,
     limit: int | None = None,
     offset: int = 0,
 ) -> list | dict:
@@ -137,7 +138,20 @@ def build_merged_timeline_items(
     ]
     merged = visit_payloads + unlinked_payloads
     merged.sort(key=_timeline_entry_sort_key, reverse=True)
-    if trigger_source != "all":
+    if trigger_source == "all":
+        active = {
+            str(x or "").strip().lower()
+            for x in (active_trigger_sources or set())
+            if str(x or "").strip()
+        }
+        if active:
+            merged = [
+                item
+                for item in merged
+                if str(item.get("trigger_source") or "").strip().lower()
+                in active
+            ]
+    else:
         merged = [
             item
             for item in merged

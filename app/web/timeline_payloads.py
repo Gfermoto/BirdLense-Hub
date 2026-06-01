@@ -32,13 +32,25 @@ def _model_behavior_events_from_video(video) -> list[dict]:
     ]
 
 
-def _infer_trigger_source_from_detections(detections: list[dict]) -> str:
+def _infer_trigger_source_from_detections(
+    detections: list[dict], *, preferred_trigger: str | None = None
+) -> str:
     """Best-effort trigger source for timeline semantics.
 
     Timeline payload historically has detection source/provider only. To keep
     trigger semantics explicit for UI filters we derive a stable trigger tag
     from detection lineage.
     """
+    normalized_preferred = str(preferred_trigger or "").strip().lower()
+    if normalized_preferred in {
+        "opencv",
+        "frigate",
+        "motion_sensor",
+        "scales",
+        "unknown",
+    }:
+        return normalized_preferred
+
     providers = {
         str(d.get("detection_provider") or "").strip().lower()
         for d in (detections or [])
@@ -46,7 +58,12 @@ def _infer_trigger_source_from_detections(detections: list[dict]) -> str:
     }
     if any("frigate" in p for p in providers):
         return "frigate"
-    if any(p in {"yolo", "detector", "binary"} for p in providers):
+    if any(p in {"yolo", "ultralytics", "openvino"} for p in providers):
+        return "opencv"
+    if any(
+        p in {"opencv", "motion", "motion_detector", "or_motion"}
+        for p in providers
+    ):
         return "opencv"
     if any(p in {"scale", "scales"} for p in providers):
         return "scales"
@@ -162,7 +179,10 @@ def format_visit_for_timeline(visit) -> dict:
         "bird_profile_id": bird_profile_id,
         "behavior_events": behavior_events,
         "timeline_kind": "visit",
-        "trigger_source": _infer_trigger_source_from_detections(detections),
+        "trigger_source": _infer_trigger_source_from_detections(
+            detections,
+            preferred_trigger=getattr(video, "trigger_source", None) if video else None,
+        ),
     }
 
 
@@ -243,5 +263,8 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
         "bird_profile_id": bird_profile_id,
         "behavior_events": _model_behavior_events_from_video(video),
         "timeline_kind": "unlinked_video",
-        "trigger_source": _infer_trigger_source_from_detections(detections),
+        "trigger_source": _infer_trigger_source_from_detections(
+            detections,
+            preferred_trigger=getattr(video, "trigger_source", None),
+        ),
     }
