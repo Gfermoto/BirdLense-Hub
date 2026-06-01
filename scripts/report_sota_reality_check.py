@@ -126,6 +126,8 @@ def _to_md(report: dict[str, Any]) -> str:
         f"- tracks_coverage: `{metrics.get('tracks_coverage')}`",
         "- trigger_to_first_bbox_latency_p95_s: "
         f"`{metrics.get('trigger_to_first_bbox_latency_p95_s')}`",
+        "- finalize_duration_p95_ms: "
+        f"`{metrics.get('finalize_duration_p95_ms')}`",
         "",
         "## Critical issues",
         "",
@@ -154,7 +156,10 @@ def _args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--outcome-json",
-        default="docs/reports/quality_outcome/quality_outcome_metrics_latest.json",
+        default=(
+            "docs/reports/quality_outcome/"
+            "quality_outcome_metrics_latest.json"
+        ),
     )
     parser.add_argument(
         "--out-json",

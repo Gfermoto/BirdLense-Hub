@@ -202,10 +202,19 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
         if _session_runtime_has_column("trigger_to_first_bbox_latency_s")
         else "NULL AS trigger_to_first_bbox_latency_s"
     )
+    finalize_duration_col_expr = (
+        "finalize_duration_ms"
+        if _session_runtime_has_column("finalize_duration_ms")
+        else "NULL AS finalize_duration_ms"
+    )
     runtime_rows = db.session.execute(
         text(
             f"""
-            SELECT created_at, {latency_col_expr}, payload_json
+            SELECT
+              created_at,
+              {latency_col_expr},
+              {finalize_duration_col_expr},
+              payload_json
             FROM session_runtime_metrics
             WHERE datetime(created_at) >= datetime('now', :window)
             ORDER BY id DESC
@@ -216,6 +225,7 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
     ).mappings()
     blind_scores: list[float] = []
     first_bbox_latencies: list[float] = []
+    finalize_durations_ms: list[float] = []
     fallback_sessions = 0
     total_sessions = 0
     for row in runtime_rows:
@@ -241,6 +251,23 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
                     parsed_latency = float(fallback_latency)
                     if parsed_latency > 0:
                         first_bbox_latencies.append(parsed_latency)
+            except (TypeError, ValueError):
+                pass
+        finalize_duration = row.get("finalize_duration_ms")
+        finalize_added = False
+        try:
+            if finalize_duration is not None:
+                parsed_finalize = float(finalize_duration)
+                if parsed_finalize > 0:
+                    finalize_durations_ms.append(parsed_finalize)
+                    finalize_added = True
+        except (TypeError, ValueError):
+            pass
+        if not finalize_added and payload.get("finalize_duration_ms") is not None:
+            try:
+                payload_finalize = float(payload.get("finalize_duration_ms"))
+                if payload_finalize > 0:
+                    finalize_durations_ms.append(payload_finalize)
             except (TypeError, ValueError):
                 pass
         score = payload.get("yolo_blind_score")
@@ -310,6 +337,11 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
         if first_bbox_latencies
         else None
     )
+    finalize_duration_p95_ms = (
+        sorted(finalize_durations_ms)[max(0, int(len(finalize_durations_ms) * 0.95) - 1)]
+        if finalize_durations_ms
+        else None
+    )
     return {
         "window_hours": h,
         "health_kpis": {
@@ -321,6 +353,11 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             "trigger_to_first_bbox_latency_p95_s": (
                 round(float(first_bbox_latency_p95_s), 4)
                 if first_bbox_latency_p95_s is not None
+                else None
+            ),
+            "finalize_duration_p95_ms": (
+                round(float(finalize_duration_p95_ms), 4)
+                if finalize_duration_p95_ms is not None
                 else None
             ),
         },

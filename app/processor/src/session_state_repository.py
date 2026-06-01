@@ -102,6 +102,7 @@ class SessionStateRepository:
                     yolo_blind_confirmed INTEGER NOT NULL DEFAULT 0,
                     trigger_to_first_bbox_latency_s REAL,
                     first_track_latency_s REAL,
+                    finalize_duration_ms REAL,
                     runtime_profile TEXT,
                     video_file_ok INTEGER NOT NULL DEFAULT 0,
                     payload_json TEXT
@@ -126,6 +127,13 @@ class SessionStateRepository:
                     """
                     ALTER TABLE session_runtime_metrics
                     ADD COLUMN first_track_latency_s REAL
+                    """
+                )
+            if "finalize_duration_ms" not in cols:
+                con.execute(
+                    """
+                    ALTER TABLE session_runtime_metrics
+                    ADD COLUMN finalize_duration_ms REAL
                     """
                 )
             con.execute(
@@ -205,8 +213,9 @@ class SessionStateRepository:
                     session_extended_by_frigate_only, bytetrack_rows, post_fusion_persisted,
                     rejected_decision_rows, mqtt_events_in_window, yolo_blind_confirmed,
                     trigger_to_first_bbox_latency_s, first_track_latency_s,
+                    finalize_duration_ms,
                     runtime_profile, video_file_ok, payload_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     _utc_now_iso(),
@@ -227,6 +236,7 @@ class SessionStateRepository:
                     1 if blind else 0,
                     _nullable_float(summary.get("trigger_to_first_bbox_latency_s")),
                     _nullable_float(summary.get("first_track_latency_s")),
+                    _nullable_float(summary.get("finalize_duration_ms")),
                     str(summary.get("runtime_profile") or "").strip() or None,
                     1 if bool(summary.get("video_file_ok")) else 0,
                     json.dumps(summary, ensure_ascii=False, separators=(",", ":")),
