@@ -138,6 +138,7 @@ def evaluate(
     ingest_pruned_rows_total = 0
     ingest_pruned_frames_total = 0
     frigate_catches_missed_birds_sessions = 0
+    frigate_catches_missed_birds_by_trigger_source: dict[str, int] = {}
 
     for row in rows:
         yolo_ran = _safe_int(row["yolo_frames_ran"])
@@ -146,8 +147,6 @@ def evaluate(
         frigate_only = _safe_int(row["session_extended_by_frigate_only"])
         sessions_with_yolo += 1 if yolo_ran > 0 else 0
         sessions_with_tracks += 1 if yolo_tracks > 0 else 0
-        if frigate_only > 0 and yolo_raw_total == 0:
-            frigate_catches_missed_birds_sessions += 1
         blind_confirmed += (
             1 if _safe_int(row["yolo_blind_confirmed"]) > 0 else 0
         )
@@ -163,6 +162,19 @@ def evaluate(
                     payload = parsed
             except json.JSONDecodeError:
                 payload = {}
+        if frigate_only > 0 and yolo_raw_total == 0:
+            frigate_catches_missed_birds_sessions += 1
+            source = str(payload.get("trigger_source") or "unknown").strip()
+            source_key = source.lower() if source else "unknown"
+            frigate_catches_missed_birds_by_trigger_source[source_key] = (
+                int(
+                    frigate_catches_missed_birds_by_trigger_source.get(
+                        source_key
+                    )
+                    or 0
+                )
+                + 1
+            )
 
         reason_counts = payload.get("rejected_reason_counts")
         if isinstance(reason_counts, dict):
@@ -403,6 +415,26 @@ def evaluate(
             "frigate_catches_missed_birds_rate": float(
                 round(frigate_catches_missed_birds_rate, 6)
             ),
+            "frigate_catches_missed_birds_by_trigger_source": {
+                k: int(v)
+                for k, v in sorted(
+                    frigate_catches_missed_birds_by_trigger_source.items()
+                )
+            },
+            "frigate_catches_missed_birds_by_trigger_source_rate": {
+                k: float(
+                    round(
+                        float(v)
+                        / float(
+                            max(1, frigate_catches_missed_birds_sessions)
+                        ),
+                        6,
+                    )
+                )
+                for k, v in sorted(
+                    frigate_catches_missed_birds_by_trigger_source.items()
+                )
+            },
             "frigate_catches_missed_birds_rate_7d_baseline": float(
                 round(frigate_catches_missed_birds_rate_7d_baseline, 6)
             ),
@@ -452,6 +484,9 @@ def _to_md(report: dict[str, Any]) -> str:
     ingest_rows_per_hour_delta = metrics.get(
         "ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d"
     )
+    frigate_by_source_rate = metrics.get(
+        "frigate_catches_missed_birds_by_trigger_source_rate"
+    )
     lines = [
         "# Quality Outcome Metrics",
         "",
@@ -490,6 +525,10 @@ def _to_md(report: dict[str, Any]) -> str:
         f"`{metrics.get('frigate_catches_missed_birds_sessions')}`",
         "- frigate_catches_missed_birds_rate: "
         f"`{metrics.get('frigate_catches_missed_birds_rate')}`",
+        "- frigate_catches_missed_birds_by_trigger_source: "
+        f"`{metrics.get('frigate_catches_missed_birds_by_trigger_source')}`",
+        "- frigate_catches_missed_birds_by_trigger_source_rate: "
+        f"`{frigate_by_source_rate}`",
         "- frigate_catches_missed_birds_rate_7d_baseline: "
         f"`{metrics.get('frigate_catches_missed_birds_rate_7d_baseline')}`",
         "- frigate_catches_missed_birds_rate_delta_vs_7d: "

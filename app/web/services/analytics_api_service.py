@@ -234,6 +234,7 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
     ingest_pruned_frames_total = 0
     ingest_pruned_rows_total_7d = 0
     frigate_catches_missed_birds_sessions = 0
+    frigate_catches_missed_birds_by_trigger_source: dict[str, int] = {}
     fallback_sessions = 0
     total_sessions = 0
     for row in runtime_rows:
@@ -290,6 +291,17 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
         frigate_only_total = int(row.get("session_extended_by_frigate_only") or 0)
         if frigate_only_total > 0 and yolo_raw_total == 0:
             frigate_catches_missed_birds_sessions += 1
+            source = str(payload.get("trigger_source") or "unknown").strip()
+            source_key = source.lower() if source else "unknown"
+            frigate_catches_missed_birds_by_trigger_source[source_key] = (
+                int(
+                    frigate_catches_missed_birds_by_trigger_source.get(
+                        source_key
+                    )
+                    or 0
+                )
+                + 1
+            )
     try:
         runtime_rows_7d = db.session.execute(
             text(
@@ -549,6 +561,22 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
                 frigate_catches_missed_birds_rate,
                 4,
             ),
+            "frigate_catches_missed_birds_by_trigger_source": {
+                k: int(v)
+                for k, v in sorted(
+                    frigate_catches_missed_birds_by_trigger_source.items()
+                )
+            },
+            "frigate_catches_missed_birds_by_trigger_source_rate": {
+                k: round(
+                    float(v)
+                    / float(max(1, frigate_catches_missed_birds_sessions)),
+                    4,
+                )
+                for k, v in sorted(
+                    frigate_catches_missed_birds_by_trigger_source.items()
+                )
+            },
             "frigate_catches_missed_birds_rate_7d_baseline": round(
                 frigate_catches_missed_birds_rate_7d_baseline,
                 4,
