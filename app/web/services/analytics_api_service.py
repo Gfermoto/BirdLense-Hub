@@ -32,6 +32,16 @@ def _as_utc_iso(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).isoformat()
 
 
+def _session_runtime_has_column(column_name: str) -> bool:
+    try:
+        rows = db.session.execute(
+            text("PRAGMA table_info(session_runtime_metrics)")
+        ).mappings()
+        return any(str(r.get("name") or "") == column_name for r in rows)
+    except Exception:
+        return False
+
+
 def fetch_trajectories(*, start_iso: str | None, end_iso: str | None, limit: int = 250) -> dict[str, Any]:
     start_dt = _parse_iso(start_iso)
     end_dt = _parse_iso(end_iso)
@@ -187,19 +197,25 @@ def fetch_visits_timeseries(*, start_iso: str | None, end_iso: str | None, bucke
 def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str, Any]:
     h = max(1, min(int(hours), 168))
     lim = max(1, min(int(events_limit), 200))
+    latency_col_expr = (
+        "trigger_to_first_bbox_latency_s"
+        if _session_runtime_has_column("trigger_to_first_bbox_latency_s")
+        else "NULL AS trigger_to_first_bbox_latency_s"
+    )
     runtime_rows = db.session.execute(
         text(
-            """
-            SELECT created_at, payload_json
+            f"""
+            SELECT created_at, {latency_col_expr}, payload_json
             FROM session_runtime_metrics
             WHERE datetime(created_at) >= datetime('now', :window)
             ORDER BY id DESC
             LIMIT 600
-            """
+            """  # nosec B608
         ),
         {"window": f"-{h} hours"},
     ).mappings()
     blind_scores: list[float] = []
+    first_bbox_latencies: list[float] = []
     fallback_sessions = 0
     total_sessions = 0
     for row in runtime_rows:
@@ -208,6 +224,25 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             payload = json.loads(str(row["payload_json"] or "{}"))
         except Exception:
             payload = {}
+        latency_s = row.get("trigger_to_first_bbox_latency_s")
+        latency_added = False
+        try:
+            if latency_s is not None:
+                parsed_latency = float(latency_s)
+                if parsed_latency > 0:
+                    first_bbox_latencies.append(parsed_latency)
+                    latency_added = True
+        except (TypeError, ValueError):
+            pass
+        if not latency_added:
+            fallback_latency = payload.get("trigger_to_first_bbox_latency_s")
+            try:
+                if fallback_latency is not None:
+                    parsed_latency = float(fallback_latency)
+                    if parsed_latency > 0:
+                        first_bbox_latencies.append(parsed_latency)
+            except (TypeError, ValueError):
+                pass
         score = payload.get("yolo_blind_score")
         try:
             if score is not None:
@@ -270,6 +305,11 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
     blind_score_avg = (sum(blind_scores) / float(len(blind_scores))) if blind_scores else 0.0
     fallback_ratio = (float(fallback_sessions) / float(total_sessions)) if total_sessions > 0 else 0.0
     infer_p95_avg = (sum(infer_p95_samples) / float(len(infer_p95_samples))) if infer_p95_samples else None
+    first_bbox_latency_p95_s = (
+        sorted(first_bbox_latencies)[max(0, int(len(first_bbox_latencies) * 0.95) - 1)]
+        if first_bbox_latencies
+        else None
+    )
     return {
         "window_hours": h,
         "health_kpis": {
@@ -278,6 +318,11 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             "fallback_ratio": round(fallback_ratio, 4),
             "self_heal_action_counts": action_counts,
             "inference_latency_p95_ms_avg": round(infer_p95_avg, 2) if infer_p95_avg is not None else None,
+            "trigger_to_first_bbox_latency_p95_s": (
+                round(float(first_bbox_latency_p95_s), 4)
+                if first_bbox_latency_p95_s is not None
+                else None
+            ),
         },
         "recent_events": events,
     }

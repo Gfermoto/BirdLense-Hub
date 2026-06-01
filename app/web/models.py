@@ -281,6 +281,9 @@ class Video(db.Model):
     )
     ingest_payload_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     spectrogram_path: Mapped[str] = mapped_column(String, nullable=True)  # spectrogram image
+    trigger_source: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )  # opencv|frigate|motion_sensor|scales|track_regen|unknown
     favorite: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Weather data
@@ -462,6 +465,8 @@ class SessionRuntimeMetrics(db.Model):
     rejected_decision_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     mqtt_events_in_window: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     yolo_blind_confirmed: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
+    trigger_to_first_bbox_latency_s: Mapped[float | None] = mapped_column(Float, nullable=True)
+    first_track_latency_s: Mapped[float | None] = mapped_column(Float, nullable=True)
     runtime_profile: Mapped[str | None] = mapped_column(String(32), nullable=True)
     video_file_ok: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
     payload_json: Mapped[str | None] = mapped_column(String, nullable=True)

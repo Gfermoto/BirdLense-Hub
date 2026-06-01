@@ -6,7 +6,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 src_path = os.path.abspath(os.path.join(current_dir, '../src'))
 sys.path.insert(0, src_path)
 
-from session_state_repository import SessionStateRepository
+from session_state_repository import SessionStateRepository  # noqa: E402
 
 
 def _mk_repo():
@@ -28,6 +28,8 @@ def test_session_state_repository_persists_runtime_and_health_events():
                 'yolo_raw_boxes_total': 0,
                 'session_extended_by_frigate_only': 7,
                 'yolo_blind_confirmed': True,
+                'trigger_to_first_bbox_latency_s': 0.42,
+                'first_track_latency_s': 0.31,
                 'video_file_ok': True,
             }
         )
@@ -43,6 +45,8 @@ def test_session_state_repository_persists_runtime_and_health_events():
         assert len(rows) == 1
         assert int(rows[0]['yolo_frames_ran']) == 80
         assert int(rows[0]['yolo_raw_boxes_total']) == 0
+        assert float(rows[0]['trigger_to_first_bbox_latency_s']) == 0.42
+        assert float(rows[0]['first_track_latency_s']) == 0.31
     finally:
         tmp.cleanup()
 
@@ -59,7 +63,9 @@ def test_blind_confirmed_requires_consecutive_blind_sessions():
                     'session_extended_by_frigate_only': 9,
                 }
             )
-        assert repo.is_blind_confirmed(camera_id='BirdBox', min_recent_sessions=2)
+        assert repo.is_blind_confirmed(
+            camera_id='BirdBox', min_recent_sessions=2
+        )
 
         repo.save_session_runtime(
             {
@@ -69,7 +75,9 @@ def test_blind_confirmed_requires_consecutive_blind_sessions():
                 'session_extended_by_frigate_only': 1,
             }
         )
-        assert not repo.is_blind_confirmed(camera_id='BirdBox', min_recent_sessions=2)
+        assert not repo.is_blind_confirmed(
+            camera_id='BirdBox', min_recent_sessions=2
+        )
     finally:
         tmp.cleanup()
 
@@ -189,7 +197,8 @@ def test_run_retention_and_compaction_builds_hourly_aggregate():
         assert "deleted_runtime_rows" in res
         with repo._connect() as con:
             row = con.execute(
-                "SELECT detections, blind_confirmed_sessions FROM analytics_visit_hourly ORDER BY id DESC LIMIT 1"
+                "SELECT detections, blind_confirmed_sessions "
+                "FROM analytics_visit_hourly ORDER BY id DESC LIMIT 1"
             ).fetchone()
         assert row is not None
         assert int(row["detections"]) >= 1

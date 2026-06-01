@@ -17,6 +17,15 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _nullable_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _db_path() -> str:
     env = (os.environ.get("BIRDLENSE_DB_PATH") or "").strip()
     if env:
@@ -91,12 +100,34 @@ class SessionStateRepository:
                     rejected_decision_rows INTEGER NOT NULL DEFAULT 0,
                     mqtt_events_in_window INTEGER NOT NULL DEFAULT 0,
                     yolo_blind_confirmed INTEGER NOT NULL DEFAULT 0,
+                    trigger_to_first_bbox_latency_s REAL,
+                    first_track_latency_s REAL,
                     runtime_profile TEXT,
                     video_file_ok INTEGER NOT NULL DEFAULT 0,
                     payload_json TEXT
                 )
                 """
             )
+            cols = {
+                str(r["name"])
+                for r in con.execute(
+                    "PRAGMA table_info(session_runtime_metrics)"
+                ).fetchall()
+            }
+            if "trigger_to_first_bbox_latency_s" not in cols:
+                con.execute(
+                    """
+                    ALTER TABLE session_runtime_metrics
+                    ADD COLUMN trigger_to_first_bbox_latency_s REAL
+                    """
+                )
+            if "first_track_latency_s" not in cols:
+                con.execute(
+                    """
+                    ALTER TABLE session_runtime_metrics
+                    ADD COLUMN first_track_latency_s REAL
+                    """
+                )
             con.execute(
                 """
                 CREATE TABLE IF NOT EXISTS detector_health_events (
@@ -173,8 +204,9 @@ class SessionStateRepository:
                     yolo_accepted_boxes_total, low_light_blocked_frames,
                     session_extended_by_frigate_only, bytetrack_rows, post_fusion_persisted,
                     rejected_decision_rows, mqtt_events_in_window, yolo_blind_confirmed,
+                    trigger_to_first_bbox_latency_s, first_track_latency_s,
                     runtime_profile, video_file_ok, payload_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     _utc_now_iso(),
@@ -193,6 +225,8 @@ class SessionStateRepository:
                     int(summary.get("rejected_decision_rows") or 0),
                     int(summary.get("mqtt_events_in_window") or 0),
                     1 if blind else 0,
+                    _nullable_float(summary.get("trigger_to_first_bbox_latency_s")),
+                    _nullable_float(summary.get("first_track_latency_s")),
                     str(summary.get("runtime_profile") or "").strip() or None,
                     1 if bool(summary.get("video_file_ok")) else 0,
                     json.dumps(summary, ensure_ascii=False, separators=(",", ":")),
