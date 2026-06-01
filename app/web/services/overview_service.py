@@ -180,6 +180,23 @@ def get_overview_data(
         .group_by(VideoSpecies.detection_provider)
         .all()
     )
+    # По источнику срабатывания триггера: число визитов, где есть ролик
+    # с соответствующим Video.trigger_source.
+    trigger_q = (
+        session.query(
+            Video.trigger_source,
+            func.count(distinct(SpeciesVisit.id)).label("count"),
+        )
+        .join(VideoSpecies, Video.id == VideoSpecies.video_id)
+        .join(SpeciesVisit, VideoSpecies.species_visit_id == SpeciesVisit.id)
+        .join(Species, SpeciesVisit.species_id == Species.id)
+        .filter(
+            *_visit_overlaps_window(start_of_day, end_of_day),
+            Species.name != GENERIC_BIRD_SPECIES,
+        )
+        .group_by(Video.trigger_source)
+        .all()
+    )
 
     stats = {
         "uniqueSpecies": stats_q.uniqueSpecies or 0,
@@ -191,6 +208,9 @@ def get_overview_data(
         "videoDuration": round(recording_sec),
         "audioDuration": round(dur_q.audio_duration or 0),
         "detectionByProvider": {(p or "legacy"): int(c) for p, c in prov_q},
+        "triggerBySource": {
+            (src or "unknown"): int(c) for src, c in trigger_q
+        },
     }
 
     # Hourly temperature

@@ -42,6 +42,7 @@ import {
   fetchOverviewData,
   speciesDirectoryItems,
 } from '../../api/speciesOverviewDetections';
+import { fetchStatus } from '../../api/camerasHealth';
 import { fetchSystemMetricsLive } from '../../api/systemAuditMetrics';
 import { queryKeys } from '../../api/queryKeys';
 import OutlinedInput from '@mui/material/OutlinedInput';
@@ -108,9 +109,7 @@ type TimelineTriggerSource =
   | 'opencv'
   | 'frigate'
   | 'motion_sensor'
-  | 'scales'
-  | 'track_regen'
-  | 'unknown';
+  | 'scales';
 
 function getVisitMaxConfidence(visit: SpeciesVisit): number {
   const detections = visit.detections ?? [];
@@ -264,6 +263,52 @@ export function TimelinePage() {
     refetchInterval: 30_000,
     retry: 1,
   });
+  const { data: statusData } = useQuery({
+    queryKey: queryKeys.health.status,
+    queryFn: fetchStatus,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+    retry: 1,
+  });
+  const activeTriggerSources = useMemo(() => {
+    const raw = statusData?.active_triggers;
+    if (!Array.isArray(raw)) return [] as TimelineTriggerSource[];
+    const allowed = new Set<TimelineTriggerSource>([
+      'opencv',
+      'frigate',
+      'motion_sensor',
+      'scales',
+    ]);
+    return raw
+      .map((x) => String(x || '').trim().toLowerCase())
+      .filter(
+        (x): x is TimelineTriggerSource =>
+          allowed.has(x as TimelineTriggerSource),
+      );
+  }, [statusData]);
+  const triggerOptions = useMemo(
+    () =>
+      ([
+        { value: 'all', label: t('timeline.triggerSourceAll') },
+        { value: 'opencv', label: t('timeline.triggerSourceOpencv') },
+        { value: 'frigate', label: t('timeline.triggerSourceFrigate') },
+        {
+          value: 'motion_sensor',
+          label: t('timeline.triggerSourceMotionSensor'),
+        },
+        { value: 'scales', label: t('timeline.triggerSourceScales') },
+      ] as const).filter(
+        (opt) =>
+          opt.value === 'all' || activeTriggerSources.includes(opt.value),
+      ),
+    [activeTriggerSources, t],
+  );
+  useEffect(() => {
+    if (triggerSource === 'all') return;
+    if (!activeTriggerSources.includes(triggerSource)) {
+      setTriggerSource('all');
+    }
+  }, [activeTriggerSources, triggerSource]);
   const observerToday = useMemo(() => {
     const timezone = observerOverview?.observer_timezone;
     if (!timezone) {
@@ -787,22 +832,11 @@ export function TimelinePage() {
                   setTriggerSource(event.target.value as TimelineTriggerSource)
                 }
               >
-                <MenuItem value="all">{t('timeline.triggerSourceAll')}</MenuItem>
-                <MenuItem value="opencv">
-                  {t('timeline.triggerSourceOpencv')}
-                </MenuItem>
-                <MenuItem value="frigate">
-                  {t('timeline.triggerSourceFrigate')}
-                </MenuItem>
-                <MenuItem value="motion_sensor">
-                  {t('timeline.triggerSourceMotionSensor')}
-                </MenuItem>
-                <MenuItem value="scales">
-                  {t('timeline.triggerSourceScales')}
-                </MenuItem>
-                <MenuItem value="unknown">
-                  {t('timeline.triggerSourceUnknown')}
-                </MenuItem>
+                {triggerOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
             <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>

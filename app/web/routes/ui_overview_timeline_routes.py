@@ -1,9 +1,11 @@
 """Overview, region, migration calendar, timeline, export, PDF report, unknowns (#198)."""
 
 from datetime import timedelta
+import os
 
 from flask import Response, request
 from app_config.app_config import app_config
+from app_config.trigger_config import get_active_trigger_names
 from auth import ui_sensitive_export_access
 from models import db
 from services.cache import cache_get, cache_set
@@ -41,6 +43,12 @@ from routes.ui_timeline_helpers import build_merged_timeline_items
 def _favorite_only_from_request() -> bool:
     raw = (request.args.get("favorite_only") or request.args.get("favorites") or "").strip().lower()
     return raw in ("1", "true", "yes", "on")
+
+
+def _allowed_timeline_trigger_sources() -> set[str]:
+    mqtt_broker = os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker")
+    active = get_active_trigger_names(app_config, mqtt_broker=mqtt_broker)
+    return {"all", *[str(x or "").strip().lower() for x in active if str(x or "").strip()]}
 
 
 def register_ui_overview_timeline_routes(app):
@@ -224,15 +232,7 @@ def register_ui_overview_timeline_routes(app):
         trigger_source = (
             request.args.get("trigger_source", "all").strip().lower()
         )
-        if trigger_source not in {
-            "all",
-            "opencv",
-            "frigate",
-            "motion_sensor",
-            "scales",
-            "track_regen",
-            "unknown",
-        }:
+        if trigger_source not in _allowed_timeline_trigger_sources():
             return {"error": "trigger_source is invalid"}, 400
 
         try:
@@ -299,15 +299,7 @@ def register_ui_overview_timeline_routes(app):
         trigger_source = (
             request.args.get("trigger_source", "all").strip().lower()
         )
-        if trigger_source not in {
-            "all",
-            "opencv",
-            "frigate",
-            "motion_sensor",
-            "scales",
-            "track_regen",
-            "unknown",
-        }:
+        if trigger_source not in _allowed_timeline_trigger_sources():
             return {"error": "trigger_source is invalid"}, 400
         fmt = request.args.get("format", "json").lower()
 
