@@ -526,6 +526,41 @@ def _best_yolo_anchor_rows(rows: list[dict[str, Any]], *, max_rows: int = 3) -> 
     return out
 
 
+def _default_scales_evidence_snapshot(
+    *,
+    app_config_obj: Any,
+    scales_topic_arg: str | None,
+) -> dict[str, Any]:
+    raw_min_delta = app_config_obj.get("integrations.scales.min_delta_kg_for_estimate")
+    min_delta_kg: float | None
+    if raw_min_delta is None:
+        min_delta_kg = None
+    else:
+        try:
+            min_delta_kg = float(raw_min_delta)
+        except (TypeError, ValueError):
+            min_delta_kg = None
+    return {
+        "enabled": bool(app_config_obj.get("integrations.scales.enabled")),
+        "weight_estimate_enabled": bool(
+            app_config_obj.get(
+                "integrations.scales.weight_estimate_enabled",
+                True,
+            ),
+        ),
+        "topic_present": bool(scales_topic_arg),
+        "estimated_delta_kg": None,
+        "sample_count": 0,
+        "min_delta_kg": min_delta_kg,
+        "require_consecutive_spike": bool(
+            app_config_obj.get(
+                "integrations.scales.estimate_require_consecutive_spike",
+                True,
+            ),
+        ),
+    }
+
+
 def finalize_motion_recording(
     api: API,
     motion_detector: Any,
@@ -955,17 +990,24 @@ def finalize_motion_recording(
             "Fusion audio evidence summary: %s",
             dict(sorted(audio_evidence_summary.items())),
         )
-    decision_trace = build_decision_trace_payload(
-        app_config=app_config,
-        start_time=start_time,
-        end_time=end_time,
-        video_path=video_path_for_api,
-        persisted_tracks=video_detections,
-        rejected_tracks=rejected_decisions,
-        recording_context=recording_context,
-        scales_topic_arg=scales_topic_arg,
-    )
-    scales_evidence = decision_trace["scales_evidence"]
+    decision_trace: dict[str, Any] | None = None
+    if video_detections or rejected_decisions:
+        decision_trace = build_decision_trace_payload(
+            app_config=app_config,
+            start_time=start_time,
+            end_time=end_time,
+            video_path=video_path_for_api,
+            persisted_tracks=video_detections,
+            rejected_tracks=rejected_decisions,
+            recording_context=recording_context,
+            scales_topic_arg=scales_topic_arg,
+        )
+        scales_evidence = decision_trace["scales_evidence"]
+    else:
+        scales_evidence = _default_scales_evidence_snapshot(
+            app_config_obj=app_config,
+            scales_topic_arg=scales_topic_arg,
+        )
     logging.info(
         "Processing stopped. Video Result: %s; Audio Result: %s",
         video_summary,
@@ -1068,10 +1110,11 @@ def finalize_motion_recording(
         inc_counter("recording_persisted_total", len(video_detections))
         video_id = response_video_id(resp)
         if video_id is not None:
-            try:
-                decision_trace["video_id"] = int(video_id)
-            except (TypeError, ValueError):
-                decision_trace["video_id"] = video_id
+            if decision_trace is not None:
+                try:
+                    decision_trace["video_id"] = int(video_id)
+                except (TypeError, ValueError):
+                    decision_trace["video_id"] = video_id
             sl = behavior_bundle.get("shadow_label")
             sc = behavior_bundle.get("shadow_confidence")
             logging.info(
@@ -1115,7 +1158,8 @@ def finalize_motion_recording(
             encode_func=encode_notify_preview_base64,
         )
     persist_finished_ts = time.perf_counter()
-    write_decision_trace_activity(api, decision_trace)
+    if decision_trace is not None:
+        write_decision_trace_activity(api, decision_trace)
     if not video_file_ok:
         remove_session_dir(output_path_physical, reason="bad")
     elif len(video_detections) == 0:
