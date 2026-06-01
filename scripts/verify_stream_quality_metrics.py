@@ -123,8 +123,13 @@ def evaluate_stream_quality(
             "support": {
                 "lifecycle_entered_windows_24h": lifecycle_entered,
                 "lifecycle_rejected_only_windows_24h": lifecycle_rejected,
+                "sessions_total": _safe_int(q_metrics.get("sessions_total"), 0),
                 "empty_bbox_rate": _safe_float(q_metrics.get("empty_bbox_rate")),
                 "tracks_coverage": _safe_float(q_metrics.get("tracks_coverage")),
+                "trigger_to_first_bbox_latency_p95_s": _safe_float(
+                    q_metrics.get("trigger_to_first_bbox_latency_p95_s"),
+                    0.0,
+                ),
             },
         },
         "classifier": {
@@ -190,6 +195,20 @@ def evaluate_stream_quality(
         and streams["detector"]["recall"] >= _safe_float(det_t.get("min_recall"))
         and streams["detector"]["fp_hour"] <= _safe_float(det_t.get("max_fp_hour"), 1e9)
         and streams["detector"]["fn_hour"] <= _safe_float(det_t.get("max_fn_hour"), 1e9)
+        and _safe_float(q_metrics.get("tracks_coverage"))
+        >= _safe_float(det_t.get("min_tracks_coverage"), 0.0)
+        and _safe_float(q_metrics.get("empty_bbox_rate"))
+        <= _safe_float(det_t.get("max_empty_bbox_rate"), 1.0)
+        and _safe_float(
+            q_metrics.get("trigger_to_first_bbox_latency_p95_s"),
+            1e9,
+        )
+        <= _safe_float(
+            det_t.get("max_trigger_to_first_bbox_latency_p95_s"),
+            1e9,
+        )
+        and _safe_int(q_metrics.get("sessions_total"), 0)
+        >= _safe_int(det_t.get("min_sessions_total"), 1)
     )
     checks["classifier_thresholds_ok"] = (
         streams["classifier"]["top1"] >= _safe_float(clf_t.get("min_top1"))

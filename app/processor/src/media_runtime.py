@@ -92,8 +92,8 @@ def setup_processor_media(
     from app_config.cameras import cameras_for_processor, get_valid_cameras
 
     source = (app_config.get("video.source") or "go2rtc").strip().lower()
-    cameras_config = app_config.get("video.cameras") or []
-    valid = get_valid_cameras(cameras_config)
+    video_config = app_config.get("video") or {}
+    valid = get_valid_cameras(video_config=video_config)
     cameras = cameras_for_processor(valid)
     go2rtc_url = (os.environ.get("GO2RTC_URL") or app_config.get("video.go2rtc_url") or "").strip()
 

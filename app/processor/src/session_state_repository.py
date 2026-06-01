@@ -86,6 +86,7 @@ class SessionStateRepository:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     created_at TEXT NOT NULL,
                     camera_id TEXT,
+                    camera_slot TEXT,
                     duration_s REAL,
                     frames_seen INTEGER NOT NULL DEFAULT 0,
                     yolo_frames_ran INTEGER NOT NULL DEFAULT 0,
@@ -136,6 +137,20 @@ class SessionStateRepository:
                     ADD COLUMN finalize_duration_ms REAL
                     """
                 )
+            if "camera_slot" not in cols:
+                try:
+                    self._execute_with_retry(
+                        con,
+                        """
+                        ALTER TABLE session_runtime_metrics
+                        ADD COLUMN camera_slot TEXT
+                        """,
+                        retries=8,
+                        retry_delay_s=0.15,
+                    )
+                except sqlite3.OperationalError:
+                    # Avoid processor crash on transient startup DB contention.
+                    pass
             con.execute(
                 """
                 CREATE TABLE IF NOT EXISTS detector_health_events (
@@ -176,38 +191,69 @@ class SessionStateRepository:
                 )
                 """
             )
-            con.execute(
-                "CREATE INDEX IF NOT EXISTS ix_srm_camera_created ON session_runtime_metrics(camera_id, created_at DESC)"
-            )
-            con.execute(
-                "CREATE INDEX IF NOT EXISTS ix_srm_created ON session_runtime_metrics(created_at DESC)"
-            )
-            con.execute(
-                "CREATE INDEX IF NOT EXISTS ix_dhe_camera_created ON detector_health_events(camera_id, created_at DESC)"
-            )
-            con.execute(
-                "CREATE INDEX IF NOT EXISTS ix_dhe_type_created ON detector_health_events(event_type, created_at DESC)"
-            )
-            con.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ux_analytics_visit_hourly_bucket ON analytics_visit_hourly(bucket_hour, camera_id)"
-            )
-            con.execute(
-                "CREATE INDEX IF NOT EXISTS ix_alb_created ON active_learning_buffer(created_at DESC)"
-            )
-            con.execute(
-                "CREATE INDEX IF NOT EXISTS ix_alb_reason_created ON active_learning_buffer(reason_code, created_at DESC)"
-            )
+            try:
+                self._execute_with_retry(
+                    con,
+                    "CREATE INDEX IF NOT EXISTS ix_srm_camera_created ON session_runtime_metrics(camera_id, created_at DESC)",
+                    retries=8,
+                    retry_delay_s=0.15,
+                )
+                self._execute_with_retry(
+                    con,
+                    "CREATE INDEX IF NOT EXISTS ix_srm_slot_created ON session_runtime_metrics(camera_slot, created_at DESC)",
+                    retries=8,
+                    retry_delay_s=0.15,
+                )
+                self._execute_with_retry(
+                    con,
+                    "CREATE INDEX IF NOT EXISTS ix_srm_created ON session_runtime_metrics(created_at DESC)",
+                    retries=8,
+                    retry_delay_s=0.15,
+                )
+                self._execute_with_retry(
+                    con,
+                    "CREATE INDEX IF NOT EXISTS ix_dhe_camera_created ON detector_health_events(camera_id, created_at DESC)",
+                    retries=8,
+                    retry_delay_s=0.15,
+                )
+                self._execute_with_retry(
+                    con,
+                    "CREATE INDEX IF NOT EXISTS ix_dhe_type_created ON detector_health_events(event_type, created_at DESC)",
+                    retries=8,
+                    retry_delay_s=0.15,
+                )
+                self._execute_with_retry(
+                    con,
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_analytics_visit_hourly_bucket ON analytics_visit_hourly(bucket_hour, camera_id)",
+                    retries=8,
+                    retry_delay_s=0.15,
+                )
+                self._execute_with_retry(
+                    con,
+                    "CREATE INDEX IF NOT EXISTS ix_alb_created ON active_learning_buffer(created_at DESC)",
+                    retries=8,
+                    retry_delay_s=0.15,
+                )
+                self._execute_with_retry(
+                    con,
+                    "CREATE INDEX IF NOT EXISTS ix_alb_reason_created ON active_learning_buffer(reason_code, created_at DESC)",
+                    retries=8,
+                    retry_delay_s=0.15,
+                )
+            except sqlite3.OperationalError:
+                pass
             con.commit()
 
     def save_session_runtime(self, summary: dict[str, Any]) -> int:
         camera_id = str(summary.get("triggered_camera") or "").strip() or None
+        camera_slot = str(summary.get("camera_slot") or "").strip() or None
         blind = bool(summary.get("yolo_blind_confirmed"))
         with self._connect() as con:
             cur = self._execute_with_retry(
                 con,
                 """
                 INSERT INTO session_runtime_metrics (
-                    created_at, camera_id, duration_s, frames_seen, yolo_frames_ran,
+                    created_at, camera_id, camera_slot, duration_s, frames_seen, yolo_frames_ran,
                     yolo_frames_with_tracks, yolo_frames_with_raw_boxes, yolo_raw_boxes_total,
                     yolo_accepted_boxes_total, low_light_blocked_frames,
                     session_extended_by_frigate_only, bytetrack_rows, post_fusion_persisted,
@@ -215,11 +261,12 @@ class SessionStateRepository:
                     trigger_to_first_bbox_latency_s, first_track_latency_s,
                     finalize_duration_ms,
                     runtime_profile, video_file_ok, payload_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     _utc_now_iso(),
                     camera_id,
+                    camera_slot,
                     float(summary.get("duration_s") or 0.0),
                     int(summary.get("frames_seen") or 0),
                     int(summary.get("yolo_frames_ran") or 0),

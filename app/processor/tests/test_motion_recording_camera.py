@@ -30,12 +30,12 @@ class TestMotionRecordingCamera(unittest.TestCase):
         with patch(
             "motion_recording_camera.app_config.get",
             side_effect=lambda key, default=None: {
-                "video.cameras": [{"id": "BirdBox"}, {"id": "Forest"}],
+                "video": {"cameras": [{"id": "BirdBox"}, {"id": "Forest"}]},
                 "processor.frigate_activity_hold_seconds": 6.0,
             }.get(key, default),
         ), patch(
             "app_config.cameras.get_valid_cameras",
-            side_effect=lambda cams: cams,
+            side_effect=lambda *args, **kwargs: kwargs.get("video_config", {}).get("cameras", []),
         ), patch(
             "app_config.cameras.cameras_for_processor",
             side_effect=lambda cams: cams,
@@ -59,12 +59,12 @@ class TestMotionRecordingCamera(unittest.TestCase):
         with patch(
             "motion_recording_camera.app_config.get",
             side_effect=lambda key, default=None: {
-                "video.cameras": [{"id": "BirdBox"}, {"id": "Forest"}],
+                "video": {"cameras": [{"id": "BirdBox"}, {"id": "Forest"}]},
                 "processor.frigate_activity_hold_seconds": 6.0,
             }.get(key, default),
         ), patch(
             "app_config.cameras.get_valid_cameras",
-            side_effect=lambda cams: cams,
+            side_effect=lambda *args, **kwargs: kwargs.get("video_config", {}).get("cameras", []),
         ), patch(
             "app_config.cameras.cameras_for_processor",
             side_effect=lambda cams: cams,

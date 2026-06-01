@@ -219,6 +219,11 @@ def _args() -> argparse.Namespace:
         "--out-md",
         default="docs/reports/sota_reality/sota_reality_check_latest.md",
     )
+    parser.add_argument(
+        "--fail-on-blocked",
+        action="store_true",
+        help="return non-zero when acceptance_blocked=true",
+    )
     return parser.parse_args()
 
 
@@ -259,6 +264,8 @@ def main() -> int:
             ensure_ascii=False,
         )
     )
+    if args.fail_on_blocked and bool(report.get("acceptance_blocked")):
+        return 1
     return 0
 
 

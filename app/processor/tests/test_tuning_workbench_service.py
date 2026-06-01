@@ -1,7 +1,9 @@
 from services.system_tuning_workbench_service import (
+    _PRESET_OVERRIDES,
     _collect_guardrail_feedback,
     _estimate_profile_metrics,
     _profile_delta,
+    _runtime_cost_guard_error,
     _to_nested_patch,
 )
 
@@ -76,3 +78,23 @@ def test_tuning_workbench_patch_helpers():
         "precision_delta": -4.0,
         "runtime_cost_delta": 5.0,
     }
+
+
+def test_feeder_closeup_preset_exists():
+    assert "feeder_closeup_ab" in _PRESET_OVERRIDES
+
+
+def test_runtime_cost_guard_error():
+    auto_eval = {"delta": {"runtime_cost_delta": 6.5}}
+    err = _runtime_cost_guard_error(
+        auto_eval,
+        max_runtime_cost_delta=5.0,
+    )
+    assert isinstance(err, str) and "Rollback guard triggered" in err
+    assert (
+        _runtime_cost_guard_error(
+            auto_eval,
+            max_runtime_cost_delta=7.0,
+        )
+        is None
+    )

@@ -59,6 +59,16 @@ verify:
 	MCP_TOKEN="$${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="$${BIRDLENSE_UI_API_KEY:-}" \
 	  ./scripts/verify-stack.sh --base-url "$$_url"
 
+check-prod-disk:
+	@set -e; cd "$(CURDIR)"; \
+	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
+	: "$${DEPLOY_HOST:?DEPLOY_HOST is required}"; \
+	ssh -p "$${DEPLOY_SSH_PORT:-22}" "$${DEPLOY_HOST}" "set -e; \
+	FREE_GB=\$$(df -BG --output=avail / | tail -1 | tr -dc '0-9'); \
+	USED_PCT=\$$(df --output=pcent / | tail -1 | tr -dc '0-9'); \
+	DIAG_GB=\$$(du -sBG /root/BirdLense/app/data/diagnostics 2>/dev/null | cut -f1 | tr -dc '0-9'); \
+	echo disk-check free_gb=\$${FREE_GB:-0} used_pct=\$${USED_PCT:-0} diagnostics_gb=\$${DIAG_GB:-0}"
+
 baseline-snapshot-contract:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
@@ -198,15 +208,32 @@ outcome-metrics-gate:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/report_quality_outcome_metrics.py \
 	  --db-path "$${OUTCOME_DB_PATH:-app/data/db/birdlense.db}" \
+	  --data-source "$${OUTCOME_DATA_SOURCE:-local:app/data/db/birdlense.db}" \
 	  --lookback-hours "$${OUTCOME_LOOKBACK_HOURS:-24}" \
 	  --max-blind-rate "$${OUTCOME_MAX_BLIND_RATE:-0.30}" \
 	  --min-tracks-coverage "$${OUTCOME_MIN_TRACKS_COVERAGE:-0.50}" \
 	  --max-empty-bbox-rate "$${OUTCOME_MAX_EMPTY_BBOX_RATE:-0.20}" \
 	  --min-yolo-frames-with-tracks "$${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS:-1}"
 
+failure-mode-funnel:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/report_failure_mode_funnel.py \
+	  --db-path "$${OUTCOME_DB_PATH:-app/data/db/birdlense.db}" \
+	  --lookback-hours "$${OUTCOME_LOOKBACK_HOURS:-24}"
+
+runtime-pipeline-profile:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/report_runtime_pipeline_profile.py \
+	  --db-path "$${OUTCOME_DB_PATH:-app/data/db/birdlense.db}" \
+	  --lookback-hours "$${OUTCOME_LOOKBACK_HOURS:-24}" \
+	  --first-bbox-warn-s "$${FIRST_BBOX_WARN_S:-5}" \
+	  --finalize-warn-ms "$${FINALIZE_WARN_MS:-5000}"
+
 sota-reality-check:
 	@set -e; cd "$(CURDIR)"; \
-	python3 ./scripts/report_sota_reality_check.py
+	_fail_flag=""; \
+	if [ "$${SOTA_FAIL_ON_BLOCKED:-0}" = "1" ]; then _fail_flag="--fail-on-blocked"; fi; \
+	python3 ./scripts/report_sota_reality_check.py $$_fail_flag
 
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \

@@ -149,6 +149,7 @@ def evaluate(
     rows: list[sqlite3.Row],
     thresholds: dict[str, float],
     *,
+    data_source: str = "local",
     ingest_gate_rows: list[sqlite3.Row] | None = None,
     ingest_gate_rows_7d: list[sqlite3.Row] | None = None,
     trigger_moratorium_rows: list[sqlite3.Row] | None = None,
@@ -317,10 +318,17 @@ def evaluate(
         if sessions_with_yolo > 0
         else 0.0
     )
+    tracks_missing_rate = (
+        (1.0 - tracks_coverage) if sessions_with_yolo > 0 else 1.0
+    )
     empty_bbox_rate = (
         empty_bbox_rejections / rejected_rows_total
         if rejected_rows_total > 0
         else 0.0
+    )
+    bbox_quality_score = max(
+        0.0,
+        min(1.0, tracks_coverage * (1.0 - empty_bbox_rate)),
     )
     latency_p95 = _percentile(latency_samples, 95.0)
     finalize_duration_p95_ms = _percentile(finalize_duration_samples, 95.0)
@@ -368,6 +376,8 @@ def evaluate(
     errors: list[str] = []
     if sessions_total <= 0:
         errors.append("no session_runtime_metrics rows in lookback window")
+    if sessions_total > 0 and sessions_with_yolo <= 0:
+        errors.append("no yolo runtime rows in lookback window")
     if blind_rate > thresholds["max_blind_rate"]:
         errors.append(
             "blind_rate="
@@ -430,6 +440,7 @@ def evaluate(
     return {
         "schema": "quality_outcome_metrics@v1",
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "data_source": str(data_source or "local"),
         "window_hours": lookback_hours,
         "metrics": {
             "sessions_total": int(sessions_total),
@@ -439,6 +450,8 @@ def evaluate(
             "yolo_frames_with_tracks": int(yolo_frames_with_tracks_sum),
             "empty_bbox_rate": float(round(empty_bbox_rate, 6)),
             "tracks_coverage": float(round(tracks_coverage, 6)),
+            "tracks_missing_rate": float(round(tracks_missing_rate, 6)),
+            "bbox_quality_score": float(round(bbox_quality_score, 6)),
             "trigger_to_first_bbox_latency_p95_s": (
                 None if latency_p95 is None else float(round(latency_p95, 6))
             ),
@@ -579,6 +592,7 @@ def _to_md(report: dict[str, Any]) -> str:
         "# Quality Outcome Metrics",
         "",
         f"- generated_at: `{report.get('generated_at')}`",
+        f"- data_source: `{report.get('data_source')}`",
         f"- gate_ok: `{gate.get('ok')}`",
         f"- sessions_total: `{metrics.get('sessions_total')}`",
         "",
@@ -589,6 +603,9 @@ def _to_md(report: dict[str, Any]) -> str:
         f"`{metrics.get('yolo_frames_with_tracks')}`",
         f"- empty_bbox_rate: `{metrics.get('empty_bbox_rate')}`",
         f"- tracks_coverage: `{metrics.get('tracks_coverage')}`",
+        "- tracks_missing_rate: "
+        f"`{metrics.get('tracks_missing_rate')}`",
+        f"- bbox_quality_score: `{metrics.get('bbox_quality_score')}`",
         "- trigger_to_first_bbox_latency_p95_s: "
         f"`{metrics.get('trigger_to_first_bbox_latency_p95_s')}`",
         "- finalize_duration_p95_ms: "
@@ -683,6 +700,10 @@ def _args() -> argparse.Namespace:
         default=0.0,
     )
     parser.add_argument(
+        "--data-source",
+        default="local",
+    )
+    parser.add_argument(
         "--out-json",
         default=(
             "docs/reports/quality_outcome/"
@@ -748,6 +769,7 @@ def main() -> int:
     report = evaluate(
         rows,
         thresholds,
+        data_source=str(args.data_source or "local"),
         ingest_gate_rows=ingest_gate_rows,
         ingest_gate_rows_7d=ingest_gate_rows_7d,
         trigger_moratorium_rows=trigger_moratorium_rows,

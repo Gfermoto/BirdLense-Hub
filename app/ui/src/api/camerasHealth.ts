@@ -9,6 +9,8 @@ export type CameraRow = {
   stream_url: string;
   /** Имя потока в Go2RTC (≠ id камеры, если так задано в настройках). */
   go2rtc_src?: string;
+  camera_slot?: string;
+  camera_profile?: string;
   stream_url_mjpeg?: string;
 };
 

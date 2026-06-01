@@ -11,6 +11,7 @@ from sqlalchemy import text
 from app_config.app_config import app_config
 from data_paths import data_dir
 from models import ActivityLog
+from services.cache import cache_get, cache_set
 from services.cache import cache_backend_readiness
 from services.component_status_service import build_component_status_payload_safe
 from services.runtime_env import env_flag_enabled, is_production_runtime
@@ -143,12 +144,19 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
     checks["processor_heartbeat"] = _processor_heartbeat_readiness(session)
 
     ready = all(check.get("status") == "ok" for check in checks.values())
+    hit, cached_components = cache_get("component_status:v1")
+    if hit and isinstance(cached_components, dict):
+        components_payload = cached_components
+    else:
+        components_payload = build_component_status_payload_safe(session)
+        cache_set("component_status:v1", components_payload, 180)
+
     payload = {
         "status": "ok" if ready else "degraded",
         "ready": ready,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "checks": checks,
-        "components": build_component_status_payload_safe(session),
+        "components": components_payload,
         "security_gates": build_security_gates_payload(),
     }
     return payload, (200 if ready else 503)

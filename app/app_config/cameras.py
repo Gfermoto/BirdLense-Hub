@@ -5,7 +5,65 @@
 """
 
 
-def get_valid_cameras(cameras_config: list) -> list[dict]:
+def _slot_key(value: object, *, idx: int) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return f"camera_{idx + 1}"
+    if raw.isdigit():
+        return f"camera_{int(raw)}"
+    return raw
+
+
+def _resolve_effective_cameras_from_video_config(video_config: dict | None) -> list[dict]:
+    video_cfg = video_config or {}
+    slots = video_cfg.get("camera_slots") or []
+    profiles = video_cfg.get("camera_profiles") or {}
+    bindings = video_cfg.get("camera_profile_bindings") or {}
+    legacy_cameras = video_cfg.get("cameras") or []
+    rows: list[dict] = []
+
+    if isinstance(slots, list) and slots:
+        for idx, slot in enumerate(slots):
+            if not isinstance(slot, dict):
+                continue
+            slot_key = _slot_key(slot.get("slot"), idx=idx)
+            profile_id = (
+                str(
+                    slot.get("profile")
+                    or slot.get("profile_id")
+                    or bindings.get(slot_key)
+                    or "",
+                ).strip()
+                or None
+            )
+            profile = profiles.get(profile_id or "") if isinstance(profiles, dict) else None
+            profile_dict = profile if isinstance(profile, dict) else {}
+            merged: dict = dict(profile_dict)
+            merged.update(slot)
+            merged["camera_slot"] = slot_key
+            if profile_id:
+                merged["camera_profile"] = profile_id
+            rows.append(merged)
+        return rows
+
+    # C2 dual-read compatibility: synthesize camera_slots from legacy video.cameras.
+    for idx, cam in enumerate(legacy_cameras):
+        if not isinstance(cam, dict):
+            continue
+        slot_key = _slot_key(cam.get("camera_slot"), idx=idx)
+        row = dict(cam)
+        row.setdefault("camera_slot", slot_key)
+        if row.get("camera_profile"):
+            row["camera_profile"] = str(row["camera_profile"]).strip()
+        rows.append(row)
+    return rows
+
+
+def get_valid_cameras(
+    cameras_config: list | None = None,
+    *,
+    video_config: dict | None = None,
+) -> list[dict]:
     """
     Возвращает список камер с непустым stream_name.
 
@@ -14,19 +72,32 @@ def get_valid_cameras(cameras_config: list) -> list[dict]:
     ``opencv_masks`` — Frigate-style полигоны для OpenCV-триггера на этой камере.
     запись по-прежнему с ``stream_name`` (main).
     """
-    if not cameras_config:
+    source_rows: list = []
+    if video_config is not None:
+        source_rows = _resolve_effective_cameras_from_video_config(video_config)
+    elif cameras_config:
+        source_rows = cameras_config
+
+    if not source_rows:
         return []
     out: list[dict] = []
-    for c in cameras_config:
+    for idx, c in enumerate(source_rows):
+        if not isinstance(c, dict):
+            continue
         sn = (c.get('stream_name') or '').strip()
         if not sn:
             continue
+        slot_key = _slot_key(c.get("camera_slot"), idx=idx)
         dsn = (c.get('detect_stream_name') or '').strip()
         row = {
             'id': c.get('id') or sn,
             'stream_name': sn,
             'name': c.get('name') or c.get('id') or sn,
+            'camera_slot': slot_key,
         }
+        profile_id = str(c.get("camera_profile") or "").strip()
+        if profile_id:
+            row["camera_profile"] = profile_id
         if dsn:
             row['detect_stream_name'] = dsn
         masks = c.get('opencv_masks')
@@ -38,16 +109,23 @@ def get_valid_cameras(cameras_config: list) -> list[dict]:
 
 def cameras_for_api(valid_cameras: list) -> list[dict]:
     """Формат для API: id, name, stream_url, stream_url_mjpeg, go2rtc_src (имя потока в Go2RTC)."""
-    return [
-        {
+    out: list[dict] = []
+    for i, c in enumerate(valid_cameras):
+        row = {
             'id': c['id'],
             'name': c['name'],
             'stream_url': f"/go2rtc/stream.html?src={c['stream_name']}",
             'go2rtc_src': c['stream_name'],
             'stream_url_mjpeg': f"/processor/live/{i}",
         }
-        for i, c in enumerate(valid_cameras)
-    ]
+        slot_key = str(c.get("camera_slot") or "").strip()
+        if slot_key:
+            row["camera_slot"] = slot_key
+        profile_id = str(c.get("camera_profile") or "").strip()
+        if profile_id:
+            row["camera_profile"] = profile_id
+        out.append(row)
+    return out
 
 
 def cameras_for_processor(valid_cameras: list) -> list[dict]:
@@ -58,6 +136,12 @@ def cameras_for_processor(valid_cameras: list) -> list[dict]:
         dsn = (c.get('detect_stream_name') or '').strip()
         if dsn:
             row['detect_stream_name'] = dsn
+        slot_key = str(c.get("camera_slot") or "").strip()
+        if slot_key:
+            row["camera_slot"] = slot_key
+        profile_id = str(c.get("camera_profile") or "").strip()
+        if profile_id:
+            row["camera_profile"] = profile_id
         masks = c.get('opencv_masks')
         if masks:
             row['opencv_masks'] = masks

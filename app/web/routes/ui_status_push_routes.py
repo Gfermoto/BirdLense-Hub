@@ -146,9 +146,8 @@ def register_ui_status_push_routes(app):
 
     @app.route("/api/ui/cameras", methods=["GET"])
     def list_cameras():
-        """List cameras — только из video.cameras, добавлять по одной. Без default."""
-        cameras_config = app_config.get("video.cameras") or []
-        valid = get_valid_cameras(cameras_config)
+        """List cameras from effective camera config (slot-centric with legacy fallback)."""
+        valid = get_valid_cameras(video_config=(app_config.get("video") or {}))
         return {"cameras": cameras_for_api(valid)}
 
     @app.route("/api/ui/status", methods=["GET"])

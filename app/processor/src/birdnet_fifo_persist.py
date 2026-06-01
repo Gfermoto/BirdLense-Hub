@@ -180,6 +180,48 @@ class BirdnetFifoPersist:
             "CREATE INDEX IF NOT EXISTS ix_birdnet_fifo_event_ts_epoch ON birdnet_fifo_event (ts_epoch)",
         )
 
+    @staticmethod
+    def _execute_with_retry(
+        conn: sqlite3.Connection,
+        query: str,
+        params: tuple[Any, ...] = (),
+        *,
+        retries: int = 6,
+        retry_delay_s: float = 0.12,
+    ) -> None:
+        for attempt in range(max(1, retries)):
+            try:
+                conn.execute(query, params)
+                return
+            except sqlite3.OperationalError as exc:
+                msg = str(exc).lower()
+                if "locked" not in msg and "busy" not in msg:
+                    raise
+                if attempt >= retries - 1:
+                    raise
+                # DB lock contention is expected during startup migration/finalize bursts.
+                # Retry instead of crashing worker and dropping persistence.
+                threading.Event().wait(retry_delay_s * (attempt + 1))
+
+    def _commit_with_retry(
+        self,
+        conn: sqlite3.Connection,
+        *,
+        retries: int = 6,
+        retry_delay_s: float = 0.12,
+    ) -> None:
+        for attempt in range(max(1, retries)):
+            try:
+                conn.commit()
+                return
+            except sqlite3.OperationalError as exc:
+                msg = str(exc).lower()
+                if "locked" not in msg and "busy" not in msg:
+                    raise
+                if attempt >= retries - 1:
+                    raise
+                threading.Event().wait(retry_delay_s * (attempt + 1))
+
     def _run(self) -> None:
         try:
             conn = self._connect()
@@ -209,14 +251,16 @@ class BirdnetFifoPersist:
                     except (TypeError, ValueError):
                         ts = 0.0
                     payload = json.dumps(ev, separators=(",", ":"), ensure_ascii=False, default=str)
-                    conn.execute(
+                    self._execute_with_retry(
+                        conn,
                         "INSERT INTO birdnet_fifo_event (ts_epoch, payload) VALUES (?, ?)",
                         (ts, payload),
                     )
-                    conn.commit()
+                    self._commit_with_retry(conn)
                 elif item[0] == "prune":
                     _, low_epoch, cap = item
-                    conn.execute(
+                    self._execute_with_retry(
+                        conn,
                         "DELETE FROM birdnet_fifo_event WHERE ts_epoch < ?",
                         (low_epoch,),
                     )
@@ -224,13 +268,14 @@ class BirdnetFifoPersist:
                     n = int(row[0]) if row else 0
                     excess = max(0, n - int(cap))
                     if excess:
-                        conn.execute(
+                        self._execute_with_retry(
+                            conn,
                             """DELETE FROM birdnet_fifo_event WHERE id IN (
                                 SELECT id FROM birdnet_fifo_event ORDER BY id ASC LIMIT ?
                             )""",
                             (excess,),
                         )
-                    conn.commit()
+                    self._commit_with_retry(conn)
             except Exception:
                 logger.exception("BirdNET FIFO persist worker error")
             finally:

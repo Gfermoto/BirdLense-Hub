@@ -2,6 +2,7 @@
 
 import logging
 import os
+import time
 from datetime import datetime, timezone
 
 import requests
@@ -41,7 +42,14 @@ def _hub_go2rtc_frame_url(stream_name: str) -> str | None:
 
 def _probe_frame_url(url: str, auth: tuple[str, str] | None) -> bool:
     try:
-        r = requests.get(url, auth=auth, timeout=5)
+        timeout_s = float(
+            app_config.get("video.go2rtc_probe_timeout_seconds") or 1.5
+        )
+    except (TypeError, ValueError):
+        timeout_s = 1.5
+    timeout_s = max(0.2, min(5.0, timeout_s))
+    try:
+        r = requests.get(url, auth=auth, timeout=timeout_s)
         return r.status_code == 200
     except Exception as e:
         logger.debug("Video frame probe failed (%s): %s", url, e)
@@ -57,9 +65,19 @@ def check_video_reachable() -> str:
     valid = get_valid_cameras(cameras_config)
     if not valid:
         return "not_configured"
+    try:
+        max_probe_total_s = float(
+            app_config.get("video.go2rtc_probe_max_total_seconds") or 3.0
+        )
+    except (TypeError, ValueError):
+        max_probe_total_s = 3.0
+    deadline = time.monotonic() + max(0.5, min(20.0, max_probe_total_s))
     base = resolve_go2rtc_base_url()
     auth = _go2rtc_auth()
     for cam in valid:
+        if time.monotonic() >= deadline:
+            logger.debug("Video frame probe deadline exceeded")
+            break
         stream_name = (cam.get("stream_name") or cam.get("id") or "").strip()
         if not stream_name:
             continue
@@ -68,6 +86,8 @@ def check_video_reachable() -> str:
             _hub_go2rtc_frame_url(stream_name),
         ]
         for url in candidates:
+            if time.monotonic() >= deadline:
+                break
             if url and _probe_frame_url(url, auth):
                 return "ok"
     return "error"
