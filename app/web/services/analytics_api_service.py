@@ -424,22 +424,21 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             int(trigger_moratorium_by_source.get(source_key) or 0) + 1
         )
     try:
-        moratorium_rows_7d = db.session.execute(
-            text(
-                """
-                SELECT COUNT(*) AS cnt
-                FROM activity_log
-                WHERE type = 'trigger_moratorium'
-                  AND datetime(created_at) >= datetime('now', '-168 hours')
-                """
-            ),
-        ).mappings()
-    except Exception:
-        moratorium_rows_7d = []
-    if moratorium_rows_7d:
         trigger_moratorium_events_7d = int(
-            (moratorium_rows_7d[0] or {}).get("cnt") or 0
+            db.session.execute(
+                text(
+                    """
+                    SELECT COUNT(*)
+                    FROM activity_log
+                    WHERE type = 'trigger_moratorium'
+                      AND datetime(created_at) >= datetime('now', '-168 hours')
+                    """
+                ),
+            ).scalar()
+            or 0
         )
+    except Exception:
+        trigger_moratorium_events_7d = 0
 
     heal_rows = db.session.execute(
         text(
