@@ -1,0 +1,144 @@
+{
+  "schema": "dataset_contract_registry@v1",
+  "required_streams": [
+    "detector",
+    "classifier",
+    "behavior",
+    "reid"
+  ],
+  "contracts": [
+    {
+      "stream": "detector",
+      "contract_schema": "detector_dataset_contract@v1",
+      "required_fields": [
+        "dataset_id",
+        "stream",
+        "version",
+        "split",
+        "label",
+        "source",
+        "provenance"
+      ],
+      "split_policy": {
+        "required_keys": [
+          "train",
+          "val"
+        ],
+        "allow_test": true,
+        "cross_split_leakage_forbidden": true
+      },
+      "versioning": {
+        "strategy": "semver",
+        "minimum_major": 1
+      },
+      "provenance": {
+        "required_keys": [
+          "source_system",
+          "collected_at",
+          "license"
+        ]
+      }
+    },
+    {
+      "stream": "classifier",
+      "contract_schema": "classifier_dataset_contract@v1",
+      "required_fields": [
+        "dataset_id",
+        "stream",
+        "version",
+        "split",
+        "class_name",
+        "source",
+        "provenance"
+      ],
+      "split_policy": {
+        "required_keys": [
+          "train",
+          "val"
+        ],
+        "allow_test": true,
+        "cross_split_leakage_forbidden": true
+      },
+      "versioning": {
+        "strategy": "semver",
+        "minimum_major": 1
+      },
+      "provenance": {
+        "required_keys": [
+          "source_system",
+          "collected_at",
+          "license"
+        ]
+      }
+    },
+    {
+      "stream": "behavior",
+      "contract_schema": "behavior_dataset_contract@v1",
+      "required_fields": [
+        "dataset_id",
+        "stream",
+        "version",
+        "split",
+        "behavior_label",
+        "source",
+        "provenance"
+      ],
+      "split_policy": {
+        "required_keys": [
+          "train",
+          "val"
+        ],
+        "allow_test": true,
+        "cross_split_leakage_forbidden": true
+      },
+      "versioning": {
+        "strategy": "semver",
+        "minimum_major": 1
+      },
+      "provenance": {
+        "required_keys": [
+          "source_system",
+          "collected_at",
+          "license"
+        ]
+      }
+    },
+    {
+      "stream": "reid",
+      "contract_schema": "reid_dataset_contract@v1",
+      "required_fields": [
+        "dataset_id",
+        "stream",
+        "version",
+        "split",
+        "identity_label",
+        "source",
+        "provenance",
+        "reid_private_backup"
+      ],
+      "split_policy": {
+        "required_keys": [
+          "train",
+          "val"
+        ],
+        "allow_test": true,
+        "cross_split_leakage_forbidden": true
+      },
+      "versioning": {
+        "strategy": "semver",
+        "minimum_major": 1
+      },
+      "provenance": {
+        "required_keys": [
+          "source_system",
+          "collected_at",
+          "license"
+        ]
+      },
+      "export_policy": {
+        "community_export_allowed": false,
+        "private_backup_only": true
+      }
+    }
+  ]
+}
