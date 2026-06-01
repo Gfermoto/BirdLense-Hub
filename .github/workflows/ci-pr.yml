@@ -482,19 +482,22 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Generate SOTA reality-check artifacts
+      - name: SOTA governance cycle (nightly)
         run: |
           set -euo pipefail
-          # Outcome JSON может быть stale в репо; nightly обязан краснеть,
-          # если сводный decision=hold / acceptance_blocked=true.
-          SOTA_FAIL_ON_BLOCKED=1 make sota-reality-check
+          chmod +x ./scripts/run_sota_governance_cycle.sh
+          GOVERNANCE_MODE=nightly SOTA_FAIL_ON_BLOCKED=1 make sota-governance-cycle
 
-      - name: Upload SOTA reality-check artifacts
+      - name: Upload SOTA governance artifacts
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: sota-reality-check-nightly
+          name: sota-governance-cycle-nightly
           path: |
+            docs/reports/governance/governance_cycle_latest.json
+            docs/reports/governance/governance_cycle_latest.md
             docs/reports/sota_reality/sota_reality_check_latest.json
             docs/reports/sota_reality/sota_reality_check_latest.md
+            docs/reports/perf/runtime_pipeline_profile_latest.json
+            docs/reports/perf/runtime_pipeline_profile_latest.md
           if-no-files-found: error

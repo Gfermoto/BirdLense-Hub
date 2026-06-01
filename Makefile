@@ -235,6 +235,17 @@ sota-reality-check:
 	if [ "$${SOTA_FAIL_ON_BLOCKED:-0}" = "1" ]; then _fail_flag="--fail-on-blocked"; fi; \
 	python3 ./scripts/report_sota_reality_check.py $$_fail_flag
 
+sota-governance-cycle:
+	@set -e; cd "$(CURDIR)"; \
+	chmod +x ./scripts/run_sota_governance_cycle.sh; \
+	GOVERNANCE_MODE="$${GOVERNANCE_MODE:-nightly}" \
+	SOTA_FAIL_ON_BLOCKED="$${SOTA_FAIL_ON_BLOCKED:-1}" \
+	./scripts/run_sota_governance_cycle.sh
+
+sota-governance-weekly:
+	@set -e; cd "$(CURDIR)"; \
+	GOVERNANCE_MODE=weekly SOTA_FAIL_ON_BLOCKED=1 $(MAKE) sota-governance-cycle
+
 error-budget-gate:
 	@set -e; cd "$(CURDIR)"; \
 	if [ -f scripts/deploy.local.sh ]; then set -a; . scripts/deploy.local.sh; set +a; fi; \
