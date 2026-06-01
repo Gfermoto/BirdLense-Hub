@@ -35,6 +35,7 @@ from services.processor_ingest.notify_ingest import process_processor_notify_det
 from services.processor_ingest.video_ingest import prepare_processor_video
 from services.active_learning_service import mine_hard_examples
 from recording_layout_paths import RECORDING_VIDEO_PATH_RE
+from timeline_payloads import _infer_trigger_source_from_detections
 
 # Path traversal protection (см. recording_layout_paths + SECURITY.md).
 VIDEO_PATH_RE = RECORDING_VIDEO_PATH_RE
@@ -359,6 +360,18 @@ def register_routes(app):
                 **fetch_weather(),
             )
             raw_trigger_source = str(data.get("trigger_source") or "").strip().lower()
+            inferred_trigger_source = None
+            if not raw_trigger_source:
+                inferred = _infer_trigger_source_from_detections(
+                    pruned_species_list
+                )
+                if inferred in {
+                    "opencv",
+                    "frigate",
+                    "motion_sensor",
+                    "scales",
+                }:
+                    inferred_trigger_source = inferred
             if raw_trigger_source in {
                 "opencv",
                 "frigate",
@@ -367,6 +380,8 @@ def register_routes(app):
                 "unknown",
             }:
                 video.trigger_source = raw_trigger_source
+            elif inferred_trigger_source is not None:
+                video.trigger_source = inferred_trigger_source
             raw_sw = data.get("scales_weight_delta_kg")
             if raw_sw is not None and app_config.get("integrations.scales.enabled"):
                 try:
