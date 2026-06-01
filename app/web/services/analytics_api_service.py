@@ -233,6 +233,9 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
     ingest_pruned_rows_total = 0
     ingest_pruned_frames_total = 0
     ingest_pruned_rows_total_7d = 0
+    trigger_moratorium_events = 0
+    trigger_moratorium_events_7d = 0
+    trigger_moratorium_by_source: dict[str, int] = {}
     frigate_catches_missed_birds_sessions = 0
     frigate_catches_missed_birds_by_trigger_source: dict[str, int] = {}
     fallback_sessions = 0
@@ -393,6 +396,50 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
         ingest_pruned_rows_total_7d += int(
             payload.get("dropped_empty_bbox") or 0
         )
+    try:
+        moratorium_rows = db.session.execute(
+            text(
+                """
+                SELECT data
+                FROM activity_log
+                WHERE type = 'trigger_moratorium'
+                  AND datetime(created_at) >= datetime('now', :window)
+                ORDER BY id DESC
+                LIMIT 1000
+                """
+            ),
+            {"window": f"-{h} hours"},
+        ).mappings()
+    except Exception:
+        moratorium_rows = []
+    for row in moratorium_rows:
+        trigger_moratorium_events += 1
+        try:
+            payload = json.loads(str(row.get("data") or "{}"))
+        except Exception:
+            payload = {}
+        source = str(payload.get("trigger_source") or "unknown").strip()
+        source_key = source.lower() if source else "unknown"
+        trigger_moratorium_by_source[source_key] = (
+            int(trigger_moratorium_by_source.get(source_key) or 0) + 1
+        )
+    try:
+        moratorium_rows_7d = db.session.execute(
+            text(
+                """
+                SELECT COUNT(*) AS cnt
+                FROM activity_log
+                WHERE type = 'trigger_moratorium'
+                  AND datetime(created_at) >= datetime('now', '-168 hours')
+                """
+            ),
+        ).mappings()
+    except Exception:
+        moratorium_rows_7d = []
+    if moratorium_rows_7d:
+        trigger_moratorium_events_7d = int(
+            (moratorium_rows_7d[0] or {}).get("cnt") or 0
+        )
 
     heal_rows = db.session.execute(
         text(
@@ -482,6 +529,16 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
     ingest_pruned_rows_per_hour_delta_vs_7d = (
         ingest_pruned_rows_per_hour - ingest_pruned_rows_per_hour_7d_baseline
     )
+    trigger_moratorium_events_per_hour = (
+        float(trigger_moratorium_events) / float(max(1, h))
+    )
+    trigger_moratorium_events_per_hour_7d_baseline = (
+        float(trigger_moratorium_events_7d) / float(24 * 7)
+    )
+    trigger_moratorium_events_per_hour_delta_vs_7d = (
+        trigger_moratorium_events_per_hour
+        - trigger_moratorium_events_per_hour_7d_baseline
+    )
     frigate_catches_missed_birds_rate = (
         (
             float(frigate_catches_missed_birds_sessions)
@@ -552,6 +609,23 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             ),
             "ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d": round(
                 ingest_pruned_rows_per_hour_delta_vs_7d,
+                4,
+            ),
+            "trigger_moratorium_events": int(trigger_moratorium_events),
+            "trigger_moratorium_by_source": {
+                k: int(v)
+                for k, v in sorted(trigger_moratorium_by_source.items())
+            },
+            "trigger_moratorium_events_per_hour": round(
+                trigger_moratorium_events_per_hour,
+                4,
+            ),
+            "trigger_moratorium_events_per_hour_7d_baseline": round(
+                trigger_moratorium_events_per_hour_7d_baseline,
+                4,
+            ),
+            "trigger_moratorium_events_per_hour_delta_vs_7d": round(
+                trigger_moratorium_events_per_hour_delta_vs_7d,
                 4,
             ),
             "frigate_catches_missed_birds_sessions": int(
