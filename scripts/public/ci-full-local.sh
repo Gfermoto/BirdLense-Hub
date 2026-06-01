@@ -180,6 +180,15 @@ log "Radon (информативно, без падения)"
   env -u PIP_USER PYTHONNOUSERSITE=1 "${VENV_CI}/bin/radon" cc -a -s web/ processor/src/ || true
 )
 
+log "Stream quality matrix gate (#557 Stream E)"
+"${PYTHON}" "${ROOT}/scripts/verify_stream_quality_metrics.py" \
+  --contract "docs/reports/stream_quality/stream_quality_contract.json" \
+  --quality-outcome "docs/reports/quality_outcome/quality_outcome_metrics_latest.json" \
+  --favorites-benchmark "docs/reports/favorites_ab_benchmark.json" \
+  --champion-shadow "docs/reports/ml_shadow/champion_challenger_latest.json" \
+  --out-json "docs/reports/stream_quality/stream_quality_latest.json" \
+  --out-md "docs/reports/stream_quality/stream_quality_latest.md"
+
 if [[ "${CI_FULL_DOCKER}" != "1" ]]; then
   log "Docker-слой пропущен (CI_FULL_DOCKER=1 для processor+web тестов в образе и E2E smoke)"
   log "Готово (локальный CI без Docker)."

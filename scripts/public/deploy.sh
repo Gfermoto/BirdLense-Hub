@@ -476,6 +476,22 @@ if [[ ! "${BIRDLENSE_SKIP_OUTCOME_METRICS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.73 Stream quality matrix gate (#557 Stream E).
+if [[ ! "${BIRDLENSE_SKIP_STREAM_QUALITY_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.73 Stream Quality Matrix Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_stream_quality_metrics.py \
+      --contract "docs/reports/stream_quality/stream_quality_contract.json" \
+      --quality-outcome "docs/reports/quality_outcome/quality_outcome_metrics_latest.json" \
+      --favorites-benchmark "docs/reports/favorites_ab_benchmark.json" \
+      --champion-shadow "docs/reports/ml_shadow/champion_challenger_latest.json" \
+      --out-json "docs/reports/stream_quality/stream_quality_latest.json" \
+      --out-md "docs/reports/stream_quality/stream_quality_latest.md") || {
+        echo "Ошибка: Stream quality matrix gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
