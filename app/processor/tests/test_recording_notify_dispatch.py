@@ -26,11 +26,21 @@ class TestRecordingNotifyDispatch(unittest.TestCase):
     def test_notifies_each_species_once_with_video_link(self):
         api = MagicMock()
         detections = [
-            {"species_name": "Robin", "confidence": 0.9, "notification_eligible": True},
-            {"species_name": "Robin", "confidence": 0.8, "notification_eligible": True},
+            {
+                "species_name": "Robin",
+                "confidence": 0.9,
+                "notification_eligible": True,
+            },
+            {
+                "species_name": "Robin",
+                "confidence": 0.8,
+                "notification_eligible": True,
+            },
         ]
 
-        with patch("recording_notify_dispatch.write_notify_preview_activity") as write_log:
+        with patch(
+            "recording_notify_dispatch.write_notify_preview_activity"
+        ) as write_log:
             notify_unique_species(
                 api,
                 _Config({"processor.min_confidence_to_notify": 0.5}),
@@ -51,17 +61,25 @@ class TestRecordingNotifyDispatch(unittest.TestCase):
 
     def test_suppresses_low_confidence(self):
         api = MagicMock()
+        encode = MagicMock(return_value=("img", "best_frame"))
 
         notify_unique_species(
             api,
             _Config({"processor.min_confidence_to_notify": 0.95}),
-            video_detections=[{"species_name": "Robin", "confidence": 0.9, "notification_eligible": True}],
+            video_detections=[
+                {
+                    "species_name": "Robin",
+                    "confidence": 0.9,
+                    "notification_eligible": True,
+                }
+            ],
             video_output="/tmp/video.mp4",
             video_id=42,
-            encode_func=lambda _d, _v: ("img", "best_frame"),
+            encode_func=encode,
         )
 
         api.notify_species.assert_not_called()
+        encode.assert_not_called()
 
     def test_skips_when_preview_missing(self):
         api = MagicMock()
@@ -69,7 +87,13 @@ class TestRecordingNotifyDispatch(unittest.TestCase):
         notify_unique_species(
             api,
             _Config({"processor.min_confidence_to_notify": 0.5}),
-            video_detections=[{"species_name": "Robin", "confidence": 0.9, "notification_eligible": True}],
+            video_detections=[
+                {
+                    "species_name": "Robin",
+                    "confidence": 0.9,
+                    "notification_eligible": True,
+                }
+            ],
             video_output="/tmp/video.mp4",
             video_id=None,
             encode_func=lambda _d, _v: (None, "missing"),

@@ -24,23 +24,32 @@ def notify_unique_species(
     video_id: Any,
     encode_func: Callable[[dict, str], tuple[str | None, str]] | None = None,
 ) -> None:
-    """Notify once per species with eligible detections and generated previews."""
-    encode = encode_notify_preview_base64 if encode_func is None else encode_func
+    """Notify once per species with eligible detections."""
+    encode = (
+        encode_notify_preview_base64
+        if encode_func is None
+        else encode_func
+    )
+    min_notify = resolve_min_confidence_to_notify(config)
     seen = set()
     seen_profiles = set()
     for detection in video_detections:
-        species = detection.get("species_name") or detection.get("species") or ""
+        species = (
+            detection.get("species_name")
+            or detection.get("species")
+            or ""
+        )
         if not species or species in seen:
             continue
         seen.add(species)
-        nickname = str(detection.get("individual_nickname") or "").strip().lower()
+        nickname = str(
+            detection.get("individual_nickname") or ""
+        ).strip().lower()
         first_profile_in_clip = False
         if nickname:
             if nickname not in seen_profiles:
                 first_profile_in_clip = True
             seen_profiles.add(nickname)
-        image_base64, preview_source = encode(detection, video_output)
-        min_notify = resolve_min_confidence_to_notify(config)
         suppress_reason = notify_suppression_reason(detection, min_notify)
         if suppress_reason is None:
             suppress_reason = smart_alert_suppression_reason(
@@ -60,22 +69,28 @@ def notify_unique_species(
             "smart_alert_not_rare",
             "smart_alert_not_first_profile",
         }:
-            logging.info("Notify suppressed for %s: %s", species, suppress_reason)
+            logging.info(
+                "Notify suppressed for %s: %s",
+                species,
+                suppress_reason,
+            )
             continue
+        if suppress_reason == "low_confidence":
+            logging.info(
+                "Notify suppressed for %s: confidence=%.3f < "
+                "processor.min_confidence_to_notify=%.3f",
+                species,
+                float(detection.get("confidence") or 0.0),
+                min_notify,
+            )
+            continue
+        image_base64, preview_source = encode(detection, video_output)
         if image_base64 is None:
             logging.info(
                 "Notify %s without photo: no preview (provider=%s, source=%s)",
                 species,
                 detection.get("detection_provider", "unknown"),
                 preview_source,
-            )
-            continue
-        if suppress_reason == "low_confidence":
-            logging.info(
-                "Notify suppressed for %s: confidence=%.3f < processor.min_confidence_to_notify=%.3f",
-                species,
-                float(detection.get("confidence") or 0.0),
-                min_notify,
             )
             continue
         logging.info(
