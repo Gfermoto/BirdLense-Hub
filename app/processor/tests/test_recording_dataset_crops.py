@@ -35,7 +35,15 @@ class TestRecordingDatasetCrops(unittest.TestCase):
         save.assert_not_called()
 
     def test_calls_dataset_saver_with_configured_threshold(self):
-        detections = [{"species_name": "Robin"}]
+        detections = [
+            {
+                "species_name": "Robin",
+                "confidence": 0.9,
+                "best_frame": "frame",
+                "start_time": 0.0,
+                "end_time": 1.0,
+            }
+        ]
         with patch("recording_dataset_crops._save_dataset_crops") as save:
             maybe_save_dataset_crops(
                 _Config(
@@ -56,6 +64,63 @@ class TestRecordingDatasetCrops(unittest.TestCase):
             min_confidence=0.7,
             video_output_path="/tmp/video.mp4",
         )
+
+    def test_skips_when_no_crop_candidates_after_prefilter(self):
+        detections = [
+            {
+                "species_name": "Robin",
+                "confidence": 0.9,
+                "best_frame": None,
+                "frames": [],
+                "start_time": 0.0,
+                "end_time": 1.0,
+            },
+            {
+                "species_name": "Sparrow",
+                "confidence": 0.4,
+                "best_frame": "frame",
+            },
+        ]
+        with patch("recording_dataset_crops._save_dataset_crops") as save:
+            maybe_save_dataset_crops(
+                _Config({"processor.save_dataset_crops": True}),
+                video_id=12,
+                video_detections=detections,
+                data_dir="/tmp/data",
+                video_output="/tmp/video.mp4",
+            )
+        save.assert_not_called()
+
+    def test_prefilter_keeps_only_eligible_candidates(self):
+        detections = [
+            {
+                "species_name": "Robin",
+                "confidence": 0.91,
+                "best_frame": "frame",
+                "frames": [],
+                "start_time": 0.0,
+                "end_time": 1.0,
+            },
+            {
+                "species_name": "Sparrow",
+                "confidence": 0.1,
+                "best_frame": "frame",
+                "start_time": 0.0,
+                "end_time": 1.0,
+            },
+        ]
+        with patch("recording_dataset_crops._save_dataset_crops") as save:
+            maybe_save_dataset_crops(
+                _Config({"processor.save_dataset_crops": True}),
+                video_id=77,
+                video_detections=detections,
+                data_dir="/tmp/data",
+                video_output="/tmp/video.mp4",
+            )
+        save.assert_called_once()
+        args = save.call_args.args
+        self.assertEqual(len(args[0]), 1)
+        self.assertEqual(args[0][0]["species_name"], "Robin")
 
 
 if __name__ == "__main__":
