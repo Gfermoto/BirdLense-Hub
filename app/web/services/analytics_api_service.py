@@ -212,6 +212,8 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             f"""
             SELECT
               created_at,
+              yolo_raw_boxes_total,
+              session_extended_by_frigate_only,
               {latency_col_expr},
               {finalize_duration_col_expr},
               payload_json
@@ -230,6 +232,8 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
     ingest_empty_contract_events = 0
     ingest_pruned_rows_total = 0
     ingest_pruned_frames_total = 0
+    ingest_pruned_rows_total_7d = 0
+    frigate_catches_missed_birds_sessions = 0
     fallback_sessions = 0
     total_sessions = 0
     for row in runtime_rows:
@@ -282,6 +286,10 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             pass
         if int(payload.get("session_extended_by_frigate_only") or 0) > 0:
             fallback_sessions += 1
+        yolo_raw_total = int(row.get("yolo_raw_boxes_total") or 0)
+        frigate_only_total = int(row.get("session_extended_by_frigate_only") or 0)
+        if frigate_only_total > 0 and yolo_raw_total == 0:
+            frigate_catches_missed_birds_sessions += 1
 
     try:
         ingest_rows = db.session.execute(
@@ -314,6 +322,33 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             )
         elif reason == "video_bbox_track_contract_empty":
             ingest_empty_contract_events += 1
+    try:
+        ingest_rows_7d = db.session.execute(
+            text(
+                """
+                SELECT data
+                FROM activity_log
+                WHERE type = 'ingest_gate'
+                  AND datetime(created_at) >= datetime('now', '-168 hours')
+                ORDER BY id DESC
+                LIMIT 2000
+                """
+            ),
+        ).mappings()
+    except Exception:
+        ingest_rows_7d = []
+    for row in ingest_rows_7d:
+        try:
+            payload = json.loads(str(row.get("data") or "{}"))
+        except Exception:
+            payload = {}
+        reason = str(payload.get("reason") or "").strip().lower()
+        if reason != "video_bbox_track_contract_pruned":
+            continue
+        ingest_pruned_rows_total_7d += int(
+            payload.get("dropped_missing_frames") or 0
+        )
+        ingest_pruned_rows_total_7d += int(payload.get("dropped_empty_bbox") or 0)
 
     heal_rows = db.session.execute(
         text(
@@ -394,6 +429,15 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
         if finalize_durations_ms
         else None
     )
+    ingest_pruned_rows_per_hour = (
+        float(ingest_pruned_rows_total) / float(max(1, h))
+    )
+    ingest_pruned_rows_per_hour_7d_baseline = (
+        float(ingest_pruned_rows_total_7d) / float(24 * 7)
+    )
+    ingest_pruned_rows_per_hour_delta_vs_7d = (
+        ingest_pruned_rows_per_hour - ingest_pruned_rows_per_hour_7d_baseline
+    )
     return {
         "window_hours": h,
         "health_kpis": {
@@ -429,6 +473,30 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             "ingest_bbox_contract_pruned_rows_per_session": (
                 round(
                     float(ingest_pruned_rows_total) / float(total_sessions),
+                    4,
+                )
+                if total_sessions > 0
+                else None
+            ),
+            "ingest_bbox_contract_pruned_rows_per_hour": round(
+                ingest_pruned_rows_per_hour,
+                4,
+            ),
+            "ingest_bbox_contract_pruned_rows_per_hour_7d_baseline": round(
+                ingest_pruned_rows_per_hour_7d_baseline,
+                4,
+            ),
+            "ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d": round(
+                ingest_pruned_rows_per_hour_delta_vs_7d,
+                4,
+            ),
+            "frigate_catches_missed_birds_sessions": int(
+                frigate_catches_missed_birds_sessions
+            ),
+            "frigate_catches_missed_birds_rate": (
+                round(
+                    float(frigate_catches_missed_birds_sessions)
+                    / float(total_sessions),
                     4,
                 )
                 if total_sessions > 0

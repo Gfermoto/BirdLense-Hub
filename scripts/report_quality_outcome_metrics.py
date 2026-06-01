@@ -69,6 +69,8 @@ def _load_rows(db_path: Path, lookback_hours: int) -> list[sqlite3.Row]:
                   yolo_blind_confirmed,
                   yolo_frames_ran,
                   yolo_frames_with_tracks,
+                  yolo_raw_boxes_total,
+                  session_extended_by_frigate_only,
                   rejected_decision_rows,
                   {latency_col},
                   {track_col},
@@ -119,6 +121,7 @@ def evaluate(
     thresholds: dict[str, float],
     *,
     ingest_gate_rows: list[sqlite3.Row] | None = None,
+    ingest_gate_rows_7d: list[sqlite3.Row] | None = None,
 ) -> dict[str, Any]:
     sessions_total = len(rows)
     sessions_with_yolo = 0
@@ -133,12 +136,17 @@ def evaluate(
     ingest_empty_contract_events = 0
     ingest_pruned_rows_total = 0
     ingest_pruned_frames_total = 0
+    frigate_catches_missed_birds_sessions = 0
 
     for row in rows:
         yolo_ran = _safe_int(row["yolo_frames_ran"])
         yolo_tracks = _safe_int(row["yolo_frames_with_tracks"])
+        yolo_raw_total = _safe_int(row["yolo_raw_boxes_total"])
+        frigate_only = _safe_int(row["session_extended_by_frigate_only"])
         sessions_with_yolo += 1 if yolo_ran > 0 else 0
         sessions_with_tracks += 1 if yolo_tracks > 0 else 0
+        if frigate_only > 0 and yolo_raw_total == 0:
+            frigate_catches_missed_birds_sessions += 1
         blind_confirmed += (
             1 if _safe_int(row["yolo_blind_confirmed"]) > 0 else 0
         )
@@ -209,6 +217,24 @@ def evaluate(
         elif reason == "video_bbox_track_contract_empty":
             ingest_empty_contract_events += 1
 
+    ingest_pruned_rows_total_7d = 0
+    for row in ingest_gate_rows_7d or []:
+        payload = {}
+        raw_data = row["data"]
+        if isinstance(raw_data, str) and raw_data.strip():
+            try:
+                parsed = json.loads(raw_data)
+                if isinstance(parsed, dict):
+                    payload = parsed
+            except json.JSONDecodeError:
+                payload = {}
+        reason = str(payload.get("reason") or "").strip().lower()
+        if reason != "video_bbox_track_contract_pruned":
+            continue
+        ingest_pruned_rows_total_7d += _safe_int(
+            payload.get("dropped_missing_frames")
+        ) + _safe_int(payload.get("dropped_empty_bbox"))
+
     blind_rate = (
         (blind_confirmed / sessions_total) if sessions_total > 0 else 1.0
     )
@@ -224,6 +250,21 @@ def evaluate(
     )
     latency_p95 = _percentile(latency_samples, 95.0)
     finalize_duration_p95_ms = _percentile(finalize_duration_samples, 95.0)
+    frigate_catches_missed_birds_rate = (
+        (frigate_catches_missed_birds_sessions / sessions_total)
+        if sessions_total > 0
+        else 0.0
+    )
+    lookback_hours = int(thresholds["lookback_hours"])
+    current_pruned_rows_per_hour = (
+        float(ingest_pruned_rows_total) / float(max(1, lookback_hours))
+    )
+    baseline_pruned_rows_per_hour_7d = (
+        float(ingest_pruned_rows_total_7d) / float(24 * 7)
+    )
+    ingest_pruned_rows_per_hour_delta_vs_7d = (
+        current_pruned_rows_per_hour - baseline_pruned_rows_per_hour_7d
+    )
 
     errors: list[str] = []
     if sessions_total <= 0:
@@ -256,11 +297,21 @@ def evaluate(
             "min_yolo_frames_with_tracks="
             f"{int(thresholds['min_yolo_frames_with_tracks'])}"
         )
+    if (
+        ingest_pruned_rows_per_hour_delta_vs_7d
+        > thresholds["max_ingest_pruned_rows_per_hour_delta_vs_7d"]
+    ):
+        errors.append(
+            "ingest_pruned_rows_per_hour_delta_vs_7d="
+            f"{ingest_pruned_rows_per_hour_delta_vs_7d:.6f} > "
+            "max_ingest_pruned_rows_per_hour_delta_vs_7d="
+            f"{thresholds['max_ingest_pruned_rows_per_hour_delta_vs_7d']:.6f}"
+        )
 
     return {
         "schema": "quality_outcome_metrics@v1",
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "window_hours": int(thresholds["lookback_hours"]),
+        "window_hours": lookback_hours,
         "metrics": {
             "sessions_total": int(sessions_total),
             "sessions_with_yolo": int(sessions_with_yolo),
@@ -292,6 +343,21 @@ def evaluate(
                 if sessions_total <= 0
                 else float(round(ingest_pruned_rows_total / sessions_total, 6))
             ),
+            "ingest_bbox_contract_pruned_rows_per_hour": float(
+                round(current_pruned_rows_per_hour, 6)
+            ),
+            "ingest_bbox_contract_pruned_rows_per_hour_7d_baseline": float(
+                round(baseline_pruned_rows_per_hour_7d, 6)
+            ),
+            "ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d": float(
+                round(ingest_pruned_rows_per_hour_delta_vs_7d, 6)
+            ),
+            "frigate_catches_missed_birds_sessions": int(
+                frigate_catches_missed_birds_sessions
+            ),
+            "frigate_catches_missed_birds_rate": float(
+                round(frigate_catches_missed_birds_rate, 6)
+            ),
         },
         "thresholds": {
             "max_blind_rate": float(thresholds["max_blind_rate"]),
@@ -299,6 +365,9 @@ def evaluate(
             "max_empty_bbox_rate": float(thresholds["max_empty_bbox_rate"]),
             "min_yolo_frames_with_tracks": int(
                 thresholds["min_yolo_frames_with_tracks"]
+            ),
+            "max_ingest_pruned_rows_per_hour_delta_vs_7d": float(
+                thresholds["max_ingest_pruned_rows_per_hour_delta_vs_7d"]
             ),
         },
         "gate": {
@@ -312,6 +381,12 @@ def _to_md(report: dict[str, Any]) -> str:
     metrics = report.get("metrics") or {}
     gate = report.get("gate") or {}
     thresholds = report.get("thresholds") or {}
+    ingest_rows_per_hour_7d = metrics.get(
+        "ingest_bbox_contract_pruned_rows_per_hour_7d_baseline"
+    )
+    ingest_rows_per_hour_delta = metrics.get(
+        "ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d"
+    )
     lines = [
         "# Quality Outcome Metrics",
         "",
@@ -340,6 +415,16 @@ def _to_md(report: dict[str, Any]) -> str:
         f"`{metrics.get('ingest_bbox_contract_pruned_frames_total')}`",
         "- ingest_bbox_contract_pruned_rows_per_session: "
         f"`{metrics.get('ingest_bbox_contract_pruned_rows_per_session')}`",
+        "- ingest_bbox_contract_pruned_rows_per_hour: "
+        f"`{metrics.get('ingest_bbox_contract_pruned_rows_per_hour')}`",
+        "- ingest_bbox_contract_pruned_rows_per_hour_7d_baseline: "
+        f"`{ingest_rows_per_hour_7d}`",
+        "- ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d: "
+        f"`{ingest_rows_per_hour_delta}`",
+        "- frigate_catches_missed_birds_sessions: "
+        f"`{metrics.get('frigate_catches_missed_birds_sessions')}`",
+        "- frigate_catches_missed_birds_rate: "
+        f"`{metrics.get('frigate_catches_missed_birds_rate')}`",
         "",
         "## Thresholds",
         "",
@@ -348,6 +433,8 @@ def _to_md(report: dict[str, Any]) -> str:
         f"- max_empty_bbox_rate: `{thresholds.get('max_empty_bbox_rate')}`",
         "- min_yolo_frames_with_tracks: "
         f"`{thresholds.get('min_yolo_frames_with_tracks')}`",
+        "- max_ingest_pruned_rows_per_hour_delta_vs_7d: "
+        f"`{thresholds.get('max_ingest_pruned_rows_per_hour_delta_vs_7d')}`",
     ]
     errors = list((gate.get("errors") or []))
     if errors:
@@ -370,6 +457,11 @@ def _args() -> argparse.Namespace:
     parser.add_argument("--min-tracks-coverage", type=float, default=0.50)
     parser.add_argument("--max-empty-bbox-rate", type=float, default=0.20)
     parser.add_argument("--min-yolo-frames-with-tracks", type=int, default=1)
+    parser.add_argument(
+        "--max-ingest-pruned-rows-per-hour-delta-vs-7d",
+        type=float,
+        default=0.0,
+    )
     parser.add_argument(
         "--out-json",
         default=(
@@ -405,13 +497,22 @@ def main() -> int:
         "min_yolo_frames_with_tracks": float(
             max(0, args.min_yolo_frames_with_tracks)
         ),
+        "max_ingest_pruned_rows_per_hour_delta_vs_7d": float(
+            max(0.0, args.max_ingest_pruned_rows_per_hour_delta_vs_7d)
+        ),
     }
     rows = _load_rows(db_path, int(thresholds["lookback_hours"]))
     ingest_gate_rows = _load_ingest_gate_rows(
         db_path,
         int(thresholds["lookback_hours"]),
     )
-    report = evaluate(rows, thresholds, ingest_gate_rows=ingest_gate_rows)
+    ingest_gate_rows_7d = _load_ingest_gate_rows(db_path, 24 * 7)
+    report = evaluate(
+        rows,
+        thresholds,
+        ingest_gate_rows=ingest_gate_rows,
+        ingest_gate_rows_7d=ingest_gate_rows_7d,
+    )
 
     out_json = Path(args.out_json).expanduser()
     if not out_json.is_absolute():

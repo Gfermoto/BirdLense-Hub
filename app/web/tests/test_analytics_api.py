@@ -93,4 +93,15 @@ def test_analytics_quality_health_contract(client, app):
     assert "finalize_duration_p95_ms" in body["health_kpis"]
     assert "ingest_bbox_contract_pruned_events" in body["health_kpis"]
     assert "ingest_bbox_contract_empty_events" in body["health_kpis"]
+    assert "ingest_bbox_contract_pruned_rows_per_hour" in body["health_kpis"]
+    assert (
+        "ingest_bbox_contract_pruned_rows_per_hour_7d_baseline"
+        in body["health_kpis"]
+    )
+    assert (
+        "ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d"
+        in body["health_kpis"]
+    )
+    assert "frigate_catches_missed_birds_sessions" in body["health_kpis"]
+    assert "frigate_catches_missed_birds_rate" in body["health_kpis"]
     assert "recent_events" in body
