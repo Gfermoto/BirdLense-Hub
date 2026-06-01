@@ -619,6 +619,7 @@ export interface OverviewStats {
   busiestHour: number;
   avgVisitDuration: number;
   detectionByProvider?: Record<string, number>;
+  triggerBySource?: Record<string, number>;
 }
 
 export interface OverviewLastDetection {

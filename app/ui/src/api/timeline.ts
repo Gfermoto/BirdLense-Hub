@@ -29,9 +29,7 @@ export const fetchTimelineForObserverDate = async (
       | 'opencv'
       | 'frigate'
       | 'motion_sensor'
-      | 'scales'
-      | 'track_regen'
-      | 'unknown';
+      | 'scales';
   },
 ): Promise<SpeciesVisit[]> => {
   const response = await axios.get(`${BASE_API_URL}/timeline`, {
@@ -89,9 +87,7 @@ export const exportTimelineForObserverDate = async (
       | 'opencv'
       | 'frigate'
       | 'motion_sensor'
-      | 'scales'
-      | 'track_regen'
-      | 'unknown';
+      | 'scales';
   },
 ): Promise<void> => {
   const params = new URLSearchParams({

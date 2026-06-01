@@ -36,7 +36,6 @@ import { overviewHelpConfig } from '../../page-help-config';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import type { Weather } from '../../types';
-import { detectionProviderLabel } from '../../util/detectionProviderLabel';
 
 const formatHour = (hour: number) => {
   return `${String(hour).padStart(2, '0')}:00`;
@@ -111,8 +110,17 @@ export const Overview = () => {
 
   const stats = overviewData?.stats;
   const topSpecies = overviewData?.topSpecies ?? [];
-  const detectionByProvider = stats?.detectionByProvider ?? {};
-  const hasDetectionByProvider = Object.keys(detectionByProvider).length > 0;
+  const triggerBySource = stats?.triggerBySource ?? {};
+  const hasTriggerBySource = Object.keys(triggerBySource).length > 0;
+  const triggerSourceLabel = (source: string): string => {
+    const key = String(source || '').trim().toLowerCase();
+    if (key === 'opencv') return t('timeline.triggerSourceOpencv');
+    if (key === 'frigate') return t('timeline.triggerSourceFrigate');
+    if (key === 'motion_sensor') return t('timeline.triggerSourceMotionSensor');
+    if (key === 'scales') return t('timeline.triggerSourceScales');
+    if (key === 'all') return t('timeline.triggerSourceAll');
+    return key || t('timeline.triggerSourceUnknown');
+  };
 
   return (
     <Box sx={{ pb: 4 }}>
@@ -270,7 +278,7 @@ export const Overview = () => {
               />
             </Grid>
           </Grid>
-          {hasDetectionByProvider && (
+          {hasTriggerBySource && (
             <Paper sx={{ p: 2, mt: 2 }}>
               <Typography
                 component="p"
@@ -310,18 +318,11 @@ export const Overview = () => {
                 </Typography>
               )}
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-                {Object.entries(detectionByProvider).map(
-                  ([provider, count]) => (
-                    <Typography key={provider} variant="body2">
-                      <strong>
-                        {detectionProviderLabel(t, provider, {
-                          technical: canEdit,
-                        })}
-                      </strong>
-                      : {count}
-                    </Typography>
-                  ),
-                )}
+                {Object.entries(triggerBySource).map(([source, count]) => (
+                  <Typography key={source} variant="body2">
+                    <strong>{triggerSourceLabel(source)}</strong>: {count}
+                  </Typography>
+                ))}
               </Box>
             </Paper>
           )}
