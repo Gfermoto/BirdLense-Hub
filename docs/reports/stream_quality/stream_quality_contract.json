@@ -1,0 +1,51 @@
+{
+  "schema": "stream_quality_contract@v1",
+  "detector": {
+    "required_metrics": [
+      "precision",
+      "recall",
+      "fp_hour",
+      "fn_hour"
+    ],
+    "thresholds": {
+      "min_precision": 0.0,
+      "min_recall": 0.0,
+      "max_fp_hour": 1000000.0,
+      "max_fn_hour": 1000000.0
+    }
+  },
+  "classifier": {
+    "required_metrics": [
+      "top1",
+      "top3",
+      "macro_f1",
+      "ece"
+    ],
+    "thresholds": {
+      "min_top1": 0.0,
+      "min_top3": 0.0,
+      "min_macro_f1": 0.0,
+      "max_ece": 1.0
+    }
+  },
+  "behavior": {
+    "required_metrics": [
+      "class_f1",
+      "temporal_consistency"
+    ],
+    "thresholds": {
+      "min_class_f1": 0.0,
+      "min_temporal_consistency": 0.0
+    }
+  },
+  "reid": {
+    "required_metrics": [
+      "link_accuracy",
+      "id_switches"
+    ],
+    "thresholds": {
+      "min_link_accuracy": 0.9,
+      "max_id_switches": 0
+    }
+  }
+}
