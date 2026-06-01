@@ -44,6 +44,25 @@ def _marker_missing(path: Path, markers: list[str]) -> list[str]:
     return missing
 
 
+def _parse_uplift_f1(row: dict[str, Any], evidence_path: Path | None) -> float | None:
+    raw = row.get("uplift_f1")
+    if raw is not None:
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            pass
+    if evidence_path is None or not evidence_path.is_file():
+        return None
+    for line in evidence_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line.startswith("- uplift_f1:"):
+            try:
+                return float(line.split(":", 1)[1].strip())
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
 def evaluate_domain_finetune_loop(
     *,
     contract: dict[str, Any],
@@ -70,11 +89,19 @@ def evaluate_domain_finetune_loop(
     require_rollback_ready_evidence = bool(
         contract.get("require_rollback_ready_evidence", True)
     )
+    try:
+        min_uplift_f1 = float(contract.get("min_uplift_f1") or 0.0)
+    except (TypeError, ValueError):
+        min_uplift_f1 = 0.0
+    block_promote_on_weak_uplift = bool(
+        contract.get("block_promote_on_weak_uplift", True)
+    )
 
     candidate_history: dict[str, dict[str, Any]] = {}
     evidence_missing_files: list[str] = []
     evidence_missing_markers: dict[str, list[str]] = {}
     rollback_not_ready: list[str] = []
+    weak_uplift_promotions: list[str] = []
 
     for row in history_rows:
         candidate_id = str(row.get("candidate_id") or "").strip()
@@ -94,10 +121,21 @@ def evaluate_domain_finetune_loop(
             text = evidence_path.read_text(encoding="utf-8")
             if "rollback_ready: true" not in text:
                 rollback_not_ready.append(candidate_id)
+        uplift_f1 = _parse_uplift_f1(row, evidence_path)
+        promoted = bool(row.get("promoted"))
+        if (
+            block_promote_on_weak_uplift
+            and promoted
+            and min_uplift_f1 > 0.0
+            and (uplift_f1 is None or uplift_f1 < min_uplift_f1)
+        ):
+            weak_uplift_promotions.append(candidate_id)
         candidate_history[candidate_id] = {
             "evidence_path": evidence_rel,
             "shadow_passed": bool(row.get("shadow_passed")),
             "unsafe_promotion": bool(row.get("unsafe_promotion")),
+            "promoted": promoted,
+            "uplift_f1": uplift_f1,
         }
 
     missing_required_candidates = sorted(
@@ -123,6 +161,7 @@ def evaluate_domain_finetune_loop(
         "evidence_files_ok": len(evidence_missing_files) == 0,
         "evidence_markers_ok": len(evidence_missing_markers) == 0,
         "rollback_ready_ok": len(rollback_not_ready) == 0,
+        "promote_uplift_ok": len(weak_uplift_promotions) == 0,
     }
     return {
         "schema": "domain_finetune_loop_report@v1",
@@ -133,12 +172,14 @@ def evaluate_domain_finetune_loop(
             "history_candidates_total": len(candidate_history),
             "champion_shadow_schema": champion_shadow.get("schema"),
             "acceptance_gate_schema": acceptance_gate.get("schema"),
+            "min_uplift_f1": min_uplift_f1,
         },
         "drift": {
             "missing_required_candidates": missing_required_candidates,
             "evidence_missing_files": evidence_missing_files,
             "evidence_missing_markers": evidence_missing_markers,
             "rollback_not_ready": rollback_not_ready,
+            "weak_uplift_promotions": weak_uplift_promotions,
         },
         "ok": all(checks.values()),
     }
@@ -183,6 +224,10 @@ def _to_md(report: dict[str, Any]) -> str:
             (
                 "- rollback_not_ready: "
                 f"`{len(drift.get('rollback_not_ready') or [])}`"
+            ),
+            (
+                "- weak_uplift_promotions: "
+                f"`{len(drift.get('weak_uplift_promotions') or [])}`"
             ),
             "",
         ]

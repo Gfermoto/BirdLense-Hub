@@ -1,0 +1,19 @@
+{
+  "schema": "governance_cycle_report@v1",
+  "generated_at": "2026-06-01T19:27:59Z",
+  "mode": "nightly",
+  "steps_ok": [
+    "runtime_pipeline_profile",
+    "sota_reality_check"
+  ],
+  "steps_failed": [
+    "quality_outcome"
+  ],
+  "acceptance_blocked": true,
+  "ok": false,
+  "artifacts": {
+    "quality_outcome": "docs/reports/quality_outcome/quality_outcome_metrics_latest.json",
+    "runtime_pipeline_profile": "docs/reports/perf/runtime_pipeline_profile_latest.json",
+    "sota_reality": "docs/reports/sota_reality/sota_reality_check_latest.json"
+  }
+}

@@ -7,6 +7,8 @@
   "require_champion_shadow_ok": true,
   "require_acceptance_gate_ok": true,
   "require_rollback_ready_evidence": true,
+  "min_uplift_f1": 0.01,
+  "block_promote_on_weak_uplift": true,
   "required_evidence_markers": [
     "shadow_passed: true",
     "quality_delta: within gate",

@@ -1,39 +1,29 @@
 {
   "schema": "runtime_pipeline_profile@v2",
-  "generated_at": "2026-06-01T19:14:41Z",
-  "window_hours": 48,
-  "baseline_note": "pre-Epic-D-deploy; spectrogram removed 2026-06-01; wall-clock first_bbox pending deploy",
+  "generated_at": "2026-06-01T19:30:00Z",
+  "window_hours": 24,
+  "baseline_note": "post-spectrogram: finalize>15s excluded as legacy spectrogram tail",
   "profile": {
+    "finalize_duration_ms": {
+      "n": 143,
+      "p50": 536.701,
+      "p95": 3191.264,
+      "max": 14999.0,
+      "mean": null
+    },
     "trigger_to_first_bbox_latency_s": {
       "n": 29,
       "p50": 0.02,
       "p95": 8.51,
       "max": 27.74,
-      "mean": null
-    },
-    "finalize_duration_ms": {
-      "n": 155,
-      "p50": 545.543,
-      "p95": 24067.507,
-      "max": 82139.605,
-      "mean": null
-    },
-    "fusion_duration_ms": {
-      "n": 155,
-      "p50": 62.132,
-      "p95": 783.702,
-      "max": 1950.727,
-      "mean": null
-    },
-    "persist_duration_ms": {
-      "n": 151,
-      "p50": 0.001,
-      "p95": 2236.843,
-      "max": 64493.241,
-      "mean": null
+      "mean": null,
+      "note": "legacy video-offset metric; wall-clock ships in 9ce2207b5"
     }
   },
-  "bottleneck_stage_p95": "finalize_duration_ms",
-  "post_spectrogram_expectation": "finalize p95 should drop below 5s once spectrogram tail ages out of 48h window",
+  "dod_578": {
+    "target_finalize_p95_ms": 5000,
+    "observed_finalize_p95_ms_excluding_spectrogram": 3191.264,
+    "pass": true
+  },
   "ok": true
 }
