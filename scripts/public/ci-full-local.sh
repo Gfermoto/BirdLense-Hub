@@ -189,6 +189,16 @@ log "Stream quality matrix gate (#557 Stream E)"
   --out-json "docs/reports/stream_quality/stream_quality_latest.json" \
   --out-md "docs/reports/stream_quality/stream_quality_latest.md"
 
+log "Domain closure package gate (#557 final artifacts)"
+"${PYTHON}" "${ROOT}/scripts/verify_domain_closure_package.py" \
+  --contract "docs/reports/domain_finetune/closure_package_contract.json" \
+  --closure-doc "docs/reports/domain_finetune/closure_package_30_60_90.md" \
+  --domain-loop "docs/reports/domain_finetune/domain_finetune_loop_latest.json" \
+  --stream-quality "docs/reports/stream_quality/stream_quality_latest.json" \
+  --champion-shadow "docs/reports/ml_shadow/champion_challenger_latest.json" \
+  --out-json "docs/reports/domain_finetune/closure_package_latest.json" \
+  --out-md "docs/reports/domain_finetune/closure_package_latest.md"
+
 if [[ "${CI_FULL_DOCKER}" != "1" ]]; then
   log "Docker-слой пропущен (CI_FULL_DOCKER=1 для processor+web тестов в образе и E2E smoke)"
   log "Готово (локальный CI без Docker)."
