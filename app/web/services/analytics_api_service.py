@@ -226,6 +226,10 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
     blind_scores: list[float] = []
     first_bbox_latencies: list[float] = []
     finalize_durations_ms: list[float] = []
+    ingest_pruned_events = 0
+    ingest_empty_contract_events = 0
+    ingest_pruned_rows_total = 0
+    ingest_pruned_frames_total = 0
     fallback_sessions = 0
     total_sessions = 0
     for row in runtime_rows:
@@ -279,6 +283,38 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
         if int(payload.get("session_extended_by_frigate_only") or 0) > 0:
             fallback_sessions += 1
 
+    try:
+        ingest_rows = db.session.execute(
+            text(
+                """
+                SELECT data
+                FROM activity_log
+                WHERE type = 'ingest_gate'
+                  AND datetime(created_at) >= datetime('now', :window)
+                ORDER BY id DESC
+                LIMIT 1000
+                """
+            ),
+            {"window": f"-{h} hours"},
+        ).mappings()
+    except Exception:
+        ingest_rows = []
+    for row in ingest_rows:
+        try:
+            payload = json.loads(str(row.get("data") or "{}"))
+        except Exception:
+            payload = {}
+        reason = str(payload.get("reason") or "").strip().lower()
+        if reason == "video_bbox_track_contract_pruned":
+            ingest_pruned_events += 1
+            ingest_pruned_rows_total += int(payload.get("dropped_missing_frames") or 0)
+            ingest_pruned_rows_total += int(payload.get("dropped_empty_bbox") or 0)
+            ingest_pruned_frames_total += int(
+                payload.get("pruned_invalid_bbox_frames") or 0
+            )
+        elif reason == "video_bbox_track_contract_empty":
+            ingest_empty_contract_events += 1
+
     heal_rows = db.session.execute(
         text(
             """
@@ -329,16 +365,32 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
         )
 
     blind_score_current = blind_scores[0] if blind_scores else 0.0
-    blind_score_avg = (sum(blind_scores) / float(len(blind_scores))) if blind_scores else 0.0
-    fallback_ratio = (float(fallback_sessions) / float(total_sessions)) if total_sessions > 0 else 0.0
-    infer_p95_avg = (sum(infer_p95_samples) / float(len(infer_p95_samples))) if infer_p95_samples else None
+    blind_score_avg = (
+        (sum(blind_scores) / float(len(blind_scores)))
+        if blind_scores
+        else 0.0
+    )
+    fallback_ratio = (
+        (float(fallback_sessions) / float(total_sessions))
+        if total_sessions > 0
+        else 0.0
+    )
+    infer_p95_avg = (
+        (sum(infer_p95_samples) / float(len(infer_p95_samples)))
+        if infer_p95_samples
+        else None
+    )
     first_bbox_latency_p95_s = (
-        sorted(first_bbox_latencies)[max(0, int(len(first_bbox_latencies) * 0.95) - 1)]
+        sorted(first_bbox_latencies)[
+            max(0, int(len(first_bbox_latencies) * 0.95) - 1)
+        ]
         if first_bbox_latencies
         else None
     )
     finalize_duration_p95_ms = (
-        sorted(finalize_durations_ms)[max(0, int(len(finalize_durations_ms) * 0.95) - 1)]
+        sorted(finalize_durations_ms)[
+            max(0, int(len(finalize_durations_ms) * 0.95) - 1)
+        ]
         if finalize_durations_ms
         else None
     )
@@ -349,7 +401,11 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             "blind_score_avg": round(blind_score_avg, 4),
             "fallback_ratio": round(fallback_ratio, 4),
             "self_heal_action_counts": action_counts,
-            "inference_latency_p95_ms_avg": round(infer_p95_avg, 2) if infer_p95_avg is not None else None,
+            "inference_latency_p95_ms_avg": (
+                round(infer_p95_avg, 2)
+                if infer_p95_avg is not None
+                else None
+            ),
             "trigger_to_first_bbox_latency_p95_s": (
                 round(float(first_bbox_latency_p95_s), 4)
                 if first_bbox_latency_p95_s is not None
@@ -358,6 +414,24 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             "finalize_duration_p95_ms": (
                 round(float(finalize_duration_p95_ms), 4)
                 if finalize_duration_p95_ms is not None
+                else None
+            ),
+            "ingest_bbox_contract_pruned_events": int(ingest_pruned_events),
+            "ingest_bbox_contract_empty_events": int(
+                ingest_empty_contract_events
+            ),
+            "ingest_bbox_contract_pruned_rows_total": int(
+                ingest_pruned_rows_total
+            ),
+            "ingest_bbox_contract_pruned_frames_total": int(
+                ingest_pruned_frames_total
+            ),
+            "ingest_bbox_contract_pruned_rows_per_session": (
+                round(
+                    float(ingest_pruned_rows_total) / float(total_sessions),
+                    4,
+                )
+                if total_sessions > 0
                 else None
             ),
         },

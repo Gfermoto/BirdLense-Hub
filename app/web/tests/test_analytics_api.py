@@ -91,4 +91,6 @@ def test_analytics_quality_health_contract(client, app):
     assert "health_kpis" in body
     assert "trigger_to_first_bbox_latency_p95_s" in body["health_kpis"]
     assert "finalize_duration_p95_ms" in body["health_kpis"]
+    assert "ingest_bbox_contract_pruned_events" in body["health_kpis"]
+    assert "ingest_bbox_contract_empty_events" in body["health_kpis"]
     assert "recent_events" in body
