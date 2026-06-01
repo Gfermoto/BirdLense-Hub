@@ -97,6 +97,103 @@ def test_processor_videos_all_below_threshold_400(client, proc_headers, monkeypa
     assert "threshold" in err.lower() or "below" in err.lower()
 
 
+def test_processor_videos_rejects_empty_yolo_bbox_rows(
+    client,
+    proc_headers,
+    monkeypatch,
+    tmp_path,
+):
+    from app_config.app_config import app_config
+    from routes import processor_routes
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setitem(
+        app_config.config.setdefault("detection", {}),
+        "min_confidence_to_store",
+        0.05,
+    )
+    body = _base_video_payload("090011b")
+    _touch_video_file(body["video_path"], data_root=str(tmp_path / "data"))
+    body["species"] = [
+        {
+            "species_name": "Great Tit",
+            "confidence": 0.9,
+            "start_time": 0,
+            "end_time": 1,
+            "source": "video",
+            "detection_provider": "yolo",
+            "frames": [],
+        }
+    ]
+    r = client.post("/api/processor/videos", json=body, headers=proc_headers)
+    assert r.status_code == 400
+    payload = r.get_json() or {}
+    assert payload.get("reason") == "video_bbox_track_contract_empty"
+
+
+def test_processor_videos_prunes_invalid_yolo_rows_but_keeps_valid(
+    app,
+    client,
+    proc_headers,
+    monkeypatch,
+    tmp_path,
+):
+    from app_config.app_config import app_config
+    from routes import processor_routes
+    from models import Species, Video, VideoSpecies, db
+    import services.visit_processor as vp_mod
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(
+        vp_mod,
+        "update_species_info_from_wiki",
+        lambda *_a, **_k: None,
+        raising=False,
+    )
+    monkeypatch.setitem(
+        app_config.config.setdefault("detection", {}),
+        "min_confidence_to_store",
+        0.05,
+    )
+    monkeypatch.setitem(app_config.config.setdefault("webhook", {}), "url", "")
+    token = str(id(app))[-6:].zfill(6)
+    body = _base_video_payload(f"{token}a")
+    _touch_video_file(body["video_path"], data_root=str(tmp_path / "data"))
+    body["species"] = [
+        {
+            "species_name": f"Pytest Invalid {token}",
+            "confidence": 0.9,
+            "start_time": 0,
+            "end_time": 1,
+            "source": "video",
+            "detection_provider": "yolo",
+            "frames": [{"t": 0.1, "bbox": [0.2, 0.2, 0.2, 0.4]}],
+        },
+        {
+            "species_name": f"Pytest Valid {token}",
+            "confidence": 0.9,
+            "start_time": 0,
+            "end_time": 1,
+            "source": "video",
+            "detection_provider": "yolo",
+            "frames": [{"t": 0.1, "bbox": [0.1, 0.1, 0.3, 0.3]}],
+        },
+    ]
+    r = client.post("/api/processor/videos", json=body, headers=proc_headers)
+    assert r.status_code == 201, r.get_data(as_text=True)
+    with app.app_context():
+        assert db.session.query(Video).count() == 1
+        assert db.session.query(VideoSpecies).count() == 1
+        species_name = (
+            db.session.query(Species.name)
+            .join(VideoSpecies, VideoSpecies.species_id == Species.id)
+            .scalar()
+        )
+        assert species_name == f"Pytest Valid {token}"
+
+
 def test_processor_videos_rejects_missing_video_file(app, client, proc_headers, monkeypatch, tmp_path):
     from app_config.app_config import app_config
     from routes import processor_routes
