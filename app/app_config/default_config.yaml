@@ -79,6 +79,9 @@ processor:
   # Свежее подтверждение Frigate держит клип «живым» ещё N сек, даже если YOLO на паре кадров молчит.
   # Помогает не обрывать ролик, пока объект ещё реально в кадре.
   frigate_activity_hold_seconds: 6
+  # Ограничение на «Frigate-only» продление в кадрах (0 = без ограничения).
+  # Защита от долгих сессий без raw boxes: после лимита клип больше не продлевается только Frigate-активностью.
+  frigate_only_extension_max_frames: 0
   # Мин. длительность трека ByteTrack (сек). Truth serum: 1s — отсечь мгновенные FP на текстуре корма.
   min_track_duration: 0.6
   # Только офлайн-перегенерация треков: ниже live, иначе короткие визиты и рваные track_id → rejected_short_track и пустые overlays в UI.
@@ -322,9 +325,8 @@ processor:
   # Несколько камер Frigate на одной локации: если один вид с 2+ камер из группы — прибавка к confidence (#153)
   multi_camera_groups: []  # список групп ID камер из Video → Cameras, например: [["cam_a","cam_b"]]
   multi_camera_confidence_boost: 0.03
-  spectrogram_px_per_sec: 200
-  # true — спектрограмма после каждой записи (FFmpeg+librosa). false — только если в окне записи было событие BirdNET MQTT.
-  generate_spectrogram_always: true
+  # true — retention ANALYZE/VACUUM для runtime metrics в фоне, не в hot path finalize worker.
+  runtime_metrics_maintenance_async: true
   # regional_species: [] — без локального сужения classifier scope; YOLO использует все классы
   regional_species: []
   # TrapperAI: все классы модели (0..17). Пустой scope = без фильтра по метке.
@@ -425,6 +427,15 @@ processor:
   finalize_queue_maxsize: 2
   finalize_enqueue_timeout_ms: 1500
   finalize_shutdown_grace_seconds: 120
+  # Runtime latency budgets (D1/D2). Exceeding warn/critical emits detector_health_events.
+  latency_budget_trigger_to_first_bbox_warn_s: 5.0
+  latency_budget_trigger_to_first_bbox_critical_s: 8.0
+  latency_budget_finalize_warn_ms: 5000
+  latency_budget_finalize_critical_ms: 15000
+  latency_budget_fusion_warn_ms: 1200
+  latency_budget_fusion_critical_ms: 3500
+  latency_budget_persist_warn_ms: 1500
+  latency_budget_persist_critical_ms: 5000
   classifier_task_queue_maxsize: 8
   # Детектор-контракт не фиксируется на Bird-only: используем mixed class detector.
   detector_weight_contract: off
@@ -547,6 +558,13 @@ video:
   # detect_stream_name — второй поток Go2RTC для motion + YOLO (как Frigate detect: ниже разрешение и FPS).
   # Detect substream в Go2RTC/Frigate: 704×576@~7fps. Hub: inference_lores_wh [704,576] — без даунскейла в 640².
   cameras: []
+  # Config v2 (slot-centric, для разного числа камер у разных инсталляций):
+  # - camera_profiles: шаблоны (имя/потоки/маски) без привязки к конкретному пользователю.
+  # - camera_slots: фактические камеры (camera_1, camera_2, ...) + binding на profile.
+  # Если camera_slots пустой, runtime автоматически читает legacy video.cameras.
+  camera_profiles: {}
+  camera_profile_bindings: {}
+  camera_slots: []
   # Пример после добавления (ID и имена потоков задаёт пользователь в UI):
   # cameras:
   #   - id: yard_main
@@ -556,6 +574,16 @@ video:
   #   - id: feeder_hd
   #     stream_name: feeder_hd
   #     name: "Кормушка"
+  # Пример slot-конфига:
+  # camera_profiles:
+  #   feeder_closeup:
+  #     detect_stream_name: feeder_detect
+  # camera_slots:
+  #   - slot: camera_1
+  #     profile: feeder_closeup
+  #     id: feeder
+  #     stream_name: feeder_main
+  #     name: "Feeder"
   pre_record_seconds: 5
   auto_reconnect: true
   video_width: 1280

@@ -102,7 +102,7 @@ class API:
         start_time,
         end_time,
         video_path,
-        spectrogram_path,
+        trigger_source=None,
         scales_weight_delta_kg=None,
         behavior_label=None,
         behavior_confidence=None,
@@ -127,8 +127,9 @@ class API:
             "start_time": start_time.isoformat(),
             "end_time": end_time.isoformat(),
             "video_path": video_path,
-            "spectrogram_path": spectrogram_path,
         }
+        if trigger_source is not None and str(trigger_source).strip():
+            video_data["trigger_source"] = str(trigger_source).strip().lower()
         if scales_weight_delta_kg is not None:
             video_data["scales_weight_delta_kg"] = float(scales_weight_delta_kg)
         if behavior_label is not None and str(behavior_label).strip():

@@ -112,7 +112,6 @@ export interface Video {
   start_time: string;
   end_time: string;
   video_path: string;
-  spectrogram_path: string;
   favorite: boolean;
   weather: Weather;
   species: VideoSpecies[];
@@ -291,9 +290,6 @@ export interface Settings {
     save_dataset_crops?: boolean;
     dataset_min_confidence?: number;
     classifier_fallback_bird?: boolean; // Keep generic detector label when classifier stays uncertain
-    spectrogram_px_per_sec: number; // Spectrogram pixels per second
-    /** If true, generate spectrogram for every recording; if false, only when BirdNET MQTT in window */
-    generate_spectrogram_always?: boolean;
     included_bird_families: string[]; // List of bird families to use in detections
     adaptive_profiles?: ProcessorAdaptiveProfiles;
     frame_processing_warn_ms?: number;

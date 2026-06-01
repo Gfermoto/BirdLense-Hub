@@ -4,13 +4,6 @@ from __future__ import annotations
 
 import threading
 
-_regenerate_status = {
-    "status": "idle",
-    "result": None,
-    "error": None,
-    "progress": None,
-}
-_regenerate_lock = threading.Lock()
 _regenerate_tracks_status = {
     "status": "idle",
     "result": None,

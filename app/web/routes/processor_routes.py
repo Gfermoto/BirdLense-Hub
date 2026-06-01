@@ -356,7 +356,6 @@ def register_routes(app):
                 video_path=pv.video_path,
                 idempotency_key=clip_key,
                 ingest_payload_hash=payload_hash,
-                spectrogram_path=pv.spectrogram_path,
                 **fetch_weather(),
             )
             raw_trigger_source = str(data.get("trigger_source") or "").strip().lower()

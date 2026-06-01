@@ -251,8 +251,6 @@ def run_retention(dry_run: bool = False, mode: str = None):
             for v in videos:
                 v.deleted_at = datetime.now(timezone.utc)
                 # keep paths unchanged to avoid NOT NULL violation
-                # (optional: could clear spectrogram_path if nullable)
-                v.spectrogram_path = None
                 deleted_video_ids.add(v.id)
             try:
                 db.session.commit()

@@ -738,19 +738,6 @@ def test_prepare_sqlite_db_backup_rejects_non_sqlite_engine():
     assert code == 400
 
 
-def test_start_bulk_spectrogram_requires_birdnet(monkeypatch):
-    from services import system_admin_api_service as saa
-
-    monkeypatch.setattr(saa, "_birdnet_configured", lambda: False)
-
-    class _FakeApp:
-        pass
-
-    body, code = saa.start_bulk_spectrogram_regeneration(_FakeApp(), {})
-    assert code == 400
-    assert "BirdNET" in body.get("error", "")
-
-
 def test_review_queue_bulk_delete_confirm_mismatch(monkeypatch):
     from unittest.mock import MagicMock
 

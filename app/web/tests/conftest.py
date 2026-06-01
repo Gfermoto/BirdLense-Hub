@@ -100,7 +100,6 @@ def _reset_global_test_state():
         import routes.ui_system_jobs_state as _js
 
         idle = {"status": "idle", "result": None, "error": None, "progress": None}
-        _js._regenerate_status = dict(idle)
         _js._regenerate_tracks_status = dict(idle)
         _js._species_metadata_status = dict(idle)
         _js._catalog_cards_status = dict(idle)

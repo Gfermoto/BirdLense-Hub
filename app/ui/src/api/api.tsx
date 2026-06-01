@@ -76,7 +76,6 @@ export {
   fetchVideoFusionTrace,
   fetchVideoNeighbors,
   mergeVideoSpecies,
-  regenerateSpectrogramForSingleVideo,
   regenerateTracksForSingleVideo,
 } from './video';
 export type {
@@ -224,8 +223,6 @@ export type {
   RefreshSpeciesMetadataResponse,
   ReviewQueueDeletePreview,
   ReviewQueueDeletePreviewVideo,
-  SpectrogramRegenProgress,
-  SpectrogramRegenerationJobStatus,
   TrackRegenProgress,
   TrackRegenerationJobStatus,
   TuningTargetEntry,
@@ -241,7 +238,6 @@ export {
   fetchOverviewData,
   fetchRecentCorrections,
   fetchSpeciesSummary,
-  fetchSpectrogramRegenerationStatus,
   fetchTrackRegenSpeciesOptions,
   fetchTrackRegenerationStatus,
   fetchTuningTargets,

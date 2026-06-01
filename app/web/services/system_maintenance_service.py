@@ -54,7 +54,6 @@ def coerce_duplicate_group_limit(raw: object, default: int = 500) -> tuple[int |
 def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
     """
     Scan data/recordings/ for video.mp4 not in DB and add them.
-    On success may start spectrogram regen thread via app.extensions (if registered).
     """
     if not os.path.exists(recordings_dir()):
         return {"imported": 0, "message": "No recordings directory"}, 200
@@ -111,18 +110,12 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
                                     tzinfo=timezone.utc,
                                 )
                                 end_time = start_time + timedelta(seconds=30)
-                                spectrogram = None
-                                for f in os.listdir(ts_path):
-                                    if f.startswith("spectrogram") and f.endswith(".jpg"):
-                                        spectrogram = f"data/recordings/{year}/{month}/{day}/{ts}/{f}"
-                                        break
 
                                 video = Video(
                                     processor_version="1",
                                     start_time=start_time,
                                     end_time=end_time,
                                     video_path=rel_path,
-                                    spectrogram_path=spectrogram,
                                 )
                                 db.session.add(video)
                             existing_paths.add(rel_path)
@@ -135,21 +128,6 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
         bust_response_caches()
         bust_system_response_caches()
 
-        spectrogram_started = False
-        if imported > 0:
-            run_sg = flask_app.extensions.get("birdlense", {}).get(
-                "run_regenerate_spectrograms",
-            )
-            if run_sg is not None:
-                with job_state._regenerate_lock:
-                    if job_state._regenerate_status["status"] != "running":
-                        threading.Thread(
-                            target=run_sg,
-                            args=(False, None, None, None),
-                            daemon=True,
-                        ).start()
-                        spectrogram_started = True
-
         message = f"Imported {imported} recordings"
         if cleaned_legacy_placeholders:
             message += f"; cleaned {cleaned_legacy_placeholders} legacy placeholders"
@@ -158,7 +136,6 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
             "cleaned_legacy_placeholders": cleaned_legacy_placeholders,
             "cleaned_legacy_visits": cleaned_legacy_visits,
             "message": message,
-            "spectrogramRegenerationStarted": spectrogram_started,
         }, 200
     except Exception:
         db.session.rollback()

@@ -280,7 +280,7 @@ class Video(db.Model):
         default=lambda: uuid.uuid4().hex,
     )
     ingest_payload_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    spectrogram_path: Mapped[str] = mapped_column(String, nullable=True)  # spectrogram image
+    spectrogram_path: Mapped[str | None] = mapped_column(String, nullable=True)  # legacy, unused
     trigger_source: Mapped[str | None] = mapped_column(
         String(32), nullable=True
     )  # opencv|frigate|motion_sensor|scales|track_regen|unknown
@@ -451,6 +451,7 @@ class SessionRuntimeMetrics(db.Model):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     camera_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    camera_slot: Mapped[str | None] = mapped_column(String(64), nullable=True)
     duration_s: Mapped[float | None] = mapped_column(Float, nullable=True)
     frames_seen: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     yolo_frames_ran: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
@@ -474,6 +475,7 @@ class SessionRuntimeMetrics(db.Model):
 
     __table_args__ = (
         Index("ix_session_runtime_metrics_camera_created", "camera_id", desc("created_at")),
+        Index("ix_session_runtime_metrics_slot_created", "camera_slot", desc("created_at")),
         Index("ix_session_runtime_metrics_created", desc("created_at")),
     )
 

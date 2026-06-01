@@ -5,9 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import {
-  fetchSpectrogramRegenerationStatus,
   fetchTrackRegenerationStatus,
-  type SpectrogramRegenerationJobStatus,
   type TrackRegenerationJobStatus,
 } from '../../api/speciesOverviewDetections';
 import {
@@ -15,7 +13,6 @@ import {
   fetchVideoDetectionFrames,
   fetchVideoNeighbors,
   fetchVideoReidMatch,
-  regenerateSpectrogramForSingleVideo,
   regenerateTracksForSingleVideo,
 } from '../../api/video';
 import { queryKeys } from '../../api/queryKeys';
@@ -34,7 +31,6 @@ import LinearProgress from '@mui/material/LinearProgress';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
-import GraphicEqIcon from '@mui/icons-material/GraphicEq';
 import type { Video, VideoSpecies } from '../../types';
 import { VideoInfo } from './VideoInfo';
 import { VideoPlayer } from './VideoPlayer';
@@ -119,19 +115,6 @@ function tailPath(p: string | null | undefined): string {
   const s = String(p).replace(/\\/g, '/');
   const i = s.lastIndexOf('/');
   return i >= 0 ? s.slice(i + 1) : s;
-}
-
-function summarizeSpecRegenJob(
-  st: SpectrogramRegenerationJobStatus | undefined,
-  t: TFunction,
-): { severity: 'success' | 'warning' | 'error'; message: string } | null {
-  if (!st) return null;
-  if (st.status === 'running') return null;
-  if (st.error) return { severity: 'error', message: st.error };
-  if (st.status === 'done') {
-    return { severity: 'success', message: t('video.specRegenDone') };
-  }
-  return { severity: 'warning', message: t('video.regenResultTimeout') };
 }
 
 export const VideoDetails = () => {
@@ -227,13 +210,9 @@ export const VideoDetails = () => {
   const videoIdNum = Number(params.id);
 
   const [followTrackRegen, setFollowTrackRegen] = useState<number | null>(null);
-  const [followSpecRegen, setFollowSpecRegen] = useState<number | null>(null);
   const [trackRegenPollNonce, setTrackRegenPollNonce] = useState(0);
-  const [specRegenPollNonce, setSpecRegenPollNonce] = useState(0);
   const [finishedTrackRegen, setFinishedTrackRegen] =
     useState<TrackRegenerationJobStatus | null>(null);
-  const [finishedSpecRegen, setFinishedSpecRegen] =
-    useState<SpectrogramRegenerationJobStatus | null>(null);
 
   const trackRegenStart = useMutation({
     mutationFn: () => regenerateTracksForSingleVideo(videoIdNum),
@@ -241,15 +220,6 @@ export const VideoDetails = () => {
       setFinishedTrackRegen(null);
       setTrackRegenPollNonce((n) => n + 1);
       setFollowTrackRegen(videoIdNum);
-    },
-  });
-
-  const specRegenStart = useMutation({
-    mutationFn: () => regenerateSpectrogramForSingleVideo(videoIdNum),
-    onSuccess: () => {
-      setFinishedSpecRegen(null);
-      setSpecRegenPollNonce((n) => n + 1);
-      setFollowSpecRegen(videoIdNum);
     },
   });
 
@@ -265,27 +235,11 @@ export const VideoDetails = () => {
     refetchInterval: (q) => (q.state.data?.status === 'running' ? 1000 : false),
   });
 
-  const { data: specRemoteStatus } = useQuery({
-    queryKey: queryKeys.video.specRegenStatusUi(
-      followSpecRegen,
-      specRegenPollNonce,
-    ),
-    queryFn: fetchSpectrogramRegenerationStatus,
-    enabled: followSpecRegen !== null,
-    staleTime: 0,
-    refetchOnMount: 'always',
-    refetchInterval: (q) => (q.state.data?.status === 'running' ? 1000 : false),
-  });
-
   useEffect(() => {
     trackRegenStart.reset();
-    specRegenStart.reset();
     setFollowTrackRegen(null);
-    setFollowSpecRegen(null);
     setTrackRegenPollNonce(0);
-    setSpecRegenPollNonce(0);
     setFinishedTrackRegen(null);
-    setFinishedSpecRegen(null);
     // Только смена ролика. Объекты useMutation() нестабильны по ссылке — если перечислить их
     // в deps, эффект крутится на каждом кадре (reset → ререндер → новый объект → снова effect).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- намеренно только params.id
@@ -308,33 +262,13 @@ export const VideoDetails = () => {
     });
   }, [followTrackRegen, trackRemoteStatus, queryClient, params.id]);
 
-  useEffect(() => {
-    if (followSpecRegen === null) return;
-    const st = specRemoteStatus;
-    if (!st || st.status === 'running') return;
-    setFinishedSpecRegen(st);
-    setFollowSpecRegen(null);
-    void queryClient.invalidateQueries({
-      queryKey: queryKeys.video.detail(String(params.id)),
-    });
-    void queryClient.invalidateQueries({
-      queryKey: queryKeys.timeline.speciesVisitsAll,
-    });
-  }, [followSpecRegen, specRemoteStatus, queryClient, params.id]);
-
   const trackJobSummary = useMemo(
     () =>
       summarizeTrackRegenJob(finishedTrackRegen ?? undefined, videoIdNum, t),
     [finishedTrackRegen, videoIdNum, t],
   );
 
-  const specJobSummary = useMemo(
-    () => summarizeSpecRegenJob(finishedSpecRegen ?? undefined, t),
-    [finishedSpecRegen, t],
-  );
-
   const trackRegenBusy = trackRegenStart.isPending || followTrackRegen !== null;
-  const specRegenBusy = specRegenStart.isPending || followSpecRegen !== null;
 
   const trackProgress = trackRemoteStatus?.progress;
   const yoloFramesDone = trackProgress?.yolo_frames_done;
@@ -362,37 +296,6 @@ export const VideoDetails = () => {
     }
     return t('video.regenerateTracksThisVideoFailed');
   })();
-
-  const specRegenErrorMessage = (() => {
-    const err = specRegenStart.error;
-    if (!err) return null;
-    if (
-      axios.isAxiosError(err) &&
-      err.response?.data &&
-      typeof err.response.data === 'object'
-    ) {
-      const d = err.response.data as { error?: string };
-      if (d.error) return d.error;
-    }
-    return t('video.regenerateSpectrogramThisVideoFailed');
-  })();
-
-  const specProgress = specRemoteStatus?.progress;
-  const specProgressPct =
-    specProgress &&
-    typeof specProgress.total === 'number' &&
-    specProgress.total > 0 &&
-    typeof specProgress.processed === 'number'
-      ? Math.min(
-          100,
-          Math.round((100 * specProgress.processed) / specProgress.total),
-        )
-      : null;
-  const specIndeterminate =
-    !specProgress ||
-    !specProgress.total ||
-    specProgress.total <= 1 ||
-    (specProgress.total === 1 && (specProgress.processed ?? 0) < 1);
 
   const trackProgressPct =
     trackProgress &&
@@ -534,16 +437,6 @@ export const VideoDetails = () => {
                       {trackRegenErrorMessage}
                     </Alert>
                   )}
-                  {specRegenErrorMessage && (
-                    <Alert
-                      severity="error"
-                      variant="outlined"
-                      sx={{ mb: 1 }}
-                      onClose={() => specRegenStart.reset()}
-                    >
-                      {specRegenErrorMessage}
-                    </Alert>
-                  )}
                   {showTracksRegenHint && (
                     <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
                       {t('video.tracksMissingHint')}
@@ -614,42 +507,6 @@ export const VideoDetails = () => {
                         ) : null}
                       </Alert>
                     )}
-                  {followSpecRegen !== null &&
-                    specRemoteStatus?.status === 'running' && (
-                      <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
-                        <LinearProgress
-                          variant={
-                            specIndeterminate ? 'indeterminate' : 'determinate'
-                          }
-                          {...(!specIndeterminate
-                            ? { value: specProgressPct ?? 0 }
-                            : {})}
-                          sx={{ mb: 1 }}
-                        />
-                        <Typography variant="body2" component="div">
-                          {specProgress &&
-                          specProgress.total &&
-                          specProgress.total > 1
-                            ? t('video.specRegenProgressBatch', {
-                                processed: specProgress.processed ?? 0,
-                                total: specProgress.total,
-                              })
-                            : t('video.specRegenProgressSingle')}
-                        </Typography>
-                        {specProgress?.current_video ? (
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            display="block"
-                            sx={{ mt: 0.5 }}
-                          >
-                            {t('video.specRegenProgressFile', {
-                              name: tailPath(specProgress.current_video),
-                            })}
-                          </Typography>
-                        ) : null}
-                      </Alert>
-                    )}
                   {!trackRegenBusy && trackJobSummary && (
                     <Alert
                       severity={trackJobSummary.severity}
@@ -660,16 +517,6 @@ export const VideoDetails = () => {
                       {trackJobSummary.message}
                     </Alert>
                   )}
-                  {!specRegenBusy && specJobSummary && (
-                    <Alert
-                      severity={specJobSummary.severity}
-                      variant="outlined"
-                      sx={{ mb: 1 }}
-                      onClose={() => setFinishedSpecRegen(null)}
-                    >
-                      {specJobSummary.message}
-                    </Alert>
-                  )}
                   <Stack direction="row" flexWrap="wrap" gap={1}>
                     {canRegenTracks && (
                       <Tooltip title={t('video.regenerateTracksThisVideoHelp')}>
@@ -678,7 +525,7 @@ export const VideoDetails = () => {
                             variant="outlined"
                             size="small"
                             onClick={() => trackRegenStart.mutate()}
-                            disabled={trackRegenBusy || specRegenBusy}
+                            disabled={trackRegenBusy}
                           >
                             {trackRegenBusy
                               ? t('video.regenerateTracksThisVideoRunning')
@@ -687,23 +534,6 @@ export const VideoDetails = () => {
                         </span>
                       </Tooltip>
                     )}
-                    <Tooltip
-                      title={t('video.regenerateSpectrogramThisVideoHelp')}
-                    >
-                      <span>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          disabled={trackRegenBusy || specRegenBusy}
-                          startIcon={<GraphicEqIcon fontSize="small" />}
-                          onClick={() => specRegenStart.mutate()}
-                        >
-                          {specRegenBusy
-                            ? t('video.regenerateSpectrogramThisVideoRunning')
-                            : t('video.regenerateSpectrogramThisVideo')}
-                        </Button>
-                      </span>
-                    </Tooltip>
                   </Stack>
                 </Box>
               </AccordionDetails>

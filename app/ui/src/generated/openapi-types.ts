@@ -1156,6 +1156,8 @@ export interface paths {
                     favorite_only?: string;
                     /** @description Same as `favorite_only` (either may be used). */
                     favorites?: string;
+                    /** @description Trigger-layer filter only (not detection provider/source). */
+                    trigger_source?: "all" | "opencv" | "frigate" | "motion_sensor" | "scales" | "unknown";
                 };
                 header?: never;
                 path?: never;
@@ -6944,121 +6946,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/system/regenerate-spectrograms": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Bulk regenerate spectrograms
-         * @description Admin: start batch spectrogram job.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Error */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Error */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/system/regenerate-spectrograms/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Spectrogram batch status
-         * @description Poll batch spectrogram job.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Error */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/system/regenerate-tracks/status": {
         parameters: {
             query?: never;
@@ -7166,7 +7053,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        type: "track_regen" | "spectrogram_regen" | "catalog_repair" | "species_metadata" | "fusion_export" | "fusion_eval" | "telegram_proxy_refresh";
+                        type: "track_regen" | "catalog_repair" | "species_metadata" | "fusion_export" | "fusion_eval" | "telegram_proxy_refresh";
                         payload?: {
                             [key: string]: unknown;
                         };
@@ -7894,58 +7781,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/videos/{video_id}/regenerate-spectrogram": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Regenerate spectrogram
-         * @description Admin: queue spectrogram regeneration for one recording.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    video_id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                /** @description Error */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/videos/{video_id}/regenerate-tracks": {
         parameters: {
             query?: never;
@@ -8499,7 +8334,6 @@ export interface components {
             /** Format: date-time */
             end_time?: string;
             video_path?: string;
-            spectrogram_path?: string;
             favorite?: boolean;
             weather?: {
                 main?: string;
@@ -8596,6 +8430,8 @@ export interface components {
             video_duration_seconds?: number | null;
             /** @enum {string} */
             timeline_kind?: "visit" | "unlinked_video";
+            /** @description Trigger semantics for the visit item (opencv/frigate/motion_sensor/scales/unknown). */
+            trigger_source?: string | null;
             individual_nickname?: string | null;
             /** @description Behavior events produced by behavior recognition model runtime. */
             behavior_events?: {
@@ -8901,9 +8737,6 @@ export interface components {
                 save_dataset_crops?: boolean;
                 dataset_min_confidence?: number;
                 classifier_fallback_bird?: boolean;
-                spectrogram_px_per_sec?: number;
-                /** @description If true, generate spectrogram after every recording; if false, only when BirdNET MQTT in window */
-                generate_spectrogram_always?: boolean;
                 included_bird_families?: string[];
                 adaptive_profiles?: {
                     [key: string]: unknown;

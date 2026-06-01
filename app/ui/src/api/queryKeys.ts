@@ -149,8 +149,6 @@ export const queryKeys = {
     listAll: ['videos'] as const,
     trackRegenStatusUi: (videoId: number | null, nonce: number) =>
       ['track-regen-status-ui', videoId, nonce] as const,
-    specRegenStatusUi: (videoId: number | null, nonce: number) =>
-      ['spec-regen-status-ui', videoId, nonce] as const,
   },
   birdDirectory: {
     all: ['bird-directory'] as const,

@@ -43,11 +43,12 @@ class TestApiClient(unittest.TestCase):
                         isoformat=lambda: '2026-04-15T12:01:00+00:00'
                     ),
                     video_path='data/recordings/test/video.mp4',
-                    spectrogram_path=None,
+                    trigger_source='frigate',
                 )
 
         payload = request_mock.call_args.kwargs['json']
         self.assertEqual(payload['processor_version'], 'wave3-provenance-test')
+        self.assertEqual(payload['trigger_source'], 'frigate')
 
     def test_send_request_tracks_ingest_conflict_reason_metric(self):
         with patch.dict(

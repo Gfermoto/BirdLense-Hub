@@ -13,7 +13,6 @@ from services.species_registry_admin_service import (
     start_repair_catalog_cards,
 )
 from services.system_admin_api_service import (
-    start_bulk_spectrogram_regeneration,
     start_single_video_track_regeneration,
 )
 from services.system_fusion_telegram_jobs_service import (
@@ -32,12 +31,6 @@ _JOB_SPECS: dict[str, dict[str, Any]] = {
         "cancel_attr": "_regenerate_tracks_cancel_requested",
         "password_required": False,
         "admin_track_regen": True,
-    },
-    "spectrogram_regen": {
-        "label": "Spectrogram regeneration",
-        "state_attr": "_regenerate_status",
-        "lock_attr": "_regenerate_lock",
-        "password_required": True,
     },
     "catalog_repair": {
         "label": "Catalog card repair",
@@ -124,10 +117,6 @@ def _start_species_metadata(flask_app: Flask, payload: dict[str, Any]) -> tuple[
     return start_metadata_enrichment(flask_app, payload)
 
 
-def _start_spectrogram_regen(flask_app: Flask, payload: dict[str, Any]) -> tuple[dict[str, Any], int]:
-    return start_bulk_spectrogram_regeneration(flask_app, payload)
-
-
 def _start_fusion_export(flask_app: Flask, payload: dict[str, Any]) -> tuple[dict[str, Any], int]:
     del payload
     return start_fusion_export_background(flask_app)
@@ -144,7 +133,6 @@ def _start_telegram_proxy(flask_app: Flask, payload: dict[str, Any]) -> tuple[di
 
 _STARTERS: dict[str, JobStartFn] = {
     "track_regen": _start_track_regen,
-    "spectrogram_regen": _start_spectrogram_regen,
     "catalog_repair": _start_catalog_repair,
     "species_metadata": _start_species_metadata,
     "fusion_export": _start_fusion_export,

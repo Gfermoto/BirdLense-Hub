@@ -176,10 +176,6 @@ class TestLibraryDatasetFlow:
                 assert r_stats.status_code == 200
                 assert isinstance(r_stats.json, list)
 
-                r_spec_status = client.get("/api/ui/system/regenerate-spectrograms/status")
-                assert r_spec_status.status_code == 200
-                assert "status" in r_spec_status.json
-
                 r_tracks_status = client.get("/api/ui/system/regenerate-tracks/status")
                 assert r_tracks_status.status_code == 200
                 assert "status" in r_tracks_status.json
