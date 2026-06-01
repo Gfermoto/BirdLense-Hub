@@ -244,7 +244,12 @@ export const LivePage = () => {
       (settings as { video?: { cameras?: Array<Record<string, unknown>> } } | undefined)
         ?.video?.cameras || []
     );
-    const camera = all.find((c) => String(c.id || '') === String(cameraId || ''));
+    const camera = all.find((c) => {
+      const id = String(c.id || '').trim();
+      const slot = String(c.camera_slot || '').trim();
+      const target = String(cameraId || '').trim();
+      return id === target || slot === target;
+    });
     const key = layer === 'detector_zones' ? 'detection_interest_zones' : 'opencv_masks';
     return parseTriggerMasks(camera?.[key]);
   };
@@ -291,8 +296,10 @@ export const LivePage = () => {
       (settings as { video?: { cameras?: Array<Record<string, unknown>> } } | undefined)
         ?.video?.cameras || []
     ).map((camera) => {
-      const id = String(camera.id || '');
-      if (id !== String(fullscreenCamId)) {
+      const id = String(camera.id || '').trim();
+      const slot = String(camera.camera_slot || '').trim();
+      const target = String(fullscreenCamId || '').trim();
+      if (id !== target && slot !== target) {
         return camera;
       }
       return {
@@ -398,7 +405,7 @@ export const LivePage = () => {
                 canEdit={isAdmin}
                 onOpenEditor={() => {
                   const initialMasks = getCameraLayerPolygons(cam.id, 'opencv_masks');
-                  setFullscreenCamId(cam.id);
+                  setFullscreenCamId(cam.id || cam.camera_slot || null);
                   setEditorLayer('opencv_masks');
                   setDraftPolygons(initialMasks.map((poly) => [...poly]));
                   setDraftCurrent([]);

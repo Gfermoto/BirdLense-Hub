@@ -13,6 +13,7 @@ from typing import Any, Callable, Optional
 from argparse import Namespace
 
 from app_config.app_config import app_config
+from app_config.cameras import get_valid_cameras
 from app_config.trigger_config import format_trigger_display_line, get_active_trigger_names
 from birdnet_mqtt_confidence import merge_birdnet_mqtt_bias_into_overrides
 from fps_tracker import FPSTracker
@@ -35,7 +36,7 @@ def _camera_processor_overrides(camera_id: str | None) -> dict:
         return {}
     raw = app_config.get(f"processor.camera_overrides.{cam}")
     merged = dict(raw) if isinstance(raw, dict) else {}
-    cameras = app_config.get("video.cameras") or []
+    cameras = get_valid_cameras(video_config=(app_config.get("video") or {}))
     if isinstance(cameras, list):
         for row in cameras:
             if not isinstance(row, dict):
@@ -48,6 +49,19 @@ def _camera_processor_overrides(camera_id: str | None) -> dict:
                 merged["processor.detection_interest_zones_required"] = bool(zones)
             break
     return merged
+
+
+def _camera_slot_for_id(camera_id: str | None) -> str | None:
+    cam = str(camera_id or "").strip()
+    if not cam:
+        return None
+    cameras = get_valid_cameras(video_config=(app_config.get("video") or {}))
+    for row in cameras:
+        if str(row.get("id") or "").strip() != cam:
+            continue
+        slot = str(row.get("camera_slot") or "").strip()
+        return slot or None
+    return None
 
 
 def _classifier_use_source_frame() -> bool:
@@ -297,6 +311,7 @@ class MotionRecordingSession:
             video_output,
         )
         start_time = datetime.now(timezone.utc)
+        session_trigger_perf = time.perf_counter()
 
         trace_writer = None
         try:
@@ -349,6 +364,17 @@ class MotionRecordingSession:
             except (TypeError, ValueError):
                 frigate_hold_seconds = 0.0
             try:
+                max_frigate_only_extension_frames = int(
+                    app_config.get("processor.frigate_only_extension_max_frames")
+                    or 0
+                )
+            except (TypeError, ValueError):
+                max_frigate_only_extension_frames = 0
+            max_frigate_only_extension_frames = max(
+                0,
+                max_frigate_only_extension_frames,
+            )
+            try:
                 none_frame_retries = int(app_config.get("processor.capture_none_frame_retries") or 3)
             except (TypeError, ValueError):
                 none_frame_retries = 3
@@ -367,6 +393,7 @@ class MotionRecordingSession:
                 "yolo_accepted_boxes_total": 0,
                 "low_light_blocked_frames": 0,
                 "session_extended_by_frigate_only": 0,
+                "session_frigate_only_extension_guard_drops": 0,
                 "track_id_switches_count": 0,
                 "avg_track_duration_sec": 0.0,
                 "yolo_blind_phase": "none",
@@ -410,6 +437,22 @@ class MotionRecordingSession:
                 raw_boxes_local = _raw_boxes_from_stats(local_stats)
                 if not count_frame_metrics:
                     return raw_boxes_local
+                if (
+                    raw_boxes_local > 0
+                    and runtime_signals.get("trigger_to_first_bbox_wall_s") is None
+                ):
+                    runtime_signals["trigger_to_first_bbox_wall_s"] = round(
+                        max(0.0, time.perf_counter() - session_trigger_perf),
+                        6,
+                    )
+                if (
+                    local_stats.get("yolo_track_found")
+                    and runtime_signals.get("trigger_to_first_track_wall_s") is None
+                ):
+                    runtime_signals["trigger_to_first_track_wall_s"] = round(
+                        max(0.0, time.perf_counter() - session_trigger_perf),
+                        6,
+                    )
                 if local_stats.get("yolo_ran"):
                     runtime_signals["yolo_frames_ran"] += 1
                     processor_status["last_yolo_ok_at"] = datetime.now(timezone.utc).isoformat()
@@ -531,6 +574,20 @@ class MotionRecordingSession:
                 frigate_only_extension = bool(has_detections and not raw_yolo_detections)
                 if frigate_only_extension:
                     runtime_signals["session_extended_by_frigate_only"] += 1
+                    if (
+                        max_frigate_only_extension_frames > 0
+                        and runtime_signals["session_extended_by_frigate_only"]
+                        > max_frigate_only_extension_frames
+                    ):
+                        runtime_signals["session_frigate_only_extension_guard_drops"] += 1
+                        has_detections = False
+                        frigate_only_extension = False
+                        logger.info(
+                            "recording_session: frigate-only extension guard hit "
+                            "(camera=%s, max_frames=%s)",
+                            camera_id or "_default",
+                            max_frigate_only_extension_frames,
+                        )
                     suspicion_ready = (
                         runtime_signals["yolo_frames_ran"] >= max(1, blind_min_frames)
                         and runtime_signals["yolo_raw_boxes_total"] == 0
@@ -642,6 +699,7 @@ class MotionRecordingSession:
                 "data_dir": self.data_dir,
                 "recording_context": {
                     "triggered_camera": camera_id,
+                    "camera_slot": _camera_slot_for_id(camera_id),
                     "frigate_trigger_event": frigate_trigger_event,
                     "frigate_activity_hold_seconds": frigate_hold_seconds,
                     "triggered_by": getattr(self.motion_detector, "get_triggered_by", lambda: None)(),

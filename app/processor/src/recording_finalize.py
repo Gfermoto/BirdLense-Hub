@@ -120,6 +120,35 @@ def _valid_track_frames(frames: Any) -> list[dict[str, Any]]:
     return out
 
 
+def _runtime_wall_latency_seconds(
+    runtime_signals: dict[str, Any] | None,
+    key: str,
+) -> float | None:
+    if not isinstance(runtime_signals, dict):
+        return None
+    value = _safe_float(runtime_signals.get(key), default=-1.0)
+    return value if value >= 0.0 else None
+
+
+def _resolve_session_latencies(
+    runtime_signals: dict[str, Any] | None,
+    video_detections: list[dict[str, Any]],
+) -> tuple[float | None, float | None, float | None, float | None]:
+    """Wall-clock trigger latencies plus video-timeline offsets from persisted rows."""
+    video_bbox_s, video_track_s = _first_bbox_and_track_latency_seconds(video_detections)
+    wall_bbox_s = _runtime_wall_latency_seconds(
+        runtime_signals,
+        "trigger_to_first_bbox_wall_s",
+    )
+    wall_track_s = _runtime_wall_latency_seconds(
+        runtime_signals,
+        "trigger_to_first_track_wall_s",
+    )
+    trigger_bbox_s = wall_bbox_s if wall_bbox_s is not None else video_bbox_s
+    trigger_track_s = wall_track_s if wall_track_s is not None else video_track_s
+    return trigger_bbox_s, video_bbox_s, trigger_track_s, video_track_s
+
+
 def _first_bbox_and_track_latency_seconds(
     video_detections: list[dict[str, Any]],
 ) -> tuple[float | None, float | None]:
@@ -1106,7 +1135,12 @@ def finalize_motion_recording(
         )
 
     persist_started_ts = time.perf_counter()
+    scales_duration_ms: float | None = None
+    behavior_duration_ms: float | None = None
+    create_video_duration_ms: float | None = None
+    dataset_crops_duration_ms: float | None = None
     if len(video_detections) > 0 and video_file_ok:
+        scales_started_ts = time.perf_counter()
         scales_delta_kg, scales_evidence_update = estimate_recording_scales_delta(
             app_config,
             video_detections,
@@ -1115,18 +1149,27 @@ def finalize_motion_recording(
             start_time=start_time,
             end_time=end_time,
         )
+        scales_duration_ms = round(
+            max(0.0, (time.perf_counter() - scales_started_ts) * 1000.0),
+            3,
+        )
         scales_evidence.update(scales_evidence_update)
         try:
             duration_behavior_s = max(0.0, (end_time - start_time).total_seconds())
         except Exception:
             duration_behavior_s = 0.0
         proc_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        behavior_started_ts = time.perf_counter()
         behavior_bundle = maybe_predict_video_behavior_bundle(
             app_config,
             video_detections,
             duration_s=duration_behavior_s,
             processor_cwd=proc_root,
             video_path=video_path_for_api,
+        )
+        behavior_duration_ms = round(
+            max(0.0, (time.perf_counter() - behavior_started_ts) * 1000.0),
+            3,
         )
         br_cfg = app_config.get("processor.behavior_recognition") or {}
         if not isinstance(br_cfg, dict):
@@ -1145,6 +1188,7 @@ def finalize_motion_recording(
                 if isinstance(d0, dict) and not (d0.get("review_reason") or "").strip():
                     d0["review_reason"] = "behavior_uncertainty"
                     d0["classifier_needs_review"] = True
+        create_video_started_ts = time.perf_counter()
         resp = api.create_video(
             video_detections,
             audio_detections,
@@ -1161,6 +1205,10 @@ def finalize_motion_recording(
             behavior_shadow_confidence=behavior_bundle.get("shadow_confidence"),
             behavior_shadow_model_kind=behavior_bundle.get("shadow_model_kind"),
             behavior_shadow_model_version=behavior_bundle.get("shadow_model_version"),
+        )
+        create_video_duration_ms = round(
+            max(0.0, (time.perf_counter() - create_video_started_ts) * 1000.0),
+            3,
         )
         inc_counter("recording_persisted_total", len(video_detections))
         video_id = response_video_id(resp)
@@ -1197,12 +1245,17 @@ def finalize_motion_recording(
                 )
             except Exception:
                 logging.debug("behavior shadow activity_log skipped", exc_info=True)
+        dataset_crops_started_ts = time.perf_counter()
         maybe_save_dataset_crops(
             app_config,
             video_id=video_id,
             video_detections=video_detections,
             data_dir=get_data_dir(),
             video_output=video_output,
+        )
+        dataset_crops_duration_ms = round(
+            max(0.0, (time.perf_counter() - dataset_crops_started_ts) * 1000.0),
+            3,
         )
         notify_unique_species(
             api,
@@ -1251,9 +1304,12 @@ def finalize_motion_recording(
             blind_score=blind_score,
             blind_score_threshold=blind_score_threshold,
         )
-        first_bbox_latency_s, first_track_latency_s = (
-            _first_bbox_and_track_latency_seconds(video_detections)
-        )
+        (
+            trigger_to_first_bbox_s,
+            first_bbox_latency_s,
+            trigger_to_first_track_s,
+            first_track_latency_s,
+        ) = _resolve_session_latencies(rs, video_detections)
         finalize_duration_ms = round(
             max(0.0, (time.perf_counter() - finalize_started_ts) * 1000.0),
             3,
@@ -1336,10 +1392,14 @@ def finalize_motion_recording(
             "decision_trace_duration_ms": decision_trace_duration_ms,
             "fusion_duration_ms": fusion_duration_ms,
             "persist_duration_ms": persist_duration_ms,
+            "scales_duration_ms": scales_duration_ms,
+            "behavior_duration_ms": behavior_duration_ms,
+            "create_video_duration_ms": create_video_duration_ms,
+            "dataset_crops_duration_ms": dataset_crops_duration_ms,
             "trigger_to_first_bbox_latency_s": (
                 None
-                if first_bbox_latency_s is None
-                else round(float(first_bbox_latency_s), 6)
+                if trigger_to_first_bbox_s is None
+                else round(float(trigger_to_first_bbox_s), 6)
             ),
             "first_bbox_latency_s": (
                 None
@@ -1348,6 +1408,11 @@ def finalize_motion_recording(
             ),
             "first_track_latency_s": (
                 None
+                if trigger_to_first_track_s is None
+                else round(float(trigger_to_first_track_s), 6)
+            ),
+            "video_first_track_latency_s": (
+                None
                 if first_track_latency_s is None
                 else round(float(first_track_latency_s), 6)
             ),
@@ -1355,8 +1420,8 @@ def finalize_motion_recording(
         latency_breaches = _latency_budget_breaches(
             trigger_to_first_bbox_latency_s=(
                 None
-                if first_bbox_latency_s is None
-                else float(first_bbox_latency_s)
+                if trigger_to_first_bbox_s is None
+                else float(trigger_to_first_bbox_s)
             ),
             finalize_duration_ms=(
                 None

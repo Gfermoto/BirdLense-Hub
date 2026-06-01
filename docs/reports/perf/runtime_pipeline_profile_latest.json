@@ -1,0 +1,71 @@
+{
+  "schema": "runtime_pipeline_profile@v2",
+  "generated_at": "2026-06-01T19:14:41Z",
+  "window_hours": 48,
+  "baseline_note": "pre-Epic-D-deploy; spectrogram removed 2026-06-01; wall-clock first_bbox pending deploy",
+  "profile": {
+    "trigger_to_first_bbox_latency_s": {
+      "n": 29,
+      "p50": 0.02,
+      "p95": 8.51,
+      "max": 27.74,
+      "mean": null
+    },
+    "finalize_duration_ms": {
+      "n": 155,
+      "p50": 545.543,
+      "p95": 24067.507,
+      "max": 82139.605,
+      "mean": null
+    },
+    "fusion_duration_ms": {
+      "n": 155,
+      "p50": 62.132,
+      "p95": 783.702,
+      "max": 1950.727,
+      "mean": null
+    },
+    "persist_duration_ms": {
+      "n": 151,
+      "p50": 0.001,
+      "p95": 2236.843,
+      "max": 64493.241,
+      "mean": null
+    },
+    "create_video_duration_ms": {
+      "n": 0,
+      "p50": null,
+      "p95": null,
+      "max": null,
+      "mean": null
+    },
+    "behavior_duration_ms": {
+      "n": 0,
+      "p50": null,
+      "p95": null,
+      "max": null,
+      "mean": null
+    },
+    "scales_duration_ms": {
+      "n": 0,
+      "p50": null,
+      "p95": null,
+      "max": null,
+      "mean": null
+    },
+    "dataset_crops_duration_ms": {
+      "n": 0,
+      "p50": null,
+      "p95": null,
+      "max": null,
+      "mean": null
+    }
+  },
+  "by_slot_finalize_duration_ms": {},
+  "bottleneck_stage_p95": "finalize_duration_ms",
+  "warnings": [
+    "finalize_duration_p95 24067.51ms > 5000.00ms",
+    "first_bbox_latency_p95 8.510s > 5.000s"
+  ],
+  "ok": true
+}

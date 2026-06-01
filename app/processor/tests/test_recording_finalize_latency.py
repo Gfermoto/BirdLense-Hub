@@ -8,10 +8,68 @@ sys.path.insert(0, src_path)
 
 from recording_finalize import (  # noqa: E402
     _first_bbox_and_track_latency_seconds,
+    _latency_budget_breaches,
+    _resolve_session_latencies,
 )
 
 
 class TestRecordingFinalizeLatency(unittest.TestCase):
+    def test_resolve_session_latencies_prefers_wall_clock(self):
+        detections = [
+            {
+                "source": "video",
+                "start_time": 4.0,
+                "frames": [{"t": 3.5, "bbox": [0.1, 0.1, 0.2, 0.2]}],
+            }
+        ]
+        trigger_bbox, video_bbox, trigger_track, video_track = _resolve_session_latencies(
+            {"trigger_to_first_bbox_wall_s": 1.25, "trigger_to_first_track_wall_s": 2.0},
+            detections,
+        )
+        self.assertEqual(trigger_bbox, 1.25)
+        self.assertEqual(video_bbox, 3.5)
+        self.assertEqual(trigger_track, 2.0)
+        self.assertEqual(video_track, 4.0)
+
+    def test_resolve_session_latencies_falls_back_to_video_offsets(self):
+        detections = [
+            {
+                "source": "video",
+                "start_time": 0.8,
+                "frames": [{"t": 0.9, "bbox": [0.2, 0.2, 0.4, 0.4]}],
+            }
+        ]
+        trigger_bbox, video_bbox, trigger_track, video_track = _resolve_session_latencies(
+            {},
+            detections,
+        )
+        self.assertEqual(trigger_bbox, 0.9)
+        self.assertEqual(video_bbox, 0.9)
+        self.assertEqual(trigger_track, 0.8)
+        self.assertEqual(video_track, 0.8)
+
+    def test_latency_budget_breaches_warn_and_critical(self):
+        breaches = _latency_budget_breaches(
+            trigger_to_first_bbox_latency_s=6.0,
+            finalize_duration_ms=6000.0,
+            fusion_duration_ms=900.0,
+            persist_duration_ms=2500.0,
+        )
+        by_metric = {row["metric"]: row for row in breaches}
+        self.assertEqual(by_metric["trigger_to_first_bbox_latency_s"]["severity"], "warning")
+        self.assertEqual(by_metric["finalize_duration_ms"]["severity"], "warning")
+        self.assertNotIn("fusion_duration_ms", by_metric)
+        self.assertEqual(by_metric["persist_duration_ms"]["severity"], "warning")
+
+    def test_latency_budget_breaches_ignores_missing_values(self):
+        breaches = _latency_budget_breaches(
+            trigger_to_first_bbox_latency_s=None,
+            finalize_duration_ms=None,
+            fusion_duration_ms=None,
+            persist_duration_ms=None,
+        )
+        self.assertEqual(breaches, [])
+
     def test_latency_uses_first_valid_bbox_timestamp(self):
         detections = [
             {

@@ -17,6 +17,16 @@ DEPLOY_URL="${DEPLOY_URL:-http://localhost:8085}"
 SYNC_RETRIES="${SYNC_RETRIES:-3}"
 DEPLOY_MIN_INTERVAL_MINUTES="${DEPLOY_MIN_INTERVAL_MINUTES:-20}"
 DEPLOY_MIN_INTERVAL_BYPASS="${DEPLOY_MIN_INTERVAL_BYPASS:-0}"
+DEPLOY_MIN_FREE_GB="${DEPLOY_MIN_FREE_GB:-5}"
+DEPLOY_MAX_DIAGNOSTICS_GB_WARN="${DEPLOY_MAX_DIAGNOSTICS_GB_WARN:-2}"
+OUTCOME_DB_MODE="${OUTCOME_DB_MODE:-auto}"  # auto|local|remote
+OUTCOME_DB_PATH="${OUTCOME_DB_PATH:-app/data/db/birdlense.db}"
+OUTCOME_REMOTE_DB_PATH="${OUTCOME_REMOTE_DB_PATH:-${REMOTE_DIR}/app/data/db/birdlense.db}"
+OUTCOME_LOOKBACK_HOURS="${OUTCOME_LOOKBACK_HOURS:-24}"
+OUTCOME_MAX_BLIND_RATE="${OUTCOME_MAX_BLIND_RATE:-0.30}"
+OUTCOME_MIN_TRACKS_COVERAGE="${OUTCOME_MIN_TRACKS_COVERAGE:-0.50}"
+OUTCOME_MAX_EMPTY_BBOX_RATE="${OUTCOME_MAX_EMPTY_BBOX_RATE:-0.20}"
+OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS="${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS:-1}"
 # Keepalive — сборка Docker может занимать 5+ мин, без этого SSH обрывается (Broken pipe)
 # Порт через DEPLOY_SSH_PORT (по умолчанию 22)
 _PORT_OPT=""
@@ -73,6 +83,63 @@ PY
   then
     echo "Ошибка: деплой остановлен политикой cooldown, чтобы не терять визиты на частых перезапусках."
     echo "Подсказка: подождите или выставьте DEPLOY_MIN_INTERVAL_BYPASS=1 для аварийного исключения."
+    exit 1
+  fi
+fi
+
+check_remote_disk_headroom() {
+  local host="$1"
+  local remote_dir="$2"
+  local min_free_gb="$3"
+  local diagnostics_warn_gb="$4"
+  ssh ${SSH_OPTS} "${host}" "python3 - <<'PY'
+import os
+import shutil
+from pathlib import Path
+
+root = Path('/')
+remote_dir = Path('${remote_dir}')
+data_dir = remote_dir / 'app' / 'data'
+diag_dir = data_dir / 'diagnostics'
+min_free_gb = float('${min_free_gb}')
+warn_diag_gb = float('${diagnostics_warn_gb}')
+
+usage = shutil.disk_usage(str(root))
+free_gb = usage.free / (1024 ** 3)
+used_pct = (usage.used / usage.total) * 100.0 if usage.total else 0.0
+print(f'disk-check: free_gb={free_gb:.2f} used_pct={used_pct:.2f}')
+
+diag_bytes = 0
+if diag_dir.exists():
+    for p in diag_dir.rglob('*'):
+        if p.is_file():
+            try:
+                diag_bytes += p.stat().st_size
+            except OSError:
+                pass
+diag_gb = diag_bytes / (1024 ** 3)
+print(f'disk-check: diagnostics_gb={diag_gb:.2f}')
+
+if diag_gb > warn_diag_gb:
+    print(
+        'disk-check: WARN diagnostics size high; '
+        f'consider cleanup or disabling debug dumps (threshold={warn_diag_gb:.2f}GB)'
+    )
+
+if free_gb < min_free_gb:
+    print(
+        'disk-check: FAIL low free disk space; '
+        f'free={free_gb:.2f}GB threshold={min_free_gb:.2f}GB'
+    )
+    raise SystemExit(2)
+PY"
+}
+
+if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
+  echo "0.0 Проверка свободного места на сервере..."
+  if ! check_remote_disk_headroom "${HOST}" "${REMOTE_DIR}" "${DEPLOY_MIN_FREE_GB}" "${DEPLOY_MAX_DIAGNOSTICS_GB_WARN}"; then
+    echo "Ошибка: недостаточно свободного места на сервере для безопасного деплоя."
+    echo "Подсказка: освободите место или временно уменьшите DEPLOY_MIN_FREE_GB."
     exit 1
   fi
 fi
@@ -461,19 +528,43 @@ fi
 # 0.72 Outcome quality metrics gate (#555/#556).
 if [[ ! "${BIRDLENSE_SKIP_OUTCOME_METRICS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
   echo "0.72 Outcome Quality Metrics Gate..."
-  (cd "${REPO_ROOT}" && \
-    python3 ./scripts/report_quality_outcome_metrics.py \
-      --db-path "${OUTCOME_DB_PATH:-app/data/db/birdlense.db}" \
-      --lookback-hours "${OUTCOME_LOOKBACK_HOURS:-24}" \
-      --max-blind-rate "${OUTCOME_MAX_BLIND_RATE:-0.30}" \
-      --min-tracks-coverage "${OUTCOME_MIN_TRACKS_COVERAGE:-0.50}" \
-      --max-empty-bbox-rate "${OUTCOME_MAX_EMPTY_BBOX_RATE:-0.20}" \
-      --min-yolo-frames-with-tracks "${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS:-1}" \
-      --out-json "docs/reports/quality_outcome/quality_outcome_metrics_latest.json" \
-      --out-md "docs/reports/quality_outcome/quality_outcome_metrics_latest.md") || {
-        echo "Ошибка: Outcome quality metrics gate не пройден. Деплой остановлен."
-        exit 1
-      }
+  if [[ "${OUTCOME_DB_MODE}" == "local" ]] || \
+     { [[ "${OUTCOME_DB_MODE}" == "auto" ]] && [[ -f "${REPO_ROOT}/${OUTCOME_DB_PATH}" ]]; }; then
+    (cd "${REPO_ROOT}" && \
+      python3 ./scripts/report_quality_outcome_metrics.py \
+        --db-path "${OUTCOME_DB_PATH}" \
+        --data-source "local:${OUTCOME_DB_PATH}" \
+        --lookback-hours "${OUTCOME_LOOKBACK_HOURS}" \
+        --max-blind-rate "${OUTCOME_MAX_BLIND_RATE}" \
+        --min-tracks-coverage "${OUTCOME_MIN_TRACKS_COVERAGE}" \
+        --max-empty-bbox-rate "${OUTCOME_MAX_EMPTY_BBOX_RATE}" \
+        --min-yolo-frames-with-tracks "${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS}" \
+        --out-json "docs/reports/quality_outcome/quality_outcome_metrics_latest.json" \
+        --out-md "docs/reports/quality_outcome/quality_outcome_metrics_latest.md") || {
+          echo "Ошибка: Outcome quality metrics gate (local DB) не пройден. Деплой остановлен."
+          exit 1
+        }
+  else
+    if [[ "${OUTCOME_DB_MODE}" != "remote" ]] && [[ "${OUTCOME_DB_MODE}" != "auto" ]]; then
+      echo "Ошибка: неизвестный OUTCOME_DB_MODE=${OUTCOME_DB_MODE}" >&2
+      exit 1
+    fi
+    echo "  - local outcome DB не найден, запускаю gate на удалённой БД (${HOST})"
+    ssh ${SSH_OPTS} "${HOST}" \
+      "cd '${REMOTE_DIR}' && python3 ./scripts/report_quality_outcome_metrics.py \
+        --db-path '${OUTCOME_REMOTE_DB_PATH}' \
+        --data-source 'remote:${HOST}:${OUTCOME_REMOTE_DB_PATH}' \
+        --lookback-hours '${OUTCOME_LOOKBACK_HOURS}' \
+        --max-blind-rate '${OUTCOME_MAX_BLIND_RATE}' \
+        --min-tracks-coverage '${OUTCOME_MIN_TRACKS_COVERAGE}' \
+        --max-empty-bbox-rate '${OUTCOME_MAX_EMPTY_BBOX_RATE}' \
+        --min-yolo-frames-with-tracks '${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS}' \
+        --out-json 'docs/reports/quality_outcome/quality_outcome_metrics_latest.json' \
+        --out-md 'docs/reports/quality_outcome/quality_outcome_metrics_latest.md'" || {
+          echo "Ошибка: Outcome quality metrics gate (remote DB) не пройден. Деплой остановлен."
+          exit 1
+        }
+  fi
 fi
 
 # 0.73 Stream quality matrix gate (#557 Stream E).

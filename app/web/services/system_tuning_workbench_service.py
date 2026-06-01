@@ -54,6 +54,14 @@ _PRESET_OVERRIDES: dict[str, dict[str, Any]] = {
         "processor.adaptive_profiles.night.overrides.min_box_size_px": 12,
         "processor.adaptive_profiles.night.overrides.min_track_duration": 0.45,
     },
+    "feeder_closeup_ab": {
+        "processor.min_confidence_binary": 0.13,
+        "processor.min_confidence_to_process": 0.1,
+        "processor.min_track_duration": 0.55,
+        "processor.min_box_size_px": 10,
+        "processor.binary_imgsz": 704,
+        "processor.light_gate_enabled": True,
+    },
 }
 
 
@@ -191,6 +199,24 @@ def _profile_delta(before: dict[str, float], after: dict[str, float]) -> dict[st
     }
 
 
+def _runtime_cost_guard_error(
+    auto_eval: dict[str, Any],
+    *,
+    max_runtime_cost_delta: float | None,
+) -> str | None:
+    if max_runtime_cost_delta is None:
+        return None
+    if max_runtime_cost_delta < 0:
+        return "max_runtime_cost_delta must be >= 0"
+    delta = _safe_float((auto_eval.get("delta") or {}).get("runtime_cost_delta"), 0.0)
+    if delta <= max_runtime_cost_delta:
+        return None
+    return (
+        "Rollback guard triggered: runtime_cost_delta="
+        f"{delta:.2f} > max_runtime_cost_delta={max_runtime_cost_delta:.2f}"
+    )
+
+
 def _load_raw_user_config() -> dict[str, Any]:
     import os
     import yaml
@@ -319,6 +345,8 @@ def upsert_camera_tuning_profile(
     *,
     camera_id: str,
     overrides: dict[str, Any] | None,
+    experiment_tag: str | None = None,
+    max_runtime_cost_delta: float | None = None,
 ) -> tuple[dict[str, Any], int]:
     cam = str(camera_id or "").strip()
     if not cam:
@@ -369,6 +397,17 @@ def upsert_camera_tuning_profile(
         "delta": _profile_delta(before_metrics, after_metrics),
         "ok": len(guardrails["errors"]) == 0,
     }
+    guard_error = _runtime_cost_guard_error(
+        auto_eval,
+        max_runtime_cost_delta=max_runtime_cost_delta,
+    )
+    if guard_error:
+        _write_raw_user_config(raw_before)
+        return {
+            "error": guard_error,
+            "camera_id": cam,
+            "auto_eval": auto_eval,
+        }, 409
     _save_state(
         {
             "schema": "tuning_workbench_state@v1",
@@ -380,6 +419,7 @@ def upsert_camera_tuning_profile(
             "last_change": {
                 "action": "upsert_camera_profile",
                 "camera_id": cam,
+                "experiment_tag": str(experiment_tag or "").strip() or None,
                 "auto_eval": auto_eval,
                 "guardrails": guardrails,
             },
@@ -388,6 +428,7 @@ def upsert_camera_tuning_profile(
     return {
         "ok": True,
         "camera_id": cam,
+        "experiment_tag": str(experiment_tag or "").strip() or None,
         "auto_eval": auto_eval,
         "guardrails": guardrails,
     }, 200

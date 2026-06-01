@@ -207,11 +207,20 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
         if _session_runtime_has_column("finalize_duration_ms")
         else "NULL AS finalize_duration_ms"
     )
+    camera_slot_col_expr = (
+        "camera_slot"
+        if _session_runtime_has_column("camera_slot")
+        else "NULL AS camera_slot"
+    )
     runtime_rows = db.session.execute(
         text(
             f"""
             SELECT
               created_at,
+              camera_id,
+              {camera_slot_col_expr},
+              yolo_frames_ran,
+              yolo_frames_with_tracks,
               yolo_raw_boxes_total,
               session_extended_by_frigate_only,
               {latency_col_expr},
@@ -236,16 +245,37 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
     trigger_moratorium_events = 0
     trigger_moratorium_events_7d = 0
     trigger_moratorium_by_source: dict[str, int] = {}
+    sessions_with_yolo = 0
+    sessions_with_tracks = 0
+    empty_bbox_rejections = 0
+    rejected_rows_total = 0
     frigate_catches_missed_birds_sessions = 0
     frigate_catches_missed_birds_by_trigger_source: dict[str, int] = {}
     fallback_sessions = 0
     total_sessions = 0
+    by_camera_slot: dict[str, dict[str, int]] = {}
     for row in runtime_rows:
         total_sessions += 1
         try:
             payload = json.loads(str(row["payload_json"] or "{}"))
         except Exception:
             payload = {}
+        slot_key = str(
+            row.get("camera_slot")
+            or payload.get("camera_slot")
+            or "legacy:no-slot"
+        ).strip() or "legacy:no-slot"
+        slot_kpi = by_camera_slot.setdefault(
+            slot_key,
+            {
+                "sessions_total": 0,
+                "sessions_with_yolo": 0,
+                "sessions_with_tracks": 0,
+                "empty_bbox_rejections": 0,
+                "rejected_rows_total": 0,
+            },
+        )
+        slot_kpi["sessions_total"] += 1
         latency_s = row.get("trigger_to_first_bbox_latency_s")
         latency_added = False
         try:
@@ -290,6 +320,24 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             pass
         if int(payload.get("session_extended_by_frigate_only") or 0) > 0:
             fallback_sessions += 1
+        yolo_frames_ran = int(row.get("yolo_frames_ran") or 0)
+        yolo_frames_with_tracks = int(row.get("yolo_frames_with_tracks") or 0)
+        if yolo_frames_ran > 0:
+            sessions_with_yolo += 1
+            slot_kpi["sessions_with_yolo"] += 1
+        if yolo_frames_with_tracks > 0:
+            sessions_with_tracks += 1
+            slot_kpi["sessions_with_tracks"] += 1
+        rejected_rows_total += int(payload.get("rejected_decision_rows") or 0)
+        slot_kpi["rejected_rows_total"] += int(payload.get("rejected_decision_rows") or 0)
+        reason_counts = payload.get("rejected_reason_counts")
+        if isinstance(reason_counts, dict):
+            empty_bbox_rejections += int(
+                reason_counts.get("empty_bbox_frames") or 0
+            )
+            slot_kpi["empty_bbox_rejections"] += int(
+                reason_counts.get("empty_bbox_frames") or 0
+            )
         yolo_raw_total = int(row.get("yolo_raw_boxes_total") or 0)
         frigate_only_total = int(row.get("session_extended_by_frigate_only") or 0)
         if frigate_only_total > 0 and yolo_raw_total == 0:
@@ -450,6 +498,7 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
                 event_type='yolo_self_heal_action'
                 OR event_type='yolo_blind_confirmed'
                 OR event_type='yolo_blind_recovered'
+                OR event_type='runtime_latency_budget_breach'
               )
             ORDER BY id DESC
             LIMIT :lim
@@ -459,6 +508,7 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
     ).mappings()
     events = []
     action_counts = {"soft_clear": 0, "reinit": 0, "restart": 0, "alert": 0}
+    latency_budget_breach_counts: dict[str, int] = {}
     infer_p95_samples: list[float] = []
     for row in heal_rows:
         details_raw = str(row.get("details_json") or "{}")
@@ -469,6 +519,16 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
         action = str(details.get("action") or "").strip()
         if action in action_counts:
             action_counts[action] += 1
+        if str(row.get("event_type") or "").strip() == "runtime_latency_budget_breach":
+            for breach in details.get("breaches") or []:
+                if not isinstance(breach, dict):
+                    continue
+                metric = str(breach.get("metric") or "").strip()
+                if not metric:
+                    continue
+                latency_budget_breach_counts[metric] = (
+                    int(latency_budget_breach_counts.get(metric) or 0) + 1
+                )
         try:
             p95 = (
                 details.get("runtime_stats", {})
@@ -499,6 +559,46 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
         (float(fallback_sessions) / float(total_sessions))
         if total_sessions > 0
         else 0.0
+    )
+    tracks_coverage = (
+        (float(sessions_with_tracks) / float(sessions_with_yolo))
+        if sessions_with_yolo > 0
+        else 0.0
+    )
+    by_camera_slot_metrics: dict[str, dict[str, float | int]] = {}
+    for slot, vals in sorted(by_camera_slot.items()):
+        slot_sessions_with_yolo = int(vals.get("sessions_with_yolo") or 0)
+        slot_sessions_with_tracks = int(vals.get("sessions_with_tracks") or 0)
+        slot_rejected_rows = int(vals.get("rejected_rows_total") or 0)
+        slot_empty_bbox = int(vals.get("empty_bbox_rejections") or 0)
+        slot_tracks_coverage = (
+            float(slot_sessions_with_tracks) / float(slot_sessions_with_yolo)
+            if slot_sessions_with_yolo > 0
+            else 0.0
+        )
+        slot_empty_bbox_rate = (
+            float(slot_empty_bbox) / float(slot_rejected_rows)
+            if slot_rejected_rows > 0
+            else 0.0
+        )
+        by_camera_slot_metrics[slot] = {
+            "sessions_total": int(vals.get("sessions_total") or 0),
+            "sessions_with_yolo": slot_sessions_with_yolo,
+            "sessions_with_tracks": slot_sessions_with_tracks,
+            "tracks_coverage": round(slot_tracks_coverage, 4),
+            "empty_bbox_rate": round(slot_empty_bbox_rate, 4),
+        }
+    tracks_missing_rate = (
+        (1.0 - tracks_coverage) if sessions_with_yolo > 0 else 1.0
+    )
+    empty_bbox_rate = (
+        float(empty_bbox_rejections) / float(rejected_rows_total)
+        if rejected_rows_total > 0
+        else 0.0
+    )
+    bbox_quality_score = max(
+        0.0,
+        min(1.0, tracks_coverage * (1.0 - empty_bbox_rate)),
     )
     infer_p95_avg = (
         (sum(infer_p95_samples) / float(len(infer_p95_samples)))
@@ -564,7 +664,15 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             "blind_score_current": round(blind_score_current, 4),
             "blind_score_avg": round(blind_score_avg, 4),
             "fallback_ratio": round(fallback_ratio, 4),
+            "tracks_coverage": round(tracks_coverage, 4),
+            "tracks_missing_rate": round(tracks_missing_rate, 4),
+            "empty_bbox_rate": round(empty_bbox_rate, 4),
+            "bbox_quality_score": round(bbox_quality_score, 4),
             "self_heal_action_counts": action_counts,
+            "latency_budget_breach_counts": {
+                k: int(v)
+                for k, v in sorted(latency_budget_breach_counts.items())
+            },
             "inference_latency_p95_ms_avg": (
                 round(infer_p95_avg, 2)
                 if infer_p95_avg is not None
@@ -658,6 +766,7 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
                 frigate_catches_missed_birds_rate_delta_vs_7d,
                 4,
             ),
+            "by_camera_slot": by_camera_slot_metrics,
         },
         "recent_events": events,
     }

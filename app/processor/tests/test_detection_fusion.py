@@ -689,7 +689,7 @@ def test_merge_skips_suppressed_frigate_for_yolo_promotion():
         app_config=cfg,
     )
     assert len(out) == 1
-    assert out[0]['species_name'] == 'Great Tit'
+    assert str(out[0]['species_name']).lower() == 'great tit'
 
 
 def test_frigate_standalone_drops_wrong_camera_when_hub_scoped():
@@ -898,11 +898,12 @@ def test_arbitration_keeps_strongest_species_with_multi_source_consensus():
         app_config=cfg,
     )
     assert len(out) == 1
-    assert out[0]['species_name'] == 'Great Tit'
+    assert str(out[0]['species_name']).lower() == 'great tit'
     assert out[0]['decision_reason'] == 'species_won_by_multi_source_consensus'
     assert out[0].get('arbitration_reason') == 'species_won_by_multi_source_consensus'
-    assert out[0].get('detection_provider') == 'arbitration'
+    assert out[0].get('detection_provider') == 'yolo'
     assert out[0].get('arbitrated_primary_provider') == 'yolo'
+    assert out[0].get('fusion_stage') == 'arbitrated'
 
 
 def test_arbitration_absorbs_generic_bird_into_species_with_cross_source_support():

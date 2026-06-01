@@ -191,6 +191,19 @@ def requeue_motion_trigger(motion_detector) -> bool:
     return False
 
 
+def _moratorium_scope_for_camera(
+    camera_id: str | None,
+    *,
+    trigger_source: str,
+) -> tuple[str, bool]:
+    """Return (scope_key, is_camera_scoped) for trigger moratorium bookkeeping."""
+    raw_camera = str(camera_id or "").strip()
+    if raw_camera and raw_camera != "_default":
+        return raw_camera, True
+    source_key = str(trigger_source or "").strip().lower() or "unknown"
+    return f"_unscoped:{source_key}", False
+
+
 def run_motion_loop(ctx: ProcessorRunContext) -> None:
     """Бесконечный цикл движения; выход при ``session.run()`` → True (режим файла) или SystemExit."""
     last_recording_end_by_camera: dict[str, float] = {}
@@ -236,11 +249,27 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                     camera_id,
                 )
                 continue
-        camera_key = str(camera_id)
-        moratorium_wait = recording_cooldown_remaining(
-            last_recording_end=last_trigger_start_by_camera.get(camera_key, 0.0),
-            cooldown=trigger_moratorium,
+        camera_key, camera_scoped = _moratorium_scope_for_camera(
+            camera_id,
+            trigger_source=trigger_source,
         )
+        moratorium_wait = 0.0
+        if trigger_moratorium > 0 and camera_scoped:
+            moratorium_wait = recording_cooldown_remaining(
+                last_recording_end=last_trigger_start_by_camera.get(
+                    camera_key,
+                    0.0,
+                ),
+                cooldown=trigger_moratorium,
+            )
+        elif trigger_moratorium > 0 and not camera_scoped:
+            inc_counter("recording_trigger_moratorium_unscoped_total")
+            logger.warning(
+                "Skipping trigger moratorium: unresolved camera "
+                "(source=%s, camera_id=%s)",
+                trigger_source or "?",
+                str(camera_id or "").strip() or "_default",
+            )
         if moratorium_wait > 0:
             requeued = requeue_motion_trigger(ctx.session.motion_detector)
             inc_counter("recording_trigger_deferred_moratorium_total")
@@ -286,10 +315,23 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                 )
             time.sleep(moratorium_wait)
             continue
-        wait = recording_cooldown_remaining(
-            last_recording_end=last_recording_end_by_camera.get(camera_key, 0.0),
-            cooldown=cooldown,
-        )
+        wait = 0.0
+        if cooldown > 0 and camera_scoped:
+            wait = recording_cooldown_remaining(
+                last_recording_end=last_recording_end_by_camera.get(
+                    camera_key,
+                    0.0,
+                ),
+                cooldown=cooldown,
+            )
+        elif cooldown > 0 and not camera_scoped:
+            inc_counter("recording_trigger_cooldown_unscoped_total")
+            logger.warning(
+                "Skipping per-camera cooldown: unresolved camera "
+                "(source=%s, camera_id=%s)",
+                trigger_source or "?",
+                str(camera_id or "").strip() or "_default",
+            )
         if wait > 0:
             elapsed = cooldown - wait
             requeued = requeue_motion_trigger(ctx.session.motion_detector)

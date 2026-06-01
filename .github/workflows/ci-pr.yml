@@ -470,3 +470,31 @@ jobs:
           name: catalog-cards-audit-local
           path: .artifacts/catalog-cards-audit.local.json
           if-no-files-found: ignore
+
+  sota-reality-nightly:
+    name: sota-reality-nightly
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Generate SOTA reality-check artifacts
+        run: |
+          set -euo pipefail
+          # Outcome JSON может быть stale в репо; nightly обязан краснеть,
+          # если сводный decision=hold / acceptance_blocked=true.
+          SOTA_FAIL_ON_BLOCKED=1 make sota-reality-check
+
+      - name: Upload SOTA reality-check artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: sota-reality-check-nightly
+          path: |
+            docs/reports/sota_reality/sota_reality_check_latest.json
+            docs/reports/sota_reality/sota_reality_check_latest.md
+          if-no-files-found: error

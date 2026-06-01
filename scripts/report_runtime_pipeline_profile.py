@@ -85,6 +85,10 @@ def build_profile(
     finalize_ms: list[float] = []
     fusion_ms: list[float] = []
     persist_ms: list[float] = []
+    create_video_ms: list[float] = []
+    behavior_ms: list[float] = []
+    scales_ms: list[float] = []
+    dataset_crops_ms: list[float] = []
     by_slot_finalize: dict[str, list[float]] = {}
 
     pre_fusion_ms: list[float] = []
@@ -117,6 +121,16 @@ def build_profile(
         p_ms = _safe_float(payload.get("persist_duration_ms"))
         if p_ms is not None and p_ms > 0:
             persist_ms.append(p_ms)
+
+        for key, bucket in (
+            ("create_video_duration_ms", create_video_ms),
+            ("behavior_duration_ms", behavior_ms),
+            ("scales_duration_ms", scales_ms),
+            ("dataset_crops_duration_ms", dataset_crops_ms),
+        ):
+            stage_ms = _safe_float(payload.get(key))
+            if stage_ms is not None and stage_ms > 0:
+                bucket.append(stage_ms)
 
         pre_ms = _safe_float(payload.get("pre_fusion_duration_ms"))
         if pre_ms is not None and pre_ms > 0:
@@ -166,6 +180,10 @@ def build_profile(
             "pre_fusion_duration_ms": _summary(pre_fusion_ms),
             "fusion_duration_ms": _summary(fusion_ms),
             "persist_duration_ms": _summary(persist_ms),
+            "create_video_duration_ms": _summary(create_video_ms),
+            "behavior_duration_ms": _summary(behavior_ms),
+            "scales_duration_ms": _summary(scales_ms),
+            "dataset_crops_duration_ms": _summary(dataset_crops_ms),
         },
         "by_slot_finalize_duration_ms": by_slot,
         "bottleneck_stage_p95": bottleneck,

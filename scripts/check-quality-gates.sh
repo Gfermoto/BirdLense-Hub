@@ -24,6 +24,9 @@ OUTCOME_MAX_BLIND_RATE="${OUTCOME_MAX_BLIND_RATE:-0.30}"
 OUTCOME_MIN_TRACKS_COVERAGE="${OUTCOME_MIN_TRACKS_COVERAGE:-0.50}"
 OUTCOME_MAX_EMPTY_BBOX_RATE="${OUTCOME_MAX_EMPTY_BBOX_RATE:-0.20}"
 OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS="${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS:-1}"
+OUTCOME_DB_MODE="${OUTCOME_DB_MODE:-auto}"  # auto|local|remote
+OUTCOME_REMOTE_DB_PATH="${OUTCOME_REMOTE_DB_PATH:-${DEPLOY_REMOTE_DIR:-/root/BirdLense}/app/data/db/birdlense.db}"
+OUTCOME_REMOTE_DIR="${OUTCOME_REMOTE_DIR:-${DEPLOY_REMOTE_DIR:-/root/BirdLense}}"
 
 usage() {
   cat <<'EOF'
@@ -55,6 +58,8 @@ Environment:
   SOTA_BENCHMARK_SKIP_IF_MISSING      1 to skip (not fail) when clips absent (default 0)
   REQUIRE_NO_SKIPPED_CRITICAL_ML_CHECKS 1 to fail on skipped critical ML gates (default 1)
   QUALITY_GATE_OVERRIDE_TICKET        required issue token (e.g. #555) for emergency skip/override
+  OUTCOME_DB_MODE                     auto|local|remote (default auto)
+  OUTCOME_REMOTE_DB_PATH              remote sqlite path for outcome gate
 EOF
 }
 
@@ -194,15 +199,59 @@ if errors:
 print("quality-gate: PASS")
 PY
 
-if python3 "${BASH_SOURCE%/*}/report_quality_outcome_metrics.py" \
-  --db-path "${OUTCOME_DB_PATH}" \
-  --lookback-hours "${OUTCOME_LOOKBACK_HOURS}" \
-  --max-blind-rate "${OUTCOME_MAX_BLIND_RATE}" \
-  --min-tracks-coverage "${OUTCOME_MIN_TRACKS_COVERAGE}" \
-  --max-empty-bbox-rate "${OUTCOME_MAX_EMPTY_BBOX_RATE}" \
-  --min-yolo-frames-with-tracks "${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS}" \
-  --out-json "docs/reports/quality_outcome/quality_outcome_metrics_latest.json" \
-  --out-md "docs/reports/quality_outcome/quality_outcome_metrics_latest.md"; then
+run_outcome_gate_local() {
+  python3 "${BASH_SOURCE%/*}/report_quality_outcome_metrics.py" \
+    --db-path "${OUTCOME_DB_PATH}" \
+    --data-source "local:${OUTCOME_DB_PATH}" \
+    --lookback-hours "${OUTCOME_LOOKBACK_HOURS}" \
+    --max-blind-rate "${OUTCOME_MAX_BLIND_RATE}" \
+    --min-tracks-coverage "${OUTCOME_MIN_TRACKS_COVERAGE}" \
+    --max-empty-bbox-rate "${OUTCOME_MAX_EMPTY_BBOX_RATE}" \
+    --min-yolo-frames-with-tracks "${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS}" \
+    --out-json "docs/reports/quality_outcome/quality_outcome_metrics_latest.json" \
+    --out-md "docs/reports/quality_outcome/quality_outcome_metrics_latest.md"
+}
+
+run_outcome_gate_remote() {
+  local host="${DEPLOY_HOST:-}"
+  local port="${DEPLOY_SSH_PORT:-22}"
+  if [[ -z "${host}" ]]; then
+    echo "quality-gate: FAIL remote outcome requested but DEPLOY_HOST is empty" >&2
+    return 1
+  fi
+  ssh -p "${port}" "${host}" \
+    "cd '${OUTCOME_REMOTE_DIR}' && python3 ./scripts/report_quality_outcome_metrics.py \
+      --db-path '${OUTCOME_REMOTE_DB_PATH}' \
+      --data-source 'remote:${host}:${OUTCOME_REMOTE_DB_PATH}' \
+      --lookback-hours '${OUTCOME_LOOKBACK_HOURS}' \
+      --max-blind-rate '${OUTCOME_MAX_BLIND_RATE}' \
+      --min-tracks-coverage '${OUTCOME_MIN_TRACKS_COVERAGE}' \
+      --max-empty-bbox-rate '${OUTCOME_MAX_EMPTY_BBOX_RATE}' \
+      --min-yolo-frames-with-tracks '${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS}' \
+      --out-json 'docs/reports/quality_outcome/quality_outcome_metrics_latest.json' \
+      --out-md 'docs/reports/quality_outcome/quality_outcome_metrics_latest.md'"
+}
+
+if {
+  if [[ "${OUTCOME_DB_MODE}" == "local" ]]; then
+    run_outcome_gate_local
+  elif [[ "${OUTCOME_DB_MODE}" == "remote" ]]; then
+    run_outcome_gate_remote
+  elif [[ "${OUTCOME_DB_MODE}" == "auto" ]]; then
+    if [[ -f "${OUTCOME_DB_PATH}" ]]; then
+      run_outcome_gate_local
+    elif [[ -n "${DEPLOY_HOST:-}" ]]; then
+      echo "quality-gate: local DB not found, fallback to remote outcome gate (${DEPLOY_HOST})"
+      run_outcome_gate_remote
+    else
+      echo "quality-gate: FAIL local DB not found and no DEPLOY_HOST for remote fallback" >&2
+      exit 1
+    fi
+  else
+    echo "quality-gate: FAIL unknown OUTCOME_DB_MODE=${OUTCOME_DB_MODE}" >&2
+    exit 1
+  fi
+}; then
   echo "quality-gate: outcome-metrics PASS"
 else
   echo "quality-gate: outcome-metrics FAIL" >&2
