@@ -442,9 +442,25 @@ if [[ ! "${BIRDLENSE_SKIP_DATASET_CONTRACT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
-# 0.71 Outcome quality metrics gate (#555/#556).
+# 0.71 Domain fine-tune loop evidence gate (#557 Stream C).
+if [[ ! "${BIRDLENSE_SKIP_DOMAIN_FINETUNE_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.71 Domain Fine-tune Loop Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_domain_finetune_loop.py \
+      --contract "docs/reports/domain_finetune/domain_finetune_contract.json" \
+      --champion-shadow "docs/reports/ml_shadow/champion_challenger_latest.json" \
+      --acceptance-gate "docs/reports/golden_set_gate/golden_set_gate_latest.json" \
+      --history "docs/reports/ml_shadow/shadow_pipeline_history.jsonl" \
+      --out-json "docs/reports/domain_finetune/domain_finetune_loop_latest.json" \
+      --out-md "docs/reports/domain_finetune/domain_finetune_loop_latest.md") || {
+        echo "Ошибка: Domain fine-tune loop gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
+# 0.72 Outcome quality metrics gate (#555/#556).
 if [[ ! "${BIRDLENSE_SKIP_OUTCOME_METRICS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
-  echo "0.71 Outcome Quality Metrics Gate..."
+  echo "0.72 Outcome Quality Metrics Gate..."
   (cd "${REPO_ROOT}" && \
     python3 ./scripts/report_quality_outcome_metrics.py \
       --db-path "${OUTCOME_DB_PATH:-app/data/db/birdlense.db}" \

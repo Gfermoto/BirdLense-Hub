@@ -1,0 +1,15 @@
+{
+  "schema": "domain_finetune_contract@v1",
+  "required_candidates": [
+    "detector_candidate_2026_05_24",
+    "detector_candidate_2026_05_29"
+  ],
+  "require_champion_shadow_ok": true,
+  "require_acceptance_gate_ok": true,
+  "require_rollback_ready_evidence": true,
+  "required_evidence_markers": [
+    "shadow_passed: true",
+    "quality_delta: within gate",
+    "rollback_ready: true"
+  ]
+}
