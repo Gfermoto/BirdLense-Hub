@@ -290,6 +290,32 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
         frigate_only_total = int(row.get("session_extended_by_frigate_only") or 0)
         if frigate_only_total > 0 and yolo_raw_total == 0:
             frigate_catches_missed_birds_sessions += 1
+    try:
+        runtime_rows_7d = db.session.execute(
+            text(
+                """
+                SELECT
+                  yolo_raw_boxes_total,
+                  session_extended_by_frigate_only
+                FROM session_runtime_metrics
+                WHERE datetime(created_at) >= datetime('now', '-168 hours')
+                ORDER BY id DESC
+                LIMIT 3000
+                """
+            ),
+        ).mappings()
+    except Exception:
+        runtime_rows_7d = []
+    total_sessions_7d = 0
+    frigate_catches_missed_birds_sessions_7d = 0
+    for row in runtime_rows_7d:
+        total_sessions_7d += 1
+        yolo_raw_total = int(row.get("yolo_raw_boxes_total") or 0)
+        frigate_only_total = int(
+            row.get("session_extended_by_frigate_only") or 0
+        )
+        if frigate_only_total > 0 and yolo_raw_total == 0:
+            frigate_catches_missed_birds_sessions_7d += 1
 
     try:
         ingest_rows = db.session.execute(
@@ -315,8 +341,12 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
         reason = str(payload.get("reason") or "").strip().lower()
         if reason == "video_bbox_track_contract_pruned":
             ingest_pruned_events += 1
-            ingest_pruned_rows_total += int(payload.get("dropped_missing_frames") or 0)
-            ingest_pruned_rows_total += int(payload.get("dropped_empty_bbox") or 0)
+            ingest_pruned_rows_total += int(
+                payload.get("dropped_missing_frames") or 0
+            )
+            ingest_pruned_rows_total += int(
+                payload.get("dropped_empty_bbox") or 0
+            )
             ingest_pruned_frames_total += int(
                 payload.get("pruned_invalid_bbox_frames") or 0
             )
@@ -348,7 +378,9 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
         ingest_pruned_rows_total_7d += int(
             payload.get("dropped_missing_frames") or 0
         )
-        ingest_pruned_rows_total_7d += int(payload.get("dropped_empty_bbox") or 0)
+        ingest_pruned_rows_total_7d += int(
+            payload.get("dropped_empty_bbox") or 0
+        )
 
     heal_rows = db.session.execute(
         text(
@@ -438,6 +470,26 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
     ingest_pruned_rows_per_hour_delta_vs_7d = (
         ingest_pruned_rows_per_hour - ingest_pruned_rows_per_hour_7d_baseline
     )
+    frigate_catches_missed_birds_rate = (
+        (
+            float(frigate_catches_missed_birds_sessions)
+            / float(total_sessions)
+        )
+        if total_sessions > 0
+        else 0.0
+    )
+    frigate_catches_missed_birds_rate_7d_baseline = (
+        (
+            float(frigate_catches_missed_birds_sessions_7d)
+            / float(total_sessions_7d)
+        )
+        if total_sessions_7d > 0
+        else 0.0
+    )
+    frigate_catches_missed_birds_rate_delta_vs_7d = (
+        frigate_catches_missed_birds_rate
+        - frigate_catches_missed_birds_rate_7d_baseline
+    )
     return {
         "window_hours": h,
         "health_kpis": {
@@ -493,14 +545,17 @@ def fetch_quality_health(*, hours: int = 24, events_limit: int = 30) -> dict[str
             "frigate_catches_missed_birds_sessions": int(
                 frigate_catches_missed_birds_sessions
             ),
-            "frigate_catches_missed_birds_rate": (
-                round(
-                    float(frigate_catches_missed_birds_sessions)
-                    / float(total_sessions),
-                    4,
-                )
-                if total_sessions > 0
-                else None
+            "frigate_catches_missed_birds_rate": round(
+                frigate_catches_missed_birds_rate,
+                4,
+            ),
+            "frigate_catches_missed_birds_rate_7d_baseline": round(
+                frigate_catches_missed_birds_rate_7d_baseline,
+                4,
+            ),
+            "frigate_catches_missed_birds_rate_delta_vs_7d": round(
+                frigate_catches_missed_birds_rate_delta_vs_7d,
+                4,
             ),
         },
         "recent_events": events,

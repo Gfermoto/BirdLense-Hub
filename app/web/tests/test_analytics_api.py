@@ -104,4 +104,12 @@ def test_analytics_quality_health_contract(client, app):
     )
     assert "frigate_catches_missed_birds_sessions" in body["health_kpis"]
     assert "frigate_catches_missed_birds_rate" in body["health_kpis"]
+    assert (
+        "frigate_catches_missed_birds_rate_7d_baseline"
+        in body["health_kpis"]
+    )
+    assert (
+        "frigate_catches_missed_birds_rate_delta_vs_7d"
+        in body["health_kpis"]
+    )
     assert "recent_events" in body

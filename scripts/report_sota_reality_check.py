@@ -150,6 +150,10 @@ def _to_md(report: dict[str, Any]) -> str:
         f"`{metrics.get('frigate_catches_missed_birds_sessions')}`",
         "- frigate_catches_missed_birds_rate: "
         f"`{metrics.get('frigate_catches_missed_birds_rate')}`",
+        "- frigate_catches_missed_birds_rate_7d_baseline: "
+        f"`{metrics.get('frigate_catches_missed_birds_rate_7d_baseline')}`",
+        "- frigate_catches_missed_birds_rate_delta_vs_7d: "
+        f"`{metrics.get('frigate_catches_missed_birds_rate_delta_vs_7d')}`",
         "",
         "## Critical issues",
         "",
