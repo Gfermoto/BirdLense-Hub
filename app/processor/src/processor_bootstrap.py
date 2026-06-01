@@ -195,6 +195,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
     """Бесконечный цикл движения; выход при ``session.run()`` → True (режим файла) или SystemExit."""
     last_recording_end_by_camera: dict[str, float] = {}
     last_trigger_start_by_camera: dict[str, float] = {}
+    last_trigger_source_by_camera: dict[str, str] = {}
     cooldown = float(app_config.get("processor.min_seconds_between_recordings") or 0)
     trigger_moratorium = float(
         app_config.get("detection.trigger_moratorium_seconds")
@@ -243,6 +244,17 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
         if moratorium_wait > 0:
             requeued = requeue_motion_trigger(ctx.session.motion_detector)
             inc_counter("recording_trigger_deferred_moratorium_total")
+            winner_source = str(
+                last_trigger_source_by_camera.get(camera_key) or ""
+            ).strip().lower()
+            winner_start = float(
+                last_trigger_start_by_camera.get(camera_key) or 0.0
+            )
+            elapsed_since_winner_s = (
+                max(0.0, time.monotonic() - winner_start)
+                if winner_start > 0
+                else None
+            )
             logger.info(
                 "Skipping competing trigger for camera=%s: trigger moratorium %.2fs (requeued=%s, source=%s)",
                 camera_key,
@@ -256,6 +268,12 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                     {
                         "camera": camera_key,
                         "trigger_source": trigger_source or None,
+                        "winner_trigger_source": winner_source or None,
+                        "elapsed_since_winner_s": (
+                            None
+                            if elapsed_since_winner_s is None
+                            else float(round(elapsed_since_winner_s, 3))
+                        ),
                         "moratorium_seconds": float(trigger_moratorium),
                         "wait_seconds": float(round(moratorium_wait, 3)),
                         "requeued": bool(requeued),
@@ -301,6 +319,8 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
         ctx.session.api.notify_motion()
         should_stop = False
         last_trigger_start_by_camera[camera_key] = time.monotonic()
+        if trigger_source:
+            last_trigger_source_by_camera[camera_key] = trigger_source
         try:
             should_stop = bool(ctx.session.run())
         finally:
