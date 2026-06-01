@@ -43,6 +43,9 @@ export function DatasetStreamsCard() {
 
   const payload = summaryQ.data;
   const streams = payload.streams || [];
+  const jobIndex = new Map(
+    (payload.api_jobs || []).map((row) => [row.stream, row.operations]),
+  );
   return (
     <SystemCardShell
       id="dataset-streams"
@@ -79,6 +82,9 @@ export function DatasetStreamsCard() {
                 fields: {stream.required_fields_count} | split:{' '}
                 {stream.split_required_keys.join(', ') || 'n/a'} | provenance:{' '}
                 {stream.provenance_required_keys.join(', ') || 'n/a'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                jobs: {(jobIndex.get(stream.stream) || []).join(', ') || 'n/a'}
               </Typography>
             </Stack>
           ))

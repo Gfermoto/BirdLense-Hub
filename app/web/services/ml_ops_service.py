@@ -597,12 +597,47 @@ def build_dataset_streams_summary() -> tuple[dict[str, Any], int]:
     checks = latest_payload.get("checks") or {}
     summary = latest_payload.get("summary") or {}
     drift = latest_payload.get("drift") or {}
+    api_jobs = [
+        {
+            "stream": "detector",
+            "operations": [
+                "package_dataset_bundle",
+                "version_snapshot",
+                "export_to_community",
+            ],
+        },
+        {
+            "stream": "classifier",
+            "operations": [
+                "package_dataset_bundle",
+                "version_snapshot",
+                "export_to_community",
+            ],
+        },
+        {
+            "stream": "behavior",
+            "operations": [
+                "package_dataset_bundle",
+                "version_snapshot",
+                "export_to_community",
+            ],
+        },
+        {
+            "stream": "reid",
+            "operations": [
+                "package_dataset_bundle",
+                "version_snapshot",
+                "private_backup_only",
+            ],
+        },
+    ]
     return {
         "schema": "dataset_streams_summary@v1",
         "contract_file": str(contract_file),
         "report_file": str(latest_file),
         "required_streams": required_streams,
         "streams": rows,
+        "api_jobs": api_jobs,
         "gate": {
             "ok": bool(latest_payload.get("ok")),
             "generated_at": latest_payload.get("generated_at"),
