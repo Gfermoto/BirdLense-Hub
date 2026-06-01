@@ -2,7 +2,7 @@
 # Подключается к внешним: Go2RTC (Frigate), MQTT (BirdNET, Frigate)
 
 # Stage 1: UI (использует pre-built dist если есть — обход ETIMEDOUT на сервере)
-FROM node:22-alpine AS ui
+FROM node:26-alpine AS ui
 WORKDIR /ui
 COPY app/ui/ ./
 # Если dist уже собран локально — пропускаем npm (сервер может не достать registry)
