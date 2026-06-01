@@ -8,6 +8,7 @@ from routes.ui_timeline_helpers import (
     _timeline_item_matches_trigger,
     build_merged_timeline_items,
 )
+from timeline_payloads import _infer_trigger_source_from_detections
 
 
 def test_timeline_pagination_envelope(app):
@@ -37,3 +38,18 @@ def test_timeline_trigger_filter_matcher():
     assert _timeline_item_matches_trigger(item_opencv, "frigate") is False
     assert _timeline_item_matches_trigger(item_frigate, "frigate") is True
     assert _timeline_item_matches_trigger(item_empty, "unknown") is True
+
+
+def test_infer_trigger_source_prefers_explicit_video_trigger():
+    detections = [{"detection_provider": "yolo", "source": "video"}]
+    assert (
+        _infer_trigger_source_from_detections(
+            detections, preferred_trigger="frigate"
+        )
+        == "frigate"
+    )
+
+
+def test_infer_trigger_source_does_not_map_yolo_to_opencv():
+    detections = [{"detection_provider": "yolo", "source": "video"}]
+    assert _infer_trigger_source_from_detections(detections) == "opencv"
