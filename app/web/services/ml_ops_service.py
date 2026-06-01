@@ -510,6 +510,109 @@ def build_ml_runtime_status() -> tuple[dict[str, Any], int]:
     }, 200
 
 
+def _read_json_file(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def build_dataset_streams_summary() -> tuple[dict[str, Any], int]:
+    """Expose detector/classifier/behavior/reid dataset stream contracts (#557)."""
+    repo_root = Path(__file__).resolve().parents[3]
+    contract_file = (
+        repo_root / "docs" / "reports" / "datasets" / "dataset_contract_registry.json"
+    )
+    latest_file = (
+        repo_root
+        / "docs"
+        / "reports"
+        / "datasets"
+        / "dataset_contract_registry_latest.json"
+    )
+    contract_payload = _read_json_file(contract_file)
+    latest_payload = _read_json_file(latest_file)
+
+    rows = []
+    for row in list(contract_payload.get("contracts") or []):
+        if not isinstance(row, dict):
+            continue
+        stream = str(row.get("stream") or "").strip()
+        if not stream:
+            continue
+        split_policy = row.get("split_policy")
+        split_required_keys = []
+        if isinstance(split_policy, dict):
+            split_required_keys = sorted(
+                {
+                    str(item).strip()
+                    for item in list(split_policy.get("required_keys") or [])
+                    if str(item).strip()
+                }
+            )
+        export_policy = row.get("export_policy")
+        if not isinstance(export_policy, dict):
+            export_policy = {
+                "community_export_allowed": stream != "reid",
+                "private_backup_only": stream == "reid",
+            }
+        rows.append(
+            {
+                "stream": stream,
+                "contract_schema": str(row.get("contract_schema") or ""),
+                "required_fields_count": len(
+                    {
+                        str(item).strip()
+                        for item in list(row.get("required_fields") or [])
+                        if str(item).strip()
+                    }
+                ),
+                "split_required_keys": split_required_keys,
+                "versioning": row.get("versioning") or {},
+                "provenance_required_keys": sorted(
+                    {
+                        str(item).strip()
+                        for item in list(
+                            (row.get("provenance") or {}).get("required_keys")
+                            or []
+                        )
+                        if str(item).strip()
+                    }
+                ),
+                "export_policy": export_policy,
+                "ui_panel_route": f"/system#dataset-streams-{stream}",
+            }
+        )
+
+    required_streams = sorted(
+        {
+            str(item).strip()
+            for item in list(contract_payload.get("required_streams") or [])
+            if str(item).strip()
+        }
+    )
+    checks = latest_payload.get("checks") or {}
+    summary = latest_payload.get("summary") or {}
+    drift = latest_payload.get("drift") or {}
+    return {
+        "schema": "dataset_streams_summary@v1",
+        "contract_file": str(contract_file),
+        "report_file": str(latest_file),
+        "required_streams": required_streams,
+        "streams": rows,
+        "gate": {
+            "ok": bool(latest_payload.get("ok")),
+            "generated_at": latest_payload.get("generated_at"),
+            "checks": checks,
+            "summary": summary,
+            "drift": drift,
+        },
+    }, 200
+
+
 def build_classifier_calibration_report_payload(
     *,
     pair_limit: int = 15,
