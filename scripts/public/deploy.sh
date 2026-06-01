@@ -15,6 +15,8 @@ HOST="${DEPLOY_HOST:-birdlense}"
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
 DEPLOY_URL="${DEPLOY_URL:-http://localhost:8085}"
 SYNC_RETRIES="${SYNC_RETRIES:-3}"
+DEPLOY_MIN_INTERVAL_MINUTES="${DEPLOY_MIN_INTERVAL_MINUTES:-20}"
+DEPLOY_MIN_INTERVAL_BYPASS="${DEPLOY_MIN_INTERVAL_BYPASS:-0}"
 # Keepalive — сборка Docker может занимать 5+ мин, без этого SSH обрывается (Broken pipe)
 # Порт через DEPLOY_SSH_PORT (по умолчанию 22)
 _PORT_OPT=""
@@ -25,6 +27,54 @@ SSH_OPTS="${_PORT_OPT} -o ServerAliveInterval=30 -o ServerAliveCountMax=60"
 echo "=== Деплой BirdLense Hub на ${HOST} ==="
 if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]] && [[ "${DEPLOY_URL}" == *"localhost"* ]]; then
   echo "ВНИМАНИЕ: DEPLOY_URL=${DEPLOY_URL} — health check будет с локальной машины. Для удалённого сервера задайте DEPLOY_URL в deploy.local.sh (например http://YOUR_HOST:8085)"
+fi
+if [[ ! "${DEPLOY_MIN_INTERVAL_BYPASS}" =~ ^(1|true|yes)$ ]] && [[ "${DEPLOY_MIN_INTERVAL_MINUTES}" =~ ^[0-9]+$ ]] && [ "${DEPLOY_MIN_INTERVAL_MINUTES}" -gt 0 ]; then
+  _deploy_events="${REPO_ROOT}/docs/reports/dora/deploy_events.jsonl"
+  if ! python3 - "$_deploy_events" "${DEPLOY_MIN_INTERVAL_MINUTES}" <<'PY'
+import json
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+events_path = Path(sys.argv[1])
+min_interval_minutes = int(sys.argv[2])
+if not events_path.exists():
+    raise SystemExit(0)
+last_success = None
+for line in events_path.read_text(encoding="utf-8").splitlines():
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        row = json.loads(line)
+    except json.JSONDecodeError:
+        continue
+    if str(row.get("status") or "").strip().lower() != "success":
+        continue
+    ts = str(row.get("deployed_at") or "").strip()
+    if not ts:
+        continue
+    try:
+        dt = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError:
+        continue
+    if last_success is None or dt > last_success:
+        last_success = dt
+if last_success is None:
+    raise SystemExit(0)
+minutes = (datetime.now(UTC) - last_success).total_seconds() / 60.0
+if minutes < float(min_interval_minutes):
+    print(
+        "Deploy cooldown active: "
+        f"{minutes:.1f}m since last success < {min_interval_minutes}m threshold."
+    )
+    raise SystemExit(2)
+PY
+  then
+    echo "Ошибка: деплой остановлен политикой cooldown, чтобы не терять визиты на частых перезапусках."
+    echo "Подсказка: подождите или выставьте DEPLOY_MIN_INTERVAL_BYPASS=1 для аварийного исключения."
+    exit 1
+  fi
 fi
 
 # 0.4 Опционально (A1 roadmap): прогон verify-prod-env по локальной копии server .env до rsync.
