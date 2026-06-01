@@ -92,6 +92,25 @@ def test_ml_runtime_reports_config_state(client):
     assert "classifier_inference_backend" in body["processor"]
 
 
+def test_dataset_streams_summary_endpoint(client):
+    with client.session_transaction() as sess:
+        sess["access_role"] = "contributor"
+    r = client.get("/api/ui/system/dataset-streams")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["schema"] == "dataset_streams_summary@v1"
+    assert sorted(body["required_streams"]) == [
+        "behavior",
+        "classifier",
+        "detector",
+        "reid",
+    ]
+    stream_index = {item["stream"]: item for item in body["streams"]}
+    assert "reid" in stream_index
+    assert stream_index["reid"]["export_policy"]["community_export_allowed"] is False
+    assert stream_index["reid"]["export_policy"]["private_backup_only"] is True
+
+
 def test_classifier_calibration_report_endpoint(app, client):
     import sqlite3
     from app_config.app_config import app_config

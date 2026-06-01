@@ -20,6 +20,7 @@ import { BehaviorBaselineRetrainCard } from './BehaviorBaselineRetrainCard';
 import { DetectionQualityDashboardCard } from './DetectionQualityDashboardCard';
 import { YoloDetectorHealthCard } from './YoloDetectorHealthCard';
 import { TriggerGraphDashboardCard } from './TriggerGraphDashboardCard';
+import { DatasetStreamsCard } from './DatasetStreamsCard';
 import { ClassifierCalibrationCard } from './ClassifierCalibrationCard';
 import { TuningWorkbenchCard } from './TuningWorkbenchCard';
 import Box from '@mui/material/Box';
@@ -131,6 +132,7 @@ export const System: React.FC = () => {
               <TuningWorkbenchCard />
               <YoloDetectorHealthCard />
               <TriggerGraphDashboardCard />
+              <DatasetStreamsCard />
               <Box
                 id="recognition-improvement"
                 sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}

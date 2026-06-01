@@ -199,6 +199,41 @@ export const fetchMlRuntimeStatus = async (): Promise<MlRuntimeStatus> => {
   return response.data;
 };
 
+export type DatasetStreamSummary = {
+  stream: string;
+  contract_schema: string;
+  required_fields_count: number;
+  split_required_keys: string[];
+  versioning: Record<string, unknown>;
+  provenance_required_keys: string[];
+  export_policy: {
+    community_export_allowed: boolean;
+    private_backup_only: boolean;
+  };
+  ui_panel_route: string;
+};
+
+export type DatasetStreamsSummaryResponse = {
+  schema: string;
+  required_streams: string[];
+  streams: DatasetStreamSummary[];
+  gate: {
+    ok: boolean;
+    generated_at?: string | null;
+    checks?: Record<string, unknown>;
+    summary?: Record<string, unknown>;
+    drift?: Record<string, unknown>;
+  };
+};
+
+export const fetchDatasetStreamsSummary =
+  async (): Promise<DatasetStreamsSummaryResponse> => {
+    const response = await axios.get(`${BASE_API_URL}/system/dataset-streams`, {
+      withCredentials: true,
+    });
+    return response.data;
+  };
+
 export type FeedbackLoopStatus = {
   schema: string;
   events_total: number;
