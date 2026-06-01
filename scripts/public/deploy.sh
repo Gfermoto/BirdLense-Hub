@@ -492,6 +492,23 @@ if [[ ! "${BIRDLENSE_SKIP_STREAM_QUALITY_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
+# 0.74 Domain closure package gate (#557 final artifacts).
+if [[ ! "${BIRDLENSE_SKIP_DOMAIN_CLOSURE_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "0.74 Domain Closure Package Gate..."
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/verify_domain_closure_package.py \
+      --contract "docs/reports/domain_finetune/closure_package_contract.json" \
+      --closure-doc "docs/reports/domain_finetune/closure_package_30_60_90.md" \
+      --domain-loop "docs/reports/domain_finetune/domain_finetune_loop_latest.json" \
+      --stream-quality "docs/reports/stream_quality/stream_quality_latest.json" \
+      --champion-shadow "docs/reports/ml_shadow/champion_challenger_latest.json" \
+      --out-json "docs/reports/domain_finetune/closure_package_latest.json" \
+      --out-md "docs/reports/domain_finetune/closure_package_latest.md") || {
+        echo "Ошибка: Domain closure package gate не пройден. Деплой остановлен."
+        exit 1
+      }
+fi
+
 # 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
 echo "0. Остановка контейнера birdlense..."
 ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
