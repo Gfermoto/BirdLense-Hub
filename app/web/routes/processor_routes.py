@@ -106,6 +106,70 @@ def _canonical_detection_row(row: dict) -> dict:
     }
 
 
+def _is_valid_norm_bbox(value) -> bool:
+    if not isinstance(value, (list, tuple)) or len(value) < 4:
+        return False
+    try:
+        x1, y1, x2, y2 = [float(v) for v in value[:4]]
+    except (TypeError, ValueError):
+        return False
+    if not (x2 > x1 and y2 > y1):
+        return False
+    low, high = -0.05, 1.05
+    return all(low <= v <= high for v in (x1, y1, x2, y2))
+
+
+def _enforce_video_bbox_track_contract(species_list: list[dict]) -> tuple[list[dict], dict]:
+    """Prune invalid video detections for provider rows that must have track frames."""
+    kept: list[dict] = []
+    stats = {
+        "dropped_missing_frames": 0,
+        "dropped_empty_bbox": 0,
+        "pruned_invalid_bbox_frames": 0,
+    }
+    providers_requiring_frames = {
+        "yolo",
+        "opencv",
+        "detector",
+        "binary",
+        "motion_detector",
+        "or_motion",
+    }
+    for row in species_list or []:
+        source = str((row or {}).get("source") or "").strip().lower()
+        provider = str((row or {}).get("detection_provider") or "").strip().lower()
+        require_contract = source == "video" and (
+            provider in providers_requiring_frames
+            or bool((row or {}).get("yolo_track_present"))
+        )
+        if not require_contract:
+            kept.append(row)
+            continue
+        frames = row.get("frames")
+        if isinstance(frames, str):
+            try:
+                frames = json.loads(frames)
+            except (TypeError, ValueError):
+                frames = None
+        if not isinstance(frames, list) or not frames:
+            stats["dropped_missing_frames"] += 1
+            continue
+        valid_frames = [
+            fr
+            for fr in frames
+            if isinstance(fr, dict) and _is_valid_norm_bbox(fr.get("bbox"))
+        ]
+        if not valid_frames:
+            stats["dropped_empty_bbox"] += 1
+            continue
+        if len(valid_frames) != len(frames):
+            stats["pruned_invalid_bbox_frames"] += int(len(frames) - len(valid_frames))
+            row = dict(row)
+            row["frames"] = valid_frames
+        kept.append(row)
+    return kept, stats
+
+
 def _build_species_payload_hash(*, species_list: list[dict]) -> str:
     normalized_rows = [_canonical_detection_row(row or {}) for row in (species_list or [])]
     normalized_rows.sort(
@@ -218,11 +282,30 @@ def register_routes(app):
         if prep[0] is False:
             return prep[1], prep[2]
         pv = prep[1]
+        pruned_species_list, prune_stats = _enforce_video_bbox_track_contract(
+            pv.species_list
+        )
+        if not pruned_species_list:
+            return {
+                "error": (
+                    "No valid video detections after bbox/track contract "
+                    "validation"
+                ),
+                "reason": "video_bbox_track_contract_empty",
+            }, 400
+        if any(int(v or 0) > 0 for v in prune_stats.values()):
+            app.logger.warning(
+                "processor_ingest pruned invalid video rows: "
+                "missing_frames=%s empty_bbox=%s pruned_frames=%s",
+                int(prune_stats.get("dropped_missing_frames") or 0),
+                int(prune_stats.get("dropped_empty_bbox") or 0),
+                int(prune_stats.get("pruned_invalid_bbox_frames") or 0),
+            )
         clip_key = _build_clip_idempotency_key(
             processor_version=data["processor_version"],
             pv=pv,
         )
-        payload_hash = _build_species_payload_hash(species_list=pv.species_list)
+        payload_hash = _build_species_payload_hash(species_list=pruned_species_list)
         existing_video = _find_existing_video_for_idempotent_ingest(
             processor_version=data["processor_version"],
             pv=pv,
@@ -258,6 +341,15 @@ def register_routes(app):
                 spectrogram_path=pv.spectrogram_path,
                 **fetch_weather(),
             )
+            raw_trigger_source = str(data.get("trigger_source") or "").strip().lower()
+            if raw_trigger_source in {
+                "opencv",
+                "frigate",
+                "motion_sensor",
+                "scales",
+                "unknown",
+            }:
+                video.trigger_source = raw_trigger_source
             raw_sw = data.get("scales_weight_delta_kg")
             if raw_sw is not None and app_config.get("integrations.scales.enabled"):
                 try:
@@ -305,7 +397,7 @@ def register_routes(app):
 
             visit_timeout = int(app_config.get("detection.dedup_window_seconds") or 60)
             visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
-            visit_processor.process_detections(video, pv.species_list)
+            visit_processor.process_detections(video, pruned_species_list)
 
             db.session.commit()
             bust_all_api_caches()
@@ -328,11 +420,11 @@ def register_routes(app):
 
             # Webhook: fire-and-forget
             webhook_url = (app_config.get("webhook.url") or "").strip()
-            if webhook_url and pv.species_list:
+            if webhook_url and pruned_species_list:
                 if is_safe_webhook_url(webhook_url):
                     threading.Thread(
                         target=fire_webhook,
-                        args=(webhook_url, pv.species_list, pv.start_time, app.logger),
+                        args=(webhook_url, pruned_species_list, pv.start_time, app.logger),
                         daemon=True,
                     ).start()
                 else:

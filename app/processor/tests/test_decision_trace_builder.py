@@ -13,7 +13,10 @@ sys.path.insert(0, src_path)
 if app_path not in sys.path:
     sys.path.insert(0, app_path)
 
-from decision_trace_builder import decision_trace_row  # noqa: E402
+from decision_trace_builder import (  # noqa: E402
+    _compact_runtime_signals,
+    decision_trace_row,
+)
 
 
 class TestDecisionTraceBuilder(unittest.TestCase):
@@ -60,6 +63,22 @@ class TestDecisionTraceBuilder(unittest.TestCase):
         self.assertEqual(row["audio_evidence"], "none")
         self.assertFalse(row["persisted_to_clip"])
         self.assertFalse(row["yolo_track_present"])
+
+    def test_compact_runtime_signals_keeps_only_scalars(self):
+        compact = _compact_runtime_signals(
+            {
+                "yolo_ran": 12,
+                "phase": "suspected",
+                "debug_payload": {"huge": True},
+                "events": [1, 2, 3],
+                "long_text": "x" * 200,
+            }
+        )
+        self.assertEqual(compact["yolo_ran"], 12)
+        self.assertEqual(compact["phase"], "suspected")
+        self.assertNotIn("debug_payload", compact)
+        self.assertNotIn("events", compact)
+        self.assertNotIn("long_text", compact)
 
 
 if __name__ == "__main__":

@@ -69,6 +69,27 @@ _DECISION_TRACE_FIELDS = (
 _DECISION_TRACE_LIMIT = 40
 
 
+def _compact_runtime_signals(
+    runtime_signals: dict[str, Any] | None,
+    *,
+    max_items: int = 24,
+) -> dict[str, Any]:
+    """Keep only compact scalar runtime signals for trace payload."""
+    if not isinstance(runtime_signals, dict):
+        return {}
+    out: dict[str, Any] = {}
+    for key in sorted(runtime_signals.keys()):
+        if len(out) >= max(1, int(max_items)):
+            break
+        value = runtime_signals.get(key)
+        if isinstance(value, (bool, int, float)):
+            out[str(key)] = value
+            continue
+        if isinstance(value, str) and len(value) <= 64:
+            out[str(key)] = value
+    return out
+
+
 def _policy_snapshot(app_config) -> dict[str, Any]:
     def _get(key: str, default: Any) -> Any:
         try:
@@ -204,7 +225,9 @@ def build_decision_trace_payload(
                 app_config.get("processor.min_seconds_between_recordings") or 0,
             ),
             "clip_duration_seconds": round(clip_duration_seconds, 3),
-            "runtime_signals": dict((recording_context or {}).get("runtime_signals") or {}),
+            "runtime_signals": _compact_runtime_signals(
+                (recording_context or {}).get("runtime_signals"),
+            ),
             "regen_profile": (recording_context or {}).get("regen_profile"),
             "policy_snapshot": _policy_snapshot(app_config),
         },
