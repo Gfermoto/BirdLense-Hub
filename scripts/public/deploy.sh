@@ -840,7 +840,10 @@ fi
 # 3. Проверка после деплоя
 echo ""
 echo "3. Проверка после деплоя..."
-sleep 8
+# OpenVINO/bootstrap может занимать 3–5 мин; readiness retry — в verify-stack (ATTEMPTS×SLEEP_SEC).
+DEPLOY_READINESS_ATTEMPTS="${DEPLOY_READINESS_ATTEMPTS:-60}"
+DEPLOY_READINESS_SLEEP_SEC="${DEPLOY_READINESS_SLEEP_SEC:-5}"
+echo "  - Post-deploy readiness wait: up to $((DEPLOY_READINESS_ATTEMPTS * DEPLOY_READINESS_SLEEP_SEC))s (${DEPLOY_READINESS_ATTEMPTS}×${DEPLOY_READINESS_SLEEP_SEC}s)"
 echo "  - Docker logs (последние 25 строк):"
 ssh ${SSH_OPTS} "${HOST}" "docker logs birdlense --tail=25 2>&1" | tail -30
 echo ""
@@ -849,17 +852,17 @@ echo "  - Shared verify contract:"
 DEPLOY_STRICT_QUALITY_REQUIRED="${DEPLOY_STRICT_QUALITY_REQUIRED:-0}"
 if [[ "${DEPLOY_STRICT_QUALITY_REQUIRED}" == "1" ]]; then
   echo "  - Strict quality gate: blocking (DEPLOY_STRICT_QUALITY_REQUIRED=1)"
-  BASE_URL="${DEPLOY_URL}" ATTEMPTS=20 SLEEP_SEC=3 CHECK_CAMERAS=1 \
+  BASE_URL="${DEPLOY_URL}" ATTEMPTS="${DEPLOY_READINESS_ATTEMPTS}" SLEEP_SEC="${DEPLOY_READINESS_SLEEP_SEC}" CHECK_CAMERAS=1 \
     MCP_TOKEN="${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
     ./scripts/verify-stack.sh --check-domain-health --strict-quality
 else
   echo "  - Strict quality gate: report-only (set DEPLOY_STRICT_QUALITY_REQUIRED=1 to block deploy)"
-  BASE_URL="${DEPLOY_URL}" ATTEMPTS=20 SLEEP_SEC=3 CHECK_CAMERAS=1 \
+  BASE_URL="${DEPLOY_URL}" ATTEMPTS="${DEPLOY_READINESS_ATTEMPTS}" SLEEP_SEC="${DEPLOY_READINESS_SLEEP_SEC}" CHECK_CAMERAS=1 \
     MCP_TOKEN="${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
     ./scripts/verify-stack.sh --check-domain-health
 fi
 echo "  - Runtime SLI gate:"
-BASE_URL="${DEPLOY_URL}" \
+BASE_URL="${DEPLOY_URL}" ATTEMPTS="${DEPLOY_READINESS_ATTEMPTS}" SLEEP_SEC="${DEPLOY_READINESS_SLEEP_SEC}" \
   MCP_TOKEN="${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
   MAX_HEARTBEAT_AGE_SECONDS="${MAX_HEARTBEAT_AGE_SECONDS:-240}" \
   MAX_HTTP_OVER_1000MS_RATIO="${MAX_HTTP_OVER_1000MS_RATIO:-0.20}" \
