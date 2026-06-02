@@ -109,7 +109,7 @@ def apply_settings_patch_and_refresh_caches(normalized_updates: dict) -> dict:
 
     payload = app_config.prepare_settings_for_api(app_config.config)
     if deprecated:
-        payload["_settings_warnings"] = {"deprecated_keys_present": deprecated}
+        payload["settings_warnings"] = {"deprecated_keys_present": deprecated}
     return payload
 
 
