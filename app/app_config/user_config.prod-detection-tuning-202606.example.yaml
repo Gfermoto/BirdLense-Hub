@@ -22,6 +22,9 @@ processor:
       min_confidence_to_process: 0.12
       openvino_min_confidence_binary_bird: 0.12
     Forest:
-      # Optional: slightly looser static reject for windy canopy (feeder is static-heavy).
-      track_static_reject_max_center_dispersion_norm: 0.09
-      track_static_reject_min_duration_sec: 3.0
+      # v2 (2026-06-02): opencv FP + windy canopy — looser static gate than BirdBox feeder.
+      track_static_reject_max_center_dispersion_norm: 0.10
+      track_static_reject_max_relative_center_dispersion: 0.18
+      track_static_reject_min_duration_sec: 2.5
+      track_static_reject_min_frames: 3
+      track_static_reject_min_frames_sparse: 2

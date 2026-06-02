@@ -252,6 +252,10 @@ sota-governance-prod:
 	GOVERNANCE_FETCH_PROD_DB=1 SOTA_FAIL_ON_BLOCKED=0 \
 	$(MAKE) sota-governance-cycle
 
+# Once-daily prod metrics (cron / manual); report-only, no fail on KPI.
+daily-stats-prod: sota-governance-prod
+	@echo "daily-stats-prod: see docs/reports/governance/governance_cycle_latest.json"
+
 apply-prod-detection-tuning:
 	@set -e; cd "$(CURDIR)"; \
 	chmod +x ./scripts/apply-prod-detection-tuning-hotfix.sh; \

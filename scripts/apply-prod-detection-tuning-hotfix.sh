@@ -58,8 +58,11 @@ for key in (
     bird[key] = 0.12
 
 forest = overrides.setdefault("Forest", {})
-forest.setdefault("track_static_reject_max_center_dispersion_norm", 0.09)
-forest.setdefault("track_static_reject_min_duration_sec", 3.0)
+forest["track_static_reject_max_center_dispersion_norm"] = 0.10
+forest["track_static_reject_max_relative_center_dispersion"] = 0.18
+forest["track_static_reject_min_duration_sec"] = 2.5
+forest["track_static_reject_min_frames"] = 3
+forest["track_static_reject_min_frames_sparse"] = 2
 
 cfg_path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
 print("OK:", cfg_path)
