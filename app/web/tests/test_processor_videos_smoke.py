@@ -172,7 +172,7 @@ def test_processor_videos_prunes_invalid_yolo_rows_but_keeps_valid(
             "frames": [{"t": 0.1, "bbox": [0.2, 0.2, 0.2, 0.4]}],
         },
         {
-            "species_name": f"Pytest Valid {token}",
+            "species_name": "Great Tit",
             "confidence": 0.9,
             "start_time": 0,
             "end_time": 1,
@@ -187,7 +187,7 @@ def test_processor_videos_prunes_invalid_yolo_rows_but_keeps_valid(
         assert db.session.query(Video).count() == 1
         assert db.session.query(VideoSpecies).count() == 1
         species_name = db.session.query(Species.name).join(VideoSpecies, VideoSpecies.species_id == Species.id).scalar()
-        assert species_name == f"Pytest Valid {token}"
+        assert species_name == "Great Tit"
 
 
 def test_processor_videos_rejects_missing_video_file(app, client, proc_headers, monkeypatch, tmp_path):
