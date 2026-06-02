@@ -379,8 +379,12 @@ jobs:
           set -euo pipefail
           link_weights() {
             W="${{ github.workspace }}/app/processor/models/detection/weights"
-            ln -sf best.pt "$W/trapper_ai_v02_2024.pt"
             C="${{ github.workspace }}/app/processor/models/classification/weights"
+            mkdir -p "$W" "$C"
+            ln -sf best.pt "$W/trapper_ai_v02_2024.pt"
+            if [[ ! -s "$C/best.pt" && -s "$W/best.pt" ]]; then
+              ln -sf ../../detection/weights/best.pt "$C/best.pt"
+            fi
             if [[ -s "$C/best.pt" && ! -e "$C/convnext_v2_tiny_eu-common256px.pt" ]]; then
               ln -sf best.pt "$C/convnext_v2_tiny_eu-common256px.pt"
             fi
