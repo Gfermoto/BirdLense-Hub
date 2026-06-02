@@ -102,6 +102,30 @@ class TestReportFailureModeFunnel(unittest.TestCase):
         self.assertIn("cam1", report["by_camera"])
         self.assertIn("0", report["by_slot"])
 
+    def test_build_failure_mode_funnel_decision_reason_counts(self):
+        from report_failure_mode_funnel import build_failure_mode_funnel
+
+        rows = [
+            {
+                "camera_id": "BirdBox",
+                "camera_slot": 0,
+                "yolo_raw_boxes_total": 5,
+                "yolo_frames_with_tracks": 2,
+                "payload_json": (
+                    '{"post_fusion_persisted": 0, "trigger_graph": '
+                    '{"decision_reason_counts": {"rejected_static_pinned_track": 2, '
+                    '"rejected_short_track": 1}}}'
+                ),
+            },
+        ]
+        report = build_failure_mode_funnel(rows, lookback_hours=24)
+        self.assertEqual(
+            report["decision_reason_counts"]["rejected_static_pinned_track"], 2
+        )
+        self.assertEqual(
+            report["decision_reason_by_camera"]["BirdBox"]["rejected_short_track"], 1
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
