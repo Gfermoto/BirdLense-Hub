@@ -159,7 +159,7 @@ def test_processor_videos_prunes_invalid_yolo_rows_but_keeps_valid(
     )
     monkeypatch.setitem(app_config.config.setdefault("webhook", {}), "url", "")
     token = str(id(app))[-6:].zfill(6)
-    body = _base_video_payload(f"{(int(token)+1) % 1000000:06d}")
+    body = _base_video_payload(f"{(int(token) + 1) % 1000000:06d}")
     _touch_video_file(body["video_path"], data_root=str(tmp_path / "data"))
     body["species"] = [
         {
