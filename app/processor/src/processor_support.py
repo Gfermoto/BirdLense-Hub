@@ -88,6 +88,40 @@ def check_restart_flag():
         raise SystemExit(0)
 
 
+def _heartbeat_payload() -> dict:
+    data: dict = {"status": "up"}
+    if processor_status.get("last_video_ok_at"):
+        data["last_video_ok_at"] = processor_status["last_video_ok_at"]
+    if processor_status.get("last_yolo_ok_at"):
+        data["last_yolo_ok_at"] = processor_status["last_yolo_ok_at"]
+    if processor_status.get("last_yolo_detection_at"):
+        data["last_yolo_detection_at"] = processor_status["last_yolo_detection_at"]
+    ref = heartbeat_mqtt_ref[0] if heartbeat_mqtt_ref else None
+    if ref is not None:
+        try:
+            data["mqtt_connected"] = ref.is_mqtt_ok_for_heartbeat()
+        except Exception:
+            data["mqtt_connected"] = False
+    try:
+        from encoding_status import get_last_encoding_used
+
+        enc = get_last_encoding_used()
+        if enc:
+            data["encoding_used"] = enc
+    except Exception:
+        _log.debug("heartbeat: encoding_status unavailable", exc_info=True)
+    try:
+        flush_runtime_stats_snapshot()
+        data["runtime_stats"] = runtime_stats_snapshot()
+    except Exception:
+        _log.debug("heartbeat: runtime_stats flush/snapshot failed", exc_info=True)
+    return data
+
+
+def _send_heartbeat(api: API, hb_row_id: int | None) -> int | None:
+    return api.activity_log(type="heartbeat", data=_heartbeat_payload(), id=hb_row_id)
+
+
 def heartbeat():
     """Периодический heartbeat в API (60 с)."""
     hb_row_id = None
@@ -96,33 +130,7 @@ def heartbeat():
         try:
             if api is None:
                 api = API()
-            data = {"status": "up"}
-            if processor_status.get("last_video_ok_at"):
-                data["last_video_ok_at"] = processor_status["last_video_ok_at"]
-            if processor_status.get("last_yolo_ok_at"):
-                data["last_yolo_ok_at"] = processor_status["last_yolo_ok_at"]
-            if processor_status.get("last_yolo_detection_at"):
-                data["last_yolo_detection_at"] = processor_status["last_yolo_detection_at"]
-            ref = heartbeat_mqtt_ref[0] if heartbeat_mqtt_ref else None
-            if ref is not None:
-                try:
-                    data["mqtt_connected"] = ref.is_mqtt_ok_for_heartbeat()
-                except Exception:
-                    data["mqtt_connected"] = False
-            try:
-                from encoding_status import get_last_encoding_used
-
-                enc = get_last_encoding_used()
-                if enc:
-                    data["encoding_used"] = enc
-            except Exception:
-                _log.debug("heartbeat: encoding_status unavailable", exc_info=True)
-            try:
-                flush_runtime_stats_snapshot()
-                data["runtime_stats"] = runtime_stats_snapshot()
-            except Exception:
-                _log.debug("heartbeat: runtime_stats flush/snapshot failed", exc_info=True)
-            hb_row_id = api.activity_log(type="heartbeat", data=data, id=hb_row_id)
+            hb_row_id = _send_heartbeat(api, hb_row_id)
         except Exception as e:
             logging.error("Heartbeat failed: %s (will retry in 60s)", e)
         # Restart: только основной цикл (check_restart_flag); SystemExit из потока
@@ -132,7 +140,19 @@ def heartbeat():
 
 def start_heartbeat_daemon():
     """Запустить поток heartbeat в фоне."""
-    t = threading.Thread(target=heartbeat, daemon=True)
+    def _run() -> None:
+        hb_row_id = None
+        api = None
+        while True:
+            try:
+                if api is None:
+                    api = API()
+                hb_row_id = _send_heartbeat(api, hb_row_id)
+            except Exception as e:
+                logging.error("Heartbeat failed: %s (will retry in 60s)", e)
+            time.sleep(60)
+
+    t = threading.Thread(target=_run, daemon=True, name="birdlense-heartbeat")
     t.start()
     return t
 

@@ -109,6 +109,7 @@ class MotionRecordingSession:
         self.fps_tracker = fps_tracker
         self.finalize_worker = finalize_worker
         self.file_test_runtime = file_test_runtime
+        self.inference_lock = None
         self.session_state_repo = SessionStateRepository()
         self._startup_blind_confirmed = False
         try:
@@ -276,7 +277,12 @@ class MotionRecordingSession:
         )
         return (hits > 0) if cfg.start_recording_on_positive else True
 
-    def run(self) -> bool:
+    def run(
+        self,
+        *,
+        forced_camera_id: str | None = None,
+        forced_trigger_source: str | None = None,
+    ) -> bool:
         """Выполнить одну запись. Возвращает True, если внешний цикл main должен завершиться (режим --input)."""
         session_overrides = merge_birdnet_mqtt_bias_into_overrides(
             self.merged_overrides, app_config, self.mqtt_aggregator
@@ -285,13 +291,21 @@ class MotionRecordingSession:
 
         from motion_recording_camera import resolve_motion_recording_camera_id
 
-        camera_id = resolve_motion_recording_camera_id(
-            self.motion_detector,
-            mqtt_aggregator=self.mqtt_aggregator,
-            default_camera_id=self.default_camera_id,
+        camera_id = (
+            str(forced_camera_id).strip()
+            if forced_camera_id
+            else resolve_motion_recording_camera_id(
+                self.motion_detector,
+                mqtt_aggregator=self.mqtt_aggregator,
+                default_camera_id=self.default_camera_id,
+            )
         )
         frigate_trigger_event = None
-        if getattr(self.motion_detector, "get_triggered_by", lambda: None)() == "frigate":
+        trigger_by = (
+            str(forced_trigger_source or "").strip().lower()
+            or str(getattr(self.motion_detector, "get_triggered_by", lambda: None)() or "").strip().lower()
+        )
+        if trigger_by == "frigate":
             _last_frigate = getattr(self.motion_detector, "get_last_frigate_event", None)
             if callable(_last_frigate):
                 _ev = _last_frigate()
@@ -531,12 +545,22 @@ class MotionRecordingSession:
                         frigate_hold_seconds=frigate_hold_seconds,
                     )
                 with self.fps_tracker:
-                    has_detections = self.frame_processor.run(
-                        frame,
-                        frame_time=frame_time,
-                        classification_frame=classifier_source_frame,
-                        camera_overrides=scoring_overrides,
-                    )
+                    lock = getattr(self, "inference_lock", None)
+                    if lock is not None:
+                        with lock:
+                            has_detections = self.frame_processor.run(
+                                frame,
+                                frame_time=frame_time,
+                                classification_frame=classifier_source_frame,
+                                camera_overrides=scoring_overrides,
+                            )
+                    else:
+                        has_detections = self.frame_processor.run(
+                            frame,
+                            frame_time=frame_time,
+                            classification_frame=classifier_source_frame,
+                            camera_overrides=scoring_overrides,
+                        )
                 run_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
                 if camera_id:
                     from motion_detectors.opencv_live_overlay import set_yolo_live_overlay
