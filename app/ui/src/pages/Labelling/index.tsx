@@ -1,24 +1,22 @@
 import React from 'react';
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  InputLabel,
-  LinearProgress,
-  MenuItem,
-  Select,
-  Stack,
-  Tooltip,
-  Typography,
-} from '@mui/material';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Chip from '@mui/material/Chip';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import LinearProgress from '@mui/material/LinearProgress';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { useHelpAudience } from '../../hooks/useHelpAudience';
@@ -147,13 +145,16 @@ export const LabellingPage: React.FC = () => {
   const exp = useExportLabellingCasesMutation();
   const [showHelp, setShowHelp] = React.useState<boolean>(() => localStorage.getItem('labelling_help_seen') !== '1');
 
-  const allItems = q.data?.items || [];
+  const allItems = q.data?.items;
   const cameras = React.useMemo(
-    () => Array.from(new Set(allItems.map((x) => x.camera_id).filter((x): x is string => Boolean(x)))).sort(),
+    () =>
+      Array.from(
+        new Set((allItems ?? []).map((x) => x.camera_id).filter((x): x is string => Boolean(x))),
+      ).sort(),
     [allItems],
   );
   const items = React.useMemo(() => {
-    const filtered = allItems.filter((item) => {
+    const filtered = (allItems ?? []).filter((item) => {
       if (status !== 'all' && item.status !== status) return false;
       if (workflowFilter === 'new' && item.status !== 'pending') return false;
       if (workflowFilter === 'error' && !(item.reason_code.includes('blind') || item.reason_code.includes('fallback'))) return false;
@@ -176,26 +177,29 @@ export const LabellingPage: React.FC = () => {
 
   const reviewed = items.filter((x) => x.status !== 'pending').length;
   const progress = items.length > 0 ? (reviewed / items.length) * 100 : 0;
-  const gotoNext = () => setCurrentIndex((v) => Math.min(items.length - 1, v + 1));
-  const gotoPrev = () => setCurrentIndex((v) => Math.max(0, v - 1));
+  const gotoNext = React.useCallback(
+    () => setCurrentIndex((v) => Math.min(items.length - 1, v + 1)),
+    [items.length],
+  );
+  const gotoPrev = React.useCallback(() => setCurrentIndex((v) => Math.max(0, v - 1)), []);
 
   const approveAll = React.useCallback(async () => {
     if (!current) return;
     await batch.mutateAsync([{ kind: 'status', case_id: current.id, status: 'approved' }]);
     gotoNext();
-  }, [batch, current]);
+  }, [batch, current, gotoNext]);
 
   const rejectAll = React.useCallback(async () => {
     if (!current) return;
     await batch.mutateAsync([{ kind: 'feedback', case_id: current.id, action: 'reject_box' }]);
     gotoNext();
-  }, [batch, current]);
+  }, [batch, current, gotoNext]);
 
   const flagSemanticError = React.useCallback(async () => {
     if (!current) return;
     await batch.mutateAsync([{ kind: 'feedback', case_id: current.id, action: 'flag_semantic_error' }]);
     gotoNext();
-  }, [batch, current]);
+  }, [batch, current, gotoNext]);
 
   React.useEffect(() => {
     const handler = async (e: KeyboardEvent) => {
@@ -217,7 +221,7 @@ export const LabellingPage: React.FC = () => {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [approveAll, current, rejectAll]);
+  }, [approveAll, current, gotoNext, gotoPrev, rejectAll]);
 
   return (
     <ProtectedRoute title={t('labelling.title')} requireAdmin={false}>

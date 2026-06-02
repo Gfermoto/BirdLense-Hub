@@ -20,6 +20,7 @@ import {
   fetchBirdProfiles,
   type BirdProfile,
 } from '../api/speciesOverviewDetections';
+import { queryKeys } from '../api/queryKeys';
 import { formatBirdProfileOptionLabel } from './filters/BirdProfileFilterAutocomplete';
 import { getApiErrorMessage } from '../api/api';
 import Snackbar from '@mui/material/Snackbar';
@@ -44,7 +45,7 @@ export function BirdProfilesCatalogDialog({
   const [success, setSuccess] = useState<string | null>(null);
 
   const { data: profiles = [], isLoading } = useQuery({
-    queryKey: ['bird-profiles', 'catalog'],
+    queryKey: queryKeys.birdProfiles.catalog,
     queryFn: async () => (await fetchBirdProfiles({ limit: 100 })).items,
     enabled: open,
     staleTime: 30_000,
@@ -53,7 +54,7 @@ export function BirdProfilesCatalogDialog({
   const deleteMutation = useMutation({
     mutationFn: (profileId: number) => deleteBirdProfile(profileId),
     onSuccess: (payload) => {
-      queryClient.invalidateQueries({ queryKey: ['bird-profiles'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.birdProfiles.all });
       setPendingDelete(null);
       setSuccess(
         t('birdProfiles.deletedSuccess', {

@@ -21,12 +21,12 @@ type JobsListResponse = {
 export function CatalogOpsHubCard() {
   const { t } = useTranslation();
   const catalogQ = useQuery({
-    queryKey: [...queryKeys.speciesDirectory.list, 'allowlist', 'hub'],
+    queryKey: queryKeys.speciesDirectory.allowlistHub,
     queryFn: () => fetchBirdDirectory({ scope: 'allowlist', meta: true }),
     staleTime: 60_000,
   });
   const jobsQ = useQuery({
-    queryKey: ['system', 'jobs'],
+    queryKey: queryKeys.system.jobs,
     queryFn: async () => {
       const r = await axios.get<JobsListResponse>(`${BASE_API_URL}/jobs`);
       return r.data;
@@ -35,7 +35,7 @@ export function CatalogOpsHubCard() {
     refetchInterval: 15_000,
   });
   const bpQ = useQuery({
-    queryKey: ['system', 'backpressure'],
+    queryKey: queryKeys.system.backpressure,
     queryFn: fetchProcessorBackpressure,
     staleTime: 10_000,
     refetchInterval: 15_000,

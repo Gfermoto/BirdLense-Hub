@@ -11,6 +11,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deleteBirdProfile } from '../api/speciesOverviewDetections';
+import { queryKeys } from '../api/queryKeys';
 import { getApiErrorMessage } from '../api/api';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
@@ -37,7 +38,7 @@ export function DeleteBirdProfileButton({
   const deleteMutation = useMutation({
     mutationFn: () => deleteBirdProfile(profileId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bird-profiles'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.birdProfiles.all });
       setConfirmOpen(false);
       onDeleted?.();
     },

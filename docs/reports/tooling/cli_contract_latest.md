@@ -1,6 +1,6 @@
 # CLI Contract Standardization Report
 
-- generated_at: `2026-05-31T19:02:52Z`
+- generated_at: `2026-06-02T09:22:49Z`
 - cli_total: `5`
 - required_cli_total: `5`
 - missing_required_ids: `0`

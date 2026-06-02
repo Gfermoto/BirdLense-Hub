@@ -49,6 +49,8 @@ export const queryKeys = {
     yoloDetectorHealth: (hours: number) =>
       ['system', 'yolo-detector-health', hours] as const,
     triggerGraph: (hours: number) => ['system', 'trigger-graph', hours] as const,
+    jobs: ['system', 'jobs'] as const,
+    backpressure: ['system', 'backpressure'] as const,
   },
   /** Карточки страницы «Система» с плоскими ключами кэша (legacy-строки). */
   systemPanels: {
@@ -93,6 +95,7 @@ export const queryKeys = {
   /** Страница каталога видов (отдельно от `bird-directory`). */
   speciesDirectory: {
     list: ['species-directory'] as const,
+    allowlistHub: ['species-directory', 'allowlist', 'hub'] as const,
   },
   favorites: {
     bySpecies: ['favorites', 'by-species'] as const,
@@ -134,6 +137,7 @@ export const queryKeys = {
       status: 'pending' | 'approved' | 'rejected' | 'semantic_review_required' | 'all',
       withMediaOnly = true,
     ) => ['labelling-cases', status, withMediaOnly ? 'media-only' : 'all-cases'] as const,
+    casesAll: ['labelling-cases'] as const,
   },
   corrections: {
     recent: ['corrections-recent'] as const,
@@ -152,6 +156,22 @@ export const queryKeys = {
   },
   birdDirectory: {
     all: ['bird-directory'] as const,
+  },
+  birdProfiles: {
+    all: ['bird-profiles'] as const,
+    catalog: ['bird-profiles', 'catalog'] as const,
+    timelineFilter: ['bird-profiles', 'timeline-filter'] as const,
+    timelineFilterMap: ['bird-profiles', 'timeline-filter-map'] as const,
+    videoDetails: ['bird-profiles', 'video-details'] as const,
+    suggestLinks: (detectionId: number | string, anchorProfileId?: number | string | null) =>
+      ['bird-profile-suggest-links', detectionId, anchorProfileId ?? null] as const,
+  },
+  reid: {
+    status: ['reid', 'status'] as const,
+    gallery: ['reid', 'gallery'] as const,
+  },
+  expert: {
+    queue: ['expert', 'queue'] as const,
   },
   speciesSummary: {
     all: ['speciesSummary'] as const,
