@@ -69,3 +69,20 @@ def download_variant(variant: str, base: Path) -> Path:
     jays = [n for n in lines if "jay" in n.lower()]
     print("jay classes:", jays)
     return base
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--variant", default=DEFAULT_VARIANT, choices=sorted(MODELS))
+    parser.add_argument(
+        "--dest",
+        type=Path,
+        default=REPO / "app" / "processor" / "models" / "classification" / "weights",
+        help="Classification weights directory (default: app/processor/models/classification/weights)",
+    )
+    args = parser.parse_args()
+    download_variant(args.variant, args.dest)
+
+
+if __name__ == "__main__":
+    main()
