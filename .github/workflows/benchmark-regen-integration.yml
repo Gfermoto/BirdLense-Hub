@@ -72,18 +72,46 @@ jobs:
 
       - name: Processor .pt weights
         working-directory: ${{ github.workspace }}
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          BIRDLENSE_FETCH_CLASSIFIER_OPTIONAL: "1"
         run: |
           set -euo pipefail
+          link_weights() {
+            W="${{ github.workspace }}/app/processor/models/detection/weights"
+            ln -sf best.pt "$W/trapper_ai_v02_2024.pt"
+            C="${{ github.workspace }}/app/processor/models/classification/weights"
+            if [[ -s "$C/best.pt" && ! -e "$C/convnext_v2_tiny_eu-common256px.pt" ]]; then
+              ln -sf best.pt "$C/convnext_v2_tiny_eu-common256px.pt"
+            fi
+          }
           for attempt in 1 2 3; do
             if ./scripts/fetch-processor-weights.sh; then
-              W="${{ github.workspace }}/app/processor/models/detection/weights"
-              ln -sf best.pt "$W/trapper_ai_v02_2024.pt"
+              link_weights
               exit 0
             fi
             sleep $((attempt * 10))
           done
           echo "Failed to fetch processor weights" >&2
           exit 1
+
+      - name: Ensure Birder EU classifier for benchmark smoke
+        working-directory: ${{ github.workspace }}
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          C="app/processor/models/classification/weights"
+          PT="$C/convnext_v2_tiny_eu-common256px.pt"
+          if [[ -s "$PT" ]]; then
+            exit 0
+          fi
+          if [[ -s "$C/best.pt" ]]; then
+            ln -sf best.pt "$PT"
+            exit 0
+          fi
+          pip install -q huggingface_hub birder torch
+          python3 scripts/download_birder_classifier.py --variant convnext_v2_tiny_eu-common256px
 
       - name: Build birdlense image
         run: docker compose build birdlense

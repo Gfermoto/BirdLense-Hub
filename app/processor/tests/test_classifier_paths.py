@@ -81,7 +81,7 @@ class TestClassifierPaths(unittest.TestCase):
                     proc,
                 )
             self.assertEqual(backend, "torch")
-            self.assertTrue(path.endswith("_openvino_model"))
+            self.assertTrue(path.endswith(".pt"))
 
 
 if __name__ == "__main__":

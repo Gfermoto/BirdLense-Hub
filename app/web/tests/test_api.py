@@ -383,97 +383,103 @@ class TestTrackRegenFallback:
 
         from models import ActivityLog, Video, db
         import services.system_track_regen.worker_core as worker_mod
+        from app_config.app_config import app_config
 
-        with app.app_context():
-            video = Video(
-                processor_version="test",
-                start_time=datetime(2026, 4, 18, 8, 21, 31, tzinfo=timezone.utc),
-                end_time=datetime(2026, 4, 18, 8, 22, 17, tzinfo=timezone.utc),
-                video_path="data/recordings/2026/04/18/082131/video.mp4",
-            )
-            db.session.add(video)
-            db.session.flush()
-            db.session.add(
-                ActivityLog(
-                    type="decision_trace",
-                    data=json.dumps(
-                        {
-                            "video_id": video.id,
-                            "video_path": video.video_path,
-                            "accepted_tracks": [{"track_id": -1, "species_name": "Eurasian Jay", "accepted": True}],
-                            "rejected_tracks": [],
-                        }
-                    ),
+        old_match_live = app_config.get("processor.track_regen_match_live_pipeline")
+        app_config.set("processor.track_regen_match_live_pipeline", False)
+        try:
+            with app.app_context():
+                video = Video(
+                    processor_version="test",
+                    start_time=datetime(2026, 4, 18, 8, 21, 31, tzinfo=timezone.utc),
+                    end_time=datetime(2026, 4, 18, 8, 22, 17, tzinfo=timezone.utc),
+                    video_path="data/recordings/2026/04/18/082131/video.mp4",
                 )
+                db.session.add(video)
+                db.session.flush()
+                db.session.add(
+                    ActivityLog(
+                        type="decision_trace",
+                        data=json.dumps(
+                            {
+                                "video_id": video.id,
+                                "video_path": video.video_path,
+                                "accepted_tracks": [{"track_id": -1, "species_name": "Eurasian Jay", "accepted": True}],
+                                "rejected_tracks": [],
+                            }
+                        ),
+                    )
+                )
+                db.session.commit()
+                video_id = video.id
+
+            monkeypatch.setattr(worker_mod, "resolve_recording_video_file", lambda _path: "/tmp/fake-regen.mp4")
+            monkeypatch.setattr(worker_mod, "_derive_track_regen_species_scope", lambda *_args, **_kwargs: [])
+            monkeypatch.setattr(
+                worker_mod,
+                "VisitProcessor",
+                lambda *_args, **_kwargs: types.SimpleNamespace(
+                    process_detections=lambda *_a, **_k: [],
+                    _get_or_create_species=lambda *_a, **_k: None,
+                ),
             )
-            db.session.commit()
-            video_id = video.id
 
-        monkeypatch.setattr(worker_mod, "resolve_recording_video_file", lambda _path: "/tmp/fake-regen.mp4")
-        monkeypatch.setattr(worker_mod, "_derive_track_regen_species_scope", lambda *_args, **_kwargs: [])
-        monkeypatch.setattr(
-            worker_mod,
-            "VisitProcessor",
-            lambda *_args, **_kwargs: types.SimpleNamespace(
-                process_detections=lambda *_a, **_k: [],
-                _get_or_create_species=lambda *_a, **_k: None,
-            ),
-        )
-
-        fake_track_regenerator = types.SimpleNamespace(
-            build_detection_pipeline=lambda *args, **kwargs: ("fp", "dm"),
-            process_video_for_tracks=lambda *args, **kwargs: [
-                {
-                    "track_id": 1,
-                    "species_name": "Bird",
-                    "confidence": 0.61,
-                    "start_time": 1.2,
-                    "end_time": 3.0,
-                    "detection_provider": "yolo",
-                    "decision_reason": "fallback_bird",
-                    "decision_kind": "accepted_generic",
-                    "accepted": True,
-                    "frames": [{"t": 1.2, "bbox": [0.1, 0.1, 0.2, 0.2]}],
-                }
-            ],
-        )
-        fake_detection_fusion = types.SimpleNamespace(
-            build_fused_video_detections=lambda detections, _mqtt_events, **kwargs: list(detections),
-        )
-        monkeypatch.setitem(sys.modules, "track_regenerator", fake_track_regenerator)
-        monkeypatch.setitem(sys.modules, "detection_fusion", fake_detection_fusion)
-
-        worker_mod.run_regenerate_tracks_worker(
-            app,
-            force=False,
-            start_date=None,
-            end_date=None,
-            video_ids=[video_id],
-        )
-
-        with app.app_context():
-            logs = (
-                db.session.query(ActivityLog)
-                .filter(ActivityLog.type == "decision_trace")
-                .order_by(ActivityLog.id.asc())
-                .all()
+            fake_track_regenerator = types.SimpleNamespace(
+                build_detection_pipeline=lambda *args, **kwargs: ("fp", "dm"),
+                process_video_for_tracks=lambda *args, **kwargs: [
+                    {
+                        "track_id": 1,
+                        "species_name": "Bird",
+                        "confidence": 0.61,
+                        "start_time": 1.2,
+                        "end_time": 3.0,
+                        "detection_provider": "yolo",
+                        "decision_reason": "fallback_bird",
+                        "decision_kind": "accepted_generic",
+                        "accepted": True,
+                        "frames": [{"t": 1.2, "bbox": [0.1, 0.1, 0.2, 0.2]}],
+                    }
+                ],
             )
-            latest = json.loads(logs[-1].data)
+            fake_detection_fusion = types.SimpleNamespace(
+                build_fused_video_detections=lambda detections, _mqtt_events, **kwargs: list(detections),
+            )
+            monkeypatch.setitem(sys.modules, "track_regenerator", fake_track_regenerator)
+            monkeypatch.setitem(sys.modules, "detection_fusion", fake_detection_fusion)
 
-        assert len(logs) == 2
-        assert latest["video_id"] == video_id
-        assert latest["persisted_tracks"][0]["track_id"] == 1
-        assert latest["persisted_tracks"][0]["species_name"] == "Bird"
-        assert latest["persisted_tracks"][0]["primary_provider"] == "yolo"
-        assert latest["persisted_tracks"][0]["fallback_used"] is True
-        assert latest["recording_context"]["triggered_by"] == "track_regen"
-        assert latest["recording_context"]["runtime_signals"]["yolo_ran"] is True
-        assert latest["recording_context"]["runtime_signals"]["yolo_track_found"] is True
-        assert latest["recording_context"]["pipeline_policy"]["regen"]["profile"] == "single_video_quality"
-        assert latest["recording_context"]["pipeline_policy"]["regen"]["scope_strategy"] in {
-            "global_classifier_scope",
-            "match_live_pipeline",
-        }
+            worker_mod.run_regenerate_tracks_worker(
+                app,
+                force=False,
+                start_date=None,
+                end_date=None,
+                video_ids=[video_id],
+            )
+
+            with app.app_context():
+                logs = (
+                    db.session.query(ActivityLog)
+                    .filter(ActivityLog.type == "decision_trace")
+                    .order_by(ActivityLog.id.asc())
+                    .all()
+                )
+                latest = json.loads(logs[-1].data)
+
+            assert len(logs) == 2
+            assert latest["video_id"] == video_id
+            assert latest["persisted_tracks"][0]["track_id"] == 1
+            assert latest["persisted_tracks"][0]["species_name"] == "Bird"
+            assert latest["persisted_tracks"][0]["primary_provider"] == "yolo"
+            assert latest["persisted_tracks"][0]["fallback_used"] is True
+            assert latest["recording_context"]["triggered_by"] == "track_regen"
+            assert latest["recording_context"]["runtime_signals"]["yolo_ran"] is True
+            assert latest["recording_context"]["runtime_signals"]["yolo_track_found"] is True
+            assert latest["recording_context"]["pipeline_policy"]["regen"]["profile"] == "single_video_quality"
+            assert latest["recording_context"]["pipeline_policy"]["regen"]["scope_strategy"] in {
+                "global_classifier_scope",
+                "match_live_pipeline",
+            }
+        finally:
+            app_config.set("processor.track_regen_match_live_pipeline", old_match_live)
 
     def test_single_video_regen_uses_quality_profile(self, app, monkeypatch):
         import sys
@@ -932,7 +938,7 @@ class TestTimeline:
         from services.http_response_cache import bust_response_caches
 
         with app.app_context():
-            st = datetime(2026, 3, 24, 12, 0, 0)
+            st = datetime(2026, 3, 24, 12, 0, 0, tzinfo=timezone.utc)
             v = Video(
                 processor_version="test",
                 start_time=st,
@@ -965,7 +971,7 @@ class TestTimeline:
             species = Species(name=f"Unlinked Identity {id(app)}")
             db.session.add(species)
             db.session.flush()
-            st = datetime(2026, 3, 24, 16, 0, 0)
+            st = datetime(2026, 3, 24, 16, 0, 0, tzinfo=timezone.utc)
             v = Video(
                 processor_version="test",
                 start_time=st,
@@ -1032,8 +1038,8 @@ class TestTimeline:
             nf_name = sp_nf.name
             fav_name = sp_f.name
 
-            st = datetime(2026, 3, 24, 12, 0, 0)
-            et = datetime(2026, 3, 24, 12, 0, 30)
+            st = datetime(2026, 3, 24, 12, 0, 0, tzinfo=timezone.utc)
+            et = datetime(2026, 3, 24, 12, 0, 30, tzinfo=timezone.utc)
             visit_nf = SpeciesVisit(
                 species=sp_nf,
                 start_time=st,
@@ -1056,8 +1062,8 @@ class TestTimeline:
                 confidence=0.9,
                 source="video",
             )
-            st2 = datetime(2026, 3, 24, 13, 0, 0)
-            et2 = datetime(2026, 3, 24, 13, 0, 30)
+            st2 = datetime(2026, 3, 24, 13, 0, 0, tzinfo=timezone.utc)
+            et2 = datetime(2026, 3, 24, 13, 0, 30, tzinfo=timezone.utc)
             visit_f = SpeciesVisit(
                 species=sp_f,
                 start_time=st2,
@@ -1080,8 +1086,8 @@ class TestTimeline:
                 confidence=0.91,
                 source="video",
             )
-            st3 = datetime(2026, 3, 24, 14, 0, 0)
-            et3 = datetime(2026, 3, 24, 14, 0, 30)
+            st3 = datetime(2026, 3, 24, 14, 0, 0, tzinfo=timezone.utc)
+            et3 = datetime(2026, 3, 24, 14, 0, 30, tzinfo=timezone.utc)
             v_orphan = Video(
                 processor_version="test",
                 start_time=st3,
@@ -2681,7 +2687,7 @@ class TestSpeciesRegionalScope:
 
             bust_response_caches()
 
-            r = client.get("/api/ui/species")
+            r = client.get("/api/ui/species", query_string={"scope": "all"})
             assert r.status_code == 200
             row = next((x for x in r.json if x["id"] == sid), None)
             assert row is not None

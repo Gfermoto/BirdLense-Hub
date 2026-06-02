@@ -172,7 +172,7 @@ class TestWebhookUrlValidation:
         monkeypatch.setattr(
             processor_gateway_mod.requests, "post", lambda *args, **kwargs: posted.append((args, kwargs))
         )
-        monkeypatch.setattr(processor_routes_mod, "fetch_weather", lambda: {})
+        monkeypatch.setattr(processor_routes_mod, "fetch_weather_for_ingest", lambda: {})
         monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
         monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
 

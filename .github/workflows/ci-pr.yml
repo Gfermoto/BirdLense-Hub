@@ -362,12 +362,26 @@ jobs:
 
       - name: Processor .pt weights for integration tests
         working-directory: ${{ github.workspace }}
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          BIRDLENSE_FETCH_CLASSIFIER_OPTIONAL: "1"
         run: |
           set -euo pipefail
+          link_weights() {
+            W="${{ github.workspace }}/app/processor/models/detection/weights"
+            ln -sf best.pt "$W/trapper_ai_v02_2024.pt"
+            C="${{ github.workspace }}/app/processor/models/classification/weights"
+            if [[ -s "$C/best.pt" && ! -e "$C/convnext_v2_tiny_eu-common256px.pt" ]]; then
+              ln -sf best.pt "$C/convnext_v2_tiny_eu-common256px.pt"
+            fi
+          }
           for attempt in 1 2 3; do
             if ./scripts/fetch-processor-weights.sh; then
-              W="${{ github.workspace }}/app/processor/models/detection/weights"
-              ln -sf best.pt "$W/trapper_ai_v02_2024.pt"
+              link_weights
+              exit 0
+            fi
+            if ./scripts/fetch-processor-weights.sh --detector-only; then
+              link_weights
               exit 0
             fi
             sleep $((attempt * 10))

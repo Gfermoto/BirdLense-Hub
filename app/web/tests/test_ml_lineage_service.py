@@ -23,6 +23,7 @@ def test_model_lineage_resolves_processor_models_binary_classifier(monkeypatch, 
     monkeypatch.setattr(aps, "repo_root_path", lambda: str(tmp_path))
     # Stabilize against host env forcing OpenVINO backend.
     monkeypatch.delenv("BIRDLENSE_INFERENCE_BACKEND", raising=False)
+    monkeypatch.delenv("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", raising=False)
 
     orig = app_config.get
 
@@ -55,6 +56,7 @@ def test_model_lineage_openvino_detector_resolves_binary_openvino(monkeypatch, t
     ov_dir = tmp_path / "app" / "processor" / "ov_export"
     ov_dir.mkdir(parents=True)
     (ov_dir / "model.xml").write_text("<net />", encoding="utf-8")
+    (ov_dir / "model.bin").write_bytes(b"bin")
     clf_dir = tmp_path / "app" / "processor" / "models" / "classification" / "weights"
     clf_dir.mkdir(parents=True)
     (clf_dir / "c.pt").write_bytes(b"cls")
@@ -86,6 +88,7 @@ def test_model_lineage_auto_backend_resolves_to_openvino_when_available(monkeypa
     ov_dir = tmp_path / "app" / "processor" / "ov_export"
     ov_dir.mkdir(parents=True)
     (ov_dir / "model.xml").write_text("<net />", encoding="utf-8")
+    (ov_dir / "model.bin").write_bytes(b"bin")
     clf_dir = tmp_path / "app" / "processor" / "models" / "classification" / "weights"
     clf_dir.mkdir(parents=True)
     (clf_dir / "c.pt").write_bytes(b"cls")
@@ -119,6 +122,7 @@ def test_model_lineage_openvino_classifier_resolves_classifier_openvino(monkeypa
     cls_ov = tmp_path / "app" / "processor" / "cls_ov"
     cls_ov.mkdir(parents=True)
     (cls_ov / "best.xml").write_text("<net />", encoding="utf-8")
+    (cls_ov / "best.bin").write_bytes(b"bin")
 
     monkeypatch.setattr(aps, "repo_root_path", lambda: str(tmp_path))
     monkeypatch.setenv("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", "openvino")
@@ -127,8 +131,12 @@ def test_model_lineage_openvino_classifier_resolves_classifier_openvino(monkeypa
     orig = app_config.get
 
     def get_override(key, default=None):
+        if key == "processor.classifier_engine":
+            return "yolo"
         if key == "processor.models.binary":
             return "models/detection/weights/d.pt"
+        if key == "processor.models.classifier_openvino":
+            return str(cls_ov)
         return orig(key, default)
 
     monkeypatch.setattr(app_config, "get", get_override)
