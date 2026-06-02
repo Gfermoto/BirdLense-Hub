@@ -98,6 +98,9 @@ def build_profile(
 
     pre_fusion_ms: list[float] = []
     critical_path_ms: list[float] = []
+    ingest_visit_ms: list[float] = []
+    ingest_commit_ms: list[float] = []
+    ingest_weather_ms: list[float] = []
 
     for row in rows:
         payload = _extract_payload(row["payload_json"])
@@ -152,6 +155,17 @@ def build_profile(
         crit_ms = _safe_float(payload.get("finalize_critical_path_ms"))
         if crit_ms is not None and crit_ms > 0:
             critical_path_ms.append(crit_ms)
+
+        ingest_timing = payload.get("create_video_ingest_timing_ms")
+        if isinstance(ingest_timing, dict):
+            for key, bucket in (
+                ("visit_processor_ms", ingest_visit_ms),
+                ("commit_ms", ingest_commit_ms),
+                ("weather_ms", ingest_weather_ms),
+            ):
+                stage_ms = _safe_float(ingest_timing.get(key))
+                if stage_ms is not None and stage_ms > 0:
+                    bucket.append(stage_ms)
 
     first_bbox_p95 = _percentile(first_bbox_s, 95.0)
     first_bbox_wall_p95 = _percentile(first_bbox_wall_s, 95.0)
@@ -260,6 +274,9 @@ def build_profile(
             "fusion_duration_ms": _summary(fusion_ms),
             "persist_duration_ms": _summary(persist_ms),
             "create_video_duration_ms": _summary(create_video_ms),
+            "create_video_ingest_visit_processor_ms": _summary(ingest_visit_ms),
+            "create_video_ingest_commit_ms": _summary(ingest_commit_ms),
+            "create_video_ingest_weather_ms": _summary(ingest_weather_ms),
             "behavior_duration_ms": _summary(behavior_ms),
             "scales_duration_ms": _summary(scales_ms),
             "dataset_crops_duration_ms": _summary(dataset_crops_ms),

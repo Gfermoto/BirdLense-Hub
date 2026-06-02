@@ -748,7 +748,12 @@ def test_processor_videos_runtime_reid_payload_persists_nickname_and_sidecar(
     ]
     r = client.post("/api/processor/videos", json=body, headers=proc_headers)
     assert r.status_code == 201, r.get_data(as_text=True)
-    vid = r.get_json()["video_id"]
+    payload = r.get_json() or {}
+    timing = payload.get("ingest_timing_ms") or {}
+    assert timing.get("total_ms", 0) >= 0
+    assert "visit_processor_ms" in timing
+    assert "commit_ms" in timing
+    vid = payload["video_id"]
     with app.app_context():
         vs = db.session.query(VideoSpecies).filter_by(video_id=vid).first()
         assert vs is not None
