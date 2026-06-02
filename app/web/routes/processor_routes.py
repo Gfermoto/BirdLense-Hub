@@ -19,7 +19,7 @@ from flask import request
 from sqlalchemy.exc import IntegrityError
 
 from models import db, BirdFood, Video, VideoSpecies, Species
-from util import fetch_weather, notify, filter_feeder_species
+from util import fetch_weather_for_ingest, notify, filter_feeder_species
 from services.visit_processor import VisitProcessor
 from app_config.app_config import app_config
 from services.api_json_validation import (
@@ -362,7 +362,7 @@ def register_routes(app):
             ), 200
 
         try:
-            weather = fetch_weather()
+            weather = fetch_weather_for_ingest()
             timing.lap("weather_ms")
             video = Video(
                 processor_version=data["processor_version"],
@@ -449,22 +449,29 @@ def register_routes(app):
             db.session.commit()
             timing.lap("commit_ms")
             bust_all_api_caches()
-            try:
-                if bool(app_config.get("experimental.active_learning_auto_mine_enabled", True)):
-                    mine_hard_examples(
-                        lookback_hours=int(app_config.get("experimental.active_learning_auto_mine_lookback_hours") or 6),
-                        max_rows=int(app_config.get("experimental.active_learning_auto_mine_max_rows") or 200),
-                        blind_score_threshold=float(
-                            app_config.get("experimental.active_learning_blind_score_threshold") or 0.5
-                        ),
-                        fallback_ratio_threshold=float(
-                            app_config.get("experimental.active_learning_fallback_ratio_threshold") or 0.35
-                        ),
-                        conf_min=float(app_config.get("experimental.active_learning_conf_min") or 0.20),
-                        conf_max=float(app_config.get("experimental.active_learning_conf_max") or 0.35),
-                    )
-            except Exception:
-                app.logger.debug("active learning auto-mine skipped", exc_info=True)
+            if bool(app_config.get("experimental.active_learning_auto_mine_enabled", True)):
+                def _mine_hard_examples_async() -> None:
+                    try:
+                        mine_hard_examples(
+                            lookback_hours=int(
+                                app_config.get("experimental.active_learning_auto_mine_lookback_hours") or 6
+                            ),
+                            max_rows=int(
+                                app_config.get("experimental.active_learning_auto_mine_max_rows") or 200
+                            ),
+                            blind_score_threshold=float(
+                                app_config.get("experimental.active_learning_blind_score_threshold") or 0.5
+                            ),
+                            fallback_ratio_threshold=float(
+                                app_config.get("experimental.active_learning_fallback_ratio_threshold") or 0.35
+                            ),
+                            conf_min=float(app_config.get("experimental.active_learning_conf_min") or 0.20),
+                            conf_max=float(app_config.get("experimental.active_learning_conf_max") or 0.35),
+                        )
+                    except Exception:
+                        app.logger.debug("active learning auto-mine skipped", exc_info=True)
+
+                threading.Thread(target=_mine_hard_examples_async, daemon=True).start()
 
             # Webhook: fire-and-forget
             webhook_url = (app_config.get("webhook.url") or "").strip()
