@@ -192,7 +192,7 @@ jobs:
         run: |
           python3 scripts/report_track_quality_core_metrics.py \
             --benchmark-sota-report .artifacts/benchmark_sota_smoke.json \
-            --baseline benchmarks/golden_baseline.json \
+            --baseline benchmarks/golden_baseline_smoke.json \
             --out .artifacts/track_quality_core_metrics_smoke.json \
             --summary-out .artifacts/track_quality_core_metrics_smoke.md
           cat .artifacts/track_quality_core_metrics_smoke.md >> "$GITHUB_STEP_SUMMARY"
@@ -201,7 +201,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           python3 scripts/report_track_quality_truthset_delta.py \
-            --baseline benchmarks/golden_baseline.json \
+            --baseline benchmarks/golden_baseline_smoke.json \
             --benchmark-sota-report .artifacts/benchmark_sota_smoke.json \
             --out .artifacts/track_quality_truthset_delta_smoke.json \
             --summary-out .artifacts/track_quality_truthset_delta_smoke.md
