@@ -23,8 +23,10 @@ if [[ -z "${HOST}" ]]; then
 fi
 
 _PORT_OPT=()
+RSYNC_SSH="ssh"
 if [[ -n "${DEPLOY_SSH_PORT:-}" && "${DEPLOY_SSH_PORT}" != "22" ]]; then
   _PORT_OPT=(-p "${DEPLOY_SSH_PORT}")
+  RSYNC_SSH="ssh -p ${DEPLOY_SSH_PORT}"
 fi
 SSH_OPTS=("${_PORT_OPT[@]}" -o ServerAliveInterval=30 -o ServerAliveCountMax=20)
 
@@ -55,7 +57,8 @@ ls -lh "${DST}"
 REMOTE
 
 mkdir -p "$(dirname "${LOCAL_LATEST_ABS}")"
-rsync -avz "${SSH_OPTS[@]}" "${HOST}:${REMOTE_TMP}" "${LOCAL_FILE}"
+rsync -avz -e "${RSYNC_SSH} -o ServerAliveInterval=30 -o ServerAliveCountMax=20" \
+  "${HOST}:${REMOTE_TMP}" "${LOCAL_FILE}"
 ssh "${SSH_OPTS[@]}" "${HOST}" "rm -f '${REMOTE_TMP}'"
 cp -f "${LOCAL_FILE}" "${LOCAL_LATEST_ABS}"
 
