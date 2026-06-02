@@ -44,4 +44,4 @@ def test_settings_patch_returns_deprecated_warnings(client, tmp_path, monkeypatc
     )
     assert r.status_code == 200
     body = r.get_json()
-    assert body.get("_settings_warnings", {}).get("deprecated_keys_present")
+    assert body.get("settings_warnings", {}).get("deprecated_keys_present")

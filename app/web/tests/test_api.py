@@ -540,15 +540,19 @@ class TestTrackRegenFallback:
 
         old_frame_step = app_config.get("processor.track_regen_frame_step")
         old_lores = app_config.get("processor.track_regen_lores_px")
+        old_lores_wh = app_config.get("processor.track_regen_lores_wh")
         old_live = app_config.get("processor.track_regen_match_live_pipeline")
         old_inference_lores = app_config.get("processor.inference_lores_px")
+        old_inference_lores_wh = app_config.get("processor.inference_lores_wh")
         old_timeout = app_config.get("processor.track_regen_video_timeout_sec")
         old_precise_timeout = app_config.get("processor.track_regen_precise_timeout_sec")
         try:
             app_config.set("processor.track_regen_frame_step", 6)
             app_config.set("processor.track_regen_lores_px", 512)
+            app_config.set("processor.track_regen_lores_wh", None)
             app_config.set("processor.track_regen_match_live_pipeline", False)
             app_config.set("processor.inference_lores_px", 640)
+            app_config.set("processor.inference_lores_wh", None)
             app_config.set("processor.track_regen_video_timeout_sec", 300)
             app_config.set("processor.track_regen_precise_timeout_sec", 420)
 
@@ -562,8 +566,10 @@ class TestTrackRegenFallback:
         finally:
             app_config.set("processor.track_regen_frame_step", old_frame_step)
             app_config.set("processor.track_regen_lores_px", old_lores)
+            app_config.set("processor.track_regen_lores_wh", old_lores_wh)
             app_config.set("processor.track_regen_match_live_pipeline", old_live)
             app_config.set("processor.inference_lores_px", old_inference_lores)
+            app_config.set("processor.inference_lores_wh", old_inference_lores_wh)
             app_config.set("processor.track_regen_video_timeout_sec", old_timeout)
             app_config.set("processor.track_regen_precise_timeout_sec", old_precise_timeout)
 
@@ -938,11 +944,12 @@ class TestTimeline:
         from services.http_response_cache import bust_response_caches
 
         with app.app_context():
-            st = datetime(2026, 3, 24, 12, 0, 0, tzinfo=timezone.utc)
+            st = datetime(2026, 3, 24, 12, 0, 0)
             v = Video(
                 processor_version="test",
                 start_time=st,
                 end_time=st.replace(minute=1),
+                trigger_source="opencv",
                 video_path=f"2026/03/24/120000/orphan_timeline_{id(app)}.mp4",
             )
             db.session.add(v)
@@ -971,13 +978,14 @@ class TestTimeline:
             species = Species(name=f"Unlinked Identity {id(app)}")
             db.session.add(species)
             db.session.flush()
-            st = datetime(2026, 3, 24, 16, 0, 0, tzinfo=timezone.utc)
+            st = datetime(2026, 3, 24, 16, 0, 0)
             v = Video(
                 processor_version="test",
                 start_time=st,
                 end_time=st.replace(minute=1),
                 behavior_label="feeding",
                 behavior_confidence=0.91,
+                trigger_source="opencv",
                 video_path=f"2026/03/24/160000/orphan_identity_{id(app)}.mp4",
             )
             db.session.add(v)
@@ -1038,8 +1046,8 @@ class TestTimeline:
             nf_name = sp_nf.name
             fav_name = sp_f.name
 
-            st = datetime(2026, 3, 24, 12, 0, 0, tzinfo=timezone.utc)
-            et = datetime(2026, 3, 24, 12, 0, 30, tzinfo=timezone.utc)
+            st = datetime(2026, 3, 24, 12, 0, 0)
+            et = datetime(2026, 3, 24, 12, 0, 30)
             visit_nf = SpeciesVisit(
                 species=sp_nf,
                 start_time=st,
@@ -1051,6 +1059,7 @@ class TestTimeline:
                 start_time=st,
                 end_time=et,
                 favorite=False,
+                trigger_source="opencv",
                 video_path=f"data/recordings/2026/03/24/120001/nf_{id(app)}.mp4",
             )
             vs_nf = VideoSpecies(
@@ -1062,8 +1071,8 @@ class TestTimeline:
                 confidence=0.9,
                 source="video",
             )
-            st2 = datetime(2026, 3, 24, 13, 0, 0, tzinfo=timezone.utc)
-            et2 = datetime(2026, 3, 24, 13, 0, 30, tzinfo=timezone.utc)
+            st2 = datetime(2026, 3, 24, 13, 0, 0)
+            et2 = datetime(2026, 3, 24, 13, 0, 30)
             visit_f = SpeciesVisit(
                 species=sp_f,
                 start_time=st2,
@@ -1075,6 +1084,7 @@ class TestTimeline:
                 start_time=st2,
                 end_time=et2,
                 favorite=True,
+                trigger_source="opencv",
                 video_path=f"data/recordings/2026/03/24/120002/f_{id(app)}.mp4",
             )
             vs_f = VideoSpecies(
@@ -1086,13 +1096,14 @@ class TestTimeline:
                 confidence=0.91,
                 source="video",
             )
-            st3 = datetime(2026, 3, 24, 14, 0, 0, tzinfo=timezone.utc)
-            et3 = datetime(2026, 3, 24, 14, 0, 30, tzinfo=timezone.utc)
+            st3 = datetime(2026, 3, 24, 14, 0, 0)
+            et3 = datetime(2026, 3, 24, 14, 0, 30)
             v_orphan = Video(
                 processor_version="test",
                 start_time=st3,
                 end_time=et3,
                 favorite=True,
+                trigger_source="opencv",
                 video_path=f"data/recordings/2026/03/24/120003/orphan_fav_{id(app)}.mp4",
             )
             db.session.add_all(

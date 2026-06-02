@@ -102,12 +102,9 @@ jobs:
         run: |
           set -euo pipefail
           C="app/processor/models/classification/weights"
-          PT="$C/convnext_v2_tiny_eu-common256px.pt"
-          if [[ -s "$PT" ]]; then
-            exit 0
-          fi
-          if [[ -s "$C/best.pt" ]]; then
-            ln -sf best.pt "$PT"
+          OV="$C/convnext_v2_tiny_eu-common256px_openvino_model"
+          if [[ -f "$OV/class_labels.txt" || -f "$OV/birdlense_manifest.json" ]]; then
+            echo "Birder EU metadata already present"
             exit 0
           fi
           pip install -q huggingface_hub birder torch
