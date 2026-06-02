@@ -65,6 +65,8 @@ if [[ -f "${OUTCOME_DB}" ]]; then
     --first-bbox-warn-s "${FIRST_BBOX_WARN_S:-5}" \
     --first-bbox-fail-s "${FIRST_BBOX_FAIL_S:-2}" \
     --finalize-warn-ms "${FINALIZE_WARN_MS:-5000}" \
+    --create-video-warn-ms "${CREATE_VIDEO_WARN_MS:-30000}" \
+    --create-video-fail-ms "${CREATE_VIDEO_FAIL_MS:-60000}" \
     "${_pipeline_fail_flag[@]}" \
     --out-json docs/reports/perf/runtime_pipeline_profile_latest.json \
     --out-md docs/reports/perf/runtime_pipeline_profile_latest.md \
@@ -76,6 +78,12 @@ if [[ -f "${OUTCOME_DB}" ]]; then
     --out-json docs/reports/quality_outcome/failure_mode_funnel_latest.json \
     --out-md docs/reports/quality_outcome/failure_mode_funnel_latest.md \
   || overall_ok=false
+
+  if [[ -f app/app_config/user_config.yaml ]]; then
+    _run_step "processor_config_drift" python3 ./scripts/verify_processor_config_drift.py \
+      --user-config app/app_config/user_config.yaml \
+      || overall_ok=false
+  fi
 else
   echo "governance-cycle: skip DB steps (no db at ${OUTCOME_DB})"
 fi

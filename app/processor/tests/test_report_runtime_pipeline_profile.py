@@ -44,6 +44,8 @@ def test_profile_detects_finalize_bottleneck_and_warning():
         first_bbox_warn_s=5.0,
         first_bbox_fail_s=None,
         finalize_warn_ms=5000.0,
+        create_video_warn_ms=30000.0,
+        create_video_fail_ms=None,
     )
     assert report["ok"] is True
     assert report["bottleneck_stage_p95"] == "finalize_duration_ms"
@@ -74,6 +76,8 @@ def test_profile_prefers_wall_clock_first_bbox_for_kpi():
         first_bbox_warn_s=2.0,
         first_bbox_fail_s=None,
         finalize_warn_ms=5000.0,
+        create_video_warn_ms=30000.0,
+        create_video_fail_ms=None,
     )
     wall = report["profile"]["trigger_to_first_bbox_wall_s"]
     resolved = report["profile"]["trigger_to_first_bbox_latency_s"]
@@ -103,7 +107,36 @@ def test_profile_bbox_kpi_fail_when_wall_p95_above_threshold():
         first_bbox_warn_s=2.0,
         first_bbox_fail_s=2.0,
         finalize_warn_ms=5000.0,
+        create_video_warn_ms=30000.0,
+        create_video_fail_ms=60000.0,
     )
     assert report["kpi"]["ok"] is False
     assert report["failures"]
     assert report["ok"] is False
+
+
+def test_profile_create_video_kpi_fail():
+    mod = _load_mod()
+    rows = [
+        {
+            "payload_json": '{"create_video_duration_ms": 72000, "camera_slot": "camera_1"}',
+            "trigger_to_first_bbox_latency_s": 0.5,
+            "finalize_duration_ms": 900.0,
+        },
+        {
+            "payload_json": '{"create_video_duration_ms": 65000, "camera_slot": "camera_2"}',
+            "trigger_to_first_bbox_latency_s": 0.6,
+            "finalize_duration_ms": 800.0,
+        },
+    ]
+    report = mod.build_profile(
+        rows,
+        lookback_hours=24,
+        first_bbox_warn_s=5.0,
+        first_bbox_fail_s=None,
+        finalize_warn_ms=5000.0,
+        create_video_warn_ms=30000.0,
+        create_video_fail_ms=60000.0,
+    )
+    assert report["kpi"]["create_video_ok"] is False
+    assert any("create_video_duration_p95" in f for f in report["failures"])

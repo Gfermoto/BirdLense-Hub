@@ -81,6 +81,8 @@ def build_profile(
     first_bbox_warn_s: float,
     first_bbox_fail_s: float | None,
     finalize_warn_ms: float,
+    create_video_warn_ms: float,
+    create_video_fail_ms: float | None,
 ) -> dict[str, Any]:
     first_bbox_s: list[float] = []
     first_bbox_wall_s: list[float] = []
@@ -157,11 +159,14 @@ def build_profile(
     fusion_p95 = _percentile(fusion_ms, 95.0)
     persist_p95 = _percentile(persist_ms, 95.0)
 
+    create_video_p95 = _percentile(create_video_ms, 95.0)
+
     bottleneck = "unknown"
     stage_p95 = {
         "finalize_duration_ms": finalize_p95 or 0.0,
         "fusion_duration_ms": fusion_p95 or 0.0,
         "persist_duration_ms": persist_p95 or 0.0,
+        "create_video_duration_ms": create_video_p95 or 0.0,
     }
     if any(v > 0 for v in stage_p95.values()):
         bottleneck = max(stage_p95.items(), key=lambda item: float(item[1]))[0]
@@ -200,6 +205,22 @@ def build_profile(
         warnings.append(
             f"finalize_duration_p95 {float(finalize_p95):.2f}ms > {float(finalize_warn_ms):.2f}ms"
         )
+    create_video_kpi_ok: bool | None = None
+    if create_video_p95 is not None and float(create_video_p95) > float(create_video_warn_ms):
+        warnings.append(
+            f"create_video_duration_p95 {float(create_video_p95):.2f}ms > "
+            f"{float(create_video_warn_ms):.2f}ms (#578)"
+        )
+    if create_video_fail_ms is not None:
+        if create_video_p95 is None:
+            create_video_kpi_ok = True
+        else:
+            create_video_kpi_ok = float(create_video_p95) <= float(create_video_fail_ms)
+            if not create_video_kpi_ok:
+                failures.append(
+                    f"create_video_duration_p95 {float(create_video_p95):.2f}ms > "
+                    f"KPI {float(create_video_fail_ms):.2f}ms (#578)"
+                )
 
     by_slot = {
         slot: _summary(vals)
@@ -234,6 +255,12 @@ def build_profile(
             "first_bbox_warn_threshold_s": float(first_bbox_warn_s),
             "source": kpi_source,
             "ok": bbox_kpi_ok,
+            "create_video_p95_ms": (
+                round(float(create_video_p95), 3) if create_video_p95 is not None else None
+            ),
+            "create_video_fail_threshold_ms": create_video_fail_ms,
+            "create_video_warn_threshold_ms": float(create_video_warn_ms),
+            "create_video_ok": create_video_kpi_ok,
         },
         "warnings": warnings,
         "failures": failures,
@@ -292,10 +319,22 @@ def _args() -> argparse.Namespace:
         help="Hard KPI threshold for wall first-bbox p95 (#579); omit to skip fail gate",
     )
     parser.add_argument("--finalize-warn-ms", type=float, default=5000.0)
+    parser.add_argument("--create-video-warn-ms", type=float, default=30000.0)
+    parser.add_argument(
+        "--create-video-fail-ms",
+        type=float,
+        default=None,
+        help="Hard KPI for create_video p95 (#578); omit to skip fail gate",
+    )
+    parser.add_argument(
+        "--fail-on-stage-kpi",
+        action="store_true",
+        help="Exit 1 when any KPI failure (bbox or create_video)",
+    )
     parser.add_argument(
         "--fail-on-bbox-kpi",
         action="store_true",
-        help="Exit 1 when KPI failures present (requires --first-bbox-fail-s)",
+        help="Deprecated alias for --fail-on-stage-kpi",
     )
     parser.add_argument(
         "--out-json",
@@ -327,6 +366,12 @@ def main() -> int:
         first_bbox_warn_s=float(max(0.1, args.first_bbox_warn_s)),
         first_bbox_fail_s=fail_s,
         finalize_warn_ms=float(max(100.0, args.finalize_warn_ms)),
+        create_video_warn_ms=float(max(100.0, args.create_video_warn_ms)),
+        create_video_fail_ms=(
+            float(max(100.0, args.create_video_fail_ms))
+            if args.create_video_fail_ms is not None
+            else None
+        ),
     )
 
     out_json = Path(args.out_json).expanduser()
@@ -348,10 +393,12 @@ def main() -> int:
                 "md": str(out_md),
                 "bottleneck_stage_p95": report.get("bottleneck_stage_p95"),
                 "kpi_ok": (report.get("kpi") or {}).get("ok"),
+                "create_video_kpi_ok": (report.get("kpi") or {}).get("create_video_ok"),
             }
         )
     )
-    if args.fail_on_bbox_kpi and (report.get("failures") or []):
+    fail_kpi = bool(args.fail_on_stage_kpi or args.fail_on_bbox_kpi)
+    if fail_kpi and (report.get("failures") or []):
         return 1
     return 0 if bool(report.get("ok")) else 1
 

@@ -27,6 +27,7 @@ app/data/processor.log*
 app/data/db/prod_snapshots/
 app/data/db/birdlense_prod_latest.db
 app/data/db/birdlense_prod_latest.json
+app/app_config/.user_config_prod_drift.yaml
 app.log
 .DS_Store
 # Windows NTFS ADS artifacts from downloaded/copied files
