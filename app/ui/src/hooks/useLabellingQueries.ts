@@ -28,7 +28,7 @@ export function useMineLabellingCasesMutation() {
   return useMutation({
     mutationFn: mineLabellingCases,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['labelling-cases'] });
+      qc.invalidateQueries({ queryKey: queryKeys.labelling.casesAll });
     },
   });
 }
@@ -39,7 +39,7 @@ export function usePatchLabellingCaseMutation() {
     mutationFn: ({ id, status, note }: { id: number; status: LabellingCaseStatus; note?: string }) =>
       patchLabellingCase(id, status, note),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['labelling-cases'] });
+      qc.invalidateQueries({ queryKey: queryKeys.labelling.casesAll });
     },
   });
 }
@@ -66,7 +66,7 @@ export function useLabellingFeedbackMutation() {
       species_tag?: string;
     }) => postLabellingFeedback(id, { action, behavior_tag, species_tag }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['labelling-cases'] });
+      qc.invalidateQueries({ queryKey: queryKeys.labelling.casesAll });
     },
   });
 }
@@ -76,7 +76,7 @@ export function useLabellingBatchFeedbackMutation() {
   return useMutation({
     mutationFn: (operations: LabellingBatchOperation[]) => postLabellingBatchFeedback(operations),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['labelling-cases'] });
+      qc.invalidateQueries({ queryKey: queryKeys.labelling.casesAll });
     },
   });
 }

@@ -7,6 +7,7 @@ import {
   fetchBirdProfiles,
   type BirdProfile,
 } from '../../api/speciesOverviewDetections';
+import { queryKeys } from '../../api/queryKeys';
 export function formatBirdProfileOptionLabel(profile: BirdProfile): string {
   const species = profile.species_name?.trim();
   return species ? `${profile.display_name} (${species})` : profile.display_name;
@@ -29,7 +30,7 @@ export function BirdProfileFilterAutocomplete({
 }: BirdProfileFilterAutocompleteProps) {
   const { t } = useTranslation();
   const { data: profiles = [], isLoading } = useQuery({
-    queryKey: ['bird-profiles', 'timeline-filter'],
+    queryKey: queryKeys.birdProfiles.timelineFilter,
     queryFn: async () => (await fetchBirdProfiles({ limit: 200 })).items,
     staleTime: 1000 * 60 * 5,
   });

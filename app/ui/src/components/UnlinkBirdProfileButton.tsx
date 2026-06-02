@@ -13,6 +13,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { clearDetectionBirdProfile } from '../api/speciesOverviewDetections';
 import { getApiErrorMessage } from '../api/api';
 import { invalidateLocalSpeciesEditCaches } from '../api/invalidateLocalSpeciesCaches';
+import { queryKeys } from '../api/queryKeys';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 
@@ -40,7 +41,7 @@ export function UnlinkBirdProfileButton({
     mutationFn: () => clearDetectionBirdProfile(detectionId),
     onSuccess: () => {
       invalidateLocalSpeciesEditCaches(queryClient, videoId);
-      queryClient.invalidateQueries({ queryKey: ['bird-profiles'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.birdProfiles.all });
       setConfirmOpen(false);
       onUnlinked?.();
     },

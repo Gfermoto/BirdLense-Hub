@@ -224,11 +224,11 @@ export const LivePage = () => {
     queryFn: fetchCameras,
   });
 
-  const cams = cameras ?? [];
   const fullscreenCam = useMemo(
-    () => cams.find((c) => c.id === fullscreenCamId) ?? null,
-    [cams, fullscreenCamId],
+    () => (cameras ?? []).find((c) => c.id === fullscreenCamId) ?? null,
+    [cameras, fullscreenCamId],
   );
+  const cams = cameras ?? [];
   const hasProcessorMjpeg = cams.some((c) => c.stream_url_mjpeg);
   const showProcessorStream = hasProcessorMjpeg;
   const runtimeOverlaysQuery = useQuery<LiveRuntimeOverlaysPayload>({

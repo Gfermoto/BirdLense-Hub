@@ -17,26 +17,27 @@ import {
   fetchReidGalleryStatus,
   resolveExpertTask,
 } from '../../api/expertReid';
+import { queryKeys } from '../../api/queryKeys';
 
 export function ReidGalleryPage() {
   useDocumentTitle('ReID Gallery');
   const qc = useQueryClient();
-  const statusQ = useQuery({ queryKey: ['reid', 'status'], queryFn: fetchReidGalleryStatus });
+  const statusQ = useQuery({ queryKey: queryKeys.reid.status, queryFn: fetchReidGalleryStatus });
   const galleryQ = useQuery({
-    queryKey: ['reid', 'gallery'],
+    queryKey: queryKeys.reid.gallery,
     queryFn: () => fetchReidGallery({ limit: 200 }),
     enabled: Boolean(statusQ.data?.reid_track_clustering_enabled),
   });
   const queueQ = useQuery({
-    queryKey: ['expert', 'queue'],
+    queryKey: queryKeys.expert.queue,
     queryFn: () => fetchExpertQueue({ limit: 40 }),
     enabled: Boolean(statusQ.data?.reid_expert_queue_enabled),
   });
   const resolveM = useMutation({
     mutationFn: resolveExpertTask,
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['expert', 'queue'] });
-      void qc.invalidateQueries({ queryKey: ['reid', 'gallery'] });
+      void qc.invalidateQueries({ queryKey: queryKeys.expert.queue });
+      void qc.invalidateQueries({ queryKey: queryKeys.reid.gallery });
     },
   });
 
