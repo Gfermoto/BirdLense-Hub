@@ -77,12 +77,20 @@ def build_track_quality_core_metrics_report(
         base_1819.get("min_avg_track_duration_sec", 0.2)
     )
     max_track_id_switches = int(base_1819.get("max_track_id_switches", 8))
+    min_fused_track_count = int(base_1819.get("min_fused_track_count", 1))
     available = bool(yolo_frames_ran > 0 or fused_track_count > 0)
+    # Synthetic CI clip: pipeline ran, zero detections — skip proxy gates (see golden_baseline_smoke.json).
+    skip_proxy_gates = bool(
+        min_fused_track_count <= 0
+        and fused_track_count <= 0
+        and frames_with_tracks <= 0
+        and yolo_frames_ran > 0
+    )
 
     idf1_proxy = None
     hota_proxy = None
     fragmentation_proxy = None
-    if available:
+    if available and not skip_proxy_gates:
         idf1_proxy = (
             round(frames_with_tracks / float(yolo_frames_ran), 6)
             if yolo_frames_ran > 0
@@ -151,6 +159,7 @@ def build_track_quality_core_metrics_report(
         },
         "metrics": {
             "track_metrics_available": available,
+            "skip_proxy_gates_smoke_no_detections": skip_proxy_gates,
             "yolo_frames_ran": yolo_frames_ran,
             "frames_with_tracks": frames_with_tracks,
             "fused_track_count": fused_track_count,
