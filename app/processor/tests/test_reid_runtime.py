@@ -32,19 +32,25 @@ class TestReidRuntime(unittest.TestCase):
             }
         ]
 
-        out = apply_runtime_reid_metadata(
-            detections,
-            embed_crop=lambda _crop: np.asarray([1.0, 0.0], dtype=np.float32),
-            load_candidates=lambda _species: [
-                (np.asarray([0.99, 0.01], dtype=np.float32), "Синичка"),
-            ],
-            model_name="dinov2_vits14",
-            similarity_threshold=0.8,
-            max_detections=4,
-            min_best_frame_score=5.5,
-            flag_low_similarity_for_review=True,
-            video_path="data/recordings/2026/05/02/235959/video.mp4",
-        )
+        with mock.patch(
+            "reid_runtime._cfg_bool",
+            side_effect=lambda key, default: True
+            if key == "processor.reid.include_embedding_payload"
+            else default,
+        ):
+            out = apply_runtime_reid_metadata(
+                detections,
+                embed_crop=lambda _crop: np.asarray([1.0, 0.0], dtype=np.float32),
+                load_candidates=lambda _species: [
+                    (np.asarray([0.99, 0.01], dtype=np.float32), "Синичка"),
+                ],
+                model_name="dinov2_vits14",
+                similarity_threshold=0.8,
+                max_detections=4,
+                min_best_frame_score=5.5,
+                flag_low_similarity_for_review=True,
+                video_path="data/recordings/2026/05/02/235959/video.mp4",
+            )
 
         row = out[0]
         self.assertEqual(row.get("individual_nickname"), "Синичка")

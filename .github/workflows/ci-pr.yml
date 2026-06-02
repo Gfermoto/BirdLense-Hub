@@ -354,9 +354,10 @@ jobs:
       - name: Prepare .env and data dirs
         run: |
           test -f .env || cp .env.example .env
-          # CI image ships .pt weights; Birder OpenVINO IR may be absent — do not hard-force openvino from .env.example.
-          sed -i 's/^BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=openvino/BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=auto/' .env
-          sed -i 's/^BIRDLENSE_INFERENCE_BACKEND=openvino/BIRDLENSE_INFERENCE_BACKEND=auto/' .env
+          for var in BIRDLENSE_INFERENCE_BACKEND BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND \
+            BIRDLENSE_OPENVINO_BINARY_ENABLED BIRDLENSE_INFERENCE_DEVICE BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE; do
+            sed -i "/^${var}=/d" .env || true
+          done
           mkdir -p data/db data/recordings
 
       - name: Processor .pt weights for integration tests
@@ -365,6 +366,8 @@ jobs:
           set -euo pipefail
           for attempt in 1 2 3; do
             if ./scripts/fetch-processor-weights.sh; then
+              W="${{ github.workspace }}/app/processor/models/detection/weights"
+              ln -sf best.pt "$W/trapper_ai_v02_2024.pt"
               exit 0
             fi
             sleep $((attempt * 10))
