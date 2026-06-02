@@ -124,6 +124,7 @@ jobs:
           fi
           pip install -q huggingface_hub birder torch
           python3 scripts/download_birder_classifier.py --variant convnext_v2_tiny_eu-common256px
+          test -f "$OV/class_labels.txt" -o -f "$OV/birdlense_manifest.json"
 
       - name: Build birdlense image
         run: docker compose build birdlense
