@@ -86,7 +86,7 @@ class TestProcessorBootstrapCooldown(unittest.TestCase):
             def run_detection_probe_window(self, *, camera_id, trigger_source):
                 return True
 
-            def run(self):
+            def run(self, **kwargs):
                 self.run_calls += 1
                 return True
 
@@ -164,7 +164,7 @@ class TestProcessorBootstrapCooldown(unittest.TestCase):
             def run_detection_probe_window(self, *, camera_id, trigger_source):
                 return True
 
-            def run(self):
+            def run(self, **kwargs):
                 self.run_calls += 1
                 return self.run_calls >= 2
 
@@ -232,7 +232,7 @@ class TestProcessorBootstrapCooldown(unittest.TestCase):
             def run_detection_probe_window(self, *, camera_id, trigger_source):
                 return True
 
-            def run(self):
+            def run(self, **kwargs):
                 self.run_calls += 1
                 return self.run_calls >= 2
 

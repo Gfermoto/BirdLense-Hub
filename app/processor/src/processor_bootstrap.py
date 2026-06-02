@@ -27,6 +27,7 @@ from processor_runtime_stats import inc_counter, set_gauge
 from processor_support import check_restart_flag
 from recording_finalize_worker import FinalizeWorker, maybe_start_finalize_worker
 from recording_session import MotionRecordingSession
+from recording_concurrency import RecordingConcurrency, concurrent_recording_enabled
 from reid_runtime import prewarm_runtime_reid_model
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,8 @@ class ProcessorRunContext:
     media_setup: ProcessorMediaSetup
     finalize_worker: Optional[FinalizeWorker] = None
     file_test: Optional[FileTestRuntime] = None
+    recording_concurrency: Optional["RecordingConcurrency"] = None
+    concurrent_recording_enabled: bool = False
 
 
 def parse_processor_args(argv: list[str] | None = None) -> Namespace:
@@ -171,11 +174,22 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
         finalize_worker=finalize_worker,
         file_test_runtime=file_test,
     )
+    registry = RecordingConcurrency()
+    session.inference_lock = registry.inference_lock
+    cameras = media_setup.cameras or []
+    concurrent_enabled = concurrent_recording_enabled(app_config, camera_count=len(cameras))
+    if concurrent_enabled:
+        logger.info(
+            "Concurrent per-camera recording enabled (cameras=%s)",
+            len(cameras),
+        )
     return ProcessorRunContext(
         session=session,
         media_setup=media_setup,
         finalize_worker=finalize_worker,
         file_test=file_test,
+        recording_concurrency=registry,
+        concurrent_recording_enabled=concurrent_enabled,
     )
 
 
@@ -204,6 +218,53 @@ def _moratorium_scope_for_camera(
     return f"_unscoped:{source_key}", False
 
 
+def _poll_motion(motion_detector) -> bool:
+    check = getattr(motion_detector, "check", None)
+    if callable(check):
+        return bool(check())
+    check_pending = getattr(motion_detector, "check_pending", None)
+    if callable(check_pending):
+        return bool(check_pending())
+    return False
+
+
+def _wait_for_motion(ctx: ProcessorRunContext) -> bool:
+    registry = getattr(ctx, "recording_concurrency", None)
+    concurrent = bool(getattr(ctx, "concurrent_recording_enabled", False) and registry is not None)
+    if concurrent and registry.any_active():
+        if _poll_motion(ctx.session.motion_detector):
+            return True
+        time.sleep(0.05)
+        return False
+    return bool(ctx.session.motion_detector.detect())
+
+
+def _run_recording_session(
+    ctx: ProcessorRunContext,
+    *,
+    camera_key: str,
+    camera_id: str | None,
+    trigger_source: str,
+    last_recording_end_by_camera: dict[str, float],
+) -> bool:
+    registry = getattr(ctx, "recording_concurrency", None)
+
+    def _finish() -> None:
+        if registry is not None:
+            registry.unregister(camera_key)
+        last_recording_end_by_camera[camera_key] = time.monotonic()
+
+    try:
+        return bool(
+            ctx.session.run(
+                forced_camera_id=camera_id,
+                forced_trigger_source=trigger_source or None,
+            )
+        )
+    finally:
+        _finish()
+
+
 def run_motion_loop(ctx: ProcessorRunContext) -> None:
     """Бесконечный цикл движения; выход при ``session.run()`` → True (режим файла) или SystemExit."""
     last_recording_end_by_camera: dict[str, float] = {}
@@ -223,7 +284,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
             if not ft.armed:
                 time.sleep(0.25)
                 continue
-        if not ctx.session.motion_detector.detect():
+        if not _wait_for_motion(ctx):
             continue
         from motion_recording_camera import resolve_motion_recording_camera_id
 
@@ -363,10 +424,57 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
         last_trigger_start_by_camera[camera_key] = time.monotonic()
         if trigger_source:
             last_trigger_source_by_camera[camera_key] = trigger_source
+
+        registry = getattr(ctx, "recording_concurrency", None)
+        concurrent = bool(getattr(ctx, "concurrent_recording_enabled", False) and registry is not None)
+        other_active = bool(concurrent and registry.any_active())
+        if registry is not None and not registry.try_register(camera_key):
+            requeued = requeue_motion_trigger(ctx.session.motion_detector)
+            inc_counter("recording_trigger_deferred_camera_busy_total")
+            logger.info(
+                "Skipping motion trigger for camera=%s: recording already active (requeued=%s)",
+                camera_key,
+                requeued,
+            )
+            continue
+
+        if concurrent and other_active:
+            inc_counter("recording_concurrent_session_started_total")
+
+            def _async_recording() -> None:
+                try:
+                    _run_recording_session(
+                        ctx,
+                        camera_key=camera_key,
+                        camera_id=camera_id,
+                        trigger_source=trigger_source,
+                        last_recording_end_by_camera=last_recording_end_by_camera,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Concurrent recording failed for camera=%s",
+                        camera_key,
+                    )
+
+            threading.Thread(
+                target=_async_recording,
+                daemon=True,
+                name=f"birdlense-recording-{camera_key}",
+            ).start()
+            continue
+
         try:
-            should_stop = bool(ctx.session.run())
-        finally:
-            last_recording_end_by_camera[camera_key] = time.monotonic()
+            should_stop = _run_recording_session(
+                ctx,
+                camera_key=camera_key,
+                camera_id=camera_id,
+                trigger_source=trigger_source,
+                last_recording_end_by_camera=last_recording_end_by_camera,
+            )
+        except Exception:
+            if registry is not None:
+                registry.unregister(camera_key)
+            raise
         if should_stop:
             break
 

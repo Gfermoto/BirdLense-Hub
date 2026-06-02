@@ -48,12 +48,18 @@ class OrMotionDetector:
         """Block until any detector fires. Returns True."""
         poll_interval = 0.05
         while True:
-            for name, detector in self._detectors:
-                if self._check_detector(detector):
-                    self._triggered_by = name
-                    logger.info("Motion: %s trigger", name)
-                    return True
+            if self.check():
+                logger.info("Motion: %s trigger", self._triggered_by)
+                return True
             time.sleep(poll_interval)
+
+    def check(self) -> bool:
+        """Non-blocking poll: True when any child detector fires."""
+        for name, detector in self._detectors:
+            if self._check_detector(detector):
+                self._triggered_by = name
+                return True
+        return False
 
     def get_triggered_camera(self):
         """Return triggered camera when current detector exposes it."""
