@@ -112,7 +112,11 @@ def _merge_reason_counts(
 
 
 def build_failure_mode_funnel(
-    rows: list[sqlite3.Row], *, lookback_hours: int
+    rows: list[sqlite3.Row],
+    *,
+    lookback_hours: int,
+    max_fp_empty_opencv_rate: float = 0.35,
+    max_acceptance_gap_sessions: int = 8,
 ) -> dict[str, Any]:
     global_counts: Counter[str] = Counter()
     by_camera: dict[str, Counter[str]] = defaultdict(Counter)
@@ -121,6 +125,8 @@ def build_failure_mode_funnel(
     decision_reason_by_camera: dict[str, Counter[str]] = defaultdict(Counter)
     risk_flags: Counter[str] = Counter()
     concurrent_started = 0
+    fp_empty_by_source: Counter[str] = Counter()
+    fp_empty_by_camera: dict[str, Counter[str]] = defaultdict(Counter)
 
     for row in rows:
         payload = _extract_payload(row["payload_json"])
@@ -134,6 +140,18 @@ def build_failure_mode_funnel(
         cr = payload.get("concurrent_recording")
         if isinstance(cr, dict) and cr.get("started_concurrent"):
             concurrent_started += 1
+        camera_id = str(row["camera_id"] or "unknown")
+        trigger_graph = payload.get("trigger_graph")
+        if isinstance(trigger_graph, dict):
+            metrics_by_source = trigger_graph.get("metrics_by_source")
+            if isinstance(metrics_by_source, dict):
+                for source, metrics in metrics_by_source.items():
+                    if not isinstance(metrics, dict):
+                        continue
+                    fp_empty = _safe_int(metrics.get("fp_empty_recording"))
+                    if fp_empty > 0:
+                        fp_empty_by_source[str(source)] += 1
+                        fp_empty_by_camera[camera_id][str(source)] += 1
         mode = _classify_failure_mode(
             yolo_raw_boxes_total=_safe_int(row["yolo_raw_boxes_total"]),
             yolo_accepted_boxes_total=_safe_int(row["yolo_accepted_boxes_total"]),
@@ -147,7 +165,6 @@ def build_failure_mode_funnel(
         by_slot[slot][mode] += 1
         _merge_reason_counts(decision_reason_counts, payload)
         per_cam = decision_reason_by_camera[camera_id]
-        trigger_graph = payload.get("trigger_graph")
         if isinstance(trigger_graph, dict):
             raw_counts = trigger_graph.get("decision_reason_counts")
             if isinstance(raw_counts, dict):
@@ -160,6 +177,23 @@ def build_failure_mode_funnel(
         return {k: int(v) for k, v in counter.most_common()}
 
     top_root_causes = [mode for mode, _ in global_counts.most_common(5)]
+
+    acceptance_gap_sessions = int(risk_flags.get("detection_acceptance_gap", 0))
+    fp_opencv_sessions = int(fp_empty_by_source.get("opencv", 0))
+    fp_frigate_sessions = int(fp_empty_by_source.get("frigate", 0))
+    alerts: list[str] = []
+    if total_sessions > 0:
+        fp_opencv_rate = fp_opencv_sessions / float(total_sessions)
+        if fp_opencv_rate > float(max_fp_empty_opencv_rate):
+            alerts.append(
+                f"fp_empty_recording opencv rate {fp_opencv_rate:.1%} > "
+                f"{float(max_fp_empty_opencv_rate):.1%} (#I9)"
+            )
+    if acceptance_gap_sessions > int(max_acceptance_gap_sessions):
+        alerts.append(
+            f"detection_acceptance_gap sessions {acceptance_gap_sessions} > "
+            f"{int(max_acceptance_gap_sessions)} (#587)"
+        )
 
     return {
         "schema": "failure_mode_funnel@v1",
@@ -182,15 +216,22 @@ def build_failure_mode_funnel(
             for camera, counter in sorted(decision_reason_by_camera.items())
         },
         "risk_flags": {
-            "detection_acceptance_gap_sessions": int(
-                risk_flags.get("detection_acceptance_gap", 0)
-            ),
+            "detection_acceptance_gap_sessions": acceptance_gap_sessions,
             "concurrent_recording_started_sessions": int(concurrent_started),
             "static_pinned_rejects_total": int(
                 decision_reason_counts.get("rejected_static_pinned_track", 0)
             ),
+            "fp_empty_recording_opencv_sessions": fp_opencv_sessions,
+            "fp_empty_recording_frigate_sessions": fp_frigate_sessions,
         },
+        "trigger_graph_fp_by_source": _to_ranked_dict(fp_empty_by_source),
+        "trigger_graph_fp_by_camera": {
+            camera: _to_ranked_dict(counter)
+            for camera, counter in sorted(fp_empty_by_camera.items())
+        },
+        "alerts": alerts,
         "ok": total_sessions > 0 and len(top_root_causes) > 0,
+        "acceptance_ok": not alerts,
     }
 
 
@@ -228,6 +269,21 @@ def _to_md(report: dict[str, Any]) -> str:
     lines.append("")
     lines.append(f"`{report.get('decision_reason_by_camera')}`")
     lines.append("")
+    lines.append("## Risk flags")
+    lines.append("")
+    lines.append(f"`{report.get('risk_flags')}`")
+    lines.append("")
+    lines.append("## Trigger-graph FP (empty recording)")
+    lines.append("")
+    lines.append(f"`{report.get('trigger_graph_fp_by_source')}`")
+    lines.append("")
+    lines.append("## Alerts")
+    lines.append("")
+    for item in report.get("alerts") or []:
+        lines.append(f"- {item}")
+    if not (report.get("alerts") or []):
+        lines.append("- none")
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -243,10 +299,27 @@ def _args() -> argparse.Namespace:
         "--out-md",
         default="docs/reports/quality_outcome/failure_mode_funnel_latest.md",
     )
+    parser.add_argument(
+        "--max-fp-empty-opencv-rate",
+        type=float,
+        default=None,
+        help="Alert when opencv fp_empty_recording session rate exceeds threshold",
+    )
+    parser.add_argument(
+        "--max-acceptance-gap-sessions",
+        type=int,
+        default=None,
+    )
+    parser.add_argument(
+        "--fail-on-alerts",
+        action="store_true",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
+    import os
+
     args = _args()
     db_path = Path(args.db_path).expanduser()
     if not db_path.is_absolute():
@@ -254,9 +327,17 @@ def main() -> int:
     if not db_path.exists():
         raise SystemExit(f"db file not found: {db_path}")
     rows = _load_rows(db_path, int(max(1, args.lookback_hours)))
+    max_fp_rate = args.max_fp_empty_opencv_rate
+    if max_fp_rate is None:
+        max_fp_rate = float(os.environ.get("FUNNEL_MAX_FP_EMPTY_OPENCV_RATE", "0.35"))
+    max_gap = args.max_acceptance_gap_sessions
+    if max_gap is None:
+        max_gap = int(os.environ.get("FUNNEL_MAX_ACCEPTANCE_GAP_SESSIONS", "8"))
     report = build_failure_mode_funnel(
         rows,
         lookback_hours=int(max(1, args.lookback_hours)),
+        max_fp_empty_opencv_rate=float(max_fp_rate),
+        max_acceptance_gap_sessions=int(max_gap),
     )
     out_json = Path(args.out_json).expanduser()
     if not out_json.is_absolute():
@@ -275,11 +356,15 @@ def main() -> int:
         json.dumps(
             {
                 "ok": bool(report.get("ok")),
+                "acceptance_ok": bool(report.get("acceptance_ok")),
+                "alerts": list(report.get("alerts") or []),
                 "json": str(out_json),
                 "md": str(out_md),
             }
         )
     )
+    if args.fail_on_alerts and (report.get("alerts") or []):
+        return 1
     return 0 if bool(report.get("ok")) else 1
 
 

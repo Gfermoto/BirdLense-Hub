@@ -1,5 +1,6 @@
 """Unit tests for scripts/report_failure_mode_funnel.py."""
 
+import json
 import os
 import sys
 import unittest
@@ -145,6 +146,44 @@ class TestReportFailureModeFunnel(unittest.TestCase):
         self.assertEqual(
             report["decision_reason_by_camera"]["BirdBox"]["rejected_short_track"], 1
         )
+
+    def test_build_failure_mode_funnel_fp_opencv_alert(self):
+        from report_failure_mode_funnel import build_failure_mode_funnel
+
+        rows = [
+            {
+                "camera_id": "Forest",
+                "camera_slot": 1,
+                "yolo_raw_boxes_total": 10,
+                "yolo_accepted_boxes_total": 10,
+                "yolo_frames_with_tracks": 10,
+                "payload_json": json.dumps(
+                    {
+                        "post_fusion_persisted": 0,
+                        "trigger_graph": {
+                            "metrics_by_source": {
+                                "opencv": {"fp_empty_recording": 1},
+                            }
+                        },
+                    }
+                ),
+            },
+            {
+                "camera_id": "Forest",
+                "camera_slot": 1,
+                "yolo_raw_boxes_total": 10,
+                "yolo_accepted_boxes_total": 10,
+                "yolo_frames_with_tracks": 10,
+                "payload_json": json.dumps({"post_fusion_persisted": 1}),
+            },
+        ]
+        report = build_failure_mode_funnel(
+            rows,
+            lookback_hours=24,
+            max_fp_empty_opencv_rate=0.4,
+        )
+        self.assertEqual(report["risk_flags"]["fp_empty_recording_opencv_sessions"], 1)
+        self.assertTrue(report["alerts"])
 
 
 if __name__ == "__main__":
