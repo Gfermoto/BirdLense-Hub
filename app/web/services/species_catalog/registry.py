@@ -896,8 +896,6 @@ def repair_catalog_cards(
 
     for sp in targets:
         time.sleep(0.035)
-        before_img = bool((sp.image_url or "").strip())
-        before_desc = bool((sp.description or "").strip())
 
         if species_card_needs_full_metadata_refresh(sp):
             try:
@@ -1037,17 +1035,13 @@ def catalog_cards_coverage_snapshot(app_config_get) -> dict:
         return bool(desc) and not _catalog_description_is_placeholder(desc)
 
     with_description = sum(1 for sp in matched_per_line if _real_description(sp))
-    complete_cards = sum(
-        1 for sp in matched_per_line if (sp.image_url or "").strip() and _real_description(sp)
-    )
+    complete_cards = sum(1 for sp in matched_per_line if (sp.image_url or "").strip() and _real_description(sp))
     completion_percent = round((complete_cards / max(1, len(allowlist_names))) * 100.0, 2)
     missing_image = max(0, allowlist_lines_matched - with_image)
     missing_description = max(0, allowlist_lines_matched - with_description)
     from services.species_catalog.canon import is_all_caps_display_name
 
-    all_caps_matched = sum(
-        1 for sp in uniq_ids.values() if is_all_caps_display_name(sp.name or "")
-    )
+    all_caps_matched = sum(1 for sp in uniq_ids.values() if is_all_caps_display_name(sp.name or ""))
     audio_with_source = 0
     audio_probed = 0
     audio_coverage_percent = None

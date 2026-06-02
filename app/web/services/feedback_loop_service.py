@@ -44,13 +44,8 @@ def record_feedback_event(
     confidence: float | None,
     frames_json: str | None,
 ) -> None:
-    action = (
-        str(action_override or "").strip()
-        or (
-            "delete_as_background"
-            if _is_background_label(to_species_name)
-            else "relabel"
-        )
+    action = str(action_override or "").strip() or (
+        "delete_as_background" if _is_background_label(to_species_name) else "relabel"
     )
     row = DetectionFeedbackEvent(
         action=action,
@@ -97,10 +92,7 @@ def build_feedback_loop_status(session, *, data_dir: str = "app/data") -> dict[s
         .group_by(DetectionFeedbackEvent.action)
         .all()
     )
-    action_counts = {
-        str(action or "unknown"): int(count or 0)
-        for action, count in by_action_rows
-    }
+    action_counts = {str(action or "unknown"): int(count or 0) for action, count in by_action_rows}
     queue_rows = (
         session.query(
             ActiveLearningCase.status,
@@ -109,10 +101,7 @@ def build_feedback_loop_status(session, *, data_dir: str = "app/data") -> dict[s
         .group_by(ActiveLearningCase.status)
         .all()
     )
-    queue_counts = {
-        str(status or "unknown"): int(count or 0)
-        for status, count in queue_rows
-    }
+    queue_counts = {str(status or "unknown"): int(count or 0) for status, count in queue_rows}
     latest_tag = (
         session.query(ActiveLearningCase.export_tag)
         .filter(ActiveLearningCase.export_tag.isnot(None))

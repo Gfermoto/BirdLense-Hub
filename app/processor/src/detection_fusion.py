@@ -601,9 +601,7 @@ def build_fused_video_detections(
     merge_window = app_config.get("detection.merge_window_seconds", 5)
     dedup_window = app_config.get("detection.dedup_window_seconds", 45)
     one_per_species = app_config.get("detection.one_per_species", True)
-    one_per_species_keep_distinct_tracks = bool(
-        app_config.get("detection.one_per_species_keep_distinct_tracks", False)
-    )
+    one_per_species_keep_distinct_tracks = bool(app_config.get("detection.one_per_species_keep_distinct_tracks", False))
     source_priority_cfg = app_config.get("detection.source_priority") or [
         "yolo",
         "frigate",
@@ -635,7 +633,9 @@ def build_fused_video_detections(
     effective_blind_score = float(yolo_blind_score)
     if bool(yolo_blind_confirmed) and effective_blind_score <= 0.0:
         effective_blind_score = 1.0
-    blind_gate_ok = bool(yolo_blind_confirmed and effective_blind_score >= blind_score_threshold) if require_blind else True
+    blind_gate_ok = (
+        bool(yolo_blind_confirmed and effective_blind_score >= blind_score_threshold) if require_blind else True
+    )
     session_duration_s = max(0.0, float((end_time - start_time).total_seconds()))
     forced_standalone_due_no_yolo = (
         standalone_on and bool(frigate_events) and not prepared and session_duration_s >= force_after_no_yolo_s

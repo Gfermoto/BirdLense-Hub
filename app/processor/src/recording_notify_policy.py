@@ -51,11 +51,7 @@ def _cfg_rare_list(config: Any) -> set[str]:
         items = [str(x) for x in raw]
     else:
         items = []
-    return {
-        str(item).strip().lower()
-        for item in items
-        if str(item).strip()
-    }
+    return {str(item).strip().lower() for item in items if str(item).strip()}
 
 
 def smart_alert_suppression_reason(

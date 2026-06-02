@@ -24,12 +24,8 @@ def proc_headers():
 
 
 def _payload(trigger_source: str) -> dict:
-    start_iso = datetime(
-        2026, 5, 31, 12, 0, tzinfo=timezone.utc
-    ).isoformat()
-    end_iso = datetime(
-        2026, 5, 31, 12, 0, 10, tzinfo=timezone.utc
-    ).isoformat()
+    start_iso = datetime(2026, 5, 31, 12, 0, tzinfo=timezone.utc).isoformat()
+    end_iso = datetime(2026, 5, 31, 12, 0, 10, tzinfo=timezone.utc).isoformat()
     return {
         "processor_version": "test-trigger-source",
         "start_time": start_iso,

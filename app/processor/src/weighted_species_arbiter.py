@@ -46,32 +46,16 @@ def apply_weighted_species_arbiter(
         return rows
 
     try:
-        w_conf = float(
-            app_config.get("detection.weighted_arbiter_conf_weight") or 0.55
-        )
-        w_detector = float(
-            app_config.get("detection.weighted_arbiter_detector_weight") or 0.15
-        )
-        w_classifier = float(
-            app_config.get("detection.weighted_arbiter_classifier_weight") or 0.12
-        )
-        w_birdnet = float(
-            app_config.get("detection.weighted_arbiter_birdnet_weight") or 0.08
-        )
-        w_regional = float(
-            app_config.get("detection.weighted_arbiter_regional_weight") or 0.05
-        )
-        w_multi = float(
-            app_config.get("detection.weighted_arbiter_multicamera_weight") or 0.05
-        )
+        w_conf = float(app_config.get("detection.weighted_arbiter_conf_weight") or 0.55)
+        w_detector = float(app_config.get("detection.weighted_arbiter_detector_weight") or 0.15)
+        w_classifier = float(app_config.get("detection.weighted_arbiter_classifier_weight") or 0.12)
+        w_birdnet = float(app_config.get("detection.weighted_arbiter_birdnet_weight") or 0.08)
+        w_regional = float(app_config.get("detection.weighted_arbiter_regional_weight") or 0.05)
+        w_multi = float(app_config.get("detection.weighted_arbiter_multicamera_weight") or 0.05)
     except (TypeError, ValueError):
         return rows
 
-    regional = {
-        _norm(v)
-        for v in (app_config.get("processor.regional_species") or [])
-        if _norm(v)
-    }
+    regional = {_norm(v) for v in (app_config.get("processor.regional_species") or []) if _norm(v)}
     birdnet_idx = _birdnet_event_index(mqtt_events)
     out: list[dict] = []
     for row in rows:
@@ -91,9 +75,7 @@ def apply_weighted_species_arbiter(
         )
         regional_prior = 1.0 if (species and species in regional) else 0.0
         multi_support = (
-            1.0
-            if bool(row.get("_multi_camera_support"))
-            else min(1.0, _safe_float(row.get("_multi_camera_count")))
+            1.0 if bool(row.get("_multi_camera_support")) else min(1.0, _safe_float(row.get("_multi_camera_count")))
         )
 
         weighted = (

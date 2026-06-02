@@ -53,6 +53,21 @@ const fetchBirdDirectory = vi.hoisted(() =>
   }),
 );
 
+vi.mock('../../contexts/ProtectedAreaContext', () => ({
+  useProtectedArea: () => ({
+    requiresPassword: false,
+    hasContributorTier: false,
+    unlocked: true,
+    role: null,
+    setUnlocked: () => {},
+    logoutAccess: async () => {},
+    isLoading: false,
+    accessError: null,
+    canEdit: false,
+    isAdmin: false,
+  }),
+}));
+
 vi.mock('../../api/speciesOverviewDetections', async (importOriginal) => {
   const actual =
     await importOriginal<

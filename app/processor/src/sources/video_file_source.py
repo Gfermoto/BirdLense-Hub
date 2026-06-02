@@ -8,8 +8,6 @@ from pathlib import Path
 
 import cv2
 
-from yolo_geometry import letterbox_bgr_to_wh, prepare_detector_frame
-
 
 class VideoFileSource:
     """Video source with camera-like timing over an mp4 file."""

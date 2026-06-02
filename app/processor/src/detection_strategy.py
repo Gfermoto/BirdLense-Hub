@@ -431,9 +431,7 @@ def _storage_bbox_norm_for_overlay(
             letterbox_shape=detector_frame_shape[:2],
         )
         capture_norm = (
-            [round(float(v), 6) for v in mapped]
-            if mapped is not None
-            else [round(float(b), 6) for b in bbox_norm]
+            [round(float(v), 6) for v in mapped] if mapped is not None else [round(float(b), 6) for b in bbox_norm]
         )
     else:
         capture_norm = [round(float(b), 6) for b in bbox_norm]
@@ -730,8 +728,7 @@ class TwoStageStrategy(DetectionStrategy):
             )
             self.logger.info("Enabled classes: %s", enabled_classes)
         elif self.regional_species and (
-            getattr(self, "_classifier_is_efficientnet", False)
-            or getattr(self, "_classifier_is_birder_eu", False)
+            getattr(self, "_classifier_is_efficientnet", False) or getattr(self, "_classifier_is_birder_eu", False)
         ):
             self.logger.info(
                 "Regional species filter delegated to neural classifier (%s entries).",
@@ -743,9 +740,7 @@ class TwoStageStrategy(DetectionStrategy):
         if self._binary_track_device:
             _warm["device"] = self._binary_track_device
         self.binary_model.track(np.zeros((320, 320, 3), dtype=np.uint8), **_warm)
-        if getattr(self, "_classifier_is_efficientnet", False) or getattr(
-            self, "_classifier_is_birder_eu", False
-        ):
+        if getattr(self, "_classifier_is_efficientnet", False) or getattr(self, "_classifier_is_birder_eu", False):
             self.classifier_model.warmup()
         else:
             _cls_warm: dict = {"verbose": False}
@@ -811,9 +806,7 @@ class TwoStageStrategy(DetectionStrategy):
         crop_bgr, _copied = crop_for_classifier(crop)
         if crop_bgr.size == 0:
             return ClassifierOutput(None, 0.0, 0.0, 0.0)
-        if getattr(self, "_classifier_is_efficientnet", False) or getattr(
-            self, "_classifier_is_birder_eu", False
-        ):
+        if getattr(self, "_classifier_is_efficientnet", False) or getattr(self, "_classifier_is_birder_eu", False):
             out = self.classifier_model.classify_crop_bgr(crop_bgr)
             return ClassifierOutput(
                 out.species_name,
@@ -1246,9 +1239,7 @@ class TwoStageStrategy(DetectionStrategy):
             )
         except (TypeError, ValueError):
             base_bird_min = float(min_confidence)
-        scene_bird_floor = self._detection_quality.scene_analyzer.bird_confidence_floor(
-            base_bird_min
-        )
+        scene_bird_floor = self._detection_quality.scene_analyzer.bird_confidence_floor(base_bird_min)
 
         def _collect_valid_boxes(
             *,
@@ -1438,9 +1429,13 @@ class TwoStageStrategy(DetectionStrategy):
         # Overlay regen: только Trapper bbox+track (как тест OV), без NABirds — иначе Bird→сорока и «херня в бою».
         overlay_shape = getattr(self, "_overlay_frame_shape", None) or cls_frame.shape[:2]
         detector_shape = getattr(self, "_detector_frame_shape", None) or frame.shape[:2]
-        _binary_only = bool(_pol.binary_only) if _pol is not None else bool(
-            getattr(self, "_for_track_regen", False)
-            and bool(runtime_cfg.get("processor.track_regen_binary_only", False))
+        _binary_only = (
+            bool(_pol.binary_only)
+            if _pol is not None
+            else bool(
+                getattr(self, "_for_track_regen", False)
+                and bool(runtime_cfg.get("processor.track_regen_binary_only", False))
+            )
         )
         if _binary_only:
             detection_results = []
@@ -1523,9 +1518,7 @@ class TwoStageStrategy(DetectionStrategy):
             is_blur, variance = self.is_blurry(crop_view)
             if is_blur:
                 continue
-            crop_sr, sr_n, sr_ms = self._apply_roi_sr_to_crop(
-                crop_view, min_box_size_px=min_box_size_px
-            )
+            crop_sr, sr_n, sr_ms = self._apply_roi_sr_to_crop(crop_view, min_box_size_px=min_box_size_px)
             sr_applied += sr_n
             sr_latency_total_ms += sr_ms
             crop_payload: np.ndarray | RoiCropRef = roi_ref
@@ -1563,15 +1556,11 @@ class TwoStageStrategy(DetectionStrategy):
                 roi_ref = roi_crop_ref_from_norm_bbox(cls_frame, x1=x1, y1=y1, x2=x2, y2=y2)
                 if roi_ref is not None:
                     crop_view = roi_ref.view()
-                    crop_sr, sr_n, sr_ms = self._apply_roi_sr_to_crop(
-                        crop_view, min_box_size_px=min_box_size_px
-                    )
+                    crop_sr, sr_n, sr_ms = self._apply_roi_sr_to_crop(crop_view, min_box_size_px=min_box_size_px)
                     sr_applied += sr_n
                     sr_latency_total_ms += sr_ms
                     _, variance = self.is_blurry(crop_view)
-                    crop_payload: np.ndarray | RoiCropRef = (
-                        crop_sr if crop_sr is not crop_view else roi_ref
-                    )
+                    crop_payload: np.ndarray | RoiCropRef = crop_sr if crop_sr is not crop_view else roi_ref
                     self._classification_task_queue.append(
                         ClassificationTask(
                             track_id=int(fallback_box["track_id"]),
@@ -1618,9 +1607,10 @@ class TwoStageStrategy(DetectionStrategy):
                 co = self._classify_crop(classified.crop)
                 crop = classified.crop
                 blur_variance = classified.blur_variance
-            elif int(box["track_id"]) in scheduled_for_classifier and str(
-                box.get("detector_label") or ""
-            ).strip() != "Bird":
+            elif (
+                int(box["track_id"]) in scheduled_for_classifier
+                and str(box.get("detector_label") or "").strip() != "Bird"
+            ):
                 # Не-Bird в scope (Trapper squirrel и т.д.): один проход классификатора даже при tight budget.
                 co, crop, blur_variance = self._classify_valid_box_crop(
                     box,

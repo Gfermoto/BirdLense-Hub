@@ -81,15 +81,9 @@ def test_enrich_birdnet_fifo_response_attaches_fields():
 
 
 def test_strict_quality_ratio_skips_empty_sample():
-    assert (
-        strict_quality_ratio_ok(None, sample_count=0, threshold=0.9) is True
-    )
-    assert (
-        strict_quality_ratio_ok(0.5, sample_count=0, threshold=0.9) is True
-    )
-    assert (
-        strict_quality_ratio_ok(0.5, sample_count=10, threshold=0.9) is False
-    )
+    assert strict_quality_ratio_ok(None, sample_count=0, threshold=0.9) is True
+    assert strict_quality_ratio_ok(0.5, sample_count=0, threshold=0.9) is True
+    assert strict_quality_ratio_ok(0.5, sample_count=10, threshold=0.9) is False
 
 
 def test_strict_quality_block_skips_ratio_without_24h_sample():
@@ -117,8 +111,6 @@ def test_filter_frigate_parity_when_frigate_off():
             "frigate_degraded_no_mqtt": True,
             "effective_trigger_paths_dropped": True,
         },
-        app_config_get=lambda k, d=None: (
-            False if k == "triggers.frigate.enabled" else d
-        ),
+        app_config_get=lambda k, d=None: (False if k == "triggers.frigate.enabled" else d),
     )
     assert alerts["frigate_degraded_no_mqtt"] is False

@@ -162,9 +162,7 @@ def static_pinned_track_reason(track: Mapping[str, Any], cfg: StaticPinnedTrackC
 
     if len(bboxes) >= 2:
         max_pair_iou = max(
-            _bbox_iou(bboxes[i], bboxes[j])
-            for i in range(len(bboxes))
-            for j in range(i + 1, len(bboxes))
+            _bbox_iou(bboxes[i], bboxes[j]) for i in range(len(bboxes)) for j in range(i + 1, len(bboxes))
         )
         if max_pair_iou < cfg.max_bbox_iou_first_last_min:
             return None

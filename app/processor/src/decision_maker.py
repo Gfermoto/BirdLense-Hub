@@ -500,7 +500,6 @@ class DecisionMaker:
         store_floor = float(self.min_confidence_to_store)
         entropy_ge = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_entropy_ge"))
         margin_le = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_margin_le"))
-        runtime_cfg = getattr(app_config, "config", None) or {}
         static_cfg = self._resolve_static_pinned_cfg()
         for track_id, track in tracks.items():
             detector_events = track.get("detector_events") or []

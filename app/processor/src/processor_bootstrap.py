@@ -295,9 +295,9 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
             mqtt_aggregator=getattr(ctx.session, "mqtt_aggregator", None),
             default_camera_id=getattr(ctx.session, "default_camera_id", None),
         )
-        trigger_source = str(
-            getattr(ctx.session.motion_detector, "get_triggered_by", lambda: "")() or ""
-        ).strip().lower()
+        trigger_source = (
+            str(getattr(ctx.session.motion_detector, "get_triggered_by", lambda: "")() or "").strip().lower()
+        )
         if should_run_probe(trigger_source=trigger_source, app_config=app_config):
             probe_ok = bool(
                 ctx.session.run_detection_probe_window(
@@ -328,25 +328,16 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
         elif trigger_moratorium > 0 and not camera_scoped:
             inc_counter("recording_trigger_moratorium_unscoped_total")
             logger.warning(
-                "Skipping trigger moratorium: unresolved camera "
-                "(source=%s, camera_id=%s)",
+                "Skipping trigger moratorium: unresolved camera (source=%s, camera_id=%s)",
                 trigger_source or "?",
                 str(camera_id or "").strip() or "_default",
             )
         if moratorium_wait > 0:
             requeued = requeue_motion_trigger(ctx.session.motion_detector)
             inc_counter("recording_trigger_deferred_moratorium_total")
-            winner_source = str(
-                last_trigger_source_by_camera.get(camera_key) or ""
-            ).strip().lower()
-            winner_start = float(
-                last_trigger_start_by_camera.get(camera_key) or 0.0
-            )
-            elapsed_since_winner_s = (
-                max(0.0, time.monotonic() - winner_start)
-                if winner_start > 0
-                else None
-            )
+            winner_source = str(last_trigger_source_by_camera.get(camera_key) or "").strip().lower()
+            winner_start = float(last_trigger_start_by_camera.get(camera_key) or 0.0)
+            elapsed_since_winner_s = max(0.0, time.monotonic() - winner_start) if winner_start > 0 else None
             logger.info(
                 "Skipping competing trigger for camera=%s: trigger moratorium %.2fs (requeued=%s, source=%s)",
                 camera_key,
@@ -362,9 +353,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                         "trigger_source": trigger_source or None,
                         "winner_trigger_source": winner_source or None,
                         "elapsed_since_winner_s": (
-                            None
-                            if elapsed_since_winner_s is None
-                            else float(round(elapsed_since_winner_s, 3))
+                            None if elapsed_since_winner_s is None else float(round(elapsed_since_winner_s, 3))
                         ),
                         "moratorium_seconds": float(trigger_moratorium),
                         "wait_seconds": float(round(moratorium_wait, 3)),
@@ -390,8 +379,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
         elif cooldown > 0 and not camera_scoped:
             inc_counter("recording_trigger_cooldown_unscoped_total")
             logger.warning(
-                "Skipping per-camera cooldown: unresolved camera "
-                "(source=%s, camera_id=%s)",
+                "Skipping per-camera cooldown: unresolved camera (source=%s, camera_id=%s)",
                 trigger_source or "?",
                 str(camera_id or "").strip() or "_default",
             )

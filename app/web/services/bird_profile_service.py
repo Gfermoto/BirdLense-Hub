@@ -38,7 +38,9 @@ def _append_semantic_history(case: ActiveLearningCase, *, source: str, note: str
     case.payload_json = json.dumps(payload, ensure_ascii=False)
 
 
-def list_bird_profiles(*, query: str | None = None, species_id: int | None = None, limit: int = 20) -> list[dict[str, Any]]:
+def list_bird_profiles(
+    *, query: str | None = None, species_id: int | None = None, limit: int = 20
+) -> list[dict[str, Any]]:
     lim = max(1, min(int(limit or 20), 100))
     q = db.session.query(BirdProfile).order_by(BirdProfile.created_at.desc())
     if species_id is not None:
@@ -46,12 +48,7 @@ def list_bird_profiles(*, query: str | None = None, species_id: int | None = Non
     needle = (query or "").strip()
     if needle:
         q = q.filter(BirdProfile.display_name.ilike(f"%{needle}%"))
-    rows = (
-        q.outerjoin(Species, BirdProfile.species_id == Species.id)
-        .add_columns(Species.name)
-        .limit(lim)
-        .all()
-    )
+    rows = q.outerjoin(Species, BirdProfile.species_id == Species.id).add_columns(Species.name).limit(lim).all()
     return [
         {
             "id": int(row.id),
@@ -66,7 +63,9 @@ def list_bird_profiles(*, query: str | None = None, species_id: int | None = Non
     ]
 
 
-def create_bird_profile(*, display_name: str, species_id: int | None = None, avatar_url: str | None = None, status: str | None = None) -> dict[str, Any]:
+def create_bird_profile(
+    *, display_name: str, species_id: int | None = None, avatar_url: str | None = None, status: str | None = None
+) -> dict[str, Any]:
     name = str(display_name or "").strip()
     if not name:
         raise ValueError("display_name is required")
@@ -87,7 +86,9 @@ def create_bird_profile(*, display_name: str, species_id: int | None = None, ava
     }
 
 
-def update_bird_profile(*, profile_id: int, display_name: str | None = None, avatar_url: str | None = None, status: str | None = None) -> dict[str, Any]:
+def update_bird_profile(
+    *, profile_id: int, display_name: str | None = None, avatar_url: str | None = None, status: str | None = None
+) -> dict[str, Any]:
     row = db.session.get(BirdProfile, int(profile_id))
     if row is None:
         raise LookupError("profile not found")
@@ -179,7 +180,9 @@ def assign_profile_to_detection(*, detection_id: int, bird_profile_id: int) -> d
     }
 
 
-def set_detection_semantic_review(*, detection_id: int, required: bool, note: str | None = None, source: str = "video_details") -> dict[str, Any]:
+def set_detection_semantic_review(
+    *, detection_id: int, required: bool, note: str | None = None, source: str = "video_details"
+) -> dict[str, Any]:
     vs = db.session.get(VideoSpecies, int(detection_id))
     if vs is None:
         raise LookupError("detection not found")
@@ -227,4 +230,3 @@ def merge_bird_profiles(*, target_profile_id: int, source_profile_id: int) -> di
         target_profile_id=int(target_profile_id),
         source_profile_id=int(source_profile_id),
     )
-

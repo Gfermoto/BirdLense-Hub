@@ -43,11 +43,7 @@ def _load_manifest(weights_dir: Path) -> dict[str, Any]:
 def _load_id2label(weights_dir: Path) -> dict[int, str]:
     labels_path = weights_dir / "class_labels.txt"
     if labels_path.is_file():
-        lines = [
-            ln.strip()
-            for ln in labels_path.read_text(encoding="utf-8").splitlines()
-            if ln.strip()
-        ]
+        lines = [ln.strip() for ln in labels_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
         return {i: _normalize_species_label(ln) for i, ln in enumerate(lines)}
     manifest = _load_manifest(weights_dir)
     n = int(manifest.get("num_labels") or 0)
@@ -133,8 +129,7 @@ class BirderEuClassifier:
                     break
         if not xml.is_file():
             raise FileNotFoundError(
-                f"Birder OpenVINO IR missing under {bundle}. "
-                "Run scripts/export_birder_classifier_to_openvino.py",
+                f"Birder OpenVINO IR missing under {bundle}. Run scripts/export_birder_classifier_to_openvino.py",
             )
         ov_dev = resolve_efficientnet_openvino_device(self.device)
         core = ov.Core()
@@ -155,9 +150,7 @@ class BirderEuClassifier:
         if not self.regional_species:
             self._allowed_ids = None
             return
-        allowed_names = {
-            _normalize_species_label(s).lower() for s in self.regional_species if str(s).strip()
-        }
+        allowed_names = {_normalize_species_label(s).lower() for s in self.regional_species if str(s).strip()}
         ids: set[int] = set()
         for idx, name in self.id2label.items():
             if name.lower() in allowed_names:

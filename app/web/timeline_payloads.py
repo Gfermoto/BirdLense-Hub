@@ -32,9 +32,7 @@ def _model_behavior_events_from_video(video) -> list[dict]:
     ]
 
 
-def _infer_trigger_source_from_detections(
-    detections: list[dict], *, preferred_trigger: str | None = None
-) -> str:
+def _infer_trigger_source_from_detections(detections: list[dict], *, preferred_trigger: str | None = None) -> str:
     """Best-effort trigger source for timeline semantics.
 
     Timeline payload historically has detection source/provider only. To keep
@@ -52,26 +50,17 @@ def _infer_trigger_source_from_detections(
         return normalized_preferred
 
     providers = {
-        str(d.get("detection_provider") or "").strip().lower()
-        for d in (detections or [])
-        if isinstance(d, dict)
+        str(d.get("detection_provider") or "").strip().lower() for d in (detections or []) if isinstance(d, dict)
     }
     if any("frigate" in p for p in providers):
         return "frigate"
     if any(p in {"yolo", "ultralytics", "openvino"} for p in providers):
         return "opencv"
-    if any(
-        p in {"opencv", "motion", "motion_detector", "or_motion"}
-        for p in providers
-    ):
+    if any(p in {"opencv", "motion", "motion_detector", "or_motion"} for p in providers):
         return "opencv"
     if any(p in {"scale", "scales"} for p in providers):
         return "scales"
-    sources = {
-        str(d.get("source") or "").strip().lower()
-        for d in (detections or [])
-        if isinstance(d, dict)
-    }
+    sources = {str(d.get("source") or "").strip().lower() for d in (detections or []) if isinstance(d, dict)}
     if "audio" in sources:
         return "motion_sensor"
     return "unknown"

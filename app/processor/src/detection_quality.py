@@ -84,7 +84,6 @@ class DetectionQualityConfig:
     bird_base_min_confidence: float = 0.12
     scoring_engine_enabled: bool = False
 
-
     @classmethod
     def from_runtime_cfg(cls, runtime_cfg: Mapping[str, Any]) -> DetectionQualityConfig:
         static = StaticObjectFilterConfig.from_runtime_cfg(runtime_cfg)
@@ -100,53 +99,31 @@ class DetectionQualityConfig:
             static.static_temporal_min_frames = max(4, int(sec * fps))
         else:
             static.static_temporal_min_frames = min_frames_override
-        static.static_temporal_max_jitter_px = _parse_float(
-            runtime_cfg, "processor.static_temporal_max_jitter_px", 2.0
-        )
+        static.static_temporal_max_jitter_px = _parse_float(runtime_cfg, "processor.static_temporal_max_jitter_px", 2.0)
         return cls(
             mask=DetectionMaskConfig.from_runtime_cfg(runtime_cfg),
             static=static,
-            motion_verified_enabled=_parse_bool(
-                runtime_cfg, "processor.motion_verified_detection_enabled", True
-            ),
-            motion_min_mean_absdiff=_parse_float(
-                runtime_cfg, "processor.motion_verified_min_pixel_change", 10.0
-            ),
-            motion_global_static_reject=_parse_bool(
-                runtime_cfg, "processor.motion_global_static_reject_enabled", True
-            ),
-            motion_global_max_mean_absdiff=_parse_float(
-                runtime_cfg, "processor.motion_global_max_mean_absdiff", 2.0
-            ),
+            motion_verified_enabled=_parse_bool(runtime_cfg, "processor.motion_verified_detection_enabled", True),
+            motion_min_mean_absdiff=_parse_float(runtime_cfg, "processor.motion_verified_min_pixel_change", 10.0),
+            motion_global_static_reject=_parse_bool(runtime_cfg, "processor.motion_global_static_reject_enabled", True),
+            motion_global_max_mean_absdiff=_parse_float(runtime_cfg, "processor.motion_global_max_mean_absdiff", 2.0),
             motion_strict_frames=max(
                 2,
                 _parse_int(runtime_cfg, "processor.motion_strict_consecutive_frames", 3),
             ),
-            motion_hard_conf_ceiling=_parse_float(
-                runtime_cfg, "processor.motion_hard_conf_ceiling", 0.55
-            ),
+            motion_hard_conf_ceiling=_parse_float(runtime_cfg, "processor.motion_hard_conf_ceiling", 0.55),
             texture_enabled=_parse_bool(runtime_cfg, "processor.detection_texture_filter_enabled", True),
-            texture_min_laplacian_var=_parse_float(
-                runtime_cfg, "processor.detection_texture_min_laplacian_var", 20.0
-            ),
+            texture_min_laplacian_var=_parse_float(runtime_cfg, "processor.detection_texture_min_laplacian_var", 20.0),
             hard_negatives_enabled=_parse_bool(runtime_cfg, "processor.hard_negatives_enabled", True),
-            hard_negatives_max_per_frame=_parse_int(
-                runtime_cfg, "processor.hard_negatives_max_per_frame", 8
-            ),
-            hard_negatives_dir=str(
-                runtime_cfg.get("processor.hard_negatives_dir") or "data/hard_negatives"
-            ),
+            hard_negatives_max_per_frame=_parse_int(runtime_cfg, "processor.hard_negatives_max_per_frame", 8),
+            hard_negatives_dir=str(runtime_cfg.get("processor.hard_negatives_dir") or "data/hard_negatives"),
             assumed_fps=max(
                 1.0,
                 _parse_float(runtime_cfg, "processor.detection_quality_assumed_fps", 15.0),
             ),
-            static_temporal_min_seconds=_parse_float(
-                runtime_cfg, "processor.static_temporal_min_seconds", 8.0
-            ),
+            static_temporal_min_seconds=_parse_float(runtime_cfg, "processor.static_temporal_min_seconds", 8.0),
             scene=SceneAdaptiveConfig.from_runtime_cfg(runtime_cfg),
-            allow_relaxed_small_object=_parse_bool(
-                runtime_cfg, "processor.auto_small_object_relax_enabled", False
-            ),
+            allow_relaxed_small_object=_parse_bool(runtime_cfg, "processor.auto_small_object_relax_enabled", False),
             bird_base_min_confidence=_parse_float(
                 runtime_cfg,
                 "processor.min_confidence_binary_bird",
@@ -243,9 +220,7 @@ class DetectionQualityPipeline:
         var = float(cv2.Laplacian(gray, cv2.CV_64F).var())
         return var < self.cfg.texture_min_laplacian_var
 
-    def _roi_motion_reject(
-        self, gray: np.ndarray, prev_gray: np.ndarray, box: dict[str, Any]
-    ) -> str | None:
+    def _roi_motion_reject(self, gray: np.ndarray, prev_gray: np.ndarray, box: dict[str, Any]) -> str | None:
         x1, y1, x2, y2 = [int(v) for v in box["crop_coords"]]
         roi_prev = prev_gray[y1:y2, x1:x2]
         roi_curr = gray[y1:y2, x1:x2]
@@ -373,15 +348,10 @@ class DetectionQualityPipeline:
         prev_gray = self._prev_gray
         global_static = False
         global_diff = 0.0
-        if (
-            self.cfg.motion_verified_enabled
-            and prev_gray is not None
-            and prev_gray.shape == gray.shape
-        ):
+        if self.cfg.motion_verified_enabled and prev_gray is not None and prev_gray.shape == gray.shape:
             global_diff = float(np.mean(cv2.absdiff(gray, prev_gray)))
             global_static = (
-                self.cfg.motion_global_static_reject
-                and global_diff < self.cfg.motion_global_max_mean_absdiff
+                self.cfg.motion_global_static_reject and global_diff < self.cfg.motion_global_max_mean_absdiff
             )
         self._prev_gray = gray
 
@@ -419,11 +389,7 @@ class DetectionQualityPipeline:
             mreason = None
             ceil = float(self.cfg.motion_hard_conf_ceiling)
             local_diff: float | None = None
-            if (
-                self.cfg.motion_verified_enabled
-                and prev_gray is not None
-                and prev_gray.shape == gray.shape
-            ):
+            if self.cfg.motion_verified_enabled and prev_gray is not None and prev_gray.shape == gray.shape:
                 x1, y1, x2, y2 = [int(v) for v in box["crop_coords"]]
                 roi_prev = prev_gray[y1:y2, x1:x2]
                 roi_curr = gray[y1:y2, x1:x2]
@@ -432,12 +398,7 @@ class DetectionQualityPipeline:
 
             # Boxes that already passed bird confidence floor must not be zeroed by
             # global static (RTSP/compression often yields mean_absdiff≈0 on real birds).
-            if (
-                self.cfg.motion_verified_enabled
-                and global_static
-                and conf < ceil
-                and conf < trust_floor
-            ):
+            if self.cfg.motion_verified_enabled and global_static and conf < ceil and conf < trust_floor:
                 mreason = f"global_frame_static(mean_absdiff={global_diff:.2f})"
             elif self.cfg.motion_verified_enabled and conf < ceil and conf < trust_floor and prev_gray is not None:
                 if local_diff is not None and local_diff < self.cfg.motion_min_mean_absdiff:
@@ -474,12 +435,8 @@ class DetectionQualityPipeline:
 
         pre_static = len(kept)
         kept = self._static.filter_boxes(kept, frame_bgr=frame_bgr, frame_index=frame_index)
-        self.last_stats["rejected_static_objects"] += int(
-            self._static.last_stats.get("rejected_static_objects") or 0
-        )
-        self.last_stats["rejected_phantom_boxes"] += int(
-            self._static.last_stats.get("rejected_phantom_boxes") or 0
-        )
+        self.last_stats["rejected_static_objects"] += int(self._static.last_stats.get("rejected_static_objects") or 0)
+        self.last_stats["rejected_phantom_boxes"] += int(self._static.last_stats.get("rejected_phantom_boxes") or 0)
         if pre_static > len(kept):
             self._save_hard_negative(
                 frame_bgr,

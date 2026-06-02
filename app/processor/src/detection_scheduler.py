@@ -27,22 +27,16 @@ def build_probe_config(app_config) -> DetectionProbeConfig:
     ]
     if not isinstance(raw, (list, tuple, set)):
         raw = ["frigate", "motion_sensor", "scales"]
-    triggers = tuple(
-        sorted({_norm_trigger(v) for v in raw if _norm_trigger(v)})
-    )
+    triggers = tuple(sorted({_norm_trigger(v) for v in raw if _norm_trigger(v)}))
     try:
-        window_seconds = float(
-            app_config.get("processor.detect_probe_window_seconds") or 2.5
-        )
+        window_seconds = float(app_config.get("processor.detect_probe_window_seconds") or 2.5)
     except (TypeError, ValueError):
         window_seconds = 2.5
     try:
         max_frames = int(app_config.get("processor.detect_probe_max_frames") or 30)
     except (TypeError, ValueError):
         max_frames = 30
-    start_recording_on_positive = bool(
-        app_config.get("processor.detect_probe_start_recording_on_positive", True)
-    )
+    start_recording_on_positive = bool(app_config.get("processor.detect_probe_start_recording_on_positive", True))
     return DetectionProbeConfig(
         enabled=enabled,
         triggers=triggers,

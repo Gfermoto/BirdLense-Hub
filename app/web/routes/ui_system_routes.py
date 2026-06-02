@@ -68,6 +68,7 @@ def register_routes(app):
     from routes.ui_system_jobs_routes import register_ui_system_jobs_routes
 
     register_ui_system_jobs_routes(app)
+
     @app.route("/api/ui/system/config-audit", methods=["GET"])
     @require_ui_settings_unauthorized
     def system_config_audit():
@@ -120,11 +121,7 @@ def register_routes(app):
             camera_id=str((body or {}).get("camera_id") or ""),
             overrides=(body or {}).get("overrides"),
             experiment_tag=str((body or {}).get("experiment_tag") or ""),
-            max_runtime_cost_delta=(
-                (body or {}).get("max_runtime_cost_delta")
-                if isinstance(body, dict)
-                else None
-            ),
+            max_runtime_cost_delta=((body or {}).get("max_runtime_cost_delta") if isinstance(body, dict) else None),
         )
 
     @app.route("/api/ui/system/tuning-workbench/rollback", methods=["POST"])

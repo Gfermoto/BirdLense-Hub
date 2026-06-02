@@ -68,7 +68,9 @@ def _resolve_birder_eu_paths(
         or app_config.get("processor.models.classifier_birder_eu_openvino")
         or classifier_openvino_rel_dir(variant),
     ).strip()
-    p_ov = resolve_birder_bundle_dir(weights_root, variant, Path(resolve_relative_to_processor_root(cfg_ov, processor_root)))
+    p_ov = resolve_birder_bundle_dir(
+        weights_root, variant, Path(resolve_relative_to_processor_root(cfg_ov, processor_root))
+    )
 
     ov_xml = p_ov / "openvino_model.xml"
     ov_ready = ov_xml.is_file() and openvino_runtime_available()

@@ -43,41 +43,25 @@ def _build_opencv_motion_detector(
         detection_method=str(opencv_cfg.get("detection_method") or "frame_diff"),
         suppress_warmup_frames=int(opencv_cfg.get("suppress_warmup_frames") or 0),
         auto_profile_enabled=bool(opencv_cfg.get("auto_profile_enabled", False)),
-        auto_profile_night_luma_threshold=_opencv_float(
-            opencv_cfg, "auto_profile_night_luma_threshold", 58.0
-        ),
-        day_diff_threshold=int(
-            opencv_cfg.get("day_diff_threshold") or int(opencv_cfg.get("diff_threshold") or 18)
-        ),
+        auto_profile_night_luma_threshold=_opencv_float(opencv_cfg, "auto_profile_night_luma_threshold", 58.0),
+        day_diff_threshold=int(opencv_cfg.get("day_diff_threshold") or int(opencv_cfg.get("diff_threshold") or 18)),
         day_min_contour_area=int(
             opencv_cfg.get("day_min_contour_area") or int(opencv_cfg.get("min_contour_area") or 320)
         ),
-        day_global_motion_mean_absdiff=_opencv_float(
-            opencv_cfg, "day_global_motion_mean_absdiff", 2.5
-        ),
-        day_min_motion_pixel_fraction=_opencv_float(
-            opencv_cfg, "day_min_motion_pixel_fraction", 0.0008
-        ),
+        day_global_motion_mean_absdiff=_opencv_float(opencv_cfg, "day_global_motion_mean_absdiff", 2.5),
+        day_min_motion_pixel_fraction=_opencv_float(opencv_cfg, "day_min_motion_pixel_fraction", 0.0008),
         day_max_contour_area_frac=_opencv_float(opencv_cfg, "day_max_contour_area_frac", 0.38),
-        night_diff_threshold=int(
-            opencv_cfg.get("night_diff_threshold") or int(opencv_cfg.get("diff_threshold") or 18)
-        ),
+        night_diff_threshold=int(opencv_cfg.get("night_diff_threshold") or int(opencv_cfg.get("diff_threshold") or 18)),
         night_min_contour_area=int(
             opencv_cfg.get("night_min_contour_area") or int(opencv_cfg.get("min_contour_area") or 320)
         ),
-        night_global_motion_mean_absdiff=_opencv_float(
-            opencv_cfg, "night_global_motion_mean_absdiff", 2.2
-        ),
-        night_min_motion_pixel_fraction=_opencv_float(
-            opencv_cfg, "night_min_motion_pixel_fraction", 0.0006
-        ),
+        night_global_motion_mean_absdiff=_opencv_float(opencv_cfg, "night_global_motion_mean_absdiff", 2.2),
+        night_min_motion_pixel_fraction=_opencv_float(opencv_cfg, "night_min_motion_pixel_fraction", 0.0006),
         night_max_contour_area_frac=_opencv_float(opencv_cfg, "night_max_contour_area_frac", 0.45),
         mog2_history=int(opencv_cfg.get("mog2_history") or 300),
         mog2_var_threshold=_opencv_float(opencv_cfg, "mog2_var_threshold", 24.0),
         mog2_detect_shadows=bool(opencv_cfg.get("mog2_detect_shadows", False)),
-        mog2_min_motion_pixel_fraction=_opencv_float(
-            opencv_cfg, "mog2_min_motion_pixel_fraction", 0.0006
-        ),
+        mog2_min_motion_pixel_fraction=_opencv_float(opencv_cfg, "mog2_min_motion_pixel_fraction", 0.0006),
         mog2_min_contour_area=int(
             opencv_cfg.get("mog2_min_contour_area") or int(opencv_cfg.get("min_contour_area") or 320)
         ),
@@ -186,9 +170,7 @@ def build_motion_detector(
             "motion_sensor": {
                 "enabled": source in {TRIGGER_SOURCE_MQTT, TRIGGER_SOURCE_ESPHOME, "pir"},
                 "source": (
-                    source
-                    if source in {TRIGGER_SOURCE_MQTT, TRIGGER_SOURCE_ESPHOME, "pir"}
-                    else TRIGGER_SOURCE_MQTT
+                    source if source in {TRIGGER_SOURCE_MQTT, TRIGGER_SOURCE_ESPHOME, "pir"} else TRIGGER_SOURCE_MQTT
                 ),
                 "mqtt_topic": mqtt_topic,
                 "esphome_url": esphome_url,
@@ -285,9 +267,7 @@ def build_motion_detector(
                 detectors.append(
                     (
                         "motion_sensor",
-                        PIRMotionDetector(
-                            pin=int(motion_sensor_cfg.get("pir_pin") or 4)
-                        ),
+                        PIRMotionDetector(pin=int(motion_sensor_cfg.get("pir_pin") or 4)),
                     )
                 )
             except (ImportError, ModuleNotFoundError, Exception) as exc:

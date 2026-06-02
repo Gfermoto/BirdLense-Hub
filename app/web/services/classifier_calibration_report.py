@@ -89,11 +89,7 @@ def load_corrections_from_db(
         except (TypeError, ValueError):
             conf = 0.0
         try:
-            did = (
-                int(row["detection_id"])
-                if row["detection_id"] is not None
-                else None
-            )
+            did = int(row["detection_id"]) if row["detection_id"] is not None else None
         except (TypeError, ValueError):
             did = None
         try:
@@ -105,18 +101,12 @@ def load_corrections_from_db(
         except (TypeError, ValueError):
             tid = None
         try:
-            entropy = (
-                float(row["classifier_entropy"])
-                if row["classifier_entropy"] is not None
-                else None
-            )
+            entropy = float(row["classifier_entropy"]) if row["classifier_entropy"] is not None else None
         except (TypeError, ValueError):
             entropy = None
         try:
             margin = (
-                float(row["classifier_top1_top2_margin"])
-                if row["classifier_top1_top2_margin"] is not None
-                else None
+                float(row["classifier_top1_top2_margin"]) if row["classifier_top1_top2_margin"] is not None else None
             )
         except (TypeError, ValueError):
             margin = None
@@ -170,15 +160,9 @@ def _is_generic_bird_label(name: str) -> bool:
 
 def recommend_binary_thresholds(rows: list[CorrectionRow]) -> dict[str, Any]:
     """Heuristic floors from operator corrections (not a full val-set sweep)."""
-    rodent_as_bird = [
-        r.confidence
-        for r in rows
-        if _is_rodent_label(r.from_name) and not _is_rodent_label(r.to_name)
-    ]
+    rodent_as_bird = [r.confidence for r in rows if _is_rodent_label(r.from_name) and not _is_rodent_label(r.to_name)]
     bird_as_other = [
-        r.confidence
-        for r in rows
-        if _is_generic_bird_label(r.from_name) and not _is_generic_bird_label(r.to_name)
+        r.confidence for r in rows if _is_generic_bird_label(r.from_name) and not _is_generic_bird_label(r.to_name)
     ]
     all_conf = [r.confidence for r in rows if r.confidence > 0]
 
@@ -226,11 +210,7 @@ def recommend_binary_thresholds(rows: list[CorrectionRow]) -> dict[str, Any]:
         "0 = disabled. Start with 0.012–0.02 on wide-angle feeders "
         "if rodent→tit/confusion persists."
     )
-    incorrect_conf = [
-        r.confidence
-        for r in rows
-        if not r.is_correct and r.confidence > 0
-    ]
+    incorrect_conf = [r.confidence for r in rows if not r.is_correct and r.confidence > 0]
     if incorrect_conf:
         p75 = _pct(incorrect_conf, 0.75) or 0.48
         rec["recommended_processor_yaml"]["unknown_confidence_threshold"] = round(
@@ -346,24 +326,14 @@ def _topk_unknown_metrics(
         "samples": total,
         "top1_before": round(correct_before / float(total), 6),
         "top3_proxy_before": round(top3_hits_before / float(total), 6),
-        "top1_after_unknown_policy": (
-            round(known_correct / float(known_total), 6)
-            if known_total > 0
-            else None
-        ),
-        "top3_proxy_after_unknown_policy": (
-            round(known_top3 / float(known_total), 6)
-            if known_total > 0
-            else None
-        ),
+        "top1_after_unknown_policy": (round(known_correct / float(known_total), 6) if known_total > 0 else None),
+        "top3_proxy_after_unknown_policy": (round(known_top3 / float(known_total), 6) if known_total > 0 else None),
         "false_species_rate_before": round(
             (total - correct_before) / float(total),
             6,
         ),
         "false_species_rate_after_unknown_policy": (
-            round(known_errors / float(known_total), 6)
-            if known_total > 0
-            else None
+            round(known_errors / float(known_total), 6) if known_total > 0 else None
         ),
         "unknown_share_after_policy": round(len(unknown) / float(total), 6),
     }
@@ -395,11 +365,7 @@ def _session_consensus_metrics(
         winner, winner_weight = ordered[0]
         total_weight = sum(votes.values())
         ratio = winner_weight / total_weight if total_weight > 0 else 0.0
-        support = sum(
-            1
-            for r in group
-            if r.to_name.strip().lower() == winner.lower()
-        )
+        support = sum(1 for r in group if r.to_name.strip().lower() == winner.lower())
         ok = support >= int(min_support) and ratio >= float(min_ratio)
         if ok:
             passed += 1
@@ -416,11 +382,7 @@ def _session_consensus_metrics(
     return {
         "sessions_total": len(sessions),
         "sessions_consensus_ready": passed,
-        "consensus_ready_ratio": (
-            round(passed / float(len(sessions)), 6)
-            if sessions
-            else None
-        ),
+        "consensus_ready_ratio": (round(passed / float(len(sessions)), 6) if sessions else None),
         "sessions": sessions[:200],
     }
 
@@ -452,20 +414,11 @@ def _ood_guardrail_metrics(
             "ood_candidate",
             "open_set_candidate",
         }
-        by_entropy = (
-            r.classifier_entropy is not None
-            and float(r.classifier_entropy) >= float(entropy_threshold)
+        by_entropy = r.classifier_entropy is not None and float(r.classifier_entropy) >= float(entropy_threshold)
+        by_margin = r.classifier_top1_top2_margin is not None and float(r.classifier_top1_top2_margin) <= float(
+            margin_threshold
         )
-        by_margin = (
-            r.classifier_top1_top2_margin is not None
-            and float(r.classifier_top1_top2_margin) <= float(margin_threshold)
-        )
-        is_flagged = bool(
-            r.classifier_needs_review
-            or ood_by_reason
-            or by_entropy
-            or by_margin
-        )
+        is_flagged = bool(r.classifier_needs_review or ood_by_reason or by_entropy or by_margin)
         if not is_flagged:
             continue
         flagged += 1
@@ -476,15 +429,9 @@ def _ood_guardrail_metrics(
         "samples": total,
         "flagged_count": flagged,
         "flagged_share": round(flagged / float(total), 6),
-        "incorrect_in_flagged_share": (
-            round(incorrect_flagged / float(flagged), 6)
-            if flagged > 0
-            else None
-        ),
+        "incorrect_in_flagged_share": (round(incorrect_flagged / float(flagged), 6) if flagged > 0 else None),
         "flag_precision_for_errors": (
-            round(incorrect_flagged / float(incorrect_total), 6)
-            if incorrect_total > 0
-            else None
+            round(incorrect_flagged / float(incorrect_total), 6) if incorrect_total > 0 else None
         ),
     }
 
@@ -529,10 +476,7 @@ def build_report(db_path: Path, *, pair_limit: int = 15) -> dict[str, Any]:
     by_source: Counter[str] = Counter()
     for r in rows:
         by_source[r.source or "unknown"] += 1
-    top_pairs = [
-        {"from": fr, "to": to, "count": cnt}
-        for (fr, to), cnt in pairs.most_common(pair_limit)
-    ]
+    top_pairs = [{"from": fr, "to": to, "count": cnt} for (fr, to), cnt in pairs.most_common(pair_limit)]
     calibration_metrics = _calibration_metrics(rows)
     topk_metrics = _topk_unknown_metrics(rows)
     ood_guardrail = _ood_guardrail_metrics(rows)
@@ -550,12 +494,8 @@ def build_report(db_path: Path, *, pair_limit: int = 15) -> dict[str, Any]:
         "unknown_ood_dashboard": {
             "unknown_policy": {
                 "threshold": 0.48,
-                "unknown_share_after_policy": topk_metrics.get(
-                    "unknown_share_after_policy"
-                ),
-                "false_species_rate_before": topk_metrics.get(
-                    "false_species_rate_before"
-                ),
+                "unknown_share_after_policy": topk_metrics.get("unknown_share_after_policy"),
+                "false_species_rate_before": topk_metrics.get("false_species_rate_before"),
                 "false_species_rate_after_unknown_policy": (
                     topk_metrics.get("false_species_rate_after_unknown_policy")
                 ),
@@ -565,8 +505,7 @@ def build_report(db_path: Path, *, pair_limit: int = 15) -> dict[str, Any]:
         "long_tail_report": long_tail,
         "notes": {
             "top3_is_proxy": (
-                "Top-3 uses margin proxy from classifier_top1_top2_margin; "
-                "for exact Top-3 run full truth-set export."
+                "Top-3 uses margin proxy from classifier_top1_top2_margin; for exact Top-3 run full truth-set export."
             )
         },
     }

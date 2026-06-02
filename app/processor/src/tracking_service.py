@@ -135,9 +135,7 @@ class TrackingService:
         try:
             while True:
                 if max_runtime_sec and (time.monotonic() - started) > max_runtime_sec:
-                    raise TimeoutError(
-                        f"Tracking timeout ({max_runtime_sec}s) for {video_path}"
-                    )
+                    raise TimeoutError(f"Tracking timeout ({max_runtime_sec}s) for {video_path}")
                 if frame_count % step == 0:
                     ret, frame = cap.read()
                     if not ret:
@@ -192,8 +190,7 @@ class TrackingService:
                 metrics_out["processing_seconds"] = round(max(0.0, time.monotonic() - started), 4)
                 if metrics_out["processing_seconds"] > 0 and metrics_out.get("yolo_frames_ran"):
                     metrics_out["processing_fps"] = round(
-                        float(metrics_out["yolo_frames_ran"])
-                        / float(metrics_out["processing_seconds"]),
+                        float(metrics_out["yolo_frames_ran"]) / float(metrics_out["processing_seconds"]),
                         3,
                     )
                 else:
@@ -209,9 +206,9 @@ class TrackingService:
         metrics_out["yolo_raw_boxes_total"] = int(metrics_out.get("yolo_raw_boxes_total") or 0) + int(
             run_stats.get("yolo_raw_boxes") or 0
         )
-        metrics_out["yolo_accepted_boxes_total"] = int(
-            metrics_out.get("yolo_accepted_boxes_total") or 0
-        ) + int(run_stats.get("yolo_accepted_boxes") or 0)
+        metrics_out["yolo_accepted_boxes_total"] = int(metrics_out.get("yolo_accepted_boxes_total") or 0) + int(
+            run_stats.get("yolo_accepted_boxes") or 0
+        )
         metrics_out["yolo_boxes_with_track_id_total"] = int(
             metrics_out.get("yolo_boxes_with_track_id_total") or 0
         ) + int(run_stats.get("yolo_boxes_with_track_id") or 0)

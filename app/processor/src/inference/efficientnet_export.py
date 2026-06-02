@@ -21,7 +21,7 @@ def export_onnx_ov_safe(src_dir: str | Path, onnx_path: str | Path) -> Path:
     out = Path(onnx_path)
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    hf = EfficientNetForImageClassification.from_pretrained(str(src))
+    hf = EfficientNetForImageClassification.from_pretrained(str(src))  # nosec B615 — local export dir
     hf.eval()
 
     class _OvSafeClassifier(nn.Module):

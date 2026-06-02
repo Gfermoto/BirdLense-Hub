@@ -208,9 +208,7 @@ def get_overview_data(
         "videoDuration": round(recording_sec),
         "audioDuration": round(dur_q.audio_duration or 0),
         "detectionByProvider": {(p or "legacy"): int(c) for p, c in prov_q},
-        "triggerBySource": {
-            (src or "unknown"): int(c) for src, c in trigger_q
-        },
+        "triggerBySource": {(src or "unknown"): int(c) for src, c in trigger_q},
     }
 
     # Hourly temperature

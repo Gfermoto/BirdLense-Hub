@@ -165,11 +165,7 @@ def register_ui_status_push_routes(app):
         return payload
 
     def _opencv_live_for_camera(camera_id: str) -> dict | None:
-        row = (
-            ActivityLog.query.filter_by(type="opencv_live")
-            .order_by(ActivityLog.updated_at.desc())
-            .first()
-        )
+        row = ActivityLog.query.filter_by(type="opencv_live").order_by(ActivityLog.updated_at.desc()).first()
         if not row:
             return None
         try:
@@ -227,9 +223,7 @@ def register_ui_status_push_routes(app):
                 detector_overlay_fresh = is_fresh
             source = "opencv_live"
 
-        trace_fallback_enabled = bool(
-            app_config.get("ui.live_overlay_trace_fallback_enabled", False)
-        )
+        trace_fallback_enabled = bool(app_config.get("ui.live_overlay_trace_fallback_enabled", False))
         if not detector_from_opencv_live and trace_fallback_enabled:
             rows = (
                 ActivityLog.query.filter_by(type="decision_trace")
@@ -261,11 +255,7 @@ def register_ui_status_push_routes(app):
                 rc = payload.get("recording_context") or {}
                 if not isinstance(rc, dict):
                     rc = {}
-                row_camera = str(
-                    payload.get("camera_id")
-                    or rc.get("triggered_camera")
-                    or ""
-                ).strip()
+                row_camera = str(payload.get("camera_id") or rc.get("triggered_camera") or "").strip()
                 if camera_id and row_camera != camera_id:
                     continue
                 trace_trigger, trace_detector = _extract_runtime_overlays_from_trace(payload)

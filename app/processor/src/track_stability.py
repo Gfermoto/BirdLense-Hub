@@ -76,12 +76,7 @@ class TrackStabilityMonitor:
                 if iou > best_iou:
                     best_iou = iou
                     best_pid = pid
-            if (
-                best_pid is not None
-                and best_iou >= self.iou_threshold
-                and best_pid != tid
-                and best_pid not in curr
-            ):
+            if best_pid is not None and best_iou >= self.iou_threshold and best_pid != tid and best_pid not in curr:
                 self.track_id_switches_count += 1
             if best_pid is not None and best_iou >= self.iou_threshold:
                 matched_prev.add(best_pid)

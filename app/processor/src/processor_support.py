@@ -140,6 +140,7 @@ def heartbeat():
 
 def start_heartbeat_daemon():
     """Запустить поток heartbeat в фоне."""
+
     def _run() -> None:
         hb_row_id = None
         api = None
@@ -193,8 +194,7 @@ def _opencv_overlay_heartbeat_loop():
                     _opencv_overlay_empty_since = now
                 elif now - _opencv_overlay_empty_since >= 45:
                     logging.warning(
-                        "OpenCV live overlay snapshot empty for %.0fs "
-                        "(processor not analyzing frames?)",
+                        "OpenCV live overlay snapshot empty for %.0fs (processor not analyzing frames?)",
                         now - _opencv_overlay_empty_since,
                     )
                     _opencv_overlay_empty_since = now

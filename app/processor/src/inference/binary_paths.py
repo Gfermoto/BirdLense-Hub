@@ -79,11 +79,7 @@ def resolve_binary_detector_weight_path(
         resolve_inference_backend,
     )
 
-    root = (
-        processor_root
-        if processor_root is not None
-        else processor_package_root()
-    )
+    root = processor_root if processor_root is not None else processor_package_root()
     requested_backend = resolve_inference_backend(app_config)
     env_ov = os.environ.get("BIRDLENSE_BINARY_OPENVINO_PATH") or ""
     binary_env_ov = env_ov.strip()
@@ -104,11 +100,7 @@ def resolve_binary_detector_weight_path(
         if requested_backend == "openvino":
             if p and detector_weights_available(p):
                 return (p, "openvino")
-        if (
-            p
-            and detector_weights_available(p)
-            and openvino_runtime_available()
-        ):
+        if p and detector_weights_available(p) and openvino_runtime_available():
             return (p, "openvino")
     default_bin = "models/detection/weights/yolo11n.pt"
     rel = app_config.get("processor.models.binary", default_bin)
@@ -131,9 +123,7 @@ def openvino_bundle_fingerprint(path: str | None) -> str | None:
     if not os.path.isdir(path):
         return None
     try:
-        xml_names = sorted(
-            fn for fn in os.listdir(path) if fn.endswith(".xml")
-        )
+        xml_names = sorted(fn for fn in os.listdir(path) if fn.endswith(".xml"))
     except OSError:
         return None
     if not xml_names:

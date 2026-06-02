@@ -42,9 +42,7 @@ def _hub_go2rtc_frame_url(stream_name: str) -> str | None:
 
 def _probe_frame_url(url: str, auth: tuple[str, str] | None) -> bool:
     try:
-        timeout_s = float(
-            app_config.get("video.go2rtc_probe_timeout_seconds") or 1.5
-        )
+        timeout_s = float(app_config.get("video.go2rtc_probe_timeout_seconds") or 1.5)
     except (TypeError, ValueError):
         timeout_s = 1.5
     timeout_s = max(0.2, min(5.0, timeout_s))
@@ -66,9 +64,7 @@ def check_video_reachable() -> str:
     if not valid:
         return "not_configured"
     try:
-        max_probe_total_s = float(
-            app_config.get("video.go2rtc_probe_max_total_seconds") or 3.0
-        )
+        max_probe_total_s = float(app_config.get("video.go2rtc_probe_max_total_seconds") or 3.0)
     except (TypeError, ValueError):
         max_probe_total_s = 3.0
     deadline = time.monotonic() + max(0.5, min(20.0, max_probe_total_s))

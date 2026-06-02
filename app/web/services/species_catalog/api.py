@@ -95,9 +95,7 @@ def _species_row_dict(
         scientific_name = allowlist_scientific_name_for_display_name(display_name, app_config.get)
     if not scientific_name:
         scientific_name = scientific_name_from_canonical_mapping(display_name, mapping)
-    classifier_predictable = (
-        species_matches_allowlist(raw_name, allow_keys, mapping) if allow_keys else True
-    )
+    classifier_predictable = species_matches_allowlist(raw_name, allow_keys, mapping) if allow_keys else True
     return {
         "id": sp.id,
         "name": display_name,
@@ -146,17 +144,14 @@ def fetch_species_catalog_list(
     mapping = load_species_canonical_mapping()
     vocab = get_species_vocabulary_snapshot()
     if catalog_scope == "allowlist" and allow_keys:
-        species_list = [
-            s for s in species_list if species_matches_allowlist(s.Species.name, allow_keys, mapping)
-        ]
+        species_list = [s for s in species_list if species_matches_allowlist(s.Species.name, allow_keys, mapping)]
         species_list = _dedupe_allowlist_species_rows(species_list, allow_keys=allow_keys, mapping=mapping)
     elif catalog_scope == "project":
         project_keys = vocab.project_norm_keys
         species_list = [
             s
             for s in species_list
-            if int(s.count or 0) > 0
-            or species_matches_allowlist(s.Species.name, project_keys, mapping)
+            if int(s.count or 0) > 0 or species_matches_allowlist(s.Species.name, project_keys, mapping)
         ]
         species_list = _dedupe_allowlist_species_rows(
             species_list,
@@ -166,9 +161,7 @@ def fetch_species_catalog_list(
     elif catalog_scope == "observed":
         species_list = [s for s in species_list if int(s.count or 0) > 0]
         if allow_keys:
-            species_list = [
-                s for s in species_list if species_matches_allowlist(s.Species.name, allow_keys, mapping)
-            ]
+            species_list = [s for s in species_list if species_matches_allowlist(s.Species.name, allow_keys, mapping)]
             species_list = _dedupe_allowlist_species_rows(species_list, allow_keys=allow_keys, mapping=mapping)
 
     regional_scope_ids = compute_regional_scope_species_ids()

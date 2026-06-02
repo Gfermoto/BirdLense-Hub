@@ -73,7 +73,6 @@ def build_detection_stack(
     from ebird_regional_confidence import (
         merge_species_confidence_overrides_with_ebird_top,
     )
-    from pipeline_policy import build_pipeline_policy_snapshot
 
     _ = warn_two_stage_fallback  # legacy param, no longer used
 
@@ -103,11 +102,7 @@ def build_detection_stack(
     assert_backend_supported(_requested_classifier_backend)
 
     binary_path, _inf_backend = resolve_binary_detector_weight_path(app_config, processor_root)
-    if (
-        _requested_backend == "openvino"
-        and openvino_binary_enabled(app_config)
-        and not (binary_path or "").strip()
-    ):
+    if _requested_backend == "openvino" and openvino_binary_enabled(app_config) and not (binary_path or "").strip():
         raise FileNotFoundError(
             "OpenVINO binary detector path missing: set processor.models.binary_openvino "
             "or environment variable BIRDLENSE_BINARY_OPENVINO_PATH "
@@ -318,7 +313,7 @@ def build_detection_stack(
             binary_path = torch_binary_path
             _inf_backend = "torch"
         if can_fallback_classifier:
-            eng = classifier_engine(app_config)
+            classifier_engine(app_config)
             torch_classifier_path, _ = resolve_classifier_weight_path(app_config, processor_root)
             if not classifier_weights_available(torch_classifier_path):
                 raise

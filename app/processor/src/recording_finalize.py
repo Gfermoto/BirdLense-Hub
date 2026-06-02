@@ -320,11 +320,7 @@ def _emit_frigate_hub_panic_if_needed(
         ev for ev in (mqtt_events or []) if str((ev or {}).get("source") or "").strip().lower() == "frigate"
     ]
     frigate_count = len(frigate_events)
-    if not (
-        duration_s >= max(1.0, min_duration)
-        and accepted == 0
-        and frigate_count >= max(1, min_frigate_events)
-    ):
+    if not (duration_s >= max(1.0, min_duration) and accepted == 0 and frigate_count >= max(1, min_frigate_events)):
         return
     panic_payload = {
         "event": "frigate_hub_panic",
@@ -847,8 +843,7 @@ def finalize_motion_recording(
         pre_fusion_yolo_anchors = [
             row
             for row in _best_yolo_anchor_rows(accepted_pre_fusion, max_rows=anchor_max)
-            if str(row.get("decision_kind") or "").strip().lower()
-            not in {"review_only_generic", "review_only"}
+            if str(row.get("decision_kind") or "").strip().lower() not in {"review_only_generic", "review_only"}
             and str(row.get("decision_reason") or "").strip().lower() != "review_only_generic_bird"
         ]
         has_fused_yolo = any(
@@ -871,9 +866,7 @@ def finalize_motion_recording(
                 yolo_tracks_count,
                 len(accepted_pre_fusion),
             )
-    require_bbox_tracks = bool(
-        app_config.get("detection.require_bbox_tracks_for_persisted_rows", True)
-    )
+    require_bbox_tracks = bool(app_config.get("detection.require_bbox_tracks_for_persisted_rows", True))
     if require_bbox_tracks and video_detections:
         kept_rows: list[dict[str, Any]] = []
         dropped_missing_frames = 0
@@ -1215,9 +1208,7 @@ def finalize_motion_recording(
             raw_timing = resp.get("ingest_timing_ms")
             if isinstance(raw_timing, dict):
                 create_video_ingest_timing_ms = {
-                    str(key): round(float(value), 3)
-                    for key, value in raw_timing.items()
-                    if value is not None
+                    str(key): round(float(value), 3) for key, value in raw_timing.items() if value is not None
                 }
         inc_counter("recording_persisted_total", len(video_detections))
         video_id = response_video_id(resp)
@@ -1387,8 +1378,7 @@ def finalize_motion_recording(
             "yolo_frames_raw_unaccepted": int(rs.get("yolo_frames_raw_unaccepted") or 0),
             "yolo_frames_raw_no_track": int(rs.get("yolo_frames_raw_no_track") or 0),
             "detection_acceptance_gap": bool(
-                int(rs.get("yolo_raw_boxes_total") or 0) > 0
-                and int(rs.get("yolo_accepted_boxes_total") or 0) == 0
+                int(rs.get("yolo_raw_boxes_total") or 0) > 0 and int(rs.get("yolo_accepted_boxes_total") or 0) == 0
             ),
             "low_light_blocked_frames": int(rs.get("low_light_blocked_frames") or 0),
             "session_extended_by_frigate_only": int(rs.get("session_extended_by_frigate_only") or 0),
@@ -1421,54 +1411,26 @@ def finalize_motion_recording(
             "create_video_ingest_timing_ms": create_video_ingest_timing_ms,
             "dataset_crops_duration_ms": dataset_crops_duration_ms,
             "trigger_to_first_bbox_latency_s": (
-                None
-                if trigger_to_first_bbox_s is None
-                else round(float(trigger_to_first_bbox_s), 6)
+                None if trigger_to_first_bbox_s is None else round(float(trigger_to_first_bbox_s), 6)
             ),
-            "trigger_to_first_bbox_wall_s": (
-                None if wall_bbox_s is None else round(float(wall_bbox_s), 6)
-            ),
-            "trigger_to_first_track_wall_s": (
-                None if wall_track_s is None else round(float(wall_track_s), 6)
-            ),
-            "first_bbox_latency_s": (
-                None
-                if first_bbox_latency_s is None
-                else round(float(first_bbox_latency_s), 6)
-            ),
+            "trigger_to_first_bbox_wall_s": (None if wall_bbox_s is None else round(float(wall_bbox_s), 6)),
+            "trigger_to_first_track_wall_s": (None if wall_track_s is None else round(float(wall_track_s), 6)),
+            "first_bbox_latency_s": (None if first_bbox_latency_s is None else round(float(first_bbox_latency_s), 6)),
             "first_track_latency_s": (
-                None
-                if trigger_to_first_track_s is None
-                else round(float(trigger_to_first_track_s), 6)
+                None if trigger_to_first_track_s is None else round(float(trigger_to_first_track_s), 6)
             ),
             "video_first_track_latency_s": (
-                None
-                if first_track_latency_s is None
-                else round(float(first_track_latency_s), 6)
+                None if first_track_latency_s is None else round(float(first_track_latency_s), 6)
             ),
             "concurrent_recording": dict(ctx.get("concurrent_recording") or {}),
         }
         latency_breaches = _latency_budget_breaches(
             trigger_to_first_bbox_latency_s=(
-                None
-                if trigger_to_first_bbox_s is None
-                else float(trigger_to_first_bbox_s)
+                None if trigger_to_first_bbox_s is None else float(trigger_to_first_bbox_s)
             ),
-            finalize_duration_ms=(
-                None
-                if finalize_duration_ms is None
-                else float(finalize_duration_ms)
-            ),
-            fusion_duration_ms=(
-                None
-                if fusion_duration_ms is None
-                else float(fusion_duration_ms)
-            ),
-            persist_duration_ms=(
-                None
-                if persist_duration_ms is None
-                else float(persist_duration_ms)
-            ),
+            finalize_duration_ms=(None if finalize_duration_ms is None else float(finalize_duration_ms)),
+            fusion_duration_ms=(None if fusion_duration_ms is None else float(fusion_duration_ms)),
+            persist_duration_ms=(None if persist_duration_ms is None else float(persist_duration_ms)),
         )
         session_summary["latency_budget_breaches"] = latency_breaches
         try:
@@ -1506,9 +1468,7 @@ def finalize_motion_recording(
                         "yolo_frames_ran": session_summary.get("yolo_frames_ran"),
                         "yolo_raw_boxes_total": session_summary.get("yolo_raw_boxes_total"),
                         "post_fusion_persisted": session_summary.get("post_fusion_persisted"),
-                        "session_extended_by_frigate_only": session_summary.get(
-                            "session_extended_by_frigate_only"
-                        ),
+                        "session_extended_by_frigate_only": session_summary.get("session_extended_by_frigate_only"),
                         "blind_score": session_summary.get("yolo_blind_score"),
                     }
                     if (
@@ -1640,6 +1600,7 @@ def finalize_motion_recording(
                     },
                 )
             if bool(app_config.get("processor.runtime_metrics_maintenance_async", True)):
+
                 def _deferred_maintenance() -> None:
                     try:
                         maint_repo = SessionStateRepository()

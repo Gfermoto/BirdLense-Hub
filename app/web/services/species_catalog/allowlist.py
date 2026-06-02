@@ -194,9 +194,12 @@ def _resolve_supplement_allowlist_paths(app_config_get) -> list[str]:
 
 def resolve_all_allowlist_paths(app_config_get) -> list[str]:
     """Файлы allowlist (если не используем id2label активного классификатора)."""
-    follow_engine = str(
-        app_config_get("species.catalog_allowlist_follow_classifier_engine", True)
-    ).strip().lower() in ("1", "true", "yes", "on")
+    follow_engine = str(app_config_get("species.catalog_allowlist_follow_classifier_engine", True)).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
     if follow_engine and _catalog_use_active_classifier_labels(app_config_get):
         return list(_resolve_supplement_allowlist_paths(app_config_get))
 
@@ -267,9 +270,12 @@ def _norm_keys_from_label_lines(lines: tuple[str, ...] | list[str]) -> set[str]:
 
 def load_catalog_allowlist_norm_keys(app_config_get) -> frozenset[str] | None:
     """Нормализованные ключи allowlist = активный классификатор (+ extras), не union YOLO EU."""
-    follow_engine = str(
-        app_config_get("species.catalog_allowlist_follow_classifier_engine", True)
-    ).strip().lower() in ("1", "true", "yes", "on")
+    follow_engine = str(app_config_get("species.catalog_allowlist_follow_classifier_engine", True)).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
     if follow_engine and _catalog_use_active_classifier_labels(app_config_get):
         labels = load_active_classifier_label_names(app_config_get)
         if labels:
@@ -358,9 +364,12 @@ def _load_allowlist_names_cached(abspath: str) -> tuple[str, ...]:
 
 def load_catalog_allowlist_names(app_config_get) -> tuple[str, ...] | None:
     """Список имён классов активного классификатора + extras (дедуп по norm key)."""
-    follow_engine = str(
-        app_config_get("species.catalog_allowlist_follow_classifier_engine", True)
-    ).strip().lower() in ("1", "true", "yes", "on")
+    follow_engine = str(app_config_get("species.catalog_allowlist_follow_classifier_engine", True)).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
     extras = _catalog_allowlist_extra_names(app_config_get)
     names: list[str] = []
     seen: set[str] = set()

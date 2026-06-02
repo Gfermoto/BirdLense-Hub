@@ -119,7 +119,9 @@ class ExpertReviewQueue(db.Model):
     )
     cluster_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
     similarity: Mapped[float | None] = mapped_column(nullable=True)
-    species_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("species.id", ondelete="SET NULL"), nullable=True)
+    species_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("species.id", ondelete="SET NULL"), nullable=True
+    )
     payload_json: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -152,7 +154,9 @@ class ReidTrainingPair(db.Model):
     )
     similarity: Mapped[float | None] = mapped_column(nullable=True)
     label: Mapped[str] = mapped_column(String(32), nullable=False)
-    source: Mapped[str] = mapped_column(String(64), nullable=False, default="auto_link_ui", server_default="auto_link_ui")
+    source: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="auto_link_ui", server_default="auto_link_ui"
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -460,7 +464,9 @@ class SessionRuntimeMetrics(db.Model):
     yolo_raw_boxes_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     yolo_accepted_boxes_total: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     low_light_blocked_frames: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
-    session_extended_by_frigate_only: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    session_extended_by_frigate_only: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     bytetrack_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     post_fusion_persisted: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     rejected_decision_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")

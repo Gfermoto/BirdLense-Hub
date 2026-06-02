@@ -9,7 +9,6 @@ from typing import Any, Literal, Mapping
 from app_config.app_config import app_config
 from pipeline_policy import build_pipeline_policy_snapshot
 from tracker_low_fps import resolve_adaptive_tracker_path
-from tracker_paths import resolve_tracker_config_path
 from tracker_registry import resolve_tracker_preset
 
 _LOG = logging.getLogger(__name__)

@@ -33,9 +33,7 @@ class FinalizeWorker:
         enqueue_timeout_s: float = 1.5,
         shutdown_grace_s: float = 120.0,
     ) -> None:
-        self._queue: queue.Queue[FinalizeTask] = queue.Queue(
-            maxsize=max(1, int(maxsize))
-        )
+        self._queue: queue.Queue[FinalizeTask] = queue.Queue(maxsize=max(1, int(maxsize)))
         self._enqueue_timeout_s = max(0.0, float(enqueue_timeout_s))
         self._shutdown_grace_s = max(1.0, float(shutdown_grace_s))
         self._stop_event = threading.Event()
@@ -124,16 +122,11 @@ def maybe_start_finalize_worker(app_config_obj) -> FinalizeWorker | None:
     except (TypeError, ValueError):
         maxsize = 2
     try:
-        timeout_ms = int(
-            app_config_obj.get("processor.finalize_enqueue_timeout_ms") or 1500
-        )
+        timeout_ms = int(app_config_obj.get("processor.finalize_enqueue_timeout_ms") or 1500)
     except (TypeError, ValueError):
         timeout_ms = 1500
     try:
-        shutdown_grace_s = float(
-            app_config_obj.get("processor.finalize_shutdown_grace_seconds")
-            or 120.0
-        )
+        shutdown_grace_s = float(app_config_obj.get("processor.finalize_shutdown_grace_seconds") or 120.0)
     except (TypeError, ValueError):
         shutdown_grace_s = 120.0
     worker = FinalizeWorker(

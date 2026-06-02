@@ -17,9 +17,7 @@ def test_check_video_reachable_ok_via_hub_proxy(monkeypatch):
         status_service.app_config,
         "get",
         lambda key, default=None: (
-            [{"id": "BirdBox", "stream_name": "BirdBox"}]
-            if key == "video.cameras"
-            else default
+            [{"id": "BirdBox", "stream_name": "BirdBox"}] if key == "video.cameras" else default
         ),
     )
     with patch.dict(status_service.os.environ, {"BIRDLENSE_PORT": "8085"}, clear=False):

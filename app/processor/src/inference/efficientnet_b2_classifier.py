@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
@@ -114,20 +113,17 @@ class EfficientNetB2Classifier:
         from transformers import EfficientNetForImageClassification, EfficientNetImageProcessor
 
         self._torch = torch
-        self._processor = EfficientNetImageProcessor.from_pretrained(self.weights_dir)
-        self._model = EfficientNetForImageClassification.from_pretrained(self.weights_dir)
+        self._processor = EfficientNetImageProcessor.from_pretrained(self.weights_dir)  # nosec B615 — local weights dir
+        self._model = EfficientNetForImageClassification.from_pretrained(self.weights_dir)  # nosec B615
         self._model.eval()
-        self.id2label = {
-            int(k): _normalize_species_label(v)
-            for k, v in self._model.config.id2label.items()
-        }
+        self.id2label = {int(k): _normalize_species_label(v) for k, v in self._model.config.id2label.items()}
 
     def _init_onnxruntime(self) -> None:
         import onnxruntime as ort
         from transformers import EfficientNetImageProcessor
 
         onnx_path = self._resolve_onnx_path(self.weights_dir)
-        self._processor = EfficientNetImageProcessor.from_pretrained(self.weights_dir)
+        self._processor = EfficientNetImageProcessor.from_pretrained(self.weights_dir)  # nosec B615 — local weights dir
         providers = ["CPUExecutionProvider"]
         dev = (self.device or "").lower()
         if "cuda" in dev:
@@ -158,7 +154,7 @@ class EfficientNetB2Classifier:
         from transformers import EfficientNetImageProcessor
 
         xml = self._resolve_xml_path(self.weights_dir)
-        self._processor = EfficientNetImageProcessor.from_pretrained(self.weights_dir)
+        self._processor = EfficientNetImageProcessor.from_pretrained(self.weights_dir)  # nosec B615 — local weights dir
         core = ov.Core()
         self._ov_core = core
         ov_dev = resolve_efficientnet_openvino_device(self.device)

@@ -57,6 +57,7 @@ def test_is_hierarchy_taxon_label_allows_allowlist_species(monkeypatch):
 
 def test_audio_search_term_for_group_uses_allowlist_child(monkeypatch):
     allow = frozenset({"common starling"})
+
     def _matches(name, allow, _mapping):
         from services.species_catalog.canon import parse_scientific_and_common
 

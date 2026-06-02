@@ -28,10 +28,12 @@ def _load_sessions_from_db(*, hours: int, camera_id: str | None, limit: int) -> 
         params["camera_id"] = str(camera_id).strip()
     rows = db.session.execute(
         text(
-            f"""
+            """
             SELECT camera_id, payload_json, created_at
             FROM session_runtime_metrics
-            WHERE {where}
+            WHERE """
+            + where  # nosec B608
+            + """
             ORDER BY id DESC
             LIMIT :lim
             """

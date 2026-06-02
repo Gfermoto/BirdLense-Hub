@@ -91,7 +91,7 @@ def build_session_trigger_graph(
     mqtt_events: Iterable[dict] | None = None,
 ) -> dict[str, Any]:
     """
-  Build per-session trigger graph + FP/FN metrics for persistence in ``payload_json``.
+    Build per-session trigger graph + FP/FN metrics for persistence in ``payload_json``.
     """
     ctx = dict(recording_context or {})
     rs = dict(ctx.get("runtime_signals") or {})
@@ -105,12 +105,12 @@ def build_session_trigger_graph(
     metrics[init_source].recordings_initiated += 1
     edges.append(TriggerGraphEdge(init_source, "recording", _EDGE_INITIATED))
 
-    frigate_only = int(rs.get("session_extended_by_frigate_only") or session_summary.get("session_extended_by_frigate_only") or 0)
+    frigate_only = int(
+        rs.get("session_extended_by_frigate_only") or session_summary.get("session_extended_by_frigate_only") or 0
+    )
     if frigate_only > 0:
         metrics["frigate"].session_extensions += frigate_only
-        edges.append(
-            TriggerGraphEdge("frigate", "recording", _EDGE_EXTENDED, count=frigate_only)
-        )
+        edges.append(TriggerGraphEdge("frigate", "recording", _EDGE_EXTENDED, count=frigate_only))
 
     mqtt_counts = _mqtt_source_counts(mqtt_events or [])
     for node, cnt in mqtt_counts.items():
@@ -270,8 +270,5 @@ def aggregate_trigger_metrics(sessions: Iterable[Mapping[str, Any]]) -> dict[str
         "recordings_initiated_by_source": dict(sorted(init_counts.items())),
         "metrics_by_source": {k: v.to_dict() for k, v in totals.items()},
         "decision_reason_counts": dict(by_reason.most_common(50)),
-        "by_camera": {
-            cam: {n: m.to_dict() for n, m in blocks.items()}
-            for cam, blocks in sorted(by_camera.items())
-        },
+        "by_camera": {cam: {n: m.to_dict() for n, m in blocks.items()} for cam, blocks in sorted(by_camera.items())},
     }

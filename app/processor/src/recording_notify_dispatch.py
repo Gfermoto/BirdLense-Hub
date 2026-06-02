@@ -25,26 +25,16 @@ def notify_unique_species(
     encode_func: Callable[[dict, str], tuple[str | None, str]] | None = None,
 ) -> None:
     """Notify once per species with eligible detections."""
-    encode = (
-        encode_notify_preview_base64
-        if encode_func is None
-        else encode_func
-    )
+    encode = encode_notify_preview_base64 if encode_func is None else encode_func
     min_notify = resolve_min_confidence_to_notify(config)
     seen = set()
     seen_profiles = set()
     for detection in video_detections:
-        species = (
-            detection.get("species_name")
-            or detection.get("species")
-            or ""
-        )
+        species = detection.get("species_name") or detection.get("species") or ""
         if not species or species in seen:
             continue
         seen.add(species)
-        nickname = str(
-            detection.get("individual_nickname") or ""
-        ).strip().lower()
+        nickname = str(detection.get("individual_nickname") or "").strip().lower()
         first_profile_in_clip = False
         if nickname:
             if nickname not in seen_profiles:
@@ -77,8 +67,7 @@ def notify_unique_species(
             continue
         if suppress_reason == "low_confidence":
             logging.info(
-                "Notify suppressed for %s: confidence=%.3f < "
-                "processor.min_confidence_to_notify=%.3f",
+                "Notify suppressed for %s: confidence=%.3f < processor.min_confidence_to_notify=%.3f",
                 species,
                 float(detection.get("confidence") or 0.0),
                 min_notify,

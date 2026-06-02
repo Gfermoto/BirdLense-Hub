@@ -133,10 +133,7 @@ def build_birdnet_fifo_snapshot_payload(
     species_counter: Counter[str] = Counter()
     epochs: list[float] = []
     for ev in events:
-        label = (
-            str(ev.get("species") or ev.get("common_name") or "").strip()
-            or "unknown"
-        )
+        label = str(ev.get("species") or ev.get("common_name") or "").strip() or "unknown"
         species_counter[label] += 1
         ts = _parse_ts(ev.get("timestamp"))
         if ts is not None:
@@ -149,21 +146,15 @@ def build_birdnet_fifo_snapshot_payload(
 
     oldest = newest = None
     if epochs:
-        oldest = datetime.fromtimestamp(
-            min(epochs), tz=timezone.utc
-        ).isoformat()
-        newest = datetime.fromtimestamp(
-            max(epochs), tz=timezone.utc
-        ).isoformat()
+        oldest = datetime.fromtimestamp(min(epochs), tz=timezone.utc).isoformat()
+        newest = datetime.fromtimestamp(max(epochs), tz=timezone.utc).isoformat()
 
     recent = sanitized_all[-recent_limit:] if recent_limit else []
 
     now_utc = now or datetime.now(timezone.utc)
     if hearing_active_hours is None:
         try:
-            hearing_active_hours = float(
-                app_config.get("processor.birdnet_fifo_hearing_active_hours", 24)
-            )
+            hearing_active_hours = float(app_config.get("processor.birdnet_fifo_hearing_active_hours", 24))
         except (TypeError, ValueError):
             hearing_active_hours = 24.0
     species_hearing = build_species_hearing_state(
@@ -187,9 +178,7 @@ def build_birdnet_fifo_snapshot_payload(
     return {
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "processor_pid": int(processor_pid),
-        "mqtt_connected": (
-            bool(mqtt_connected) if mqtt_connected is not None else None
-        ),
+        "mqtt_connected": (bool(mqtt_connected) if mqtt_connected is not None else None),
         "queue_len": len(events),
         "fifo_cap": int(fifo_cap),
         "fifo_fill_ratio": round(fill_ratio, 4),
@@ -212,21 +201,14 @@ def try_build_birdnet_fifo_snapshot_from_db() -> dict | None:
         return None
 
     try:
-        rows = (
-            db.session.query(BirdnetFifoEvent)
-            .order_by(BirdnetFifoEvent.id.asc())
-            .all()
-        )
+        rows = db.session.query(BirdnetFifoEvent).order_by(BirdnetFifoEvent.id.asc()).all()
     except Exception:
         logger.debug("birdnet_fifo_event query failed", exc_info=True)
         return None
 
     if not rows:
         try:
-            recent_limit = int(
-                app_config.get("processor.birdnet_fifo_snapshot_recent_limit")
-                or 80
-            )
+            recent_limit = int(app_config.get("processor.birdnet_fifo_snapshot_recent_limit") or 80)
         except (TypeError, ValueError):
             recent_limit = 80
         cap = birdnet_fifo_cap_from_config()
@@ -260,9 +242,7 @@ def try_build_birdnet_fifo_snapshot_from_db() -> dict | None:
         events.append(ev)
 
     try:
-        ttl_h = float(
-            app_config.get("processor.birdnet_mqtt_prior_ttl_hours", 25)
-        )
+        ttl_h = float(app_config.get("processor.birdnet_mqtt_prior_ttl_hours", 25))
     except (TypeError, ValueError):
         ttl_h = 25.0
     cap = birdnet_fifo_cap_from_config()
@@ -273,9 +253,7 @@ def try_build_birdnet_fifo_snapshot_from_db() -> dict | None:
         cap=cap,
     )
     try:
-        recent_limit = int(
-            app_config.get("processor.birdnet_fifo_snapshot_recent_limit") or 80
-        )
+        recent_limit = int(app_config.get("processor.birdnet_fifo_snapshot_recent_limit") or 80)
     except (TypeError, ValueError):
         recent_limit = 80
 

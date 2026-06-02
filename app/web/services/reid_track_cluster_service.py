@@ -117,7 +117,7 @@ def load_track_embeddings(
     cfg = load_cluster_config()
     lim = max(1, min(int(limit or 500), 2000))
     clauses = ["re.embedding_json IS NOT NULL", "vs.id IS NOT NULL"]
-    params: dict[str, Any] = {"min_dur": float(cfg["min_track_duration_sec"])}
+    params: dict[str, Any] = {"min_dur": float(cfg["min_track_duration_sec"]), "lim": lim}
     if video_id is not None:
         clauses.append("re.video_id = :video_id")
         params["video_id"] = int(video_id)
@@ -126,7 +126,7 @@ def load_track_embeddings(
         params["species_id"] = int(species_id)
     where = " AND ".join(clauses)
     sql = text(
-        f"""
+        """
         SELECT
             vs.id AS video_species_id,
             re.video_id AS video_id,
@@ -137,10 +137,12 @@ def load_track_embeddings(
             re.embedding_json AS embedding_json
         FROM reid_embedding re
         JOIN video_species vs ON vs.id = re.video_species_id
-        WHERE {where}
+        WHERE """
+        + where  # nosec B608
+        + """
           AND (vs.end_time - vs.start_time) >= :min_dur
         ORDER BY re.id DESC
-        LIMIT {lim}
+        LIMIT :lim
         """
     )
     rows = db.session.execute(sql, params).fetchall()
@@ -194,8 +196,7 @@ def cluster_track_embeddings(rows: list[TrackEmbeddingRow]) -> list[ReidTrackClu
                     remaining.pop(i)
                     dim = len(centroid)
                     centroid = [
-                        (centroid[j] * (len(cluster_members) - 1) + cand.embedding[j])
-                        / len(cluster_members)
+                        (centroid[j] * (len(cluster_members) - 1) + cand.embedding[j]) / len(cluster_members)
                         for j in range(dim)
                     ]
                     norm = math.sqrt(sum(v * v for v in centroid))
