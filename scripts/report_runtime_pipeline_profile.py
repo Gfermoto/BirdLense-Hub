@@ -160,10 +160,12 @@ def build_profile(
     persist_p95 = _percentile(persist_ms, 95.0)
 
     create_video_p95 = _percentile(create_video_ms, 95.0)
+    critical_path_p95 = _percentile(critical_path_ms, 95.0)
 
     bottleneck = "unknown"
     stage_p95 = {
         "finalize_duration_ms": finalize_p95 or 0.0,
+        "finalize_critical_path_ms": critical_path_p95 or 0.0,
         "fusion_duration_ms": fusion_p95 or 0.0,
         "persist_duration_ms": persist_p95 or 0.0,
         "create_video_duration_ms": create_video_p95 or 0.0,
@@ -222,6 +224,23 @@ def build_profile(
                     f"KPI {float(create_video_fail_ms):.2f}ms (#578)"
                 )
 
+    finalize_tail_dominant: str | None = None
+    if critical_path_p95 is not None and critical_path_p95 > 0:
+        tail_candidates = {
+            "create_video": create_video_p95 or 0.0,
+            "persist": persist_p95 or 0.0,
+            "fusion": fusion_p95 or 0.0,
+        }
+        dominant = max(tail_candidates.items(), key=lambda item: float(item[1]))
+        if dominant[1] > 0:
+            finalize_tail_dominant = dominant[0]
+            share = float(dominant[1]) / float(critical_path_p95)
+            if share >= 0.5 and float(critical_path_p95) > float(finalize_warn_ms):
+                warnings.append(
+                    f"finalize tail dominated by {dominant[0]} "
+                    f"({share:.0%} of critical_path p95 {float(critical_path_p95):.0f}ms; #586/I12)"
+                )
+
     by_slot = {
         slot: _summary(vals)
         for slot, vals in sorted(by_slot_finalize.items())
@@ -261,6 +280,13 @@ def build_profile(
             "create_video_fail_threshold_ms": create_video_fail_ms,
             "create_video_warn_threshold_ms": float(create_video_warn_ms),
             "create_video_ok": create_video_kpi_ok,
+            "finalize_critical_path_p95_ms": (
+                round(float(critical_path_p95), 3) if critical_path_p95 is not None else None
+            ),
+            "persist_p95_ms": (
+                round(float(persist_p95), 3) if persist_p95 is not None else None
+            ),
+            "finalize_tail_dominant": finalize_tail_dominant,
         },
         "warnings": warnings,
         "failures": failures,
