@@ -25,23 +25,23 @@ def test_deprecated_keys_present_detects_legacy_weather():
     assert "weather.ha_url" in keys
 
 
-def test_settings_patch_returns_deprecated_warnings(client, tmp_path, monkeypatch):
-    from app_config import app_config as ac_mod
+def test_settings_patch_returns_deprecated_warnings(tmp_path, monkeypatch):
+    from app_config.app_config import app_config
+    from services.settings_patch_service import apply_settings_patch_from_request
 
     user_path = tmp_path / "user_config.yaml"
     user_path.write_text(
         yaml.safe_dump({"weather": {"ha_url": "http://legacy"}}),
         encoding="utf-8",
     )
-    monkeypatch.setattr(ac_mod.app_config, "user_config_file", str(user_path))
+    monkeypatch.setattr(app_config, "user_config_file", str(user_path))
+    assert "weather.ha_url" in deprecated_keys_present(app_config.load_raw_user_config_dict())
 
-    with client.session_transaction() as sess:
-        sess["access_role"] = "admin"
-
-    r = client.patch(
-        "/api/ui/settings",
-        json={"general": {"app_name": "BirdLense Test"}},
+    payload = apply_settings_patch_from_request(
+        {"general": {"app_name": "BirdLense Test"}},
+        access_role="admin",
+        contributor_tier_configured=False,
     )
-    assert r.status_code == 200
-    body = r.get_json()
-    assert body.get("settings_warnings", {}).get("deprecated_keys_present")
+    warnings = payload.get("settings_warnings", {}).get("deprecated_keys_present")
+    assert warnings
+    assert "weather.ha_url" in warnings

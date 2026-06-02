@@ -73,26 +73,12 @@ def validate_settings_patch_updates(normalized_updates: dict) -> None:
         raise SettingsPatchValidationError(issues)
 
 
-def _load_raw_user_config_dict() -> dict:
-    import os
-    import yaml
-
-    path = app_config.user_config_file
-    if not os.path.isfile(path):
-        return {}
-    try:
-        with open(path, encoding="utf-8") as fh:
-            return yaml.safe_load(fh) or {}
-    except yaml.YAMLError:
-        return {}
-
-
 def apply_settings_patch_and_refresh_caches(normalized_updates: dict) -> dict:
     """Смержить в live config, save, сброс кэшей. Возвращает payload для ответа API."""
     from app_config.config_migrations import deprecated_keys_present
 
     validate_settings_patch_updates(normalized_updates)
-    deprecated = deprecated_keys_present(_load_raw_user_config_dict())
+    deprecated = deprecated_keys_present(app_config.load_raw_user_config_dict())
     to_merge = hash_password_fields_in_updates(normalized_updates)
     app_config.config = app_config.merge_dicts(
         app_config.config,
