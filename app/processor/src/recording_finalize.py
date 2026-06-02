@@ -1210,6 +1210,15 @@ def finalize_motion_recording(
             max(0.0, (time.perf_counter() - create_video_started_ts) * 1000.0),
             3,
         )
+        create_video_ingest_timing_ms = None
+        if isinstance(resp, dict):
+            raw_timing = resp.get("ingest_timing_ms")
+            if isinstance(raw_timing, dict):
+                create_video_ingest_timing_ms = {
+                    str(key): round(float(value), 3)
+                    for key, value in raw_timing.items()
+                    if value is not None
+                }
         inc_counter("recording_persisted_total", len(video_detections))
         video_id = response_video_id(resp)
         if video_id is not None:
@@ -1409,6 +1418,7 @@ def finalize_motion_recording(
             "scales_duration_ms": scales_duration_ms,
             "behavior_duration_ms": behavior_duration_ms,
             "create_video_duration_ms": create_video_duration_ms,
+            "create_video_ingest_timing_ms": create_video_ingest_timing_ms,
             "dataset_crops_duration_ms": dataset_crops_duration_ms,
             "trigger_to_first_bbox_latency_s": (
                 None

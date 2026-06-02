@@ -10,6 +10,11 @@ import json
 import threading
 from datetime import timezone
 
+from services.processor_ingest.ingest_timing import (
+    IngestTimingRecorder,
+    merge_ingest_timing_response,
+)
+
 from flask import request
 from sqlalchemy.exc import IntegrityError
 
@@ -274,19 +279,23 @@ def register_routes(app):
     def create_video():
         if not _check_processor_secret():
             return {"error": "Forbidden"}, 403
+        timing = IngestTimingRecorder()
         data, perr = parse_request_json_dict(request)
+        timing.lap("parse_ms")
         if perr is not None:
             return perr, 400
         if not data:
             return {"error": "JSON body required"}, 400
         min_conf = float(app_config.get("detection.min_confidence_to_store") or 0.05)
         prep = prepare_processor_video(data, min_confidence=min_conf)
+        timing.lap("prepare_ms")
         if prep[0] is False:
             return prep[1], prep[2]
         pv = prep[1]
         pruned_species_list, prune_stats = _enforce_video_bbox_track_contract(
             pv.species_list
         )
+        timing.lap("contract_ms")
         if not pruned_species_list:
             return {
                 "error": (
@@ -329,6 +338,7 @@ def register_routes(app):
             pv=pv,
             clip_key=clip_key,
         )
+        timing.lap("idempotency_ms")
         if existing_video is not None:
             existing_payload_hash = str(existing_video.ingest_payload_hash or "").strip()
             if not existing_payload_hash:
@@ -342,13 +352,18 @@ def register_routes(app):
                     video_id=existing_video.id,
                     reason="payload_hash_mismatch",
                 )
-            return {
-                "message": "Video already ingested.",
-                "video_id": existing_video.id,
-                "duplicate": True,
-            }, 200
+            return merge_ingest_timing_response(
+                {
+                    "message": "Video already ingested.",
+                    "video_id": existing_video.id,
+                    "duplicate": True,
+                },
+                timing.finish(),
+            ), 200
 
         try:
+            weather = fetch_weather()
+            timing.lap("weather_ms")
             video = Video(
                 processor_version=data["processor_version"],
                 start_time=pv.start_time,
@@ -356,7 +371,7 @@ def register_routes(app):
                 video_path=pv.video_path,
                 idempotency_key=clip_key,
                 ingest_payload_hash=payload_hash,
-                **fetch_weather(),
+                **weather,
             )
             raw_trigger_source = str(data.get("trigger_source") or "").strip().lower()
             inferred_trigger_source = None
@@ -429,8 +444,10 @@ def register_routes(app):
             visit_timeout = int(app_config.get("detection.dedup_window_seconds") or 60)
             visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
             visit_processor.process_detections(video, pruned_species_list)
+            timing.lap("visit_processor_ms")
 
             db.session.commit()
+            timing.lap("commit_ms")
             bust_all_api_caches()
             try:
                 if bool(app_config.get("experimental.active_learning_auto_mine_enabled", True)):
@@ -461,7 +478,13 @@ def register_routes(app):
                 else:
                     app.logger.warning("Unsafe webhook.url blocked: %s", webhook_url)
 
-            return {"message": "Video and associated data inserted successfully.", "video_id": video.id}, 201
+            return merge_ingest_timing_response(
+                {
+                    "message": "Video and associated data inserted successfully.",
+                    "video_id": video.id,
+                },
+                timing.finish(),
+            ), 201
 
         except IntegrityError:
             db.session.rollback()
@@ -481,11 +504,14 @@ def register_routes(app):
                         video_id=raced_video.id,
                         reason="payload_hash_mismatch_race",
                     )
-                return {
-                    "message": "Video already ingested.",
-                    "video_id": raced_video.id,
-                    "duplicate": True,
-                }, 200
+                return merge_ingest_timing_response(
+                    {
+                        "message": "Video already ingested.",
+                        "video_id": raced_video.id,
+                        "duplicate": True,
+                    },
+                    timing.finish(),
+                ), 200
             return {"error": "Failed to process video"}, 500
         except Exception as e:
             db.session.rollback()
