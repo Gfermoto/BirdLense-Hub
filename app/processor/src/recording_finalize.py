@@ -1375,6 +1375,12 @@ def finalize_motion_recording(
             "yolo_frames_with_raw_boxes": int(rs.get("yolo_frames_with_raw_boxes") or 0),
             "yolo_raw_boxes_total": int(rs.get("yolo_raw_boxes_total") or 0),
             "yolo_accepted_boxes_total": int(rs.get("yolo_accepted_boxes_total") or 0),
+            "yolo_frames_raw_unaccepted": int(rs.get("yolo_frames_raw_unaccepted") or 0),
+            "yolo_frames_raw_no_track": int(rs.get("yolo_frames_raw_no_track") or 0),
+            "detection_acceptance_gap": bool(
+                int(rs.get("yolo_raw_boxes_total") or 0) > 0
+                and int(rs.get("yolo_accepted_boxes_total") or 0) == 0
+            ),
             "low_light_blocked_frames": int(rs.get("low_light_blocked_frames") or 0),
             "session_extended_by_frigate_only": int(rs.get("session_extended_by_frigate_only") or 0),
             "bytetrack_rows": yolo_tracks_count,
@@ -1430,6 +1436,7 @@ def finalize_motion_recording(
                 if first_track_latency_s is None
                 else round(float(first_track_latency_s), 6)
             ),
+            "concurrent_recording": dict(ctx.get("concurrent_recording") or {}),
         }
         latency_breaches = _latency_budget_breaches(
             trigger_to_first_bbox_latency_s=(

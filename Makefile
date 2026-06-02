@@ -252,6 +252,11 @@ sota-governance-prod:
 	GOVERNANCE_FETCH_PROD_DB=1 SOTA_FAIL_ON_BLOCKED=0 \
 	$(MAKE) sota-governance-cycle
 
+apply-prod-detection-tuning:
+	@set -e; cd "$(CURDIR)"; \
+	chmod +x ./scripts/apply-prod-detection-tuning-hotfix.sh; \
+	./scripts/apply-prod-detection-tuning-hotfix.sh
+
 sota-governance-weekly:
 	@set -e; cd "$(CURDIR)"; \
 	GOVERNANCE_MODE=weekly SOTA_FAIL_ON_BLOCKED=1 $(MAKE) sota-governance-cycle

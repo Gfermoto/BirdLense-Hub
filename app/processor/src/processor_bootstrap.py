@@ -246,6 +246,7 @@ def _run_recording_session(
     camera_id: str | None,
     trigger_source: str,
     last_recording_end_by_camera: dict[str, float],
+    concurrent_context: dict | None = None,
 ) -> bool:
     registry = getattr(ctx, "recording_concurrency", None)
 
@@ -259,6 +260,7 @@ def _run_recording_session(
             ctx.session.run(
                 forced_camera_id=camera_id,
                 forced_trigger_source=trigger_source or None,
+                concurrent_context=concurrent_context,
             )
         )
     finally:
@@ -438,6 +440,13 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
             )
             continue
 
+        concurrent_context = None
+        if registry is not None:
+            concurrent_context = {
+                "started_concurrent": bool(other_active),
+                **registry.snapshot(exclude=camera_key),
+            }
+
         if concurrent and other_active:
             inc_counter("recording_concurrent_session_started_total")
 
@@ -449,6 +458,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                         camera_id=camera_id,
                         trigger_source=trigger_source,
                         last_recording_end_by_camera=last_recording_end_by_camera,
+                        concurrent_context=concurrent_context,
                     )
                 except Exception:
                     logger.exception(
@@ -470,6 +480,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                 camera_id=camera_id,
                 trigger_source=trigger_source,
                 last_recording_end_by_camera=last_recording_end_by_camera,
+                concurrent_context=concurrent_context,
             )
         except Exception:
             if registry is not None:

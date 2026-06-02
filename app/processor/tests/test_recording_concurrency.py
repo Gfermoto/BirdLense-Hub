@@ -40,5 +40,14 @@ class TestRecordingConcurrency(unittest.TestCase):
         self.assertFalse(concurrent_recording_enabled(Cfg(), camera_count=3))
 
 
+    def test_snapshot_peers(self):
+        reg = RecordingConcurrency()
+        reg.try_register("BirdBox")
+        reg.try_register("Forest")
+        snap = reg.snapshot(exclude="BirdBox")
+        self.assertEqual(snap["peer_cameras"], ["Forest"])
+        self.assertEqual(snap["active_count"], 2)
+
+
 if __name__ == "__main__":
     unittest.main()

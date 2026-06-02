@@ -45,6 +45,7 @@ def _load_rows(db_path: Path, lookback_hours: int) -> list[sqlite3.Row]:
                   yolo_frames_ran,
                   yolo_frames_with_tracks,
                   yolo_raw_boxes_total,
+                  yolo_accepted_boxes_total,
                   payload_json,
                   {slot_col}
                 FROM session_runtime_metrics
@@ -81,11 +82,14 @@ def _infer_slot(row: sqlite3.Row, payload: dict[str, Any]) -> str:
 def _classify_failure_mode(
     *,
     yolo_raw_boxes_total: int,
+    yolo_accepted_boxes_total: int,
     yolo_frames_with_tracks: int,
     post_fusion_persisted: int,
 ) -> str:
     if yolo_raw_boxes_total <= 0:
         return "detector_silent_raw0"
+    if yolo_accepted_boxes_total <= 0:
+        return "confidence_gate_collapse_raw_gt_0_accepted_0"
     if yolo_frames_with_tracks <= 0:
         return "quality_filter_collapse_raw_gt_0_tracks_0"
     if post_fusion_persisted <= 0:
@@ -121,6 +125,7 @@ def build_failure_mode_funnel(
         post_fusion_persisted = _safe_int(payload.get("post_fusion_persisted"))
         mode = _classify_failure_mode(
             yolo_raw_boxes_total=_safe_int(row["yolo_raw_boxes_total"]),
+            yolo_accepted_boxes_total=_safe_int(row["yolo_accepted_boxes_total"]),
             yolo_frames_with_tracks=_safe_int(row["yolo_frames_with_tracks"]),
             post_fusion_persisted=post_fusion_persisted,
         )
