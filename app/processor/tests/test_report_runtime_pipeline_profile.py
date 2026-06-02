@@ -173,3 +173,32 @@ def test_profile_finalize_tail_dominant_create_video_warning():
     )
     assert report["kpi"]["finalize_tail_dominant"] == "create_video"
     assert any("finalize tail dominated by create_video" in w for w in report["warnings"])
+
+
+def test_profile_excludes_legacy_spectrogram_finalize_from_kpi_warn():
+    mod = _load_mod()
+    rows = [
+        {
+            "payload_json": "{}",
+            "trigger_to_first_bbox_latency_s": 0.5,
+            "finalize_duration_ms": 20000.0,
+        },
+        {
+            "payload_json": '{"create_video_duration_ms": 800, "finalize_critical_path_ms": 900}',
+            "trigger_to_first_bbox_latency_s": 0.6,
+            "finalize_duration_ms": 4000.0,
+        },
+    ]
+    report = mod.build_profile(
+        rows,
+        lookback_hours=24,
+        first_bbox_warn_s=5.0,
+        first_bbox_fail_s=None,
+        finalize_warn_ms=5000.0,
+        create_video_warn_ms=30000.0,
+        create_video_fail_ms=None,
+        legacy_spectrogram_finalize_ms=15000.0,
+    )
+    assert report["legacy_spectrogram_finalize"]["excluded_sessions"] == 1
+    assert report["profile"]["finalize_duration_ms_kpi_excl_legacy"]["n"] == 1
+    assert not any("finalize_duration_p95" in w for w in report["warnings"])

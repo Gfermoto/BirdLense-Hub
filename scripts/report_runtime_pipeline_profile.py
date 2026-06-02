@@ -83,11 +83,14 @@ def build_profile(
     finalize_warn_ms: float,
     create_video_warn_ms: float,
     create_video_fail_ms: float | None,
+    legacy_spectrogram_finalize_ms: float = 15000.0,
 ) -> dict[str, Any]:
     first_bbox_s: list[float] = []
     first_bbox_wall_s: list[float] = []
     first_track_wall_s: list[float] = []
     finalize_ms: list[float] = []
+    finalize_kpi_ms: list[float] = []
+    legacy_spectrogram_excluded = 0
     fusion_ms: list[float] = []
     persist_ms: list[float] = []
     create_video_ms: list[float] = []
@@ -129,6 +132,14 @@ def build_profile(
         if fin_ms is not None and fin_ms > 0:
             finalize_ms.append(fin_ms)
             by_slot_finalize.setdefault(slot, []).append(fin_ms)
+            legacy_tail = float(fin_ms) >= float(legacy_spectrogram_finalize_ms) and (
+                _safe_float(payload.get("create_video_duration_ms")) is None
+                and _safe_float(payload.get("finalize_critical_path_ms")) is None
+            )
+            if legacy_tail:
+                legacy_spectrogram_excluded += 1
+            else:
+                finalize_kpi_ms.append(fin_ms)
 
         f_ms = _safe_float(payload.get("fusion_duration_ms"))
         if f_ms is not None and f_ms > 0:
@@ -170,6 +181,7 @@ def build_profile(
     first_bbox_p95 = _percentile(first_bbox_s, 95.0)
     first_bbox_wall_p95 = _percentile(first_bbox_wall_s, 95.0)
     finalize_p95 = _percentile(finalize_ms, 95.0)
+    finalize_kpi_p95 = _percentile(finalize_kpi_ms, 95.0) if finalize_kpi_ms else finalize_p95
     fusion_p95 = _percentile(fusion_ms, 95.0)
     persist_p95 = _percentile(persist_ms, 95.0)
 
@@ -217,9 +229,15 @@ def build_profile(
                 failures.append(
                     f"first_bbox_wall_p95 {float(kpi_bbox_p95):.3f}s > KPI {float(first_bbox_fail_s):.3f}s (#579)"
                 )
-    if finalize_p95 is not None and float(finalize_p95) > float(finalize_warn_ms):
+    if finalize_kpi_p95 is not None and float(finalize_kpi_p95) > float(finalize_warn_ms):
         warnings.append(
-            f"finalize_duration_p95 {float(finalize_p95):.2f}ms > {float(finalize_warn_ms):.2f}ms"
+            f"finalize_duration_p95 {float(finalize_kpi_p95):.2f}ms > {float(finalize_warn_ms):.2f}ms"
+            + (
+                f" (excl {legacy_spectrogram_excluded} legacy spectrogram tails >= "
+                f"{float(legacy_spectrogram_finalize_ms):.0f}ms; #584)"
+                if legacy_spectrogram_excluded > 0
+                else ""
+            )
         )
     create_video_kpi_ok: bool | None = None
     if create_video_p95 is not None and float(create_video_p95) > float(create_video_warn_ms):
@@ -269,6 +287,7 @@ def build_profile(
             "trigger_to_first_bbox_wall_s": _summary(first_bbox_wall_s),
             "trigger_to_first_track_wall_s": _summary(first_track_wall_s),
             "finalize_duration_ms": _summary(finalize_ms),
+            "finalize_duration_ms_kpi_excl_legacy": _summary(finalize_kpi_ms),
             "finalize_critical_path_ms": _summary(critical_path_ms),
             "pre_fusion_duration_ms": _summary(pre_fusion_ms),
             "fusion_duration_ms": _summary(fusion_ms),
@@ -304,6 +323,10 @@ def build_profile(
                 round(float(persist_p95), 3) if persist_p95 is not None else None
             ),
             "finalize_tail_dominant": finalize_tail_dominant,
+        },
+        "legacy_spectrogram_finalize": {
+            "threshold_ms": float(legacy_spectrogram_finalize_ms),
+            "excluded_sessions": int(legacy_spectrogram_excluded),
         },
         "warnings": warnings,
         "failures": failures,
@@ -362,6 +385,12 @@ def _args() -> argparse.Namespace:
         help="Hard KPI threshold for wall first-bbox p95 (#579); omit to skip fail gate",
     )
     parser.add_argument("--finalize-warn-ms", type=float, default=5000.0)
+    parser.add_argument(
+        "--legacy-spectrogram-finalize-ms",
+        type=float,
+        default=15000.0,
+        help="Exclude pre-instrumentation finalize tails from KPI warn (#584)",
+    )
     parser.add_argument("--create-video-warn-ms", type=float, default=30000.0)
     parser.add_argument(
         "--create-video-fail-ms",
@@ -409,6 +438,7 @@ def main() -> int:
         first_bbox_warn_s=float(max(0.1, args.first_bbox_warn_s)),
         first_bbox_fail_s=fail_s,
         finalize_warn_ms=float(max(100.0, args.finalize_warn_ms)),
+        legacy_spectrogram_finalize_ms=float(max(1000.0, args.legacy_spectrogram_finalize_ms)),
         create_video_warn_ms=float(max(100.0, args.create_video_warn_ms)),
         create_video_fail_ms=(
             float(max(100.0, args.create_video_fail_ms))
