@@ -34,9 +34,7 @@ def build_bbox_parity_debug_payload(*, session_id: str | None = None) -> dict[st
                 {
                     "session_id": child.name,
                     "frame_count": len(frames),
-                    "latest_meta": json.loads(meta_files[-1].read_text(encoding="utf-8"))
-                    if meta_files
-                    else None,
+                    "latest_meta": json.loads(meta_files[-1].read_text(encoding="utf-8")) if meta_files else None,
                 }
             )
 

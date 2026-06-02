@@ -24,9 +24,7 @@ def _resolve_resize_interpolation() -> int:
         try:
             from app_config.app_config import app_config
 
-            raw = str(
-                app_config.get("processor.letterbox_resize_interpolation", "linear") or "linear"
-            ).strip().lower()
+            raw = str(app_config.get("processor.letterbox_resize_interpolation", "linear") or "linear").strip().lower()
         except ImportError:
             raw = "linear"
     mapping = {
@@ -200,9 +198,7 @@ def resolve_binary_track_imgsz(
     from inference_lores import parse_inference_lores_wh
     from pipeline_config import resolve_binary_model_imgsz
 
-    backend = str(
-        inference_backend or runtime_cfg.get("processor.inference_backend") or "torch"
-    ).strip().lower()
+    backend = str(inference_backend or runtime_cfg.get("processor.inference_backend") or "torch").strip().lower()
     square = resolve_binary_model_imgsz(
         runtime_cfg,
         default=default_square if default_square is not None else 640,
@@ -524,12 +520,8 @@ def live_regen_canvas_parity(
     """Compare live vs regen canvas resolution + letterbox meta on the same frame."""
     live_wh = resolve_detector_canvas_wh(runtime_cfg, frame.shape[:2], mode="live")
     regen_wh = resolve_detector_canvas_wh(runtime_cfg, frame.shape[:2], mode="regen")
-    live_meta = (
-        compute_letterbox_meta(frame.shape[:2], live_wh) if live_wh else None
-    )
-    regen_meta = (
-        compute_letterbox_meta(frame.shape[:2], regen_wh) if regen_wh else None
-    )
+    live_meta = compute_letterbox_meta(frame.shape[:2], live_wh) if live_wh else None
+    regen_meta = compute_letterbox_meta(frame.shape[:2], regen_wh) if regen_wh else None
     return {
         "live_canvas_wh": list(live_wh) if live_wh else None,
         "regen_canvas_wh": list(regen_wh) if regen_wh else None,

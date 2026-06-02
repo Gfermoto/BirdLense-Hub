@@ -224,11 +224,7 @@ def process_video_for_tracks(
     detections = _dedupe_track_detections(detections)
     if metrics_out is not None:
         species = sorted(
-            {
-                str(d.get("species_name") or "").strip()
-                for d in detections
-                if str(d.get("species_name") or "").strip()
-            }
+            {str(d.get("species_name") or "").strip() for d in detections if str(d.get("species_name") or "").strip()}
         )
         metrics_out["fused_track_count"] = len(detections)
         metrics_out["species_detected"] = species

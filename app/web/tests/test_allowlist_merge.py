@@ -77,13 +77,7 @@ def test_allowlist_uses_classifier_id2label_not_yolo_file(efficientnet_fixture):
 @pytest.fixture
 def birder_eu_fixture(tmp_path):
     processor = tmp_path / "processor"
-    weights = (
-        processor
-        / "models"
-        / "classification"
-        / "weights"
-        / "convnext_v2_tiny_eu-common256px_openvino_model"
-    )
+    weights = processor / "models" / "classification" / "weights" / "convnext_v2_tiny_eu-common256px_openvino_model"
     weights.mkdir(parents=True)
     (weights / "class_labels.txt").write_text(
         "eurasian magpie\neurasian jay\n",

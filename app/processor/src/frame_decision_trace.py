@@ -58,11 +58,7 @@ class FrameDecisionTraceWriter:
         self._fh.flush()
 
     def write(self, record: FrameDecisionRecord | dict[str, Any]) -> None:
-        payload = (
-            record.to_dict()
-            if isinstance(record, FrameDecisionRecord)
-            else dict(record)
-        )
+        payload = record.to_dict() if isinstance(record, FrameDecisionRecord) else dict(record)
         payload.setdefault("ts", datetime.now(timezone.utc).isoformat())
         with _lock:
             self._fh.write(json.dumps(payload, ensure_ascii=False) + "\n")

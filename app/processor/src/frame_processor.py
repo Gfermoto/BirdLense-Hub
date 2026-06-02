@@ -152,7 +152,7 @@ class FrameProcessor:
         }
         key_frames.append(entry)
         key_frames.sort(key=lambda item: item["score"], reverse=True)
-        del key_frames[self.key_frame_limit:]
+        del key_frames[self.key_frame_limit :]
 
     def _overlay_tracks_for_live(self, frame_time: float) -> dict:
         try:
@@ -226,9 +226,7 @@ class FrameProcessor:
         # profile values and applies even outside night profile.
         if isinstance(camera_overrides, dict) and camera_overrides:
             profile_overrides.update(camera_overrides)
-        policy = getattr(self, "tracking_policy", None) or getattr(
-            self.strategy, "_tracking_policy", None
-        )
+        policy = getattr(self, "tracking_policy", None) or getattr(self.strategy, "_tracking_policy", None)
         if policy is not None and not policy.unified_with_live and policy.for_track_regen:
             from tracking_policy import apply_policy_profile_overrides
 
@@ -395,9 +393,7 @@ class FrameProcessor:
         self.last_frame_context.yolo_accepted_boxes = self.last_run_stats["yolo_accepted_boxes"]
         self.last_frame_context.tracker_used = tracker_cfg
         self.last_run_stats["yolo_predict_fallback"] = bool(dm.get("predict_fallback"))
-        self.last_run_stats["frame_copy_count_per_frame"] = int(
-            dm.get("frame_copy_count_per_frame") or 0
-        )
+        self.last_run_stats["frame_copy_count_per_frame"] = int(dm.get("frame_copy_count_per_frame") or 0)
         set_gauge(
             "frame_copy_count_per_frame",
             self.last_run_stats["frame_copy_count_per_frame"],
@@ -429,7 +425,12 @@ class FrameProcessor:
             lifetimes.append(len(frames))
             first_bbox = frames[0].get("bbox") if isinstance(frames[0], dict) else None
             last_bbox = frames[-1].get("bbox") if isinstance(frames[-1], dict) else None
-            if isinstance(first_bbox, list) and isinstance(last_bbox, list) and len(first_bbox) == 4 and len(last_bbox) == 4:
+            if (
+                isinstance(first_bbox, list)
+                and isinstance(last_bbox, list)
+                and len(first_bbox) == 4
+                and len(last_bbox) == 4
+            ):
                 c1x = (float(first_bbox[0]) + float(first_bbox[2])) * 0.5
                 c1y = (float(first_bbox[1]) + float(first_bbox[3])) * 0.5
                 c2x = (float(last_bbox[0]) + float(last_bbox[2])) * 0.5
@@ -466,9 +467,7 @@ class FrameProcessor:
             cv2.imwrite(f"data/test/frame{str(self.cnt)}.jpg", debug_img)
 
         if not results:
-            self.live_detector_polygons = tracks_to_detector_polygons(
-                self._overlay_tracks_for_live(frame_time)
-            )
+            self.live_detector_polygons = tracks_to_detector_polygons(self._overlay_tracks_for_live(frame_time))
             if self.cnt <= 3 or self.cnt % 30 == 0:
                 self.logger.debug(f"No detections (frame {self.cnt})")
             return False
@@ -494,9 +493,7 @@ class FrameProcessor:
                 classifier_entropy=getattr(res, "classifier_entropy", None),
                 classifier_top1_top2_margin=getattr(res, "classifier_top1_top2_margin", None),
             )
-        self.live_detector_polygons = tracks_to_detector_polygons(
-            self._overlay_tracks_for_live(frame_time)
-        )
+        self.live_detector_polygons = tracks_to_detector_polygons(self._overlay_tracks_for_live(frame_time))
 
         self.logger.debug(f"Detection Time: {(time.time() - st) * 1000:.0f} msec | Valid: {len(results)}")
 

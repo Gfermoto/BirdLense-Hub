@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
-import pytest
 import yaml
 
 from app_config.app_config import AppConfig, validate_merged_config_semantics

@@ -36,9 +36,7 @@ def get_recording_mqtt_events(
         )()
     scope_cam_l = str(scope_camera_id or "").strip().lower()
     trig_src = str(trigger_source or "").strip().lower()
-    extended_frigate_lookback = bool(lookback_cam) and (
-        yolo_tracks_count == 0 or trig_src == "frigate"
-    )
+    extended_frigate_lookback = bool(lookback_cam) and (yolo_tracks_count == 0 or trig_src == "frigate")
     if extended_frigate_lookback:
         # Short default lookback misses Frigate MQTT when YOLO tracks exist later in the clip.
         # Keep a bounded recovery window (same cap as zero-YOLO Frigate sessions).

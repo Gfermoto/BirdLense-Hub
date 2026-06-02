@@ -97,19 +97,14 @@ def _mean_normalized(vectors: list[list[float]]) -> list[float] | None:
 
 def _reid_table_ready() -> bool:
     return bool(
-        db.session.execute(
-            text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")
-        ).scalar()
+        db.session.execute(text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")).scalar()
     )
 
 
 def _fetch_anchor_embedding(*, video_species_id: int) -> list[float] | None:
     row = (
         db.session.execute(
-            text(
-                "SELECT embedding_json FROM reid_embedding "
-                "WHERE video_species_id = :vsid ORDER BY id DESC LIMIT 1"
-            ),
+            text("SELECT embedding_json FROM reid_embedding WHERE video_species_id = :vsid ORDER BY id DESC LIMIT 1"),
             {"vsid": int(video_species_id)},
         )
         .mappings()
@@ -120,7 +115,9 @@ def _fetch_anchor_embedding(*, video_species_id: int) -> list[float] | None:
     return _parse_embedding(row.get("embedding_json"))
 
 
-def _profile_centroids(*, exclude_profile_id: int | None = None, species_id: int | None = None) -> dict[int, list[float]]:
+def _profile_centroids(
+    *, exclude_profile_id: int | None = None, species_id: int | None = None
+) -> dict[int, list[float]]:
     if not _reid_table_ready():
         return {}
     params: dict[str, Any] = {}
@@ -234,10 +231,7 @@ def suggest_profile_links(
         return base
 
     profiles = {
-        int(p.id): p
-        for p in db.session.query(BirdProfile)
-        .filter(BirdProfile.id.in_(list(centroids.keys())))
-        .all()
+        int(p.id): p for p in db.session.query(BirdProfile).filter(BirdProfile.id.in_(list(centroids.keys()))).all()
     }
     scored: list[dict[str, Any]] = []
     for pid, centroid in centroids.items():

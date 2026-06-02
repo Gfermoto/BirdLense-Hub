@@ -28,9 +28,7 @@ def upgrade():
     if "trigger_to_first_bbox_latency_s" not in cols:
         op.add_column(
             "session_runtime_metrics",
-            sa.Column(
-                "trigger_to_first_bbox_latency_s", sa.Float(), nullable=True
-            ),
+            sa.Column("trigger_to_first_bbox_latency_s", sa.Float(), nullable=True),
         )
     if "first_track_latency_s" not in cols:
         op.add_column(

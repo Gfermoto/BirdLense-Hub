@@ -22,9 +22,7 @@ def test_merge_canonical_name_collisions_merges_legacy_scientific_form(app, monk
         )
         monkeypatch.setattr(
             "services.species_catalog.idealize.normalize_catalog_display_name",
-            lambda value, _mapping: "Catalog Ideal Robin Zz506"
-            if "robin zz506" in str(value).lower()
-            else value,
+            lambda value, _mapping: "Catalog Ideal Robin Zz506" if "robin zz506" in str(value).lower() else value,
         )
         out = merge_canonical_name_collisions(dry_run=False)
         assert out["merged"] >= 1

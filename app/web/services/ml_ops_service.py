@@ -324,15 +324,11 @@ def build_similarity_behavior_summary_payload(
     k = max(1, min(int(top_k or 5), 20))
     lim = max(20, min(int(max_rows or 500), 5000))
     try:
-        guardrail_ms = float(
-            app_config.get("processor.reid_similarity_p95_guardrail_ms") or 500.0
-        )
+        guardrail_ms = float(app_config.get("processor.reid_similarity_p95_guardrail_ms") or 500.0)
     except (TypeError, ValueError):
         guardrail_ms = 500.0
     has_reid = bool(
-        session.execute(
-            text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")
-        ).scalar()
+        session.execute(text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")).scalar()
     )
     payload: dict[str, Any] = {
         "schema": "similarity_behavior_summary@v1",
@@ -399,9 +395,7 @@ def build_similarity_behavior_summary_payload(
             if lbl:
                 label_support[lbl] = label_support.get(lbl, 0) + 1
         eval_rows = [
-            row
-            for row in parsed
-            if row["individual_label"] and label_support.get(row["individual_label"], 0) >= 2
+            row for row in parsed if row["individual_label"] and label_support.get(row["individual_label"], 0) >= 2
         ]
         latencies: list[float] = []
         top1 = 0
@@ -475,10 +469,7 @@ def build_similarity_behavior_summary_payload(
         key = f"{truth}->{pred}"
         confusion[key] = confusion.get(key, 0) + 1
     top_confusions = sorted(
-        (
-            {"pair": pair, "count": int(count)}
-            for pair, count in confusion.items()
-        ),
+        ({"pair": pair, "count": int(count)} for pair, count in confusion.items()),
         key=lambda item: item["count"],
         reverse=True,
     )[:10]
@@ -523,16 +514,8 @@ def _read_json_file(path: Path) -> dict[str, Any]:
 def build_dataset_streams_summary() -> tuple[dict[str, Any], int]:
     """Expose detector/classifier/behavior/reid dataset stream contracts (#557)."""
     repo_root = Path(__file__).resolve().parents[3]
-    contract_file = (
-        repo_root / "docs" / "reports" / "datasets" / "dataset_contract_registry.json"
-    )
-    latest_file = (
-        repo_root
-        / "docs"
-        / "reports"
-        / "datasets"
-        / "dataset_contract_registry_latest.json"
-    )
+    contract_file = repo_root / "docs" / "reports" / "datasets" / "dataset_contract_registry.json"
+    latest_file = repo_root / "docs" / "reports" / "datasets" / "dataset_contract_registry_latest.json"
     contract_payload = _read_json_file(contract_file)
     latest_payload = _read_json_file(latest_file)
 
@@ -547,11 +530,7 @@ def build_dataset_streams_summary() -> tuple[dict[str, Any], int]:
         split_required_keys = []
         if isinstance(split_policy, dict):
             split_required_keys = sorted(
-                {
-                    str(item).strip()
-                    for item in list(split_policy.get("required_keys") or [])
-                    if str(item).strip()
-                }
+                {str(item).strip() for item in list(split_policy.get("required_keys") or []) if str(item).strip()}
             )
         export_policy = row.get("export_policy")
         if not isinstance(export_policy, dict):
@@ -564,21 +543,14 @@ def build_dataset_streams_summary() -> tuple[dict[str, Any], int]:
                 "stream": stream,
                 "contract_schema": str(row.get("contract_schema") or ""),
                 "required_fields_count": len(
-                    {
-                        str(item).strip()
-                        for item in list(row.get("required_fields") or [])
-                        if str(item).strip()
-                    }
+                    {str(item).strip() for item in list(row.get("required_fields") or []) if str(item).strip()}
                 ),
                 "split_required_keys": split_required_keys,
                 "versioning": row.get("versioning") or {},
                 "provenance_required_keys": sorted(
                     {
                         str(item).strip()
-                        for item in list(
-                            (row.get("provenance") or {}).get("required_keys")
-                            or []
-                        )
+                        for item in list((row.get("provenance") or {}).get("required_keys") or [])
                         if str(item).strip()
                     }
                 ),
@@ -588,11 +560,7 @@ def build_dataset_streams_summary() -> tuple[dict[str, Any], int]:
         )
 
     required_streams = sorted(
-        {
-            str(item).strip()
-            for item in list(contract_payload.get("required_streams") or [])
-            if str(item).strip()
-        }
+        {str(item).strip() for item in list(contract_payload.get("required_streams") or []) if str(item).strip()}
     )
     checks = latest_payload.get("checks") or {}
     summary = latest_payload.get("summary") or {}

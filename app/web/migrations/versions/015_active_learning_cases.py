@@ -25,8 +25,12 @@ def upgrade() -> None:
     op.create_table(
         "active_learning_case",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("CURRENT_TIMESTAMP")
+        ),
         sa.Column("video_id", sa.Integer(), nullable=True),
         sa.Column("video_species_id", sa.Integer(), nullable=True),
         sa.Column("camera_id", sa.String(length=64), nullable=True),

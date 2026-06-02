@@ -96,4 +96,3 @@ def downgrade() -> None:
         if "ix_bird_profiles_display_name" in idx:
             op.drop_index("ix_bird_profiles_display_name", table_name="bird_profiles")
         op.drop_table("bird_profiles")
-

@@ -129,7 +129,9 @@ def list_expert_queue(
                 "species_id": row.species_id,
                 "species_name": sp.name if sp else None,
                 "video_id": vs.video_id if vs else None,
-                "video_start_time": vid.start_time.astimezone(timezone.utc).isoformat() if vid and vid.start_time else None,
+                "video_start_time": vid.start_time.astimezone(timezone.utc).isoformat()
+                if vid and vid.start_time
+                else None,
                 "payload": _parse_payload(row.payload_json),
                 "created_at": row.created_at.astimezone(timezone.utc).isoformat() if row.created_at else None,
             }

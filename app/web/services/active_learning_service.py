@@ -56,15 +56,15 @@ def _extract_track_frames(vs: VideoSpecies | None, payload: dict[str, Any]) -> l
     if vs is not None and vs.frames:
         raw_frames = _parse_json_any(vs.frames)
     if raw_frames is None:
-        raw_frames = payload.get('frames')
+        raw_frames = payload.get("frames")
     if not isinstance(raw_frames, list):
         return []
     out: list[dict[str, Any]] = []
     for row in raw_frames:
         if not isinstance(row, dict):
             continue
-        t_raw = row.get('t')
-        bbox_raw = row.get('bbox')
+        t_raw = row.get("t")
+        bbox_raw = row.get("bbox")
         bbox_xywh = _bbox_xyxy_to_xywh(bbox_raw)
         if bbox_xywh is None:
             continue
@@ -74,9 +74,9 @@ def _extract_track_frames(vs: VideoSpecies | None, payload: dict[str, Any]) -> l
             t_val = None
         out.append(
             {
-                't': t_val,
-                'bbox': bbox_xywh,
-                'bbox_xyxy': bbox_raw,
+                "t": t_val,
+                "bbox": bbox_xywh,
+                "bbox_xyxy": bbox_raw,
             }
         )
     return out
@@ -360,16 +360,15 @@ def list_cases(*, status: str | None = None, limit: int = 100, with_media_only: 
     for case, vs, species, video, bird_profile in rows:
         payload = _parse_payload(case.payload_json)
         track_frames = _extract_track_frames(vs, payload)
-        bbox = track_frames[0].get('bbox') if track_frames else None
+        bbox = track_frames[0].get("bbox") if track_frames else None
         pre_approved = False
         if case.status == "pending":
             conf = float(case.confidence or 0.0)
             beh_conf = float(getattr(video, "behavior_confidence", 0.0) or 0.0) if video else 0.0
             pre_approved = conf >= 0.95 or beh_conf >= 0.95
         suggested_species = species.name if species else None
-        suggested_behavior = (
-            (getattr(video, "behavior_label", None) if video else None)
-            or (getattr(video, "behavior_shadow_label", None) if video else None)
+        suggested_behavior = (getattr(video, "behavior_label", None) if video else None) or (
+            getattr(video, "behavior_shadow_label", None) if video else None
         )
         item = {
             "id": int(case.id),
@@ -406,15 +405,11 @@ def list_cases(*, status: str | None = None, limit: int = 100, with_media_only: 
         }
         if with_media_only:
             has_media = (
-                bool(item["video_stream_url"])
-                and bool(item["track_frames"])
-                and _video_file_exists(item["video_path"])
+                bool(item["video_stream_url"]) and bool(item["track_frames"]) and _video_file_exists(item["video_path"])
             )
             if not has_media:
                 continue
-        items.append(
-            item
-        )
+        items.append(item)
     return {"items": items, "count": len(items)}
 
 

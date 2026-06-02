@@ -130,9 +130,7 @@ class OpenCVMotionDetector:
         self.morphology_open_iterations = max(0, int(morphology_open_iterations or 0))
         self._consecutive_motion_hits = 0
         self._pending_trigger = False
-        self._clahe = (
-            cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)) if self.improve_contrast else None
-        )
+        self._clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8)) if self.improve_contrast else None
         self._mog2_history = max(30, int(mog2_history or 300))
         self._mog2_var_threshold = max(4.0, float(mog2_var_threshold))
         self._mog2_detect_shadows = bool(mog2_detect_shadows)
@@ -228,15 +226,11 @@ class OpenCVMotionDetector:
         if "mog2_history" in opencv_cfg:
             self._mog2_history = max(30, int(opencv_cfg.get("mog2_history") or self._mog2_history))
         if "mog2_var_threshold" in opencv_cfg:
-            self._mog2_var_threshold = max(
-                4.0, float(opencv_cfg.get("mog2_var_threshold") or self._mog2_var_threshold)
-            )
+            self._mog2_var_threshold = max(4.0, float(opencv_cfg.get("mog2_var_threshold") or self._mog2_var_threshold))
         if "mog2_detect_shadows" in opencv_cfg:
             self._mog2_detect_shadows = bool(opencv_cfg.get("mog2_detect_shadows"))
         if "mog2_min_contour_area" in opencv_cfg:
-            self.mog2_min_contour_area = int(
-                opencv_cfg.get("mog2_min_contour_area") or self.mog2_min_contour_area
-            )
+            self.mog2_min_contour_area = int(opencv_cfg.get("mog2_min_contour_area") or self.mog2_min_contour_area)
         if "mog2_min_motion_pixel_fraction" in opencv_cfg:
             self.mog2_min_motion_pixel_fraction = float(
                 opencv_cfg.get("mog2_min_motion_pixel_fraction") or self.mog2_min_motion_pixel_fraction
@@ -275,9 +269,7 @@ class OpenCVMotionDetector:
             motion_pixel_fraction=motion_frac,
             max_contour_area=max_area,
             has_contour_motion=has_motion,
-            motion_contour_polygons=motion_contour_polygons_normalized(
-                contours, overlay_min_area, fh, fw
-            ),
+            motion_contour_polygons=motion_contour_polygons_normalized(contours, overlay_min_area, fh, fw),
         )
 
     def _polygons_for_overlay(self, analysis: OpenCVMotionAnalysis) -> list[list[list[float]]]:
@@ -423,8 +415,7 @@ class OpenCVMotionDetector:
         self._publish_live_overlay(analysis, profile=profile)
         if self._suppressed_static_total <= 5 or self._suppressed_static_total % 120 == 0:
             self.logger.debug(
-                "OpenCV motion suppressed: profile=%s reason=%s "
-                "rejects=%s accepts=%s",
+                "OpenCV motion suppressed: profile=%s reason=%s rejects=%s accepts=%s",
                 profile,
                 decision.reason,
                 dict(self._reject_reasons),

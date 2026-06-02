@@ -61,9 +61,7 @@ def _seed_semantic_case(app):
 
 def test_expert_queue_confirm_removes_item(client, app):
     ctx = _seed_semantic_case(app)
-    before = client.get(
-        f"/api/ui/unknowns?queue=expert&start_time={ctx['start']}&end_time={ctx['end']}&limit=50"
-    )
+    before = client.get(f"/api/ui/unknowns?queue=expert&start_time={ctx['start']}&end_time={ctx['end']}&limit=50")
     assert before.status_code == 200, before.get_data(as_text=True)
     ids_before = {int(row["id"]) for row in before.get_json()}
     assert ctx["detection_id"] in ids_before
@@ -74,9 +72,7 @@ def test_expert_queue_confirm_removes_item(client, app):
     )
     assert confirm.status_code == 200, confirm.get_data(as_text=True)
 
-    after = client.get(
-        f"/api/ui/unknowns?queue=expert&start_time={ctx['start']}&end_time={ctx['end']}&limit=50"
-    )
+    after = client.get(f"/api/ui/unknowns?queue=expert&start_time={ctx['start']}&end_time={ctx['end']}&limit=50")
     assert after.status_code == 200, after.get_data(as_text=True)
     ids_after = {int(row["id"]) for row in after.get_json()}
     assert ctx["detection_id"] not in ids_after

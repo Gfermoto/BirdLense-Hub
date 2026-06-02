@@ -110,12 +110,7 @@ class SessionStateRepository:
                 )
                 """
             )
-            cols = {
-                str(r["name"])
-                for r in con.execute(
-                    "PRAGMA table_info(session_runtime_metrics)"
-                ).fetchall()
-            }
+            cols = {str(r["name"]) for r in con.execute("PRAGMA table_info(session_runtime_metrics)").fetchall()}
             if "trigger_to_first_bbox_latency_s" not in cols:
                 con.execute(
                     """
@@ -348,7 +343,7 @@ class SessionStateRepository:
             return int(cur.lastrowid)
 
     def recent_blind_sessions(self, *, camera_id: str | None, limit: int = 6) -> list[sqlite3.Row]:
-        cam = (str(camera_id or "").strip() or None)
+        cam = str(camera_id or "").strip() or None
         where = "WHERE camera_id IS NULL OR camera_id = ?" if cam is None else "WHERE camera_id = ?"
         arg = (None,) if cam is None else (cam,)
         with self._connect() as con:
@@ -372,7 +367,7 @@ class SessionStateRepository:
         event_type: str,
         camera_id: str | None,
     ) -> sqlite3.Row | None:
-        cam = (str(camera_id or "").strip() or None)
+        cam = str(camera_id or "").strip() or None
         where = "event_type = ?"
         params: list[Any] = [str(event_type).strip()]
         if cam is not None:

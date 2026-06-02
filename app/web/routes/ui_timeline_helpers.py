@@ -17,11 +17,7 @@ def _visit_has_favorite_active_video(visit) -> bool:
     """Есть ли у визита связанный ролик с favorite и без soft-delete."""
     for vs in visit.video_species or []:
         vid = getattr(vs, "video", None)
-        if (
-            vid is not None
-            and bool(getattr(vid, "favorite", False))
-            and getattr(vid, "deleted_at", None) is None
-        ):
+        if vid is not None and bool(getattr(vid, "favorite", False)) and getattr(vid, "deleted_at", None) is None:
             return True
     return False
 
@@ -88,9 +84,7 @@ def build_merged_timeline_items(
         .join(VideoSpecies)
         .join(Video)
         .options(
-            joinedload(SpeciesVisit.video_species).joinedload(
-                VideoSpecies.video
-            ),
+            joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
             joinedload(SpeciesVisit.species),
         )
         .filter(
@@ -110,11 +104,7 @@ def build_merged_timeline_items(
             vid = d.get("video_id")
             if vid is not None:
                 video_ids_in_visits.add(int(vid))
-    fallback_species = (
-        session.query(Species)
-        .filter(Species.name == GENERIC_BIRD_SPECIES)
-        .first()
-    )
+    fallback_species = session.query(Species).filter(Species.name == GENERIC_BIRD_SPECIES).first()
     uq = (
         session.query(Video)
         .options(
@@ -130,38 +120,23 @@ def build_merged_timeline_items(
         uq = uq.filter(Video.favorite.is_(True))
     unlinked_videos = uq.order_by(Video.start_time.desc()).all()
     unlinked_payloads = [
-        format_unlinked_video_for_timeline(
-            v, fallback_species=fallback_species
-        )
+        format_unlinked_video_for_timeline(v, fallback_species=fallback_species)
         for v in unlinked_videos
         if v.id not in video_ids_in_visits
     ]
     merged = visit_payloads + unlinked_payloads
     merged.sort(key=_timeline_entry_sort_key, reverse=True)
     if trigger_source == "all":
-        active = {
-            str(x or "").strip().lower()
-            for x in (active_trigger_sources or set())
-            if str(x or "").strip()
-        }
+        active = {str(x or "").strip().lower() for x in (active_trigger_sources or set()) if str(x or "").strip()}
         if active:
-            merged = [
-                item
-                for item in merged
-                if str(item.get("trigger_source") or "").strip().lower()
-                in active
-            ]
+            merged = [item for item in merged if str(item.get("trigger_source") or "").strip().lower() in active]
     else:
-        merged = [
-            item
-            for item in merged
-            if _timeline_item_matches_trigger(item, trigger_source)
-        ]
+        merged = [item for item in merged if _timeline_item_matches_trigger(item, trigger_source)]
     total = len(merged)
     if limit is not None:
         off = max(0, int(offset or 0))
         lim = max(1, min(int(limit), 500))
-        page = merged[off:off + lim]
+        page = merged[off : off + lim]
         return {
             "items": page,
             "total": total,

@@ -161,7 +161,5 @@ def test_bird_profiles_link_and_semantic_queue(client, app):
     assert semantic_resp.get_json()["required"] is True
 
     now_ts = int(datetime.now(timezone.utc).timestamp())
-    queue = client.get(
-        f"/api/ui/unknowns?queue=expert&start_time={now_ts - 7200}&end_time={now_ts}&limit=50"
-    )
+    queue = client.get(f"/api/ui/unknowns?queue=expert&start_time={now_ts - 7200}&end_time={now_ts}&limit=50")
     assert queue.status_code == 200, queue.get_data(as_text=True)

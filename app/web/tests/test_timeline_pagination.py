@@ -17,9 +17,7 @@ def test_timeline_pagination_envelope(app):
 
         start = datetime(2099, 1, 1, tzinfo=timezone.utc)
         end = start + timedelta(hours=23)
-        out = build_merged_timeline_items(
-            db.session, start, end, limit=10, offset=0
-        )
+        out = build_merged_timeline_items(db.session, start, end, limit=10, offset=0)
         assert isinstance(out, dict)
         assert "items" in out
         assert "total" in out
@@ -42,12 +40,7 @@ def test_timeline_trigger_filter_matcher():
 
 def test_infer_trigger_source_prefers_explicit_video_trigger():
     detections = [{"detection_provider": "yolo", "source": "video"}]
-    assert (
-        _infer_trigger_source_from_detections(
-            detections, preferred_trigger="frigate"
-        )
-        == "frigate"
-    )
+    assert _infer_trigger_source_from_detections(detections, preferred_trigger="frigate") == "frigate"
 
 
 def test_infer_trigger_source_does_not_map_yolo_to_opencv():

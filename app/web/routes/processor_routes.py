@@ -146,8 +146,7 @@ def _enforce_video_bbox_track_contract(species_list: list[dict]) -> tuple[list[d
         source = str((row or {}).get("source") or "").strip().lower()
         provider = str((row or {}).get("detection_provider") or "").strip().lower()
         require_contract = source == "video" and (
-            provider in providers_requiring_frames
-            or bool((row or {}).get("yolo_track_present"))
+            provider in providers_requiring_frames or bool((row or {}).get("yolo_track_present"))
         )
         if not require_contract:
             kept.append(row)
@@ -161,11 +160,7 @@ def _enforce_video_bbox_track_contract(species_list: list[dict]) -> tuple[list[d
         if not isinstance(frames, list) or not frames:
             stats["dropped_missing_frames"] += 1
             continue
-        valid_frames = [
-            fr
-            for fr in frames
-            if isinstance(fr, dict) and _is_valid_norm_bbox(fr.get("bbox"))
-        ]
+        valid_frames = [fr for fr in frames if isinstance(fr, dict) and _is_valid_norm_bbox(fr.get("bbox"))]
         if not valid_frames:
             stats["dropped_empty_bbox"] += 1
             continue
@@ -292,22 +287,16 @@ def register_routes(app):
         if prep[0] is False:
             return prep[1], prep[2]
         pv = prep[1]
-        pruned_species_list, prune_stats = _enforce_video_bbox_track_contract(
-            pv.species_list
-        )
+        pruned_species_list, prune_stats = _enforce_video_bbox_track_contract(pv.species_list)
         timing.lap("contract_ms")
         if not pruned_species_list:
             return {
-                "error": (
-                    "No valid video detections after bbox/track contract "
-                    "validation"
-                ),
+                "error": ("No valid video detections after bbox/track contract validation"),
                 "reason": "video_bbox_track_contract_empty",
             }, 400
         if any(int(v or 0) > 0 for v in prune_stats.values()):
             app.logger.warning(
-                "processor_ingest pruned invalid video rows: "
-                "missing_frames=%s empty_bbox=%s pruned_frames=%s",
+                "processor_ingest pruned invalid video rows: missing_frames=%s empty_bbox=%s pruned_frames=%s",
                 int(prune_stats.get("dropped_missing_frames") or 0),
                 int(prune_stats.get("dropped_empty_bbox") or 0),
                 int(prune_stats.get("pruned_invalid_bbox_frames") or 0),
@@ -317,15 +306,9 @@ def register_routes(app):
                 {
                     "reason": "video_bbox_track_contract_pruned",
                     "video_path": str(pv.video_path or "").strip(),
-                    "dropped_missing_frames": int(
-                        prune_stats.get("dropped_missing_frames") or 0
-                    ),
-                    "dropped_empty_bbox": int(
-                        prune_stats.get("dropped_empty_bbox") or 0
-                    ),
-                    "pruned_invalid_bbox_frames": int(
-                        prune_stats.get("pruned_invalid_bbox_frames") or 0
-                    ),
+                    "dropped_missing_frames": int(prune_stats.get("dropped_missing_frames") or 0),
+                    "dropped_empty_bbox": int(prune_stats.get("dropped_empty_bbox") or 0),
+                    "pruned_invalid_bbox_frames": int(prune_stats.get("pruned_invalid_bbox_frames") or 0),
                 },
             )
         clip_key = _build_clip_idempotency_key(
@@ -376,9 +359,7 @@ def register_routes(app):
             raw_trigger_source = str(data.get("trigger_source") or "").strip().lower()
             inferred_trigger_source = None
             if not raw_trigger_source:
-                inferred = _infer_trigger_source_from_detections(
-                    pruned_species_list
-                )
+                inferred = _infer_trigger_source_from_detections(pruned_species_list)
                 if inferred in {
                     "opencv",
                     "frigate",
@@ -450,15 +431,14 @@ def register_routes(app):
             timing.lap("commit_ms")
             bust_all_api_caches()
             if bool(app_config.get("experimental.active_learning_auto_mine_enabled", True)):
+
                 def _mine_hard_examples_async() -> None:
                     try:
                         mine_hard_examples(
                             lookback_hours=int(
                                 app_config.get("experimental.active_learning_auto_mine_lookback_hours") or 6
                             ),
-                            max_rows=int(
-                                app_config.get("experimental.active_learning_auto_mine_max_rows") or 200
-                            ),
+                            max_rows=int(app_config.get("experimental.active_learning_auto_mine_max_rows") or 200),
                             blind_score_threshold=float(
                                 app_config.get("experimental.active_learning_blind_score_threshold") or 0.5
                             ),

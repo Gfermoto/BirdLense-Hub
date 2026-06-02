@@ -316,9 +316,7 @@ def register_ui_corrections_dataset_routes(app):
             )
         else:
             return {
-                "error": (
-                    "species_id, individual_nickname, bird_profile_id or semantic_review_required is required"
-                )
+                "error": ("species_id, individual_nickname, bird_profile_id or semantic_review_required is required")
             }, 400
         if err:
             code = 404

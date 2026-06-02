@@ -3397,10 +3397,7 @@ class TestConfigAudit:
         assert "processor.species_confidence_overrides.Bird" not in data["unknown_keys"]
         assert "processor.camera_overrides.BirdBox.min_box_size_px" not in data["unknown_keys"]
         assert "processor.adaptive_profiles.night.overrides.max_box_area_norm" not in data["unknown_keys"]
-        assert (
-            "processor.camera_overrides.BirdBox.definitely_unknown_camera_override_key"
-            in data["unknown_keys"]
-        )
+        assert "processor.camera_overrides.BirdBox.definitely_unknown_camera_override_key" in data["unknown_keys"]
         assert (
             "processor.adaptive_profiles.night.overrides.definitely_unknown_profile_override_key"
             in data["unknown_keys"]

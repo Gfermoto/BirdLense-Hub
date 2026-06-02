@@ -117,12 +117,8 @@ class ScoringEngineConfig:
             static_phantom_square_aspect_max=_parse_float(
                 runtime_cfg, "processor.scoring_static_phantom_square_aspect_max", 1.22
             ),
-            static_phantom_max_conf=_parse_float(
-                runtime_cfg, "processor.scoring_static_phantom_max_conf", 0.52
-            ),
-            relaxed_scoring_min_confidence=_parse_float(
-                runtime_cfg, "processor.scoring_relaxed_min_confidence", 0.08
-            ),
+            static_phantom_max_conf=_parse_float(runtime_cfg, "processor.scoring_static_phantom_max_conf", 0.52),
+            relaxed_scoring_min_confidence=_parse_float(runtime_cfg, "processor.scoring_relaxed_min_confidence", 0.08),
             scene=SceneAdaptiveConfig.from_runtime_cfg(runtime_cfg),
         )
 
@@ -391,11 +387,7 @@ class ScoringEngine:
                 "final_score": decision.breakdown.final_score,
                 "final_decision": decision.zone.value,
                 "reject_reason": decision.reject_reason,
-                "reason_code": (
-                    str(decision.reject_reason).split("(", 1)[0]
-                    if decision.reject_reason
-                    else "accepted"
-                ),
+                "reason_code": (str(decision.reject_reason).split("(", 1)[0] if decision.reject_reason else "accepted"),
                 "box_area_norm": float(box.get("box_area_norm") or 0.0),
                 "low_threshold": self._calibration.low_threshold,
                 "high_threshold": self._calibration.high_threshold,
@@ -440,7 +432,5 @@ class ScoringEngine:
                 self.last_decisions,
                 stats=self.last_stats,
             )
-            get_scoring_telemetry().record_calibration(
-                self._calibration.snapshot()
-            )
+            get_scoring_telemetry().record_calibration(self._calibration.snapshot())
         return kept

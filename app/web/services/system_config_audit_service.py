@@ -9,18 +9,16 @@ import yaml
 
 import data_paths
 from app_config.scales_config import normalize_scales_source, scales_source_uses_mqtt
+from app_config.deprecated_keys import DEPRECATED_USER_CONFIG_KEYS
 from app_config.trigger_config import (
     format_motion_source_summary,
     get_active_trigger_names,
     normalize_transport_source,
 )
 
-# Совпадает с `integrations.scales.mqtt_topic_prefix` в default_config и примером `esphome/bird-feeder-scale.yaml`.
 DOCUMENTED_SCALES_MQTT_PREFIX = "birdlense/scale"
 
 _log = logging.getLogger(__name__)
-
-from app_config.deprecated_keys import DEPRECATED_USER_CONFIG_KEYS
 
 TERMINAL_CONFIG_MAP_KEYS = frozenset(
     {
@@ -40,9 +38,7 @@ IGNORED_CONFIG_AUDIT_KEYS = frozenset(
 )
 
 # Ветки с динамическими leaf-ключами: audit не должен помечать их как unknown.
-IGNORED_CONFIG_AUDIT_PREFIXES = (
-    "processor.camera_overrides.",
-)
+IGNORED_CONFIG_AUDIT_PREFIXES = ("processor.camera_overrides.",)
 
 
 def _is_known_dynamic_config_key(path: str, *, default_keys: set[str]) -> bool:
@@ -539,11 +535,7 @@ def build_system_config_audit_payload(
     )
     recall_tuning, recall_hints, recall_blocking = _recall_audit(app_config_get)
     scales_tuning, scales_warnings = _scales_mqtt_audit(app_config_get, user_cfg)
-    scales_blocking = [
-        w
-        for w in scales_warnings
-        if "mqtt.broker is empty" in w or "no weight MQTT topic" in w
-    ]
+    scales_blocking = [w for w in scales_warnings if "mqtt.broker is empty" in w or "no weight MQTT topic" in w]
     combined_warnings = [*recall_blocking, *scales_blocking]
     processor_runtime_hints = _processor_runtime_hints(app_config_get)
     preflight = _preflight_config_safety(app_config_get)

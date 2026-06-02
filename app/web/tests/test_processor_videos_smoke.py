@@ -186,11 +186,7 @@ def test_processor_videos_prunes_invalid_yolo_rows_but_keeps_valid(
     with app.app_context():
         assert db.session.query(Video).count() == 1
         assert db.session.query(VideoSpecies).count() == 1
-        species_name = (
-            db.session.query(Species.name)
-            .join(VideoSpecies, VideoSpecies.species_id == Species.id)
-            .scalar()
-        )
+        species_name = db.session.query(Species.name).join(VideoSpecies, VideoSpecies.species_id == Species.id).scalar()
         assert species_name == f"Pytest Valid {token}"
 
 

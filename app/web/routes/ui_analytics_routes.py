@@ -18,6 +18,7 @@ from routes.ui_route_constants import CACHE_ANALYTICS_SEC
 
 _analytics_cache_lock = threading.Lock()
 
+
 def register_ui_analytics_routes(app):
     def _cached_payload(key: str, builder):
         hit, cached = cache_get(key)
@@ -39,7 +40,7 @@ def register_ui_analytics_routes(app):
             limit = int(request.args.get("limit", 250))
         except (TypeError, ValueError):
             limit = 250
-        key = f'analytics:traj:v1:{start}:{end}:{limit}'
+        key = f"analytics:traj:v1:{start}:{end}:{limit}"
         payload = _cached_payload(
             key,
             lambda: fetch_trajectories(start_iso=start, end_iso=end, limit=limit),
@@ -54,7 +55,7 @@ def register_ui_analytics_routes(app):
             grid = int(request.args.get("grid", 12))
         except (TypeError, ValueError):
             grid = 12
-        key = f'analytics:heat:v1:{start}:{end}:{grid}'
+        key = f"analytics:heat:v1:{start}:{end}:{grid}"
         payload = _cached_payload(
             key,
             lambda: fetch_heatmap(start_iso=start, end_iso=end, grid=grid),
@@ -66,7 +67,7 @@ def register_ui_analytics_routes(app):
         start = request.args.get("start_time")
         end = request.args.get("end_time")
         bucket = request.args.get("bucket", "hour")
-        key = f'analytics:visits:v1:{start}:{end}:{bucket}'
+        key = f"analytics:visits:v1:{start}:{end}:{bucket}"
         payload = _cached_payload(
             key,
             lambda: fetch_visits_timeseries(start_iso=start, end_iso=end, bucket=bucket),
@@ -93,7 +94,7 @@ def register_ui_analytics_routes(app):
             hours = int(request.args.get("hours", 24))
         except (TypeError, ValueError):
             hours = 24
-        key = f'analytics:quality:v1:{hours}'
+        key = f"analytics:quality:v1:{hours}"
         payload = _cached_payload(
             key,
             lambda: fetch_quality_health(hours=hours),

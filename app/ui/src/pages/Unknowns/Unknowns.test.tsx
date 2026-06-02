@@ -40,6 +40,6 @@ describe('UnknownCard', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Low confidence')).toBeInTheDocument();
+    expect(screen.getByText('Model unsure about species')).toBeInTheDocument();
   });
 });

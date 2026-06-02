@@ -101,10 +101,7 @@ def merge_canonical_name_collisions(
             if int(source.id) == int(target.id):
                 continue
             canon = normalize_catalog_display_name(source.name or "", mapping) or key
-            detail = (
-                f"collision merge: {source.id} {source.name!r} → {target.id} {target.name!r} "
-                f"(canon={canon!r})"
-            )
+            detail = f"collision merge: {source.id} {source.name!r} → {target.id} {target.name!r} (canon={canon!r})"
             report["details"].append(detail)
             report["merged"] += 1
             if report["merged"] > cap:

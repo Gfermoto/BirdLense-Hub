@@ -67,9 +67,7 @@ def _evaluate_detector_health(
         "yolo_blind_alert": bool(alert),
         "yolo_blind_phase": phase,
         "yolo_frames_with_tracks_session": int(gauges.get("yolo_frames_with_tracks_session") or 0),
-        "session_extended_by_frigate_only": int(
-            gauges.get("session_extended_by_frigate_only_session") or 0
-        ),
+        "session_extended_by_frigate_only": int(gauges.get("session_extended_by_frigate_only_session") or 0),
         "stream_probe_width": gauges.get("stream_probe_width"),
         "stream_probe_height": gauges.get("stream_probe_height"),
         "stream_probe_fps": gauges.get("stream_probe_fps"),
@@ -111,9 +109,7 @@ def build_yolo_detector_health_payload(*, hours: int = 24) -> dict[str, Any]:
             "yolo_blind_status": gauges.get("yolo_blind_status"),
             "yolo_blind_phase_live": gauges.get("yolo_blind_phase_live"),
             "yolo_frames_with_tracks_session": gauges.get("yolo_frames_with_tracks_session"),
-            "session_extended_by_frigate_only_session": gauges.get(
-                "session_extended_by_frigate_only_session"
-            ),
+            "session_extended_by_frigate_only_session": gauges.get("session_extended_by_frigate_only_session"),
             "yolo_blind_frigate_only_seconds": gauges.get("yolo_blind_frigate_only_seconds"),
             "stream_probe_width": gauges.get("stream_probe_width"),
             "stream_probe_height": gauges.get("stream_probe_height"),
@@ -143,4 +139,3 @@ def _safe_config_get(key: str) -> Any:
         return app_config.get(key)
     except Exception:
         return None
-

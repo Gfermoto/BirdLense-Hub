@@ -146,9 +146,7 @@ def test_domain_health_includes_lifecycle_and_regression_metrics(app, client):
         now = datetime.now(timezone.utc)
         prev_trace = {
             "video_id": 9001,
-            "persisted_tracks": [
-                {"track_id": 1, "species_name": "Bird", "confidence": 0.9}
-            ],
+            "persisted_tracks": [{"track_id": 1, "species_name": "Bird", "confidence": 0.9}],
             "rejected_tracks": [],
         }
         current_trace = {

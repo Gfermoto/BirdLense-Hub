@@ -45,9 +45,7 @@ class OpenCVMultiCameraMotionDetector:
         for camera_id, detector in self._detectors:
             if camera_id != self._triggered_camera:
                 continue
-            fn = getattr(detector, "get_opencv_diagnostics", None) or getattr(
-                detector, "diagnostics", None
-            )
+            fn = getattr(detector, "get_opencv_diagnostics", None) or getattr(detector, "diagnostics", None)
             if callable(fn):
                 data = fn()
                 if isinstance(data, dict):

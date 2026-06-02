@@ -167,9 +167,7 @@ class MotionRecordingSession:
         recent_frigate = getattr(self.motion_detector, "has_recent_frigate_activity", None)
         if callable(recent_frigate):
             try:
-                return bool(
-                    recent_frigate(camera=camera_id, max_age_seconds=frigate_hold_seconds)
-                )
+                return bool(recent_frigate(camera=camera_id, max_age_seconds=frigate_hold_seconds))
             except Exception:
                 pass
         aggregator_recent = getattr(self.mqtt_aggregator, "has_recent_frigate_activity", None)
@@ -380,8 +378,7 @@ class MotionRecordingSession:
                 frigate_hold_seconds = 0.0
             try:
                 max_frigate_only_extension_frames = int(
-                    app_config.get("processor.frigate_only_extension_max_frames")
-                    or 0
+                    app_config.get("processor.frigate_only_extension_max_frames") or 0
                 )
             except (TypeError, ValueError):
                 max_frigate_only_extension_frames = 0
@@ -454,18 +451,12 @@ class MotionRecordingSession:
                 raw_boxes_local = _raw_boxes_from_stats(local_stats)
                 if not count_frame_metrics:
                     return raw_boxes_local
-                if (
-                    raw_boxes_local > 0
-                    and runtime_signals.get("trigger_to_first_bbox_wall_s") is None
-                ):
+                if raw_boxes_local > 0 and runtime_signals.get("trigger_to_first_bbox_wall_s") is None:
                     runtime_signals["trigger_to_first_bbox_wall_s"] = round(
                         max(0.0, time.perf_counter() - session_trigger_perf),
                         6,
                     )
-                if (
-                    local_stats.get("yolo_track_found")
-                    and runtime_signals.get("trigger_to_first_track_wall_s") is None
-                ):
+                if local_stats.get("yolo_track_found") and runtime_signals.get("trigger_to_first_track_wall_s") is None:
                     runtime_signals["trigger_to_first_track_wall_s"] = round(
                         max(0.0, time.perf_counter() - session_trigger_perf),
                         6,
@@ -492,6 +483,7 @@ class MotionRecordingSession:
                 if local_stats.get("light_gate_blocked"):
                     runtime_signals["low_light_blocked_frames"] += 1
                 return raw_boxes_local
+
             frame_n = 0
             consecutive_none_frames = 0
             while True:
@@ -573,9 +565,7 @@ class MotionRecordingSession:
                 if camera_id:
                     from motion_detectors.opencv_live_overlay import set_yolo_live_overlay
 
-                    live_polygons = list(
-                        getattr(self.frame_processor, "live_detector_polygons", None) or []
-                    )
+                    live_polygons = list(getattr(self.frame_processor, "live_detector_polygons", None) or [])
                     set_yolo_live_overlay(
                         camera_id,
                         {
@@ -608,15 +598,13 @@ class MotionRecordingSession:
                     runtime_signals["session_extended_by_frigate_only"] += 1
                     if (
                         max_frigate_only_extension_frames > 0
-                        and runtime_signals["session_extended_by_frigate_only"]
-                        > max_frigate_only_extension_frames
+                        and runtime_signals["session_extended_by_frigate_only"] > max_frigate_only_extension_frames
                     ):
                         runtime_signals["session_frigate_only_extension_guard_drops"] += 1
                         has_detections = False
                         frigate_only_extension = False
                         logger.info(
-                            "recording_session: frigate-only extension guard hit "
-                            "(camera=%s, max_frames=%s)",
+                            "recording_session: frigate-only extension guard hit (camera=%s, max_frames=%s)",
                             camera_id or "_default",
                             max_frigate_only_extension_frames,
                         )
@@ -707,12 +695,8 @@ class MotionRecordingSession:
                 set_gauge("last_session_runtime_profile", dominant_runtime_profile)
             try:
                 stability = self.frame_processor.get_tracking_stability_stats()
-                runtime_signals["track_id_switches_count"] = int(
-                    stability.get("track_id_switches_count") or 0
-                )
-                runtime_signals["avg_track_duration_sec"] = float(
-                    stability.get("avg_track_duration_sec") or 0.0
-                )
+                runtime_signals["track_id_switches_count"] = int(stability.get("track_id_switches_count") or 0)
+                runtime_signals["avg_track_duration_sec"] = float(stability.get("avg_track_duration_sec") or 0.0)
             except Exception:
                 logging.debug("track stability summary failed", exc_info=True)
             finalize_kwargs = {
@@ -755,14 +739,10 @@ class MotionRecordingSession:
                 finalize_kwargs["recording_context"]["runtime_signals"]["opencv_trigger_diagnostics"] = opencv_diag
             if self.finalize_worker is not None:
                 if self.finalize_worker.enqueue(finalize_kwargs):
-                    logger.info(
-                        "recording_session: finalize task enqueued (async worker mode)"
-                    )
+                    logger.info("recording_session: finalize task enqueued (async worker mode)")
                 else:
                     # Backpressure fallback: never drop finalized clip; run sync as safety net.
-                    logger.warning(
-                        "recording_session: finalize queue full, fallback to synchronous finalize"
-                    )
+                    logger.warning("recording_session: finalize queue full, fallback to synchronous finalize")
                     finalize_motion_recording(**finalize_kwargs)
             else:
                 finalize_motion_recording(**finalize_kwargs)

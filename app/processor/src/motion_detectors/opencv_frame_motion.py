@@ -109,9 +109,7 @@ def analyze_frame_pair(
         motion_pixel_fraction=motion_frac,
         max_contour_area=max_area,
         has_contour_motion=has_motion,
-        motion_contour_polygons=motion_contour_polygons_normalized(
-            contours, overlay_min_area, fh, fw
-        ),
+        motion_contour_polygons=motion_contour_polygons_normalized(contours, overlay_min_area, fh, fw),
     )
 
 
@@ -124,13 +122,13 @@ def should_trigger_recording(
     max_contour_area_frac: float = 0.38,
 ) -> bool:
     """
-  Decide whether OpenCV motion should start a recording session.
+    Decide whether OpenCV motion should start a recording session.
 
-  - Rejects compression/AE flicker: low global diff and tiny changed-pixel fraction.
-  - Rejects dominant static structure (feeder body / machine): contour covers a large
-    fraction of the frame with no global scene motion.
-  - Accepts localized motion (typical bird) or whole-frame motion (wind, visitor).
-  """
+    - Rejects compression/AE flicker: low global diff and tiny changed-pixel fraction.
+    - Rejects dominant static structure (feeder body / machine): contour covers a large
+      fraction of the frame with no global scene motion.
+    - Accepts localized motion (typical bird) or whole-frame motion (wind, visitor).
+    """
     if not analysis.has_contour_motion:
         return False
     area = max(1, int(frame_area))

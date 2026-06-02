@@ -47,7 +47,9 @@ def resolve_inference_lores_size(app_config: Mapping[str, Any]) -> LoResSize | N
     try:
         from pipeline_config import _cfg_get
     except ImportError:
-        _cfg_get = lambda c, k, d=None: c.get(k, d) if hasattr(c, "get") else d  # type: ignore
+
+        def _cfg_get(c, k, d=None):  # type: ignore[no-untyped-def]
+            return c.get(k, d) if hasattr(c, "get") else d
 
     wh = parse_inference_lores_wh(_cfg_get(app_config, "processor.inference_lores_wh"))
     if wh is not None:

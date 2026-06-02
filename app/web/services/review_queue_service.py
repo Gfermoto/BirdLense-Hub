@@ -121,7 +121,9 @@ def fetch_review_queue_items(
                 "source": vs.source,
                 "detection_provider": vs.detection_provider,
                 "image_url": vs.species.image_url,
-                "review_state": "semantic_review_required" if review_reason == "semantic_review_required" else "pending",
+                "review_state": "semantic_review_required"
+                if review_reason == "semantic_review_required"
+                else "pending",
                 "review_reason": review_reason,
                 "review_source": "unknowns",
                 "classifier_entropy": vs.classifier_entropy,

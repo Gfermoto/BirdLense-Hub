@@ -297,9 +297,7 @@ def test_confirm_detection_writes_confirm_feedback_and_queue(app, client):
     assert r.status_code == 200
 
     with app.app_context():
-        row = DetectionFeedbackEvent.query.order_by(
-            DetectionFeedbackEvent.id.desc()
-        ).first()
+        row = DetectionFeedbackEvent.query.order_by(DetectionFeedbackEvent.id.desc()).first()
         assert row is not None
         assert row.action == "confirm_species"
         queued = (

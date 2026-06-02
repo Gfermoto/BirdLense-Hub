@@ -75,42 +75,22 @@ class SceneAdaptiveConfig:
         return cls(
             bg_enabled=_parse_bool(runtime_cfg, "processor.background_subtraction_enabled", True),
             bg_history=max(50, _parse_int(runtime_cfg, "processor.background_subtraction_history", 400)),
-            bg_var_threshold=_parse_float(
-                runtime_cfg, "processor.background_subtraction_var_threshold", 16.0
-            ),
-            bg_detect_shadows=_parse_bool(
-                runtime_cfg, "processor.background_subtraction_detect_shadows", True
-            ),
-            bg_min_foreground_ratio=_parse_float(
-                runtime_cfg, "processor.background_subtraction_min_fg_ratio", 0.07
-            ),
-            bg_warmup_frames=max(
-                10, _parse_int(runtime_cfg, "processor.background_subtraction_warmup_frames", 45)
-            ),
-            bg_learning_rate=_parse_float(
-                runtime_cfg, "processor.background_subtraction_learning_rate", -1.0
-            ),
-            adaptive_conf_enabled=_parse_bool(
-                runtime_cfg, "processor.scene_adaptive_conf_enabled", True
-            ),
+            bg_var_threshold=_parse_float(runtime_cfg, "processor.background_subtraction_var_threshold", 16.0),
+            bg_detect_shadows=_parse_bool(runtime_cfg, "processor.background_subtraction_detect_shadows", True),
+            bg_min_foreground_ratio=_parse_float(runtime_cfg, "processor.background_subtraction_min_fg_ratio", 0.07),
+            bg_warmup_frames=max(10, _parse_int(runtime_cfg, "processor.background_subtraction_warmup_frames", 45)),
+            bg_learning_rate=_parse_float(runtime_cfg, "processor.background_subtraction_learning_rate", -1.0),
+            adaptive_conf_enabled=_parse_bool(runtime_cfg, "processor.scene_adaptive_conf_enabled", True),
             adaptive_static_global_diff_max=_parse_float(
                 runtime_cfg, "processor.scene_adaptive_static_global_diff_max", 2.0
             ),
-            adaptive_static_boost=_parse_float(
-                runtime_cfg, "processor.scene_adaptive_static_boost", 0.10
-            ),
-            adaptive_low_fg_ratio_max=_parse_float(
-                runtime_cfg, "processor.scene_adaptive_low_fg_ratio_max", 0.012
-            ),
-            adaptive_low_fg_boost=_parse_float(
-                runtime_cfg, "processor.scene_adaptive_low_fg_boost", 0.06
-            ),
+            adaptive_static_boost=_parse_float(runtime_cfg, "processor.scene_adaptive_static_boost", 0.10),
+            adaptive_low_fg_ratio_max=_parse_float(runtime_cfg, "processor.scene_adaptive_low_fg_ratio_max", 0.012),
+            adaptive_low_fg_boost=_parse_float(runtime_cfg, "processor.scene_adaptive_low_fg_boost", 0.06),
             adaptive_night_brightness_max=_parse_float(
                 runtime_cfg, "processor.scene_adaptive_night_brightness_max", 48.0
             ),
-            adaptive_night_boost=_parse_float(
-                runtime_cfg, "processor.scene_adaptive_night_boost", 0.10
-            ),
+            adaptive_night_boost=_parse_float(runtime_cfg, "processor.scene_adaptive_night_boost", 0.10),
             adaptive_conf_cap=_parse_float(runtime_cfg, "processor.scene_adaptive_conf_cap", 0.50),
         )
 
@@ -210,9 +190,7 @@ class SceneAdaptiveAnalyzer:
         roi = self._last_fg[y1:y2, x1:x2]
         return float(np.mean(roi > 0))
 
-    def background_reject_reason(
-        self, box: dict[str, Any], *, frame_shape: tuple[int, int, int]
-    ) -> str | None:
+    def background_reject_reason(self, box: dict[str, Any], *, frame_shape: tuple[int, int, int]) -> str | None:
         if not self.cfg.bg_enabled or self._mog is None:
             return None
         if not self.last_state.warmed_up:

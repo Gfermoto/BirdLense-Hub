@@ -95,4 +95,3 @@ def build_species_mapping(app_config: Any) -> dict:
     for variant, canonical in _efficientnet_id2label_mapping(app_config).items():
         merged.setdefault(variant, canonical)
     return merged
-

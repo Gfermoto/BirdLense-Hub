@@ -171,7 +171,6 @@ def probe_stream_opencv(
 
 def _measure_capture_fps(cap: Any, *, max_frames: int = 15, timeout_sec: float = 20.0) -> float:
     """Estimate FPS by decoding ``max_frames`` frames."""
-    import cv2
 
     n = max(3, int(max_frames))
     started = time.monotonic()

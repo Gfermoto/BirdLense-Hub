@@ -5,11 +5,9 @@ from __future__ import annotations
 import logging
 import os
 import re
-import threading
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
-import routes.ui_system_jobs_state as job_state
 from app_config.app_config import app_config
 from models import Species, Video, db
 from services.http_response_cache import (

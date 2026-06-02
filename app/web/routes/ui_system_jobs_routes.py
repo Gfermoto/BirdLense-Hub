@@ -50,7 +50,9 @@ def register_ui_system_jobs_routes(app) -> None:
         if job_type == "track_regen":
             if not auth_mod.admin_track_regen_access():
                 return {"error": "Access denied"}, 403
-            return start_job(app, job_type, {**pl, **{k: v for k, v in body.items() if k not in ("type", "job_type", "payload")}})
+            return start_job(
+                app, job_type, {**pl, **{k: v for k, v in body.items() if k not in ("type", "job_type", "payload")}}
+            )
 
         denied = _settings_denied()
         if denied:

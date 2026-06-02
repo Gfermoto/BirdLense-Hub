@@ -369,9 +369,7 @@ def upsert_camera_tuning_profile(
 
     if clean_overrides:
         try:
-            apply_settings_patch_and_refresh_caches(
-                {"processor": {"camera_overrides": {cam: clean_overrides}}}
-            )
+            apply_settings_patch_and_refresh_caches({"processor": {"camera_overrides": {cam: clean_overrides}}})
         except SettingsPatchValidationError as exc:
             return {"error": "Validation failed", "issues": exc.issues}, 400
     else:
