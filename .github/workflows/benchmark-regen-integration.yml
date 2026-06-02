@@ -56,8 +56,10 @@ jobs:
       - name: Free disk space (Docker image)
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
-            /usr/local/share/powershell /opt/hostedtoolcache/CodeQL || true
-          docker image prune -af || true
+            /usr/local/share/powershell /opt/hostedtoolcache/CodeQL \
+            /opt/hostedtoolcache/go /opt/hostedtoolcache/node \
+            "$AGENT_TOOLSDIRECTORY"/Python || true
+          docker system prune -af || true
           df -h
 
       - uses: actions/setup-node@v6
@@ -125,6 +127,14 @@ jobs:
           pip install -q huggingface_hub birder torch
           python3 scripts/download_birder_classifier.py --variant convnext_v2_tiny_eu-common256px
           test -f "$OV/class_labels.txt" -o -f "$OV/birdlense_manifest.json"
+
+      - name: Reclaim disk before Docker build
+        run: |
+          pip cache purge || true
+          rm -rf "$HOME/.cache/pip" /tmp/pip-* || true
+          docker builder prune -af || true
+          docker image prune -af || true
+          df -h
 
       - name: Build birdlense image
         run: docker compose build birdlense
