@@ -1459,6 +1459,598 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
     },
 
+    # SOTA Epic D batch: default_config keys added 2026-06 (Settings coverage CI).
+    "detection.bbox_iou_gate_action": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.bbox_iou_gate_enabled": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.bbox_iou_gate_min": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.one_per_species_keep_distinct_tracks": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.panic_gate_enabled": {
+        "category": "advanced",
+        "reason": "Panic gate for multi-source trigger confirmation; ops tuning.",
+        "next_step": "YAML-only or Triggers advanced panel.",
+    },
+    "detection.panic_gate_min_duration_seconds": {
+        "category": "advanced",
+        "reason": "Panic gate for multi-source trigger confirmation; ops tuning.",
+        "next_step": "YAML-only or Triggers advanced panel.",
+    },
+    "detection.panic_gate_min_frigate_events": {
+        "category": "advanced",
+        "reason": "Panic gate for multi-source trigger confirmation; ops tuning.",
+        "next_step": "YAML-only or Triggers advanced panel.",
+    },
+    "detection.strip_review_only_overlay_frames": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.weighted_arbiter_birdnet_weight": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.weighted_arbiter_classifier_weight": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.weighted_arbiter_conf_weight": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.weighted_arbiter_detector_weight": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.weighted_arbiter_enabled": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.weighted_arbiter_multicamera_weight": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.weighted_arbiter_regional_weight": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.yolo_blind_alert_seconds": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.yolo_core_anchor_max_rows": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "detection.yolo_weak_track_salvage_max_rows": {
+        "category": "advanced",
+        "reason": "Detection pipeline knob not yet in Settings UI.",
+        "next_step": "YAML-only or Processor advanced panel.",
+    },
+    "general.app_name": {
+        "category": "access-control",
+        "reason": "General access/runtime knob; YAML-focused.",
+        "next_step": "Wire to General accordion when UX revisits.",
+    },
+    "notifications.smart_alert_first_profile_sighting": {
+        "category": "advanced",
+        "reason": "Notification routing/dedup knobs not in Settings UI yet.",
+        "next_step": "Future Notifications advanced panel.",
+    },
+    "notifications.smart_alert_rare_species_list": {
+        "category": "advanced",
+        "reason": "Notification routing/dedup knobs not in Settings UI yet.",
+        "next_step": "Future Notifications advanced panel.",
+    },
+    "notifications.smart_alert_rare_species_only": {
+        "category": "advanced",
+        "reason": "Notification routing/dedup knobs not in Settings UI yet.",
+        "next_step": "Future Notifications advanced panel.",
+    },
+    "processor.adaptive_preprocess_enabled": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.bbox_parity_debug_enabled": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.bbox_parity_debug_max_frames": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.binary_rescue_enabled": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.birder_eu_min_confidence": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.birder_eu_unknown_label": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.birder_eu_variant": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.classifier_engine": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.classifier_task_queue_maxsize": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.concurrent_recording_enabled": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.detect_probe_max_frames": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.detect_probe_start_recording_on_positive": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.detect_probe_window_seconds": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.detect_scheduler_enabled": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.detect_scheduler_triggers": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.detector_native_class_labels": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.efficientnet_b2_min_confidence": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.efficientnet_b2_unknown_label": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.finalize_async_enabled": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.finalize_enqueue_timeout_ms": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.finalize_queue_maxsize": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.finalize_shutdown_grace_seconds": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.frigate_only_extension_max_frames": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.latency_budget_finalize_critical_ms": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.latency_budget_finalize_warn_ms": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.latency_budget_fusion_critical_ms": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.latency_budget_fusion_warn_ms": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.latency_budget_persist_critical_ms": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.latency_budget_persist_warn_ms": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.latency_budget_trigger_to_first_bbox_critical_s": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.latency_budget_trigger_to_first_bbox_warn_s": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.reid.candidate_cache_ttl_seconds": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.reid.hub_download_timeout_seconds": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.reid.include_embedding_payload": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.reid.inference_backend": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.reid.max_runtime_ms": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.reid_expert_queue_enabled": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.reid_gallery_duplicate_threshold_low": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.reid_gallery_enabled": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.reid_gallery_max_cluster_members": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.reid_gallery_merge_cosine_threshold": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.reid_gallery_min_track_duration_sec": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.reid_track_clustering_enabled": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.runtime_metrics_maintenance_async": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.squirrel_species_label": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.track_id_switch_iou_threshold": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.track_static_reject_enabled": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.track_static_reject_max_bbox_iou_first_last_min": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.track_static_reject_max_center_dispersion_norm": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.track_static_reject_max_relative_center_dispersion": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.track_static_reject_min_duration_sec": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.track_static_reject_min_duration_sparse_sec": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.track_static_reject_min_frames": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.track_static_reject_min_frames_sparse": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.tracker_adaptive_low_fps_enabled": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.tracker_adaptive_max_buffer": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.tracker_adaptive_min_buffer": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.tracker_fps_profiles.gt_15": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.tracker_fps_profiles.lte_10": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.tracker_fps_profiles.lte_15": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.tracker_fps_profiles.lte_5": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.tracker_fps_profiles.lte_7": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.tracker_low_fps_threshold": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.tracker_remember_seconds": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.trigger_moratorium_seconds": {
+        "category": "advanced",
+        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
+        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "species.catalog_allowlist_extra": {
+        "category": "yaml-only",
+        "reason": "Species catalog probe/filter paths; deployment-specific.",
+        "next_step": "Keep in user_config.yaml.",
+    },
+    "species.catalog_allowlist_follow_classifier_engine": {
+        "category": "yaml-only",
+        "reason": "Species catalog probe/filter paths; deployment-specific.",
+        "next_step": "Keep in user_config.yaml.",
+    },
+    "species.catalog_allowlist_use_active_classifier": {
+        "category": "yaml-only",
+        "reason": "Species catalog probe/filter paths; deployment-specific.",
+        "next_step": "Keep in user_config.yaml.",
+    },
+    "species.catalog_filter_off_allowlist": {
+        "category": "yaml-only",
+        "reason": "Species catalog probe/filter paths; deployment-specific.",
+        "next_step": "Keep in user_config.yaml.",
+    },
+    "species.catalog_probe_audio_on_coverage": {
+        "category": "yaml-only",
+        "reason": "Species catalog probe/filter paths; deployment-specific.",
+        "next_step": "Keep in user_config.yaml.",
+    },
+    "triggers.frigate.trigger_on_update": {
+        "category": "advanced",
+        "reason": "Config-level key not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Settings panel.",
+    },
+    "triggers.motion_sensor.pir_pin": {
+        "category": "advanced",
+        "reason": "Config-level key not yet exposed in Settings UI.",
+        "next_step": "YAML-only or future Settings panel.",
+    },
+    "triggers.opencv.auto_profile_enabled": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.auto_profile_night_luma_threshold": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.check_interval_seconds": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.day_diff_threshold": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.day_global_motion_mean_absdiff": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.day_max_contour_area_frac": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.day_min_contour_area": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.day_min_motion_pixel_fraction": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.mog2_history": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.mog2_min_motion_pixel_fraction": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.motion_max_side_px": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.night_diff_threshold": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.night_global_motion_mean_absdiff": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.night_max_contour_area_frac": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.night_min_contour_area": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.night_min_motion_pixel_fraction": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.smart_trigger_enabled": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "triggers.opencv.suppress_warmup_frames": {
+        "category": "advanced",
+        "reason": "OpenCV day/night smart trigger tuning; YAML or future OpenCV advanced panel.",
+        "next_step": "Expose in OpenCV section when operators tune feeder cameras.",
+    },
+    "ui.live_detector_overlay_ttl_seconds": {
+        "category": "backend-managed",
+        "reason": "Live overlay TTL/tick knobs for SSE trace fallback; tuned via default_config.",
+        "next_step": "Optional Live UI advanced panel.",
+    },
+    "ui.live_overlay_tick_seconds": {
+        "category": "backend-managed",
+        "reason": "Live overlay TTL/tick knobs for SSE trace fallback; tuned via default_config.",
+        "next_step": "Optional Live UI advanced panel.",
+    },
+    "ui.live_overlay_trace_fallback_enabled": {
+        "category": "backend-managed",
+        "reason": "Live overlay TTL/tick knobs for SSE trace fallback; tuned via default_config.",
+        "next_step": "Optional Live UI advanced panel.",
+    },
+    "ui.live_overlay_trace_fallback_ttl_seconds": {
+        "category": "backend-managed",
+        "reason": "Live overlay TTL/tick knobs for SSE trace fallback; tuned via default_config.",
+        "next_step": "Optional Live UI advanced panel.",
+    },
+    "ui.live_overlay_track_ttl_seconds": {
+        "category": "backend-managed",
+        "reason": "Live overlay TTL/tick knobs for SSE trace fallback; tuned via default_config.",
+        "next_step": "Optional Live UI advanced panel.",
+    },
+    "video.camera_slots": {
+        "category": "advanced",
+        "reason": "Dual-camera slot map (BirdBox/Forest); deployment topology.",
+        "next_step": "YAML/user_config; future Cameras section.",
+    },
+
 }
 
 # Legacy terminal keys that are still config-level (not yet exposed in Settings UI).
