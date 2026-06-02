@@ -170,6 +170,8 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
         src._capture_backend = "ffmpeg_vaapi"
         src._encoding_mode = "intel"
+        src._detect_native = False
+        src.lores_size = (640, 640)
         src._force_opencv_until_ts = time.time() + 30
         self.assertFalse(src._should_use_ffmpeg_vaapi_capture())
 

@@ -63,7 +63,7 @@ def test_gate_override_allows_release_when_exhausted():
     mod = _load_mod()
     payload = mod.evaluate_gate(
         _report(critical=3, warning=0, status_ok=False, cam_warn=4),
-        override_reason="SRE approved emergency hotfix",
+        override_reason="SRE approved emergency hotfix #529",
     )
     assert payload["budget"]["exhausted"] is True
     assert payload["gate"]["override_used"] is True

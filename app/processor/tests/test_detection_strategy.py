@@ -133,8 +133,13 @@ class _FakeClassifierModel:
         self._per_crop_probs = per_crop_probs
 
     def __call__(self, crop, verbose=False):
-        crop_key = int(crop[0, 0, 0])
-        return [_FakeClassifierResult(self.names, self._per_crop_probs[crop_key])]
+        if crop.ndim == 3:
+            sig = int(np.max(crop[:, :, 0]))
+        else:
+            sig = int(crop.reshape(-1)[0])
+        if sig not in self._per_crop_probs:
+            sig = min(self._per_crop_probs.keys(), key=lambda k: abs(k - sig))
+        return [_FakeClassifierResult(self.names, self._per_crop_probs[sig])]
 
 
 class TestDetectionStrategy(unittest.TestCase):
