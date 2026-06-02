@@ -17,9 +17,14 @@ from processor_support import start_heartbeat_daemon, start_opencv_overlay_daemo
 
 def main() -> None:
     """Запуск фонового heartbeat, сборка пайплайна и главный цикл до выхода."""
+    from api import API
     from processor_config_guard import assert_processor_config_valid
 
     assert_processor_config_valid()
+    try:
+        API().activity_log("heartbeat", {"status": "bootstrap"})
+    except Exception:
+        logging.debug("bootstrap heartbeat skipped", exc_info=True)
     args = parse_processor_args()
     ctx = build_processor_run_context(args)
     start_heartbeat_daemon()

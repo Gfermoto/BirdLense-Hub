@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+import yaml
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_path = os.path.abspath(os.path.join(current_dir, "../src"))
+sys.path.insert(0, src_path)
 
 from tracker_low_fps import (
     adaptive_match_thresh,
@@ -49,6 +57,31 @@ class TestTrackerLowFps(unittest.TestCase):
             text = Path(out).read_text(encoding="utf-8")
             self.assertIn("track_buffer:", text)
             self.assertIn("56", text)
+
+
+    def test_resolve_clamps_high_fps_tracker_when_track_conf_low(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp) / "bytetrack_highfps.yaml"
+            base.write_text(
+                "tracker_type: bytetrack\n"
+                "track_high_thresh: 0.12\n"
+                "new_track_thresh: 0.12\n"
+                "track_low_thresh: 0.06\n"
+                "match_thresh: 0.86\n"
+                "track_buffer: 30\n",
+                encoding="utf-8",
+            )
+            cfg = {
+                "processor.tracker_adaptive_low_fps_enabled": True,
+                "processor.tracker_low_fps_threshold": 10.0,
+                "processor.min_confidence_binary": 0.12,
+                "processor.inference_backend": "openvino",
+                "processor.openvino_binary_track_ultralytics_conf": 0.12,
+            }
+            out = resolve_adaptive_tracker_path(str(base), 25.0, runtime_cfg=cfg)
+            self.assertNotEqual(out, str(base))
+            doc = yaml.safe_load(Path(out).read_text(encoding="utf-8"))
+            self.assertLessEqual(float(doc["track_high_thresh"]), 0.10)
 
 
 if __name__ == "__main__":
