@@ -48,3 +48,34 @@ def test_profile_detects_finalize_bottleneck_and_warning():
     assert report["bottleneck_stage_p95"] == "finalize_duration_ms"
     assert any("finalize_duration_p95" in w for w in report["warnings"])
     assert report["by_slot_finalize_duration_ms"]["camera_1"]["n"] == 2
+
+
+def test_profile_prefers_wall_clock_first_bbox_for_kpi():
+    mod = _load_mod()
+    rows = [
+        {
+            "payload_json": (
+                '{"trigger_to_first_bbox_wall_s": 0.8, '
+                '"trigger_to_first_track_wall_s": 1.1, "camera_slot": "camera_1"}'
+            ),
+            "trigger_to_first_bbox_latency_s": 35.0,
+            "finalize_duration_ms": 900.0,
+        },
+        {
+            "payload_json": '{"trigger_to_first_bbox_wall_s": 0.6, "camera_slot": "camera_2"}',
+            "trigger_to_first_bbox_latency_s": 40.0,
+            "finalize_duration_ms": 800.0,
+        },
+    ]
+    report = mod.build_profile(
+        rows,
+        lookback_hours=24,
+        first_bbox_warn_s=2.0,
+        finalize_warn_ms=5000.0,
+    )
+    wall = report["profile"]["trigger_to_first_bbox_wall_s"]
+    resolved = report["profile"]["trigger_to_first_bbox_latency_s"]
+    assert wall["n"] == 2
+    assert wall["max"] == 0.8
+    assert resolved["max"] == 40.0
+    assert report["warnings"] == []

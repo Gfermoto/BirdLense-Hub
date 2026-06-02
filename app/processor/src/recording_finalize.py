@@ -1310,6 +1310,14 @@ def finalize_motion_recording(
             trigger_to_first_track_s,
             first_track_latency_s,
         ) = _resolve_session_latencies(rs, video_detections)
+        wall_bbox_s = _runtime_wall_latency_seconds(
+            rs,
+            "trigger_to_first_bbox_wall_s",
+        )
+        wall_track_s = _runtime_wall_latency_seconds(
+            rs,
+            "trigger_to_first_track_wall_s",
+        )
         finalize_duration_ms = round(
             max(0.0, (time.perf_counter() - finalize_started_ts) * 1000.0),
             3,
@@ -1400,6 +1408,12 @@ def finalize_motion_recording(
                 None
                 if trigger_to_first_bbox_s is None
                 else round(float(trigger_to_first_bbox_s), 6)
+            ),
+            "trigger_to_first_bbox_wall_s": (
+                None if wall_bbox_s is None else round(float(wall_bbox_s), 6)
+            ),
+            "trigger_to_first_track_wall_s": (
+                None if wall_track_s is None else round(float(wall_track_s), 6)
             ),
             "first_bbox_latency_s": (
                 None

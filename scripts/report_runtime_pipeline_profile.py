@@ -82,6 +82,8 @@ def build_profile(
     finalize_warn_ms: float,
 ) -> dict[str, Any]:
     first_bbox_s: list[float] = []
+    first_bbox_wall_s: list[float] = []
+    first_track_wall_s: list[float] = []
     finalize_ms: list[float] = []
     fusion_ms: list[float] = []
     persist_ms: list[float] = []
@@ -106,6 +108,14 @@ def build_profile(
             )
         if latency_s is not None and latency_s > 0:
             first_bbox_s.append(latency_s)
+
+        wall_bbox = _safe_float(payload.get("trigger_to_first_bbox_wall_s"))
+        if wall_bbox is not None and wall_bbox > 0:
+            first_bbox_wall_s.append(wall_bbox)
+
+        wall_track = _safe_float(payload.get("trigger_to_first_track_wall_s"))
+        if wall_track is not None and wall_track > 0:
+            first_track_wall_s.append(wall_track)
 
         fin_ms = _safe_float(row["finalize_duration_ms"])
         if fin_ms is None:
@@ -141,6 +151,7 @@ def build_profile(
             critical_path_ms.append(crit_ms)
 
     first_bbox_p95 = _percentile(first_bbox_s, 95.0)
+    first_bbox_wall_p95 = _percentile(first_bbox_wall_s, 95.0)
     finalize_p95 = _percentile(finalize_ms, 95.0)
     fusion_p95 = _percentile(fusion_ms, 95.0)
     persist_p95 = _percentile(persist_ms, 95.0)
@@ -155,9 +166,15 @@ def build_profile(
         bottleneck = max(stage_p95.items(), key=lambda item: float(item[1]))[0]
 
     warnings: list[str] = []
-    if first_bbox_p95 is not None and float(first_bbox_p95) > float(first_bbox_warn_s):
+    kpi_bbox_p95 = first_bbox_wall_p95 if first_bbox_wall_p95 is not None else first_bbox_p95
+    if kpi_bbox_p95 is not None and float(kpi_bbox_p95) > float(first_bbox_warn_s):
         warnings.append(
-            f"first_bbox_latency_p95 {float(first_bbox_p95):.3f}s > {float(first_bbox_warn_s):.3f}s"
+            f"first_bbox_latency_p95 {float(kpi_bbox_p95):.3f}s > {float(first_bbox_warn_s):.3f}s"
+            + (
+                " (wall-clock)"
+                if first_bbox_wall_p95 is not None
+                else " (resolved/video offset)"
+            )
         )
     if finalize_p95 is not None and float(finalize_p95) > float(finalize_warn_ms):
         warnings.append(
@@ -175,6 +192,8 @@ def build_profile(
         "window_hours": int(max(1, lookback_hours)),
         "profile": {
             "trigger_to_first_bbox_latency_s": _summary(first_bbox_s),
+            "trigger_to_first_bbox_wall_s": _summary(first_bbox_wall_s),
+            "trigger_to_first_track_wall_s": _summary(first_track_wall_s),
             "finalize_duration_ms": _summary(finalize_ms),
             "finalize_critical_path_ms": _summary(critical_path_ms),
             "pre_fusion_duration_ms": _summary(pre_fusion_ms),
