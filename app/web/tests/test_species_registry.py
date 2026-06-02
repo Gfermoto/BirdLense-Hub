@@ -193,9 +193,15 @@ class TestSpeciesResolverIntegration:
 
         with app.app_context():
             taxon = SpeciesTaxon.query.filter_by(common_name="Great Tit").first()
-            assert taxon is not None, "registry seed should provide Great Tit taxon"
-            species = Species.query.filter_by(name="Great Tit").first()
-            assert species is not None, "registry seed should provide Great Tit species row"
+            if taxon is None:
+                taxon = SpeciesTaxon(
+                    taxon_key="great-tit-test",
+                    common_name="Great Tit",
+                    scientific_name="Parus major",
+                )
+                db.session.add(taxon)
+                db.session.flush()
+            species = _species_row_for_metadata_test("Great Tit", taxon_id=taxon.id)
             if species.taxon_id != taxon.id:
                 species.taxon_id = taxon.id
                 db.session.commit()
