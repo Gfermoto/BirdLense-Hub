@@ -152,7 +152,7 @@ const ProfileSuggestLinksBlock = ({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
-    queryKey: ['bird-profile-suggest-links', detectionId, anchorProfileId],
+    queryKey: queryKeys.birdProfiles.suggestLinks(detectionId, anchorProfileId),
     queryFn: () =>
       fetchBirdProfileSuggestLinks(anchorProfileId, {
         video_species_id: detectionId,
@@ -171,7 +171,7 @@ const ProfileSuggestLinksBlock = ({
       sourceProfileId: number;
     }) => mergeBirdProfiles(targetProfileId, sourceProfileId),
     onSuccess: (payload) => {
-      queryClient.invalidateQueries({ queryKey: ['bird-profiles'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.birdProfiles.all });
       onMerged(
         t('video.profileMergeSuccess', {
           name: payload.display_name,
@@ -294,7 +294,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
     staleTime: 5 * 60 * 1000,
   });
   const { data: birdProfilesResponse } = useQuery({
-    queryKey: ['bird-profiles', 'video-details'],
+    queryKey: queryKeys.birdProfiles.videoDetails,
     queryFn: () => fetchBirdProfiles({ limit: 200 }),
     enabled: canEdit,
     staleTime: 60 * 1000,
@@ -359,7 +359,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
         avatar_url: avatarUrl,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bird-profiles'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.birdProfiles.all });
     },
   });
   const semanticReviewMutation = useMutation({
@@ -1031,7 +1031,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                           onMerged={(message) => {
                             setCorrectSuccess(message);
                             invalidateLocalSpeciesEditCaches(queryClient, videoId);
-                            queryClient.invalidateQueries({ queryKey: ['bird-profiles'] });
+                            queryClient.invalidateQueries({ queryKey: queryKeys.birdProfiles.all });
                           }}
                         />
                         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>

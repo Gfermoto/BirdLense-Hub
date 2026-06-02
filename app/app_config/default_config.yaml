@@ -221,7 +221,7 @@ processor:
   detection_interest_zones: []
   detection_interest_zones_required: false
   # MOG2 background subtraction (OpenCV): reject boxes that sit on learned static background.
-  background_subtraction_enabled: true
+  background_subtraction_enabled: false
   background_subtraction_method: mog2
   background_subtraction_history: 400
   background_subtraction_var_threshold: 16
@@ -751,7 +751,7 @@ detection:
   # Не писать bbox в БД для review-only (фантомные кормушки в UI).
   strip_review_only_overlay_frames: true
   # Frigate — fallback при пустых YOLO-треках (blind-gate и force_after_no_yolo остаются).
-  frigate_standalone_when_no_yolo: true
+  frigate_standalone_when_no_yolo: false
   # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).
   frigate_standalone_require_blind_yolo: true
   frigate_standalone_blind_score_threshold: 0.7
