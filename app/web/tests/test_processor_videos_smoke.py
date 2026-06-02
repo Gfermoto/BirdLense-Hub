@@ -59,7 +59,7 @@ def test_processor_videos_missing_species_400(client, proc_headers, monkeypatch,
     from routes import processor_routes
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     body = _base_video_payload("090010")
     _touch_video_file(body["video_path"], data_root=str(tmp_path / "data"))
     body["species"] = []
@@ -73,7 +73,7 @@ def test_processor_videos_all_below_threshold_400(client, proc_headers, monkeypa
     from routes import processor_routes
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
         "min_confidence_to_store",
@@ -107,7 +107,7 @@ def test_processor_videos_rejects_empty_yolo_bbox_rows(
     from routes import processor_routes
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
         "min_confidence_to_store",
@@ -145,7 +145,7 @@ def test_processor_videos_prunes_invalid_yolo_rows_but_keeps_valid(
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(
         vp_mod,
         "update_species_info_from_wiki",
@@ -197,7 +197,7 @@ def test_processor_videos_rejects_missing_video_file(app, client, proc_headers, 
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -234,7 +234,7 @@ def test_processor_videos_success_201(app, client, proc_headers, monkeypatch, tm
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -274,7 +274,7 @@ def test_processor_videos_persists_behavior_label_optional(app, client, proc_hea
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -322,7 +322,7 @@ def test_processor_videos_idempotent_same_payload_returns_existing(
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -373,7 +373,7 @@ def test_processor_videos_same_clip_key_but_payload_changed_returns_409(
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -432,7 +432,7 @@ def test_processor_videos_same_clip_conflict_detected_when_legacy_hash_missing(
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -498,7 +498,7 @@ def test_processor_videos_idempotent_ignores_non_persisted_flags(
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -551,7 +551,7 @@ def test_processor_videos_hot_path_skips_species_metadata_enrichment(app, client
     import services.species_metadata_enrichment_service as meta_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(
         meta_mod,
         "enrich_species_metadata",
@@ -593,7 +593,7 @@ def test_processor_videos_scales_delta_persisted_when_enabled(app, client, proc_
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -640,7 +640,7 @@ def test_processor_videos_scales_ignored_when_disabled(app, client, proc_headers
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),
@@ -676,7 +676,7 @@ def test_processor_videos_invalid_iso_400(client, proc_headers, monkeypatch, tmp
     from routes import processor_routes
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     _touch_video_file("data/recordings/2026/04/04/090012/video.mp4", data_root=str(tmp_path / "data"))
     body = {
         "processor_version": "x",
@@ -714,7 +714,7 @@ def test_processor_videos_runtime_reid_payload_persists_nickname_and_sidecar(
     import services.visit_processor as vp_mod
 
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setattr(processor_routes, "fetch_weather", lambda: {})
+    monkeypatch.setattr(processor_routes, "fetch_weather_for_ingest", lambda: {})
     monkeypatch.setattr(vp_mod, "update_species_info_from_wiki", lambda *_a, **_k: None, raising=False)
     monkeypatch.setitem(
         app_config.config.setdefault("detection", {}),

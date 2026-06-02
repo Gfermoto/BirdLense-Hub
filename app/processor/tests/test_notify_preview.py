@@ -159,6 +159,8 @@ class TestDetectionStackWeights(unittest.TestCase):
             os.makedirs(ov_dir, exist_ok=True)
             with open(os.path.join(ov_dir, 'best.xml'), 'w', encoding='utf-8') as f:
                 f.write('<net />')
+            with open(os.path.join(ov_dir, 'best.bin'), 'wb') as f:
+                f.write(b'\x00')
             with open(os.path.join(ov_dir, 'metadata.yaml'), 'w', encoding='utf-8') as f:
                 f.write('imgsz:\n- 960\n- 960\n')
             cls_pt = os.path.join(d, 'classifier.pt')
