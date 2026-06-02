@@ -79,6 +79,7 @@ def build_profile(
     *,
     lookback_hours: int,
     first_bbox_warn_s: float,
+    first_bbox_fail_s: float | None,
     finalize_warn_ms: float,
 ) -> dict[str, Any]:
     first_bbox_s: list[float] = []
@@ -166,7 +167,13 @@ def build_profile(
         bottleneck = max(stage_p95.items(), key=lambda item: float(item[1]))[0]
 
     warnings: list[str] = []
+    failures: list[str] = []
     kpi_bbox_p95 = first_bbox_wall_p95 if first_bbox_wall_p95 is not None else first_bbox_p95
+    kpi_source = (
+        "wall_clock"
+        if first_bbox_wall_p95 is not None
+        else ("resolved_video_offset" if first_bbox_p95 is not None else "missing")
+    )
     if kpi_bbox_p95 is not None and float(kpi_bbox_p95) > float(first_bbox_warn_s):
         warnings.append(
             f"first_bbox_latency_p95 {float(kpi_bbox_p95):.3f}s > {float(first_bbox_warn_s):.3f}s"
@@ -176,6 +183,19 @@ def build_profile(
                 else " (resolved/video offset)"
             )
         )
+    bbox_kpi_ok: bool | None = None
+    if first_bbox_fail_s is not None:
+        if kpi_bbox_p95 is None:
+            bbox_kpi_ok = False
+            failures.append(
+                f"first_bbox_wall_p95 missing (need trigger_to_first_bbox_wall_s in payload; #579)"
+            )
+        else:
+            bbox_kpi_ok = float(kpi_bbox_p95) <= float(first_bbox_fail_s)
+            if not bbox_kpi_ok:
+                failures.append(
+                    f"first_bbox_wall_p95 {float(kpi_bbox_p95):.3f}s > KPI {float(first_bbox_fail_s):.3f}s (#579)"
+                )
     if finalize_p95 is not None and float(finalize_p95) > float(finalize_warn_ms):
         warnings.append(
             f"finalize_duration_p95 {float(finalize_p95):.2f}ms > {float(finalize_warn_ms):.2f}ms"
@@ -206,8 +226,18 @@ def build_profile(
         },
         "by_slot_finalize_duration_ms": by_slot,
         "bottleneck_stage_p95": bottleneck,
+        "kpi": {
+            "first_bbox_wall_p95_s": (
+                round(float(kpi_bbox_p95), 6) if kpi_bbox_p95 is not None else None
+            ),
+            "first_bbox_fail_threshold_s": first_bbox_fail_s,
+            "first_bbox_warn_threshold_s": float(first_bbox_warn_s),
+            "source": kpi_source,
+            "ok": bbox_kpi_ok,
+        },
         "warnings": warnings,
-        "ok": len(rows) > 0,
+        "failures": failures,
+        "ok": len(rows) > 0 and not failures,
     }
 
 
@@ -236,6 +266,17 @@ def _to_md(report: dict[str, Any]) -> str:
     if not (report.get("warnings") or []):
         lines.append("- none")
     lines.append("")
+    lines.append("## KPI (#579 wall first-bbox)")
+    lines.append("")
+    lines.append(f"`{report.get('kpi')}`")
+    lines.append("")
+    lines.append("## Failures")
+    lines.append("")
+    for item in report.get("failures") or []:
+        lines.append(f"- {item}")
+    if not (report.get("failures") or []):
+        lines.append("- none")
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -244,7 +285,18 @@ def _args() -> argparse.Namespace:
     parser.add_argument("--db-path", default="app/data/db/birdlense.db")
     parser.add_argument("--lookback-hours", type=int, default=24)
     parser.add_argument("--first-bbox-warn-s", type=float, default=5.0)
+    parser.add_argument(
+        "--first-bbox-fail-s",
+        type=float,
+        default=None,
+        help="Hard KPI threshold for wall first-bbox p95 (#579); omit to skip fail gate",
+    )
     parser.add_argument("--finalize-warn-ms", type=float, default=5000.0)
+    parser.add_argument(
+        "--fail-on-bbox-kpi",
+        action="store_true",
+        help="Exit 1 when KPI failures present (requires --first-bbox-fail-s)",
+    )
     parser.add_argument(
         "--out-json",
         default="docs/reports/perf/runtime_pipeline_profile_latest.json",
@@ -264,11 +316,16 @@ def main() -> int:
     if not db_path.exists():
         raise SystemExit(f"db file not found: {db_path}")
 
+    fail_s = args.first_bbox_fail_s
+    if fail_s is not None:
+        fail_s = float(max(0.1, fail_s))
+
     rows = _load_rows(db_path, int(max(1, args.lookback_hours)))
     report = build_profile(
         rows,
         lookback_hours=int(max(1, args.lookback_hours)),
         first_bbox_warn_s=float(max(0.1, args.first_bbox_warn_s)),
+        first_bbox_fail_s=fail_s,
         finalize_warn_ms=float(max(100.0, args.finalize_warn_ms)),
     )
 
@@ -290,10 +347,13 @@ def main() -> int:
                 "json": str(out_json),
                 "md": str(out_md),
                 "bottleneck_stage_p95": report.get("bottleneck_stage_p95"),
+                "kpi_ok": (report.get("kpi") or {}).get("ok"),
             }
         )
     )
-    return 0
+    if args.fail_on_bbox_kpi and (report.get("failures") or []):
+        return 1
+    return 0 if bool(report.get("ok")) else 1
 
 
 if __name__ == "__main__":

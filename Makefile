@@ -242,6 +242,16 @@ sota-governance-cycle:
 	SOTA_FAIL_ON_BLOCKED="$${SOTA_FAIL_ON_BLOCKED:-1}" \
 	./scripts/run_sota_governance_cycle.sh
 
+fetch-prod-db-snapshot:
+	@set -e; cd "$(CURDIR)"; \
+	chmod +x ./scripts/fetch_prod_db_snapshot.sh; \
+	./scripts/fetch_prod_db_snapshot.sh
+
+sota-governance-prod:
+	@set -e; cd "$(CURDIR)"; \
+	GOVERNANCE_FETCH_PROD_DB=1 SOTA_FAIL_ON_BLOCKED=0 \
+	$(MAKE) sota-governance-cycle
+
 sota-governance-weekly:
 	@set -e; cd "$(CURDIR)"; \
 	GOVERNANCE_MODE=weekly SOTA_FAIL_ON_BLOCKED=1 $(MAKE) sota-governance-cycle

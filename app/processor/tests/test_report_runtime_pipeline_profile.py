@@ -42,6 +42,7 @@ def test_profile_detects_finalize_bottleneck_and_warning():
         rows,
         lookback_hours=24,
         first_bbox_warn_s=5.0,
+        first_bbox_fail_s=None,
         finalize_warn_ms=5000.0,
     )
     assert report["ok"] is True
@@ -71,6 +72,7 @@ def test_profile_prefers_wall_clock_first_bbox_for_kpi():
         rows,
         lookback_hours=24,
         first_bbox_warn_s=2.0,
+        first_bbox_fail_s=None,
         finalize_warn_ms=5000.0,
     )
     wall = report["profile"]["trigger_to_first_bbox_wall_s"]
@@ -79,3 +81,29 @@ def test_profile_prefers_wall_clock_first_bbox_for_kpi():
     assert wall["max"] == 0.8
     assert resolved["max"] == 40.0
     assert report["warnings"] == []
+
+
+def test_profile_bbox_kpi_fail_when_wall_p95_above_threshold():
+    mod = _load_mod()
+    rows = [
+        {
+            "payload_json": '{"trigger_to_first_bbox_wall_s": 3.5, "camera_slot": "camera_1"}',
+            "trigger_to_first_bbox_latency_s": 0.5,
+            "finalize_duration_ms": 900.0,
+        },
+        {
+            "payload_json": '{"trigger_to_first_bbox_wall_s": 4.2, "camera_slot": "camera_2"}',
+            "trigger_to_first_bbox_latency_s": 0.6,
+            "finalize_duration_ms": 800.0,
+        },
+    ]
+    report = mod.build_profile(
+        rows,
+        lookback_hours=24,
+        first_bbox_warn_s=2.0,
+        first_bbox_fail_s=2.0,
+        finalize_warn_ms=5000.0,
+    )
+    assert report["kpi"]["ok"] is False
+    assert report["failures"]
+    assert report["ok"] is False

@@ -93,12 +93,28 @@ def _classify_failure_mode(
     return "healthy_persisted_gt_0"
 
 
+def _merge_reason_counts(
+    target: Counter[str],
+    payload: dict[str, Any],
+) -> None:
+    trigger_graph = payload.get("trigger_graph")
+    if not isinstance(trigger_graph, dict):
+        return
+    raw_counts = trigger_graph.get("decision_reason_counts")
+    if not isinstance(raw_counts, dict):
+        return
+    for reason, count in raw_counts.items():
+        target[str(reason or "unknown")] += _safe_int(count)
+
+
 def build_failure_mode_funnel(
     rows: list[sqlite3.Row], *, lookback_hours: int
 ) -> dict[str, Any]:
     global_counts: Counter[str] = Counter()
     by_camera: dict[str, Counter[str]] = defaultdict(Counter)
     by_slot: dict[str, Counter[str]] = defaultdict(Counter)
+    decision_reason_counts: Counter[str] = Counter()
+    decision_reason_by_camera: dict[str, Counter[str]] = defaultdict(Counter)
 
     for row in rows:
         payload = _extract_payload(row["payload_json"])
@@ -113,6 +129,14 @@ def build_failure_mode_funnel(
         global_counts[mode] += 1
         by_camera[camera_id][mode] += 1
         by_slot[slot][mode] += 1
+        _merge_reason_counts(decision_reason_counts, payload)
+        per_cam = decision_reason_by_camera[camera_id]
+        trigger_graph = payload.get("trigger_graph")
+        if isinstance(trigger_graph, dict):
+            raw_counts = trigger_graph.get("decision_reason_counts")
+            if isinstance(raw_counts, dict):
+                for reason, count in raw_counts.items():
+                    per_cam[str(reason or "unknown")] += _safe_int(count)
 
     total_sessions = len(rows)
 
@@ -136,6 +160,11 @@ def build_failure_mode_funnel(
             for slot, counter in sorted(by_slot.items())
         },
         "top_root_causes": top_root_causes,
+        "decision_reason_counts": _to_ranked_dict(decision_reason_counts),
+        "decision_reason_by_camera": {
+            camera: _to_ranked_dict(counter)
+            for camera, counter in sorted(decision_reason_by_camera.items())
+        },
         "ok": total_sessions > 0 and len(top_root_causes) > 0,
     }
 
@@ -165,6 +194,14 @@ def _to_md(report: dict[str, Any]) -> str:
     lines.append("## By slot")
     lines.append("")
     lines.append(f"`{report.get('by_slot')}`")
+    lines.append("")
+    lines.append("## Decision reason counts")
+    lines.append("")
+    lines.append(f"`{report.get('decision_reason_counts')}`")
+    lines.append("")
+    lines.append("## Decision reasons by camera")
+    lines.append("")
+    lines.append(f"`{report.get('decision_reason_by_camera')}`")
     lines.append("")
     return "\n".join(lines)
 

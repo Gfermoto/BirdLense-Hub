@@ -23,6 +23,10 @@ app/data/diagnostics/
 app/data/feedback_exports/
 app/processor/data/
 app/data/processor.log*
+# Prod DB snapshots for governance (#585) — fetch locally, never commit
+app/data/db/prod_snapshots/
+app/data/db/birdlense_prod_latest.db
+app/data/db/birdlense_prod_latest.json
 app.log
 .DS_Store
 # Windows NTFS ADS artifacts from downloaded/copied files
