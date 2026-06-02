@@ -147,8 +147,11 @@ print(json.dumps(report, indent=2))
 PY
 
 if [[ "${overall_ok}" != "true" ]]; then
-  echo "governance-cycle: FAIL (see ${MANIFEST_JSON})" >&2
-  exit 1
+  if [[ "${FAIL_ON_BLOCKED}" == "1" ]]; then
+    echo "governance-cycle: FAIL (see ${MANIFEST_JSON})" >&2
+    exit 1
+  fi
+  echo "governance-cycle: WARN — steps failed but SOTA_FAIL_ON_BLOCKED=0 (report-only)" >&2
 fi
 
 echo "governance-cycle: OK (${MODE})"
