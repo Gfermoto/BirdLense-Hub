@@ -354,6 +354,9 @@ jobs:
       - name: Prepare .env and data dirs
         run: |
           test -f .env || cp .env.example .env
+          # CI image ships .pt weights; Birder OpenVINO IR may be absent — do not hard-force openvino from .env.example.
+          sed -i 's/^BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=openvino/BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=auto/' .env
+          sed -i 's/^BIRDLENSE_INFERENCE_BACKEND=openvino/BIRDLENSE_INFERENCE_BACKEND=auto/' .env
           mkdir -p data/db data/recordings
 
       - name: Processor .pt weights for integration tests

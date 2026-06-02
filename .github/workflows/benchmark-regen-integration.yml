@@ -64,6 +64,8 @@ jobs:
       - name: Prepare .env and data dirs
         run: |
           test -f .env || cp .env.example .env
+          sed -i 's/^BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=openvino/BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=auto/' .env
+          sed -i 's/^BIRDLENSE_INFERENCE_BACKEND=openvino/BIRDLENSE_INFERENCE_BACKEND=auto/' .env
           mkdir -p data/db data/recordings
 
       - name: Processor .pt weights
