@@ -35,6 +35,7 @@ from weather_service import (
     _create_weather_fetcher,
     weather_fetcher,
     fetch_weather,
+    fetch_weather_for_ingest,
 )
 
 __all__ = [
@@ -62,6 +63,7 @@ __all__ = [
     "client_ip_for_rate_limit",
     "contributor_or_admin_access",
     "fetch_weather",
+    "fetch_weather_for_ingest",
     "notify",
     "notify_app_startup",
     "notify_telegram_test",
