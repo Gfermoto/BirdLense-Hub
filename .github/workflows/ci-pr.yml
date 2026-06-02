@@ -39,10 +39,13 @@ jobs:
           pip install pip-audit==2.9.0
           # py 1.11.0 (транзитивно от interrogate): нет фикса на PyPI; dev/docs зависимость
           # GHSA-r374-rxx8-8654 (paramiko): в advisory feed пока без фикс-версии.
+          # transformers 4.57.x (PYSEC-2025-217 / GHSA-69w3-r845-3855): фикс только в 5.0.0rc3; pin после стабильного релиза.
           # Runtime mitigation: strict host key policy by default, no silent trust in production path.
           pip-audit -r web/requirements.txt -r processor/requirements.txt \
             --ignore-vuln PYSEC-2022-42969 \
-            --ignore-vuln GHSA-r374-rxx8-8654
+            --ignore-vuln GHSA-r374-rxx8-8654 \
+            --ignore-vuln PYSEC-2025-217 \
+            --ignore-vuln GHSA-69w3-r845-3855
 
   # Roadmap #418 / A1: lock production env gate script into CI (same logic as deploy pre-flight).
   # Synthetic secrets satisfy length/shape checks only — not real deployment values.

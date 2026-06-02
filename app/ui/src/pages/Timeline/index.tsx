@@ -208,7 +208,7 @@ export function TimelinePage() {
     return parsed.isValid() ? parsed : dayjs().startOf('date');
   }, [searchParams]);
   const { data: birdProfilesForFilter = [] } = useQuery({
-    queryKey: ['bird-profiles', 'timeline-filter-map'],
+    queryKey: queryKeys.birdProfiles.timelineFilterMap,
     queryFn: async () => (await fetchBirdProfiles({ limit: 200 })).items,
     staleTime: 1000 * 60 * 5,
     enabled: !isReviewMode,

@@ -63,10 +63,10 @@ export function TuningWorkbenchCard() {
     onSuccess: refresh,
   });
 
-  const cameraRows = q.data?.camera_profiles ?? [];
+  const cameraProfiles = q.data?.camera_profiles;
   const activeCamera = useMemo(
-    () => cameraRows.find((row) => row.camera_id === selectedCamera),
-    [cameraRows, selectedCamera],
+    () => (cameraProfiles ?? []).find((row) => row.camera_id === selectedCamera),
+    [cameraProfiles, selectedCamera],
   );
 
   const parseNumber = (raw: string): number | undefined => {
