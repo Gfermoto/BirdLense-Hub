@@ -38,6 +38,7 @@ class TestBenchmarkSotaGate(unittest.TestCase):
             "species_detected_count": 1,
             "track_id_switches_count": 0,
             "avg_track_duration_sec": 0.5,
+            "tracking_unified_with_live": True,
         }
         self.assertEqual(
             evaluate_clip("1819", metrics, thresholds=self.thresholds, baseline_metrics=self.baseline_metrics),
