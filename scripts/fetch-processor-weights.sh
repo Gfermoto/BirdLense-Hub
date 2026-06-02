@@ -4,16 +4,19 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODE="two_stage"
 CHECK_ONLY=0
+DETECTOR_ONLY=0
 RELEASE_TAG="${RELEASE_TAG:-weights/v1}"
 LEGACY_ASSET="yolo11n.pt"
 LEGACY_DEST="${ROOT}/app/yolo11n.pt"
 DETECTOR_ZIP="${DETECTOR_ZIP:-${ROOT}/app/processor/models/detection/nabirds_yolo11n_binary.zip}"
 DETECTOR_DEST="${ROOT}/app/processor/models/detection/weights/best.pt"
 CLASSIFIER_DEST="${ROOT}/app/processor/models/classification/weights/best.pt"
+BIRDER_PT_DEST="${ROOT}/app/processor/models/classification/weights/convnext_v2_tiny_eu-common256px.pt"
 # Бинарный zip по умолчанию — из форка AleksandrRogachev94/BirdLense (ветка main).
 BINARY_ZIP_URL="${BINARY_ZIP_URL:-https://raw.githubusercontent.com/AleksandrRogachev94/BirdLense/main/app/processor/models/detection/nabirds_yolo11n_binary.zip}"
 # Пин ревизии HF (не main): иначе при обновлении ветки ломается CHECKSUMS/CI.
 CLASSIFIER_URL="${CLASSIFIER_URL:-https://huggingface.co/gfermoto/birdlense-birds-eu/resolve/c6af5aa595cbb1198a61bcf2f3f9c2adc3772dc9/best.pt}"
+CLASSIFIER_OPTIONAL="${BIRDLENSE_FETCH_CLASSIFIER_OPTIONAL:-0}"
 
 usage() {
   cat <<'EOF'
@@ -21,14 +24,18 @@ Usage:
   ./scripts/fetch-processor-weights.sh
   ./scripts/fetch-processor-weights.sh --legacy-single-stage
   ./scripts/fetch-processor-weights.sh --check-only
+  ./scripts/fetch-processor-weights.sh --detector-only
 
 Options:
   --legacy-single-stage  Download compatibility-only app/yolo11n.pt from GitHub Release.
   --check-only           Do not download anything; only verify active two-stage paths.
+  --detector-only        Fetch detector only (skip EU classifier; for CI when HF rate-limits).
 
 Env:
-  BINARY_ZIP_URL   Override URL for nabirds_yolo11n_binary.zip (default: raw.githubusercontent.com/.../BirdLense/...).
-  CLASSIFIER_URL   Override EU classifier (default: Hugging Face gfermoto/birdlense-birds-eu pinned best.pt).
+  BINARY_ZIP_URL                      Override URL for nabirds_yolo11n_binary.zip.
+  CLASSIFIER_URL                      Override EU classifier (pinned HF best.pt).
+  BIRDLENSE_FETCH_CLASSIFIER_OPTIONAL If 1, warn and continue when classifier download fails but detector exists.
+  HF_TOKEN                            Optional Hugging Face token (reduces 429 on classifier download).
 EOF
 }
 
@@ -39,6 +46,9 @@ while [[ $# -gt 0 ]]; do
       ;;
     --check-only)
       CHECK_ONLY=1
+      ;;
+    --detector-only)
+      DETECTOR_ONLY=1
       ;;
     -h|--help)
       usage
@@ -57,6 +67,30 @@ cd "$(git rev-parse --show-toplevel)"
 
 ensure_dir() {
   mkdir -p "$(dirname "$1")"
+}
+
+curl_download() {
+  local url="$1"
+  local dest="$2"
+  local -a args=(
+    -fsSL
+    --retry 5
+    --retry-all-errors
+    --retry-connrefused
+    --retry-delay 10
+    -o "$dest"
+  )
+  if [[ -n "${HF_TOKEN:-}" ]]; then
+    args+=(-H "Authorization: Bearer ${HF_TOKEN}")
+  fi
+  curl "${args[@]}" "$url"
+}
+
+link_birder_classifier_alias() {
+  if [[ -s "$CLASSIFIER_DEST" && ! -e "$BIRDER_PT_DEST" ]]; then
+    ln -sf "$(basename "$CLASSIFIER_DEST")" "$BIRDER_PT_DEST"
+    echo "Linked Birder EU alias: $BIRDER_PT_DEST -> best.pt"
+  fi
 }
 
 fetch_legacy_single_stage() {
@@ -98,7 +132,7 @@ ensure_two_stage_detector() {
   if [[ ! -s "$DETECTOR_ZIP" ]]; then
     echo "Downloading binary detector zip (AleksandrRogachev94/BirdLense)..."
     ensure_dir "$DETECTOR_ZIP"
-    curl -fsSL --retry 4 --retry-connrefused --retry-delay 4 -o "$DETECTOR_ZIP" "$BINARY_ZIP_URL"
+    curl_download "$BINARY_ZIP_URL" "$DETECTOR_ZIP"
   fi
   echo "Extracting detector weights from $DETECTOR_ZIP..."
   ensure_dir "$DETECTOR_DEST"
@@ -108,12 +142,21 @@ ensure_two_stage_detector() {
 ensure_two_stage_classifier() {
   if [[ -s "$CLASSIFIER_DEST" ]]; then
     echo "Classifier weights already present: $CLASSIFIER_DEST"
+    link_birder_classifier_alias
     return
   fi
   echo "Downloading EU classifier (gfermoto/birdlense-birds-eu) -> best.pt..."
   ensure_dir "$CLASSIFIER_DEST"
   tmp="$(mktemp)"
-  curl -fsSL --retry 3 --retry-connrefused --retry-delay 5 -o "$tmp" "$CLASSIFIER_URL"
+  if ! curl_download "$CLASSIFIER_URL" "$tmp"; then
+    rm -f "$tmp"
+    if [[ "$CLASSIFIER_OPTIONAL" == "1" && -s "$DETECTOR_DEST" ]]; then
+      echo "WARN: classifier download failed; continuing with detector only (BIRDLENSE_FETCH_CLASSIFIER_OPTIONAL=1)" >&2
+      return 0
+    fi
+    echo "ERROR: classifier download failed" >&2
+    exit 6
+  fi
   echo "Verifying classifier checksum against CHECKSUMS..."
   expected="$(awk '/  app\/processor\/models\/classification\/weights\/best\.pt$/ {print $1}' "${ROOT}/CHECKSUMS")"
   actual="$(sha256sum "$tmp" | awk '{print $1}')"
@@ -130,6 +173,7 @@ ensure_two_stage_classifier() {
     exit 8
   fi
   mv "$tmp" "$CLASSIFIER_DEST"
+  link_birder_classifier_alias
 }
 
 if [[ "$MODE" == "legacy" ]]; then
@@ -151,7 +195,7 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
     echo "Missing detector weights: $DETECTOR_DEST" >&2
     missing=1
   fi
-  if [[ ! -s "$CLASSIFIER_DEST" ]]; then
+  if [[ "$DETECTOR_ONLY" -eq 0 && ! -s "$CLASSIFIER_DEST" ]]; then
     echo "Missing classifier weights: $CLASSIFIER_DEST" >&2
     missing=1
   fi
@@ -160,15 +204,21 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
   fi
   echo "Two-stage weights present:"
   echo "  detector: $DETECTOR_DEST"
-  echo "  classifier: $CLASSIFIER_DEST"
+  if [[ "$DETECTOR_ONLY" -eq 0 ]]; then
+    echo "  classifier: $CLASSIFIER_DEST"
+  fi
   exit 0
 fi
 
 ensure_two_stage_detector
-ensure_two_stage_classifier
+if [[ "$DETECTOR_ONLY" -eq 0 ]]; then
+  ensure_two_stage_classifier
+fi
 
 echo "Two-stage weights ready:"
 echo "  detector:   $DETECTOR_DEST"
-echo "  classifier: $CLASSIFIER_DEST"
+if [[ -s "$CLASSIFIER_DEST" ]]; then
+  echo "  classifier: $CLASSIFIER_DEST"
+fi
 echo "Validate rollout artifacts with: make validate-weights"
 echo "Legacy compatibility asset is optional: use --legacy-single-stage for app/yolo11n.pt"

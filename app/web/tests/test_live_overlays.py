@@ -23,9 +23,10 @@ def _mk_trace(camera_id: str = "BirdBox") -> dict:
     }
 
 
-def test_live_overlays_default_disables_decision_trace_fallback(client):
-    db.session.add(ActivityLog(type="decision_trace", data=json.dumps(_mk_trace())))
-    db.session.commit()
+def test_live_overlays_default_disables_decision_trace_fallback(app, client):
+    with app.app_context():
+        db.session.add(ActivityLog(type="decision_trace", data=json.dumps(_mk_trace())))
+        db.session.commit()
 
     prev = app_config.get("ui.live_overlay_trace_fallback_enabled")
     app_config.set("ui.live_overlay_trace_fallback_enabled", False)
@@ -40,9 +41,10 @@ def test_live_overlays_default_disables_decision_trace_fallback(client):
         app_config.set("ui.live_overlay_trace_fallback_enabled", prev)
 
 
-def test_live_overlays_can_use_decision_trace_fallback_when_enabled(client):
-    db.session.add(ActivityLog(type="decision_trace", data=json.dumps(_mk_trace())))
-    db.session.commit()
+def test_live_overlays_can_use_decision_trace_fallback_when_enabled(app, client):
+    with app.app_context():
+        db.session.add(ActivityLog(type="decision_trace", data=json.dumps(_mk_trace())))
+        db.session.commit()
 
     prev_enabled = app_config.get("ui.live_overlay_trace_fallback_enabled")
     prev_ttl = app_config.get("ui.live_overlay_trace_fallback_ttl_seconds")
@@ -60,7 +62,7 @@ def test_live_overlays_can_use_decision_trace_fallback_when_enabled(client):
         app_config.set("ui.live_overlay_trace_fallback_ttl_seconds", prev_ttl)
 
 
-def test_live_overlays_drop_stale_opencv_detector_polygons(client):
+def test_live_overlays_drop_stale_opencv_detector_polygons(app, client):
     stale = datetime.now(timezone.utc) - timedelta(seconds=30)
     payload = {
         "by_camera": {
@@ -73,8 +75,9 @@ def test_live_overlays_drop_stale_opencv_detector_polygons(client):
             }
         }
     }
-    db.session.add(ActivityLog(type="opencv_live", data=json.dumps(payload)))
-    db.session.commit()
+    with app.app_context():
+        db.session.add(ActivityLog(type="opencv_live", data=json.dumps(payload)))
+        db.session.commit()
 
     prev_ttl = app_config.get("ui.live_detector_overlay_ttl_seconds")
     app_config.set("ui.live_detector_overlay_ttl_seconds", 4.0)

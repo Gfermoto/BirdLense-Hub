@@ -84,16 +84,18 @@ def _resolve_birder_eu_paths(
             "Run scripts/download_birder_classifier.py && scripts/export_birder_classifier_to_openvino.py",
         )
 
+    pt_path = resolve_birder_pt_path(weights_root, variant, p_pt)
+
     if requested_backend == "auto":
         if ov_ready:
             return (str(p_ov), "openvino")
         if pt_ready:
-            return (str(p_ov), "torch")
+            return (str(pt_path), "torch")
 
     if ov_ready:
         return (str(p_ov), "openvino")
     if pt_ready:
-        return (str(p_ov), "torch")
+        return (str(pt_path), "torch")
     return (str(p_ov), "torch")
 
 

@@ -89,7 +89,10 @@ def _load_raw_user_config_dict() -> dict:
 
 def apply_settings_patch_and_refresh_caches(normalized_updates: dict) -> dict:
     """Смержить в live config, save, сброс кэшей. Возвращает payload для ответа API."""
+    from app_config.config_migrations import deprecated_keys_present
+
     validate_settings_patch_updates(normalized_updates)
+    deprecated = deprecated_keys_present(_load_raw_user_config_dict())
     to_merge = hash_password_fields_in_updates(normalized_updates)
     app_config.config = app_config.merge_dicts(
         app_config.config,
@@ -105,9 +108,6 @@ def apply_settings_patch_and_refresh_caches(normalized_updates: dict) -> dict:
     reset_redis_client()
 
     payload = app_config.prepare_settings_for_api(app_config.config)
-    from app_config.config_migrations import deprecated_keys_present
-
-    deprecated = deprecated_keys_present(_load_raw_user_config_dict())
     if deprecated:
         payload["_settings_warnings"] = {"deprecated_keys_present": deprecated}
     return payload

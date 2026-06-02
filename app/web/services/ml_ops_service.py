@@ -511,11 +511,36 @@ def _read_json_file(path: Path) -> dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
+def _dataset_contract_paths() -> tuple[Path, Path]:
+    """Registry JSON: repo root in dev, ``/workspace`` mount in docker test-web."""
+    from services.fusion_training_service import repo_root
+
+    rel = Path("docs") / "reports" / "datasets"
+    candidates = [
+        repo_root() / rel,
+        Path("/workspace") / rel,
+        Path(__file__).resolve().parents[3] / rel,
+    ]
+    seen: set[Path] = set()
+    for base in candidates:
+        try:
+            resolved = base.resolve()
+        except OSError:
+            continue
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        contract = resolved / "dataset_contract_registry.json"
+        if contract.is_file():
+            latest = resolved / "dataset_contract_registry_latest.json"
+            return contract, latest
+    fallback = candidates[0]
+    return fallback / "dataset_contract_registry.json", fallback / "dataset_contract_registry_latest.json"
+
+
 def build_dataset_streams_summary() -> tuple[dict[str, Any], int]:
     """Expose detector/classifier/behavior/reid dataset stream contracts (#557)."""
-    repo_root = Path(__file__).resolve().parents[3]
-    contract_file = repo_root / "docs" / "reports" / "datasets" / "dataset_contract_registry.json"
-    latest_file = repo_root / "docs" / "reports" / "datasets" / "dataset_contract_registry_latest.json"
+    contract_file, latest_file = _dataset_contract_paths()
     contract_payload = _read_json_file(contract_file)
     latest_payload = _read_json_file(latest_file)
 

@@ -34,7 +34,6 @@ def test_settings_patch_returns_deprecated_warnings(client, tmp_path, monkeypatc
         encoding="utf-8",
     )
     monkeypatch.setattr(ac_mod.app_config, "user_config_file", str(user_path))
-    monkeypatch.setattr(ac_mod.app_config, "config", ac_mod.app_config.load_and_merge_configs())
 
     with client.session_transaction() as sess:
         sess["access_role"] = "admin"
