@@ -160,6 +160,19 @@ if [[ "${RUN_VERIFY_PROD_BEFORE_DEPLOY:-}" =~ ^(1|true|yes)$ ]]; then
   }
 fi
 
+# 0.43 Processor config drift on prod user_config (warn-only, #585/I11).
+if [[ ! "${BIRDLENSE_SKIP_CONFIG_DRIFT_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]] && \
+     [[ -f "${REPO_ROOT}/scripts/verify-prod-config-drift.sh" ]]; then
+    echo "0.43 Processor config drift (prod user_config, warn-only)..."
+    if ! (cd "${REPO_ROOT}" && chmod +x ./scripts/verify-prod-config-drift.sh && \
+          ./scripts/verify-prod-config-drift.sh); then
+      echo "WARN: prod processor config drift detected — deploy continues (#I11)." >&2
+      echo "Подсказка: make verify-prod-config-drift; BIRDLENSE_SKIP_CONFIG_DRIFT_GATE=1 to skip." >&2
+    fi
+  fi
+fi
+
 # 0.45 Mandatory golden-set gate for model/config changes (#534).
 # Gate runs only when changed files hit model/detection-config patterns.
 if [[ ! "${BIRDLENSE_SKIP_GOLDEN_SET_GATE:-}" =~ ^(1|true|yes)$ ]]; then
