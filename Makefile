@@ -257,6 +257,15 @@ apply-prod-detection-tuning:
 	chmod +x ./scripts/apply-prod-detection-tuning-hotfix.sh; \
 	./scripts/apply-prod-detection-tuning-hotfix.sh
 
+verify-prod-config-drift:
+	@set -e; cd "$(CURDIR)"; \
+	chmod +x ./scripts/verify-prod-config-drift.sh; \
+	./scripts/verify-prod-config-drift.sh
+
+verify-processor-config-drift:
+	@set -e; cd "$(CURDIR)"; \
+	python3 ./scripts/verify_processor_config_drift.py
+
 sota-governance-weekly:
 	@set -e; cd "$(CURDIR)"; \
 	GOVERNANCE_MODE=weekly SOTA_FAIL_ON_BLOCKED=1 $(MAKE) sota-governance-cycle

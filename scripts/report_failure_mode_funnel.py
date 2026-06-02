@@ -119,10 +119,21 @@ def build_failure_mode_funnel(
     by_slot: dict[str, Counter[str]] = defaultdict(Counter)
     decision_reason_counts: Counter[str] = Counter()
     decision_reason_by_camera: dict[str, Counter[str]] = defaultdict(Counter)
+    risk_flags: Counter[str] = Counter()
+    concurrent_started = 0
 
     for row in rows:
         payload = _extract_payload(row["payload_json"])
         post_fusion_persisted = _safe_int(payload.get("post_fusion_persisted"))
+        raw_total = _safe_int(row["yolo_raw_boxes_total"])
+        accepted_total = _safe_int(row["yolo_accepted_boxes_total"])
+        if payload.get("detection_acceptance_gap") or (
+            raw_total > 0 and accepted_total <= 0
+        ):
+            risk_flags["detection_acceptance_gap"] += 1
+        cr = payload.get("concurrent_recording")
+        if isinstance(cr, dict) and cr.get("started_concurrent"):
+            concurrent_started += 1
         mode = _classify_failure_mode(
             yolo_raw_boxes_total=_safe_int(row["yolo_raw_boxes_total"]),
             yolo_accepted_boxes_total=_safe_int(row["yolo_accepted_boxes_total"]),
@@ -169,6 +180,15 @@ def build_failure_mode_funnel(
         "decision_reason_by_camera": {
             camera: _to_ranked_dict(counter)
             for camera, counter in sorted(decision_reason_by_camera.items())
+        },
+        "risk_flags": {
+            "detection_acceptance_gap_sessions": int(
+                risk_flags.get("detection_acceptance_gap", 0)
+            ),
+            "concurrent_recording_started_sessions": int(concurrent_started),
+            "static_pinned_rejects_total": int(
+                decision_reason_counts.get("rejected_static_pinned_track", 0)
+            ),
         },
         "ok": total_sessions > 0 and len(top_root_causes) > 0,
     }
