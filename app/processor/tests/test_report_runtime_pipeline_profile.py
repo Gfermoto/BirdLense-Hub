@@ -140,3 +140,36 @@ def test_profile_create_video_kpi_fail():
     )
     assert report["kpi"]["create_video_ok"] is False
     assert any("create_video_duration_p95" in f for f in report["failures"])
+
+
+def test_profile_finalize_tail_dominant_create_video_warning():
+    mod = _load_mod()
+    rows = [
+        {
+            "payload_json": (
+                '{"finalize_critical_path_ms": 70000, "create_video_duration_ms": 65000, '
+                '"persist_duration_ms": 2000, "fusion_duration_ms": 500, "camera_slot": "camera_1"}'
+            ),
+            "trigger_to_first_bbox_latency_s": 0.5,
+            "finalize_duration_ms": 72000.0,
+        },
+        {
+            "payload_json": (
+                '{"finalize_critical_path_ms": 68000, "create_video_duration_ms": 62000, '
+                '"persist_duration_ms": 1800, "camera_slot": "camera_2"}'
+            ),
+            "trigger_to_first_bbox_latency_s": 0.6,
+            "finalize_duration_ms": 70000.0,
+        },
+    ]
+    report = mod.build_profile(
+        rows,
+        lookback_hours=24,
+        first_bbox_warn_s=5.0,
+        first_bbox_fail_s=None,
+        finalize_warn_ms=5000.0,
+        create_video_warn_ms=30000.0,
+        create_video_fail_ms=None,
+    )
+    assert report["kpi"]["finalize_tail_dominant"] == "create_video"
+    assert any("finalize tail dominated by create_video" in w for w in report["warnings"])
