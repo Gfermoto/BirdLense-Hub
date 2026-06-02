@@ -1,4 +1,13 @@
-from scripts.verify_runtime_slo_dashboard import verify_report
+import os
+import sys
+
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_repo_root = os.path.abspath(os.path.join(_current_dir, "../../.."))
+_scripts_path = os.path.join(_repo_root, "scripts")
+if _scripts_path not in sys.path:
+    sys.path.insert(0, _scripts_path)
+
+from verify_runtime_slo_dashboard import verify_report
 
 
 def test_verify_runtime_slo_dashboard_passes():
