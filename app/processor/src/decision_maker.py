@@ -2,6 +2,7 @@ import logging
 import time
 from collections import Counter
 import re
+from typing import Any, Mapping
 
 from decision_outcome import compute_outcome_bucket
 from runtime_contract import apply_runtime_contract
@@ -143,7 +144,67 @@ class DecisionMaker:
             "min_track_duration": self.min_track_duration,
             "min_confidence_to_process": self.min_confidence_to_process,
         }
+        self._static_pinned_override: StaticPinnedTrackConfig | None = None
         self.reset()
+
+    @staticmethod
+    def _static_cfg_from_overrides(
+        overrides: dict | None,
+        *,
+        runtime_cfg: Mapping[str, Any] | None = None,
+    ) -> StaticPinnedTrackConfig | None:
+        if not overrides:
+            return None
+        from app_config.app_config import app_config as _app_config
+
+        base = StaticPinnedTrackConfig.from_runtime_cfg(runtime_cfg or getattr(_app_config, "config", None) or {})
+        updates: dict[str, Any] = {}
+        bool_keys = {"track_static_reject_enabled": "enabled"}
+        float_keys = {
+            "track_static_reject_min_duration_sec": "min_duration_sec",
+            "track_static_reject_min_duration_sparse_sec": "min_duration_sparse_sec",
+            "track_static_reject_max_center_dispersion_norm": "max_center_dispersion_norm",
+            "track_static_reject_max_relative_center_dispersion": "max_relative_center_dispersion",
+            "track_static_reject_max_bbox_iou_first_last_min": "max_bbox_iou_first_last_min",
+        }
+        int_keys = {
+            "track_static_reject_min_frames": "min_frames",
+            "track_static_reject_min_frames_sparse": "min_frames_sparse",
+        }
+        for src, dst in bool_keys.items():
+            if src not in overrides:
+                continue
+            raw = overrides[src]
+            if isinstance(raw, bool):
+                updates[dst] = raw
+            else:
+                updates[dst] = str(raw).strip().lower() in {"1", "true", "yes", "on"}
+        for src, dst in float_keys.items():
+            if src in overrides:
+                try:
+                    updates[dst] = float(overrides[src])
+                except (TypeError, ValueError):
+                    pass
+        for src, dst in int_keys.items():
+            if src in overrides:
+                try:
+                    updates[dst] = int(overrides[src])
+                except (TypeError, ValueError):
+                    pass
+        if not updates:
+            return None
+        from dataclasses import asdict
+
+        merged = {**asdict(base), **updates}
+        return StaticPinnedTrackConfig(**merged)
+
+    def _resolve_static_pinned_cfg(self) -> StaticPinnedTrackConfig:
+        if self._static_pinned_override is not None:
+            return self._static_pinned_override
+        from app_config.app_config import app_config
+
+        runtime_cfg = getattr(app_config, "config", None) or {}
+        return StaticPinnedTrackConfig.from_runtime_cfg(runtime_cfg)
 
     def _trust_band_for_decision(
         self,
@@ -307,10 +368,14 @@ class DecisionMaker:
                 self.min_confidence_to_process = float(overrides["min_confidence_to_process"])
             except (TypeError, ValueError):
                 pass
+        static_cfg = self._static_cfg_from_overrides(overrides)
+        if static_cfg is not None:
+            self._static_pinned_override = static_cfg
 
     def reset_runtime_overrides(self):
         self.min_track_duration = self._runtime_override_defaults["min_track_duration"]
         self.min_confidence_to_process = self._runtime_override_defaults["min_confidence_to_process"]
+        self._static_pinned_override = None
 
     def update_has_detections(self, has_detections):
         if not has_detections:
@@ -436,7 +501,7 @@ class DecisionMaker:
         entropy_ge = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_entropy_ge"))
         margin_le = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_margin_le"))
         runtime_cfg = getattr(app_config, "config", None) or {}
-        static_cfg = StaticPinnedTrackConfig.from_runtime_cfg(runtime_cfg)
+        static_cfg = self._resolve_static_pinned_cfg()
         for track_id, track in tracks.items():
             detector_events = track.get("detector_events") or []
             if not detector_events:

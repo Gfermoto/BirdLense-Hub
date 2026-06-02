@@ -18,6 +18,7 @@ class TestReportFailureModeFunnel(unittest.TestCase):
         self.assertEqual(
             _classify_failure_mode(
                 yolo_raw_boxes_total=0,
+                yolo_accepted_boxes_total=0,
                 yolo_frames_with_tracks=0,
                 post_fusion_persisted=0,
             ),
@@ -25,7 +26,17 @@ class TestReportFailureModeFunnel(unittest.TestCase):
         )
         self.assertEqual(
             _classify_failure_mode(
+                yolo_raw_boxes_total=5,
+                yolo_accepted_boxes_total=0,
+                yolo_frames_with_tracks=0,
+                post_fusion_persisted=0,
+            ),
+            "confidence_gate_collapse_raw_gt_0_accepted_0",
+        )
+        self.assertEqual(
+            _classify_failure_mode(
                 yolo_raw_boxes_total=3,
+                yolo_accepted_boxes_total=2,
                 yolo_frames_with_tracks=0,
                 post_fusion_persisted=0,
             ),
@@ -34,6 +45,7 @@ class TestReportFailureModeFunnel(unittest.TestCase):
         self.assertEqual(
             _classify_failure_mode(
                 yolo_raw_boxes_total=3,
+                yolo_accepted_boxes_total=2,
                 yolo_frames_with_tracks=2,
                 post_fusion_persisted=0,
             ),
@@ -42,6 +54,7 @@ class TestReportFailureModeFunnel(unittest.TestCase):
         self.assertEqual(
             _classify_failure_mode(
                 yolo_raw_boxes_total=3,
+                yolo_accepted_boxes_total=2,
                 yolo_frames_with_tracks=2,
                 post_fusion_persisted=1,
             ),
@@ -56,6 +69,7 @@ class TestReportFailureModeFunnel(unittest.TestCase):
                 "camera_id": "cam1",
                 "camera_slot": 0,
                 "yolo_raw_boxes_total": 0,
+                "yolo_accepted_boxes_total": 0,
                 "yolo_frames_with_tracks": 0,
                 "payload_json": "{}",
             },
@@ -63,6 +77,7 @@ class TestReportFailureModeFunnel(unittest.TestCase):
                 "camera_id": "cam1",
                 "camera_slot": 0,
                 "yolo_raw_boxes_total": 5,
+                "yolo_accepted_boxes_total": 0,
                 "yolo_frames_with_tracks": 0,
                 "payload_json": "{}",
             },
@@ -70,6 +85,7 @@ class TestReportFailureModeFunnel(unittest.TestCase):
                 "camera_id": "cam2",
                 "camera_slot": 1,
                 "yolo_raw_boxes_total": 5,
+                "yolo_accepted_boxes_total": 2,
                 "yolo_frames_with_tracks": 2,
                 "payload_json": '{"post_fusion_persisted": 0}',
             },
@@ -77,6 +93,7 @@ class TestReportFailureModeFunnel(unittest.TestCase):
                 "camera_id": "cam2",
                 "camera_slot": 1,
                 "yolo_raw_boxes_total": 5,
+                "yolo_accepted_boxes_total": 2,
                 "yolo_frames_with_tracks": 2,
                 "payload_json": '{"post_fusion_persisted": 1}',
             },
@@ -87,9 +104,7 @@ class TestReportFailureModeFunnel(unittest.TestCase):
         self.assertEqual(report["sessions_total"], 4)
         self.assertEqual(report["global_funnel"]["detector_silent_raw0"], 1)
         self.assertEqual(
-            report["global_funnel"][
-                "quality_filter_collapse_raw_gt_0_tracks_0"
-            ],
+            report["global_funnel"]["confidence_gate_collapse_raw_gt_0_accepted_0"],
             1,
         )
         self.assertEqual(
@@ -99,6 +114,10 @@ class TestReportFailureModeFunnel(unittest.TestCase):
             1,
         )
         self.assertEqual(report["global_funnel"]["healthy_persisted_gt_0"], 1)
+        self.assertNotIn(
+            "quality_filter_collapse_raw_gt_0_tracks_0",
+            report["global_funnel"],
+        )
         self.assertIn("cam1", report["by_camera"])
         self.assertIn("0", report["by_slot"])
 
@@ -110,6 +129,7 @@ class TestReportFailureModeFunnel(unittest.TestCase):
                 "camera_id": "BirdBox",
                 "camera_slot": 0,
                 "yolo_raw_boxes_total": 5,
+                "yolo_accepted_boxes_total": 2,
                 "yolo_frames_with_tracks": 2,
                 "payload_json": (
                     '{"post_fusion_persisted": 0, "trigger_graph": '

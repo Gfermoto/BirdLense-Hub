@@ -282,6 +282,7 @@ class MotionRecordingSession:
         *,
         forced_camera_id: str | None = None,
         forced_trigger_source: str | None = None,
+        concurrent_context: dict[str, Any] | None = None,
     ) -> bool:
         """Выполнить одну запись. Возвращает True, если внешний цикл main должен завершиться (режим --input)."""
         session_overrides = merge_birdnet_mqtt_bias_into_overrides(
@@ -413,6 +414,8 @@ class MotionRecordingSession:
                 "yolo_blind_phase": "none",
                 "blind_quickcheck_frames": 0,
                 "blind_quickcheck_hits": 0,
+                "yolo_frames_raw_unaccepted": 0,
+                "yolo_frames_raw_no_track": 0,
             }
             blind_suspected_since_monotonic: float | None = None
             blind_quickcheck_until_monotonic = 0.0
@@ -476,7 +479,12 @@ class MotionRecordingSession:
                 if raw_boxes_local > 0:
                     runtime_signals["yolo_frames_with_raw_boxes"] += 1
                     runtime_signals["yolo_raw_boxes_total"] += raw_boxes_local
-                runtime_signals["yolo_accepted_boxes_total"] += int(local_stats.get("yolo_accepted_boxes") or 0)
+                accepted_local = int(local_stats.get("yolo_accepted_boxes") or 0)
+                runtime_signals["yolo_accepted_boxes_total"] += accepted_local
+                if raw_boxes_local > 0 and accepted_local == 0:
+                    runtime_signals["yolo_frames_raw_unaccepted"] += 1
+                if raw_boxes_local > 0 and not local_stats.get("yolo_track_found"):
+                    runtime_signals["yolo_frames_raw_no_track"] += 1
                 runtime_signals["track_id_switches_count"] = max(
                     int(runtime_signals.get("track_id_switches_count") or 0),
                     int(local_stats.get("track_id_switches_count") or 0),
@@ -737,6 +745,7 @@ class MotionRecordingSession:
                         "runtime_profile": dominant_runtime_profile,
                         "runtime_profile_frames": dict(runtime_profile_counts),
                     },
+                    "concurrent_recording": dict(concurrent_context or {}),
                 },
             }
             opencv_diag = getattr(self.motion_detector, "get_opencv_diagnostics", lambda: None)()
