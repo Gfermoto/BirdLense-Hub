@@ -28,6 +28,9 @@ interface RetentionConfig {
   protect_favorites: boolean;
   min_age_hours: number;
   batch_size: number;
+  max_deletes_per_run?: number;
+  auto_run_enabled?: boolean;
+  auto_run_interval_hours?: number;
   last_run?: string | null;
   last_deleted_count?: number;
   last_freed_bytes?: number;
@@ -396,6 +399,15 @@ export function RetentionPolicy() {
             : t('system.retentionBoolNo')}
           , {t('system.retentionMinAgeHours')}: {cfg.min_age_hours},{' '}
           {t('system.retentionBatch')}: {cfg.batch_size}
+          {cfg.max_deletes_per_run != null
+            ? `, max/run: ${cfg.max_deletes_per_run}`
+            : ''}
+          {cfg.auto_run_enabled != null
+            ? `, auto: ${cfg.auto_run_enabled ? t('system.retentionBoolYes') : t('system.retentionBoolNo')}`
+            : ''}
+          {cfg.auto_run_interval_hours != null
+            ? ` (${cfg.auto_run_interval_hours}h)`
+            : ''}
         </Typography>
 
         {runMutation.isError && (

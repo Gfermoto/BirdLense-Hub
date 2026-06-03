@@ -202,17 +202,6 @@ def _retention_cfg(key: str, default=None):
     return app_config.get(f"retention.{key}", default)
 
 
-def _active_video_count() -> int:
-    return int(Video.query.filter(Video.deleted_at.is_(None)).count())
-
-
-def _min_videos_keep() -> int:
-    try:
-        return max(0, int(_retention_cfg("min_videos_keep") or 0))
-    except (TypeError, ValueError):
-        return 0
-
-
 def _cleanup_orphaned_visits_after_retention(*, dry_run: bool) -> int:
     if dry_run:
         return 0
@@ -312,14 +301,6 @@ def run_retention(dry_run: bool = False, mode: str = None):
                 sz = _get_recordings_size_gb()
                 if sz <= float(max_gb):
                     break
-                floor = _min_videos_keep()
-                if floor and _active_video_count() <= floor:
-                    logger.info(
-                        "Retention max_gb: at min_videos_keep=%s (count=%s), stopping size trim",
-                        floor,
-                        _active_video_count(),
-                    )
-                    break
                 q = Video.query.order_by(Video.start_time.asc())
                 if protect_favorites:
                     q = q.filter(Video.favorite.is_(False))
@@ -378,14 +359,6 @@ def run_retention(dry_run: bool = False, mode: str = None):
             for video in videos:
                 if protect_favorites and video_row_in_protected_session(rec_cascade, video.video_path, prot_cascade):
                     continue
-                floor = _min_videos_keep()
-                if floor and _active_video_count() <= floor:
-                    logger.info(
-                        "Retention days: at min_videos_keep=%s (count=%s), stopping age trim",
-                        floor,
-                        _active_video_count(),
-                    )
-                    break
                 try:
                     if video.video_path:
                         app_base = os.path.dirname(os.path.dirname(_recordings_dir()))

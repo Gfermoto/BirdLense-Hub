@@ -15,8 +15,8 @@ _scheduler_lock = threading.Lock()
 _scheduler_started = False
 
 
-def _retention_auto_enabled(cfg) -> bool:
-    raw = cfg.get("retention.auto_run_enabled")
+def _retention_auto_enabled() -> bool:
+    raw = app_config.get("retention.auto_run_enabled")
     if raw is None:
         return True
     if isinstance(raw, bool):
@@ -24,9 +24,9 @@ def _retention_auto_enabled(cfg) -> bool:
     return str(raw).strip().lower() in ("1", "true", "yes", "on")
 
 
-def _retention_interval_hours(cfg) -> float:
+def _retention_interval_hours() -> float:
     try:
-        hours = float(cfg.get("retention.auto_run_interval_hours") or 6)
+        hours = float(app_config.get("retention.auto_run_interval_hours") or 6)
     except (TypeError, ValueError):
         hours = 6.0
     return max(1.0, min(168.0, hours))
@@ -34,14 +34,13 @@ def _retention_interval_hours(cfg) -> float:
 
 def maybe_run_scheduled_retention(flask_app) -> None:
     """Apply retention when due; no-op if disabled or mode=disabled."""
-    cfg = app_config.config or {}
-    if not _retention_auto_enabled(cfg):
+    if not _retention_auto_enabled():
         return
-    mode = str(cfg.get("retention.mode") or "cascade").strip().lower()
+    mode = str(app_config.get("retention.mode") or "cascade").strip().lower()
     if mode == "disabled":
         return
-    days = cfg.get("retention.days")
-    max_gb = cfg.get("retention.max_gb")
+    days = app_config.get("retention.days")
+    max_gb = app_config.get("retention.max_gb")
     if not days and not max_gb:
         return
 
@@ -64,11 +63,11 @@ def _retention_scheduler_worker(flask_app) -> None:
         return
     while True:
         try:
-            interval_h = _retention_interval_hours(app_config.config or {})
+            interval_h = _retention_interval_hours()
             maybe_run_scheduled_retention(flask_app)
         except Exception as exc:
             flask_app.logger.warning("retention scheduler: %s", exc)
-        time.sleep(_retention_interval_hours(app_config.config or {}) * 3600.0)
+        time.sleep(_retention_interval_hours() * 3600.0)
 
 
 def start_retention_scheduler(flask_app) -> None:
@@ -89,6 +88,6 @@ def start_retention_scheduler(flask_app) -> None:
     ).start()
     logger.info(
         "retention scheduler started (interval_h=%.1f enabled=%s)",
-        _retention_interval_hours(app_config.config or {}),
-        _retention_auto_enabled(app_config.config or {}),
+        _retention_interval_hours(),
+        _retention_auto_enabled(),
     )
