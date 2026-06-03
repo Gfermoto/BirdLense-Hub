@@ -209,11 +209,11 @@ Ref: `docs/contributor/hub-reliability-and-quality-plan.md` W1+W3 — **реал
 
 | ID | Title | Phase |
 |----|-------|-------|
-| TBD | [P0] FinalizeTransaction: atomic clip + DB | 1.1 |
-| TBD | [P0] QuotaMaintainer: unified trim module | 1.3 |
-| TBD | [P0] ReconcileJob: disk↔DB startup sync | 1.4 |
-| TBD | [P0] Honest readiness: funnel + yolo status | 0.1 |
-| TBD | [P1] Persist funnel dashboard per camera | 2.1 |
+| #605 | [P0] Honest readiness: funnel + yolo status | 0.1 |
+| #602 | [P0] FinalizeTransaction: atomic clip + DB | 1.1 |
+| #603 | [P0] QuotaMaintainer: unified trim module | 1.3 |
+| #604 | [P0] ReconcileJob: disk↔DB startup sync | 1.4 |
+| #606 | [P1] Persist funnel dashboard per camera | 2.1 |
 | TBD | [P1] camera_profile static gate calibration | 2.2 |
 | TBD | [P1] Frigate↔Hub daily parity report | 3.1 |
 | TBD | [P1] Deploy artifact manifest + config migration | 4.1–4.2 |

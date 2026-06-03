@@ -29,10 +29,10 @@ def test_scheduled_retention_reads_nested_config(days, max_gb, should_check):
         }.get(key, default)
 
         with patch(
-            "services.retention_service.retention_deletion_pending",
+            "services.quota_maintainer.quota_deletion_pending",
             return_value=(False, ""),
         ) as pending_mock:
-            with patch("services.retention_service.run_retention") as run_mock:
+            with patch("services.quota_maintainer.run_quota_trim") as run_mock:
                 sched.maybe_run_scheduled_retention(app)
 
     if should_check:
@@ -64,14 +64,14 @@ def test_scheduler_skips_when_not_pending(pending, reason, should_run):
         }.get(key, default)
 
         with patch(
-            "services.retention_service.retention_deletion_pending",
+            "services.quota_maintainer.quota_deletion_pending",
             return_value=(pending, reason),
         ):
-            with patch("services.retention_service.run_retention") as run_mock:
+            with patch("services.quota_maintainer.run_quota_trim") as run_mock:
                 run_mock.return_value = (0, 0)
                 sched.maybe_run_scheduled_retention(app)
 
     if should_run:
-        run_mock.assert_called_once_with(dry_run=False, mode="cascade", policy_scope=reason)
+        run_mock.assert_called_once_with(dry_run=False, policy_scope=reason)
     else:
         run_mock.assert_not_called()
