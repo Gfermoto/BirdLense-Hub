@@ -52,6 +52,16 @@ interface RetentionRunResponse {
   mode?: string;
 }
 
+interface OrphanPurgeResponse {
+  dry_run?: boolean;
+  would_delete_count?: number;
+  would_free_bytes?: number;
+  deleted_count?: number;
+  freed_bytes?: number;
+  eligible_count?: number;
+  skipped_protected?: number;
+}
+
 type FormData = Omit<
   RetentionConfig,
   'last_run' | 'last_deleted_count' | 'last_freed_bytes' | 'last_mode'
@@ -144,6 +154,23 @@ export function RetentionPolicy() {
     },
     onError: (error) => {
       console.error('Failed to update retention config', error);
+    },
+  });
+
+  const orphanPurgeMutation = useMutation({
+    mutationFn: async (body: {
+      dry_run: boolean;
+      confirmation?: string;
+      limit?: number;
+    }) => {
+      const { data } = await axios.post<OrphanPurgeResponse>(
+        `${BASE_API_URL}/system/retention/orphan-files/purge`,
+        body,
+      );
+      return data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.system.retentionConfig });
     },
   });
 
@@ -401,6 +428,52 @@ export function RetentionPolicy() {
                 sx={{ display: 'block', mt: 0.5 }}
               >
                 {orphanFiles.sample_paths.join(', ')}
+              </Typography>
+            )}
+            <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={orphanPurgeMutation.isPending}
+                onClick={() => orphanPurgeMutation.mutate({ dry_run: true })}
+              >
+                {t('system.retentionOrphanPurgePreview')}
+              </Button>
+              <Button
+                size="small"
+                variant="contained"
+                color="warning"
+                disabled={orphanPurgeMutation.isPending}
+                onClick={() => {
+                  const ok = window.confirm(t('system.retentionOrphanPurgeConfirm'));
+                  if (ok) {
+                    orphanPurgeMutation.mutate({
+                      dry_run: false,
+                      confirmation: 'purge_orphan_recording_files',
+                    });
+                  }
+                }}
+              >
+                {t('system.retentionOrphanPurgeApply')}
+              </Button>
+            </Stack>
+            {orphanPurgeMutation.isSuccess && orphanPurgeMutation.data && (
+              <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+                {orphanPurgeMutation.data.dry_run
+                  ? t('system.retentionOrphanPurgePreviewResult', {
+                      n: orphanPurgeMutation.data.would_delete_count ?? 0,
+                      mb: Math.round(
+                        (orphanPurgeMutation.data.would_free_bytes ?? 0) /
+                          1024 /
+                          1024,
+                      ),
+                    })
+                  : t('system.retentionOrphanPurgeApplyResult', {
+                      n: orphanPurgeMutation.data.deleted_count ?? 0,
+                      mb: Math.round(
+                        (orphanPurgeMutation.data.freed_bytes ?? 0) / 1024 / 1024,
+                      ),
+                    })}
               </Typography>
             )}
           </Alert>
