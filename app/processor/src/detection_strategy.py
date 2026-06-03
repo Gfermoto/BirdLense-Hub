@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from collections import deque
 import logging
 import math
+import threading
+import time
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Sequence, Tuple
 from dataclasses import dataclass
@@ -712,6 +714,18 @@ class TwoStageStrategy(DetectionStrategy):
         self._classification_task_queue: deque[ClassificationTask] = deque()
         self._classification_task_drops_total = 0
         self._latest_cls_by_track: dict[int, ClassifierOutput] = {}
+        self._classifier_async_enabled = bool(app_config.get("processor.classifier_async_enabled", True))
+        self._classifier_async_lock = threading.Lock()
+        self._classifier_worker_stop = threading.Event()
+        self._classifier_worker: threading.Thread | None = None
+        if self._classifier_async_enabled:
+            self._classifier_worker = threading.Thread(
+                target=self._classifier_async_worker_loop,
+                name="birdlense-classifier-async",
+                daemon=True,
+            )
+            self._classifier_worker.start()
+            self.logger.info("Classifier async worker started (detect path decoupled from classify).")
 
         # Pre-calculate allowed class IDs for regional species (YOLO-cls path only).
         self.classes = None
@@ -747,6 +761,33 @@ class TwoStageStrategy(DetectionStrategy):
             if self._classifier_predict_device:
                 _cls_warm["device"] = self._classifier_predict_device
             self.classifier_model(np.zeros((224, 224, 3), dtype=np.uint8), **_cls_warm)
+
+    def _classifier_async_worker_loop(self) -> None:
+        """Drain classification queue off the hot detect+track path."""
+        while not self._classifier_worker_stop.is_set():
+            if bool(getattr(self, "_for_track_regen", False)):
+                time.sleep(0.05)
+                continue
+            task: ClassificationTask | None = None
+            with self._classifier_async_lock:
+                if self._classification_task_queue:
+                    task = self._classification_task_queue.popleft()
+            if task is None:
+                time.sleep(0.015)
+                continue
+            try:
+                co = self._classify_crop(task.crop)
+            except Exception:
+                logger.debug("Async classifier failed for track %s", task.track_id, exc_info=True)
+                continue
+            with self._classifier_async_lock:
+                self._latest_cls_by_track[int(task.track_id)] = co
+                stats = self._track_stats.setdefault(
+                    int(task.track_id),
+                    {"classified_count": 0, "last_classified_frame": -1},
+                )
+                stats["classified_count"] = int(stats.get("classified_count") or 0) + 1
+                stats["last_classified_frame"] = int(getattr(self, "_frame_index", 0) or 0)
 
     def _normalize_class_name(self, name: str) -> str:
         """Blue_Jay → Blue Jay, Winter_OR_juvenile → Winter/juvenile."""
@@ -1529,22 +1570,30 @@ class TwoStageStrategy(DetectionStrategy):
                 if copied:
                     frame_copy_count += 1
             if len(self._classification_task_queue) >= self._classification_task_queue_maxsize:
-                self._classification_task_queue.popleft()
+                if getattr(self, "_classifier_async_enabled", False) and not track_regen_ctx:
+                    with self._classifier_async_lock:
+                        if len(self._classification_task_queue) >= self._classification_task_queue_maxsize:
+                            self._classification_task_queue.popleft()
+                else:
+                    self._classification_task_queue.popleft()
                 self._classification_task_drops_total += 1
                 record_classification_queue_drop(
                     depth=len(self._classification_task_queue),
                     maxsize=self._classification_task_queue_maxsize,
                     drops_total=self._classification_task_drops_total,
                 )
-            self._classification_task_queue.append(
-                ClassificationTask(
-                    track_id=int(box["track_id"]),
-                    detector_label=str(box["detector_label"]),
-                    box_area_norm=float(box["box_area_norm"]),
-                    crop=crop_payload,
-                    blur_variance=variance,
-                )
+            task = ClassificationTask(
+                track_id=int(box["track_id"]),
+                detector_label=str(box["detector_label"]),
+                box_area_norm=float(box["box_area_norm"]),
+                crop=crop_payload,
+                blur_variance=variance,
             )
+            if getattr(self, "_classifier_async_enabled", False) and not track_regen_ctx:
+                with self._classifier_async_lock:
+                    self._classification_task_queue.append(task)
+            else:
+                self._classification_task_queue.append(task)
         if not self._classification_task_queue and fallback_box is not None:
             mapped = _crop_coords_from_letterboxed_bbox_norm(
                 bbox_norm=fallback_box["bbox_norm"],
@@ -1561,26 +1610,43 @@ class TwoStageStrategy(DetectionStrategy):
                     sr_latency_total_ms += sr_ms
                     _, variance = self.is_blurry(crop_view)
                     crop_payload: np.ndarray | RoiCropRef = crop_sr if crop_sr is not crop_view else roi_ref
-                    self._classification_task_queue.append(
-                        ClassificationTask(
-                            track_id=int(fallback_box["track_id"]),
-                            detector_label=str(fallback_box["detector_label"]),
-                            box_area_norm=float(fallback_box["box_area_norm"]),
-                            crop=crop_payload,
-                            blur_variance=variance,
-                        )
+                    fb_task = ClassificationTask(
+                        track_id=int(fallback_box["track_id"]),
+                        detector_label=str(fallback_box["detector_label"]),
+                        box_area_norm=float(fallback_box["box_area_norm"]),
+                        crop=crop_payload,
+                        blur_variance=variance,
                     )
-        while self._classification_task_queue and len(classified_by_track) < classification_budget:
-            task = self._classification_task_queue.popleft()
-            classified_by_track[int(task.track_id)] = task
-        for box in valid_boxes:
-            stats = self._track_stats.setdefault(
-                box["track_id"],
-                {"classified_count": 0, "last_classified_frame": -1},
-            )
-            if box["track_id"] in classified_by_track:
-                stats["classified_count"] = int(stats.get("classified_count") or 0) + 1
-                stats["last_classified_frame"] = self._frame_index
+                    if getattr(self, "_classifier_async_enabled", False) and not track_regen_ctx:
+                        with self._classifier_async_lock:
+                            self._classification_task_queue.append(fb_task)
+                    else:
+                        self._classification_task_queue.append(fb_task)
+        use_async_classifier = bool(
+            getattr(self, "_classifier_async_enabled", False) and not track_regen_ctx
+        )
+        if use_async_classifier:
+            with self._classifier_async_lock:
+                classified_by_track = {}
+        else:
+            while self._classification_task_queue and len(classified_by_track) < classification_budget:
+                task = self._classification_task_queue.popleft()
+                classified_by_track[int(task.track_id)] = task
+        if not use_async_classifier:
+            for box in valid_boxes:
+                stats = self._track_stats.setdefault(
+                    box["track_id"],
+                    {"classified_count": 0, "last_classified_frame": -1},
+                )
+                if box["track_id"] in classified_by_track:
+                    stats["classified_count"] = int(stats.get("classified_count") or 0) + 1
+                    stats["last_classified_frame"] = self._frame_index
+        elif valid_boxes:
+            for box in valid_boxes:
+                self._track_stats.setdefault(
+                    box["track_id"],
+                    {"classified_count": 0, "last_classified_frame": -1},
+                )
         detection_results = []
         for box in valid_boxes:
             species_name = None
@@ -1607,6 +1673,9 @@ class TwoStageStrategy(DetectionStrategy):
                 co = self._classify_crop(classified.crop)
                 crop = classified.crop
                 blur_variance = classified.blur_variance
+            elif use_async_classifier:
+                with self._classifier_async_lock:
+                    co = self._latest_cls_by_track.get(int(box["track_id"]))
             elif (
                 int(box["track_id"]) in scheduled_for_classifier
                 and str(box.get("detector_label") or "").strip() != "Bird"
@@ -1703,3 +1772,10 @@ class TwoStageStrategy(DetectionStrategy):
         self._detection_quality: DetectionQualityPipeline | None = None
         if hasattr(self.binary_model.predictor, "trackers"):
             self.binary_model.predictor.trackers[0].reset()
+
+    def stop_classifier_worker(self) -> None:
+        if getattr(self, "_classifier_worker_stop", None) is not None:
+            self._classifier_worker_stop.set()
+        worker = getattr(self, "_classifier_worker", None)
+        if worker is not None and worker.is_alive():
+            worker.join(timeout=0.5)

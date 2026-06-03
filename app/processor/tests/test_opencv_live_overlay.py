@@ -10,6 +10,8 @@ sys.path.append(src_path)
 
 from motion_detectors.opencv_live_overlay import (  # noqa: E402
     detection_results_to_detector_polygons,
+    merge_live_detector_polygons,
+    publish_merged_detector_overlay,
     refresh_all_opencv_live_detectors,
     register_opencv_live_detector,
     set_opencv_live_overlay,
@@ -98,6 +100,23 @@ class TestOpenCVLiveOverlay(unittest.TestCase):
         self.assertEqual(len(polys), 1)
         self.assertEqual(detection_results_to_detector_polygons([]), [])
         self.assertEqual(detection_results_to_detector_polygons(None), [])
+
+    def test_merge_prefers_yolo_over_frigate(self):
+        yolo = [[[0.0, 0.0], [0.1, 0.0], [0.1, 0.1], [0.0, 0.1]]]
+        merged, src = merge_live_detector_polygons(yolo, [0.5, 0.5, 0.6, 0.6])
+        self.assertEqual(src, "yolo")
+        self.assertEqual(merged, yolo)
+
+    def test_merge_frigate_fallback_when_yolo_empty(self):
+        merged, src = merge_live_detector_polygons([], [0.2, 0.3, 0.4, 0.5])
+        self.assertEqual(src, "frigate")
+        self.assertEqual(len(merged), 1)
+
+    def test_publish_merged_overlay(self):
+        publish_merged_detector_overlay("Forest", [], frigate_bbox_norm=[0.1, 0.2, 0.3, 0.4])
+        snap = snapshot_opencv_live_by_camera()
+        self.assertEqual(snap["Forest"]["detector_overlay_source"], "frigate")
+        self.assertEqual(len(snap["Forest"]["detector_polygons"]), 1)
 
 
 if __name__ == "__main__":

@@ -72,6 +72,43 @@ def set_yolo_live_overlay(camera_id: str, payload: dict[str, Any]) -> None:
     _merge_camera_payload(camera_id, payload, source="yolo")
 
 
+def set_frigate_live_overlay(camera_id: str, payload: dict[str, Any]) -> None:
+    _merge_camera_payload(camera_id, payload, source="frigate")
+
+
+def merge_live_detector_polygons(
+    yolo_polys: list[list[list[float]]] | None,
+    frigate_bbox_norm: list[float] | None,
+    *,
+    yolo_preferred: bool = True,
+) -> tuple[list[list[list[float]]], str]:
+    """
+    Overlay merge: YOLO track boxes (core) when present; optional Frigate bbox if MQTT
+    aux is active and YOLO returned nothing. Standalone installs never hit the Frigate path.
+    """
+    polys = list(yolo_polys or [])
+    if polys:
+        return polys, "yolo"
+    poly = _bbox_norm_to_polygon(frigate_bbox_norm)
+    if poly:
+        return [poly], "frigate"
+    return [], "none"
+
+
+def publish_merged_detector_overlay(
+    camera_id: str,
+    yolo_polys: list[list[list[float]]] | None,
+    *,
+    frigate_bbox_norm: list[float] | None = None,
+) -> None:
+    """Push merged detector polygons to the live overlay store."""
+    merged, source = merge_live_detector_polygons(yolo_polys, frigate_bbox_norm)
+    payload: dict[str, Any] = {"detector_polygons": merged, "detector_overlay_source": source}
+    set_yolo_live_overlay(camera_id, payload)
+    if source == "frigate" and frigate_bbox_norm:
+        set_frigate_live_overlay(camera_id, {"frigate_bbox_norm": list(frigate_bbox_norm)})
+
+
 def _bbox_norm_to_polygon(bbox) -> list[list[float]] | None:
     if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
         return None

@@ -7,6 +7,25 @@ checked.
 
 Карта каталога процессора (модели, скрипты): [../README.md](../README.md), [../models/README.md](../models/README.md).
 
+## Product contract (standalone-first)
+
+Hub работает **без** Frigate, BirdNET и прочих сайтов. Минимальный контур:
+
+**триггер (OpenCV / вес / MQTT-реле) → YOLO binary + ByteTrack → параллельно ReID, классификатор, поведение → fusion / notify / persist.**
+
+Frigate и BirdNET — **опционально**: доп. триггер, подсказка вида, bias в fusion. Они не подменяют трек, bbox и запись.
+
+### Сценарии пользователя (north star)
+
+| # | Пользователь | Успех |
+|---|--------------|--------|
+| 1 | Одна камера на кормушке, только OpenCV | Движение → запись → зелёный bbox на птице в Live (во время записи) → TG с узнаваемым кадром → визит с видом |
+| 2 | Несколько камер, разное качество | То же per camera; настройки камеры, не зависимость от Frigate |
+| 3 | + Frigate в LAN | Frigate может **стартовать** запись или дать hint вида; трек и bbox — **свой YOLO** |
+| 4 | + BirdNET | Подсказка вида в fusion; без BirdNET — только классификатор |
+
+**Не цель:** «Frigate видит — значит OK»; synthetic rows без `frames[]`; длинные клипы без YOLO «потому что Frigate шевелится».
+
 ## Contours
 
 | Contour | `models/` | Owns | Primary modules | Main dependencies |

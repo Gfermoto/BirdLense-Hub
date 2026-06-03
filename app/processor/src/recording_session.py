@@ -20,7 +20,7 @@ from fps_tracker import FPSTracker
 from processor_support import get_output_path, processor_status
 from processor_runtime_stats import inc_counter, observe_timing, set_gauge
 from detection_strategy import coerce_bgr_frame
-from recording_finalize import finalize_motion_recording
+from recording_session_policy import effective_frigate_hold_seconds
 from recording_finalize_worker import FinalizeWorker
 from session_state_repository import SessionStateRepository
 from detection_scheduler import build_probe_config
@@ -376,6 +376,10 @@ class MotionRecordingSession:
                 frigate_hold_seconds = float(app_config.get("processor.frigate_activity_hold_seconds") or 0.0)
             except (TypeError, ValueError):
                 frigate_hold_seconds = 0.0
+            frigate_hold_seconds = effective_frigate_hold_seconds(
+                frigate_hold_seconds,
+                trigger_by,
+            )
             try:
                 max_frigate_only_extension_frames = int(
                     app_config.get("processor.frigate_only_extension_max_frames") or 0
@@ -563,14 +567,14 @@ class MotionRecordingSession:
                         )
                 run_stats = dict(getattr(self.frame_processor, "last_run_stats", {}) or {})
                 if camera_id:
-                    from motion_detectors.opencv_live_overlay import set_yolo_live_overlay
+                    from frigate_live_track import get_frigate_live_bbox
+                    from motion_detectors.opencv_live_overlay import publish_merged_detector_overlay
 
                     live_polygons = list(getattr(self.frame_processor, "live_detector_polygons", None) or [])
-                    set_yolo_live_overlay(
+                    publish_merged_detector_overlay(
                         camera_id,
-                        {
-                            "detector_polygons": live_polygons,
-                        },
+                        live_polygons,
+                        frigate_bbox_norm=get_frigate_live_bbox(camera_id),
                     )
                 raw_boxes = _accumulate_run_stats(run_stats)
                 runtime_profile = str(run_stats.get("runtime_profile") or "").strip()
@@ -593,7 +597,11 @@ class MotionRecordingSession:
                     blind_suspected_since_monotonic = None
                     blind_quickcheck_until_monotonic = 0.0
 
-                frigate_only_extension = bool(has_detections and not raw_yolo_detections)
+                frigate_only_extension = bool(
+                    frigate_hold_seconds > 0
+                    and has_detections
+                    and not raw_yolo_detections
+                )
                 if frigate_only_extension:
                     runtime_signals["session_extended_by_frigate_only"] += 1
                     if (

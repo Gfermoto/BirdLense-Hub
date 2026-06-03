@@ -29,6 +29,7 @@ from app_config.app_config import app_config
 from app_config.trigger_config import get_effective_trigger_config
 from birdnet_merge_key import birdnet_merge_key
 from frigate_bbox import frigate_after_to_normalized_xyxy
+from frigate_live_track import update_frigate_live_track
 from species_mapping_config import build_species_mapping
 from mqtt_event_parsers import (
     _frigate_after_has_tracked_geometry,
@@ -667,6 +668,23 @@ class MQTTEventAggregator:
                     bbox_norm = frigate_after_to_normalized_xyxy(after)
                     if bbox_norm:
                         ev["frigate_bbox_norm"] = bbox_norm
+                    ev_type_raw = str(fdata.get("type") or "").strip().lower()
+                    try:
+                        trigger_score_live = float(ev.get("confidence") or 0.0)
+                    except (TypeError, ValueError):
+                        trigger_score_live = 0.0
+                    update_frigate_live_track(
+                        str(ev.get("camera") or ""),
+                        bbox_norm=bbox_norm,
+                        score=trigger_score_live,
+                        event_id=str(after.get("id") or fdata.get("id") or ""),
+                        event_type=ev_type_raw,
+                        labels={
+                            str(ev.get("label") or ""),
+                            str(ev.get("sub_label") or ""),
+                            str(ev.get("species") or ""),
+                        },
+                    )
                 label = ev.get("label", "")
                 sub_label = ev.get("sub_label", "")
                 species = ev.get("species", "")
