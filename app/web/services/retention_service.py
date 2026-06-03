@@ -203,10 +203,21 @@ def _retention_cfg(key: str, default=None):
 
 
 def _cleanup_orphaned_visits_after_retention(*, dry_run: bool) -> int:
-    if dry_run:
-        return 0
     try:
-        from services.species_visit_maintenance_service import apply_clean_orphaned_visits
+        from services.species_visit_maintenance_service import (
+            apply_clean_orphaned_visits,
+            preview_clean_orphaned_visits,
+        )
+
+        if dry_run:
+            result = preview_clean_orphaned_visits(db.session)
+            removed = int(result.get("orphaned") or 0)
+            if removed:
+                logger.info(
+                    "Retention dry-run: would remove %s orphaned visit(s) after cascade",
+                    removed,
+                )
+            return removed
 
         result = apply_clean_orphaned_visits(db.session)
         db.session.commit()

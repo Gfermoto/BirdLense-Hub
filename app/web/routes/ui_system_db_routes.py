@@ -161,6 +161,17 @@ def register_ui_system_db_routes(app):
             safe["last_mode"] = m.get("retention_mode", "cascade")
         except Exception:
             app.logger.debug("retention last_run metrics unavailable", exc_info=True)
+        try:
+            from services.recording_orphan_inventory import summarize_orphan_recording_files
+
+            safe["orphan_recording_files"] = summarize_orphan_recording_files()
+        except Exception:
+            app.logger.debug("retention orphan file inventory unavailable", exc_info=True)
+            safe["orphan_recording_files"] = {
+                "orphan_session_count": 0,
+                "orphan_bytes": 0,
+                "sample_paths": [],
+            }
         return safe, 200
 
     @app.route("/api/ui/system/retention", methods=["PUT"])

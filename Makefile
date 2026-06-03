@@ -220,6 +220,14 @@ pipeline-health-gate:
 	chmod +x ./scripts/pipeline-health-gate.sh; \
 	./scripts/pipeline-health-gate.sh
 
+# Replay all favorite mp4 on VPS (#599); creates new processor sessions.
+#   source scripts/deploy.local.sh && \
+#   BIRDLENSE_ALLOW_REMOTE_MUTATION=1 make replay-favorites-vps
+replay-favorites-vps:
+	@mkdir -p "$(CURDIR)/.artifacts/replay-favorites"
+	@python3 "$(CURDIR)/scripts/replay_favorite_videos.py" \
+		--json-out "$(CURDIR)/.artifacts/replay-favorites/replay_favorites_$$(date -u +%Y%m%dT%H%M%SZ).json"
+
 failure-mode-funnel:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/report_failure_mode_funnel.py \

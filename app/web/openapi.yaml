@@ -3037,6 +3037,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Error
+    put:
+      summary: Update retention configuration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetentionConfigUpdate'
+      responses:
+        '200':
+          description: Updated retention config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetentionConfigResponse'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Error
     post:
       summary: Run retention policy (delete old recordings)
       requestBody:
@@ -4347,6 +4373,34 @@ components:
       properties:
         error:
           type: string
+    RetentionConfigUpdate:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [cascade, files_only, disabled]
+        days:
+          type: integer
+          nullable: true
+        max_gb:
+          type: number
+          nullable: true
+        dataset_max_age_days:
+          type: integer
+        migration_max_age_days:
+          type: integer
+        protect_favorites:
+          type: boolean
+        min_age_hours:
+          type: integer
+        batch_size:
+          type: integer
+        max_deletes_per_run:
+          type: integer
+        auto_run_enabled:
+          type: boolean
+        auto_run_interval_hours:
+          type: integer
     RetentionConfigResponse:
       type: object
       properties:
@@ -4369,6 +4423,12 @@ components:
           type: integer
         batch_size:
           type: integer
+        max_deletes_per_run:
+          type: integer
+        auto_run_enabled:
+          type: boolean
+        auto_run_interval_hours:
+          type: integer
         last_run:
           type: string
           format: date-time
@@ -4379,6 +4439,17 @@ components:
           type: integer
         last_mode:
           type: string
+        orphan_recording_files:
+          type: object
+          properties:
+            orphan_session_count:
+              type: integer
+            orphan_bytes:
+              type: integer
+            sample_paths:
+              type: array
+              items:
+                type: string
     ConfigAuditResponse:
       type: object
       required:

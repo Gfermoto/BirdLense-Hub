@@ -19,6 +19,12 @@ import { queryKeys } from '../../../api/queryKeys';
 
 type RetentionMode = 'cascade' | 'files_only' | 'disabled';
 
+interface OrphanRecordingFiles {
+  orphan_session_count: number;
+  orphan_bytes: number;
+  sample_paths: string[];
+}
+
 interface RetentionConfig {
   mode: RetentionMode;
   days?: number | null;
@@ -31,6 +37,7 @@ interface RetentionConfig {
   max_deletes_per_run?: number;
   auto_run_enabled?: boolean;
   auto_run_interval_hours?: number;
+  orphan_recording_files?: OrphanRecordingFiles;
   last_run?: string | null;
   last_deleted_count?: number;
   last_freed_bytes?: number;
@@ -73,6 +80,9 @@ function toFormData(config: RetentionConfig): FormData {
     protect_favorites: config.protect_favorites,
     min_age_hours: config.min_age_hours,
     batch_size: config.batch_size,
+    max_deletes_per_run: config.max_deletes_per_run ?? 500,
+    auto_run_enabled: config.auto_run_enabled ?? true,
+    auto_run_interval_hours: config.auto_run_interval_hours ?? 6,
   };
 }
 
@@ -115,16 +125,7 @@ export function RetentionPolicy() {
 
   useEffect(() => {
     if (configQuery.data) {
-      setFormData({
-        mode: configQuery.data.mode,
-        days: configQuery.data.days ?? null,
-        max_gb: configQuery.data.max_gb ?? null,
-        dataset_max_age_days: configQuery.data.dataset_max_age_days,
-        migration_max_age_days: configQuery.data.migration_max_age_days,
-        protect_favorites: configQuery.data.protect_favorites,
-        min_age_hours: configQuery.data.min_age_hours,
-        batch_size: configQuery.data.batch_size,
-      });
+      setFormData(toFormData(configQuery.data));
     }
   }, [configQuery.data]);
 
@@ -156,6 +157,7 @@ export function RetentionPolicy() {
 
   const cfg = configQuery.data;
   const savedFormData = toFormData(cfg);
+  const orphanFiles = cfg.orphan_recording_files;
   const hasLocalChanges =
     !!formData && JSON.stringify(formData) !== JSON.stringify(savedFormData);
 
@@ -329,6 +331,81 @@ export function RetentionPolicy() {
           helperText={t('system.retentionBatchHelper')}
         />
 
+        <TextField
+          label={t('system.retentionMaxDeletesPerRun')}
+          size="small"
+          type="number"
+          inputProps={{ min: 1, step: 1 }}
+          value={formData?.max_deletes_per_run ?? 500}
+          onChange={(e) =>
+            setField(
+              'max_deletes_per_run',
+              boundedNumber(e.target.value, 500, 1),
+            )
+          }
+          fullWidth
+          disabled={updateMutation.isPending}
+          helperText={t('system.retentionMaxDeletesPerRunHelper')}
+        />
+
+        <Box>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={formData?.auto_run_enabled ?? true}
+                onChange={(e) =>
+                  setField('auto_run_enabled', e.target.checked)
+                }
+                disabled={updateMutation.isPending}
+              />
+            }
+            label={t('system.retentionAutoRunEnabled')}
+          />
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            display="block"
+            sx={{ mt: -0.5, mb: 0.5 }}
+          >
+            {t('system.retentionAutoRunEnabledHelper')}
+          </Typography>
+        </Box>
+
+        <TextField
+          label={t('system.retentionAutoRunIntervalHours')}
+          size="small"
+          type="number"
+          inputProps={{ min: 1, step: 1 }}
+          value={formData?.auto_run_interval_hours ?? 6}
+          onChange={(e) =>
+            setField(
+              'auto_run_interval_hours',
+              boundedNumber(e.target.value, 6, 1),
+            )
+          }
+          fullWidth
+          disabled={updateMutation.isPending || !formData?.auto_run_enabled}
+          helperText={t('system.retentionAutoRunIntervalHoursHelper')}
+        />
+
+        {orphanFiles && orphanFiles.orphan_session_count > 0 && (
+          <Alert severity="warning">
+            {t('system.retentionOrphanFilesSummary', {
+              n: orphanFiles.orphan_session_count,
+              gb: (orphanFiles.orphan_bytes / 1024 ** 3).toFixed(1),
+            })}
+            {orphanFiles.sample_paths.length > 0 && (
+              <Typography
+                component="span"
+                variant="caption"
+                sx={{ display: 'block', mt: 0.5 }}
+              >
+                {orphanFiles.sample_paths.join(', ')}
+              </Typography>
+            )}
+          </Alert>
+        )}
+
         <Stack direction="row" spacing={1}>
           <Button
             type="submit"
@@ -397,14 +474,14 @@ export function RetentionPolicy() {
           {cfg.protect_favorites
             ? t('system.retentionBoolYes')
             : t('system.retentionBoolNo')}
-          , {t('system.retentionMinAgeHours')}: {cfg.min_age_hours},{' '}
-          {t('system.retentionBatch')}: {cfg.batch_size}
-          {cfg.max_deletes_per_run != null
-            ? `, max/run: ${cfg.max_deletes_per_run}`
-            : ''}
-          {cfg.auto_run_enabled != null
-            ? `, auto: ${cfg.auto_run_enabled ? t('system.retentionBoolYes') : t('system.retentionBoolNo')}`
-            : ''}
+          ,           {t('system.retentionMinAgeHours')}: {cfg.min_age_hours},{' '}
+          {t('system.retentionBatch')}: {cfg.batch_size},{' '}
+          {t('system.retentionMaxDeletesPerRun')}:{' '}
+          {cfg.max_deletes_per_run ?? 500},{' '}
+          {t('system.retentionAutoRunEnabled')}:{' '}
+          {cfg.auto_run_enabled
+            ? t('system.retentionBoolYes')
+            : t('system.retentionBoolNo')}
           {cfg.auto_run_interval_hours != null
             ? ` (${cfg.auto_run_interval_hours}h)`
             : ''}
