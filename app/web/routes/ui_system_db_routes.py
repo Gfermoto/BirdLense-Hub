@@ -45,6 +45,9 @@ def _validate_retention_update(data: dict) -> tuple[dict, dict | None]:
         "protect_favorites",
         "min_age_hours",
         "batch_size",
+        "max_deletes_per_run",
+        "auto_run_enabled",
+        "auto_run_interval_hours",
     }
     extra = sorted(set(data) - allowed)
     if extra:
@@ -69,6 +72,8 @@ def _validate_retention_update(data: dict) -> tuple[dict, dict | None]:
         ("migration_max_age_days", 0),
         ("min_age_hours", 0),
         ("batch_size", 1),
+        ("max_deletes_per_run", 1),
+        ("auto_run_interval_hours", 1),
     ):
         if field in data:
             value, error = _non_negative_int(data[field], field=field, minimum=minimum)
@@ -80,6 +85,11 @@ def _validate_retention_update(data: dict) -> tuple[dict, dict | None]:
         if not isinstance(data["protect_favorites"], bool):
             return {}, {"error": "protect_favorites must be a boolean"}
         update["protect_favorites"] = data["protect_favorites"]
+
+    if "auto_run_enabled" in data:
+        if not isinstance(data["auto_run_enabled"], bool):
+            return {}, {"error": "auto_run_enabled must be a boolean"}
+        update["auto_run_enabled"] = data["auto_run_enabled"]
 
     return update, None
 
@@ -136,6 +146,9 @@ def register_ui_system_db_routes(app):
             "protect_favorites": rc.get("protect_favorites", True),
             "min_age_hours": rc.get("min_age_hours", 1),
             "batch_size": rc.get("batch_size", 50),
+            "max_deletes_per_run": rc.get("max_deletes_per_run", 500),
+            "auto_run_enabled": rc.get("auto_run_enabled", True),
+            "auto_run_interval_hours": rc.get("auto_run_interval_hours", 6),
         }
         # add last-run metrics
         try:

@@ -197,20 +197,29 @@ def _fetch_metrics():
     }
 
 
+def _retention_cfg(key: str, default=None):
+    """Read retention.* via AppConfig dot-path (nested YAML)."""
+    return app_config.get(f"retention.{key}", default)
+
+
 def run_retention(dry_run: bool = False, mode: str = None):
     """Apply retention policies based on configured mode.
     Returns (deleted_count, deleted_size) for recordings cleanup.
     """
-    cfg = app_config.config
-    mode_raw = mode if mode is not None else cfg.get("retention.mode", "cascade")
+    mode_raw = mode if mode is not None else _retention_cfg("mode", "cascade")
     mode = str(mode_raw).strip().lower() if mode_raw else "cascade"
     if mode == "disabled":
         logger.info("Retention mode=disabled, skipping")
         return 0, 0
 
-    grace_hours = int(cfg.get("retention.min_age_hours", 1))
-    batch_size = int(cfg.get("retention.batch_size", 50))
-    protect_favorites = bool(cfg.get("retention.protect_favorites", True))
+    grace_hours = int(_retention_cfg("min_age_hours", 1))
+    batch_size = int(_retention_cfg("batch_size", 50))
+    try:
+        max_deletes_per_run = int(_retention_cfg("max_deletes_per_run") or 500)
+    except (TypeError, ValueError):
+        max_deletes_per_run = 500
+    max_deletes_per_run = max(1, min(5000, max_deletes_per_run))
+    protect_favorites = bool(_retention_cfg("protect_favorites", True))
 
     recordings_deleted = 0
     recordings_freed = 0
@@ -219,8 +228,8 @@ def run_retention(dry_run: bool = False, mode: str = None):
     if mode == "files_only":
         # files_only: only remove files; mark Video as deleted
         rec_dir = _recordings_dir()
-        cut_days = cfg.get("retention.days")
-        max_gb = cfg.get("retention.max_gb")
+        cut_days = _retention_cfg("days")
+        max_gb = _retention_cfg("max_gb")
         if not cut_days and not max_gb:
             return 0, 0
         if not cut_days and max_gb and float(max_gb) > 0:
@@ -259,8 +268,8 @@ def run_retention(dry_run: bool = False, mode: str = None):
                 logger.error(f"Soft-delete Video rows failed: {e}")
     else:
         # cascade or full_row: original behavior
-        cut_days = cfg.get("retention.days")
-        max_gb = cfg.get("retention.max_gb")
+        cut_days = _retention_cfg("days")
+        max_gb = _retention_cfg("max_gb")
         if not cut_days and not max_gb:
             return 0, 0
         cutoff = None
@@ -299,8 +308,22 @@ def run_retention(dry_run: bool = False, mode: str = None):
                     deleted_video_ids.add(oldest.id)
                 except Exception as e:
                     logger.error(f"Retention max_gb delete failed: {e}")
+                    db.session.rollback()
                     break
-                if len(deleted_video_ids) >= int(cfg.get("retention.batch_size", 50)):
+                if len(deleted_video_ids) % 25 == 0:
+                    try:
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+                        logger.exception("Retention interim commit failed during max_gb trim")
+                        break
+                if len(deleted_video_ids) >= max_deletes_per_run:
+                    logger.info(
+                        "Retention max_gb: reached max_deletes_per_run=%s (size_gb=%.2f target=%s)",
+                        max_deletes_per_run,
+                        sz,
+                        max_gb,
+                    )
                     break
             try:
                 db.session.commit()
@@ -340,9 +363,9 @@ def run_retention(dry_run: bool = False, mode: str = None):
                 logger.error(f"Retention commit failed: {e}")
 
         # dataset TTL
-        _cleanup_dataset_ttl(cfg.get("retention.dataset_max_age_days", 0), grace_hours, dry_run)
+        _cleanup_dataset_ttl(_retention_cfg("dataset_max_age_days", 0), grace_hours, dry_run)
         # migration TTL
-        _cleanup_migration_ttl(cfg.get("retention.migration_max_age_days", 0), grace_hours, dry_run)
+        _cleanup_migration_ttl(_retention_cfg("migration_max_age_days", 0), grace_hours, dry_run)
 
         if recordings_deleted:
             logger.info(f"Retention: deleted {recordings_deleted} videos, {recordings_freed / 1024 / 1024:.1f} MB")
