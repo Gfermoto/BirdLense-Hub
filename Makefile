@@ -228,6 +228,11 @@ replay-favorites-vps:
 	@python3 "$(CURDIR)/scripts/replay_favorite_videos.py" \
 		--json-out "$(CURDIR)/.artifacts/replay-favorites/replay_favorites_$$(date -u +%Y%m%dT%H%M%SZ).json"
 
+replay-favorites-track-gate:
+	@mkdir -p "$(CURDIR)/.artifacts/replay-favorites"
+	@python3 "$(CURDIR)/scripts/replay_favorites_track_gate.py" \
+		--json-out "$(CURDIR)/.artifacts/replay-favorites/track_gate_$$(date -u +%Y%m%dT%H%M%SZ).json"
+
 failure-mode-funnel:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/report_failure_mode_funnel.py \
