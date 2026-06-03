@@ -107,12 +107,28 @@ def tracks_to_detector_polygons(tracks: dict | None, *, limit: int = 20) -> list
     polys: list[list[list[float]]] = []
     if not isinstance(tracks, dict):
         return polys
+    static_cfg = None
+    try:
+        from app_config.app_config import app_config
+        from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
+
+        static_cfg = StaticPinnedTrackConfig.from_runtime_cfg(app_config.config or {})
+    except Exception:
+        static_cfg = None
     for tr in tracks.values():
         if not isinstance(tr, dict):
             continue
         bbox = None
         frames = tr.get("frames")
         if isinstance(frames, list) and frames:
+            if static_cfg is not None and static_cfg.enabled:
+                pseudo = {
+                    "start_time": tr.get("start_time", 0),
+                    "end_time": tr.get("end_time", 0),
+                    "frames": frames,
+                }
+                if static_pinned_track_reason(pseudo, static_cfg):
+                    continue
             last = frames[-1]
             if isinstance(last, dict):
                 bbox = last.get("bbox")
