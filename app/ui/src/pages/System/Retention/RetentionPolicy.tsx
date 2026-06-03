@@ -91,7 +91,7 @@ function toFormData(config: RetentionConfig): FormData {
     min_age_hours: config.min_age_hours,
     batch_size: config.batch_size,
     max_deletes_per_run: config.max_deletes_per_run ?? 500,
-    auto_run_enabled: config.auto_run_enabled ?? true,
+    auto_run_enabled: config.auto_run_enabled ?? false,
     auto_run_interval_hours: config.auto_run_interval_hours ?? 6,
   };
 }
@@ -379,7 +379,7 @@ export function RetentionPolicy() {
           <FormControlLabel
             control={
               <Switch
-                checked={formData?.auto_run_enabled ?? true}
+                checked={formData?.auto_run_enabled ?? false}
                 onChange={(e) =>
                   setField('auto_run_enabled', e.target.checked)
                 }

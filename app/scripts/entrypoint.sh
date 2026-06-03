@@ -80,7 +80,22 @@ open("/etc/nginx/conf.d/default.conf", "w").write(t)
 # =============================================================================
 if [ -d /app/_bundled_data/images ]; then
   mkdir -p /app/data/images
-  cp -a /app/_bundled_data/images/. /app/data/images/
+  # Never clobber good volume files with empty/stale bundled assets (deploy excludes app/data).
+  while IFS= read -r -d '' _bundled_src; do
+    _rel="${_bundled_src#/app/_bundled_data/images/}"
+    _dest="/app/data/images/${_rel}"
+    mkdir -p "$(dirname "$_dest")"
+    _src_size="$(stat -c '%s' "$_bundled_src" 2>/dev/null || echo 0)"
+    [ "$_src_size" -gt 0 ] || continue
+    if [ ! -f "$_dest" ]; then
+      cp -a "$_bundled_src" "$_dest"
+      continue
+    fi
+    _dest_size="$(stat -c '%s' "$_dest" 2>/dev/null || echo 0)"
+    if [ "$_dest_size" -eq 0 ] || [ "$_src_size" -gt "$_dest_size" ]; then
+      cp -a "$_bundled_src" "$_dest"
+    fi
+  done < <(find /app/_bundled_data/images -type f -print0)
 fi
 mkdir -p /app/data/file_test
 mkdir -p /tmp/nginx-client-body /tmp/nginx-proxy /tmp/nginx-fastcgi /tmp/nginx-uwsgi /tmp/nginx-scgi

@@ -1,4 +1,4 @@
-"""Фоновый запуск retention по расписанию (cascade + max_gb + days)."""
+"""Фоновая проверка retention: удаление только при нарушении days или max_gb."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ _scheduler_started = False
 def _retention_auto_enabled() -> bool:
     raw = app_config.get("retention.auto_run_enabled")
     if raw is None:
-        return True
+        return False
     if isinstance(raw, bool):
         return raw
     return str(raw).strip().lower() in ("1", "true", "yes", "on")
@@ -33,7 +33,7 @@ def _retention_interval_hours() -> float:
 
 
 def maybe_run_scheduled_retention(flask_app) -> None:
-    """Apply retention when due; no-op if disabled or mode=disabled."""
+    """Check retention thresholds on interval; trim oldest/expired rows only until policy is met."""
     if not _retention_auto_enabled():
         return
     mode = str(app_config.get("retention.mode") or "cascade").strip().lower()
@@ -44,18 +44,23 @@ def maybe_run_scheduled_retention(flask_app) -> None:
     if not days and not max_gb:
         return
 
-    from services.retention_service import run_retention
+    from services.retention_service import retention_deletion_pending, run_retention
 
     with flask_app.app_context():
-        deleted, freed = run_retention(dry_run=False, mode=mode)
+        pending, reason = retention_deletion_pending(mode=mode)
+        if not pending:
+            logger.info("scheduled retention: skipped, within policy (mode=%s)", mode)
+            return
+
+        deleted, freed = run_retention(dry_run=False, mode=mode, policy_scope=reason)
         if deleted or freed:
             logger.info(
-                "scheduled retention: deleted=%s freed_mb=%.1f mode=%s",
+                "scheduled retention: reason=%s deleted=%s freed_mb=%.1f mode=%s",
+                reason,
                 deleted,
                 freed / (1024 * 1024),
                 mode,
             )
-
 
 def _retention_scheduler_worker(flask_app) -> None:
     disable = os.environ.get("DISABLE_RETENTION_SCHEDULER", "").strip().lower()
