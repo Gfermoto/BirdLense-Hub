@@ -42,6 +42,22 @@ class TestVerifyParityReport(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(any("precision_proxy_low" in e for e in errs))
 
+    def test_verify_skips_thresholds_for_smoke_no_detections(self):
+        from verify_parity_report import verify_parity_report
+
+        report = {
+            "schema": "parity_report@v1",
+            "ok": False,
+            "inputs": {"skip_smoke_gates_no_detections": True},
+            "sections": {
+                "quality": {"precision_proxy": 0.1, "recall_proxy": 0.0},
+                "event_structure": {"unknown_share": 0.99},
+            },
+        }
+        ok, errs = verify_parity_report(report=report)
+        self.assertTrue(ok)
+        self.assertEqual(errs, [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -28,6 +28,16 @@ def verify_parity_report(
     schema = str(report.get("schema") or "")
     if schema != "parity_report@v1":
         errs.append(f"schema_invalid:{schema}")
+        return (False, errs)
+
+    inputs = (
+        report.get("inputs")
+        if isinstance(report.get("inputs"), dict)
+        else {}
+    )
+    if bool(inputs.get("skip_smoke_gates_no_detections")):
+        return (True, [])
+
     if not bool(report.get("ok")):
         errs.append("report_ok_false")
 

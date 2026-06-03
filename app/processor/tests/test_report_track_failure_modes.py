@@ -81,6 +81,38 @@ class TestTrackFailureModesReport(unittest.TestCase):
         self.assertEqual(out["failure_modes"]["occlusion"]["risk"], "high")
         self.assertEqual(out["failure_modes"]["night_noise"]["risk"], "high")
 
+    def test_modes_report_skips_gates_for_smoke_no_detections(self):
+        from report_track_failure_modes import build_track_failure_modes_report
+
+        sota = {
+            "report_format": "benchmark_sota@v1",
+            "clips": {
+                "1819": {
+                    "metrics": {
+                        "track_id_switches_count": 0,
+                        "avg_track_duration_sec": 0.0,
+                        "yolo_frames_ran": 40,
+                        "frames_with_tracks": 0,
+                    }
+                },
+            },
+        }
+        core = {
+            "schema": "track_quality_core_metrics_report@v1",
+            "metrics": {
+                "hota_proxy": None,
+                "idf1_proxy": None,
+                "skip_proxy_gates_smoke_no_detections": True,
+            },
+        }
+        out = build_track_failure_modes_report(
+            benchmark_sota_report=sota,
+            benchmark_trackers_ab_report={"schema": "tracker_ab_report@v1", "rows": []},
+            track_quality_core_metrics_report=core,
+        )
+        self.assertTrue(out["ok"])
+        self.assertTrue(out["metrics"]["skip_gates_smoke_no_detections"])
+
 
 if __name__ == "__main__":
     unittest.main()

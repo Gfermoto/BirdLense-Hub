@@ -72,6 +72,37 @@ class TestParityRunner(unittest.TestCase):
         self.assertTrue(out["ok"])
         self.assertEqual(out["schema"], "parity_report@v1")
 
+    def test_build_parity_report_skips_gates_for_smoke_no_detections(self):
+        from parity_runner import build_parity_report
+
+        sota = {
+            "report_format": "benchmark_sota@v1",
+            "clips": {
+                "1819": {
+                    "metrics": {
+                        "yolo_frames_ran": 40,
+                        "frames_with_tracks": 0,
+                    }
+                },
+            },
+        }
+        core = {
+            "schema": "track_quality_core_metrics_report@v1",
+            "ok": True,
+            "metrics": {"skip_proxy_gates_smoke_no_detections": True},
+        }
+        out = build_parity_report(
+            benchmark_sota_report=sota,
+            core_metrics_report=core,
+            truthset_delta_report={"ok": False},
+            failure_modes_report={"ok": False},
+            tracker_ab_report={"ok": False},
+            event_metrics={"available": False},
+            period="daily",
+        )
+        self.assertTrue(out["ok"])
+        self.assertTrue(out["inputs"]["skip_smoke_gates_no_detections"])
+
 
 if __name__ == "__main__":
     unittest.main()

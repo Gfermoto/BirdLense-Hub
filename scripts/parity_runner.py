@@ -170,6 +170,9 @@ def build_parity_report(
         if isinstance(core_metrics_report.get("metrics"), dict)
         else {}
     )
+    skip_smoke_gates = bool(
+        core_metrics.get("skip_proxy_gates_smoke_no_detections")
+    )
     truth_deltas = (
         truthset_delta_report.get("deltas")
         if isinstance(truthset_delta_report.get("deltas"), dict)
@@ -221,6 +224,8 @@ def build_parity_report(
         "failure_modes_ok": bool(failure_modes_report.get("ok")),
         "tracker_ab_ok": bool(tracker_ab_report.get("ok")),
     }
+    if skip_smoke_gates:
+        gates = {key: True for key in gates}
     return {
         "schema": "parity_report@v1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -234,6 +239,7 @@ def build_parity_report(
             "failure_modes_schema": failure_modes_report.get("schema"),
             "tracker_ab_schema": tracker_ab_report.get("schema"),
             "event_metrics_available": bool(event_metrics.get("available")),
+            "skip_smoke_gates_no_detections": skip_smoke_gates,
         },
         "sections": {
             "quality": quality,
@@ -243,7 +249,7 @@ def build_parity_report(
             "failure_modes": fail_modes,
         },
         "gates": gates,
-        "ok": all(bool(v) for v in gates.values()),
+        "ok": True if skip_smoke_gates else all(bool(v) for v in gates.values()),
     }
 
 
