@@ -32,14 +32,17 @@ if [[ ! -f "${DB_PATH}" ]]; then
 fi
 
 echo "pipeline-health-gate: outcome metrics (lookback=${LOOKBACK_H}h, db=${DB_PATH})"
-OUTCOME_DB_PATH="${DB_PATH}" \
-OUTCOME_DATA_SOURCE="${DATA_SOURCE}" \
-OUTCOME_LOOKBACK_HOURS="${LOOKBACK_H}" \
-OUTCOME_MIN_TRACKS_COVERAGE="${MIN_TRACKS_COVERAGE}" \
-OUTCOME_MAX_EMPTY_BBOX_RATE="${MAX_EMPTY_BBOX_RATE}" \
-OUTCOME_MAX_BLIND_RATE="${MAX_BLIND_RATE}" \
-OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS="${MIN_YOLO_FRAMES_WITH_TRACKS}" \
-  make outcome-metrics-gate
+python3 ./scripts/report_quality_outcome_metrics.py \
+  --db-path "${DB_PATH}" \
+  --data-source "${DATA_SOURCE}" \
+  --lookback-hours "${LOOKBACK_H}" \
+  --max-blind-rate "${MAX_BLIND_RATE}" \
+  --min-tracks-coverage "${MIN_TRACKS_COVERAGE}" \
+  --max-empty-bbox-rate "${MAX_EMPTY_BBOX_RATE}" \
+  --min-yolo-frames-with-tracks "${MIN_YOLO_FRAMES_WITH_TRACKS}" \
+  --max-ingest-pruned-rows-per-hour-delta-vs-7d "${PIPELINE_HEALTH_MAX_INGEST_PRUNED_DELTA:-0.5}" \
+  --max-frigate-catches-missed-birds-rate "${PIPELINE_HEALTH_MAX_FRIGATE_MISS_RATE:-0.05}" \
+  --max-frigate-catches-missed-birds-rate-delta-vs-7d "${PIPELINE_HEALTH_MAX_FRIGATE_MISS_DELTA:-0.05}"
 
 echo "pipeline-health-gate: runtime pipeline profile"
 OUTCOME_DB_PATH="${DB_PATH}" \
