@@ -988,6 +988,16 @@ def finalize_motion_recording(
                 float(salvage_row.get("confidence") or 0.0),
                 session_camera_id,
             )
+    video_file_ok_early = _is_playable_video_file(video_output)
+    if video_detections and video_file_ok_early:
+        notify_unique_species(
+            api,
+            app_config,
+            video_detections=video_detections,
+            video_output=video_output,
+            video_id=None,
+            encode_func=encode_notify_preview_base64,
+        )
     if video_detections:
         try:
             video_detections = enrich_runtime_reid_detections(
@@ -1256,14 +1266,6 @@ def finalize_motion_recording(
         dataset_crops_duration_ms = round(
             max(0.0, (time.perf_counter() - dataset_crops_started_ts) * 1000.0),
             3,
-        )
-        notify_unique_species(
-            api,
-            app_config,
-            video_detections=video_detections,
-            video_output=video_output,
-            video_id=video_id,
-            encode_func=encode_notify_preview_base64,
         )
     persist_finished_ts = time.perf_counter()
     if decision_trace is not None:

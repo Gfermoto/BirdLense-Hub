@@ -79,9 +79,9 @@ class TestEncodeNotifyPreview(unittest.TestCase):
         self.assertEqual(source, 'full_frame')
         self.assertEqual(len(opened_attempts), 2)
 
-    def test_prefers_video_crop_over_memory_best_frame(self):
-        """TG preview must match saved file: video bbox before in-memory best_frame."""
-        bf = np.full((8, 8, 3), 128, dtype=np.uint8)
+    def test_prefers_best_frame_when_scored_over_video_bbox(self):
+        """TG preview: crop at detection time, not lagging tracker bbox on file."""
+        bf = np.random.randint(0, 255, (32, 32, 3), dtype=np.uint8)
         frame = np.full((20, 20, 3), 255, dtype=np.uint8)
 
         def fake_video_capture(_path):
@@ -103,6 +103,7 @@ class TestEncodeNotifyPreview(unittest.TestCase):
             image_b64, source = encode_notify_preview_base64(
                 {
                     'best_frame': bf,
+                    'best_frame_score': 20.0,
                     'start_time': 0.0,
                     'end_time': 2.0,
                     'frames': [
@@ -113,7 +114,7 @@ class TestEncodeNotifyPreview(unittest.TestCase):
             )
 
         self.assertIsNotNone(image_b64)
-        self.assertEqual(source, 'bbox_crop')
+        self.assertEqual(source, 'best_frame')
 
 
 class TestDetectionStackWeights(unittest.TestCase):

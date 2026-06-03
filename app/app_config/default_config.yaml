@@ -367,7 +367,7 @@ processor:
   # Универсальный механизм для любых камер/доменов без ручных per-camera правил.
   auto_unstick_enabled: true
   # ~4 с при detect ~7 FPS (60 кадров ≈ 8.5 с — поздно для коротких визитов).
-  auto_unstick_no_track_frames: 40
+  auto_unstick_no_track_frames: 10
   auto_unstick_min_confidence_binary: 0.08
   auto_unstick_min_confidence_binary_bird: 0.03
   auto_unstick_min_box_size_px: 14

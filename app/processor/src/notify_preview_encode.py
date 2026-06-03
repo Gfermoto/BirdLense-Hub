@@ -9,10 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 def encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple[str | None, str]:
-    """(image_base64, source): bbox_crop | full_frame | best_frame | none.
+    """(image_base64, source): best_frame | bbox_crop | full_frame | none.
 
-    Сначала кадр из сохранённого mp4 по bbox/времени трека — как в плеере.
-    Иначе in-memory best_frame мог не совпасть с тем, что видно на видео.
+    Для TG: сначала best_frame с момента детекции (классификатор видел птицу).
+    bbox из mp4 — fallback; пустой/однотонный crop отбрасываем.
     """
     try:
         import base64
@@ -83,6 +83,15 @@ def encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple
                     cap.release()
             return None
 
+        def _crop_has_signal(crop: np.ndarray) -> bool:
+            if crop is None or crop.size == 0:
+                return False
+            try:
+                gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY) if crop.ndim == 3 else crop
+                return float(gray.std()) >= 8.0
+            except Exception:
+                return True
+
         def _encode_from_video() -> tuple[str | None, str]:
             if not video_file_path:
                 return None, "none"
@@ -97,7 +106,7 @@ def encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple
                     x2 = max(x1 + 1, min(w, int(float(bbox[2]) * w)))
                     y2 = max(y1 + 1, min(h, int(float(bbox[3]) * h)))
                     crop = frame[y1:y2, x1:x2]
-                    if crop.size > 0:
+                    if crop.size > 0 and _crop_has_signal(crop):
                         params = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
                         ok, buf = cv2.imencode(".jpg", crop, params)
                         if ok and buf is not None:
@@ -106,30 +115,39 @@ def encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple
 
                 params = [int(cv2.IMWRITE_JPEG_QUALITY), 88]
                 ok, buf = cv2.imencode(".jpg", frame, params)
-                if not ok or buf is None:
-                    return None, "none"
-                b64 = base64.b64encode(buf.tobytes()).decode("ascii")
-                return b64, "full_frame"
+                if ok and buf is not None:
+                    b64 = base64.b64encode(buf.tobytes()).decode("ascii")
+                    return b64, "full_frame"
+                return None, "none"
             except Exception as e:
                 logging.warning("Encode video crop for notify failed: %s", e)
                 return None, "none"
+
+        def _encode_best_frame() -> tuple[str | None, str]:
+            bf = detection.get("best_frame")
+            if not isinstance(bf, np.ndarray) or bf.size <= 0:
+                return None, "none"
+            try:
+                ok, buf = cv2.imencode(".jpg", bf, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+                if ok and buf is not None:
+                    b64 = base64.b64encode(buf.tobytes()).decode("ascii")
+                    return b64, "best_frame"
+            except Exception as e:
+                logging.warning("Encode best_frame for notify failed: %s", e)
+            return None, "none"
+
+        best_frame_score = float(detection.get("best_frame_score") or 0.0)
+        if best_frame_score > 0.0:
+            image_b64, src = _encode_best_frame()
+            if image_b64:
+                return image_b64, src
 
         if video_file_path:
             image_b64, src = _encode_from_video()
             if image_b64:
                 return image_b64, src
 
-        bf = detection.get("best_frame")
-        if isinstance(bf, np.ndarray):
-            try:
-                ok, buf = cv2.imencode(".jpg", bf)
-                if ok and buf is not None:
-                    b64 = base64.b64encode(buf.tobytes()).decode("ascii")
-                    return b64, "best_frame"
-            except Exception as e:
-                logging.warning("Encode best_frame for notify failed: %s", e)
-
-        return None, "none"
+        return _encode_best_frame()
     except Exception as e:
         logging.warning("Encode notify preview failed: %s", e)
         return None, "none"
