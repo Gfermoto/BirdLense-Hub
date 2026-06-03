@@ -706,6 +706,16 @@ if [[ $sync_ok -eq 0 ]]; then
 fi
 # Предупреждения rsync «cannot delete non-empty directory» — часто лишние каталоги на сервере вне дерева репо; при необходимости удалите вручную по SSH.
 
+# 1.05 Каталог кормов (app/data целиком исключён — иначе на сервере нулевые JPG в образе и entrypoint затирает volume).
+if [[ -d "${REPO_ROOT}/app/data/images" ]]; then
+  echo "1.05 Синхронизация catalog images (food и т.д.)..."
+  if [[ "${HOST}" == "localhost" || "${HOST}" == "127.0.0.1" ]]; then
+    rsync -a "${REPO_ROOT}/app/data/images/" "${REMOTE_DIR}/app/data/images/"
+  else
+    rsync -avz -e "ssh ${SSH_OPTS}" "${REPO_ROOT}/app/data/images/" "${HOST}:${REMOTE_DIR}/app/data/images/"
+  fi
+fi
+
 # 1.1 Trapper (prod) или legacy NABirds OpenVINO IR
 echo "1.1 Проверка весов бинарного детектора..."
 if (cd "${REPO_ROOT}" && bash scripts/sync_trapper_weights.sh --check); then

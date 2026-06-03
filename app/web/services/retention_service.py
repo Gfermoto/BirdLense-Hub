@@ -202,6 +202,82 @@ def _retention_cfg(key: str, default=None):
     return app_config.get(f"retention.{key}", default)
 
 
+def _oldest_deletable_video(*, protect_favorites: bool):
+    """Oldest Video row eligible for cascade trim (respects favorites / session dirs)."""
+    rec_dir = _recordings_dir()
+    prot = protected_favorite_session_dirs(rec_dir) if protect_favorites else set()
+    q = Video.query.order_by(Video.start_time.asc())
+    if protect_favorites:
+        q = q.filter(Video.favorite.is_(False))
+    for cand in q:
+        if protect_favorites and video_row_in_protected_session(rec_dir, cand.video_path, prot):
+            continue
+        return cand
+    return None
+
+
+def _has_videos_older_than_cutoff(cutoff: datetime, *, protect_favorites: bool) -> bool:
+    rec_dir = _recordings_dir()
+    prot = protected_favorite_session_dirs(rec_dir) if protect_favorites else set()
+    q = Video.query.filter(Video.start_time < cutoff)
+    if protect_favorites:
+        q = q.filter(Video.favorite.is_(False))
+    for video in q:
+        if protect_favorites and video_row_in_protected_session(rec_dir, video.video_path, prot):
+            continue
+        return True
+    return False
+
+
+def retention_deletion_pending(mode: str | None = None) -> tuple[bool, str]:
+    """True when recordings should be deleted (days expired or max_gb exceeded).
+
+    Returns (pending, reason) where reason is ``days``, ``max_gb``, or empty.
+    """
+    mode_raw = mode if mode is not None else _retention_cfg("mode", "cascade")
+    mode = str(mode_raw).strip().lower() if mode_raw else "cascade"
+    if mode == "disabled":
+        return False, ""
+
+    cut_days = _retention_cfg("days")
+    max_gb = _retention_cfg("max_gb")
+    if not cut_days and not max_gb:
+        return False, ""
+
+    grace_hours = int(_retention_cfg("min_age_hours", 1))
+    protect_favorites = bool(_retention_cfg("protect_favorites", True))
+    cutoff = None
+    if cut_days and int(cut_days) > 0:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=int(cut_days), hours=grace_hours)
+
+    if mode == "files_only":
+        if not cutoff:
+            return False, ""
+        rec_dir = _recordings_dir()
+        deleted, _ = _files_only_cleanup(
+            rec_dir,
+            cutoff,
+            batch_size=1,
+            grace_hours=grace_hours,
+            protect_favorites=protect_favorites,
+            dry_run=True,
+        )
+        if deleted > 0:
+            return True, "days"
+        return False, ""
+
+    if max_gb and float(max_gb) > 0:
+        if _get_recordings_size_gb() > float(max_gb) and _oldest_deletable_video(
+            protect_favorites=protect_favorites
+        ):
+            return True, "max_gb"
+
+    if cutoff and _has_videos_older_than_cutoff(cutoff, protect_favorites=protect_favorites):
+        return True, "days"
+
+    return False, ""
+
+
 def _cleanup_orphaned_visits_after_retention(*, dry_run: bool) -> int:
     try:
         from services.species_visit_maintenance_service import (
@@ -231,8 +307,14 @@ def _cleanup_orphaned_visits_after_retention(*, dry_run: bool) -> int:
         return 0
 
 
-def run_retention(dry_run: bool = False, mode: str = None):
+def run_retention(dry_run: bool = False, mode: str = None, policy_scope: str | None = None):
     """Apply retention policies based on configured mode.
+
+    ``policy_scope`` limits which rules run (scheduled auto-run passes ``days`` or
+    ``max_gb`` from ``retention_deletion_pending``). Manual/API calls omit it to apply
+    all configured rules. Deletes are incremental: oldest first for ``max_gb`` until
+    under the cap; only rows older than ``days`` cutoff; bounded by ``max_deletes_per_run``.
+
     Returns (deleted_count, deleted_size) for recordings cleanup.
     """
     mode_raw = mode if mode is not None else _retention_cfg("mode", "cascade")
@@ -249,6 +331,9 @@ def run_retention(dry_run: bool = False, mode: str = None):
         max_deletes_per_run = 500
     max_deletes_per_run = max(1, min(5000, max_deletes_per_run))
     protect_favorites = bool(_retention_cfg("protect_favorites", True))
+    scope = (policy_scope or "all").strip().lower()
+    run_max_gb = scope in ("all", "max_gb")
+    run_days = scope in ("all", "days")
 
     recordings_deleted = 0
     recordings_freed = 0
@@ -304,7 +389,7 @@ def run_retention(dry_run: bool = False, mode: str = None):
         cutoff = None
         if cut_days and int(cut_days) > 0:
             cutoff = datetime.now(timezone.utc) - timedelta(days=int(cut_days), hours=grace_hours)
-        if max_gb and float(max_gb) > 0:
+        if max_gb and float(max_gb) > 0 and run_max_gb:
             rec_max = _recordings_dir()
             prot_max = protected_favorite_session_dirs(rec_max) if protect_favorites else set()
             # size-based loop (cascade mode must delete oldest first)
@@ -360,36 +445,49 @@ def run_retention(dry_run: bool = False, mode: str = None):
                 db.session.rollback()
                 logger.exception("Retention commit failed after max_gb cascade deletes")
 
-        if cutoff and mode == "cascade":
+        if cutoff and mode == "cascade" and run_days:
             rec_cascade = _recordings_dir()
             prot_cascade = protected_favorite_session_dirs(rec_cascade) if protect_favorites else set()
-            videos = Video.query.filter(Video.start_time < cutoff)
-            if protect_favorites:
-                videos = videos.filter(Video.favorite.is_(False))
-            videos = videos.all()
-            for video in videos:
-                if protect_favorites and video_row_in_protected_session(rec_cascade, video.video_path, prot_cascade):
-                    continue
+            remaining = max_deletes_per_run - len(deleted_video_ids)
+            if remaining <= 0:
+                logger.info(
+                    "Retention days: skipped, max_deletes_per_run=%s already used",
+                    max_deletes_per_run,
+                )
+            else:
+                q = Video.query.filter(Video.start_time < cutoff).order_by(Video.start_time.asc())
+                if protect_favorites:
+                    q = q.filter(Video.favorite.is_(False))
+                videos = q.limit(max(remaining * 4, remaining)).all()
+                deleted_days = 0
+                for video in videos:
+                    if deleted_days >= remaining:
+                        break
+                    if protect_favorites and video_row_in_protected_session(
+                        rec_cascade, video.video_path, prot_cascade
+                    ):
+                        continue
+                    try:
+                        if video.video_path:
+                            app_base = os.path.dirname(os.path.dirname(_recordings_dir()))
+                            dir_path = os.path.join(app_base, os.path.dirname(video.video_path))
+                            if os.path.isdir(dir_path):
+                                for f in os.listdir(dir_path):
+                                    fp = os.path.join(dir_path, f)
+                                    if os.path.isfile(fp):
+                                        recordings_freed += os.path.getsize(fp)
+                                shutil.rmtree(dir_path)
+                                recordings_deleted += 1
+                        _delete_video_row_cascade(video)
+                        deleted_video_ids.add(video.id)
+                        deleted_days += 1
+                    except Exception as e:
+                        logger.error(f"Retention delete failed: {e}")
                 try:
-                    if video.video_path:
-                        app_base = os.path.dirname(os.path.dirname(_recordings_dir()))
-                        dir_path = os.path.join(app_base, os.path.dirname(video.video_path))
-                        if os.path.isdir(dir_path):
-                            for f in os.listdir(dir_path):
-                                fp = os.path.join(dir_path, f)
-                                if os.path.isfile(fp):
-                                    recordings_freed += os.path.getsize(fp)
-                            shutil.rmtree(dir_path)
-                            recordings_deleted += 1
-                    _delete_video_row_cascade(video)
-                    deleted_video_ids.add(video.id)
+                    db.session.commit()
                 except Exception as e:
-                    logger.error(f"Retention delete failed: {e}")
-            try:
-                db.session.commit()
-            except Exception as e:
-                db.session.rollback()
-                logger.error(f"Retention commit failed: {e}")
+                    db.session.rollback()
+                    logger.error(f"Retention commit failed: {e}")
 
         # dataset TTL
         _cleanup_dataset_ttl(_retention_cfg("dataset_max_age_days", 0), grace_hours, dry_run)
