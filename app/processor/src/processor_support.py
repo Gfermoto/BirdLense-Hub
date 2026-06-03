@@ -9,9 +9,11 @@ from datetime import datetime, timezone
 from api import API
 from app_config.app_config import app_config
 from motion_detectors.opencv_live_overlay import (
+    merge_live_detector_polygons,
     refresh_all_opencv_live_detectors,
     snapshot_opencv_live_by_camera,
 )
+from frigate_live_track import get_frigate_live_bbox
 from processor_runtime_stats import flush_runtime_stats_snapshot, runtime_stats_snapshot
 
 # last_video_ok_at / last_yolo_ok_at для статуса (обновляет main loop)
@@ -175,6 +177,16 @@ def _opencv_overlay_heartbeat_loop():
         try:
             refresh_all_opencv_live_detectors()
             snap = snapshot_opencv_live_by_camera()
+            if snap:
+                for cam_id, payload in snap.items():
+                    polys = payload.get("detector_polygons")
+                    if polys:
+                        continue
+                    fb = get_frigate_live_bbox(cam_id)
+                    merged, src = merge_live_detector_polygons([], fb)
+                    if merged:
+                        payload["detector_polygons"] = merged
+                        payload["detector_overlay_source"] = src
             if snap:
                 _opencv_overlay_empty_since = None
                 if api is None:

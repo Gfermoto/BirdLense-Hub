@@ -79,6 +79,20 @@ class TestFrameProcessorLiveOverlay(unittest.TestCase):
         finally:
             app_config.set("ui.live_overlay_track_ttl_seconds", prev_ttl)
 
+    def test_live_overlay_holds_last_detection_between_sparse_frames(self):
+        prev_ttl = app_config.get("ui.live_overlay_track_ttl_seconds")
+        app_config.set("ui.live_overlay_track_ttl_seconds", 0.6)
+        try:
+            fp = FrameProcessor(_Strategy())
+            frame = np.zeros((64, 64, 3), dtype=np.uint8)
+            fp.run(frame, frame_time=1.0)
+            self.assertEqual(len(fp.live_detector_polygons), 1)
+            # No detections but within TTL — still show last bbox (user sees bird during gap).
+            fp.run(frame, frame_time=1.3)
+            self.assertEqual(len(fp.live_detector_polygons), 1)
+        finally:
+            app_config.set("ui.live_overlay_track_ttl_seconds", prev_ttl)
+
 
 if __name__ == "__main__":
     unittest.main()

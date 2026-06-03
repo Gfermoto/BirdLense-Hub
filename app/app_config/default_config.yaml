@@ -81,6 +81,8 @@ processor:
   # Свежее подтверждение Frigate держит клип «живым» ещё N сек, даже если YOLO на паре кадров молчит.
   # Помогает не обрывать ролик, пока объект ещё реально в кадре.
   frigate_activity_hold_seconds: 6
+  # Удержание клипа по Frigate MQTT только если триггером была Frigate (standalone OpenCV — свой YOLO).
+  frigate_hold_only_when_frigate_trigger: true
   # Ограничение на «Frigate-only» продление в кадрах (0 = без ограничения).
   # Защита от долгих сессий без raw boxes: после лимита клип больше не продлевается только Frigate-активностью.
   frigate_only_extension_max_frames: 0
@@ -112,6 +114,8 @@ processor:
   # Live/file pipeline: если ByteTrack не отдал id, не терять бокс — присвоить временный id по IoU.
   iou_id_fallback_live_enabled: true
   iou_id_fallback_live_match_threshold: 0.18
+  # Классификатор в фоне: hot path = detect+track only; species подтягивается из кэша.
+  classifier_async_enabled: true
   # Если track() вернул 0 боксов, сделать predict() с мягким conf как аварийный fallback.
   track_to_predict_fallback_enabled: true
   track_to_predict_fallback_confidence: 0.002
@@ -790,7 +794,7 @@ detection:
   # При включении standalone мониторьте баланс провайдеров: fusion_provider_yolo должен оставаться доминирующим.
   # Если ровно один accepted_generic «Bird» от YOLO — НЕ подменять на Frigate standalone по умолчанию.
   # Иначе Frigate начинает доминировать как primary provider даже при наличии визуального YOLO-трека.
-  frigate_standalone_when_no_accepted_species: true
+  frigate_standalone_when_no_accepted_species: false
   # Last-resort: Frigate-триггер + пустой fusion → review-only строка (без кадров YOLO).
   # По умолчанию выкл.: иначе Frigate MQTT (Bird Classification / sub_label) даёт вид на пустом клипе.
   frigate_trigger_review_salvage_enabled: false
@@ -1037,6 +1041,8 @@ ui:
   live_detector_overlay_ttl_seconds: 1.0
   live_overlay_tick_seconds: 0.12
   live_overlay_track_ttl_seconds: 0.35
+  # Frigate MQTT bbox fallback для live overlay когда YOLO без трека (сек).
+  frigate_live_bbox_max_age_seconds: 2.5
   # Optional safety fallback for temporary overlay gaps (strict TTL).
   live_overlay_trace_fallback_enabled: false
   live_overlay_trace_fallback_ttl_seconds: 1.5

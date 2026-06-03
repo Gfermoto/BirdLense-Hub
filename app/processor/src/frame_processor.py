@@ -11,7 +11,10 @@ from processor_runtime_stats import inc_counter, observe_timing, set_gauge
 from tracker_paths import resolve_tracker_config_path
 from tracker_low_fps import resolve_adaptive_tracker_path
 from track_stability import TrackStabilityMonitor, summarize_tracks_stability
-from motion_detectors.opencv_live_overlay import tracks_to_detector_polygons
+from motion_detectors.opencv_live_overlay import (
+    detection_results_to_detector_polygons,
+    tracks_to_detector_polygons,
+)
 from roi_crop import crop_for_classifier
 
 
@@ -69,6 +72,8 @@ class FrameProcessor:
         except (TypeError, ValueError):
             iou_thr = 0.25
         self._stability_monitor = TrackStabilityMonitor(iou_threshold=iou_thr)
+        self._last_live_polygons: list = []
+        self._last_live_polygons_at = 0.0
         self.reset()
 
     def set_session_context(self, context: dict | None) -> None:
@@ -172,6 +177,31 @@ class FrameProcessor:
             if age <= max_age_sec:
                 out[track_id] = track
         return out
+
+    def _live_overlay_max_age_sec(self) -> float:
+        try:
+            max_age_sec = float(app_config.get("ui.live_overlay_track_ttl_seconds") or 0.6)
+        except (TypeError, ValueError):
+            max_age_sec = 0.6
+        return min(2.0, max(0.1, max_age_sec))
+
+    def _refresh_live_detector_polygons(self, frame_time: float, results=None) -> None:
+        """Live green boxes during recording: prefer track history, else last frame detections."""
+        max_age = self._live_overlay_max_age_sec()
+        ft = float(frame_time)
+        if results:
+            current = detection_results_to_detector_polygons(results)
+            if current:
+                self._last_live_polygons = current
+                self._last_live_polygons_at = ft
+        track_polys = tracks_to_detector_polygons(self._overlay_tracks_for_live(ft))
+        if track_polys:
+            self.live_detector_polygons = track_polys
+            return
+        if self._last_live_polygons and (ft - self._last_live_polygons_at) <= max_age:
+            self.live_detector_polygons = list(self._last_live_polygons)
+            return
+        self.live_detector_polygons = []
 
     def run(
         self,
@@ -467,7 +497,7 @@ class FrameProcessor:
             cv2.imwrite(f"data/test/frame{str(self.cnt)}.jpg", debug_img)
 
         if not results:
-            self.live_detector_polygons = tracks_to_detector_polygons(self._overlay_tracks_for_live(frame_time))
+            self._refresh_live_detector_polygons(frame_time)
             if self.cnt <= 3 or self.cnt % 30 == 0:
                 self.logger.debug(f"No detections (frame {self.cnt})")
             return False
@@ -493,7 +523,7 @@ class FrameProcessor:
                 classifier_entropy=getattr(res, "classifier_entropy", None),
                 classifier_top1_top2_margin=getattr(res, "classifier_top1_top2_margin", None),
             )
-        self.live_detector_polygons = tracks_to_detector_polygons(self._overlay_tracks_for_live(frame_time))
+        self._refresh_live_detector_polygons(frame_time, results=results)
 
         self.logger.debug(f"Detection Time: {(time.time() - st) * 1000:.0f} msec | Valid: {len(results)}")
 
@@ -601,3 +631,5 @@ class FrameProcessor:
         self._previous_track_ids = set()
         self._stability_monitor.reset()
         self.live_detector_polygons = []
+        self._last_live_polygons = []
+        self._last_live_polygons_at = 0.0
