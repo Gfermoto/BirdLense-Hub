@@ -1036,7 +1036,7 @@ ui:
   # Live overlay freshness and near-realtime tick.
   live_detector_overlay_ttl_seconds: 1.0
   live_overlay_tick_seconds: 0.12
-  live_overlay_track_ttl_seconds: 0.6
+  live_overlay_track_ttl_seconds: 0.35
   # Optional safety fallback for temporary overlay gaps (strict TTL).
   live_overlay_trace_fallback_enabled: false
   live_overlay_trace_fallback_ttl_seconds: 1.5
