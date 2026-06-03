@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 import time
 
 import requests
@@ -23,11 +24,9 @@ class API:
             headers["X-Processor-Token"] = self._processor_secret
         return headers
 
-    def _send_request(self, method, endpoint, json_data):
+    def _send_request(self, method, endpoint, json_data, *, timeout=30, max_retries=3):
         """Helper function to send HTTP requests with timeout and retry on 5xx."""
         url = f"{self.api_url_base}/{endpoint}"
-        timeout = 30
-        max_retries = 3
         last_exc = None
         for attempt in range(max_retries):
             st = time.time()
@@ -154,7 +153,13 @@ class API:
             video_data["behavior_shadow_model_kind"] = str(behavior_shadow_model_kind).strip()[:32]
         if behavior_shadow_model_version is not None and str(behavior_shadow_model_version).strip():
             video_data["behavior_shadow_model_version"] = str(behavior_shadow_model_version).strip()[:96]
-        response = self._send_request("POST", "videos", video_data)
+        response = self._send_request(
+            "POST",
+            "videos",
+            video_data,
+            timeout=90,
+            max_retries=1,
+        )
         return response.json()
 
     def set_active_species(self, active_names):
@@ -164,7 +169,28 @@ class API:
 
     def activity_log(self, type, data, id=None):
         log_data = {"type": type, "data": data, "id": id}
-        response = self._send_request("POST", "activity_log", log_data)
+        response = self._send_request(
+            "POST",
+            "activity_log",
+            log_data,
+            timeout=5,
+            max_retries=1,
+        )
         response_data = response.json()
         # Capture the returned 'id' from the response
         return response_data.get("id")
+
+    def activity_log_async(self, type, data, id=None):
+        """Non-blocking activity_log for finalize tail (#597)."""
+
+        def _run() -> None:
+            try:
+                self.activity_log(type, data, id=id)
+            except Exception:
+                self.logger.debug("async activity_log failed type=%s", type, exc_info=True)
+
+        threading.Thread(
+            target=_run,
+            daemon=True,
+            name=f"birdlense-activity-log-{type}",
+        ).start()
