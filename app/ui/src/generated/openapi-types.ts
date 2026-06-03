@@ -5437,7 +5437,49 @@ export interface paths {
                 };
             };
         };
-        put?: never;
+        /** Update retention configuration */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["RetentionConfigUpdate"];
+                };
+            };
+            responses: {
+                /** @description Updated retention config */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RetentionConfigResponse"];
+                    };
+                };
+                /** @description Error */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Error */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
         /** Run retention policy (delete old recordings) */
         post: {
             parameters: {
@@ -8224,6 +8266,20 @@ export interface components {
         Error: {
             error?: string;
         };
+        RetentionConfigUpdate: {
+            /** @enum {string} */
+            mode?: "cascade" | "files_only" | "disabled";
+            days?: number | null;
+            max_gb?: number | null;
+            dataset_max_age_days?: number;
+            migration_max_age_days?: number;
+            protect_favorites?: boolean;
+            min_age_hours?: number;
+            batch_size?: number;
+            max_deletes_per_run?: number;
+            auto_run_enabled?: boolean;
+            auto_run_interval_hours?: number;
+        };
         RetentionConfigResponse: {
             /** @enum {string} */
             mode?: "cascade" | "files_only" | "disabled";
@@ -8234,11 +8290,19 @@ export interface components {
             protect_favorites?: boolean;
             min_age_hours?: number;
             batch_size?: number;
+            max_deletes_per_run?: number;
+            auto_run_enabled?: boolean;
+            auto_run_interval_hours?: number;
             /** Format: date-time */
             last_run?: string | null;
             last_deleted_count?: number;
             last_freed_bytes?: number;
             last_mode?: string;
+            orphan_recording_files?: {
+                orphan_session_count?: number;
+                orphan_bytes?: number;
+                sample_paths?: string[];
+            };
         };
         ConfigAuditResponse: {
             deprecated_keys_present: string[];
