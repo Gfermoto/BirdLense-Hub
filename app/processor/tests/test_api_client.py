@@ -2,6 +2,7 @@
 
 import os
 import sys
+import threading
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -73,6 +74,42 @@ class TestApiClient(unittest.TestCase):
         names = [name for name, _ in counters]
         self.assertIn('api_ingest_conflict_total', names)
         self.assertIn('api_ingest_conflict_reason_payload_hash_mismatch_total', names)
+
+    def test_activity_log_async_does_not_block(self):
+        with patch.dict(
+            os.environ,
+            {
+                'API_URL_BASE': 'http://example.test/api',
+            },
+            clear=False,
+        ):
+            api = API()
+            started = threading.Event()
+            release = threading.Event()
+
+            def _slow_log(*args, **kwargs):
+                started.set()
+                release.wait(timeout=5)
+
+            with patch.object(api, 'activity_log', side_effect=_slow_log):
+                api.activity_log_async('decision_trace', {'x': 1})
+                self.assertTrue(started.wait(timeout=2))
+            release.set()
+
+    def test_activity_log_uses_short_timeout(self):
+        with patch.dict(
+            os.environ,
+            {
+                'API_URL_BASE': 'http://example.test/api',
+            },
+            clear=False,
+        ):
+            api = API()
+            response = MagicMock()
+            response.json.return_value = {'id': 1}
+            with patch('api.requests.request', return_value=response) as request_mock:
+                api.activity_log('test_type', {'a': 1})
+        self.assertEqual(request_mock.call_args.kwargs['timeout'], 5)
 
 
 if __name__ == '__main__':

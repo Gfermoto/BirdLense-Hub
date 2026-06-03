@@ -998,7 +998,9 @@ def finalize_motion_recording(
             video_id=None,
             encode_func=encode_notify_preview_base64,
         )
+    reid_enrich_duration_ms: float | None = None
     if video_detections:
+        reid_enrich_started_ts = time.perf_counter()
         try:
             video_detections = enrich_runtime_reid_detections(
                 video_detections,
@@ -1007,6 +1009,10 @@ def finalize_motion_recording(
         except Exception as exc:
             inc_counter("reid_runtime_enrich_fail_total")
             logging.warning("Runtime ReID enrich failed; keep fused detections: %s", exc)
+        reid_enrich_duration_ms = round(
+            max(0.0, (time.perf_counter() - reid_enrich_started_ts) * 1000.0),
+            3,
+        )
     fusion_finished_ts = time.perf_counter()
 
     fusion_fs = sum(1 for d in video_detections if d.get("frigate_standalone"))
@@ -1238,23 +1244,20 @@ def finalize_motion_recording(
                 bool(sl and str(sl).strip()),
                 str((br_cfg.get("engine") if isinstance(br_cfg, dict) else "") or ""),
             )
-            try:
-                api.activity_log(
-                    type="behavior_shadow_prediction",
-                    data={
-                        "video_id": video_id,
-                        "main_label": behavior_bundle.get("main_label"),
-                        "main_confidence": behavior_bundle.get("main_confidence"),
-                        "model_kind": behavior_bundle.get("model_kind"),
-                        "model_version": behavior_bundle.get("model_version"),
-                        "shadow_label": behavior_bundle.get("shadow_label"),
-                        "shadow_confidence": behavior_bundle.get("shadow_confidence"),
-                        "shadow_model_kind": behavior_bundle.get("shadow_model_kind"),
-                        "shadow_model_version": behavior_bundle.get("shadow_model_version"),
-                    },
-                )
-            except Exception:
-                logging.debug("behavior shadow activity_log skipped", exc_info=True)
+            api.activity_log_async(
+                type="behavior_shadow_prediction",
+                data={
+                    "video_id": video_id,
+                    "main_label": behavior_bundle.get("main_label"),
+                    "main_confidence": behavior_bundle.get("main_confidence"),
+                    "model_kind": behavior_bundle.get("model_kind"),
+                    "model_version": behavior_bundle.get("model_version"),
+                    "shadow_label": behavior_bundle.get("shadow_label"),
+                    "shadow_confidence": behavior_bundle.get("shadow_confidence"),
+                    "shadow_model_kind": behavior_bundle.get("shadow_model_kind"),
+                    "shadow_model_version": behavior_bundle.get("shadow_model_version"),
+                },
+            )
         dataset_crops_started_ts = time.perf_counter()
         maybe_save_dataset_crops(
             app_config,
@@ -1411,6 +1414,7 @@ def finalize_motion_recording(
             "behavior_duration_ms": behavior_duration_ms,
             "create_video_duration_ms": create_video_duration_ms,
             "create_video_ingest_timing_ms": create_video_ingest_timing_ms,
+            "reid_enrich_duration_ms": reid_enrich_duration_ms,
             "dataset_crops_duration_ms": dataset_crops_duration_ms,
             "trigger_to_first_bbox_latency_s": (
                 None if trigger_to_first_bbox_s is None else round(float(trigger_to_first_bbox_s), 6)
