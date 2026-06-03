@@ -13,6 +13,7 @@ from services.system_sqlite_admin_api_service import (
     restore_sqlite_database_from_upload,
     run_retention_and_bust_caches,
 )
+from services.recording_orphan_purge_service import purge_orphan_recording_files
 
 _RETENTION_ALLOWED_MODES = {"cascade", "files_only", "disabled"}
 
@@ -204,3 +205,12 @@ def register_ui_system_db_routes(app):
             if not isinstance(mode, str) or mode not in _RETENTION_ALLOWED_MODES:
                 return {"error": "Invalid mode (allowed: cascade, files_only, disabled)"}, 400
         return run_retention_and_bust_caches(dry_run=dry_run, mode=mode)
+
+    @app.route("/api/ui/system/retention/orphan-files/purge", methods=["POST"])
+    @require_ui_settings_password
+    def purge_orphan_recording_files_route():
+        """Delete disk-only recording sessions (no Video row). Default dry_run=true."""
+        data = request.get_json(silent=True) or {}
+        if not isinstance(data, dict):
+            return {"error": "JSON object required"}, 400
+        return purge_orphan_recording_files(data)
