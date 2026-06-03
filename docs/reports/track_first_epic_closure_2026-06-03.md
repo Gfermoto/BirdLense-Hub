@@ -45,6 +45,13 @@ BIRDLENSE_ALLOW_REMOTE_MUTATION=1 make replay-favorites-track-gate
 - #598 orphan disk purge — retention incident
 - #600 retention config audit — P2, partial tests in CI
 
+## Track gate (2026-06-03, 14 favorites)
+
+- **6/14** clips: fused_track_count ≥ 1
+- **14/14** runner completed without error
+- **8/14** zero tracks (empty/legacy favorites — not pipeline crash)
+- Report: `.artifacts/replay-favorites/track_gate_20260603.json`
+
 ## Remaining field-only (not blocking code closure)
 
 - Live bbox 7/10 manual sample (#591 DoD)
