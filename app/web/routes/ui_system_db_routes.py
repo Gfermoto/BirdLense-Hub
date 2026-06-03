@@ -148,7 +148,7 @@ def register_ui_system_db_routes(app):
             "min_age_hours": rc.get("min_age_hours", 1),
             "batch_size": rc.get("batch_size", 50),
             "max_deletes_per_run": rc.get("max_deletes_per_run", 500),
-            "auto_run_enabled": rc.get("auto_run_enabled", True),
+            "auto_run_enabled": rc.get("auto_run_enabled", False),
             "auto_run_interval_hours": rc.get("auto_run_interval_hours", 6),
         }
         # add last-run metrics

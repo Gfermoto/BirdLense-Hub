@@ -44,15 +44,15 @@ def maybe_run_scheduled_retention(flask_app) -> None:
     if not days and not max_gb:
         return
 
-    from services.retention_service import retention_deletion_pending, run_retention
+    from services.quota_maintainer import quota_deletion_pending, run_quota_trim
 
     with flask_app.app_context():
-        pending, reason = retention_deletion_pending(mode=mode)
+        pending, reason = quota_deletion_pending()
         if not pending:
             logger.info("scheduled retention: skipped, within policy (mode=%s)", mode)
             return
 
-        deleted, freed = run_retention(dry_run=False, mode=mode, policy_scope=reason)
+        deleted, freed = run_quota_trim(dry_run=False, policy_scope=reason)
         if deleted or freed:
             logger.info(
                 "scheduled retention: reason=%s deleted=%s freed_mb=%.1f mode=%s",

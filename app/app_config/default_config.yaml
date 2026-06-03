@@ -923,6 +923,19 @@ weather:
   source: openweather
   ha_entity_id: "weather.home"
 
+# Readiness / persist funnel SLO (Phase 0 — honest health)
+readiness:
+  funnel_lookback_hours: 24
+  max_fusion_drop_session_rate: 0.35
+  max_fp_empty_opencv_rate: 0.35
+  min_healthy_persist_rate: 0.30
+
+# Disk↔DB reconcile (Phase 1 — Frigate sync_recordings parity)
+reconcile:
+  auto_run_enabled: true
+  startup_delay_seconds: 30
+  auto_run_interval_hours: 24
+
 # Retention
 retention:
   days: 90

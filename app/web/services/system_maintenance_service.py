@@ -26,6 +26,7 @@ from services.species_visit_maintenance_service import (
     preview_realign_visit_times,
     preview_split_large_gap_visits,
 )
+from services.session_manifest_io import read_session_manifest_times
 from util import recordings_dir
 
 if TYPE_CHECKING:
@@ -97,17 +98,24 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
 
                         try:
                             with db.session.begin_nested():
-                                y, mo, d, h, mi, s = map(int, m.groups())
-                                start_time = datetime(
-                                    y,
-                                    mo,
-                                    d,
-                                    h,
-                                    mi,
-                                    s,
-                                    tzinfo=timezone.utc,
-                                )
-                                end_time = start_time + timedelta(seconds=30)
+                                manifest_start, manifest_end = read_session_manifest_times(ts_path)
+                                if manifest_start is not None:
+                                    start_time = manifest_start
+                                    end_time = manifest_end or (
+                                        manifest_start + timedelta(seconds=30)
+                                    )
+                                else:
+                                    y, mo, d, h, mi, s = map(int, m.groups())
+                                    start_time = datetime(
+                                        y,
+                                        mo,
+                                        d,
+                                        h,
+                                        mi,
+                                        s,
+                                        tzinfo=timezone.utc,
+                                    )
+                                    end_time = start_time + timedelta(seconds=30)
 
                                 video = Video(
                                     processor_version="1",

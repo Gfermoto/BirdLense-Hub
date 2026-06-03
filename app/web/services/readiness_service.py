@@ -14,6 +14,7 @@ from models import ActivityLog
 from services.cache import cache_get, cache_set
 from services.cache import cache_backend_readiness
 from services.component_status_service import build_component_status_payload_safe
+from services.persist_funnel_service import build_persist_funnel_summary
 from services.runtime_env import env_flag_enabled, is_production_runtime
 from util import ensure_utc
 
@@ -142,7 +143,16 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         }
     checks["cache_backend"] = cache_check
     checks["processor_heartbeat"] = _processor_heartbeat_readiness(session)
-
+    funnel = build_persist_funnel_summary(session)
+    checks["pipeline_funnel"] = {
+        "status": funnel.get("status", "unknown"),
+        "sessions_total": funnel.get("sessions_total"),
+        "healthy_persist_rate": funnel.get("healthy_persist_rate"),
+        "fusion_drop_rate": funnel.get("fusion_drop_rate"),
+        "fp_empty_opencv_rate": funnel.get("fp_empty_opencv_rate"),
+        "alerts": funnel.get("alerts") or [],
+        "top_root_causes": funnel.get("top_root_causes") or [],
+    }
     ready = all(check.get("status") == "ok" for check in checks.values())
     hit, cached_components = cache_get("component_status:v1")
     if hit and isinstance(cached_components, dict):
@@ -151,12 +161,28 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         components_payload = build_component_status_payload_safe(session)
         cache_set("component_status:v1", components_payload, 180)
 
+    yolo_probe = str(components_payload.get("yolo") or "unknown")
+    if yolo_probe in ("error", "degraded"):
+        checks["yolo_detector"] = {"status": yolo_probe, "source": "heartbeat"}
+        ready = ready and yolo_probe == "ok"
+    elif yolo_probe == "ok":
+        checks["yolo_detector"] = {"status": "ok", "source": "heartbeat"}
+    else:
+        checks["yolo_detector"] = {"status": "unknown", "source": "heartbeat"}
+        if _is_production_env() and not _is_test_runtime():
+            ready = False
+
+    funnel_status = str(checks["pipeline_funnel"].get("status") or "unknown")
+    if funnel_status == "degraded":
+        ready = False
+
     payload = {
         "status": "ok" if ready else "degraded",
         "ready": ready,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "checks": checks,
         "components": components_payload,
+        "pipeline_funnel": funnel,
         "security_gates": build_security_gates_payload(),
     }
     return payload, (200 if ready else 503)

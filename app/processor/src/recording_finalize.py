@@ -1198,23 +1198,61 @@ def finalize_motion_recording(
                     d0["review_reason"] = "behavior_uncertainty"
                     d0["classifier_needs_review"] = True
         create_video_started_ts = time.perf_counter()
-        resp = api.create_video(
-            video_detections,
-            audio_detections,
-            start_time,
-            end_time,
-            video_path_for_api,
-            trigger_source=trigger_source,
-            scales_weight_delta_kg=scales_delta_kg,
-            behavior_label=behavior_label_kw,
-            behavior_confidence=behavior_conf_kw,
-            behavior_model_kind=behavior_bundle.get("model_kind"),
-            behavior_model_version=behavior_bundle.get("model_version"),
-            behavior_shadow_label=behavior_bundle.get("shadow_label"),
-            behavior_shadow_confidence=behavior_bundle.get("shadow_confidence"),
-            behavior_shadow_model_kind=behavior_bundle.get("shadow_model_kind"),
-            behavior_shadow_model_version=behavior_bundle.get("shadow_model_version"),
-        )
+        video_id = None
+        resp = None
+        try:
+            from recording_session_manifest import (
+                mark_persist_failed,
+                mark_persist_ready,
+                mark_persist_started,
+            )
+
+            mark_persist_started(output_path_physical, end_time=end_time)
+            resp = api.create_video(
+                video_detections,
+                audio_detections,
+                start_time,
+                end_time,
+                video_path_for_api,
+                trigger_source=trigger_source,
+                scales_weight_delta_kg=scales_delta_kg,
+                behavior_label=behavior_label_kw,
+                behavior_confidence=behavior_conf_kw,
+                behavior_model_kind=behavior_bundle.get("model_kind"),
+                behavior_model_version=behavior_bundle.get("model_version"),
+                behavior_shadow_label=behavior_bundle.get("shadow_label"),
+                behavior_shadow_confidence=behavior_bundle.get("shadow_confidence"),
+                behavior_shadow_model_kind=behavior_bundle.get("shadow_model_kind"),
+                behavior_shadow_model_version=behavior_bundle.get("shadow_model_version"),
+            )
+            video_id = response_video_id(resp)
+            if video_id is None:
+                mark_persist_failed(
+                    output_path_physical,
+                    reason="create_video_no_video_id",
+                    end_time=end_time,
+                )
+                inc_counter("recording_persist_failed_total")
+            else:
+                mark_persist_ready(
+                    output_path_physical,
+                    video_id=int(video_id),
+                    end_time=end_time,
+                )
+        except Exception as exc:
+            try:
+                from recording_session_manifest import mark_persist_failed
+
+                mark_persist_failed(
+                    output_path_physical,
+                    reason=str(exc),
+                    end_time=end_time,
+                )
+            except Exception:
+                logging.debug("manifest persist_failed write skipped", exc_info=True)
+            inc_counter("recording_persist_failed_total")
+            logging.exception("FinalizeTransaction: create_video failed")
+            resp = None
         create_video_duration_ms = round(
             max(0.0, (time.perf_counter() - create_video_started_ts) * 1000.0),
             3,
@@ -1226,9 +1264,8 @@ def finalize_motion_recording(
                 create_video_ingest_timing_ms = {
                     str(key): round(float(value), 3) for key, value in raw_timing.items() if value is not None
                 }
-        inc_counter("recording_persisted_total", len(video_detections))
-        video_id = response_video_id(resp)
         if video_id is not None:
+            inc_counter("recording_persisted_total", len(video_detections))
             if decision_trace is not None:
                 try:
                     decision_trace["video_id"] = int(video_id)

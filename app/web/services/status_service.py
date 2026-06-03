@@ -89,21 +89,50 @@ def check_video_reachable() -> str:
     return "error"
 
 
+def _yolo_blind_from_runtime_stats(heartbeat_data: dict | None) -> str | None:
+    if not isinstance(heartbeat_data, dict):
+        return None
+    runtime = heartbeat_data.get("runtime_stats")
+    if not isinstance(runtime, dict):
+        return None
+    gauges = runtime.get("gauges")
+    if not isinstance(gauges, dict):
+        return None
+    status = str(gauges.get("yolo_blind_status") or "").strip().lower()
+    alert = int(gauges.get("yolo_blind_alert") or 0)
+    if alert == 1 or status == "blind":
+        return "error"
+    if status in ("degraded", "suspected"):
+        return "degraded"
+    phase = str(gauges.get("yolo_blind_phase_live") or "").strip().lower()
+    if phase in ("suspected", "degraded"):
+        return "degraded"
+    return None
+
+
 def parse_yolo_status_from_heartbeat(heartbeat_data: dict | None) -> str:
     """
-    Из данных heartbeat процессора: yolo_ok при последнем успешном run в пределах 5 мин.
-    Returns: 'ok' | 'unknown'
+    Из heartbeat процессора: свежий YOLO run, blind/degraded из runtime_stats.
+    Returns: 'ok' | 'degraded' | 'error' | 'unknown'
     """
     if not heartbeat_data:
         return "unknown"
+    blind_signal = _yolo_blind_from_runtime_stats(heartbeat_data)
+    if blind_signal == "error":
+        return "error"
     last_ok = heartbeat_data.get("last_yolo_ok_at")
-    if not last_ok:
-        return "unknown"
-    try:
-        dt = datetime.fromisoformat(last_ok.replace("Z", "+00:00"))
-        now = datetime.now(timezone.utc)
-        if (now - dt).total_seconds() <= STATUS_FRESH_SECONDS:
-            return "ok"
-    except (TypeError, ValueError):
-        pass
+    fresh_ok = False
+    if last_ok:
+        try:
+            dt = datetime.fromisoformat(str(last_ok).replace("Z", "+00:00"))
+            now = datetime.now(timezone.utc)
+            fresh_ok = (now - dt).total_seconds() <= STATUS_FRESH_SECONDS
+        except (TypeError, ValueError):
+            fresh_ok = False
+    if fresh_ok:
+        return "degraded" if blind_signal == "degraded" else "ok"
+    if blind_signal == "degraded":
+        return "degraded"
+    if last_ok:
+        return "degraded"
     return "unknown"

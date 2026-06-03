@@ -324,6 +324,19 @@ class MotionRecordingSession:
             video_output,
         )
         start_time = datetime.now(timezone.utc)
+        try:
+            from recording_session_manifest import write_recording_started
+
+            write_recording_started(
+                output_path_physical,
+                video_path_logical=video_path_for_api,
+                start_time=start_time,
+                camera_id=camera_id,
+                camera_slot=_camera_slot_for_id(camera_id),
+                trigger_source=str(forced_trigger_source or "").strip().lower() or None,
+            )
+        except Exception:
+            logger.debug("session manifest write failed", exc_info=True)
         session_trigger_perf = time.perf_counter()
 
         trace_writer = None
