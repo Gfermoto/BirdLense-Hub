@@ -215,6 +215,11 @@ outcome-metrics-gate:
 	  --max-empty-bbox-rate "$${OUTCOME_MAX_EMPTY_BBOX_RATE:-0.20}" \
 	  --min-yolo-frames-with-tracks "$${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS:-1}"
 
+pipeline-health-gate:
+	@set -e; cd "$(CURDIR)"; \
+	chmod +x ./scripts/pipeline-health-gate.sh; \
+	./scripts/pipeline-health-gate.sh
+
 failure-mode-funnel:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/report_failure_mode_funnel.py \

@@ -36,6 +36,7 @@ try:
     from detection_strategy import (
         TwoStageStrategy,
         _regional_class_ids,
+        _track_maybe_retry,
         binary_track_ultralytics_conf_floor,
         bird_skip_classifier_area_limit,
         build_binary_track_ultralytics_extras,
@@ -45,6 +46,7 @@ try:
     )
 except ImportError:
     TwoStageStrategy = None  # type: ignore
+    _track_maybe_retry = None  # type: ignore
     build_binary_track_ultralytics_extras = None  # type: ignore
     _regional_class_ids = None  # type: ignore
     binary_track_ultralytics_conf_floor = None  # type: ignore
@@ -873,6 +875,43 @@ class TestBuildBinaryTrackUltralyticsExtras(unittest.TestCase):
             build_binary_track_ultralytics_extras({"processor.binary_track_max_det": 5000}),
             {},
         )
+
+
+class TestTrackMaybeRetry(unittest.TestCase):
+    def test_openvino_third_try_lowers_conf(self):
+        if _track_maybe_retry is None:
+            self.skipTest("detection_strategy import failed")
+        import numpy as np
+
+        confs: list[float | None] = []
+
+        class _Boxes:
+            def __init__(self, n: int, *, with_id: bool):
+                self.id = [1] * n if with_id else None
+
+            def __len__(self):
+                return 1 if self.id is not None or self.id is None else 0
+
+        class _Result:
+            def __init__(self, with_id: bool):
+                self.boxes = _Boxes(1, with_id=with_id)
+
+        class _Model:
+            def track(self, frame, **kwargs):
+                confs.append(kwargs.get("conf"))
+                # first two calls: boxes without id; third with id
+                return [_Result(with_id=len(confs) >= 3 and confs[-1] == 0.054)]
+
+        frame = np.zeros((64, 64, 3), dtype=np.uint8)
+        out = _track_maybe_retry(
+            _Model(),
+            frame,
+            openvino_low_conf_retry=True,
+            conf=0.12,
+            persist=True,
+        )
+        self.assertEqual(len(out[0].boxes.id), 1)
+        self.assertEqual(confs, [0.12, 0.12, 0.054])
 
 
 class TestTwoStageBirdSkipClassifier(unittest.TestCase):

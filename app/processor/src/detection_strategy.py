@@ -309,13 +309,35 @@ def _regional_class_ids(
     ]
 
 
-def _track_maybe_retry(model, frame: np.ndarray, **kwargs):
-    """ByteTrack иногда возвращает ``boxes.id is None`` на первом реальном кадре — повтор без нового кадра."""
+def _track_maybe_retry(
+    model,
+    frame: np.ndarray,
+    *,
+    openvino_low_conf_retry: bool = False,
+    **kwargs,
+):
+    """ByteTrack иногда возвращает ``boxes.id is None`` — повтор; для OpenVINO ещё снижаем conf."""
     results = model.track(frame, **kwargs)
     if not results or len(results[0].boxes) == 0:
         return results
-    if results[0].boxes.id is None:
-        results = model.track(frame, **kwargs)
+    if results[0].boxes.id is not None:
+        return results
+    results = model.track(frame, **kwargs)
+    if not results or len(results[0].boxes) == 0:
+        return results
+    if results[0].boxes.id is not None:
+        return results
+    if not openvino_low_conf_retry:
+        return results
+    try:
+        conf = float(kwargs.get("conf") or 0.1)
+    except (TypeError, ValueError):
+        conf = 0.1
+    if conf <= 0.035:
+        return results
+    retry_kw = dict(kwargs)
+    retry_kw["conf"] = round(max(0.02, conf * 0.45), 4)
+    results = model.track(frame, **retry_kw)
     return results
 
 
@@ -1058,7 +1080,12 @@ class TwoStageStrategy(DetectionStrategy):
         results = (
             self.binary_model.track(frame, **_tkw)
             if track_regen_ctx and iou_fb
-            else _track_maybe_retry(self.binary_model, frame, **_tkw)
+            else _track_maybe_retry(
+                self.binary_model,
+                frame,
+                openvino_low_conf_retry=(inference_backend == "openvino"),
+                **_tkw,
+            )
         )
 
         _quality_reject_stats: dict[str, int] = {}

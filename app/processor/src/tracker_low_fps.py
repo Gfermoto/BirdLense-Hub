@@ -76,33 +76,24 @@ def adaptive_match_thresh(stream_fps: float, base_thresh: float, low_fps_thresho
 
 def _track_conf_cap_from_config(cfg: Mapping[str, Any]) -> float | None:
     """Upper bound for ByteTrack high/new thresholds (must stay below YOLO track conf)."""
-    cap: float | None = None
-    for key in (
-        "processor.min_confidence_binary",
-        "processor.min_confidence_binary_bird",
-    ):
-        try:
-            raw = cfg.get(key)
-            if raw is None:
-                continue
-            val = float(raw)
-        except (TypeError, ValueError):
-            continue
-        cap = min(cap, val) if cap is not None else val
-    if cap is None:
-        cap = 0.22
-    backend = str(cfg.get("processor.inference_backend") or "").strip().lower()
-    if backend == "openvino":
-        raw = cfg.get("processor.openvino_binary_track_ultralytics_conf")
-        if raw is not None:
-            try:
-                ov = float(raw)
-                cap = min(cap, ov) if cap is not None else ov
-            except (TypeError, ValueError):
-                pass
-    if cap is None:
-        return None
-    return max(0.05, min(0.45, float(cap)))
+    from detection_strategy import binary_track_ultralytics_conf_floor
+
+    try:
+        raw_base = cfg.get("processor.min_confidence_binary")
+    except (AttributeError, TypeError):
+        raw_base = None
+    if raw_base is None:
+        raw_base = app_config.get("processor.min_confidence_binary")
+    try:
+        base = float(raw_base if raw_base is not None else 0.22)
+    except (TypeError, ValueError):
+        base = 0.22
+    try:
+        backend = str(cfg.get("processor.inference_backend") or app_config.get("processor.inference_backend") or "")
+    except (AttributeError, TypeError):
+        backend = str(app_config.get("processor.inference_backend") or "")
+    backend = backend.strip().lower() or None
+    return binary_track_ultralytics_conf_floor(base, cfg, inference_backend=backend)
 
 
 def clamp_bytetrack_track_thresholds(doc: dict[str, Any], track_conf_cap: float | None) -> None:
