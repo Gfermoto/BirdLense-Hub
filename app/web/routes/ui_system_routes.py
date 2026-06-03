@@ -29,6 +29,7 @@ from services.system_tuning_workbench_service import (
 from services.yolo_detector_health_service import build_yolo_detector_health_payload
 from services.system_metrics_constants import _CACHE_SYSTEM_ACTIVITY_SEC
 from services.system_metrics_sampler_service import start_system_metrics_sampler
+from services.retention_scheduler_service import start_retention_scheduler
 
 import routes.ui_system_jobs_state as job_state
 
@@ -167,3 +168,4 @@ def register_routes(app):
     register_ui_system_species_registry_routes(app)
 
     start_system_metrics_sampler(app)
+    start_retention_scheduler(app)

@@ -1635,6 +1635,6 @@ def finalize_motion_recording(
                         details=maintenance_res,
                     )
         except Exception:
-            logging.debug("recording_session_summary persist skipped", exc_info=True)
+            logging.warning("recording_session_summary persist skipped", exc_info=True)
     except Exception:
-        logging.debug("recording_session_summary skipped", exc_info=True)
+        logging.warning("recording_session_summary skipped", exc_info=True)
