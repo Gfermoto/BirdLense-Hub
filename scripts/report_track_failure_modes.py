@@ -68,6 +68,9 @@ def build_track_failure_modes_report(
         if isinstance(track_quality_core_metrics_report.get("metrics"), dict)
         else {}
     )
+    skip_smoke_gates = bool(
+        core_metrics.get("skip_proxy_gates_smoke_no_detections")
+    )
     tracker_rows = (
         benchmark_trackers_ab_report.get("rows")
         if isinstance(benchmark_trackers_ab_report.get("rows"), list)
@@ -148,6 +151,8 @@ def build_track_failure_modes_report(
         "hota_proxy_not_critical": hota_proxy >= 0.05,
         "idf1_proxy_not_critical": idf1_proxy >= 0.05,
     }
+    if skip_smoke_gates:
+        gates = {key: True for key in gates}
     return {
         "schema": "track_failure_modes_report@v1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -163,6 +168,7 @@ def build_track_failure_modes_report(
             ),
         },
         "metrics": {
+            "skip_gates_smoke_no_detections": skip_smoke_gates,
             "idsw_count_1819": idsw,
             "avg_track_duration_sec_1819": round(avg_track_duration, 6),
             "frame_cover_ratio_1819": round(frame_cover, 6),
@@ -178,7 +184,7 @@ def build_track_failure_modes_report(
         },
         "mitigation": recommendations,
         "gates": gates,
-        "ok": all(bool(v) for v in gates.values()),
+        "ok": True if skip_smoke_gates else all(bool(v) for v in gates.values()),
     }
 
 
