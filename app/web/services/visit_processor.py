@@ -26,6 +26,9 @@ def _review_reason_from_detection(det: dict) -> str | None:
     return None
 
 
+_reid_embedding_table_ready = False
+
+
 class VisitProcessor:
     """Правила склейки визитов по таймауту и привязки детекций к видео."""
 
@@ -134,6 +137,32 @@ class VisitProcessor:
         self.db.session.add(video_species)
         return video_species
 
+    def _ensure_reid_embedding_table(self) -> None:
+        global _reid_embedding_table_ready
+        if _reid_embedding_table_ready:
+            return
+        self.db.session.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS reid_embedding (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    video_species_id INTEGER,
+                    video_id INTEGER,
+                    species_id INTEGER,
+                    track_id INTEGER,
+                    crop_path TEXT NOT NULL UNIQUE,
+                    model TEXT NOT NULL,
+                    dim INTEGER NOT NULL,
+                    embedding_json TEXT NOT NULL,
+                    species_name TEXT,
+                    individual_label TEXT,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+        )
+        _reid_embedding_table_ready = True
+
     def _upsert_reid_embedding_from_detection(
         self,
         *,
@@ -160,26 +189,7 @@ class VisitProcessor:
         if not crop_key:
             crop_key = f"runtime://video/{video_species.video_id}/vs/{video_species.id}"
 
-        self.db.session.execute(
-            text(
-                """
-                CREATE TABLE IF NOT EXISTS reid_embedding (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    video_species_id INTEGER,
-                    video_id INTEGER,
-                    species_id INTEGER,
-                    track_id INTEGER,
-                    crop_path TEXT NOT NULL UNIQUE,
-                    model TEXT NOT NULL,
-                    dim INTEGER NOT NULL,
-                    embedding_json TEXT NOT NULL,
-                    species_name TEXT,
-                    individual_label TEXT,
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
-        )
+        self._ensure_reid_embedding_table()
         self.db.session.execute(
             text(
                 """
@@ -257,23 +267,28 @@ class VisitProcessor:
         video_species_records = []
         visits_to_update = {}  # Map (species_id, start_time) to visit data
         deduped_detections = self._deduplicate_detections(detections)
+        species_cache: dict[str, Species | None] = {}
 
         # First pass: Process all detections
         for det in deduped_detections:
             visit_eligible = bool(det.get("visit_eligible", True))
             provider = str(det.get("detection_provider") or det.get("source") or "ingest").strip().lower()
-            raw_aliases = [
-                *(det.get("source_aliases") or []),
-                det.get("species_name_raw"),
-                det.get("species"),
-            ]
-            scientific_aliases = list(det.get("source_scientific_names") or [])
-            species = self.species_identity.resolve_or_create_species(
-                det["species_name"],
-                source=f"ingest:{provider}" if provider else "ingest",
-                audit_aliases=[str(x).strip() for x in raw_aliases if str(x or "").strip()],
-                audit_scientific_names=[str(x).strip() for x in scientific_aliases if str(x or "").strip()],
-            )
+            species_key = str(det.get("species_name") or "").strip().lower()
+            species = species_cache.get(species_key)
+            if species_key not in species_cache:
+                raw_aliases = [
+                    *(det.get("source_aliases") or []),
+                    det.get("species_name_raw"),
+                    det.get("species"),
+                ]
+                scientific_aliases = list(det.get("source_scientific_names") or [])
+                species = self.species_identity.resolve_or_create_species(
+                    det["species_name"],
+                    source=f"ingest:{provider}" if provider else "ingest",
+                    audit_aliases=[str(x).strip() for x in raw_aliases if str(x or "").strip()],
+                    audit_scientific_names=[str(x).strip() for x in scientific_aliases if str(x or "").strip()],
+                )
+                species_cache[species_key] = species
             if not species:
                 self.logger.warning(f'Could not create species "{det["species_name"]}"')
                 continue

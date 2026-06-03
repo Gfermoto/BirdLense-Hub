@@ -930,6 +930,8 @@ retention:
   # Лимит каталога recordings (GB); cascade удаляет старейшие Video до порога.
   # max_deletes_per_run — safety cap за один прогон (auto или POST /system/retention).
   max_deletes_per_run: 500
+  # Не удалять ниже N строк Video (deleted_at IS NULL); 0 = без пола. Защита тестовой/рабочей базы.
+  min_videos_keep: 25
   auto_run_enabled: true
   auto_run_interval_hours: 6
 
