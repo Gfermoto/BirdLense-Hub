@@ -152,7 +152,7 @@ def _fetch_latest_summary(
     host: str,
     port: str,
     remote_db: str,
-    video_path: str,
+    after_iso: str,
     timeout: int,
 ) -> dict[str, Any] | None:
     sql_py = (
@@ -160,11 +160,11 @@ def _fetch_latest_summary(
         "import sqlite3, json\n"
         f"con=sqlite3.connect({remote_db!r})\n"
         "row=con.execute(\n"
-        "  \"\"\"SELECT payload_json, created_at FROM activity_log\n"
+        "  \"\"\"SELECT data, created_at FROM activity_log\n"
         "     WHERE type='recording_session_summary'\n"
-        "       AND payload_json LIKE ?\n"
+        "       AND created_at >= ?\n"
         "     ORDER BY id DESC LIMIT 1\"\"\",\n"
-        f"  ('%{video_path.replace(chr(39), '')}%',),\n"
+        f"  ({after_iso!r},),\n"
         ").fetchone()\n"
         "if not row:\n"
         "  print('null')\n"
@@ -228,6 +228,7 @@ def main() -> int:
     results: list[dict[str, Any]] = []
     failures = 0
     for row in favorites:
+        run_started = datetime.now(timezone.utc).isoformat()
         cpath = _container_path(row.video_path)
         entry: dict[str, Any] = {
             "video_id": row.video_id,
@@ -250,7 +251,7 @@ def main() -> int:
                 host=host,
                 port=args.port,
                 remote_db=args.remote_db,
-                video_path=row.video_path,
+                after_iso=run_started,
                 timeout=120,
             )
             if summary:
