@@ -7,7 +7,13 @@ import argparse
 import json
 import math
 import sqlite3
-from datetime import UTC, datetime
+try:
+    from datetime import UTC
+except ImportError:  # Python < 3.11
+    from datetime import timezone
+
+    UTC = timezone.utc  # type: ignore[misc,assignment]
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 

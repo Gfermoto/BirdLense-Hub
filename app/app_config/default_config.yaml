@@ -396,6 +396,7 @@ processor:
       min_track_duration: 0.5
     feeder_far:
       min_track_duration: 0.5
+      track_static_reject_enabled: false
       track_static_reject_max_center_dispersion_norm: 0.10
       track_static_reject_max_relative_center_dispersion: 0.18
       track_static_reject_min_duration_sec: 2.5
@@ -439,7 +440,7 @@ processor:
   # Ниже порога Birder, но выше min — сохранить best-guess вид + review (classification-first).
   classifier_best_guess_enabled: true
   classifier_best_guess_min_confidence: 0.10
-  classifier_best_guess_min_events: 2
+  classifier_best_guess_min_events: 1
   efficientnet_b2_min_confidence: 0.22
   efficientnet_b2_unknown_label: "Unknown Bird"
   # Trapper squirrel → каталог Rodent (не класс EfficientNet 525)

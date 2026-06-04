@@ -70,6 +70,20 @@ def test_classification_first_migration_disables_arbitration_layers():
     assert current_schema_version(user) == USER_CONFIG_SCHEMA_VERSION
 
 
+def test_classification_reliability_migration_lowers_birder_and_static_far():
+    user = {
+        "processor": {
+            "birder_eu_min_confidence": 0.18,
+            "classifier_best_guess_min_events": 2,
+        },
+    }
+    assert run_user_config_migrations(user) is True
+    assert user["processor"]["birder_eu_min_confidence"] == 0.15
+    assert user["processor"]["classifier_best_guess_min_events"] == 1
+    assert user["processor"]["camera_tuning_by_role"]["feeder_far"]["track_static_reject_enabled"] is False
+    assert current_schema_version(user) == USER_CONFIG_SCHEMA_VERSION
+
+
 def test_settings_patch_returns_deprecated_warnings(tmp_path, monkeypatch):
     from app_config.app_config import app_config
     from services.settings_patch_service import apply_settings_patch_from_request

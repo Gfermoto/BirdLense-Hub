@@ -100,18 +100,13 @@ def defer_static_pinned_reject(
         return False
     if not track_has_bbox_frames(track):
         return False
-    max_conf = 0.0
     has_bird = False
     for ev in detector_events or []:
         if not isinstance(ev, dict):
             continue
-        label = str(ev.get("label") or "").strip().lower()
-        if label == "bird":
+        if str(ev.get("label") or "").strip().lower() == "bird":
             has_bird = True
-        try:
-            max_conf = max(max_conf, float(ev.get("confidence") or 0.0))
-        except (TypeError, ValueError):
-            continue
+            break
     if not has_bird:
         return False
-    return max_conf >= float(min_confidence_to_process)
+    return True

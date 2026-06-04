@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Patch prod user_config for classification-first / binary_track_first (deploy does not rsync user_config).
-# Prefer schema v3 migration on web startup; this script is for immediate prod reconcile.
+# Prefer schema v4 migration on web startup; this script is for immediate prod reconcile.
 # Run on VPS: bash scripts/patch-prod-user-config-track-first.sh
 set -euo pipefail
 HOST_CFG="${1:-/root/BirdLense/app/app_config/user_config.yaml}"
@@ -28,9 +28,15 @@ det["hypothesis_arbitration_enabled"] = False
 det["yolo_weak_track_salvage_enabled"] = False
 
 proc["bird_skip_classifier_max_area_frac"] = 0
-proc.setdefault("classifier_best_guess_enabled", True)
+proc["classifier_best_guess_enabled"] = True
+proc["classifier_best_guess_min_events"] = 1
+proc["birder_eu_min_confidence"] = 0.15
 
-# Role presets replace per-camera YAML tuning; legacy overrides often fight feeder_close/feeder_far.
+roles = proc.setdefault("camera_tuning_by_role", {})
+far = roles.setdefault("feeder_far", {})
+if isinstance(far, dict):
+    far["track_static_reject_enabled"] = False
+
 if proc.pop("camera_overrides", None) is not None:
     print("removed processor.camera_overrides (use video.cameras[].tuning_role)")
 
@@ -46,16 +52,13 @@ if isinstance(cameras, list):
             row["tuning_role"] = role_by_id[cam_id]
 
 meta = cfg.setdefault("_meta", {})
-if int(meta.get("schema_version") or 0) < 3:
-    meta["schema_version"] = 3
+meta["schema_version"] = 4
 
 path.write_text(yaml.dump(cfg, allow_unicode=True, sort_keys=False), encoding="utf-8")
 print("patched", path)
-print("triggers", proc.get("detect_scheduler_triggers"))
-print("persist_mode", det.get("persist_mode"))
-print("arbiter", det.get("weighted_arbiter_enabled"))
-print("hypothesis", det.get("hypothesis_arbitration_enabled"))
-print("bird_skip_classifier", proc.get("bird_skip_classifier_max_area_frac"))
+print("birder_min", proc.get("birder_eu_min_confidence"))
+print("best_guess_events", proc.get("classifier_best_guess_min_events"))
+print("feeder_far_static_off", (roles.get("feeder_far") or {}).get("track_static_reject_enabled"))
 print("schema_version", meta.get("schema_version"))
 PY
 echo "Restart processor to apply (Settings → restart processor, or):"

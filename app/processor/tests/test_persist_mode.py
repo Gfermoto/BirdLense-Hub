@@ -103,6 +103,24 @@ class TestPersistMode(unittest.TestCase):
             )
         )
 
+    def test_defer_static_pinned_for_low_conf_bird_in_track(self):
+        cfg = MagicMock()
+        cfg.get.side_effect = lambda key, default=None: (
+            "binary_track_first" if key == "detection.persist_mode" else default
+        )
+        track = {
+            "frames": [{"bbox": [0.5, 0.5, 0.6, 0.6]}],
+            "detector_events": [{"label": "Bird", "confidence": 0.08}],
+        }
+        self.assertTrue(
+            defer_static_pinned_reject(
+                app_config=cfg,
+                track=track,
+                detector_events=track["detector_events"],
+                min_confidence_to_process=0.12,
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

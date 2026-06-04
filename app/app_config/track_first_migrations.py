@@ -88,3 +88,40 @@ def migrate_classification_first(user_config: dict[str, Any]) -> bool:
         changed = True
 
     return changed
+
+
+def migrate_classification_reliability(user_config: dict[str, Any]) -> bool:
+    """Birder thresholds, best-guess votes, Forest static reject off via role preset."""
+    if not isinstance(user_config, dict):
+        return False
+    changed = False
+    proc = user_config.setdefault("processor", {})
+    if not isinstance(proc, dict):
+        return False
+
+    try:
+        birder_min = float(proc.get("birder_eu_min_confidence"))
+    except (TypeError, ValueError):
+        birder_min = None
+    if birder_min is None or birder_min >= 0.18:
+        proc["birder_eu_min_confidence"] = 0.15
+        changed = True
+
+    try:
+        min_events = int(proc.get("classifier_best_guess_min_events"))
+    except (TypeError, ValueError):
+        min_events = None
+    if min_events is None or min_events > 1:
+        proc["classifier_best_guess_min_events"] = 1
+        changed = True
+
+    roles = proc.get("camera_tuning_by_role")
+    if not isinstance(roles, dict):
+        roles = {}
+        proc["camera_tuning_by_role"] = roles
+    far = roles.setdefault("feeder_far", {})
+    if isinstance(far, dict) and far.get("track_static_reject_enabled") is not False:
+        far["track_static_reject_enabled"] = False
+        changed = True
+
+    return changed
