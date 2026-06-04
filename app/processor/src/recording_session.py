@@ -30,24 +30,32 @@ logger = logging.getLogger(__name__)
 
 
 def _camera_processor_overrides(camera_id: str | None) -> dict:
-    """Per-camera processor overrides from ``processor.camera_overrides.<camera_id>``."""
+    """Per-camera processor overrides from role presets + ``processor.camera_overrides.<camera_id>``."""
     cam = str(camera_id or "").strip()
     if not cam:
         return {}
-    raw = app_config.get(f"processor.camera_overrides.{cam}")
-    merged = dict(raw) if isinstance(raw, dict) else {}
+    merged: dict = {}
     cameras = get_valid_cameras(video_config=(app_config.get("video") or {}))
+    tuning_role = ""
     if isinstance(cameras, list):
         for row in cameras:
             if not isinstance(row, dict):
                 continue
             if str(row.get("id") or "").strip() != cam:
                 continue
+            tuning_role = str(row.get("tuning_role") or "").strip()
             zones = row.get("detection_interest_zones")
             if zones is not None:
                 merged["processor.detection_interest_zones"] = zones
                 merged["processor.detection_interest_zones_required"] = bool(zones)
             break
+    if tuning_role:
+        role_raw = app_config.get(f"processor.camera_tuning_by_role.{tuning_role}")
+        if isinstance(role_raw, dict):
+            merged.update(dict(role_raw))
+    raw = app_config.get(f"processor.camera_overrides.{cam}")
+    if isinstance(raw, dict):
+        merged.update(dict(raw))
     return merged
 
 

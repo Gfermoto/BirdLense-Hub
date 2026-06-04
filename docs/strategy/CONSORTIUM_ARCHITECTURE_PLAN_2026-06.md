@@ -147,6 +147,28 @@ Trigger (opencv|frigate|…)
 
 **Anti-patterns:** новый fusion layer; «Frigate fallback» без track persist.
 
+#### Phase 2.6 — Persist mode (архитектурный сдвиг, не tuning)
+
+**Проблема:** 7+ последовательных gate (DecisionMaker store_floor → fusion → post_fusion → strip → track_first) — YOLO track+bbox есть, DB row нет.
+
+**Контракт `detection.persist_mode: binary_track_first` (default + migration v2):**
+
+| Слой | Было | Стало |
+|------|------|-------|
+| DecisionMaker | classifier/store_floor veto | bird track+bbox → accept; species = enrichment |
+| Finalize | strip review_only frames | track_first gate + honest metrics |
+| Triggers | user_config без opencv | migration + forced probe при track_first |
+| Per-camera | только `camera_overrides.<id>` | `tuning_role` → `camera_tuning_by_role` в default |
+
+**Код:** `persist_mode.py`, `track_first_migrations.py`, `decision_maker._binary_track_first_override`.
+
+**Не заменяет Phase 2.2:** static_pinned / short_track — ролевые профили (`feeder_close` / `feeder_far`), не глобальные пороги.
+
+**Phase 2.6b — geometry не veto при btf:**
+
+- `defer_static_pinned_reject`: сидящая птица на кормушке не режется `rejected_static_pinned_track`, если bird+bbox ≥ process floor.
+- Fusion store floor + `yolo_core_anchor_enabled: false` по умолчанию при `binary_track_first` — меньше band-aid слоёв.
+
 ---
 
 ### Phase 3 — Operator Truth (3 нед)

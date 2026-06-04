@@ -1653,3 +1653,42 @@ def test_frigate_standalone_forced_after_timeout_without_blind_confirmation():
     )
     assert len(out) == 1
     assert out[0]["detection_provider"] == "frigate"
+
+
+def test_binary_track_first_keeps_yolo_row_below_store_floor():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=8)
+    cfg = DummyConfig(
+        {
+            "detection.merge_window_seconds": 5,
+            "detection.dedup_window_seconds": 45,
+            "detection.one_per_species": True,
+            "detection.source_priority": ["yolo", "frigate"],
+            "detection.cross_source_confidence_bonus": 0.0,
+            "detection.min_confidence_to_store": 0.36,
+            "detection.persist_mode": "binary_track_first",
+            "processor.min_confidence_to_process": 0.12,
+            "processor.multi_camera_groups": [],
+        }
+    )
+    row = {
+        "track_id": 3,
+        "species_name": "Bird",
+        "confidence": 0.15,
+        "start_time": 0.0,
+        "end_time": 2.0,
+        "detection_provider": "yolo",
+        "detector_label": "Bird",
+        "detector_confidence": 0.15,
+        "decision_reason": "accepted_binary_track_classifier_uncertain",
+        "frames": [{"bbox": [10, 10, 40, 40], "t": 0.0}],
+    }
+    out = build_fused_video_detections(
+        [row],
+        [],
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+    assert len(out) == 1
+    assert out[0]["track_id"] == 3

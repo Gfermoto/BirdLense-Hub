@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Patch prod user_config for track-first (deploy does not rsync user_config).
+# Patch prod user_config for track-first / persist_mode (deploy does not rsync user_config).
+# Prefer schema v2 migration on web startup; this script is for immediate prod reconcile.
 # Run on VPS: bash scripts/patch-prod-user-config-track-first.sh
 set -euo pipefail
 HOST_CFG="${1:-/root/BirdLense/app/app_config/user_config.yaml}"
@@ -21,23 +22,27 @@ if "opencv" not in triggers:
 det = cfg.setdefault("detection", {})
 det["strip_review_only_overlay_frames"] = False
 det["track_first_gate_enabled"] = True
+det.setdefault("persist_mode", "binary_track_first")
 
-co = det.setdefault("camera_overrides", {})
-for cam in ("BirdBox", "Forest"):
-    row = co.setdefault(cam, {})
-    row.setdefault("min_confidence_binary", 0.12)
-    row.setdefault("min_confidence_binary_bird", 0.12)
-    row.setdefault("min_confidence_to_process", 0.12)
-    row.setdefault("min_track_duration", 0.5)
+video = cfg.setdefault("video", {})
+cameras = video.get("cameras")
+role_by_id = {"BirdBox": "feeder_close", "Forest": "feeder_far"}
+if isinstance(cameras, list):
+    for row in cameras:
+        if not isinstance(row, dict):
+            continue
+        cam_id = str(row.get("id") or "").strip()
+        if cam_id in role_by_id and not str(row.get("tuning_role") or "").strip():
+            row["tuning_role"] = role_by_id[cam_id]
 
-forest = co["Forest"]
-forest["track_static_reject_max_center_dispersion_norm"] = 0.12
-forest["track_static_reject_max_relative_center_dispersion"] = 0.22
-forest["track_static_reject_min_duration_sec"] = 3.5
+meta = cfg.setdefault("_meta", {})
+if int(meta.get("schema_version") or 0) < 2:
+    meta["schema_version"] = 2
 
 path.write_text(yaml.dump(cfg, allow_unicode=True, sort_keys=False), encoding="utf-8")
 print("patched", path)
 print("triggers", proc.get("detect_scheduler_triggers"))
+print("persist_mode", det.get("persist_mode"))
 print("strip_review", det.get("strip_review_only_overlay_frames"))
 PY
 echo "Restart processor to apply (Settings → restart processor, or):"

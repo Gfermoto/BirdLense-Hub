@@ -30,8 +30,10 @@ Frigate и BirdNET — **опционально**: доп. триггер, по�
 
 1. **Trigger:** OpenCV и прочие источники из `detect_scheduler_triggers` — только после YOLO probe (bird in frame).
 2. **Detect+track:** persist = строки `source=video` с валидным `frames[]` (bbox+track).
-3. **Finalize:** `track_first_gate` перед ingest; без bbox — клип удаляется, `create_video` не вызывается.
-4. **Honest metrics:** `post_fusion_persisted=1` только при успешном `video_id` в БД.
+3. **Decision (`persist_mode: binary_track_first`):** YOLO bird+bbox ≥ `min_confidence_to_process` → accept; вид — enrichment; fusion не режет такие строки по `min_confidence_to_store`; static_pinned не veto при bird+bbox.
+4. **Finalize:** `track_first_gate` перед ingest; без bbox — клип удаляется, `create_video` не вызывается.
+5. **Honest metrics:** `post_fusion_persisted=1` только при успешном `video_id` в БД.
+6. **Per-camera:** `video.cameras[].tuning_role` → `processor.camera_tuning_by_role` (default), затем `camera_overrides.<id>`.
 
 ## Contours
 

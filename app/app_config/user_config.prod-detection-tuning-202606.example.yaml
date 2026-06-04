@@ -1,30 +1,27 @@
-# Prod tuning notes (2026-06-02) — apply manually to user_config.yaml on VPS.
+# Prod tuning notes (2026-06) — prefer default_config + migration v2 + tuning_role.
 # Backup before edit: cp user_config.yaml user_config.yaml.bak-tuning-$(date -u +%Y%m%dT%H%M%SZ)
 #
-# Observed on prod (288 sess / 24h):
-# - BirdBox: 31× raw>0 tracks=0 with yolo_accepted_boxes_total=0 → camera_overrides
-#   min_confidence_binary 0.26 blocks all boxes (global 0.12).
-# - Forest: 615× rejected_static_pinned_track — global track_static_* too strict
-#   (min_frames=18, min_duration_sec=10, iou=0.92, rel_disp=0.06) vs default_config.
+# Architecture (not per-id YAML forever):
+# - detection.persist_mode: binary_track_first  (default + migration)
+# - video.cameras[].tuning_role → processor.camera_tuning_by_role in default_config
+# - processor.camera_overrides.<id> only for exceptions
 
+detection:
+  persist_mode: binary_track_first
+
+video:
+  cameras:
+    # Example: replace ids with yours; roles map to default_config presets.
+    - id: BirdBox
+      tuning_role: feeder_close
+    - id: Forest
+      tuning_role: feeder_far
+
+# Optional global static gate (default_config already softened vs 2026-05 prod):
 processor:
   track_static_reject_min_duration_sec: 2.0
-  track_static_reject_min_duration_sparse_sec: 2.5
   track_static_reject_min_frames: 4
-  track_static_reject_min_frames_sparse: 3
-  track_static_reject_max_center_dispersion_norm: 0.075
-  track_static_reject_max_relative_center_dispersion: 0.16
-  track_static_reject_max_bbox_iou_first_last_min: 0.74
-  camera_overrides:
-    BirdBox:
-      min_confidence_binary: 0.12
-      min_confidence_binary_bird: 0.12
-      min_confidence_to_process: 0.12
-      openvino_min_confidence_binary_bird: 0.12
-    Forest:
-      # v2 (2026-06-02): opencv FP + windy canopy — looser static gate than BirdBox feeder.
-      track_static_reject_max_center_dispersion_norm: 0.10
-      track_static_reject_max_relative_center_dispersion: 0.18
-      track_static_reject_min_duration_sec: 2.5
-      track_static_reject_min_frames: 3
-      track_static_reject_min_frames_sparse: 2
+  # Legacy per-id overrides — drop when tuning_role covers the camera:
+  # camera_overrides:
+  #   BirdBox:
+  #     min_confidence_binary: 0.12
