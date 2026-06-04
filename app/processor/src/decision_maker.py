@@ -494,6 +494,62 @@ class DecisionMaker:
             "avg_top1_top2_margin": avg_top1_top2_margin,
         }
 
+    @staticmethod
+    def _unknown_classifier_labels(app_config) -> set[str]:
+        unknown = str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird").strip().lower()
+        return {"bird", "unknown", unknown, "unknown bird"}
+
+    def _pick_named_classifier_from_events(
+        self,
+        app_config,
+        classifier_events: list[Any],
+    ) -> dict[str, Any] | None:
+        """Best non-generic Birder label from raw classifier events (top vote may be Unknown)."""
+        if not classifier_events:
+            return None
+        try:
+            min_guess = float(app_config.get("processor.classifier_best_guess_min_confidence") or 0.10)
+        except (TypeError, ValueError):
+            min_guess = 0.10
+        try:
+            min_events = int(app_config.get("processor.classifier_best_guess_min_events") or 1)
+        except (TypeError, ValueError):
+            min_events = 1
+        unknown = self._unknown_classifier_labels(app_config)
+        by_name: dict[str, list[dict[str, Any]]] = {}
+        for ev in classifier_events:
+            if not isinstance(ev, dict):
+                continue
+            name = str(ev.get("species_name") or "").strip()
+            if not name or name.lower() in unknown:
+                continue
+            by_name.setdefault(name, []).append(ev)
+        if not by_name:
+            return None
+
+        def _score(name: str) -> tuple[int, float, float]:
+            rows = by_name[name]
+            confs = [float(r.get("confidence") or 0.0) for r in rows]
+            combined = [float(r.get("combined_confidence") or 0.0) for r in rows]
+            avg_conf = sum(confs) / len(confs) if confs else 0.0
+            avg_combined = sum(combined) / len(combined) if combined else 0.0
+            return (len(rows), avg_conf, avg_combined)
+
+        best_name = max(by_name.keys(), key=lambda n: _score(n))
+        rows = by_name[best_name]
+        if len(rows) < min_events:
+            return None
+        avg_conf = sum(float(r.get("confidence") or 0.0) for r in rows) / len(rows)
+        if avg_conf < min_guess:
+            return None
+        avg_combined = sum(float(r.get("combined_confidence") or 0.0) for r in rows) / len(rows)
+        return {
+            "species_name": best_name,
+            "avg_classifier_confidence": avg_conf,
+            "combined_confidence": avg_combined,
+            "event_count": len(rows),
+        }
+
     def _binary_track_first_override(
         self,
         *,
@@ -514,16 +570,26 @@ class DecisionMaker:
             return None
         species = "Bird"
         combined = 0.0
+        decision_reason = "accepted_binary_track_classifier_uncertain"
         if classifier_candidate is not None:
             species = str(classifier_candidate.get("species_name") or "Bird").strip() or "Bird"
             combined = float(classifier_candidate.get("combined_confidence") or 0.0)
+            if species.lower() in self._unknown_classifier_labels(app_config):
+                named = self._pick_named_classifier_from_events(
+                    app_config,
+                    track.get("classifier_events") or [],
+                )
+                if named is not None:
+                    species = str(named["species_name"])
+                    combined = max(combined, float(named.get("combined_confidence") or 0.0))
+                    decision_reason = "accepted_classifier_best_guess"
         return {
             "accepted": True,
             "visit_eligible": True,
             "notification_eligible": False,
             "out_species": species,
             "out_conf": max(combined, float(detector_conf)),
-            "decision_reason": "accepted_binary_track_classifier_uncertain",
+            "decision_reason": decision_reason,
             "decision_kind": "accepted_species",
             "evidence_state": "weak_classifier",
             "classifier_needs_review": True,
@@ -552,19 +618,30 @@ class DecisionMaker:
         except (TypeError, ValueError):
             min_guess = 0.10
         try:
-            min_events = int(app_config.get("processor.classifier_best_guess_min_events") or 2)
+            min_events = int(app_config.get("processor.classifier_best_guess_min_events") or 1)
         except (TypeError, ValueError):
-            min_events = 2
-        unknown_label = str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird").strip().lower()
+            min_events = 1
+        unknown_label = self._unknown_classifier_labels(app_config)
         species = str(classifier_candidate.get("species_name") or "").strip()
-        if not species or species.lower() in {"bird", "unknown", unknown_label}:
-            return None
-        if int(classifier_candidate.get("event_count") or 0) < min_events:
-            return None
-        avg_conf = float(classifier_candidate.get("avg_classifier_confidence") or 0.0)
-        if avg_conf < min_guess:
-            return None
-        combined = float(classifier_candidate.get("combined_confidence") or 0.0)
+        if not species or species.lower() in unknown_label:
+            named = self._pick_named_classifier_from_events(
+                app_config,
+                track.get("classifier_events") or [],
+            )
+            if named is None:
+                return None
+            species = str(named["species_name"])
+            avg_conf = float(named.get("avg_classifier_confidence") or 0.0)
+            combined = float(named.get("combined_confidence") or 0.0)
+            if int(named.get("event_count") or 0) < min_events or avg_conf < min_guess:
+                return None
+        else:
+            if int(classifier_candidate.get("event_count") or 0) < min_events:
+                return None
+            avg_conf = float(classifier_candidate.get("avg_classifier_confidence") or 0.0)
+            if avg_conf < min_guess:
+                return None
+            combined = float(classifier_candidate.get("combined_confidence") or 0.0)
         return {
             "accepted": True,
             "visit_eligible": True,

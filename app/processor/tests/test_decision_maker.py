@@ -600,6 +600,42 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertTrue(d["visit_eligible"])
         self.assertFalse(d["notification_eligible"])
 
+    @patch("app_config.app_config.app_config")
+    def test_btf_uses_named_species_when_top_classifier_is_unknown(self, mock_cfg):
+        def fake_get(k, default=None):
+            if k == "detection.persist_mode":
+                return "binary_track_first"
+            if k == "processor.classifier_best_guess_min_confidence":
+                return 0.10
+            if k == "processor.classifier_best_guess_min_events":
+                return 1
+            if k == "processor.birder_eu_unknown_label":
+                return "Unknown Bird"
+            return default
+
+        mock_cfg.get.side_effect = fake_get
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.12,
+            min_confidence_to_store=0.20,
+        )
+        frames = [{"bbox": [0.30, 0.30, 0.50, 0.50], "t": float(i)} for i in range(6)]
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.14] * 6,
+                classifier_events=[
+                    ("Unknown Bird", 0.12, 0.14),
+                    ("Unknown Bird", 0.11, 0.14),
+                    ("Great Tit", 0.11, 0.14),
+                ],
+                frames=frames,
+            ),
+        }
+        d = dm.get_decisions(tracks)[0]
+        self.assertTrue(d["accepted"])
+        self.assertEqual(d["species_name"], "Great Tit")
+        self.assertEqual(d["decision_reason"], "accepted_classifier_best_guess")
+
 
 if __name__ == '__main__':
     unittest.main()
