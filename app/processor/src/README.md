@@ -26,6 +26,13 @@ Frigate и BirdNET — **опционально**: доп. триггер, по�
 
 **Не цель:** «Frigate видит — значит OK»; synthetic rows без `frames[]`; длинные клипы без YOLO «потому что Frigate шевелится».
 
+### Track-first invariant (конституция pipeline)
+
+1. **Trigger:** OpenCV и прочие источники из `detect_scheduler_triggers` — только после YOLO probe (bird in frame).
+2. **Detect+track:** persist = строки `source=video` с валидным `frames[]` (bbox+track).
+3. **Finalize:** `track_first_gate` перед ingest; без bbox — клип удаляется, `create_video` не вызывается.
+4. **Honest metrics:** `post_fusion_persisted=1` только при успешном `video_id` в БД.
+
 ## Contours
 
 | Contour | `models/` | Owns | Primary modules | Main dependencies |

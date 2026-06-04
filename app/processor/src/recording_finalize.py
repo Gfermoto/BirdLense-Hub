@@ -40,6 +40,11 @@ from processor_diagnostics import collect_root_cause_snapshot, write_root_cause_
 from session_state_repository import SessionStateRepository
 from behavior_baseline_runtime import maybe_predict_video_behavior_bundle
 from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
+from track_first_contract import (
+    apply_track_first_persist_gate,
+    count_ingestible_track_rows,
+    has_ingestible_track_rows,
+)
 
 # Пустые сессии без детекций — частое событие; не засоряем лог (раз в интервал — WARNING, иначе DEBUG).
 _NO_DETECTIONS_WARN_INTERVAL_S = 120.0
@@ -59,16 +64,20 @@ def _sanitize_persisted_overlay_frames(
     *,
     runtime_cfg: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Drop phantom/sticky bbox series from DB overlay (UI reads VideoSpecies.frames)."""
+    """Mark overlay suppression; optionally strip frames only when track-first gate is off."""
     cfg = StaticPinnedTrackConfig.from_runtime_cfg(runtime_cfg or app_config.config or {})
-    strip_review = bool(app_config.get("detection.strip_review_only_overlay_frames", True))
+    strip_review = bool(app_config.get("detection.strip_review_only_overlay_frames", False))
+    track_first = bool(app_config.get("detection.track_first_gate_enabled", True))
     out: list[dict[str, Any]] = []
     for row in video_detections or []:
         d = dict(row)
         kind = str(d.get("decision_kind") or "").strip().lower()
         if strip_review and kind in {"review_only_generic", "review_only"}:
-            if d.get("frames"):
-                d["frames"] = []
+            if d.get("frames") and track_first:
+                d["overlay_suppressed"] = "review_only_no_overlay"
+            else:
+                if d.get("frames"):
+                    d["frames"] = []
                 d["overlay_suppressed"] = "review_only_no_overlay"
             out.append(d)
             continue
@@ -988,6 +997,19 @@ def finalize_motion_recording(
                 float(salvage_row.get("confidence") or 0.0),
                 session_camera_id,
             )
+    track_first_enabled = bool(app_config.get("detection.track_first_gate_enabled", True))
+    video_detections, track_first_rejected = apply_track_first_persist_gate(
+        video_detections,
+        enabled=track_first_enabled,
+    )
+    if track_first_rejected:
+        rejected_decisions.extend(track_first_rejected)
+        inc_counter("recording_rejected_track_first_gate_total", len(track_first_rejected))
+        logging.warning(
+            "Track-first gate: dropped %s row(s) without bbox+track (ingestible=%s).",
+            len(track_first_rejected),
+            has_ingestible_track_rows(video_detections),
+        )
     video_file_ok_early = _is_playable_video_file(video_output)
     if video_detections and video_file_ok_early:
         notify_unique_species(
@@ -1147,7 +1169,9 @@ def finalize_motion_recording(
     scales_duration_ms: float | None = None
     behavior_duration_ms: float | None = None
     create_video_duration_ms: float | None = None
+    create_video_ingest_timing_ms: dict[str, float] | None = None
     dataset_crops_duration_ms: float | None = None
+    video_id: int | None = None
     if len(video_detections) > 0 and video_file_ok:
         scales_started_ts = time.perf_counter()
         scales_delta_kg, scales_evidence_update = estimate_recording_scales_delta(
@@ -1198,7 +1222,6 @@ def finalize_motion_recording(
                     d0["review_reason"] = "behavior_uncertainty"
                     d0["classifier_needs_review"] = True
         create_video_started_ts = time.perf_counter()
-        video_id = None
         resp = None
         try:
             from recording_session_manifest import (
@@ -1257,7 +1280,6 @@ def finalize_motion_recording(
             max(0.0, (time.perf_counter() - create_video_started_ts) * 1000.0),
             3,
         )
-        create_video_ingest_timing_ms = None
         if isinstance(resp, dict):
             raw_timing = resp.get("ingest_timing_ms")
             if isinstance(raw_timing, dict):
@@ -1426,7 +1448,9 @@ def finalize_motion_recording(
             "session_extended_by_frigate_only": int(rs.get("session_extended_by_frigate_only") or 0),
             "bytetrack_rows": yolo_tracks_count,
             "pre_fusion_accepted_rows": len(accepted_pre_fusion),
-            "post_fusion_persisted": len(video_detections),
+            "post_fusion_persisted": 1 if video_id is not None else 0,
+            "ingestible_track_rows": count_ingestible_track_rows(video_detections),
+            "db_persist_success": bool(video_id is not None),
             "fusion_dropped_rows": max(
                 0,
                 int(len(accepted_pre_fusion) - len(video_detections)),
