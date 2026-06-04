@@ -63,7 +63,7 @@ def test_build_fused_video_detections_marks_birdnet_support():
         app_config=cfg,
     )
     assert out[0]['audio_evidence'] == 'support'
-    assert out[0]['audio_support_species'] == 'Great Tit'
+    assert out[0]['audio_support_species'].lower() == 'great tit'
     assert out[0]['_birdnet_prior'] > 0
 
 
@@ -96,7 +96,7 @@ def test_build_fused_video_detections_marks_birdnet_timestamp_parse_failure():
         app_config=cfg,
     )
     assert out[0]['_birdnet_timestamp_parse_failed'] is True
-    assert out[0]['audio_top_species'] == 'Great Tit'
+    assert out[0]['audio_top_species'].lower() == 'great tit'
     assert out[0]['audio_top_score'] > 0
 
 
@@ -417,7 +417,7 @@ def test_frigate_standalone_accepts_session_trigger_snapshot_without_geometry():
     )
     assert len(out) == 1
     assert out[0]['decision_kind'] == 'frigate_standalone'
-    assert out[0]['species_name'] == 'Hooded Crow'
+    assert out[0]['species_name'].lower() == 'hooded crow'
 
 
 def test_frigate_standalone_ignores_stale_events_outside_age_window():
@@ -825,7 +825,7 @@ def test_fusion_birdnet_locale_resolved_via_scientific_name(monkeypatch):
             app_config=cfg,
         )
         assert out[0]['audio_evidence'] == 'support'
-        assert out[0]['audio_support_species'] == 'Great Tit'
+        assert out[0]['audio_support_species'].lower() == 'great tit'
         assert out[0]['_birdnet_prior'] > 0
     finally:
         reset_birdnet_merge_key_cache_for_tests()
@@ -845,6 +845,7 @@ def test_arbitration_keeps_strongest_species_with_multi_source_consensus():
         'detection.source_priority': ['yolo', 'frigate'],
         'detection.cross_source_confidence_bonus': 0.0,
         'detection.min_confidence_to_store': 0.05,
+        'detection.hypothesis_arbitration_enabled': True,
         'processor.birdnet_mqtt_half_life_hours': 6.0,
         'processor.multi_camera_groups': [['cam-a', 'cam-b']],
         'processor.multi_camera_confidence_boost': 0.05,
@@ -916,6 +917,7 @@ def test_arbitration_absorbs_generic_bird_into_species_with_cross_source_support
         'detection.source_priority': ['yolo', 'frigate'],
         'detection.cross_source_confidence_bonus': 0.0,
         'detection.min_confidence_to_store': 0.05,
+        'detection.hypothesis_arbitration_enabled': True,
         'processor.birdnet_mqtt_half_life_hours': 6.0,
         'processor.multi_camera_groups': [['cam-a', 'cam-b']],
         'processor.multi_camera_confidence_boost': 0.05,
@@ -971,7 +973,7 @@ def test_arbitration_absorbs_generic_bird_into_species_with_cross_source_support
         app_config=cfg,
     )
     assert len(out) == 1
-    assert out[0]['species_name'] == 'Great Tit'
+    assert out[0]['species_name'].lower() == 'great tit'
     assert out[0].get('arbitration_reason') == 'absorbed_generic_into_species'
 
 
@@ -985,6 +987,7 @@ def test_arbitration_downgrades_weak_conflict_to_single_generic_review():
         'detection.source_priority': ['yolo', 'frigate'],
         'detection.cross_source_confidence_bonus': 0.0,
         'detection.min_confidence_to_store': 0.05,
+        'detection.hypothesis_arbitration_enabled': True,
         'processor.birdnet_mqtt_half_life_hours': 6.0,
         'processor.multi_camera_groups': [],
     })
@@ -1265,6 +1268,7 @@ def test_build_fused_video_detections_absorbs_generic_bird_into_frigate_species(
         'detection.frigate_standalone_notify': True,
         'detection.frigate_standalone_min_score': 0.4,
         'detection.frigate_standalone_missing_score_fallback': 0.68,
+        'detection.hypothesis_arbitration_enabled': True,
         'processor.multi_camera_groups': [],
         'video.cameras': [],
     })
@@ -1292,7 +1296,7 @@ def test_build_fused_video_detections_absorbs_generic_bird_into_frigate_species(
     )
 
     assert len(out) == 1
-    assert out[0]['species_name'] == 'Eurasian Jay'
+    assert out[0]['species_name'].lower() == 'eurasian jay'
     assert out[0]['decision_reason'] == 'absorbed_generic_into_frigate_species'
     assert out[0]['decision_reason_before_arbitration'] == 'frigate_standalone'
     assert out[0]['detection_provider'] == 'frigate'

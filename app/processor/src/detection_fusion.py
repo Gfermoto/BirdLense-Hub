@@ -720,7 +720,8 @@ def build_fused_video_detections(
         mqtt_events=mqtt_events,
         app_config=app_config,
     )
-    fused = apply_hypothesis_arbitration(fused)
+    if bool(app_config.get("detection.hypothesis_arbitration_enabled", False)):
+        fused = apply_hypothesis_arbitration(fused)
     fused = _merge_adjacent_yolo_fragments(fused, app_config)
     # Optional learned fusion/calibration step. If enabled, the learned scorer
     # produces a calibrated probability from multimodal features and is blended

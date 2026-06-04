@@ -560,6 +560,46 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertTrue(d["visit_eligible"])
         self.assertTrue(d["classifier_needs_review"])
 
+    @patch("app_config.app_config.app_config")
+    def test_classifier_best_guess_accepts_weak_birder_over_generic_bird(self, mock_cfg):
+        def fake_get(k, default=None):
+            if k == "processor.classifier_best_guess_enabled":
+                return True
+            if k == "processor.classifier_best_guess_min_confidence":
+                return 0.10
+            if k == "processor.classifier_best_guess_min_events":
+                return 2
+            if k == "processor.birder_eu_unknown_label":
+                return "Unknown Bird"
+            return default
+
+        mock_cfg.get.side_effect = fake_get
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.12,
+            min_confidence_to_store=0.20,
+            generic_bird_min_detector_conf=0.20,
+        )
+        frames = [{"bbox": [0.30, 0.30, 0.50, 0.50], "t": float(i)} for i in range(8)]
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.55] * 8,
+                classifier_events=[
+                    ("Great Tit", 0.11, 0.11),
+                    ("Great Tit", 0.12, 0.11),
+                ],
+                frames=frames,
+                best_frame_score=8.0,
+            ),
+        }
+        d = dm.get_decisions(tracks)[0]
+        self.assertTrue(d["accepted"])
+        self.assertEqual(d["species_name"], "Great Tit")
+        self.assertEqual(d["decision_reason"], "accepted_classifier_best_guess")
+        self.assertTrue(d["classifier_needs_review"])
+        self.assertTrue(d["visit_eligible"])
+        self.assertFalse(d["notification_eligible"])
+
 
 if __name__ == '__main__':
     unittest.main()
