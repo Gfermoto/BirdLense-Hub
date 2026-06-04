@@ -36,6 +36,7 @@ roles = proc.setdefault("camera_tuning_by_role", {})
 far = roles.setdefault("feeder_far", {})
 if isinstance(far, dict):
     far["track_static_reject_enabled"] = False
+    far["min_confidence_binary_bird"] = 0.08
 
 if proc.pop("camera_overrides", None) is not None:
     print("removed processor.camera_overrides (use video.cameras[].tuning_role)")

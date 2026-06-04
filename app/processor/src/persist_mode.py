@@ -38,6 +38,23 @@ def track_has_bbox_frames(track: dict[str, Any]) -> bool:
     return False
 
 
+def binary_track_first_min_detector_conf(app_config, min_confidence_to_process: float) -> float:
+    """YOLO bird floor for btf — align with binary detect, not combined species threshold."""
+    try:
+        bird = float(
+            app_config.get("processor.min_confidence_binary_bird")
+            or app_config.get("processor.min_confidence_binary")
+            or 0.12
+        )
+    except (TypeError, ValueError):
+        bird = 0.12
+    try:
+        proc = float(min_confidence_to_process)
+    except (TypeError, ValueError):
+        proc = bird
+    return min(bird, proc)
+
+
 def can_binary_track_first_accept(
     *,
     app_config,
@@ -50,7 +67,8 @@ def can_binary_track_first_accept(
         return False
     if str(detector_label or "").strip().lower() != "bird":
         return False
-    if float(detector_conf) < float(min_confidence_to_process):
+    floor = binary_track_first_min_detector_conf(app_config, float(min_confidence_to_process))
+    if float(detector_conf) < floor:
         return False
     return track_has_bbox_frames(track)
 
@@ -85,7 +103,8 @@ def passes_binary_track_first_store_floor(
     except (TypeError, ValueError):
         min_proc = 0.12
     det_conf = float(row.get("detector_confidence") or conf)
-    return det_conf >= min_proc
+    floor = binary_track_first_min_detector_conf(app_config, min_proc)
+    return det_conf >= floor
 
 
 def defer_static_pinned_reject(

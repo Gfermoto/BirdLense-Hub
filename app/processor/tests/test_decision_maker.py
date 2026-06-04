@@ -137,7 +137,11 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(results2[0]['species_name'], 'Bird')
         self.assertEqual(results2[0]['decision_reason'], 'fallback_bird')
 
-    def test_classifier_uncertain_emits_review_only_generic_bird_with_frames(self):
+    @patch("app_config.app_config.app_config")
+    def test_classifier_uncertain_emits_review_only_generic_bird_with_frames(self, mock_cfg):
+        mock_cfg.get.side_effect = lambda k, default=None: (
+            "legacy" if k == "detection.persist_mode" else default
+        )
         dm = DecisionMaker(
             min_track_duration=0,
             min_confidence_to_process=0.5,
@@ -165,7 +169,11 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(results[0]['primary_signal'], 'generic_visual_guard')
         self.assertEqual(results[0]['threshold_path'], 'classifier_threshold_then_generic_guard')
 
-    def test_detector_only_weak_bird_is_review_only(self):
+    @patch("app_config.app_config.app_config")
+    def test_detector_only_weak_bird_is_review_only(self, mock_cfg):
+        mock_cfg.get.side_effect = lambda k, default=None: (
+            "legacy" if k == "detection.persist_mode" else default
+        )
         dm = DecisionMaker(
             min_track_duration=0,
             min_confidence_to_process=0.5,

@@ -123,5 +123,13 @@ def migrate_classification_reliability(user_config: dict[str, Any]) -> bool:
     if isinstance(far, dict) and far.get("track_static_reject_enabled") is not False:
         far["track_static_reject_enabled"] = False
         changed = True
+    if isinstance(far, dict):
+        try:
+            far_bird = float(far.get("min_confidence_binary_bird"))
+        except (TypeError, ValueError):
+            far_bird = None
+        if far_bird is None or far_bird > 0.08:
+            far["min_confidence_binary_bird"] = 0.08
+            changed = True
 
     return changed
