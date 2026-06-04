@@ -13,6 +13,8 @@ if app_root not in sys.path:
 
 from decision_maker import DecisionMaker
 
+import app_config.app_config as _ac_mod
+
 
 def _make_track(
     *,
@@ -63,6 +65,19 @@ def _make_track(
 class TestDecisionMaker(unittest.TestCase):
     def setUp(self):
         self.decision_maker = DecisionMaker(min_track_duration=0)
+        self._real_get = _ac_mod.app_config.get
+        self._cfg_patch = patch.object(_ac_mod.app_config, "get")
+        self.mock_get = self._cfg_patch.start()
+
+        def _legacy_get(key, default=None):
+            if key == "processor.pipeline_mode":
+                return "legacy"
+            return self._real_get(key, default)
+
+        self.mock_get.side_effect = _legacy_get
+
+    def tearDown(self):
+        self._cfg_patch.stop()
 
     def test_accepted_species_uses_classifier_evidence_only(self):
         tracks = {

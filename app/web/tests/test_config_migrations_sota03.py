@@ -84,6 +84,13 @@ def test_classification_reliability_migration_lowers_birder_and_static_far():
     assert current_schema_version(user) == USER_CONFIG_SCHEMA_VERSION
 
 
+def test_linear_pipeline_migration_sets_mode():
+    user = {"processor": {}}
+    assert run_user_config_migrations(user) is True
+    assert user["processor"]["pipeline_mode"] == "linear"
+    assert current_schema_version(user) == USER_CONFIG_SCHEMA_VERSION
+
+
 def test_settings_patch_returns_deprecated_warnings(tmp_path, monkeypatch):
     from app_config.app_config import app_config
     from services.settings_patch_service import apply_settings_patch_from_request

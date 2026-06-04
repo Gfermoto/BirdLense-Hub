@@ -11,7 +11,11 @@ checked.
 
 Hub работает **без** Frigate, BirdNET и прочих сайтов. Минимальный контур:
 
-**триггер (OpenCV / вес / MQTT-реле) → YOLO binary + ByteTrack → параллельно ReID, классификатор, поведение → fusion / notify / persist.**
+**триггер → YOLO binary + ByteTrack → классификатор и MQTT-помощники → ReID и поведение → persist.**
+
+Режим по умолчанию: `processor.pipeline_mode: linear` (`linear_pipeline.py`). Откат: `legacy`.
+
+Linear Phase A (NVR core): live = detect+track only (`classifier_defer_to_finalize`); persist gate = `object_confirm.py` (min_score + median/peak); static/scoring off live; Birder на finalize по `key_frames`; Frigate salvage/standalone выкл.
 
 Frigate и BirdNET — **опционально**: доп. триггер, подсказка вида, bias в fusion. Они не подменяют трек, bbox и запись.
 

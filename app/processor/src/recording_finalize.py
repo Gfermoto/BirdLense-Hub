@@ -681,6 +681,17 @@ def finalize_motion_recording(
     decision_trace_finished_ts: float | None = None
     merge_window = int(app_config.get("detection.merge_window_seconds") or 5)
     yolo_tracks_count = len(frame_processor.tracks)
+    try:
+        from finalize_classification import enrich_tracks_classifier_at_finalize, defer_classifier_to_finalize
+
+        if defer_classifier_to_finalize(app_config):
+            enrich_tracks_classifier_at_finalize(
+                frame_processor.tracks,
+                getattr(frame_processor, "strategy", None),
+                app_config,
+            )
+    except ImportError:
+        pass
     decisions = decision_maker.get_decisions(frame_processor.tracks)
     video_detections = [item for item in decisions if item.get("accepted", False)]
     rejected_decisions = [item for item in decisions if not item.get("accepted", False)]
@@ -842,9 +853,21 @@ def finalize_motion_recording(
             accepted_pre_fusion=accepted_pre_fusion,
             persisted_detections=video_detections,
         )
+        if not linear_skip_legacy_fusion_safeguards(app_config)
+        else []
     )
+    from linear_pipeline import STAGE_CLASSIFY_ENRICH, is_linear_pipeline, linear_skip_frigate_salvage_paths, linear_skip_legacy_fusion_safeguards
+
+    if is_linear_pipeline(app_config):
+        logging.info(
+            "Linear pipeline stage=%s fused_rows=%s",
+            STAGE_CLASSIFY_ENRICH,
+            len(video_detections or []),
+        )
     raw_core_anchor = app_config.get("detection.yolo_core_anchor_enabled")
-    if raw_core_anchor is None:
+    if linear_skip_legacy_fusion_safeguards(app_config):
+        yolo_core_anchor_enabled = False
+    elif raw_core_anchor is None:
         yolo_core_anchor_enabled = not binary_track_first_enabled(app_config)
     else:
         yolo_core_anchor_enabled = bool(raw_core_anchor)
@@ -940,6 +963,7 @@ def finalize_motion_recording(
         not video_detections
         and yolo_tracks_count > 0
         and bool(app_config.get("detection.yolo_weak_track_salvage_enabled", True))
+        and not linear_skip_legacy_fusion_safeguards(app_config)
     ):
         try:
             salvage_min_conf = float(app_config.get("detection.yolo_weak_track_salvage_min_confidence") or 0.10)
@@ -971,6 +995,7 @@ def finalize_motion_recording(
     if (
         not video_detections
         and salvage_enabled
+        and not linear_skip_frigate_salvage_paths(app_config)
         and (
             trigger_source == "frigate"
             or isinstance(frigate_trigger_event, dict)
@@ -1039,6 +1064,15 @@ def finalize_motion_recording(
             max(0.0, (time.perf_counter() - reid_enrich_started_ts) * 1000.0),
             3,
         )
+        if is_linear_pipeline(app_config):
+            from linear_pipeline import STAGE_REID_BEHAVIOR
+
+            logging.info(
+                "Linear pipeline stage=%s rows=%s duration_ms=%s",
+                STAGE_REID_BEHAVIOR,
+                len(video_detections or []),
+                reid_enrich_duration_ms,
+            )
     fusion_finished_ts = time.perf_counter()
 
     fusion_fs = sum(1 for d in video_detections if d.get("frigate_standalone"))

@@ -676,6 +676,10 @@ class DecisionMaker:
 
     def get_decisions(self, tracks):
         from app_config.app_config import app_config
+        from linear_pipeline import build_linear_decisions, is_linear_pipeline
+
+        if is_linear_pipeline(app_config):
+            return build_linear_decisions(self, tracks, app_config)
 
         decisions = []
         store_floor = float(self.min_confidence_to_store)

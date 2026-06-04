@@ -100,12 +100,26 @@ class DetectionQualityConfig:
         else:
             static.static_temporal_min_frames = min_frames_override
         static.static_temporal_max_jitter_px = _parse_float(runtime_cfg, "processor.static_temporal_max_jitter_px", 2.0)
+        try:
+            from linear_pipeline import linear_disable_live_quality_gates
+
+            linear_core = linear_disable_live_quality_gates(runtime_cfg)
+        except ImportError:
+            linear_core = False
+        if linear_core:
+            static.enabled = False
+        scoring_on = _parse_bool(runtime_cfg, "processor.scoring_engine_enabled", False)
+        if linear_core:
+            scoring_on = False
+        motion_global_static = _parse_bool(runtime_cfg, "processor.motion_global_static_reject_enabled", True)
+        if linear_core:
+            motion_global_static = False
         return cls(
             mask=DetectionMaskConfig.from_runtime_cfg(runtime_cfg),
             static=static,
             motion_verified_enabled=_parse_bool(runtime_cfg, "processor.motion_verified_detection_enabled", True),
             motion_min_mean_absdiff=_parse_float(runtime_cfg, "processor.motion_verified_min_pixel_change", 10.0),
-            motion_global_static_reject=_parse_bool(runtime_cfg, "processor.motion_global_static_reject_enabled", True),
+            motion_global_static_reject=motion_global_static,
             motion_global_max_mean_absdiff=_parse_float(runtime_cfg, "processor.motion_global_max_mean_absdiff", 2.0),
             motion_strict_frames=max(
                 2,
@@ -129,7 +143,7 @@ class DetectionQualityConfig:
                 "processor.min_confidence_binary_bird",
                 _parse_float(runtime_cfg, "processor.min_confidence_binary", 0.12),
             ),
-            scoring_engine_enabled=_parse_bool(runtime_cfg, "processor.scoring_engine_enabled", False),
+            scoring_engine_enabled=scoring_on,
         )
 
 

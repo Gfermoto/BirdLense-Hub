@@ -23,6 +23,13 @@ general:
 # Важно: user_config.yaml мержится с дефолтами рекурсивно (merge_dicts): заданные ключи
 # переопределяют вложенные значения на всех уровнях; отсутствующие ключи берутся из default.
 processor:
+  # linear: trigger → detect/track → classify+helpers → reid/behavior → persist
+  # legacy: pre-2026-06 multi-gate decision path (opt-in rollback)
+  pipeline_mode: linear
+  # linear: Birder только на finalize (key_frames), не на каждом live-кадре
+  classifier_defer_to_finalize: true
+  classifier_finalize_max_key_frames: 3
+  # object_confirm_min_score / object_confirm_threshold — unset → min_confidence_binary_bird
   # Legacy compatibility toggles (kept for older user_config keys; runtime may ignore).
   adaptive_preprocess_enabled: false
   binary_rescue_enabled: false
