@@ -72,7 +72,10 @@ def passes_binary_track_first_store_floor(
     if not track_has_bbox_frames(row):
         return False
     reason = str(row.get("decision_reason") or "").strip()
-    if reason == "accepted_binary_track_classifier_uncertain":
+    if reason in {
+        "accepted_binary_track_classifier_uncertain",
+        "accepted_classifier_best_guess",
+    }:
         return True
     label = str(row.get("detector_label") or row.get("species_name") or "").strip().lower()
     if label not in {"bird", "unknown"}:

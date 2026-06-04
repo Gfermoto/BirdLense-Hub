@@ -253,8 +253,9 @@ processor:
   # Устаревший алиас (читается, если min_confidence_binary_rodent не задан):
   # min_confidence_binary_squirrel: 0.24
   # Доля площади кадра (0..1): Bird с bbox ≤ порога — без видового классификатора. 0 = выкл. (рекомендуется для видов на кормушке).
-  bird_skip_classifier_max_area_frac: 0.015
-  min_confidence_to_process: 0.20  # combined для БД; detect 704×576@7fps — слабые YOLO conf ~0.08–0.15
+  # 0 = не пропускать Birder на мелких птицах (кормушка / дальняя камера).
+  bird_skip_classifier_max_area_frac: 0
+  min_confidence_to_process: 0.12  # combined для БД; detect 704×576@7fps — слабые YOLO conf ~0.08–0.15
   # Отдельный порог для Telegram: только уверенные визиты (может быть > min_confidence_to_process).
   min_confidence_to_notify: 0.46
   # Перед YOLO: отсечь совсем тёмные кадры. ИК/сумерки: слишком жёсткие пороги = YOLO почти не работает.
@@ -433,8 +434,12 @@ processor:
   # birder_eu (707 EU, Collins / birder-project eu-common) | efficientnet_b2 (global 525) | yolo (legacy)
   classifier_engine: birder_eu
   birder_eu_variant: convnext_v2_tiny_eu-common256px
-  birder_eu_min_confidence: 0.18
+  birder_eu_min_confidence: 0.15
   birder_eu_unknown_label: "Unknown Bird"
+  # Ниже порога Birder, но выше min — сохранить best-guess вид + review (classification-first).
+  classifier_best_guess_enabled: true
+  classifier_best_guess_min_confidence: 0.10
+  classifier_best_guess_min_events: 2
   efficientnet_b2_min_confidence: 0.22
   efficientnet_b2_unknown_label: "Unknown Bird"
   # Trapper squirrel → каталог Rodent (не класс EfficientNet 525)
@@ -751,7 +756,8 @@ detection:
   # При конфликте разных sources: YOLO track остаётся primary, Frigate помогает promotion/boost.
   source_priority: ["yolo", "frigate"]
   # Weighted signal arbiter (BirdNET/regional/multi-camera priors).
-  weighted_arbiter_enabled: true
+  # classification-first: выкл. — вид из Birder на треке, без пересчёта confidence.
+  weighted_arbiter_enabled: false
   weighted_arbiter_conf_weight: 0.55
   weighted_arbiter_detector_weight: 0.15
   weighted_arbiter_classifier_weight: 0.12
@@ -773,8 +779,10 @@ detection:
   strip_review_only_overlay_frames: false
   # Final gate before create_video: drop frameless video rows (no 400 on API contract).
   track_first_gate_enabled: true
-  # Persist contract: YOLO track+bbox gates DB row; classifier enriches species (not veto by default).
+  # Persist contract: YOLO track+bbox → БД; Birder EU — вид (enrichment, не veto).
   persist_mode: binary_track_first
+  # Слой «судья» между classifier и persist — выкл. по умолчанию (упрощение live path).
+  hypothesis_arbitration_enabled: false
   # Frigate — fallback при пустых YOLO-треках (blind-gate и force_after_no_yolo остаются).
   frigate_standalone_when_no_yolo: false
   # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).
@@ -845,7 +853,7 @@ detection:
   panic_gate_min_duration_seconds: 20
   # Если у YOLO есть треки, но после Decision/Fusion всё отклонено — сохранить лучший трек как review_only,
   # чтобы не терять геометрию/overlay на длинных клипах со слабой уверенностью.
-  yolo_weak_track_salvage_enabled: true
+  yolo_weak_track_salvage_enabled: false
   yolo_weak_track_salvage_min_confidence: 0.012
   yolo_weak_track_salvage_max_rows: 5
   # После fusion: до N лучших YOLO-рядов, если fusion убрал все YOLO (legacy band-aid).

@@ -50,3 +50,41 @@ def migrate_track_first_contract(user_config: dict[str, Any]) -> bool:
                 changed = True
 
     return changed
+
+
+def migrate_classification_first(user_config: dict[str, Any]) -> bool:
+    """Simplify live path: classification-first defaults, classifier on all bird sizes."""
+    if not isinstance(user_config, dict):
+        return False
+    changed = False
+    det = user_config.setdefault("detection", {})
+    proc = user_config.setdefault("processor", {})
+    if not isinstance(det, dict) or not isinstance(proc, dict):
+        return False
+
+    for key, val in (
+        ("weighted_arbiter_enabled", False),
+        ("hypothesis_arbitration_enabled", False),
+        ("yolo_weak_track_salvage_enabled", False),
+    ):
+        if det.get(key) is not False:
+            det[key] = val
+            changed = True
+
+    if not str(det.get("persist_mode") or "").strip():
+        det["persist_mode"] = "binary_track_first"
+        changed = True
+
+    try:
+        skip_frac = float(proc.get("bird_skip_classifier_max_area_frac"))
+    except (TypeError, ValueError):
+        skip_frac = None
+    if skip_frac is not None and skip_frac > 0:
+        proc["bird_skip_classifier_max_area_frac"] = 0
+        changed = True
+
+    if proc.get("classifier_best_guess_enabled") is None:
+        proc["classifier_best_guess_enabled"] = True
+        changed = True
+
+    return changed

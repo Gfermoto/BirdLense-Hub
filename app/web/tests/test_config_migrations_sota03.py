@@ -52,6 +52,24 @@ def test_track_first_migration_sets_tuning_role_on_known_cameras():
     assert user["video"]["cameras"][1]["tuning_role"] == "feeder_far"
 
 
+def test_classification_first_migration_disables_arbitration_layers():
+    user = {
+        "detection": {
+            "weighted_arbiter_enabled": True,
+            "hypothesis_arbitration_enabled": True,
+            "yolo_weak_track_salvage_enabled": True,
+        },
+        "processor": {"bird_skip_classifier_max_area_frac": 0.015},
+    }
+    assert run_user_config_migrations(user) is True
+    assert user["detection"]["weighted_arbiter_enabled"] is False
+    assert user["detection"]["hypothesis_arbitration_enabled"] is False
+    assert user["detection"]["yolo_weak_track_salvage_enabled"] is False
+    assert user["processor"]["bird_skip_classifier_max_area_frac"] == 0
+    assert user["processor"]["classifier_best_guess_enabled"] is True
+    assert current_schema_version(user) == USER_CONFIG_SCHEMA_VERSION
+
+
 def test_settings_patch_returns_deprecated_warnings(tmp_path, monkeypatch):
     from app_config.app_config import app_config
     from services.settings_patch_service import apply_settings_patch_from_request
