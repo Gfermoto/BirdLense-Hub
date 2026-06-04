@@ -31,6 +31,13 @@ from recording_no_detection_log import (
 )
 from recording_notify_dispatch import notify_unique_species
 from recording_post_fusion_rejections import collect_post_fusion_rejections
+from linear_pipeline import (
+    STAGE_CLASSIFY_ENRICH,
+    STAGE_REID_BEHAVIOR,
+    is_linear_pipeline,
+    linear_skip_frigate_salvage_paths,
+    linear_skip_legacy_fusion_safeguards,
+)
 from recording_scales_evidence import estimate_recording_scales_delta
 from recording_session_cleanup import remove_session_dir
 from recording_video_response import response_video_id
@@ -856,8 +863,6 @@ def finalize_motion_recording(
         if not linear_skip_legacy_fusion_safeguards(app_config)
         else []
     )
-    from linear_pipeline import STAGE_CLASSIFY_ENRICH, is_linear_pipeline, linear_skip_frigate_salvage_paths, linear_skip_legacy_fusion_safeguards
-
     if is_linear_pipeline(app_config):
         logging.info(
             "Linear pipeline stage=%s fused_rows=%s",
@@ -1065,8 +1070,6 @@ def finalize_motion_recording(
             3,
         )
         if is_linear_pipeline(app_config):
-            from linear_pipeline import STAGE_REID_BEHAVIOR
-
             logging.info(
                 "Linear pipeline stage=%s rows=%s duration_ms=%s",
                 STAGE_REID_BEHAVIOR,
