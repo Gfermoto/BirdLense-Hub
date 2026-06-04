@@ -16,6 +16,7 @@ class TestDetectionScheduler(unittest.TestCase):
         cfg = {
             "processor.detect_scheduler_enabled": True,
             "processor.detect_scheduler_triggers": ["frigate", "scales"],
+            "detection.track_first_gate_enabled": False,
         }
         self.assertTrue(
             should_run_probe(trigger_source="frigate", app_config=cfg)
@@ -28,6 +29,17 @@ class TestDetectionScheduler(unittest.TestCase):
         cfg = {
             "processor.detect_scheduler_enabled": True,
             "processor.detect_scheduler_triggers": ["opencv", "frigate", "scales"],
+        }
+        self.assertTrue(
+            should_run_probe(trigger_source="opencv", app_config=cfg)
+        )
+
+    def test_probe_opencv_forced_when_track_first_and_legacy_triggers(self):
+        """Legacy user_config without opencv still probes when track-first gate is on."""
+        cfg = {
+            "processor.detect_scheduler_enabled": True,
+            "processor.detect_scheduler_triggers": ["frigate", "scales"],
+            "detection.track_first_gate_enabled": True,
         }
         self.assertTrue(
             should_run_probe(trigger_source="opencv", app_config=cfg)

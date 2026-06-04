@@ -51,4 +51,8 @@ def should_run_probe(*, trigger_source: str | None, app_config) -> bool:
     cfg = build_probe_config(app_config)
     if not cfg.enabled:
         return False
-    return _norm_trigger(trigger_source) in set(cfg.triggers)
+    trigger = _norm_trigger(trigger_source)
+    # Track-first: OpenCV must confirm YOLO bird even if legacy user_config omits opencv.
+    if trigger == "opencv" and bool(app_config.get("detection.track_first_gate_enabled", True)):
+        return True
+    return trigger in set(cfg.triggers)
