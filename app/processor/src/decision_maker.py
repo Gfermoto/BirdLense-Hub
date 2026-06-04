@@ -5,7 +5,12 @@ import re
 from typing import Any, Mapping
 
 from decision_outcome import compute_outcome_bucket
-from persist_mode import can_binary_track_first_accept, defer_static_pinned_reject, track_has_bbox_frames
+from persist_mode import (
+    binary_track_first_min_detector_conf,
+    can_binary_track_first_accept,
+    defer_static_pinned_reject,
+    track_has_bbox_frames,
+)
 from runtime_contract import apply_runtime_contract
 from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
 
@@ -611,7 +616,9 @@ class DecisionMaker:
             return None
         if not track_has_bbox_frames(track):
             return None
-        if float(detector_conf) < float(self.min_confidence_to_process):
+        if float(detector_conf) < binary_track_first_min_detector_conf(
+            app_config, float(self.min_confidence_to_process)
+        ):
             return None
         try:
             min_guess = float(app_config.get("processor.classifier_best_guess_min_confidence") or 0.10)

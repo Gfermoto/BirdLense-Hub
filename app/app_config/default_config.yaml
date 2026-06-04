@@ -396,6 +396,7 @@ processor:
       min_track_duration: 0.5
     feeder_far:
       min_track_duration: 0.5
+      min_confidence_binary_bird: 0.08
       track_static_reject_enabled: false
       track_static_reject_max_center_dispersion_norm: 0.10
       track_static_reject_max_relative_center_dispersion: 0.18
