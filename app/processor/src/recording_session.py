@@ -241,7 +241,7 @@ class MotionRecordingSession:
         return False
 
     def run_detection_probe_window(self, *, camera_id: str | None, trigger_source: str | None) -> bool:
-        """Run bounded detect-only loop before recording for non-OpenCV triggers."""
+        """Run bounded detect-only loop before recording when trigger is in scheduler list."""
         cfg = build_probe_config(app_config)
         if not cfg.enabled:
             return True

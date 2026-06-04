@@ -24,6 +24,15 @@ class TestDetectionScheduler(unittest.TestCase):
             should_run_probe(trigger_source="opencv", app_config=cfg)
         )
 
+    def test_probe_enabled_for_opencv_in_default_triggers(self):
+        cfg = {
+            "processor.detect_scheduler_enabled": True,
+            "processor.detect_scheduler_triggers": ["opencv", "frigate", "scales"],
+        }
+        self.assertTrue(
+            should_run_probe(trigger_source="opencv", app_config=cfg)
+        )
+
     def test_probe_disabled_globally(self):
         cfg = {"processor.detect_scheduler_enabled": False}
         self.assertFalse(

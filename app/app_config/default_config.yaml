@@ -74,7 +74,8 @@ processor:
   trigger_moratorium_seconds: 2
   # Trigger -> bounded detect-only window before recording (scheduler gate).
   detect_scheduler_enabled: true
-  detect_scheduler_triggers: ["frigate", "motion_sensor", "scales"]
+  # opencv: YOLO must see bird before motion clip starts (cuts FP empty recordings).
+  detect_scheduler_triggers: ["opencv", "frigate", "motion_sensor", "scales"]
   detect_probe_window_seconds: 2.5
   detect_probe_max_frames: 30
   detect_probe_start_recording_on_positive: true
@@ -752,8 +753,10 @@ detection:
   # Ниже порога детекция отбрасывается после fusion; должно быть ≤ processor.min_confidence_to_process.
   # Держим мягче, чтобы YOLO-треки не пропадали до записи в БД/overlay.
   min_confidence_to_store: 0.20
-  # Не писать bbox в БД для review-only (фантомные кормушки в UI).
-  strip_review_only_overlay_frames: true
+  # Track-first: keep bbox in DB for ingest contract; UI may hide via overlay_suppressed.
+  strip_review_only_overlay_frames: false
+  # Final gate before create_video: drop frameless video rows (no 400 on API contract).
+  track_first_gate_enabled: true
   # Frigate — fallback при пустых YOLO-треках (blind-gate и force_after_no_yolo остаются).
   frigate_standalone_when_no_yolo: false
   # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).

@@ -1,4 +1,4 @@
-"""Detection scheduler: run bounded detect windows for non-OpenCV triggers."""
+"""Detection scheduler: bounded YOLO probe before recording (all configured triggers)."""
 
 from __future__ import annotations
 
@@ -21,12 +21,13 @@ def _norm_trigger(value: str | None) -> str:
 def build_probe_config(app_config) -> DetectionProbeConfig:
     enabled = bool(app_config.get("processor.detect_scheduler_enabled", False))
     raw = app_config.get("processor.detect_scheduler_triggers") or [
+        "opencv",
         "frigate",
         "motion_sensor",
         "scales",
     ]
     if not isinstance(raw, (list, tuple, set)):
-        raw = ["frigate", "motion_sensor", "scales"]
+        raw = ["opencv", "frigate", "motion_sensor", "scales"]
     triggers = tuple(sorted({_norm_trigger(v) for v in raw if _norm_trigger(v)}))
     try:
         window_seconds = float(app_config.get("processor.detect_probe_window_seconds") or 2.5)
