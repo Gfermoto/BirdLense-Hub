@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Patch prod user_config for classification-first / binary_track_first (deploy does not rsync user_config).
-# Prefer schema v4 migration on web startup; this script is for immediate prod reconcile.
+# Prefer schema v5 migration on web startup; this script is for immediate prod reconcile.
 # Run on VPS: bash scripts/patch-prod-user-config-track-first.sh
 set -euo pipefail
 HOST_CFG="${1:-/root/BirdLense/app/app_config/user_config.yaml}"
@@ -52,8 +52,10 @@ if isinstance(cameras, list):
         if cam_id in role_by_id and not str(row.get("tuning_role") or "").strip():
             row["tuning_role"] = role_by_id[cam_id]
 
+proc.setdefault("pipeline_mode", "linear")
+
 meta = cfg.setdefault("_meta", {})
-meta["schema_version"] = 4
+meta["schema_version"] = 5
 
 path.write_text(yaml.dump(cfg, allow_unicode=True, sort_keys=False), encoding="utf-8")
 print("patched", path)

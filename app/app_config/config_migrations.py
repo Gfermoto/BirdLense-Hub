@@ -8,7 +8,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Bump when adding a new migration tranche; persisted in user_config._meta.schema_version.
-USER_CONFIG_SCHEMA_VERSION = 4
+USER_CONFIG_SCHEMA_VERSION = 5
 
 _META_KEY = "_meta"
 
@@ -111,6 +111,15 @@ def run_user_config_migrations(user_config: dict[str, Any]) -> bool:
                 changed = True
         except Exception as exc:
             logger.warning("user_config migration migrate_classification_reliability failed: %s", exc)
+
+    if version < 5:
+        from app_config.track_first_migrations import migrate_linear_pipeline
+
+        try:
+            if migrate_linear_pipeline(user_config):
+                changed = True
+        except Exception as exc:
+            logger.warning("user_config migration migrate_linear_pipeline failed: %s", exc)
 
     if version < USER_CONFIG_SCHEMA_VERSION:
         meta["schema_version"] = USER_CONFIG_SCHEMA_VERSION

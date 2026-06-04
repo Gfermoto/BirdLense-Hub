@@ -133,3 +133,16 @@ def migrate_classification_reliability(user_config: dict[str, Any]) -> bool:
             changed = True
 
     return changed
+
+
+def migrate_linear_pipeline(user_config: dict[str, Any]) -> bool:
+    """Enable linear stage order (classify before reid/behavior) on upgraded installs."""
+    if not isinstance(user_config, dict):
+        return False
+    proc = user_config.setdefault("processor", {})
+    if not isinstance(proc, dict):
+        return False
+    if str(proc.get("pipeline_mode") or "").strip():
+        return False
+    proc["pipeline_mode"] = "linear"
+    return True

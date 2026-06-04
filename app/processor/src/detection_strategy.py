@@ -1505,7 +1505,13 @@ class TwoStageStrategy(DetectionStrategy):
                 and bool(runtime_cfg.get("processor.track_regen_binary_only", False))
             )
         )
-        if _binary_only:
+        try:
+            from finalize_classification import defer_classifier_to_finalize
+
+            _defer_classifier = defer_classifier_to_finalize(runtime_cfg)
+        except ImportError:
+            _defer_classifier = False
+        if _binary_only or _defer_classifier:
             detection_results = []
             for box in valid_boxes:
                 label = str(box.get("detector_label") or "Bird").strip() or "Bird"
