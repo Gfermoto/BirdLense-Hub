@@ -5,6 +5,7 @@ import re
 from typing import Any, Mapping
 
 from decision_outcome import compute_outcome_bucket
+from persist_mode import can_binary_track_first_accept, defer_static_pinned_reject
 from runtime_contract import apply_runtime_contract
 from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
 
@@ -493,6 +494,41 @@ class DecisionMaker:
             "avg_top1_top2_margin": avg_top1_top2_margin,
         }
 
+    def _binary_track_first_override(
+        self,
+        *,
+        app_config,
+        track: dict,
+        detector_label: str,
+        detector_conf: float,
+        classifier_candidate: dict | None,
+    ) -> dict[str, Any] | None:
+        """Persist YOLO bird track + bbox; species from classifier when uncertain."""
+        if not can_binary_track_first_accept(
+            app_config=app_config,
+            detector_label=detector_label,
+            detector_conf=detector_conf,
+            min_confidence_to_process=float(self.min_confidence_to_process),
+            track=track,
+        ):
+            return None
+        species = "Bird"
+        combined = 0.0
+        if classifier_candidate is not None:
+            species = str(classifier_candidate.get("species_name") or "Bird").strip() or "Bird"
+            combined = float(classifier_candidate.get("combined_confidence") or 0.0)
+        return {
+            "accepted": True,
+            "visit_eligible": True,
+            "notification_eligible": False,
+            "out_species": species,
+            "out_conf": max(combined, float(detector_conf)),
+            "decision_reason": "accepted_binary_track_classifier_uncertain",
+            "decision_kind": "accepted_species",
+            "evidence_state": "weak_classifier",
+            "classifier_needs_review": True,
+        }
+
     def get_decisions(self, tracks):
         from app_config.app_config import app_config
 
@@ -507,6 +543,13 @@ class DecisionMaker:
                 continue
 
             static_reason = static_pinned_track_reason(track, static_cfg)
+            if static_reason and defer_static_pinned_reject(
+                app_config=app_config,
+                track=track,
+                detector_events=detector_events,
+                min_confidence_to_process=float(self.min_confidence_to_process),
+            ):
+                static_reason = None
             if static_reason:
                 decisions.append(
                     apply_runtime_contract(
@@ -589,6 +632,7 @@ class DecisionMaker:
 
             visit_eligible = True
             notification_eligible = True
+            force_classifier_review = False
 
             if classifier_candidate is not None:
                 species_name = classifier_candidate["species_name"]
@@ -621,22 +665,40 @@ class DecisionMaker:
                             else "weak_classifier"
                         )
                     elif detector_conf < store_floor:
-                        logger.debug(
-                            "Skipping track %s: detector confidence=%.3f < min_confidence_to_store=%.3f",
-                            track_id,
-                            detector_conf,
-                            store_floor,
+                        btf = self._binary_track_first_override(
+                            app_config=app_config,
+                            track=track,
+                            detector_label=detector_label,
+                            detector_conf=detector_conf,
+                            classifier_candidate=classifier_candidate,
                         )
-                        accepted = False
-                        out_species = detector_label
-                        out_conf = detector_conf
-                        decision_reason = "rejected_detector_below_store_floor"
-                        decision_kind = "rejected"
-                        evidence_state = (
-                            "conflicting_classifier_votes"
-                            if float(classifier_candidate["vote_share"] or 0.0) <= 0.5
-                            else "weak_classifier"
-                        )
+                        if btf:
+                            accepted = bool(btf["accepted"])
+                            visit_eligible = bool(btf["visit_eligible"])
+                            notification_eligible = bool(btf["notification_eligible"])
+                            out_species = btf["out_species"]
+                            out_conf = float(btf["out_conf"])
+                            decision_reason = btf["decision_reason"]
+                            decision_kind = btf["decision_kind"]
+                            evidence_state = btf["evidence_state"]
+                            force_classifier_review = bool(btf.get("classifier_needs_review"))
+                        else:
+                            logger.debug(
+                                "Skipping track %s: detector confidence=%.3f < min_confidence_to_store=%.3f",
+                                track_id,
+                                detector_conf,
+                                store_floor,
+                            )
+                            accepted = False
+                            out_species = detector_label
+                            out_conf = detector_conf
+                            decision_reason = "rejected_detector_below_store_floor"
+                            decision_kind = "rejected"
+                            evidence_state = (
+                                "conflicting_classifier_votes"
+                                if float(classifier_candidate["vote_share"] or 0.0) <= 0.5
+                                else "weak_classifier"
+                            )
                     else:
                         out_species = detector_label
                         out_conf = min(1.0, max(store_floor, detector_conf))
@@ -666,16 +728,34 @@ class DecisionMaker:
                             detector_conf=detector_conf,
                             track=track,
                         ):
-                            accepted = True
-                            visit_eligible = False
-                            notification_eligible = False
-                            decision_reason = "review_only_generic_bird"
-                            decision_kind = "review_only_generic"
-                            evidence_state = (
-                                "conflicting_classifier_votes"
-                                if float(classifier_candidate["vote_share"] or 0.0) <= 0.5
-                                else "weak_classifier"
+                            btf = self._binary_track_first_override(
+                                app_config=app_config,
+                                track=track,
+                                detector_label=detector_label,
+                                detector_conf=detector_conf,
+                                classifier_candidate=classifier_candidate,
                             )
+                            if btf:
+                                accepted = bool(btf["accepted"])
+                                visit_eligible = bool(btf["visit_eligible"])
+                                notification_eligible = bool(btf["notification_eligible"])
+                                out_species = btf["out_species"]
+                                out_conf = float(btf["out_conf"])
+                                decision_reason = btf["decision_reason"]
+                                decision_kind = btf["decision_kind"]
+                                evidence_state = btf["evidence_state"]
+                                force_classifier_review = bool(btf.get("classifier_needs_review"))
+                            else:
+                                accepted = True
+                                visit_eligible = False
+                                notification_eligible = False
+                                decision_reason = "review_only_generic_bird"
+                                decision_kind = "review_only_generic"
+                                evidence_state = (
+                                    "conflicting_classifier_votes"
+                                    if float(classifier_candidate["vote_share"] or 0.0) <= 0.5
+                                    else "weak_classifier"
+                                )
                         else:
                             if is_bird:
                                 decision_reason = "fallback_bird"
@@ -691,19 +771,37 @@ class DecisionMaker:
                             )
             else:
                 if detector_conf < store_floor:
-                    logger.debug(
-                        "Skipping track %s (%s): detector confidence=%.3f < min_confidence_to_store=%.3f",
-                        track_id,
-                        detector_label,
-                        detector_conf,
-                        store_floor,
+                    btf = self._binary_track_first_override(
+                        app_config=app_config,
+                        track=track,
+                        detector_label=detector_label,
+                        detector_conf=detector_conf,
+                        classifier_candidate=None,
                     )
-                    accepted = False
-                    out_species = detector_label
-                    out_conf = detector_conf
-                    decision_reason = "rejected_detector_below_store_floor"
-                    decision_kind = "rejected"
-                    evidence_state = "detector_only_low_confidence"
+                    if btf:
+                        accepted = bool(btf["accepted"])
+                        visit_eligible = bool(btf["visit_eligible"])
+                        notification_eligible = bool(btf["notification_eligible"])
+                        out_species = btf["out_species"]
+                        out_conf = float(btf["out_conf"])
+                        decision_reason = btf["decision_reason"]
+                        decision_kind = btf["decision_kind"]
+                        evidence_state = btf["evidence_state"]
+                        force_classifier_review = bool(btf.get("classifier_needs_review"))
+                    else:
+                        logger.debug(
+                            "Skipping track %s (%s): detector confidence=%.3f < min_confidence_to_store=%.3f",
+                            track_id,
+                            detector_label,
+                            detector_conf,
+                            store_floor,
+                        )
+                        accepted = False
+                        out_species = detector_label
+                        out_conf = detector_conf
+                        decision_reason = "rejected_detector_below_store_floor"
+                        decision_kind = "rejected"
+                        evidence_state = "detector_only_low_confidence"
                 else:
                     out_species = detector_label
                     out_conf = min(1.0, max(store_floor, detector_conf))
@@ -729,12 +827,30 @@ class DecisionMaker:
                         detector_conf=detector_conf,
                         track=track,
                     ):
-                        accepted = True
-                        visit_eligible = False
-                        notification_eligible = False
-                        decision_reason = "review_only_generic_bird"
-                        decision_kind = "review_only_generic"
-                        evidence_state = "detector_only"
+                        btf = self._binary_track_first_override(
+                            app_config=app_config,
+                            track=track,
+                            detector_label=detector_label,
+                            detector_conf=detector_conf,
+                            classifier_candidate=None,
+                        )
+                        if btf:
+                            accepted = bool(btf["accepted"])
+                            visit_eligible = bool(btf["visit_eligible"])
+                            notification_eligible = bool(btf["notification_eligible"])
+                            out_species = btf["out_species"]
+                            out_conf = float(btf["out_conf"])
+                            decision_reason = btf["decision_reason"]
+                            decision_kind = btf["decision_kind"]
+                            evidence_state = btf["evidence_state"]
+                            force_classifier_review = bool(btf.get("classifier_needs_review"))
+                        else:
+                            accepted = True
+                            visit_eligible = False
+                            notification_eligible = False
+                            decision_reason = "review_only_generic_bird"
+                            decision_kind = "review_only_generic"
+                            evidence_state = "detector_only"
                     else:
                         if is_bird:
                             decision_reason = "fallback_bird"
@@ -797,7 +913,7 @@ class DecisionMaker:
                         ),
                         "classifier_entropy": clf_entropy,
                         "classifier_top1_top2_margin": clf_margin,
-                        "classifier_needs_review": clf_needs_review,
+                        "classifier_needs_review": clf_needs_review or force_classifier_review,
                         "decision_kind": decision_kind,
                         "reject_reason_code": reject_reason_code,
                         "evidence_state": evidence_state,

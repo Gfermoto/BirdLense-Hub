@@ -455,7 +455,11 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(decisions[0]['decision_kind'], 'rejected')
         self.assertEqual(decisions[0]['outcome_bucket'], 'rejected')
 
-    def test_review_only_generic_has_review_only_outcome_bucket(self):
+    @patch("app_config.app_config.app_config")
+    def test_review_only_generic_has_review_only_outcome_bucket(self, mock_cfg):
+        mock_cfg.get.side_effect = lambda k, default=None: (
+            "legacy" if k == "detection.persist_mode" else default
+        )
         dm = DecisionMaker(
             min_track_duration=0,
             min_confidence_to_store=0.3,
@@ -502,6 +506,60 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertAlmostEqual(d["classifier_entropy"], 2.0)
         self.assertAlmostEqual(d["classifier_top1_top2_margin"], 0.02)
         self.assertTrue(d["classifier_needs_review"])
+
+    @patch("app_config.app_config.app_config")
+    def test_binary_track_first_defers_static_pinned_reject(self, mock_cfg):
+        def fake_get(k, default=None):
+            if k == "detection.persist_mode":
+                return "binary_track_first"
+            return default
+
+        mock_cfg.get.side_effect = fake_get
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.12,
+            min_confidence_to_store=0.20,
+        )
+        frames = [{"bbox": [0.40, 0.30, 0.48, 0.38], "t": float(i)} for i in range(12)]
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.15] * 12,
+                start_time=0.0,
+                end_time=10.0,
+                frames=frames,
+            ),
+        }
+        d = dm.get_decisions(tracks)[0]
+        self.assertTrue(d["accepted"])
+        self.assertNotEqual(d["decision_reason"], "rejected_static_pinned_track")
+
+    @patch("app_config.app_config.app_config")
+    def test_binary_track_first_accepts_weak_classifier_below_store_floor(self, mock_cfg):
+        def fake_get(k, default=None):
+            if k == "detection.persist_mode":
+                return "binary_track_first"
+            return default
+
+        mock_cfg.get.side_effect = fake_get
+        dm = DecisionMaker(
+            min_track_duration=0,
+            min_confidence_to_process=0.12,
+            min_confidence_to_store=0.20,
+        )
+        frames = [{"bbox": [10, 10, 50, 50], "t": i * 0.1} for i in range(5)]
+        tracks = {
+            1: _make_track(
+                detector_confidences=[0.15] * 5,
+                classifier_events=[("Unknown", 0.05, 0.15)],
+                frames=frames,
+            ),
+        }
+        d = dm.get_decisions(tracks)[0]
+        self.assertTrue(d["accepted"])
+        self.assertEqual(d["decision_reason"], "accepted_binary_track_classifier_uncertain")
+        self.assertTrue(d["visit_eligible"])
+        self.assertTrue(d["classifier_needs_review"])
+
 
 if __name__ == '__main__':
     unittest.main()

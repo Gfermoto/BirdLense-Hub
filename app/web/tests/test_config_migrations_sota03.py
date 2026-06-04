@@ -25,6 +25,33 @@ def test_deprecated_keys_present_detects_legacy_weather():
     assert "weather.ha_url" in keys
 
 
+def test_track_first_migration_adds_opencv_and_persist_mode():
+    user = {
+        "processor": {"detect_scheduler_triggers": ["frigate", "motion_sensor"]},
+        "detection": {"strip_review_only_overlay_frames": True},
+    }
+    assert run_user_config_migrations(user) is True
+    assert "opencv" in user["processor"]["detect_scheduler_triggers"]
+    assert user["detection"]["strip_review_only_overlay_frames"] is False
+    assert user["detection"]["persist_mode"] == "binary_track_first"
+    assert user["detection"]["track_first_gate_enabled"] is True
+    assert current_schema_version(user) == USER_CONFIG_SCHEMA_VERSION
+
+
+def test_track_first_migration_sets_tuning_role_on_known_cameras():
+    user = {
+        "video": {
+            "cameras": [
+                {"id": "BirdBox", "stream_name": "birdbox"},
+                {"id": "Forest", "stream_name": "forest"},
+            ]
+        },
+    }
+    assert run_user_config_migrations(user) is True
+    assert user["video"]["cameras"][0]["tuning_role"] == "feeder_close"
+    assert user["video"]["cameras"][1]["tuning_role"] == "feeder_far"
+
+
 def test_settings_patch_returns_deprecated_warnings(tmp_path, monkeypatch):
     from app_config.app_config import app_config
     from services.settings_patch_service import apply_settings_patch_from_request

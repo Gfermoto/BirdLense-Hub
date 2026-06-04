@@ -6,12 +6,12 @@
 
 ```yaml
 _meta:
-  schema_version: 1
+  schema_version: 2
 ```
 
 Текущая версия: `USER_CONFIG_SCHEMA_VERSION` в `app/app_config/config_migrations.py`.
 
-При загрузке конфига вызывается `run_user_config_migrations()` (scales, MQTT topics, HA, classifier path, motion→triggers).
+При загрузке конфига вызывается `run_user_config_migrations()` (scales, MQTT topics, HA, classifier path, motion→triggers, **track-first v2**: opencv в triggers, `persist_mode`, `tuning_role` на известных камерах).
 
 ## Аудит
 

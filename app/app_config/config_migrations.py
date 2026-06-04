@@ -8,7 +8,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Bump when adding a new migration tranche; persisted in user_config._meta.schema_version.
-USER_CONFIG_SCHEMA_VERSION = 1
+USER_CONFIG_SCHEMA_VERSION = 2
 
 _META_KEY = "_meta"
 
@@ -85,6 +85,15 @@ def run_user_config_migrations(user_config: dict[str, Any]) -> bool:
 
     meta = _meta(user_config)
     version = current_schema_version(user_config)
+    if version < 2:
+        from app_config.track_first_migrations import migrate_track_first_contract
+
+        try:
+            if migrate_track_first_contract(user_config):
+                changed = True
+        except Exception as exc:
+            logger.warning("user_config migration migrate_track_first_contract failed: %s", exc)
+
     if version < USER_CONFIG_SCHEMA_VERSION:
         meta["schema_version"] = USER_CONFIG_SCHEMA_VERSION
         changed = True

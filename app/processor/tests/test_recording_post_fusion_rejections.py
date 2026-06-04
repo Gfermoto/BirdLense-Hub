@@ -66,6 +66,31 @@ class TestRecordingPostFusionRejections(unittest.TestCase):
 
         self.assertEqual(rows, [])
 
+    def test_skips_binary_track_first_below_store_floor(self):
+        rows = collect_post_fusion_rejections(
+            _Config(
+                {
+                    "detection.min_confidence_to_store": 0.5,
+                    "detection.persist_mode": "binary_track_first",
+                    "processor.min_confidence_to_process": 0.12,
+                }
+            ),
+            accepted_pre_fusion=[
+                {
+                    "track_id": 9,
+                    "confidence": 0.15,
+                    "detector_confidence": 0.15,
+                    "detector_label": "Bird",
+                    "detection_provider": "yolo",
+                    "decision_reason": "accepted_binary_track_classifier_uncertain",
+                    "frames": [{"bbox": [1, 2, 10, 12]}],
+                    "visit_eligible": True,
+                }
+            ],
+            persisted_detections=[],
+        )
+        self.assertEqual(rows, [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -385,6 +385,21 @@ processor:
   # Ключ = video.cameras[].id. Поддерживаются те же processor-* поля, что и в adaptive profile overrides
   # (например min_box_size_px, min_confidence_binary_bird, min_confidence_to_process, min_track_duration).
   camera_overrides: {}
+  # Ролевые пресеты: video.cameras[].tuning_role → merge до camera_overrides (per-id побеждает).
+  # Новые инсталляции без ручного BirdBox/Forest — feeder_close / feeder_far.
+  camera_tuning_by_role:
+    feeder_close:
+      min_confidence_binary: 0.12
+      min_confidence_binary_bird: 0.12
+      min_confidence_to_process: 0.12
+      min_track_duration: 0.5
+    feeder_far:
+      min_track_duration: 0.5
+      track_static_reject_max_center_dispersion_norm: 0.10
+      track_static_reject_max_relative_center_dispersion: 0.18
+      track_static_reject_min_duration_sec: 2.5
+      track_static_reject_min_frames: 3
+      track_static_reject_min_frames_sparse: 2
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
   # Не 0.42: на OV+detect слабые conf 0.04–0.15 — иначе только review_only salvage.
   generic_bird_min_detector_conf: 0.10
@@ -581,6 +596,7 @@ video:
   #   - id: feeder_hd
   #     stream_name: feeder_hd
   #     name: "Кормушка"
+  #     tuning_role: feeder_close   # → processor.camera_tuning_by_role.feeder_close
   # Пример slot-конфига:
   # camera_profiles:
   #   feeder_closeup:
@@ -757,6 +773,8 @@ detection:
   strip_review_only_overlay_frames: false
   # Final gate before create_video: drop frameless video rows (no 400 on API contract).
   track_first_gate_enabled: true
+  # Persist contract: YOLO track+bbox gates DB row; classifier enriches species (not veto by default).
+  persist_mode: binary_track_first
   # Frigate — fallback при пустых YOLO-треках (blind-gate и force_after_no_yolo остаются).
   frigate_standalone_when_no_yolo: false
   # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).
@@ -830,7 +848,9 @@ detection:
   yolo_weak_track_salvage_enabled: true
   yolo_weak_track_salvage_min_confidence: 0.012
   yolo_weak_track_salvage_max_rows: 5
-  # После fusion: до N лучших YOLO-рядов, если fusion убрал все YOLO (разные track_id).
+  # После fusion: до N лучших YOLO-рядов, если fusion убрал все YOLO (legacy band-aid).
+  # По умолчанию выкл. при persist_mode=binary_track_first (см. recording_finalize).
+  yolo_core_anchor_enabled: false
   yolo_core_anchor_max_rows: 5
   # Learned fusion: optional learned scorer to blend multimodal signals and produce
   # a calibrated confidence. Disabled by default for safety.

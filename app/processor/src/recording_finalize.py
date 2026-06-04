@@ -45,6 +45,7 @@ from track_first_contract import (
     count_ingestible_track_rows,
     has_ingestible_track_rows,
 )
+from persist_mode import binary_track_first_enabled
 
 # Пустые сессии без детекций — частое событие; не засоряем лог (раз в интервал — WARNING, иначе DEBUG).
 _NO_DETECTIONS_WARN_INTERVAL_S = 120.0
@@ -842,7 +843,11 @@ def finalize_motion_recording(
             persisted_detections=video_detections,
         )
     )
-    yolo_core_anchor_enabled = bool(app_config.get("detection.yolo_core_anchor_enabled", True))
+    raw_core_anchor = app_config.get("detection.yolo_core_anchor_enabled")
+    if raw_core_anchor is None:
+        yolo_core_anchor_enabled = not binary_track_first_enabled(app_config)
+    else:
+        yolo_core_anchor_enabled = bool(raw_core_anchor)
     if yolo_core_anchor_enabled:
         try:
             anchor_max = int(app_config.get("detection.yolo_core_anchor_max_rows") or 3)
