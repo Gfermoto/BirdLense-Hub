@@ -72,15 +72,14 @@ def _sanitize_persisted_overlay_frames(
     for row in video_detections or []:
         d = dict(row)
         kind = str(d.get("decision_kind") or "").strip().lower()
-        if strip_review and kind in {"review_only_generic", "review_only"}:
-            if d.get("frames") and track_first:
-                d["overlay_suppressed"] = "review_only_no_overlay"
-            else:
-                if d.get("frames"):
-                    d["frames"] = []
-                d["overlay_suppressed"] = "review_only_no_overlay"
+        if strip_review and not track_first and kind in {"review_only_generic", "review_only"}:
+            if d.get("frames"):
+                d["frames"] = []
+            d["overlay_suppressed"] = "review_only_no_overlay"
             out.append(d)
             continue
+        if kind in {"review_only_generic", "review_only"} and d.get("frames"):
+            d["overlay_suppressed"] = "review_only_no_overlay"
         frames = d.get("frames") or []
         if frames and cfg.enabled:
             pseudo = {
