@@ -11,7 +11,7 @@ from persist_mode import (
     defer_static_pinned_reject,
     track_has_bbox_frames,
 )
-from app_config.visit_eligibility import is_generic_bird_species_name, visit_eligible_for_named_species
+from app_config.visit_eligibility import visit_eligible_for_named_species
 from runtime_contract import apply_runtime_contract
 from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
 

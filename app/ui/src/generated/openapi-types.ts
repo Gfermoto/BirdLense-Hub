@@ -1105,6 +1105,8 @@ export interface paths {
                                 species_name?: string;
                                 /** Format: date-time */
                                 start_time?: string | null;
+                                /** @description True when last activity is generic Bird/Rodent (detector only) */
+                                unidentified?: boolean;
                             } | null;
                             /** @description IANA timezone name used for local-hour bucketing */
                             observer_timezone?: string;
@@ -8466,11 +8468,20 @@ export interface components {
             id?: number;
             name?: string;
             detections?: number[];
+            /** @description True for synthetic generic Bird/Rodent rows from detector segments */
+            unidentified?: boolean;
         };
         OverviewStats: {
             uniqueSpecies?: number;
+            /** @description Named-species visits (SpeciesVisit), excludes generic Bird/Rodent */
             totalDetections?: number;
             lastHourDetections?: number;
+            /** @description YOLO/MQTT segments labeled generic Bird (classifier not required) */
+            unidentifiedBirdDetections?: number;
+            /** @description Detector segments labeled Rodent or rodent-like taxa */
+            rodentDetections?: number;
+            /** @description Named visits plus unidentified bird and rodent detector segments */
+            totalActivity?: number;
             busiestHour?: number;
             /** @description Mean duration of one recording (Video) in seconds for the day window */
             avgVisitDuration?: number;
