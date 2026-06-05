@@ -23,7 +23,12 @@ from detection_strategy import coerce_bgr_frame
 from recording_session_policy import effective_frigate_hold_seconds
 from recording_finalize_worker import FinalizeWorker
 from session_state_repository import SessionStateRepository
-from detection_scheduler import build_probe_config
+from detection_scheduler import (
+    build_detect_first_config,
+    build_probe_config,
+    is_valid_detect_first_anchor,
+    requires_detect_first_before_record,
+)
 from yolo_blind_monitor import YoloBlindLiveMonitor, run_blind_quickcheck
 
 logger = logging.getLogger(__name__)
@@ -271,23 +276,79 @@ class MotionRecordingSession:
             frames += 1
             if self.frame_processor.run(frame, frame_time=None, skip_light_gate=False):
                 hits += 1
-                break
+                if hits >= cfg.min_hits:
+                    break
         self.frame_processor.reset()
         logger.info(
-            "detection_probe: trigger=%s camera=%s frames=%s hits=%s window=%.2fs",
+            "detection_probe: trigger=%s camera=%s frames=%s hits=%s min_hits=%s window=%.2fs",
             trigger or "?",
             camera_id or "?",
             frames,
             hits,
+            cfg.min_hits,
             cfg.window_seconds,
         )
-        return (hits > 0) if cfg.start_recording_on_positive else True
+        positive = hits >= cfg.min_hits
+        return positive if cfg.start_recording_on_positive else True
+
+    def detect_until_confirmed(self, *, camera_id: str | None, trigger_source: str | None) -> dict[str, Any] | None:
+        """Run lores YOLO+ByteTrack window; return confirmed anchor or None (never bypass)."""
+        cfg = build_detect_first_config(app_config)
+        trigger = str(trigger_source or "").strip().lower()
+        if not trigger:
+            return None
+        if not self.args.input and app_config.get("video.source") == "go2rtc":
+            self.media_source = self.get_media_source(camera_id or self.default_camera_id)
+        camera_overrides = _camera_processor_overrides(camera_id)
+        start = time.monotonic()
+        frames = 0
+        hits = 0
+        anchor = None
+        self.frame_processor.reset()
+        while frames < cfg.max_frames and (time.monotonic() - start) <= cfg.window_seconds:
+            frame = self.media_source.capture()
+            if frame is None:
+                time.sleep(0.03)
+                continue
+            frames += 1
+            if self.frame_processor.run(frame, frame_time=None, skip_light_gate=False, camera_overrides=camera_overrides):
+                hits += 1
+            if hits >= cfg.confirm_min_hits:
+                anchor = self.frame_processor.confirmed_track_anchor(
+                    app_config=app_config,
+                    min_track_duration=cfg.confirm_min_track_seconds,
+                    min_confidence_to_process=float(app_config.get("processor.min_confidence_to_process") or 0.12),
+                )
+                if anchor is not None:
+                    break
+        if anchor is None:
+            self.frame_processor.reset()
+            inc_counter("detect_first_no_anchor_total")
+        else:
+            inc_counter("detect_first_confirmed_total")
+        logger.info(
+            "detect_first: trigger=%s camera=%s frames=%s hits=%s min_hits=%s anchor=%s window=%.2fs",
+            trigger or "?",
+            camera_id or "?",
+            frames,
+            hits,
+            cfg.confirm_min_hits,
+            bool(anchor),
+            cfg.window_seconds,
+        )
+        if anchor is not None:
+            anchor["detect_first_frames"] = frames
+            anchor["detect_first_hits"] = hits
+            anchor["trigger_source"] = trigger or None
+            anchor["camera_id"] = camera_id
+        return anchor
 
     def run(
         self,
         *,
         forced_camera_id: str | None = None,
         forced_trigger_source: str | None = None,
+        detect_first_anchor: dict[str, Any] | None = None,
         concurrent_context: dict[str, Any] | None = None,
     ) -> bool:
         """Выполнить одну запись. Возвращает True, если внешний цикл main должен завершиться (режим --input)."""
@@ -320,6 +381,16 @@ class MotionRecordingSession:
                     frigate_trigger_event = {**_ev, "_session_trigger_snapshot": True}
         if not self.args.input and app_config.get("video.source") == "go2rtc":
             self.media_source = self.get_media_source(camera_id)
+
+        _go2rtc_live = requires_detect_first_before_record(args=self.args, app_config=app_config)
+        if _go2rtc_live and not is_valid_detect_first_anchor(detect_first_anchor):
+            inc_counter("main_ffmpeg_started_without_anchor_total")
+            logger.error(
+                "Refusing go2rtc recording without confirmed lores anchor (trigger=%s camera=%s)",
+                forced_trigger_source or trigger_by or "?",
+                camera_id,
+            )
+            return False
 
         output_path_physical, output_path_logical = get_output_path()
         video_output = os.path.join(output_path_physical, "video.mp4")
@@ -388,7 +459,8 @@ class MotionRecordingSession:
                 trigger_ctx.model_imgsz,
                 trigger_ctx.use_native_resolution,
             )
-            self.frame_processor.reset()
+            if not detect_first_anchor:
+                self.frame_processor.reset()
             self.decision_maker.reset()
             self.fps_tracker.reset()
             inc_counter("recording_session_total")
@@ -438,6 +510,25 @@ class MotionRecordingSession:
                 "blind_quickcheck_hits": 0,
                 "yolo_frames_raw_unaccepted": 0,
                 "yolo_frames_raw_no_track": 0,
+                "detect_first_confirmed": bool(detect_first_anchor),
+                "detect_first_anchor_track_id": (
+                    None if not isinstance(detect_first_anchor, dict) else detect_first_anchor.get("track_id")
+                ),
+                "detect_first_anchor_confidence": (
+                    0.0
+                    if not isinstance(detect_first_anchor, dict)
+                    else float(detect_first_anchor.get("confidence") or 0.0)
+                ),
+                "detect_first_window_frames": (
+                    0
+                    if not isinstance(detect_first_anchor, dict)
+                    else int(detect_first_anchor.get("detect_first_frames") or 0)
+                ),
+                "detect_first_window_hits": (
+                    0
+                    if not isinstance(detect_first_anchor, dict)
+                    else int(detect_first_anchor.get("detect_first_hits") or 0)
+                ),
             }
             blind_suspected_since_monotonic: float | None = None
             blind_quickcheck_until_monotonic = 0.0

@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, List
 
 from api import API
 from app_config.app_config import app_config
+from app_config.cameras import get_valid_cameras, validate_go2rtc_detect_streams
 from processor_support import check_restart_flag
 from file_test_paths import scan_video_files_in_dir
 from sources.go2rtc_stream_source import Go2RTCStreamSource, _build_stream_url
@@ -80,6 +81,13 @@ def _resolve_capture_stream_url(
         username=username,
         password=password,
     )
+
+
+def _validate_go2rtc_detect_streams(cameras: list) -> None:
+    """Every Go2RTC camera must have a separate detect substream (lores)."""
+    issues = validate_go2rtc_detect_streams(cameras, video_source="go2rtc")
+    if issues:
+        raise RuntimeError("; ".join(issues))
 
 
 def setup_processor_media(
@@ -172,6 +180,7 @@ def setup_processor_media(
         )
 
     _wait_until_cameras_configured(api, cameras, go2rtc_url)
+    _validate_go2rtc_detect_streams(cameras)
 
     default_camera_id = cameras[0]["id"]
     media_sources_cache: Dict[Any, Any] = {}
@@ -192,6 +201,12 @@ def setup_processor_media(
                 username=app_config.get("video.go2rtc_username"),
                 password=app_config.get("video.go2rtc_password"),
             )
+            if not capture_url:
+                cid = str(cam.get("id") or "").strip() or "?"
+                raise RuntimeError(
+                    f"video.cameras: detect_stream_name required for camera {cid!r} "
+                    "(lores motion/YOLO; main stream is record-only)"
+                )
             idx = next(
                 (i for i, c in enumerate(cameras) if c["id"] == camera_id),
                 0,

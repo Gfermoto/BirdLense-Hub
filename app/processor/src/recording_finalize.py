@@ -89,7 +89,15 @@ def _sanitize_persisted_overlay_frames(
         if kind in {"review_only_generic", "review_only"} and d.get("frames"):
             d["overlay_suppressed"] = "review_only_no_overlay"
         frames = d.get("frames") or []
-        if frames and cfg.enabled:
+        runtime = runtime_cfg or app_config.config or {}
+        skip_static_strip = False
+        try:
+            from linear_pipeline import is_linear_pipeline
+
+            skip_static_strip = is_linear_pipeline(runtime)
+        except ImportError:
+            pass
+        if frames and cfg.enabled and not skip_static_strip:
             pseudo = {
                 "start_time": d.get("start_time", 0),
                 "end_time": d.get("end_time", 0),
@@ -1482,6 +1490,11 @@ def finalize_motion_recording(
             "yolo_accepted_boxes_total": int(rs.get("yolo_accepted_boxes_total") or 0),
             "yolo_frames_raw_unaccepted": int(rs.get("yolo_frames_raw_unaccepted") or 0),
             "yolo_frames_raw_no_track": int(rs.get("yolo_frames_raw_no_track") or 0),
+            "detect_first_confirmed": bool(rs.get("detect_first_confirmed")),
+            "detect_first_anchor_track_id": rs.get("detect_first_anchor_track_id"),
+            "detect_first_anchor_confidence": round(float(rs.get("detect_first_anchor_confidence") or 0.0), 4),
+            "detect_first_window_frames": int(rs.get("detect_first_window_frames") or 0),
+            "detect_first_window_hits": int(rs.get("detect_first_window_hits") or 0),
             "detection_acceptance_gap": bool(
                 int(rs.get("yolo_raw_boxes_total") or 0) > 0 and int(rs.get("yolo_accepted_boxes_total") or 0) == 0
             ),

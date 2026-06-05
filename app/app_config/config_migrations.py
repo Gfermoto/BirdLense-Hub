@@ -8,7 +8,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Bump when adding a new migration tranche; persisted in user_config._meta.schema_version.
-USER_CONFIG_SCHEMA_VERSION = 5
+USER_CONFIG_SCHEMA_VERSION = 6
 
 _META_KEY = "_meta"
 
@@ -120,6 +120,15 @@ def run_user_config_migrations(user_config: dict[str, Any]) -> bool:
                 changed = True
         except Exception as exc:
             logger.warning("user_config migration migrate_linear_pipeline failed: %s", exc)
+
+    if version < 6:
+        from app_config.track_first_migrations import migrate_detect_stream_lores_substream
+
+        try:
+            if migrate_detect_stream_lores_substream(user_config):
+                changed = True
+        except Exception as exc:
+            logger.warning("user_config migration migrate_detect_stream_lores_substream failed: %s", exc)
 
     if version < USER_CONFIG_SCHEMA_VERSION:
         meta["schema_version"] = USER_CONFIG_SCHEMA_VERSION

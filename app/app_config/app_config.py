@@ -182,6 +182,15 @@ def validate_merged_config_semantics(merged: dict) -> list[str]:
                         "processor.behavior_recognition.max_runtime_detections must be int, got %r"
                         % (raw_md,)
                     )
+    video = merged.get("video")
+    if isinstance(video, dict):
+        from app_config.cameras import get_valid_cameras, validate_go2rtc_detect_streams
+
+        source = str(video.get("source") or "go2rtc").strip().lower()
+        valid = get_valid_cameras(video_config=video)
+        issues.extend(
+            validate_go2rtc_detect_streams(valid, video_source=source),
+        )
     return issues
 
 

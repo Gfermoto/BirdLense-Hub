@@ -20,6 +20,19 @@ def binary_track_first_enabled(app_config) -> bool:
     return mode in {"binary_track_first", "track_first"}
 
 
+def _is_valid_norm_bbox(bbox: Any) -> bool:
+    if not isinstance(bbox, (list, tuple)) or len(bbox) < 4:
+        return False
+    try:
+        x1, y1, x2, y2 = [float(v) for v in bbox[:4]]
+    except (TypeError, ValueError):
+        return False
+    if not (x2 > x1 and y2 > y1):
+        return False
+    low, high = -0.05, 1.05
+    return all(low <= v <= high for v in (x1, y1, x2, y2))
+
+
 def track_has_bbox_frames(track: dict[str, Any]) -> bool:
     frames = track.get("frames")
     if not isinstance(frames, list) or not frames:
@@ -27,14 +40,8 @@ def track_has_bbox_frames(track: dict[str, Any]) -> bool:
     for frame in frames:
         if not isinstance(frame, dict):
             continue
-        bbox = frame.get("bbox")
-        if isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
-            try:
-                x1, y1, x2, y2 = [float(v) for v in bbox[:4]]
-            except (TypeError, ValueError):
-                continue
-            if x2 > x1 and y2 > y1:
-                return True
+        if _is_valid_norm_bbox(frame.get("bbox")):
+            return True
     return False
 
 

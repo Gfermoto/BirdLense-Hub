@@ -3,12 +3,17 @@
 import os
 import sys
 import unittest
+from types import SimpleNamespace
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_path = os.path.abspath(os.path.join(current_dir, "../src"))
 sys.path.append(src_path)
 
-from detection_scheduler import should_run_probe  # noqa: E402
+from detection_scheduler import (  # noqa: E402
+    is_valid_detect_first_anchor,
+    requires_detect_first_before_record,
+    should_run_probe,
+)
 
 
 class TestDetectionScheduler(unittest.TestCase):
@@ -49,6 +54,32 @@ class TestDetectionScheduler(unittest.TestCase):
         cfg = {"processor.detect_scheduler_enabled": False}
         self.assertFalse(
             should_run_probe(trigger_source="frigate", app_config=cfg)
+        )
+
+
+class TestDetectFirstContract(unittest.TestCase):
+    def test_is_valid_anchor_requires_track_and_norm_bbox(self):
+        self.assertFalse(is_valid_detect_first_anchor(None))
+        self.assertFalse(is_valid_detect_first_anchor({"detect_first_bypassed": True}))
+        self.assertFalse(is_valid_detect_first_anchor({"track_id": 1}))
+        self.assertTrue(
+            is_valid_detect_first_anchor({"track_id": 7, "bbox": [0.1, 0.2, 0.3, 0.4]})
+        )
+
+    def test_requires_detect_first_for_go2rtc_live(self):
+        cfg = {"video.source": "go2rtc"}
+        self.assertTrue(requires_detect_first_before_record(args=SimpleNamespace(input=None), app_config=cfg))
+        self.assertFalse(
+            requires_detect_first_before_record(
+                args=SimpleNamespace(input="/tmp/x.mp4"),
+                app_config=cfg,
+            )
+        )
+        self.assertFalse(
+            requires_detect_first_before_record(
+                args=SimpleNamespace(input=None),
+                app_config={"video.source": "file"},
+            )
         )
 
 

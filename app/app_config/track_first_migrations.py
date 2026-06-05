@@ -146,3 +146,49 @@ def migrate_linear_pipeline(user_config: dict[str, Any]) -> bool:
         return False
     proc["pipeline_mode"] = "linear"
     return True
+
+
+def _migrate_detect_stream_field(value: str) -> tuple[str, bool]:
+    """Dahua/Hik-style RTSP: detect substream should use subtype=1 (lores), not subtype=0 (main)."""
+    raw = str(value or "").strip()
+    if not raw:
+        return raw, False
+    if "realmonitor" in raw and "subtype=0" in raw:
+        return raw.replace("subtype=0", "subtype=1"), True
+    return raw, False
+
+
+def migrate_detect_stream_lores_substream(user_config: dict[str, Any]) -> bool:
+    """Fix detect_stream_name accidentally pointing at main RTSP substream (subtype=0)."""
+    if not isinstance(user_config, dict):
+        return False
+    video = user_config.get("video")
+    if not isinstance(video, dict):
+        return False
+    changed = False
+
+    def _walk_cameras(rows: list | None) -> None:
+        nonlocal changed
+        if not isinstance(rows, list):
+            return
+        for cam in rows:
+            if not isinstance(cam, dict):
+                continue
+            dsn = cam.get("detect_stream_name")
+            if not isinstance(dsn, str):
+                continue
+            new_dsn, fixed = _migrate_detect_stream_field(dsn)
+            if fixed:
+                cam["detect_stream_name"] = new_dsn
+                changed = True
+
+    _walk_cameras(video.get("cameras"))
+    profiles = video.get("camera_profiles")
+    if isinstance(profiles, dict):
+        for prof in profiles.values():
+            if isinstance(prof, dict) and isinstance(prof.get("detect_stream_name"), str):
+                new_dsn, fixed = _migrate_detect_stream_field(prof["detect_stream_name"])
+                if fixed:
+                    prof["detect_stream_name"] = new_dsn
+                    changed = True
+    return changed

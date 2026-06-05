@@ -17,7 +17,11 @@ from file_test_control import FileTestRuntime, maybe_build_file_test_runtime
 from fps_tracker import FPSTracker
 from media_runtime import ProcessorMediaSetup, setup_processor_media
 from motion_runtime import build_processor_motion_detector
-from detection_scheduler import should_run_probe
+from detection_scheduler import (
+    is_valid_detect_first_anchor,
+    requires_detect_first_before_record,
+    should_run_probe,
+)
 from mqtt_runtime import (
     frigate_filters_for_cameras,
     load_scales_mqtt_topic_config,
@@ -246,6 +250,7 @@ def _run_recording_session(
     camera_id: str | None,
     trigger_source: str,
     last_recording_end_by_camera: dict[str, float],
+    detect_first_anchor: dict | None = None,
     concurrent_context: dict | None = None,
 ) -> bool:
     registry = getattr(ctx, "recording_concurrency", None)
@@ -260,6 +265,7 @@ def _run_recording_session(
             ctx.session.run(
                 forced_camera_id=camera_id,
                 forced_trigger_source=trigger_source or None,
+                detect_first_anchor=detect_first_anchor,
                 concurrent_context=concurrent_context,
             )
         )
@@ -298,7 +304,29 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
         trigger_source = (
             str(getattr(ctx.session.motion_detector, "get_triggered_by", lambda: "")() or "").strip().lower()
         )
-        if should_run_probe(trigger_source=trigger_source, app_config=app_config):
+        detect_first_anchor = None
+        session_args = getattr(ctx.session, "args", None)
+        if requires_detect_first_before_record(args=session_args, app_config=app_config):
+            detect_first = getattr(ctx.session, "detect_until_confirmed", None)
+            if not callable(detect_first):
+                logger.error(
+                    "Go2RTC requires detect_until_confirmed; skipping trigger (source=%s camera=%s)",
+                    trigger_source or "?",
+                    camera_id,
+                )
+                continue
+            detect_first_anchor = detect_first(
+                camera_id=camera_id,
+                trigger_source=trigger_source,
+            )
+            if not is_valid_detect_first_anchor(detect_first_anchor):
+                logger.info(
+                    "Skipping recording: no confirmed lores anchor (trigger=%s camera=%s)",
+                    trigger_source or "?",
+                    camera_id,
+                )
+                continue
+        elif should_run_probe(trigger_source=trigger_source, app_config=app_config):
             probe_ok = bool(
                 ctx.session.run_detection_probe_window(
                     camera_id=camera_id,
@@ -446,6 +474,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                         camera_id=camera_id,
                         trigger_source=trigger_source,
                         last_recording_end_by_camera=last_recording_end_by_camera,
+                        detect_first_anchor=detect_first_anchor,
                         concurrent_context=concurrent_context,
                     )
                 except Exception:
@@ -468,6 +497,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                 camera_id=camera_id,
                 trigger_source=trigger_source,
                 last_recording_end_by_camera=last_recording_end_by_camera,
+                detect_first_anchor=detect_first_anchor,
                 concurrent_context=concurrent_context,
             )
         except Exception:

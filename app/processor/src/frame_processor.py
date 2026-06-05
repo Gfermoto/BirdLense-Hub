@@ -610,6 +610,53 @@ class FrameProcessor:
                     0.0,
                 )
 
+    def confirmed_track_anchor(
+        self,
+        *,
+        app_config,
+        min_track_duration: float,
+        min_confidence_to_process: float,
+    ) -> dict | None:
+        """Return best confirmed YOLO+ByteTrack bbox anchor, or None."""
+        from linear_pipeline import evaluate_track_linear
+
+        best: dict | None = None
+        for track_id, track in (self.tracks or {}).items():
+            if not isinstance(track, dict) or not track.get("detector_events"):
+                continue
+            decision = evaluate_track_linear(
+                app_config=app_config,
+                track=track,
+                min_track_duration=float(min_track_duration),
+                min_confidence_to_process=float(min_confidence_to_process),
+            )
+            if not bool(decision.get("accepted")):
+                continue
+            frames = [f for f in (track.get("frames") or []) if isinstance(f, dict) and f.get("bbox")]
+            if not frames:
+                continue
+            candidate = {
+                "track_id": track_id,
+                "bbox": list(frames[-1].get("bbox") or []),
+                "start_time": track.get("start_time"),
+                "end_time": track.get("end_time"),
+                "confidence": float(decision.get("out_conf") or decision.get("detector_conf") or 0.0),
+                "detector_label": decision.get("detector_label") or "Bird",
+                "detector_confidence": float(decision.get("detector_conf") or 0.0),
+                "detector_event_count": int(decision.get("detector_event_count") or 0),
+                "frames": list(track.get("frames") or []),
+                "key_frame_count": len(track.get("key_frames") or []),
+            }
+            if best is None or (
+                float(candidate["confidence"]),
+                int(candidate["detector_event_count"]),
+            ) > (
+                float(best["confidence"]),
+                int(best["detector_event_count"]),
+            ):
+                best = candidate
+        return best
+
     def reset(self):
         self.tracks = {}
         if self.strategy:
