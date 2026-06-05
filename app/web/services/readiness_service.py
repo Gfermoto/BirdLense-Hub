@@ -153,7 +153,8 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         "alerts": funnel.get("alerts") or [],
         "top_root_causes": funnel.get("top_root_causes") or [],
     }
-    ready = all(check.get("status") == "ok" for check in checks.values())
+    core_check_names = ("database", "data_dir", "app_config_dir", "cache_backend", "processor_heartbeat")
+    ready = all(checks.get(name, {}).get("status") == "ok" for name in core_check_names)
     hit, cached_components = cache_get("component_status:v1")
     if hit and isinstance(cached_components, dict):
         components_payload = cached_components
@@ -169,16 +170,14 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         checks["yolo_detector"] = {"status": "ok", "source": "heartbeat"}
     else:
         checks["yolo_detector"] = {"status": "unknown", "source": "heartbeat"}
-        if _is_production_env() and not _is_test_runtime():
-            ready = False
 
     funnel_status = str(checks["pipeline_funnel"].get("status") or "unknown")
-    if funnel_status == "degraded":
-        ready = False
+    quality_ready = funnel_status != "degraded" and yolo_probe not in ("error", "degraded")
 
     payload = {
         "status": "ok" if ready else "degraded",
         "ready": ready,
+        "quality_ready": quality_ready,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "checks": checks,
         "components": components_payload,
