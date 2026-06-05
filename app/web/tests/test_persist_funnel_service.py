@@ -1,6 +1,6 @@
 """Tests for persist_funnel_service (#605)."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import json
 
 from models import SessionRuntimeMetrics, db
@@ -9,6 +9,7 @@ from models import SessionRuntimeMetrics, db
 def _add_metric(**kwargs):
     row = SessionRuntimeMetrics(
         camera_id=kwargs.get("camera_id", "cam1"),
+        created_at=kwargs.get("created_at", datetime.now(timezone.utc)),
         yolo_raw_boxes_total=kwargs.get("yolo_raw_boxes_total", 5),
         yolo_accepted_boxes_total=kwargs.get("yolo_accepted_boxes_total", 4),
         yolo_frames_with_tracks=kwargs.get("yolo_frames_with_tracks", 3),
@@ -63,3 +64,50 @@ def test_readiness_includes_pipeline_funnel(client):
     checks = payload.get("checks") or {}
     assert "pipeline_funnel" in checks
     assert "yolo_detector" in checks
+
+
+def test_readiness_keeps_quality_degraded_separate_from_service_ready(client, monkeypatch):
+    import services.readiness_service as rs
+
+    monkeypatch.setenv("BIRDLENSE_ENV", "production")
+    monkeypatch.setattr(
+        rs,
+        "_processor_heartbeat_readiness",
+        lambda _session: {"status": "ok", "reason": "ok", "max_age_seconds": 180},
+    )
+    monkeypatch.setattr(
+        rs,
+        "build_persist_funnel_summary",
+        lambda _session: {
+            "status": "degraded",
+            "sessions_total": 10,
+            "healthy_persist_rate": 0.1,
+            "fusion_drop_rate": 0.9,
+            "fp_empty_opencv_rate": 0.0,
+            "alerts": ["fusion_drop"],
+            "top_root_causes": ["decision_fusion_drop_tracks_gt_0_persisted_0"],
+        },
+    )
+    monkeypatch.setattr(
+        rs,
+        "build_component_status_payload_safe",
+        lambda _session: {
+            "web": "ok",
+            "processor": "ok",
+            "video": "ok",
+            "mqtt": "ok",
+            "esphome": "ok",
+            "yolo": "unknown",
+        },
+    )
+    monkeypatch.setattr(rs, "cache_get", lambda _key: (False, None))
+    monkeypatch.setattr(rs, "cache_set", lambda *_args, **_kwargs: None)
+
+    res = client.get("/api/ui/readiness")
+    payload = res.get_json() or {}
+
+    assert res.status_code == 200
+    assert payload["ready"] is True
+    assert payload["quality_ready"] is False
+    assert payload["checks"]["pipeline_funnel"]["status"] == "degraded"
+    assert payload["checks"]["yolo_detector"]["status"] == "unknown"
