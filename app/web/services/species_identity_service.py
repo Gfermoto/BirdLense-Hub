@@ -138,6 +138,18 @@ class SpeciesIdentityService:
 
         species = Species.query.filter_by(name=canonical_name).first()
         if species:
+            if canonical_name in (GENERIC_BIRD_SPECIES, CATALOG_RODENT_SPECIES):
+                species.active = True
+                birds_parent = Species.query.filter_by(name="Birds").first()
+                if birds_parent and not species.parent_id:
+                    species.parent_id = birds_parent.id
+                if not (species.description or "").strip():
+                    species.description = (
+                        "Bird detected by the camera before species classification. "
+                        "Use review or manual correction to assign a specific species."
+                        if canonical_name == GENERIC_BIRD_SPECIES
+                        else "Rodent detected by the camera. Use review to assign a specific species when known."
+                    )
             current_common = species.taxon.common_name if species.taxon else None
             if self.ingest_blocked(
                 species.name or "",
@@ -177,9 +189,16 @@ class SpeciesIdentityService:
         species = Species(
             name=canonical_name,
             parent_id=parent_id,
-            active=False,
+            active=canonical_name in (GENERIC_BIRD_SPECIES, CATALOG_RODENT_SPECIES),
             taxon_id=taxon.id if taxon else None,
         )
+        if species.active and not (species.description or "").strip():
+            species.description = (
+                "Bird detected by the camera before species classification. "
+                "Use review or manual correction to assign a specific species."
+                if canonical_name == GENERIC_BIRD_SPECIES
+                else "Rodent detected by the camera. Use review to assign a specific species when known."
+            )
         self.db.session.add(species)
         self.db.session.flush()
         alias_count = self._attach_aliases_to_taxon(

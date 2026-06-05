@@ -175,8 +175,8 @@ class TestDecisionMaker(unittest.TestCase):
         self.assertEqual(results[0]['species_name'], 'Bird')
         self.assertEqual(results[0]['decision_reason'], 'review_only_generic_bird')
         self.assertEqual(results[0]['decision_kind'], 'review_only_generic')
-        self.assertFalse(results[0].get('visit_eligible', True))
         self.assertFalse(results[0].get('notification_eligible', True))
+        self.assertTrue(results[0].get('visit_eligible', False))
         self.assertEqual(results[0]['detector_label'], 'Bird')
         self.assertEqual(len(results[0].get('frames') or []), 1)
         self.assertTrue(results[0]['fallback_used'])
@@ -232,7 +232,7 @@ class TestDecisionMaker(unittest.TestCase):
         results = dm.get_results(tracks)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["decision_reason"], "fallback_bird")
-        self.assertFalse(results[0].get("visit_eligible", True))
+        self.assertTrue(results[0].get("visit_eligible", False))
 
     def test_generic_bird_promotion_thresholds_are_configurable(self):
         dm = DecisionMaker(
@@ -258,7 +258,7 @@ class TestDecisionMaker(unittest.TestCase):
         results = dm.get_results(tracks)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['decision_reason'], 'fallback_bird')
-        self.assertFalse(results[0].get('visit_eligible', True))
+        self.assertTrue(results[0].get('visit_eligible', False))
 
     def test_classifier_uncertain_respects_fallback_off(self):
         dm = DecisionMaker(

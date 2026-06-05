@@ -191,7 +191,7 @@ def _build_generic_review_row(
     review_row["start_time"] = start_time
     review_row["end_time"] = end_time
     review_row["track_id"] = None
-    review_row["visit_eligible"] = False
+    review_row["visit_eligible"] = True
     review_row["notification_eligible"] = False
     review_row["decision_kind"] = "review_only_generic"
     review_row["evidence_state"] = "cross_species_conflict"

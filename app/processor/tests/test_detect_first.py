@@ -70,7 +70,7 @@ class TestDetectFirst(unittest.TestCase):
         self.assertIsNotNone(row)
         self.assertEqual(row["track_id"], 9)
         self.assertEqual(len(row["frames"]), 1)
-        self.assertFalse(row.get("visit_eligible"))
+        self.assertTrue(row.get("visit_eligible"))
 
     def test_restore_from_anchor_when_fusion_empty(self):
         ctx = {

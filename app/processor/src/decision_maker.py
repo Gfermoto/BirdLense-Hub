@@ -905,7 +905,7 @@ class DecisionMaker:
                                 force_classifier_review = bool(btf.get("classifier_needs_review"))
                             else:
                                 accepted = True
-                                visit_eligible = False
+                                visit_eligible = True
                                 notification_eligible = False
                                 decision_reason = "review_only_generic_bird"
                                 decision_kind = "review_only_generic"
@@ -914,6 +914,7 @@ class DecisionMaker:
                                     if float(classifier_candidate["vote_share"] or 0.0) <= 0.5
                                     else "weak_classifier"
                                 )
+                                force_classifier_review = True
                         else:
                             guess = self._classifier_best_guess_override(
                                 app_config=app_config,
@@ -1024,11 +1025,12 @@ class DecisionMaker:
                             force_classifier_review = bool(btf.get("classifier_needs_review"))
                         else:
                             accepted = True
-                            visit_eligible = False
+                            visit_eligible = True
                             notification_eligible = False
                             decision_reason = "review_only_generic_bird"
                             decision_kind = "review_only_generic"
                             evidence_state = "detector_only"
+                            force_classifier_review = True
                     else:
                         if is_bird:
                             decision_reason = "fallback_bird"

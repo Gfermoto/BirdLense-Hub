@@ -707,14 +707,13 @@ class TestOverviewDayOverlap:
 
         assert response.status_code == 200
         body = response.get_json()
-        assert body["stats"]["totalDetections"] == 1
-        assert body["stats"]["unidentifiedBirdDetections"] == 2
+        assert body["stats"]["totalDetections"] == 3
+        assert body["stats"]["unidentifiedBirdDetections"] == 0
         assert body["stats"]["totalActivity"] == 3
-        assert body["stats"]["uniqueSpecies"] == 1
-        assert body["topSpecies"][0]["name"] == "Robin"
-        bird_rows = [row for row in body["topSpecies"] if row.get("unidentified")]
-        assert len(bird_rows) == 1
-        assert bird_rows[0]["name"] == "Bird"
+        assert body["stats"]["uniqueSpecies"] == 3
+        names = {row["name"] for row in body["topSpecies"]}
+        assert "Robin" in names
+        assert "Bird" in names
         assert body["lastDetection"]["species_name"] == "Robin"
 
 

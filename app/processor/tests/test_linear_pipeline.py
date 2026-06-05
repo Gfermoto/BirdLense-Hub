@@ -77,7 +77,7 @@ class TestLinearPipeline(unittest.TestCase):
         self.assertTrue(ev["accepted"])
         self.assertEqual(ev["decision_reason"], "track_first_persist")
         self.assertEqual(ev["out_species"], "Bird")
-        self.assertFalse(ev["visit_eligible"])
+        self.assertTrue(ev["visit_eligible"])
 
     def test_static_like_track_not_blocked_by_linear(self):
         """Linear has no static_pinned — forest-style weak conf still passes floor."""
