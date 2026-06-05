@@ -35,6 +35,9 @@ class TestPersistMode(unittest.TestCase):
         self.assertFalse(track_has_bbox_frames({}))
         self.assertFalse(track_has_bbox_frames({"frames": [{"bbox": [0, 0, 0, 0]}]}))
         self.assertTrue(
+            track_has_bbox_frames({"frames": [{"bbox": [0.1, 0.1, 0.4, 0.4], "t": 0.0}]})
+        )
+        self.assertFalse(
             track_has_bbox_frames({"frames": [{"bbox": [10, 10, 40, 40], "t": 0.0}]})
         )
 
@@ -43,7 +46,7 @@ class TestPersistMode(unittest.TestCase):
         cfg.get.side_effect = lambda key, default=None: (
             "binary_track_first" if key == "detection.persist_mode" else default
         )
-        track = {"frames": [{"bbox": [1, 2, 10, 12]}]}
+        track = {"frames": [{"bbox": [0.1, 0.2, 0.3, 0.4]}]}
         self.assertTrue(
             can_binary_track_first_accept(
                 app_config=cfg,
@@ -75,7 +78,7 @@ class TestPersistMode(unittest.TestCase):
             "detector_confidence": 0.15,
             "detector_label": "Bird",
             "decision_reason": "accepted_binary_track_classifier_uncertain",
-            "frames": [{"bbox": [1, 2, 20, 22]}],
+            "frames": [{"bbox": [0.1, 0.2, 0.3, 0.4]}],
         }
         self.assertTrue(
             passes_binary_track_first_store_floor(
@@ -91,7 +94,7 @@ class TestPersistMode(unittest.TestCase):
             "binary_track_first" if key == "detection.persist_mode" else default
         )
         track = {
-            "frames": [{"bbox": [10, 10, 50, 50]}],
+            "frames": [{"bbox": [0.1, 0.1, 0.5, 0.5]}],
             "detector_events": [{"label": "Bird", "confidence": 0.15}],
         }
         self.assertTrue(

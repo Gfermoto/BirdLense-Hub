@@ -624,6 +624,14 @@ def build_fused_video_detections(
     # Safe-by-default: Frigate stays fallback-only unless explicitly enabled in config.
     standalone_on = bool(app_config.get("detection.frigate_standalone_when_no_yolo", False))
     standalone_no_species = bool(app_config.get("detection.frigate_standalone_when_no_accepted_species", False))
+    try:
+        from linear_pipeline import is_linear_pipeline
+
+        if is_linear_pipeline(app_config):
+            standalone_on = False
+            standalone_no_species = False
+    except ImportError:
+        pass
     require_blind = bool(app_config.get("detection.frigate_standalone_require_blind_yolo", False))
     blind_score_threshold = float(app_config.get("detection.frigate_standalone_blind_score_threshold", 0.7) or 0.7)
     force_after_no_yolo_s = float(

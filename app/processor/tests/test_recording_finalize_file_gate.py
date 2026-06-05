@@ -17,6 +17,19 @@ from recording_file_gate import _is_playable_video_file as is_playable_video_fil
 from recording_finalize import finalize_motion_recording  # noqa: E402
 
 
+def _decision_trace_payload(api):
+    for log_name in ("activity_log", "activity_log_async"):
+        log = getattr(api, log_name, None)
+        for call in reversed(getattr(log, "call_args_list", []) or []):
+            args = call.args
+            kwargs = call.kwargs
+            if len(args) >= 2 and args[0] == "decision_trace":
+                return args[1]
+            if kwargs.get("type") == "decision_trace":
+                return kwargs.get("data")
+    raise AssertionError("decision_trace activity log call not found")
+
+
 class TestRecordingFinalizeFileGate(unittest.TestCase):
     def test_is_playable_video_file_direct_module_rejects_missing_path(self):
         self.assertFalse(is_playable_video_file_direct('/tmp/birdlense-missing-video.mp4'))
@@ -144,11 +157,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
 
         api.create_video.assert_called_once()
         api.notify_species.assert_not_called()
-        api.activity_log.assert_any_call(
-            'decision_trace',
-            unittest.mock.ANY,
-        )
-        trace_payload = api.activity_log.call_args_list[-1].args[1]
+        trace_payload = _decision_trace_payload(api)
         self.assertEqual(trace_payload['decision_contract_version'], '2026-04-yolo-first-v1')
         self.assertEqual(trace_payload['outcome_summary']['persisted_track_count'], 1)
         self.assertEqual(trace_payload['outcome_summary']['review_only_count'], 0)
@@ -298,7 +307,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                     data_dir=tmp,
                 )
 
-        trace_payload = api.activity_log.call_args_list[-1].args[1]
+        trace_payload = _decision_trace_payload(api)
         persisted = trace_payload['persisted_tracks']
         self.assertEqual(len(persisted), 1)
         self.assertEqual(persisted[0]['decision_reason'], 'absorbed_generic_into_frigate_species')
@@ -419,7 +428,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                         },
                     },
                 )
-        trace_payload = api.activity_log.call_args_list[-1].args[1]
+        trace_payload = _decision_trace_payload(api)
         self.assertIn('pipeline_fingerprint', trace_payload)
         self.assertEqual(trace_payload['pipeline_fingerprint']['fusion']['enabled'], True)
         self.assertIn('binary_model', trace_payload['pipeline_fingerprint'])

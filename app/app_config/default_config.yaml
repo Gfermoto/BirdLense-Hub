@@ -79,12 +79,22 @@ processor:
   # Анти-конкуренция trigger-веток: окно (сек) после первого fire, в котором
   # конкурирующие триггеры не стартуют новую запись (логируются как trigger_moratorium).
   trigger_moratorium_seconds: 2
-  # Trigger -> bounded detect-only window before recording (scheduler gate).
+  # Trigger -> lowres detect-first window; recording starts only after confirmed YOLO+ByteTrack bbox.
+  detect_first_enabled: true
+  detect_first_triggers: ["opencv", "frigate", "motion_sensor", "scales"]
+  detect_first_window_seconds: 2.5
+  detect_first_max_frames: 30
+  detect_first_confirm_min_hits: 2
+  detect_first_confirm_min_track_seconds: 0.5
+  record_prebuffer_seconds: 0
+  record_postroll_seconds: 3
+  # Legacy alias for the old bounded probe; kept for migrated user_config values.
   detect_scheduler_enabled: true
   # opencv: YOLO must see bird before motion clip starts (cuts FP empty recordings).
   detect_scheduler_triggers: ["opencv", "frigate", "motion_sensor", "scales"]
   detect_probe_window_seconds: 2.5
   detect_probe_max_frames: 30
+  detect_probe_min_hits: 2
   detect_probe_start_recording_on_positive: true
   # Свежее подтверждение Frigate держит клип «живым» ещё N сек, даже если YOLO на паре кадров молчит.
   # Помогает не обрывать ролик, пока объект ещё реально в кадре.
@@ -591,7 +601,8 @@ video:
   # copy — без перекодирования (ниже CPU; если поток HEVC, в Chrome может быть «Не удалось загрузить видео»).
   record_stream_codec: h264
   # Камеры — добавлять по одной. stream_name = имя потока в Go2RTC (main / запись, как Frigate record).
-  # detect_stream_name — второй поток Go2RTC для motion + YOLO (как Frigate detect: ниже разрешение и FPS).
+  # detect_stream_name — ОБЯЗАТЕЛЕН: второй поток Go2RTC для motion + YOLO (lores).
+  # stream_name (main) — только FFmpeg-запись MP4; без detect_stream_name processor не стартует.
   # Detect substream в Go2RTC/Frigate: 704×576@~7fps. Hub: inference_lores_wh [704,576] — без даунскейла в 640².
   cameras: []
   # Config v2 (slot-centric, для разного числа камер у разных инсталляций):

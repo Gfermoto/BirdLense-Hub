@@ -106,8 +106,6 @@ class DetectionQualityConfig:
             linear_core = linear_disable_live_quality_gates(runtime_cfg)
         except ImportError:
             linear_core = False
-        if linear_core:
-            static.enabled = False
         scoring_on = _parse_bool(runtime_cfg, "processor.scoring_engine_enabled", False)
         if linear_core:
             scoring_on = False

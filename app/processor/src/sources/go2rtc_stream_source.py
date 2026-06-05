@@ -275,8 +275,19 @@ class Go2RTCStreamSource:
         self.logger = logging.getLogger(__name__)
         # Main/high stream: FFmpeg recording only.
         self.stream_url = stream_url
-        # Optional second RTSP (e.g. Go2RTC name for camera sub / Frigate detect) — lower res & FPS.
-        self._capture_stream_url = (capture_stream_url or "").strip() or stream_url
+        # Detect substream (lores): motion, YOLO, ByteTrack — never fallback to main.
+        capture_url = (capture_stream_url or "").strip()
+        if not capture_url:
+            raise ValueError(
+                "Go2RTC detect substream URL required: set video.cameras[].detect_stream_name "
+                "(main stream_url is record-only)"
+            )
+        if capture_url == (stream_url or "").strip():
+            raise ValueError(
+                "Go2RTC capture stream must differ from main record stream "
+                "(detect_stream_name ≠ stream_name)"
+            )
+        self._capture_stream_url = capture_url
         self.main_size = main_size
         self.lores_size = lores_size  # None = native RTSP resolution for detect/YOLO
         self._detect_native = lores_size is None

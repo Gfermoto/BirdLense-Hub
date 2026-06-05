@@ -1685,7 +1685,7 @@ def test_binary_track_first_keeps_yolo_row_below_store_floor():
         "detector_label": "Bird",
         "detector_confidence": 0.15,
         "decision_reason": "accepted_binary_track_classifier_uncertain",
-        "frames": [{"bbox": [10, 10, 40, 40], "t": 0.0}],
+        "frames": [{"bbox": [0.1, 0.1, 0.4, 0.4], "t": 0.0}],
     }
     out = build_fused_video_detections(
         [row],

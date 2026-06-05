@@ -82,6 +82,7 @@ class TestProcessorBootstrapCooldown(unittest.TestCase):
                 self.motion_detector = _Detector()
                 self.api = _API()
                 self.run_calls = 0
+                self.args = SimpleNamespace(input=None)
 
             def run_detection_probe_window(self, *, camera_id, trigger_source):
                 return True
@@ -92,6 +93,10 @@ class TestProcessorBootstrapCooldown(unittest.TestCase):
 
         ctx = SimpleNamespace(session=_Session(), file_test=None)
         with patch.object(bootstrap_mod, "check_restart_flag", return_value=None), patch.object(
+            bootstrap_mod,
+            "requires_detect_first_before_record",
+            return_value=False,
+        ), patch.object(
             bootstrap_mod.app_config,
             "get",
             return_value=8.0,
@@ -160,6 +165,7 @@ class TestProcessorBootstrapCooldown(unittest.TestCase):
                 self.motion_detector = _Detector()
                 self.api = _API()
                 self.run_calls = 0
+                self.args = SimpleNamespace(input=None)
 
             def run_detection_probe_window(self, *, camera_id, trigger_source):
                 return True
@@ -173,6 +179,10 @@ class TestProcessorBootstrapCooldown(unittest.TestCase):
             bootstrap_mod,
             "check_restart_flag",
             return_value=None,
+        ), patch.object(
+            bootstrap_mod,
+            "requires_detect_first_before_record",
+            return_value=False,
         ), patch.object(
             bootstrap_mod.app_config,
             "get",
@@ -228,6 +238,7 @@ class TestProcessorBootstrapCooldown(unittest.TestCase):
                 self.motion_detector = _Detector()
                 self.api = _API()
                 self.run_calls = 0
+                self.args = SimpleNamespace(input=None)
 
             def run_detection_probe_window(self, *, camera_id, trigger_source):
                 return True
@@ -254,6 +265,10 @@ class TestProcessorBootstrapCooldown(unittest.TestCase):
             bootstrap_mod,
             "check_restart_flag",
             return_value=None,
+        ), patch.object(
+            bootstrap_mod,
+            "requires_detect_first_before_record",
+            return_value=False,
         ), patch.object(
             bootstrap_mod.app_config,
             "get",

@@ -167,6 +167,7 @@ export function CamerasListField({
             <TextField
               fullWidth
               size="small"
+              required={Boolean((row.stream_name ?? '').trim())}
               value={row.detect_stream_name ?? ''}
               onChange={(e) =>
                 updateRow(i, 'detect_stream_name', e.target.value)

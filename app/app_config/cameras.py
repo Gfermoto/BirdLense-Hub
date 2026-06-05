@@ -59,6 +59,36 @@ def _resolve_effective_cameras_from_video_config(video_config: dict | None) -> l
     return rows
 
 
+def validate_go2rtc_detect_streams(
+    valid_cameras: list,
+    *,
+    video_source: str | None = None,
+) -> list[str]:
+    """Issues when go2rtc live requires separate lores detect substream per camera."""
+    source = (video_source or "go2rtc").strip().lower()
+    if source != "go2rtc":
+        return []
+    issues: list[str] = []
+    for c in valid_cameras:
+        if not isinstance(c, dict):
+            continue
+        cid = str(c.get("id") or c.get("stream_name") or "?")
+        sn = str(c.get("stream_name") or "").strip()
+        dsn = str(c.get("detect_stream_name") or "").strip()
+        if not dsn:
+            issues.append(
+                f"video.cameras[{cid}]: detect_stream_name required "
+                "(lores motion/YOLO; stream_name is main record only)",
+            )
+            continue
+        if dsn == sn:
+            issues.append(
+                f"video.cameras[{cid}]: detect_stream_name must differ from stream_name "
+                "(main=record, detect=lores)",
+            )
+    return issues
+
+
 def get_valid_cameras(
     cameras_config: list | None = None,
     *,
@@ -68,9 +98,8 @@ def get_valid_cameras(
     Возвращает список камер с непустым stream_name.
 
     Каждая камера: {id, stream_name, name, detect_stream_name?, opencv_masks?}.
-    ``detect_stream_name`` — второй поток Go2RTC для motion/YOLO (как detect в Frigate);
-    ``opencv_masks`` — Frigate-style полигоны для OpenCV-триггера на этой камере.
-    запись по-прежнему с ``stream_name`` (main).
+    ``detect_stream_name`` — обязателен при ``video.source=go2rtc``: lores motion/YOLO;
+    ``stream_name`` — main, только запись FFmpeg.
     """
     source_rows: list = []
     if video_config is not None:
