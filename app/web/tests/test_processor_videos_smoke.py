@@ -757,7 +757,8 @@ def test_processor_videos_runtime_reid_payload_persists_nickname_and_sidecar(
         row = (
             db.session.execute(
                 text(
-                    "SELECT model, dim, individual_label "
+                    "SELECT model, dim, individual_label, embedding_schema, embedding_model_id, "
+                    "embedding_model_sha16, crop_fingerprint_sha16, jsonl_created_at_utc "
                     "FROM reid_embedding WHERE video_species_id=:vs_id "
                     "ORDER BY id DESC LIMIT 1"
                 ),
@@ -770,3 +771,8 @@ def test_processor_videos_runtime_reid_payload_persists_nickname_and_sidecar(
         assert row["model"] == "dinov2_vits14"
         assert int(row["dim"]) == 4
         assert row["individual_label"] == "Рыжик"
+        assert row["embedding_schema"] == "embedding_schema@v1"
+        assert row["embedding_model_id"] == "dinov2_vits14"
+        assert row["embedding_model_sha16"]
+        assert row["crop_fingerprint_sha16"]
+        assert row["jsonl_created_at_utc"]

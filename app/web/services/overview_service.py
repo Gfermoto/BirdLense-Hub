@@ -77,6 +77,7 @@ def _collect_orphan_detector_activity(
             Video.end_time,
             VideoSpecies.start_time,
         )
+        .select_from(VideoSpecies)
         .join(Video, VideoSpecies.video_id == Video.id)
         .join(Species, VideoSpecies.species_id == Species.id)
         .filter(
@@ -327,6 +328,7 @@ def get_overview_data(
     else:
         last_orphan = (
             session.query(Species.name, Video.end_time)
+            .select_from(VideoSpecies)
             .join(Video, VideoSpecies.video_id == Video.id)
             .join(Species, VideoSpecies.species_id == Species.id)
             .filter(

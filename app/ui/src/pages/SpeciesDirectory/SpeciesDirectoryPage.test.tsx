@@ -22,6 +22,7 @@ const fetchBirdDirectory = vi.hoisted(() =>
       description: 'Garden bird',
       active: true,
       count: 12,
+      catalog_card_incomplete: true,
     },
     {
       id: 2,
@@ -32,6 +33,7 @@ const fetchBirdDirectory = vi.hoisted(() =>
       description: 'Common visitor',
       active: true,
       count: 4,
+      catalog_card_incomplete: true,
     },
     {
       id: 3,
@@ -42,13 +44,14 @@ const fetchBirdDirectory = vi.hoisted(() =>
       description: 'Pigeon from woodland edges',
       active: true,
       count: 2,
+      catalog_card_incomplete: true,
     },
     ],
     meta: {
       db_species_total: 1214,
       allowlist_total: 526,
       listed_allowlist: 3,
-      allowlist_incomplete: 0,
+      allowlist_incomplete: 3,
     },
   }),
 );

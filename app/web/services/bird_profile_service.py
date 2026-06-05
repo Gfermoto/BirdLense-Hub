@@ -141,20 +141,18 @@ def delete_bird_profile(*, profile_id: int) -> dict[str, Any]:
 
 
 def clear_profile_from_detection(*, detection_id: int) -> dict[str, Any]:
-    """Remove bird profile link from all detections in the same video session."""
+    """Remove bird profile link from one detection."""
     vs = db.session.get(VideoSpecies, int(detection_id))
     if vs is None:
         raise LookupError("detection not found")
-    targets = db.session.query(VideoSpecies).filter(VideoSpecies.video_id == vs.video_id).all()
-    for row in targets:
-        row.bird_profile_id = None
-        row.individual_nickname = None
+    vs.bird_profile_id = None
+    vs.individual_nickname = None
     db.session.commit()
     return {
         "detection_id": int(vs.id),
         "video_id": int(vs.video_id),
         "bird_profile_id": None,
-        "updated_count": len(targets),
+        "updated_count": 1,
     }
 
 
@@ -165,17 +163,14 @@ def assign_profile_to_detection(*, detection_id: int, bird_profile_id: int) -> d
     profile = db.session.get(BirdProfile, int(bird_profile_id))
     if profile is None:
         raise LookupError("profile not found")
-    # Correction propagation: keep one identity across all detections inside the same video session.
-    targets = db.session.query(VideoSpecies).filter(VideoSpecies.video_id == vs.video_id).all()
-    for row in targets:
-        row.bird_profile_id = profile.id
-        row.individual_nickname = profile.display_name
+    vs.bird_profile_id = profile.id
+    vs.individual_nickname = profile.display_name
     db.session.commit()
     return {
         "detection_id": int(vs.id),
         "video_id": int(vs.video_id),
         "bird_profile_id": int(profile.id),
-        "updated_count": len(targets),
+        "updated_count": 1,
         "auto_link_hook": auto_link_profile_candidate(video_species_id=vs.id),
     }
 

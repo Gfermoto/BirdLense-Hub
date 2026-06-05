@@ -23,17 +23,27 @@ class TestMqttFrigateFilters(unittest.TestCase):
         cfg = {'triggers.frigate.camera_filter': ['x', 'y']}
         self.assertEqual(fs.frigate_camera_allow_ids(cameras, cfg), ['x', 'y'])
 
-    def test_frigate_camera_filter_none_uses_all_camera_ids(self):
-        cameras = [{'id': 'c1'}, {'id': 'c2'}]
+    def test_frigate_camera_filter_none_uses_stream_names(self):
+        cameras = [
+            {'id': 'legacy1', 'stream_name': 'c1'},
+            {'id': 'legacy2', 'stream_name': 'c2'},
+        ]
         self.assertEqual(fs.frigate_camera_allow_ids(cameras, {}), ['c1', 'c2'])
 
-    def test_frigate_camera_filter_empty_list_uses_all_camera_ids(self):
-        cameras = [{'id': 'c1'}, {'id': 'c2'}]
+    def test_frigate_camera_filter_empty_list_uses_stream_names(self):
+        cameras = [
+            {'id': 'legacy1', 'stream_name': 'c1'},
+            {'id': 'legacy2', 'stream_name': 'c2'},
+        ]
         cfg = {
             'triggers.frigate.camera_filter': [],
             'mqtt.frigate_camera_filter': ['should_not_use_when_triggers_present'],
         }
         self.assertEqual(fs.frigate_camera_allow_ids(cameras, cfg), ['c1', 'c2'])
+
+    def test_frigate_camera_filter_falls_back_to_id_when_stream_missing(self):
+        cameras = [{'id': 'c1'}, {'id': 'c2'}]
+        self.assertEqual(fs.frigate_camera_allow_ids(cameras, {}), ['c1', 'c2'])
 
     def test_frigate_camera_filter_mqtt_fallback_when_triggers_absent(self):
         cameras = [{'id': 'a'}]

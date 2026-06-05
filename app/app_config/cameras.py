@@ -118,12 +118,15 @@ def get_valid_cameras(
             continue
         slot_key = _slot_key(c.get("camera_slot"), idx=idx)
         dsn = (c.get('detect_stream_name') or '').strip()
+        legacy_id = str(c.get("id") or "").strip()
         row = {
-            'id': c.get('id') or sn,
+            'id': sn,
             'stream_name': sn,
-            'name': c.get('name') or c.get('id') or sn,
+            'name': c.get('name') or legacy_id or sn,
             'camera_slot': slot_key,
         }
+        if legacy_id and legacy_id != sn:
+            row["legacy_id"] = legacy_id
         profile_id = str(c.get("camera_profile") or "").strip()
         if profile_id:
             row["camera_profile"] = profile_id
@@ -132,6 +135,13 @@ def get_valid_cameras(
         masks = c.get('opencv_masks')
         if masks:
             row['opencv_masks'] = masks
+        for key in (
+            "tuning_role",
+            "detection_interest_zones",
+            "detection_interest_zones_required",
+        ):
+            if key in c:
+                row[key] = c[key]
         out.append(row)
     return out
 

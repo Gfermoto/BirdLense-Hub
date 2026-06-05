@@ -45,9 +45,10 @@ function isDirectoryPayload(
 export function SpeciesDirectoryPage() {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
-  const [qualityFilter, setQualityFilter] = useState<CatalogQualityFilter>('all');
-  const [scope, setScope] = useState<SpeciesCatalogScope>('project');
-  useDocumentTitle(t('nav.species'));
+  const [qualityFilter, setQualityFilter] =
+    useState<CatalogQualityFilter>('incomplete');
+  const scope: SpeciesCatalogScope = 'allowlist';
+  useDocumentTitle(t('speciesDirectory.title'));
 
   const speciesQ = useQuery({
     queryKey: [
@@ -125,6 +126,10 @@ export function SpeciesDirectoryPage() {
         <Link component={RouterLink} to="/species" underline="hover">
           {t('speciesDirectory.backToCatalog')}
         </Link>
+        {' · '}
+        <Link component={RouterLink} to="/system" underline="hover">
+          {t('speciesDirectory.backToSystem')}
+        </Link>
       </Typography>
 
       {meta ? (
@@ -138,29 +143,6 @@ export function SpeciesDirectoryPage() {
           })}
         </Alert>
       ) : null}
-
-      <ToggleButtonGroup
-        exclusive
-        size="small"
-        value={scope}
-        onChange={(_e, value: SpeciesCatalogScope | null) => {
-          if (value) setScope(value);
-        }}
-        sx={{ flexWrap: 'wrap' }}
-      >
-        <ToggleButton value="project">
-          {t('speciesDirectory.scopeProject')}
-        </ToggleButton>
-        <ToggleButton value="allowlist">
-          {t('speciesDirectory.scopeAllowlist')}
-        </ToggleButton>
-        <ToggleButton value="observed">
-          {t('speciesDirectory.scopeObserved')}
-        </ToggleButton>
-        <ToggleButton value="all">
-          {t('speciesDirectory.scopeAllDb')}
-        </ToggleButton>
-      </ToggleButtonGroup>
 
       <ToggleButtonGroup
         exclusive

@@ -7,7 +7,7 @@ import threading
 from datetime import datetime, timedelta, timezone
 
 from app_config.app_config import app_config
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 
 from models import ActiveLearningCase, Species, VideoSpecies, db
 from services.corrections_activity_service import (
@@ -62,6 +62,35 @@ def _resolve_review_queue_on_confirm(session, detections: list[VideoSpecies]) ->
         {"status": "approved", "updated_at": now},
         synchronize_session=False,
     )
+
+
+def _sync_reid_embeddings_species(session, detections: list[VideoSpecies], species: Species) -> None:
+    """Keep runtime ReID sidecar in the same species pool after manual correction."""
+    vs_ids = [int(v.id) for v in detections if getattr(v, "id", None) is not None]
+    if not vs_ids:
+        return
+    try:
+        has_reid = bool(
+            session.execute(text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")).scalar()
+        )
+        if not has_reid:
+            return
+        session.execute(
+            text(
+                """
+                UPDATE reid_embedding
+                SET species_id = :species_id, species_name = :species_name
+                WHERE video_species_id IN :vs_ids
+                """
+            ).bindparams(bindparam("vs_ids", expanding=True)),
+            {
+                "species_id": int(species.id),
+                "species_name": species.name,
+                "vs_ids": vs_ids,
+            },
+        )
+    except Exception:
+        _log.exception("Failed to sync species correction into reid_embedding sidecar")
 
 
 def run_confirm_detection(
@@ -240,6 +269,7 @@ def apply_detection_species_patch(
         new_visit.start_time = min(new_visit.start_time, v_start)
 
     session.flush()
+    _sync_reid_embeddings_species(session, to_update, species)
 
     for ov in old_visits:
         if ov:

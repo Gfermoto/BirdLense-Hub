@@ -393,6 +393,10 @@ function App() {
                         />
                         <Route
                           path="/species-directory"
+                          element={<Navigate to="/system/catalog-quality" replace />}
+                        />
+                        <Route
+                          path="/system/catalog-quality"
                           element={<SpeciesDirectoryPage />}
                         />
                         <Route path="/live" element={<LivePage />} />

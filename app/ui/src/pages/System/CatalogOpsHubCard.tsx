@@ -116,7 +116,7 @@ export function CatalogOpsHubCard() {
           </Button>
           <Button
             component={RouterLink}
-            to="/species-directory"
+            to="/system/catalog-quality"
             variant="outlined"
             size="small"
           >

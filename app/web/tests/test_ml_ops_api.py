@@ -206,7 +206,7 @@ def test_video_reid_match_returns_candidate(app, client):
     from models import Species, Video, VideoSpecies, db
 
     with app.app_context():
-        species = Species(name="Great Tit")
+        species = Species(name="Great Tit ReID Match")
         v1 = Video(
             processor_version="t",
             start_time=datetime(2026, 4, 29, 12, 0, 0, tzinfo=timezone.utc),

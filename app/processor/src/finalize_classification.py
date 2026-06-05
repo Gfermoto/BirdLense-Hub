@@ -87,7 +87,12 @@ def enrich_tracks_classifier_at_finalize(
                 )
             except ValueError:
                 det_conf = 0.0
-            cls_conf = float(getattr(out, "confidence", 0.0) or 0.0)
+            cls_conf = float(
+                getattr(out, "top1_confidence", None)
+                if getattr(out, "top1_confidence", None) is not None
+                else getattr(out, "confidence", 0.0)
+                or 0.0
+            )
             track.setdefault("classifier_events", []).append(
                 {
                     "species_name": str(out.species_name),
