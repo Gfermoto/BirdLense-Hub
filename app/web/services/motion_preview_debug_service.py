@@ -48,7 +48,10 @@ def _runtime_cfg_dict() -> dict[str, Any]:
 
 
 def _fetch_camera_frame_bgr(camera_id: str | None) -> tuple[np.ndarray | None, str | None]:
-    cameras = get_valid_cameras(app_config.get("video.cameras") or [])
+    video_cfg = app_config.get("video") or {}
+    cameras = get_valid_cameras(
+        video_config=video_cfg if isinstance(video_cfg, dict) else None,
+    )
     if not cameras:
         return None, "no_cameras_configured"
     target = (camera_id or "").strip()
@@ -61,19 +64,21 @@ def _fetch_camera_frame_bgr(camera_id: str | None) -> tuple[np.ndarray | None, s
     if chosen is None:
         chosen = cameras[0]
     stream_name = str(chosen.get("stream_name") or chosen.get("id") or "").strip()
-    if not stream_name:
+    detect_name = str(chosen.get("detect_stream_name") or "").strip()
+    probe_stream = detect_name or stream_name
+    if not probe_stream:
         return None, "camera_missing_stream_name"
     base = resolve_go2rtc_base_url()
     auth = _go2rtc_auth()
     urls = [
-        f"{base}/api/frame.jpeg?src={stream_name}",
+        f"{base}/api/frame.jpeg?src={probe_stream}",
     ]
     port = (app_config.get("general.port") or "").strip()
     if not port:
         import os
 
         port = (os.environ.get("BIRDLENSE_PORT") or "8080").strip()
-    urls.append(f"http://127.0.0.1:{port}/go2rtc/api/frame.jpeg?src={stream_name}")
+    urls.append(f"http://127.0.0.1:{port}/go2rtc/api/frame.jpeg?src={probe_stream}")
     for url in urls:
         if not url:
             continue

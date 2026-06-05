@@ -400,7 +400,7 @@ export interface Settings {
     cameras?: Array<{
       id?: string;
       stream_name?: string;
-      /** Optional stream for motion/YOLO (can be direct low-res camera feed). */
+      /** Required when video.source=go2rtc: lores motion/YOLO; stream_name is main record. */
       detect_stream_name?: string;
       name?: string;
     }>;
@@ -602,14 +602,22 @@ export interface OverviewTopSpecies {
   id: number;
   name: string;
   detections: number[]; // hourly visit counts (24), legacy field name
+  /** Generic Bird/Rodent from detector — not a named SpeciesVisit */
+  unidentified?: boolean;
 }
 
 export interface OverviewStats {
   uniqueSpecies: number;
-  /** Visit count for the day (SpeciesVisit rows), not recognition segments */
+  /** Named-species visit count (SpeciesVisit rows) */
   totalDetections: number;
-  /** Visits overlapping the last hour */
+  /** Visits overlapping the last hour (named + unidentified segments) */
   lastHourDetections: number;
+  /** YOLO/MQTT segments labeled generic Bird */
+  unidentifiedBirdDetections?: number;
+  /** Detector segments labeled Rodent */
+  rodentDetections?: number;
+  /** Named visits + unidentified bird + rodent segments */
+  totalActivity?: number;
   videoDuration: number;
   audioDuration: number;
   busiestHour: number;
@@ -621,6 +629,7 @@ export interface OverviewStats {
 export interface OverviewLastDetection {
   species_name: string;
   start_time: string; // ISO datetime
+  unidentified?: boolean;
 }
 
 export interface OverviewData {

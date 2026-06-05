@@ -32,6 +32,7 @@ import VideocamOutlined from '@mui/icons-material/VideocamOutlined';
 import { BirdIcon } from '../../components/icons/BirdIcon';
 import { PageHelp } from '../../components/PageHelp';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
+import { overviewLastDetectionLabel } from './overviewSpeciesLabel';
 import { overviewHelpConfig } from '../../page-help-config';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -109,6 +110,16 @@ export const Overview = () => {
   };
 
   const stats = overviewData?.stats;
+  const activityTotal = stats?.totalActivity ?? stats?.totalDetections ?? 0;
+  const visitsHint =
+    (stats?.unidentifiedBirdDetections ?? 0) > 0 ||
+    (stats?.rodentDetections ?? 0) > 0
+      ? t('overview.totalVisitsBreakdown', {
+          named: stats?.totalDetections ?? 0,
+          bird: stats?.unidentifiedBirdDetections ?? 0,
+          rodent: stats?.rodentDetections ?? 0,
+        })
+      : t('overview.totalVisitsHint');
   const topSpecies = overviewData?.topSpecies ?? [];
   const triggerBySource = stats?.triggerBySource ?? {};
   const hasTriggerBySource = Object.keys(triggerBySource).length > 0;
@@ -211,9 +222,11 @@ export const Overview = () => {
                       )
                     : '—'}{' '}
                   —{' '}
-                  {overviewData.lastDetection.species_name === 'Bird'
-                    ? t('overview.lastBirdUnknown')
-                    : overviewData.lastDetection.species_name}
+                  {overviewLastDetectionLabel(
+                    t,
+                    overviewData.lastDetection.species_name,
+                    overviewData.lastDetection.unidentified,
+                  )}
                 </Typography>
               </Box>
             </Paper>
@@ -235,8 +248,8 @@ export const Overview = () => {
               <StatCard
                 icon={VisibilityOutlined}
                 title={t('overview.totalVisits')}
-                value={stats?.totalDetections || 0}
-                hint={t('overview.totalVisitsHint')}
+                value={activityTotal}
+                hint={visitsHint}
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -260,7 +273,7 @@ export const Overview = () => {
                 icon={WbSunnyOutlined}
                 title={t('overview.busiestHour')}
                 value={
-                  (stats?.totalDetections ?? 0) > 0
+                  activityTotal > 0
                     ? formatHour(stats?.busiestHour ?? 0)
                     : t('common.na')
                 }

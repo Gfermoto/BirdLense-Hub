@@ -619,6 +619,7 @@ class FrameProcessor:
     ) -> dict | None:
         """Return best confirmed YOLO+ByteTrack bbox anchor, or None."""
         from linear_pipeline import evaluate_track_linear
+        from track_first_contract import is_valid_norm_bbox, valid_track_frames
 
         best: dict | None = None
         for track_id, track in (self.tracks or {}).items():
@@ -632,19 +633,22 @@ class FrameProcessor:
             )
             if not bool(decision.get("accepted")):
                 continue
-            frames = [f for f in (track.get("frames") or []) if isinstance(f, dict) and f.get("bbox")]
+            frames = valid_track_frames(track.get("frames"))
             if not frames:
+                continue
+            bbox = list(frames[-1].get("bbox") or [])
+            if not is_valid_norm_bbox(bbox):
                 continue
             candidate = {
                 "track_id": track_id,
-                "bbox": list(frames[-1].get("bbox") or []),
+                "bbox": bbox,
                 "start_time": track.get("start_time"),
                 "end_time": track.get("end_time"),
                 "confidence": float(decision.get("out_conf") or decision.get("detector_conf") or 0.0),
                 "detector_label": decision.get("detector_label") or "Bird",
                 "detector_confidence": float(decision.get("detector_conf") or 0.0),
                 "detector_event_count": int(decision.get("detector_event_count") or 0),
-                "frames": list(track.get("frames") or []),
+                "frames": frames,
                 "key_frame_count": len(track.get("key_frames") or []),
             }
             if best is None or (

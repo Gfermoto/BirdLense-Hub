@@ -22,12 +22,19 @@ from processor_runtime_stats import inc_counter, observe_timing, set_gauge
 from detection_strategy import coerce_bgr_frame
 from recording_session_policy import effective_frigate_hold_seconds
 from recording_finalize_worker import FinalizeWorker
+from recording_finalize import finalize_motion_recording
 from session_state_repository import SessionStateRepository
+from detect_first import (
+    detect_first_runtime_signal_fields,
+    enrich_detect_first_anchor,
+    is_valid_detect_first_anchor,
+    sanitize_anchor_for_context,
+)
 from detection_scheduler import (
     build_detect_first_config,
     build_probe_config,
-    is_valid_detect_first_anchor,
     requires_detect_first_before_record,
+    trigger_requires_detect_first,
 )
 from yolo_blind_monitor import YoloBlindLiveMonitor, run_blind_quickcheck
 
@@ -261,23 +268,14 @@ class MotionRecordingSession:
         trigger = str(trigger_source or "").strip().lower()
         if trigger not in set(cfg.triggers):
             return True
-        if not self.args.input and app_config.get("video.source") == "go2rtc":
-            self.media_source = self.get_media_source(camera_id or self.default_camera_id)
-        start = time.monotonic()
-        frames = 0
-        hits = 0
-        # Isolate probe from regular track accumulation.
+        self._bind_lores_media(camera_id)
         self.frame_processor.reset()
-        while frames < cfg.max_frames and (time.monotonic() - start) <= cfg.window_seconds:
-            frame = self.media_source.capture()
-            if frame is None:
-                time.sleep(0.03)
-                continue
-            frames += 1
-            if self.frame_processor.run(frame, frame_time=None, skip_light_gate=False):
-                hits += 1
-                if hits >= cfg.min_hits:
-                    break
+        frames, hits, _ = self._run_lores_yolo_window(
+            camera_id=camera_id,
+            max_frames=cfg.max_frames,
+            window_seconds=cfg.window_seconds,
+            stop_when=lambda h, _f: h >= cfg.min_hits,
+        )
         self.frame_processor.reset()
         logger.info(
             "detection_probe: trigger=%s camera=%s frames=%s hits=%s min_hits=%s window=%.2fs",
@@ -295,32 +293,31 @@ class MotionRecordingSession:
         """Run lores YOLO+ByteTrack window; return confirmed anchor or None (never bypass)."""
         cfg = build_detect_first_config(app_config)
         trigger = str(trigger_source or "").strip().lower()
-        if not trigger:
+        if not trigger or not cfg.enabled:
             return None
-        if not self.args.input and app_config.get("video.source") == "go2rtc":
-            self.media_source = self.get_media_source(camera_id or self.default_camera_id)
-        camera_overrides = _camera_processor_overrides(camera_id)
-        start = time.monotonic()
-        frames = 0
-        hits = 0
-        anchor = None
+        if not trigger_requires_detect_first(trigger_source=trigger, app_config=app_config):
+            return None
+        self._bind_lores_media(camera_id)
         self.frame_processor.reset()
-        while frames < cfg.max_frames and (time.monotonic() - start) <= cfg.window_seconds:
-            frame = self.media_source.capture()
-            if frame is None:
-                time.sleep(0.03)
-                continue
-            frames += 1
-            if self.frame_processor.run(frame, frame_time=None, skip_light_gate=False, camera_overrides=camera_overrides):
-                hits += 1
-            if hits >= cfg.confirm_min_hits:
-                anchor = self.frame_processor.confirmed_track_anchor(
-                    app_config=app_config,
-                    min_track_duration=cfg.confirm_min_track_seconds,
-                    min_confidence_to_process=float(app_config.get("processor.min_confidence_to_process") or 0.12),
-                )
-                if anchor is not None:
-                    break
+        anchor: dict[str, Any] | None = None
+
+        def _maybe_anchor(_hits: int, _frames: int) -> bool:
+            nonlocal anchor
+            if _hits < cfg.confirm_min_hits:
+                return False
+            anchor = self.frame_processor.confirmed_track_anchor(
+                app_config=app_config,
+                min_track_duration=cfg.confirm_min_track_seconds,
+                min_confidence_to_process=float(app_config.get("processor.min_confidence_to_process") or 0.12),
+            )
+            return anchor is not None
+
+        frames, hits, _ = self._run_lores_yolo_window(
+            camera_id=camera_id,
+            max_frames=cfg.max_frames,
+            window_seconds=cfg.window_seconds,
+            stop_when=_maybe_anchor,
+        )
         if anchor is None:
             self.frame_processor.reset()
             inc_counter("detect_first_no_anchor_total")
@@ -337,11 +334,81 @@ class MotionRecordingSession:
             cfg.window_seconds,
         )
         if anchor is not None:
-            anchor["detect_first_frames"] = frames
-            anchor["detect_first_hits"] = hits
-            anchor["trigger_source"] = trigger or None
-            anchor["camera_id"] = camera_id
+            enrich_detect_first_anchor(
+                anchor,
+                detect_first_frames=frames,
+                detect_first_hits=hits,
+                trigger_source=trigger,
+                camera_id=camera_id,
+            )
         return anchor
+
+    def _bind_lores_media(self, camera_id: str | None) -> None:
+        if not self.args.input and app_config.get("video.source") == "go2rtc":
+            self.media_source = self.get_media_source(camera_id or self.default_camera_id)
+        self._apply_main_playback_shape()
+
+    def _apply_main_playback_shape(self) -> None:
+        """Main-stream bbox normalization must be active before lores YOLO (detect-first + session)."""
+        main_size = getattr(self.media_source, "main_size", None)
+        if not main_size or len(main_size) < 2:
+            return
+        strategy = getattr(self.frame_processor, "strategy", None)
+        if strategy is None or not hasattr(strategy, "set_playback_frame_shape"):
+            return
+        try:
+            pw, ph = int(main_size[0]), int(main_size[1])
+            if pw > 0 and ph > 0:
+                strategy.set_playback_frame_shape((ph, pw))
+            else:
+                logger.warning("main_size invalid for playback bbox remap: %s", main_size)
+        except (TypeError, ValueError):
+            logger.warning("main_size parse failed for playback bbox remap: %s", main_size, exc_info=True)
+
+    def _run_lores_yolo_window(
+        self,
+        *,
+        camera_id: str | None,
+        max_frames: int,
+        window_seconds: float,
+        stop_when: Callable[[int, int], bool] | None = None,
+    ) -> tuple[int, int, bool]:
+        """Bounded lores capture + YOLO loop. Returns (frames, hits, stopped_early)."""
+        camera_overrides = _camera_processor_overrides(camera_id)
+        start = time.monotonic()
+        frames = 0
+        hits = 0
+        stopped_early = False
+        while frames < max_frames and (time.monotonic() - start) <= window_seconds:
+            frame = self.media_source.capture()
+            if frame is None:
+                time.sleep(0.03)
+                continue
+            frames += 1
+            frame_time = getattr(self.media_source, "get_frame_time", lambda: None)()
+            lock = getattr(self, "inference_lock", None)
+
+            def _run_frame() -> bool:
+                return bool(
+                    self.frame_processor.run(
+                        frame,
+                        frame_time=frame_time,
+                        skip_light_gate=False,
+                        camera_overrides=camera_overrides,
+                    )
+                )
+
+            if lock is not None:
+                with lock:
+                    hit = _run_frame()
+            else:
+                hit = _run_frame()
+            if hit:
+                hits += 1
+            if stop_when and stop_when(hits, frames):
+                stopped_early = True
+                break
+        return frames, hits, stopped_early
 
     def run(
         self,
@@ -383,7 +450,11 @@ class MotionRecordingSession:
             self.media_source = self.get_media_source(camera_id)
 
         _go2rtc_live = requires_detect_first_before_record(args=self.args, app_config=app_config)
-        if _go2rtc_live and not is_valid_detect_first_anchor(detect_first_anchor):
+        _trigger_needs_anchor = trigger_requires_detect_first(
+            trigger_source=str(forced_trigger_source or trigger_by or "").strip().lower(),
+            app_config=app_config,
+        )
+        if _go2rtc_live and _trigger_needs_anchor and not is_valid_detect_first_anchor(detect_first_anchor):
             inc_counter("main_ffmpeg_started_without_anchor_total")
             logger.error(
                 "Refusing go2rtc recording without confirmed lores anchor (trigger=%s camera=%s)",
@@ -442,14 +513,7 @@ class MotionRecordingSession:
                 media_source=self.media_source,
             )
             self.frame_processor.set_session_context(trigger_ctx.as_dict())
-            main_size = getattr(self.media_source, "main_size", None)
-            if main_size and len(main_size) >= 2:
-                try:
-                    pw, ph = int(main_size[0]), int(main_size[1])
-                    if pw > 0 and ph > 0:
-                        self.frame_processor.strategy.set_playback_frame_shape((ph, pw))
-                except (TypeError, ValueError):
-                    pass
+            self._apply_main_playback_shape()
             set_gauge("recording_trigger_source", trigger_ctx.triggered_by or "unknown")
             set_gauge("recording_stream_fps", float(trigger_ctx.stream_fps))
             logger.info(
@@ -459,8 +523,7 @@ class MotionRecordingSession:
                 trigger_ctx.model_imgsz,
                 trigger_ctx.use_native_resolution,
             )
-            if not detect_first_anchor:
-                self.frame_processor.reset()
+            self.frame_processor.reset()
             self.decision_maker.reset()
             self.fps_tracker.reset()
             inc_counter("recording_session_total")
@@ -510,25 +573,7 @@ class MotionRecordingSession:
                 "blind_quickcheck_hits": 0,
                 "yolo_frames_raw_unaccepted": 0,
                 "yolo_frames_raw_no_track": 0,
-                "detect_first_confirmed": bool(detect_first_anchor),
-                "detect_first_anchor_track_id": (
-                    None if not isinstance(detect_first_anchor, dict) else detect_first_anchor.get("track_id")
-                ),
-                "detect_first_anchor_confidence": (
-                    0.0
-                    if not isinstance(detect_first_anchor, dict)
-                    else float(detect_first_anchor.get("confidence") or 0.0)
-                ),
-                "detect_first_window_frames": (
-                    0
-                    if not isinstance(detect_first_anchor, dict)
-                    else int(detect_first_anchor.get("detect_first_frames") or 0)
-                ),
-                "detect_first_window_hits": (
-                    0
-                    if not isinstance(detect_first_anchor, dict)
-                    else int(detect_first_anchor.get("detect_first_hits") or 0)
-                ),
+                **detect_first_runtime_signal_fields(detect_first_anchor),
             }
             blind_suspected_since_monotonic: float | None = None
             blind_quickcheck_until_monotonic = 0.0
@@ -857,6 +902,14 @@ class MotionRecordingSession:
                 opencv_diag = getattr(self.motion_detector, "diagnostics", lambda: None)()
             if isinstance(opencv_diag, dict):
                 finalize_kwargs["recording_context"]["runtime_signals"]["opencv_trigger_diagnostics"] = opencv_diag
+            anchor_snapshot = sanitize_anchor_for_context(detect_first_anchor)
+            if anchor_snapshot is not None:
+                finalize_kwargs["recording_context"]["detect_first_anchor"] = anchor_snapshot
+            tracks = getattr(self.frame_processor, "tracks", None) or {}
+            if isinstance(tracks, dict) and tracks:
+                import copy
+
+                finalize_kwargs["recording_context"]["tracks_snapshot"] = copy.deepcopy(tracks)
             if self.finalize_worker is not None:
                 if self.finalize_worker.enqueue(finalize_kwargs):
                     logger.info("recording_session: finalize task enqueued (async worker mode)")

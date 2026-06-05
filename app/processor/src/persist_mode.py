@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from track_first_contract import is_valid_norm_bbox, valid_track_frames
+
 
 def persist_mode_name(app_config) -> str:
     return str(app_config.get("detection.persist_mode") or "binary_track_first").strip().lower()
@@ -21,28 +23,11 @@ def binary_track_first_enabled(app_config) -> bool:
 
 
 def _is_valid_norm_bbox(bbox: Any) -> bool:
-    if not isinstance(bbox, (list, tuple)) or len(bbox) < 4:
-        return False
-    try:
-        x1, y1, x2, y2 = [float(v) for v in bbox[:4]]
-    except (TypeError, ValueError):
-        return False
-    if not (x2 > x1 and y2 > y1):
-        return False
-    low, high = -0.05, 1.05
-    return all(low <= v <= high for v in (x1, y1, x2, y2))
+    return is_valid_norm_bbox(bbox)
 
 
 def track_has_bbox_frames(track: dict[str, Any]) -> bool:
-    frames = track.get("frames")
-    if not isinstance(frames, list) or not frames:
-        return False
-    for frame in frames:
-        if not isinstance(frame, dict):
-            continue
-        if _is_valid_norm_bbox(frame.get("bbox")):
-            return True
-    return False
+    return bool(valid_track_frames(track.get("frames")))
 
 
 def binary_track_first_min_detector_conf(app_config, min_confidence_to_process: float) -> float:
@@ -94,16 +79,18 @@ def passes_binary_track_first_store_floor(
         return False
     if str(row.get("detection_provider") or "").strip().lower() != "yolo":
         return False
-    if not track_has_bbox_frames(row):
-        return False
     reason = str(row.get("decision_reason") or "").strip()
     if reason in {
         "accepted_binary_track_classifier_uncertain",
         "accepted_classifier_best_guess",
+        "track_first_persist",
+        "detect_first_anchor_persist",
+        "detect_first_pre_fusion_restore",
+        "detect_first_track_safeguard",
+        "yolo_core_anchor_forced",
     }:
         return True
-    label = str(row.get("detector_label") or row.get("species_name") or "").strip().lower()
-    if label not in {"bird", "unknown"}:
+    if not track_has_bbox_frames(row):
         return False
     try:
         min_proc = float(app_config.get("processor.min_confidence_to_process") or 0.12)
@@ -111,6 +98,9 @@ def passes_binary_track_first_store_floor(
         min_proc = 0.12
     det_conf = float(row.get("detector_confidence") or conf)
     floor = binary_track_first_min_detector_conf(app_config, min_proc)
+    label = str(row.get("detector_label") or row.get("species_name") or "").strip().lower()
+    if label not in {"bird", "unknown"}:
+        return reason == "accepted_species" and det_conf >= floor
     return det_conf >= floor
 
 

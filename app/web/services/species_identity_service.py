@@ -127,7 +127,7 @@ class SpeciesIdentityService:
         normalized = name.strip()
         if not normalized:
             return None
-        if normalized.lower() in {"bird", "unknown"}:
+        if normalized.lower() in {"bird", "unknown", "unknown bird", "generic bird"}:
             normalized = GENERIC_BIRD_SPECIES
         resolution = resolve_species_name(normalized, source=source)
         taxon = resolution.taxon if resolution.found else None

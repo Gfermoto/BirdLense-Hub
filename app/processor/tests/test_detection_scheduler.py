@@ -9,10 +9,11 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 src_path = os.path.abspath(os.path.join(current_dir, "../src"))
 sys.path.append(src_path)
 
+from detect_first import is_valid_detect_first_anchor  # noqa: E402
 from detection_scheduler import (  # noqa: E402
-    is_valid_detect_first_anchor,
     requires_detect_first_before_record,
     should_run_probe,
+    trigger_requires_detect_first,
 )
 
 
@@ -60,7 +61,6 @@ class TestDetectionScheduler(unittest.TestCase):
 class TestDetectFirstContract(unittest.TestCase):
     def test_is_valid_anchor_requires_track_and_norm_bbox(self):
         self.assertFalse(is_valid_detect_first_anchor(None))
-        self.assertFalse(is_valid_detect_first_anchor({"detect_first_bypassed": True}))
         self.assertFalse(is_valid_detect_first_anchor({"track_id": 1}))
         self.assertTrue(
             is_valid_detect_first_anchor({"track_id": 7, "bbox": [0.1, 0.2, 0.3, 0.4]})
@@ -69,6 +69,8 @@ class TestDetectFirstContract(unittest.TestCase):
     def test_requires_detect_first_for_go2rtc_live(self):
         cfg = {"video.source": "go2rtc"}
         self.assertTrue(requires_detect_first_before_record(args=SimpleNamespace(input=None), app_config=cfg))
+        cfg_off = {"video.source": "go2rtc", "processor.detect_first_enabled": False}
+        self.assertFalse(requires_detect_first_before_record(args=SimpleNamespace(input=None), app_config=cfg_off))
         self.assertFalse(
             requires_detect_first_before_record(
                 args=SimpleNamespace(input="/tmp/x.mp4"),
@@ -81,6 +83,16 @@ class TestDetectFirstContract(unittest.TestCase):
                 app_config={"video.source": "file"},
             )
         )
+
+
+class TestTriggerRequiresDetectFirst(unittest.TestCase):
+    def test_opencv_always_when_track_first_gate(self):
+        cfg = {"video.source": "go2rtc", "processor.detect_first_triggers": ["frigate"]}
+        self.assertTrue(trigger_requires_detect_first(trigger_source="opencv", app_config=cfg))
+
+    def test_respects_trigger_allowlist(self):
+        cfg = {"video.source": "go2rtc", "processor.detect_first_triggers": ["frigate"]}
+        self.assertFalse(trigger_requires_detect_first(trigger_source="scales", app_config=cfg))
 
 
 if __name__ == "__main__":

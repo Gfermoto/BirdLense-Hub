@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 import requests
 
 from app_config.app_config import app_config
-from app_config.cameras import get_valid_cameras
+from app_config.cameras import get_valid_cameras, validate_go2rtc_detect_streams
 
 logger = logging.getLogger(__name__)
 
@@ -59,10 +59,17 @@ def check_video_reachable() -> str:
     Проверка доступности камер через go2rtc snapshot.
     Returns: 'ok' | 'error' | 'not_configured'
     """
-    cameras_config = app_config.get("video.cameras") or []
-    valid = get_valid_cameras(cameras_config)
+    cameras_config = app_config.get("video") or {}
+    valid = get_valid_cameras(
+        video_config=cameras_config if isinstance(cameras_config, dict) else None,
+    )
     if not valid:
         return "not_configured"
+    source = str(cameras_config.get("source") or "go2rtc").strip().lower()
+    if source == "go2rtc":
+        issues = validate_go2rtc_detect_streams(valid, video_source=source)
+        if issues:
+            return "error"
     try:
         max_probe_total_s = float(app_config.get("video.go2rtc_probe_max_total_seconds") or 3.0)
     except (TypeError, ValueError):
@@ -75,17 +82,24 @@ def check_video_reachable() -> str:
             logger.debug("Video frame probe deadline exceeded")
             break
         stream_name = (cam.get("stream_name") or cam.get("id") or "").strip()
+        detect_name = (cam.get("detect_stream_name") or "").strip()
         if not stream_name:
             continue
-        candidates = [
-            f"{base}/api/frame.jpeg?src={stream_name}",
-            _hub_go2rtc_frame_url(stream_name),
-        ]
-        for url in candidates:
+        stream_names = [stream_name]
+        if detect_name and detect_name != stream_name:
+            stream_names.append(detect_name)
+        for probe_name in stream_names:
             if time.monotonic() >= deadline:
                 break
-            if url and _probe_frame_url(url, auth):
-                return "ok"
+            candidates = [
+                f"{base}/api/frame.jpeg?src={probe_name}",
+                _hub_go2rtc_frame_url(probe_name),
+            ]
+            for url in candidates:
+                if time.monotonic() >= deadline:
+                    break
+                if url and _probe_frame_url(url, auth):
+                    return "ok"
     return "error"
 
 

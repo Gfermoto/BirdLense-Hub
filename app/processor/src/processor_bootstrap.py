@@ -17,10 +17,11 @@ from file_test_control import FileTestRuntime, maybe_build_file_test_runtime
 from fps_tracker import FPSTracker
 from media_runtime import ProcessorMediaSetup, setup_processor_media
 from motion_runtime import build_processor_motion_detector
+from detect_first import is_valid_detect_first_anchor
 from detection_scheduler import (
-    is_valid_detect_first_anchor,
     requires_detect_first_before_record,
     should_run_probe,
+    trigger_requires_detect_first,
 )
 from mqtt_runtime import (
     frigate_filters_for_cameras,
@@ -306,26 +307,40 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
         )
         detect_first_anchor = None
         session_args = getattr(ctx.session, "args", None)
+        registry = getattr(ctx, "recording_concurrency", None)
+        concurrent = bool(getattr(ctx, "concurrent_recording_enabled", False) and registry is not None)
         if requires_detect_first_before_record(args=session_args, app_config=app_config):
-            detect_first = getattr(ctx.session, "detect_until_confirmed", None)
-            if not callable(detect_first):
-                logger.error(
-                    "Go2RTC requires detect_until_confirmed; skipping trigger (source=%s camera=%s)",
-                    trigger_source or "?",
-                    camera_id,
-                )
-                continue
-            detect_first_anchor = detect_first(
-                camera_id=camera_id,
-                trigger_source=trigger_source,
-            )
-            if not is_valid_detect_first_anchor(detect_first_anchor):
+            if concurrent and registry is not None and registry.any_active():
+                requeued = requeue_motion_trigger(ctx.session.motion_detector)
+                inc_counter("recording_trigger_deferred_detect_first_busy_total")
                 logger.info(
-                    "Skipping recording: no confirmed lores anchor (trigger=%s camera=%s)",
-                    trigger_source or "?",
-                    camera_id,
+                    "Deferring detect-first: shared inference busy (requeued=%s camera=%s)",
+                    requeued,
+                    camera_id or "?",
                 )
                 continue
+            if not trigger_requires_detect_first(trigger_source=trigger_source, app_config=app_config):
+                detect_first_anchor = None
+            else:
+                detect_first = getattr(ctx.session, "detect_until_confirmed", None)
+                if not callable(detect_first):
+                    logger.error(
+                        "Go2RTC requires detect_until_confirmed; skipping trigger (source=%s camera=%s)",
+                        trigger_source or "?",
+                        camera_id,
+                    )
+                    continue
+                detect_first_anchor = detect_first(
+                    camera_id=camera_id,
+                    trigger_source=trigger_source,
+                )
+                if not is_valid_detect_first_anchor(detect_first_anchor):
+                    logger.info(
+                        "Skipping recording: no confirmed lores anchor (trigger=%s camera=%s)",
+                        trigger_source or "?",
+                        camera_id,
+                    )
+                    continue
         elif should_run_probe(trigger_source=trigger_source, app_config=app_config):
             probe_ok = bool(
                 ctx.session.run_detection_probe_window(

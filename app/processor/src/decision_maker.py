@@ -11,6 +11,7 @@ from persist_mode import (
     defer_static_pinned_reject,
     track_has_bbox_frames,
 )
+from app_config.visit_eligibility import is_generic_bird_species_name, visit_eligible_for_named_species
 from runtime_contract import apply_runtime_contract
 from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
 
@@ -590,7 +591,11 @@ class DecisionMaker:
                     decision_reason = "accepted_classifier_best_guess"
         return {
             "accepted": True,
-            "visit_eligible": True,
+            "visit_eligible": visit_eligible_for_named_species(
+                species_name=species,
+                visit_eligible=True,
+                birder_unknown_label=str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird"),
+            ),
             "notification_eligible": False,
             "out_species": species,
             "out_conf": max(combined, float(detector_conf)),
@@ -651,7 +656,11 @@ class DecisionMaker:
             combined = float(classifier_candidate.get("combined_confidence") or 0.0)
         return {
             "accepted": True,
-            "visit_eligible": True,
+            "visit_eligible": visit_eligible_for_named_species(
+                species_name=species,
+                visit_eligible=True,
+                birder_unknown_label=str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird"),
+            ),
             "notification_eligible": False,
             "out_species": species,
             "out_conf": max(combined, avg_conf, float(detector_conf)),
@@ -1040,6 +1049,14 @@ class DecisionMaker:
             clf_entropy = classifier_candidate.get("avg_entropy") if classifier_candidate is not None else None
             clf_margin = classifier_candidate.get("avg_top1_top2_margin") if classifier_candidate is not None else None
             clf_needs_review = _classifier_needs_review_flag(clf_entropy, clf_margin, entropy_ge, margin_le)
+
+            visit_eligible = visit_eligible_for_named_species(
+                species_name=out_species,
+                visit_eligible=bool(visit_eligible),
+                birder_unknown_label=str(app_config.get("processor.birder_eu_unknown_label") or "Unknown Bird"),
+            )
+            if not visit_eligible:
+                notification_eligible = False
 
             decisions.append(
                 apply_runtime_contract(

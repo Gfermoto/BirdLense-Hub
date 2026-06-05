@@ -232,7 +232,7 @@ class TestDecisionMaker(unittest.TestCase):
         results = dm.get_results(tracks)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["decision_reason"], "fallback_bird")
-        self.assertTrue(results[0].get("visit_eligible", True))
+        self.assertFalse(results[0].get("visit_eligible", True))
 
     def test_generic_bird_promotion_thresholds_are_configurable(self):
         dm = DecisionMaker(
@@ -258,7 +258,7 @@ class TestDecisionMaker(unittest.TestCase):
         results = dm.get_results(tracks)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]['decision_reason'], 'fallback_bird')
-        self.assertTrue(results[0].get('visit_eligible', True))
+        self.assertFalse(results[0].get('visit_eligible', True))
 
     def test_classifier_uncertain_respects_fallback_off(self):
         dm = DecisionMaker(
@@ -569,7 +569,7 @@ class TestDecisionMaker(unittest.TestCase):
             min_confidence_to_process=0.12,
             min_confidence_to_store=0.20,
         )
-        frames = [{"bbox": [10, 10, 50, 50], "t": i * 0.1} for i in range(5)]
+        frames = [{"bbox": [0.10, 0.10, 0.50, 0.50], "t": i * 0.1} for i in range(5)]
         tracks = {
             1: _make_track(
                 detector_confidences=[0.15] * 5,
@@ -580,7 +580,7 @@ class TestDecisionMaker(unittest.TestCase):
         d = dm.get_decisions(tracks)[0]
         self.assertTrue(d["accepted"])
         self.assertEqual(d["decision_reason"], "accepted_binary_track_classifier_uncertain")
-        self.assertTrue(d["visit_eligible"])
+        self.assertFalse(d["visit_eligible"])
         self.assertTrue(d["classifier_needs_review"])
 
     @patch("app_config.app_config.app_config")

@@ -832,6 +832,9 @@ paths:
                         type: string
                         format: date-time
                         nullable: true
+                      unidentified:
+                        type: boolean
+                        description: True when last activity is generic Bird/Rodent (detector only)
                   observer_timezone:
                     type: string
                     description: IANA timezone name used for local-hour bucketing
@@ -4768,6 +4771,9 @@ components:
           type: array
           items:
             type: integer
+        unidentified:
+          type: boolean
+          description: True for synthetic generic Bird/Rodent rows from detector segments
     OverviewStats:
       type: object
       properties:
@@ -4775,8 +4781,18 @@ components:
           type: integer
         totalDetections:
           type: integer
+          description: Named-species visits (SpeciesVisit), excludes generic Bird/Rodent
         lastHourDetections:
           type: integer
+        unidentifiedBirdDetections:
+          type: integer
+          description: YOLO/MQTT segments labeled generic Bird (classifier not required)
+        rodentDetections:
+          type: integer
+          description: Detector segments labeled Rodent or rodent-like taxa
+        totalActivity:
+          type: integer
+          description: Named visits plus unidentified bird and rodent detector segments
         busiestHour:
           type: integer
         avgVisitDuration:

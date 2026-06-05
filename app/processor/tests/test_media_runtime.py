@@ -52,19 +52,22 @@ class TestMediaRuntimeHelpers(unittest.TestCase):
         )
 
     def test_validate_go2rtc_detect_streams_raises_when_missing(self):
-        from media_runtime import _validate_go2rtc_detect_streams
+        from app_config.cameras import validate_go2rtc_detect_streams
 
-        with self.assertRaises(RuntimeError):
-            _validate_go2rtc_detect_streams(
-                [{"id": "yard", "stream_name": "yard_main"}],
-            )
+        issues = validate_go2rtc_detect_streams(
+            [{"id": "yard", "stream_name": "yard_main"}],
+            video_source="go2rtc",
+        )
+        self.assertTrue(issues)
 
     def test_validate_go2rtc_detect_streams_ok(self):
-        from media_runtime import _validate_go2rtc_detect_streams
+        from app_config.cameras import validate_go2rtc_detect_streams
 
-        _validate_go2rtc_detect_streams(
+        issues = validate_go2rtc_detect_streams(
             [{"id": "yard", "stream_name": "yard_main", "detect_stream_name": "yard_detect"}],
+            video_source="go2rtc",
         )
+        self.assertEqual(issues, [])
 
 
 if __name__ == "__main__":

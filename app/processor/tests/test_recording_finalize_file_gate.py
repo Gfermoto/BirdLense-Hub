@@ -682,10 +682,14 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
 
         persisted = api.create_video.call_args.args[0]
         self.assertGreater(len(persisted), 0)
-        self.assertFalse(any(item.get('decision_kind') == 'frigate_standalone' and not item.get('frames') for item in persisted))
         self.assertFalse(any(item.get('detection_provider') == 'yolo' and not item.get('frames') for item in persisted))
+        frigate_frameless = [
+            item for item in persisted
+            if item.get('decision_kind') == 'frigate_standalone' and not item.get('frames')
+        ]
+        self.assertEqual(len(frigate_frameless), 1)
 
-    def test_rejects_frameless_frigate_standalone_by_bbox_track_contract(self):
+    def test_allows_frameless_frigate_standalone_under_bbox_track_contract(self):
         api = MagicMock()
         api.create_video.return_value = {'video_id': 1021}
         motion_detector = MagicMock()
@@ -765,7 +769,11 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                     data_dir=tmp,
                 )
 
-        self.assertIsNone(api.create_video.call_args)
+        self.assertIsNotNone(api.create_video.call_args)
+        persisted = api.create_video.call_args.args[0]
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0].get("detection_provider"), "frigate")
+        self.assertEqual(persisted[0].get("frames"), [])
 
     def test_salvages_weak_yolo_track_as_review_only_when_fused_empty(self):
         api = MagicMock()

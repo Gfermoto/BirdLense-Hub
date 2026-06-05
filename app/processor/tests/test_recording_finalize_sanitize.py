@@ -43,7 +43,11 @@ class TestRecordingFinalizeSanitize(unittest.TestCase):
             "end_time": 58.0,
             "frames": _static_pinned_frames(),
         }
-        runtime = {"processor.pipeline_mode": "legacy", "processor.track_static_reject_enabled": True}
+        runtime = {
+            "processor.pipeline_mode": "legacy",
+            "processor.track_static_reject_enabled": True,
+            "detection.persist_mode": "legacy",
+        }
         with patch("recording_finalize.app_config") as mock_cfg:
             mock_cfg.get.return_value = False
             out = _sanitize_persisted_overlay_frames([row], runtime_cfg=runtime)
