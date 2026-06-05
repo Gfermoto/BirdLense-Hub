@@ -8,10 +8,14 @@
       "fn_hour"
     ],
     "thresholds": {
-      "min_precision": 0.0,
-      "min_recall": 0.0,
-      "max_fp_hour": 1000000.0,
-      "max_fn_hour": 1000000.0
+      "min_precision": 0.3,
+      "min_recall": 0.3,
+      "max_fp_hour": 5.0,
+      "max_fn_hour": 60.0,
+      "min_tracks_coverage": 0.5,
+      "max_empty_bbox_rate": 0.2,
+      "max_trigger_to_first_bbox_latency_p95_s": 5.0,
+      "min_sessions_total": 1
     }
   },
   "classifier": {
@@ -22,10 +26,10 @@
       "ece"
     ],
     "thresholds": {
-      "min_top1": 0.0,
-      "min_top3": 0.0,
-      "min_macro_f1": 0.0,
-      "max_ece": 1.0
+      "min_top1": 0.3,
+      "min_top3": 0.3,
+      "min_macro_f1": 0.3,
+      "max_ece": 0.4
     }
   },
   "behavior": {
@@ -34,8 +38,8 @@
       "temporal_consistency"
     ],
     "thresholds": {
-      "min_class_f1": 0.0,
-      "min_temporal_consistency": 0.0
+      "min_class_f1": 0.4,
+      "min_temporal_consistency": 0.4
     }
   },
   "reid": {

@@ -7,7 +7,11 @@ import argparse
 import json
 import sqlite3
 from collections import Counter, defaultdict
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+try:
+    from datetime import UTC
+except ImportError:  # Python 3.9
+    UTC = timezone.utc  # type: ignore[misc, assignment]
 from pathlib import Path
 from typing import Any
 

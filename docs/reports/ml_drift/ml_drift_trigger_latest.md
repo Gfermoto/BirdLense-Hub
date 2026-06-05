@@ -1,6 +1,6 @@
 # ML Drift Trigger Report
 
-- generated_at: `2026-05-31T19:02:50Z`
+- generated_at: `2026-06-05T16:01:11Z`
 - observations_total: `5`
 - min_observations_required: `5`
 - retrain_required: `False`

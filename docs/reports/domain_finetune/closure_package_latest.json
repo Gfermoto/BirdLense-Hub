@@ -1,6 +1,6 @@
 {
   "schema": "domain_closure_package_report@v1",
-  "generated_at": "2026-06-01T12:17:04Z",
+  "generated_at": "2026-06-04T14:49:19Z",
   "checks": {
     "closure_doc_exists_ok": true,
     "required_sections_ok": true,

@@ -1,15 +1,16 @@
 # Golden Set Mandatory Gate
 
-- generated_at: `2026-05-31T19:02:31Z`
+- generated_at: `2026-06-05T16:00:58Z`
 - base_ref: `HEAD~1`
 - head_ref: `HEAD`
-- gate_required: `False`
+- gate_required: `True`
 - ok: `True`
 
 ## Trigger files
 
-- none
+- `app/processor/src/detection_fusion.py`
 
 ## Runs
 
-- skipped
+- `make validate-pipeline-golden` -> ok=`True` (exit=0, 1.667s)
+- `python3 scripts/stress_test_offline.py --no-yolo` -> ok=`True` (exit=0, 3.946s)

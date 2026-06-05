@@ -1,6 +1,6 @@
 {
   "schema": "error_budget_gate@v1",
-  "generated_at": "2026-05-31T19:02:32Z",
+  "generated_at": "2026-06-05T11:48:52Z",
   "policy": {
     "window": "rolling_28d",
     "budget_pct_total": 100,
@@ -35,7 +35,11 @@
   "gate": {
     "override_used": false,
     "override_reason": "",
-    "block_release": false,
-    "ok": true
+    "override_has_ticket": false,
+    "warning_requires_override": true,
+    "requires_override": true,
+    "warning_override_active": true,
+    "block_release": true,
+    "ok": false
   }
 }

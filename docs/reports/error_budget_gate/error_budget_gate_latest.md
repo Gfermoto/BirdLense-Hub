@@ -1,10 +1,10 @@
 # Error Budget Gate
 
-- generated_at: `2026-05-31T19:02:32Z`
+- generated_at: `2026-06-05T11:48:52Z`
 - state: `warning`
 - consumed_pct: `85`
 - remaining_pct: `15`
-- gate_ok: `True`
+- gate_ok: `False`
 
 ## Inputs
 
@@ -26,4 +26,4 @@
 
 - override_used: `False`
 - override_reason: ``
-- block_release: `False`
+- block_release: `True`

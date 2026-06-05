@@ -66,6 +66,15 @@ app/.pytest_cache/
 .venv-ci/
 .venv-yolo-fetch/
 .venv-docs/
+.venv-birder/
+# Local model weights at repo root (do not commit large blobs)
+models/
+.tmp_fusion_*.json
+/0
+# Local deep-pipeline scratch scripts (not part of CI/Makefile)
+scripts/deep_pipeline_today_runner.py
+scripts/deep_pipeline_today_vps.py
+scripts/deep_pipeline_tuning_plan.py
 # Local model weight (do not commit large model blobs)
 app/yolo11n.pt
 # Настройки — не коммитить (только шаблоны в репо)

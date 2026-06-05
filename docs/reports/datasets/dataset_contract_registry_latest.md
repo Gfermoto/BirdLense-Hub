@@ -1,6 +1,6 @@
 # Dataset Contract Registry
 
-- generated_at: `2026-06-01T10:27:57Z`
+- generated_at: `2026-06-05T16:01:14Z`
 - required_streams_total: `4`
 - contracts_total: `4`
 - valid_streams_total: `4`

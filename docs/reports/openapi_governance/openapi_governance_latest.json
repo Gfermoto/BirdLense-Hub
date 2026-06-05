@@ -1,6 +1,6 @@
 {
   "schema": "openapi_governance@v1",
-  "generated_at": "2026-05-31T19:02:51Z",
+  "generated_at": "2026-06-05T16:01:13Z",
   "checks": {
     "spectral_ruleset_present": true,
     "spectral_ran": true,

@@ -1,0 +1,149 @@
+{
+  "video": "/workspace/app/data/audit_clips/noise_fp_142314.mp4",
+  "accepted": [
+    {
+      "frame_id": 73,
+      "sample_idx": 7,
+      "boxes": [
+        {
+          "track_id": 2,
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "confidence": 0.11371987901278402,
+          "detector_confidence": 0.5605053305625916
+        }
+      ],
+      "image": "frame_000073.jpg"
+    },
+    {
+      "frame_id": 97,
+      "sample_idx": 9,
+      "boxes": [
+        {
+          "track_id": 2,
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "confidence": 0.10834779241110937,
+          "detector_confidence": 0.6748654246330261
+        }
+      ],
+      "image": "frame_000097.jpg"
+    },
+    {
+      "frame_id": 277,
+      "sample_idx": 24,
+      "boxes": [
+        {
+          "track_id": 3,
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "confidence": 0.2326740069647215,
+          "detector_confidence": 0.8232420682907104
+        }
+      ],
+      "image": "frame_000277.jpg"
+    },
+    {
+      "frame_id": 313,
+      "sample_idx": 27,
+      "boxes": [
+        {
+          "track_id": 3,
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "confidence": 0.20595964371186248,
+          "detector_confidence": 0.8522952795028687
+        }
+      ],
+      "image": "frame_000313.jpg"
+    },
+    {
+      "frame_id": 325,
+      "sample_idx": 28,
+      "boxes": [
+        {
+          "track_id": 3,
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "confidence": 0.19163287315964084,
+          "detector_confidence": 0.8340201377868652
+        }
+      ],
+      "image": "frame_000325.jpg"
+    },
+    {
+      "frame_id": 337,
+      "sample_idx": 29,
+      "boxes": [
+        {
+          "track_id": 3,
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "confidence": 0.5625966286424955,
+          "detector_confidence": 0.7706364989280701
+        }
+      ],
+      "image": "frame_000337.jpg"
+    },
+    {
+      "frame_id": 385,
+      "sample_idx": 33,
+      "boxes": [
+        {
+          "track_id": 3,
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "confidence": 0.20161449080242555,
+          "detector_confidence": 0.7999855875968933
+        }
+      ],
+      "image": "frame_000385.jpg"
+    },
+    {
+      "frame_id": 421,
+      "sample_idx": 36,
+      "boxes": [
+        {
+          "track_id": 3,
+          "bbox": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "confidence": 0.6122786301572312,
+          "detector_confidence": 0.7639419436454773
+        }
+      ],
+      "image": "frame_000421.jpg"
+    }
+  ]
+}
