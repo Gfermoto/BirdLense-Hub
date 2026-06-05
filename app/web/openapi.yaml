@@ -63,6 +63,9 @@ paths:
                   ready:
                     type: boolean
                     example: true
+                  quality_ready:
+                    type: boolean
+                    description: True when historical pipeline-quality checks are healthy. Core service readiness may be true while this is false.
                   checked_at:
                     type: string
                     format: date-time
@@ -99,6 +102,21 @@ paths:
                           writable:
                             type: boolean
                           status:
+                            type: string
+                      cache_backend:
+                        type: object
+                        additionalProperties: true
+                      processor_heartbeat:
+                        type: object
+                        additionalProperties: true
+                      pipeline_funnel:
+                        $ref: "#/components/schemas/PipelineFunnelCheck"
+                      yolo_detector:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          source:
                             type: string
                   components:
                     type: object
@@ -152,6 +170,9 @@ paths:
                             status:
                               type: string
                               enum: [ok, warn, error]
+                  pipeline_funnel:
+                    type: object
+                    additionalProperties: true
         "503":
           description: App is up but not fully ready for use
           content:
@@ -166,6 +187,9 @@ paths:
                   ready:
                     type: boolean
                     example: false
+                  quality_ready:
+                    type: boolean
+                    description: True when historical pipeline-quality checks are healthy. Core service readiness may be false due to core checks.
                   checked_at:
                     type: string
                     format: date-time
@@ -204,6 +228,21 @@ paths:
                           writable:
                             type: boolean
                           status:
+                            type: string
+                      cache_backend:
+                        type: object
+                        additionalProperties: true
+                      processor_heartbeat:
+                        type: object
+                        additionalProperties: true
+                      pipeline_funnel:
+                        $ref: "#/components/schemas/PipelineFunnelCheck"
+                      yolo_detector:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          source:
                             type: string
                   components:
                     type: object
@@ -253,6 +292,9 @@ paths:
                             status:
                               type: string
                               enum: [ok, warn, error]
+                  pipeline_funnel:
+                    type: object
+                    additionalProperties: true
   /status:
     get:
       summary: Component status
@@ -802,6 +844,19 @@ paths:
           schema:
             type: string
             format: date
+          description: Observer-local calendar day (YYYY-MM-DD). Use either date or start_time/end_time.
+        - in: query
+          name: start_time
+          required: false
+          schema:
+            type: integer
+          description: Unix timestamp (UTC); pair with end_time for explicit window.
+        - in: query
+          name: end_time
+          required: false
+          schema:
+            type: integer
+          description: Unix timestamp (UTC); pair with start_time for explicit window.
       responses:
         "200":
           description: Overview data
@@ -964,8 +1019,9 @@ paths:
     get:
       summary: List all species
       description: |
-        Retrieve species rows for catalog UIs. Default ``scope=allowlist`` returns one row per classifier
-        class (~526), not every legacy SQLite row. Use ``scope=all`` for the full DB catalog.
+        Retrieve species rows for catalog UIs. Default ``scope=project`` returns project-visible
+        species (observed rows plus arbitration/classifier vocabulary and Bird/Rodent placeholders).
+        ``scope=allowlist`` returns one row per classifier class. Use ``scope=all`` for the full DB catalog.
         With ``exclude_suspects=1``, rows matching ``species_suspect_blocklist.txt`` are omitted.
         With ``meta=1``, response is ``{items, meta}`` with allowlist vs DB totals.
       parameters:
@@ -980,15 +1036,27 @@ paths:
           required: false
           schema:
             type: string
-            enum: [allowlist, observed, all]
-            default: allowlist
-          description: Catalog slice (default allowlist = classifier classes).
+            enum: [project, allowlist, observed, all]
+            default: project
+          description: Catalog slice (default project = operator-visible catalog).
         - in: query
           name: meta
           required: false
           schema:
             type: boolean
           description: If true, wrap list in `{items, meta}` with coverage counters.
+        - in: query
+          name: missing_audio
+          required: false
+          schema:
+            type: boolean
+          description: If true, return rows without catalog audio metadata.
+        - in: query
+          name: catalog_incomplete
+          required: false
+          schema:
+            type: boolean
+          description: If true, return rows with incomplete photo/description metadata.
       responses:
         "200":
           description: List of species (array) or wrapped payload when meta=1
@@ -2147,8 +2215,7 @@ paths:
           content:
             application/json:
               schema:
-                additionalProperties: true
-                type: object
+                $ref: '#/components/schemas/CamerasResponse'
           description: OK
         '403':
           content:
@@ -4774,6 +4841,62 @@ components:
         unidentified:
           type: boolean
           description: True for synthetic generic Bird/Rodent rows from detector segments
+    PipelineFunnelCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, unknown]
+        sessions_total:
+          type: integer
+          nullable: true
+        healthy_persist_rate:
+          type: number
+          nullable: true
+        fusion_drop_rate:
+          type: number
+          nullable: true
+        fp_empty_opencv_rate:
+          type: number
+          nullable: true
+        alerts:
+          type: array
+          items:
+            type: string
+        top_root_causes:
+          type: array
+          items:
+            type: string
+    CameraSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Canonical camera id, equal to the Go2RTC recording stream name.
+        name:
+          type: string
+          description: Display name used in the UI.
+        stream_url:
+          type: string
+        go2rtc_src:
+          type: string
+          description: Go2RTC stream name used for main/live playback.
+        stream_url_mjpeg:
+          type: string
+          description: Processor MJPEG overlay endpoint for the detection stream.
+        camera_slot:
+          type: string
+          nullable: true
+        camera_profile:
+          type: string
+          nullable: true
+    CamerasResponse:
+      type: object
+      properties:
+        cameras:
+          type: array
+          items:
+            $ref: "#/components/schemas/CameraSummary"
     OverviewStats:
       type: object
       properties:
@@ -4807,6 +4930,11 @@ components:
         detectionByProvider:
           type: object
           description: Visit counts by `VideoSpecies.detection_provider` (key `legacy` if null)
+          additionalProperties:
+            type: integer
+        triggerBySource:
+          type: object
+          description: Visit counts by `Video.trigger_source` (key `unknown` if null)
           additionalProperties:
             type: integer
     TimelineVisit:
@@ -4961,6 +5089,15 @@ components:
           type: integer
         name:
           type: string
+        db_name:
+          type: string
+          description: Raw persisted species name before catalog display normalization.
+        scientific_name:
+          type: string
+          nullable: true
+        classifier_predictable:
+          type: boolean
+          description: True when the active classifier/allowlist can predict this row.
         parent_id:
           type: integer
         created_at:
@@ -4970,6 +5107,13 @@ components:
           type: string
         description:
           type: string
+          nullable: true
+        metadata_source:
+          type: string
+          nullable: true
+        metadata_source_url:
+          type: string
+          nullable: true
         active:
           type: boolean
         regional_scope:
@@ -4984,8 +5128,11 @@ components:
           description: True when photo or description is missing or placeholder (card-quality UI).
         catalog_scope:
           type: string
-          enum: [allowlist, observed, all]
+          enum: [project, allowlist, observed, all]
           description: Present when the row was returned under a scoped catalog query.
+        catalog_has_audio:
+          type: boolean
+          description: True when the catalog card has linked audio metadata.
     SpeciesCatalogMeta:
       type: object
       properties:
@@ -4997,6 +5144,25 @@ components:
           type: integer
         allowlist_incomplete:
           type: integer
+        project_vocabulary_total:
+          type: integer
+        listed_project:
+          type: integer
+        arbitration_vocabulary_total:
+          type: integer
+        classifier_engine:
+          type: string
+          nullable: true
+        classifier_class_count:
+          type: integer
+          nullable: true
+        catalog_with_audio:
+          type: integer
+        catalog_missing_audio:
+          type: integer
+        catalog_cards:
+          type: object
+          additionalProperties: true
     SpeciesCatalogListResponse:
       type: object
       properties:

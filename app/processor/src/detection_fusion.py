@@ -388,7 +388,7 @@ def _frigate_events_camera_scoped(
         from frigate_scope import frigate_camera_allow_ids
     except ImportError:
         return [e for e in (frigate_events or []) if e]
-    valid = get_valid_cameras(app_config.get("video.cameras") or [])
+    valid = get_valid_cameras(video_config=(app_config.get("video") or {}))
     proc_cams = cameras_for_processor(valid)
     allow = frigate_camera_allow_ids(proc_cams, app_config)
     allow_l = {str(x).strip().lower() for x in allow if str(x).strip()}

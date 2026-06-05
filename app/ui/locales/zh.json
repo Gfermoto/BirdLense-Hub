@@ -296,6 +296,7 @@
     "detectStreamName": "Detect 流 (Go2RTC)",
     "detectStreamNamePlaceholder": "例如 yard_detect",
     "detectStreamNameHint": "Go2RTC 必填：运动检测、YOLO 与跟踪仅使用此流。上方的 stream_name 仅用于主 MP4 录制。",
+    "detectStreamNameSameAsRecordError": "Detect 流必须是单独的低清流，不能与录制流相同。",
     "cameraName": "相机名称",
     "cameraPlaceholder": "喂食器",
     "addCamera": "+ 添加相机",
@@ -3098,15 +3099,17 @@
   },
   "speciesDirectory": {
     "title": "卡片质量",
-    "description": "用于完善照片与说明的服务列表（模型类别 525+1）。目录索引在导航「物种」中。",
-    "scopeHint": "分类器：{{allowlist}} 个名称。SQLite 共 {{db}} 条 Species（历史、分类、重复）。Allowlist 不完整卡片：{{incomplete}}。",
+    "description": "用于完善物种卡片照片、说明和音频覆盖率的系统工具。普通物种视图在「物种」菜单中。",
+    "scopeHint": "模型类别：{{engine}}，{{classCount}}。仲裁词表：约 {{arbCount}} 个键。SQLite Species：{{db}}。Allowlist 不完整卡片：{{incomplete}}。",
+    "scopeProject": "项目",
     "scopeAllowlist": "模型类别",
     "scopeObserved": "已观测",
     "scopeAllDb": "全库（管理）",
     "allowlistModelCount": "模型：{{count}}",
     "incompleteAllowlistCount": "不完整（allowlist）：{{count}}",
     "badgeIncomplete": "卡片不完整",
-    "backToCatalog": "← 返回目录索引（已观测、数据集、EU）",
+    "backToCatalog": "← 返回物种",
+    "backToSystem": "返回系统",
     "colSpecies": "物种",
     "colStatus": "状态",
     "colActions": "操作",
@@ -3124,6 +3127,10 @@
     "openSpeciesTooltip": "物种详情：说明、出现频率、相关录像。",
     "openRecordingsTooltip": "仅筛选该物种的录像与检测。",
     "filterAll": "全部",
-    "filterIncomplete": "不完整"
+    "filterIncomplete": "不完整",
+    "filterMissingAudio": "无目录音频",
+    "audioKpi": "音频：{{withAudio}} 有来源，{{missing}} 缺失",
+    "badgeNoImage": "无照片",
+    "badgeNoDescription": "无说明"
   }
 }

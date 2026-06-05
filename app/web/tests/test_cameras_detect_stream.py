@@ -71,7 +71,7 @@ def test_cameras_for_processor_includes_detect_when_set():
     proc = cameras_for_processor(valid)
     assert proc == [
         {
-            "id": "x",
+            "id": "rec_x",
             "stream_name": "rec_x",
             "detect_stream_name": "det_x",
             "camera_slot": "camera_1",
@@ -83,7 +83,7 @@ def test_cameras_for_processor_omits_detect_when_absent():
     """Processor dict has no detect key if unset."""
     valid = get_valid_cameras([{"id": "y", "stream_name": "only_y"}])
     proc = cameras_for_processor(valid)
-    assert proc == [{"id": "y", "stream_name": "only_y", "camera_slot": "camera_1"}]
+    assert proc == [{"id": "only_y", "stream_name": "only_y", "camera_slot": "camera_1"}]
 
 
 def test_cameras_preserve_opencv_masks():
@@ -124,10 +124,11 @@ def test_get_valid_cameras_from_slot_config_with_profile_binding():
     )
     assert valid == [
         {
-            "id": "feeder",
+            "id": "feeder_main",
             "stream_name": "feeder_main",
             "name": "Feeder",
             "camera_slot": "camera_1",
+            "legacy_id": "feeder",
             "camera_profile": "closeup",
             "detect_stream_name": "feeder_detect",
             "opencv_masks": ["0,0,1,0,1,1,0,1"],
@@ -154,3 +155,25 @@ def test_get_valid_cameras_dual_read_legacy_fallback():
         },
     )
     assert [v["camera_slot"] for v in valid] == ["camera_1", "camera_2"]
+    assert [v["id"] for v in valid] == ["birdbox", "forest"]
+    assert [v["legacy_id"] for v in valid] == ["BirdBox", "Forest"]
+
+
+def test_get_valid_cameras_preserves_tuning_role_and_zones():
+    zones = [{"name": "feeder", "polygon": [[0, 0], [1, 0], [1, 1]]}]
+    valid = get_valid_cameras(
+        [
+            {
+                "id": "BirdBox",
+                "stream_name": "BirdBox",
+                "detect_stream_name": "BirdBox_detect",
+                "tuning_role": "feeder_close",
+                "detection_interest_zones": zones,
+                "detection_interest_zones_required": True,
+            }
+        ],
+    )
+
+    assert valid[0]["tuning_role"] == "feeder_close"
+    assert valid[0]["detection_interest_zones"] == zones
+    assert valid[0]["detection_interest_zones_required"] is True

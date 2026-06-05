@@ -78,6 +78,8 @@ export interface paths {
                             status: string;
                             /** @example true */
                             ready: boolean;
+                            /** @description True when historical pipeline-quality checks are healthy. Core service readiness may be true while this is false. */
+                            quality_ready?: boolean;
                             /** Format: date-time */
                             checked_at: string;
                             checks: {
@@ -97,6 +99,17 @@ export interface paths {
                                     is_dir?: boolean;
                                     writable?: boolean;
                                     status?: string;
+                                };
+                                cache_backend?: {
+                                    [key: string]: unknown;
+                                };
+                                processor_heartbeat?: {
+                                    [key: string]: unknown;
+                                };
+                                pipeline_funnel?: components["schemas"]["PipelineFunnelCheck"];
+                                yolo_detector?: {
+                                    status?: string;
+                                    source?: string;
                                 };
                             };
                             components: {
@@ -128,6 +141,9 @@ export interface paths {
                                     status: "ok" | "warn" | "error";
                                 }[];
                             };
+                            pipeline_funnel?: {
+                                [key: string]: unknown;
+                            };
                         };
                     };
                 };
@@ -142,6 +158,8 @@ export interface paths {
                             status: string;
                             /** @example false */
                             ready: boolean;
+                            /** @description True when historical pipeline-quality checks are healthy. Core service readiness may be false due to core checks. */
+                            quality_ready?: boolean;
                             /** Format: date-time */
                             checked_at: string;
                             checks: {
@@ -162,6 +180,17 @@ export interface paths {
                                     is_dir?: boolean;
                                     writable?: boolean;
                                     status?: string;
+                                };
+                                cache_backend?: {
+                                    [key: string]: unknown;
+                                };
+                                processor_heartbeat?: {
+                                    [key: string]: unknown;
+                                };
+                                pipeline_funnel?: components["schemas"]["PipelineFunnelCheck"];
+                                yolo_detector?: {
+                                    status?: string;
+                                    source?: string;
                                 };
                             };
                             components: {
@@ -187,6 +216,9 @@ export interface paths {
                                     /** @enum {string} */
                                     status: "ok" | "warn" | "error";
                                 }[];
+                            };
+                            pipeline_funnel?: {
+                                [key: string]: unknown;
                             };
                         };
                     };
@@ -1082,7 +1114,12 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Observer-local calendar day (YYYY-MM-DD). Use either date or start_time/end_time. */
                     date?: string;
+                    /** @description Unix timestamp (UTC); pair with end_time for explicit window. */
+                    start_time?: number;
+                    /** @description Unix timestamp (UTC); pair with start_time for explicit window. */
+                    end_time?: number;
                 };
                 header?: never;
                 path?: never;
@@ -1257,8 +1294,9 @@ export interface paths {
         };
         /**
          * List all species
-         * @description Retrieve species rows for catalog UIs. Default ``scope=allowlist`` returns one row per classifier
-         *     class (~526), not every legacy SQLite row. Use ``scope=all`` for the full DB catalog.
+         * @description Retrieve species rows for catalog UIs. Default ``scope=project`` returns project-visible
+         *     species (observed rows plus arbitration/classifier vocabulary and Bird/Rodent placeholders).
+         *     ``scope=allowlist`` returns one row per classifier class. Use ``scope=all`` for the full DB catalog.
          *     With ``exclude_suspects=1``, rows matching ``species_suspect_blocklist.txt`` are omitted.
          *     With ``meta=1``, response is ``{items, meta}`` with allowlist vs DB totals.
          */
@@ -1267,10 +1305,14 @@ export interface paths {
                 query?: {
                     /** @description If true, filter out catalog rows flagged by the data-quality blocklist. */
                     exclude_suspects?: boolean;
-                    /** @description Catalog slice (default allowlist = classifier classes). */
-                    scope?: "allowlist" | "observed" | "all";
+                    /** @description Catalog slice (default project = operator-visible catalog). */
+                    scope?: "project" | "allowlist" | "observed" | "all";
                     /** @description If true, wrap list in `{items, meta}` with coverage counters. */
                     meta?: boolean;
+                    /** @description If true, return rows without catalog audio metadata. */
+                    missing_audio?: boolean;
+                    /** @description If true, return rows with incomplete photo/description metadata. */
+                    catalog_incomplete?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -3463,9 +3505,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
+                        "application/json": components["schemas"]["CamerasResponse"];
                     };
                 };
                 /** @description Error */
@@ -8471,6 +8511,32 @@ export interface components {
             /** @description True for synthetic generic Bird/Rodent rows from detector segments */
             unidentified?: boolean;
         };
+        PipelineFunnelCheck: {
+            /** @enum {string} */
+            status?: "ok" | "degraded" | "unknown";
+            sessions_total?: number | null;
+            healthy_persist_rate?: number | null;
+            fusion_drop_rate?: number | null;
+            fp_empty_opencv_rate?: number | null;
+            alerts?: string[];
+            top_root_causes?: string[];
+        };
+        CameraSummary: {
+            /** @description Canonical camera id, equal to the Go2RTC recording stream name. */
+            id?: string;
+            /** @description Display name used in the UI. */
+            name?: string;
+            stream_url?: string;
+            /** @description Go2RTC stream name used for main/live playback. */
+            go2rtc_src?: string;
+            /** @description Processor MJPEG overlay endpoint for the detection stream. */
+            stream_url_mjpeg?: string;
+            camera_slot?: string | null;
+            camera_profile?: string | null;
+        };
+        CamerasResponse: {
+            cameras?: components["schemas"]["CameraSummary"][];
+        };
         OverviewStats: {
             uniqueSpecies?: number;
             /** @description Named-species visits (SpeciesVisit), excludes generic Bird/Rodent */
@@ -8491,6 +8557,10 @@ export interface components {
             audioDuration?: number;
             /** @description Visit counts by `VideoSpecies.detection_provider` (key `legacy` if null) */
             detectionByProvider?: {
+                [key: string]: number;
+            };
+            /** @description Visit counts by `Video.trigger_source` (key `unknown` if null) */
+            triggerBySource?: {
                 [key: string]: number;
             };
         };
@@ -8571,11 +8641,18 @@ export interface components {
         SpeciesSummary: {
             id?: number;
             name?: string;
+            /** @description Raw persisted species name before catalog display normalization. */
+            db_name?: string;
+            scientific_name?: string | null;
+            /** @description True when the active classifier/allowlist can predict this row. */
+            classifier_predictable?: boolean;
             parent_id?: number;
             /** Format: date-time */
             created_at?: string;
             image_url?: string;
-            description?: string;
+            description?: string | null;
+            metadata_source?: string | null;
+            metadata_source_url?: string | null;
             active?: boolean;
             /** @description True if species is in the eBird regional top (same source as Migration comparison) or has any BirdNET MQTT detection (detection_provider birdnet_mqtt). Used for Bird Directory «Regional» filter. */
             regional_scope?: boolean;
@@ -8586,13 +8663,25 @@ export interface components {
              * @description Present when the row was returned under a scoped catalog query.
              * @enum {string}
              */
-            catalog_scope?: "allowlist" | "observed" | "all";
+            catalog_scope?: "project" | "allowlist" | "observed" | "all";
+            /** @description True when the catalog card has linked audio metadata. */
+            catalog_has_audio?: boolean;
         };
         SpeciesCatalogMeta: {
             db_species_total?: number;
             allowlist_total?: number;
             listed_allowlist?: number;
             allowlist_incomplete?: number;
+            project_vocabulary_total?: number;
+            listed_project?: number;
+            arbitration_vocabulary_total?: number;
+            classifier_engine?: string | null;
+            classifier_class_count?: number | null;
+            catalog_with_audio?: number;
+            catalog_missing_audio?: number;
+            catalog_cards?: {
+                [key: string]: unknown;
+            };
         };
         SpeciesCatalogListResponse: {
             items?: components["schemas"]["SpeciesSummary"][];

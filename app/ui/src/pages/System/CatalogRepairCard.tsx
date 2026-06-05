@@ -103,7 +103,7 @@ export function CatalogRepairCard() {
         <>
           <Button
             component={RouterLink}
-            to="/species-directory"
+            to="/system/catalog-quality"
             size="small"
             variant="outlined"
           >

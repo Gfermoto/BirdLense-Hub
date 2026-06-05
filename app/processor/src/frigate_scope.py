@@ -32,7 +32,7 @@ def frigate_label_resolve_set(
 def frigate_camera_allow_ids(cameras: list, config: Any) -> list:
     """Те же правила, что ``mqtt_runtime._frigate_camera_filter_list``.
 
-    Пустой ``[]`` в YAML = не задано → id из ``cameras`` (камеры Hub).
+    Пустой ``[]`` в YAML = не задано → stream_name из ``cameras`` (имя Frigate/Go2RTC камеры).
     Сначала ``triggers.frigate.camera_filter``,
     затем ``mqtt.frigate_camera_filter``.
     """
@@ -40,12 +40,12 @@ def frigate_camera_allow_ids(cameras: list, config: Any) -> list:
     if raw is None:
         raw = _get_from_config(config, "mqtt.frigate_camera_filter")
     if raw is None:
-        return [c["id"] for c in cameras]
+        return [c.get("stream_name") or c["id"] for c in cameras]
     if isinstance(raw, str):
         s = raw.strip()
-        return [s] if s else [c["id"] for c in cameras]
+        return [s] if s else [c.get("stream_name") or c["id"] for c in cameras]
     if isinstance(raw, (list, tuple)):
         if not raw:
-            return [c["id"] for c in cameras]
+            return [c.get("stream_name") or c["id"] for c in cameras]
         return list(raw)
-    return [c["id"] for c in cameras]
+    return [c.get("stream_name") or c["id"] for c in cameras]

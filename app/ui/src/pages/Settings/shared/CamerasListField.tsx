@@ -43,7 +43,7 @@ export function CamerasListField({
   const rows: CameraRowUi[] =
     Array.isArray(value) && value.length > 0
       ? value.map((c, idx) => ({
-          id: c.id ?? '',
+          id: c.stream_name ?? c.id ?? '',
           camera_slot: (c.camera_slot ?? '').trim() || defaultSlot(idx),
           stream_name: c.stream_name ?? c.id ?? '',
           detect_stream_name: c.detect_stream_name ?? '',
@@ -54,23 +54,20 @@ export function CamerasListField({
   const sync = (newRows: CameraRowUi[]) => {
     const arr = newRows.map((r, idx) => {
       const stream_name = (r.stream_name ?? '').trim();
-      const id_raw = (r.id ?? '').trim();
       const name = (r.name ?? '').trim() || stream_name;
-      const id = id_raw || undefined;
+      const camera_slot = (r.camera_slot ?? '').trim() || defaultSlot(idx);
       const row: {
-        id?: string;
+        id: string;
         camera_slot: string;
         stream_name: string;
         name: string;
         detect_stream_name?: string;
       } = {
-        camera_slot: defaultSlot(idx),
+        id: stream_name,
+        camera_slot,
         stream_name,
         name,
       };
-      if (id) {
-        row.id = id;
-      }
       const ds = (r.detect_stream_name ?? '').trim();
       if (ds) {
         row.detect_stream_name = ds;
@@ -131,17 +128,7 @@ export function CamerasListField({
           sx={{ mb: 2 }}
           alignItems="flex-start"
         >
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <TextField
-              fullWidth
-              size="small"
-              value={row.id ?? ''}
-              onChange={(e) => updateRow(i, 'id', e.target.value)}
-              label="camera_id"
-              placeholder="cam_1"
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
+          <Grid size={{ xs: 12, sm: 5 }}>
             <TextField
               fullWidth
               size="small"
@@ -151,7 +138,7 @@ export function CamerasListField({
               placeholder={t('settings.streamNamePlaceholder')}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 3 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <TextField
               fullWidth
               size="small"
@@ -182,7 +169,18 @@ export function CamerasListField({
               }
               label={t('settings.detectStreamName')}
               placeholder={t('settings.detectStreamNamePlaceholder')}
-              helperText={t('settings.detectStreamNameHint')}
+              error={
+                Boolean((row.stream_name ?? '').trim()) &&
+                (row.detect_stream_name ?? '').trim() ===
+                  (row.stream_name ?? '').trim()
+              }
+              helperText={
+                Boolean((row.stream_name ?? '').trim()) &&
+                (row.detect_stream_name ?? '').trim() ===
+                  (row.stream_name ?? '').trim()
+                  ? t('settings.detectStreamNameSameAsRecordError')
+                  : t('settings.detectStreamNameHint')
+              }
             />
           </Grid>
         </Grid>
