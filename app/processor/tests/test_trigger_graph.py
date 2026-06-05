@@ -89,6 +89,21 @@ class TestTriggerGraph(unittest.TestCase):
         for node in TRIGGER_NODES:
             self.assertIn(node, tg["metrics_by_source"])
 
+    def test_detect_first_confirmed_skips_fp_empty_recording(self):
+        summary = self._base_summary(
+            detect_first_confirmed=True,
+            post_fusion_persisted=0,
+            session_extended_by_frigate_only=0,
+            yolo_blind_confirmed=False,
+        )
+        tg = build_session_trigger_graph(
+            session_summary=summary,
+            recording_context={"triggered_by": "opencv", "runtime_signals": summary},
+            persisted_tracks=[],
+            rejected_tracks=[],
+        )
+        self.assertEqual(tg["metrics_by_source"]["opencv"]["fp_empty_recording"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

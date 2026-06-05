@@ -159,10 +159,16 @@ def build_session_trigger_graph(
     frames_seen = int(session_summary.get("frames_seen") or 0)
     yolo_raw = int(session_summary.get("yolo_raw_boxes_total") or 0)
     video_ok = bool(session_summary.get("video_file_ok", True))
+    detect_first_ok = bool(
+        rs.get("detect_first_confirmed") or session_summary.get("detect_first_confirmed")
+    )
+    yolo_tracks = int(session_summary.get("yolo_frames_with_tracks") or rs.get("yolo_frames_with_tracks") or 0)
 
     # FP: trigger fired but nothing useful persisted (operator-visible false alarm).
+    # Skip when lores detect-first confirmed — persist failure is downstream, not opencv FP.
     if video_ok and frames_seen >= 30 and post_fusion == 0:
-        metrics[init_source].fp_empty_recording += 1
+        if not detect_first_ok:
+            metrics[init_source].fp_empty_recording += 1
 
     # FP: rejected noise candidates (weak generic / phantom / short track).
     _FP_REJECT_REASONS = {
@@ -186,7 +192,6 @@ def build_session_trigger_graph(
         metrics["frigate"].fn_no_persisted_species += 1
 
     # FN: recording with motion but YOLO never ran tracks despite frames.
-    yolo_tracks = int(session_summary.get("yolo_frames_with_tracks") or 0)
     yolo_ran = int(session_summary.get("yolo_frames_ran") or 0)
     if frames_seen >= 60 and yolo_ran >= 30 and yolo_tracks == 0 and post_fusion == 0:
         metrics["yolo"].fn_no_persisted_species += 1

@@ -253,9 +253,9 @@ def get_monthly_report_data(session, start_dt, end_dt):
     """Query DB for monthly stats. Returns (top_species, stats)."""
     from models import Species, SpeciesVisit, VideoSpecies, Video
     from sqlalchemy import func, case, distinct
-    from species_constants import GENERIC_BIRD_SPECIES
+    from species_constants import GENERIC_BIRD_NAME_KEYS
 
-    exclude_bird = Species.name != GENERIC_BIRD_SPECIES
+    exclude_generic = func.lower(Species.name).notin_(list(GENERIC_BIRD_NAME_KEYS))
 
     # Top species by visit count in period; hourly bars = visits starting in that hour (UTC hour of DB timestamp).
     top_query = (
@@ -273,7 +273,7 @@ def get_monthly_report_data(session, start_dt, end_dt):
         .filter(
             SpeciesVisit.start_time >= start_dt,
             SpeciesVisit.start_time <= end_dt,
-            exclude_bird,
+            exclude_generic,
         )
         .group_by(Species.id, Species.name)
         .order_by(func.count(SpeciesVisit.id).desc())
@@ -302,7 +302,7 @@ def get_monthly_report_data(session, start_dt, end_dt):
         .filter(
             SpeciesVisit.start_time >= start_dt,
             SpeciesVisit.start_time <= end_dt,
-            exclude_bird,
+            exclude_generic,
         )
         .first()
     )

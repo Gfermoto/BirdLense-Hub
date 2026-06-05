@@ -1,7 +1,15 @@
 """Общие константы каталога видов (#222)."""
 
-# Вид «Bird» / «bird» — птица без определённого вида (отдельная запись Species, не родитель каталога)
-GENERIC_BIRD_SPECIES = "Bird"
+from app_config.visit_eligibility import (  # noqa: F401
+    GENERIC_BIRD_NAME_KEYS,
+    GENERIC_BIRD_SPECIES,
+    GENERIC_RODENT_NAME_KEYS,
+    GENERIC_RODENT_SPECIES,
+    is_generic_bird_species_name,
+    is_generic_rodent_species_name,
+    is_unidentified_activity_species_name,
+    visit_eligible_for_named_species,
+)
 
 # Родительская категория в дереве каталога — не класс YOLO
 CATALOG_BIRDS_GROUP_SPECIES = "Birds"

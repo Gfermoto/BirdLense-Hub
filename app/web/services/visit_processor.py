@@ -7,6 +7,7 @@ import json
 from models import Video, Species, VideoSpecies, SpeciesVisit
 from sqlalchemy import text
 from services.species_identity_service import SpeciesIdentityService
+from species_constants import is_generic_bird_species_name
 
 
 def _ensure_utc(dt: datetime) -> datetime:
@@ -272,6 +273,11 @@ class VisitProcessor:
         # First pass: Process all detections
         for det in deduped_detections:
             visit_eligible = bool(det.get("visit_eligible", True))
+            species_label = str(det.get("species_name") or det.get("species") or "").strip()
+            if visit_eligible and is_generic_bird_species_name(species_label):
+                visit_eligible = False
+                if not det.get("review_reason"):
+                    det = {**det, "review_reason": "generic_bird"}
             provider = str(det.get("detection_provider") or det.get("source") or "ingest").strip().lower()
             species_key = str(det.get("species_name") or "").strip().lower()
             species = species_cache.get(species_key)

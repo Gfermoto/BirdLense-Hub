@@ -15,6 +15,7 @@ from typing import Any
 
 from object_confirm import track_object_confirmed
 from persist_mode import binary_track_first_min_detector_conf, track_has_bbox_frames
+from app_config.visit_eligibility import visit_eligible_for_named_species
 from runtime_contract import apply_runtime_contract
 
 logger = logging.getLogger(__name__)
@@ -212,6 +213,7 @@ def evaluate_track_linear(
     species, sp_conf, needs_review, clf_meta = _species_from_classifier(app_config, track)
     out_conf = max(float(detector_conf), float(sp_conf))
     reason = "accepted_species" if not needs_review and species != "Bird" else "track_first_persist"
+    visit_ok = visit_eligible_for_named_species(species_name=species, visit_eligible=True)
     return {
         "accepted": True,
         "decision_reason": reason,
@@ -222,8 +224,8 @@ def evaluate_track_linear(
         "detector_event_count": det_count,
         "out_species": species,
         "out_conf": out_conf,
-        "visit_eligible": True,
-        "notification_eligible": not needs_review,
+        "visit_eligible": visit_ok,
+        "notification_eligible": not needs_review and visit_ok,
         "evidence_state": "species_supported" if not needs_review else "weak_classifier",
         "classifier_needs_review": needs_review,
         "classifier_candidate": clf_meta,

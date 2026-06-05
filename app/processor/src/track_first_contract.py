@@ -98,3 +98,20 @@ def count_ingestible_track_rows(rows: list[dict[str, Any]] | None) -> int:
 
 def has_ingestible_track_rows(rows: list[dict[str, Any]] | None) -> bool:
     return count_ingestible_track_rows(rows) > 0
+
+
+def _row_accepted_for_persist(row: dict[str, Any]) -> bool:
+    kind = str(row.get("decision_kind") or "").strip().lower()
+    if kind in {"review_only_generic", "review_only", "rejected"}:
+        return False
+    if row.get("accepted") is False:
+        return False
+    return True
+
+
+def has_accepted_ingestible_track_rows(rows: list[dict[str, Any]] | None) -> bool:
+    """Rows that can actually be persisted (accepted visit + valid bbox frames)."""
+    return any(
+        _row_accepted_for_persist(row) and row_requires_bbox(row) and valid_track_frames(row.get("frames"))
+        for row in (rows or [])
+    )

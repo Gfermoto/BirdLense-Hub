@@ -225,6 +225,7 @@ class TestRecordingSessionCaptureRetry(unittest.TestCase):
         old_finalize = rs.finalize_motion_recording
         rs.app_config.get = lambda key, default=None: {
             "video.source": "go2rtc",
+            "processor.detect_first_enabled": False,
             "processor.capture_none_frame_retries": 1,
             "processor.capture_none_frame_retry_sleep_ms": 0,
             "processor.frigate_activity_hold_seconds": 0,

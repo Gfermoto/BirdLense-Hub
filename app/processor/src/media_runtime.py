@@ -83,13 +83,6 @@ def _resolve_capture_stream_url(
     )
 
 
-def _validate_go2rtc_detect_streams(cameras: list) -> None:
-    """Every Go2RTC camera must have a separate detect substream (lores)."""
-    issues = validate_go2rtc_detect_streams(cameras, video_source="go2rtc")
-    if issues:
-        raise RuntimeError("; ".join(issues))
-
-
 def setup_processor_media(
     args: Any,
     main_size: tuple,
@@ -180,7 +173,9 @@ def setup_processor_media(
         )
 
     _wait_until_cameras_configured(api, cameras, go2rtc_url)
-    _validate_go2rtc_detect_streams(cameras)
+    issues = validate_go2rtc_detect_streams(cameras, video_source="go2rtc")
+    if issues:
+        raise RuntimeError("; ".join(issues))
 
     default_camera_id = cameras[0]["id"]
     media_sources_cache: Dict[Any, Any] = {}

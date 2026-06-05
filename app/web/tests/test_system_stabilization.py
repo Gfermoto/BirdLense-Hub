@@ -397,7 +397,7 @@ class TestOverviewDayOverlap:
     def test_overview_counts_visit_that_crosses_midnight(self, app, client):
         from app_config.app_config import app_config
         from observer_time import _observer_timezone_name_cached
-        from models import Species, SpeciesVisit, db
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
 
         app_config.set("secrets.latitude", "55.7558")
         app_config.set("secrets.longitude", "37.6176")
@@ -413,7 +413,26 @@ class TestOverviewDayOverlap:
                 end_time=datetime(2026, 3, 25, 0, 10, 0),
                 max_simultaneous=2,
             )
-            db.session.add(visit)
+            video = Video(
+                processor_version="test",
+                start_time=datetime(2026, 3, 24, 23, 50, 0),
+                end_time=datetime(2026, 3, 25, 0, 10, 0),
+                video_path="data/recordings/2026/03/24/235000/video.mp4",
+            )
+            db.session.add_all([visit, video])
+            db.session.flush()
+            db.session.add(
+                VideoSpecies(
+                    species_id=species.id,
+                    species_visit_id=visit.id,
+                    video_id=video.id,
+                    start_time=0.0,
+                    end_time=10.0,
+                    confidence=0.8,
+                    source="video",
+                    detection_provider="yolo",
+                )
+            )
             db.session.commit()
 
         bust_response_caches()
@@ -432,7 +451,7 @@ class TestOverviewDayOverlap:
 
     def test_overview_date_uses_observer_local_day_and_local_hour(self, app, client):
         from app_config.app_config import app_config
-        from models import Species, SpeciesVisit, db
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
 
         with app.app_context():
             app_config.set("secrets.latitude", "55.7558")
@@ -440,13 +459,31 @@ class TestOverviewDayOverlap:
             species = Species(name="Local Time Species")
             db.session.add(species)
             db.session.flush()
+            visit = SpeciesVisit(
+                species_id=species.id,
+                start_time=datetime(2026, 3, 24, 21, 30, 0),
+                end_time=datetime(2026, 3, 24, 21, 40, 0),
+                max_simultaneous=3,
+            )
+            video = Video(
+                processor_version="test",
+                start_time=datetime(2026, 3, 24, 21, 30, 0),
+                end_time=datetime(2026, 3, 24, 21, 40, 0),
+                video_path="data/recordings/2026/03/24/213000/video.mp4",
+            )
+            db.session.add_all([visit, video])
+            db.session.flush()
             db.session.add(
-                SpeciesVisit(
+                VideoSpecies(
                     species_id=species.id,
-                    start_time=datetime(2026, 3, 24, 21, 30, 0),
-                    end_time=datetime(2026, 3, 24, 21, 40, 0),
-                    max_simultaneous=3,
-                ),
+                    species_visit_id=visit.id,
+                    video_id=video.id,
+                    start_time=0.0,
+                    end_time=10.0,
+                    confidence=0.8,
+                    source="video",
+                    detection_provider="yolo",
+                )
             )
             db.session.commit()
 
@@ -583,6 +620,102 @@ class TestOverviewDayOverlap:
         body = response.get_json()
         assert body["stats"]["detectionByProvider"]["yolo"] == 1
         assert body["stats"]["detectionByProvider"]["frigate"] == 1
+
+    def test_overview_excludes_generic_bird_and_orphan_visits(self, app, client):
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+
+        with app.app_context():
+            bird = Species(name="Bird")
+            unknown_bird = Species(name="Unknown Bird")
+            robin = Species(name="Robin")
+            db.session.add_all([bird, unknown_bird, robin])
+            db.session.flush()
+
+            orphan = SpeciesVisit(
+                species_id=bird.id,
+                start_time=datetime(2026, 3, 25, 10, 0, 0),
+                end_time=datetime(2026, 3, 25, 10, 1, 0),
+                max_simultaneous=1,
+            )
+            bird_visit = SpeciesVisit(
+                species_id=bird.id,
+                start_time=datetime(2026, 3, 25, 11, 0, 0),
+                end_time=datetime(2026, 3, 25, 11, 1, 0),
+                max_simultaneous=1,
+            )
+            unknown_visit = SpeciesVisit(
+                species_id=unknown_bird.id,
+                start_time=datetime(2026, 3, 25, 12, 0, 0),
+                end_time=datetime(2026, 3, 25, 12, 1, 0),
+                max_simultaneous=1,
+            )
+            robin_visit = SpeciesVisit(
+                species_id=robin.id,
+                start_time=datetime(2026, 3, 25, 13, 0, 0),
+                end_time=datetime(2026, 3, 25, 13, 1, 0),
+                max_simultaneous=1,
+            )
+            video = Video(
+                processor_version="test",
+                start_time=datetime(2026, 3, 25, 11, 0, 0),
+                end_time=datetime(2026, 3, 25, 13, 30, 0),
+                video_path="data/recordings/2026/03/25/110000/video.mp4",
+            )
+            db.session.add_all([orphan, bird_visit, unknown_visit, robin_visit, video])
+            db.session.flush()
+            db.session.add_all(
+                [
+                    VideoSpecies(
+                        species_id=bird.id,
+                        species_visit_id=bird_visit.id,
+                        video_id=video.id,
+                        start_time=0.0,
+                        end_time=1.0,
+                        confidence=0.5,
+                        source="video",
+                        detection_provider="yolo",
+                    ),
+                    VideoSpecies(
+                        species_id=unknown_bird.id,
+                        species_visit_id=unknown_visit.id,
+                        video_id=video.id,
+                        start_time=1.0,
+                        end_time=2.0,
+                        confidence=0.5,
+                        source="video",
+                        detection_provider="yolo",
+                    ),
+                    VideoSpecies(
+                        species_id=robin.id,
+                        species_visit_id=robin_visit.id,
+                        video_id=video.id,
+                        start_time=2.0,
+                        end_time=3.0,
+                        confidence=0.8,
+                        source="video",
+                        detection_provider="yolo",
+                    ),
+                ]
+            )
+            db.session.commit()
+
+        bust_response_caches()
+
+        start = int(datetime(2026, 3, 25, 0, 0, 0, tzinfo=timezone.utc).timestamp())
+        end = int(datetime(2026, 3, 25, 23, 59, 59, tzinfo=timezone.utc).timestamp())
+        response = client.get("/api/ui/overview", query_string={"start_time": start, "end_time": end})
+
+        assert response.status_code == 200
+        body = response.get_json()
+        assert body["stats"]["totalDetections"] == 1
+        assert body["stats"]["unidentifiedBirdDetections"] == 2
+        assert body["stats"]["totalActivity"] == 3
+        assert body["stats"]["uniqueSpecies"] == 1
+        assert body["topSpecies"][0]["name"] == "Robin"
+        bird_rows = [row for row in body["topSpecies"] if row.get("unidentified")]
+        assert len(bird_rows) == 1
+        assert bird_rows[0]["name"] == "Bird"
+        assert body["lastDetection"]["species_name"] == "Robin"
 
 
 @pytest.mark.usefixtures("moscow_observer_tz")

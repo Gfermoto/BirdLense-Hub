@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { PieChart } from '@mui/x-charts/PieChart';
 import { OverviewTopSpecies } from '../../types';
+import { overviewSpeciesLabel } from './overviewSpeciesLabel';
 import { labelToUniqueHexColor } from '../../util';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -39,7 +40,7 @@ export const SpeciesDistributionChart: React.FC<
       id: species.id,
       value: species.detections.reduce((a, b) => a + b, 0),
       label: '',
-      name: species.name,
+      name: overviewSpeciesLabel(t, species),
       color: labelToUniqueHexColor(species.name),
     }))
     .filter((item) => item.value > 0)

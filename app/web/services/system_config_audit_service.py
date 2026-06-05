@@ -9,6 +9,8 @@ import yaml
 
 import data_paths
 from app_config.scales_config import normalize_scales_source, scales_source_uses_mqtt
+
+logger = logging.getLogger(__name__)
 from app_config.deprecated_keys import DEPRECATED_USER_CONFIG_KEYS
 from app_config.trigger_config import (
     format_motion_source_summary,
@@ -144,6 +146,19 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
         blocking.append(
             "Frigate trigger is enabled but mqtt.broker is empty, so Frigate events will never reach the processor."
         )
+    source = str(app_config_get("video.source") or "go2rtc").strip().lower()
+    if source == "go2rtc":
+        try:
+            from app_config.cameras import get_valid_cameras, validate_go2rtc_detect_streams
+
+            video_cfg = app_config_get("video") or {}
+            valid = get_valid_cameras(
+                video_config=video_cfg if isinstance(video_cfg, dict) else None,
+            )
+            for issue in validate_go2rtc_detect_streams(valid, video_source=source):
+                blocking.append(issue)
+        except Exception as exc:
+            logger.warning("go2rtc detect_stream audit failed", exc_info=True)
     frigate_standalone = _bool_config(
         app_config_get("detection.frigate_standalone_when_no_yolo"),
         default=True,

@@ -51,7 +51,10 @@ from track_first_contract import (
     apply_track_first_persist_gate,
     count_ingestible_track_rows,
     has_ingestible_track_rows,
+    is_valid_norm_bbox,
+    valid_track_frames,
 )
+from detect_first import restore_detect_first_persist_rows
 from persist_mode import binary_track_first_enabled
 
 # Пустые сессии без детекций — частое событие; не засоряем лог (раз в интервал — WARNING, иначе DEBUG).
@@ -94,9 +97,9 @@ def _sanitize_persisted_overlay_frames(
         try:
             from linear_pipeline import is_linear_pipeline
 
-            skip_static_strip = is_linear_pipeline(runtime)
+            skip_static_strip = is_linear_pipeline(runtime) or binary_track_first_enabled(runtime)
         except ImportError:
-            pass
+            skip_static_strip = binary_track_first_enabled(runtime)
         if frames and cfg.enabled and not skip_static_strip:
             pseudo = {
                 "start_time": d.get("start_time", 0),
@@ -112,17 +115,21 @@ def _sanitize_persisted_overlay_frames(
 
 
 def _is_valid_track_bbox(bbox: Any) -> bool:
-    if not isinstance(bbox, (list, tuple)) or len(bbox) < 4:
-        return False
-    try:
-        x1, y1, x2, y2 = [float(v) for v in bbox[:4]]
-    except (TypeError, ValueError):
-        return False
-    if not (x2 > x1 and y2 > y1):
-        return False
-    # Stored frames are normalized; keep a small margin for rounding noise.
-    low, high = -0.05, 1.05
-    return all(low <= v <= high for v in (x1, y1, x2, y2))
+    return is_valid_norm_bbox(bbox)
+
+
+def _valid_track_frames(frames: Any) -> list[dict[str, Any]]:
+    return valid_track_frames(frames)
+
+
+def _row_exempt_from_video_bbox_requirement(row: dict[str, Any]) -> bool:
+    """Frameless MQTT-evidence rows are not YOLO track visits."""
+    provider = str(row.get("detection_provider") or "").strip().lower()
+    if provider == "frigate":
+        return True
+    if row.get("frigate_standalone") or row.get("frigate_trigger_salvage"):
+        return True
+    return False
 
 
 def _safe_float(value: Any, *, default: float = 0.0) -> float:
@@ -130,18 +137,6 @@ def _safe_float(value: Any, *, default: float = 0.0) -> float:
         return float(value)
     except (TypeError, ValueError):
         return float(default)
-
-
-def _valid_track_frames(frames: Any) -> list[dict[str, Any]]:
-    if not isinstance(frames, list):
-        return []
-    out: list[dict[str, Any]] = []
-    for frame in frames:
-        if not isinstance(frame, dict):
-            continue
-        if _is_valid_track_bbox(frame.get("bbox")):
-            out.append(frame)
-    return out
 
 
 def _runtime_wall_latency_seconds(
@@ -498,7 +493,7 @@ def _build_weak_yolo_salvage_rows(
     scored: list[tuple[float, Any, dict[str, Any], float]] = []
     for track_id, track in (tracks or {}).items():
         frames = list(track.get("frames") or [])
-        if not frames:
+        if not valid_track_frames(frames):
             continue
         detector_events = list(track.get("detector_events") or [])
         max_det_conf = max((float(ev.get("confidence") or 0.0) for ev in detector_events), default=0.0)
@@ -669,6 +664,17 @@ def _default_scales_evidence_snapshot(
     }
 
 
+def _tracks_for_finalize(
+    frame_processor: Any,
+    recording_context: dict[str, Any] | None,
+) -> dict[Any, dict[str, Any]]:
+    if isinstance(recording_context, dict):
+        snap = recording_context.get("tracks_snapshot")
+        if isinstance(snap, dict):
+            return snap
+    return getattr(frame_processor, "tracks", None) or {}
+
+
 def finalize_motion_recording(
     api: API,
     motion_detector: Any,
@@ -695,19 +701,20 @@ def finalize_motion_recording(
     decision_trace_started_ts: float | None = None
     decision_trace_finished_ts: float | None = None
     merge_window = int(app_config.get("detection.merge_window_seconds") or 5)
-    yolo_tracks_count = len(frame_processor.tracks)
+    session_tracks = _tracks_for_finalize(frame_processor, recording_context)
+    yolo_tracks_count = len(session_tracks)
     try:
         from finalize_classification import enrich_tracks_classifier_at_finalize, defer_classifier_to_finalize
 
         if defer_classifier_to_finalize(app_config):
             enrich_tracks_classifier_at_finalize(
-                frame_processor.tracks,
+                session_tracks,
                 getattr(frame_processor, "strategy", None),
                 app_config,
             )
     except ImportError:
         pass
-    decisions = decision_maker.get_decisions(frame_processor.tracks)
+    decisions = decision_maker.get_decisions(session_tracks)
     video_detections = [item for item in decisions if item.get("accepted", False)]
     rejected_decisions = [item for item in decisions if not item.get("accepted", False)]
     clf_review_n = sum(1 for item in decisions if bool(item.get("classifier_needs_review")))
@@ -757,7 +764,7 @@ def finalize_motion_recording(
                 "or thresholds if you expect video tracks.",
                 yolo_tracks_count,
             )
-            for tid, t in frame_processor.tracks.items():
+            for tid, t in session_tracks.items():
                 dur = t.get("end_time", 0) - t.get("start_time", 0)
                 detector_events = len(t.get("detector_events", []))
                 classifier_events = len(t.get("classifier_events", []))
@@ -926,6 +933,9 @@ def finalize_motion_recording(
             if row_source != "video":
                 kept_rows.append(row)
                 continue
+            if _row_exempt_from_video_bbox_requirement(row):
+                kept_rows.append(row)
+                continue
             frames = row.get("frames")
             if not isinstance(frames, list) or not frames:
                 dropped_missing_frames += 1
@@ -972,11 +982,30 @@ def finalize_motion_recording(
             )
         video_detections = kept_rows
     video_detections = _sanitize_persisted_overlay_frames(video_detections)
+    detect_first_restored = False
+    try:
+        session_duration_s = max(0.0, float((end_time - start_time).total_seconds()))
+    except (TypeError, AttributeError):
+        session_duration_s = 0.0
+    video_detections, detect_first_restored = restore_detect_first_persist_rows(
+        video_detections,
+        recording_context=recording_context if isinstance(recording_context, dict) else None,
+        accepted_pre_fusion=accepted_pre_fusion,
+        frame_processor_tracks=session_tracks,
+        video_duration_s=session_duration_s,
+    )
+    if detect_first_restored:
+        inc_counter("detect_first_persist_safeguard_total")
+    weak_salvage_linear_ok = bool(rs_ctx.get("detect_first_confirmed")) and bool(
+        rs_ctx.get("yolo_frames_with_tracks")
+    )
+    skip_weak_salvage = bool(rs_ctx.get("detect_first_confirmed")) and not detect_first_restored
     if (
         not video_detections
         and yolo_tracks_count > 0
         and bool(app_config.get("detection.yolo_weak_track_salvage_enabled", True))
-        and not linear_skip_legacy_fusion_safeguards(app_config)
+        and (not linear_skip_legacy_fusion_safeguards(app_config) or weak_salvage_linear_ok)
+        and not skip_weak_salvage
     ):
         try:
             salvage_min_conf = float(app_config.get("detection.yolo_weak_track_salvage_min_confidence") or 0.10)
@@ -987,7 +1016,7 @@ def finalize_motion_recording(
         except (TypeError, ValueError):
             salvage_max_rows = 5
         salvage_rows = _build_weak_yolo_salvage_rows(
-            frame_processor.tracks,
+            session_tracks,
             min_confidence=salvage_min_conf,
             max_rows=salvage_max_rows,
         )
@@ -1181,7 +1210,7 @@ def finalize_motion_recording(
     if len(video_detections) == 0 and mqtt_aggregator:
         global _no_detections_warn_next_monotonic
         _no_detections_warn_next_monotonic = log_no_detections_after_merge(
-            track_count=len(frame_processor.tracks),
+            track_count=len(session_tracks),
             mqtt_event_count=len(mqtt_events),
             now_monotonic=time.monotonic(),
             next_warn_monotonic=_no_detections_warn_next_monotonic,
@@ -1191,7 +1220,7 @@ def finalize_motion_recording(
     if len(video_detections) == 0:
         log_no_detection_activity(
             api,
-            track_count=len(frame_processor.tracks),
+            track_count=len(session_tracks),
             mqtt_event_count=len(mqtt_events),
             rejected_count=len(rejected_decisions),
             video_path_for_api=video_path_for_api,
@@ -1495,6 +1524,7 @@ def finalize_motion_recording(
             "detect_first_anchor_confidence": round(float(rs.get("detect_first_anchor_confidence") or 0.0), 4),
             "detect_first_window_frames": int(rs.get("detect_first_window_frames") or 0),
             "detect_first_window_hits": int(rs.get("detect_first_window_hits") or 0),
+            "detect_first_safeguard_restored": int(detect_first_restored),
             "detection_acceptance_gap": bool(
                 int(rs.get("yolo_raw_boxes_total") or 0) > 0 and int(rs.get("yolo_accepted_boxes_total") or 0) == 0
             ),

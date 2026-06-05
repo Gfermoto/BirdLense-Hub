@@ -23,7 +23,7 @@ from services.species_catalog.canon import (
     is_hierarchy_taxon_label,
     normalize_catalog_display_name,
 )
-from species_constants import GENERIC_BIRD_SPECIES
+from species_constants import GENERIC_BIRD_NAME_KEYS
 from util import load_species_canonical_mapping
 
 
@@ -112,10 +112,7 @@ def species_ids_to_exclude_from_bird_catalog(session) -> frozenset[int]:
     filter_off_allowlist = bool(app_config.get("species.catalog_filter_off_allowlist", False))
     mapping = load_species_canonical_mapping()
     allow_keys = load_catalog_allowlist_norm_keys(app_config.get)
-    service_names = {
-        GENERIC_BIRD_SPECIES.strip().lower(),
-        "unknown",
-    }
+    service_names = set(GENERIC_BIRD_NAME_KEYS)
     rows = (
         session.query(
             Species.id,
