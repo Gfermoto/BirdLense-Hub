@@ -9,10 +9,10 @@ from __future__ import annotations
 import logging
 
 from sqlalchemy import distinct, func
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, object_session
 
 from app_config.app_config import app_config
-from models import Species, SpeciesVisit, VideoSpecies
+from models import Species, SpeciesTaxon, SpeciesVisit, VideoSpecies
 from services.species_catalog.allowlist import (
     allowlist_scientific_name_for_display_name,
     catalog_classifier_meta,
@@ -28,10 +28,20 @@ from services.species_catalog.canon import normalize_catalog_display_name, parse
 from services.species_catalog.registry import species_card_needs_full_metadata_refresh
 from services.species_data_quality_service import species_ids_to_exclude_from_bird_catalog
 from services.species_regional_scope import compute_regional_scope_species_ids
+from species_constants import GENERIC_BIRD_SPECIES, GENERIC_RODENT_SPECIES
 
 CatalogScope = str  # "allowlist" | "project" | "observed" | "all"
 
 logger = logging.getLogger(__name__)
+
+
+_PLACEHOLDER_DESCRIPTIONS = {
+    GENERIC_BIRD_SPECIES: (
+        "Bird detected by the camera before species classification. "
+        "Use review or manual correction to assign a specific species."
+    ),
+    GENERIC_RODENT_SPECIES: "Rodent detected by the camera. Use review to assign a specific species when known.",
+}
 
 
 def _normalize_catalog_scope(scope: str | None) -> CatalogScope:
@@ -75,6 +85,58 @@ def _species_has_catalog_audio(sp) -> bool:
     return False
 
 
+def _ensure_placeholder_catalog_species(session) -> None:
+    """Bird/Rodent are visible catalog taxa, even before classifier/manual labels refine them."""
+    birds_parent = session.query(Species).filter(Species.name == "Birds").first()
+    parent_id = birds_parent.id if birds_parent else None
+    changed = False
+    for name in (GENERIC_BIRD_SPECIES, GENERIC_RODENT_SPECIES):
+        sp = session.query(Species).filter(Species.name == name).first()
+        if sp is None:
+            sp = Species(
+                name=name,
+                parent_id=parent_id,
+                active=True,
+                description=_PLACEHOLDER_DESCRIPTIONS[name],
+            )
+            session.add(sp)
+            changed = True
+            continue
+        if not sp.active:
+            sp.active = True
+            changed = True
+        if parent_id and not sp.parent_id:
+            sp.parent_id = parent_id
+            changed = True
+        if not (sp.description or "").strip():
+            sp.description = _PLACEHOLDER_DESCRIPTIONS[name]
+            changed = True
+    if changed:
+        session.flush()
+
+
+def _append_project_placeholders(session, species_list: list, catalog_scope: str) -> list:
+    if catalog_scope not in ("project", "all"):
+        return species_list
+    seen = {int(row.Species.id) for row in species_list}
+    placeholders = (
+        session.query(
+            Species,
+            func.coalesce(func.sum(SpeciesVisit.max_simultaneous), 0).label("count"),
+        )
+        .outerjoin(SpeciesVisit)
+        .filter(Species.name.in_([GENERIC_BIRD_SPECIES, GENERIC_RODENT_SPECIES]))
+        .group_by(Species.id)
+        .order_by(Species.name.asc())
+        .all()
+    )
+    for row in placeholders:
+        if int(row.Species.id) not in seen:
+            species_list.append(row)
+            seen.add(int(row.Species.id))
+    return species_list
+
+
 def _species_row_dict(
     row,
     *,
@@ -89,6 +151,10 @@ def _species_row_dict(
     scientific_name, _common = parse_scientific_and_common(raw_name)
     if not scientific_name:
         taxon = getattr(sp, "taxon", None)
+        if taxon is None and getattr(sp, "taxon_id", None):
+            sess = object_session(sp)
+            if sess is not None:
+                taxon = sess.get(SpeciesTaxon, sp.taxon_id)
         if taxon is not None:
             scientific_name = (taxon.scientific_name or "").strip() or None
     if not scientific_name:
@@ -125,6 +191,7 @@ def fetch_species_catalog_list(
     catalog_incomplete: bool = False,
 ) -> list[dict]:
     catalog_scope = _normalize_catalog_scope(scope)
+    _ensure_placeholder_catalog_species(session)
     query = (
         session.query(
             Species,
@@ -163,6 +230,8 @@ def fetch_species_catalog_list(
         if allow_keys:
             species_list = [s for s in species_list if species_matches_allowlist(s.Species.name, allow_keys, mapping)]
             species_list = _dedupe_allowlist_species_rows(species_list, allow_keys=allow_keys, mapping=mapping)
+
+    species_list = _append_project_placeholders(session, species_list, catalog_scope)
 
     regional_scope_ids = compute_regional_scope_species_ids()
     rows = [
