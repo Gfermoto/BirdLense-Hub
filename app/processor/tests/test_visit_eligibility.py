@@ -23,9 +23,15 @@ class TestVisitEligibility(unittest.TestCase):
         self.assertFalse(is_generic_bird_species_name("Great Tit"))
         self.assertFalse(is_generic_bird_species_name("Robin"))
 
-    def test_visit_eligible_strips_generic(self):
-        self.assertFalse(
+    def test_visit_eligible_includes_catalog_placeholders(self):
+        self.assertTrue(
             visit_eligible_for_named_species(species_name="Bird", visit_eligible=True)
+        )
+        self.assertTrue(
+            visit_eligible_for_named_species(species_name="Rodent", visit_eligible=True)
+        )
+        self.assertFalse(
+            visit_eligible_for_named_species(species_name="Unknown", visit_eligible=True)
         )
         self.assertTrue(
             visit_eligible_for_named_species(species_name="Robin", visit_eligible=True)

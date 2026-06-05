@@ -833,6 +833,37 @@ class TwoStageStrategy(DetectionStrategy):
                 continue
         return out if out else None
 
+    def _extract_valid_box_crop(
+        self,
+        box: dict[str, Any],
+        *,
+        frame: np.ndarray,
+        cls_frame: np.ndarray,
+        min_box_size_px: int,
+    ) -> tuple[np.ndarray | RoiCropRef | None, float | None]:
+        """ROI crop for a valid box (no classifier call)."""
+        det_shape = getattr(self, "_detector_frame_shape", frame.shape[:2])
+        mapped = _crop_coords_from_letterboxed_bbox_norm(
+            bbox_norm=box["bbox_norm"],
+            detector_frame_shape=det_shape,
+            classification_frame_shape=cls_frame.shape,
+        )
+        if mapped is None:
+            return None, None
+        x1, y1, x2, y2 = mapped
+        crop_ref = roi_crop_ref_from_norm_bbox(cls_frame, x1=x1, y1=y1, x2=x2, y2=y2)
+        if crop_ref is None:
+            return None, None
+        crop_view = crop_ref.view()
+        is_blur, variance = self.is_blurry(crop_view)
+        if is_blur:
+            return None, variance
+        crop_sr, _, _ = self._apply_roi_sr_to_crop(crop_view, min_box_size_px=min_box_size_px)
+        crop_payload: np.ndarray | RoiCropRef = crop_ref
+        if crop_sr is not crop_view:
+            crop_payload = crop_sr
+        return crop_payload, variance
+
     def _classify_valid_box_crop(
         self,
         box: dict[str, Any],
@@ -842,26 +873,14 @@ class TwoStageStrategy(DetectionStrategy):
         min_box_size_px: int,
     ) -> tuple[ClassifierOutput | None, np.ndarray | RoiCropRef | None, float | None]:
         """Классификатор по боксу (если не попал в очередь кадра)."""
-        det_shape = getattr(self, "_detector_frame_shape", frame.shape[:2])
-        mapped = _crop_coords_from_letterboxed_bbox_norm(
-            bbox_norm=box["bbox_norm"],
-            detector_frame_shape=det_shape,
-            classification_frame_shape=cls_frame.shape,
+        crop_payload, variance = self._extract_valid_box_crop(
+            box,
+            frame=frame,
+            cls_frame=cls_frame,
+            min_box_size_px=min_box_size_px,
         )
-        if mapped is None:
-            return None, None, None
-        x1, y1, x2, y2 = mapped
-        crop_ref = roi_crop_ref_from_norm_bbox(cls_frame, x1=x1, y1=y1, x2=x2, y2=y2)
-        if crop_ref is None:
-            return None, None, None
-        crop_view = crop_ref.view()
-        is_blur, variance = self.is_blurry(crop_view)
-        if is_blur:
+        if crop_payload is None:
             return None, None, variance
-        crop_sr, _, _ = self._apply_roi_sr_to_crop(crop_view, min_box_size_px=min_box_size_px)
-        crop_payload: np.ndarray | RoiCropRef = crop_ref
-        if crop_sr is not crop_view:
-            crop_payload = crop_sr
         return self._classify_crop(crop_payload), crop_payload, variance
 
     def _classify_crop(self, crop: np.ndarray | RoiCropRef) -> ClassifierOutput:
@@ -1521,6 +1540,15 @@ class TwoStageStrategy(DetectionStrategy):
                     overlay_frame_shape=overlay_shape,
                     playback_frame_shape=self._playback_shape_for_storage(),
                 )
+                crop = None
+                blur_variance = None
+                if str(label).strip().lower() == "bird":
+                    crop, blur_variance = self._extract_valid_box_crop(
+                        box,
+                        frame=frame,
+                        cls_frame=cls_frame,
+                        min_box_size_px=min_box_size_px,
+                    )
                 detection_results.append(
                     DetectionResult(
                         track_id=box["track_id"],
@@ -1530,6 +1558,8 @@ class TwoStageStrategy(DetectionStrategy):
                         detector_confidence=box["conf"],
                         classifier_confidence=None,
                         bbox=storage_bbox,
+                        blur_variance=blur_variance,
+                        crop=crop,
                         scoring_review_only=bool(box.get("scoring_review_only")),
                     )
                 )

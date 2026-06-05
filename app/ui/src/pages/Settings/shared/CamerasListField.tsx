@@ -13,6 +13,10 @@ type CameraRowUi = {
   name?: string;
 };
 
+function defaultSlot(index: number): string {
+  return `camera_${index + 1}`;
+}
+
 export function CamerasListField({
   value,
   onChange,
@@ -38,35 +42,34 @@ export function CamerasListField({
 }) {
   const rows: CameraRowUi[] =
     Array.isArray(value) && value.length > 0
-      ? value.map((c) => ({
+      ? value.map((c, idx) => ({
           id: c.id ?? '',
-          camera_slot: c.camera_slot ?? '',
+          camera_slot: (c.camera_slot ?? '').trim() || defaultSlot(idx),
           stream_name: c.stream_name ?? c.id ?? '',
           detect_stream_name: c.detect_stream_name ?? '',
           name: c.name ?? c.id ?? c.stream_name ?? '',
         }))
-      : [{ id: '', camera_slot: '', stream_name: '', detect_stream_name: '', name: '' }];
+      : [{ id: '', camera_slot: defaultSlot(0), stream_name: '', detect_stream_name: '', name: '' }];
 
   const sync = (newRows: CameraRowUi[]) => {
-    const arr = newRows.map((r) => {
+    const arr = newRows.map((r, idx) => {
       const stream_name = (r.stream_name ?? '').trim();
-      const camera_slot = (r.camera_slot ?? '').trim();
       const id_raw = (r.id ?? '').trim();
       const name = (r.name ?? '').trim() || stream_name;
       const id = id_raw || undefined;
       const row: {
         id?: string;
-        camera_slot?: string;
+        camera_slot: string;
         stream_name: string;
         name: string;
         detect_stream_name?: string;
       } = {
-        id,
+        camera_slot: defaultSlot(idx),
         stream_name,
         name,
       };
-      if (camera_slot) {
-        row.camera_slot = camera_slot;
+      if (id) {
+        row.id = id;
       }
       const ds = (r.detect_stream_name ?? '').trim();
       if (ds) {
@@ -80,14 +83,29 @@ export function CamerasListField({
   const updateRow = (i: number, field: keyof CameraRowUi, val: string) => {
     const next = [...rows];
     if (!next[i]) {
-      next[i] = { id: '', camera_slot: '', stream_name: '', detect_stream_name: '', name: '' };
+      next[i] = {
+        id: '',
+        camera_slot: defaultSlot(i),
+        stream_name: '',
+        detect_stream_name: '',
+        name: '',
+      };
     }
     next[i] = { ...next[i], [field]: val };
     sync(next);
   };
 
   const addRow = () => {
-    sync([...rows, { id: '', camera_slot: '', stream_name: '', detect_stream_name: '', name: '' }]);
+    sync([
+      ...rows,
+      {
+        id: '',
+        camera_slot: defaultSlot(rows.length),
+        stream_name: '',
+        detect_stream_name: '',
+        name: '',
+      },
+    ]);
   };
 
   const removeRow = (i: number) => {
@@ -95,7 +113,7 @@ export function CamerasListField({
     sync(
       next.length
         ? next
-        : [{ id: '', camera_slot: '', stream_name: '', detect_stream_name: '', name: '' }],
+        : [{ id: '', camera_slot: defaultSlot(0), stream_name: '', detect_stream_name: '', name: '' }],
     );
   };
 
@@ -113,7 +131,7 @@ export function CamerasListField({
           sx={{ mb: 2 }}
           alignItems="flex-start"
         >
-          <Grid size={{ xs: 12, sm: 5 }}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <TextField
               fullWidth
               size="small"
@@ -123,7 +141,7 @@ export function CamerasListField({
               placeholder="cam_1"
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 5 }}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <TextField
               fullWidth
               size="small"
@@ -133,7 +151,7 @@ export function CamerasListField({
               placeholder={t('settings.streamNamePlaceholder')}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
+          <Grid size={{ xs: 12, sm: 3 }}>
             <TextField
               fullWidth
               size="small"
@@ -141,16 +159,6 @@ export function CamerasListField({
               onChange={(e) => updateRow(i, 'name', e.target.value)}
               label={t('settings.cameraName')}
               placeholder={t('settings.cameraPlaceholder')}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 2 }}>
-            <TextField
-              fullWidth
-              size="small"
-              value={row.camera_slot ?? ''}
-              onChange={(e) => updateRow(i, 'camera_slot', e.target.value)}
-              label="camera_slot"
-              placeholder="camera_1"
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 1 }} sx={{ pt: { sm: 0.5 } }}>
