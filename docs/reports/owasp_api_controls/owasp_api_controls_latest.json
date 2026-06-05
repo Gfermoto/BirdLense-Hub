@@ -1,18 +1,18 @@
 {
   "schema": "owasp_api_control_map@v1",
-  "generated_at": "2026-05-31T19:02:35Z",
+  "generated_at": "2026-06-05T11:50:04Z",
   "inputs": {
-    "strict_api_auth_ok": true,
-    "secrets_ok": true,
+    "strict_api_auth_ok": false,
+    "secrets_ok": false,
     "protected_unauth_status": 403,
     "protected_auth_status": 200,
     "authz_enforced": true,
     "authz_allows_authorized": true
   },
   "coverage": {
-    "covered": 10,
+    "covered": 8,
     "total": 10,
-    "percent": 100.0
+    "percent": 80.0
   },
   "controls": [
     {
@@ -24,7 +24,7 @@
     {
       "id": "API2",
       "risk": "Broken Authentication",
-      "covered": true,
+      "covered": false,
       "control": "BIRDLENSE_STRICT_API_AUTH gate"
     },
     {
@@ -60,7 +60,7 @@
     {
       "id": "API8",
       "risk": "Security Misconfiguration",
-      "covered": true,
+      "covered": false,
       "control": "verify-prod-env + readiness security_gates"
     },
     {
@@ -76,10 +76,10 @@
       "control": "dependency scans + CI security checks"
     }
   ],
-  "ok": true,
+  "ok": false,
   "base_url": "http://185.218.111.196:8085",
   "errors": {
-    "readiness": null,
+    "readiness": "http_503",
     "domain_health_unauth": "http_403",
     "domain_health_auth": null
   }

@@ -1,6 +1,6 @@
 # Docs Drift Gate Report
 
-- generated_at: `2026-05-31T19:02:52Z`
+- generated_at: `2026-06-05T16:01:13Z`
 - nav_inventory_sync_ok: `True`
 - redirect_inventory_sync_ok: `True`
 - redirect_snippet_sync_ok: `True`

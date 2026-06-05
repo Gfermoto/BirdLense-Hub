@@ -1,22 +1,25 @@
 # Quality Outcome Metrics
 
-- generated_at: `2026-06-01T09:38:08Z`
+- generated_at: `2026-06-05T11:52:25Z`
+- data_source: `local:app/data/db/birdlense.db`
 - gate_ok: `False`
-- sessions_total: `0`
+- sessions_total: `186`
 
 ## Metrics
 
-- blind_rate: `1.0`
+- blind_rate: `0.0`
 - yolo_frames_with_tracks: `0`
 - empty_bbox_rate: `0.0`
 - tracks_coverage: `0.0`
-- trigger_to_first_bbox_latency_p95_s: `None`
-- finalize_duration_p95_ms: `None`
+- tracks_missing_rate: `1.0`
+- bbox_quality_score: `0.0`
+- trigger_to_first_bbox_latency_p95_s: `0.3`
+- finalize_duration_p95_ms: `1593.776`
 - ingest_bbox_contract_pruned_events: `0`
 - ingest_bbox_contract_empty_events: `0`
 - ingest_bbox_contract_pruned_rows_total: `0`
 - ingest_bbox_contract_pruned_frames_total: `0`
-- ingest_bbox_contract_pruned_rows_per_session: `None`
+- ingest_bbox_contract_pruned_rows_per_session: `0.0`
 - ingest_bbox_contract_pruned_rows_per_hour: `0.0`
 - ingest_bbox_contract_pruned_rows_per_hour_7d_baseline: `0.0`
 - ingest_bbox_contract_pruned_rows_per_hour_delta_vs_7d: `0.0`
@@ -44,7 +47,6 @@
 
 ## Errors
 
-- no session_runtime_metrics rows in lookback window
-- blind_rate=1.0000 > max_blind_rate=0.3000
+- no yolo runtime rows in lookback window
 - tracks_coverage=0.0000 < min_tracks_coverage=0.5000
 - yolo_frames_with_tracks_sum=0 < min_yolo_frames_with_tracks=1

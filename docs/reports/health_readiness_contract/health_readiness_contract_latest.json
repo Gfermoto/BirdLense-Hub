@@ -1,14 +1,14 @@
 {
   "schema": "health_readiness_contract@v1",
-  "generated_at": "2026-05-31T19:02:33Z",
+  "generated_at": "2026-06-05T11:49:27Z",
   "checks": {
     "health_ok": true,
-    "readiness_ok": true,
+    "readiness_ok": false,
     "status_web_ok": true,
     "status_processor_ok": true,
-    "false_green_detected": false
+    "false_green_detected": true
   },
-  "ok": true,
+  "ok": false,
   "base_url": "http://185.218.111.196:8085",
   "responses": {
     "health": {
@@ -18,75 +18,8 @@
       }
     },
     "readiness": {
-      "status_code": 200,
-      "payload": {
-        "checked_at": "2026-05-31T19:02:33.541598+00:00",
-        "checks": {
-          "app_config_dir": {
-            "exists": true,
-            "is_dir": true,
-            "path": "app_config/",
-            "status": "ok",
-            "writable": true
-          },
-          "cache_backend": {
-            "backend": "redis",
-            "configured": true,
-            "status": "ok"
-          },
-          "data_dir": {
-            "exists": true,
-            "is_dir": true,
-            "path": "data/",
-            "status": "ok",
-            "writable": true
-          },
-          "database": {
-            "status": "ok"
-          },
-          "processor_heartbeat": {
-            "age_seconds": 144.542,
-            "last_heartbeat_utc": "2026-05-31T19:00:09+00:00",
-            "max_age_seconds": 180,
-            "reason": "ok",
-            "status": "ok"
-          }
-        },
-        "components": {
-          "active_triggers": [
-            "opencv",
-            "frigate"
-          ],
-          "birdnet_url": "https://birdnet.eyera.info",
-          "esphome": "ok",
-          "motion_source": "opencv,frigate",
-          "mqtt": "ok",
-          "processor": "ok",
-          "trigger_display": "opencv + frigate",
-          "video": "ok",
-          "web": "ok",
-          "yolo": "unknown"
-        },
-        "ready": true,
-        "security_gates": {
-          "items": [
-            {
-              "id": "strict_api_auth",
-              "status": "ok"
-            },
-            {
-              "id": "flask_secret_key",
-              "status": "ok"
-            },
-            {
-              "id": "processor_secret",
-              "status": "ok"
-            }
-          ],
-          "runtime": "production"
-        },
-        "status": "ok"
-      }
+      "status_code": 503,
+      "payload": null
     },
     "status": {
       "status_code": 200,
@@ -103,9 +36,15 @@
         "trigger_display": "opencv + frigate",
         "video": "ok",
         "web": "ok",
-        "yolo": "unknown"
+        "yolo": "degraded"
       }
     }
   },
-  "errors": []
+  "errors": [
+    {
+      "path": "/api/ui/readiness",
+      "status_code": 503,
+      "error": "http_503"
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 # Champion Challenger Shadow Report
 
-- generated_at: `2026-06-01T19:15:36Z`
+- generated_at: `2026-06-05T16:01:13Z`
 - shadow_coverage_ratio: `1.0` (target `1.0`)
 - shadow_pass_rate: `1.0`
 - missing_required_candidates: `0`

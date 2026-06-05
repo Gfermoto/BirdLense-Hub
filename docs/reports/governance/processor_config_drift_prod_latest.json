@@ -1,0 +1,7 @@
+{
+  "schema": "processor_config_drift@v1",
+  "generated_at": "2026-06-05T16:00:53Z",
+  "drift_count": 0,
+  "drifts": [],
+  "ok": true
+}
