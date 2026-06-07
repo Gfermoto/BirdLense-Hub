@@ -33,20 +33,13 @@ STAGE_REID_BEHAVIOR = "reid_behavior"
 STAGE_PERSIST = "persist"
 
 
-def pipeline_mode(app_config) -> str:
-    return str(app_config.get("processor.pipeline_mode") or PIPELINE_MODE).strip().lower()
-
-
-def is_linear_pipeline(app_config) -> bool:
-    return pipeline_mode(app_config) in {"linear", "simple"}
-
-
-def linear_disable_live_quality_gates(app_config) -> bool:
-    """Linear core NVR: no static/scoring veto on live bird boxes."""
-    return is_linear_pipeline(app_config)
-
-
-def linear_skip_legacy_fusion_safeguards(app_config) -> bool:
+from pipeline_mode_utils import (
+    is_linear_pipeline,
+    linear_disable_legacy_quality_gates,
+    linear_disable_live_quality_gates,
+    linear_live_scoring_engine_enabled,
+    pipeline_mode,
+)
     """Linear mode: no salvage / core-anchor / post-fusion second-guessing."""
     return is_linear_pipeline(app_config)
 

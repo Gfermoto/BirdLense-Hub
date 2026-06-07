@@ -26,6 +26,8 @@ processor:
   # linear: trigger → detect/track → classify+helpers → reid/behavior → persist
   # legacy: pre-2026-06 multi-gate decision path (opt-in rollback)
   pipeline_mode: linear
+  # linear + scoring_engine: phantom/static filter on live (TG-aligned); legacy static cascade stays off
+  linear_live_scoring_engine_enabled: true
   # linear: Birder только на finalize (key_frames), не на каждом live-кадре
   classifier_defer_to_finalize: true
   classifier_finalize_max_key_frames: 3

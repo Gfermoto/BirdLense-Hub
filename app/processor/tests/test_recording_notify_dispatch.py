@@ -81,6 +81,26 @@ class TestRecordingNotifyDispatch(unittest.TestCase):
         api.notify_species.assert_not_called()
         encode.assert_not_called()
 
+    def test_skips_when_video_id_missing(self):
+        api = MagicMock()
+
+        notify_unique_species(
+            api,
+            _Config({"processor.min_confidence_to_notify": 0.5}),
+            video_detections=[
+                {
+                    "species_name": "Robin",
+                    "confidence": 0.9,
+                    "notification_eligible": True,
+                }
+            ],
+            video_output="/tmp/video.mp4",
+            video_id=None,
+            encode_func=lambda _d, _v: ("img", "best_frame"),
+        )
+
+        api.notify_species.assert_not_called()
+
     def test_skips_when_preview_missing(self):
         api = MagicMock()
 
