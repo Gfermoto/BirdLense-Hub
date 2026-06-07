@@ -1094,16 +1094,6 @@ def finalize_motion_recording(
             len(track_first_rejected),
             has_ingestible_track_rows(video_detections),
         )
-    video_file_ok_early = _is_playable_video_file(video_output)
-    if video_detections and video_file_ok_early:
-        notify_unique_species(
-            api,
-            app_config,
-            video_detections=video_detections,
-            video_output=video_output,
-            video_id=None,
-            encode_func=encode_notify_preview_base64,
-        )
     reid_enrich_duration_ms: float | None = None
     if video_detections:
         reid_enrich_started_ts = time.perf_counter()
@@ -1352,6 +1342,14 @@ def finalize_motion_recording(
                     output_path_physical,
                     video_id=int(video_id),
                     end_time=end_time,
+                )
+                notify_unique_species(
+                    api,
+                    app_config,
+                    video_detections=video_detections,
+                    video_output=video_output,
+                    video_id=video_id,
+                    encode_func=encode_notify_preview_base64,
                 )
         except Exception as exc:
             try:

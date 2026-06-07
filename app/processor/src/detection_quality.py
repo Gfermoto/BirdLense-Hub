@@ -101,13 +101,18 @@ class DetectionQualityConfig:
             static.static_temporal_min_frames = min_frames_override
         static.static_temporal_max_jitter_px = _parse_float(runtime_cfg, "processor.static_temporal_max_jitter_px", 2.0)
         try:
-            from linear_pipeline import linear_disable_live_quality_gates
+            from pipeline_mode_utils import (
+                linear_disable_legacy_quality_gates,
+                linear_live_scoring_engine_enabled,
+            )
 
-            linear_core = linear_disable_live_quality_gates(runtime_cfg)
+            linear_core = linear_disable_legacy_quality_gates(runtime_cfg)
+            linear_scoring = linear_live_scoring_engine_enabled(runtime_cfg)
         except ImportError:
             linear_core = False
+            linear_scoring = True
         scoring_on = _parse_bool(runtime_cfg, "processor.scoring_engine_enabled", False)
-        if linear_core:
+        if linear_core and not linear_scoring:
             scoring_on = False
         motion_global_static = _parse_bool(runtime_cfg, "processor.motion_global_static_reject_enabled", True)
         if linear_core:

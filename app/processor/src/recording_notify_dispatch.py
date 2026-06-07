@@ -88,7 +88,13 @@ def notify_unique_species(
             species,
         )
         try:
-            link = f"videos/{video_id}" if video_id else "live"
+            if not video_id:
+                logging.warning(
+                    "Notify skipped for %s: missing video_id (no live fallback)",
+                    species,
+                )
+                continue
+            link = f"videos/{video_id}"
             api.notify_species(
                 species,
                 image_base64=image_base64,
