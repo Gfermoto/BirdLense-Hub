@@ -49,6 +49,7 @@ def test_enrich_tracks_classifier_at_finalize_uses_top1_confidence():
             "processor.pipeline_mode": "linear",
             "processor.classifier_defer_to_finalize": True,
             "processor.classifier_finalize_max_key_frames": 3,
+            "processor.classifier_best_guess_min_confidence": 0.10,
         }
     )
 
@@ -62,3 +63,31 @@ def test_enrich_tracks_classifier_at_finalize_uses_top1_confidence():
     assert event["detector_confidence"] == 0.5
     assert event["combined_confidence"] == 0.21
     assert event["source"] == "finalize_deferred"
+
+
+def test_enrich_skips_weak_classifier_below_best_guess_floor():
+    tracks = {
+        8: {
+            "detector_events": [{"label": "Bird", "confidence": 0.5}],
+            "best_frame": object(),
+            "best_frame_score": 2.0,
+            "end_time": 3.5,
+        }
+    }
+
+    class _WeakStrategy:
+        def _classify_crop(self, _crop):
+            return SimpleNamespace(species_name="Eurasian Jay", top1_confidence=0.05)
+
+    cfg = _Cfg(
+        {
+            "processor.pipeline_mode": "linear",
+            "processor.classifier_defer_to_finalize": True,
+            "processor.classifier_best_guess_min_confidence": 0.10,
+        }
+    )
+
+    appended = enrich_tracks_classifier_at_finalize(tracks, _WeakStrategy(), cfg)
+
+    assert appended == 0
+    assert "classifier_events" not in tracks[8]

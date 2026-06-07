@@ -16,6 +16,16 @@ from motion_detectors.opencv_live_overlay import (
     tracks_to_detector_polygons,
 )
 from roi_crop import crop_for_classifier
+from processor_config_defaults import (
+    AUTO_UNSTICK_MIN_BOX_SIZE_PX,
+    AUTO_UNSTICK_MIN_CENTER_DIST,
+    AUTO_UNSTICK_MIN_CONFIDENCE_BINARY,
+    AUTO_UNSTICK_MIN_CONFIDENCE_BINARY_BIRD,
+    AUTO_UNSTICK_NO_TRACK_FRAMES,
+    MIN_CONFIDENCE_BINARY,
+    config_float,
+    config_int,
+)
 
 
 class _LightGateDisabled:
@@ -308,34 +318,41 @@ class FrameProcessor:
 
         st = time.time()
         try:
-            min_conf = float(
-                profile_overrides.get("min_confidence_binary", app_config.get("processor.min_confidence_binary"))
+            min_conf = config_float(
+                app_config,
+                "processor.min_confidence_binary",
+                MIN_CONFIDENCE_BINARY,
             )
+            if profile_overrides.get("min_confidence_binary") is not None:
+                min_conf = float(profile_overrides["min_confidence_binary"])
         except (TypeError, ValueError):
-            min_conf = 0.22
+            min_conf = MIN_CONFIDENCE_BINARY
         auto_unstick_enabled = bool(app_config.get("processor.auto_unstick_enabled", True))
-        try:
-            auto_unstick_no_track_frames = int(app_config.get("processor.auto_unstick_no_track_frames") or 180)
-        except (TypeError, ValueError):
-            auto_unstick_no_track_frames = 180
-        try:
-            auto_unstick_min_conf = float(app_config.get("processor.auto_unstick_min_confidence_binary") or 0.12)
-        except (TypeError, ValueError):
-            auto_unstick_min_conf = 0.12
-        try:
-            auto_unstick_min_conf_bird = float(
-                app_config.get("processor.auto_unstick_min_confidence_binary_bird") or auto_unstick_min_conf
-            )
-        except (TypeError, ValueError):
-            auto_unstick_min_conf_bird = auto_unstick_min_conf
-        try:
-            auto_unstick_min_box_px = int(app_config.get("processor.auto_unstick_min_box_size_px") or 12)
-        except (TypeError, ValueError):
-            auto_unstick_min_box_px = 12
-        try:
-            auto_unstick_min_center_dist = float(app_config.get("processor.auto_unstick_min_center_dist") or 0.0)
-        except (TypeError, ValueError):
-            auto_unstick_min_center_dist = 0.0
+        auto_unstick_no_track_frames = config_int(
+            app_config,
+            "processor.auto_unstick_no_track_frames",
+            AUTO_UNSTICK_NO_TRACK_FRAMES,
+        )
+        auto_unstick_min_conf = config_float(
+            app_config,
+            "processor.auto_unstick_min_confidence_binary",
+            AUTO_UNSTICK_MIN_CONFIDENCE_BINARY,
+        )
+        auto_unstick_min_conf_bird = config_float(
+            app_config,
+            "processor.auto_unstick_min_confidence_binary_bird",
+            AUTO_UNSTICK_MIN_CONFIDENCE_BINARY_BIRD,
+        )
+        auto_unstick_min_box_px = config_int(
+            app_config,
+            "processor.auto_unstick_min_box_size_px",
+            AUTO_UNSTICK_MIN_BOX_SIZE_PX,
+        )
+        auto_unstick_min_center_dist = config_float(
+            app_config,
+            "processor.auto_unstick_min_center_dist",
+            AUTO_UNSTICK_MIN_CENTER_DIST,
+        )
         if (
             auto_unstick_enabled
             and auto_unstick_no_track_frames > 0

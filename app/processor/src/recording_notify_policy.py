@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+from processor_config_defaults import MIN_CONFIDENCE_TO_PROCESS, config_float
+
 
 _INELIGIBLE_DECISION_KINDS = frozenset(
     {
@@ -18,9 +20,9 @@ def resolve_min_confidence_to_notify(config: Any) -> float:
     try:
         if raw_notify is not None and str(raw_notify).strip() != "":
             return float(raw_notify)
-        return float(config.get("processor.min_confidence_to_process") or 0.30)
+        return config_float(config, "processor.min_confidence_to_process", MIN_CONFIDENCE_TO_PROCESS)
     except (TypeError, ValueError):
-        return float(config.get("processor.min_confidence_to_process") or 0.30)
+        return config_float(config, "processor.min_confidence_to_process", MIN_CONFIDENCE_TO_PROCESS)
 
 
 def notify_suppression_reason(detection: dict, min_notify: float) -> str | None:

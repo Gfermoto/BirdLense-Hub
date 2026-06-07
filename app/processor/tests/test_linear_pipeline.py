@@ -55,9 +55,10 @@ class _Cfg:
 
 
 class TestLinearPipeline(unittest.TestCase):
-    def test_is_linear_default_legacy_when_unset(self):
-        self.assertFalse(is_linear_pipeline(_Cfg({})))
+    def test_is_linear_default_when_unset(self):
+        self.assertTrue(is_linear_pipeline(_Cfg({})))
         self.assertTrue(is_linear_pipeline(_Cfg({"processor.pipeline_mode": "linear"})))
+        self.assertFalse(is_linear_pipeline(_Cfg({"processor.pipeline_mode": "legacy"})))
 
     def test_weak_bird_with_bbox_persists(self):
         cfg = _Cfg(
@@ -75,8 +76,9 @@ class TestLinearPipeline(unittest.TestCase):
             min_confidence_to_process=0.12,
         )
         self.assertTrue(ev["accepted"])
-        self.assertEqual(ev["decision_reason"], "track_first_persist")
+        self.assertEqual(ev["decision_reason"], "accepted_binary_track_classifier_deferred")
         self.assertEqual(ev["out_species"], "Bird")
+        self.assertEqual(ev["evidence_state"], "detector_only")
         self.assertTrue(ev["visit_eligible"])
 
     def test_static_like_track_not_blocked_by_linear(self):

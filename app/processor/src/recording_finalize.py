@@ -44,6 +44,11 @@ from recording_video_response import response_video_id
 from recordings_remote_mirror import schedule_recordings_session_mirror
 from reid_runtime import enrich_runtime_reid_detections
 from processor_diagnostics import collect_root_cause_snapshot, write_root_cause_dump
+from processor_config_defaults import (
+    YOLO_BLIND_MIN_FRAMES,
+    YOLO_BLIND_MIN_FRIGATE_ONLY_FRAMES,
+    config_int,
+)
 from session_state_repository import SessionStateRepository
 from behavior_baseline_runtime import maybe_predict_video_behavior_bundle
 from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
@@ -809,8 +814,16 @@ def finalize_motion_recording(
         yolo_raw_now = int(rs_ctx.get("yolo_raw_boxes_total") or 0)
         frigate_only_now = int(rs_ctx.get("session_extended_by_frigate_only") or 0)
         blind_min_sessions = int(app_config.get("detection.yolo_blind_required_consecutive_sessions") or 1)
-        blind_min_frames = int(app_config.get("detection.yolo_blind_min_frames") or 180)
-        blind_min_frigate = int(app_config.get("detection.yolo_blind_min_frigate_only_frames") or 120)
+        blind_min_frames = config_int(
+            app_config,
+            "detection.yolo_blind_min_frames",
+            YOLO_BLIND_MIN_FRAMES,
+        )
+        blind_min_frigate = config_int(
+            app_config,
+            "detection.yolo_blind_min_frigate_only_frames",
+            YOLO_BLIND_MIN_FRIGATE_ONLY_FRAMES,
+        )
         blind_min_duration_s = float(app_config.get("detection.yolo_blind_min_duration_seconds") or 30.0)
         blind_min_effective_fps = float(app_config.get("detection.yolo_blind_min_effective_fps") or 2.0)
         blind_score_threshold = float(app_config.get("detection.yolo_blind_score_threshold") or 0.7)

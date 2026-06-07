@@ -6,6 +6,10 @@ import logging
 from typing import Any
 
 from linear_pipeline import is_linear_pipeline
+from processor_config_defaults import (
+    CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE,
+    config_float,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +42,11 @@ def enrich_tracks_classifier_at_finalize(
     except (TypeError, ValueError):
         max_kf = 3
     max_kf = max(1, min(8, max_kf))
+    min_guess = config_float(
+        app_config,
+        "processor.classifier_best_guess_min_confidence",
+        CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE,
+    )
 
     appended = 0
     for track_id, track in tracks.items():
@@ -93,6 +102,8 @@ def enrich_tracks_classifier_at_finalize(
                 else getattr(out, "confidence", 0.0)
                 or 0.0
             )
+            if cls_conf < min_guess:
+                continue
             track.setdefault("classifier_events", []).append(
                 {
                     "species_name": str(out.species_name),

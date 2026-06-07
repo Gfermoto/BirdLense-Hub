@@ -17,6 +17,7 @@ from runtime_contract import apply_runtime_contract_rows
 from weighted_species_arbiter import apply_weighted_species_arbiter
 from species_mapping_config import build_species_mapping
 from persist_mode import passes_binary_track_first_store_floor
+from processor_config_defaults import ABSORB_GENERIC_BIRD_MIN_CLASSIFIER_CONFIDENCE, config_float
 
 logger = logging.getLogger(__name__)
 
@@ -707,8 +708,10 @@ def build_fused_video_detections(
         absorb_generic_bird_overlap_min_sec=float(
             app_config.get("detection.absorb_generic_bird_overlap_min_sec") or 0.1
         ),
-        absorb_generic_bird_min_classifier_confidence=float(
-            app_config.get("detection.absorb_generic_bird_min_classifier_confidence") or 0.22
+        absorb_generic_bird_min_classifier_confidence=config_float(
+            app_config,
+            "detection.absorb_generic_bird_min_classifier_confidence",
+            ABSORB_GENERIC_BIRD_MIN_CLASSIFIER_CONFIDENCE,
         ),
         preserve_equal_rank_conflicts_for_arbitration=True,
     )

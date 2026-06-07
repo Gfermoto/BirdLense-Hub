@@ -135,7 +135,7 @@ processor:
   # Классификатор в фоне: hot path = detect+track only; species подтягивается из кэша.
   classifier_async_enabled: true
   # Если track() вернул 0 боксов, сделать predict() с мягким conf как аварийный fallback.
-  track_to_predict_fallback_enabled: true
+  track_to_predict_fallback_enabled: false
   track_to_predict_fallback_confidence: 0.002
   # Таймаут на одно видео при batch-перегенерации треков (сек): защита от «зависшего» файла.
   track_regen_video_timeout_sec: 900
@@ -819,7 +819,7 @@ detection:
   # Bbox geometry IoU gate (letterbox roundtrip); see docs/ru/detection-geometry.ru.md
   bbox_iou_gate_enabled: true
   bbox_iou_gate_min: 0.85
-  bbox_iou_gate_action: warn  # warn | reject
+  bbox_iou_gate_action: reject  # warn | reject — reject drops phantom letterbox bboxes
   yolo_blind_min_frames: 180
   # Учитывать просадку до 2 FPS: для blind-gate берётся min(min_frames, min_duration*min_effective_fps).
   yolo_blind_min_effective_fps: 2.0
