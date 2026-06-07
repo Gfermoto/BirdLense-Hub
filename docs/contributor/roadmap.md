@@ -2,7 +2,7 @@
 
 Direction of travel and current stack. **Shipped items** are summarized here; details live in [Changelog](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md) and [FEATURES](../user/features.md).
 
-> **SOTA Reality Status (2026-05-31):** wave-controls (`program:sota` #528–#554) закрыты, но customer acceptance остаётся **blocked** до закрытия [#555](https://github.com/Gfermoto/BirdLense-Hub/issues/555), [#556](https://github.com/Gfermoto/BirdLense-Hub/issues/556), [#557](https://github.com/Gfermoto/BirdLense-Hub/issues/557) и hard-gates эпика [#517](https://github.com/Gfermoto/BirdLense-Hub/issues/517). Правило исполнения: **Backend + UI parity**.
+> **SOTA Reality Status (2026-06-05):** wave-controls (#528–#554) закрыты. Customer acceptance **blocked** on CV pipeline (#606) and storage integrity (#601). Primary plans: `CONSORTIUM_ARCHITECTURE_PLAN_2026-06.md`, `CV_PIPELINE_RECOVERY_PLAN_2026-06.md`.
 
 [Русский](../contributor/roadmap.md)
 
@@ -23,16 +23,27 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 
 ---
 
-## In progress (May 2026 — live tracking / overlay)
+## In progress (June 2026)
 
-### Acceptance-critical (current)
+### Primary execution tracks
 
-- **Primary epic:** [#517](https://github.com/Gfermoto/BirdLense-Hub/issues/517) (`[EPIC][P0→P2] BirdLense > Frigate`).
-- **Release blockers (P0):**
-  - [#555](https://github.com/Gfermoto/BirdLense-Hub/issues/555) — корректный trigger/support/fusion contract + moratorium + bbox/tracks/empty-bbox path.
-  - [#556](https://github.com/Gfermoto/BirdLense-Hub/issues/556) — orphan visit/delete path, timeline filter scope, sources=triggers, non-empty bird dropdown.
-  - [#557](https://github.com/Gfermoto/BirdLense-Hub/issues/557) — консилиум: раздельные dataset-контуры (`detector/classifier/behavior/ReID`) + export policy + domain retrain loop.
-- **Execution guardrail:** закрытие stream/task допускается только при доказанном **backend+ui parity** и field evidence (не только `*_latest.md` compliance-отчёты).
+| Track | Epic | Focus |
+|-------|------|--------|
+| **Storage / NVR parity** | [#601](https://github.com/Gfermoto/BirdLense-Hub/issues/601) | FinalizeTransaction, QuotaMaintainer, ReconcileJob, honest readiness [#605](https://github.com/Gfermoto/BirdLense-Hub/issues/605) |
+| **CV pipeline recovery** | [#606](https://github.com/Gfermoto/BirdLense-Hub/issues/606) | Tracks, false bbox, species — `docs/strategy/CV_PIPELINE_RECOVERY_PLAN_2026-06.md` |
+
+**Field symptoms (Jun 2026):** no tracks, false/sticky bboxes, classifier stuck on Bird → #607–#611.
+
+**Superseded as primary plan:** closed [#517](https://github.com/Gfermoto/BirdLense-Hub/issues/517), [#555–#557](https://github.com/Gfermoto/BirdLense-Hub/issues/555) (residual work split into #601 + #606).
+
+---
+
+## In progress (May 2026 — live tracking / overlay) — historical
+
+### Acceptance-critical (superseded 2026-06)
+
+- ~~**Primary epic:** [#517](https://github.com/Gfermoto/BirdLense-Hub/issues/517)~~ → #601 + #606
+- ~~**Release blockers (P0):** [#555](https://github.com/Gfermoto/BirdLense-Hub/issues/555), [#556](https://github.com/Gfermoto/BirdLense-Hub/issues/556), [#557](https://github.com/Gfermoto/BirdLense-Hub/issues/557)~~ — closed; CV gaps → #606
 
 - **Sticky bbox / phantom tracks** — `track_geometry` (sparse 3-frame rule), strip `review_only` overlay frames before persist, VPS `tracker_remember_seconds: 3.5` (was 8 in `user_config`). Aligns with [SOTA Wave 3](../strategy/SOTA_WAVE3_ROADMAP_2026.md) P0 hard-negatives / threshold contract.
 - **Species vocabulary (#506)** — `services/species_catalog/vocabulary.py`: classifier labels + arbitration. Catalog `scope=project` (default); `scope=allowlist` = активный классификатор (Birder 707 / EfficientNet 525). Ingest не сбрасывает уже наблюдаемые виды в Unknown.

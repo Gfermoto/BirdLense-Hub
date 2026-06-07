@@ -15,7 +15,13 @@ from typing import Any
 
 from object_confirm import track_object_confirmed
 from persist_mode import binary_track_first_min_detector_conf, track_has_bbox_frames
-from app_config.visit_eligibility import visit_eligible_for_named_species
+from processor_config_defaults import (
+    BIRDER_EU_MIN_CONFIDENCE,
+    CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE,
+    PIPELINE_MODE,
+    config_float,
+)
+from app_config.visit_eligibility import GENERIC_BIRD_SPECIES, visit_eligible_for_named_species
 from runtime_contract import apply_runtime_contract
 
 logger = logging.getLogger(__name__)
@@ -28,7 +34,7 @@ STAGE_PERSIST = "persist"
 
 
 def pipeline_mode(app_config) -> str:
-    return str(app_config.get("processor.pipeline_mode") or "legacy").strip().lower()
+    return str(app_config.get("processor.pipeline_mode") or PIPELINE_MODE).strip().lower()
 
 
 def is_linear_pipeline(app_config) -> bool:
@@ -79,17 +85,21 @@ def _best_detector(track: dict[str, Any]) -> tuple[str, float, int] | None:
     return best_label, max(0.0, best_conf), len(events)
 
 
-def _species_from_classifier(app_config, track: dict[str, Any]) -> tuple[str, float, bool, dict[str, Any] | None]:
-    """Pick species from Birder events; helpers may override weak top vote via named alt."""
+def _species_from_classifier(
+    app_config, track: dict[str, Any]
+) -> tuple[str | None, float, bool, dict[str, Any] | None]:
+    """Pick species from Birder events. Returns species=None when only detector evidence."""
     unknown = _unknown_species_labels(app_config)
-    try:
-        min_guess = float(app_config.get("processor.classifier_best_guess_min_confidence") or 0.10)
-    except (TypeError, ValueError):
-        min_guess = 0.10
-    try:
-        birder_min = float(app_config.get("processor.birder_eu_min_confidence") or 0.15)
-    except (TypeError, ValueError):
-        birder_min = 0.15
+    min_guess = config_float(
+        app_config,
+        "processor.classifier_best_guess_min_confidence",
+        CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE,
+    )
+    birder_min = config_float(
+        app_config,
+        "processor.birder_eu_min_confidence",
+        BIRDER_EU_MIN_CONFIDENCE,
+    )
 
     by_name: dict[str, list[dict[str, Any]]] = {}
     for ev in track.get("classifier_events") or []:
@@ -101,7 +111,7 @@ def _species_from_classifier(app_config, track: dict[str, Any]) -> tuple[str, fl
         by_name.setdefault(name, []).append(ev)
 
     if not by_name:
-        return "Bird", 0.0, True, None
+        return None, 0.0, True, None
 
     def _score(name: str) -> tuple[int, float]:
         rows = by_name[name]
@@ -122,7 +132,7 @@ def _species_from_classifier(app_config, track: dict[str, Any]) -> tuple[str, fl
         "avg_top1_top2_margin": None,
     }
     if avg_cls < min_guess:
-        return "Bird", avg_cls, True, meta
+        return None, avg_cls, True, meta
     needs_review = avg_cls < birder_min
     return best_name, max(avg_combined, avg_cls), needs_review, meta
 
@@ -211,12 +221,23 @@ def evaluate_track_linear(
     detector_conf = max(float(detector_conf), float(confirm_score))
 
     species, sp_conf, needs_review, clf_meta = _species_from_classifier(app_config, track)
+    if species is None:
+        species = GENERIC_BIRD_SPECIES
+        sp_conf = 0.0
+        needs_review = True
+        evidence_state = "detector_only"
+        decision_reason = "accepted_binary_track_classifier_deferred"
+    elif needs_review:
+        evidence_state = "weak_classifier"
+        decision_reason = "accepted_binary_track_classifier_uncertain"
+    else:
+        evidence_state = "species_supported"
+        decision_reason = "accepted_species"
     out_conf = max(float(detector_conf), float(sp_conf))
-    reason = "accepted_species" if not needs_review and species != "Bird" else "track_first_persist"
     visit_ok = visit_eligible_for_named_species(species_name=species, visit_eligible=True)
     return {
         "accepted": True,
-        "decision_reason": reason,
+        "decision_reason": decision_reason,
         "decision_kind": "accepted_species",
         "reject_reason_code": None,
         "detector_label": detector_label,
@@ -225,8 +246,8 @@ def evaluate_track_linear(
         "out_species": species,
         "out_conf": out_conf,
         "visit_eligible": visit_ok,
-        "notification_eligible": not needs_review and visit_ok,
-        "evidence_state": "species_supported" if not needs_review else "weak_classifier",
+        "notification_eligible": not needs_review and visit_ok and species != GENERIC_BIRD_SPECIES,
+        "evidence_state": evidence_state,
         "classifier_needs_review": needs_review,
         "classifier_candidate": clf_meta,
     }

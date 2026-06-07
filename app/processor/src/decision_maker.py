@@ -17,8 +17,7 @@ from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
 
 logger = logging.getLogger(__name__)
 
-# Default min confidence; can be overridden via app_config processor.min_confidence_to_process.
-DEFAULT_MIN_CONFIDENCE = 0.30
+from processor_config_defaults import MIN_CONFIDENCE_TO_PROCESS
 
 
 def _parse_optional_threshold(raw):
@@ -102,7 +101,7 @@ class DecisionMaker:
         self._effective_max_inactive = float(max_inactive_seconds or 0) + max(0.0, min(pr, 120.0))
         self.min_track_duration = min_track_duration
         self.min_confidence_to_process = (
-            min_confidence_to_process if min_confidence_to_process is not None else DEFAULT_MIN_CONFIDENCE
+            min_confidence_to_process if min_confidence_to_process is not None else MIN_CONFIDENCE_TO_PROCESS
         )
         self.species_confidence_overrides = species_confidence_overrides or {}
         self._species_confidence_override_keys = {

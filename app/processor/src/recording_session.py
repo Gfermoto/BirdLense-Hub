@@ -23,6 +23,11 @@ from detection_strategy import coerce_bgr_frame
 from recording_session_policy import effective_frigate_hold_seconds
 from recording_finalize_worker import FinalizeWorker
 from recording_finalize import finalize_motion_recording
+from processor_config_defaults import (
+    YOLO_BLIND_MIN_FRAMES,
+    YOLO_BLIND_MIN_FRIGATE_ONLY_FRAMES,
+    config_int,
+)
 from session_state_repository import SessionStateRepository
 from detect_first import (
     detect_first_runtime_signal_fields,
@@ -134,8 +139,16 @@ class MotionRecordingSession:
         self._startup_blind_confirmed = False
         try:
             blind_min_sessions = int(app_config.get("detection.yolo_blind_required_consecutive_sessions") or 1)
-            blind_min_frames = int(app_config.get("detection.yolo_blind_min_frames") or 180)
-            blind_min_frigate = int(app_config.get("detection.yolo_blind_min_frigate_only_frames") or 120)
+            blind_min_frames = config_int(
+                app_config,
+                "detection.yolo_blind_min_frames",
+                YOLO_BLIND_MIN_FRAMES,
+            )
+            blind_min_frigate = config_int(
+                app_config,
+                "detection.yolo_blind_min_frigate_only_frames",
+                YOLO_BLIND_MIN_FRIGATE_ONLY_FRAMES,
+            )
             blind_min_duration_s = float(app_config.get("detection.yolo_blind_min_duration_seconds") or 30.0)
             blind_min_effective_fps = float(app_config.get("detection.yolo_blind_min_effective_fps") or 2.0)
             self._startup_blind_confirmed = self.session_state_repo.is_blind_confirmed(
@@ -578,13 +591,21 @@ class MotionRecordingSession:
             blind_suspected_since_monotonic: float | None = None
             blind_quickcheck_until_monotonic = 0.0
             try:
-                blind_min_frames = int(app_config.get("detection.yolo_blind_min_frames") or 180)
+                blind_min_frames = config_int(
+                    app_config,
+                    "detection.yolo_blind_min_frames",
+                    YOLO_BLIND_MIN_FRAMES,
+                )
             except (TypeError, ValueError):
-                blind_min_frames = 180
+                blind_min_frames = YOLO_BLIND_MIN_FRAMES
             try:
-                blind_min_frigate = int(app_config.get("detection.yolo_blind_min_frigate_only_frames") or 120)
+                blind_min_frigate = config_int(
+                    app_config,
+                    "detection.yolo_blind_min_frigate_only_frames",
+                    YOLO_BLIND_MIN_FRIGATE_ONLY_FRAMES,
+                )
             except (TypeError, ValueError):
-                blind_min_frigate = 120
+                blind_min_frigate = YOLO_BLIND_MIN_FRIGATE_ONLY_FRAMES
             try:
                 quickcheck_seconds = float(app_config.get("detection.yolo_blind_quickcheck_seconds") or 2.0)
             except (TypeError, ValueError):

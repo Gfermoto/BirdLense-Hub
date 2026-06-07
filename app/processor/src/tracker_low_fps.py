@@ -11,6 +11,14 @@ import yaml
 
 from app_config.app_config import app_config
 from inference.binary_paths import processor_package_root
+from processor_config_defaults import (
+    MIN_CONFIDENCE_BINARY,
+    TRACKER_ADAPTIVE_MAX_BUFFER,
+    TRACKER_ADAPTIVE_MIN_BUFFER,
+    TRACKER_LOW_FPS_THRESHOLD,
+    TRACKER_REMEMBER_SECONDS,
+    config_float,
+)
 from tracker_paths import resolve_tracker_config_path
 
 _LOG = logging.getLogger(__name__)
@@ -79,15 +87,9 @@ def _track_conf_cap_from_config(cfg: Mapping[str, Any]) -> float | None:
     from detection_strategy import binary_track_ultralytics_conf_floor
 
     try:
-        raw_base = cfg.get("processor.min_confidence_binary")
+        base = config_float(cfg, "processor.min_confidence_binary", MIN_CONFIDENCE_BINARY)
     except (AttributeError, TypeError):
-        raw_base = None
-    if raw_base is None:
-        raw_base = app_config.get("processor.min_confidence_binary")
-    try:
-        base = float(raw_base if raw_base is not None else 0.22)
-    except (TypeError, ValueError):
-        base = 0.22
+        base = MIN_CONFIDENCE_BINARY
     try:
         backend = str(cfg.get("processor.inference_backend") or app_config.get("processor.inference_backend") or "")
     except (AttributeError, TypeError):
@@ -173,12 +175,12 @@ def resolve_adaptive_tracker_path(
     doc = dict(base_doc)
     track_conf_cap = _track_conf_cap_from_config(cfg)
     adaptive_enabled = _parse_bool(cfg, f"{prefix}tracker_adaptive_low_fps_enabled", True)
-    low_fps_threshold = _parse_float(cfg, f"{prefix}tracker_low_fps_threshold", 10.0)
+    low_fps_threshold = _parse_float(cfg, f"{prefix}tracker_low_fps_threshold", TRACKER_LOW_FPS_THRESHOLD)
 
     if adaptive_enabled and stream_fps <= low_fps_threshold:
-        remember_seconds = _parse_float(cfg, f"{prefix}tracker_remember_seconds", 8.0)
-        min_buffer = _parse_int(cfg, f"{prefix}tracker_adaptive_min_buffer", 24)
-        max_buffer = _parse_int(cfg, f"{prefix}tracker_adaptive_max_buffer", 120)
+        remember_seconds = _parse_float(cfg, f"{prefix}tracker_remember_seconds", TRACKER_REMEMBER_SECONDS)
+        min_buffer = _parse_int(cfg, f"{prefix}tracker_adaptive_min_buffer", TRACKER_ADAPTIVE_MIN_BUFFER)
+        max_buffer = _parse_int(cfg, f"{prefix}tracker_adaptive_max_buffer", TRACKER_ADAPTIVE_MAX_BUFFER)
         buffer_frames = adaptive_track_buffer_frames(
             stream_fps,
             remember_seconds=remember_seconds,
