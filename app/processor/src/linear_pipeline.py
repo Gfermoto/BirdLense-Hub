@@ -40,6 +40,9 @@ from pipeline_mode_utils import (
     linear_live_scoring_engine_enabled,
     pipeline_mode,
 )
+
+
+def linear_skip_legacy_fusion_safeguards(app_config) -> bool:
     """Linear mode: no salvage / core-anchor / post-fusion second-guessing."""
     return is_linear_pipeline(app_config)
 
