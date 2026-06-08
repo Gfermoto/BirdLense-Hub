@@ -61,11 +61,36 @@ def encode_notify_preview_base64(
                 st = float(detection.get("start_time") or 0)
                 et = float(detection.get("end_time") or st)
                 if et > st:
-                    return st + (et - st) * 0.5
-                return st
+                    t_mid = st + (et - st) * 0.5
+                else:
+                    t_mid = st
             except Exception:
                 logger.debug("_pick_timestamp fallback 0", exc_info=True)
-                return 0.0
+                t_mid = 0.0
+            try:
+                from dual_stream_timeline import (
+                    apply_record_time_offset,
+                    resolve_detect_record_time_offset_sec,
+                )
+
+                cam = str(detection.get("camera_id") or detection.get("triggered_camera") or "").strip()
+                offset = resolve_detect_record_time_offset_sec(runtime_cfg, camera_id=cam or None)
+                return apply_record_time_offset(t_mid, offset)
+            except ImportError:
+                return t_mid
+
+        def _apply_offset_to_t(ts: float) -> float:
+            try:
+                from dual_stream_timeline import (
+                    apply_record_time_offset,
+                    resolve_detect_record_time_offset_sec,
+                )
+
+                cam = str(detection.get("camera_id") or detection.get("triggered_camera") or "").strip()
+                offset = resolve_detect_record_time_offset_sec(runtime_cfg, camera_id=cam or None)
+                return apply_record_time_offset(float(ts), offset)
+            except ImportError:
+                return float(ts)
 
         key_frames = detection.get("key_frames") or []
         best_kf = None
@@ -81,14 +106,14 @@ def encode_notify_preview_base64(
         mid = frames[len(frames) // 2] if isinstance(frames, list) and frames else None
         bbox = mid.get("bbox") if isinstance(mid, dict) else None
         if isinstance(mid, dict):
-            t = float(mid.get("t") or _pick_timestamp())
+            t = _apply_offset_to_t(float(mid.get("t") or _pick_timestamp()))
         else:
             t = _pick_timestamp()
         if best_kf is not None:
             bb = best_kf.get("bbox")
             if isinstance(bb, (list, tuple)) and len(bb) == 4:
                 bbox = bb
-            t = float(best_kf.get("t") or t)
+            t = _apply_offset_to_t(float(best_kf.get("t") or t))
 
         def _read_frame_with_retries(ts: float):
             retry_delays = (0.2, 0.5)

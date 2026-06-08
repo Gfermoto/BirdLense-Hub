@@ -1343,6 +1343,10 @@ def finalize_motion_recording(
                     video_id=int(video_id),
                     end_time=end_time,
                 )
+                if session_camera_id:
+                    for row in video_detections:
+                        if isinstance(row, dict) and not row.get("camera_id"):
+                            row["camera_id"] = session_camera_id
                 notify_unique_species(
                     api,
                     app_config,

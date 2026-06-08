@@ -55,14 +55,14 @@ Frigate использует **detect substream** (motion + object detection) и
 
 **Issue:** child of #607 / #608
 
-### Phase F — Track timeline (P0)
+### Phase F — Track timeline (P0) — частично в dev
 
-| ID | Deliverable | Acceptance |
-|----|-------------|------------|
-| F1 | ByteTrack YAML materialization vs `openvino_binary_track_ultralytics_conf` | `yolo_frames_with_tracks/yolo_frames_ran ≥ 0.15` |
-| F2 | Dense `frames[]` append (no subsample on accept) | avg frames/track ↑, overlay lag ↓ |
-| F3 | ScoringEngine: phantom reject only; не резать moving ROI | field FP без collapse recall |
-| F4 | Optional detect↔record time offset calibration (config per camera) | manual golden ≤2 px median err |
+| ID | Deliverable | Status |
+|----|-------------|--------|
+| F1 | ByteTrack conf contract log + metrics | `bytetrack_contract.py` |
+| F2 | Dense frames[] | уже каждый кадр в `update_track` |
+| F3 | Scoring moving ROI → REVIEW not REJECT | `scoring_moving_roi_*` |
+| F4 | `detect_record_time_offset_sec` per camera | `dual_stream_timeline.py` |
 
 ### Phase G — Hi-res TG notify (P1)
 
