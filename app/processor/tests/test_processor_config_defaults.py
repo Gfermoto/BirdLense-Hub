@@ -32,6 +32,8 @@ from processor_config_defaults import (  # noqa: E402
     TRACKER_ADAPTIVE_MAX_BUFFER,
     TRACKER_ADAPTIVE_MIN_BUFFER,
     TRACKER_REMEMBER_SECONDS,
+    TRACK_TO_PREDICT_FALLBACK_ENABLED,
+    ULTRA_WEAK_BOX_SALVAGE_ENABLED,
     YOLO_BLIND_MIN_FRAMES,
 )
 
@@ -80,6 +82,12 @@ class TestProcessorConfigDefaults(unittest.TestCase):
     def test_classifier_thresholds(self):
         self.assertEqual(CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE, self.proc["classifier_best_guess_min_confidence"])
         self.assertEqual(BIRDER_EU_MIN_CONFIDENCE, self.proc["birder_eu_min_confidence"])
+
+    def test_salvage_fallback_off_by_default(self):
+        self.assertEqual(ULTRA_WEAK_BOX_SALVAGE_ENABLED, self.proc["ultra_weak_box_salvage_enabled"])
+        self.assertEqual(TRACK_TO_PREDICT_FALLBACK_ENABLED, self.proc["track_to_predict_fallback_enabled"])
+        self.assertFalse(ULTRA_WEAK_BOX_SALVAGE_ENABLED)
+        self.assertFalse(TRACK_TO_PREDICT_FALLBACK_ENABLED)
 
     def test_detection_keys(self):
         self.assertEqual(MIN_CONFIDENCE_TO_STORE, self.det["min_confidence_to_store"])
