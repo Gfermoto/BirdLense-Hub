@@ -67,6 +67,12 @@ def test_production_strict_allows_public_storage_read_endpoints(client, _strict_
     )
 
 
+def test_production_strict_allows_public_bird_profiles_list(client, _strict_prod_env):
+    r = client.get("/api/ui/bird-profiles", query_string={"limit": 5})
+    assert r.status_code == 200
+    assert "items" in (r.get_json() or {})
+
+
 def test_production_strict_report_pdf_passes_gate_route_denies_guest(client, _strict_prod_env):
     """Как unknowns/export: strict не режет; доступ — в обработчике (ui_sensitive_export_access)."""
     r = client.get("/api/ui/report/pdf")
