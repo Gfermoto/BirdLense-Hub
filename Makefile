@@ -1057,6 +1057,9 @@ generate-golden-v2:
 validate-pipeline-golden:
 	@cd "$(CURDIR)/app/processor" && PYTHONPATH=src python3 -m pytest tests/test_pipeline_golden_gate.py tests/test_scoring_engine.py tests/test_decision_trace_builder.py tests/test_recording_decision_trace_log.py -q
 
+pipeline-golden:
+	@python3 "$(CURDIR)/scripts/pipeline_golden_gate.py" --enforce --skip-heavy
+
 ml-golden-set-gate:
 	@python3 "$(CURDIR)/scripts/enforce_golden_set_gate.py" --enforce
 

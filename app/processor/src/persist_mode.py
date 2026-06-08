@@ -8,13 +8,21 @@ legacy: pre-2026-06 multi-gate behavior (classifier/store_floor can veto valid t
 
 from __future__ import annotations
 
+import logging
+
 from typing import Any
 
 from track_first_contract import is_valid_norm_bbox, valid_track_frames
 
 
 def persist_mode_name(app_config) -> str:
-    return str(app_config.get("detection.persist_mode") or "binary_track_first").strip().lower()
+    raw = str(app_config.get("detection.persist_mode") or "binary_track_first").strip().lower()
+    if raw == "legacy":
+        logging.getLogger(__name__).warning(
+            "detection.persist_mode=legacy is deprecated (#610); using binary_track_first",
+        )
+        return "binary_track_first"
+    return raw
 
 
 def binary_track_first_enabled(app_config) -> bool:

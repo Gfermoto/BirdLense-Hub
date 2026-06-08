@@ -61,7 +61,7 @@ class TestLinearPipeline(unittest.TestCase):
     def test_is_linear_default_when_unset(self):
         self.assertTrue(is_linear_pipeline(_Cfg({})))
         self.assertTrue(is_linear_pipeline(_Cfg({"processor.pipeline_mode": "linear"})))
-        self.assertFalse(is_linear_pipeline(_Cfg({"processor.pipeline_mode": "legacy"})))
+        self.assertTrue(is_linear_pipeline(_Cfg({"processor.pipeline_mode": "legacy"})))
 
     def test_weak_bird_with_bbox_persists(self):
         cfg = _Cfg(

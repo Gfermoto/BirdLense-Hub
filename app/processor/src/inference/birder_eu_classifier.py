@@ -11,12 +11,12 @@ from typing import Any, Mapping
 import numpy as np
 
 from inference.efficientnet_b2_classifier import (
-    DEFAULT_MIN_CONFIDENCE,
     UNKNOWN_BIRD_LABEL,
     _entropy_margin,
     _normalize_species_label,
     resolve_efficientnet_openvino_device,
 )
+from processor_config_defaults import BIRDER_EU_MIN_CONFIDENCE
 
 _log = logging.getLogger(__name__)
 
@@ -263,7 +263,7 @@ def load_birder_eu_classifier(
     regional_species: list[str] | None = None,
     app_config: Mapping[str, Any] | None = None,
 ) -> BirderEuClassifier:
-    min_conf = DEFAULT_MIN_CONFIDENCE
+    min_conf = float(BIRDER_EU_MIN_CONFIDENCE)
     unknown = UNKNOWN_BIRD_LABEL
     var = variant or default_birder_variant(app_config)
     if app_config is not None:
