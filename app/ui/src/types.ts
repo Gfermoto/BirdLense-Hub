@@ -48,6 +48,8 @@ export interface SpeciesVisit {
   behavior_events?: { label?: string }[];
   /** Trigger semantics for timeline filtering (opencv/frigate/motion_sensor/scales/unknown). */
   trigger_source?: string;
+  /** Hub camera id (video.cameras[].id) when known. */
+  camera_id?: string | null;
 }
 
 export interface TrackFrame {

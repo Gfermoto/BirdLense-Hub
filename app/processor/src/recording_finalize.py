@@ -1343,6 +1343,7 @@ def finalize_motion_recording(
                 behavior_shadow_confidence=behavior_bundle.get("shadow_confidence"),
                 behavior_shadow_model_kind=behavior_bundle.get("shadow_model_kind"),
                 behavior_shadow_model_version=behavior_bundle.get("shadow_model_version"),
+                camera_id=session_camera_id,
             )
             video_id = response_video_id(resp)
             if video_id is None:

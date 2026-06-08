@@ -111,6 +111,7 @@ class API:
         behavior_shadow_confidence=None,
         behavior_shadow_model_kind=None,
         behavior_shadow_model_version=None,
+        camera_id=None,
     ):
         # Fields to exclude from API payload (non-serializable or internal)
         exclude_fields = {"best_frame"}
@@ -129,6 +130,8 @@ class API:
         }
         if trigger_source is not None and str(trigger_source).strip():
             video_data["trigger_source"] = str(trigger_source).strip().lower()
+        if camera_id is not None and str(camera_id).strip():
+            video_data["camera_id"] = str(camera_id).strip()[:64]
         if scales_weight_delta_kg is not None:
             video_data["scales_weight_delta_kg"] = float(scales_weight_delta_kg)
         if behavior_label is not None and str(behavior_label).strip():

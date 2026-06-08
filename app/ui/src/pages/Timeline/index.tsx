@@ -18,6 +18,7 @@ import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
 import { BirdProfileFilterAutocomplete } from '../../components/filters/BirdProfileFilterAutocomplete';
 import { BehaviorFilterSelect } from '../../components/filters/BehaviorFilterSelect';
+import { CameraFilterMultiSelect } from '../../components/filters/CameraFilterMultiSelect';
 import { BirdProfilesCatalogDialog } from '../../components/BirdProfilesCatalogDialog';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import { fetchBirdProfiles } from '../../api/speciesOverviewDetections';
@@ -58,6 +59,8 @@ import {
   getVisitBehaviorSortValue,
   visitMatchesBehavior,
   visitMatchesBirdProfile,
+  visitMatchesCameras,
+  parseCameraIdsFromSearchParams,
 } from './timelineFilters';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Chip from '@mui/material/Chip';
@@ -191,6 +194,9 @@ export function TimelinePage() {
   const [behaviorFilter, setBehaviorFilter] = useState(
     () => searchParams.get('behavior')?.trim() ?? '',
   );
+  const [cameraFilterIds, setCameraFilterIds] = useState<string[]>(() =>
+    parseCameraIdsFromSearchParams(searchParams),
+  );
   const [triggerSource, setTriggerSource] =
     useState<TimelineTriggerSource>('all');
   const [sortBy, setSortBy] = useState<TimelineSortBy>('date_desc');
@@ -246,9 +252,25 @@ export function TimelinePage() {
     [searchParams, setSearchParams],
   );
 
+  const updateCameraFilter = useCallback(
+    (cameraIds: string[]) => {
+      setCameraFilterIds(cameraIds);
+      const next = new URLSearchParams(searchParams);
+      if (cameraIds.length) {
+        next.set('camera_ids', cameraIds.join(','));
+      } else {
+        next.delete('camera_ids');
+        next.delete('camera_id');
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
   useEffect(() => {
     setBirdProfileFilterId(parseBirdProfileIdFromSearchParams(searchParams));
     setBehaviorFilter(searchParams.get('behavior')?.trim() ?? '');
+    setCameraFilterIds(parseCameraIdsFromSearchParams(searchParams));
   }, [searchParams]);
 
   const { data: observerOverview } = useQuery({
@@ -442,6 +464,9 @@ export function TimelinePage() {
       if (!visitMatchesBehavior(visit, behaviorFilter)) {
         return false;
       }
+      if (!visitMatchesCameras(visit, cameraFilterIds)) {
+        return false;
+      }
       return true;
     });
     const sorted = [...rows];
@@ -488,6 +513,7 @@ export function TimelinePage() {
     birdProfileFilterId,
     birdProfilesById,
     behaviorFilter,
+    cameraFilterIds,
     sortBy,
     i18n.language,
   ]);
@@ -819,6 +845,11 @@ export function TimelinePage() {
               value={behaviorFilter}
               onChange={updateBehaviorFilter}
               sx={{ minWidth: { xs: '100%', md: 240 } }}
+            />
+            <CameraFilterMultiSelect
+              value={cameraFilterIds}
+              onChange={updateCameraFilter}
+              sx={{ minWidth: { xs: '100%', md: 280 } }}
             />
             <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>
               <InputLabel id="timeline-trigger-source-label">

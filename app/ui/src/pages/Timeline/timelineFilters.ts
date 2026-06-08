@@ -53,3 +53,23 @@ export function visitMatchesBehavior(
   if (!normalized) return true;
   return getVisitBehaviorLabels(visit).includes(normalized);
 }
+
+export function visitMatchesCameras(
+  visit: SpeciesVisit,
+  cameraIds: string[],
+): boolean {
+  if (!cameraIds.length) return true;
+  const cam = String(visit.camera_id || '').trim();
+  if (!cam) return false;
+  return cameraIds.includes(cam);
+}
+
+export function parseCameraIdsFromSearchParams(
+  params: URLSearchParams,
+): string[] {
+  const raw = params.get('camera_ids') || params.get('camera_id') || '';
+  return raw
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+}

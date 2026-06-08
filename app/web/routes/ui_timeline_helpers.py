@@ -97,7 +97,7 @@ def build_merged_timeline_items(
     visits = _timeline_visits_deduped_ordered(visits_raw)
     if favorite_only:
         visits = [v for v in visits if _visit_has_favorite_active_video(v)]
-    visit_payloads = [format_visit_for_timeline(v) for v in visits]
+    visit_payloads = [format_visit_for_timeline(v, session=session) for v in visits]
     video_ids_in_visits: set[int] = set()
     for p in visit_payloads:
         for d in p.get("detections") or []:
@@ -120,7 +120,7 @@ def build_merged_timeline_items(
         uq = uq.filter(Video.favorite.is_(True))
     unlinked_videos = uq.order_by(Video.start_time.desc()).all()
     unlinked_payloads = [
-        format_unlinked_video_for_timeline(v, fallback_species=fallback_species)
+        format_unlinked_video_for_timeline(v, fallback_species=fallback_species, session=session)
         for v in unlinked_videos
         if v.id not in video_ids_in_visits
     ]
