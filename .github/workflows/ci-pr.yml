@@ -102,6 +102,7 @@ jobs:
         run: |
           pip install opencv-python-headless==4.10.0.84 numpy pyyaml==6.0.2
           make validate-pipeline-golden
+          make pipeline-golden
           python3 scripts/stress_test_offline.py --no-yolo
 
       - name: Radon cyclomatic complexity (summary only)

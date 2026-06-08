@@ -24,12 +24,13 @@ class TestPersistMode(unittest.TestCase):
         self.assertEqual(persist_mode_name(cfg), "binary_track_first")
         self.assertTrue(binary_track_first_enabled(cfg))
 
-    def test_legacy_mode_disables_override(self):
+    def test_legacy_persist_mode_maps_to_binary_track_first(self):
         cfg = MagicMock()
         cfg.get.side_effect = lambda key, default=None: (
             "legacy" if key == "detection.persist_mode" else default
         )
-        self.assertFalse(binary_track_first_enabled(cfg))
+        self.assertTrue(binary_track_first_enabled(cfg))
+        self.assertEqual(persist_mode_name(cfg), "binary_track_first")
 
     def test_track_has_bbox_frames(self):
         self.assertFalse(track_has_bbox_frames({}))

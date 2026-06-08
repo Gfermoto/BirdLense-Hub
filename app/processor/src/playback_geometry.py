@@ -183,6 +183,7 @@ def reconcile_playback_shape_after_record(
             if not _shapes_equal(resolved, cfg_hw):
                 summary["config_mismatch"] = True
                 inc_counter("playback_shape_config_mismatch_total")
+                inc_counter("bbox_remap_mismatch_total")
                 logger.warning(
                     "playback_shape config mismatch: config=%sx%s resolved=%sx%s source=%s",
                     cfg_hw[1],

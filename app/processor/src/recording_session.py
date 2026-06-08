@@ -401,6 +401,7 @@ class MotionRecordingSession:
                 cfg_hw = (int(main_size[1]), int(main_size[0]))
                 if cfg_hw != shape_hw and source != "config_main_size":
                     inc_counter("playback_shape_config_mismatch_total")
+                    inc_counter("bbox_remap_mismatch_total")
                     logger.warning(
                         "playback_shape at session start: config=%sx%s applied=%sx%s source=%s",
                         main_size[0],

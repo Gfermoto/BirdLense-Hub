@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from processor_config_defaults import PIPELINE_MODE
+
+_log = logging.getLogger(__name__)
+_legacy_mode_warned = False
 
 
 def pipeline_mode(app_config: Any) -> str:
@@ -12,7 +16,16 @@ def pipeline_mode(app_config: Any) -> str:
 
 
 def is_linear_pipeline(app_config: Any) -> bool:
-    return pipeline_mode(app_config) in {"linear", "simple"}
+    mode = pipeline_mode(app_config)
+    if mode == "legacy":
+        global _legacy_mode_warned
+        if not _legacy_mode_warned:
+            _log.warning(
+                "processor.pipeline_mode=legacy is deprecated (#610); treated as linear",
+            )
+            _legacy_mode_warned = True
+        return True
+    return mode in {"linear", "simple"}
 
 
 def linear_disable_legacy_quality_gates(app_config: Any) -> bool:
