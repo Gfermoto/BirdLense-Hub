@@ -1162,7 +1162,12 @@ class TwoStageStrategy(DetectionStrategy):
         if results and len(results[0].boxes) > 0:
             boxes = results[0].boxes
         else:
-            fallback_enabled = bool(runtime_cfg.get("processor.track_to_predict_fallback_enabled", True))
+            fallback_enabled = bool(
+                runtime_cfg.get(
+                    "processor.track_to_predict_fallback_enabled",
+                    False,
+                )
+            )
             if not fallback_enabled:
                 _record_detect_metrics(raw_boxes=0, boxes_with_track_id=0, accepted=0)
                 return []
@@ -1432,7 +1437,9 @@ class TwoStageStrategy(DetectionStrategy):
                     auto_small_object_relax_min_center_dist,
                     auto_small_object_relax_conf_delta,
                 )
-        if not valid_boxes and bool(runtime_cfg.get("processor.ultra_weak_box_salvage_enabled", True)):
+        if not valid_boxes and bool(
+            runtime_cfg.get("processor.ultra_weak_box_salvage_enabled", False)
+        ):
             try:
                 ultra_min_conf = float(runtime_cfg.get("processor.ultra_weak_box_salvage_min_confidence") or 0.005)
             except (TypeError, ValueError):
