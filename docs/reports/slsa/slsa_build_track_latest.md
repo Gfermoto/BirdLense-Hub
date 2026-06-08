@@ -1,6 +1,6 @@
 # SLSA Build Track Report
 
-- generated_at: `2026-06-05T16:01:13Z`
+- generated_at: `2026-06-08T11:05:12Z`
 - workflow_exists: `True`
 - required_controls_present: `True`
 - control_adoption: `5/5`

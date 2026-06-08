@@ -140,7 +140,7 @@ def evaluate_track_linear(
     min_track_duration: float,
     min_confidence_to_process: float,
 ) -> dict[str, Any]:
-    """Stage detect_track → persist decision. No static_pinned / store_floor / arbiter."""
+    """Stage detect_track → persist decision. Optional static_pinned reject (#608)."""
     try:
         dur = float(track["end_time"]) - float(track["start_time"])
     except (TypeError, ValueError, KeyError):
@@ -190,6 +190,25 @@ def evaluate_track_linear(
             detector_conf,
             det_count,
         )
+
+    try:
+        from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
+
+        raw = app_config.get("processor.linear_static_pinned_reject_enabled")
+        static_enabled = True if raw is None else bool(raw)
+        if static_enabled:
+            static_cfg = StaticPinnedTrackConfig.from_runtime_cfg(app_config)
+            static_reason = static_pinned_track_reason(track, static_cfg)
+            if static_reason:
+                return _reject_linear(
+                    "rejected_static_pinned_track",
+                    "insufficient_frames",
+                    detector_label,
+                    detector_conf,
+                    det_count,
+                )
+    except ImportError:
+        pass
 
     floor = binary_track_first_min_detector_conf(app_config, float(min_confidence_to_process))
     confirmed, confirm_score, confirm_reason = track_object_confirmed(

@@ -106,6 +106,44 @@ export function ProcessorStreamGeometryBlock({ form }: Props) {
             )}
           </form.Field>
         </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="processor.notify_preview_source">
+            {(field) => (
+              <TextField
+                fullWidth
+                select
+                SelectProps={{ native: true }}
+                label={t('settings.processorNotifyPreviewSource')}
+                helperText={t('settings.processorNotifyPreviewSourceHint')}
+                value={field.state.value ?? 'auto'}
+                onChange={(e) => field.handleChange(e.target.value)}
+              >
+                <option value="auto">{t('settings.processorNotifyPreviewSourceAuto')}</option>
+                <option value="record_hires">{t('settings.processorNotifyPreviewSourceRecord')}</option>
+                <option value="best_frame_lores">{t('settings.processorNotifyPreviewSourceLores')}</option>
+              </TextField>
+            )}
+          </form.Field>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <form.Field name="processor.detect_record_time_offset_sec">
+            {(field) => (
+              <TextField
+                fullWidth
+                size="small"
+                type="number"
+                inputProps={{ min: -2, max: 2, step: 0.05 }}
+                label={t('settings.processorDetectRecordTimeOffsetSecGlobal')}
+                helperText={t('settings.processorDetectRecordTimeOffsetSecGlobalHint')}
+                value={field.state.value ?? ''}
+                onChange={(e) => {
+                  const raw = e.target.value.trim();
+                  field.handleChange(raw === '' ? undefined : Number(raw));
+                }}
+              />
+            )}
+          </form.Field>
+        </Grid>
       </Grid>
     </ServiceBlock>
   );

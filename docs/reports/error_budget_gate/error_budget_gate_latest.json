@@ -1,6 +1,6 @@
 {
   "schema": "error_budget_gate@v1",
-  "generated_at": "2026-06-05T11:48:52Z",
+  "generated_at": "2026-06-08T11:08:41Z",
   "policy": {
     "window": "rolling_28d",
     "budget_pct_total": 100,
@@ -33,13 +33,13 @@
     "exhausted": false
   },
   "gate": {
-    "override_used": false,
-    "override_reason": "",
-    "override_has_ticket": false,
+    "override_used": true,
+    "override_reason": "dual-stream bbox timeline sync + BirdBox frigate-assist (#608)",
+    "override_has_ticket": true,
     "warning_requires_override": true,
     "requires_override": true,
     "warning_override_active": true,
-    "block_release": true,
-    "ok": false
+    "block_release": false,
+    "ok": true
   }
 }

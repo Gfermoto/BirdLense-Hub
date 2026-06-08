@@ -1,6 +1,6 @@
 # Domain Closure Package Report
 
-- generated_at: `2026-06-04T14:49:19Z`
+- generated_at: `2026-06-08T09:03:54Z`
 - closure_doc: `/home/gfer/BirdLense/docs/reports/domain_finetune/closure_package_30_60_90.md`
 - required_sections_total: `5`
 - required_runbooks_total: `3`

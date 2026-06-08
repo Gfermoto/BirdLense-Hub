@@ -1,6 +1,6 @@
 {
   "schema": "ml_technical_debt_scorecard_report@v1",
-  "generated_at": "2026-06-05T16:01:13Z",
+  "generated_at": "2026-06-08T11:05:13Z",
   "checks": {
     "min_checks_total_ok": true,
     "duplicates_ok": true,

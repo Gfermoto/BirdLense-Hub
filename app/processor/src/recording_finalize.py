@@ -708,6 +708,9 @@ def finalize_motion_recording(
     merge_window = int(app_config.get("detection.merge_window_seconds") or 5)
     session_tracks = _tracks_for_finalize(frame_processor, recording_context)
     yolo_tracks_count = len(session_tracks)
+    session_camera_id = None
+    if isinstance(recording_context, dict):
+        session_camera_id = str(recording_context.get("triggered_camera") or "").strip() or None
     try:
         from finalize_classification import enrich_tracks_classifier_at_finalize, defer_classifier_to_finalize
 
@@ -716,6 +719,8 @@ def finalize_motion_recording(
                 session_tracks,
                 getattr(frame_processor, "strategy", None),
                 app_config,
+                video_path=video_output,
+                camera_id=session_camera_id,
             )
     except ImportError:
         pass
@@ -727,10 +732,10 @@ def finalize_motion_recording(
         inc_counter("classifier_needs_review_total", clf_review_n)
     yolo_passed_count = len(video_detections)
     trigger_source = None
-    session_camera_id = None
     if isinstance(recording_context, dict):
         trigger_source = str(recording_context.get("triggered_by") or "").strip().lower() or None
-        session_camera_id = str(recording_context.get("triggered_camera") or "").strip() or None
+        if not session_camera_id:
+            session_camera_id = str(recording_context.get("triggered_camera") or "").strip() or None
     scope_camera_id = None
     if trigger_source == "frigate":
         scope_camera_id = session_camera_id
@@ -995,6 +1000,16 @@ def finalize_motion_recording(
             )
         video_detections = kept_rows
     video_detections = _sanitize_persisted_overlay_frames(video_detections)
+    try:
+        from dual_stream_timeline import apply_playback_timeline_offset_to_detections
+
+        video_detections = apply_playback_timeline_offset_to_detections(
+            video_detections,
+            runtime_cfg=app_config,
+            camera_id=session_camera_id,
+        )
+    except ImportError:
+        pass
     detect_first_restored = False
     try:
         session_duration_s = max(0.0, float((end_time - start_time).total_seconds()))

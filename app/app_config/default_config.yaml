@@ -88,6 +88,9 @@ processor:
   detect_first_max_frames: 30
   detect_first_confirm_min_hits: 2
   detect_first_confirm_min_track_seconds: 0.5
+  # Frigate trigger: если lores YOLO не дал anchor, но Frigate уже видит bird+bbox — старт record.
+  detect_first_frigate_assist_enabled: true
+  detect_first_frigate_assist_min_confidence: 0.50
   record_prebuffer_seconds: 0
   record_postroll_seconds: 3
   # Legacy alias for the old bounded probe; kept for migrated user_config values.
@@ -280,6 +283,12 @@ processor:
   # TG preview: best_frame_lores (detect crop) | record_hires (main MP4) | auto (hires then lores)
   notify_preview_source: auto
   notify_preview_crop_pad_frac: 0.06
+  # Classifier/ReID crops: same hi-res MP4 path as TG (record_hires) when auto.
+  classifier_crop_source: auto
+  reid_crop_source: auto
+  enrichment_crop_pad_frac: 0.06
+  # Linear pipeline: reject static-pinned tracks (feeder FP #608).
+  linear_static_pinned_reject_enabled: true
   # Seek offset (sec) when cropping main MP4 for TG/overlay; per-camera in camera_tuning_by_role
   detect_record_time_offset_sec: 0
   scoring_moving_roi_review_enabled: true
@@ -420,9 +429,18 @@ processor:
       min_confidence_binary_bird: 0.12
       min_confidence_to_process: 0.12
       min_track_duration: 0.5
+      detect_record_time_offset_sec: -0.10
+      track_static_reject_enabled: true
+      track_static_reject_min_duration_sec: 1.5
+      track_static_reject_min_frames: 3
+      track_static_reject_max_center_dispersion_norm: 0.065
+      track_static_reject_max_relative_center_dispersion: 0.13
+      track_static_reject_max_bbox_iou_first_last_min: 0.72
+      scoring_moving_roi_min_motion_score: 0.30
     feeder_far:
       min_track_duration: 0.5
       min_confidence_binary_bird: 0.08
+      detect_record_time_offset_sec: -0.12
       track_static_reject_enabled: false
       track_static_reject_max_center_dispersion_norm: 0.10
       track_static_reject_max_relative_center_dispersion: 0.18

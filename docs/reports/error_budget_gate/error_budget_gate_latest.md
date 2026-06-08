@@ -1,10 +1,10 @@
 # Error Budget Gate
 
-- generated_at: `2026-06-05T11:48:52Z`
+- generated_at: `2026-06-08T11:08:41Z`
 - state: `warning`
 - consumed_pct: `85`
 - remaining_pct: `15`
-- gate_ok: `False`
+- gate_ok: `True`
 
 ## Inputs
 
@@ -24,6 +24,6 @@
 
 ## Gate
 
-- override_used: `False`
-- override_reason: ``
-- block_release: `True`
+- override_used: `True`
+- override_reason: `dual-stream bbox timeline sync + BirdBox frigate-assist (#608)`
+- block_release: `False`

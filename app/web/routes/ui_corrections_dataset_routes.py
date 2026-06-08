@@ -35,8 +35,7 @@ from services.reid_auto_link_service import record_link_feedback, suggest_profil
 def register_ui_corrections_dataset_routes(app):
     @app.route("/api/ui/bird-profiles", methods=["GET"])
     def get_bird_profiles():
-        if not contributor_or_admin_access():
-            return {"error": "Password required"}, 403
+        # Read-only catalog for timeline filter / nickname pickers — public like visits list.
         query = request.args.get("query")
         species_id = request.args.get("species_id", type=int)
         limit = request.args.get("limit", 20, type=int)

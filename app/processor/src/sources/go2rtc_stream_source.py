@@ -309,6 +309,7 @@ class Go2RTCStreamSource:
         self._streaming_output = None
         self._streaming_thread = None
         self._recording = False
+        self._recording_t0: float | None = None
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
         self._last_frame_time = 0
         self._frame_count = 0
@@ -568,6 +569,7 @@ class Go2RTCStreamSource:
     def start_recording(self, output: str):
         """Start recording via FFmpeg (video+audio from RTSP). CPU or Intel VA-API."""
         self._recording = True
+        self._recording_t0 = time.monotonic()
         self._recording_used_vaapi = False
         self._video_output = output
         os.makedirs(os.path.dirname(output), exist_ok=True)
@@ -609,6 +611,7 @@ class Go2RTCStreamSource:
     def stop_recording(self):
         """Stop FFmpeg recording."""
         self._recording = False
+        self._recording_t0 = None
         if self._ffmpeg_process:
             return_code = None
             stderr_text = ""
@@ -681,6 +684,12 @@ class Go2RTCStreamSource:
     def get_classifier_source_frame(self):
         """Best-effort source frame for classifier/ReID crops (pre-letterbox when available)."""
         return self._last_classifier_source_frame
+
+    def get_frame_time(self):
+        """Seconds on main MP4 timeline (monotonic elapsed since FFmpeg record start)."""
+        if self._recording and self._recording_t0 is not None:
+            return round(time.monotonic() - self._recording_t0, 2)
+        return None
 
     def push_one_frame_to_mjpeg(self):
         """Read one frame and push to MJPEG (for live view). Skips if main thread is reading."""

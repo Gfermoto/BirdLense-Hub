@@ -1,6 +1,6 @@
 # UI Contract Guard
 
-- generated_at: `2026-06-05T16:01:11Z`
+- generated_at: `2026-06-08T11:05:09Z`
 - ok: `True`
 
 ## Checks

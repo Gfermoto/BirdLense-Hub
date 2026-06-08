@@ -1,6 +1,6 @@
 {
   "schema": "health_readiness_contract@v1",
-  "generated_at": "2026-06-05T11:49:27Z",
+  "generated_at": "2026-06-08T11:07:18Z",
   "checks": {
     "health_ok": true,
     "readiness_ok": false,

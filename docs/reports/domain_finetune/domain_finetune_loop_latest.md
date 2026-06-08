@@ -1,6 +1,6 @@
 # Domain Fine-tune Loop Report
 
-- generated_at: `2026-06-05T16:01:14Z`
+- generated_at: `2026-06-08T11:05:14Z`
 - required_candidates_total: `2`
 - history_candidates_total: `2`
 - champion_shadow_ok: `True`

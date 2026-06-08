@@ -1,6 +1,6 @@
 {
   "schema": "owasp_api_control_map@v1",
-  "generated_at": "2026-06-05T11:50:04Z",
+  "generated_at": "2026-06-08T11:08:42Z",
   "inputs": {
     "strict_api_auth_ok": false,
     "secrets_ok": false,

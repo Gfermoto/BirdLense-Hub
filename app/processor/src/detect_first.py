@@ -312,3 +312,58 @@ def restore_detect_first_persist_rows(
         return [best], True
 
     return rows, False
+
+
+def build_frigate_assisted_detect_first_anchor(
+    *,
+    app_config,
+    camera_id: str | None,
+    motion_detector: Any,
+    trigger_source: str | None,
+) -> dict[str, Any] | None:
+    """When lores YOLO misses but Frigate already confirmed bird+bbox, allow main record."""
+    trigger = str(trigger_source or "").strip().lower()
+    if trigger != "frigate":
+        return None
+    if not bool(app_config.get("processor.detect_first_frigate_assist_enabled", True)):
+        return None
+    try:
+        min_conf = float(app_config.get("processor.detect_first_frigate_assist_min_confidence") or 0.50)
+    except (TypeError, ValueError):
+        min_conf = 0.50
+    get_ev = getattr(motion_detector, "get_last_frigate_event", None)
+    ev = get_ev() if callable(get_ev) else None
+    if not isinstance(ev, dict):
+        return None
+    ev_cam = str(ev.get("camera") or "").strip()
+    cam = str(camera_id or ev_cam or "").strip()
+    if cam and ev_cam and cam != ev_cam:
+        return None
+    try:
+        conf = float(ev.get("confidence") or 0.0)
+    except (TypeError, ValueError):
+        conf = 0.0
+    if conf < min_conf or not ev.get("_frigate_has_geometry"):
+        return None
+    try:
+        from frigate_live_track import get_frigate_live_bbox
+    except ImportError:
+        return None
+    bbox = get_frigate_live_bbox(cam or ev_cam)
+    if not is_valid_norm_bbox(bbox):
+        return None
+    logger.info(
+        "detect_first: frigate-assisted anchor camera=%s conf=%.3f (lores YOLO missed)",
+        cam or ev_cam or "?",
+        conf,
+    )
+    return {
+        "track_id": 0,
+        "bbox": [float(v) for v in bbox[:4]],
+        "confidence": conf,
+        "start_time": 0.0,
+        "end_time": 0.0,
+        "frames": [{"t": 0.0, "bbox": [float(v) for v in bbox[:4]]}],
+        "detect_first_frigate_assisted": True,
+        "frigate_label": ev.get("label"),
+    }

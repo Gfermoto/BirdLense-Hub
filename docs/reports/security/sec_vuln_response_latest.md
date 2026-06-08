@@ -1,6 +1,6 @@
 # Secrets & Vulnerability Response
 
-- generated_at: `2026-06-05T16:00:59Z`
+- generated_at: `2026-06-08T11:04:45Z`
 - register_file: `/home/gfer/BirdLense/docs/reports/security/vulnerability_register.json`
 - ok: `True`
 

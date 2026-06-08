@@ -522,6 +522,35 @@ def apply_runtime_reid_metadata(
         if float(det.get("best_frame_score") or 0.0) < float(min_best_frame_score):
             continue
         crop = det.get("best_frame")
+        crop_source = "best_frame_lores"
+        try:
+            from record_hires_crop import resolve_enrichment_crop, resolve_enrichment_crop_source
+
+            runtime_cfg = None
+            try:
+                from app_config.app_config import app_config as _cfg
+
+                runtime_cfg = getattr(_cfg, "config", None) or _cfg
+            except ImportError:
+                pass
+            mode = resolve_enrichment_crop_source(
+                runtime_cfg,
+                config_key="processor.reid_crop_source",
+                default="auto",
+            )
+            if video_path:
+                resolved, crop_source = resolve_enrichment_crop(
+                    det,
+                    video_path=video_path,
+                    mode=mode,
+                    lores_crop=crop,
+                    runtime_cfg=runtime_cfg,
+                )
+                if resolved is not None:
+                    crop = resolved
+                    det["reid_crop_source"] = crop_source
+        except ImportError:
+            pass
         if crop is None:
             continue
         embedding = embed_crop(crop)

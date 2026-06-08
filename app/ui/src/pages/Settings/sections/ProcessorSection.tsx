@@ -28,6 +28,9 @@ import { ProcessorStreamGeometryBlock } from './processor/ProcessorStreamGeometr
 import { ProcessorOpenVinoBlock } from './processor/ProcessorOpenVinoBlock';
 import { ProcessorMotionCalibrationBlock } from './processor/ProcessorMotionCalibrationBlock';
 import { ProcessorBehaviorRecognitionBlock } from './processor/ProcessorBehaviorRecognitionBlock';
+import { ProcessorDetectFirstBlock } from './processor/ProcessorDetectFirstBlock';
+import { ProcessorCameraProfilesBlock } from './processor/ProcessorCameraProfilesBlock';
+import { ProcessorRolePresetsBlock } from './processor/ProcessorRolePresetsBlock';
 
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
@@ -110,8 +113,11 @@ export function ProcessorSection({ form, simpleMode = true }: Props) {
           <Divider sx={{ my: 2 }} />
 
           <SectionHeading>2. Детектор</SectionHeading>
+          <ProcessorDetectFirstBlock form={form} />
           <ProcessorDetectorPipelineBlock form={form} />
           <ProcessorStreamGeometryBlock form={form} />
+          <ProcessorCameraProfilesBlock form={form} />
+          <ProcessorRolePresetsBlock form={form} />
           <ProcessorTrackRegenBlock form={form} />
           {!simpleMode ? (
             <>

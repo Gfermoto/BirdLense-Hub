@@ -368,7 +368,27 @@ export interface Settings {
     track_regen_ignore_regional_species?: boolean;
     track_regen_match_live_pipeline?: boolean;
     track_regen_parallel_auto_with_manual?: boolean;
-    /** Baseline behavior head (#416): logistic on finalize when enabled. */
+    /** Lores YOLO gate before main-stream record (go2rtc). */
+    detect_first_enabled?: boolean;
+    detect_first_window_seconds?: number;
+    detect_first_max_frames?: number;
+    detect_first_confirm_min_hits?: number;
+    detect_first_confirm_min_track_seconds?: number;
+    /** Per-camera id → processor field overrides (win over tuning_role preset). */
+    camera_overrides?: Record<string, Record<string, unknown>>;
+    /** Role presets referenced by video.cameras[].tuning_role. */
+    camera_tuning_by_role?: Record<string, Record<string, unknown>>;
+    max_box_area_norm?: number;
+    scoring_giant_box_area_frac?: number;
+    detect_record_time_offset_sec?: number;
+    notify_preview_source?: 'auto' | 'record_hires' | 'best_frame_lores' | string;
+    notify_preview_crop_pad_frac?: number;
+    track_static_reject_enabled?: boolean;
+    track_static_reject_min_duration_sec?: number;
+    track_static_reject_min_frames?: number;
+    scoring_moving_roi_review_enabled?: boolean;
+    scoring_moving_roi_min_motion_score?: number;
+    linear_live_scoring_engine_enabled?: boolean;
     behavior_recognition?: {
       enabled?: boolean;
       weights_path?: string;
@@ -403,6 +423,8 @@ export interface Settings {
       /** Required when video.source=go2rtc: lores motion/YOLO; stream_name is main record. */
       detect_stream_name?: string;
       name?: string;
+      /** Maps to processor.camera_tuning_by_role preset (feeder_close / feeder_far). */
+      tuning_role?: string;
     }>;
     go2rtc_username?: string;
     go2rtc_password?: string;
