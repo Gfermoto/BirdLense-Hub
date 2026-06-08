@@ -8,15 +8,53 @@ import cv2
 logger = logging.getLogger(__name__)
 
 
-def encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple[str | None, str]:
-    """(image_base64, source): best_frame | bbox_crop | full_frame | none.
+def encode_notify_preview_base64(
+    detection: dict,
+    video_file_path: str,
+    *,
+    runtime_cfg: dict | None = None,
+) -> tuple[str | None, str]:
+    """(image_base64, source): best_frame | record_hires | bbox_crop | full_frame | none.
 
-    Для TG: сначала best_frame с момента детекции (классификатор видел птицу).
-    bbox из mp4 — fallback; пустой/однотонный crop отбрасываем.
+    ``processor.notify_preview_source``:
+      - best_frame_lores — detect-stream crop (default, TG-quality on lores)
+      - record_hires — main MP4 crop by remapped bbox + pad
+      - auto — record_hires when video+bbox exist, else best_frame_lores
     """
     try:
         import base64
         import numpy as np
+
+        def _preview_mode() -> str:
+            raw = "best_frame_lores"
+            if runtime_cfg is not None:
+                raw = str(runtime_cfg.get("processor.notify_preview_source") or raw).strip().lower()
+            else:
+                try:
+                    from app_config.app_config import app_config
+
+                    raw = str(app_config.get("processor.notify_preview_source") or raw).strip().lower()
+                except ImportError:
+                    pass
+            if raw in {"best_frame_lores", "record_hires", "auto"}:
+                return raw
+            return "best_frame_lores"
+
+        def _crop_pad_frac() -> float:
+            raw = 0.06
+            if runtime_cfg is not None:
+                try:
+                    raw = float(runtime_cfg.get("processor.notify_preview_crop_pad_frac") or raw)
+                except (TypeError, ValueError):
+                    pass
+            else:
+                try:
+                    from app_config.app_config import app_config
+
+                    raw = float(app_config.get("processor.notify_preview_crop_pad_frac") or raw)
+                except (TypeError, ValueError):
+                    pass
+            return max(0.0, min(0.25, raw))
 
         def _pick_timestamp() -> float:
             try:
@@ -101,17 +139,24 @@ def encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple
                     return None, "none"
                 h, w = frame.shape[:2]
                 if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
-                    x1 = max(0, min(w - 1, int(float(bbox[0]) * w)))
-                    y1 = max(0, min(h - 1, int(float(bbox[1]) * h)))
-                    x2 = max(x1 + 1, min(w, int(float(bbox[2]) * w)))
-                    y2 = max(y1 + 1, min(h, int(float(bbox[3]) * h)))
+                    pad = _crop_pad_frac()
+                    bw = float(bbox[2]) - float(bbox[0])
+                    bh = float(bbox[3]) - float(bbox[1])
+                    x1n = max(0.0, float(bbox[0]) - bw * pad)
+                    y1n = max(0.0, float(bbox[1]) - bh * pad)
+                    x2n = min(1.0, float(bbox[2]) + bw * pad)
+                    y2n = min(1.0, float(bbox[3]) + bh * pad)
+                    x1 = max(0, min(w - 1, int(x1n * w)))
+                    y1 = max(0, min(h - 1, int(y1n * h)))
+                    x2 = max(x1 + 1, min(w, int(x2n * w)))
+                    y2 = max(y1 + 1, min(h, int(y2n * h)))
                     crop = frame[y1:y2, x1:x2]
                     if crop.size > 0 and _crop_has_signal(crop):
                         params = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
                         ok, buf = cv2.imencode(".jpg", crop, params)
                         if ok and buf is not None:
                             b64 = base64.b64encode(buf.tobytes()).decode("ascii")
-                            return b64, "bbox_crop"
+                            return b64, "record_hires" if pad > 0 else "bbox_crop"
 
                 params = [int(cv2.IMWRITE_JPEG_QUALITY), 88]
                 ok, buf = cv2.imencode(".jpg", frame, params)
@@ -136,7 +181,20 @@ def encode_notify_preview_base64(detection: dict, video_file_path: str) -> tuple
                 logging.warning("Encode best_frame for notify failed: %s", e)
             return None, "none"
 
+        mode = _preview_mode()
         best_frame_score = float(detection.get("best_frame_score") or 0.0)
+
+        if mode in {"record_hires", "auto"} and video_file_path:
+            image_b64, src = _encode_from_video()
+            if image_b64:
+                return image_b64, src
+
+        if mode == "record_hires":
+            image_b64, src = _encode_best_frame()
+            if image_b64:
+                return image_b64, src
+            return None, "none"
+
         if best_frame_score > 0.0:
             image_b64, src = _encode_best_frame()
             if image_b64:

@@ -27,6 +27,15 @@ def notify_unique_species(
     """Notify once per species with eligible detections."""
     encode = encode_notify_preview_base64 if encode_func is None else encode_func
     min_notify = resolve_min_confidence_to_notify(config)
+
+    def _encode_preview(detection: dict, video_output: str) -> tuple[str | None, str]:
+        if encode is encode_notify_preview_base64:
+            return encode_notify_preview_base64(
+                detection,
+                video_output,
+                runtime_cfg=config,
+            )
+        return encode(detection, video_output)
     seen = set()
     seen_profiles = set()
     for detection in video_detections:
@@ -73,7 +82,7 @@ def notify_unique_species(
                 min_notify,
             )
             continue
-        image_base64, preview_source = encode(detection, video_output)
+        image_base64, preview_source = _encode_preview(detection, video_output)
         if image_base64 is None:
             logging.info(
                 "Notify %s without photo: no preview (provider=%s, source=%s)",

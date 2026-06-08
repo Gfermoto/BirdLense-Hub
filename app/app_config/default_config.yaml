@@ -277,6 +277,9 @@ processor:
   min_confidence_to_process: 0.12  # combined для БД; detect 704×576@7fps — слабые YOLO conf ~0.08–0.15
   # Отдельный порог для Telegram: только уверенные визиты (может быть > min_confidence_to_process).
   min_confidence_to_notify: 0.46
+  # TG preview: best_frame_lores (detect crop) | record_hires (main MP4) | auto (hires then lores)
+  notify_preview_source: auto
+  notify_preview_crop_pad_frac: 0.06
   # Перед YOLO: отсечь совсем тёмные кадры. ИК/сумерки: слишком жёсткие пороги = YOLO почти не работает.
   light_gate_enabled: false
   light_gate_min_brightness: 14
