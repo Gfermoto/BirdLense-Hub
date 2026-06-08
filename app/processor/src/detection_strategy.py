@@ -1073,6 +1073,17 @@ class TwoStageStrategy(DetectionStrategy):
             runtime_cfg,
             inference_backend=inference_backend,
         )
+        try:
+            from bytetrack_contract import log_bytetrack_conf_contract_once
+
+            _assumed_fps = float(runtime_cfg.get("processor.detection_quality_assumed_fps") or 7.0)
+            log_bytetrack_conf_contract_once(
+                tracker_config,
+                float(track_conf),
+                stream_fps=_assumed_fps,
+            )
+        except ImportError:
+            pass
         # Post-track filters must not discard boxes that track() already admitted at track_conf.
         accept_min_confidence = min(float(min_confidence), float(track_conf))
         boxes_from_predict_fallback = False

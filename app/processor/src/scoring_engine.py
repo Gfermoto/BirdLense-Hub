@@ -84,6 +84,8 @@ class ScoringEngineConfig:
     static_phantom_square_aspect_max: float = 1.22
     static_phantom_max_conf: float = 0.52
     relaxed_scoring_min_confidence: float = 0.08
+    moving_roi_review_enabled: bool = True
+    moving_roi_min_motion_score: float = 0.32
     scene: SceneAdaptiveConfig = field(default_factory=SceneAdaptiveConfig)
 
     @classmethod
@@ -119,6 +121,12 @@ class ScoringEngineConfig:
             ),
             static_phantom_max_conf=_parse_float(runtime_cfg, "processor.scoring_static_phantom_max_conf", 0.52),
             relaxed_scoring_min_confidence=_parse_float(runtime_cfg, "processor.scoring_relaxed_min_confidence", 0.08),
+            moving_roi_review_enabled=_parse_bool(
+                runtime_cfg, "processor.scoring_moving_roi_review_enabled", True
+            ),
+            moving_roi_min_motion_score=_parse_float(
+                runtime_cfg, "processor.scoring_moving_roi_min_motion_score", 0.32
+            ),
             scene=SceneAdaptiveConfig.from_runtime_cfg(runtime_cfg),
         )
 
@@ -409,6 +417,22 @@ class ScoringEngine:
                 trace["final_decision"] = decision.zone.value
                 trace["reject_reason"] = decision.reject_reason
                 trace["reason_code"] = "relaxed_small_object_scoring_floor"
+            elif (
+                decision.zone == DecisionZone.REJECT
+                and self.cfg.moving_roi_review_enabled
+                and decision.breakdown.motion_score >= self.cfg.moving_roi_min_motion_score
+                and float(box.get("conf") or 0.0) >= self.cfg.relaxed_scoring_min_confidence
+                and decision.reject_reason
+                and str(decision.reject_reason).startswith("score_below_low_threshold")
+            ):
+                decision = ScoringDecision(
+                    zone=DecisionZone.REVIEW,
+                    breakdown=decision.breakdown,
+                    reject_reason="moving_roi_scoring_review",
+                )
+                trace["final_decision"] = decision.zone.value
+                trace["reject_reason"] = decision.reject_reason
+                trace["reason_code"] = "moving_roi_scoring_review"
             if decision.zone == DecisionZone.ACCEPT:
                 kept.append(box)
                 self.last_stats["scoring_accepted"] += 1
