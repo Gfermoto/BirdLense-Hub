@@ -1,60 +1,14 @@
 {
   "schema": "golden_set_mandatory_gate@v1",
-  "generated_at": "2026-06-05T16:00:58Z",
+  "generated_at": "2026-06-08T11:08:40Z",
   "base_ref": "HEAD~1",
   "head_ref": "HEAD",
-  "changed_files_count": 28,
+  "changed_files_count": 1,
   "changed_files": [
-    "app/app_config/cameras.py",
-    "app/processor/src/detection_fusion.py",
-    "app/processor/src/finalize_classification.py",
-    "app/processor/src/frigate_scope.py",
-    "app/processor/tests/test_finalize_classification.py",
-    "app/processor/tests/test_mqtt_frigate_filters.py",
-    "app/ui/locales/en.json",
-    "app/ui/locales/ru.json",
-    "app/ui/locales/zh.json",
-    "app/ui/src/App.routes.test.tsx",
-    "app/ui/src/App.tsx",
-    "app/ui/src/generated/openapi-types.ts",
-    "app/ui/src/pages/Settings/shared/CamerasListField.test.tsx",
-    "app/ui/src/pages/Settings/shared/CamerasListField.tsx",
-    "app/ui/src/pages/SpeciesDirectory/SpeciesDirectoryPage.test.tsx",
-    "app/ui/src/pages/SpeciesDirectory/index.tsx",
-    "app/ui/src/pages/System/CatalogOpsHubCard.tsx",
-    "app/ui/src/pages/System/CatalogRepairCard.tsx",
-    "app/web/openapi.yaml",
-    "app/web/services/bird_profile_service.py",
-    "app/web/services/detection_species_correction_service.py",
-    "app/web/services/overview_service.py",
-    "app/web/services/visit_processor.py",
-    "app/web/tests/test_bird_profile_service.py",
-    "app/web/tests/test_cameras_detect_stream.py",
-    "app/web/tests/test_detection_species_correction_reid.py",
-    "app/web/tests/test_ml_ops_api.py",
-    "app/web/tests/test_processor_videos_smoke.py"
+    "docs/strategy/DUAL_STREAM_BBOX_SYNC_PLAN_2026-06.md"
   ],
-  "gate_required": true,
-  "gate_trigger_files": [
-    "app/processor/src/detection_fusion.py"
-  ],
-  "runs": [
-    {
-      "command": "make validate-pipeline-golden",
-      "exit_code": 0,
-      "ok": true,
-      "elapsed_sec": 1.667,
-      "stdout_tail": "make[1]: Entering directory '/home/gfer/BirdLense'\ns.............                                                           [100%]\n13 passed, 1 skipped in 1.32s\nmake[1]: Leaving directory '/home/gfer/BirdLense'",
-      "stderr_tail": ""
-    },
-    {
-      "command": "python3 scripts/stress_test_offline.py --no-yolo",
-      "exit_code": 0,
-      "ok": true,
-      "elapsed_sec": 3.946,
-      "stdout_tail": "          \"passed\": true,\n          \"accepted_boxes\": 0,\n          \"frames_sampled\": 400,\n          \"mode\": \"phantom_boxes\",\n          \"calibrated\": false\n        },\n        {\n          \"scenario\": \"storm_golden\",\n          \"passed\": true,\n          \"accepted_boxes\": 12,\n          \"frames_sampled\": 12,\n          \"recall\": 1.0,\n          \"missed\": 0\n        }\n      ]\n    }\n  ],\n  \"ok\": true,\n  \"winning_cfg\": {}\n}",
-      "stderr_tail": ""
-    }
-  ],
+  "gate_required": false,
+  "gate_trigger_files": [],
+  "runs": [],
   "ok": true
 }

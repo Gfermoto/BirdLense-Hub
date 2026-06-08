@@ -4,6 +4,12 @@ import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid2';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import FormHelperText from '@mui/material/FormHelperText';
+import { CAMERA_TUNING_ROLES } from './cameraTuningFields';
 
 type CameraRowUi = {
   id?: string;
@@ -11,6 +17,7 @@ type CameraRowUi = {
   stream_name?: string;
   detect_stream_name?: string;
   name?: string;
+  tuning_role?: string;
 };
 
 function defaultSlot(index: number): string {
@@ -28,6 +35,7 @@ export function CamerasListField({
         stream_name?: string;
         detect_stream_name?: string;
         name?: string;
+        tuning_role?: string;
       }>
     | undefined;
   onChange: (
@@ -37,6 +45,7 @@ export function CamerasListField({
       stream_name?: string;
       detect_stream_name?: string;
       name?: string;
+      tuning_role?: string;
     }>,
   ) => void;
 }) {
@@ -48,6 +57,7 @@ export function CamerasListField({
           stream_name: c.stream_name ?? c.id ?? '',
           detect_stream_name: c.detect_stream_name ?? '',
           name: c.name ?? c.id ?? c.stream_name ?? '',
+          tuning_role: c.tuning_role ?? '',
         }))
       : [{ id: '', camera_slot: defaultSlot(0), stream_name: '', detect_stream_name: '', name: '' }];
 
@@ -62,6 +72,7 @@ export function CamerasListField({
         stream_name: string;
         name: string;
         detect_stream_name?: string;
+        tuning_role?: string;
       } = {
         id: stream_name,
         camera_slot,
@@ -71,6 +82,10 @@ export function CamerasListField({
       const ds = (r.detect_stream_name ?? '').trim();
       if (ds) {
         row.detect_stream_name = ds;
+      }
+      const role = (r.tuning_role ?? '').trim();
+      if (role && role !== 'custom') {
+        row.tuning_role = role;
       }
       return row;
     });
@@ -157,6 +172,27 @@ export function CamerasListField({
             >
               −
             </Button>
+          </Grid>
+          <Grid size={{ xs: 12 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel id={`cam-role-${i}`}>{t('settings.cameraTuningRole')}</InputLabel>
+              <Select
+                labelId={`cam-role-${i}`}
+                label={t('settings.cameraTuningRole')}
+                value={row.tuning_role ?? ''}
+                onChange={(e) => updateRow(i, 'tuning_role', String(e.target.value))}
+              >
+                <MenuItem value="">
+                  <em>{t('settings.cameraTuningRoleDefault')}</em>
+                </MenuItem>
+                {CAMERA_TUNING_ROLES.filter((r) => r !== 'custom').map((role) => (
+                  <MenuItem key={role} value={role}>
+                    {t(`settings.cameraTuningRole_${role}`)}
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>{t('settings.cameraTuningRoleHint')}</FormHelperText>
+            </FormControl>
           </Grid>
           <Grid size={{ xs: 12 }}>
             <TextField

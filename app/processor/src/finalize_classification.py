@@ -27,6 +27,9 @@ def enrich_tracks_classifier_at_finalize(
     tracks: dict[int | str, dict[str, Any]],
     strategy: Any,
     app_config,
+    *,
+    video_path: str | None = None,
+    camera_id: str | None = None,
 ) -> int:
     """
     Run Birder on in-memory key_frames / best_frame per track.
@@ -47,6 +50,26 @@ def enrich_tracks_classifier_at_finalize(
         "processor.classifier_best_guess_min_confidence",
         CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE,
     )
+    runtime_cfg = getattr(app_config, "config", None) or app_config
+    crop_mode = "auto"
+    pad_frac = 0.06
+    try:
+        from record_hires_crop import (
+            resolve_crop_pad_frac,
+            resolve_enrichment_crop,
+            resolve_enrichment_crop_source,
+            track_as_detection,
+        )
+
+        crop_mode = resolve_enrichment_crop_source(
+            app_config,
+            config_key="processor.classifier_crop_source",
+            default="auto",
+        )
+        pad_frac = resolve_crop_pad_frac(app_config)
+    except ImportError:
+        resolve_enrichment_crop = None  # type: ignore[assignment,misc]
+        track_as_detection = None  # type: ignore[assignment,misc]
 
     appended = 0
     for track_id, track in tracks.items():
@@ -62,23 +85,35 @@ def enrich_tracks_classifier_at_finalize(
         if not bird_det:
             continue
 
-        crops: list[tuple[Any, float]] = []
+        crops: list[tuple[Any, float, str]] = []
+        if resolve_enrichment_crop is not None and track_as_detection is not None and video_path:
+            det_like = track_as_detection(track, camera_id=camera_id)
+            hires_crop, src = resolve_enrichment_crop(
+                det_like,
+                video_path=video_path,
+                mode=crop_mode,
+                lores_crop=track.get("best_frame"),
+                pad_frac=pad_frac,
+                runtime_cfg=runtime_cfg,
+            )
+            if hires_crop is not None:
+                crops.append((hires_crop, float(track.get("best_frame_score") or 0.0), src))
         best = track.get("best_frame")
-        if best is not None:
-            crops.append((best, float(track.get("best_frame_score") or 0.0)))
+        if best is not None and not crops:
+            crops.append((best, float(track.get("best_frame_score") or 0.0), "best_frame_lores"))
         for kf in (track.get("key_frames") or [])[:max_kf]:
             if not isinstance(kf, dict):
                 continue
             crop = kf.get("crop")
             if crop is None:
                 continue
-            crops.append((crop, float(kf.get("score") or 0.0)))
+            crops.append((crop, float(kf.get("score") or 0.0), "key_frame_lores"))
 
         if not crops:
             continue
         crops.sort(key=lambda x: x[1], reverse=True)
         seen = 0
-        for crop, _score in crops:
+        for crop, _score, crop_src in crops:
             if seen >= max_kf:
                 break
             try:
@@ -114,6 +149,7 @@ def enrich_tracks_classifier_at_finalize(
                     "top1_top2_margin": getattr(out, "top1_top2_margin", None),
                     "t": track.get("end_time"),
                     "source": "finalize_deferred",
+                    "crop_source": crop_src,
                 }
             )
             appended += 1

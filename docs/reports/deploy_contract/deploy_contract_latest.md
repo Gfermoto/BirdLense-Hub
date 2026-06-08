@@ -1,6 +1,6 @@
 # Deploy Contract Report
 
-- generated_at: `2026-06-05T16:16:11Z`
+- generated_at: `2026-06-08T11:25:10Z`
 - idempotency_pass_rate: `1.0`
 - repeated_deploy_samples: `8`
 - rollback_ready: `True`

@@ -114,17 +114,41 @@ def _extract_camera_ids() -> list[str]:
     return out
 
 
+def _camera_merged_overrides(camera_id: str) -> tuple[str, dict[str, Any]]:
+    """Role preset + per-id overrides (same merge order as processor recording_session)."""
+    cam = str(camera_id or "").strip()
+    tuning_role = ""
+    merged: dict[str, Any] = {}
+    if not cam:
+        return tuning_role, merged
+    cams = app_config.get("video.cameras") or []
+    if isinstance(cams, list):
+        for row in cams:
+            if not isinstance(row, dict):
+                continue
+            if str(row.get("id") or "").strip() != cam:
+                continue
+            tuning_role = str(row.get("tuning_role") or "").strip()
+            break
+    if tuning_role:
+        role_raw = app_config.get(f"processor.camera_tuning_by_role.{tuning_role}")
+        if isinstance(role_raw, dict):
+            merged.update(copy.deepcopy(role_raw))
+    camera_map = app_config.get("processor.camera_overrides")
+    if isinstance(camera_map, dict):
+        cam_overrides = camera_map.get(cam)
+        if isinstance(cam_overrides, dict):
+            merged.update(copy.deepcopy(cam_overrides))
+    return tuning_role, merged
+
+
 def _processor_effective_for_camera(camera_id: str | None) -> dict[str, Any]:
     proc = copy.deepcopy(app_config.get("processor") or {})
     if not camera_id:
         return proc
-    camera_map = proc.get("camera_overrides")
-    if not isinstance(camera_map, dict):
-        return proc
-    cam_overrides = camera_map.get(camera_id)
-    if isinstance(cam_overrides, dict):
-        for key, value in cam_overrides.items():
-            proc[key] = value
+    _, merged = _camera_merged_overrides(str(camera_id))
+    for key, value in merged.items():
+        proc[key] = value
     return proc
 
 
@@ -268,15 +292,24 @@ def build_tuning_workbench_payload() -> tuple[dict[str, Any], int]:
     camera_rows: list[dict[str, Any]] = []
     camera_overrides = proc_global.get("camera_overrides")
     for camera_id in camera_ids:
+        tuning_role, role_merged = _camera_merged_overrides(camera_id)
         eff = _processor_effective_for_camera(camera_id)
         per_metrics = _estimate_profile_metrics(eff)
         overrides = {}
         if isinstance(camera_overrides, dict) and isinstance(camera_overrides.get(camera_id), dict):
             overrides = copy.deepcopy(camera_overrides.get(camera_id))
+        role_preset = {}
+        if tuning_role:
+            role_raw = app_config.get(f"processor.camera_tuning_by_role.{tuning_role}")
+            if isinstance(role_raw, dict):
+                role_preset = copy.deepcopy(role_raw)
         camera_rows.append(
             {
                 "camera_id": camera_id,
+                "tuning_role": tuning_role or None,
+                "role_preset": role_preset,
                 "overrides": overrides,
+                "effective_keys": role_merged,
                 "effective": per_metrics,
                 "delta_vs_global": _profile_delta(global_metrics, per_metrics),
             }

@@ -73,6 +73,8 @@ def encode_notify_preview_base64(
                     resolve_detect_record_time_offset_sec,
                 )
 
+                if detection.get("playback_timeline_synced"):
+                    return max(0.0, float(t_mid))
                 cam = str(detection.get("camera_id") or detection.get("triggered_camera") or "").strip()
                 offset = resolve_detect_record_time_offset_sec(runtime_cfg, camera_id=cam or None)
                 return apply_record_time_offset(t_mid, offset)
@@ -80,6 +82,8 @@ def encode_notify_preview_base64(
                 return t_mid
 
         def _apply_offset_to_t(ts: float) -> float:
+            if detection.get("playback_timeline_synced"):
+                return max(0.0, float(ts))
             try:
                 from dual_stream_timeline import (
                     apply_record_time_offset,

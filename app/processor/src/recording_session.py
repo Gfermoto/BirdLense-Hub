@@ -30,6 +30,7 @@ from processor_config_defaults import (
 )
 from session_state_repository import SessionStateRepository
 from detect_first import (
+    build_frigate_assisted_detect_first_anchor,
     detect_first_runtime_signal_fields,
     enrich_detect_first_anchor,
     is_valid_detect_first_anchor,
@@ -314,14 +315,26 @@ class MotionRecordingSession:
         self.frame_processor.reset()
         anchor: dict[str, Any] | None = None
 
+        cam_overrides = _camera_processor_overrides(camera_id)
+
         def _maybe_anchor(_hits: int, _frames: int) -> bool:
             nonlocal anchor
             if _hits < cfg.confirm_min_hits:
                 return False
+            min_track = float(
+                cam_overrides.get("min_track_duration")
+                if cam_overrides.get("min_track_duration") is not None
+                else cfg.confirm_min_track_seconds
+            )
+            min_conf = float(
+                cam_overrides.get("min_confidence_to_process")
+                if cam_overrides.get("min_confidence_to_process") is not None
+                else (app_config.get("processor.min_confidence_to_process") or 0.12)
+            )
             anchor = self.frame_processor.confirmed_track_anchor(
                 app_config=app_config,
-                min_track_duration=cfg.confirm_min_track_seconds,
-                min_confidence_to_process=float(app_config.get("processor.min_confidence_to_process") or 0.12),
+                min_track_duration=min_track,
+                min_confidence_to_process=min_conf,
             )
             return anchor is not None
 
@@ -333,7 +346,16 @@ class MotionRecordingSession:
         )
         if anchor is None:
             self.frame_processor.reset()
-            inc_counter("detect_first_no_anchor_total")
+            anchor = build_frigate_assisted_detect_first_anchor(
+                app_config=app_config,
+                camera_id=camera_id,
+                motion_detector=self.motion_detector,
+                trigger_source=trigger,
+            )
+            if anchor is not None:
+                inc_counter("detect_first_frigate_assisted_total")
+            else:
+                inc_counter("detect_first_no_anchor_total")
         else:
             inc_counter("detect_first_confirmed_total")
         logger.info(

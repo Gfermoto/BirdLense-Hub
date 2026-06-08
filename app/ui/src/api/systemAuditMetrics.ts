@@ -41,7 +41,10 @@ export type TuningWorkbenchPayload = {
   }>;
   camera_profiles: Array<{
     camera_id: string;
+    tuning_role?: string | null;
+    role_preset?: Record<string, unknown>;
     overrides: Record<string, unknown>;
+    effective_keys?: Record<string, unknown>;
     effective: TuningEstimate;
     delta_vs_global: {
       recall_delta: number;

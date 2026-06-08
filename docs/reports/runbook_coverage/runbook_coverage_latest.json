@@ -1,6 +1,6 @@
 {
   "schema": "runbook_coverage_report@v1",
-  "generated_at": "2026-06-05T16:00:59Z",
+  "generated_at": "2026-06-08T11:04:45Z",
   "coverage": {
     "covered": 8,
     "total": 8,
@@ -8,7 +8,7 @@
     "ok": true
   },
   "validation_cadence": {
-    "cycles_last_7d": 114,
+    "cycles_last_7d": 74,
     "required_min_cycles": 1,
     "ok": true
   },

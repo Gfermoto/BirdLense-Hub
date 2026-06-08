@@ -1,9 +1,9 @@
 # Quality Outcome Metrics
 
-- generated_at: `2026-06-05T11:52:25Z`
+- generated_at: `2026-06-08T11:05:14Z`
 - data_source: `local:app/data/db/birdlense.db`
 - gate_ok: `False`
-- sessions_total: `186`
+- sessions_total: `13`
 
 ## Metrics
 
@@ -14,7 +14,7 @@
 - tracks_missing_rate: `1.0`
 - bbox_quality_score: `0.0`
 - trigger_to_first_bbox_latency_p95_s: `0.3`
-- finalize_duration_p95_ms: `1593.776`
+- finalize_duration_p95_ms: `7518.808`
 - ingest_bbox_contract_pruned_events: `0`
 - ingest_bbox_contract_empty_events: `0`
 - ingest_bbox_contract_pruned_rows_total: `0`

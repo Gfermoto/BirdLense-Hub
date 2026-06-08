@@ -1,6 +1,6 @@
 # OWASP API Controls
 
-- generated_at: `2026-06-05T11:50:04Z`
+- generated_at: `2026-06-08T11:08:42Z`
 - coverage: `8/10`
 - coverage_pct: `80.0`
 - ok: `False`

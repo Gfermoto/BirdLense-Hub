@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Alert from '@mui/material/Alert';
@@ -21,17 +21,24 @@ import {
 } from '../../api/systemAuditMetrics';
 import { queryKeys } from '../../api/queryKeys';
 import { SystemCardShell } from './SystemCardShell';
+import { CAMERA_TUNING_FIELD_DEFS } from '../Settings/shared/cameraTuningFields';
 
-type CameraOverrideDraft = {
-  min_confidence_binary?: string;
-  min_confidence_to_process?: string;
-  min_track_duration?: string;
-  min_box_size_px?: string;
-};
+type CameraOverrideDraft = Record<string, string>;
 
 function fmtDelta(v: number): string {
   if (v > 0) return `+${v.toFixed(2)}`;
   return v.toFixed(2);
+}
+
+function draftFromOverrides(overrides: Record<string, unknown> | undefined): CameraOverrideDraft {
+  const out: CameraOverrideDraft = {};
+  if (!overrides) return out;
+  for (const def of CAMERA_TUNING_FIELD_DEFS) {
+    const v = overrides[def.key];
+    if (v === undefined || v === null) continue;
+    out[def.key] = String(v);
+  }
+  return out;
 }
 
 export function TuningWorkbenchCard() {
@@ -69,6 +76,10 @@ export function TuningWorkbenchCard() {
     [cameraProfiles, selectedCamera],
   );
 
+  useEffect(() => {
+    setDraft(draftFromOverrides(activeCamera?.overrides));
+  }, [activeCamera?.camera_id, activeCamera?.overrides]);
+
   const parseNumber = (raw: string): number | undefined => {
     const text = raw.trim();
     if (!text) return undefined;
@@ -79,14 +90,16 @@ export function TuningWorkbenchCard() {
 
   const toOverrides = (): Record<string, unknown> => {
     const out: Record<string, unknown> = {};
-    const maybeBinary = parseNumber(draft.min_confidence_binary ?? '');
-    const maybeProcess = parseNumber(draft.min_confidence_to_process ?? '');
-    const maybeTrack = parseNumber(draft.min_track_duration ?? '');
-    const maybeBox = parseNumber(draft.min_box_size_px ?? '');
-    if (maybeBinary != null) out.min_confidence_binary = maybeBinary;
-    if (maybeProcess != null) out.min_confidence_to_process = maybeProcess;
-    if (maybeTrack != null) out.min_track_duration = maybeTrack;
-    if (maybeBox != null) out.min_box_size_px = maybeBox;
+    for (const def of CAMERA_TUNING_FIELD_DEFS) {
+      const raw = draft[def.key];
+      if (raw == null || raw === '') continue;
+      if (def.kind === 'boolean') {
+        out[def.key] = raw === 'true' || raw === '1';
+        continue;
+      }
+      const n = parseNumber(raw);
+      if (n != null) out[def.key] = n;
+    }
     return out;
   };
 
@@ -167,42 +180,27 @@ export function TuningWorkbenchCard() {
         </FormControl>
         {selectedCamera ? (
           <Stack spacing={1}>
+            {activeCamera?.tuning_role ? (
+              <Typography variant="caption" color="text.secondary">
+                role={activeCamera.tuning_role}
+              </Typography>
+            ) : null}
             <Typography variant="body2" color="text.secondary">
               {t('system.tuningWorkbenchCameraHint')}
             </Typography>
             <Stack direction="row" useFlexGap flexWrap="wrap" gap={1}>
-              <TextField
-                size="small"
-                label="min_confidence_binary"
-                value={draft.min_confidence_binary ?? ''}
-                onChange={(e) =>
-                  setDraft((prev) => ({ ...prev, min_confidence_binary: e.target.value }))
-                }
-              />
-              <TextField
-                size="small"
-                label="min_confidence_to_process"
-                value={draft.min_confidence_to_process ?? ''}
-                onChange={(e) =>
-                  setDraft((prev) => ({ ...prev, min_confidence_to_process: e.target.value }))
-                }
-              />
-              <TextField
-                size="small"
-                label="min_track_duration"
-                value={draft.min_track_duration ?? ''}
-                onChange={(e) =>
-                  setDraft((prev) => ({ ...prev, min_track_duration: e.target.value }))
-                }
-              />
-              <TextField
-                size="small"
-                label="min_box_size_px"
-                value={draft.min_box_size_px ?? ''}
-                onChange={(e) =>
-                  setDraft((prev) => ({ ...prev, min_box_size_px: e.target.value }))
-                }
-              />
+              {CAMERA_TUNING_FIELD_DEFS.map((def) => (
+                <TextField
+                  key={def.key}
+                  size="small"
+                  sx={{ minWidth: 200, flex: '1 1 200px' }}
+                  label={def.key}
+                  value={draft[def.key] ?? ''}
+                  onChange={(e) =>
+                    setDraft((prev) => ({ ...prev, [def.key]: e.target.value }))
+                  }
+                />
+              ))}
             </Stack>
             <Stack direction="row" spacing={1}>
               <Button

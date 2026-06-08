@@ -20,7 +20,10 @@ from linear_pipeline import (
 
 
 def _bbox_frames(n=3):
-    return [{"t": i * 0.1, "bbox": [0.1, 0.1, 0.3, 0.3]} for i in range(n)]
+    return [
+        {"t": i * 0.1, "bbox": [0.1 + i * 0.02, 0.1, 0.3 + i * 0.02, 0.3]}
+        for i in range(n)
+    ]
 
 
 def _track(*, conf=0.25, species=None, frames=None):
@@ -67,6 +70,7 @@ class TestLinearPipeline(unittest.TestCase):
                 "processor.min_confidence_binary_bird": 0.08,
                 "processor.classifier_best_guess_min_confidence": 0.10,
                 "processor.birder_eu_min_confidence": 0.15,
+                "processor.linear_static_pinned_reject_enabled": False,
             }
         )
         ev = evaluate_track_linear(
@@ -81,18 +85,36 @@ class TestLinearPipeline(unittest.TestCase):
         self.assertEqual(ev["evidence_state"], "detector_only")
         self.assertTrue(ev["visit_eligible"])
 
-    def test_static_like_track_not_blocked_by_linear(self):
-        """Linear has no static_pinned — forest-style weak conf still passes floor."""
+    def test_static_frozen_track_rejected_in_linear(self):
+        frozen = [{"t": float(i), "bbox": [0.40, 0.30, 0.48, 0.38]} for i in range(12)]
         cfg = _Cfg(
             {
                 "processor.pipeline_mode": "linear",
-                "processor.min_confidence_binary_bird": 0.08,
+                "processor.linear_static_pinned_reject_enabled": True,
+                "processor.track_static_reject_enabled": True,
             }
         )
         ev = evaluate_track_linear(
             app_config=cfg,
-            track=_track(conf=0.09, frames=_bbox_frames(8)),
-            min_track_duration=1.0,
+            track=_track(conf=0.25, frames=frozen),
+            min_track_duration=0.5,
+            min_confidence_to_process=0.12,
+        )
+        self.assertFalse(ev["accepted"])
+        self.assertEqual(ev["decision_reason"], "rejected_static_pinned_track")
+
+    def test_static_reject_can_be_disabled_for_linear(self):
+        frozen = [{"t": float(i), "bbox": [0.40, 0.30, 0.48, 0.38]} for i in range(12)]
+        cfg = _Cfg(
+            {
+                "processor.pipeline_mode": "linear",
+                "processor.linear_static_pinned_reject_enabled": False,
+            }
+        )
+        ev = evaluate_track_linear(
+            app_config=cfg,
+            track=_track(conf=0.25, frames=frozen),
+            min_track_duration=0.5,
             min_confidence_to_process=0.12,
         )
         self.assertTrue(ev["accepted"])
@@ -113,6 +135,7 @@ class TestLinearPipeline(unittest.TestCase):
             {
                 "processor.classifier_best_guess_min_confidence": 0.10,
                 "processor.birder_eu_min_confidence": 0.15,
+                "processor.linear_static_pinned_reject_enabled": False,
             }
         )
         ev = evaluate_track_linear(
@@ -133,6 +156,7 @@ class TestLinearPipeline(unittest.TestCase):
                 "processor.min_confidence_binary_bird": 0.08,
                 "processor.classifier_best_guess_min_confidence": 0.10,
                 "processor.birder_eu_min_confidence": 0.15,
+                "processor.linear_static_pinned_reject_enabled": False,
             }
         )
         tracks = {7: _track(conf=0.15)}
@@ -149,6 +173,7 @@ class TestLinearPipeline(unittest.TestCase):
             "processor.min_confidence_binary_bird": 0.08,
             "processor.classifier_best_guess_min_confidence": 0.10,
             "processor.birder_eu_min_confidence": 0.15,
+            "processor.linear_static_pinned_reject_enabled": False,
         }.get(k, d)
 
         with unittest.mock.patch("app_config.app_config.app_config", mock_cfg):
