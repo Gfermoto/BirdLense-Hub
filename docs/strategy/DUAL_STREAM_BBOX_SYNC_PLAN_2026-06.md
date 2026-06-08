@@ -1,6 +1,6 @@
 # Dual-stream bbox sync & hi-res notify (Jun 2026)
 
-**Статус:** Phase E/G в dev (playback_geometry, notify hires)  
+**Статус:** Phase E/F/G в dev + prod (`42e04292d`, VPS 2026-06-08)  
 **Связано:** [#606](https://github.com/Gfermoto/BirdLense-Hub/issues/606) EPIC, [#607](https://github.com/Gfermoto/BirdLense-Hub/issues/607) tracks, [#608](https://github.com/Gfermoto/BirdLense-Hub/issues/608) bbox  
 **Предшествующий план:** `CV_PIPELINE_RECOVERY_PLAN_2026-06.md`
 
