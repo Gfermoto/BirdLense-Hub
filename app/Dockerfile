@@ -84,9 +84,9 @@ RUN mkdir -p processor/models/detection/weights processor/models/classification/
            && mv processor/models/classification/weights/best.pt.tmp processor/models/classification/weights/best.pt; \
          fi; \
        fi
-RUN pip install --no-cache-dir -r web/requirements.txt \
-    && pip install --no-cache-dir -r processor/requirements.txt \
-    && pip install --no-cache-dir 'openvino>=2024.0'
+RUN pip install --default-timeout=300 --no-cache-dir -r web/requirements.txt \
+    && pip install --default-timeout=300 --no-cache-dir -r processor/requirements.txt \
+    && pip install --default-timeout=300 --no-cache-dir 'openvino>=2024.0'
 
 # OpenVINO runtime нужен для dual-mode (processor.inference_backend=auto/openvino).
 
