@@ -377,6 +377,9 @@ def register_routes(app):
                 video.trigger_source = raw_trigger_source
             elif inferred_trigger_source is not None:
                 video.trigger_source = inferred_trigger_source
+            raw_camera_id = str(data.get("camera_id") or "").strip()
+            if raw_camera_id:
+                video.camera_id = raw_camera_id[:64]
             raw_sw = data.get("scales_weight_delta_kg")
             if raw_sw is not None and app_config.get("integrations.scales.enabled"):
                 try:

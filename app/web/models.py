@@ -288,6 +288,7 @@ class Video(db.Model):
     trigger_source: Mapped[str | None] = mapped_column(
         String(32), nullable=True
     )  # opencv|frigate|motion_sensor|scales|track_regen|unknown
+    camera_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     favorite: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Weather data
@@ -323,6 +324,7 @@ class Video(db.Model):
         Index("ix_video_start_time", "start_time"),
         Index("ix_video_end_time", "end_time"),
         Index("ix_video_deleted_at", "deleted_at"),
+        Index("ix_video_camera_id", "camera_id"),
         Index(
             "ux_video_idempotency_active",
             "idempotency_key",

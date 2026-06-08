@@ -1176,6 +1176,8 @@
     "behaviorFilter": "Behavior",
     "behaviorFilterPlaceholder": "Filter by behavior",
     "behaviorFilterAll": "All behaviors",
+    "cameraFilter": "Camera",
+    "cameraFilterPlaceholder": "All cameras",
     "triggerSource": "Trigger source",
     "triggerSourceAll": "All triggers",
     "triggerSourceOpencv": "OpenCV",

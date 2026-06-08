@@ -613,9 +613,22 @@ if [[ ! "${BIRDLENSE_SKIP_DOMAIN_CLOSURE_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       }
 fi
 
-# 0. Остановка контейнера приложения (Redis birdlense-redis не удаляем — кэш переживает пересборку)
-echo "0. Остановка контейнера birdlense..."
-ssh ${SSH_OPTS} "${HOST}" "docker stop birdlense 2>/dev/null || true; docker rm birdlense 2>/dev/null || true"
+# 0. Остановка контейнера birdlense + удаление старого образа (Redis birdlense-redis не трогаем)
+echo "0. Остановка birdlense и удаление старых образов app-birdlense..."
+ssh ${SSH_OPTS} "${HOST}" "set -e; \
+  cd '${REMOTE_DIR}/app' 2>/dev/null || cd '${REMOTE_DIR}'; \
+  if [ -f docker-compose.yml ]; then \
+    docker compose stop birdlense 2>/dev/null || true; \
+    docker compose rm -f birdlense 2>/dev/null || true; \
+  fi; \
+  docker stop birdlense 2>/dev/null || true; \
+  docker rm birdlense 2>/dev/null || true; \
+  old_images=\$(docker images -q 'app-birdlense' 2>/dev/null || true); \
+  if [ -n \"\${old_images}\" ]; then \
+    echo \"  docker rmi app-birdlense: \${old_images}\"; \
+    docker rmi -f \${old_images} || true; \
+  fi; \
+  docker image prune -f --filter 'dangling=true' 2>/dev/null || true"
 
 # 0.5. Убедиться, что rsync есть на сервере (для надёжной синхронизации)
 if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
@@ -833,7 +846,10 @@ echo "2. Сборка и запуск..."
 BUILD_RETRIES="${BUILD_RETRIES:-2}"
 build_ok=0
 for attempt in $(seq 1 ${BUILD_RETRIES}); do
-  if ssh ${SSH_OPTS} "${HOST}" "mkdir -p ${REMOTE_DIR}/app/data/recordings ${REMOTE_DIR}/app/data/db ${REMOTE_DIR}/app/app_config && cd ${REMOTE_DIR}/app && make stop 2>/dev/null; make build && make start"; then
+  if ssh ${SSH_OPTS} "${HOST}" "mkdir -p ${REMOTE_DIR}/app/data/recordings ${REMOTE_DIR}/app/data/db ${REMOTE_DIR}/app/app_config && cd ${REMOTE_DIR}/app && \
+    old_images=\$(docker images -q 'app-birdlense' 2>/dev/null || true); \
+    if [ -n \"\${old_images}\" ]; then docker rmi -f \${old_images} || true; fi; \
+    make stop 2>/dev/null; make build && make start"; then
     build_ok=1
     break
   fi

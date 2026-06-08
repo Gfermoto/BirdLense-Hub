@@ -10,6 +10,39 @@ from time_util import ensure_utc
 from services.feeder_scale import video_scales_estimate_payload
 
 
+def resolve_video_camera_id(session, video) -> str | None:
+    """Video.camera_id or nearest session_runtime_metrics row (legacy clips)."""
+    if not video:
+        return None
+    raw = getattr(video, "camera_id", None)
+    if raw and str(raw).strip():
+        return str(raw).strip()
+    if session is None:
+        return None
+    try:
+        from datetime import timedelta
+
+        from models import SessionRuntimeMetrics
+
+        v_start = ensure_utc(video.start_time)
+        window = timedelta(seconds=120)
+        row = (
+            session.query(SessionRuntimeMetrics.camera_id)
+            .filter(
+                SessionRuntimeMetrics.camera_id.isnot(None),
+                SessionRuntimeMetrics.created_at >= v_start - window,
+                SessionRuntimeMetrics.created_at <= v_start + window,
+            )
+            .order_by(SessionRuntimeMetrics.created_at.desc())
+            .first()
+        )
+        if row and row[0]:
+            return str(row[0]).strip()
+    except Exception:
+        return None
+    return None
+
+
 def _model_behavior_events_from_video(video) -> list[dict]:
     """Runtime behavior baseline persisted on Video (#416)."""
     if not video:
@@ -105,7 +138,7 @@ def get_primary_video_for_visit_in_window(
     return primary.video
 
 
-def format_visit_for_timeline(visit) -> dict:
+def format_visit_for_timeline(visit, *, session=None) -> dict:
     """Format SpeciesVisit to timeline API format (detections, weather, species)."""
     video = get_primary_video_for_visit(visit)
     video_duration_seconds = None
@@ -172,10 +205,11 @@ def format_visit_for_timeline(visit) -> dict:
             detections,
             preferred_trigger=getattr(video, "trigger_source", None) if video else None,
         ),
+        "camera_id": resolve_video_camera_id(session, video),
     }
 
 
-def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
+def format_unlinked_video_for_timeline(video, *, fallback_species, session=None) -> dict:
     """Ролик за интервал без привязки к SpeciesVisit — тот же контракт, что у визита в /timeline."""
     v0 = ensure_utc(video.start_time)
     v1 = ensure_utc(video.end_time)
@@ -256,4 +290,5 @@ def format_unlinked_video_for_timeline(video, *, fallback_species) -> dict:
             detections,
             preferred_trigger=getattr(video, "trigger_source", None),
         ),
+        "camera_id": resolve_video_camera_id(session, video),
     }
