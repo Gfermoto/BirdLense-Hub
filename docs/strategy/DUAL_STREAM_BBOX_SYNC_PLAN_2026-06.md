@@ -1,6 +1,6 @@
 # Dual-stream bbox sync & hi-res notify (Jun 2026)
 
-**Статус:** Phase E/F/G в dev + prod; #607–#609 закрыты 2026-06-08 после prod verify  
+**Статус:** #606–#611 закрыты 2026-06-08; Phase E geometry — метрика `bbox_remap_mismatch_total`, playback в decision_trace  
 **Связано:** [#606](https://github.com/Gfermoto/BirdLense-Hub/issues/606) EPIC, [#607](https://github.com/Gfermoto/BirdLense-Hub/issues/607) tracks, [#608](https://github.com/Gfermoto/BirdLense-Hub/issues/608) bbox  
 **Предшествующий план:** `CV_PIPELINE_RECOVERY_PLAN_2026-06.md`
 
