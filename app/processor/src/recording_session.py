@@ -362,21 +362,33 @@ class MotionRecordingSession:
         self._apply_main_playback_shape()
 
     def _apply_main_playback_shape(self) -> None:
-        """Main-stream bbox normalization must be active before lores YOLO (detect-first + session)."""
+        """Main-stream bbox normalization before lores YOLO (Frigate-style: record = playback frame)."""
+        from playback_geometry import apply_playback_shape_to_strategy, resolve_playback_shape_hw
+
         main_size = getattr(self.media_source, "main_size", None)
-        if not main_size or len(main_size) < 2:
+        shape_hw, source = resolve_playback_shape_hw(
+            config_main_size=main_size,
+            media_source=self.media_source,
+        )
+        if shape_hw is None:
             return
-        strategy = getattr(self.frame_processor, "strategy", None)
-        if strategy is None or not hasattr(strategy, "set_playback_frame_shape"):
+        if not apply_playback_shape_to_strategy(self.frame_processor, shape_hw, source=source):
             return
-        try:
-            pw, ph = int(main_size[0]), int(main_size[1])
-            if pw > 0 and ph > 0:
-                strategy.set_playback_frame_shape((ph, pw))
-            else:
-                logger.warning("main_size invalid for playback bbox remap: %s", main_size)
-        except (TypeError, ValueError):
-            logger.warning("main_size parse failed for playback bbox remap: %s", main_size, exc_info=True)
+        if main_size and len(main_size) >= 2:
+            try:
+                cfg_hw = (int(main_size[1]), int(main_size[0]))
+                if cfg_hw != shape_hw and source != "config_main_size":
+                    inc_counter("playback_shape_config_mismatch_total")
+                    logger.warning(
+                        "playback_shape at session start: config=%sx%s applied=%sx%s source=%s",
+                        main_size[0],
+                        main_size[1],
+                        shape_hw[1],
+                        shape_hw[0],
+                        source,
+                    )
+            except (TypeError, ValueError):
+                pass
 
     def _run_lores_yolo_window(
         self,
@@ -479,6 +491,7 @@ class MotionRecordingSession:
         output_path_physical, output_path_logical = get_output_path()
         video_output = os.path.join(output_path_physical, "video.mp4")
         video_path_for_api = f"{output_path_logical}/video.mp4"
+        playback_reconcile: dict[str, Any] = {}
 
         self.media_source.start_recording(video_output)
 
@@ -862,6 +875,18 @@ class MotionRecordingSession:
             self.media_source.stop_recording()
             end_time = datetime.now(timezone.utc)
 
+            playback_reconcile = {}
+            try:
+                from playback_geometry import reconcile_playback_shape_after_record
+
+                playback_reconcile = reconcile_playback_shape_after_record(
+                    frame_processor=self.frame_processor,
+                    video_output=video_output,
+                    media_source=self.media_source,
+                )
+            except Exception:
+                logger.debug("playback_shape reconcile failed", exc_info=True)
+
         try:
             _mqtt_b = (os.environ.get("MQTT_BROKER") or app_config.get("mqtt.broker") or "").strip() or None
             _active_names = get_active_trigger_names(app_config, mqtt_broker=_mqtt_b)
@@ -914,6 +939,7 @@ class MotionRecordingSession:
                         "session_extended_by_frigate": runtime_signals["session_extended_by_frigate_only"] > 0,
                         "runtime_profile": dominant_runtime_profile,
                         "runtime_profile_frames": dict(runtime_profile_counts),
+                        "playback_geometry": playback_reconcile,
                     },
                     "concurrent_recording": dict(concurrent_context or {}),
                 },

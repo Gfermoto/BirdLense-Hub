@@ -111,10 +111,48 @@ class TestEncodeNotifyPreview(unittest.TestCase):
                     ],
                 },
                 '/tmp/fake-video.mp4',
+                runtime_cfg={'processor.notify_preview_source': 'best_frame_lores'},
             )
 
         self.assertIsNotNone(image_b64)
         self.assertEqual(source, 'best_frame')
+
+    def test_record_hires_prefers_mp4_over_best_frame(self):
+        bf = np.random.randint(0, 255, (32, 32, 3), dtype=np.uint8)
+        frame = np.random.randint(0, 255, (1080, 1920, 3), dtype=np.uint8)
+
+        def fake_video_capture(_path):
+            return _FakeCapture(True, frame)
+
+        with patch.object(
+            notify_preview_encode_mod.cv2,
+            'VideoCapture',
+            fake_video_capture,
+        ), patch.object(
+            notify_preview_encode_mod.cv2,
+            'imencode',
+            lambda *_a, **_k: (True, np.array([1, 2, 3], dtype=np.uint8)),
+        ), patch.object(
+            notify_preview_encode_mod.time,
+            'sleep',
+            lambda _d: None,
+        ):
+            image_b64, source = encode_notify_preview_base64(
+                {
+                    'best_frame': bf,
+                    'best_frame_score': 20.0,
+                    'start_time': 0.0,
+                    'end_time': 2.0,
+                    'frames': [
+                        {'bbox': [0.2, 0.2, 0.5, 0.5], 't': 1.0},
+                    ],
+                },
+                '/tmp/fake-video.mp4',
+                runtime_cfg={'processor.notify_preview_source': 'record_hires'},
+            )
+
+        self.assertIsNotNone(image_b64)
+        self.assertEqual(source, 'record_hires')
 
 
 class TestDetectionStackWeights(unittest.TestCase):

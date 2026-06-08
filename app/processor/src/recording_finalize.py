@@ -1349,7 +1349,9 @@ def finalize_motion_recording(
                     video_detections=video_detections,
                     video_output=video_output,
                     video_id=video_id,
-                    encode_func=encode_notify_preview_base64,
+                    encode_func=lambda d, v: encode_notify_preview_base64(
+                        d, v, runtime_cfg=app_config
+                    ),
                 )
         except Exception as exc:
             try:

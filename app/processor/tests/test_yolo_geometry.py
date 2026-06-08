@@ -83,6 +83,20 @@ class TestLetterboxBGR(unittest.TestCase):
         self.assertGreaterEqual(x1, 0.0)
         self.assertLessEqual(x2, 1.0)
 
+    def test_storage_bbox_overlay_detect_to_main(self):
+        from detection_strategy import _storage_bbox_norm_for_overlay
+
+        det_bbox = [0.3, 0.35, 0.55, 0.65]
+        out = _storage_bbox_norm_for_overlay(
+            det_bbox,
+            detector_frame_shape=(576, 704),
+            overlay_frame_shape=(576, 704),
+            playback_frame_shape=(1080, 1920),
+        )
+        self.assertEqual(len(out), 4)
+        self.assertGreater(out[2], out[0])
+        self.assertGreater(out[3], out[1])
+
     def test_map_norm_bbox_same_shape_identity(self):
         src_bbox = [0.12, 0.23, 0.63, 0.74]
         mapped = map_norm_bbox_xyxy_between_frame_shapes(
