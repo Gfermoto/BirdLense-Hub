@@ -59,14 +59,64 @@ def _skip_orphan_session(rec_dir: str, entry: dict[str, Any], protected_dirs: se
     return bool(sd and sd in protected_dirs)
 
 
+def _coerce_orphan_purge_limit(raw: object, *, default: int = 500) -> int | None:
+    try:
+        limit = int(raw if raw is not None else default)
+    except (TypeError, ValueError):
+        return None
+    return max(1, min(5000, limit))
+
+
+def apply_orphan_recording_purge(*, limit: int = 500) -> dict[str, Any]:
+    """Delete eligible disk-only sessions (no confirmation; reconcile/scheduler)."""
+    rec_dir = recordings_dir()
+    if not rec_dir or not os.path.isdir(rec_dir):
+        return {
+            "deleted_count": 0,
+            "freed_bytes": 0,
+            "orphan_session_count": 0,
+            "skipped_protected": 0,
+            "errors": [],
+        }
+
+    db_paths = _db_video_paths()
+    orphans = _iter_orphan_sessions(rec_dir=rec_dir, db_paths=db_paths)
+    protected_dirs = protected_favorite_session_dirs(rec_dir)
+    eligible = [o for o in orphans if not _skip_orphan_session(rec_dir, o, protected_dirs)]
+    skipped_protected = len(orphans) - len(eligible)
+
+    deleted = 0
+    freed = 0
+    errors: list[str] = []
+    for entry in eligible[:limit]:
+        session_dir = entry["session_dir"]
+        try:
+            if os.path.isdir(session_dir):
+                for fname in os.listdir(session_dir):
+                    fp = os.path.join(session_dir, fname)
+                    if os.path.isfile(fp):
+                        freed += os.path.getsize(fp)
+                shutil.rmtree(session_dir)
+                deleted += 1
+        except OSError as exc:
+            errors.append(f"{entry['video_path']}: {exc}")
+            _log.warning("orphan purge failed for %s", entry["video_path"], exc_info=True)
+
+    return {
+        "deleted_count": deleted,
+        "freed_bytes": freed,
+        "orphan_session_count": len(orphans),
+        "skipped_protected": skipped_protected,
+        "errors": errors,
+    }
+
+
 def purge_orphan_recording_files(payload: dict | None) -> tuple[dict, int]:
     data = payload if isinstance(payload, dict) else {}
     dry_run = bool(data.get("dry_run", True))
-    try:
-        limit = int(data.get("limit") or 500)
-    except (TypeError, ValueError):
+    limit = _coerce_orphan_purge_limit(data.get("limit"))
+    if limit is None:
         return {"error": "limit must be an integer"}, 400
-    limit = max(1, min(5000, limit))
 
     rec_dir = recordings_dir()
     if not rec_dir or not os.path.isdir(rec_dir):
@@ -99,27 +149,11 @@ def purge_orphan_recording_files(payload: dict | None) -> tuple[dict, int]:
             "confirmation_phrase": ORPHAN_FILES_PURGE_CONFIRMATION,
         }, 400
 
-    deleted = 0
-    freed = 0
-    errors: list[str] = []
-    for entry in eligible[:limit]:
-        session_dir = entry["session_dir"]
-        try:
-            if os.path.isdir(session_dir):
-                for fname in os.listdir(session_dir):
-                    fp = os.path.join(session_dir, fname)
-                    if os.path.isfile(fp):
-                        freed += os.path.getsize(fp)
-                shutil.rmtree(session_dir)
-                deleted += 1
-        except OSError as exc:
-            errors.append(f"{entry['video_path']}: {exc}")
-            _log.warning("orphan purge failed for %s", entry["video_path"], exc_info=True)
-
+    result = apply_orphan_recording_purge(limit=limit)
     return {
         "dry_run": False,
-        "deleted_count": deleted,
-        "freed_bytes": freed,
-        "skipped_protected": skipped_protected,
-        "errors": errors,
+        "deleted_count": result["deleted_count"],
+        "freed_bytes": result["freed_bytes"],
+        "skipped_protected": result["skipped_protected"],
+        "errors": result["errors"],
     }, 200

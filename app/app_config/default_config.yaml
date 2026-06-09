@@ -1031,6 +1031,12 @@ reconcile:
   auto_run_enabled: true
   startup_delay_seconds: 30
   auto_run_interval_hours: 24
+  # Auto-purge disk sessions without Video row (reconcile policy; protect_favorites respected)
+  purge_orphan_disk_enabled: true
+  purge_orphan_disk_limit: 500
+  # Remove Video rows whose file is missing/unreadable
+  purge_broken_db_rows_enabled: true
+  purge_broken_db_rows_limit: 100
 
 # Retention
 retention:

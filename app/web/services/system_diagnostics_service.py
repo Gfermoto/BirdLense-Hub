@@ -205,6 +205,66 @@ def delete_broken_video_rows(payload) -> tuple[dict, int]:
         return {"error": "Failed to delete broken video rows"}, 500
 
 
+def apply_broken_video_rows_purge(*, limit: int = 100, max_scan: int = 100_000) -> dict:
+    """Remove broken Video rows (missing/unreadable file); reconcile internal path."""
+    max_scan = max(1000, min(max_scan, 500_000))
+    limit = max(1, min(limit, 5000))
+    inv = scan_broken_videos_inventory(
+        max_scan=max_scan,
+        collect_ids_limit=limit,
+    )
+    video_ids = inv["ids_to_delete"]
+    if not video_ids:
+        return {
+            "deleted_count": 0,
+            "scanned": inv["scanned"],
+            "more_batches_suggested": False,
+        }
+
+    videos = Video.query.filter(Video.id.in_(video_ids)).all()
+    by_id = {v.id: v for v in videos}
+    not_broken = [
+        vid
+        for vid in video_ids
+        if vid not in by_id or broken_video_row_payload(by_id[vid]) is None
+    ]
+    if not_broken:
+        return {
+            "deleted_count": 0,
+            "skipped_not_broken": sorted(not_broken),
+            "scanned": inv["scanned"],
+        }
+
+    ordered = [by_id[vid] for vid in video_ids if vid in by_id]
+    deleted_video_ids, deleted_dirs = _cascade_delete_videos_collect_dirs(ordered)
+
+    cleanup_log = ActivityLog(
+        type="admin_diagnostics_cleanup",
+        data=json.dumps(
+            {
+                "action": "broken_video_rows_reconcile_purge",
+                "bucket": "broken_video_row",
+                "video_ids": deleted_video_ids,
+                "batch_limit": limit,
+            }
+        ),
+    )
+    db.session.add(cleanup_log)
+    db.session.commit()
+
+    deleted_files, deleted_size = _remove_recording_dirs(deleted_dirs)
+    bust_response_caches()
+    bust_system_response_caches()
+    return {
+        "deleted_count": len(deleted_video_ids),
+        "deleted_video_ids": deleted_video_ids,
+        "deleted_files": deleted_files,
+        "deleted_size": deleted_size,
+        "scanned": inv["scanned"],
+        "more_batches_suggested": len(deleted_video_ids) >= limit,
+    }
+
+
 def purge_broken_video_rows(payload) -> tuple[dict, int]:
     try:
         dry_run = bool(payload.get("dry_run", True))
