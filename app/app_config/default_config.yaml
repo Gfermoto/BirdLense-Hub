@@ -22,6 +22,14 @@ general:
 # Video/Audio processor settings
 # Важно: user_config.yaml мержится с дефолтами рекурсивно (merge_dicts): заданные ключи
 # переопределяют вложенные значения на всех уровнях; отсутствующие ключи берутся из default.
+#
+# Порядок порогов (позже перекрывает раньше):
+#   default_config → user_config → adaptive_profiles.night → camera_tuning_by_role.<role>
+#   → processor.camera_overrides.<camera_id> → video.cameras[].detection_interest_zones
+#
+# Detect-first (lores anchor до main record) — отдельные ключи, НЕ min_track_duration:
+#   detect_first_confirm_min_hits, detect_first_confirm_min_track_seconds, detect_first_window_seconds.
+# min_track_duration — только gate persist/ByteTrack после старта записи (#612).
 processor:
   # linear: trigger → detect/track → classify+helpers → reid/behavior → persist
   # legacy: pre-2026-06 multi-gate decision path (opt-in rollback)
@@ -84,10 +92,10 @@ processor:
   # Trigger -> lowres detect-first window; recording starts only after confirmed YOLO+ByteTrack bbox.
   detect_first_enabled: true
   detect_first_triggers: ["opencv", "frigate", "motion_sensor", "scales"]
-  detect_first_window_seconds: 2.5
+  detect_first_window_seconds: 4.0
   detect_first_max_frames: 30
-  detect_first_confirm_min_hits: 2
-  detect_first_confirm_min_track_seconds: 0.5
+  detect_first_confirm_min_hits: 1
+  detect_first_confirm_min_track_seconds: 0.35
   # Detect-first opens the main recording, but should not by itself create a final visit.
   # Persist dense live YOLO tracks; anchor-only rows are too short for lifecycle trails.
   detect_first_anchor_only_persist_enabled: false
@@ -106,14 +114,14 @@ processor:
   detect_probe_start_recording_on_positive: true
   # Свежее подтверждение Frigate держит клип «живым» ещё N сек, даже если YOLO на паре кадров молчит.
   # Помогает не обрывать ролик, пока объект ещё реально в кадре.
-  frigate_activity_hold_seconds: 6
+  frigate_activity_hold_seconds: 10
   # Удержание клипа по Frigate MQTT только если триггером была Frigate (standalone OpenCV — свой YOLO).
   frigate_hold_only_when_frigate_trigger: true
   # Ограничение на «Frigate-only» продление в кадрах (0 = без ограничения).
   # Защита от долгих сессий без raw boxes: после лимита клип больше не продлевается только Frigate-активностью.
   frigate_only_extension_max_frames: 0
-  # Мин. длительность трека ByteTrack (сек). Truth serum: 1s — отсечь мгновенные FP на текстуре корма.
-  min_track_duration: 0.6
+  # Мин. длительность трека ByteTrack (сек) для persist после старта записи. Detect-first anchor — см. detect_first_confirm_min_track_seconds.
+  min_track_duration: 0.25
   # Только офлайн-перегенерация треков: ниже live, иначе короткие визиты и рваные track_id → rejected_short_track и пустые overlays в UI.
   track_regen_min_track_duration: 0.05
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
@@ -143,7 +151,7 @@ processor:
   # Классификатор в фоне: hot path = detect+track only; species подтягивается из кэша.
   classifier_async_enabled: true
   # Если track() вернул 0 боксов, сделать predict() с мягким conf как аварийный fallback.
-  track_to_predict_fallback_enabled: false
+  track_to_predict_fallback_enabled: true
   track_to_predict_fallback_confidence: 0.002
   # Таймаут на одно видео при batch-перегенерации треков (сек): защита от «зависшего» файла.
   track_regen_video_timeout_sec: 900
@@ -192,17 +200,17 @@ processor:
   track_regen_parallel_auto_with_manual: false
   # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
   # Trapper @ conf 0.25 на 1816/1819: визуально без ложных (showdown 2026-05).
-  min_confidence_binary: 0.25
-  min_confidence_binary_bird: 0.23
+  min_confidence_binary: 0.12
+  min_confidence_binary_bird: 0.12
   # Trapper class 5 (белка): отдельный порог после track(); калибровать по val-клипам (не ниже bird без причины).
   min_confidence_binary_rodent: 0.30
   # DEPRECATED (nabirds-pivot): Rodent не детектируется; ключ только для legacy user_config (игнорируется при detector_scope: [Bird]).
   # OpenVINO NABirds: conf на IR часто ВЫШЕ torch, не ниже — scale 8.5 (legacy BRG) раздувает FP.
   # track(conf) cap — не ниже bird-порога; scale 1.0 = без искусственного завышения при фильтрации.
   # conf для YOLO track(); должен быть < min_confidence_binary_bird и > track_high в ByteTrack YAML.
-  openvino_binary_track_ultralytics_conf: 0.24
+  openvino_binary_track_ultralytics_conf: 0.12
   openvino_binary_bird_score_scale: 1.0
-  openvino_min_confidence_binary_bird: 0.23
+  openvino_min_confidence_binary_bird: 0.12
   # --- SOTA 2.0: unified ScoringEngine (replaces legacy filter cascade) ---
   scoring_engine_enabled: true
   scoring_weight_conf: 0.45
@@ -245,7 +253,7 @@ processor:
   static_temporal_min_seconds: 8
   static_temporal_max_jitter_px: 2
   # Fallback FPS для static/temporal фильтров, если поток не отдаёт FPS (0 = только probe потока).
-  detection_quality_assumed_fps: 15
+  detection_quality_assumed_fps: 7
   # Optional user-drawn masks (UI); empty by default — core FP control is algorithmic (MOG2 + motion).
   detection_ignore_masks: []
   detection_interest_zones: []
@@ -429,10 +437,14 @@ processor:
   # Новые инсталляции без ручного BirdBox/Forest — feeder_close / feeder_far.
   camera_tuning_by_role:
     feeder_close:
-      min_confidence_binary: 0.12
-      min_confidence_binary_bird: 0.12
-      min_confidence_to_process: 0.12
-      min_track_duration: 0.8
+      detect_first_confirm_min_track_seconds: 0.35
+      min_confidence_binary: 0.08
+      min_confidence_binary_bird: 0.06
+      min_confidence_to_process: 0.08
+      min_track_duration: 0.35
+      min_box_size_px: 10
+      max_box_area_norm: 0.92
+      track_to_predict_fallback_enabled: true
       detect_record_time_offset_sec: -0.10
       track_static_reject_enabled: true
       track_static_reject_min_duration_sec: 1.5

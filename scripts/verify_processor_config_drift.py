@@ -14,6 +14,9 @@ REPO = Path(__file__).resolve().parents[1]
 
 # Keys where higher user value = stricter rejection / more missed birds.
 _STRICTER_IF_HIGHER = (
+    "processor.detect_first_confirm_min_hits",
+    "processor.detect_first_confirm_min_track_seconds",
+    "processor.min_track_duration",
     "processor.track_static_reject_min_duration_sec",
     "processor.track_static_reject_min_duration_sparse_sec",
     "processor.track_static_reject_min_frames",
@@ -23,6 +26,7 @@ _STRICTER_IF_HIGHER = (
 
 # Keys where lower user value = stricter.
 _STRICTER_IF_LOWER = (
+    "processor.detect_first_window_seconds",
     "processor.track_static_reject_max_center_dispersion_norm",
     "processor.track_static_reject_max_relative_center_dispersion",
 )

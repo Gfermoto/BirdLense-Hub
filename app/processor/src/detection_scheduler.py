@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, Mapping
 
 
 @dataclass(frozen=True)
@@ -144,6 +145,29 @@ def trigger_requires_detect_first(
     if trigger == "opencv" and bool(app_config.get("detection.track_first_gate_enabled", True)):
         return True
     return trigger in set(cfg.triggers)
+
+
+def resolve_detect_first_min_track_seconds(
+    cfg: DetectFirstConfig,
+    cam_overrides: Mapping[str, Any] | None,
+) -> float:
+    """Detect-first anchor duration — not session ``min_track_duration`` (#612)."""
+    if isinstance(cam_overrides, dict):
+        raw = cam_overrides.get("detect_first_confirm_min_track_seconds")
+        if raw is not None:
+            try:
+                return max(0.0, min(30.0, float(raw)))
+            except (TypeError, ValueError):
+                pass
+    return float(cfg.confirm_min_track_seconds)
+
+
+def frame_counts_as_detect_first_hit(last_run_stats: Mapping[str, Any] | None) -> bool:
+    """Count YOLO raw boxes as detect-first progress, not only accepted tracks."""
+    stats = last_run_stats or {}
+    if bool(stats.get("yolo_track_found")) or int(stats.get("result_count") or 0) > 0:
+        return True
+    return int(stats.get("yolo_raw_boxes") or 0) > 0
 
 
 def should_run_probe(*, trigger_source: str | None, app_config) -> bool:
