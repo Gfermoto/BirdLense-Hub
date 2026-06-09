@@ -39,7 +39,9 @@ from detect_first import (
 from detection_scheduler import (
     build_detect_first_config,
     build_probe_config,
+    frame_counts_as_detect_first_hit,
     requires_detect_first_before_record,
+    resolve_detect_first_min_track_seconds,
     trigger_requires_detect_first,
 )
 from yolo_blind_monitor import YoloBlindLiveMonitor, run_blind_quickcheck
@@ -321,11 +323,7 @@ class MotionRecordingSession:
             nonlocal anchor
             if _hits < cfg.confirm_min_hits:
                 return False
-            min_track = float(
-                cam_overrides.get("min_track_duration")
-                if cam_overrides.get("min_track_duration") is not None
-                else cfg.confirm_min_track_seconds
-            )
+            min_track = resolve_detect_first_min_track_seconds(cfg, cam_overrides)
             min_conf = float(
                 cam_overrides.get("min_confidence_to_process")
                 if cam_overrides.get("min_confidence_to_process") is not None
@@ -343,6 +341,7 @@ class MotionRecordingSession:
             max_frames=cfg.max_frames,
             window_seconds=cfg.window_seconds,
             stop_when=_maybe_anchor,
+            count_raw_as_hit=True,
         )
         if anchor is None:
             self.frame_processor.reset()
@@ -420,6 +419,7 @@ class MotionRecordingSession:
         max_frames: int,
         window_seconds: float,
         stop_when: Callable[[int, int], bool] | None = None,
+        count_raw_as_hit: bool = False,
     ) -> tuple[int, int, bool]:
         """Bounded lores capture + YOLO loop. Returns (frames, hits, stopped_early)."""
         camera_overrides = _camera_processor_overrides(camera_id)
@@ -451,6 +451,8 @@ class MotionRecordingSession:
                     hit = _run_frame()
             else:
                 hit = _run_frame()
+            if count_raw_as_hit and not hit:
+                hit = frame_counts_as_detect_first_hit(self.frame_processor.last_run_stats)
             if hit:
                 hits += 1
             if stop_when and stop_when(hits, frames):
