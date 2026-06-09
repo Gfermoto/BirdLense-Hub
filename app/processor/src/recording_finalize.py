@@ -1024,6 +1024,17 @@ def finalize_motion_recording(
     )
     if detect_first_restored:
         inc_counter("detect_first_persist_safeguard_total")
+    try:
+        from dense_track_persist import restore_dense_persist_frames
+
+        video_detections, dense_restored = restore_dense_persist_frames(
+            video_detections,
+            session_tracks,
+        )
+        if dense_restored:
+            inc_counter("dense_track_persist_restored_total", dense_restored)
+    except ImportError:
+        dense_restored = 0
     weak_salvage_linear_ok = bool(rs_ctx.get("detect_first_confirmed")) and bool(
         rs_ctx.get("yolo_frames_with_tracks")
     )
@@ -1445,6 +1456,9 @@ def finalize_motion_recording(
         write_decision_trace_activity(api, decision_trace)
     if not video_file_ok:
         remove_session_dir(output_path_physical, reason="bad")
+    elif len(video_detections) > 0 and video_id is None:
+        inc_counter("recording_persist_orphan_rollback_total")
+        remove_session_dir(output_path_physical, reason="persist_failed")
     elif len(video_detections) == 0:
         if should_keep_empty_recording(app_config):
             logging.info(

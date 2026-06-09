@@ -45,6 +45,21 @@ class TestDetectFirstSchedulerHelpers(unittest.TestCase):
         }
         self.assertEqual(resolve_detect_first_min_track_seconds(cfg, cam), 0.25)
 
+    def test_per_camera_confirm_min_hits_override(self):
+        from detection_scheduler import resolve_detect_first_confirm_min_hits
+
+        cfg = DetectFirstConfig(
+            enabled=True,
+            triggers=("opencv",),
+            window_seconds=4.0,
+            max_frames=30,
+            confirm_min_hits=2,
+            confirm_min_track_seconds=0.35,
+        )
+        cam = {"detect_first_confirm_min_hits": 1}
+        self.assertEqual(resolve_detect_first_confirm_min_hits(cfg, cam), 1)
+        self.assertEqual(resolve_detect_first_confirm_min_hits(cfg, {}), 2)
+
     def test_raw_boxes_count_as_hit(self):
         self.assertTrue(
             frame_counts_as_detect_first_hit(

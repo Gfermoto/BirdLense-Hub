@@ -41,6 +41,7 @@ from detection_scheduler import (
     build_probe_config,
     frame_counts_as_detect_first_hit,
     requires_detect_first_before_record,
+    resolve_detect_first_confirm_min_hits,
     resolve_detect_first_min_track_seconds,
     trigger_requires_detect_first,
 )
@@ -318,10 +319,11 @@ class MotionRecordingSession:
         anchor: dict[str, Any] | None = None
 
         cam_overrides = _camera_processor_overrides(camera_id)
+        confirm_min_hits = resolve_detect_first_confirm_min_hits(cfg, cam_overrides)
 
         def _maybe_anchor(_hits: int, _frames: int) -> bool:
             nonlocal anchor
-            if _hits < cfg.confirm_min_hits:
+            if _hits < confirm_min_hits:
                 return False
             min_track = resolve_detect_first_min_track_seconds(cfg, cam_overrides)
             min_conf = float(
@@ -363,7 +365,7 @@ class MotionRecordingSession:
             camera_id or "?",
             frames,
             hits,
-            cfg.confirm_min_hits,
+            confirm_min_hits,
             bool(anchor),
             cfg.window_seconds,
         )

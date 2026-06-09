@@ -162,6 +162,21 @@ def resolve_detect_first_min_track_seconds(
     return float(cfg.confirm_min_track_seconds)
 
 
+def resolve_detect_first_confirm_min_hits(
+    cfg: DetectFirstConfig,
+    cam_overrides: Mapping[str, Any] | None,
+) -> int:
+    """Per-camera detect-first hit threshold (#612 BirdBox recall audit)."""
+    if isinstance(cam_overrides, dict):
+        raw = cam_overrides.get("detect_first_confirm_min_hits")
+        if raw is not None:
+            try:
+                return max(1, min(10, int(raw)))
+            except (TypeError, ValueError):
+                pass
+    return int(cfg.confirm_min_hits)
+
+
 def frame_counts_as_detect_first_hit(last_run_stats: Mapping[str, Any] | None) -> bool:
     """Count YOLO raw boxes as detect-first progress, not only accepted tracks."""
     stats = last_run_stats or {}

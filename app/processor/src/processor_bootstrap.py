@@ -340,6 +340,16 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                         trigger_source or "?",
                         camera_id,
                     )
+                    try:
+                        ctx.session.api.activity_log(
+                            "detect_first_no_anchor",
+                            {
+                                "camera": str(camera_id or "").strip() or None,
+                                "trigger_source": trigger_source or None,
+                            },
+                        )
+                    except Exception:
+                        logger.debug("detect_first_no_anchor activity log failed", exc_info=True)
                     continue
         elif should_run_probe(trigger_source=trigger_source, app_config=app_config):
             probe_ok = bool(

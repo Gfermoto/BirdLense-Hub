@@ -106,8 +106,9 @@ def test_readiness_keeps_quality_degraded_separate_from_service_ready(client, mo
     res = client.get("/api/ui/readiness")
     payload = res.get_json() or {}
 
-    assert res.status_code == 200
-    assert payload["ready"] is True
+    assert res.status_code == 503
+    assert payload["ready"] is False
     assert payload["quality_ready"] is False
     assert payload["checks"]["pipeline_funnel"]["status"] == "degraded"
-    assert payload["checks"]["yolo_detector"]["status"] == "unknown"
+    assert payload["checks"]["yolo_detector"]["status"] == "degraded"
+    assert payload["components"]["yolo"] == "degraded"
