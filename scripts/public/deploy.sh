@@ -47,10 +47,13 @@ _outcome_use_local_db() {
 # Keepalive — сборка Docker может занимать 5+ мин, без этого SSH обрывается (Broken pipe)
 # Порт через DEPLOY_SSH_PORT (по умолчанию 22)
 _PORT_OPT=""
+_SCP_PORT_OPT=""
 if [ -n "${DEPLOY_SSH_PORT:-}" ] && [ "${DEPLOY_SSH_PORT}" != "22" ]; then
   _PORT_OPT="-p ${DEPLOY_SSH_PORT}"
+  _SCP_PORT_OPT="-P ${DEPLOY_SSH_PORT}"
 fi
 SSH_OPTS="${_PORT_OPT} -o ServerAliveInterval=30 -o ServerAliveCountMax=60"
+SCP_OPTS="${_SCP_PORT_OPT} -o ServerAliveInterval=30 -o ServerAliveCountMax=60"
 echo "=== Деплой BirdLense Hub на ${HOST} ==="
 if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]] && [[ "${DEPLOY_URL}" == *"localhost"* ]]; then
   echo "ВНИМАНИЕ: DEPLOY_URL=${DEPLOY_URL} — health check будет с локальной машины. Для удалённого сервера задайте DEPLOY_URL в deploy.local.sh (например http://YOUR_HOST:8085)"
@@ -581,10 +584,10 @@ if [[ ! "${BIRDLENSE_SKIP_OUTCOME_METRICS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
           exit 1
         }
     mkdir -p "${REPO_ROOT}/docs/reports/quality_outcome"
-    scp ${SSH_OPTS} \
+    scp ${SCP_OPTS} \
       "${HOST}:${REMOTE_DIR}/docs/reports/quality_outcome/quality_outcome_metrics_latest.json" \
       "${REPO_ROOT}/docs/reports/quality_outcome/quality_outcome_metrics_latest.json"
-    scp ${SSH_OPTS} \
+    scp ${SCP_OPTS} \
       "${HOST}:${REMOTE_DIR}/docs/reports/quality_outcome/quality_outcome_metrics_latest.md" \
       "${REPO_ROOT}/docs/reports/quality_outcome/quality_outcome_metrics_latest.md" 2>/dev/null || true
   fi
