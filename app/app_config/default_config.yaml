@@ -88,6 +88,9 @@ processor:
   detect_first_max_frames: 30
   detect_first_confirm_min_hits: 2
   detect_first_confirm_min_track_seconds: 0.5
+  # Detect-first opens the main recording, but should not by itself create a final visit.
+  # Persist dense live YOLO tracks; anchor-only rows are too short for lifecycle trails.
+  detect_first_anchor_only_persist_enabled: false
   # Frigate trigger: если lores YOLO не дал anchor, но Frigate уже видит bird+bbox — старт record.
   detect_first_frigate_assist_enabled: true
   detect_first_frigate_assist_min_confidence: 0.50
