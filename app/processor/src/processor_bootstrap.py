@@ -295,6 +295,9 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                 continue
         if not _wait_for_motion(ctx):
             continue
+        from processor_support import mark_motion_triggered
+
+        mark_motion_triggered()
         from motion_recording_camera import resolve_motion_recording_camera_id
 
         camera_id = resolve_motion_recording_camera_id(

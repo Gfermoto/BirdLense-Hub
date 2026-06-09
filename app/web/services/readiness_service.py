@@ -16,6 +16,7 @@ from services.cache import cache_backend_readiness
 from services.component_status_service import build_component_status_payload_safe
 from services.persist_funnel_service import build_persist_funnel_summary
 from services.runtime_env import env_flag_enabled, is_production_runtime
+from services.status_service import _yolo_inference_ready, parse_yolo_status_from_heartbeat
 from util import ensure_utc
 
 
@@ -80,6 +81,100 @@ def _path_status(path: Path, label: str) -> dict[str, object]:
     }
 
 
+def _parse_heartbeat_data(row) -> dict | None:
+    if not row or not row.data:
+        return None
+    try:
+        import json
+
+        parsed = json.loads(row.data) if isinstance(row.data, str) else row.data
+    except (TypeError, ValueError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _latest_processor_heartbeat_row(session):
+    return session.query(ActivityLog).filter_by(type="heartbeat").order_by(ActivityLog.updated_at.desc()).first()
+
+
+def _processor_bootstrap_phase(heartbeat_data: dict | None, *, age_seconds: float) -> bool:
+    if not isinstance(heartbeat_data, dict):
+        return False
+    if heartbeat_data.get("bootstrap_error"):
+        return False
+    status = str(heartbeat_data.get("status") or "").strip().lower()
+    if status == "bootstrap":
+        return True
+    if _yolo_inference_ready(heartbeat_data):
+        return False
+    try:
+        max_boot = int(app_config.get("processor.bootstrap_phase_max_seconds") or 600)
+    except (TypeError, ValueError):
+        max_boot = 600
+    return age_seconds <= max(30.0, float(max_boot))
+
+
+def _heartbeat_last_motion_age_sec(heartbeat_data: dict | None) -> float | None:
+    if not isinstance(heartbeat_data, dict):
+        return None
+    direct = heartbeat_data.get("last_motion_age_sec")
+    if direct is not None:
+        try:
+            return max(0.0, float(direct))
+        except (TypeError, ValueError):
+            pass
+    runtime = heartbeat_data.get("runtime_stats")
+    if isinstance(runtime, dict):
+        gauges = runtime.get("gauges")
+        if isinstance(gauges, dict) and gauges.get("last_motion_age_sec") is not None:
+            try:
+                return max(0.0, float(gauges.get("last_motion_age_sec")))
+            except (TypeError, ValueError):
+                return None
+    last_motion_at = heartbeat_data.get("last_motion_at")
+    if not last_motion_at:
+        return None
+    try:
+        motion_dt = ensure_utc(datetime.fromisoformat(str(last_motion_at).replace("Z", "+00:00")))
+    except (TypeError, ValueError):
+        return None
+    return max(0.0, (datetime.now(timezone.utc) - motion_dt).total_seconds())
+
+
+def _build_yolo_detector_check(heartbeat_data: dict | None, yolo_probe: str) -> dict[str, object]:
+    """YOLO readiness with between-session idle monitoring (#605 idle ok preserved)."""
+    check: dict[str, object] = {"source": "heartbeat"}
+    motion_age = _heartbeat_last_motion_age_sec(heartbeat_data)
+    if motion_age is not None:
+        check["last_motion_age_sec"] = round(motion_age, 3)
+    runtime = heartbeat_data.get("runtime_stats") if isinstance(heartbeat_data, dict) else None
+    gauges = runtime.get("gauges") if isinstance(runtime, dict) else None
+    blind_alert = 0
+    blind_status = ""
+    if isinstance(gauges, dict):
+        blind_alert = int(gauges.get("yolo_blind_alert") or 0)
+        blind_status = str(gauges.get("yolo_blind_status") or "").strip().lower()
+    try:
+        motion_window = float(app_config.get("detection.yolo_between_motion_max_age_seconds") or 120.0)
+    except (TypeError, ValueError):
+        motion_window = 120.0
+    recent_motion = motion_age is not None and motion_age <= max(5.0, motion_window)
+    between_session_blind = bool(
+        recent_motion
+        and _yolo_inference_ready(heartbeat_data)
+        and (blind_alert == 1 or blind_status in ("blind", "degraded", "suspected"))
+    )
+    if between_session_blind:
+        check["between_session_blind"] = True
+    status = yolo_probe
+    if status == "unknown" and _yolo_inference_ready(heartbeat_data):
+        status = "ok"
+    if between_session_blind and status == "ok":
+        status = "error" if blind_alert == 1 or blind_status == "blind" else "degraded"
+    check["status"] = status
+    return check
+
+
 def _processor_heartbeat_readiness(session) -> dict[str, object]:
     """Processor heartbeat freshness check for readiness gate."""
     # Pytest uses in-memory DB without processor heartbeats; production still enforces below.
@@ -95,27 +190,22 @@ def _processor_heartbeat_readiness(session) -> dict[str, object]:
     except (TypeError, ValueError):
         max_age = 180
     max_age = max(30, max_age)
-    row = session.query(ActivityLog).filter_by(type="heartbeat").order_by(ActivityLog.updated_at.desc()).first()
+    row = _latest_processor_heartbeat_row(session)
+    heartbeat_data = _parse_heartbeat_data(row)
     if not row or not row.updated_at:
         return {
             "status": "error" if prod else "ok",
             "reason": "missing_heartbeat",
             "max_age_seconds": max_age,
+            "bootstrap_phase": False,
         }
-    heartbeat_data = None
-    if row.data:
-        try:
-            import json
-
-            heartbeat_data = json.loads(row.data) if isinstance(row.data, str) else row.data
-        except (TypeError, ValueError):
-            heartbeat_data = None
     if isinstance(heartbeat_data, dict) and heartbeat_data.get("bootstrap_error"):
         return {
             "status": "error",
             "reason": str(heartbeat_data.get("bootstrap_error_code") or "processor_config_error"),
             "message": str(heartbeat_data.get("bootstrap_error") or ""),
             "max_age_seconds": max_age,
+            "bootstrap_phase": False,
         }
     try:
         hb_ts = ensure_utc(row.updated_at)
@@ -124,16 +214,19 @@ def _processor_heartbeat_readiness(session) -> dict[str, object]:
             "status": "error" if prod else "ok",
             "reason": "invalid_heartbeat_timestamp",
             "max_age_seconds": max_age,
+            "bootstrap_phase": False,
         }
     now = datetime.now(timezone.utc)
     age = max(0.0, (now - hb_ts).total_seconds())
     stale = hb_ts < (now - timedelta(seconds=max_age))
+    bootstrap_phase = _processor_bootstrap_phase(heartbeat_data, age_seconds=age)
     return {
         "status": "error" if (prod and stale) else "ok",
         "reason": "stale_heartbeat" if stale else "ok",
         "max_age_seconds": max_age,
         "age_seconds": round(age, 3),
         "last_heartbeat_utc": hb_ts.isoformat(),
+        "bootstrap_phase": bootstrap_phase,
     }
 
 
@@ -158,6 +251,8 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         }
     checks["cache_backend"] = cache_check
     checks["processor_heartbeat"] = _processor_heartbeat_readiness(session)
+    heartbeat_row = _latest_processor_heartbeat_row(session)
+    heartbeat_data = _parse_heartbeat_data(heartbeat_row)
     funnel = build_persist_funnel_summary(session)
     checks["pipeline_funnel"] = {
         "status": funnel.get("status", "unknown"),
@@ -178,18 +273,14 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         cache_set("component_status:v1", components_payload, 180)
 
     yolo_probe = str(components_payload.get("yolo") or "unknown")
-    if yolo_probe in ("error", "degraded"):
-        checks["yolo_detector"] = {"status": yolo_probe, "source": "heartbeat"}
-    elif yolo_probe == "ok":
-        checks["yolo_detector"] = {"status": "ok", "source": "heartbeat"}
-    else:
-        checks["yolo_detector"] = {"status": "unknown", "source": "heartbeat"}
-
+    if heartbeat_data and yolo_probe in ("unknown", "ok", "degraded", "error"):
+        yolo_probe = parse_yolo_status_from_heartbeat(heartbeat_data)
+    checks["yolo_detector"] = _build_yolo_detector_check(heartbeat_data, yolo_probe)
     funnel_status = str(checks["pipeline_funnel"].get("status") or "unknown")
-    yolo_ok_for_quality = yolo_probe == "ok"
+    yolo_ok_for_quality = str(checks["yolo_detector"].get("status") or "") == "ok"
     funnel_ok = funnel_status != "degraded"
     quality_ready = funnel_ok and yolo_ok_for_quality
-    if not funnel_ok or yolo_probe in ("error", "degraded"):
+    if not funnel_ok or str(checks["yolo_detector"].get("status") or "") in ("error", "degraded"):
         ready = False
 
     payload = {

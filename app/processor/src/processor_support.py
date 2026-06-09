@@ -21,11 +21,24 @@ processor_status = {
     "last_video_ok_at": None,
     "last_yolo_ok_at": None,
     "last_yolo_detection_at": None,
+    "last_motion_at": None,
     "yolo_inference_ready_at": None,
     "yolo_inference_backend": None,
     "bootstrap_error": None,
     "bootstrap_error_code": None,
 }
+
+
+def mark_motion_triggered() -> None:
+    """Record latest motion trigger for between-session idle monitoring."""
+    now = datetime.now(timezone.utc).isoformat()
+    processor_status["last_motion_at"] = now
+    try:
+        from processor_runtime_stats import set_gauge
+
+        set_gauge("last_motion_age_sec", 0.0)
+    except Exception:
+        _log.debug("last_motion_age gauge reset skipped", exc_info=True)
 
 
 def mark_yolo_inference_ready(backend: str | None = None) -> None:
@@ -133,6 +146,19 @@ def _heartbeat_payload() -> dict:
         data["yolo_inference_ready"] = True
     if processor_status.get("yolo_inference_backend"):
         data["yolo_inference_backend"] = processor_status["yolo_inference_backend"]
+    last_motion_at = processor_status.get("last_motion_at")
+    if last_motion_at:
+        data["last_motion_at"] = last_motion_at
+        try:
+            motion_dt = datetime.fromisoformat(str(last_motion_at).replace("Z", "+00:00"))
+            motion_age = max(0.0, (datetime.now(timezone.utc) - motion_dt).total_seconds())
+            rounded_age = round(motion_age, 3)
+            data["last_motion_age_sec"] = rounded_age
+            from processor_runtime_stats import set_gauge
+
+            set_gauge("last_motion_age_sec", rounded_age)
+        except (TypeError, ValueError):
+            _log.debug("heartbeat: last_motion_age_sec skipped", exc_info=True)
     ref = heartbeat_mqtt_ref[0] if heartbeat_mqtt_ref else None
     if ref is not None:
         try:
