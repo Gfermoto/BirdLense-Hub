@@ -6,6 +6,7 @@ from flask import request
 
 from routes.http_guards import require_ui_settings_password
 from services.api_json_validation import parse_request_json_object_allow_empty
+from services.reconcile_recordings_service import run_disk_db_reconcile
 from services.system_maintenance_service import (
     post_clean_orphaned_visits,
     post_merge_duplicate_species,
@@ -28,6 +29,14 @@ def register_ui_system_maintenance_routes(app):
         Fixes recordings missing from stats after server restart.
         """
         body, code = run_recordings_scan(app)
+        return body, code
+
+    @app.route("/api/ui/system/recordings/reconcile", methods=["POST"])
+    @require_ui_settings_password
+    def reconcile_recordings():
+        """Disk↔DB reconcile: import orphans, purge stale disk/DB per policy (#604)."""
+        body = run_disk_db_reconcile(app)
+        code = 200 if body.get("ok", True) else 500
         return body, code
 
     @app.route("/api/ui/system/clean-orphaned-visits", methods=["POST"])
