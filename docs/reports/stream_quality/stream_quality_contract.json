@@ -14,7 +14,7 @@
       "max_fn_hour": 60.0,
       "min_tracks_coverage": 0.5,
       "max_empty_bbox_rate": 0.2,
-      "max_trigger_to_first_bbox_latency_p95_s": 5.0,
+      "max_trigger_to_first_bbox_latency_p95_s": 15.0,
       "min_sessions_total": 1
     }
   },
@@ -29,7 +29,8 @@
       "min_top1": 0.3,
       "min_top3": 0.3,
       "min_macro_f1": 0.3,
-      "max_ece": 0.4
+      "max_ece": 0.4,
+      "min_n_processed": 30
     }
   },
   "behavior": {

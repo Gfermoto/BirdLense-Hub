@@ -39,7 +39,14 @@ def _http_json(
                 return None, int(resp.status), "non_object_json"
             return payload, int(resp.status), None
     except HTTPError as exc:
-        return None, int(exc.code), f"http_{exc.code}"
+        status = int(exc.code)
+        try:
+            payload = json.loads(exc.read().decode("utf-8"))
+            if isinstance(payload, dict):
+                return payload, status, None
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            pass
+        return None, status, f"http_{exc.code}"
     except URLError as exc:
         return None, None, f"url_error:{exc.reason}"
     except json.JSONDecodeError:

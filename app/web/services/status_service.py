@@ -103,6 +103,23 @@ def check_video_reachable() -> str:
     return "error"
 
 
+def _yolo_inference_ready(heartbeat_data: dict | None) -> bool:
+    if not isinstance(heartbeat_data, dict):
+        return False
+    if heartbeat_data.get("yolo_inference_ready") is True:
+        return True
+    if heartbeat_data.get("yolo_inference_ready_at"):
+        return True
+    runtime = heartbeat_data.get("runtime_stats")
+    if isinstance(runtime, dict):
+        gauges = runtime.get("gauges")
+        if isinstance(gauges, dict):
+            ready = gauges.get("yolo_inference_ready")
+            if ready in (1, 1.0, True, "1"):
+                return True
+    return False
+
+
 def _yolo_blind_from_runtime_stats(heartbeat_data: dict | None) -> str | None:
     if not isinstance(heartbeat_data, dict):
         return None
@@ -147,6 +164,8 @@ def parse_yolo_status_from_heartbeat(heartbeat_data: dict | None) -> str:
         return "degraded" if blind_signal == "degraded" else "ok"
     if blind_signal == "degraded":
         return "degraded"
+    if _yolo_inference_ready(heartbeat_data):
+        return "ok"
     if last_ok:
         return "degraded"
     return "unknown"

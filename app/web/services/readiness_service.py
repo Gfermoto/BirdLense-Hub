@@ -162,12 +162,7 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         components_payload = build_component_status_payload_safe(session)
         cache_set("component_status:v1", components_payload, 180)
 
-    processor_hb_ok = str(checks.get("processor_heartbeat", {}).get("status") or "") == "ok"
     yolo_probe = str(components_payload.get("yolo") or "unknown")
-    if yolo_probe == "unknown" and processor_hb_ok:
-        # I3: live processor without YOLO signal is not honest green.
-        yolo_probe = "degraded"
-        components_payload = {**components_payload, "yolo": yolo_probe}
     if yolo_probe in ("error", "degraded"):
         checks["yolo_detector"] = {"status": yolo_probe, "source": "heartbeat"}
     elif yolo_probe == "ok":

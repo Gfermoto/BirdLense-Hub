@@ -725,6 +725,9 @@ class TwoStageStrategy(DetectionStrategy):
             self.weight_contract_mode,
             self.logger,
         )
+        from processor_support import mark_yolo_inference_ready
+
+        mark_yolo_inference_ready(self.inference_backend)
 
         # Round-robin index for classification scheduling
         self._classification_index = 0

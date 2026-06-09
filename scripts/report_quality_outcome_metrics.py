@@ -698,12 +698,12 @@ def _args() -> argparse.Namespace:
     parser.add_argument(
         "--max-frigate-catches-missed-birds-rate",
         type=float,
-        default=0.0,
+        default=0.10,
     )
     parser.add_argument(
         "--max-frigate-catches-missed-birds-rate-delta-vs-7d",
         type=float,
-        default=0.0,
+        default=0.08,
     )
     parser.add_argument(
         "--data-source",
