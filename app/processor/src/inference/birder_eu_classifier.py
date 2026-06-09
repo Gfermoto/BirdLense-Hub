@@ -61,7 +61,7 @@ class BirderEuClassifier:
         weights_dir: str,
         variant: str,
         backend: str = "openvino",
-        min_confidence: float = DEFAULT_MIN_CONFIDENCE,
+        min_confidence: float = BIRDER_EU_MIN_CONFIDENCE,
         unknown_label: str = UNKNOWN_BIRD_LABEL,
         device: str | None = None,
         regional_species: list[str] | None = None,
