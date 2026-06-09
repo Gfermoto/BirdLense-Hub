@@ -11,6 +11,7 @@ src_path = os.path.abspath(os.path.join(current_dir, "../src"))
 sys.path.insert(0, src_path)
 
 from detect_first import (  # noqa: E402
+    build_frigate_assisted_detect_first_anchor,
     build_persist_row_from_anchor,
     detect_first_runtime_signal_fields,
     enrich_detect_first_anchor,
@@ -39,6 +40,42 @@ class TestDetectFirst(unittest.TestCase):
         self.assertEqual(fields["detect_first_anchor_track_id"], 3)
         self.assertEqual(fields["detect_first_window_frames"], 12)
         self.assertEqual(fields["detect_first_window_hits"], 4)
+
+    def test_frigate_assist_accepts_grouped_camera(self):
+        class Cfg:
+            def get(self, key, default=None):
+                data = {
+                    "processor.detect_first_frigate_assist_enabled": True,
+                    "processor.detect_first_frigate_assist_min_confidence": 0.5,
+                    "processor.multi_camera_groups": [["BirdBox", "Forest"]],
+                }
+                return data.get(key, default)
+
+        class Detector:
+            def get_last_frigate_event(self):
+                return {
+                    "camera": "Forest",
+                    "confidence": 0.88,
+                    "_frigate_has_geometry": True,
+                    "label": "bird",
+                }
+
+        from unittest.mock import patch
+
+        with patch(
+            "frigate_live_track.get_frigate_live_bbox",
+            return_value=[0.1, 0.2, 0.3, 0.4],
+        ):
+            anchor = build_frigate_assisted_detect_first_anchor(
+                app_config=Cfg(),
+                camera_id="BirdBox",
+                motion_detector=Detector(),
+                trigger_source="frigate",
+            )
+
+        self.assertIsNotNone(anchor)
+        self.assertTrue(anchor["detect_first_frigate_assisted_grouped"])
+        self.assertEqual(anchor["detect_first_frigate_assisted_source_camera"], "Forest")
 
     def test_anchor_rejects_degenerate_bbox(self):
         self.assertFalse(

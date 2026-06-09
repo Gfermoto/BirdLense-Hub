@@ -16,6 +16,22 @@ from track_first_contract import (
 logger = logging.getLogger(__name__)
 
 
+def _same_multi_camera_group(app_config: Any, left: str | None, right: str | None) -> bool:
+    """True when two cameras are configured as views of the same scene."""
+    l = str(left or "").strip()
+    r = str(right or "").strip()
+    if not l or not r or l == r:
+        return bool(l and r and l == r)
+    groups = app_config.get("processor.multi_camera_groups") or []
+    for group in groups:
+        if not isinstance(group, (list, tuple, set)):
+            continue
+        norm = {str(item).strip() for item in group if str(item).strip()}
+        if l in norm and r in norm:
+            return True
+    return False
+
+
 def is_valid_detect_first_anchor(anchor: dict | None) -> bool:
     """Confirmed lores anchor: track id + normalized bbox."""
     if not isinstance(anchor, dict):
@@ -347,7 +363,8 @@ def build_frigate_assisted_detect_first_anchor(
         return None
     ev_cam = str(ev.get("camera") or "").strip()
     cam = str(camera_id or ev_cam or "").strip()
-    if cam and ev_cam and cam != ev_cam:
+    grouped_assist = bool(cam and ev_cam and cam != ev_cam and _same_multi_camera_group(app_config, cam, ev_cam))
+    if cam and ev_cam and cam != ev_cam and not grouped_assist:
         return None
     try:
         conf = float(ev.get("confidence") or 0.0)
@@ -359,13 +376,16 @@ def build_frigate_assisted_detect_first_anchor(
         from frigate_live_track import get_frigate_live_bbox
     except ImportError:
         return None
-    bbox = get_frigate_live_bbox(cam or ev_cam)
+    bbox_camera = ev_cam if grouped_assist else (cam or ev_cam)
+    bbox = get_frigate_live_bbox(bbox_camera)
     if not is_valid_norm_bbox(bbox):
         return None
     logger.info(
-        "detect_first: frigate-assisted anchor camera=%s conf=%.3f (lores YOLO missed)",
+        "detect_first: frigate-assisted anchor camera=%s conf=%.3f source_camera=%s grouped=%s (lores YOLO missed)",
         cam or ev_cam or "?",
         conf,
+        ev_cam or None,
+        grouped_assist,
     )
     return {
         "track_id": 0,
@@ -375,5 +395,7 @@ def build_frigate_assisted_detect_first_anchor(
         "end_time": 0.0,
         "frames": [{"t": 0.0, "bbox": [float(v) for v in bbox[:4]]}],
         "detect_first_frigate_assisted": True,
+        "detect_first_frigate_assisted_source_camera": ev_cam or None,
+        "detect_first_frigate_assisted_grouped": grouped_assist,
         "frigate_label": ev.get("label"),
     }
