@@ -1031,6 +1031,7 @@
     "birdFamilies": "Семейства птиц",
     "resolution": "Разрешение записи",
     "resolutionHint": "Размер кадра при захвате и записи видео. Влияет на качество записи и нагрузку.",
+    "recordingResolutionAuto": "Разрешение записи определяется автоматически из main/record RTSP каждой камеры (в т.ч. выше Full HD). Для принудительного фиксированного размера при офлайн file-replay задайте video.force_recording_resolution и video_width/height в YAML.",
     "go2rtcUrlLabel": "Go2RTC URL",
     "weatherSource": "Источник погоды",
     "weatherOpenWeather": "OpenWeather",

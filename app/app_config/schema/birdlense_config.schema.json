@@ -693,7 +693,7 @@
           "anyOf": [
             {
               "maximum": 7680,
-              "minimum": 64,
+              "minimum": 0,
               "type": "integer"
             },
             {
@@ -701,13 +701,14 @@
             }
           ],
           "default": null,
+          "description": "Legacy file-replay only; ignored unless force_recording_resolution is true",
           "title": "Video Width"
         },
         "video_height": {
           "anyOf": [
             {
               "maximum": 4320,
-              "minimum": 64,
+              "minimum": 0,
               "type": "integer"
             },
             {
@@ -715,7 +716,21 @@
             }
           ],
           "default": null,
+          "description": "Legacy file-replay only; ignored unless force_recording_resolution is true",
           "title": "Video Height"
+        },
+        "force_recording_resolution": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When true, video_width/height override stream probe (legacy file-replay)",
+          "title": "Force Recording Resolution"
         },
         "detect_fps": {
           "anyOf": [

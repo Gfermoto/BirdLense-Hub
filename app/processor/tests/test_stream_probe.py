@@ -12,6 +12,8 @@ from stream_probe import (
     StreamCapabilities,
     _parse_fps_value,
     attach_stream_capabilities,
+    force_recording_resolution,
+    parse_configured_video_size,
     probe_stream_ffprobe,
     probe_stream_url,
     resolve_main_size,
@@ -66,10 +68,25 @@ def test_probe_stream_url_prefers_ffprobe_when_complete(mock_cv, mock_ff):
     mock_cv.assert_not_called()
 
 
-def test_resolve_main_size_config_over_probe():
+def test_resolve_main_size_probe_over_config_by_default():
     cfg = {"video.video_width": 1920, "video.video_height": 1080}
     probe = StreamCapabilities(704, 576, 7.0)
+    assert resolve_main_size(cfg, probe) == (704, 576)
+
+
+def test_resolve_main_size_force_config_over_probe():
+    cfg = {
+        "video.video_width": 1920,
+        "video.video_height": 1080,
+        "video.force_recording_resolution": True,
+    }
+    probe = StreamCapabilities(704, 576, 7.0)
     assert resolve_main_size(cfg, probe) == (1920, 1080)
+    assert force_recording_resolution(cfg) is True
+
+
+def test_parse_configured_video_size_zero_is_auto():
+    assert parse_configured_video_size({"video.video_width": 0, "video.video_height": 0}) is None
 
 
 def test_resolve_main_size_from_probe():
@@ -79,8 +96,14 @@ def test_resolve_main_size_from_probe():
 
 
 def test_resolve_main_size_raises_without_config_or_probe():
-    with pytest.raises(ValueError, match="video.video_width"):
+    with pytest.raises(ValueError, match="stream probe failed"):
         resolve_main_size({}, None)
+
+
+def test_resolve_main_size_ignores_config_without_force_when_probe_missing():
+    cfg = {"video.video_width": 1920, "video.video_height": 1080}
+    with pytest.raises(ValueError, match="stream probe failed"):
+        resolve_main_size(cfg, None)
 
 
 def test_attach_stream_capabilities_sets_fps():

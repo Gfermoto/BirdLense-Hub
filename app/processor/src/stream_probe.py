@@ -273,23 +273,44 @@ def _cfg_get(cfg: Mapping[str, Any], key: str, default: Any = None) -> Any:
     return cur
 
 
-def resolve_main_size(
-    runtime_cfg: Mapping[str, Any],
-    probe: StreamCapabilities | None = None,
-) -> tuple[int, int]:
-    """Main/record WxH: explicit config overrides probe."""
+def parse_configured_video_size(runtime_cfg: Mapping[str, Any]) -> tuple[int, int] | None:
+    """Legacy fixed WxH when ``force_recording_resolution`` and both dimensions > 0."""
     try:
         vw = int(_cfg_get(runtime_cfg, "video.video_width") or 0)
         vh = int(_cfg_get(runtime_cfg, "video.video_height") or 0)
     except (TypeError, ValueError):
-        vw, vh = 0, 0
+        return None
     if vw > 0 and vh > 0:
         return (vw, vh)
+    return None
+
+
+def force_recording_resolution(runtime_cfg: Mapping[str, Any]) -> bool:
+    """Legacy override: fixed config WxH wins over stream probe."""
+    raw = _cfg_get(runtime_cfg, "video.force_recording_resolution", False)
+    if isinstance(raw, bool):
+        return raw
+    return str(raw or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def resolve_main_size(
+    runtime_cfg: Mapping[str, Any],
+    probe: StreamCapabilities | None = None,
+) -> tuple[int, int]:
+    """Main/record WxH: per-stream probe; config only when ``force_recording_resolution``."""
+    configured = parse_configured_video_size(runtime_cfg)
+    if force_recording_resolution(runtime_cfg) and configured is not None:
+        return configured
     if probe and probe.width > 0 and probe.height > 0:
-        return (probe.width, probe.height)
+        return (int(probe.width), int(probe.height))
+    if configured is not None and not force_recording_resolution(runtime_cfg):
+        logger.debug(
+            "ignoring video.video_width/height without force_recording_resolution "
+            "(use per-camera stream probe or set force_recording_resolution for file-replay)",
+        )
     raise ValueError(
-        "video.video_width/height not set and stream probe failed; "
-        "configure video dimensions or ensure ffprobe/OpenCV can read the stream",
+        "stream probe failed; set video.force_recording_resolution with video_width/height "
+        "for offline file-replay, or ensure ffprobe/OpenCV can read the stream",
     )
 
 

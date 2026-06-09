@@ -440,6 +440,8 @@ export interface Settings {
     record_stream_codec?: 'h264' | 'copy' | string;
     video_width?: number;
     video_height?: number;
+    /** Legacy file-replay; ignored unless true. Not in UI. */
+    force_recording_resolution?: boolean;
     /** 0 = auto/probe from stream (SOTA-02). */
     detect_fps?: number;
   };

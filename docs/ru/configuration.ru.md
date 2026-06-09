@@ -210,7 +210,8 @@
 | `cameras` | Список: `{id, stream_name, name}` |
 | `pre_record_seconds` | Предзапись перед триггером |
 | `auto_reconnect` | Автопереподключение к потоку |
-| `video_width`, `video_height` | Разрешение |
+| `video_width`, `video_height` | Fallback разрешения записи (0 = авто из probe); не в UI |
+| `force_recording_resolution` | Legacy: фиксированные width/height перекрывают probe |
 
 ### Потоки Go2RTC и MJPEG (страница Live)
 

@@ -169,7 +169,7 @@ processor:
   # Кадр 704×576 → YOLO один раз letterbox до binary_imgsz (704). См. inference_lores_px (legacy max side).
   # Родное разрешение камеры: true — без принудительного letterbox на capture (YOLO готовит кадр в detect).
   detect_use_native_resolution: false
-  # Опционально: WxH detect-потока (если не native). Пусто — video_width×video_height или inference_lores_px.
+  # Опционально: WxH detect-потока (если не native). Пусто — inference_lores_px или probe кадра.
   inference_lores_wh: [704, 576]
   inference_lores_px: 704
   # Best-practice split pipeline: YOLO detect/track on lores, classifier/ReID crops from source frame.
@@ -679,8 +679,11 @@ video:
   #     name: "Feeder"
   pre_record_seconds: 5
   auto_reconnect: true
-  video_width: 1280
-  video_height: 720
+  # 0×0 = авто из probe record/main RTSP (per camera). Legacy WxH — только с force_recording_resolution.
+  video_width: 0
+  video_height: 0
+  # true — legacy file-replay: video_width/height перекрывают probe; иначе ключи игнорируются.
+  force_recording_resolution: false
   # 0 = авто из RTSP/файла; иначе фиксированный FPS для таймингов офлайн/симуляции.
   detect_fps: 0
 

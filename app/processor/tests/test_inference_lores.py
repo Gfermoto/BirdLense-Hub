@@ -24,9 +24,9 @@ def test_resolve_inference_lores_px_fallback():
     assert resolve_inference_lores_size(cfg) == (640, 640)
 
 
-def test_resolve_inference_lores_from_video_dimensions():
+def test_resolve_inference_lores_ignores_video_dimensions():
     cfg = {"video.video_width": 704, "video.video_height": 576}
-    assert resolve_inference_lores_size(cfg) == (704, 576)
+    assert resolve_inference_lores_size(cfg) is None
 
 
 def test_track_regen_lores_px_over_inference_wh():

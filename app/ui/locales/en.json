@@ -1031,6 +1031,7 @@
     "birdFamilies": "Bird families",
     "resolution": "Recording resolution",
     "resolutionHint": "Frame size for capture and recording. Affects quality and load.",
+    "recordingResolutionAuto": "Recording resolution is detected automatically from each camera's main/record RTSP stream (supports resolutions above Full HD). To force a fixed size for offline file replay, set video.force_recording_resolution and video_width/height in YAML.",
     "go2rtcUrlLabel": "Go2RTC URL",
     "weatherSource": "Weather source",
     "weatherOpenWeather": "OpenWeather",

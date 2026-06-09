@@ -5,7 +5,6 @@ import Box from '@mui/material/Box';
 import Checkbox from '@mui/material/Checkbox';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
-import FormHelperText from '@mui/material/FormHelperText';
 import Grid from '@mui/material/Grid2';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -33,12 +32,6 @@ type TriggerTransportSource = NonNullable<
 
 export function CaptureFeederSection({ form }: Props) {
   const { t } = useTranslation();
-  const resolutions = [
-    { label: t('settings.resolutionFullHD'), width: 1920, height: 1080 },
-    { label: t('settings.resolutionHD'), width: 1280, height: 720 },
-    { label: t('settings.resolutionDetect704'), width: 704, height: 576 },
-    { label: t('settings.resolutionVGA'), width: 640, height: 480 },
-  ];
 
   return (
     <Accordion>
@@ -432,51 +425,9 @@ export function CaptureFeederSection({ form }: Props) {
                 </form.Field>
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <form.Field name="video.video_width">
-                  {(widthField) => (
-                    <form.Field name="video.video_height">
-                      {(heightField) => {
-                        const w = widthField.state.value;
-                        const h = heightField.state.value;
-                        const sel = resolutions.find(
-                          (r) => r.width === w && r.height === h,
-                        );
-
-                        return (
-                          <FormControl fullWidth>
-                            <InputLabel id="settings-resolution-label">
-                              {t('settings.resolution')}
-                            </InputLabel>
-                            <Select
-                              labelId="settings-resolution-label"
-                              value={sel ? `${sel.width}x${sel.height}` : ''}
-                              label={t('settings.resolution')}
-                              onChange={(e) => {
-                                const [a, b] = (e.target.value as string)
-                                  .split('x')
-                                  .map(Number);
-                                widthField.handleChange(a);
-                                heightField.handleChange(b);
-                              }}
-                            >
-                              {resolutions.map((r) => (
-                                <MenuItem
-                                  key={r.label}
-                                  value={`${r.width}x${r.height}`}
-                                >
-                                  {r.label}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                            <FormHelperText>
-                              {t('settings.resolutionHint')}
-                            </FormHelperText>
-                          </FormControl>
-                        );
-                      }}
-                    </form.Field>
-                  )}
-                </form.Field>
+                <Typography variant="body2" color="text.secondary">
+                  {t('settings.recordingResolutionAuto')}
+                </Typography>
               </Grid>
             </Grid>
           </ServiceBlock>
