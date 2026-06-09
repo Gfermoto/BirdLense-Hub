@@ -50,6 +50,48 @@ def _fetch_domain_health(
     return payload
 
 
+def build_unreachable_hub_payload(*, error: str, base_url: str) -> dict[str, Any]:
+    """Hub down before deploy — do not block restore deploy."""
+    return {
+        "schema": "error_budget_gate@v1",
+        "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "base_url": base_url,
+        "inputs": {
+            "hub_unreachable": True,
+            "hub_error": error,
+            "critical_breaches": 0,
+            "warning_breaches": 0,
+            "slo_dashboard_not_ok": False,
+            "per_camera_warn_count_24h": 0,
+            "recording_artifact_failures": False,
+        },
+        "costs": {
+            "critical_breaches": 0,
+            "warning_breaches": 0,
+            "dashboard_not_ok": 0,
+            "per_camera_warn_count": 0,
+            "recording_artifact_failures": 0,
+        },
+        "budget": {
+            "consumed_pct": 0,
+            "remaining_pct": 100,
+            "state": "hub_unreachable",
+            "exhausted": False,
+        },
+        "gate": {
+            "override_used": False,
+            "override_reason": "",
+            "override_has_ticket": False,
+            "warning_requires_override": True,
+            "requires_override": False,
+            "warning_override_active": False,
+            "block_release": False,
+            "hub_unreachable": True,
+            "ok": True,
+        },
+    }
+
+
 def evaluate_gate(
     report: dict[str, Any],
     *,
@@ -270,11 +312,46 @@ def main() -> int:
         if not isinstance(report, dict):
             raise SystemExit("report must be JSON object")
     else:
-        report = _fetch_domain_health(
-            base_url=args.base_url,
-            timeout_sec=args.timeout_sec,
-            headers=_headers(args.api_key, args.mcp_token),
-        )
+        try:
+            report = _fetch_domain_health(
+                base_url=args.base_url,
+                timeout_sec=args.timeout_sec,
+                headers=_headers(args.api_key, args.mcp_token),
+            )
+        except RuntimeError as exc:
+            err = str(exc)
+            if "url_error" in err:
+                payload = build_unreachable_hub_payload(
+                    error=err,
+                    base_url=args.base_url,
+                )
+                out_json = Path(args.out_json).expanduser()
+                if not out_json.is_absolute():
+                    out_json = REPO / out_json
+                out_md = Path(args.out_md).expanduser()
+                if not out_md.is_absolute():
+                    out_md = REPO / out_md
+                out_json.parent.mkdir(parents=True, exist_ok=True)
+                out_md.parent.mkdir(parents=True, exist_ok=True)
+                out_json.write_text(
+                    json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                out_md.write_text(_to_md(payload), encoding="utf-8")
+                print(
+                    json.dumps(
+                        {
+                            "ok": True,
+                            "state": "hub_unreachable",
+                            "consumed_pct": 0,
+                            "json": str(out_json),
+                            "md": str(out_md),
+                        },
+                        ensure_ascii=False,
+                    )
+                )
+                return 0
+            raise SystemExit(err) from exc
 
     payload = evaluate_gate(
         report,
