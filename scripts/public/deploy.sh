@@ -563,7 +563,7 @@ if [[ ! "${BIRDLENSE_SKIP_OUTCOME_METRICS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       echo "Ошибка: неизвестный OUTCOME_DB_MODE=${OUTCOME_DB_MODE}" >&2
       exit 1
     fi
-    echo "  - local outcome DB не найден, запускаю gate на удалённой БД (${HOST})"
+    echo "  - outcome gate на удалённой БД (${HOST})"
     ssh ${SSH_OPTS} "${HOST}" \
       "cd '${REMOTE_DIR}' && python3 ./scripts/report_quality_outcome_metrics.py \
         --db-path '${OUTCOME_REMOTE_DB_PATH}' \
@@ -580,6 +580,13 @@ if [[ ! "${BIRDLENSE_SKIP_OUTCOME_METRICS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
           echo "Ошибка: Outcome quality metrics gate (remote DB) не пройден. Деплой остановлен."
           exit 1
         }
+    mkdir -p "${REPO_ROOT}/docs/reports/quality_outcome"
+    scp ${SSH_OPTS} \
+      "${HOST}:${REMOTE_DIR}/docs/reports/quality_outcome/quality_outcome_metrics_latest.json" \
+      "${REPO_ROOT}/docs/reports/quality_outcome/quality_outcome_metrics_latest.json"
+    scp ${SSH_OPTS} \
+      "${HOST}:${REMOTE_DIR}/docs/reports/quality_outcome/quality_outcome_metrics_latest.md" \
+      "${REPO_ROOT}/docs/reports/quality_outcome/quality_outcome_metrics_latest.md" 2>/dev/null || true
   fi
 fi
 
