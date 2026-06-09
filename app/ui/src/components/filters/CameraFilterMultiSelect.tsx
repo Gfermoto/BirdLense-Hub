@@ -22,7 +22,7 @@ export function CameraFilterMultiSelect({
 }: CameraFilterMultiSelectProps) {
   const { t } = useTranslation();
   const { data: cameras = [], isLoading } = useQuery({
-    queryKey: queryKeys.health.cameras,
+    queryKey: queryKeys.live.cameras,
     queryFn: fetchCameras,
     staleTime: 1000 * 60 * 5,
   });
