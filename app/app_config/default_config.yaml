@@ -175,6 +175,9 @@ processor:
   # Best-practice split pipeline: YOLO detect/track on lores, classifier/ReID crops from source frame.
   # false — классификатор/ ReID используют тот же lores-кадр (быстрее, но хуже детализация).
   classifier_use_source_frame: true
+  # Go2RTC live: один RTSP read (main/record) + software lores для detect/YOLO; FFmpeg record по demand.
+  # false — legacy: отдельный RTSP на detect substream + sync buffer для classifier crops.
+  single_rtsp_read: true
   # Interpolation for OpenCV resize during letterbox preprocessing.
   # linear|cubic|area|nearest|lanczos
   letterbox_resize_interpolation: linear
@@ -1040,6 +1043,8 @@ reconcile:
   # Remove Video rows whose file is missing/unreadable
   purge_broken_db_rows_enabled: true
   purge_broken_db_rows_limit: 100
+  # When true: reconcile logs would-delete counts/paths but skips disk/DB purge
+  purge_dry_run: false
   # Grace before orphan purge / scan import (active recordings protection)
   orphan_purge_grace_minutes: 15
   orphan_purge_min_bytes: 512

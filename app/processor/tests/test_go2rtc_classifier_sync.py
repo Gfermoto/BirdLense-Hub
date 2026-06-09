@@ -47,6 +47,7 @@ class TestGo2RTCClassifierBuffer(unittest.TestCase):
     def _make_dual_stream(self) -> Go2RTCStreamSource:
         src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
         src._dual_stream = True
+        src._single_rtsp_read = False
         src._record_frame_buffer = __import__("collections").deque(
             maxlen=CLASSIFIER_RECORD_BUFFER_SIZE,
         )

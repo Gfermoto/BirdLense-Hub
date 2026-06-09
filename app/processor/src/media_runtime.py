@@ -268,6 +268,14 @@ def setup_processor_media(
             capture_backend = (app_config.get("video.capture_backend") or "auto").strip().lower()
             if capture_backend not in ("auto", "opencv", "ffmpeg_vaapi"):
                 capture_backend = "auto"
+            sr = app_config.get("processor.single_rtsp_read")
+            if sr is None:
+                single_rtsp_read = True
+            elif isinstance(sr, bool):
+                single_rtsp_read = sr
+            else:
+                s = str(sr).strip().lower()
+                single_rtsp_read = s not in ("0", "false", "no", "off")
             rwv = app_config.get("video.record_with_vaapi")
             if rwv is None:
                 record_with_vaapi = True
@@ -309,6 +317,7 @@ def setup_processor_media(
                 capture_backend=capture_backend,
                 capture_stream_url=capture_url,
                 record_with_vaapi=record_with_vaapi,
+                single_rtsp_read=single_rtsp_read,
             )
         return media_sources_cache[camera_id]
 
