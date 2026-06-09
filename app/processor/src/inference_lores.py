@@ -61,13 +61,6 @@ def resolve_inference_lores_size(app_config: Mapping[str, Any]) -> LoResSize | N
     if lpx > 0:
         side = _clamp_side(lpx)
         return (side, side)
-    try:
-        vw = int(_cfg_get(app_config, "video.video_width") or 0)
-        vh = int(_cfg_get(app_config, "video.video_height") or 0)
-    except (TypeError, ValueError):
-        vw, vh = 0, 0
-    if vw > 0 and vh > 0:
-        return (_clamp_side(vw), _clamp_side(vh))
     return None
 
 

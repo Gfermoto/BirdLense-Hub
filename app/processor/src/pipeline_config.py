@@ -89,7 +89,7 @@ def resolve_detector_letterbox_wh(
 
     Priority: ``detect_use_native_resolution`` → None;
     else ``inference_lores_wh`` / ``inference_lores_px``;
-    else ``video.video_width`` × ``video.video_height`` when set.
+    else frame / stream probe (not global record resolution).
     """
     if detect_use_native_resolution(runtime_cfg):
         return None
@@ -103,13 +103,6 @@ def resolve_detector_letterbox_wh(
     if lpx > 0:
         side = max(320, min(1280, lpx))
         return (side, side)
-    try:
-        vw = int(_cfg_get(runtime_cfg, "video.video_width") or 0)
-        vh = int(_cfg_get(runtime_cfg, "video.video_height") or 0)
-    except (TypeError, ValueError):
-        vw, vh = 0, 0
-    if vw > 0 and vh > 0:
-        return (max(320, min(1280, vw)), max(320, min(1280, vh)))
     if frame_shape and len(frame_shape) >= 2:
         h, w = int(frame_shape[0]), int(frame_shape[1])
         if w > 0 and h > 0:

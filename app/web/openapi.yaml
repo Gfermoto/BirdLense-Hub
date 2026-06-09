@@ -5515,10 +5515,6 @@ components:
             Listed properties are a non-exhaustive subset used by the UI; extra keys are allowed.
           additionalProperties: true
           properties:
-            video_width:
-              type: integer
-            video_height:
-              type: integer
             tracker:
               type: string
             max_record_seconds:
@@ -5748,6 +5744,27 @@ components:
               additionalProperties:
                 type: number
               description: Optional per-species cosine thresholds keyed by species display name (#390).
+        video:
+          type: object
+          description: >
+            Capture and recording; full shape follows `default_config.yaml`.
+            Recording resolution is auto-probed per camera (not set in UI).
+          additionalProperties: true
+          properties:
+            detect_fps:
+              type: number
+              description: "0 = auto/probe from stream"
+            video_width:
+              type: integer
+              deprecated: true
+              description: Legacy file-replay only; ignored unless force_recording_resolution is true
+            video_height:
+              type: integer
+              deprecated: true
+              description: Legacy file-replay only; ignored unless force_recording_resolution is true
+            force_recording_resolution:
+              type: boolean
+              description: When true, video_width/height override stream probe (legacy file-replay)
         secrets:
           type: object
           properties:

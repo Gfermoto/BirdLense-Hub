@@ -914,6 +914,7 @@
     "birdFamilies": "鸟类家族",
     "resolution": "录音分辨率",
     "resolutionHint": "用于捕捉和记录的帧大小。影响质量和负载。",
+    "recordingResolutionAuto": "录制分辨率从各摄像头 main/record RTSP 流自动检测（支持高于 Full HD）。离线 file-replay 需固定尺寸时，请在 YAML 中设置 video.force_recording_resolution 与 video_width/height。",
     "go2rtcUrlLabel": "Go2RTC 网址",
     "weatherSource": "天气来源",
     "weatherOpenWeather": "开放天气",

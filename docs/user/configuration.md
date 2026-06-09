@@ -210,7 +210,8 @@ The System page also lists these endpoints under **Notification observability** 
 | `cameras` | List: `{id, stream_name, name}` |
 | `pre_record_seconds` | Pre-roll before trigger |
 | `auto_reconnect` | Auto-reconnect to stream |
-| `video_width`, `video_height` | Resolution |
+| `video_width`, `video_height` | Recording resolution fallback (0 = auto from probe); not in UI |
+| `force_recording_resolution` | Legacy: fixed width/height override stream probe |
 
 ### Go2RTC streams and MJPEG (Live view)
 

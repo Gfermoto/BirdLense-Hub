@@ -35,8 +35,22 @@ class DetectionConfig(_SectionBase):
 
 class VideoConfig(_SectionBase):
     source: str | None = None
-    video_width: int | None = Field(default=None, ge=64, le=7680)
-    video_height: int | None = Field(default=None, ge=64, le=4320)
+    video_width: int | None = Field(
+        default=None,
+        ge=0,
+        le=7680,
+        description="Legacy file-replay only; ignored unless force_recording_resolution is true",
+    )
+    video_height: int | None = Field(
+        default=None,
+        ge=0,
+        le=4320,
+        description="Legacy file-replay only; ignored unless force_recording_resolution is true",
+    )
+    force_recording_resolution: bool | None = Field(
+        default=None,
+        description="When true, video_width/height override stream probe (legacy file-replay)",
+    )
     detect_fps: float | None = Field(
         default=None,
         ge=0.0,

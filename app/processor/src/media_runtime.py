@@ -223,9 +223,31 @@ def setup_processor_media(
             else:
                 s = str(rwv).strip().lower()
                 record_with_vaapi = s not in ("0", "false", "no", "off")
+            cam_main_size = main_size
+            try:
+                from stream_probe import force_recording_resolution, probe_stream_url, resolve_main_size
+
+                cam_probe = probe_stream_url(record_url)
+                cam_main_size = resolve_main_size(app_config, cam_probe)
+            except Exception:
+                if force_recording_resolution(app_config):
+                    cam_main_size = main_size
+                    logging.debug(
+                        "Go2RTC camera %s record stream probe failed; using forced main_size",
+                        camera_id,
+                        exc_info=True,
+                    )
+                else:
+                    cam_main_size = main_size
+                    logging.warning(
+                        "Go2RTC camera %s record stream probe failed at bootstrap; "
+                        "refresh_record_stream_geometry will retry (global video_width/height ignored)",
+                        camera_id,
+                        exc_info=True,
+                    )
             media_sources_cache[camera_id] = Go2RTCStreamSource(
                 stream_url=record_url,
-                main_size=main_size,
+                main_size=cam_main_size,
                 lores_size=lores_size,
                 auto_reconnect=app_config.get("video.auto_reconnect", True),
                 mjpeg_port=mjpeg_base_port + idx,

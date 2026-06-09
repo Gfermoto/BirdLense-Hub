@@ -8857,8 +8857,6 @@ export interface components {
             };
             /** @description Processor tuning; full shape follows `default_config.yaml` / `user_config.yaml`. Listed properties are a non-exhaustive subset used by the UI; extra keys are allowed. */
             processor?: {
-                video_width?: number;
-                video_height?: number;
                 tracker?: string;
                 max_record_seconds?: number;
                 post_record_seconds?: number;
@@ -8977,6 +8975,25 @@ export interface components {
                 reid_species_similarity_thresholds?: {
                     [key: string]: number;
                 };
+            } & {
+                [key: string]: unknown;
+            };
+            /** @description Capture and recording; full shape follows `default_config.yaml`. Recording resolution is auto-probed per camera (not set in UI). */
+            video?: {
+                /** @description 0 = auto/probe from stream */
+                detect_fps?: number;
+                /**
+                 * @deprecated
+                 * @description Legacy file-replay only; ignored unless force_recording_resolution is true
+                 */
+                video_width?: number;
+                /**
+                 * @deprecated
+                 * @description Legacy file-replay only; ignored unless force_recording_resolution is true
+                 */
+                video_height?: number;
+                /** @description When true, video_width/height override stream probe (legacy file-replay) */
+                force_recording_resolution?: boolean;
             } & {
                 [key: string]: unknown;
             };

@@ -4,14 +4,14 @@ BirdLense определяет **реальное** разрешение и FPS 
 
 ## Как работает
 
-1. **При старте процессора** (`processor_bootstrap`): для CLI-файла или `video.file_path` вызывается `probe_processor_startup()`; `main_size` берётся из `video.video_width` × `video.video_height` (конфиг) или из probe.
-2. **При подключении Go2RTC** (`Go2RTCStreamSource._connect`): `probe_stream_url()` на detect/capture RTSP.
+1. **При старте процессора** (`processor_bootstrap`): для CLI-файла или `video.file_path` вызывается `probe_processor_startup()`; `main_size` — probe, иначе fallback из `video.video_width` × `video.video_height`.
+2. **При подключении Go2RTC** (`Go2RTCStreamSource._connect`): `probe_stream_url()` на detect/capture RTSP; **per camera** probe record URL при создании источника и в `refresh_record_stream_geometry`.
 3. **Файловые источники** (`VideoFileSource`, плейлист): `probe_video_file()` при открытии ролика.
 4. **Track regen**: probe mp4 перед YOLO.
 
 Приоритет **FPS**: `StreamCapabilities` → атрибуты источника → `video.detect_fps` (>0) → `processor.detection_quality_assumed_fps` из YAML.
 
-Приоритет **letterbox (detect WxH)**: `detect_use_native_resolution` → `inference_lores_wh` → `inference_lores_px` → `video.video_width`×`height` → probe → кадр.
+Приоритет **letterbox (detect WxH)**: `detect_use_native_resolution` → `inference_lores_wh` → `inference_lores_px` → probe кадра / stream capabilities (не global record resolution).
 
 `processor.binary_imgsz` — размер **экспорта модели** YOLO/OpenVINO, не размер потока.
 
@@ -35,6 +35,8 @@ Gauges (processor runtime stats):
 ## Конфиг
 
 - `video.detect_fps: 0` — авто (из probe).
-- Явные `video.video_width` / `video_height` перекрывают probe для **записи/main**; detect letterbox — см. `processor.inference_lores_wh`.
+- `video.video_width` / `video_height`: **0 или не задано** — авто из probe record/main RTSP (per camera). Fallback, если probe недоступен.
+- `video.force_recording_resolution: true` — legacy: явные width/height **перекрывают** probe (офлайн file-replay).
+- Detect letterbox — см. `processor.inference_lores_wh` (не привязан к record resolution).
 
 См. также: [config-schema.ru.md](config-schema.ru.md), `app/processor/src/stream_probe.py`.
