@@ -3196,9 +3196,15 @@ class TestScanRecordings:
         monkeypatch.setitem(app_config.config, "general", general)
 
         monkeypatch.setenv("DATA_DIR", str(tmp_path))
+        import os
+        import time
+
         rec_dir = tmp_path / "recordings" / "2026" / "03" / "30" / "131825"
         rec_dir.mkdir(parents=True)
-        (rec_dir / "video.mp4").write_bytes(b"fake-video")
+        mp4 = rec_dir / "video.mp4"
+        mp4.write_bytes(b"x" * 800)
+        old = time.time() - 7200.0
+        os.utime(mp4, (old, old))
 
         now = datetime(2026, 3, 29, 12, 0, 0, tzinfo=timezone.utc).replace(
             tzinfo=None,

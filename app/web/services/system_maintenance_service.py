@@ -26,7 +26,10 @@ from services.species_visit_maintenance_service import (
     preview_realign_visit_times,
     preview_split_large_gap_visits,
 )
-from services.session_manifest_io import read_session_manifest_times
+from services.session_manifest_io import (
+    read_session_manifest_times,
+    session_importable_from_disk,
+)
 from util import recordings_dir
 
 if TYPE_CHECKING:
@@ -50,6 +53,22 @@ def coerce_duplicate_group_limit(raw: object, default: int = 500) -> tuple[int |
     return max(10, min(v, 5000)), None
 
 
+def _scan_import_grace_minutes() -> float:
+    try:
+        minutes = float(app_config.get("reconcile.scan_import_grace_minutes") or 15)
+    except (TypeError, ValueError):
+        minutes = 15.0
+    return max(0.0, min(1440.0, minutes))
+
+
+def _scan_import_min_bytes() -> int:
+    try:
+        val = int(app_config.get("reconcile.scan_import_min_bytes") or 512)
+    except (TypeError, ValueError):
+        val = 512
+    return max(0, min(10_000_000, val))
+
+
 def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
     """
     Scan data/recordings/ for video.mp4 not in DB and add them.
@@ -59,8 +78,11 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
 
     existing_paths = {v.video_path for v in db.session.query(Video.video_path).all()}
     imported = 0
+    skipped_pending = 0
     cleaned_legacy_placeholders = 0
     cleaned_legacy_visits = 0
+    grace_minutes = _scan_import_grace_minutes()
+    min_bytes = _scan_import_min_bytes()
 
     try:
         cleaned_legacy_placeholders, cleaned_legacy_visits = _cleanup_legacy_import_placeholders()
@@ -96,14 +118,27 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
                         if rel_path in existing_paths:
                             continue
 
+                        importable, skip_reason = session_importable_from_disk(
+                            ts_path,
+                            video_mp4,
+                            grace_minutes=grace_minutes,
+                            min_bytes=min_bytes,
+                        )
+                        if not importable:
+                            skipped_pending += 1
+                            _log.debug("Scan skip pending %s (%s)", rel_path, skip_reason)
+                            continue
+
                         try:
                             with db.session.begin_nested():
                                 manifest_start, manifest_end = read_session_manifest_times(ts_path)
                                 if manifest_start is not None:
                                     start_time = manifest_start
-                                    end_time = manifest_end or (
-                                        manifest_start + timedelta(seconds=30)
-                                    )
+                                    if manifest_end is None:
+                                        skipped_pending += 1
+                                        _log.debug("Scan skip pending %s (manifest_missing_end_time)", rel_path)
+                                        continue
+                                    end_time = manifest_end
                                 else:
                                     y, mo, d, h, mi, s = map(int, m.groups())
                                     start_time = datetime(
@@ -135,10 +170,13 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
         bust_system_response_caches()
 
         message = f"Imported {imported} recordings"
+        if skipped_pending:
+            message += f"; skipped {skipped_pending} pending sessions"
         if cleaned_legacy_placeholders:
             message += f"; cleaned {cleaned_legacy_placeholders} legacy placeholders"
         return {
             "imported": imported,
+            "skipped_pending": skipped_pending,
             "cleaned_legacy_placeholders": cleaned_legacy_placeholders,
             "cleaned_legacy_visits": cleaned_legacy_visits,
             "message": message,

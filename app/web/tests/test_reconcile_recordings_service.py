@@ -2,9 +2,15 @@
 
 import json
 import os
+import time
 from datetime import datetime, timezone
 
 from models import Video, db
+
+
+def _age_file(path, *, age_seconds: float = 3600.0) -> None:
+    old = time.time() - age_seconds
+    os.utime(path, (old, old))
 
 
 def test_read_session_manifest_times(tmp_path):
@@ -52,7 +58,22 @@ def test_reconcile_imports_orphan_disk(app, tmp_path, monkeypatch):
     rec_root = tmp_path / "data" / "recordings"
     orphan_dir = rec_root / "2026" / "06" / "09" / "120000"
     orphan_dir.mkdir(parents=True)
-    (orphan_dir / "video.mp4").write_bytes(b"x" * 800)
+    mp4 = orphan_dir / "video.mp4"
+    mp4.write_bytes(b"x" * 800)
+    _age_file(mp4)
+    start = datetime(2026, 6, 9, 12, 0, 0, tzinfo=timezone.utc)
+    end = datetime(2026, 6, 9, 12, 0, 45, tzinfo=timezone.utc)
+    (orphan_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "schema": "recording_session_manifest@v1",
+                "state": "failed",
+                "start_time": start.isoformat(),
+                "end_time": end.isoformat(),
+            }
+        ),
+        encoding="utf-8",
+    )
 
     monkeypatch.setattr("services.system_maintenance_service.recordings_dir", lambda: str(rec_root))
     monkeypatch.setattr("services.recording_orphan_purge_service.recordings_dir", lambda: str(rec_root))
@@ -74,6 +95,107 @@ def test_reconcile_imports_orphan_disk(app, tmp_path, monkeypatch):
     assert orphan_dir.is_dir()
     with app.app_context():
         assert db.session.query(Video).count() == 1
+        video = db.session.query(Video).one()
+        assert video.end_time.replace(tzinfo=timezone.utc) == end
+
+
+def test_reconcile_skips_active_orphan_purge(app, tmp_path, monkeypatch):
+    rec_root = tmp_path / "data" / "recordings"
+    active_dir = rec_root / "2026" / "06" / "09" / "120100"
+    active_dir.mkdir(parents=True)
+    mp4 = active_dir / "video.mp4"
+    mp4.write_bytes(b"x" * 1200)
+    start = datetime(2026, 6, 9, 12, 1, 0, tzinfo=timezone.utc)
+    (active_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "schema": "recording_session_manifest@v1",
+                "state": "recording",
+                "start_time": start.isoformat(),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("services.system_maintenance_service.recordings_dir", lambda: str(rec_root))
+    monkeypatch.setattr("services.recording_orphan_purge_service.recordings_dir", lambda: str(rec_root))
+    monkeypatch.setattr("services.recording_orphan_inventory.recordings_dir", lambda: str(rec_root))
+    monkeypatch.setattr(
+        "services.reconcile_recordings_service.apply_broken_video_rows_purge",
+        lambda **kwargs: {"deleted_count": 0},
+    )
+
+    from services.reconcile_recordings_service import run_disk_db_reconcile
+
+    with app.app_context():
+        body = run_disk_db_reconcile(app)
+
+    assert body["ok"] is True
+    assert body["imported"] == 0
+    assert body["skipped_pending"] == 1
+    assert body["purge_orphan_disk"]["deleted_count"] == 0
+    assert body["purge_orphan_disk"]["skipped_grace"] == 1
+    assert active_dir.is_dir()
+
+
+def test_reconcile_skips_recent_orphan_without_manifest(app, tmp_path, monkeypatch):
+    rec_root = tmp_path / "data" / "recordings"
+    recent_dir = rec_root / "2026" / "06" / "09" / "120200"
+    recent_dir.mkdir(parents=True)
+    (recent_dir / "video.mp4").write_bytes(b"x" * 1200)
+
+    monkeypatch.setattr("services.system_maintenance_service.recordings_dir", lambda: str(rec_root))
+    monkeypatch.setattr("services.recording_orphan_purge_service.recordings_dir", lambda: str(rec_root))
+    monkeypatch.setattr("services.recording_orphan_inventory.recordings_dir", lambda: str(rec_root))
+    monkeypatch.setattr(
+        "services.reconcile_recordings_service.apply_broken_video_rows_purge",
+        lambda **kwargs: {"deleted_count": 0},
+    )
+
+    from services.reconcile_recordings_service import run_disk_db_reconcile
+
+    with app.app_context():
+        body = run_disk_db_reconcile(app)
+
+    assert body["ok"] is True
+    assert body["imported"] == 0
+    assert body["skipped_pending"] == 1
+    assert body["purge_orphan_disk"]["deleted_count"] == 0
+    assert body["purge_orphan_disk"]["skipped_grace"] == 1
+    assert recent_dir.is_dir()
+
+
+def test_scan_skips_incomplete_manifest_without_end_time(app, tmp_path, monkeypatch):
+    rec_root = tmp_path / "data" / "recordings"
+    pending_dir = rec_root / "2026" / "06" / "09" / "120300"
+    pending_dir.mkdir(parents=True)
+    mp4 = pending_dir / "video.mp4"
+    mp4.write_bytes(b"x" * 1200)
+    _age_file(mp4)
+    start = datetime(2026, 6, 9, 12, 3, 0, tzinfo=timezone.utc)
+    (pending_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "schema": "recording_session_manifest@v1",
+                "state": "failed",
+                "start_time": start.isoformat(),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("services.system_maintenance_service.recordings_dir", lambda: str(rec_root))
+
+    from services.system_maintenance_service import run_recordings_scan
+
+    with app.app_context():
+        body, code = run_recordings_scan(app)
+
+    assert code == 200
+    assert body["imported"] == 0
+    assert body["skipped_pending"] == 1
+    with app.app_context():
+        assert db.session.query(Video).count() == 0
 
 
 def test_reconcile_purges_unimportable_orphan_disk(app, tmp_path, monkeypatch):
