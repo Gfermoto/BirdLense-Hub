@@ -82,17 +82,18 @@ def evaluate_contract(
         and isinstance(status_payload, dict)
         and str(status_payload.get("processor") or "") == "ok"
     )
-    processor_hb_ok = bool(
-        isinstance(readiness_payload, dict)
-        and str(
-            ((readiness_payload.get("checks") or {}).get("processor_heartbeat") or {}).get(
-                "status"
-            )
-            or ""
-        )
-        == "ok"
-    )
-    if not status_processor_ok and processor_hb_ok:
+    processor_hb = (
+        (readiness_payload or {}).get("checks") or {}
+    ).get("processor_heartbeat") or {}
+    processor_hb_ok = bool(str(processor_hb.get("status") or "") == "ok")
+    bootstrap_phase = bool(processor_hb.get("bootstrap_phase"))
+    status_processor_value = str((status_payload or {}).get("processor") or "")
+    if (
+        not status_processor_ok
+        and processor_hb_ok
+        and bootstrap_phase
+        and status_processor_value in ("offline", "bootstrap")
+    ):
         status_processor_ok = True
     false_green = bool(
         health_ok
