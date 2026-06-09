@@ -162,17 +162,25 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         components_payload = build_component_status_payload_safe(session)
         cache_set("component_status:v1", components_payload, 180)
 
+    processor_hb_ok = str(checks.get("processor_heartbeat", {}).get("status") or "") == "ok"
     yolo_probe = str(components_payload.get("yolo") or "unknown")
+    if yolo_probe == "unknown" and processor_hb_ok:
+        # I3: live processor without YOLO signal is not honest green.
+        yolo_probe = "degraded"
+        components_payload = {**components_payload, "yolo": yolo_probe}
     if yolo_probe in ("error", "degraded"):
         checks["yolo_detector"] = {"status": yolo_probe, "source": "heartbeat"}
-        ready = ready and yolo_probe == "ok"
     elif yolo_probe == "ok":
         checks["yolo_detector"] = {"status": "ok", "source": "heartbeat"}
     else:
         checks["yolo_detector"] = {"status": "unknown", "source": "heartbeat"}
 
     funnel_status = str(checks["pipeline_funnel"].get("status") or "unknown")
-    quality_ready = funnel_status != "degraded" and yolo_probe not in ("error", "degraded")
+    yolo_ok_for_quality = yolo_probe == "ok"
+    funnel_ok = funnel_status != "degraded"
+    quality_ready = funnel_ok and yolo_ok_for_quality
+    if not funnel_ok or yolo_probe in ("error", "degraded"):
+        ready = False
 
     payload = {
         "status": "ok" if ready else "degraded",
