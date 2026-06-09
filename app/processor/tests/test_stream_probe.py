@@ -14,6 +14,7 @@ from stream_probe import (
     attach_stream_capabilities,
     force_recording_resolution,
     parse_configured_video_size,
+    probe_processor_startup,
     probe_stream_ffprobe,
     probe_stream_url,
     resolve_main_size,
@@ -104,6 +105,24 @@ def test_resolve_main_size_ignores_config_without_force_when_probe_missing():
     cfg = {"video.video_width": 1920, "video.video_height": 1080}
     with pytest.raises(ValueError, match="stream probe failed"):
         resolve_main_size(cfg, None)
+
+
+@patch("stream_probe.probe_stream_url")
+def test_probe_processor_startup_go2rtc_probes_first_record_stream(mock_probe):
+    mock_probe.return_value = StreamCapabilities(2688, 1520, 20.0, source="ffprobe")
+    cfg = {
+        "video.source": "go2rtc",
+        "video.go2rtc_url": "http://192.168.1.11:1984",
+        "video.go2rtc_username": "user",
+        "video.go2rtc_password": "frigate",
+        "video.cameras": [{"id": "BirdBox", "stream_name": "BirdBox"}],
+    }
+    caps = probe_processor_startup(cfg)
+    assert caps is not None
+    assert caps.main_size == (2688, 1520)
+    called_url = mock_probe.call_args[0][0]
+    assert ":8554/" in called_url
+    assert called_url.endswith("/BirdBox")
 
 
 def test_attach_stream_capabilities_sets_fps():

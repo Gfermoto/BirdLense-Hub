@@ -314,13 +314,42 @@ def resolve_main_size(
     )
 
 
+def _probe_go2rtc_startup(runtime_cfg: Mapping[str, Any]) -> StreamCapabilities | None:
+    """Probe first camera record stream so bootstrap has WxH before media setup."""
+    go2rtc_url = (_cfg_get(runtime_cfg, "video.go2rtc_url") or "").strip()
+    if not go2rtc_url:
+        return None
+    cameras = _cfg_get(runtime_cfg, "video.cameras") or []
+    if not isinstance(cameras, list) or not cameras:
+        return None
+    first = cameras[0]
+    if not isinstance(first, Mapping):
+        return None
+    stream_name = (first.get("stream_name") or "").strip()
+    if not stream_name:
+        return None
+    try:
+        from sources.go2rtc_stream_source import _build_stream_url
+
+        record_url = _build_stream_url(
+            go2rtc_url,
+            stream_name,
+            username=_cfg_get(runtime_cfg, "video.go2rtc_username"),
+            password=_cfg_get(runtime_cfg, "video.go2rtc_password"),
+        )
+        return probe_stream_url(record_url)
+    except Exception:
+        logger.debug("go2rtc startup probe failed", exc_info=True)
+        return None
+
+
 def probe_processor_startup(
     runtime_cfg: Mapping[str, Any],
     *,
     input_path: str | None = None,
     capture_url: str | None = None,
 ) -> StreamCapabilities | None:
-    """Best-effort probe at processor bootstrap (file CLI or detect RTSP)."""
+    """Best-effort probe at processor bootstrap (file CLI, detect RTSP, or go2rtc record)."""
     if input_path:
         return probe_video_file(input_path)
     if capture_url:
@@ -330,6 +359,8 @@ def probe_processor_startup(
         fp = (_cfg_get(runtime_cfg, "video.file_path") or "").strip()
         if fp and os.path.isfile(fp):
             return probe_video_file(fp)
+    if source == "go2rtc":
+        return _probe_go2rtc_startup(runtime_cfg)
     return None
 
 
