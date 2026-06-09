@@ -400,15 +400,19 @@ def _crop_coords_from_letterboxed_bbox_norm(
     *,
     bbox_norm: Sequence[float],
     detector_frame_shape: Sequence[int],
+    overlay_frame_shape: Sequence[int],
     classification_frame_shape: Sequence[int],
+    playback_frame_shape: Sequence[int] | None = None,
 ) -> tuple[int, int, int, int] | None:
     """Map normalized bbox from detector letterbox space to classification frame space."""
-    from yolo_geometry import unmap_letterbox_norm_xyxy_to_source_norm_xyxy
+    from frame_geometry import remap_norm_bbox_for_crop
 
-    mapped = unmap_letterbox_norm_xyxy_to_source_norm_xyxy(
+    mapped = remap_norm_bbox_for_crop(
         bbox_norm,
-        source_shape=classification_frame_shape[:2],
-        letterbox_shape=detector_frame_shape[:2],
+        detector_shape_hw=detector_frame_shape[:2],
+        overlay_shape_hw=overlay_frame_shape[:2],
+        crop_shape_hw=classification_frame_shape[:2],
+        playback_shape_hw=playback_frame_shape[:2] if playback_frame_shape is not None else None,
     )
     if mapped is None:
         return None
@@ -843,10 +847,14 @@ class TwoStageStrategy(DetectionStrategy):
     ) -> tuple[np.ndarray | RoiCropRef | None, float | None]:
         """ROI crop for a valid box (no classifier call)."""
         det_shape = getattr(self, "_detector_frame_shape", frame.shape[:2])
+        overlay_shape = getattr(self, "_overlay_frame_shape", frame.shape[:2])
+        playback_shape = self._playback_shape_for_storage()
         mapped = _crop_coords_from_letterboxed_bbox_norm(
             bbox_norm=box["bbox_norm"],
             detector_frame_shape=det_shape,
+            overlay_frame_shape=overlay_shape,
             classification_frame_shape=cls_frame.shape,
+            playback_frame_shape=playback_shape,
         )
         if mapped is None:
             return None, None
@@ -1628,7 +1636,9 @@ class TwoStageStrategy(DetectionStrategy):
             mapped = _crop_coords_from_letterboxed_bbox_norm(
                 bbox_norm=box["bbox_norm"],
                 detector_frame_shape=detector_shape,
+                overlay_frame_shape=overlay_shape,
                 classification_frame_shape=cls_frame.shape,
+                playback_frame_shape=self._playback_shape_for_storage(),
             )
             if mapped is None:
                 continue
@@ -1679,7 +1689,9 @@ class TwoStageStrategy(DetectionStrategy):
             mapped = _crop_coords_from_letterboxed_bbox_norm(
                 bbox_norm=fallback_box["bbox_norm"],
                 detector_frame_shape=detector_shape,
+                overlay_frame_shape=overlay_shape,
                 classification_frame_shape=cls_frame.shape,
+                playback_frame_shape=self._playback_shape_for_storage(),
             )
             if mapped is not None:
                 x1, y1, x2, y2 = mapped

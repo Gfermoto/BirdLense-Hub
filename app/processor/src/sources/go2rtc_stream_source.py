@@ -332,14 +332,18 @@ class Go2RTCStreamSource:
         self._ffmpeg_capture_failures = 0
         self._force_opencv_until_ts = 0.0
         self._last_classifier_source_frame = None
+        self._record_cap = None
+        self.record_stream_capabilities = None
+        self._dual_stream = self._capture_stream_url != self.stream_url
 
-        if self._capture_stream_url != self.stream_url:
+        if self._dual_stream:
             self.logger.info(
                 "Go2RTC dual-stream: capture (motion/YOLO/MJPEG) ≠ record (main RTSP). "
                 "YOLO uses inference_lores_wh / letterbox only when decode size differs."
             )
 
         self._connect()
+        self.refresh_record_stream_geometry()
 
         # Start MJPEG streaming server for live view
         self._streaming_output, self._streaming_thread = start_streaming_server(port=mjpeg_port)
@@ -423,7 +427,7 @@ class Go2RTCStreamSource:
                     self._source_fps = float(caps.fps)
                 publish_probe_gauges(caps)
                 self.logger.info(
-                    "Stream probe: %sx%s @ %.2f fps (%s)",
+                    "Detect stream probe: %sx%s @ %.2f fps (%s)",
                     caps.width,
                     caps.height,
                     caps.fps or self._source_fps,
@@ -432,8 +436,96 @@ class Go2RTCStreamSource:
         except Exception as exc:
             self.logger.debug("stream probe skipped: %s", exc)
 
+    def refresh_record_stream_geometry(self) -> tuple[int, int] | None:
+        """Probe main/record RTSP and refresh ``main_size`` for bbox remap + playback."""
+        if not self._dual_stream:
+            return self.main_size
+        try:
+            from app_config.app_config import app_config
+            from stream_probe import force_recording_resolution, probe_stream_url, publish_probe_gauges
+
+            if force_recording_resolution(app_config):
+                return self.main_size
+
+            caps = probe_stream_url(self.stream_url)
+        except Exception as exc:
+            self.logger.debug("record stream probe skipped: %s", exc)
+            return self.main_size
+        if caps is None or caps.width <= 0 or caps.height <= 0:
+            return self.main_size
+        self.record_stream_capabilities = caps
+        probed = (int(caps.width), int(caps.height))
+        prev = tuple(self.main_size) if self.main_size and len(self.main_size) >= 2 else None
+        if prev != probed:
+            if prev is not None:
+                _inc_runtime_counter("bbox_remap_mismatch_total")
+                self.logger.warning(
+                    "record stream geometry: config/main_size=%sx%s probed=%sx%s source=%s",
+                    prev[0],
+                    prev[1],
+                    probed[0],
+                    probed[1],
+                    caps.source,
+                )
+            else:
+                self.logger.info(
+                    "record stream probe: %sx%s @ %.2f fps (%s)",
+                    caps.width,
+                    caps.height,
+                    caps.fps or 0.0,
+                    caps.source,
+                )
+        self.main_size = probed
+        try:
+            publish_probe_gauges(caps)
+            _set_runtime_gauge("record_stream_probe_width", int(caps.width))
+            _set_runtime_gauge("record_stream_probe_height", int(caps.height))
+        except Exception:
+            self.logger.debug("record stream probe gauges failed", exc_info=True)
+        return self.main_size
+
+    def _disconnect_record_cap(self) -> None:
+        if self._record_cap is not None:
+            try:
+                self._record_cap.release()
+            except Exception:
+                self.logger.debug("record cap release failed", exc_info=True)
+            self._record_cap = None
+
+    def _connect_record_cap(self) -> bool:
+        """Open main/record RTSP for hi-res classifier crops (dual-stream)."""
+        if not self._dual_stream:
+            return False
+        self._disconnect_record_cap()
+        cap = cv2.VideoCapture(self.stream_url, cv2.CAP_FFMPEG)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        if not cap.isOpened():
+            self.logger.warning("Failed to open record stream for classifier crops")
+            return False
+        self._record_cap = cap
+        return True
+
+    def _read_record_classifier_frame(self) -> np.ndarray | None:
+        """Best-effort hi-res frame from main/record RTSP (dual-stream classifier crops)."""
+        if not self._dual_stream:
+            return None
+        with self._read_lock:
+            cap = self._record_cap
+            if cap is None or not cap.isOpened():
+                if not self._connect_record_cap():
+                    return None
+                cap = self._record_cap
+            if cap is None:
+                return None
+            ret, frame = cap.read()
+            if not ret or frame is None:
+                self._disconnect_record_cap()
+                return None
+            return frame
+
     def _disconnect(self):
         """Close RTSP connection."""
+        self._disconnect_record_cap()
         if self._cap:
             self._cap.release()
             self._cap = None
@@ -459,6 +551,7 @@ class Go2RTCStreamSource:
             _inc_runtime_counter("video_capture_reconnect_total", 1)
             time.sleep(self._reconnect_delay)
             if self._connect():
+                self.refresh_record_stream_geometry()
                 return True
             self._reconnect_delay = min(self._reconnect_delay * 2, MAX_RECONNECT_DELAY)
 
@@ -677,12 +770,16 @@ class Go2RTCStreamSource:
             return None
         self._frame_count += 1
         self._last_frame_time = time.time()
-        self._last_classifier_source_frame = frame
+        if self._dual_stream:
+            record_frame = self._read_record_classifier_frame()
+            self._last_classifier_source_frame = record_frame if record_frame is not None else frame
+        else:
+            self._last_classifier_source_frame = frame
         self._update_streaming_output(frame)
         return frame
 
     def get_classifier_source_frame(self):
-        """Best-effort source frame for classifier/ReID crops (pre-letterbox when available)."""
+        """Best-effort hi-res (record) or detect frame for classifier/ReID crops."""
         return self._last_classifier_source_frame
 
     def get_frame_time(self):
