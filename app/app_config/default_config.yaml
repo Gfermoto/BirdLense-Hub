@@ -283,8 +283,9 @@ processor:
   # TG preview: best_frame_lores (detect crop) | record_hires (main MP4) | auto (hires then lores)
   notify_preview_source: auto
   notify_preview_crop_pad_frac: 0.06
-  # Classifier/ReID crops: same hi-res MP4 path as TG (record_hires) when auto.
-  classifier_crop_source: auto
+  # Classifier uses lores best_frame until detect→record bbox/timing parity is calibrated.
+  # ReID/TG can still use hi-res MP4 crops below.
+  classifier_crop_source: best_frame_lores
   reid_crop_source: auto
   enrichment_crop_pad_frac: 0.06
   # Linear pipeline: reject static-pinned tracks (feeder FP #608).
@@ -428,13 +429,15 @@ processor:
       min_confidence_binary: 0.12
       min_confidence_binary_bird: 0.12
       min_confidence_to_process: 0.12
-      min_track_duration: 0.5
+      min_track_duration: 0.8
       detect_record_time_offset_sec: -0.10
       track_static_reject_enabled: true
       track_static_reject_min_duration_sec: 1.5
       track_static_reject_min_frames: 3
-      track_static_reject_max_center_dispersion_norm: 0.065
-      track_static_reject_max_relative_center_dispersion: 0.13
+      track_static_reject_min_frames_sparse: 2
+      track_static_reject_min_duration_sparse_sec: 0.8
+      track_static_reject_max_center_dispersion_norm: 0.055
+      track_static_reject_max_relative_center_dispersion: 0.11
       track_static_reject_max_bbox_iou_first_last_min: 0.72
       scoring_moving_roi_min_motion_score: 0.30
     feeder_far:
