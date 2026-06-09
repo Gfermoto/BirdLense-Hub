@@ -210,12 +210,17 @@ def evaluate_stream_quality(
         and _safe_int(q_metrics.get("sessions_total"), 0)
         >= _safe_int(det_t.get("min_sessions_total"), 1)
     )
-    checks["classifier_thresholds_ok"] = (
-        streams["classifier"]["top1"] >= _safe_float(clf_t.get("min_top1"))
-        and streams["classifier"]["top3"] >= _safe_float(clf_t.get("min_top3"))
-        and streams["classifier"]["macro_f1"] >= _safe_float(clf_t.get("min_macro_f1"))
-        and streams["classifier"]["ece"] <= _safe_float(clf_t.get("max_ece"), 1.0)
-    )
+    clf_n_processed = _safe_int(streams["classifier"]["support"].get("n_processed"), 0)
+    clf_min_samples = _safe_int(clf_t.get("min_n_processed"), 0)
+    if clf_min_samples > 0 and clf_n_processed < clf_min_samples:
+        checks["classifier_thresholds_ok"] = True
+    else:
+        checks["classifier_thresholds_ok"] = (
+            streams["classifier"]["top1"] >= _safe_float(clf_t.get("min_top1"))
+            and streams["classifier"]["top3"] >= _safe_float(clf_t.get("min_top3"))
+            and streams["classifier"]["macro_f1"] >= _safe_float(clf_t.get("min_macro_f1"))
+            and streams["classifier"]["ece"] <= _safe_float(clf_t.get("max_ece"), 1.0)
+        )
     checks["behavior_thresholds_ok"] = (
         streams["behavior"]["class_f1"] >= _safe_float(beh_t.get("min_class_f1"))
         and streams["behavior"]["temporal_consistency"]

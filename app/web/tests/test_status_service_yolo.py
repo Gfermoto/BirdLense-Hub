@@ -10,7 +10,15 @@ def test_yolo_ok_when_recent_last_yolo_ok():
     assert parse_yolo_status_from_heartbeat({"last_yolo_ok_at": ts}) == "ok"
 
 
-def test_yolo_degraded_when_stale():
+def test_yolo_ok_when_inference_ready_idle():
+    hb = {
+        "yolo_inference_ready": True,
+        "yolo_inference_ready_at": datetime.now(timezone.utc).isoformat(),
+    }
+    assert parse_yolo_status_from_heartbeat(hb) == "ok"
+
+
+def test_yolo_degraded_when_stale_without_inference_ready():
     ts = (datetime.now(timezone.utc) - timedelta(seconds=600)).isoformat()
     assert parse_yolo_status_from_heartbeat({"last_yolo_ok_at": ts}) == "degraded"
 

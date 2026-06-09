@@ -110,5 +110,37 @@ def test_readiness_keeps_quality_degraded_separate_from_service_ready(client, mo
     assert payload["ready"] is False
     assert payload["quality_ready"] is False
     assert payload["checks"]["pipeline_funnel"]["status"] == "degraded"
-    assert payload["checks"]["yolo_detector"]["status"] == "degraded"
-    assert payload["components"]["yolo"] == "degraded"
+    assert payload["checks"]["yolo_detector"]["status"] == "unknown"
+    assert payload["components"]["yolo"] == "unknown"
+
+
+def test_readiness_ok_when_yolo_idle_inference_ready(client, monkeypatch):
+    import services.readiness_service as rs
+
+    monkeypatch.setattr(
+        rs,
+        "build_persist_funnel_summary",
+        lambda _session: {"status": "ok", "sessions_total": 0},
+    )
+    monkeypatch.setattr(
+        rs,
+        "build_component_status_payload_safe",
+        lambda _session: {
+            "web": "ok",
+            "processor": "ok",
+            "video": "ok",
+            "mqtt": "ok",
+            "esphome": "ok",
+            "yolo": "ok",
+        },
+    )
+    monkeypatch.setattr(rs, "cache_get", lambda _key: (False, None))
+    monkeypatch.setattr(rs, "cache_set", lambda *_args, **_kwargs: None)
+
+    res = client.get("/api/ui/readiness")
+    payload = res.get_json() or {}
+
+    assert res.status_code == 200
+    assert payload["ready"] is True
+    assert payload["quality_ready"] is True
+    assert payload["checks"]["yolo_detector"]["status"] == "ok"

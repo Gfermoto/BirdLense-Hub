@@ -21,7 +21,25 @@ processor_status = {
     "last_video_ok_at": None,
     "last_yolo_ok_at": None,
     "last_yolo_detection_at": None,
+    "yolo_inference_ready_at": None,
+    "yolo_inference_backend": None,
 }
+
+
+def mark_yolo_inference_ready(backend: str | None = None) -> None:
+    """Signal that detector/classifier weights loaded; idle without sessions is still ok."""
+    now = datetime.now(timezone.utc).isoformat()
+    processor_status["yolo_inference_ready_at"] = now
+    if backend:
+        processor_status["yolo_inference_backend"] = str(backend).strip().lower()
+    try:
+        from processor_runtime_stats import set_gauge
+
+        set_gauge("yolo_inference_ready", 1)
+        if backend:
+            set_gauge("yolo_inference_backend", str(backend).strip().lower())
+    except Exception:
+        _log.debug("yolo inference ready gauges skipped", exc_info=True)
 
 _log = logging.getLogger(__name__)
 
@@ -98,6 +116,11 @@ def _heartbeat_payload() -> dict:
         data["last_yolo_ok_at"] = processor_status["last_yolo_ok_at"]
     if processor_status.get("last_yolo_detection_at"):
         data["last_yolo_detection_at"] = processor_status["last_yolo_detection_at"]
+    if processor_status.get("yolo_inference_ready_at"):
+        data["yolo_inference_ready_at"] = processor_status["yolo_inference_ready_at"]
+        data["yolo_inference_ready"] = True
+    if processor_status.get("yolo_inference_backend"):
+        data["yolo_inference_backend"] = processor_status["yolo_inference_backend"]
     ref = heartbeat_mqtt_ref[0] if heartbeat_mqtt_ref else None
     if ref is not None:
         try:

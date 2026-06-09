@@ -27,6 +27,8 @@ OUTCOME_MAX_BLIND_RATE="${OUTCOME_MAX_BLIND_RATE:-0.30}"
 OUTCOME_MIN_TRACKS_COVERAGE="${OUTCOME_MIN_TRACKS_COVERAGE:-0.50}"
 OUTCOME_MAX_EMPTY_BBOX_RATE="${OUTCOME_MAX_EMPTY_BBOX_RATE:-0.20}"
 OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS="${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS:-1}"
+OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE="${OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE:-0.10}"
+OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE_DELTA_VS_7D="${OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE_DELTA_VS_7D:-0.08}"
 # Keepalive — сборка Docker может занимать 5+ мин, без этого SSH обрывается (Broken pipe)
 # Порт через DEPLOY_SSH_PORT (по умолчанию 22)
 _PORT_OPT=""
@@ -552,6 +554,8 @@ if [[ ! "${BIRDLENSE_SKIP_OUTCOME_METRICS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
         --min-tracks-coverage "${OUTCOME_MIN_TRACKS_COVERAGE}" \
         --max-empty-bbox-rate "${OUTCOME_MAX_EMPTY_BBOX_RATE}" \
         --min-yolo-frames-with-tracks "${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS}" \
+        --max-frigate-catches-missed-birds-rate "${OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE}" \
+        --max-frigate-catches-missed-birds-rate-delta-vs-7d "${OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE_DELTA_VS_7D}" \
         --out-json "docs/reports/quality_outcome/quality_outcome_metrics_latest.json" \
         --out-md "docs/reports/quality_outcome/quality_outcome_metrics_latest.md") || {
           echo "Ошибка: Outcome quality metrics gate (local DB) не пройден. Деплой остановлен."
@@ -572,6 +576,8 @@ if [[ ! "${BIRDLENSE_SKIP_OUTCOME_METRICS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
         --min-tracks-coverage '${OUTCOME_MIN_TRACKS_COVERAGE}' \
         --max-empty-bbox-rate '${OUTCOME_MAX_EMPTY_BBOX_RATE}' \
         --min-yolo-frames-with-tracks '${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS}' \
+        --max-frigate-catches-missed-birds-rate '${OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE}' \
+        --max-frigate-catches-missed-birds-rate-delta-vs-7d '${OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE_DELTA_VS_7D}' \
         --out-json 'docs/reports/quality_outcome/quality_outcome_metrics_latest.json' \
         --out-md 'docs/reports/quality_outcome/quality_outcome_metrics_latest.md'" || {
           echo "Ошибка: Outcome quality metrics gate (remote DB) не пройден. Деплой остановлен."
