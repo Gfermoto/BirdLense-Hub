@@ -1040,6 +1040,11 @@ reconcile:
   # Remove Video rows whose file is missing/unreadable
   purge_broken_db_rows_enabled: true
   purge_broken_db_rows_limit: 100
+  # Grace before orphan purge / scan import (active recordings protection)
+  orphan_purge_grace_minutes: 15
+  orphan_purge_min_bytes: 512
+  scan_import_grace_minutes: 15
+  scan_import_min_bytes: 512
 
 # Retention
 retention:

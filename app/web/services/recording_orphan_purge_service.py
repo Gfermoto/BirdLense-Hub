@@ -11,6 +11,7 @@ from app_config.app_config import app_config
 from models import Video, db
 from services.recording_orphan_inventory import _db_video_path_for_mp4
 from services.recording_protection import protected_favorite_session_dirs, session_dir_for_video_path
+from services.session_manifest_io import orphan_purge_grace_skip
 from util import recordings_dir
 
 _log = logging.getLogger(__name__)
@@ -50,13 +51,47 @@ def _db_video_paths() -> set[str]:
     return out
 
 
-def _skip_orphan_session(rec_dir: str, entry: dict[str, Any], protected_dirs: set[str]) -> bool:
+def _orphan_purge_grace_minutes() -> float:
+    try:
+        minutes = float(app_config.get("reconcile.orphan_purge_grace_minutes") or 15)
+    except (TypeError, ValueError):
+        minutes = 15.0
+    return max(0.0, min(1440.0, minutes))
+
+
+def _orphan_purge_min_bytes() -> int:
+    try:
+        val = int(app_config.get("reconcile.orphan_purge_min_bytes") or 512)
+    except (TypeError, ValueError):
+        val = 512
+    return max(0, min(10_000_000, val))
+
+
+def _skip_orphan_session(
+    rec_dir: str,
+    entry: dict[str, Any],
+    protected_dirs: set[str],
+    *,
+    grace_minutes: float,
+    min_bytes: int,
+) -> str | None:
     if not bool(app_config.get("retention.protect_favorites", True)):
-        return False
-    if "favorite" in os.path.basename(entry["video_path"]).lower():
-        return True
-    sd = session_dir_for_video_path(rec_dir, entry["video_path"])
-    return bool(sd and sd in protected_dirs)
+        pass
+    elif "favorite" in os.path.basename(entry["video_path"]).lower():
+        return "protected"
+    else:
+        sd = session_dir_for_video_path(rec_dir, entry["video_path"])
+        if sd and sd in protected_dirs:
+            return "protected"
+
+    if orphan_purge_grace_skip(
+        entry["session_dir"],
+        video_bytes=int(entry.get("bytes") or 0),
+        grace_minutes=grace_minutes,
+        min_bytes=min_bytes,
+    ):
+        return "grace"
+    return None
 
 
 def _coerce_orphan_purge_limit(raw: object, *, default: int = 500) -> int | None:
@@ -76,14 +111,32 @@ def apply_orphan_recording_purge(*, limit: int = 500) -> dict[str, Any]:
             "freed_bytes": 0,
             "orphan_session_count": 0,
             "skipped_protected": 0,
+            "skipped_grace": 0,
             "errors": [],
         }
 
+    grace_minutes = _orphan_purge_grace_minutes()
+    min_bytes = _orphan_purge_min_bytes()
     db_paths = _db_video_paths()
     orphans = _iter_orphan_sessions(rec_dir=rec_dir, db_paths=db_paths)
     protected_dirs = protected_favorite_session_dirs(rec_dir)
-    eligible = [o for o in orphans if not _skip_orphan_session(rec_dir, o, protected_dirs)]
-    skipped_protected = len(orphans) - len(eligible)
+    eligible: list[dict[str, Any]] = []
+    skipped_protected = 0
+    skipped_grace = 0
+    for orphan in orphans:
+        reason = _skip_orphan_session(
+            rec_dir,
+            orphan,
+            protected_dirs,
+            grace_minutes=grace_minutes,
+            min_bytes=min_bytes,
+        )
+        if reason == "protected":
+            skipped_protected += 1
+        elif reason == "grace":
+            skipped_grace += 1
+        else:
+            eligible.append(orphan)
 
     deleted = 0
     freed = 0
@@ -102,11 +155,22 @@ def apply_orphan_recording_purge(*, limit: int = 500) -> dict[str, Any]:
             errors.append(f"{entry['video_path']}: {exc}")
             _log.warning("orphan purge failed for %s", entry["video_path"], exc_info=True)
 
+    if deleted or skipped_grace or skipped_protected:
+        _log.info(
+            "orphan purge: deleted=%s freed_bytes=%s skipped_grace=%s skipped_protected=%s orphans=%s",
+            deleted,
+            freed,
+            skipped_grace,
+            skipped_protected,
+            len(orphans),
+        )
+
     return {
         "deleted_count": deleted,
         "freed_bytes": freed,
         "orphan_session_count": len(orphans),
         "skipped_protected": skipped_protected,
+        "skipped_grace": skipped_grace,
         "errors": errors,
     }
 
@@ -122,11 +186,28 @@ def purge_orphan_recording_files(payload: dict | None) -> tuple[dict, int]:
     if not rec_dir or not os.path.isdir(rec_dir):
         return {"orphan_session_count": 0, "orphan_bytes": 0, "dry_run": dry_run, "deleted_count": 0}, 200
 
+    grace_minutes = _orphan_purge_grace_minutes()
+    min_bytes = _orphan_purge_min_bytes()
     db_paths = _db_video_paths()
     orphans = _iter_orphan_sessions(rec_dir=rec_dir, db_paths=db_paths)
     protected_dirs = protected_favorite_session_dirs(rec_dir)
-    eligible = [o for o in orphans if not _skip_orphan_session(rec_dir, o, protected_dirs)]
-    skipped_protected = len(orphans) - len(eligible)
+    eligible: list[dict[str, Any]] = []
+    skipped_protected = 0
+    skipped_grace = 0
+    for orphan in orphans:
+        reason = _skip_orphan_session(
+            rec_dir,
+            orphan,
+            protected_dirs,
+            grace_minutes=grace_minutes,
+            min_bytes=min_bytes,
+        )
+        if reason == "protected":
+            skipped_protected += 1
+        elif reason == "grace":
+            skipped_grace += 1
+        else:
+            eligible.append(orphan)
 
     if dry_run:
         preview = eligible[:limit]
@@ -136,6 +217,7 @@ def purge_orphan_recording_files(payload: dict | None) -> tuple[dict, int]:
             "orphan_session_count": len(orphans),
             "eligible_count": len(eligible),
             "skipped_protected": skipped_protected,
+            "skipped_grace": skipped_grace,
             "would_delete_count": len(preview),
             "would_free_bytes": freed,
             "sample_paths": [o["video_path"] for o in preview[:10]],
@@ -155,5 +237,6 @@ def purge_orphan_recording_files(payload: dict | None) -> tuple[dict, int]:
         "deleted_count": result["deleted_count"],
         "freed_bytes": result["freed_bytes"],
         "skipped_protected": result["skipped_protected"],
+        "skipped_grace": result.get("skipped_grace", 0),
         "errors": result["errors"],
     }, 200

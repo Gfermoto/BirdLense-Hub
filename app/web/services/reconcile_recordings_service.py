@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 _scheduler_lock = threading.Lock()
 _scheduler_started = False
+_last_reconcile_metrics: dict[str, object] = {}
 
 
 def _cfg_bool(key: str, default: bool = True) -> bool:
@@ -68,6 +69,10 @@ def _purge_broken_db_enabled() -> bool:
     return _cfg_bool("reconcile.purge_broken_db_rows_enabled", True)
 
 
+def get_last_reconcile_metrics() -> dict[str, object]:
+    return dict(_last_reconcile_metrics)
+
+
 def run_disk_db_reconcile(flask_app) -> dict[str, object]:
     """Import disk sessions missing from DB; purge stale orphans per policy."""
     with flask_app.app_context():
@@ -79,6 +84,7 @@ def run_disk_db_reconcile(flask_app) -> dict[str, object]:
             return {"ok": False, **(body if isinstance(body, dict) else {})}
 
         imported = int((body or {}).get("imported") or 0)
+        skipped_pending = int((body or {}).get("skipped_pending") or 0)
         purge_disk: dict[str, object] = {"deleted_count": 0, "freed_bytes": 0}
         if _purge_orphan_disk_enabled():
             limit = _cfg_int("reconcile.purge_orphan_disk_limit", 500, lo=1, hi=5000)
@@ -98,13 +104,40 @@ def run_disk_db_reconcile(flask_app) -> dict[str, object]:
                 purge_db = {"deleted_count": 0, "error": "purge_failed"}
 
         orphan_after = summarize_orphan_recording_files()
+        disk_purged = int(purge_disk.get("deleted_count") or 0)
+        disk_freed = int(purge_disk.get("freed_bytes") or 0)
+        disk_skipped_grace = int(purge_disk.get("skipped_grace") or 0)
+        disk_skipped_protected = int(purge_disk.get("skipped_protected") or 0)
+        db_purged = int(purge_db.get("deleted_count") or 0)
+        orphan_gb_before = int(orphan_before.get("orphan_bytes") or 0) / (1024**3)
+        orphan_gb_after = int(orphan_after.get("orphan_bytes") or 0) / (1024**3)
+
+        global _last_reconcile_metrics
+        _last_reconcile_metrics = {
+            "imported": imported,
+            "skipped_pending": skipped_pending,
+            "disk_purged": disk_purged,
+            "disk_freed_bytes": disk_freed,
+            "disk_skipped_grace": disk_skipped_grace,
+            "disk_skipped_protected": disk_skipped_protected,
+            "db_purged": db_purged,
+            "orphan_gb_before": orphan_gb_before,
+            "orphan_gb_after": orphan_gb_after,
+        }
+
         logger.info(
-            "reconcile: imported=%s disk_purged=%s db_purged=%s orphan_gb_before=%.3f orphan_gb_after=%.3f",
+            "reconcile: imported=%s skipped_pending=%s disk_purged=%s disk_freed_bytes=%s "
+            "disk_skipped_grace=%s disk_skipped_protected=%s db_purged=%s "
+            "orphan_gb_before=%.3f orphan_gb_after=%.3f",
             imported,
-            purge_disk.get("deleted_count"),
-            purge_db.get("deleted_count"),
-            int(orphan_before.get("orphan_bytes") or 0) / (1024**3),
-            int(orphan_after.get("orphan_bytes") or 0) / (1024**3),
+            skipped_pending,
+            disk_purged,
+            disk_freed,
+            disk_skipped_grace,
+            disk_skipped_protected,
+            db_purged,
+            orphan_gb_before,
+            orphan_gb_after,
         )
         return {
             "ok": True,
