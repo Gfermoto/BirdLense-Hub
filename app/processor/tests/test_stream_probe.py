@@ -125,6 +125,28 @@ def test_probe_processor_startup_go2rtc_probes_first_record_stream(mock_probe):
     assert called_url.endswith("/BirdBox")
 
 
+@patch("stream_probe.probe_stream_url")
+def test_probe_go2rtc_record_streams_probes_all_cameras(mock_probe):
+    from stream_probe import probe_go2rtc_record_streams
+
+    mock_probe.side_effect = [
+        StreamCapabilities(1920, 1080, 20.0, source="ffprobe"),
+        StreamCapabilities(704, 576, 7.0, source="ffprobe"),
+    ]
+    cfg = {
+        "video.go2rtc_url": "http://192.168.1.11:1984",
+        "video.cameras": [
+            {"id": "yard", "stream_name": "yard_main"},
+            {"id": "feeder", "stream_name": "feeder_main"},
+        ],
+    }
+    probes = probe_go2rtc_record_streams(cfg)
+    assert len(probes) == 2
+    assert probes[0][0] == "yard"
+    assert probes[1][0] == "feeder"
+    assert mock_probe.call_count == 2
+
+
 def test_attach_stream_capabilities_sets_fps():
     src = MagicMock()
     caps = StreamCapabilities(1280, 720, 12.5, source="ffprobe")

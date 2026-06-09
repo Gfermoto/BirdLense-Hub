@@ -314,33 +314,54 @@ def resolve_main_size(
     )
 
 
-def _probe_go2rtc_startup(runtime_cfg: Mapping[str, Any]) -> StreamCapabilities | None:
-    """Probe first camera record stream so bootstrap has WxH before media setup."""
+def probe_go2rtc_record_streams(
+    runtime_cfg: Mapping[str, Any],
+) -> list[tuple[str, StreamCapabilities]]:
+    """Probe every configured camera main/record stream (config order)."""
     go2rtc_url = (_cfg_get(runtime_cfg, "video.go2rtc_url") or "").strip()
     if not go2rtc_url:
-        return None
+        return []
     cameras = _cfg_get(runtime_cfg, "video.cameras") or []
     if not isinstance(cameras, list) or not cameras:
-        return None
-    first = cameras[0]
-    if not isinstance(first, Mapping):
-        return None
-    stream_name = (first.get("stream_name") or "").strip()
-    if not stream_name:
-        return None
+        return []
     try:
         from sources.go2rtc_stream_source import _build_stream_url
-
-        record_url = _build_stream_url(
-            go2rtc_url,
-            stream_name,
-            username=_cfg_get(runtime_cfg, "video.go2rtc_username"),
-            password=_cfg_get(runtime_cfg, "video.go2rtc_password"),
-        )
-        return probe_stream_url(record_url)
     except Exception:
-        logger.debug("go2rtc startup probe failed", exc_info=True)
+        logger.debug("go2rtc record stream probe import failed", exc_info=True)
+        return []
+
+    username = _cfg_get(runtime_cfg, "video.go2rtc_username")
+    password = _cfg_get(runtime_cfg, "video.go2rtc_password")
+    out: list[tuple[str, StreamCapabilities]] = []
+    for idx, cam in enumerate(cameras):
+        if not isinstance(cam, Mapping):
+            continue
+        stream_name = (cam.get("stream_name") or "").strip()
+        if not stream_name:
+            continue
+        cid = str(cam.get("id") or stream_name or f"camera_{idx + 1}").strip()
+        try:
+            record_url = _build_stream_url(
+                go2rtc_url,
+                stream_name,
+                username=username,
+                password=password,
+            )
+            caps = probe_stream_url(record_url)
+        except Exception:
+            logger.debug("go2rtc record probe failed camera=%s", cid, exc_info=True)
+            caps = None
+        if caps is not None:
+            out.append((cid, caps))
+    return out
+
+
+def _probe_go2rtc_startup(runtime_cfg: Mapping[str, Any]) -> StreamCapabilities | None:
+    """Probe all camera record streams; return first successful for global bootstrap WxH."""
+    probes = probe_go2rtc_record_streams(runtime_cfg)
+    if not probes:
         return None
+    return probes[0][1]
 
 
 def probe_processor_startup(

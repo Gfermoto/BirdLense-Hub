@@ -10,6 +10,8 @@ import re
 import subprocess
 import threading
 import time
+from collections import deque
+
 import cv2
 import numpy as np
 
@@ -224,6 +226,8 @@ MAX_RECONNECT_DELAY = 30
 INITIAL_RECONNECT_DELAY = 1
 FFMPEG_CAPTURE_FAILURE_THRESHOLD = 3
 FFMPEG_CAPTURE_COOLDOWN_SEC = 60
+CLASSIFIER_RECORD_BUFFER_SIZE = 8
+DEFAULT_CLASSIFIER_RECORD_MAX_SKEW_SEC = 0.35
 
 
 def _build_stream_url(
@@ -335,6 +339,12 @@ class Go2RTCStreamSource:
         self._record_cap = None
         self.record_stream_capabilities = None
         self._dual_stream = self._capture_stream_url != self.stream_url
+        self._record_frame_buffer: deque[tuple[float, np.ndarray]] = deque(
+            maxlen=CLASSIFIER_RECORD_BUFFER_SIZE,
+        )
+        self._last_detect_capture_ts: float | None = None
+        self._last_classifier_crop_skew_sec: float = 0.0
+        self._last_classifier_crop_mismatch: bool = False
 
         if self._dual_stream:
             self.logger.info(
@@ -504,6 +514,37 @@ class Go2RTCStreamSource:
             return False
         self._record_cap = cap
         return True
+
+    def _classifier_record_max_skew_sec(self) -> float:
+        try:
+            from app_config.app_config import app_config
+
+            raw = app_config.get("processor.classifier_record_max_skew_sec")
+            if raw is not None:
+                v = float(raw)
+                if v > 0:
+                    return v
+        except (TypeError, ValueError):
+            pass
+        return DEFAULT_CLASSIFIER_RECORD_MAX_SKEW_SEC
+
+    def _select_nearest_record_frame(self, detect_ts: float) -> tuple[np.ndarray | None, float]:
+        if not self._record_frame_buffer:
+            return None, 0.0
+        best_ts, best_frame = min(
+            self._record_frame_buffer,
+            key=lambda item: abs(item[0] - detect_ts),
+        )
+        return best_frame, abs(best_ts - detect_ts)
+
+    def get_last_detect_capture_ts(self) -> float | None:
+        return self._last_detect_capture_ts
+
+    def get_classifier_crop_skew_sec(self) -> float:
+        return float(self._last_classifier_crop_skew_sec)
+
+    def classifier_crop_source_mismatch(self) -> bool:
+        return bool(self._last_classifier_crop_mismatch)
 
     def _read_record_classifier_frame(self) -> np.ndarray | None:
         """Best-effort hi-res frame from main/record RTSP (dual-stream classifier crops)."""
@@ -770,16 +811,35 @@ class Go2RTCStreamSource:
             return None
         self._frame_count += 1
         self._last_frame_time = time.time()
+        detect_ts = time.monotonic()
+        self._last_detect_capture_ts = detect_ts
         if self._dual_stream:
             record_frame = self._read_record_classifier_frame()
-            self._last_classifier_source_frame = record_frame if record_frame is not None else frame
+            if record_frame is not None:
+                self._record_frame_buffer.append((detect_ts, record_frame))
+            selected, skew = self._select_nearest_record_frame(detect_ts)
+            self._last_classifier_crop_skew_sec = skew
+            max_skew = self._classifier_record_max_skew_sec()
+            mismatch = selected is None or skew > max_skew
+            self._last_classifier_crop_mismatch = mismatch
+            self._last_classifier_source_frame = None if mismatch else selected
         else:
+            self._last_classifier_crop_skew_sec = 0.0
+            self._last_classifier_crop_mismatch = False
             self._last_classifier_source_frame = frame
         self._update_streaming_output(frame)
         return frame
 
-    def get_classifier_source_frame(self):
+    def get_classifier_source_frame(self, detect_ts: float | None = None):
         """Best-effort hi-res (record) or detect frame for classifier/ReID crops."""
+        if self._last_classifier_crop_mismatch:
+            return None
+        ts = detect_ts if detect_ts is not None else self._last_detect_capture_ts
+        if self._dual_stream and ts is not None:
+            selected, skew = self._select_nearest_record_frame(ts)
+            if selected is not None and skew <= self._classifier_record_max_skew_sec():
+                return selected
+            return None
         return self._last_classifier_source_frame
 
     def get_frame_time(self):
