@@ -102,17 +102,16 @@ def _coerce_orphan_purge_limit(raw: object, *, default: int = 500) -> int | None
     return max(1, min(5000, limit))
 
 
-def apply_orphan_recording_purge(*, limit: int = 500) -> dict[str, Any]:
-    """Delete eligible disk-only sessions (no confirmation; reconcile/scheduler)."""
+def _plan_orphan_recording_purge(*, limit: int = 500) -> dict[str, Any]:
+    """Eligible orphan disk sessions for purge or dry-run preview."""
     rec_dir = recordings_dir()
     if not rec_dir or not os.path.isdir(rec_dir):
         return {
-            "deleted_count": 0,
-            "freed_bytes": 0,
+            "eligible": [],
             "orphan_session_count": 0,
             "skipped_protected": 0,
             "skipped_grace": 0,
-            "errors": [],
+            "limit": limit,
         }
 
     grace_minutes = _orphan_purge_grace_minutes()
@@ -138,6 +137,60 @@ def apply_orphan_recording_purge(*, limit: int = 500) -> dict[str, Any]:
         else:
             eligible.append(orphan)
 
+    return {
+        "eligible": eligible,
+        "orphan_session_count": len(orphans),
+        "skipped_protected": skipped_protected,
+        "skipped_grace": skipped_grace,
+        "limit": limit,
+    }
+
+
+def preview_orphan_recording_purge(*, limit: int = 500) -> dict[str, Any]:
+    """Dry-run: report orphan disk sessions reconcile would delete."""
+    plan = _plan_orphan_recording_purge(limit=limit)
+    preview = plan["eligible"][:limit]
+    would_free = sum(int(o["bytes"]) for o in preview)
+    sample_paths = [o["video_path"] for o in preview[:10]]
+    if preview:
+        _log.info(
+            "orphan purge dry-run: would_delete=%s would_free_bytes=%s sample=%s",
+            len(preview),
+            would_free,
+            sample_paths[:3],
+        )
+    return {
+        "dry_run": True,
+        "would_delete_count": len(preview),
+        "would_free_bytes": would_free,
+        "deleted_count": 0,
+        "freed_bytes": 0,
+        "orphan_session_count": plan["orphan_session_count"],
+        "eligible_count": len(plan["eligible"]),
+        "skipped_protected": plan["skipped_protected"],
+        "skipped_grace": plan["skipped_grace"],
+        "sample_paths": sample_paths,
+    }
+
+
+def apply_orphan_recording_purge(*, limit: int = 500) -> dict[str, Any]:
+    """Delete eligible disk-only sessions (no confirmation; reconcile/scheduler)."""
+    plan = _plan_orphan_recording_purge(limit=limit)
+    if not plan["eligible"] and plan["orphan_session_count"] == 0:
+        return {
+            "deleted_count": 0,
+            "freed_bytes": 0,
+            "orphan_session_count": 0,
+            "skipped_protected": 0,
+            "skipped_grace": 0,
+            "errors": [],
+        }
+
+    eligible = plan["eligible"]
+    skipped_protected = plan["skipped_protected"]
+    skipped_grace = plan["skipped_grace"]
+    orphans_count = plan["orphan_session_count"]
+
     deleted = 0
     freed = 0
     errors: list[str] = []
@@ -162,13 +215,13 @@ def apply_orphan_recording_purge(*, limit: int = 500) -> dict[str, Any]:
             freed,
             skipped_grace,
             skipped_protected,
-            len(orphans),
+            orphans_count,
         )
 
     return {
         "deleted_count": deleted,
         "freed_bytes": freed,
-        "orphan_session_count": len(orphans),
+        "orphan_session_count": orphans_count,
         "skipped_protected": skipped_protected,
         "skipped_grace": skipped_grace,
         "errors": errors,

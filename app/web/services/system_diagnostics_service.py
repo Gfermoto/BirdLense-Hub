@@ -205,6 +205,33 @@ def delete_broken_video_rows(payload) -> tuple[dict, int]:
         return {"error": "Failed to delete broken video rows"}, 500
 
 
+def preview_broken_video_rows_purge(*, limit: int = 100, max_scan: int = 100_000) -> dict:
+    """Dry-run: report broken Video rows reconcile would delete."""
+    max_scan = max(1000, min(max_scan, 500_000))
+    limit = max(1, min(limit, 5000))
+    inv = scan_broken_videos_inventory(
+        max_scan=max_scan,
+        collect_ids_limit=limit,
+    )
+    video_ids = inv["ids_to_delete"]
+    if video_ids:
+        _log.info(
+            "broken db purge dry-run: would_delete=%s sample_video_ids=%s",
+            len(video_ids),
+            video_ids[:5],
+        )
+    return {
+        "dry_run": True,
+        "would_delete_count": len(video_ids),
+        "deleted_count": 0,
+        "sample_video_ids": video_ids[:10],
+        "scanned": inv["scanned"],
+        "broken_total": inv["broken_total"],
+        "by_reason": inv["by_reason"],
+        "more_batches_suggested": len(video_ids) >= limit,
+    }
+
+
 def apply_broken_video_rows_purge(*, limit: int = 100, max_scan: int = 100_000) -> dict:
     """Remove broken Video rows (missing/unreadable file); reconcile internal path."""
     max_scan = max(1000, min(max_scan, 500_000))

@@ -10,8 +10,14 @@ from typing import TYPE_CHECKING
 
 from app_config.app_config import app_config
 from services.recording_orphan_inventory import summarize_orphan_recording_files
-from services.recording_orphan_purge_service import apply_orphan_recording_purge
-from services.system_diagnostics_service import apply_broken_video_rows_purge
+from services.recording_orphan_purge_service import (
+    apply_orphan_recording_purge,
+    preview_orphan_recording_purge,
+)
+from services.system_diagnostics_service import (
+    apply_broken_video_rows_purge,
+    preview_broken_video_rows_purge,
+)
 from services.system_maintenance_service import run_recordings_scan
 
 if TYPE_CHECKING:
@@ -69,6 +75,10 @@ def _purge_broken_db_enabled() -> bool:
     return _cfg_bool("reconcile.purge_broken_db_rows_enabled", True)
 
 
+def _purge_dry_run() -> bool:
+    return _cfg_bool("reconcile.purge_dry_run", False)
+
+
 def get_last_reconcile_metrics() -> dict[str, object]:
     return dict(_last_reconcile_metrics)
 
@@ -85,11 +95,15 @@ def run_disk_db_reconcile(flask_app) -> dict[str, object]:
 
         imported = int((body or {}).get("imported") or 0)
         skipped_pending = int((body or {}).get("skipped_pending") or 0)
+        dry_run = _purge_dry_run()
         purge_disk: dict[str, object] = {"deleted_count": 0, "freed_bytes": 0}
         if _purge_orphan_disk_enabled():
             limit = _cfg_int("reconcile.purge_orphan_disk_limit", 500, lo=1, hi=5000)
             try:
-                purge_disk = apply_orphan_recording_purge(limit=limit)
+                if dry_run:
+                    purge_disk = preview_orphan_recording_purge(limit=limit)
+                else:
+                    purge_disk = apply_orphan_recording_purge(limit=limit)
             except Exception:
                 logger.exception("reconcile: orphan disk purge failed")
                 purge_disk = {"deleted_count": 0, "freed_bytes": 0, "error": "purge_failed"}
@@ -98,17 +112,26 @@ def run_disk_db_reconcile(flask_app) -> dict[str, object]:
         if _purge_broken_db_enabled():
             limit = _cfg_int("reconcile.purge_broken_db_rows_limit", 100, lo=1, hi=5000)
             try:
-                purge_db = apply_broken_video_rows_purge(limit=limit)
+                if dry_run:
+                    purge_db = preview_broken_video_rows_purge(limit=limit)
+                else:
+                    purge_db = apply_broken_video_rows_purge(limit=limit)
             except Exception:
                 logger.exception("reconcile: broken db row purge failed")
                 purge_db = {"deleted_count": 0, "error": "purge_failed"}
 
         orphan_after = summarize_orphan_recording_files()
         disk_purged = int(purge_disk.get("deleted_count") or 0)
+        if dry_run:
+            disk_purged = int(purge_disk.get("would_delete_count") or 0)
         disk_freed = int(purge_disk.get("freed_bytes") or 0)
+        if dry_run:
+            disk_freed = int(purge_disk.get("would_free_bytes") or 0)
         disk_skipped_grace = int(purge_disk.get("skipped_grace") or 0)
         disk_skipped_protected = int(purge_disk.get("skipped_protected") or 0)
         db_purged = int(purge_db.get("deleted_count") or 0)
+        if dry_run:
+            db_purged = int(purge_db.get("would_delete_count") or 0)
         orphan_gb_before = int(orphan_before.get("orphan_bytes") or 0) / (1024**3)
         orphan_gb_after = int(orphan_after.get("orphan_bytes") or 0) / (1024**3)
 
@@ -126,9 +149,10 @@ def run_disk_db_reconcile(flask_app) -> dict[str, object]:
         }
 
         logger.info(
-            "reconcile: imported=%s skipped_pending=%s disk_purged=%s disk_freed_bytes=%s "
+            "reconcile: dry_run=%s imported=%s skipped_pending=%s disk_purged=%s disk_freed_bytes=%s "
             "disk_skipped_grace=%s disk_skipped_protected=%s db_purged=%s "
             "orphan_gb_before=%.3f orphan_gb_after=%.3f",
+            dry_run,
             imported,
             skipped_pending,
             disk_purged,
@@ -141,6 +165,7 @@ def run_disk_db_reconcile(flask_app) -> dict[str, object]:
         )
         return {
             "ok": True,
+            "dry_run": dry_run,
             **body,
             "orphan_before": orphan_before,
             "orphan_after": orphan_after,
@@ -193,9 +218,10 @@ def start_reconcile_scheduler(flask_app) -> None:
         daemon=True,
     ).start()
     logger.info(
-        "reconcile scheduler started (interval_h=%.1f enabled=%s purge_disk=%s purge_db=%s)",
+        "reconcile scheduler started (interval_h=%.1f enabled=%s purge_disk=%s purge_db=%s purge_dry_run=%s)",
         _reconcile_interval_hours(),
         _reconcile_enabled(),
         _purge_orphan_disk_enabled(),
         _purge_broken_db_enabled(),
+        _purge_dry_run(),
     )

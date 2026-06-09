@@ -252,3 +252,43 @@ def test_reconcile_purges_broken_db_row(app, tmp_path, monkeypatch):
     assert body["purge_broken_db_rows"]["deleted_count"] == 1
     with app.app_context():
         assert db.session.get(Video, vid) is None
+
+
+def test_reconcile_purge_dry_run_skips_deletes(app, tmp_path, monkeypatch):
+    rec_root = tmp_path / "data" / "recordings"
+    orphan_dir = rec_root / "2026" / "06" / "09" / "120002"
+    orphan_dir.mkdir(parents=True)
+    (orphan_dir / "video.mp4").write_bytes(b"")
+
+    monkeypatch.setattr("services.system_maintenance_service.recordings_dir", lambda: str(rec_root))
+    monkeypatch.setattr("services.recording_orphan_purge_service.recordings_dir", lambda: str(rec_root))
+    monkeypatch.setattr("services.recording_orphan_inventory.recordings_dir", lambda: str(rec_root))
+    monkeypatch.setattr("services.reconcile_recordings_service._purge_dry_run", lambda: True)
+
+    with app.app_context():
+        video = Video(
+            processor_version="1",
+            start_time=datetime(2026, 6, 9, 12, 0, 0, tzinfo=timezone.utc),
+            end_time=datetime(2026, 6, 9, 12, 0, 30, tzinfo=timezone.utc),
+            video_path="data/recordings/2026/06/09/missing/video.mp4",
+        )
+        db.session.add(video)
+        db.session.commit()
+        vid = video.id
+
+    from services.reconcile_recordings_service import run_disk_db_reconcile
+
+    with app.app_context():
+        body = run_disk_db_reconcile(app)
+
+    assert body["ok"] is True
+    assert body["dry_run"] is True
+    assert orphan_dir.is_dir()
+    assert body["purge_orphan_disk"]["dry_run"] is True
+    assert body["purge_orphan_disk"]["would_delete_count"] == 1
+    assert body["purge_orphan_disk"]["deleted_count"] == 0
+    assert body["purge_broken_db_rows"]["dry_run"] is True
+    assert body["purge_broken_db_rows"]["would_delete_count"] == 1
+    assert body["purge_broken_db_rows"]["deleted_count"] == 0
+    with app.app_context():
+        assert db.session.get(Video, vid) is not None
