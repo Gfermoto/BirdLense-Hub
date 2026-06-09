@@ -29,6 +29,21 @@ OUTCOME_MAX_EMPTY_BBOX_RATE="${OUTCOME_MAX_EMPTY_BBOX_RATE:-0.20}"
 OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS="${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS:-1}"
 OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE="${OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE:-0.10}"
 OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE_DELTA_VS_7D="${OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE_DELTA_VS_7D:-0.08}"
+
+_outcome_use_local_db() {
+  if [[ "${OUTCOME_DB_MODE}" == "local" ]]; then
+    return 0
+  fi
+  if [[ "${OUTCOME_DB_MODE}" == "remote" ]]; then
+    return 1
+  fi
+  # auto: локальная БД только для localhost; VPS — remote DB на сервере
+  if [[ "${HOST}" == "localhost" || "${HOST}" == "127.0.0.1" ]]; then
+    [[ -f "${REPO_ROOT}/${OUTCOME_DB_PATH}" ]]
+    return
+  fi
+  return 1
+}
 # Keepalive — сборка Docker может занимать 5+ мин, без этого SSH обрывается (Broken pipe)
 # Порт через DEPLOY_SSH_PORT (по умолчанию 22)
 _PORT_OPT=""
@@ -526,8 +541,7 @@ fi
 # 0.72 Outcome quality metrics gate (#555/#556).
 if [[ ! "${BIRDLENSE_SKIP_OUTCOME_METRICS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
   echo "0.72 Outcome Quality Metrics Gate..."
-  if [[ "${OUTCOME_DB_MODE}" == "local" ]] || \
-     { [[ "${OUTCOME_DB_MODE}" == "auto" ]] && [[ -f "${REPO_ROOT}/${OUTCOME_DB_PATH}" ]]; }; then
+  if _outcome_use_local_db; then
     (cd "${REPO_ROOT}" && \
       python3 ./scripts/report_quality_outcome_metrics.py \
         --db-path "${OUTCOME_DB_PATH}" \
