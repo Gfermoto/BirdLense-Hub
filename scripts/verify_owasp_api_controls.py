@@ -258,6 +258,11 @@ def _args() -> argparse.Namespace:
             "owasp_api_controls_latest.md"
         ),
     )
+    parser.add_argument(
+        "--require-hub",
+        action="store_true",
+        help="Fail when hub is unreachable (post-deploy re-run).",
+    )
     return parser.parse_args()
 
 
@@ -287,9 +292,16 @@ def main() -> int:
         "domain_health_unauth": unauth_error,
         "domain_health_auth": auth_error,
     }
-    if _hub_unreachable(readiness_error, unauth_error, auth_error):
-        report = build_unreachable_hub_report(base_url=args.base_url)
-        report["errors"] = report_errors
+    hub_down = _hub_unreachable(readiness_error, unauth_error, auth_error)
+    if hub_down:
+        if args.require_hub:
+            report = build_unreachable_hub_report(base_url=args.base_url)
+            report["errors"] = report_errors
+            report["ok"] = False
+            report["require_hub_failed"] = True
+        else:
+            report = build_unreachable_hub_report(base_url=args.base_url)
+            report["errors"] = report_errors
     else:
         report = evaluate_controls(
             readiness_payload=readiness_payload,
