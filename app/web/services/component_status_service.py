@@ -101,6 +101,16 @@ def build_component_status_payload(session) -> dict:
             )
         except (TypeError, ValueError):
             logger.debug("heartbeat data JSON parse failed", exc_info=True)
+    if isinstance(heartbeat_data, dict) and heartbeat_data.get("bootstrap_error"):
+        processor_display = "error"
+    elif processor_ok:
+        hb_status = str(heartbeat_data.get("status") or "").strip().lower() if isinstance(heartbeat_data, dict) else ""
+        if hb_status == "bootstrap":
+            processor_display = "bootstrap"
+        else:
+            processor_display = "ok"
+    else:
+        processor_display = "offline"
     mqtt_status = check_mqtt_connected()
     esphome_status = check_esphome_reachable()
     feed_source = app_config.get("feed.source", "mqtt")
@@ -136,7 +146,7 @@ def build_component_status_payload(session) -> dict:
     yolo_display = parse_yolo_status_from_heartbeat(heartbeat_data) if processor_ok else "unknown"
     return {
         "web": "ok",
-        "processor": "ok" if processor_ok else "offline",
+        "processor": processor_display,
         "video": video_display,
         "mqtt": mqtt_display,
         "esphome": esphome_display,

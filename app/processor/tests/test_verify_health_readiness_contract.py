@@ -62,3 +62,74 @@ def test_contract_fails_when_health_not_ok():
     )
     assert report["ok"] is False
     assert report["checks"]["health_ok"] is False
+
+
+def test_contract_allows_processor_fallback_only_during_bootstrap():
+    mod = _load_mod()
+    readiness = {
+        "ready": True,
+        "checks": {
+            "processor_heartbeat": {
+                "status": "ok",
+                "bootstrap_phase": True,
+            }
+        },
+    }
+    report = mod.evaluate_contract(
+        health_status_code=200,
+        health_payload={"status": "ok"},
+        readiness_status_code=200,
+        readiness_payload=readiness,
+        status_status_code=200,
+        status_payload={"web": "ok", "processor": "bootstrap"},
+    )
+    assert report["ok"] is True
+    assert report["checks"]["status_processor_ok"] is True
+
+
+def test_contract_rejects_processor_fallback_for_persistent_error():
+    mod = _load_mod()
+    readiness = {
+        "ready": False,
+        "checks": {
+            "processor_heartbeat": {
+                "status": "error",
+                "bootstrap_phase": False,
+                "reason": "processor_config_error",
+            }
+        },
+    }
+    report = mod.evaluate_contract(
+        health_status_code=200,
+        health_payload={"status": "ok"},
+        readiness_status_code=503,
+        readiness_payload=readiness,
+        status_status_code=200,
+        status_payload={"web": "ok", "processor": "error"},
+    )
+    assert report["ok"] is False
+    assert report["checks"]["status_processor_ok"] is False
+    assert report["checks"]["false_green_detected"] is True
+
+
+def test_contract_no_fallback_when_bootstrap_phase_false():
+    mod = _load_mod()
+    readiness = {
+        "ready": True,
+        "checks": {
+            "processor_heartbeat": {
+                "status": "ok",
+                "bootstrap_phase": False,
+            }
+        },
+    }
+    report = mod.evaluate_contract(
+        health_status_code=200,
+        health_payload={"status": "ok"},
+        readiness_status_code=200,
+        readiness_payload=readiness,
+        status_status_code=200,
+        status_payload={"web": "ok", "processor": "offline"},
+    )
+    assert report["checks"]["status_processor_ok"] is False
+    assert report["checks"]["false_green_detected"] is True
