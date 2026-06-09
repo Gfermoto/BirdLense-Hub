@@ -78,6 +78,8 @@ processor:
   max_inactive_seconds: 8
   # Readiness guardrail: максимальный возраст heartbeat процессора (сек) в production.
   readiness_heartbeat_max_age_seconds: 180
+  # Heartbeat fallback in health contract only while models/bootstrap are still warming up.
+  bootstrap_phase_max_seconds: 600
   # Post-roll: доп. секунды к «тишине» перед остановкой записи (#157). Итог = max_inactive_seconds + post_record_seconds.
   post_record_seconds: 3
   # Мин. пауза после окончания записи до следующего старта (сек). 0 = выкл.
@@ -867,6 +869,8 @@ detection:
   yolo_blind_min_duration_seconds: 30
   # Live System Health alert: Frigate-only extension without YOLO tracks (defaults to min_duration_seconds).
   yolo_blind_alert_seconds: 30
+  # Readiness between-session monitor: recent motion within this window may flag blind/degraded.
+  yolo_between_motion_max_age_seconds: 120
   # Bbox geometry IoU gate (letterbox roundtrip); see docs/ru/detection-geometry.ru.md
   bbox_iou_gate_enabled: true
   bbox_iou_gate_min: 0.85
