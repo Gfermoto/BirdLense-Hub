@@ -172,12 +172,14 @@ class API:
 
     def activity_log(self, type, data, id=None):
         log_data = {"type": type, "data": data, "id": id}
+        timeout = 30 if type == "heartbeat" else 5
+        max_retries = 2 if type == "heartbeat" else 1
         response = self._send_request(
             "POST",
             "activity_log",
             log_data,
-            timeout=5,
-            max_retries=1,
+            timeout=timeout,
+            max_retries=max_retries,
         )
         response_data = response.json()
         # Capture the returned 'id' from the response
