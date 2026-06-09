@@ -80,6 +80,26 @@ def coerce_bgr_frame(
         return None
 
 
+def resolve_classifier_crop_frame(
+    detect_frame: np.ndarray,
+    classification_frame: Any,
+    *,
+    profile_overrides: Mapping[str, Any] | None = None,
+) -> np.ndarray:
+    """Pick classifier crop source; on sync mismatch fall back to detect frame + metric."""
+    mismatch = bool((profile_overrides or {}).get("_classifier_crop_source_mismatch"))
+    if mismatch:
+        try:
+            from processor_runtime_stats import inc_counter
+
+            inc_counter("classifier_crop_source_mismatch_total", 1)
+        except Exception:
+            logger.debug("classifier_crop_source_mismatch counter failed", exc_info=True)
+        return detect_frame
+    coerced = coerce_bgr_frame(classification_frame, log_label="classification_frame")
+    return detect_frame if coerced is None else coerced
+
+
 def _rodent_binary_threshold_raw(config: Mapping[str, Any]) -> Any:
     """Порог для белки/грызунов (legacy Rodent + Trapper ``Eurasian Red Squirrel``)."""
     raw = config.get("processor.min_confidence_binary_rodent")
@@ -1329,8 +1349,11 @@ class TwoStageStrategy(DetectionStrategy):
                 xyxyn = xyxyn[keep_idx]
 
         h, w, _ = frame.shape
-        _cls_coerced = coerce_bgr_frame(classification_frame, log_label="classification_frame")
-        cls_frame = frame if _cls_coerced is None else _cls_coerced
+        cls_frame = resolve_classifier_crop_frame(
+            frame,
+            classification_frame,
+            profile_overrides=profile_overrides,
+        )
 
         _ov_bird_scale = openvino_binary_bird_score_scale(
             runtime_cfg,

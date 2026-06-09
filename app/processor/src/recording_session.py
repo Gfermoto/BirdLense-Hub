@@ -743,12 +743,20 @@ class MotionRecordingSession:
                     inc_counter("recording_capture_none_frame_recovered_total")
                     consecutive_none_frames = 0
                 classifier_source_frame = None
+                classifier_crop_mismatch = False
                 if _classifier_use_source_frame():
                     raw_classifier_frame = getattr(
                         self.media_source,
                         "get_classifier_source_frame",
                         lambda: None,
                     )()
+                    mismatch_fn = getattr(
+                        self.media_source,
+                        "classifier_crop_source_mismatch",
+                        None,
+                    )
+                    if callable(mismatch_fn):
+                        classifier_crop_mismatch = bool(mismatch_fn())
                     classifier_source_frame = coerce_bgr_frame(
                         raw_classifier_frame,
                         log_label="classifier_source_frame",
@@ -768,6 +776,8 @@ class MotionRecordingSession:
                 processor_status["last_video_ok_at"] = datetime.now(timezone.utc).isoformat()
                 frame_time = getattr(self.media_source, "get_frame_time", lambda: None)()
                 scoring_overrides = dict(camera_overrides or {})
+                if classifier_crop_mismatch:
+                    scoring_overrides["_classifier_crop_source_mismatch"] = True
                 if bool(app_config.get("processor.scoring_engine_enabled", False)):
                     scoring_overrides["_scoring_frigate_prior_active"] = self._frigate_prior_active(
                         camera_id=camera_id,

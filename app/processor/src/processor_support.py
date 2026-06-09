@@ -23,6 +23,8 @@ processor_status = {
     "last_yolo_detection_at": None,
     "yolo_inference_ready_at": None,
     "yolo_inference_backend": None,
+    "bootstrap_error": None,
+    "bootstrap_error_code": None,
 }
 
 
@@ -109,7 +111,17 @@ def check_restart_flag():
 
 
 def _heartbeat_payload() -> dict:
-    data: dict = {"status": "up"}
+    bootstrap_error = processor_status.get("bootstrap_error")
+    if bootstrap_error:
+        data: dict = {
+            "status": "config_error",
+            "bootstrap_error": str(bootstrap_error),
+        }
+        code = processor_status.get("bootstrap_error_code")
+        if code:
+            data["bootstrap_error_code"] = str(code)
+    else:
+        data = {"status": "up"}
     if processor_status.get("last_video_ok_at"):
         data["last_video_ok_at"] = processor_status["last_video_ok_at"]
     if processor_status.get("last_yolo_ok_at"):

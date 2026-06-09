@@ -102,6 +102,21 @@ def _processor_heartbeat_readiness(session) -> dict[str, object]:
             "reason": "missing_heartbeat",
             "max_age_seconds": max_age,
         }
+    heartbeat_data = None
+    if row.data:
+        try:
+            import json
+
+            heartbeat_data = json.loads(row.data) if isinstance(row.data, str) else row.data
+        except (TypeError, ValueError):
+            heartbeat_data = None
+    if isinstance(heartbeat_data, dict) and heartbeat_data.get("bootstrap_error"):
+        return {
+            "status": "error",
+            "reason": str(heartbeat_data.get("bootstrap_error_code") or "processor_config_error"),
+            "message": str(heartbeat_data.get("bootstrap_error") or ""),
+            "max_age_seconds": max_age,
+        }
     try:
         hb_ts = ensure_utc(row.updated_at)
     except (TypeError, ValueError):
