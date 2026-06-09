@@ -218,23 +218,6 @@ if [[ ! "${BIRDLENSE_SKIP_ERROR_BUDGET_GATE:-}" =~ ^(1|true|yes)$ ]]; then
   fi
 fi
 
-# 0.47 Health/readiness/status consistency gate (#530).
-if [[ ! "${BIRDLENSE_SKIP_HEALTH_READINESS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
-  _hr_json="docs/reports/health_readiness_contract/health_readiness_contract_latest.json"
-  _hr_md="docs/reports/health_readiness_contract/health_readiness_contract_latest.md"
-  echo "0.47 Health Readiness Contract Gate..."
-  (cd "${REPO_ROOT}" && \
-    MCP_TOKEN="${MCP_TOKEN:-}" \
-    BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
-    python3 ./scripts/verify_health_readiness_contract.py \
-      --base-url "${DEPLOY_URL}" \
-      --out-json "${_hr_json}" \
-      --out-md "${_hr_md}") || {
-        echo "Ошибка: Health/Readiness Contract не пройден. Деплой остановлен."
-        exit 1
-      }
-fi
-
 # 0.48 OWASP API controls gate (#531).
 if [[ ! "${BIRDLENSE_SKIP_OWASP_API_GATE:-}" =~ ^(1|true|yes)$ ]]; then
   _owasp_json="docs/reports/owasp_api_controls/owasp_api_controls_latest.json"
@@ -905,6 +888,22 @@ else
   BASE_URL="${DEPLOY_URL}" ATTEMPTS="${DEPLOY_READINESS_ATTEMPTS}" SLEEP_SEC="${DEPLOY_READINESS_SLEEP_SEC}" CHECK_CAMERAS=1 \
     MCP_TOKEN="${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
     ./scripts/verify-stack.sh --check-domain-health
+fi
+# 0.47 Health/readiness/status consistency gate (#530) — post-deploy: не блокировать fix readiness на prod.
+if [[ ! "${BIRDLENSE_SKIP_HEALTH_READINESS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  _hr_json="docs/reports/health_readiness_contract/health_readiness_contract_latest.json"
+  _hr_md="docs/reports/health_readiness_contract/health_readiness_contract_latest.md"
+  echo "  - Health Readiness Contract gate (post-deploy):"
+  (cd "${REPO_ROOT}" && \
+    MCP_TOKEN="${MCP_TOKEN:-}" \
+    BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
+    python3 ./scripts/verify_health_readiness_contract.py \
+      --base-url "${DEPLOY_URL}" \
+      --out-json "${_hr_json}" \
+      --out-md "${_hr_md}") || {
+        echo "Ошибка: Health/Readiness Contract не пройден после деплоя."
+        exit 1
+      }
 fi
 echo "  - Runtime SLI gate:"
 BASE_URL="${DEPLOY_URL}" ATTEMPTS="${DEPLOY_READINESS_ATTEMPTS}" SLEEP_SEC="${DEPLOY_READINESS_SLEEP_SEC}" \
