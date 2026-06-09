@@ -30,6 +30,31 @@ OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS="${OUTCOME_MIN_YOLO_FRAMES_WITH_TRACKS:-1}"
 OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE="${OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE:-0.10}"
 OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE_DELTA_VS_7D="${OUTCOME_MAX_FRIGATE_CATCHES_MISSED_BIRDS_RATE_DELTA_VS_7D:-0.08}"
 
+_gate_json_hub_unreachable() {
+  local json_path="$1"
+  local key="${2:-hub_unreachable}"
+  python3 - "$json_path" "$key" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+key = sys.argv[2]
+if not path.is_file():
+    raise SystemExit(0)
+data = json.loads(path.read_text(encoding="utf-8"))
+if bool(data.get(key)):
+    raise SystemExit(0)
+gate = data.get("gate")
+if isinstance(gate, dict) and bool(gate.get(key)):
+    raise SystemExit(0)
+inputs = data.get("inputs")
+if isinstance(inputs, dict) and bool(inputs.get(key)):
+    raise SystemExit(0)
+raise SystemExit(1)
+PY
+}
+
 _outcome_use_local_db() {
   if [[ "${OUTCOME_DB_MODE}" == "local" ]]; then
     return 0
@@ -218,6 +243,7 @@ fi
 
 # 0.46 Error budget release gate (#529).
 # Blocks deploy only when budget is exhausted. Override requires reason.
+_ERROR_BUDGET_HUB_UNREACHABLE=0
 if [[ ! "${BIRDLENSE_SKIP_ERROR_BUDGET_GATE:-}" =~ ^(1|true|yes)$ ]]; then
   _error_budget_json="docs/reports/error_budget_gate/error_budget_gate_latest.json"
   _error_budget_md="docs/reports/error_budget_gate/error_budget_gate_latest.md"
@@ -234,9 +260,14 @@ if [[ ! "${BIRDLENSE_SKIP_ERROR_BUDGET_GATE:-}" =~ ^(1|true|yes)$ ]]; then
     echo "Подсказка: для аварийного обхода задайте BIRDLENSE_ERROR_BUDGET_OVERRIDE_REASON."
     exit 1
   fi
+  if _gate_json_hub_unreachable "${REPO_ROOT}/${_error_budget_json}"; then
+    _ERROR_BUDGET_HUB_UNREACHABLE=1
+    echo "  WARN: Error Budget Gate — hub unreachable pre-deploy; повтор после health contract."
+  fi
 fi
 
 # 0.48 OWASP API controls gate (#531).
+_OWASP_HUB_UNREACHABLE=0
 if [[ ! "${BIRDLENSE_SKIP_OWASP_API_GATE:-}" =~ ^(1|true|yes)$ ]]; then
   _owasp_json="docs/reports/owasp_api_controls/owasp_api_controls_latest.json"
   _owasp_md="docs/reports/owasp_api_controls/owasp_api_controls_latest.md"
@@ -251,6 +282,10 @@ if [[ ! "${BIRDLENSE_SKIP_OWASP_API_GATE:-}" =~ ^(1|true|yes)$ ]]; then
         echo "Ошибка: OWASP API Controls gate не пройден. Деплой остановлен."
         exit 1
       }
+  if _gate_json_hub_unreachable "${REPO_ROOT}/${_owasp_json}"; then
+    _OWASP_HUB_UNREACHABLE=1
+    echo "  WARN: OWASP API Controls — hub unreachable pre-deploy; повтор после health contract."
+  fi
 fi
 
 # 0.49 SSDF control map gate (#551).
@@ -926,6 +961,38 @@ if [[ ! "${BIRDLENSE_SKIP_HEALTH_READINESS_GATE:-}" =~ ^(1|true|yes)$ ]]; then
       --out-json "${_hr_json}" \
       --out-md "${_hr_md}") || {
         echo "Ошибка: Health/Readiness Contract не пройден после деплоя."
+        exit 1
+      }
+fi
+# Post-deploy re-run: pre-deploy hub_unreachable → enforce real checks after health contract.
+if [[ "${_ERROR_BUDGET_HUB_UNREACHABLE}" == "1" ]] && \
+   [[ ! "${BIRDLENSE_SKIP_ERROR_BUDGET_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "  - Error Budget Gate (post-deploy, was hub_unreachable pre-deploy):"
+  if ! (cd "${REPO_ROOT}" && \
+    MCP_TOKEN="${MCP_TOKEN:-}" \
+    BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
+    BIRDLENSE_ERROR_BUDGET_OVERRIDE_REASON="${BIRDLENSE_ERROR_BUDGET_OVERRIDE_REASON:-}" \
+    python3 ./scripts/error_budget_gate.py \
+      --base-url "${DEPLOY_URL}" \
+      --require-hub \
+      --out-json "${_error_budget_json}" \
+      --out-md "${_error_budget_md}"); then
+    echo "Ошибка: Error Budget Gate не пройден после деплоя (hub доступен, проверки не ок)."
+    exit 1
+  fi
+fi
+if [[ "${_OWASP_HUB_UNREACHABLE}" == "1" ]] && \
+   [[ ! "${BIRDLENSE_SKIP_OWASP_API_GATE:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "  - OWASP API Controls Gate (post-deploy, was hub_unreachable pre-deploy):"
+  (cd "${REPO_ROOT}" && \
+    MCP_TOKEN="${MCP_TOKEN:-}" \
+    BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
+    python3 ./scripts/verify_owasp_api_controls.py \
+      --base-url "${DEPLOY_URL}" \
+      --require-hub \
+      --out-json "${_owasp_json}" \
+      --out-md "${_owasp_md}") || {
+        echo "Ошибка: OWASP API Controls gate не пройден после деплоя (hub доступен, проверки не ок)."
         exit 1
       }
 fi

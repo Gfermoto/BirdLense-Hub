@@ -299,6 +299,11 @@ def _args() -> argparse.Namespace:
         "--out-md",
         default="docs/reports/error_budget_gate/error_budget_gate_latest.md",
     )
+    parser.add_argument(
+        "--require-hub",
+        action="store_true",
+        help="Fail when hub is unreachable (post-deploy re-run).",
+    )
     return parser.parse_args()
 
 
@@ -325,6 +330,10 @@ def main() -> int:
                     error=err,
                     base_url=args.base_url,
                 )
+                if args.require_hub:
+                    payload["gate"]["ok"] = False
+                    payload["gate"]["block_release"] = True
+                    payload["gate"]["require_hub_failed"] = True
                 out_json = Path(args.out_json).expanduser()
                 if not out_json.is_absolute():
                     out_json = REPO / out_json

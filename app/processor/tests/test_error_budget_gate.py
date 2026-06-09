@@ -68,3 +68,14 @@ def test_gate_override_allows_release_when_exhausted():
     assert payload["budget"]["exhausted"] is True
     assert payload["gate"]["override_used"] is True
     assert payload["gate"]["ok"] is True
+
+
+def test_unreachable_hub_payload_passes_without_require_hub():
+    mod = _load_mod()
+    payload = mod.build_unreachable_hub_payload(
+        error="url_error:Connection refused",
+        base_url="http://127.0.0.1:8085",
+    )
+    assert payload["gate"]["ok"] is True
+    assert payload["gate"]["hub_unreachable"] is True
+    assert payload["budget"]["state"] == "hub_unreachable"

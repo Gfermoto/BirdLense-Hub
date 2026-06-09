@@ -66,3 +66,16 @@ def test_owasp_map_fails_when_strict_auth_or_secrets_bad():
     assert report["ok"] is False
     assert report["inputs"]["strict_api_auth_ok"] is False
     assert report["inputs"]["secrets_ok"] is False
+
+
+def test_hub_unreachable_report_passes_without_require_hub():
+    mod = _load_mod()
+    report = mod.build_unreachable_hub_report(base_url="http://127.0.0.1:8085")
+    assert report["ok"] is True
+    assert report["hub_unreachable"] is True
+
+
+def test_hub_unreachable_detects_url_errors():
+    mod = _load_mod()
+    assert mod._hub_unreachable("url_error:Connection refused", None, None) is True
+    assert mod._hub_unreachable("http_403", None, None) is False
