@@ -264,18 +264,6 @@ def restore_detect_first_persist_rows(
         )
         return [restored], True
 
-    anchor_row = build_persist_row_from_anchor(
-        ctx.get("detect_first_anchor"),
-        video_duration_s=video_duration_s,
-    )
-    if anchor_row is not None:
-        logger.warning(
-            "Detect-first safeguard: restored anchor row track_id=%s frames=%s",
-            anchor_row.get("track_id"),
-            len(anchor_row.get("frames") or []),
-        )
-        return [anchor_row], True
-
     tracks = frame_processor_tracks or {}
     ordered_ids: list[Any] = []
     if anchor_tid is not None:
@@ -310,6 +298,28 @@ def restore_detect_first_persist_rows(
             len(best.get("frames") or []),
         )
         return [best], True
+
+    anchor_only_enabled = False
+    try:
+        from app_config.app_config import app_config
+
+        anchor_only_enabled = bool(app_config.get("processor.detect_first_anchor_only_persist_enabled", False))
+    except Exception:
+        anchor_only_enabled = False
+    if anchor_only_enabled:
+        anchor_row = build_persist_row_from_anchor(
+            ctx.get("detect_first_anchor"),
+            video_duration_s=video_duration_s,
+        )
+        if anchor_row is not None:
+            anchor_row["classifier_needs_review"] = True
+            anchor_row["review_reason"] = "detect_first_anchor_only"
+            logger.warning(
+                "Detect-first safeguard: restored anchor-only row track_id=%s frames=%s",
+                anchor_row.get("track_id"),
+                len(anchor_row.get("frames") or []),
+            )
+            return [anchor_row], True
 
     return rows, False
 

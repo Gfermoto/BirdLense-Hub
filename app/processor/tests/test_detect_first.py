@@ -72,7 +72,7 @@ class TestDetectFirst(unittest.TestCase):
         self.assertEqual(len(row["frames"]), 1)
         self.assertTrue(row.get("visit_eligible"))
 
-    def test_restore_from_anchor_when_fusion_empty(self):
+    def test_anchor_only_does_not_persist_by_default(self):
         ctx = {
             "runtime_signals": {"detect_first_confirmed": True, "detect_first_anchor_track_id": 9},
             "detect_first_anchor": {
@@ -90,9 +90,8 @@ class TestDetectFirst(unittest.TestCase):
             frame_processor_tracks={},
             video_duration_s=3.0,
         )
-        self.assertTrue(restored)
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["track_id"], 9)
+        self.assertFalse(restored)
+        self.assertEqual(rows, [])
 
     def test_restore_skips_when_accepted_ingestible_rows_exist(self):
         good = {
@@ -136,6 +135,40 @@ class TestDetectFirst(unittest.TestCase):
         )
         self.assertTrue(restored)
         self.assertEqual(rows[0]["track_id"], 4)
+
+    def test_restore_prefers_dense_live_track_before_anchor_only(self):
+        frames = [
+            {"t": i * 0.2, "bbox": [0.2 + i * 0.01, 0.3, 0.4 + i * 0.01, 0.5]}
+            for i in range(6)
+        ]
+        tracks = {
+            9: {
+                "start_time": 0.0,
+                "end_time": 1.0,
+                "detector_events": [{"label": "Bird", "confidence": 0.31}],
+                "frames": frames,
+            }
+        }
+        ctx = {
+            "runtime_signals": {"detect_first_confirmed": True, "detect_first_anchor_track_id": 9},
+            "detect_first_anchor": {
+                "track_id": 9,
+                "bbox": [0.1, 0.2, 0.3, 0.4],
+                "confidence": 0.33,
+                "detector_label": "Bird",
+                "frames": [{"t": 0.0, "bbox": [0.1, 0.2, 0.3, 0.4]}],
+            },
+        }
+        rows, restored = restore_detect_first_persist_rows(
+            [],
+            recording_context=ctx,
+            accepted_pre_fusion=[],
+            frame_processor_tracks=tracks,
+            video_duration_s=3.0,
+        )
+        self.assertTrue(restored)
+        self.assertEqual(rows[0]["track_id"], 9)
+        self.assertEqual(len(rows[0]["frames"]), 6)
 
 
 if __name__ == "__main__":
