@@ -97,6 +97,25 @@ class TestLetterboxBGR(unittest.TestCase):
         self.assertGreater(out[2], out[0])
         self.assertGreater(out[3], out[1])
 
+    def test_crop_remap_detect_overlay_to_main(self):
+        from detection_strategy import _crop_coords_from_letterboxed_bbox_norm
+
+        coords = _crop_coords_from_letterboxed_bbox_norm(
+            bbox_norm=[0.3, 0.35, 0.55, 0.65],
+            detector_frame_shape=(576, 704),
+            overlay_frame_shape=(576, 704),
+            classification_frame_shape=(1080, 1920),
+            playback_frame_shape=(1080, 1920),
+        )
+        self.assertIsNotNone(coords)
+        x1, y1, x2, y2 = coords  # type: ignore[misc]
+        self.assertGreater(x2, x1)
+        self.assertGreater(y2, y1)
+        self.assertGreaterEqual(x1, 0)
+        self.assertLessEqual(x2, 1920)
+        self.assertGreaterEqual(y1, 0)
+        self.assertLessEqual(y2, 1080)
+
     def test_map_norm_bbox_same_shape_identity(self):
         src_bbox = [0.12, 0.23, 0.63, 0.74]
         mapped = map_norm_bbox_xyxy_between_frame_shapes(

@@ -14,6 +14,7 @@ from frame_geometry import (
     live_regen_canvas_parity,
     pad_boxes,
     prepare_detector_frame,
+    remap_norm_bbox_for_crop,
     unpad_boxes,
 )
 
@@ -57,6 +58,62 @@ class TestLiveRegenParity(unittest.TestCase):
         report = live_regen_canvas_parity(frame, cfg)
         self.assertTrue(report["canvas_wh_match"])
         self.assertTrue(report["meta_match"])
+
+
+class TestRemapNormBboxForCrop(unittest.TestCase):
+    def test_dual_stream_detect_to_main_scale(self):
+        """Detect 704x576 overlay → main 1920x1080 crop (no letterbox on detector)."""
+        bbox = [0.3, 0.35, 0.55, 0.65]
+        mapped = remap_norm_bbox_for_crop(
+            bbox,
+            detector_shape_hw=(576, 704),
+            overlay_shape_hw=(576, 704),
+            crop_shape_hw=(1080, 1920),
+            playback_shape_hw=(1080, 1920),
+        )
+        self.assertIsNotNone(mapped)
+        x1, y1, x2, y2 = mapped  # type: ignore[misc]
+        self.assertGreater(x2, x1)
+        self.assertGreater(y2, y1)
+        self.assertGreaterEqual(x1, 0.0)
+        self.assertLessEqual(x2, 1.0)
+
+    def test_pre_letterboxed_detector_to_classification(self):
+        """640 square detector letterboxed from 1280x720 classification source."""
+        mapped = remap_norm_bbox_for_crop(
+            [0.25, 0.25, 0.75, 0.75],
+            detector_shape_hw=(640, 640),
+            overlay_shape_hw=(640, 640),
+            crop_shape_hw=(720, 1280),
+        )
+        self.assertIsNotNone(mapped)
+        x1, y1, x2, y2 = mapped  # type: ignore[misc]
+        self.assertAlmostEqual(x1, 0.25, places=2)
+        self.assertAlmostEqual(x2, 0.75, places=2)
+        self.assertLess(y1, 0.2)
+        self.assertGreater(y2, 0.8)
+
+    def test_letterboxed_detect_overlay_to_main(self):
+        """Detector letterbox canvas differs from detect overlay (576x704 native)."""
+        overlay_norm = [0.3, 0.35, 0.55, 0.65]
+        mapped = remap_norm_bbox_for_crop(
+            overlay_norm,
+            detector_shape_hw=(576, 704),
+            overlay_shape_hw=(576, 704),
+            crop_shape_hw=(1080, 1920),
+            playback_shape_hw=(1080, 1920),
+        )
+        self.assertIsNotNone(mapped)
+        from_shape = (576, 704)
+        to_shape = (1080, 1920)
+        from frame_geometry import map_norm_bbox_xyxy_between_frame_shapes
+
+        expected = map_norm_bbox_xyxy_between_frame_shapes(
+            overlay_norm,
+            from_shape_hw=from_shape,
+            to_shape_hw=to_shape,
+        )
+        self.assertEqual(mapped, expected)
 
 
 class TestPrepareDetectorFrame(unittest.TestCase):

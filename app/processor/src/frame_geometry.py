@@ -448,6 +448,102 @@ def scale_boxes_norm(
     )
 
 
+def _shape_hw_equal(
+    a: tuple[int, int] | list[int],
+    b: tuple[int, int] | list[int],
+) -> bool:
+    try:
+        return int(a[0]) == int(b[0]) and int(a[1]) == int(b[1])
+    except (TypeError, ValueError, IndexError):
+        return False
+
+
+def remap_norm_bbox_for_crop(
+    bbox_norm: tuple[float, ...] | list[float],
+    *,
+    detector_shape_hw: tuple[int, int] | list[int],
+    overlay_shape_hw: tuple[int, int] | list[int],
+    crop_shape_hw: tuple[int, int] | list[int],
+    playback_shape_hw: tuple[int, int] | list[int] | None = None,
+) -> tuple[float, float, float, float] | None:
+    """
+    Map normalized xyxy bbox from detector letterbox canvas to crop frame (classifier/ReID).
+
+    Dual-stream: unmap detector→detect overlay, then scale overlay→crop (main/hi-res).
+    Single-stream pre-letterboxed input: when overlay==detector and crop was letterbox source,
+    use letterbox unmap directly (roundtrip IoU gate).
+    """
+    if len(bbox_norm) != 4:
+        return None
+    try:
+        det_h, det_w = int(detector_shape_hw[0]), int(detector_shape_hw[1])
+        ov_h, ov_w = int(overlay_shape_hw[0]), int(overlay_shape_hw[1])
+        cr_h, cr_w = int(crop_shape_hw[0]), int(crop_shape_hw[1])
+    except (TypeError, ValueError, IndexError):
+        return None
+    if det_h <= 0 or det_w <= 0 or ov_h <= 0 or ov_w <= 0 or cr_h <= 0 or cr_w <= 0:
+        return None
+
+    if _shape_hw_equal(overlay_shape_hw, crop_shape_hw):
+        if _shape_hw_equal(detector_shape_hw, overlay_shape_hw):
+            return (
+                max(0.0, min(1.0, float(bbox_norm[0]))),
+                max(0.0, min(1.0, float(bbox_norm[1]))),
+                max(0.0, min(1.0, float(bbox_norm[2]))),
+                max(0.0, min(1.0, float(bbox_norm[3]))),
+            )
+        overlay_norm = unmap_letterbox_norm_xyxy_to_source_norm_xyxy(
+            bbox_norm,
+            source_shape=overlay_shape_hw,
+            letterbox_shape=detector_shape_hw,
+        )
+        return overlay_norm
+
+    dual_stream_crop = (
+        playback_shape_hw is not None
+        and _shape_hw_equal(crop_shape_hw, playback_shape_hw)
+        and not _shape_hw_equal(overlay_shape_hw, crop_shape_hw)
+    )
+    if _shape_hw_equal(overlay_shape_hw, detector_shape_hw) and not dual_stream_crop:
+        direct = unmap_letterbox_norm_xyxy_to_source_norm_xyxy(
+            bbox_norm,
+            source_shape=crop_shape_hw,
+            letterbox_shape=detector_shape_hw,
+        )
+        if direct is not None:
+            back = pad_boxes(
+                direct,
+                source_shape_hw=crop_shape_hw,
+                letterbox_shape_hw=detector_shape_hw,
+            )
+            if back is not None and bbox_iou_norm(bbox_norm, back) >= 0.9:
+                return direct
+        overlay_norm = (
+            max(0.0, min(1.0, float(bbox_norm[0]))),
+            max(0.0, min(1.0, float(bbox_norm[1]))),
+            max(0.0, min(1.0, float(bbox_norm[2]))),
+            max(0.0, min(1.0, float(bbox_norm[3]))),
+        )
+        return map_norm_bbox_xyxy_between_frame_shapes(
+            overlay_norm,
+            from_shape_hw=overlay_shape_hw,
+            to_shape_hw=crop_shape_hw,
+        )
+
+    overlay_norm = unmap_letterbox_norm_xyxy_to_source_norm_xyxy(
+        bbox_norm,
+        source_shape=overlay_shape_hw,
+        letterbox_shape=detector_shape_hw,
+    )
+    if overlay_norm is None:
+        return None
+    return map_norm_bbox_xyxy_between_frame_shapes(
+        overlay_norm,
+        from_shape_hw=overlay_shape_hw,
+        to_shape_hw=crop_shape_hw,
+    )
+
+
 def bbox_iou_norm(
     a: tuple[float, ...] | list[float],
     b: tuple[float, ...] | list[float],

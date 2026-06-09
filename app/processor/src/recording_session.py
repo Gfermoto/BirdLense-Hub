@@ -388,6 +388,13 @@ class MotionRecordingSession:
         """Main-stream bbox normalization before lores YOLO (Frigate-style: record = playback frame)."""
         from playback_geometry import apply_playback_shape_to_strategy, resolve_playback_shape_hw
 
+        refresh = getattr(self.media_source, "refresh_record_stream_geometry", None)
+        if callable(refresh):
+            try:
+                refresh()
+            except Exception:
+                logger.debug("refresh_record_stream_geometry failed", exc_info=True)
+
         main_size = getattr(self.media_source, "main_size", None)
         shape_hw, source = resolve_playback_shape_hw(
             config_main_size=main_size,
