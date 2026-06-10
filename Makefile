@@ -987,6 +987,10 @@ snapshot-detector-weights:
 compare-detector-bboxes-help:
 	@python3 "$(CURDIR)/scripts/compare_detector_bboxes.py" --help
 
+# Frigate-parity smoke: PT vs OpenVINO IoU (#640). Skips when weights/video missing.
+detector-bbox-parity-smoke:
+	@python3 "$(CURDIR)/scripts/detector_bbox_parity_smoke.py" --min-median-iou 0.45 --clip-id 1819
+
 # Deep pipeline replay for videos created today on VPS.
 # Example:
 #   source scripts/deploy.local.sh && \

@@ -107,6 +107,17 @@ def main() -> int:
     parser.add_argument("--conf", type=float, default=0.2)
     parser.add_argument("--frame-step", type=int, default=3)
     parser.add_argument("--device", default="", help="Ultralytics device (e.g. intel:gpu, 0, cpu)")
+    parser.add_argument(
+        "--min-median-iou",
+        type=float,
+        default=None,
+        help="Exit 1 when median_iou_when_both is below this gate (Frigate-parity #640)",
+    )
+    parser.add_argument(
+        "--clip-id",
+        default="",
+        help="Clip label for gate failure messages (e.g. golden 1819)",
+    )
     args = parser.parse_args()
 
     try:
@@ -198,6 +209,34 @@ def main() -> int:
         "median_iou_when_both": round(median(global_ious), 4) if global_ious else None,
         "videos": per_video,
     }
+    gate = args.min_median_iou
+    if gate is not None:
+        median = out.get("median_iou_when_both")
+        out["gate"] = {
+            "min_median_iou": gate,
+            "clip_id": (args.clip_id or "").strip() or None,
+            "passed": median is not None and float(median) >= float(gate),
+            "delta": None if median is None else round(float(median) - float(gate), 4),
+        }
+        if not out["gate"]["passed"]:
+            clip = out["gate"]["clip_id"] or "unknown"
+            delta = out["gate"]["delta"]
+            print(
+                json.dumps(
+                    {
+                        "error": "detector_bbox_parity_gate_failed",
+                        "clip_id": clip,
+                        "median_iou": median,
+                        "min_median_iou": gate,
+                        "delta": delta,
+                    },
+                    ensure_ascii=False,
+                ),
+                file=sys.stderr,
+            )
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 1
+
     print(json.dumps(out, ensure_ascii=False, indent=2))
     return 0
 
