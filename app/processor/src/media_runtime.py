@@ -270,7 +270,7 @@ def setup_processor_media(
                 capture_backend = "auto"
             sr = app_config.get("processor.single_rtsp_read")
             if sr is None:
-                single_rtsp_read = True
+                single_rtsp_read = False
             elif isinstance(sr, bool):
                 single_rtsp_read = sr
             else:

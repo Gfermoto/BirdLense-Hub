@@ -37,6 +37,8 @@ def _minimal_single_read_src(**overrides) -> Go2RTCStreamSource:
     src._last_classifier_crop_mismatch = False
     src._last_classifier_source_frame = None
     src._record_frame_buffer = __import__("collections").deque(maxlen=8)
+    src._recording = False
+    src._record_cap = None
     for key, val in overrides.items():
         setattr(src, key, val)
     return src
@@ -88,6 +90,41 @@ class TestSingleReadCapture(unittest.TestCase):
     def test_legacy_dual_read_keeps_detect_url(self):
         src = _minimal_single_read_src(_single_rtsp_read=False)
         self.assertEqual(src._live_capture_url(), "rtsp://example/detect")
+
+
+class TestRecordingRtspFallback(unittest.TestCase):
+    def test_live_capture_url_switches_to_detect_while_recording(self):
+        src = _minimal_single_read_src()
+        src._recording = False
+        self.assertEqual(src._live_capture_url(), "rtsp://example/main")
+        src._recording = True
+        self.assertEqual(src._live_capture_url(), "rtsp://example/detect")
+
+    def test_capture_uses_dual_stream_path_during_recording(self):
+        src = _minimal_single_read_src()
+        detect = np.full((576, 704, 3), 11, dtype=np.uint8)
+        record = np.full((1080, 1920, 3), 22, dtype=np.uint8)
+        src._recording = True
+        src._read_frame = lambda: (detect, True)
+        src._reconnect_if_needed = lambda: False
+        src._update_streaming_output = lambda _f: None
+        src._read_record_classifier_frame = lambda: record
+        src._classifier_record_max_skew_sec = lambda: 0.35
+
+        out = src.capture()
+        self.assertIs(out, detect)
+        self.assertIsNotNone(src._last_classifier_source_frame)
+        self.assertFalse(src.classifier_crop_source_mismatch())
+
+    def test_record_cap_allowed_during_recording_only(self):
+        src = _minimal_single_read_src()
+        src._recording = False
+        self.assertFalse(src._connect_record_cap())
+        src._recording = True
+        with patch("sources.go2rtc_stream_source.cv2.VideoCapture") as cap_ctor:
+            cap = cap_ctor.return_value
+            cap.isOpened.return_value = True
+            self.assertTrue(src._connect_record_cap())
 
 
 class TestSingleReadGeometryParity(unittest.TestCase):
