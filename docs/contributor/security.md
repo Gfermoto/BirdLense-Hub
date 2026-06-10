@@ -25,7 +25,7 @@
 |------|--------------|----------------|
 | ~~**Critical**~~ **Mitigated (opt-in)** | `/api/ui/*` open by default for home LAN. | Set **`BIRDLENSE_STRICT_API_AUTH=1`** with production runtime: require session (after `verify-password`), **`BIRDLENSE_UI_API_KEY`** (`X-Birdlense-Api-Key` or Bearer), or **MCP Bearer**. Bootstrap: `health`, `requires-password`, `check-access`, `verify-password`, `vapid-public`, `logout`. See [CONFIGURATION](../user/configuration.md). |
 | ~~**Critical**~~ **Fixed** | `PROCESSOR_SECRET` not set — Processor API was open. | In production, blocks when empty. Deploy merges into server **`app/.env`**. |
-| **Critical** | MCP has no authentication when `mcp.token` and `MCP_TOKEN` are empty. | Set `MCP_TOKEN` when `mcp.enabled=true`. |
+| **Critical** | MCP has no authentication when `mcp.token` and `MCP_TOKEN` are empty. | Set `MCP_TOKEN` when `mcp.enabled=true`. Dev smoke: [hub-mcp-dev.md](./hub-mcp-dev.md). |
 | **High** | Settings password (`settings_password`) is optional. When empty — settings and system operations are unprotected. | Require password in production. |
 | ~~**High**~~ **Fixed** | Settings session had no idle timeout. | `general.session_idle_minutes` (default 30; `0` disables). See [CONFIGURATION](../user/configuration.md). |
 | **Medium** | Endpoints `/api/ui/system/*` (logs, metrics, purge, scan) protected only by `settings_check_access()`. | Ensure mandatory `settings_password`. |
