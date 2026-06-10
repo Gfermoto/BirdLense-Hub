@@ -164,7 +164,7 @@ class TestDecisionMaker(unittest.TestCase):
     def test_classifier_uncertain_emits_review_only_generic_bird_with_frames(self, mock_cfg):
         mock_cfg.get.side_effect = lambda k, default=None: (
             "dual" if k == "processor.pipeline_mode"
-            else "legacy" if k == "detection.persist_mode"
+            else "binary_track_first" if k == "detection.persist_mode"
             else default
         )
         dm = DecisionMaker(
@@ -192,7 +192,7 @@ class TestDecisionMaker(unittest.TestCase):
     def test_detector_only_weak_bird_is_review_only(self, mock_cfg):
         mock_cfg.get.side_effect = lambda k, default=None: (
             "dual" if k == "processor.pipeline_mode"
-            else "legacy" if k == "detection.persist_mode"
+            else "binary_track_first" if k == "detection.persist_mode"
             else default
         )
         dm = DecisionMaker(
@@ -490,7 +490,7 @@ class TestDecisionMaker(unittest.TestCase):
     def test_review_only_generic_has_review_only_outcome_bucket(self, mock_cfg):
         mock_cfg.get.side_effect = lambda k, default=None: (
             "dual" if k == "processor.pipeline_mode"
-            else "legacy" if k == "detection.persist_mode"
+            else "binary_track_first" if k == "detection.persist_mode"
             else default
         )
         dm = DecisionMaker(
