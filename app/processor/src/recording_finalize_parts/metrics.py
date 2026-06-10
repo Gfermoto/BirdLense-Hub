@@ -16,6 +16,43 @@ from processor_support import restart_flag_path
 from session_state_repository import SessionStateRepository
 from recording_finalize_parts.overlay_helpers import _is_valid_track_bbox, _safe_float
 
+PERSIST_SUBSTAGE_SUMMARY_KEYS: tuple[str, ...] = (
+    "scales_duration_ms",
+    "behavior_duration_ms",
+    "create_video_duration_ms",
+    "dataset_crops_duration_ms",
+    "reid_enrich_duration_ms",
+)
+
+CREATE_VIDEO_INGEST_SUBSTAGE_KEYS: tuple[str, ...] = (
+    "visit_processor_ms",
+    "commit_ms",
+    "weather_ms",
+)
+
+
+def build_persist_substage_ms(
+    *,
+    scales_duration_ms: float | None,
+    behavior_duration_ms: float | None,
+    create_video_duration_ms: float | None,
+    create_video_ingest_timing_ms: dict[str, float] | None,
+    dataset_crops_duration_ms: float | None,
+    reid_enrich_duration_ms: float | None = None,
+) -> dict[str, Any]:
+    """Grouped persist-tail timers for session_summary and readiness aggregation."""
+    substage: dict[str, Any] = {
+        "scales_ms": scales_duration_ms,
+        "behavior_ms": behavior_duration_ms,
+        "create_video_ms": create_video_duration_ms,
+        "dataset_crops_ms": dataset_crops_duration_ms,
+        "reid_enrich_ms": reid_enrich_duration_ms,
+    }
+    if isinstance(create_video_ingest_timing_ms, dict) and create_video_ingest_timing_ms:
+        substage["create_video_ingest_ms"] = dict(create_video_ingest_timing_ms)
+    return substage
+
+
 def _runtime_wall_latency_seconds(
     runtime_signals: dict[str, Any] | None,
     key: str,

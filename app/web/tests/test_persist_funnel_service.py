@@ -56,6 +56,62 @@ def test_pipeline_funnel_api(client):
     assert "by_camera" in payload
 
 
+def test_persist_substage_breakdown_aggregates_payload(app):
+    with app.app_context():
+        payload = {
+            "persist_duration_ms": 500.0,
+            "scales_duration_ms": 10.0,
+            "behavior_duration_ms": 120.0,
+            "create_video_duration_ms": 200.0,
+            "dataset_crops_duration_ms": 30.0,
+            "reid_enrich_duration_ms": 80.0,
+            "create_video_ingest_timing_ms": {
+                "visit_processor_ms": 90.0,
+                "commit_ms": 40.0,
+            },
+            "persist_substage_ms": {
+                "scales_ms": 10.0,
+                "behavior_ms": 120.0,
+                "create_video_ms": 200.0,
+                "dataset_crops_ms": 30.0,
+                "reid_enrich_ms": 80.0,
+                "create_video_ingest_ms": {
+                    "visit_processor_ms": 90.0,
+                    "commit_ms": 40.0,
+                },
+            },
+        }
+        _add_metric(
+            post_fusion_persisted=1,
+            payload_json=json.dumps(payload),
+        )
+        from services.persist_funnel_service import (
+            build_persist_funnel_summary,
+            build_persist_substage_breakdown,
+        )
+
+        breakdown = build_persist_substage_breakdown(db.session)
+        assert breakdown["schema"] == "persist_substage_breakdown@v1"
+        assert breakdown["sessions_sampled"] == 1
+        assert breakdown["substages"]["behavior"]["n"] == 1
+        assert breakdown["substages"]["behavior"]["p95_ms"] == 120.0
+        assert breakdown["substages"]["create_video_ingest"]["visit_processor"]["p95_ms"] == 90.0
+
+        summary = build_persist_funnel_summary(db.session)
+        assert "persist_substage_breakdown" in summary
+        assert summary["persist_substage_breakdown"]["substages"]["persist"]["p95_ms"] == 500.0
+
+
+def test_readiness_includes_persist_substage_breakdown(client):
+    res = client.get("/api/ui/readiness")
+    assert res.status_code in (200, 503)
+    payload = res.get_json() or {}
+    funnel_check = (payload.get("checks") or {}).get("pipeline_funnel") or {}
+    assert "persist_substage_breakdown" in funnel_check
+    top_funnel = payload.get("pipeline_funnel") or {}
+    assert "persist_substage_breakdown" in top_funnel
+
+
 def test_readiness_includes_pipeline_funnel(client):
     res = client.get("/api/ui/readiness")
     assert res.status_code in (200, 503)

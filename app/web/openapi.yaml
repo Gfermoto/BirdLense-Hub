@@ -4887,6 +4887,10 @@ components:
           type: array
           items:
             type: string
+        persist_substage_breakdown:
+          type: object
+          description: p50/p95 persist-tail substage latencies from recent session_runtime_metrics (#624).
+          additionalProperties: true
     CameraSummary:
       type: object
       properties:

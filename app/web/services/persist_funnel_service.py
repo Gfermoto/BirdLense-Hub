@@ -10,6 +10,127 @@ from typing import Any
 from app_config.app_config import app_config
 from models import SessionRuntimeMetrics
 
+PERSIST_SUBSTAGE_PAYLOAD_KEYS: tuple[str, ...] = (
+    "persist_duration_ms",
+    "scales_duration_ms",
+    "behavior_duration_ms",
+    "create_video_duration_ms",
+    "dataset_crops_duration_ms",
+    "reid_enrich_duration_ms",
+)
+
+CREATE_VIDEO_INGEST_SUBSTAGE_KEYS: tuple[str, ...] = (
+    "visit_processor_ms",
+    "commit_ms",
+    "weather_ms",
+)
+
+
+def _safe_float(value: Any) -> float | None:
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return None
+    return num if num >= 0 else None
+
+
+def _percentile(values: list[float], pct: float) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(float(v) for v in values)
+    idx = int((len(ordered) - 1) * max(0.0, min(100.0, pct)) / 100.0)
+    return round(float(ordered[idx]), 3)
+
+
+def _latency_summary(values: list[float]) -> dict[str, Any]:
+    if not values:
+        return {"n": 0, "p50_ms": None, "p95_ms": None, "max_ms": None}
+    return {
+        "n": len(values),
+        "p50_ms": _percentile(values, 50.0),
+        "p95_ms": _percentile(values, 95.0),
+        "max_ms": round(max(values), 3),
+    }
+
+
+def _collect_persist_substage_samples(
+    rows: list[Any],
+) -> tuple[dict[str, list[float]], dict[str, list[float]]]:
+    """Extract per-session persist substage latencies from payload_json."""
+    flat: dict[str, list[float]] = {key: [] for key in PERSIST_SUBSTAGE_PAYLOAD_KEYS}
+    ingest: dict[str, list[float]] = {key: [] for key in CREATE_VIDEO_INGEST_SUBSTAGE_KEYS}
+
+    for row in rows:
+        payload = _extract_payload(getattr(row, "payload_json", None))
+        grouped = payload.get("persist_substage_ms")
+        if isinstance(grouped, dict):
+            mapping = {
+                "persist_duration_ms": payload.get("persist_duration_ms"),
+                "scales_duration_ms": grouped.get("scales_ms"),
+                "behavior_duration_ms": grouped.get("behavior_ms"),
+                "create_video_duration_ms": grouped.get("create_video_ms"),
+                "dataset_crops_duration_ms": grouped.get("dataset_crops_ms"),
+                "reid_enrich_duration_ms": grouped.get("reid_enrich_ms"),
+            }
+            ingest_group = grouped.get("create_video_ingest_ms")
+        else:
+            mapping = {key: payload.get(key) for key in PERSIST_SUBSTAGE_PAYLOAD_KEYS}
+            ingest_group = payload.get("create_video_ingest_timing_ms")
+
+        for key, raw in mapping.items():
+            val = _safe_float(raw)
+            if val is not None and val > 0:
+                flat[key].append(val)
+
+        if isinstance(ingest_group, dict):
+            for ingest_key in CREATE_VIDEO_INGEST_SUBSTAGE_KEYS:
+                val = _safe_float(ingest_group.get(ingest_key))
+                if val is not None and val > 0:
+                    ingest[ingest_key].append(val)
+
+    return flat, ingest
+
+
+def build_persist_substage_breakdown(session) -> dict[str, Any]:
+    """Aggregate persist-tail p50/p95 from recent session_runtime_metrics rows."""
+    lookback_h, _, _, _ = _funnel_thresholds()
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=lookback_h)
+    rows = (
+        session.query(SessionRuntimeMetrics)
+        .filter(SessionRuntimeMetrics.created_at >= cutoff)
+        .order_by(SessionRuntimeMetrics.created_at.desc())
+        .all()
+    )
+    flat, ingest = _collect_persist_substage_samples(rows)
+    substages: dict[str, Any] = {}
+    for key, samples in flat.items():
+        short = key.removesuffix("_duration_ms").removesuffix("_ms")
+        substages[short] = _latency_summary(samples)
+    ingest_summary = {
+        key.removesuffix("_ms"): _latency_summary(samples)
+        for key, samples in ingest.items()
+    }
+    if any(summary.get("n", 0) > 0 for summary in ingest_summary.values()):
+        substages["create_video_ingest"] = ingest_summary
+
+    dominant = None
+    dominant_p95 = 0.0
+    for name, summary in substages.items():
+        if name == "create_video_ingest":
+            continue
+        p95 = summary.get("p95_ms")
+        if p95 is not None and float(p95) > dominant_p95:
+            dominant_p95 = float(p95)
+            dominant = name
+
+    return {
+        "schema": "persist_substage_breakdown@v1",
+        "window_hours": lookback_h,
+        "sessions_sampled": len(rows),
+        "substages": substages,
+        "dominant_substage_p95": dominant,
+    }
+
 
 def _safe_int(value: Any) -> int:
     try:
@@ -145,4 +266,5 @@ def build_persist_funnel_summary(session) -> dict[str, Any]:
         "top_root_causes": top_causes,
         "alerts": alerts,
         "status": status,
+        "persist_substage_breakdown": build_persist_substage_breakdown(session),
     }

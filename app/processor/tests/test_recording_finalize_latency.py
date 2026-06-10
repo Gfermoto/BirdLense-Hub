@@ -12,6 +12,7 @@ from recording_finalize import (  # noqa: E402
 )
 from recording_finalize_parts.metrics import (  # noqa: E402
     _first_bbox_and_track_latency_seconds,
+    build_persist_substage_ms,
 )
 
 
@@ -133,6 +134,30 @@ class TestRecordingFinalizeLatency(unittest.TestCase):
         )
         self.assertIsNone(first_bbox)
         self.assertIsNone(first_track)
+
+    def test_build_persist_substage_ms_groups_ingest(self):
+        substage = build_persist_substage_ms(
+            scales_duration_ms=12.5,
+            behavior_duration_ms=80.0,
+            create_video_duration_ms=95.0,
+            create_video_ingest_timing_ms={
+                "visit_processor_ms": 40.0,
+                "commit_ms": 20.0,
+            },
+            dataset_crops_duration_ms=5.0,
+            reid_enrich_duration_ms=150.0,
+        )
+        self.assertEqual(substage["scales_ms"], 12.5)
+        self.assertEqual(substage["reid_enrich_ms"], 150.0)
+        self.assertEqual(substage["create_video_ingest_ms"]["visit_processor_ms"], 40.0)
+        self.assertNotIn("create_video_ingest_ms", build_persist_substage_ms(
+            scales_duration_ms=None,
+            behavior_duration_ms=None,
+            create_video_duration_ms=None,
+            create_video_ingest_timing_ms=None,
+            dataset_crops_duration_ms=None,
+            reid_enrich_duration_ms=None,
+        ))
 
 
 if __name__ == "__main__":
