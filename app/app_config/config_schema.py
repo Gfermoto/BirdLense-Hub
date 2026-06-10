@@ -30,6 +30,9 @@ class GeneralConfig(_SectionBase):
 
 class DetectionConfig(_SectionBase):
     min_confidence_to_store: float | None = Field(default=None, ge=0.0, le=1.0)
+    persist_mode: Literal["binary_track_first", "legacy"] | str | None = None
+    track_first_gate_enabled: bool | None = None
+    hypothesis_arbitration_enabled: bool | None = None
     dedup_window_seconds: int | None = Field(default=None, ge=0, le=86400)
 
 
@@ -68,6 +71,8 @@ class SpeciesConfig(_SectionBase):
 
 
 class ProcessorConfig(_SectionBase):
+    pipeline_mode: Literal["linear", "legacy"] | str | None = None
+    single_rtsp_read: bool | None = None
     detection_strategy: Literal["two_stage"] | str | None = None
     inference_backend: Literal["torch", "openvino", "auto"] | str | None = None
     inference_device: str | None = None
