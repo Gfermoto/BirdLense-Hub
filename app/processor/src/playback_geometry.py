@@ -212,3 +212,42 @@ def reconcile_playback_shape_after_record(
 
     apply_playback_shape_to_strategy(frame_processor, resolved, source=source)
     return summary
+
+
+def detection_geometry_metadata_from_strategy(strategy: Any | None) -> dict[str, list[int]]:
+    """Shape metadata for persisted detection rows (record_hires / notify remap)."""
+    if strategy is None:
+        return {}
+    meta: dict[str, list[int]] = {}
+    det = getattr(strategy, "_detector_frame_shape", None)
+    overlay = getattr(strategy, "_overlay_frame_shape", None)
+    playback = getattr(strategy, "_playback_frame_shape_hw", None)
+    if det is not None and len(det) >= 2:
+        meta["detector_shape_hw"] = [int(det[0]), int(det[1])]
+    if overlay is not None and len(overlay) >= 2:
+        meta["overlay_shape_hw"] = [int(overlay[0]), int(overlay[1])]
+    if playback is not None and len(playback) >= 2:
+        meta["playback_shape_hw"] = [int(playback[0]), int(playback[1])]
+    return meta
+
+
+def enrich_detections_playback_geometry(
+    detections: list[dict[str, Any]],
+    frame_processor: Any | None,
+) -> list[dict[str, Any]]:
+    """Attach detector/overlay/playback shapes so record_hires skips lores fallback."""
+    strategy = getattr(frame_processor, "strategy", None) if frame_processor is not None else None
+    meta = detection_geometry_metadata_from_strategy(strategy)
+    if not meta:
+        return detections
+    enriched: list[dict[str, Any]] = []
+    for row in detections:
+        if not isinstance(row, dict):
+            enriched.append(row)
+            continue
+        patched = dict(row)
+        for key, val in meta.items():
+            if patched.get(key) is None:
+                patched[key] = list(val)
+        enriched.append(patched)
+    return enriched

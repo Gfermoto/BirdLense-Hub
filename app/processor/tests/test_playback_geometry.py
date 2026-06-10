@@ -11,6 +11,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(current_dir, "../src"))
 
 from playback_geometry import (  # noqa: E402
+    enrich_detections_playback_geometry,
     remap_track_bboxes_playback_shape,
     resolve_playback_shape_hw,
 )
@@ -67,6 +68,20 @@ class TestPlaybackGeometry(unittest.TestCase):
             to_shape_hw=(1080, 1920),
         )
         self.assertEqual(n, 0)
+
+    def test_enrich_detections_attaches_playback_shape(self):
+        class _Strategy:
+            _detector_frame_shape = (576, 704)
+            _overlay_frame_shape = (576, 704)
+            _playback_frame_shape_hw = (1080, 1920)
+
+        fp = MagicMock(strategy=_Strategy())
+        rows = enrich_detections_playback_geometry(
+            [{"species_name": "Bird", "frames": []}],
+            fp,
+        )
+        self.assertEqual(rows[0]["playback_shape_hw"], [1080, 1920])
+        self.assertEqual(rows[0]["overlay_shape_hw"], [576, 704])
 
 
 if __name__ == "__main__":

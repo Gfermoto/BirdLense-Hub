@@ -1120,6 +1120,12 @@ def finalize_motion_recording(
             len(track_first_rejected),
             has_ingestible_track_rows(video_detections),
         )
+    try:
+        from playback_geometry import enrich_detections_playback_geometry
+
+        video_detections = enrich_detections_playback_geometry(video_detections, frame_processor)
+    except ImportError:
+        pass
     reid_enrich_duration_ms: float | None = None
     if video_detections:
         reid_enrich_started_ts = time.perf_counter()

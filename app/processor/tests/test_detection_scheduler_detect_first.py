@@ -60,13 +60,25 @@ class TestDetectFirstSchedulerHelpers(unittest.TestCase):
         self.assertEqual(resolve_detect_first_confirm_min_hits(cfg, cam), 1)
         self.assertEqual(resolve_detect_first_confirm_min_hits(cfg, {}), 2)
 
-    def test_raw_boxes_count_as_hit(self):
-        self.assertTrue(
+    def test_raw_boxes_alone_do_not_count_as_hit(self):
+        self.assertFalse(
             frame_counts_as_detect_first_hit(
                 {"yolo_raw_boxes": 2, "yolo_track_found": False, "result_count": 0},
             ),
         )
         self.assertFalse(frame_counts_as_detect_first_hit({"yolo_raw_boxes": 0}))
+
+    def test_track_or_accepted_count_as_hit(self):
+        self.assertTrue(
+            frame_counts_as_detect_first_hit(
+                {"yolo_raw_boxes": 0, "yolo_track_found": True, "result_count": 0},
+            ),
+        )
+        self.assertTrue(
+            frame_counts_as_detect_first_hit(
+                {"yolo_raw_boxes": 0, "yolo_track_found": False, "result_count": 1},
+            ),
+        )
 
 
 if __name__ == "__main__":
