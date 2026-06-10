@@ -115,6 +115,31 @@ class TestRemapNormBboxForCrop(unittest.TestCase):
         )
         self.assertEqual(mapped, expected)
 
+    def test_birdbox_main_2688x1520_from_detect_704x576(self):
+        """Prod BirdBox: main 2688×1520, detect lores 704×576 (non-16:9 parity)."""
+        overlay_norm = [0.3, 0.35, 0.55, 0.65]
+        mapped = remap_norm_bbox_for_crop(
+            overlay_norm,
+            detector_shape_hw=(576, 704),
+            overlay_shape_hw=(576, 704),
+            crop_shape_hw=(1520, 2688),
+            playback_shape_hw=(1520, 2688),
+        )
+        self.assertIsNotNone(mapped)
+        from frame_geometry import map_norm_bbox_xyxy_between_frame_shapes
+
+        expected = map_norm_bbox_xyxy_between_frame_shapes(
+            overlay_norm,
+            from_shape_hw=(576, 704),
+            to_shape_hw=(1520, 2688),
+        )
+        self.assertEqual(mapped, expected)
+        x1, y1, x2, y2 = mapped  # type: ignore[misc]
+        self.assertGreater(x2, x1)
+        self.assertGreater(y2, y1)
+        self.assertGreaterEqual(x1, 0.0)
+        self.assertLessEqual(x2, 1.0)
+
 
 class TestPrepareDetectorFrame(unittest.TestCase):
     def test_no_stretch_on_wide(self):

@@ -16,6 +16,7 @@ sys.path.append(src_path)
 sys.path.append(app_path)
 
 import notify_preview_encode as notify_preview_encode_mod  # noqa: E402
+import record_hires_crop as record_hires_crop_mod  # noqa: E402
 from notify_preview_encode import encode_notify_preview_base64  # noqa: E402
 
 
@@ -54,7 +55,7 @@ class TestEncodeNotifyPreview(unittest.TestCase):
             return captures.pop(0)
 
         with patch.object(
-            notify_preview_encode_mod.cv2,
+            record_hires_crop_mod.cv2,
             'VideoCapture',
             fake_video_capture,
         ), patch.object(
@@ -62,7 +63,7 @@ class TestEncodeNotifyPreview(unittest.TestCase):
             'imencode',
             lambda *_a, **_k: (True, np.array([1, 2, 3], dtype=np.uint8)),
         ), patch.object(
-            notify_preview_encode_mod.time,
+            record_hires_crop_mod.time,
             'sleep',
             lambda _d: None,
         ):
@@ -73,6 +74,7 @@ class TestEncodeNotifyPreview(unittest.TestCase):
                     'frames': [],
                 },
                 '/tmp/fake-video.mp4',
+                runtime_cfg={'processor.notify_preview_source': 'record_hires'},
             )
 
         self.assertIsNotNone(image_b64)
@@ -88,7 +90,7 @@ class TestEncodeNotifyPreview(unittest.TestCase):
             return _FakeCapture(True, frame)
 
         with patch.object(
-            notify_preview_encode_mod.cv2,
+            record_hires_crop_mod.cv2,
             'VideoCapture',
             fake_video_capture,
         ), patch.object(
@@ -96,7 +98,7 @@ class TestEncodeNotifyPreview(unittest.TestCase):
             'imencode',
             lambda *_a, **_k: (True, np.array([1, 2, 3], dtype=np.uint8)),
         ), patch.object(
-            notify_preview_encode_mod.time,
+            record_hires_crop_mod.time,
             'sleep',
             lambda _d: None,
         ):
@@ -125,7 +127,7 @@ class TestEncodeNotifyPreview(unittest.TestCase):
             return _FakeCapture(True, frame)
 
         with patch.object(
-            notify_preview_encode_mod.cv2,
+            record_hires_crop_mod.cv2,
             'VideoCapture',
             fake_video_capture,
         ), patch.object(
@@ -133,7 +135,7 @@ class TestEncodeNotifyPreview(unittest.TestCase):
             'imencode',
             lambda *_a, **_k: (True, np.array([1, 2, 3], dtype=np.uint8)),
         ), patch.object(
-            notify_preview_encode_mod.time,
+            record_hires_crop_mod.time,
             'sleep',
             lambda _d: None,
         ):

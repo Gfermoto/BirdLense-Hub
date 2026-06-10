@@ -36,6 +36,23 @@ def test_pick_bbox_and_timestamp_uses_key_frame_bbox():
     assert ts == 2.5
 
 
+def test_remap_bbox_detect_overlay_to_main_playback_shape():
+    from record_hires_crop import remap_bbox_for_record_crop
+
+    bbox = [0.3, 0.35, 0.55, 0.65]
+    det = {"frames": [{"t": 1.0, "bbox": bbox}]}
+    mapped = remap_bbox_for_record_crop(
+        bbox,
+        det,
+        crop_shape_hw=(1520, 2688),
+        runtime_cfg={"processor.inference_lores_wh": [704, 576]},
+    )
+    assert mapped is not None
+    assert mapped != bbox
+    assert mapped[2] > mapped[0]
+    assert mapped[3] > mapped[1]
+
+
 def test_resolve_enrichment_crop_falls_back_to_lores():
     lores = np.zeros((32, 32, 3), dtype=np.uint8)
     det = track_as_detection(

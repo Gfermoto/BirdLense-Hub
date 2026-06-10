@@ -1,7 +1,6 @@
 """Превью для Telegram/API: кадр из файла ролика или best_frame."""
 
 import logging
-import time
 
 import cv2
 
@@ -119,79 +118,38 @@ def encode_notify_preview_base64(
                 bbox = bb
             t = _apply_offset_to_t(float(best_kf.get("t") or t))
 
-        def _read_frame_with_retries(ts: float):
-            retry_delays = (0.2, 0.5)
-            max_attempts = 1 + len(retry_delays)
-            for attempt in range(max_attempts):
-                if attempt > 0:
-                    time.sleep(retry_delays[attempt - 1])
-                cap = cv2.VideoCapture(video_file_path)
-                try:
-                    if not cap.isOpened():
-                        frame = None
-                    else:
-                        fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
-                        if fps > 0.01:
-                            n = max(0, int(ts * fps))
-                            cap.set(cv2.CAP_PROP_POS_FRAMES, n)
-                        else:
-                            cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, ts * 1000.0))
-                        ok_local, frame = cap.read()
-                        if not ok_local:
-                            frame = None
-                        if frame is None and ts > 0:
-                            cap.set(cv2.CAP_PROP_POS_MSEC, 0.0)
-                            ok_local, frame = cap.read()
-                            if not ok_local:
-                                frame = None
-                    if frame is not None:
-                        return frame
-                finally:
-                    cap.release()
-            return None
-
-        def _crop_has_signal(crop: np.ndarray) -> bool:
-            if crop is None or crop.size == 0:
-                return False
-            try:
-                gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY) if crop.ndim == 3 else crop
-                return float(gray.std()) >= 8.0
-            except Exception:
-                return True
-
         def _encode_from_video() -> tuple[str | None, str]:
             if not video_file_path:
                 return None, "none"
             try:
-                frame = _read_frame_with_retries(t)
-                if frame is None:
-                    return None, "none"
-                h, w = frame.shape[:2]
-                if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
-                    pad = _crop_pad_frac()
-                    bw = float(bbox[2]) - float(bbox[0])
-                    bh = float(bbox[3]) - float(bbox[1])
-                    x1n = max(0.0, float(bbox[0]) - bw * pad)
-                    y1n = max(0.0, float(bbox[1]) - bh * pad)
-                    x2n = min(1.0, float(bbox[2]) + bw * pad)
-                    y2n = min(1.0, float(bbox[3]) + bh * pad)
-                    x1 = max(0, min(w - 1, int(x1n * w)))
-                    y1 = max(0, min(h - 1, int(y1n * h)))
-                    x2 = max(x1 + 1, min(w, int(x2n * w)))
-                    y2 = max(y1 + 1, min(h, int(y2n * h)))
-                    crop = frame[y1:y2, x1:x2]
-                    if crop.size > 0 and _crop_has_signal(crop):
-                        params = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
-                        ok, buf = cv2.imencode(".jpg", crop, params)
-                        if ok and buf is not None:
-                            b64 = base64.b64encode(buf.tobytes()).decode("ascii")
-                            return b64, "record_hires" if pad > 0 else "bbox_crop"
+                from record_hires_crop import read_record_hires_crop
 
-                params = [int(cv2.IMWRITE_JPEG_QUALITY), 88]
-                ok, buf = cv2.imencode(".jpg", frame, params)
-                if ok and buf is not None:
-                    b64 = base64.b64encode(buf.tobytes()).decode("ascii")
-                    return b64, "full_frame"
+                det_row = dict(detection)
+                if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
+                    det_row.setdefault("frames", [{"t": t, "bbox": list(bbox)}])
+                crop = read_record_hires_crop(
+                    video_file_path,
+                    det_row,
+                    pad_frac=_crop_pad_frac(),
+                    runtime_cfg=runtime_cfg,
+                )
+                if crop is not None and crop.size > 0:
+                    params = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
+                    ok, buf = cv2.imencode(".jpg", crop, params)
+                    if ok and buf is not None:
+                        b64 = base64.b64encode(buf.tobytes()).decode("ascii")
+                        if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
+                            return b64, "record_hires" if _crop_pad_frac() > 0 else "bbox_crop"
+                        return b64, "full_frame"
+                cam = str(detection.get("camera_id") or detection.get("triggered_camera") or "").strip()
+                logger.warning(
+                    "notify_preview: record_hires empty path=%s t=%.3f camera=%s mode=%s synced=%s",
+                    video_file_path,
+                    t,
+                    cam or "?",
+                    _preview_mode(),
+                    bool(detection.get("playback_timeline_synced")),
+                )
                 return None, "none"
             except Exception as e:
                 logging.warning("Encode video crop for notify failed: %s", e)
