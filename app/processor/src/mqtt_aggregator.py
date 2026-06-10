@@ -622,12 +622,23 @@ class MQTTEventAggregator:
     def _enqueue_publish(self, topic: str, payload: str | bytes, qos: int = 0, retain: bool = False) -> None:
         if self._stopped:
             return
+        item = (topic, payload, qos, retain)
         try:
-            self._publish_queue.put_nowait((topic, payload, qos, retain))
+            self._publish_queue.put_nowait(item)
             set_gauge("mqtt_outbound_queue_depth", self._publish_queue.qsize())
         except queue.Full:
-            inc_counter("mqtt_outbound_drops_total")
-            logger.warning("MQTT outbound queue full; dropping publish to %s", topic)
+            # W1 hygiene (#644): drop oldest publish to make room for fresher state.
+            try:
+                self._publish_queue.get_nowait()
+                inc_counter("mqtt_outbound_drops_total")
+            except queue.Empty:
+                pass
+            try:
+                self._publish_queue.put_nowait(item)
+                set_gauge("mqtt_outbound_queue_depth", self._publish_queue.qsize())
+            except queue.Full:
+                inc_counter("mqtt_outbound_drops_total")
+                logger.warning("MQTT outbound queue full; dropping publish to %s", topic)
 
     def _drain_publish_queue(self, max_items: int = 500) -> None:
         """Flush queued outbound messages (only from the MQTT loop thread)."""

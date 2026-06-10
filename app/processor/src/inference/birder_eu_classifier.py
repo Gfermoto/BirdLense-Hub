@@ -65,6 +65,7 @@ class BirderEuClassifier:
         unknown_label: str = UNKNOWN_BIRD_LABEL,
         device: str | None = None,
         regional_species: list[str] | None = None,
+        app_config: Mapping[str, Any] | None = None,
     ) -> None:
         self.weights_dir = Path(weights_dir)
         self.variant = str(variant).strip()
@@ -73,6 +74,7 @@ class BirderEuClassifier:
         self.unknown_label = str(unknown_label or UNKNOWN_BIRD_LABEL).strip() or UNKNOWN_BIRD_LABEL
         self.device = (device or "CPU").strip() or "CPU"
         self.regional_species = regional_species
+        self._app_config = app_config
         self._manifest = _load_manifest(self.weights_dir)
         self.id2label = _load_id2label(self.weights_dir)
         if not self.id2label:
@@ -134,8 +136,18 @@ class BirderEuClassifier:
         ov_dev = resolve_efficientnet_openvino_device(self.device)
         core = ov.Core()
         self._ov_model = core.read_model(str(xml))
+        compile_cfg: dict[str, str] = {}
         try:
-            self._ov_compiled = core.compile_model(self._ov_model, ov_dev)
+            from inference.openvino_ultralytics_tuning import build_openvino_compile_config
+            from processor_runtime_profile import resolve_openvino_tuning
+
+            cfg_src = self._app_config if self._app_config is not None else {}
+            tuning = resolve_openvino_tuning(cfg_src)
+            compile_cfg = build_openvino_compile_config(tuning)
+        except ImportError:
+            compile_cfg = {"PERFORMANCE_HINT": "LATENCY", "NUM_STREAMS": "1"}
+        try:
+            self._ov_compiled = core.compile_model(self._ov_model, ov_dev, compile_cfg)
         except Exception as exc:
             if str(ov_dev).upper() == "CPU":
                 raise
@@ -144,7 +156,7 @@ class BirderEuClassifier:
                 ov_dev,
                 exc,
             )
-            self._ov_compiled = core.compile_model(self._ov_model, "CPU")
+            self._ov_compiled = core.compile_model(self._ov_model, "CPU", compile_cfg)
 
     def _build_regional_filter(self) -> None:
         if not self.regional_species:
@@ -290,4 +302,5 @@ def load_birder_eu_classifier(
         unknown_label=unknown,
         device=device,
         regional_species=regional_species,
+        app_config=app_config,
     )

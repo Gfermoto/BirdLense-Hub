@@ -329,6 +329,29 @@ def _regional_class_ids(
     ]
 
 
+def _openvino_track_profile_overrides(
+    runtime_cfg: Mapping[str, Any],
+    *,
+    for_track_regen: bool,
+    profile_overrides: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Live detect: latency (config default). Regen worker: throughput (#644)."""
+    merged = dict(profile_overrides or {})
+    if not for_track_regen:
+        return merged
+    merged.setdefault("openvino_profile", "throughput")
+    if "openvino_num_requests" not in merged:
+        nr = runtime_cfg.get("processor.openvino.regen.num_requests")
+        if nr is None:
+            nr = runtime_cfg.get("processor.openvino.num_requests")
+        if nr is not None:
+            try:
+                merged["openvino_num_requests"] = max(1, int(nr))
+            except (TypeError, ValueError):
+                pass
+    return merged
+
+
 def _track_maybe_retry(
     model,
     frame: np.ndarray,
@@ -700,6 +723,14 @@ class TwoStageStrategy(DetectionStrategy):
             binary_model_path,
             backend=self.inference_backend,
         )
+        if self.inference_backend == "openvino":
+            from inference.openvino_ultralytics_tuning import apply_openvino_ultralytics_tuning
+
+            apply_openvino_ultralytics_tuning(
+                self.binary_model,
+                device=_dev or None,
+                app_config=app_config,
+            )
 
         _cls_backends = ("torch", "openvino", "onnxruntime")
         if self.classifier_inference_backend not in _cls_backends:
@@ -716,6 +747,7 @@ class TwoStageStrategy(DetectionStrategy):
             self.classifier_model = load_birder_eu_classifier(
                 classifier_model_path,
                 backend=self.classifier_inference_backend,
+                device=_cls_dev or None,
                 regional_species=self.regional_species,
                 app_config=app_config,
             )
@@ -726,6 +758,7 @@ class TwoStageStrategy(DetectionStrategy):
             self.classifier_model = load_efficientnet_b2_classifier(
                 classifier_model_path,
                 backend=self.classifier_inference_backend,
+                device=_cls_dev or None,
                 regional_species=self.regional_species,
                 app_config=app_config,
             )
@@ -763,7 +796,13 @@ class TwoStageStrategy(DetectionStrategy):
         self._classification_task_queue: deque[ClassificationTask] = deque()
         self._classification_task_drops_total = 0
         self._latest_cls_by_track: dict[int, ClassifierOutput] = {}
-        self._classifier_async_enabled = bool(app_config.get("processor.classifier_async_enabled", True))
+        from inference.openvino_ultralytics_tuning import classifier_async_safe_on_openvino_igpu
+
+        self._classifier_async_enabled = classifier_async_safe_on_openvino_igpu(
+            app_config,
+            classifier_backend=self.classifier_inference_backend,
+            classifier_device=_cls_dev or None,
+        )
         self._classifier_async_lock = threading.Lock()
         self._classifier_worker_stop = threading.Event()
         self._classifier_worker: threading.Thread | None = None
@@ -1185,6 +1224,16 @@ class TwoStageStrategy(DetectionStrategy):
         _bdev = getattr(self, "_binary_track_device", None)
         if _bdev:
             _tkw["device"] = _bdev
+        if inference_backend == "openvino":
+            from inference.openvino_ultralytics_tuning import ensure_openvino_track_tuning
+
+            ensure_openvino_track_tuning(
+                self.binary_model,
+                runtime_cfg,
+                inference_backend=inference_backend,
+                device=_bdev,
+                profile_overrides=profile_overrides,
+            )
         results = (
             self.binary_model.track(frame, **_tkw)
             if track_regen_ctx and iou_fb
