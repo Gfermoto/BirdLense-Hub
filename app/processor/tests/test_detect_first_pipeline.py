@@ -75,6 +75,13 @@ class TestFrameProcessorAnchorApi(unittest.TestCase):
 class TestRawHitsDetectFirstAnchor(unittest.TestCase):
     def test_build_raw_hits_anchor_from_strategy_candidate(self):
         class _Strategy:
+            _detector_frame_shape = (640, 640)
+            _overlay_frame_shape = (576, 704)
+            _playback_frame_shape_hw = (1080, 1920)
+
+            def _playback_shape_for_storage(self):
+                return self._playback_frame_shape_hw
+
             def get_best_raw_bird_candidate(self):
                 return {
                     "track_id": 3,
@@ -100,6 +107,34 @@ class TestRawHitsDetectFirstAnchor(unittest.TestCase):
         self.assertIsNotNone(anchor)
         self.assertEqual(anchor["track_id"], 3)
         self.assertTrue(anchor.get("detect_first_raw_hits_anchor"))
+        self.assertNotEqual(anchor["bbox"], [0.2, 0.3, 0.4, 0.5])
+        self.assertEqual(anchor["frames"][0]["bbox"], anchor["bbox"])
+        self.assertTrue(all(0.0 <= v <= 1.0 for v in anchor["bbox"]))
+
+    def test_raw_hits_anchor_rejected_when_playback_remap_unavailable(self):
+        class _Strategy:
+            def get_best_raw_bird_candidate(self):
+                return {
+                    "track_id": 1,
+                    "bbox": [0.2, 0.3, 0.4, 0.5],
+                    "confidence": 0.15,
+                    "detector_label": "Bird",
+                }
+
+        fp = FrameProcessor.__new__(FrameProcessor)
+        fp.tracks = {}
+        fp.strategy = _Strategy()
+        cfg = MagicMock()
+        cfg.get.side_effect = _cfg_get
+
+        anchor = build_raw_hits_detect_first_anchor(
+            frame_processor=fp,
+            app_config=cfg,
+            cam_overrides={},
+            hits=2,
+            camera_id="Forest",
+        )
+        self.assertIsNone(anchor)
 
 
 class TestBootstrapDetectFirst(unittest.TestCase):

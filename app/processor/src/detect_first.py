@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from runtime_contract import apply_runtime_contract
 from app_config.visit_eligibility import visit_eligible_for_named_species
@@ -368,6 +368,37 @@ def _detect_first_gate_min_confidence(
     return min(bird_floor, process_floor)
 
 
+def _raw_anchor_bbox_playback_space(
+    frame_processor,
+    bbox_norm: Sequence[float],
+) -> list[float] | None:
+    """Map raw lores/letterbox bbox to playback (main) norm coords for anchor persist/crop."""
+    strategy = getattr(frame_processor, "strategy", None)
+    if strategy is None:
+        return None
+    from detection_strategy import _storage_bbox_norm_for_overlay
+
+    detector_shape = getattr(strategy, "_detector_frame_shape", None)
+    overlay_shape = getattr(strategy, "_overlay_frame_shape", None)
+    playback_fn = getattr(strategy, "_playback_shape_for_storage", None)
+    playback_shape = playback_fn() if callable(playback_fn) else None
+    if detector_shape is None or overlay_shape is None:
+        return None
+    try:
+        storage_bbox = _storage_bbox_norm_for_overlay(
+            bbox_norm,
+            detector_frame_shape=detector_shape,
+            overlay_frame_shape=overlay_shape,
+            playback_frame_shape=playback_shape,
+        )
+    except Exception:
+        logger.debug("raw-hits anchor bbox remap failed", exc_info=True)
+        return None
+    if not is_valid_norm_bbox(storage_bbox):
+        return None
+    return [float(v) for v in storage_bbox[:4]]
+
+
 def build_raw_hits_detect_first_anchor(
     *,
     frame_processor,
@@ -398,7 +429,15 @@ def build_raw_hits_detect_first_anchor(
         return None
     if float(candidate.get("confidence") or 0.0) < gate_min_conf:
         return None
-    if not is_valid_norm_bbox(candidate.get("bbox")):
+    raw_bbox = [float(v) for v in candidate["bbox"][:4]]
+    if not is_valid_norm_bbox(raw_bbox):
+        return None
+    bbox = _raw_anchor_bbox_playback_space(frame_processor, raw_bbox)
+    if bbox is None:
+        logger.info(
+            "detect_first: raw-hits anchor rejected camera=%s (bbox remap to playback failed)",
+            camera_id or "?",
+        )
         return None
     logger.info(
         "detect_first: raw-hits anchor camera=%s conf=%.3f hits=%s (ByteTrack/acceptance missed)",
@@ -406,7 +445,6 @@ def build_raw_hits_detect_first_anchor(
         float(candidate.get("confidence") or 0.0),
         hits,
     )
-    bbox = [float(v) for v in candidate["bbox"][:4]]
     return {
         "track_id": candidate.get("track_id") or 1,
         "bbox": bbox,
