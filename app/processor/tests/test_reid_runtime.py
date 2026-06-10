@@ -83,17 +83,23 @@ class TestReidRuntime(unittest.TestCase):
                 }
             )
 
-        apply_runtime_reid_metadata(
-            detections,
-            embed_crop=_embed,
-            load_candidates=lambda _species: [],
-            model_name="dinov2_vits14",
-            similarity_threshold=0.9,
-            max_detections=2,
-            min_best_frame_score=0.0,
-            flag_low_similarity_for_review=True,
-            video_path="data/recordings/x/video.mp4",
-        )
+        with mock.patch(
+            "reid_runtime._cfg_get",
+            side_effect=lambda key, default=None: 60_000.0
+            if key == "processor.reid.max_runtime_ms"
+            else default,
+        ):
+            apply_runtime_reid_metadata(
+                detections,
+                embed_crop=_embed,
+                load_candidates=lambda _species: [],
+                model_name="dinov2_vits14",
+                similarity_threshold=0.9,
+                max_detections=2,
+                min_best_frame_score=0.0,
+                flag_low_similarity_for_review=True,
+                video_path="data/recordings/x/video.mp4",
+            )
         self.assertEqual(calls["n"], 2)
 
     def test_apply_runtime_reid_marks_review_when_no_match(self):

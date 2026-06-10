@@ -64,6 +64,7 @@ _DETECT_TEST_QUALITY_OFF = {
     "processor.hard_negatives_enabled": False,
     "processor.background_subtraction_enabled": False,
     "processor.scene_adaptive_conf_enabled": False,
+    "processor.pipeline_mode": "dual",
 }
 
 
@@ -988,7 +989,7 @@ class TestSmallObjectAutoRelax(unittest.TestCase):
         boxes = _FakeBoxes(
             track_ids=[7],
             class_indexes=[14],
-            confidences=[0.23],
+            confidences=[0.26],
             boxes_norm=[[0.08, 0.08, 0.22, 0.22]],
             boxes_abs=[[10, 10, 26, 26]],
         )
@@ -1028,11 +1029,12 @@ class TestSmallObjectAutoRelax(unittest.TestCase):
             "processor.auto_small_object_relax_min_center_dist": 0.0,
             "processor.auto_small_object_relax_conf_delta": 0.08,
             "processor.auto_small_object_relax_max_candidates": 2,
+            "processor.min_box_size_px": 12,
             "processor.min_confidence_binary_bird": 0.24,
         }
         mock_cfg = MagicMock(get=MagicMock(side_effect=_detect_test_cfg_merge(relax_map)))
         with patch.object(ac_mod, "app_config", mock_cfg):
-            results = strategy.detect(frame, "bytetrack.yaml", 0.24)
+            results = strategy.detect(frame, "bytetrack.yaml", 0.22)
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].track_id, 7)

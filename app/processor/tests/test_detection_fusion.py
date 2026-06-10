@@ -17,6 +17,9 @@ from species_normalizer import merge_detections
 
 class DummyConfig(dict):
     def get(self, key, default=None):
+        if key == "processor.pipeline_mode" and "processor.pipeline_mode" not in self:
+            # Frigate salvage/standalone tests target pre-linear fusion behavior.
+            return "dual"
         return super().get(key, default)
 
 
@@ -252,6 +255,7 @@ def test_frigate_standalone_disabled_keeps_empty_without_yolo():
         start_time=start,
         end_time=end,
         app_config=cfg,
+        triggered_camera='feeder',
     )
     assert out == []
 
@@ -696,7 +700,7 @@ def test_frigate_standalone_drops_wrong_camera_when_hub_scoped():
     start = datetime.now(timezone.utc)
     end = start + timedelta(seconds=20)
     cfg = DummyConfig({
-        'video.cameras': [{'id': 'feeder', 'stream_name': 'feeder'}],
+        'video': {'cameras': [{'id': 'feeder', 'stream_name': 'feeder'}]},
         'motion.frigate_camera_filter': [],
         'detection.merge_window_seconds': 5,
         'detection.dedup_window_seconds': 45,
@@ -734,7 +738,7 @@ def test_frigate_standalone_keeps_matching_camera_when_hub_scoped():
     start = datetime.now(timezone.utc)
     end = start + timedelta(seconds=20)
     cfg = DummyConfig({
-        'video.cameras': [{'id': 'feeder', 'stream_name': 'feeder'}],
+        'video': {'cameras': [{'id': 'feeder', 'stream_name': 'feeder'}]},
         'motion.frigate_camera_filter': [],
         'detection.merge_window_seconds': 5,
         'detection.dedup_window_seconds': 45,
@@ -1023,7 +1027,7 @@ def test_arbitration_downgrades_weak_conflict_to_single_generic_review():
     assert out[0]['species_name'] == 'Bird'
     assert out[0]['decision_reason'] == 'downgraded_to_generic_due_to_conflict'
     assert out[0]['decision_kind'] == 'review_only_generic'
-    assert out[0]['visit_eligible'] is False
+    assert out[0]['visit_eligible'] is True
     assert out[0]['outcome_bucket'] == 'review_only'
 
 

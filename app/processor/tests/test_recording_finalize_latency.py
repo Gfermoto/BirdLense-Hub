@@ -7,9 +7,11 @@ src_path = os.path.abspath(os.path.join(current_dir, "../src"))
 sys.path.insert(0, src_path)
 
 from recording_finalize import (  # noqa: E402
-    _first_bbox_and_track_latency_seconds,
     _latency_budget_breaches,
     _resolve_session_latencies,
+)
+from recording_finalize_parts.metrics import (  # noqa: E402
+    _first_bbox_and_track_latency_seconds,
 )
 
 

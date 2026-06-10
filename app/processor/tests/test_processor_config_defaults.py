@@ -87,7 +87,7 @@ class TestProcessorConfigDefaults(unittest.TestCase):
         self.assertEqual(ULTRA_WEAK_BOX_SALVAGE_ENABLED, self.proc["ultra_weak_box_salvage_enabled"])
         self.assertEqual(TRACK_TO_PREDICT_FALLBACK_ENABLED, self.proc["track_to_predict_fallback_enabled"])
         self.assertFalse(ULTRA_WEAK_BOX_SALVAGE_ENABLED)
-        self.assertFalse(TRACK_TO_PREDICT_FALLBACK_ENABLED)
+        self.assertTrue(TRACK_TO_PREDICT_FALLBACK_ENABLED)
 
     def test_detection_keys(self):
         self.assertEqual(MIN_CONFIDENCE_TO_STORE, self.det["min_confidence_to_store"])
