@@ -32,9 +32,12 @@ import { ProcessorDetectFirstBlock } from './processor/ProcessorDetectFirstBlock
 import { ProcessorCameraProfilesBlock } from './processor/ProcessorCameraProfilesBlock';
 import { ProcessorRolePresetsBlock } from './processor/ProcessorRolePresetsBlock';
 
+import type { SettingsTier } from '../settingsTier';
+import { showAdvancedProcessorBlocks } from '../settingsTier';
+
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
-  simpleMode?: boolean;
+  settingsTier?: SettingsTier;
 };
 
 function SectionHeading({
@@ -63,7 +66,8 @@ function SectionHeading({
   );
 }
 
-export function ProcessorSection({ form, simpleMode = true }: Props) {
+export function ProcessorSection({ form, settingsTier = 'basic' }: Props) {
+  const advanced = showAdvancedProcessorBlocks(settingsTier);
   const { t } = useTranslation();
   const location = useLocation();
   const expandProcessor =
@@ -106,7 +110,7 @@ export function ProcessorSection({ form, simpleMode = true }: Props) {
             кормушка». Здесь — логика обработки после старта сессии.
           </Alert>
           <ProcessorSessionTimingBlock form={form} />
-          {!simpleMode ? <ProcessorFrigateFusionBlock form={form} /> : null}
+          {advanced ? <ProcessorFrigateFusionBlock form={form} /> : null}
           <ProcessorLightGateBlock form={form} />
           <ProcessorAdaptiveProfilesBlock form={form} />
 
@@ -115,11 +119,15 @@ export function ProcessorSection({ form, simpleMode = true }: Props) {
           <SectionHeading>2. Детектор</SectionHeading>
           <ProcessorDetectFirstBlock form={form} />
           <ProcessorDetectorPipelineBlock form={form} />
-          <ProcessorStreamGeometryBlock form={form} />
-          <ProcessorCameraProfilesBlock form={form} />
-          <ProcessorRolePresetsBlock form={form} />
-          <ProcessorTrackRegenBlock form={form} />
-          {!simpleMode ? (
+          {advanced ? (
+            <>
+              <ProcessorStreamGeometryBlock form={form} />
+              <ProcessorCameraProfilesBlock form={form} />
+              <ProcessorRolePresetsBlock form={form} />
+              <ProcessorTrackRegenBlock form={form} />
+            </>
+          ) : null}
+          {advanced ? (
             <>
               <ProcessorModelsScopeBlock form={form} />
               <ProcessorOpenVinoBlock form={form} />
@@ -132,22 +140,25 @@ export function ProcessorSection({ form, simpleMode = true }: Props) {
           <SectionHeading>3. Классификатор и ReID</SectionHeading>
           <ProcessorConfidenceBlock form={form} />
           <ProcessorMultiCameraBirdnetBlock form={form} />
-          <ProcessorBirdnetExtendedBlock form={form} />
-          {!simpleMode ? (
+          {advanced ? <ProcessorBirdnetExtendedBlock form={form} /> : null}
+          {advanced ? (
             <>
               <ProcessorConfidenceAdvancedBlock form={form} />
               <ProcessorFalsePositiveGuardrailsBlock form={form} />
             </>
           ) : null}
 
-          <Divider sx={{ my: 2 }} />
+          {advanced ? (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <SectionHeading>4. Поведение</SectionHeading>
+              <Box id="processor-behavior">
+                <ProcessorBehaviorRecognitionBlock form={form} />
+              </Box>
+            </>
+          ) : null}
 
-          <SectionHeading>4. Поведение</SectionHeading>
-          <Box id="processor-behavior">
-            <ProcessorBehaviorRecognitionBlock form={form} />
-          </Box>
-
-          {!simpleMode ? (
+          {advanced ? (
             <>
               <Divider sx={{ my: 2 }} />
               <SectionHeading>{t('settings.processorSectionHeadingData')}</SectionHeading>
@@ -155,7 +166,7 @@ export function ProcessorSection({ form, simpleMode = true }: Props) {
             </>
           ) : null}
 
-          {!simpleMode ? (
+          {advanced ? (
             <>
               <Divider sx={{ my: 2 }} />
               <SectionHeading>{t('settings.processorSectionHeadingQuality')}</SectionHeading>

@@ -17,6 +17,11 @@ import { Settings as SettingsType } from '../../types';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { PageModeToggle, type PageMode } from '../../components/PageModeToggle';
+import {
+  loadSettingsTier,
+  saveSettingsTier,
+  type SettingsTier,
+} from './settingsTier';
 import { PageHeader } from '../../components/PageHeader';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -30,7 +35,11 @@ export const Settings: React.FC = () => {
   const [deprecatedKeysAlert, setDeprecatedKeysAlert] = useState<string[] | null>(
     null,
   );
-  const [mode, setMode] = useState<PageMode>('simple');
+  const [mode, setMode] = useState<PageMode>(() => loadSettingsTier());
+  const handleModeChange = (next: PageMode) => {
+    setMode(next);
+    saveSettingsTier(next as SettingsTier);
+  };
   const [restartMessage, setRestartMessage] = useState<{
     type: 'success' | 'error';
     textKey: string;
@@ -120,9 +129,11 @@ export const Settings: React.FC = () => {
             actions={
               <PageModeToggle
                 value={mode}
-                onChange={setMode}
+                onChange={handleModeChange}
+                showExpert
                 simpleLabel={t('settings.modeOverview')}
                 advancedLabel={t('settings.modeWorkspace')}
+                expertLabel={t('settings.modeExpert')}
                 ariaLabel={t('settings.modeAria')}
               />
             }
@@ -161,7 +172,7 @@ export const Settings: React.FC = () => {
             onSubmit={updateMutation.mutate}
             yamlSafeExportEnabled={canEdit}
             yamlAdminBackupEnabled={isAdmin}
-            simpleMode={mode === 'simple'}
+            settingsTier={mode}
           />
           <Snackbar
             open={showSuccessAlert}

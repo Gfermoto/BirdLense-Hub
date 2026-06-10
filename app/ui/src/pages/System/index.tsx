@@ -37,7 +37,7 @@ export const System: React.FC = () => {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.system'));
   const location = useLocation();
-  const [mode, setMode] = useState<PageMode>('simple');
+  const [mode, setMode] = useState<PageMode>('basic');
   const isAdvanced = mode === 'advanced';
 
   React.useEffect(() => {

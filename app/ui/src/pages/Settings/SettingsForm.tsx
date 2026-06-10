@@ -10,6 +10,12 @@ import { CaptureFeederSection } from './sections/CaptureFeederSection';
 import { NotificationsSection } from './sections/NotificationsSection';
 import { IntegrationsSection } from './sections/IntegrationsSection';
 import { ProcessorSection } from './sections/ProcessorSection';
+import type { SettingsTier } from './settingsTier';
+import {
+  isBasicTier,
+  showAdvancedProcessorBlocks,
+  showExpertTools,
+} from './settingsTier';
 
 /** Настройки: секции по смыслу (подключения → захват/кормушка → уведомления → интеграции → процессор). */
 export const SettingsForm = ({
@@ -18,14 +24,14 @@ export const SettingsForm = ({
   onSubmit,
   yamlSafeExportEnabled = false,
   yamlAdminBackupEnabled = false,
-  simpleMode = true,
+  settingsTier = 'basic',
 }: {
   currentSettings: Settings;
   observedSpecies: Array<{ id: number; name: string; count: number }>;
   onSubmit: (settings: Settings) => void;
   yamlSafeExportEnabled?: boolean;
   yamlAdminBackupEnabled?: boolean;
-  simpleMode?: boolean;
+  settingsTier?: SettingsTier;
 }) => {
   const { t } = useTranslation();
   const form = useForm<Settings>({
@@ -45,15 +51,19 @@ export const SettingsForm = ({
       }}
     >
       <Box id="settings-general">
-        {simpleMode ? (
+        {isBasicTier(settingsTier) ? (
           <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
             {t('settings.simpleModeHint')}
           </Alert>
         ) : null}
         <GeneralSection
           form={form}
-          yamlSafeExportEnabled={yamlSafeExportEnabled}
-          yamlAdminBackupEnabled={yamlAdminBackupEnabled}
+          yamlSafeExportEnabled={
+            yamlSafeExportEnabled && showAdvancedProcessorBlocks(settingsTier)
+          }
+          yamlAdminBackupEnabled={
+            yamlAdminBackupEnabled && showExpertTools(settingsTier)
+          }
         />
       </Box>
       <Box id="settings-connections">
@@ -66,10 +76,13 @@ export const SettingsForm = ({
         <NotificationsSection form={form} observedSpecies={observedSpecies} />
       </Box>
       <Box id="settings-integrations">
-        <IntegrationsSection form={form} simpleMode={simpleMode} />
+        <IntegrationsSection
+          form={form}
+          settingsTier={settingsTier}
+        />
       </Box>
       <Box id="settings-recognition">
-        <ProcessorSection form={form} simpleMode={simpleMode} />
+        <ProcessorSection form={form} settingsTier={settingsTier} />
       </Box>
 
       <Button variant="contained" fullWidth type="submit" sx={{ mt: 4 }}>
