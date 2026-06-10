@@ -46,6 +46,22 @@ if os.path.isdir(_processor_src) and _processor_src not in sys.path:
     sys.path.insert(0, _processor_src)
 
 
+def get_or_create_species(name: str, **fields):
+    """Reuse allowlist-seeded Species rows (startup materialize) to avoid UNIQUE(name)."""
+    from models import Species, db
+
+    sp = Species.query.filter_by(name=name).first()
+    if sp is not None:
+        for key, value in fields.items():
+            if value is not None:
+                setattr(sp, key, value)
+        return sp
+    sp = Species(name=name, **fields)
+    db.session.add(sp)
+    db.session.flush()
+    return sp
+
+
 @pytest.fixture
 def app():
     """Create Flask app. Run: cd app && pytest web/tests, or in Docker: pytest tests/."""

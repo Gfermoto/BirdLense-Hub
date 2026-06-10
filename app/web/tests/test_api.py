@@ -329,9 +329,9 @@ class TestTrackRegenFallback:
                 },
             )
             try:
-                sp = Species(name="Eurasian Jay")
-                db.session.add(sp)
-                db.session.flush()
+                from tests.conftest import get_or_create_species
+
+                sp = get_or_create_species("Eurasian Jay")
                 video = Video(
                     processor_version="test",
                     start_time=datetime(2026, 3, 25, 8, 0, 0),
@@ -2274,7 +2274,9 @@ class TestStoragePurge:
 
         try:
             with app.app_context():
-                species = Species(name="Eurasian Jay")
+                from tests.conftest import get_or_create_species
+
+                species = get_or_create_species("Eurasian Jay")
                 visit = SpeciesVisit(
                     species=species,
                     start_time=datetime(2026, 3, 26, 3, 13, 9),
@@ -2296,7 +2298,7 @@ class TestStoragePurge:
                     confidence=0.91,
                     source="video",
                 )
-                db.session.add_all([species, visit, video, detection])
+                db.session.add_all([visit, video, detection])
                 db.session.commit()
 
             response = client.post("/api/ui/storage/purge", json={"date": "2026-03-26"})
@@ -3535,7 +3537,7 @@ class TestSpeciesSummaryReadOnly:
 
     def test_summary_hourly_activity_uses_observer_local_hour(self, app, client):
         from app_config.app_config import app_config
-        from models import Species, SpeciesVisit, db
+        from models import Species, SpeciesVisit, Video, VideoSpecies, db
         from observer_time import observer_local_hour
 
         unique = f"API Summary Time Owl {id(app)}"
@@ -3549,12 +3551,29 @@ class TestSpeciesSummaryReadOnly:
             sp = Species(name=unique, metadata_status="ok")
             db.session.add(sp)
             db.session.flush()
+            visit = SpeciesVisit(
+                species_id=sp.id,
+                start_time=visit_start,
+                end_time=visit_end,
+                max_simultaneous=4,
+            )
+            video = Video(
+                processor_version="test",
+                start_time=visit_start,
+                end_time=visit_end,
+                video_path="/tmp/summary-hourly-test.mp4",
+            )
+            db.session.add_all([visit, video])
+            db.session.flush()
             db.session.add(
-                SpeciesVisit(
+                VideoSpecies(
+                    video_id=video.id,
                     species_id=sp.id,
-                    start_time=visit_start,
-                    end_time=visit_end,
-                    max_simultaneous=4,
+                    species_visit_id=visit.id,
+                    start_time=0.0,
+                    end_time=10.0,
+                    confidence=0.9,
+                    source="video",
                 ),
             )
             db.session.commit()

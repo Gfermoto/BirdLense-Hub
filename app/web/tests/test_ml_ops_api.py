@@ -114,13 +114,13 @@ def test_dataset_streams_summary_endpoint(client):
     assert "private_backup_only" in job_index["reid"]["operations"]
 
 
-def test_classifier_calibration_report_endpoint(app, client):
+def test_classifier_calibration_report_endpoint(app, client, tmp_path):
     import sqlite3
     from app_config.app_config import app_config
 
     with app.app_context():
         prev_data_dir = app_config.get("directories.data")
-        test_data_dir = app.instance_path
+        test_data_dir = str(tmp_path / "calibration-data")
         app_config.set("directories.data", test_data_dir)
         db_dir = Path(test_data_dir) / "db"
         db_dir.mkdir(parents=True, exist_ok=True)
@@ -128,7 +128,9 @@ def test_classifier_calibration_report_endpoint(app, client):
         conn = sqlite3.connect(str(db_path))
         conn.executescript(
             """
-            CREATE TABLE IF NOT EXISTS video_species (
+            DROP TABLE IF EXISTS video_species;
+            DROP TABLE IF EXISTS activity_log;
+            CREATE TABLE video_species (
                 id INTEGER PRIMARY KEY,
                 video_id INTEGER,
                 track_id INTEGER,
@@ -139,7 +141,7 @@ def test_classifier_calibration_report_endpoint(app, client):
                 classifier_needs_review INTEGER,
                 review_reason TEXT
             );
-            CREATE TABLE IF NOT EXISTS activity_log (
+            CREATE TABLE activity_log (
                 id INTEGER PRIMARY KEY,
                 type TEXT,
                 data TEXT,
