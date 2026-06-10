@@ -276,6 +276,23 @@ def maybe_predict_video_behavior_bundle(
             "shadow_model_version": str(br.get("video_model_version") or "x3d-s-shadow-v0"),
         }
 
+    try:
+        from bbox_slo import bbox_layers_allowed
+
+        if not bbox_layers_allowed(app_config):
+            return {
+                "main_label": None,
+                "main_confidence": 0.0,
+                "model_kind": "bbox_slo_gated",
+                "model_version": "behavior_skipped",
+                "shadow_label": None,
+                "shadow_confidence": 0.0,
+                "shadow_model_kind": "video_v1_shadow",
+                "shadow_model_version": str(br.get("video_model_version") or "x3d-s-shadow-v0"),
+            }
+    except ImportError:
+        pass
+
     from behavior_video_runtime import maybe_predict_video_behavior_video
 
     engine = str(br.get("engine") or "meta").strip().lower()

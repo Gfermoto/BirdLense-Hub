@@ -1292,7 +1292,9 @@ class TestHealth:
         data = r.json
         assert data["status"] == "ok"
         assert data["ready"] is True
-        assert "checked_at" in data
+        assert "bbox_slo_ok" in data
+        assert "bbox_slo_reason" in data
+        assert data["checked_at"]
         assert data["checks"]["database"]["status"] == "ok"
         assert data["checks"]["data_dir"]["status"] == "ok"
         assert data["checks"]["app_config_dir"]["status"] == "ok"

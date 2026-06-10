@@ -252,6 +252,31 @@ def _processor_heartbeat_readiness(session) -> dict[str, object]:
     }
 
 
+def _evaluate_bbox_slo_readiness(
+    session,
+    *,
+    funnel_status: str,
+    heartbeat_data: dict | None,
+) -> tuple[bool, str]:
+    """Expose bbox/crop SLO gate for ops (#642)."""
+    try:
+        import sys
+        from pathlib import Path
+
+        proc_src = Path(__file__).resolve().parents[2] / "processor" / "src"
+        if str(proc_src) not in sys.path:
+            sys.path.insert(0, str(proc_src))
+        from bbox_slo import evaluate_bbox_slo_ok
+
+        return evaluate_bbox_slo_ok(
+            app_config,
+            heartbeat_data=heartbeat_data,
+            funnel_status=funnel_status,
+        )
+    except Exception:
+        return True, "evaluate_unavailable"
+
+
 def build_readiness_payload(session) -> tuple[dict[str, object], int]:
     """Return readiness JSON and suggested HTTP status."""
     checks: dict[str, dict[str, object]] = {}
@@ -299,10 +324,15 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
     if heartbeat_data and yolo_probe in ("unknown", "ok", "degraded", "error"):
         yolo_probe = parse_yolo_status_from_heartbeat(heartbeat_data)
     checks["yolo_detector"] = _build_yolo_detector_check(heartbeat_data, yolo_probe)
-    funnel_status = str(checks["pipeline_funnel"].get("status") or "unknown")
+    funnel_status = str(funnel.get("status") or "unknown")
     yolo_ok_for_quality = str(checks["yolo_detector"].get("status") or "") == "ok"
     funnel_ok = funnel_status != "degraded"
     quality_ready = funnel_ok and yolo_ok_for_quality
+    bbox_slo_ok, bbox_slo_reason = _evaluate_bbox_slo_readiness(
+        session,
+        funnel_status=funnel_status,
+        heartbeat_data=heartbeat_data,
+    )
     if not funnel_ok or str(checks["yolo_detector"].get("status") or "") in ("error", "degraded"):
         ready = False
 
@@ -310,6 +340,8 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         "status": "ok" if ready else "degraded",
         "ready": ready,
         "quality_ready": quality_ready,
+        "bbox_slo_ok": bbox_slo_ok,
+        "bbox_slo_reason": bbox_slo_reason,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "checks": checks,
         "components": components_payload,

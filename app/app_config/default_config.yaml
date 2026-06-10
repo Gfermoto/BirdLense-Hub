@@ -433,10 +433,6 @@ processor:
   auto_small_object_relax_min_center_dist: 0.01
   auto_small_object_relax_conf_delta: 0.05
   auto_small_object_relax_max_candidates: 1
-  # Если strict + small-object relax всё ещё пусто, сохранить 1 сверхслабый bird box как последний шанс.
-  ultra_weak_box_salvage_enabled: false
-  ultra_weak_box_salvage_min_confidence: 0.20
-  ultra_weak_box_salvage_max_candidates: 1
   # Если долго нет треков подряд, временно ослабить binary confidence floor.
   # Универсальный механизм для любых камер/доменов без ручных per-camera правил.
   auto_unstick_enabled: true
@@ -490,11 +486,6 @@ processor:
       track_static_reject_min_duration_sec: 2.5
       track_static_reject_min_frames: 3
       track_static_reject_min_frames_sparse: 2
-    # Frigate co-located site: opt-in Frigate trigger review salvage on linear pipeline (#622).
-    # Assign video.cameras[].tuning_role: frigate_site — global detection.frigate_* stays false.
-    frigate_site:
-      frigate_trigger_review_salvage_enabled: true
-      frigate_trigger_review_salvage_allow_without_yolo_tracks: false
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
   # Не 0.42: на OV+detect слабые conf 0.04–0.15 — иначе только review_only salvage.
   generic_bird_min_detector_conf: 0.10
@@ -928,11 +919,7 @@ detection:
   # Если ровно один accepted_generic «Bird» от YOLO — НЕ подменять на Frigate standalone по умолчанию.
   # Иначе Frigate начинает доминировать как primary provider даже при наличии визуального YOLO-трека.
   frigate_standalone_when_no_accepted_species: false
-  # Last-resort: Frigate-триггер + пустой fusion → review-only строка (без кадров YOLO).
-  # По умолчанию выкл.: иначе Frigate MQTT (Bird Classification / sub_label) даёт вид на пустом клипе.
-  frigate_trigger_review_salvage_enabled: false
-  # true — разрешить salvage даже при 0 ByteTrack-треках (старое поведение; риск ложных видов на пустом видео).
-  frigate_trigger_review_salvage_allow_without_yolo_tracks: false
+  # Last-resort Frigate salvage keys removed (#643); use classifier hints (ADR #634).
   # Не строить standalone/review-only строки из MQTT по этим лейблам Frigate (person/human и т.д.).
   frigate_standalone_skip_labels:
     - person
@@ -955,11 +942,7 @@ detection:
   panic_gate_enabled: true
   panic_gate_min_frigate_events: 8
   panic_gate_min_duration_seconds: 20
-  # Если у YOLO есть треки, но после Decision/Fusion всё отклонено — сохранить лучший трек как review_only,
-  # чтобы не терять геометрию/overlay на длинных клипах со слабой уверенностью.
-  yolo_weak_track_salvage_enabled: false
-  yolo_weak_track_salvage_min_confidence: 0.012
-  yolo_weak_track_salvage_max_rows: 5
+  # Weak-track salvage keys removed (#643); linear pipeline uses YOLO+ByteTrack persist only.
   # После fusion: до N лучших YOLO-рядов, если fusion убрал все YOLO (legacy band-aid).
   # По умолчанию выкл. при persist_mode=binary_track_first (см. recording_finalize).
   yolo_core_anchor_enabled: false
@@ -1064,6 +1047,11 @@ readiness:
   max_fusion_drop_session_rate: 0.35
   max_fp_empty_opencv_rate: 0.35
   min_healthy_persist_rate: 0.30
+  # Bbox/crop SLO gate (#642): DINOv2 + behavior skip when red
+  bbox_slo_gate_enabled: true
+  bbox_slo_min_iou_p50: 0.45
+  bbox_slo_require_funnel_ok: true
+  bbox_slo_allow_unknown_metrics: true
 
 # Disk↔DB reconcile (Phase 1 — Frigate sync_recordings parity)
 reconcile:

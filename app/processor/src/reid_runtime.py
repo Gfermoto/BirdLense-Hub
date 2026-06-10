@@ -624,6 +624,13 @@ def enrich_runtime_reid_detections(
 ) -> list[dict]:
     if not _reid_runtime_enabled():
         return detections
+    try:
+        from bbox_slo import bbox_layers_allowed
+
+        if not bbox_layers_allowed(app_config):
+            return detections
+    except ImportError:
+        pass
     state = _ensure_model_state()
     if state is None:
         return detections

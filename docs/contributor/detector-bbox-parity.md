@@ -49,7 +49,28 @@ Gate failure prints `clip_id`, `median_iou`, `min_median_iou`, and `delta` on st
 
 Start conservative: **median IoU ≥ 0.45** when both backends see a bird on sampled frames. Tighten after golden pack stabilizes (#640 / plan §12).
 
+## Rollout order (#642)
+
+Enable layers only after bbox SLO green:
+
+```text
+motion → record → detect/track → classify → (DINOv2 re-id) → (behavior video)
+```
+
+When `bbox_slo_ok=false` in `/api/ui/readiness`, DINOv2 re-id and behavior video layers are skipped with log reason `bbox_slo gate red`.
+
+## Per-camera detect/main URL audit (#636)
+
+Checklist per camera in `video.cameras[]`:
+
+1. `detect_url` (or go2rtc detect role) resolves to lores substream (e.g. 704×576 BirdBox).
+2. `main_url` / record stream matches playback MP4 geometry (e.g. 1920×1080).
+3. `inference_lores_wh` matches native detect aspect (no square forcing).
+4. After deploy: `bbox_parity_roundtrip_iou_p50` gauge ≥ 0.45 in processor heartbeat.
+
 ## Related tests
 
 - `app/processor/tests/test_bbox_iou_gate.py` — overlay geometry remap
 - `app/processor/tests/test_yolo_golden_clips_gate.py` — track recall on clip 1819
+- `app/processor/tests/test_yolo_geometry_native.py` — native 704×576 letterbox skip
+- `app/processor/tests/test_dual_stream_timeline.py` — detect↔record offset

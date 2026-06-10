@@ -84,9 +84,8 @@ class TestProcessorConfigDefaults(unittest.TestCase):
         self.assertEqual(BIRDER_EU_MIN_CONFIDENCE, self.proc["birder_eu_min_confidence"])
 
     def test_salvage_fallback_off_by_default(self):
-        self.assertEqual(ULTRA_WEAK_BOX_SALVAGE_ENABLED, self.proc["ultra_weak_box_salvage_enabled"])
-        self.assertEqual(TRACK_TO_PREDICT_FALLBACK_ENABLED, self.proc["track_to_predict_fallback_enabled"])
         self.assertFalse(ULTRA_WEAK_BOX_SALVAGE_ENABLED)
+        self.assertEqual(TRACK_TO_PREDICT_FALLBACK_ENABLED, self.proc["track_to_predict_fallback_enabled"])
         self.assertTrue(TRACK_TO_PREDICT_FALLBACK_ENABLED)
 
     def test_track_spatial_split_default_on(self):
