@@ -5,6 +5,7 @@ from typing import Any
 
 from track_first_contract import valid_track_frames
 
+
 def _weak_yolo_salvage_row_from_track(
     track_id: Any,
     track: dict[str, Any],
@@ -192,5 +193,3 @@ def _best_yolo_anchor_rows(rows: list[dict[str, Any]], *, max_rows: int = 3) -> 
         if len(out) >= max(1, int(max_rows)):
             break
     return out
-
-

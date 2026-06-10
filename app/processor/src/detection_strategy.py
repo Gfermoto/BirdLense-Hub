@@ -858,9 +858,7 @@ class TwoStageStrategy(DetectionStrategy):
 
         best_conf = -1.0
         best: dict[str, Any] | None = None
-        for track_id, class_idx, conf, bbox_norm in zip(
-            track_ids, class_indexes, confidences, xyxyn
-        ):
+        for track_id, class_idx, conf, bbox_norm in zip(track_ids, class_indexes, confidences, xyxyn):
             detector_label = self._normalize_detector_label(self.binary_model.names[class_idx])
             if detector_label != "Bird":
                 continue
@@ -1527,9 +1525,7 @@ class TwoStageStrategy(DetectionStrategy):
                     auto_small_object_relax_min_center_dist,
                     auto_small_object_relax_conf_delta,
                 )
-        if not valid_boxes and bool(
-            runtime_cfg.get("processor.ultra_weak_box_salvage_enabled", False)
-        ):
+        if not valid_boxes and bool(runtime_cfg.get("processor.ultra_weak_box_salvage_enabled", False)):
             try:
                 ultra_min_conf = float(runtime_cfg.get("processor.ultra_weak_box_salvage_min_confidence") or 0.005)
             except (TypeError, ValueError):
@@ -1797,9 +1793,7 @@ class TwoStageStrategy(DetectionStrategy):
                             self._classification_task_queue.append(fb_task)
                     else:
                         self._classification_task_queue.append(fb_task)
-        use_async_classifier = bool(
-            getattr(self, "_classifier_async_enabled", False) and not track_regen_ctx
-        )
+        use_async_classifier = bool(getattr(self, "_classifier_async_enabled", False) and not track_regen_ctx)
         if use_async_classifier:
             with self._classifier_async_lock:
                 classified_by_track = {}

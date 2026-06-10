@@ -13,11 +13,10 @@ from persist_mode import (
 )
 from app_config.visit_eligibility import visit_eligible_for_named_species
 from runtime_contract import apply_runtime_contract
+from processor_config_defaults import MIN_CONFIDENCE_TO_PROCESS
 from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
 
 logger = logging.getLogger(__name__)
-
-from processor_config_defaults import MIN_CONFIDENCE_TO_PROCESS
 
 
 def _parse_optional_threshold(raw):
@@ -669,7 +668,9 @@ class DecisionMaker:
             "classifier_needs_review": True,
         }
 
-    def _apply_track_decision_override(self, override: dict[str, Any]) -> tuple[bool, bool, bool, str, float, str, str, str, bool]:
+    def _apply_track_decision_override(
+        self, override: dict[str, Any]
+    ) -> tuple[bool, bool, bool, str, float, str, str, str, bool]:
         return (
             bool(override["accepted"]),
             bool(override["visit_eligible"]),

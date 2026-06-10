@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
@@ -21,7 +20,6 @@ def test_max_gb_respects_max_deletes_per_run(app, tmp_path, monkeypatch, max_del
     monkeypatch.setattr("services.retention_service.recordings_dir", lambda: str(rec_root))
     monkeypatch.setattr("services.retention_service._recordings_dir", lambda: str(rec_root))
 
-    old_days = app.config.get("TESTING")
     with app.app_context():
         from app_config.app_config import app_config
 

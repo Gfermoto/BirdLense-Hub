@@ -352,5 +352,3 @@ def _run_self_heal_escalation(
         details=details,
     )
     return action, details
-
-

@@ -62,13 +62,13 @@ def maybe_run_scheduled_retention(flask_app) -> None:
                 mode,
             )
 
+
 def _retention_scheduler_worker(flask_app) -> None:
     disable = os.environ.get("DISABLE_RETENTION_SCHEDULER", "").strip().lower()
     if disable in ("1", "true", "yes"):
         return
     while True:
         try:
-            interval_h = _retention_interval_hours()
             maybe_run_scheduled_retention(flask_app)
         except Exception as exc:
             flask_app.logger.warning("retention scheduler: %s", exc)

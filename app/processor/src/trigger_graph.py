@@ -159,9 +159,7 @@ def build_session_trigger_graph(
     frames_seen = int(session_summary.get("frames_seen") or 0)
     yolo_raw = int(session_summary.get("yolo_raw_boxes_total") or 0)
     video_ok = bool(session_summary.get("video_file_ok", True))
-    detect_first_ok = bool(
-        rs.get("detect_first_confirmed") or session_summary.get("detect_first_confirmed")
-    )
+    detect_first_ok = bool(rs.get("detect_first_confirmed") or session_summary.get("detect_first_confirmed"))
     yolo_tracks = int(session_summary.get("yolo_frames_with_tracks") or rs.get("yolo_frames_with_tracks") or 0)
 
     # FP: trigger fired but nothing useful persisted (operator-visible false alarm).

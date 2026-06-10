@@ -134,8 +134,7 @@ def enrich_tracks_classifier_at_finalize(
             cls_conf = float(
                 getattr(out, "top1_confidence", None)
                 if getattr(out, "top1_confidence", None) is not None
-                else getattr(out, "confidence", 0.0)
-                or 0.0
+                else getattr(out, "confidence", 0.0) or 0.0
             )
             if cls_conf < min_guess:
                 continue

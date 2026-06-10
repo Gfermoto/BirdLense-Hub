@@ -103,8 +103,10 @@ def _collect_orphan_detector_activity(
         elif is_generic_bird_species_name(name):
             bird_hourly[hour] += 1
             bird_total += 1
-        if video_end and video_end >= last_hour_start and video_start <= datetime.now(timezone.utc).replace(
-            tzinfo=None
+        if (
+            video_end
+            and video_end >= last_hour_start
+            and video_start <= datetime.now(timezone.utc).replace(tzinfo=None)
         ):
             last_hour_orphan += 1
     return bird_total, rodent_total, bird_hourly, rodent_hourly, last_hour_orphan

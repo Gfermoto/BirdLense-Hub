@@ -66,13 +66,19 @@ def build_probe_config(app_config) -> DetectionProbeConfig:
 
 def build_detect_first_config(app_config) -> DetectFirstConfig:
     raw_enabled = app_config.get("processor.detect_first_enabled")
-    enabled = bool(app_config.get("processor.detect_scheduler_enabled", True)) if raw_enabled is None else bool(raw_enabled)
-    raw = app_config.get("processor.detect_first_triggers") or app_config.get("processor.detect_scheduler_triggers") or [
-        "opencv",
-        "frigate",
-        "motion_sensor",
-        "scales",
-    ]
+    enabled = (
+        bool(app_config.get("processor.detect_scheduler_enabled", True)) if raw_enabled is None else bool(raw_enabled)
+    )
+    raw = (
+        app_config.get("processor.detect_first_triggers")
+        or app_config.get("processor.detect_scheduler_triggers")
+        or [
+            "opencv",
+            "frigate",
+            "motion_sensor",
+            "scales",
+        ]
+    )
     if not isinstance(raw, (list, tuple, set)):
         raw = ["opencv", "frigate", "motion_sensor", "scales"]
     triggers = tuple(sorted({_norm_trigger(v) for v in raw if _norm_trigger(v)}))
@@ -194,4 +200,3 @@ def should_run_probe(*, trigger_source: str | None, app_config) -> bool:
     if trigger == "opencv" and bool(app_config.get("detection.track_first_gate_enabled", True)):
         return True
     return trigger in set(cfg.triggers)
-

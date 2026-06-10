@@ -61,7 +61,6 @@ from detect_first import restore_detect_first_persist_rows
 from persist_mode import binary_track_first_enabled
 
 
-
 from recording_finalize_parts.overlay_helpers import (
     _rejected_reason_counts,
     _sanitize_persisted_overlay_frames,
@@ -90,6 +89,7 @@ from recording_finalize_parts.tracks_scales import _default_scales_evidence_snap
 # Пустые сессии без детекций — частое событие; не засоряем лог (раз в интервал — WARNING, иначе DEBUG).
 _NO_DETECTIONS_WARN_INTERVAL_S = 120.0
 _no_detections_warn_next_monotonic = 0.0
+
 
 def finalize_motion_recording(
     api: API,
@@ -446,9 +446,7 @@ def finalize_motion_recording(
             inc_counter("dense_track_persist_restored_total", dense_restored)
     except ImportError:
         dense_restored = 0
-    weak_salvage_linear_ok = bool(rs_ctx.get("detect_first_confirmed")) and bool(
-        rs_ctx.get("yolo_frames_with_tracks")
-    )
+    weak_salvage_linear_ok = bool(rs_ctx.get("detect_first_confirmed")) and bool(rs_ctx.get("yolo_frames_with_tracks"))
     skip_weak_salvage = bool(rs_ctx.get("detect_first_confirmed")) and not detect_first_restored
     if (
         not video_detections
@@ -479,9 +477,7 @@ def finalize_motion_recording(
                 float(salvage_rows[0].get("confidence") or 0.0),
             )
     salvage_enabled = frigate_salvage_opted_in(app_config, camera_id=session_camera_id)
-    salvage_allow_without_yolo = frigate_salvage_allow_without_yolo(
-        app_config, camera_id=session_camera_id
-    )
+    salvage_allow_without_yolo = frigate_salvage_allow_without_yolo(app_config, camera_id=session_camera_id)
     if salvage_enabled and not salvage_allow_without_yolo and yolo_tracks_count <= 0:
         salvage_enabled = False
     if (
@@ -800,9 +796,7 @@ def finalize_motion_recording(
                     video_detections=video_detections,
                     video_output=video_output,
                     video_id=video_id,
-                    encode_func=lambda d, v: encode_notify_preview_base64(
-                        d, v, runtime_cfg=app_config
-                    ),
+                    encode_func=lambda d, v: encode_notify_preview_base64(d, v, runtime_cfg=app_config),
                 )
         except Exception as exc:
             from processor_exception_handling import reraise_if_io_critical

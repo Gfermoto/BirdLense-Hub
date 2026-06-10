@@ -122,9 +122,7 @@ def test_migrate_detect_stream_subtype_main_to_sub():
                 {
                     "id": "Forest",
                     "stream_name": "Forest",
-                    "detect_stream_name": (
-                        "rtsp://admin:pass@192.168.1.101:554/cam/realmonitor?channel=1&subtype=0"
-                    ),
+                    "detect_stream_name": ("rtsp://admin:pass@192.168.1.101:554/cam/realmonitor?channel=1&subtype=0"),
                 },
             ],
         },
@@ -132,7 +130,6 @@ def test_migrate_detect_stream_subtype_main_to_sub():
     assert migrate_detect_stream_lores_substream(user) is True
     assert "subtype=1" in user["video"]["cameras"][0]["detect_stream_name"]
     assert "subtype=0" not in user["video"]["cameras"][0]["detect_stream_name"]
-
 
 
 def test_remove_pipeline_persist_legacy_aliases_migration():

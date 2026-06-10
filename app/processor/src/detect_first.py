@@ -18,16 +18,16 @@ logger = logging.getLogger(__name__)
 
 def _same_multi_camera_group(app_config: Any, left: str | None, right: str | None) -> bool:
     """True when two cameras are configured as views of the same scene."""
-    l = str(left or "").strip()
-    r = str(right or "").strip()
-    if not l or not r or l == r:
-        return bool(l and r and l == r)
+    left_cam = str(left or "").strip()
+    right_cam = str(right or "").strip()
+    if not left_cam or not right_cam or left_cam == right_cam:
+        return bool(left_cam and right_cam and left_cam == right_cam)
     groups = app_config.get("processor.multi_camera_groups") or []
     for group in groups:
         if not isinstance(group, (list, tuple, set)):
             continue
         norm = {str(item).strip() for item in group if str(item).strip()}
-        if l in norm and r in norm:
+        if left_cam in norm and right_cam in norm:
             return True
     return False
 
@@ -129,11 +129,15 @@ def build_persist_row_from_anchor(
     if not frames:
         return None
     try:
-        start_time = float(anchor.get("start_time") if anchor.get("start_time") is not None else frames[0].get("t") or 0.0)
+        start_time = float(
+            anchor.get("start_time") if anchor.get("start_time") is not None else frames[0].get("t") or 0.0
+        )
     except (TypeError, ValueError):
         start_time = 0.0
     try:
-        end_time = float(anchor.get("end_time") if anchor.get("end_time") is not None else frames[-1].get("t") or video_duration_s)
+        end_time = float(
+            anchor.get("end_time") if anchor.get("end_time") is not None else frames[-1].get("t") or video_duration_s
+        )
     except (TypeError, ValueError):
         end_time = float(video_duration_s)
     end_time = max(start_time, min(end_time, float(video_duration_s)))
@@ -252,8 +256,7 @@ def restore_detect_first_persist_rows(
     pre_fusion_yolo = [
         row
         for row in (accepted_pre_fusion or [])
-        if str(row.get("detection_provider") or "").strip().lower() == "yolo"
-        and valid_track_frames(row.get("frames"))
+        if str(row.get("detection_provider") or "").strip().lower() == "yolo" and valid_track_frames(row.get("frames"))
     ]
     if anchor_tid is not None:
         for row in pre_fusion_yolo:
