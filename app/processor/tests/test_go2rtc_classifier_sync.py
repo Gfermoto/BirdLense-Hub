@@ -91,6 +91,13 @@ class TestGo2RTCClassifierBuffer(unittest.TestCase):
         with patch.object(src, "_classifier_record_max_skew_sec", return_value=0.35):
             self.assertIs(src.get_classifier_source_frame(detect_ts), frame)
 
+    def test_record_cap_blocked_during_ffmpeg_recording(self):
+        src = self._make_dual_stream()
+        src._recording = True
+        with patch("sources.go2rtc_stream_source.cv2.VideoCapture") as cap_ctor:
+            self.assertFalse(src._connect_record_cap())
+            cap_ctor.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
