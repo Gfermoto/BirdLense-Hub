@@ -48,7 +48,9 @@ class TestRecordingFinalizeSanitize(unittest.TestCase):
             "processor.track_static_reject_enabled": True,
             "detection.persist_mode": "legacy",
         }
-        with patch("recording_finalize.app_config") as mock_cfg:
+        with patch("recording_finalize.app_config") as mock_cfg, patch(
+            "linear_pipeline.is_linear_pipeline", return_value=False
+        ), patch("recording_finalize_parts.overlay_helpers.binary_track_first_enabled", return_value=False):
             mock_cfg.get.return_value = False
             out = _sanitize_persisted_overlay_frames([row], runtime_cfg=runtime)
         self.assertEqual(out[0]["frames"], [])
