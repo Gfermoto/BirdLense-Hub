@@ -1,6 +1,10 @@
-import axios from 'axios';
 import type { Settings } from '../types';
-import { BASE_API_URL, resetCsrfToken } from './client';
+import {
+  BASE_API_URL,
+  ApiHttpError,
+  apiFetch,
+  resetCsrfToken,
+} from './client';
 
 export type RequiresPasswordResult = {
   requires: boolean;
@@ -9,15 +13,13 @@ export type RequiresPasswordResult = {
 
 export const fetchSettingsRequiresPassword =
   async (): Promise<RequiresPasswordResult> => {
-    const response = await axios.get(
-      `${BASE_API_URL}/settings/requires-password`,
-      {
-        withCredentials: true,
-      },
-    );
+    const data = await apiFetch<{
+      requires?: boolean;
+      has_contributor_tier?: boolean;
+    }>(`${BASE_API_URL}/settings/requires-password`);
     return {
-      requires: response.data?.requires === true,
-      has_contributor_tier: response.data?.has_contributor_tier === true,
+      requires: data?.requires === true,
+      has_contributor_tier: data?.has_contributor_tier === true,
     };
   };
 
@@ -27,15 +29,16 @@ export type CheckAccessResult =
 
 export const checkSettingsAccess = async (): Promise<CheckAccessResult> => {
   try {
-    const response = await axios.get(`${BASE_API_URL}/settings/check-access`, {
-      withCredentials: true,
-    });
-    if (response.data?.unlocked === true) {
-      return { unlocked: true, role: response.data?.role || 'admin' };
+    const data = await apiFetch<{
+      unlocked?: boolean;
+      role?: 'admin' | 'contributor';
+    }>(`${BASE_API_URL}/settings/check-access`);
+    if (data?.unlocked === true) {
+      return { unlocked: true, role: data?.role || 'admin' };
     }
     return { unlocked: false };
   } catch (e: unknown) {
-    if (axios.isAxiosError(e) && e.response?.status === 403) {
+    if (e instanceof ApiHttpError && e.status === 403) {
       return { unlocked: false };
     }
     return { unlocked: false, error: 'network' };
@@ -49,28 +52,37 @@ export type VerifyPasswordResult =
       error: 'wrong_password' | 'csrf_or_auth' | 'server_error';
     };
 
+type VerifyPasswordResponse = {
+  ok?: boolean;
+  role?: 'admin' | 'contributor';
+  error?: string;
+};
+
 export const verifySettingsPassword = async (
   password: string,
 ): Promise<VerifyPasswordResult> => {
   const postPassword = () =>
-    axios.post(
+    apiFetch<VerifyPasswordResponse>(
       `${BASE_API_URL}/settings/verify-password`,
-      { password },
-      { withCredentials: true },
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      },
     );
 
   try {
-    const response = await postPassword();
-    if (response.data?.ok === true) {
-      return { ok: true, role: response.data?.role || 'admin' };
+    const data = await postPassword();
+    if (data?.ok === true) {
+      return { ok: true, role: data?.role || 'admin' };
     }
     return { ok: false, error: 'wrong_password' };
   } catch (e: unknown) {
-    if (!axios.isAxiosError(e) || e.response == null) {
+    if (!(e instanceof ApiHttpError)) {
       return { ok: false, error: 'server_error' };
     }
-    const status = e.response.status;
-    const msg = (e.response.data as { error?: string })?.error;
+    const status = e.status;
+    const msg = (e.data as { error?: string })?.error;
     if (status === 401) {
       return { ok: false, error: 'wrong_password' };
     }
@@ -80,9 +92,9 @@ export const verifySettingsPassword = async (
     ) {
       resetCsrfToken();
       try {
-        const response = await postPassword();
-        if (response.data?.ok === true) {
-          return { ok: true, role: response.data?.role || 'admin' };
+        const data = await postPassword();
+        if (data?.ok === true) {
+          return { ok: true, role: data?.role || 'admin' };
         }
       } catch {
         // Fall through to the user-facing CSRF/session hint below.
@@ -94,19 +106,15 @@ export const verifySettingsPassword = async (
 };
 
 export const logoutSettingsSession = async (): Promise<void> => {
-  await axios.post(
-    `${BASE_API_URL}/settings/logout`,
-    {},
-    { withCredentials: true },
-  );
+  await apiFetch(`${BASE_API_URL}/settings/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
 };
 
-export const fetchSettings = async () => {
-  const response = await axios.get(`${BASE_API_URL}/settings`, {
-    withCredentials: true,
-  });
-  return response.data;
-};
+export const fetchSettings = async () =>
+  apiFetch(`${BASE_API_URL}/settings`);
 
 export type EbirdMappingSuggestion = {
   ebird_name: string;
@@ -123,15 +131,12 @@ export type EbirdMappingSuggestionsResponse = {
 };
 
 export const fetchEbirdMappingSuggestions =
-  async (): Promise<EbirdMappingSuggestionsResponse> => {
-    const response = await axios.get(
-      `${BASE_API_URL}/settings/ebird-species-mapping-suggestions`,
-      { withCredentials: true },
-    );
-    return response.data;
-  };
+  async (): Promise<EbirdMappingSuggestionsResponse> =>
+    apiFetch(`${BASE_API_URL}/settings/ebird-species-mapping-suggestions`);
 
-export const updateSettings = async (settings: Settings) => {
+export const updateSettings = async (
+  settings: Settings,
+): Promise<Record<string, unknown> | undefined> => {
   const payload = JSON.parse(JSON.stringify(settings)) as Record<
     string,
     unknown
@@ -140,16 +145,19 @@ export const updateSettings = async (settings: Settings) => {
   if (perf && typeof perf === 'object') {
     delete perf.redis_url_effective_masked;
   }
-  const response = await axios.patch(`${BASE_API_URL}/settings`, payload, {
-    withCredentials: true,
+  return apiFetch<Record<string, unknown>>(`${BASE_API_URL}/settings`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   });
-  return response.data;
 };
 
 /** Deep-merge PATCH (same as full save); use for small updates e.g. Library file replay mode. */
-export const patchSettings = async (partial: Record<string, unknown>) => {
-  const response = await axios.patch(`${BASE_API_URL}/settings`, partial, {
-    withCredentials: true,
+export const patchSettings = async (
+  partial: Record<string, unknown>,
+): Promise<Record<string, unknown> | undefined> =>
+  apiFetch<Record<string, unknown>>(`${BASE_API_URL}/settings`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(partial),
   });
-  return response.data;
-};
