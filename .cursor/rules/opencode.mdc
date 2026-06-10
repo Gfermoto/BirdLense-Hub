@@ -10,7 +10,7 @@ Binary: `opencode` (часто `~/.opencode/bin/opencode`). Конфиг сли�
 ## В TUI (интерактив)
 
 - **Build / Plan (Tab)**: Build — обычная разработка; **Plan** — анализ и план **без записи на диск** (file edits / bash в ask). Сначала Plan, потом переключение на Build для внедрения.
-- **Субагенты @**: `@explore` — быстрый read-only обход кода; `@general` — длинные многошаговые задачи с полным доступом. Проектные: **`@birdlense-ci`** (прогон `make ci-local` и отчёт), **`@birdlense-reviewer`** (ревью под OpenAPI/AGENTS, без правок).
+- **Субагенты @**: `@explore` — быстрый read-only обход кода; `@general` — длинные многошаговые задачи с полным доступом. Проектные: **`@birdlense-ci`** (прогон `make ci-local` и отчёт), **`@birdlense-reviewer`** (ревью под OpenAPI/AGENTS, без правок), **`@birdlense-runbook-qa`** (Phase B: runbooks + `docs/ru`, webfetch MkDocs), **`@birdlense-operator-router`** (Phase C dev-only: keyword → Hub MCP groups).
 - **Сессии**: `opencode -c` — продолжить последнюю; `--session`, `--fork` — для ветвления контекста.
 
 ## Headless (терминал, без блокировки чата)
@@ -43,6 +43,8 @@ Binary: `opencode` (часто `~/.opencode/bin/opencode`). Конфиг сли�
 | План без записи на диск | OpenCode **Plan** mode |
 | CI gate, отчёт без правок | `@birdlense-ci` (`make ci-local` vs `make test-web-contract-local` — см. `docs/contributor/hub-mcp-dev.md`) |
 | Ревью без правок | `@birdlense-reviewer` |
+| Runbook / docs Q&A (grounded) | `@birdlense-runbook-qa` — см. `hub-mcp-dev.md` § Phase B |
+| Live Hub: visits/health/funnel | `@birdlense-operator-router` — dev-only; ADR `docs/strategy/adr-dev-only-operator-router.md` |
 | Параллель | Cursor правит; OpenCode — второй воркер (`opencode-mcp` в Cursor) |
 
 **MCP hygiene:** `birdlense-repo` (filesystem в OpenCode) ≠ Hub API MCP (`/mcp`, `birdlense_mcp.py`). Секреты — только env / `opencode mcp add`, не в репозиторий.
