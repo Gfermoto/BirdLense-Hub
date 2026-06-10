@@ -30,3 +30,9 @@ _meta:
 ```
 
 UI (Настройки) показывает предупреждение после успешного сохранения. Ключ `_settings_warnings` не попадает в GET settings (фильтруется в `prepare_settings_for_api`).
+
+### v7 (#621): `pipeline_mode` / `persist_mode` legacy
+
+- `processor.pipeline_mode: legacy` → переписывается в `linear` при миграции; в рантайме alias снят.
+- `detection.persist_mode: legacy` → `binary_track_first`.
+

@@ -15,13 +15,19 @@ from typing import Any
 from track_first_contract import is_valid_norm_bbox, valid_track_frames
 
 
+_legacy_persist_warned = False
+
+
 def persist_mode_name(app_config) -> str:
     raw = str(app_config.get("detection.persist_mode") or "binary_track_first").strip().lower()
     if raw == "legacy":
-        logging.getLogger(__name__).warning(
-            "detection.persist_mode=legacy is deprecated (#610); using binary_track_first",
-        )
-        return "binary_track_first"
+        global _legacy_persist_warned
+        if not _legacy_persist_warned:
+            logging.getLogger(__name__).warning(
+                "detection.persist_mode=legacy is unsupported (#621); migrate user_config to binary_track_first",
+            )
+            _legacy_persist_warned = True
+        return "legacy"
     return raw
 
 

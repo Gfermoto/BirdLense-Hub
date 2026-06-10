@@ -40,6 +40,18 @@ function gateTextColor(
   return 'error.main';
 }
 
+
+type PipelineFunnelView = {
+  status?: string;
+  window_hours?: number;
+  sessions_total?: number | null;
+  healthy_persist_rate?: number | null;
+  fusion_drop_rate?: number | null;
+  top_root_causes?: string[];
+  alerts?: string[];
+  by_camera?: Record<string, Record<string, number>>;
+};
+
 function formatRate(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return '—';
   return `${(value * 100).toFixed(1)}%`;
@@ -74,7 +86,50 @@ export function SystemReadinessCard() {
     : '';
 
   const funnelCheck = data.checks.pipeline_funnel;
-  const funnel = data.pipeline_funnel;
+  const funnelRaw = data.pipeline_funnel;
+  const funnel: PipelineFunnelView | undefined = funnelRaw
+    ? {
+        status:
+          typeof funnelRaw.status === 'string' ? funnelRaw.status : undefined,
+        window_hours:
+          typeof funnelRaw.window_hours === 'number'
+            ? funnelRaw.window_hours
+            : undefined,
+        sessions_total:
+          typeof funnelRaw.sessions_total === 'number'
+            ? funnelRaw.sessions_total
+            : null,
+        healthy_persist_rate:
+          typeof funnelRaw.healthy_persist_rate === 'number'
+            ? funnelRaw.healthy_persist_rate
+            : funnelCheck?.healthy_persist_rate,
+        fusion_drop_rate:
+          typeof funnelRaw.fusion_drop_rate === 'number'
+            ? funnelRaw.fusion_drop_rate
+            : funnelCheck?.fusion_drop_rate,
+        top_root_causes: Array.isArray(funnelRaw.top_root_causes)
+          ? (funnelRaw.top_root_causes as string[])
+          : funnelCheck?.top_root_causes,
+        alerts: Array.isArray(funnelRaw.alerts)
+          ? (funnelRaw.alerts as string[])
+          : funnelCheck?.alerts,
+        by_camera:
+          funnelRaw.by_camera &&
+          typeof funnelRaw.by_camera === 'object' &&
+          !Array.isArray(funnelRaw.by_camera)
+            ? (funnelRaw.by_camera as Record<string, Record<string, number>>)
+            : undefined,
+      }
+    : funnelCheck
+      ? {
+          status: funnelCheck.status,
+          sessions_total: funnelCheck.sessions_total,
+          healthy_persist_rate: funnelCheck.healthy_persist_rate,
+          fusion_drop_rate: funnelCheck.fusion_drop_rate,
+          top_root_causes: funnelCheck.top_root_causes,
+          alerts: funnelCheck.alerts,
+        }
+      : undefined;
   const funnelStatus = String(funnelCheck?.status ?? funnel?.status ?? 'unknown');
   const funnelDegraded = funnelStatus === 'degraded';
   const topCauses = funnel?.top_root_causes ?? funnelCheck?.top_root_causes ?? [];

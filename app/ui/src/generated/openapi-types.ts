@@ -110,6 +110,12 @@ export interface paths {
                                 yolo_detector?: {
                                     status?: string;
                                     source?: string;
+                                    /** @description Effective detector backend after bootstrap (torch/openvino). */
+                                    inference_backend_effective?: string;
+                                    /** @description Requested processor.inference_backend (may differ when auto fallback). */
+                                    inference_backend_requested?: string;
+                                    /** @description True when auto/openvino resolved to torch at bootstrap. */
+                                    inference_auto_torch_fallback?: boolean;
                                 };
                             };
                             components: {
@@ -191,6 +197,12 @@ export interface paths {
                                 yolo_detector?: {
                                     status?: string;
                                     source?: string;
+                                    /** @description Effective detector backend after bootstrap (torch/openvino). */
+                                    inference_backend_effective?: string;
+                                    /** @description Requested processor.inference_backend (may differ when auto fallback). */
+                                    inference_backend_requested?: string;
+                                    /** @description True when auto/openvino resolved to torch at bootstrap. */
+                                    inference_auto_torch_fallback?: boolean;
                                 };
                             };
                             components: {
@@ -8333,7 +8345,9 @@ export interface components {
             min_age_hours?: number;
             batch_size?: number;
             max_deletes_per_run?: number;
+            /** @description Scheduled retention auto-run; default false in default_config.yaml (distinct from reconcile.auto_run_enabled). */
             auto_run_enabled?: boolean;
+            /** @description Hours between scheduled retention checks when auto_run_enabled is true; default 6. */
             auto_run_interval_hours?: number;
             /** Format: date-time */
             last_run?: string | null;
@@ -8520,6 +8534,10 @@ export interface components {
             fp_empty_opencv_rate?: number | null;
             alerts?: string[];
             top_root_causes?: string[];
+            /** @description p50/p95 persist-tail substage latencies from recent session_runtime_metrics (#624). */
+            persist_substage_breakdown?: {
+                [key: string]: unknown;
+            };
         };
         CameraSummary: {
             /** @description Canonical camera id, equal to the Go2RTC recording stream name. */

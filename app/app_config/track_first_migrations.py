@@ -192,3 +192,23 @@ def migrate_detect_stream_lores_substream(user_config: dict[str, Any]) -> bool:
                     prof["detect_stream_name"] = new_dsn
                     changed = True
     return changed
+
+
+def migrate_remove_pipeline_persist_legacy_aliases(user_config: dict[str, Any]) -> bool:
+    """Rewrite deprecated pipeline_mode/persist_mode values (#621); runtime aliases removed."""
+    if not isinstance(user_config, dict):
+        return False
+    changed = False
+    proc = user_config.get("processor")
+    if isinstance(proc, dict):
+        mode = str(proc.get("pipeline_mode") or "").strip().lower()
+        if mode == "legacy":
+            proc["pipeline_mode"] = "linear"
+            changed = True
+    det = user_config.get("detection")
+    if isinstance(det, dict):
+        persist = str(det.get("persist_mode") or "").strip().lower()
+        if persist == "legacy":
+            det["persist_mode"] = "binary_track_first"
+            changed = True
+    return changed

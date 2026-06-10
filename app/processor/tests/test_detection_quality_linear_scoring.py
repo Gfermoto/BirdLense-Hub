@@ -31,7 +31,7 @@ class TestDetectionQualityLinearScoring(unittest.TestCase):
         dqc = DetectionQualityConfig.from_runtime_cfg(cfg)
         self.assertFalse(dqc.scoring_engine_enabled)
 
-    def test_legacy_pipeline_treated_as_linear(self):
+    def test_legacy_pipeline_not_treated_as_linear(self):
         cfg = {
             "processor.pipeline_mode": "legacy",
             "processor.scoring_engine_enabled": True,
@@ -39,7 +39,7 @@ class TestDetectionQualityLinearScoring(unittest.TestCase):
         }
         dqc = DetectionQualityConfig.from_runtime_cfg(cfg)
         self.assertTrue(dqc.scoring_engine_enabled)
-        self.assertFalse(dqc.motion_global_static_reject)
+        self.assertTrue(dqc.motion_global_static_reject)
 
 
 if __name__ == "__main__":
