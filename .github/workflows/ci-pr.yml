@@ -93,6 +93,12 @@ jobs:
           pip install pyyaml==6.0.2
           python3 scripts/check_legacy_processor_config.py
 
+      - name: Processor config drift gate (critical, #626)
+        working-directory: ${{ github.workspace }}
+        run: |
+          pip install pyyaml==6.0.2
+          python3 scripts/verify_processor_config_drift.py --fail-on-critical
+
       - name: SOTA Golden Gate + offline stress (no Docker)
         working-directory: ${{ github.workspace }}
         env:

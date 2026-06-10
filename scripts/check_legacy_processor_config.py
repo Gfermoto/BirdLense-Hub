@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail if production configs re-enable deprecated cascade thresholds (SOTA 2.0)."""
+"""Fail if production configs re-enable deprecated cascade thresholds (SOTA 2.0 / #626)."""
 
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ def main() -> int:
             errors.append(
                 f"{path.name}: detection.persist_mode=legacy — use binary_track_first (#621)"
             )
-                if det.get("frigate_standalone_when_no_yolo") is True:
+        if det.get("frigate_standalone_when_no_yolo") is True:
             errors.append(
                 f"{path.name}: detection.frigate_standalone_when_no_yolo=true — use Frigate as prior only"
             )

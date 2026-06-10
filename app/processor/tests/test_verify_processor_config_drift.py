@@ -29,14 +29,16 @@ def test_no_drift_when_user_matches_default():
             "track_static_reject_max_center_dispersion_norm": 0.085,
             "track_static_reject_max_relative_center_dispersion": 0.16,
             "track_static_reject_max_bbox_iou_first_last_min": 0.74,
+            "scoring_engine_enabled": True,
         }
     }
     report = mod.evaluate_processor_config_drift(default=default, user={})
     assert report["ok"] is True
+    assert report["critical_ok"] is True
     assert report["drift_count"] == 0
 
 
-def test_detects_stricter_track_static_and_camera_conf():
+def test_detects_stricter_track_static_and_camera_conf_as_critical():
     mod = _load_mod()
     default = {
         "processor": {
@@ -59,6 +61,31 @@ def test_detects_stricter_track_static_and_camera_conf():
     }
     report = mod.evaluate_processor_config_drift(default=default, user=user)
     assert report["ok"] is False
+    assert report["critical_ok"] is False
+    assert report["critical_count"] >= 2
     paths = {item["path"] for item in report["drifts"]}
     assert "processor.track_static_reject_min_frames" in paths
     assert "processor.camera_overrides.BirdBox.min_confidence_binary" in paths
+    assert all(item.get("severity") == "critical" for item in report["drifts"])
+
+
+def test_detects_forbidden_legacy_pipeline_mode():
+    mod = _load_mod()
+    default = {"processor": {"pipeline_mode": "linear"}}
+    user = {"processor": {"pipeline_mode": "legacy"}}
+    report = mod.evaluate_processor_config_drift(default=default, user=user)
+    assert report["critical_ok"] is False
+    paths = {item["path"] for item in report["drifts"]}
+    assert "processor.pipeline_mode" in paths
+
+
+def test_detects_legacy_bool_when_scoring_enabled():
+    mod = _load_mod()
+    default = {"processor": {"scoring_engine_enabled": True}}
+    user = {"processor": {"background_subtraction_enabled": True}}
+    report = mod.evaluate_processor_config_drift(default=default, user=user)
+    assert report["critical_ok"] is False
+    assert any(
+        item["path"] == "processor.background_subtraction_enabled"
+        for item in report["drifts"]
+    )
