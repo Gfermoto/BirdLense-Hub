@@ -288,6 +288,7 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         "fp_empty_opencv_rate": funnel.get("fp_empty_opencv_rate"),
         "alerts": funnel.get("alerts") or [],
         "top_root_causes": funnel.get("top_root_causes") or [],
+        "persist_substage_breakdown": funnel.get("persist_substage_breakdown") or {},
     }
     core_check_names = ("database", "data_dir", "app_config_dir", "cache_backend", "processor_heartbeat")
     ready = all(checks.get(name, {}).get("status") == "ok" for name in core_check_names)

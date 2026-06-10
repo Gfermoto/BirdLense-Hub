@@ -75,6 +75,7 @@ from recording_finalize_parts.metrics import (
     _blind_suspected_from_final_stats,
     _emit_frigate_hub_panic_if_needed,
     _run_self_heal_escalation,
+    build_persist_substage_ms,
 )
 from recording_finalize_parts.salvage import (
     _build_weak_yolo_salvage_rows,
@@ -1028,6 +1029,14 @@ def finalize_motion_recording(
             "create_video_ingest_timing_ms": create_video_ingest_timing_ms,
             "reid_enrich_duration_ms": reid_enrich_duration_ms,
             "dataset_crops_duration_ms": dataset_crops_duration_ms,
+            "persist_substage_ms": build_persist_substage_ms(
+                scales_duration_ms=scales_duration_ms,
+                behavior_duration_ms=behavior_duration_ms,
+                create_video_duration_ms=create_video_duration_ms,
+                create_video_ingest_timing_ms=create_video_ingest_timing_ms,
+                dataset_crops_duration_ms=dataset_crops_duration_ms,
+                reid_enrich_duration_ms=reid_enrich_duration_ms,
+            ),
             "trigger_to_first_bbox_latency_s": (
                 None if trigger_to_first_bbox_s is None else round(float(trigger_to_first_bbox_s), 6)
             ),

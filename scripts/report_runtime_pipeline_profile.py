@@ -97,6 +97,7 @@ def build_profile(
     behavior_ms: list[float] = []
     scales_ms: list[float] = []
     dataset_crops_ms: list[float] = []
+    reid_enrich_ms: list[float] = []
     by_slot_finalize: dict[str, list[float]] = {}
 
     pre_fusion_ms: list[float] = []
@@ -154,6 +155,7 @@ def build_profile(
             ("behavior_duration_ms", behavior_ms),
             ("scales_duration_ms", scales_ms),
             ("dataset_crops_duration_ms", dataset_crops_ms),
+            ("reid_enrich_duration_ms", reid_enrich_ms),
         ):
             stage_ms = _safe_float(payload.get(key))
             if stage_ms is not None and stage_ms > 0:
@@ -299,6 +301,7 @@ def build_profile(
             "behavior_duration_ms": _summary(behavior_ms),
             "scales_duration_ms": _summary(scales_ms),
             "dataset_crops_duration_ms": _summary(dataset_crops_ms),
+            "reid_enrich_duration_ms": _summary(reid_enrich_ms),
         },
         "by_slot_finalize_duration_ms": by_slot,
         "bottleneck_stage_p95": bottleneck,
