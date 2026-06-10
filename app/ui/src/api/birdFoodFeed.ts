@@ -1,21 +1,18 @@
-import axios from 'axios';
 import type { BirdFood } from '../types';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, ApiHttpError, apiFetch } from './client';
 
-export const fetchBirdFood = async (): Promise<BirdFood[]> => {
-  const response = await axios.get(`${BASE_API_URL}/birdfood`);
-  return response.data;
-};
+export const fetchBirdFood = async (): Promise<BirdFood[]> =>
+  apiFetch(`${BASE_API_URL}/birdfood`);
 
-export const toggleBirdFood = async (id: number) => {
-  const response = await axios.patch(`${BASE_API_URL}/birdfood/${id}/toggle`);
-  return response.data;
-};
+export const toggleBirdFood = async (id: number) =>
+  apiFetch(`${BASE_API_URL}/birdfood/${id}/toggle`, { method: 'PATCH' });
 
-export const addBirdFood = async (newFood: Partial<BirdFood>) => {
-  const response = await axios.post(`${BASE_API_URL}/birdfood`, newFood);
-  return response.data;
-};
+export const addBirdFood = async (newFood: Partial<BirdFood>) =>
+  apiFetch(`${BASE_API_URL}/birdfood`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newFood),
+  });
 
 export const fetchFeedInfo = async (): Promise<{
   last_dispense_at: string | null;
@@ -31,27 +28,42 @@ export const fetchFeedInfo = async (): Promise<{
     source?: string;
     bird_present?: boolean;
   } | null;
-}> => {
-  const response = await axios.get(`${BASE_API_URL}/feed/info`);
-  return response.data;
-};
+}> => apiFetch(`${BASE_API_URL}/feed/info`);
+
+function feedActionErrorMessage(
+  e: unknown,
+  fallback: string,
+): string {
+  if (e instanceof ApiHttpError) {
+    const err = (e.data as { error?: string } | null)?.error;
+    if (typeof err === 'string' && err.trim()) {
+      return err;
+    }
+    if (e.message.trim()) {
+      return e.message;
+    }
+  }
+  return fallback;
+}
 
 export const postScaleTare = async (): Promise<{
   success: boolean;
   message?: string;
 }> => {
   try {
-    const response = await axios.post(
+    const data = await apiFetch<{ message?: string }>(
       `${BASE_API_URL}/feed/scale-tare`,
-      {},
-      { withCredentials: true },
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      },
     );
-    return { success: true, message: response.data?.message };
+    return { success: true, message: data?.message };
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } };
     return {
       success: false,
-      message: err.response?.data?.error || 'Scale tare failed',
+      message: feedActionErrorMessage(e, 'Scale tare failed'),
     };
   }
 };
@@ -61,19 +73,19 @@ export const dispenseFeed = async (): Promise<{
   message?: string;
 }> => {
   try {
-    const response = await axios.post(
+    const data = await apiFetch<{ message?: string }>(
       `${BASE_API_URL}/feed/dispense`,
-      {},
       {
-        withCredentials: true,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
       },
     );
-    return { success: true, message: response.data?.message };
+    return { success: true, message: data?.message };
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } };
     return {
       success: false,
-      message: err.response?.data?.error || 'Failed to dispense feed',
+      message: feedActionErrorMessage(e, 'Failed to dispense feed'),
     };
   }
 };
