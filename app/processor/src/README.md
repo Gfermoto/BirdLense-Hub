@@ -15,7 +15,17 @@ Hub работает **без** Frigate, BirdNET и прочих сайтов. �
 
 Режим по умолчанию: `processor.pipeline_mode: linear` (`linear_pipeline.py`). Legacy `pipeline_mode`/`persist_mode` снимаются миграцией user_config (#621).
 
-Linear Phase A (NVR core): live = detect+track only (`classifier_defer_to_finalize`); persist gate = `object_confirm.py` (min_score + median/peak); static/scoring off live; Birder на finalize по `key_frames`; Frigate salvage/standalone выкл.
+Linear Phase A (NVR core): live = detect+track only (`classifier_defer_to_finalize`); persist gate = `object_confirm.py` (min_score + median/peak); static/scoring off live; Birder на finalize по `key_frames`; Frigate salvage/standalone выкл. по умолчанию (opt-in: `tuning_role: frigate_site` — см. `docs/contributor/linear-fusion-safeguards.md`).
+
+### Linear fusion safeguards (#622)
+
+| Path | Linear default | Opt-in |
+|------|----------------|--------|
+| Post-fusion rejections | Skipped | — |
+| `yolo_core_anchor` restore | Skipped | — |
+| detect-first restore | **Active** | — |
+| Weak YOLO salvage | Active when `detect_first_confirmed` + tracks | `detection.yolo_weak_track_salvage_enabled` |
+| Frigate trigger salvage | Skipped | Global `detection.frigate_trigger_review_salvage_enabled` or role `frigate_site` |
 
 Frigate и BirdNET — **опционально**: доп. триггер, подсказка вида, bias в fusion. Они не подменяют трек, bbox и запись.
 

@@ -475,6 +475,11 @@ processor:
       track_static_reject_min_duration_sec: 2.5
       track_static_reject_min_frames: 3
       track_static_reject_min_frames_sparse: 2
+    # Frigate co-located site: opt-in Frigate trigger review salvage on linear pipeline (#622).
+    # Assign video.cameras[].tuning_role: frigate_site — global detection.frigate_* stays false.
+    frigate_site:
+      frigate_trigger_review_salvage_enabled: true
+      frigate_trigger_review_salvage_allow_without_yolo_tracks: false
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
   # Не 0.42: на OV+detect слабые conf 0.04–0.15 — иначе только review_only salvage.
   generic_bird_min_detector_conf: 0.10

@@ -33,6 +33,8 @@ from recording_post_fusion_rejections import collect_post_fusion_rejections
 from linear_pipeline import (
     STAGE_CLASSIFY_ENRICH,
     STAGE_REID_BEHAVIOR,
+    frigate_salvage_allow_without_yolo,
+    frigate_salvage_opted_in,
     is_linear_pipeline,
     linear_skip_frigate_salvage_paths,
     linear_skip_legacy_fusion_safeguards,
@@ -476,16 +478,16 @@ def finalize_motion_recording(
                 salvage_rows[0].get("track_id"),
                 float(salvage_rows[0].get("confidence") or 0.0),
             )
-    salvage_enabled = bool(app_config.get("detection.frigate_trigger_review_salvage_enabled", False))
-    salvage_allow_without_yolo = bool(
-        app_config.get("detection.frigate_trigger_review_salvage_allow_without_yolo_tracks", False)
+    salvage_enabled = frigate_salvage_opted_in(app_config, camera_id=session_camera_id)
+    salvage_allow_without_yolo = frigate_salvage_allow_without_yolo(
+        app_config, camera_id=session_camera_id
     )
     if salvage_enabled and not salvage_allow_without_yolo and yolo_tracks_count <= 0:
         salvage_enabled = False
     if (
         not video_detections
         and salvage_enabled
-        and not linear_skip_frigate_salvage_paths(app_config)
+        and not linear_skip_frigate_salvage_paths(app_config, camera_id=session_camera_id)
         and (
             trigger_source == "frigate"
             or isinstance(frigate_trigger_event, dict)

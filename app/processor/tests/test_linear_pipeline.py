@@ -15,7 +15,11 @@ from linear_pipeline import (
     STAGE_DETECT_TRACK,
     build_linear_decisions,
     evaluate_track_linear,
+    frigate_salvage_allow_without_yolo,
+    frigate_salvage_opted_in,
     is_linear_pipeline,
+    linear_skip_frigate_salvage_paths,
+    linear_skip_legacy_fusion_safeguards,
 )
 
 
@@ -179,6 +183,58 @@ class TestLinearPipeline(unittest.TestCase):
         with unittest.mock.patch("app_config.app_config.app_config", mock_cfg):
             rows = dm.get_decisions({1: _track(conf=0.2)})
         self.assertTrue(rows[0]["accepted"])
+
+    def test_linear_skip_legacy_fusion_safeguards_only_in_linear(self):
+        linear = _Cfg({"processor.pipeline_mode": "linear"})
+        legacy = _Cfg({"processor.pipeline_mode": "legacy"})
+        self.assertTrue(linear_skip_legacy_fusion_safeguards(linear))
+        self.assertFalse(linear_skip_legacy_fusion_safeguards(legacy))
+
+    def test_linear_skips_frigate_salvage_by_default(self):
+        cfg = _Cfg(
+            {
+                "processor.pipeline_mode": "linear",
+                "video": {"cameras": [{"id": "Forest", "tuning_role": "feeder_far", "stream_name": "main", "detect_stream_name": "det"}]},
+                "processor.camera_tuning_by_role.feeder_far": {},
+            }
+        )
+        self.assertTrue(linear_skip_frigate_salvage_paths(cfg, camera_id="Forest"))
+
+    def test_frigate_site_role_opts_in_salvage_on_linear(self):
+        cfg = _Cfg(
+            {
+                "processor.pipeline_mode": "linear",
+                "video": {"cameras": [{"id": "Forest", "tuning_role": "frigate_site", "stream_name": "main", "detect_stream_name": "det"}]},
+                "processor.camera_tuning_by_role.frigate_site": {
+                    "frigate_trigger_review_salvage_enabled": True,
+                },
+            }
+        )
+        self.assertTrue(frigate_salvage_opted_in(cfg, camera_id="Forest"))
+        self.assertTrue(frigate_salvage_opted_in(cfg, camera_id="main"))
+        self.assertFalse(linear_skip_frigate_salvage_paths(cfg, camera_id="main"))
+
+    def test_global_frigate_salvage_opt_in(self):
+        cfg = _Cfg(
+            {
+                "processor.pipeline_mode": "linear",
+                "detection.frigate_trigger_review_salvage_enabled": True,
+            }
+        )
+        self.assertTrue(frigate_salvage_opted_in(cfg))
+        self.assertFalse(linear_skip_frigate_salvage_paths(cfg))
+
+    def test_role_allow_without_yolo_override(self):
+        cfg = _Cfg(
+            {
+                "processor.pipeline_mode": "linear",
+                "video": {"cameras": [{"id": "Forest", "tuning_role": "frigate_site", "stream_name": "main", "detect_stream_name": "det"}]},
+                "processor.camera_tuning_by_role.frigate_site": {
+                    "frigate_trigger_review_salvage_allow_without_yolo_tracks": True,
+                },
+            }
+        )
+        self.assertTrue(frigate_salvage_allow_without_yolo(cfg, camera_id="main"))
 
 
 if __name__ == "__main__":

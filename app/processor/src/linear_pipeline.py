@@ -42,14 +42,77 @@ from pipeline_mode_utils import (
 )
 
 
+def _resolve_camera_tuning_role(app_config, camera_id: str | None) -> str | None:
+    cam = str(camera_id or "").strip()
+    if not cam:
+        return None
+    try:
+        from app_config.cameras import get_valid_cameras
+    except ImportError:
+        return None
+    cameras = get_valid_cameras(video_config=(app_config.get("video") or {}))
+    for row in cameras:
+        if not isinstance(row, dict):
+            continue
+        row_id = str(row.get("id") or "").strip()
+        legacy_id = str(row.get("legacy_id") or "").strip()
+        if cam not in {row_id, legacy_id}:
+            continue
+        role = str(row.get("tuning_role") or "").strip()
+        return role or None
+    return None
+
+
+def _role_preset(app_config, camera_id: str | None) -> dict[str, Any]:
+    role = _resolve_camera_tuning_role(app_config, camera_id)
+    if not role:
+        return {}
+    raw = app_config.get(f"processor.camera_tuning_by_role.{role}")
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
+def frigate_salvage_opted_in(app_config, *, camera_id: str | None = None) -> bool:
+    """Global or per-role opt-in for Frigate trigger review salvage (linear exception)."""
+    if bool(app_config.get("detection.frigate_trigger_review_salvage_enabled", False)):
+        return True
+    preset = _role_preset(app_config, camera_id)
+    raw = preset.get("frigate_trigger_review_salvage_enabled")
+    return bool(raw) if raw is not None else False
+
+
+def frigate_salvage_allow_without_yolo(app_config, *, camera_id: str | None = None) -> bool:
+    if bool(app_config.get("detection.frigate_trigger_review_salvage_allow_without_yolo_tracks", False)):
+        return True
+    preset = _role_preset(app_config, camera_id)
+    raw = preset.get("frigate_trigger_review_salvage_allow_without_yolo_tracks")
+    return bool(raw) if raw is not None else False
+
+
 def linear_skip_legacy_fusion_safeguards(app_config) -> bool:
-    """Linear mode: no salvage / core-anchor / post-fusion second-guessing."""
+    """Linear mode: skip legacy post-fusion veto and yolo_core_anchor restore.
+
+    Skipped when linear (standalone-first):
+    - ``collect_post_fusion_rejections`` (second-guess accepted pre-fusion rows)
+    - ``yolo_core_anchor_enabled`` forced False (no fusion-drop anchor restore)
+
+    Still active in linear:
+    - ``restore_detect_first_persist_rows`` (detect-first contract)
+    - weak YOLO salvage when ``detect_first_confirmed`` + ``yolo_frames_with_tracks``
+    - bbox contract, track_first gate, dual_stream_timeline remap
+    """
     return is_linear_pipeline(app_config)
 
 
-def linear_skip_frigate_salvage_paths(app_config) -> bool:
-    """Linear: no Frigate standalone/salvage rows — core path is Hub YOLO track."""
-    return is_linear_pipeline(app_config)
+def linear_skip_frigate_salvage_paths(app_config, *, camera_id: str | None = None) -> bool:
+    """Linear: skip Frigate salvage unless global or ``camera_tuning_by_role`` opt-in.
+
+    Standalone-first default: Frigate/BirdNET remain hints in fusion, not persist drivers.
+    Frigate-site installs: set ``tuning_role: frigate_site`` or global
+    ``detection.frigate_trigger_review_salvage_enabled: true``.
+    """
+    if not is_linear_pipeline(app_config):
+        return False
+    return not frigate_salvage_opted_in(app_config, camera_id=camera_id)
 
 
 def _unknown_species_labels(app_config) -> set[str]:
