@@ -81,4 +81,34 @@ describe('settingsYamlDb api', () => {
     const init = apiFetchMock.mock.calls[0][1] as RequestInit;
     expect(init.body).toBeInstanceOf(FormData);
   });
+
+  it('fetchCoordinatesByZip uses external Nominatim fetch', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [{ lat: '55.75', lon: '37.62' }],
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { fetchCoordinatesByZip } = await import('./settingsYamlDb');
+    await expect(fetchCoordinatesByZip('101000')).resolves.toEqual({
+      lat: '55.75',
+      lon: '37.62',
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('nominatim.openstreetmap.org/search'),
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it('fetchCoordinatesByZip throws when Nominatim returns no matches', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { fetchCoordinatesByZip } = await import('./settingsYamlDb');
+    await expect(fetchCoordinatesByZip('00000')).rejects.toThrow(
+      'Invalid ZIP code or no data found.',
+    );
+    vi.unstubAllGlobals();
+  });
 });
