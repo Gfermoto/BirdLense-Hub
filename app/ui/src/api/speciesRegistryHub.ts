@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, apiFetch } from './client';
 
 export interface SpeciesDataQualityReport {
   species_total: number;
@@ -14,13 +13,13 @@ export interface SpeciesDataQualityReport {
 
 export const fetchSpeciesDataQuality =
   async (): Promise<SpeciesDataQualityReport> => {
-    const response = await axios.get(
-      `${BASE_API_URL}/system/species-registry/data-quality`,
-      {
-        params: { suspect_limit: 500, duplicate_limit: 100 },
-      },
+    const q = new URLSearchParams({
+      suspect_limit: '500',
+      duplicate_limit: '100',
+    });
+    return apiFetch(
+      `${BASE_API_URL}/system/species-registry/data-quality?${q}`,
     );
-    return response.data;
   };
 
 export interface ClassifierDatasetAlignmentReport {
@@ -113,46 +112,32 @@ export interface CatalogRepairStatus {
 
 export const fetchClassifierDatasetAlignment =
   async (): Promise<ClassifierDatasetAlignmentReport> => {
-    const response = await axios.get(
-      `${BASE_API_URL}/system/species-registry/classifier-dataset-alignment`,
-      {
-        params: {
-          classifier_limit: 400,
-          catalog_limit: 300,
-          dataset_limit: 150,
-        },
-      },
+    const q = new URLSearchParams({
+      classifier_limit: '400',
+      catalog_limit: '300',
+      dataset_limit: '150',
+    });
+    return apiFetch(
+      `${BASE_API_URL}/system/species-registry/classifier-dataset-alignment?${q}`,
     );
-    return response.data;
   };
 
 export const fetchCatalogCoverageMetrics =
-  async (): Promise<CatalogCoverageMetrics> => {
-    const response = await axios.get(
-      `${BASE_API_URL}/system/species-registry/coverage-metrics`,
-    );
-    return response.data;
-  };
+  async (): Promise<CatalogCoverageMetrics> =>
+    apiFetch(`${BASE_API_URL}/system/species-registry/coverage-metrics`);
 
 export const fetchCatalogRepairStatus =
-  async (): Promise<CatalogRepairStatus> => {
-    const response = await axios.get(
-      `${BASE_API_URL}/system/species-registry/repair-cards/status`,
-      { withCredentials: true },
-    );
-    return response.data;
-  };
+  async (): Promise<CatalogRepairStatus> =>
+    apiFetch(`${BASE_API_URL}/system/species-registry/repair-cards/status`);
 
 export const startCatalogRepair = async (
   limit = 6000,
-): Promise<{ message: string; status: CatalogRepairStatus }> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/system/species-registry/repair-cards/start`,
-    { limit },
-    { withCredentials: true },
-  );
-  return response.data;
-};
+): Promise<{ message: string; status: CatalogRepairStatus }> =>
+  apiFetch(`${BASE_API_URL}/system/species-registry/repair-cards/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ limit }),
+  });
 
 export type SystemJobStatus = {
   status: string;
@@ -222,91 +207,57 @@ export type BirdnetFifoPayload = {
 const postSystemAction = async (
   path: string,
   body: Record<string, unknown> = {},
-): Promise<Record<string, unknown>> => {
-  const response = await axios.post(`${BASE_API_URL}${path}`, body, {
-    withCredentials: true,
+): Promise<Record<string, unknown>> =>
+  apiFetch(`${BASE_API_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
-  return response.data as Record<string, unknown>;
-};
 
-export const fetchFusionExportStatus = async (): Promise<SystemJobStatus> => {
-  const response = await axios.get(
-    `${BASE_API_URL}/system/fusion/export/status`,
-    {
-      withCredentials: true,
-    },
-  );
-  return response.data as SystemJobStatus;
-};
+export const fetchFusionExportStatus = async (): Promise<SystemJobStatus> =>
+  apiFetch(`${BASE_API_URL}/system/fusion/export/status`);
 
-export const fetchFusionEvalStatus = async (): Promise<SystemJobStatus> => {
-  const response = await axios.get(
-    `${BASE_API_URL}/system/fusion/eval/status`,
-    {
-      withCredentials: true,
-    },
-  );
-  return response.data as SystemJobStatus;
-};
+export const fetchFusionEvalStatus = async (): Promise<SystemJobStatus> =>
+  apiFetch(`${BASE_API_URL}/system/fusion/eval/status`);
 
 export const fetchRecognitionImprovementSummary =
-  async (): Promise<RecognitionImprovementSummary> => {
-    const response = await axios.get(
-      `${BASE_API_URL}/system/recognition-improvement`,
-      {
-        withCredentials: true,
-      },
-    );
-    return response.data as RecognitionImprovementSummary;
-  };
+  async (): Promise<RecognitionImprovementSummary> =>
+    apiFetch(`${BASE_API_URL}/system/recognition-improvement`);
 
 export const startRecognitionImprovementTrain = async (): Promise<{
   message?: string;
-}> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/system/recognition-improvement/train`,
-    {},
-    { withCredentials: true },
-  );
-  return response.data as { message?: string };
-};
+}> =>
+  apiFetch(`${BASE_API_URL}/system/recognition-improvement/train`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
 
 export const fetchRecognitionImprovementTrainStatus =
-  async (): Promise<SystemJobStatus> => {
-    const response = await axios.get(
-      `${BASE_API_URL}/system/recognition-improvement/train/status`,
-      { withCredentials: true },
-    );
-    return response.data as SystemJobStatus;
-  };
+  async (): Promise<SystemJobStatus> =>
+    apiFetch(`${BASE_API_URL}/system/recognition-improvement/train/status`);
 
 export const rollbackRecognitionImprovement =
-  async (): Promise<RecognitionImprovementSummary> => {
-    const response = await axios.post(
-      `${BASE_API_URL}/system/recognition-improvement/rollback`,
-      {},
-      { withCredentials: true },
-    );
-    return response.data as RecognitionImprovementSummary;
-  };
+  async (): Promise<RecognitionImprovementSummary> =>
+    apiFetch(`${BASE_API_URL}/system/recognition-improvement/rollback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
 
-export const startFusionExport = async (): Promise<{ message?: string }> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/system/fusion/export`,
-    {},
-    { withCredentials: true },
-  );
-  return response.data as { message?: string };
-};
+export const startFusionExport = async (): Promise<{ message?: string }> =>
+  apiFetch(`${BASE_API_URL}/system/fusion/export`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
 
-export const startFusionEval = async (): Promise<{ message?: string }> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/system/fusion/eval`,
-    {},
-    { withCredentials: true },
-  );
-  return response.data as { message?: string };
-};
+export const startFusionEval = async (): Promise<{ message?: string }> =>
+  apiFetch(`${BASE_API_URL}/system/fusion/eval`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
 
 export const downloadLatestFusionExport = (): void => {
   window.open(
@@ -326,15 +277,8 @@ export const downloadLatestFusionEvalReport = (): void => {
 };
 
 export const fetchBirdnetFifoSnapshot =
-  async (): Promise<BirdnetFifoPayload> => {
-    const response = await axios.get(
-      `${BASE_API_URL}/system/diagnostics/birdnet-fifo`,
-      {
-        withCredentials: true,
-      },
-    );
-    return response.data as BirdnetFifoPayload;
-  };
+  async (): Promise<BirdnetFifoPayload> =>
+    apiFetch(`${BASE_API_URL}/system/diagnostics/birdnet-fifo`);
 
 export const seedSpeciesRegistry = async (): Promise<Record<string, unknown>> =>
   postSystemAction('/system/species-registry/seed');
