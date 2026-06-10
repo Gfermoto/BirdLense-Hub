@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, apiFetch } from './client';
 
 export type StorageStatsDay = {
   date: string;
@@ -8,9 +7,7 @@ export type StorageStatsDay = {
 };
 
 export const fetchStorageStats = async (): Promise<StorageStatsDay[]> => {
-  const { data } = await axios.get<StorageStatsDay[]>(
-    `${BASE_API_URL}/storage/stats`,
-  );
+  const data = await apiFetch<StorageStatsDay[]>(`${BASE_API_URL}/storage/stats`);
   return Array.isArray(data) ? data : [];
 };
 

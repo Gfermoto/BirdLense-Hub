@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, apiFetch } from './client';
 
 export type OrphanRecordingFiles = {
   orphan_session_count: number;
@@ -18,9 +17,5 @@ export type RetentionConfigSnapshot = {
 };
 
 export const fetchRetentionConfig =
-  async (): Promise<RetentionConfigSnapshot> => {
-    const { data } = await axios.get<RetentionConfigSnapshot>(
-      `${BASE_API_URL}/system/retention`,
-    );
-    return data;
-  };
+  async (): Promise<RetentionConfigSnapshot> =>
+    apiFetch(`${BASE_API_URL}/system/retention`);
