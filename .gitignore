@@ -130,6 +130,7 @@ app/ui/coverage/
 .cursor/rules/*
 !.cursor/rules/deploy.mdc
 !.cursor/rules/dev-workflow.mdc
+!.cursor/rules/opencode.mdc
 
 # Артефакты (curl -c, debug)
 **/-X
