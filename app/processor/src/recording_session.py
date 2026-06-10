@@ -51,7 +51,7 @@ logger = logging.getLogger(__name__)
 
 
 def _camera_processor_overrides(camera_id: str | None) -> dict:
-    """Per-camera processor overrides from role presets + ``processor.camera_overrides.<camera_id>``."""
+    """Per-camera overrides: role preset → ``detection.camera_overrides`` (legacy) → ``processor.camera_overrides``."""
     cam = str(camera_id or "").strip()
     if not cam:
         return {}
@@ -74,6 +74,9 @@ def _camera_processor_overrides(camera_id: str | None) -> dict:
         role_raw = app_config.get(f"processor.camera_tuning_by_role.{tuning_role}")
         if isinstance(role_raw, dict):
             merged.update(dict(role_raw))
+    legacy = app_config.get(f"detection.camera_overrides.{cam}")
+    if isinstance(legacy, dict):
+        merged.update(dict(legacy))
     raw = app_config.get(f"processor.camera_overrides.{cam}")
     if isinstance(raw, dict):
         merged.update(dict(raw))

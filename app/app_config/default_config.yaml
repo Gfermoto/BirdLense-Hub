@@ -25,6 +25,7 @@ general:
 #
 # Порядок порогов (позже перекрывает раньше):
 #   default_config → user_config → adaptive_profiles.night → camera_tuning_by_role.<role>
+#   → detection.camera_overrides.<camera_id> (legacy, merged if present)
 #   → processor.camera_overrides.<camera_id> → video.cameras[].detection_interest_zones
 #
 # Detect-first (lores anchor до main record) — отдельные ключи, НЕ min_track_duration:
