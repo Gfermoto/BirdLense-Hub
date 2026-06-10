@@ -1135,6 +1135,9 @@ def finalize_motion_recording(
                 video_path=video_path_for_api,
             )
         except Exception as exc:
+            from processor_exception_handling import reraise_if_io_critical
+
+            reraise_if_io_critical(exc)
             inc_counter("reid_runtime_enrich_fail_total")
             logging.warning("Runtime ReID enrich failed; keep fused detections: %s", exc)
         reid_enrich_duration_ms = round(
@@ -1391,6 +1394,9 @@ def finalize_motion_recording(
                     ),
                 )
         except Exception as exc:
+            from processor_exception_handling import reraise_if_io_critical
+
+            reraise_if_io_critical(exc)
             try:
                 from recording_session_manifest import mark_persist_failed
 
