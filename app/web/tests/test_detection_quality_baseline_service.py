@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 
 def test_build_detection_quality_baseline_summarizes_traces_and_slices(app):
-    from models import ActivityLog, Species, Video, VideoSpecies, db
+    from models import ActivityLog, Video, VideoSpecies, db
     from services.detection_quality_baseline_service import (
         build_detection_quality_baseline,
     )
