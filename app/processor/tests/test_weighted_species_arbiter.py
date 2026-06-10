@@ -26,7 +26,7 @@ class TestWeightedSpeciesArbiter(unittest.TestCase):
         mqtt_events = [
             {"source": "birdnet", "species": "great tit", "confidence": 0.9}
         ]
-        cfg = {"detection.weighted_arbiter_enabled": True}
+        cfg = {"detection.classifier_hints_enabled": True}
         out = apply_weighted_species_arbiter(
             rows,
             mqtt_events=mqtt_events,

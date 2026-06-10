@@ -49,6 +49,7 @@ The same **`ci-pr.yml`** file is also triggered on a **daily cron** (repository 
 | OpenAPI / generated TS types only | `cd app/ui && npm run codegen:openapi` then `git diff --exit-code -- src/generated/openapi-types.ts`; or **`make test-web-contract-local`** from repo root (OpenAPI contract + strict UI API auth tests in `app/.venv`) |
 | Flask route / service (web only) | `cd app && make test-web-local` after `make venv-web`, or narrow: `pytest web/tests/test_<area>.py` |
 | Processor logic (no heavy YOLO) | `cd app && make test-processor-light` |
+| Detector PT↔OpenVINO bbox parity (#640) | `python3 scripts/detector_bbox_parity_smoke.py` — see [detector-bbox-parity](./detector-bbox-parity.md) |
 | Markdown / MkDocs only | `.venv-docs/bin/mkdocs build --strict` from repo root |
 | “Full parity before push” | `make ci-local` + **`make ci-local-docker`** |
 

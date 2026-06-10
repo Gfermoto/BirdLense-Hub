@@ -178,6 +178,8 @@ jobs:
             processor/tests/test_auto_benchmark.py \
             processor/tests/test_benchmark_sota_gate.py \
             processor/tests/test_inference_weight_contract.py \
+            processor/tests/test_compare_detector_bboxes_gate.py \
+            processor/tests/test_classifier_hints.py \
             -q --tb=short
 
       - name: OpenAPI contract smoke tests
