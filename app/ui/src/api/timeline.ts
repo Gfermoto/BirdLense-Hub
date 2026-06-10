@@ -1,21 +1,26 @@
 /** Timeline + unknowns list API (#343). */
 import type { Dayjs } from 'dayjs';
-import axios from 'axios';
 import type { SpeciesVisit } from '../types';
 import type { TimeOfDay } from '../utils/timeUtils';
-import { BASE_API_URL } from './client';
+import {
+  BASE_API_URL,
+  apiBlob,
+  apiFetch,
+  triggerBlobDownload,
+} from './client';
+
+const timelineExportFallbackName = (format: 'csv' | 'json' | 'ebird'): string =>
+  format === 'ebird' ? 'birdlense_ebird.csv' : `birdlense_timeline.${format === 'csv' ? 'csv' : 'json'}`;
 
 export const fetchTimeline = async (
   startTime: Dayjs,
   endTime: Dayjs,
 ): Promise<SpeciesVisit[]> => {
-  const response = await axios.get(`${BASE_API_URL}/timeline`, {
-    params: {
-      start_time: startTime.unix(),
-      end_time: endTime.unix(),
-    },
+  const q = new URLSearchParams({
+    start_time: String(startTime.unix()),
+    end_time: String(endTime.unix()),
   });
-  return response.data;
+  return apiFetch<SpeciesVisit[]>(`${BASE_API_URL}/timeline?${q}`);
 };
 
 export const fetchTimelineForObserverDate = async (
@@ -32,19 +37,19 @@ export const fetchTimelineForObserverDate = async (
       | 'scales';
   },
 ): Promise<SpeciesVisit[]> => {
-  const response = await axios.get(`${BASE_API_URL}/timeline`, {
-    params: {
-      date,
-      ...(options?.hour != null
-        ? { hour: options.hour }
-        : { time_of_day: options?.timeOfDay ?? 'all' }),
-      ...(options?.favoritesOnly ? { favorite_only: 1 } : {}),
-      ...(options?.triggerSource && options.triggerSource !== 'all'
-        ? { trigger_source: options.triggerSource }
-        : {}),
-    },
-  });
-  return response.data;
+  const q = new URLSearchParams({ date });
+  if (options?.hour != null) {
+    q.set('hour', String(options.hour));
+  } else {
+    q.set('time_of_day', options?.timeOfDay ?? 'all');
+  }
+  if (options?.favoritesOnly) {
+    q.set('favorite_only', '1');
+  }
+  if (options?.triggerSource && options.triggerSource !== 'all') {
+    q.set('trigger_source', options.triggerSource);
+  }
+  return apiFetch<SpeciesVisit[]>(`${BASE_API_URL}/timeline?${q}`);
 };
 
 /** Export timeline as CSV, JSON, or eBird format. Triggers download. */
@@ -53,26 +58,13 @@ export const exportTimeline = async (
   endTime: Dayjs,
   format: 'csv' | 'json' | 'ebird',
 ): Promise<void> => {
-  const params = new URLSearchParams({
+  const q = new URLSearchParams({
     start_time: String(startTime.unix()),
     end_time: String(endTime.unix()),
     format,
   });
-  const url = `${BASE_API_URL}/timeline/export?${params}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
-  const blob = await res.blob();
-  const ext = format === 'ebird' ? 'csv' : format === 'csv' ? 'csv' : 'json';
-  const filename =
-    format === 'ebird' ? 'birdlense_ebird.csv' : `birdlense_timeline.${ext}`;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const { blob, filename } = await apiBlob(`${BASE_API_URL}/timeline/export?${q}`);
+  triggerBlobDownload(blob, filename || timelineExportFallbackName(format));
 };
 
 export const exportTimelineForObserverDate = async (
@@ -90,32 +82,20 @@ export const exportTimelineForObserverDate = async (
       | 'scales';
   },
 ): Promise<void> => {
-  const params = new URLSearchParams({
-    date,
-    format,
-    ...(options?.hour != null
-      ? { hour: String(options.hour) }
-      : { time_of_day: options?.timeOfDay ?? 'all' }),
-    ...(options?.favoritesOnly ? { favorite_only: '1' } : {}),
-    ...(options?.triggerSource && options.triggerSource !== 'all'
-      ? { trigger_source: options.triggerSource }
-      : {}),
-  });
-  const url = `${BASE_API_URL}/timeline/export?${params}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
+  const q = new URLSearchParams({ date, format });
+  if (options?.hour != null) {
+    q.set('hour', String(options.hour));
+  } else {
+    q.set('time_of_day', options?.timeOfDay ?? 'all');
   }
-  const blob = await res.blob();
-  const ext = format === 'ebird' ? 'csv' : format === 'csv' ? 'csv' : 'json';
-  const filename =
-    format === 'ebird' ? 'birdlense_ebird.csv' : `birdlense_timeline.${ext}`;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  if (options?.favoritesOnly) {
+    q.set('favorite_only', '1');
+  }
+  if (options?.triggerSource && options.triggerSource !== 'all') {
+    q.set('trigger_source', options.triggerSource);
+  }
+  const { blob, filename } = await apiBlob(`${BASE_API_URL}/timeline/export?${q}`);
+  triggerBlobDownload(blob, filename || timelineExportFallbackName(format));
 };
 
 export interface UnknownDetection {
@@ -142,14 +122,12 @@ export const fetchUnknowns = async (
   endTime: Dayjs,
   limit = 100,
 ): Promise<UnknownDetection[]> => {
-  const response = await axios.get(`${BASE_API_URL}/unknowns`, {
-    params: {
-      start_time: startTime.unix(),
-      end_time: endTime.unix(),
-      limit,
-    },
+  const q = new URLSearchParams({
+    start_time: String(startTime.unix()),
+    end_time: String(endTime.unix()),
+    limit: String(limit),
   });
-  return response.data;
+  return apiFetch<UnknownDetection[]>(`${BASE_API_URL}/unknowns?${q}`);
 };
 
 export const fetchUnknownsForObserverDate = async (
@@ -162,16 +140,20 @@ export const fetchUnknownsForObserverDate = async (
     reviewReason?: string;
   },
 ): Promise<UnknownDetection[]> => {
-  const response = await axios.get(`${BASE_API_URL}/unknowns`, {
-    params: {
-      date,
-      limit: options?.limit ?? 100,
-      ...(options?.queue && options.queue !== 'default' ? { queue: options.queue } : {}),
-      ...(options?.reviewReason ? { review_reason: options.reviewReason } : {}),
-      ...(options?.hour != null
-        ? { hour: options.hour }
-        : { time_of_day: options?.timeOfDay ?? 'all' }),
-    },
+  const q = new URLSearchParams({
+    date,
+    limit: String(options?.limit ?? 100),
   });
-  return response.data;
+  if (options?.queue && options.queue !== 'default') {
+    q.set('queue', options.queue);
+  }
+  if (options?.reviewReason) {
+    q.set('review_reason', options.reviewReason);
+  }
+  if (options?.hour != null) {
+    q.set('hour', String(options.hour));
+  } else {
+    q.set('time_of_day', options?.timeOfDay ?? 'all');
+  }
+  return apiFetch<UnknownDetection[]>(`${BASE_API_URL}/unknowns?${q}`);
 };
