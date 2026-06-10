@@ -119,7 +119,7 @@ flowchart TB
 | 3 | [#641](https://github.com/Gfermoto/BirdLense-Hub/issues/641) Classifier hints pipeline | P2 | One module: Frigate + BirdNET + eBird weights |
 | 3 | [#642](https://github.com/Gfermoto/BirdLense-Hub/issues/642) DINOv2 + behavior after SLO | P2 | Feature flag tied to IoU/funnel green |
 | 4 | [#643](https://github.com/Gfermoto/BirdLense-Hub/issues/643) Dead config/UI cleanup | P2 | Remove deprecated fusion gates |
-| 5 | [#644](https://github.com/Gfermoto/BirdLense-Hub/issues/644) Performance audit | P3 | OpenVINO iGPU/CPU + W1 queue hygiene (Intel-only; no Coral/CUDA) |
+| 5 | [#644](https://github.com/Gfermoto/BirdLense-Hub/issues/644) Performance audit | P3 | OpenVINO iGPU/CPU pin ≥2025.4; OV smoke; W1 queue (Intel-only; no Coral/CUDA) |
 
 ---
 
@@ -195,7 +195,21 @@ Frigate, BirdNET-Go, YA-WAMF и родственные feeder-проекты —
 
 - Range/location filter → confidence → repeat-confirmation (Deep Detection) → privacy filters.
 - Cross-model merge по species key, async JobQueue для persist/notify.
+- **ORT 1.25.x** — primary inference backend (TFLite phased out); CPU on Intel NUC, **не** OpenVINO EP по умолчанию.
 - **У нас:** BirdNET не создаёт persist без YOLO track; adopt optional `hint_repeat_window_sec` в hints module.
+
+### Frigate OpenVINO on Intel iGPU — parity checklist (#640, #644)
+
+| Check | Frigate reference | BirdLense target |
+|-------|-------------------|------------------|
+| `/dev/dri` full map + render group | [GPU troubleshooting](https://docs.frigate.video/troubleshooting/gpu) | `docker-compose-intel-override-gen.sh` |
+| OpenVINO ≥ 2025.4 (GPU runtime) | [Discussion #22059](https://github.com/blakeblackshear/frigate/discussions/22059) | Container smoke in #644 |
+| Gen12 `stoi` fix | OV **2026.1.0+** [#23016](https://github.com/blakeblackshear/frigate/discussions/23016) | Pin after IoU gate green |
+| YOLO letterbox, not square force | Frigate 320² for COCO; we use native 704×576 | `openvino_native_lores_imgsz` |
+| Motion→record | No object confirmation gate | #635 |
+| MQTT events | Downstream only | Classifier hint (#641) |
+
+Operator runbook: [`intel_igpu_inference_guide.md`](intel_igpu_inference_guide.md).
 
 ### YA-WAMF — Frigate-adjacent classify
 
@@ -205,7 +219,7 @@ Frigate, BirdNET-Go, YA-WAMF и родственные feeder-проекты —
 
 ### Intel-only constraint
 
-Deploy target: **Intel CPU + iGPU**. Google Coral и NVIDIA CUDA **вне scope** EPIC и Wave 5 (#644).
+Deploy target: **Intel CPU + iGPU**. Google Coral, NVIDIA CUDA, Hailo, ROCm, EdgeTPU **вне scope** EPIC и Wave 5 (#644).
 
 ---
 
@@ -246,6 +260,28 @@ detect frame (WxH native) → letterbox to model [1,3,H,W] (pad 114)
 1. `inference_lores_px` square on 4:3 stream → shrunk birds (a656199a).
 2. Silent torch fallback without `inference_backend_fallback_total`.
 3. Treating OpenVINO conf parity with torch without `compare_detector_bboxes` gate (#640).
+4. OpenVINO **2025.3** pin — Frigate field reports GPU `CL_INVALID_VALUE` and Gen12 `stoi` ([#22059](https://github.com/blakeblackshear/frigate/discussions/22059), [#23016](https://github.com/blakeblackshear/frigate/discussions/23016)).
+5. BirdNET ORT on iGPU via OpenVINO EP — unnecessary; reserve iGPU for YOLO (#644).
+
+### OpenVINO version policy (#644)
+
+| Milestone | Minimum OV | Rationale |
+|-----------|------------|-----------|
+| GPU live detect | 2025.4+ | Sub-buffer runtime fix |
+| Gen12 iGPU compile | 2026.1.0+ | `stoi` compile fix |
+| INT8/NNCF quant | After #640 IoU green | Golden re-validation required |
+
+Smoke: `compile_model(binary_ir, 'GPU')` in deploy container — see [`intel_igpu_inference_guide.md`](intel_igpu_inference_guide.md) §2.
+
+### Risk register (OpenVINO / Intel)
+
+| Risk | Likelihood | Mitigation |
+|------|------------|------------|
+| OV version drift in base image | Medium | Pin + smoke in #644; document in deploy runbook |
+| iGPU not in `available_devices` | Low | Full `/dev/dri` map; render group; driver check |
+| Non-AVX CPU (Jasper Lake) | Low | OpenVINO CPU path only; avoid TF-heavy paths |
+| BirdNET sidecar CPU load | Medium | ORT 1.25 CPU OK; async MQTT; no persist gate |
+| Frigate MQTT stale hint | Medium | TTL + weight cap in hints module (#641) |
 
 ---
 
@@ -316,7 +352,7 @@ gantt
 | Stream | Issue | Notes |
 |--------|-------|-------|
 | A | #643 Dead config/UI | After #638 |
-| B | #644 OpenVINO iGPU perf | Intel-only; after #642 |
+| B | #644 OpenVINO iGPU perf | Intel-only; OV pin ≥2025.4; smoke + queue hygiene |
 
 ---
 
@@ -419,7 +455,7 @@ rows = apply_hints_to_rows(classifier_rows, hints, app_config=cfg)
 | 3a Hints | #641 | Golden pack top-1 ±0% with hints off; +2pp with hints on fixture | `hint_trace` in decision_trace | `test_classifier_hints.py` |
 | 3b DINOv2 | #642 | Layers skip when `bbox_slo_ok=false` | readiness `bbox_slo_ok` exposed | behavior tests unchanged when green |
 | 4a Config | #643 | 0 fusion gate keys in default_config | Settings search clean | drift + UI snapshot |
-| 4b Perf | #644 | Finalize p95 < 8s; persist ≤ 40% critical path | OpenVINO LATENCY p50 detect < 80ms | `test_processor_runtime_profile_openvino.py` |
+| 4b Perf | #644 | Finalize p95 < 8s; OV GPU compile smoke; detect p50 < 80ms | `inference_backend_fallback_total` → 0 | `test_processor_runtime_profile_openvino.py` + deploy smoke |
 
 ### Program exit SLO (unchanged)
 
@@ -432,6 +468,7 @@ rows = apply_hints_to_rows(classifier_rows, hints, app_config=cfg)
 ## 13. References
 
 - Research: [`pipeline_simplification_research.md`](pipeline_simplification_research.md)  
+- Intel iGPU ops: [`intel_igpu_inference_guide.md`](intel_igpu_inference_guide.md)  
 - Commit: [2ff464057](https://github.com/Gfermoto/BirdLense-Hub/commit/2ff464057) — partial root fix (a656199a)  
 - Closed EPIC: [#601](https://github.com/Gfermoto/BirdLense-Hub/issues/601) — storage/NVR; superseded for CV spine by this plan  
 - CV recovery: [#606](https://github.com/Gfermoto/BirdLense-Hub/issues/606) — dual-stream phases E–G  
