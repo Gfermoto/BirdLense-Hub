@@ -1,11 +1,12 @@
 {
   "schema": "golden_set_mandatory_gate@v1",
-  "generated_at": "2026-06-08T11:08:40Z",
+  "generated_at": "2026-06-10T12:59:11Z",
   "base_ref": "HEAD~1",
   "head_ref": "HEAD",
-  "changed_files_count": 1,
+  "changed_files_count": 2,
   "changed_files": [
-    "docs/strategy/DUAL_STREAM_BBOX_SYNC_PLAN_2026-06.md"
+    "app/ui/src/api/systemAuditMetrics.test.ts",
+    "app/ui/src/api/systemAuditMetrics.ts"
   ],
   "gate_required": false,
   "gate_trigger_files": [],

@@ -207,13 +207,17 @@
 | `file_test_max_upload_mb` | Лимит МиБ на один ролик при upload через Hub (**Библиотека** → прогон с диска). В коде зажато **64–65536**, по умолчанию **10240** (>10000 MiB). Прокси может отдать **413** раньше Flask — поднимите nginx `client_max_body_size` под размер ролика. Потолок тела запроса в Flask: **`FLASK_MAX_CONTENT_LENGTH`** (байты); дефолт в `web/config.py` большой, чтобы первым срабатывал лимит из YAML. |
 | *(поведение)* | **`video.source=file`** и **плейлист из папки**: после **каждого доигранного файла** сессия **финализируется** (кропы/БД для этого клипа), затем открывается следующий файл. **`processor.max_inactive_seconds`** — не ниже **120** с. **`processor.file_max_record_floor_seconds`** (по умолчанию **86400**) — запас по «настенным часам», чтобы длинный файл не резался дефолтом камеры; уменьшайте только если нужны отрезки по времени. |
 | `go2rtc_url` | URL Go2RTC (http://IP:1984) |
-| `cameras` | Список: `{id, stream_name, name}` |
+| `cameras` | Список: `{id, stream_name, name, detect_stream_name?, tuning_role?}`. **`detect_stream_name` обязателен** для live `go2rtc` — lores-поток для motion + YOLO; `stream_name` — только main/запись. Пример: [`user_config.dual-stream.example.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/app_config/user_config.dual-stream.example.yaml). |
 | `pre_record_seconds` | Предзапись перед триггером |
 | `auto_reconnect` | Автопереподключение к потоку |
 | `video_width`, `video_height` | Fallback разрешения записи (0 = авто из probe); не в UI |
 | `force_recording_resolution` | Legacy: фиксированные width/height перекрывают probe |
 
-### Потоки Go2RTC и MJPEG (страница Live)
+### Dual-stream (detect + record)
+
+Как у Frigate: **`stream_name`** — main RTSP (FFmpeg MP4); **`detect_stream_name`** — lores (motion + YOLO). Без `detect_stream_name` на каждой live-камере процессор **не стартует**. Геометрия lores: `processor.inference_lores_wh` (по умолчанию `[704, 576]`). Сдвиг таймлайна detect→main: `processor.detect_record_time_offset_sec` (глобально или по `tuning_role` в `camera_tuning_by_role`). Цепочка: motion на lores → **detect-first** якорь YOLO → запись main → remap (`dual_stream_timeline.py`). Шаблон: `app/app_config/user_config.dual-stream.example.yaml`.
+
+### Потоки Go2RTC и MJPEG (страница Live) {#go2rtc-streams-and-mjpeg-live-view}
 
 Типичная камера отдаёт на RTSP **H264**. go2rtc отдаёт его в **MSE** (`/api/stream.mp4`) и в запись; **`/api/stream.mjpeg` без MJPEG-кодека пустой** ([документация go2rtc MJPEG](https://go2rtc.org/internal/mjpeg/)).
 

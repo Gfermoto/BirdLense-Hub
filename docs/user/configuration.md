@@ -207,13 +207,17 @@ The System page also lists these endpoints under **Notification observability** 
 | `file_test_max_upload_mb` | Max MiB per clip uploaded via Hub (**Library** → file replay). Clamped **64–65536** in code; default **10240** (>10000 MiB). A reverse proxy may return **413** before Flask — set e.g. nginx `client_max_body_size` ≥ your largest clip. Flask body cap: env **`FLASK_MAX_CONTENT_LENGTH`** (bytes); default in `web/config.py` is large so the YAML limit applies first. |
 | *(behaviour)* | For **`video.source=file`** with a **folder playlist**, each **`VideoPlaylistSource`** clip triggers a **session finalize** when the file ends (crops/DB/notifications for that clip), then the next file continues in a new session. **`processor.max_inactive_seconds`** is floored to **120**s. **`processor.file_max_record_floor_seconds`** (default **86400**) is a wall-clock safety minimum for **`max_record_seconds`** so long files are not cut mid-clip by the live-camera default; lower it only if you want time-based splits. |
 | `go2rtc_url` | Go2RTC URL (`http://YOUR_HOST:1984`) |
-| `cameras` | List: `{id, stream_name, name}` |
+| `cameras` | List: `{id, stream_name, name, detect_stream_name?, tuning_role?}`. **`detect_stream_name` is required** for live `go2rtc` — lores stream for motion + YOLO; `stream_name` is main/record only. Example: [`user_config.dual-stream.example.yaml`](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/app_config/user_config.dual-stream.example.yaml). |
 | `pre_record_seconds` | Pre-roll before trigger |
 | `auto_reconnect` | Auto-reconnect to stream |
 | `video_width`, `video_height` | Recording resolution fallback (0 = auto from probe); not in UI |
 | `force_recording_resolution` | Legacy: fixed width/height override stream probe |
 
-### Go2RTC streams and MJPEG (Live view)
+### Dual-stream (detect + record)
+
+Frigate-style split: per camera **`stream_name`** = main RTSP (FFmpeg MP4 record); **`detect_stream_name`** = lores substream (motion + YOLO). Processor **does not start** without `detect_stream_name` on each live camera. Lores geometry: `processor.inference_lores_wh` (default `[704, 576]`). Align detect bbox timestamps to main playback: `processor.detect_record_time_offset_sec` (global or per `tuning_role` in `camera_tuning_by_role`). Pipeline: motion on lores → **detect-first** YOLO anchor → record main → timeline remap (`dual_stream_timeline.py`). Ops template: `app/app_config/user_config.dual-stream.example.yaml`.
+
+### Go2RTC streams and MJPEG (Live view) {#go2rtc-streams-and-mjpeg-live-view}
 
 Most IP cameras expose **H264** on the main RTSP substream. go2rtc serves that for **MSE** (`/api/stream.mp4`) and recording; **`/api/stream.mjpeg` is empty** unless the stream also has an **MJPEG** track ([go2rtc MJPEG docs](https://go2rtc.org/internal/mjpeg/)).
 

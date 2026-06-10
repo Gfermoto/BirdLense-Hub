@@ -1,6 +1,6 @@
 # ML Technical Debt Scorecard Report
 
-- generated_at: `2026-06-08T11:05:13Z`
+- generated_at: `2026-06-10T12:59:29Z`
 - checks_total: `28`
 - high_risk_open: `2` (limit `3`)
 - missing_owner: `0`

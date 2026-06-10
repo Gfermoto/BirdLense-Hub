@@ -46,18 +46,20 @@ High-level layout of the single-container app, data paths, and integrations. For
 
 ## Data flows
 
-### Video (default path)
+### Video (default path, dual-stream)
 
-1. **Go2RTC** (external) — RTSP / WebRTC / HLS into the hub.
-2. **Processor** reads frames from Go2RTC.
-3. **Motion** (OpenCV, Frigate MQTT, plain MQTT, or ESPHome) starts a recording segment.
-4. **Detector** — first-stage target confirmation (`Bird | Rodent`).
-5. **YOLO classifier** — species classification for detector-confirmed tracks.
-6. **ByteTrack** — multi-object tracking and per-frame boxes.
-7. **Fusion** — detector/classifier outcome + Frigate promotion + confidence boosters.
-8. **Write** — `data/recordings/YYYY/MM/DD/HHMMSS/video.mp4`.
-9. **Spectrogram** (when enabled / needed) — FFmpeg + librosa → e.g. `spectrogram_200.jpg`.
-10. **API** — processor `POST /api/processor/videos` with fused detection payload.
+1. **Go2RTC** (external) — per camera: **main** stream (`stream_name`) for FFmpeg MP4 record; **detect** stream (`detect_stream_name`, required) — lores for motion + YOLO.
+2. **Processor** ingests the detect stream continuously; on trigger it records from main (`media_runtime.py`, `go2rtc_stream_source.py`).
+3. **Motion** (OpenCV on lores, Frigate MQTT, plain MQTT, or ESPHome) starts a recording segment.
+4. **Detect-first** — early YOLO anchor on lores before full finalize (`detect_first.py`).
+5. **Detector** — first-stage target confirmation (`Bird | Rodent`).
+6. **YOLO classifier** — species classification for detector-confirmed tracks.
+7. **ByteTrack** — multi-object tracking and per-frame boxes.
+8. **Fusion** — detector/classifier outcome + Frigate promotion + confidence boosters.
+9. **Timeline remap** — bbox timestamps shifted detect→main (`dual_stream_timeline.py`, `detect_record_time_offset_sec`).
+10. **Write** — `data/recordings/YYYY/MM/DD/HHMMSS/video.mp4`.
+11. **Spectrogram** (when enabled / needed) — FFmpeg + librosa → e.g. `spectrogram_200.jpg`.
+12. **API** — processor `POST /api/processor/videos` with fused detection payload.
 
 ### Frigate (optional)
 

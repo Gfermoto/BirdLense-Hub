@@ -9,7 +9,7 @@
 **Цель:** Детекция птиц по видео с одной камеры, без MQTT и уведомлений.
 
 1. Установить Go2RTC (standalone или в Frigate).
-2. Добавить камеры в `streams` go2rtc (имена = `stream_name` в BirdLense). Для **H264 RTSP** добавьте **`ffmpeg:ИМЯ#video=mjpeg`** на каждый поток, если нужен **Live → MJPEG** — см. [Конфигурация → Потоки Go2RTC и MJPEG](./configuration.ru.md#потоки-go2rtc-и-mjpeg-страница-live) и [`docs/examples/go2rtc-streams.example.yaml`](../examples/go2rtc-streams.example.yaml).
+2. Добавить камеры в `streams` go2rtc (имена = `stream_name` в BirdLense). Для **H264 RTSP** добавьте **`ffmpeg:ИМЯ#video=mjpeg`** на каждый поток, если нужен **Live → MJPEG** — см. [Конфигурация → Потоки Go2RTC и MJPEG](./configuration.ru.md#go2rtc-streams-and-mjpeg-live-view) и [`docs/examples/go2rtc-streams.example.yaml`](../examples/go2rtc-streams.example.yaml).
 3. Запустить BirdLense: `make pull` в `app/`.
 4. Настройки → Видео: URL Go2RTC (`http://IP:1984`).
 5. Настройки → Камеры: добавить stream name.

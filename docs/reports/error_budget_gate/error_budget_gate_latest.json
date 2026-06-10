@@ -1,6 +1,6 @@
 {
   "schema": "error_budget_gate@v1",
-  "generated_at": "2026-06-08T11:08:41Z",
+  "generated_at": "2026-06-10T12:59:11Z",
   "policy": {
     "window": "rolling_28d",
     "budget_pct_total": 100,
@@ -17,28 +17,28 @@
     "warning_breaches": 0,
     "slo_dashboard_not_ok": true,
     "per_camera_warn_count_24h": 2,
-    "recording_artifact_failures": true
+    "recording_artifact_failures": false
   },
   "costs": {
     "critical_breaches": 45,
     "warning_breaches": 0,
     "dashboard_not_ok": 20,
     "per_camera_warn_count": 10,
-    "recording_artifact_failures": 10
+    "recording_artifact_failures": 0
   },
   "budget": {
-    "consumed_pct": 85,
-    "remaining_pct": 15,
-    "state": "warning",
+    "consumed_pct": 75,
+    "remaining_pct": 25,
+    "state": "ok",
     "exhausted": false
   },
   "gate": {
-    "override_used": true,
-    "override_reason": "dual-stream bbox timeline sync + BirdBox frigate-assist (#608)",
-    "override_has_ticket": true,
+    "override_used": false,
+    "override_reason": "",
+    "override_has_ticket": false,
     "warning_requires_override": true,
-    "requires_override": true,
-    "warning_override_active": true,
+    "requires_override": false,
+    "warning_override_active": false,
     "block_release": false,
     "ok": true
   }

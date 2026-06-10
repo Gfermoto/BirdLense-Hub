@@ -1,6 +1,6 @@
 {
   "schema": "domain_finetune_loop_report@v1",
-  "generated_at": "2026-06-08T11:05:14Z",
+  "generated_at": "2026-06-10T12:59:30Z",
   "checks": {
     "required_candidates_present_ok": true,
     "champion_shadow_ok": true,
