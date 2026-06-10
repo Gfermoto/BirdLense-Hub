@@ -178,8 +178,8 @@ processor:
   # false — классификатор/ ReID используют тот же lores-кадр (быстрее, но хуже детализация).
   classifier_use_source_frame: true
   # Go2RTC live: один RTSP read (main/record) + software lores для detect/YOLO; FFmpeg record по demand.
-  # false — legacy: отдельный RTSP на detect substream + sync buffer для classifier crops.
-  single_rtsp_read: true
+  # false (default) — detect substream + sync buffer; avoids OpenCV+FFmpeg contention on main during record.
+  single_rtsp_read: false
   # Interpolation for OpenCV resize during letterbox preprocessing.
   # linear|cubic|area|nearest|lanczos
   letterbox_resize_interpolation: linear

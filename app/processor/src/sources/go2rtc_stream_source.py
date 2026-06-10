@@ -275,7 +275,7 @@ class Go2RTCStreamSource:
         capture_stream_url: str | None = None,
         *,
         record_with_vaapi: bool | None = None,
-        single_rtsp_read: bool = True,
+        single_rtsp_read: bool = False,
     ):
         self.logger = logging.getLogger(__name__)
         # Main/high stream: FFmpeg recording only.
@@ -359,17 +359,40 @@ class Go2RTCStreamSource:
                 "YOLO uses inference_lores_wh / letterbox only when decode size differs."
             )
 
+        self._capture_url_connected: str | None = None
         self._connect()
+        self._capture_url_connected = self._live_capture_url()
         self.refresh_record_stream_geometry()
 
         # Start MJPEG streaming server for live view
         self._streaming_output, self._streaming_thread = start_streaming_server(port=mjpeg_port)
 
+    def _single_read_idle(self) -> bool:
+        """Single main-stream read only when FFmpeg is not also pulling record RTSP."""
+        return bool(self._single_rtsp_read and not self._recording)
+
     def _live_capture_url(self) -> str:
-        """RTSP URL for live frame reads (main when single_rtsp_read, else detect substream)."""
-        if self._single_rtsp_read:
+        """RTSP URL for live frame reads (main when single-read idle, else detect substream)."""
+        if self._single_read_idle():
             return self.stream_url
         return self._capture_stream_url
+
+    def _reconnect_capture_if_url_changed(self) -> None:
+        """Reconnect OpenCV/VA-API capture when idle↔recording toggles capture URL."""
+        expected = self._live_capture_url()
+        current = getattr(self, "_capture_url_connected", None)
+        if current == expected:
+            return
+        self.logger.info(
+            "Capture URL switch: %s → %s (recording=%s single_rtsp_read=%s)",
+            current or "?",
+            expected,
+            self._recording,
+            self._single_rtsp_read,
+        )
+        if self._connect():
+            self._capture_url_connected = expected
+            self.refresh_record_stream_geometry()
 
     def _derive_detect_frame(self, main_frame: np.ndarray) -> np.ndarray:
         """Software lores from main frame (Frigate-style single read)."""
@@ -529,8 +552,10 @@ class Go2RTCStreamSource:
             self._record_cap = None
 
     def _connect_record_cap(self) -> bool:
-        """Open main/record RTSP for hi-res classifier crops (legacy dual-read)."""
-        if self._single_rtsp_read or not self._dual_stream:
+        """Open main/record RTSP for hi-res classifier crops (dual-read / recording fallback)."""
+        if not self._dual_stream:
+            return False
+        if self._single_rtsp_read and not self._recording:
             return False
         self._disconnect_record_cap()
         cap = cv2.VideoCapture(self.stream_url, cv2.CAP_FFMPEG)
@@ -573,8 +598,10 @@ class Go2RTCStreamSource:
         return bool(self._last_classifier_crop_mismatch)
 
     def _read_record_classifier_frame(self) -> np.ndarray | None:
-        """Best-effort hi-res frame from main/record RTSP (legacy dual-read classifier crops)."""
-        if self._single_rtsp_read or not self._dual_stream:
+        """Best-effort hi-res frame from main/record RTSP (dual-read / recording fallback)."""
+        if not self._dual_stream:
+            return None
+        if self._single_rtsp_read and not self._recording:
             return None
         with self._read_lock:
             cap = self._record_cap
@@ -729,6 +756,7 @@ class Go2RTCStreamSource:
     def start_recording(self, output: str):
         """Start recording via FFmpeg (video+audio from RTSP). CPU or Intel VA-API."""
         self._recording = True
+        self._reconnect_capture_if_url_changed()
         self._recording_t0 = time.monotonic()
         self._recording_used_vaapi = False
         self._video_output = output
@@ -771,6 +799,8 @@ class Go2RTCStreamSource:
     def stop_recording(self):
         """Stop FFmpeg recording."""
         self._recording = False
+        self._disconnect_record_cap()
+        self._reconnect_capture_if_url_changed()
         self._recording_t0 = None
         if self._ffmpeg_process:
             return_code = None
@@ -839,7 +869,7 @@ class Go2RTCStreamSource:
         self._last_frame_time = time.time()
         detect_ts = time.monotonic()
         self._last_detect_capture_ts = detect_ts
-        if self._single_rtsp_read:
+        if self._single_read_idle():
             main_frame = frame
             self._last_classifier_crop_skew_sec = 0.0
             self._last_classifier_crop_mismatch = False
@@ -867,7 +897,7 @@ class Go2RTCStreamSource:
         if self._last_classifier_crop_mismatch:
             return None
         ts = detect_ts if detect_ts is not None else self._last_detect_capture_ts
-        if not self._single_rtsp_read and self._dual_stream and ts is not None:
+        if (not self._single_read_idle()) and self._dual_stream and ts is not None:
             selected, skew = self._select_nearest_record_frame(ts)
             if selected is not None and skew <= self._classifier_record_max_skew_sec():
                 return selected
@@ -889,7 +919,7 @@ class Go2RTCStreamSource:
         try:
             frame, ok = self._read_frame()
             if ok and frame is not None:
-                if self._single_rtsp_read:
+                if self._single_read_idle():
                     frame = self._derive_detect_frame(frame)
                 self._update_streaming_output(frame)
         finally:
