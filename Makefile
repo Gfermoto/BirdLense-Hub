@@ -286,7 +286,7 @@ verify-prod-config-drift:
 
 verify-processor-config-drift:
 	@set -e; cd "$(CURDIR)"; \
-	python3 ./scripts/verify_processor_config_drift.py
+	python3 ./scripts/verify_processor_config_drift.py --fail-on-critical
 
 sota-governance-weekly:
 	@set -e; cd "$(CURDIR)"; \

@@ -44,6 +44,14 @@ def test_library_ui_guard_rejects_unmapped_key():
         allowlist.update(original)
 
 
+def test_tier_prefix_allowlist_covers_camera_role_presets():
+    """Role preset subtree keys may be allowlisted by prefix (#623)."""
+    g = _load_checker_globals()
+    meta = g["_prefix_allowlist_meta"]("processor.camera_tuning_by_role.feeder_close.min_box_size_px")
+    assert meta is not None
+    assert meta["category"] == "advanced"
+
+
 def test_tier_allowlist_categories_are_valid():
     """Expert/advanced allowlist entries must use known maturity categories."""
     g = _load_checker_globals()

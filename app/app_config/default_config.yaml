@@ -856,8 +856,7 @@ detection:
   track_fragment_merge_min_iou: 0.08
   track_fragment_merge_max_center_dist: 0.18
   # Ниже порога детекция отбрасывается после fusion; должно быть ≤ processor.min_confidence_to_process.
-  # Держим мягче, чтобы YOLO-треки не пропадали до записи в БД/overlay.
-  min_confidence_to_store: 0.20
+  min_confidence_to_store: 0.12
   # Track-first: keep bbox in DB for ingest contract; UI may hide via overlay_suppressed.
   strip_review_only_overlay_frames: false
   # Final gate before create_video: drop frameless video rows (no 400 on API contract).

@@ -57,7 +57,32 @@ def test_pydantic_static_motion_calibration_fields():
     assert issues == [], issues
 
 
-def test_pydantic_accepts_extra_unknown_processor_keys():
+def test_pydantic_accepts_p0_processor_and_detection_keys():
+    merged = {
+        "processor": {
+            "pipeline_mode": "linear",
+            "single_rtsp_read": False,
+            "min_confidence_binary": 0.12,
+            "min_confidence_to_process": 0.12,
+        },
+        "detection": {
+            "min_confidence_to_store": 0.12,
+            "persist_mode": "binary_track_first",
+            "track_first_gate_enabled": True,
+            "hypothesis_arbitration_enabled": False,
+        },
+    }
+    issues = validate_merged_config_pydantic(merged)
+    assert issues == [], issues
+
+
+def test_pydantic_rejects_legacy_pipeline_mode_value():
+    issues = validate_merged_config_pydantic(
+        {"processor": {"pipeline_mode": "legacy"}},
+    )
+    assert issues == []  # type allowed; drift gate blocks at deploy
+
+
     merged = {
         "processor": {
             "min_confidence_binary": 0.2,

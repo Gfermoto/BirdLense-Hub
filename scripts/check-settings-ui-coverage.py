@@ -2070,6 +2070,177 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Dual-camera slot map (BirdBox/Forest); deployment topology.",
         "next_step": "YAML/user_config; future Cameras section.",
     },
+    # Track-first / detection contract (#621) — expert YAML or migration defaults.
+    "detection.persist_mode": {
+        "category": "advanced",
+        "reason": "Persist contract selector; default binary_track_first; dangerous to flip in Basic tier.",
+        "next_step": "Expert tier read-only badge or guarded enum in ProcessorSection.",
+    },
+    "detection.track_first_gate_enabled": {
+        "category": "advanced",
+        "reason": "Final gate before create_video; track-first rollout knob.",
+        "next_step": "Advanced Processor block when operators tune persist contract.",
+    },
+    "detection.hypothesis_arbitration_enabled": {
+        "category": "advanced",
+        "reason": "Classifier/persist judge layer; off by default for simpler live path.",
+        "next_step": "Expert tier when arbitration UX exists.",
+    },
+    "detection.yolo_core_anchor_enabled": {
+        "category": "advanced",
+        "reason": "YOLO core anchor path tuning; ops/YAML.",
+        "next_step": "Advanced detection block.",
+    },
+    "detection.yolo_between_motion_max_age_seconds": {
+        "category": "advanced",
+        "reason": "Motion/YOLO bridge timing; feeder-site tuning.",
+        "next_step": "Advanced detection block.",
+    },
+    "processor.pipeline_mode": {
+        "category": "advanced",
+        "reason": "Linear vs legacy pipeline; must stay linear (#621).",
+        "next_step": "Expert read-only; drift gate blocks legacy.",
+    },
+    "processor.single_rtsp_read": {
+        "category": "advanced",
+        "reason": "go2rtc single-reader optimization; site-specific.",
+        "next_step": "Connections/Capture advanced panel.",
+    },
+    "processor.bootstrap_phase_max_seconds": {
+        "category": "ops-only",
+        "reason": "Processor bootstrap watchdog; rarely changed.",
+        "next_step": "System diagnostics if needed.",
+    },
+    "processor.record_prebuffer_seconds": {
+        "category": "advanced",
+        "reason": "Clip prebuffer; tied to capture pipeline.",
+        "next_step": "Capture/Processor advanced.",
+    },
+    "processor.record_postroll_seconds": {
+        "category": "advanced",
+        "reason": "Clip postroll; tied to capture pipeline.",
+        "next_step": "Capture/Processor advanced.",
+    },
+    "processor.detect_first_triggers": {
+        "category": "advanced",
+        "reason": "Detect-first trigger allowlist map; YAML-first.",
+        "next_step": "Advanced Processor triggers panel.",
+    },
+    "processor.classifier_async_enabled": {
+        "category": "advanced",
+        "reason": "Classifier scheduling mode; performance tuning.",
+        "next_step": "Advanced Processor classifier block.",
+    },
+    "processor.classifier_best_guess_enabled": {
+        "category": "advanced",
+        "reason": "Best-guess classifier fallback; expert tuning.",
+        "next_step": "Advanced Processor classifier block.",
+    },
+    "processor.classifier_best_guess_min_confidence": {
+        "category": "advanced",
+        "reason": "Best-guess threshold; expert tuning.",
+        "next_step": "Advanced Processor classifier block.",
+    },
+    "processor.classifier_best_guess_min_events": {
+        "category": "advanced",
+        "reason": "Best-guess event count; expert tuning.",
+        "next_step": "Advanced Processor classifier block.",
+    },
+    "processor.classifier_crop_source": {
+        "category": "advanced",
+        "reason": "Classifier crop policy; expert tuning.",
+        "next_step": "Advanced Processor classifier block.",
+    },
+    "processor.classifier_defer_to_finalize": {
+        "category": "advanced",
+        "reason": "Defer classifier to finalize; pipeline timing.",
+        "next_step": "Advanced Processor classifier block.",
+    },
+    "processor.classifier_finalize_max_key_frames": {
+        "category": "advanced",
+        "reason": "Finalize key-frame cap; performance tuning.",
+        "next_step": "Advanced Processor classifier block.",
+    },
+    "processor.detect_first_anchor_only_persist_enabled": {
+        "category": "advanced",
+        "reason": "Anchor-only persist mode; detect-first expert knob.",
+        "next_step": "ProcessorDetectFirst advanced fields.",
+    },
+    "processor.detect_first_frigate_assist_enabled": {
+        "category": "advanced",
+        "reason": "Frigate assist on detect-first path.",
+        "next_step": "ProcessorDetectFirst + Frigate fusion advanced.",
+    },
+    "processor.detect_first_frigate_assist_min_confidence": {
+        "category": "advanced",
+        "reason": "Frigate assist confidence floor.",
+        "next_step": "ProcessorDetectFirst advanced.",
+    },
+    "processor.detect_first_raw_hits_anchor_enabled": {
+        "category": "advanced",
+        "reason": "Raw-hit anchor path; expert detect-first tuning.",
+        "next_step": "ProcessorDetectFirst advanced.",
+    },
+    "processor.detect_probe_min_hits": {
+        "category": "advanced",
+        "reason": "Detect probe hit threshold; expert tuning.",
+        "next_step": "ProcessorDetectFirst advanced.",
+    },
+    "processor.enrichment_crop_pad_frac": {
+        "category": "advanced",
+        "reason": "Species enrichment crop padding.",
+        "next_step": "Advanced classifier/enrichment block.",
+    },
+    "processor.frigate_hold_only_when_frigate_trigger": {
+        "category": "advanced",
+        "reason": "Frigate-trigger hold policy; fusion tuning.",
+        "next_step": "ProcessorFrigateFusion advanced.",
+    },
+    "processor.linear_live_scoring_engine_enabled": {
+        "category": "advanced",
+        "reason": "Linear live scoring toggle; scoring rollout.",
+        "next_step": "Advanced scoring block.",
+    },
+    "processor.linear_static_pinned_reject_enabled": {
+        "category": "advanced",
+        "reason": "Static pinned reject in linear pipeline.",
+        "next_step": "Advanced scoring/static block.",
+    },
+    "processor.notify_preview_crop_pad_frac": {
+        "category": "advanced",
+        "reason": "Telegram preview crop padding.",
+        "next_step": "Notifications advanced.",
+    },
+    "processor.reid_crop_source": {
+        "category": "advanced",
+        "reason": "ReID crop source policy.",
+        "next_step": "ReID expert panel (#389).",
+    },
+    "processor.scoring_moving_roi_min_motion_score": {
+        "category": "advanced",
+        "reason": "Moving ROI motion floor; scoring tuning.",
+        "next_step": "Advanced scoring block.",
+    },
+    "processor.scoring_moving_roi_review_enabled": {
+        "category": "advanced",
+        "reason": "Moving ROI review gate; scoring tuning.",
+        "next_step": "Advanced scoring block.",
+    },
+    "retention.auto_run_enabled": {
+        "category": "library-ui",
+        "reason": "Retention auto-run; edited on System → Retention card.",
+        "next_step": "Keep System card as primary UX.",
+    },
+    "retention.auto_run_interval_hours": {
+        "category": "library-ui",
+        "reason": "Retention auto-run interval; System → Retention card.",
+        "next_step": "Keep System card as primary UX.",
+    },
+    "retention.max_deletes_per_run": {
+        "category": "library-ui",
+        "reason": "Retention batch delete cap; System → Retention card.",
+        "next_step": "Keep System card as primary UX.",
+    },
 
 }
 
@@ -2087,6 +2258,73 @@ TERMINAL_MAP_KEYS = {
     "detection.species_mapping",
     "ebird.species_mapping",
 }
+
+# Prefix allowlist for nested preset trees and System-surfaced ops keys (#623).
+ALLOWLIST_PREFIXES: tuple[tuple[str, dict[str, str]], ...] = (
+    (
+        "processor.camera_tuning_by_role.",
+        {
+            "category": "advanced",
+            "reason": "Per-role camera tuning presets; partial UI via ProcessorRolePresetsBlock, remainder YAML/expert.",
+            "next_step": "Expand role preset grid or expert tier editor (#623).",
+        },
+    ),
+    (
+        "reconcile.",
+        {
+            "category": "ops-only",
+            "reason": "Disk↔DB reconcile knobs; operated from System maintenance cards and YAML.",
+            "next_step": "Keep System card as primary UX entry.",
+        },
+    ),
+    (
+        "readiness.",
+        {
+            "category": "backend-managed",
+            "reason": "Readiness/funnel gate thresholds; surfaced via /api/ui/readiness not Settings forms.",
+            "next_step": "Optional System observability panel.",
+        },
+    ),
+)
+
+_CAMERA_TUNING_FIELD_KEYS = (
+    "min_confidence_binary",
+    "min_confidence_binary_bird",
+    "min_confidence_to_process",
+    "min_track_duration",
+    "min_box_size_px",
+    "max_box_area_norm",
+    "scoring_giant_box_area_frac",
+    "detect_record_time_offset_sec",
+    "openvino_binary_track_ultralytics_conf",
+    "track_static_reject_enabled",
+    "track_static_reject_min_duration_sec",
+    "track_static_reject_min_frames",
+    "light_gate_enabled",
+    "binary_imgsz",
+)
+
+_CAMERA_TUNING_ROLES = ("feeder_close", "feeder_far", "custom", "frigate_site")
+
+_CONFIG_FIELD_NAME = re.compile(
+    r'name="((?:processor|detection|video|retention|reconcile|readiness|ui|general|mqtt|species|ebird|integrations|triggers|performance|weather|mcp|web_push|storage|secrets|motion)\.[a-zA-Z0-9_.]+)"'
+)
+
+
+def _synthetic_camera_tuning_role_fields() -> set[str]:
+    out: set[str] = set()
+    for role in _CAMERA_TUNING_ROLES:
+        prefix = f"processor.camera_tuning_by_role.{role}"
+        for key in _CAMERA_TUNING_FIELD_KEYS:
+            out.add(f"{prefix}.{key}")
+    return out
+
+
+def _prefix_allowlist_meta(key: str) -> dict[str, str] | None:
+    for prefix, meta in ALLOWLIST_PREFIXES:
+        if key.startswith(prefix):
+            return meta
+    return None
 
 
 def _collect_terminal_keys(obj: object, prefix: str = "") -> list[str]:
@@ -2109,6 +2347,8 @@ def _load_form_fields() -> set[str]:
     for path in sorted(SETTINGS_UI_DIR.rglob("*.tsx")):
         text = path.read_text(encoding="utf-8")
         names.update(re.findall(r'form\.Field name="([^"]+)"', text))
+        names.update(_CONFIG_FIELD_NAME.findall(text))
+    names.update(_synthetic_camera_tuning_role_fields())
     return names
 
 
@@ -2127,6 +2367,12 @@ def _build_report(config_keys: set[str], form_fields: set[str]) -> dict:
             reason = meta["reason"]
             category = meta["category"]
             next_step = meta["next_step"]
+            category_stats[category] = category_stats.get(category, 0) + 1
+        elif (prefix_meta := _prefix_allowlist_meta(key)) is not None:
+            status = "allowlisted_non_ui"
+            reason = prefix_meta["reason"]
+            category = prefix_meta["category"]
+            next_step = prefix_meta["next_step"]
             category_stats[category] = category_stats.get(category, 0) + 1
         else:
             status = "missing"
