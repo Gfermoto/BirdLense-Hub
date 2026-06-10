@@ -163,6 +163,9 @@ def build_detection_stack(
                     processor_root,
                 )
                 if detector_weights_available(torch_binary_path):
+                    from processor_runtime_stats import inc_counter
+
+                    inc_counter("inference_openvino_auto_torch_fallback_total")
                     logger.error(
                         "%s Auto fallback detector backend: openvino -> torch (%s). "
                         "Runtime uses .pt, not IR — quality/latency differ; fix binary_imgsz to %s for OpenVINO.",
@@ -299,6 +302,9 @@ def build_detection_stack(
             raise
 
         if can_fallback_detector:
+            from processor_runtime_stats import inc_counter
+
+            inc_counter("inference_openvino_auto_torch_fallback_total")
             torch_binary_path = resolve_relative_to_processor_root(
                 str(
                     app_config.get(

@@ -118,6 +118,15 @@ paths:
                             type: string
                           source:
                             type: string
+                          inference_backend_effective:
+                            type: string
+                            description: Effective detector backend after bootstrap (torch/openvino).
+                          inference_backend_requested:
+                            type: string
+                            description: Requested processor.inference_backend (may differ when auto fallback).
+                          inference_auto_torch_fallback:
+                            type: boolean
+                            description: True when auto/openvino resolved to torch at bootstrap.
                   components:
                     type: object
                     properties:
@@ -244,6 +253,15 @@ paths:
                             type: string
                           source:
                             type: string
+                          inference_backend_effective:
+                            type: string
+                            description: Effective detector backend after bootstrap (torch/openvino).
+                          inference_backend_requested:
+                            type: string
+                            description: Requested processor.inference_backend (may differ when auto fallback).
+                          inference_auto_torch_fallback:
+                            type: boolean
+                            description: True when auto/openvino resolved to torch at bootstrap.
                   components:
                     type: object
                     properties:

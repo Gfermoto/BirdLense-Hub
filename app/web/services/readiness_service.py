@@ -149,6 +149,18 @@ def _build_yolo_detector_check(heartbeat_data: dict | None, yolo_probe: str) -> 
         check["last_motion_age_sec"] = round(motion_age, 3)
     runtime = heartbeat_data.get("runtime_stats") if isinstance(heartbeat_data, dict) else None
     gauges = runtime.get("gauges") if isinstance(runtime, dict) else None
+    if isinstance(heartbeat_data, dict):
+        backend_eff = heartbeat_data.get("inference_backend_effective")
+        if backend_eff:
+            check["inference_backend_effective"] = str(backend_eff).strip().lower()
+        backend_req = heartbeat_data.get("inference_backend_requested")
+        if backend_req:
+            check["inference_backend_requested"] = str(backend_req).strip().lower()
+    if isinstance(gauges, dict):
+        if not check.get("inference_backend_effective") and gauges.get("inference_backend_effective"):
+            check["inference_backend_effective"] = str(gauges.get("inference_backend_effective")).strip().lower()
+        if not check.get("inference_backend_requested") and gauges.get("inference_backend_requested"):
+            check["inference_backend_requested"] = str(gauges.get("inference_backend_requested")).strip().lower()
     blind_alert = 0
     blind_status = ""
     if isinstance(gauges, dict):
@@ -171,6 +183,20 @@ def _build_yolo_detector_check(heartbeat_data: dict | None, yolo_probe: str) -> 
         status = "ok"
     if between_session_blind and status == "ok":
         status = "error" if blind_alert == 1 or blind_status == "blind" else "degraded"
+    auto_torch_fallback = bool(
+        isinstance(heartbeat_data, dict) and heartbeat_data.get("inference_auto_torch_fallback"),
+    )
+    requested_backend = str(check.get("inference_backend_requested") or "").strip().lower()
+    effective_backend = str(check.get("inference_backend_effective") or "").strip().lower()
+    if (
+        not auto_torch_fallback
+        and requested_backend in ("auto", "openvino")
+        and effective_backend == "torch"
+    ):
+        auto_torch_fallback = True
+    if auto_torch_fallback and status == "ok":
+        status = "degraded"
+        check["inference_auto_torch_fallback"] = True
     check["status"] = status
     return check
 
