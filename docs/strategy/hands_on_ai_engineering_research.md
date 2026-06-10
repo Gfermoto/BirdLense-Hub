@@ -89,6 +89,8 @@
 
 **Exit B:** 5 типовых вопросов (YOLO blind, deploy, MCP token, config drift, OOM 137) получают grounded ответ с путём к `.md` за <2 мин без галлюцинаций по метрикам.
 
+**Delivered (#631):** `.opencode/agents/birdlense-runbook-qa.md`, `.opencode/prompts/runbook-qa.md`, `docs/contributor/hub-mcp-dev.md` § Runbook Q&A.
+
 ### Phase C — только если Phase B доказала ценность
 
 **Зачем:** один entry point для оператора: «orphan count + openvino device» → правильный API/SQLite, не monolithic prompt.  
@@ -101,6 +103,8 @@
 | C.3 | Fallback chain: Hub MCP tools → local runbooks → «не знаю» | **NO** DuckDuckGo, **NO** vector DB by default |
 
 **Exit C:** 10 production-like вопросов; ≥80% с корректным source; zero cloud embed в default profile.
+
+**Delivered (#632, minimal):** MCP tool groups + `@birdlense-operator-router` (keyword rules), ADR `docs/strategy/adr-dev-only-operator-router.md`. Full semantic LLM router — **not** shipped; prod remains LLM-free.
 
 ---
 

@@ -17,7 +17,7 @@ Architecture, API contract, testing, CI, and repository structure for developers
 - [Local development](local-dev.md)
 - [Testing](testing.md)
 - [CI and quality](ci-and-quality.md)
-- [MCP setup](mcp-setup.md) · [Hub MCP dev smoke](hub-mcp-dev.md)
+- [MCP setup](mcp-setup.md) · [Hub MCP dev smoke + runbook Q&A + operator router](hub-mcp-dev.md)
 - [Datasets](datasets.md)
 - [Roadmap](roadmap.md)
 
