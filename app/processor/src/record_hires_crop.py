@@ -49,6 +49,85 @@ def resolve_crop_pad_frac(
     return max(0.0, min(0.25, raw))
 
 
+def _shape_hw_from_wh(wh: Any) -> tuple[int, int] | None:
+    if not isinstance(wh, (list, tuple)) or len(wh) < 2:
+        return None
+    try:
+        w, h = int(wh[0]), int(wh[1])
+    except (TypeError, ValueError):
+        return None
+    if w <= 0 or h <= 0:
+        return None
+    return (h, w)
+
+
+def resolve_record_crop_geometry(
+    detection: Mapping[str, Any],
+    *,
+    crop_shape_hw: tuple[int, int],
+    runtime_cfg: Mapping[str, Any] | None = None,
+) -> tuple[tuple[int, int], tuple[int, int], tuple[int, int]]:
+    """(detector_hw, overlay_hw, playback_hw) for hires bbox remap."""
+    playback_hw = crop_shape_hw
+    for key in ("playback_shape_hw", "record_shape_hw"):
+        raw = detection.get(key)
+        shaped = _shape_hw_from_wh(raw) if isinstance(raw, (list, tuple)) else None
+        if shaped is not None:
+            playback_hw = shaped
+            break
+
+    overlay_hw = playback_hw
+    for key in ("overlay_shape_hw", "detect_shape_hw"):
+        raw = detection.get(key)
+        shaped = _shape_hw_from_wh(raw) if isinstance(raw, (list, tuple)) else None
+        if shaped is not None:
+            overlay_hw = shaped
+            break
+    if overlay_hw == playback_hw and runtime_cfg is not None:
+        lores = _shape_hw_from_wh(runtime_cfg.get("processor.inference_lores_wh"))
+        if lores is not None:
+            overlay_hw = lores
+
+    detector_hw = overlay_hw
+    for key in ("detector_shape_hw",):
+        raw = detection.get(key)
+        shaped = _shape_hw_from_wh(raw) if isinstance(raw, (list, tuple)) else None
+        if shaped is not None:
+            detector_hw = shaped
+            break
+
+    return detector_hw, overlay_hw, playback_hw
+
+
+def remap_bbox_for_record_crop(
+    bbox: list[float],
+    detection: Mapping[str, Any],
+    *,
+    crop_shape_hw: tuple[int, int],
+    runtime_cfg: Mapping[str, Any] | None = None,
+) -> list[float] | None:
+    """Map norm bbox from detect/overlay space onto main MP4 crop frame."""
+    from frame_geometry import remap_norm_bbox_for_crop
+
+    det_hw, overlay_hw, playback_hw = resolve_record_crop_geometry(
+        detection,
+        crop_shape_hw=crop_shape_hw,
+        runtime_cfg=runtime_cfg,
+    )
+    if overlay_hw == crop_shape_hw and det_hw == overlay_hw:
+        return bbox
+    mapped = remap_norm_bbox_for_crop(
+        bbox,
+        detector_shape_hw=det_hw,
+        overlay_shape_hw=overlay_hw,
+        crop_shape_hw=crop_shape_hw,
+        playback_shape_hw=playback_hw,
+    )
+    if mapped is None:
+        return None
+    return [float(v) for v in mapped]
+
+
 def pick_bbox_and_timestamp(
     detection: Mapping[str, Any],
     *,
@@ -151,6 +230,30 @@ def _crop_has_signal(crop: np.ndarray) -> bool:
         return True
 
 
+def _crop_from_frame(
+    frame: np.ndarray,
+    bbox: list[float],
+    *,
+    pad_frac: float,
+) -> np.ndarray | None:
+    h, w = frame.shape[:2]
+    pad = max(0.0, min(0.25, float(pad_frac)))
+    bw = float(bbox[2]) - float(bbox[0])
+    bh = float(bbox[3]) - float(bbox[1])
+    x1n = max(0.0, float(bbox[0]) - bw * pad)
+    y1n = max(0.0, float(bbox[1]) - bh * pad)
+    x2n = min(1.0, float(bbox[2]) + bw * pad)
+    y2n = min(1.0, float(bbox[3]) + bh * pad)
+    x1 = max(0, min(w - 1, int(x1n * w)))
+    y1 = max(0, min(h - 1, int(y1n * h)))
+    x2 = max(x1 + 1, min(w, int(x2n * w)))
+    y2 = max(y1 + 1, min(h, int(y2n * h)))
+    crop = frame[y1:y2, x1:x2]
+    if crop.size > 0 and _crop_has_signal(crop):
+        return crop
+    return None
+
+
 def read_record_hires_crop(
     video_path: str,
     detection: Mapping[str, Any],
@@ -162,30 +265,81 @@ def read_record_hires_crop(
     if not video_path:
         return None
     bbox, ts = pick_bbox_and_timestamp(detection, runtime_cfg=runtime_cfg)
+    cam = str(detection.get("camera_id") or detection.get("triggered_camera") or "").strip()
+    pad = resolve_crop_pad_frac(runtime_cfg=runtime_cfg) if pad_frac is None else max(0.0, min(0.25, float(pad_frac)))
     try:
         frame = _read_frame_with_retries(video_path, ts)
         if frame is None:
+            logger.warning(
+                "record_hires: video seek failed path=%s ts=%.3f camera=%s synced=%s",
+                video_path,
+                ts,
+                cam or "?",
+                bool(detection.get("playback_timeline_synced")),
+            )
             return None
-        h, w = frame.shape[:2]
+        crop_hw = (int(frame.shape[0]), int(frame.shape[1]))
         if not (isinstance(bbox, (list, tuple)) and len(bbox) == 4):
+            logger.info(
+                "record_hires: no bbox, returning full frame path=%s ts=%.3f camera=%s shape=%sx%s",
+                video_path,
+                ts,
+                cam or "?",
+                crop_hw[0],
+                crop_hw[1],
+            )
             return frame
-        pad = resolve_crop_pad_frac() if pad_frac is None else max(0.0, min(0.25, float(pad_frac)))
-        bw = float(bbox[2]) - float(bbox[0])
-        bh = float(bbox[3]) - float(bbox[1])
-        x1n = max(0.0, float(bbox[0]) - bw * pad)
-        y1n = max(0.0, float(bbox[1]) - bh * pad)
-        x2n = min(1.0, float(bbox[2]) + bw * pad)
-        y2n = min(1.0, float(bbox[3]) + bh * pad)
-        x1 = max(0, min(w - 1, int(x1n * w)))
-        y1 = max(0, min(h - 1, int(y1n * h)))
-        x2 = max(x1 + 1, min(w, int(x2n * w)))
-        y2 = max(y1 + 1, min(h, int(y2n * h)))
-        crop = frame[y1:y2, x1:x2]
-        if crop.size > 0 and _crop_has_signal(crop):
+        bbox_list = [float(v) for v in bbox]
+        det_hw, overlay_hw, playback_hw = resolve_record_crop_geometry(
+            detection,
+            crop_shape_hw=crop_hw,
+            runtime_cfg=runtime_cfg,
+        )
+        crop = _crop_from_frame(frame, bbox_list, pad_frac=pad)
+        if crop is not None:
             return crop
+        remapped = remap_bbox_for_record_crop(
+            bbox_list,
+            detection,
+            crop_shape_hw=crop_hw,
+            runtime_cfg=runtime_cfg,
+        )
+        if remapped is not None and remapped != bbox_list:
+            crop = _crop_from_frame(frame, remapped, pad_frac=pad)
+            if crop is not None:
+                logger.info(
+                    "record_hires: playback remap ok camera=%s overlay=%sx%s playback=%sx%s",
+                    cam or "?",
+                    overlay_hw[0],
+                    overlay_hw[1],
+                    playback_hw[0],
+                    playback_hw[1],
+                )
+                return crop
+        logger.warning(
+            "record_hires: crop empty/low-signal path=%s ts=%.3f camera=%s "
+            "det=%sx%s overlay=%sx%s playback=%sx%s bbox=%s remapped=%s",
+            video_path,
+            ts,
+            cam or "?",
+            det_hw[0],
+            det_hw[1],
+            overlay_hw[0],
+            overlay_hw[1],
+            playback_hw[0],
+            playback_hw[1],
+            [round(v, 4) for v in bbox_list],
+            [round(v, 4) for v in remapped] if remapped else None,
+        )
         return None
     except Exception as exc:
-        logger.warning("record_hires crop failed: %s", exc)
+        logger.warning(
+            "record_hires crop failed path=%s ts=%.3f camera=%s: %s",
+            video_path,
+            ts,
+            cam or "?",
+            exc,
+        )
         return None
 
 
