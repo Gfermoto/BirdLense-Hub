@@ -1,11 +1,12 @@
 # Pipeline simplification plan — motion→detect→classify spine
 
-**Дата:** 2026-06-10  
-**Статус:** active execution track  
-**Ветка:** `dev`  
+**Дата:** 2026-06-10 (rev 2 — wave consolidation)  
+**Статус:** Wave 1 active; W0 spine landed on prod VPS  
+**Ветка:** `dev` @ [`7570c297f`](https://github.com/Gfermoto/BirdLense-Hub/commit/7570c297f)  
 **EPIC:** [#633 — Pipeline simplification](https://github.com/Gfermoto/BirdLense-Hub/issues/633)  
 **Инцидент:** [a656199a](https://github.com/Gfermoto/BirdLense-Hub/commit/2ff464057) — detect-first blind + ByteTrack merge двух зон кормушки  
-**Предшественники:** [#601](https://github.com/Gfermoto/BirdLense-Hub/issues/601) (закрыт), [#606–#613](https://github.com/Gfermoto/BirdLense-Hub/issues/606) (CV recovery), `DUAL_STREAM_BBOX_SYNC_PLAN_2026-06.md`, `simplification_optimization_proposal.md`
+**Предшественники:** [#601](https://github.com/Gfermoto/BirdLense-Hub/issues/601) (закрыт), [#606–#613](https://github.com/Gfermoto/BirdLense-Hub/issues/606) (CV recovery), `DUAL_STREAM_BBOX_SYNC_PLAN_2026-06.md`, `simplification_optimization_proposal.md`  
+**Платформа:** Intel CPU + iGPU (OpenVINO). Coral / CUDA / Hailo / ROCm — **out of scope** (#644).
 
 ---
 
@@ -21,14 +22,16 @@ motion → detection (YOLO/ByteTrack) → classification → DINOv2 → behavior
 
 Frigate / BirdNET / eBird / multicamera — **только weighted hints в scoring классификатора**, никогда primary driver для recording, detection gates или fusion persist.
 
-**Частичные шаги уже в dev** ([`2ff464057`](https://github.com/Gfermoto/BirdLense-Hub/commit/2ff464057)):
+**Landed on dev + prod VPS** (rsync deploy, container healthy 2026-06-10):
 
-| Fix | Что сделано | Что остаётся |
-|-----|-------------|--------------|
-| OpenVINO native lores | BirdBox 704×576 без принудительного square 704² | Единый bbox space detect→crop→overlay (Phase 2 EPIC) |
-| Detect-first raw hits | Anchor по raw YOLO boxes без снижения conf floor | Убрать detect-first как **recording gate** (Phase 1 EPIC) |
-| `track_spatial_split` | Split при center jump >0.18 norm | Default-on + crop from best keyframe (Phase 3 EPIC) |
-| Frigate assist | Opt-in hint в detect-first anchor | ADR: hints never gate (Phase 0 EPIC) |
+| Issue | SHA | Status | Delivered |
+|-------|-----|--------|-----------|
+| [#634](https://github.com/Gfermoto/BirdLense-Hub/issues/634) ADR hints | [`9df7dc5b8`](https://github.com/Gfermoto/BirdLense-Hub/commit/9df7dc5b8) | **DONE** | `adr-classifier-hints-only.md`, drift lint (2+ forbidden patterns), `review_report.md` link |
+| [#635](https://github.com/Gfermoto/BirdLense-Hub/issues/635) Recording contract | [`9df7dc5b8`](https://github.com/Gfermoto/BirdLense-Hub/commit/9df7dc5b8), [`7570c297f`](https://github.com/Gfermoto/BirdLense-Hub/commit/7570c297f) | **DONE** | `recording_gate_mode: motion_immediate` default; `requires_detect_first_before_record` off; legacy `detect_first` rollback + tests |
+| [#636](https://github.com/Gfermoto/BirdLense-Hub/issues/636) Dual-stream geometry | [`2ff464057`](https://github.com/Gfermoto/BirdLense-Hub/commit/2ff464057) | **PARTIAL** | `openvino_native_lores_imgsz`, native 704×576 track imgsz, `track_spatial_split` default-on |
+| — | [`2ff464057`](https://github.com/Gfermoto/BirdLense-Hub/commit/2ff464057) | partial | Raw-hits detect-first anchor (diagnostic under `motion_immediate`) |
+
+**Остаётся в Wave 1:** единый bbox space detect→crop→overlay (#636), golden IoU CI (#640), best-keyframe crop (#637).
 
 ---
 
@@ -79,47 +82,50 @@ Frigate / BirdNET / eBird / multicamera — **только weighted hints в sco
 
 ```mermaid
 flowchart TB
-  EPIC["EPIC: Pipeline simplification"]
-  I1["#1 ADR classifier hints"]
-  I2["#2 Recording contract"]
-  I3["#3 Dual-stream geometry"]
-  I4["#4 Track hygiene"]
-  I5["#5 Demote fusion salvage"]
-  I6["#6 Multicam sessions"]
-  I7["#7 Frigate-parity CI"]
-  I8["#8 Classifier hints module"]
-  I9["#9 DINOv2/behavior gate"]
-  I10["#10 Dead config/UI cleanup"]
-  I11["#11 Perf Coral/OpenVINO"]
+  EPIC["EPIC #633"]
+  DONE["✅ W0 landed #634 #635"]
+  W1["Wave 1 Geometry+CI"]
+  W2["Wave 2 Demotion+Hints"]
+  W3["Wave 3 Layers+Perf"]
 
-  EPIC --> I1
-  I1 --> I2
-  I1 --> I3
-  I2 --> I4
-  I3 --> I4
-  I4 --> I5
-  I2 --> I6
-  I3 --> I7
-  I5 --> I8
-  I7 --> I8
-  I8 --> I9
-  I5 --> I10
-  I9 --> I11
+  I636["#636 geometry ◐"]
+  I637["#637 tracks"]
+  I639["#639 multicam"]
+  I640["#640 IoU CI"]
+  I638["#638 salvage"]
+  I641["#641 hints"]
+  I642["#642 DINOv2 gate"]
+  I643["#643 config cleanup"]
+  I644["#644 OpenVINO iGPU"]
+
+  EPIC --> DONE
+  DONE --> W1
+  W1 --> I636
+  W1 --> I637
+  W1 --> I639
+  W1 --> I640
+  W1 --> W2
+  W2 --> I638
+  W2 --> I641
+  W2 --> W3
+  W3 --> I642
+  W3 --> I643
+  W3 --> I644
 ```
 
-| Phase | Issue | Priority | Deliverable |
-|-------|-------|----------|-------------|
-| 0 | [#634](https://github.com/Gfermoto/BirdLense-Hub/issues/634) ADR: classifier hints contract | P0 | `docs/strategy/adr-classifier-hints-only.md`; lint in `verify_processor_config_drift` |
-| 1 | [#635](https://github.com/Gfermoto/BirdLense-Hub/issues/635) Recording contract | P0 | Motion→hires record; drop detect-first gate |
-| 1 | [#636](https://github.com/Gfermoto/BirdLense-Hub/issues/636) Dual-stream geometry | P0 | Native lores + single bbox space *(partial: `2ff464057`)* |
-| 2 | [#637](https://github.com/Gfermoto/BirdLense-Hub/issues/637) Track hygiene | P1 | Spatial split default; crop from best keyframe |
-| 2 | [#638](https://github.com/Gfermoto/BirdLense-Hub/issues/638) Demote fusion salvage | P1 | Hints feed classifier only |
-| 2 | [#639](https://github.com/Gfermoto/BirdLense-Hub/issues/639) Multicam independent sessions | P1 | No single-cam lock |
-| 2 | [#640](https://github.com/Gfermoto/BirdLense-Hub/issues/640) Frigate-parity benchmark gate | P1 | `compare_detector_bboxes` CI smoke |
-| 3 | [#641](https://github.com/Gfermoto/BirdLense-Hub/issues/641) Classifier hints pipeline | P2 | One module: Frigate + BirdNET + eBird weights |
-| 3 | [#642](https://github.com/Gfermoto/BirdLense-Hub/issues/642) DINOv2 + behavior after SLO | P2 | Feature flag tied to IoU/funnel green |
-| 4 | [#643](https://github.com/Gfermoto/BirdLense-Hub/issues/643) Dead config/UI cleanup | P2 | Remove deprecated fusion gates |
-| 5 | [#644](https://github.com/Gfermoto/BirdLense-Hub/issues/644) Performance audit | P3 | OpenVINO iGPU/CPU pin ≥2025.4; OV smoke; W1 queue (Intel-only; no Coral/CUDA) |
+| Wave | Issue | Priority | Status | SHA / deliverable |
+|------|-------|----------|--------|-------------------|
+| W0 | [#634](https://github.com/Gfermoto/BirdLense-Hub/issues/634) ADR classifier hints | P0 | **DONE** | `9df7dc5b8` — ADR + drift lint |
+| W0 | [#635](https://github.com/Gfermoto/BirdLense-Hub/issues/635) Recording contract | P0 | **DONE** | `9df7dc5b8`, `7570c297f` — `motion_immediate` on prod |
+| W1 | [#636](https://github.com/Gfermoto/BirdLense-Hub/issues/636) Dual-stream geometry | P0 | **PARTIAL** | `2ff464057` — native lores; ⬜ single bbox space + ffprobe |
+| W1 | [#637](https://github.com/Gfermoto/BirdLense-Hub/issues/637) Track hygiene | P1 | open | best-keyframe crop E2E |
+| W1 | [#639](https://github.com/Gfermoto/BirdLense-Hub/issues/639) Multicam sessions | P1 | open | no peer recording block |
+| W1 | [#640](https://github.com/Gfermoto/BirdLense-Hub/issues/640) Frigate-parity IoU CI | P1 | open | `compare_detector_bboxes` smoke |
+| W2 | [#638](https://github.com/Gfermoto/BirdLense-Hub/issues/638) Demote fusion salvage | P1 | open | hints only, no salvage persist |
+| W2 | [#641](https://github.com/Gfermoto/BirdLense-Hub/issues/641) Classifier hints module | P2 | open | one `classifier_hints/` module |
+| W3 | [#642](https://github.com/Gfermoto/BirdLense-Hub/issues/642) DINOv2 + behavior gate | P2 | open | `bbox_slo_ok` flag |
+| W3 | [#643](https://github.com/Gfermoto/BirdLense-Hub/issues/643) Dead config/UI cleanup | P2 | open | remove fusion gate keys |
+| W3 | [#644](https://github.com/Gfermoto/BirdLense-Hub/issues/644) OpenVINO iGPU perf audit | P3 | open | OV ≥2025.4 smoke, W1 queue, LATENCY pin |
 
 ---
 
@@ -160,16 +166,19 @@ flowchart TB
 - `track_spatial_split` before classify  
 - Frigate assist unchanged (opt-in hint)
 
-**Not done:** recording gate removal, salvage demotion, ADR hints contract, multicam lock, CI parity gate.
+**Not done (Wave 1+):** single bbox space (#636 remainder), salvage demotion (#638), multicam lock (#639), CI parity gate (#640), best-keyframe crop (#637).
+
+**Done since incident fix:** ADR hints (#634 `9df7dc5b8`), recording gate removal (#635 `9df7dc5b8`), native lores partial (#636 `2ff464057`).
 
 ---
 
 ## 7. Success criteria (program exit)
 
-- [ ] ADR accepted; `verify_processor_config_drift` fails if Frigate/BirdNET configured as gate  
-- [ ] 7-day prod window: `tracks>0 → persist=0` rate **<10%** (was ~60% at incident)  
-- [ ] No prod `user_config` kostyli documented in runbooks for detection/fusion  
-- [ ] Golden IoU CI green on merge to `dev`  
+- [x] ADR accepted; `verify_processor_config_drift` fails if Frigate/BirdNET configured as gate — **`9df7dc5b8`**
+- [x] `recording_gate_mode: motion_immediate` default on prod — **`9df7dc5b8`**, VPS healthy
+- [ ] 7-day prod window: `tracks>0 → persist=0` rate **<10%** (was ~60% at incident)
+- [ ] No prod `user_config` kostyli documented in runbooks for detection/fusion
+- [ ] Golden IoU CI green on merge to `dev` (#640)
 - [ ] Operator can explain pipeline in 5 steps: motion→record→detect→classify→(DINOv2→behavior)
 
 ---
@@ -285,74 +294,64 @@ Smoke: `compile_model(binary_ir, 'GPU')` in deploy container — see [`intel_igp
 
 ---
 
-## 10. Wave roadmap (0–4) & parallel workstreams
+## 10. Wave roadmap (3 waves + W0 done)
+
+**Consolidation (rev 2):** бывшие Wave 0–2 сжаты в **W0 done** + **3 активные волны**. Блокер «ADR перед кодом» снят — `#634`/`#635` на prod.
 
 ```mermaid
 gantt
-  title Pipeline simplification waves
+  title Pipeline simplification — consolidated waves
   dateFormat YYYY-MM-DD
-  section Wave0
-  ADR hints #634           :w0, 2026-06-10, 5d
+  section W0_done
+  ADR #634 + Record #635     :done, w0, 2026-06-08, 3d
+  Geometry partial #636      :done, w0b, 2026-06-08, 2d
   section Wave1
-  Recording #635           :w1a, after w0, 7d
-  Geometry #636            :w1b, after w0, 10d
-  Multicam #639            :w1c, after w1a, 5d
-  CI IoU #640              :w1d, after w1b, 5d
+  Geometry finish #636       :w1a, 2026-06-10, 7d
+  Track hygiene #637         :w1b, 2026-06-10, 7d
+  Multicam #639              :w1c, after w1a, 5d
+  IoU CI #640                :w1d, after w1a, 5d
   section Wave2
-  Track hygiene #637       :w2a, after w1b, 7d
-  Salvage demote #638      :w2b, after w2a, 7d
+  Salvage demote #638        :w2a, after w1d, 7d
+  Hints module #641          :w2b, after w2a, 10d
   section Wave3
-  Hints module #641        :w3a, after w2b, 10d
-  DINOv2 gate #642         :w3b, after w3a, 5d
-  section Wave4
-  Config cleanup #643      :w4a, after w2b, 5d
-  Perf audit #644          :w4b, after w3b, 7d
+  DINOv2 gate #642           :w3a, after w2b, 5d
+  Config cleanup #643        :w3b, after w2a, 5d
+  OpenVINO perf #644         :w3c, after w3a, 7d
 ```
 
-### Wave 0 — Contract (sequential blocker)
+### W0 — Spine contract (**DONE**, prod VPS 2026-06-10)
 
-| Stream | Issue | Output |
-|--------|-------|--------|
-| A | #634 ADR | `adr-classifier-hints-only.md` + drift lint |
+| Issue | SHA | Acceptance met |
+|-------|-----|----------------|
+| #634 ADR | `9df7dc5b8` | ADR `accepted`; drift: `frigate_standalone_when_no_yolo`, `frigate_trigger_review_salvage_allow_without_yolo_tracks` |
+| #635 Record | `9df7dc5b8`, `7570c297f` | `motion_immediate` default; `test_recording_gate_motion_immediate.py`; prod `detection_scheduler.py` |
+| #636 partial | `2ff464057` | `openvino_native_lores_imgsz: true`; `track_spatial_split_*` in `default_config` |
 
-**Gate:** ADR merged before any Wave 1 code merge.
+### Wave 1 — Geometry + tracks + CI (**active**, parallel)
 
-### Wave 1 — Spine restore (parallel after #634)
+| Stream | Issue | Parallel | Gate SLO |
+|--------|-------|----------|----------|
+| A | #636 geometry finish | B, D | Overlay IoU median ≥ 0.45 on 3 clips |
+| B | #637 track hygiene | A | 2-zone clip → ≥2 tracks; TG crop Δ < 5% norm |
+| C | #639 multicam | — | 2 cams / 5s → 2 MP4 + 2 DB rows |
+| D | #640 IoU CI | A | `compare_detector_bboxes` job on geometry PRs |
 
-| Stream | Issue | Parallel with | Depends |
-|--------|-------|---------------|---------|
-| A | #635 Recording contract | B | #634 |
-| B | #636 Dual-stream geometry | A | #634 |
-| C | #639 Multicam sessions | — | #635 (soft: can start when A is in review) |
-| D | #640 Frigate-parity CI | — | #636 partial (native lores landed) |
+**Start order:** `#636` + `#637` + `#640` parallel → `#639` when multicam fixture ready.
 
-**Recommended start order (Wave 1):**
+### Wave 2 — Demotion + hints (after Wave 1 IoU green)
 
-1. **#634** — ADR + drift tests (1–2 days).
-2. **#635 + #636 in parallel** — recording gate removal + geometry contract.
-3. **#639** — после merge или draft PR #635.
-4. **#640** — после native lores stable в #636.
+| Stream | Issue | Gate SLO |
+|--------|-------|----------|
+| A | #638 salvage demote | `salvage_persist_total` → 0 default; `tracks>0→persist=0` < 25% staging |
+| B | #641 hints module | Golden pack ±0% hints off; +2pp hints on fixture |
 
-### Wave 2 — Track & demotion
+### Wave 3 — Layers + cleanup + Intel perf (after Wave 2)
 
-| Stream | Issue | Parallel with |
-|--------|-------|---------------|
-| A | #637 Track hygiene | — |
-| B | #638 Salvage demotion | #639 if idle |
-
-### Wave 3 — Hints & advanced layers
-
-| Stream | Issue | Gate |
-|--------|-------|------|
-| A | #641 Classifier hints module | #638 + #640 green |
-| B | #642 DINOv2/behavior gate | #641 + IoU SLO |
-
-### Wave 4 — Cleanup & perf
-
-| Stream | Issue | Notes |
-|--------|-------|-------|
-| A | #643 Dead config/UI | After #638 |
-| B | #644 OpenVINO iGPU perf | Intel-only; OV pin ≥2025.4; smoke + queue hygiene |
+| Stream | Issue | Gate SLO |
+|--------|-------|----------|
+| A | #642 DINOv2/behavior | Skip when `bbox_slo_ok=false` |
+| B | #643 config/UI cleanup | 0 fusion gate keys in `default_config` |
+| C | #644 OpenVINO iGPU perf | Finalize p95 < 8s; OV GPU compile smoke; detect p50 < 80ms |
 
 ---
 
@@ -441,21 +440,21 @@ rows = apply_hints_to_rows(classifier_rows, hints, app_config=cfg)
 
 ---
 
-## 12. Metrics & SLO per phase
+## 12. Metrics & acceptance SLO per wave
 
-| Phase | Issue | Primary SLO | Secondary metrics | CI gate |
-|-------|-------|-------------|-------------------|---------|
-| 0 ADR | #634 | Drift lint 100% forbidden patterns | ADR linked in contributor docs | `verify_processor_config_drift` |
-| 1a Record | #635 | Motion→MP4 p95 ≤ baseline post-`2ff464057` | `sessions_without_pre_detect_anchor` | `test_recording_session*.py` |
-| 1b Geometry | #636 | Overlay IoU median ≥ gate on 3 clips | `bbox_remap_mismatch_total` → 0 trend | `test_yolo_geometry*.py` |
-| 1c Multicam | #639 | 2 cameras / 5s → 2 MP4 + 2 DB rows | `multicam_blocked_by_peer_total` → 0 | `test_concurrent_recording_smoke.py` |
-| 1d CI parity | #640 | Median IoU ≥ T (conservative start 0.45) | Per-clip debug artifact | `compare_detector_bboxes` job |
-| 2a Tracks | #637 | 2-zone clip → ≥2 tracks | TG crop position delta < 5% norm | `test_track_spatial_split.py` |
-| 2b Salvage | #638 | `tracks>0 → persist=0` < 25% staging | `salvage_persist_total` → 0 | golden finalize pack |
-| 3a Hints | #641 | Golden pack top-1 ±0% with hints off; +2pp with hints on fixture | `hint_trace` in decision_trace | `test_classifier_hints.py` |
-| 3b DINOv2 | #642 | Layers skip when `bbox_slo_ok=false` | readiness `bbox_slo_ok` exposed | behavior tests unchanged when green |
-| 4a Config | #643 | 0 fusion gate keys in default_config | Settings search clean | drift + UI snapshot |
-| 4b Perf | #644 | Finalize p95 < 8s; OV GPU compile smoke; detect p50 < 80ms | `inference_backend_fallback_total` → 0 | `test_processor_runtime_profile_openvino.py` + deploy smoke |
+| Wave | Issue | Status | Primary SLO | Secondary metrics | CI gate |
+|------|-------|--------|-------------|-------------------|---------|
+| W0 | #634 | **DONE** `9df7dc5b8` | Drift lint 100% forbidden gate patterns | ADR in contributor docs | `verify_processor_config_drift` |
+| W0 | #635 | **DONE** `9df7dc5b8` | Motion→MP4 p95 ≤ baseline post-`2ff464057` | `sessions_without_pre_detect_anchor` allowed | `test_recording_gate_motion_immediate.py` |
+| W1 | #636 | **PARTIAL** `2ff464057` | Overlay IoU median ≥ 0.45 on 3 clips | `bbox_remap_mismatch_total` → 0 | `test_yolo_geometry*.py` |
+| W1 | #637 | open | 2-zone clip → ≥2 tracks | TG crop Δ < 5% norm | `test_track_spatial_split.py` |
+| W1 | #639 | open | 2 cameras / 5s → 2 MP4 + 2 DB rows | `multicam_blocked_by_peer_total` → 0 | `test_concurrent_recording_smoke.py` |
+| W1 | #640 | open | Median IoU ≥ 0.45 (tighten later) | Per-clip debug artifact | `compare_detector_bboxes` job |
+| W2 | #638 | open | `tracks>0 → persist=0` < 25% staging | `salvage_persist_total` → 0 | golden finalize pack |
+| W2 | #641 | open | Golden top-1 ±0% hints off; +2pp on fixture | `hint_trace` in decision_trace | `test_classifier_hints.py` |
+| W3 | #642 | open | Layers skip when `bbox_slo_ok=false` | readiness exposes gate | behavior tests when green |
+| W3 | #643 | open | 0 fusion gate keys in `default_config` | Settings search clean | drift + UI snapshot |
+| W3 | #644 | open | Finalize p95 < 8s; OV GPU smoke; detect p50 < 80ms | `inference_backend_fallback_total` → 0 | `test_processor_runtime_profile_openvino.py` |
 
 ### Program exit SLO (unchanged)
 
@@ -469,7 +468,7 @@ rows = apply_hints_to_rows(classifier_rows, hints, app_config=cfg)
 
 - Research: [`pipeline_simplification_research.md`](pipeline_simplification_research.md)  
 - Intel iGPU ops: [`intel_igpu_inference_guide.md`](intel_igpu_inference_guide.md)  
-- Commit: [2ff464057](https://github.com/Gfermoto/BirdLense-Hub/commit/2ff464057) — partial root fix (a656199a)  
+- Commits: [2ff464057](https://github.com/Gfermoto/BirdLense-Hub/commit/2ff464057) geometry partial; [9df7dc5b8](https://github.com/Gfermoto/BirdLense-Hub/commit/9df7dc5b8) ADR+#635; [7570c297f](https://github.com/Gfermoto/BirdLense-Hub/commit/7570c297f) legacy gate tests  
 - Closed EPIC: [#601](https://github.com/Gfermoto/BirdLense-Hub/issues/601) — storage/NVR; superseded for CV spine by this plan  
 - CV recovery: [#606](https://github.com/Gfermoto/BirdLense-Hub/issues/606) — dual-stream phases E–G  
 - Dual-stream: [`DUAL_STREAM_BBOX_SYNC_PLAN_2026-06.md`](DUAL_STREAM_BBOX_SYNC_PLAN_2026-06.md)  
