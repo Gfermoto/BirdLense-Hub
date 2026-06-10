@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { BASE_API_URL, csrfFetch } from './client';
+import { BASE_API_URL, ApiHttpError, apiFetch, csrfFetch } from './client';
 
 /** Web Push: get VAPID public key for subscription. */
 export const fetchVapidPublicKey = async (): Promise<string> => {
@@ -38,27 +37,40 @@ export const subscribePush = async (
   }
 };
 
+function processorActionErrorMessage(e: unknown, fallback: string): string {
+  if (e instanceof ApiHttpError) {
+    const err = (e.data as { error?: string } | null)?.error;
+    if (typeof err === 'string' && err.trim()) {
+      return err;
+    }
+    if (e.message.trim()) {
+      return e.message;
+    }
+  }
+  return fallback;
+}
+
 export const sendTestNotification = async (): Promise<{
   success: boolean;
   message?: string;
 }> => {
   try {
-    const response = await axios.post(
+    const data = await apiFetch<{ message?: string }>(
       `${BASE_API_URL}/notify/test`,
-      {},
       {
-        withCredentials: true,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
       },
     );
     return {
       success: true,
-      message: response.data?.message || 'Sent',
+      message: data?.message || 'Sent',
     };
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } };
     return {
       success: false,
-      message: err.response?.data?.error || 'Failed',
+      message: processorActionErrorMessage(e, 'Failed'),
     };
   }
 };
@@ -68,22 +80,22 @@ export const refreshTelegramProxy = async (): Promise<{
   message?: string;
 }> => {
   try {
-    const response = await axios.post(
+    const data = await apiFetch<{ message?: string }>(
       `${BASE_API_URL}/system/telegram-proxy/refresh`,
-      {},
       {
-        withCredentials: true,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
       },
     );
     return {
       success: true,
-      message: response.data?.message || 'Started',
+      message: data?.message || 'Started',
     };
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } };
     return {
       success: false,
-      message: err.response?.data?.error || 'Failed',
+      message: processorActionErrorMessage(e, 'Failed'),
     };
   }
 };
@@ -93,20 +105,19 @@ export const restartProcessor = async (): Promise<{
   message?: string;
 }> => {
   try {
-    const response = await axios.post(
+    const data = await apiFetch<{ message?: string }>(
       `${BASE_API_URL}/restart-processor`,
-      {},
       {
-        withCredentials: true,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
       },
     );
-    return { success: true, message: response.data?.message };
+    return { success: true, message: data?.message };
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } };
     return {
       success: false,
-      message: err.response?.data?.error || 'Failed to restart',
+      message: processorActionErrorMessage(e, 'Failed to restart'),
     };
   }
 };
-

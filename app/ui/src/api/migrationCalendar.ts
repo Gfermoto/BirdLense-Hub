@@ -1,6 +1,5 @@
 /** Migration calendar grid API (#343). */
-import axios from 'axios';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, apiFetch } from './client';
 
 export interface MigrationCalendarData {
   species: Array<{
@@ -22,11 +21,19 @@ export type MigrationCalendarParams = {
   catalog?: 'observed' | 'all' | 'dataset' | 'full_eu' | 'active' | 'full';
 };
 
+function migrationCalendarQuery(params?: MigrationCalendarParams): string {
+  if (!params) return '';
+  const q = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      q.set(key, String(value));
+    }
+  }
+  const qs = q.toString();
+  return qs ? `?${qs}` : '';
+}
+
 export const fetchMigrationCalendar = async (
   params?: MigrationCalendarParams,
-): Promise<MigrationCalendarData> => {
-  const response = await axios.get(`${BASE_API_URL}/migration-calendar`, {
-    params: params || {},
-  });
-  return response.data;
-};
+): Promise<MigrationCalendarData> =>
+  apiFetch(`${BASE_API_URL}/migration-calendar${migrationCalendarQuery(params)}`);

@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, apiFetch } from './client';
 
 export type LiveRuntimeOverlaysPayload = {
   camera_id?: string;
@@ -15,9 +14,6 @@ export const fetchLiveRuntimeOverlays = async ({
 }: {
   cameraId: string;
 }): Promise<LiveRuntimeOverlaysPayload> => {
-  const response = await axios.get(`${BASE_API_URL}/live/overlays`, {
-    params: { camera_id: cameraId },
-    withCredentials: true,
-  });
-  return response.data as LiveRuntimeOverlaysPayload;
+  const q = new URLSearchParams({ camera_id: cameraId });
+  return apiFetch(`${BASE_API_URL}/live/overlays?${q}`);
 };
