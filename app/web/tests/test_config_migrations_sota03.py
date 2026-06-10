@@ -133,3 +133,14 @@ def test_migrate_detect_stream_subtype_main_to_sub():
     assert "subtype=1" in user["video"]["cameras"][0]["detect_stream_name"]
     assert "subtype=0" not in user["video"]["cameras"][0]["detect_stream_name"]
 
+
+
+def test_remove_pipeline_persist_legacy_aliases_migration():
+    user = {
+        "processor": {"pipeline_mode": "legacy"},
+        "detection": {"persist_mode": "legacy"},
+    }
+    assert run_user_config_migrations(user) is True
+    assert user["processor"]["pipeline_mode"] == "linear"
+    assert user["detection"]["persist_mode"] == "binary_track_first"
+    assert current_schema_version(user) == USER_CONFIG_SCHEMA_VERSION

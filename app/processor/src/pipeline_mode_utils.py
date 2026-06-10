@@ -21,10 +21,10 @@ def is_linear_pipeline(app_config: Any) -> bool:
         global _legacy_mode_warned
         if not _legacy_mode_warned:
             _log.warning(
-                "processor.pipeline_mode=legacy is deprecated (#610); treated as linear",
+                "processor.pipeline_mode=legacy is unsupported (#621); use linear (migrate user_config)",
             )
             _legacy_mode_warned = True
-        return True
+        return False
     return mode in {"linear", "simple"}
 
 

@@ -61,7 +61,16 @@ def main() -> int:
                         f"{path.name}: deprecated {section}.{key} — remove; use scoring_* thresholds"
                     )
         det = data.get("detection") if isinstance(data.get("detection"), dict) else {}
-        if det.get("frigate_standalone_when_no_yolo") is True:
+        proc = data.get("processor") if isinstance(data.get("processor"), dict) else {}
+        if str(proc.get("pipeline_mode") or "").strip().lower() == "legacy":
+            errors.append(
+                f"{path.name}: processor.pipeline_mode=legacy — use linear (#621 migration)"
+            )
+        if str(det.get("persist_mode") or "").strip().lower() == "legacy":
+            errors.append(
+                f"{path.name}: detection.persist_mode=legacy — use binary_track_first (#621)"
+            )
+                if det.get("frigate_standalone_when_no_yolo") is True:
             errors.append(
                 f"{path.name}: detection.frigate_standalone_when_no_yolo=true — use Frigate as prior only"
             )

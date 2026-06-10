@@ -23,5 +23,5 @@ DEPRECATED_USER_CONFIG_KEYS: tuple[str, ...] = (
     "weather.ha_url",
 )
 
-# processor.pipeline_mode value "legacy" is deprecated (linear is the only supported path).
+# processor.pipeline_mode value "legacy" removed (#621); migrate to linear via user_config.
 DEPRECATED_PIPELINE_MODE_VALUE = "legacy"
