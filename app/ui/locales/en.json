@@ -2386,6 +2386,24 @@
       "warn": "warning",
       "error": "error"
     },
+    "readinessFunnelTitle": "Persist funnel (recent sessions)",
+    "readinessFunnelHint": "Rolling window: last {{hours}}h from session_runtime_metrics.",
+    "readinessFunnelStatus": "Pipeline funnel",
+    "readinessFunnelState": {
+      "ok": "Healthy",
+      "degraded": "Degraded — inspect failure modes below",
+      "unknown": "Unknown"
+    },
+    "readinessFunnelSessions": "Sessions: {{total}} · healthy persist: {{healthy}} · fusion drop: {{fusionDrop}}",
+    "readinessFunnelTopCauses": "Top failure modes",
+    "readinessFunnelByCamera": "Dominant mode per camera",
+    "readinessFunnelFailureMode": {
+      "detector_silent_raw0": "YOLO blind — no raw boxes",
+      "confidence_gate_collapse_raw_gt_0_accepted_0": "Confidence gate — raw boxes but none accepted",
+      "quality_filter_collapse_raw_gt_0_tracks_0": "Quality filter — boxes accepted but no tracks",
+      "decision_fusion_drop_tracks_gt_0_persisted_0": "Fusion drop — tracks present, nothing persisted",
+      "healthy_persisted_gt_0": "Healthy — rows persisted"
+    },
     "domainTrustTitle": "Data quality & release gate (24h)",
     "domainTrustHint": "Explains why automated deploy may exit non‑zero while the hub stays online: strict_quality checks recent recordings and detection rows, not liveness.",
     "domainTrustLoadError": "Could not load domain health snapshot",

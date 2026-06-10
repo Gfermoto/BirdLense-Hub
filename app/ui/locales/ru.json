@@ -2397,6 +2397,24 @@
       "warn": "предупреждение",
       "error": "ошибка"
     },
+    "readinessFunnelTitle": "Воронка persist (последние сессии)",
+    "readinessFunnelHint": "Окно: последние {{hours}} ч по session_runtime_metrics.",
+    "readinessFunnelStatus": "Воронка пайплайна",
+    "readinessFunnelState": {
+      "ok": "Норма",
+      "degraded": "Деградация — см. режимы сбоев ниже",
+      "unknown": "Неизвестно"
+    },
+    "readinessFunnelSessions": "Сессий: {{total}} · healthy persist: {{healthy}} · fusion drop: {{fusionDrop}}",
+    "readinessFunnelTopCauses": "Частые режимы сбоев",
+    "readinessFunnelByCamera": "Доминирующий режим по камере",
+    "readinessFunnelFailureMode": {
+      "detector_silent_raw0": "YOLO слепой — нет raw-боксов",
+      "confidence_gate_collapse_raw_gt_0_accepted_0": "Порог confidence — raw есть, accepted нет",
+      "quality_filter_collapse_raw_gt_0_tracks_0": "Фильтр качества — accepted есть, треков нет",
+      "decision_fusion_drop_tracks_gt_0_persisted_0": "Fusion drop — треки есть, persist пустой",
+      "healthy_persisted_gt_0": "Норма — строки в persist"
+    },
     "domainTrustTitle": "Качество данных и release gate (24 ч)",
     "domainTrustHint": "Зачем deploy может завершиться с ошибкой при живом хабе: strict_quality смотрит на недавние записи и строки детекций, а не на liveness.",
     "domainTrustLoadError": "Не удалось загрузить снимок domain-health",

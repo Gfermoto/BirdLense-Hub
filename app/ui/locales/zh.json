@@ -2152,7 +2152,26 @@
     },
     "readinessState": {
       "ok": "正常",
+      "warn": "警告",
       "error": "错误"
+    },
+    "readinessFunnelTitle": "Persist 漏斗（近期会话）",
+    "readinessFunnelHint": "滚动窗口：最近 {{hours}} 小时（session_runtime_metrics）。",
+    "readinessFunnelStatus": "流水线漏斗",
+    "readinessFunnelState": {
+      "ok": "健康",
+      "degraded": "降级 — 请查看下方失败模式",
+      "unknown": "未知"
+    },
+    "readinessFunnelSessions": "会话：{{total}} · 健康 persist：{{healthy}} · fusion drop：{{fusionDrop}}",
+    "readinessFunnelTopCauses": "主要失败模式",
+    "readinessFunnelByCamera": "各摄像头主导模式",
+    "readinessFunnelFailureMode": {
+      "detector_silent_raw0": "YOLO 无输出 — 无 raw 框",
+      "confidence_gate_collapse_raw_gt_0_accepted_0": "置信度门槛 — 有 raw 无 accepted",
+      "quality_filter_collapse_raw_gt_0_tracks_0": "质量过滤 — 有 accepted 无轨迹",
+      "decision_fusion_drop_tracks_gt_0_persisted_0": "Fusion 丢弃 — 有轨迹未 persist",
+      "healthy_persisted_gt_0": "健康 — 已写入 persist"
     },
     "domainTrustTitle": "数据质量与发布门禁（24 小时）",
     "domainTrustHint": "说明为何自动化部署可能返回非零退出码而 Hub 仍在线：strict_quality 检查近期录像与检测行，而非存活探针。",
