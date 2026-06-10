@@ -30,7 +30,9 @@ from processor_config_defaults import (
 )
 from session_state_repository import SessionStateRepository
 from detect_first import (
+    _detect_first_gate_min_confidence,
     build_frigate_assisted_detect_first_anchor,
+    build_raw_hits_detect_first_anchor,
     detect_first_runtime_signal_fields,
     enrich_detect_first_anchor,
     is_valid_detect_first_anchor,
@@ -42,7 +44,6 @@ from detection_scheduler import (
     frame_counts_as_detect_first_hit,
     requires_detect_first_before_record,
     resolve_detect_first_confirm_min_hits,
-    resolve_detect_first_min_track_seconds,
     trigger_requires_detect_first,
 )
 from yolo_blind_monitor import YoloBlindLiveMonitor, run_blind_quickcheck
@@ -328,16 +329,11 @@ class MotionRecordingSession:
             nonlocal anchor
             if _hits < confirm_min_hits:
                 return False
-            min_track = resolve_detect_first_min_track_seconds(cfg, cam_overrides)
-            min_conf = float(
-                cam_overrides.get("min_confidence_to_process")
-                if cam_overrides.get("min_confidence_to_process") is not None
-                else (app_config.get("processor.min_confidence_to_process") or 0.12)
-            )
+            gate_min_conf = _detect_first_gate_min_confidence(app_config, cam_overrides)
             anchor = self.frame_processor.confirmed_track_anchor(
                 app_config=app_config,
-                min_track_duration=min_track,
-                min_confidence_to_process=min_conf,
+                min_track_duration=0.0,
+                min_confidence_to_process=gate_min_conf,
             )
             return anchor is not None
 
@@ -358,8 +354,18 @@ class MotionRecordingSession:
             )
             if anchor is not None:
                 inc_counter("detect_first_frigate_assisted_total")
-            else:
-                inc_counter("detect_first_no_anchor_total")
+        if anchor is None and hits >= confirm_min_hits:
+            anchor = build_raw_hits_detect_first_anchor(
+                frame_processor=self.frame_processor,
+                app_config=app_config,
+                cam_overrides=cam_overrides,
+                hits=hits,
+                camera_id=camera_id,
+            )
+            if anchor is not None:
+                inc_counter("detect_first_raw_hits_anchor_total")
+        if anchor is None:
+            inc_counter("detect_first_no_anchor_total")
         else:
             inc_counter("detect_first_confirmed_total")
         logger.info(

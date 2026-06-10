@@ -15,6 +15,7 @@ sys.path.insert(0, src_path)
 
 import processor_bootstrap as bootstrap_mod  # noqa: E402
 from detection_fusion import build_fused_video_detections  # noqa: E402
+from detect_first import build_raw_hits_detect_first_anchor  # noqa: E402
 from frame_processor import FrameProcessor  # noqa: E402
 
 
@@ -69,6 +70,36 @@ class TestFrameProcessorAnchorApi(unittest.TestCase):
         self.assertEqual(anchor["track_id"], 7)
         self.assertEqual(anchor["bbox"], [0.11, 0.2, 0.31, 0.4])
         self.assertEqual(anchor["detector_label"], "Bird")
+
+
+class TestRawHitsDetectFirstAnchor(unittest.TestCase):
+    def test_build_raw_hits_anchor_from_strategy_candidate(self):
+        class _Strategy:
+            def get_best_raw_bird_candidate(self):
+                return {
+                    "track_id": 3,
+                    "bbox": [0.2, 0.3, 0.4, 0.5],
+                    "confidence": 0.11,
+                    "detector_label": "Bird",
+                }
+
+        fp = FrameProcessor.__new__(FrameProcessor)
+        fp.tracks = {}
+        fp.strategy = _Strategy()
+        cfg = MagicMock()
+        cfg.get.side_effect = _cfg_get
+
+        anchor = build_raw_hits_detect_first_anchor(
+            frame_processor=fp,
+            app_config=cfg,
+            cam_overrides={"min_confidence_binary_bird": 0.06},
+            hits=5,
+            camera_id="BirdBox",
+        )
+
+        self.assertIsNotNone(anchor)
+        self.assertEqual(anchor["track_id"], 3)
+        self.assertTrue(anchor.get("detect_first_raw_hits_anchor"))
 
 
 class TestBootstrapDetectFirst(unittest.TestCase):

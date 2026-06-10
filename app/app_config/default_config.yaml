@@ -98,6 +98,7 @@ processor:
   detect_first_window_seconds: 4.0
   detect_first_max_frames: 30
   detect_first_confirm_min_hits: 1
+  detect_first_raw_hits_anchor_enabled: true
   detect_first_confirm_min_track_seconds: 0.35
   # Detect-first opens the main recording, but should not by itself create a final visit.
   # Persist dense live YOLO tracks; anchor-only rows are too short for lifecycle trails.
