@@ -121,9 +121,7 @@ class ScoringEngineConfig:
             ),
             static_phantom_max_conf=_parse_float(runtime_cfg, "processor.scoring_static_phantom_max_conf", 0.52),
             relaxed_scoring_min_confidence=_parse_float(runtime_cfg, "processor.scoring_relaxed_min_confidence", 0.08),
-            moving_roi_review_enabled=_parse_bool(
-                runtime_cfg, "processor.scoring_moving_roi_review_enabled", True
-            ),
+            moving_roi_review_enabled=_parse_bool(runtime_cfg, "processor.scoring_moving_roi_review_enabled", True),
             moving_roi_min_motion_score=_parse_float(
                 runtime_cfg, "processor.scoring_moving_roi_min_motion_score", 0.32
             ),

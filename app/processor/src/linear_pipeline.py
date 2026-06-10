@@ -18,10 +18,10 @@ from persist_mode import binary_track_first_min_detector_conf, track_has_bbox_fr
 from processor_config_defaults import (
     BIRDER_EU_MIN_CONFIDENCE,
     CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE,
-    PIPELINE_MODE,
     config_float,
 )
 from app_config.visit_eligibility import GENERIC_BIRD_SPECIES, visit_eligible_for_named_species
+from pipeline_mode_utils import is_linear_pipeline
 from runtime_contract import apply_runtime_contract
 
 logger = logging.getLogger(__name__)
@@ -31,15 +31,6 @@ STAGE_DETECT_TRACK = "detect_track"
 STAGE_CLASSIFY_ENRICH = "classify_enrich"
 STAGE_REID_BEHAVIOR = "reid_behavior"
 STAGE_PERSIST = "persist"
-
-
-from pipeline_mode_utils import (
-    is_linear_pipeline,
-    linear_disable_legacy_quality_gates,
-    linear_disable_live_quality_gates,
-    linear_live_scoring_engine_enabled,
-    pipeline_mode,
-)
 
 
 def _resolve_camera_tuning_role(app_config, camera_id: str | None) -> str | None:

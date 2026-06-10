@@ -82,7 +82,6 @@ def test_pydantic_rejects_legacy_pipeline_mode_value():
     )
     assert issues == []  # type allowed; drift gate blocks at deploy
 
-
     merged = {
         "processor": {
             "min_confidence_binary": 0.2,

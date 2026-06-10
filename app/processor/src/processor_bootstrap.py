@@ -153,9 +153,13 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
     from inference_bootstrap import publish_inference_backend_effective
 
     _requested_inf = resolve_inference_backend(app_config)
-    _effective_inf = str(
-        getattr(getattr(frame_processor, "strategy", None), "inference_backend", "torch") or "torch",
-    ).strip().lower()
+    _effective_inf = (
+        str(
+            getattr(getattr(frame_processor, "strategy", None), "inference_backend", "torch") or "torch",
+        )
+        .strip()
+        .lower()
+    )
     _auto_fb = _requested_inf == "auto" and _effective_inf == "torch"
     publish_inference_backend_effective(
         requested_backend=_requested_inf,

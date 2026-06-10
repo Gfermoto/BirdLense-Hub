@@ -59,6 +59,7 @@ def mark_yolo_inference_ready(backend: str | None = None) -> None:
     except Exception:
         _log.debug("yolo inference ready gauges skipped", exc_info=True)
 
+
 _log = logging.getLogger(__name__)
 
 

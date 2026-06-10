@@ -36,6 +36,7 @@ def notify_unique_species(
                 runtime_cfg=config,
             )
         return encode(detection, video_output)
+
     seen = set()
     seen_profiles = set()
     for detection in video_detections:

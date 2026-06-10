@@ -106,10 +106,7 @@ def build_persist_substage_breakdown(session) -> dict[str, Any]:
     for key, samples in flat.items():
         short = key.removesuffix("_duration_ms").removesuffix("_ms")
         substages[short] = _latency_summary(samples)
-    ingest_summary = {
-        key.removesuffix("_ms"): _latency_summary(samples)
-        for key, samples in ingest.items()
-    }
+    ingest_summary = {key.removesuffix("_ms"): _latency_summary(samples) for key, samples in ingest.items()}
     if any(summary.get("n", 0) > 0 for summary in ingest_summary.values()):
         substages["create_video_ingest"] = ingest_summary
 
@@ -232,17 +229,11 @@ def build_persist_funnel_summary(session) -> dict[str, Any]:
     alerts: list[str] = []
     if total > 0:
         if fp_opencv_rate is not None and fp_opencv_rate > max_fp_opencv:
-            alerts.append(
-                f"fp_empty_recording opencv rate {fp_opencv_rate:.1%} > {max_fp_opencv:.1%}"
-            )
+            alerts.append(f"fp_empty_recording opencv rate {fp_opencv_rate:.1%} > {max_fp_opencv:.1%}")
         if fusion_drop_rate is not None and fusion_drop_rate > max_fusion_drop:
-            alerts.append(
-                f"fusion_drop rate {fusion_drop_rate:.1%} > {max_fusion_drop:.1%}"
-            )
+            alerts.append(f"fusion_drop rate {fusion_drop_rate:.1%} > {max_fusion_drop:.1%}")
         if healthy_rate is not None and healthy_rate < min_healthy:
-            alerts.append(
-                f"healthy_persist rate {healthy_rate:.1%} < {min_healthy:.1%}"
-            )
+            alerts.append(f"healthy_persist rate {healthy_rate:.1%} < {min_healthy:.1%}")
 
     top_causes = [mode for mode, _ in global_counts.most_common(5)]
     status = "ok"

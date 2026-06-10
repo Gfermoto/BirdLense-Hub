@@ -250,11 +250,7 @@ def apply_broken_video_rows_purge(*, limit: int = 100, max_scan: int = 100_000) 
 
     videos = Video.query.filter(Video.id.in_(video_ids)).all()
     by_id = {v.id: v for v in videos}
-    not_broken = [
-        vid
-        for vid in video_ids
-        if vid not in by_id or broken_video_row_payload(by_id[vid]) is None
-    ]
+    not_broken = [vid for vid in video_ids if vid not in by_id or broken_video_row_payload(by_id[vid]) is None]
     if not_broken:
         return {
             "deleted_count": 0,

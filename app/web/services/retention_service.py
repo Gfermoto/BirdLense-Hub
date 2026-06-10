@@ -267,9 +267,7 @@ def retention_deletion_pending(mode: str | None = None) -> tuple[bool, str]:
         return False, ""
 
     if max_gb and float(max_gb) > 0:
-        if _get_recordings_size_gb() > float(max_gb) and _oldest_deletable_video(
-            protect_favorites=protect_favorites
-        ):
+        if _get_recordings_size_gb() > float(max_gb) and _oldest_deletable_video(protect_favorites=protect_favorites):
             return True, "max_gb"
 
     if cutoff and _has_videos_older_than_cutoff(cutoff, protect_favorites=protect_favorites):

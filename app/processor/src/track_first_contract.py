@@ -89,11 +89,7 @@ def apply_track_first_persist_gate(
 
 
 def count_ingestible_track_rows(rows: list[dict[str, Any]] | None) -> int:
-    return sum(
-        1
-        for row in rows or []
-        if row_requires_bbox(row) and valid_track_frames(row.get("frames"))
-    )
+    return sum(1 for row in rows or [] if row_requires_bbox(row) and valid_track_frames(row.get("frames")))
 
 
 def has_ingestible_track_rows(rows: list[dict[str, Any]] | None) -> bool:

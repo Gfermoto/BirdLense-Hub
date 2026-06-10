@@ -23,7 +23,7 @@ from services.species_catalog.canon import (
     is_hierarchy_taxon_label,
     normalize_catalog_display_name,
 )
-from species_constants import GENERIC_BIRD_NAME_KEYS, VISIT_STATS_EXCLUDE_NAME_KEYS
+from species_constants import VISIT_STATS_EXCLUDE_NAME_KEYS
 from util import load_species_canonical_mapping
 
 

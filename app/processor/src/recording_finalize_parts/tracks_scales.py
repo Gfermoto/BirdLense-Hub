@@ -47,5 +47,3 @@ def _tracks_for_finalize(
         if isinstance(snap, dict):
             return snap
     return getattr(frame_processor, "tracks", None) or {}
-
-

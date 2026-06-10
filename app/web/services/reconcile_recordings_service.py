@@ -21,7 +21,7 @@ from services.system_diagnostics_service import (
 from services.system_maintenance_service import run_recordings_scan
 
 if TYPE_CHECKING:
-    from flask import Flask
+    pass
 
 logger = logging.getLogger(__name__)
 

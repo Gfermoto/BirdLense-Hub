@@ -841,11 +841,7 @@ class MotionRecordingSession:
                     blind_suspected_since_monotonic = None
                     blind_quickcheck_until_monotonic = 0.0
 
-                frigate_only_extension = bool(
-                    frigate_hold_seconds > 0
-                    and has_detections
-                    and not raw_yolo_detections
-                )
+                frigate_only_extension = bool(frigate_hold_seconds > 0 and has_detections and not raw_yolo_detections)
                 if frigate_only_extension:
                     runtime_signals["session_extended_by_frigate_only"] += 1
                     if (

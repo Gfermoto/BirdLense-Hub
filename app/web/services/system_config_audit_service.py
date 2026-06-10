@@ -8,15 +8,15 @@ import os
 import yaml
 
 import data_paths
-from app_config.scales_config import normalize_scales_source, scales_source_uses_mqtt
-
-logger = logging.getLogger(__name__)
 from app_config.deprecated_keys import DEPRECATED_USER_CONFIG_KEYS
+from app_config.scales_config import normalize_scales_source, scales_source_uses_mqtt
 from app_config.trigger_config import (
     format_motion_source_summary,
     get_active_trigger_names,
     normalize_transport_source,
 )
+
+logger = logging.getLogger(__name__)
 
 DOCUMENTED_SCALES_MQTT_PREFIX = "birdlense/scale"
 
@@ -157,7 +157,7 @@ def _recall_audit(app_config_get) -> tuple[dict, list[str], list[str]]:
             )
             for issue in validate_go2rtc_detect_streams(valid, video_source=source):
                 blocking.append(issue)
-        except Exception as exc:
+        except Exception:
             logger.warning("go2rtc detect_stream audit failed", exc_info=True)
     frigate_standalone = _bool_config(
         app_config_get("detection.frigate_standalone_when_no_yolo"),

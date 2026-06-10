@@ -289,8 +289,7 @@ class Go2RTCStreamSource:
             )
         if capture_url == (stream_url or "").strip():
             raise ValueError(
-                "Go2RTC capture stream must differ from main record stream "
-                "(detect_stream_name ≠ stream_name)"
+                "Go2RTC capture stream must differ from main record stream (detect_stream_name ≠ stream_name)"
             )
         self._capture_stream_url = capture_url
         self._single_rtsp_read = bool(single_rtsp_read)

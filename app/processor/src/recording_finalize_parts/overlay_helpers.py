@@ -8,6 +8,7 @@ from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
 from track_first_contract import is_valid_norm_bbox, valid_track_frames
 from persist_mode import binary_track_first_enabled
 
+
 def _rejected_reason_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
     counts = Counter(
         str(item.get("reject_reason_code") or item.get("decision_reason") or "rejected_unknown")
@@ -83,5 +84,3 @@ def _safe_float(value: Any, *, default: float = 0.0) -> float:
         return float(value)
     except (TypeError, ValueError):
         return float(default)
-
-
