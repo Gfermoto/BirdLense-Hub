@@ -21,6 +21,8 @@ from frame_processor import FrameProcessor  # noqa: E402
 
 def _cfg_get(key, default=None):
     values = {
+        "video.source": "go2rtc",
+        "processor.recording_gate_mode": "detect_first",
         "processor.detect_first_enabled": True,
         "processor.detect_first_triggers": ["opencv", "frigate"],
         "processor.detect_first_window_seconds": 2.5,
