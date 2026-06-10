@@ -40,6 +40,11 @@ function gateTextColor(
   return 'error.main';
 }
 
+function formatRate(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return '—';
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 export function SystemReadinessCard() {
   const { t } = useTranslation();
   const { data, isLoading, error } = useSystemReadinessQuery();
@@ -67,6 +72,15 @@ export function SystemReadinessCard() {
   const runtimeLabel = sg?.runtime
     ? t(`system.readinessRuntime.${sg.runtime}`)
     : '';
+
+  const funnelCheck = data.checks.pipeline_funnel;
+  const funnel = data.pipeline_funnel;
+  const funnelStatus = String(funnelCheck?.status ?? funnel?.status ?? 'unknown');
+  const funnelDegraded = funnelStatus === 'degraded';
+  const topCauses = funnel?.top_root_causes ?? funnelCheck?.top_root_causes ?? [];
+  const funnelAlerts = funnel?.alerts ?? funnelCheck?.alerts ?? [];
+  const byCamera = funnel?.by_camera ?? {};
+  const cameraIds = Object.keys(byCamera);
 
   return (
     <SystemCardShell
@@ -122,6 +136,95 @@ export function SystemReadinessCard() {
             </Box>
           ))}
         </Box>
+
+        {funnel ? (
+          <Stack spacing={1}>
+            <Typography variant="subtitle2">
+              {t('system.readinessFunnelTitle')}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {t('system.readinessFunnelHint', {
+                hours: funnel.window_hours ?? 24,
+              })}
+            </Typography>
+            <Box
+              sx={{
+                p: 1.25,
+                borderRadius: 2,
+                bgcolor: 'background.default',
+                border: '1px solid',
+                borderColor: funnelDegraded ? 'warning.dark' : 'success.dark',
+              }}
+            >
+              <Typography variant="caption" color="text.secondary" display="block">
+                {t('system.readinessFunnelStatus')}
+              </Typography>
+              <Typography
+                variant="subtitle2"
+                color={funnelDegraded ? 'warning.main' : 'success.main'}
+                sx={{ mt: 0.5 }}
+              >
+                {t(`system.readinessFunnelState.${funnelStatus}`, {
+                  defaultValue: funnelStatus,
+                })}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                {t('system.readinessFunnelSessions', {
+                  total: funnel.sessions_total ?? 0,
+                  healthy: formatRate(funnel.healthy_persist_rate),
+                  fusionDrop: formatRate(funnel.fusion_drop_rate),
+                })}
+              </Typography>
+            </Box>
+            {topCauses.length > 0 ? (
+              <Stack spacing={0.5}>
+                <Typography variant="caption" color="text.secondary">
+                  {t('system.readinessFunnelTopCauses')}
+                </Typography>
+                {topCauses.map((mode) => (
+                  <Typography key={mode} variant="body2">
+                    {t(`system.readinessFunnelFailureMode.${mode}`, {
+                      defaultValue: mode,
+                    })}
+                  </Typography>
+                ))}
+              </Stack>
+            ) : null}
+            {funnelAlerts.length > 0 ? (
+              <Alert severity="warning" variant="outlined">
+                {funnelAlerts.map((alert) => (
+                  <Typography key={alert} variant="body2">
+                    {alert}
+                  </Typography>
+                ))}
+              </Alert>
+            ) : null}
+            {cameraIds.length > 0 ? (
+              <Stack spacing={0.75}>
+                <Typography variant="caption" color="text.secondary">
+                  {t('system.readinessFunnelByCamera')}
+                </Typography>
+                {cameraIds.map((cameraId) => {
+                  const modes = byCamera[cameraId] ?? {};
+                  const dominant = Object.entries(modes).sort(
+                    (a, b) => b[1] - a[1],
+                  )[0];
+                  if (!dominant) return null;
+                  const [mode, count] = dominant;
+                  return (
+                    <Typography key={cameraId} variant="body2">
+                      {cameraId}:{' '}
+                      {t(`system.readinessFunnelFailureMode.${mode}`, {
+                        defaultValue: mode,
+                      })}{' '}
+                      ({count})
+                    </Typography>
+                  );
+                })}
+              </Stack>
+            ) : null}
+          </Stack>
+        ) : null}
 
         {gateItems.length > 0 ? (
           <Stack spacing={1}>
