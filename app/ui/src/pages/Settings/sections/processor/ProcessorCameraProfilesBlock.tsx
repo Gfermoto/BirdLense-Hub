@@ -8,6 +8,7 @@ import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import { ServiceBlock } from '../../shared/ServiceBlock';
 import { CameraTuningFieldsGrid } from '../../shared/CameraTuningFieldsGrid';
+import { cameraTuningRoleLabelKey } from '../../shared/cameraTuningFields';
 import type { Settings } from '../../../../types';
 
 type Props = {
@@ -31,12 +32,14 @@ export function ProcessorCameraProfilesBlock({ form }: Props) {
             const cameraId = String(cam?.id ?? cam?.stream_name ?? '').trim();
             if (!cameraId) return null;
             const role = String(cam?.tuning_role ?? '').trim();
+            const roleLabelKey = cameraTuningRoleLabelKey(role);
+            const roleLabel = role ? (roleLabelKey ? t(roleLabelKey) : role) : '';
             return (
               <Accordion key={cameraId} disableGutters sx={{ mb: 1 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="subtitle2">
                     {cam?.name || cameraId}
-                    {role ? ` · ${role}` : ''}
+                    {roleLabel ? ` · ${roleLabel}` : ''}
                   </Typography>
                 </AccordionSummary>
                 <AccordionDetails>
