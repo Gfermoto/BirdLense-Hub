@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchReadiness } from '../api/camerasHealth';
+import { fetchRetentionConfig } from '../api/retention';
+import { fetchStorageStats } from '../api/storageStats';
 import {
   fetchQualityHealth,
   fetchQualityTimeseries,
@@ -25,6 +27,24 @@ export function useSystemReadinessQuery() {
     queryKey: queryKeys.system.readiness,
     queryFn: fetchReadiness,
     refetchInterval: 30_000,
+  });
+}
+
+export function useRetentionConfigQuery() {
+  return useQuery({
+    queryKey: queryKeys.system.retentionConfig,
+    queryFn: fetchRetentionConfig,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useStorageStatsQuery() {
+  return useQuery({
+    queryKey: queryKeys.storage.stats,
+    queryFn: fetchStorageStats,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
   });
 }
 

@@ -2173,6 +2173,23 @@
       "decision_fusion_drop_tracks_gt_0_persisted_0": "Fusion 丢弃 — 有轨迹未 persist",
       "healthy_persisted_gt_0": "健康 — 已写入 persist"
     },
+    "readinessOperatorTitle": "运维快照（磁盘 · 配额 · 孤儿文件）",
+    "readinessOperatorHint": "主机磁盘、已索引录像大小、保留配额余量及磁盘孤儿文件 — 无需 SSH。",
+    "readinessOperator": {
+      "disk": "主机磁盘",
+      "diskValue": "{{used}} / {{total}} GB（{{percent}}%）",
+      "recordings": "已索引录像",
+      "recordingsValue": "{{size}} · {{files}} 个文件",
+      "quota": "保留配额",
+      "quotaValue": "上限 {{maxGb}} GB · 余量 {{headroom}}",
+      "quotaUnlimited": "未配置 max_gb",
+      "orphan": "磁盘孤儿文件",
+      "orphanValue": "{{count}} 个会话 · {{size}}",
+      "unavailable": "不可用",
+      "linkStorage": "Library → 存储与保留",
+      "linkCatalogReconcile": "Catalog ops 与 reconcile",
+      "linkYoloBlind": "YOLO blind runbook"
+    },
     "domainTrustTitle": "数据质量与发布门禁（24 小时）",
     "domainTrustHint": "说明为何自动化部署可能返回非零退出码而 Hub 仍在线：strict_quality 检查近期录像与检测行，而非存活探针。",
     "domainTrustLoadError": "无法加载 domain-health 快照",

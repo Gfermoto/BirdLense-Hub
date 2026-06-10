@@ -2415,6 +2415,23 @@
       "decision_fusion_drop_tracks_gt_0_persisted_0": "Fusion drop — треки есть, persist пустой",
       "healthy_persisted_gt_0": "Норма — строки в persist"
     },
+    "readinessOperatorTitle": "Снимок для оператора (диск · квота · orphans)",
+    "readinessOperatorHint": "Диск хоста, размер проиндексированных записей, запас по квоте retention и orphan-файлы на диске — без SSH.",
+    "readinessOperator": {
+      "disk": "Диск хоста",
+      "diskValue": "{{used}} / {{total}} GB ({{percent}}%)",
+      "recordings": "Проиндексированные записи",
+      "recordingsValue": "{{size}} · {{files}} файлов",
+      "quota": "Квота retention",
+      "quotaValue": "Лимит {{maxGb}} GB · запас {{headroom}}",
+      "quotaUnlimited": "max_gb не задан",
+      "orphan": "Orphan-файлы на диске",
+      "orphanValue": "{{count}} сессий · {{size}}",
+      "unavailable": "Недоступно",
+      "linkStorage": "Library → хранение и retention",
+      "linkCatalogReconcile": "Catalog ops и reconcile",
+      "linkYoloBlind": "Runbook YOLO blind"
+    },
     "domainTrustTitle": "Качество данных и release gate (24 ч)",
     "domainTrustHint": "Зачем deploy может завершиться с ошибкой при живом хабе: strict_quality смотрит на недавние записи и строки детекций, а не на liveness.",
     "domainTrustLoadError": "Не удалось загрузить снимок domain-health",
