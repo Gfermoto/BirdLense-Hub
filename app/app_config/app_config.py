@@ -692,6 +692,46 @@ class AppConfig:
         with open(save_file, "w", encoding="utf-8") as file:
             yaml.safe_dump(data, file, allow_unicode=True)
 
+    def _default_retention_section(self) -> dict:
+        cached = getattr(self, "_cached_default_retention", None)
+        if cached is not None:
+            return cached
+        try:
+            with open(self.default_config_file, encoding="utf-8") as file:
+                root = yaml.safe_load(file) or {}
+        except (OSError, yaml.YAMLError):
+            root = {}
+        section = root.get("retention") if isinstance(root, dict) else {}
+        self._cached_default_retention = section if isinstance(section, dict) else {}
+        return self._cached_default_retention
+
+    def build_retention_safe_public_config(self) -> dict:
+        """Public retention fields for API; defaults aligned with default_config.yaml."""
+        merged = self.get("retention")
+        if not isinstance(merged, dict):
+            merged = {}
+        defaults = self._default_retention_section()
+
+        def pick(key: str, fallback=None):
+            val = merged.get(key)
+            if val is None:
+                val = defaults.get(key, fallback)
+            return val
+
+        return {
+            "mode": pick("mode", "cascade") or "cascade",
+            "days": pick("days"),
+            "max_gb": pick("max_gb"),
+            "dataset_max_age_days": pick("dataset_max_age_days", 0),
+            "migration_max_age_days": pick("migration_max_age_days", 0),
+            "protect_favorites": bool(pick("protect_favorites", True)),
+            "min_age_hours": int(pick("min_age_hours", 1) or 1),
+            "batch_size": int(pick("batch_size", 50) or 50),
+            "max_deletes_per_run": int(pick("max_deletes_per_run", 500) or 500),
+            "auto_run_enabled": bool(pick("auto_run_enabled", False)),
+            "auto_run_interval_hours": int(pick("auto_run_interval_hours", 6) or 6),
+        }
+
     def update_retention_config(self, retention: dict) -> dict:
         """Обновить retention в user_config.yaml и перезагрузить конфиг.
 
@@ -703,23 +743,7 @@ class AppConfig:
             raw["retention"].update(retention)
         self._persist_raw_user_config(raw)
         self.reload()
-        rc = self.get("retention", {})
-        safe = {
-            "mode": rc.get("mode", "cascade"),
-            "days": rc.get("days"),
-            "max_gb": rc.get("max_gb"),
-            "dataset_max_age_days": rc.get("dataset_max_age_days", 0),
-            "migration_max_age_days": rc.get(
-                "migration_max_age_days",
-                0,
-            ),
-            "protect_favorites": rc.get("protect_favorites", True),
-            "min_age_hours": rc.get("min_age_hours", 1),
-            "batch_size": rc.get("batch_size", 50),
-            "max_deletes_per_run": rc.get("max_deletes_per_run", 500),
-            "auto_run_enabled": rc.get("auto_run_enabled", True),
-            "auto_run_interval_hours": rc.get("auto_run_interval_hours", 6),
-        }
+        safe = self.build_retention_safe_public_config()
         try:
             from services.retention_service import _fetch_metrics
 
