@@ -50,12 +50,13 @@ High-level layout of the single-container app, data paths, and integrations. For
 
 1. **Go2RTC** (external) — per camera: **main** stream (`stream_name`) for FFmpeg MP4 record; **detect** stream (`detect_stream_name`, required) — lores for motion + YOLO.
 2. **Processor** ingests the detect stream continuously; on trigger it records from main (`media_runtime.py`, `go2rtc_stream_source.py`).
+   Optional **`processor.single_rtsp_read: true`** (default **false**): idle reads main once + software lores; **during recording** URL switches back to detect substream (parity gate — see [linear-fusion-safeguards](./linear-fusion-safeguards.md)). Bootstrap still requires **`detect_stream_name`** per camera.
 3. **Motion** (OpenCV on lores, Frigate MQTT, plain MQTT, or ESPHome) starts a recording segment.
 4. **Detect-first** — early YOLO anchor on lores before full finalize (`detect_first.py`).
 5. **Detector** — first-stage target confirmation (`Bird | Rodent`).
 6. **YOLO classifier** — species classification for detector-confirmed tracks.
 7. **ByteTrack** — multi-object tracking and per-frame boxes.
-8. **Fusion** — detector/classifier outcome + Frigate promotion + confidence boosters.
+8. **Fusion** — detector/classifier outcome + Frigate promotion + confidence boosters (hints only in linear mode — [linear-fusion-safeguards](./linear-fusion-safeguards.md)).
 9. **Timeline remap** — bbox timestamps shifted detect→main (`dual_stream_timeline.py`, `detect_record_time_offset_sec`).
 10. **Write** — `data/recordings/YYYY/MM/DD/HHMMSS/video.mp4`.
 11. **Spectrogram** (when enabled / needed) — FFmpeg + librosa → e.g. `spectrogram_200.jpg`.

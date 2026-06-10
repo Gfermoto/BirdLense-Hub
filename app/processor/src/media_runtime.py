@@ -29,6 +29,17 @@ class ProcessorMediaSetup:
     cameras: List[Any] = field(default_factory=list)
 
 
+def parse_single_rtsp_read_flag(app_config) -> bool:
+    """Return processor.single_rtsp_read; default False (dual-stream detect substream)."""
+    sr = app_config.get("processor.single_rtsp_read")
+    if sr is None:
+        return False
+    if isinstance(sr, bool):
+        return sr
+    s = str(sr).strip().lower()
+    return s not in ("0", "false", "no", "off")
+
+
 def _wait_until_detect_streams_configured(api: API, cameras: list) -> None:
     """Block until every Go2RTC camera has a distinct detect_stream_name (dual-stream migration)."""
     hb_id = None
@@ -268,14 +279,7 @@ def setup_processor_media(
             capture_backend = (app_config.get("video.capture_backend") or "auto").strip().lower()
             if capture_backend not in ("auto", "opencv", "ffmpeg_vaapi"):
                 capture_backend = "auto"
-            sr = app_config.get("processor.single_rtsp_read")
-            if sr is None:
-                single_rtsp_read = False
-            elif isinstance(sr, bool):
-                single_rtsp_read = sr
-            else:
-                s = str(sr).strip().lower()
-                single_rtsp_read = s not in ("0", "false", "no", "off")
+            single_rtsp_read = parse_single_rtsp_read_flag(app_config)
             rwv = app_config.get("video.record_with_vaapi")
             if rwv is None:
                 record_with_vaapi = True
