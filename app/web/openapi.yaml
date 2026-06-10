@@ -66,6 +66,12 @@ paths:
                   quality_ready:
                     type: boolean
                     description: True when historical pipeline-quality checks are healthy. Core service readiness may be true while this is false.
+                  bbox_slo_ok:
+                    type: boolean
+                    description: True when bbox/crop geometry SLO gate is green (#642); DINOv2/behavior layers allowed.
+                  bbox_slo_reason:
+                    type: string
+                    description: Gate evaluation reason (e.g. ok, funnel_degraded, bbox_iou_p50=...).
                   checked_at:
                     type: string
                     format: date-time
@@ -199,6 +205,11 @@ paths:
                   quality_ready:
                     type: boolean
                     description: True when historical pipeline-quality checks are healthy. Core service readiness may be false due to core checks.
+                  bbox_slo_ok:
+                    type: boolean
+                    description: True when bbox/crop geometry SLO gate is green (#642).
+                  bbox_slo_reason:
+                    type: string
                   checked_at:
                     type: string
                     format: date-time
