@@ -39,9 +39,9 @@ def test_existing_observed_species_not_demoted_to_unknown(app, monkeypatch):
             birds = Species(name="Birds")
             db.session.add(birds)
             db.session.flush()
-        jay = Species(name="Eurasian Jay", parent_id=birds.id, active=False)
-        db.session.add(jay)
-        db.session.flush()
+        from tests.conftest import get_or_create_species
+
+        jay = get_or_create_species("Eurasian Jay", parent_id=birds.id, active=False)
         now = datetime.now(timezone.utc)
         video = Video(
             processor_version="test",

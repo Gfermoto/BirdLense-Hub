@@ -134,9 +134,9 @@ def test_strict_allowlist_still_blocks_real_off_allowlist_species(app, monkeypat
 def test_out_of_order_video_ingest_does_not_attach_to_future_visit(app):
     """Older detections must not attach to a visit created from a later clip."""
     with app.app_context():
-        species = Species(name="Eurasian Jay")
-        db.session.add(species)
-        db.session.flush()
+        from tests.conftest import get_or_create_species
+
+        species = get_or_create_species("Eurasian Jay")
 
         later_video = Video(
             processor_version="test",
@@ -178,9 +178,9 @@ def test_out_of_order_video_ingest_does_not_attach_to_future_visit(app):
 def test_out_of_order_video_ingest_within_timeout_rewinds_visit_start(app):
     """Near out-of-order detections may reuse a visit, but start_time must rewind."""
     with app.app_context():
-        species = Species(name="Great Tit")
-        db.session.add(species)
-        db.session.flush()
+        from tests.conftest import get_or_create_species
+
+        species = get_or_create_species("Great Tit")
 
         later_video = Video(
             processor_version="test",

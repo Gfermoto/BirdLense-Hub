@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 
-from models import Species, Video, VideoSpecies, db
+from models import Video, VideoSpecies, db
+
+from tests.conftest import get_or_create_species
 
 
 def _auth_headers() -> dict[str, str]:
@@ -14,7 +16,7 @@ def _auth_headers() -> dict[str, str]:
 
 def _seed(app):
     with app.app_context():
-        sp = Species(name="Great Tit", active=True)
+        sp = get_or_create_species("Great Tit", active=True)
         start = datetime.now(timezone.utc) - timedelta(hours=2)
         v = Video(
             processor_version="test",
