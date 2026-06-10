@@ -88,7 +88,7 @@ def _classify_failure_mode(
     yolo_raw_boxes_total: int,
     yolo_accepted_boxes_total: int,
     yolo_frames_with_tracks: int,
-    post_fusion_persisted: int,
+    post_fusion_persisted: int,  # ingestible rows after fusion (salvage demoted in linear)
 ) -> str:
     if yolo_raw_boxes_total <= 0:
         return "detector_silent_raw0"

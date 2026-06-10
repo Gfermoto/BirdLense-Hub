@@ -190,6 +190,12 @@ class TestLinearPipeline(unittest.TestCase):
         self.assertTrue(linear_skip_legacy_fusion_safeguards(linear))
         self.assertFalse(linear_skip_legacy_fusion_safeguards(legacy))
 
+    def test_linear_skips_salvage_persist_bypass(self):
+        linear = _Cfg({"processor.pipeline_mode": "linear"})
+        legacy = _Cfg({"processor.pipeline_mode": "legacy"})
+        self.assertTrue(linear_skip_legacy_fusion_safeguards(linear))
+        self.assertFalse(linear_skip_legacy_fusion_safeguards(legacy))
+
     def test_linear_skips_frigate_salvage_by_default(self):
         cfg = _Cfg(
             {

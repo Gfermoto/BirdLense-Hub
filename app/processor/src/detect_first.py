@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def _same_multi_camera_group(app_config: Any, left: str | None, right: str | None) -> bool:
-    """True when two cameras are configured as views of the same scene."""
+    """True when two cameras share a ``multi_camera_groups`` entry (classifier hint scope only)."""
     left_cam = str(left or "").strip()
     right_cam = str(right or "").strip()
     if not left_cam or not right_cam or left_cam == right_cam:

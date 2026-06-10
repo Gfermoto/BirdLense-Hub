@@ -86,3 +86,19 @@ def test_build_detection_crop_request_uses_midpoint_bbox_when_no_best_frame():
     assert req["source_kind"] == "video_frames_bbox"
     assert req["offset_sec"] == 5.0
     assert req["bbox"] == [0.2, 0.2, 0.5, 0.6]
+
+
+def test_build_detection_crop_request_prefers_key_frames_over_midpoint():
+    from shared.detection_crop_contract import build_detection_crop_request
+
+    req = build_detection_crop_request(
+        best_frame=None,
+        frames=json.dumps([{"t": 5.0, "bbox": [0.9, 0.9, 1.0, 1.0]}]),
+        key_frames=[{"t": 1.5, "score": 10.0, "bbox": [0.2, 0.3, 0.4, 0.5]}],
+        start_time=0.0,
+        end_time=10.0,
+    )
+
+    assert req["source_kind"] == "video_frames_bbox"
+    assert req["offset_sec"] == 1.5
+    assert req["bbox"] == [0.2, 0.3, 0.4, 0.5]

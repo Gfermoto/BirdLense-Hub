@@ -166,6 +166,18 @@ def pick_bbox_and_timestamp(
         if dict_frames:
             best_kf = max(dict_frames, key=lambda k: float(k.get("score") or 0.0))
 
+    if best_kf is not None:
+        bb = best_kf.get("bbox")
+        bbox = None
+        if isinstance(bb, (list, tuple)) and len(bb) == 4:
+            try:
+                bbox = [float(v) for v in bb]
+            except (TypeError, ValueError):
+                bbox = None
+        t = _apply_record_offset(float(best_kf.get("t") or _pick_timestamp()))
+        if bbox is not None:
+            return bbox, float(t)
+
     frames = detection.get("frames") or []
     mid = frames[len(frames) // 2] if isinstance(frames, list) and frames else None
     bbox = mid.get("bbox") if isinstance(mid, dict) else None
@@ -173,11 +185,6 @@ def pick_bbox_and_timestamp(
         t = _apply_record_offset(float(mid.get("t") or _pick_timestamp()))
     else:
         t = _pick_timestamp()
-    if best_kf is not None:
-        bb = best_kf.get("bbox")
-        if isinstance(bb, (list, tuple)) and len(bb) == 4:
-            bbox = [float(v) for v in bb]
-        t = _apply_record_offset(float(best_kf.get("t") or t))
     if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
         try:
             bbox = [float(v) for v in bbox]

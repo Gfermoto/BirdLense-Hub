@@ -36,6 +36,22 @@ def test_pick_bbox_and_timestamp_uses_key_frame_bbox():
     assert ts == 2.5
 
 
+def test_pick_bbox_prefers_key_frame_over_mid_frame():
+    det = {
+        "start_time": 0.0,
+        "end_time": 10.0,
+        "playback_timeline_synced": True,
+        "frames": [
+            {"t": 1.0, "bbox": [0.0, 0.0, 0.1, 0.1]},
+            {"t": 5.0, "bbox": [0.9, 0.9, 1.0, 1.0]},
+        ],
+        "key_frames": [{"t": 1.2, "score": 12.0, "bbox": [0.2, 0.3, 0.4, 0.5]}],
+    }
+    bbox, ts = pick_bbox_and_timestamp(det)
+    assert bbox == [0.2, 0.3, 0.4, 0.5]
+    assert ts == 1.2
+
+
 def test_remap_bbox_detect_overlay_to_main_playback_shape():
     from record_hires_crop import remap_bbox_for_record_crop
 

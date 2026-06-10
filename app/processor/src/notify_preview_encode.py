@@ -105,18 +105,19 @@ def encode_notify_preview_base64(
                     key=lambda k: float(k.get("score") or 0.0),
                 )
 
-        frames = detection.get("frames") or []
-        mid = frames[len(frames) // 2] if isinstance(frames, list) and frames else None
-        bbox = mid.get("bbox") if isinstance(mid, dict) else None
-        if isinstance(mid, dict):
-            t = _apply_offset_to_t(float(mid.get("t") or _pick_timestamp()))
-        else:
-            t = _pick_timestamp()
+        bbox = None
+        t = _pick_timestamp()
         if best_kf is not None:
             bb = best_kf.get("bbox")
             if isinstance(bb, (list, tuple)) and len(bb) == 4:
-                bbox = bb
+                bbox = [float(v) for v in bb]
             t = _apply_offset_to_t(float(best_kf.get("t") or t))
+        else:
+            frames = detection.get("frames") or []
+            mid = frames[len(frames) // 2] if isinstance(frames, list) and frames else None
+            bbox = mid.get("bbox") if isinstance(mid, dict) else None
+            if isinstance(mid, dict):
+                t = _apply_offset_to_t(float(mid.get("t") or t))
 
         def _encode_from_video() -> tuple[str | None, str]:
             if not video_file_path:

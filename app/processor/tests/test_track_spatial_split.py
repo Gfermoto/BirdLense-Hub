@@ -97,6 +97,17 @@ class TestTrackSpatialSplit(unittest.TestCase):
         out = split_tracks_by_spatial_jumps(tracks, _Cfg())
         self.assertEqual(out, tracks)
 
+    def test_default_on_without_explicit_config(self):
+        class _Cfg:
+            config = {}
+
+            def get(self, key, default=None):
+                return default
+
+        tracks = {1: _merged_track()}
+        out = split_tracks_by_spatial_jumps(tracks, _Cfg())
+        self.assertEqual(len(out), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

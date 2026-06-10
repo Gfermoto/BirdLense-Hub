@@ -89,6 +89,11 @@ class TestProcessorConfigDefaults(unittest.TestCase):
         self.assertFalse(ULTRA_WEAK_BOX_SALVAGE_ENABLED)
         self.assertTrue(TRACK_TO_PREDICT_FALLBACK_ENABLED)
 
+    def test_track_spatial_split_default_on(self):
+        self.assertTrue(self.proc["track_spatial_split_enabled"])
+        self.assertEqual(self.proc["track_spatial_split_max_center_jump_norm"], 0.18)
+        self.assertEqual(self.proc["track_spatial_split_min_segment_frames"], 2)
+
     def test_detection_keys(self):
         self.assertEqual(MIN_CONFIDENCE_TO_STORE, self.det["min_confidence_to_store"])
         self.assertEqual(BBOX_IOU_GATE_ACTION, self.det["bbox_iou_gate_action"])
