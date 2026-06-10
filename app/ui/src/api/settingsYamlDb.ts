@@ -1,34 +1,24 @@
 import axios from 'axios';
-import { BASE_API_URL, csrfFetch } from './client';
-
-const _downloadYamlResponse = async (url: string, fallbackName: string) => {
-  const res = await fetch(url, { credentials: 'include' });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
-  const blob = await res.blob();
-  const cd = res.headers.get('Content-Disposition');
-  const filename = cd?.match(/filename="?([^";\n]+)"?/)?.[1] || fallbackName;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
-};
+import {
+  BASE_API_URL,
+  ApiHttpError,
+  apiBlob,
+  apiFetch,
+  triggerBlobDownload,
+} from './client';
 
 export const downloadSettingsYamlSafe = async (): Promise<void> => {
-  await _downloadYamlResponse(
+  const { blob, filename } = await apiBlob(
     `${BASE_API_URL}/settings/yaml-export?mode=safe`,
-    'user_config_safe.yaml',
   );
+  triggerBlobDownload(blob, filename || 'user_config_safe.yaml');
 };
 
 export const downloadSettingsYamlFull = async (): Promise<void> => {
-  await _downloadYamlResponse(
+  const { blob, filename } = await apiBlob(
     `${BASE_API_URL}/settings/yaml-export?mode=full&ack=full`,
-    'user_config_full.yaml',
   );
+  triggerBlobDownload(blob, filename || 'user_config_full.yaml');
 };
 
 export const importSettingsYaml = async (
@@ -36,39 +26,30 @@ export const importSettingsYaml = async (
 ): Promise<{ ok: boolean; message?: string }> => {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await csrfFetch(`${BASE_API_URL}/settings/yaml-import`, {
-    method: 'POST',
-    credentials: 'include',
-    body: formData,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    return {
-      ok: false,
-      message: (data as { error?: string }).error || res.statusText,
-    };
+  try {
+    const data = await apiFetch<{ message?: string }>(
+      `${BASE_API_URL}/settings/yaml-import`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+    );
+    return { ok: true, message: data.message };
+  } catch (e) {
+    if (e instanceof ApiHttpError) {
+      return { ok: false, message: e.message };
+    }
+    throw e;
   }
-  return { ok: true, message: (data as { message?: string }).message };
 };
 
 export const downloadDbBackup = async (): Promise<void> => {
-  const res = await fetch(`${BASE_API_URL}/system/db/backup`, {
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
-  const blob = await res.blob();
-  const cd = res.headers.get('Content-Disposition');
-  const filename =
-    cd?.match(/filename="?([^";\n]+)"?/)?.[1] ||
-    `birdlense_db_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.db`;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const { blob, filename } = await apiBlob(`${BASE_API_URL}/system/db/backup`);
+  triggerBlobDownload(
+    blob,
+    filename ||
+      `birdlense_db_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.db`,
+  );
 };
 
 /** Restore SQLite DB from uploaded file (.db). */
@@ -77,16 +58,10 @@ export const restoreDbBackup = async (
 ): Promise<{ message: string; backup_path?: string }> => {
   const formData = new FormData();
   formData.append('file', file);
-  const res = await csrfFetch(`${BASE_API_URL}/system/db/restore`, {
+  return apiFetch(`${BASE_API_URL}/system/db/restore`, {
     method: 'POST',
-    credentials: 'include',
     body: formData,
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
-  return res.json();
 };
 
 export type PurgeStorageBody =
@@ -96,13 +71,14 @@ export type PurgeStorageBody =
 /** Delete recordings by cutoff date or inclusive calendar range (admin). */
 export const purgeStorageRecordings = async (
   body: PurgeStorageBody,
-): Promise<{ message: string; deletedCount: number; deletedSize: number }> => {
-  const { data } = await axios.post(`${BASE_API_URL}/storage/purge`, body, {
-    withCredentials: true,
+): Promise<{ message: string; deletedCount: number; deletedSize: number }> =>
+  apiFetch(`${BASE_API_URL}/storage/purge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
-  return data;
-};
 
+/** External Nominatim geocoding — not Hub API (#617 documented exception). */
 export const fetchCoordinatesByZip = async (
   zip: string,
 ): Promise<{ lat: string; lon: string }> => {
@@ -123,7 +99,6 @@ export const fetchCoordinatesByZip = async (
       lat: data[0].lat,
       lon: data[0].lon,
     };
-  } else {
-    throw new Error('Invalid ZIP code or no data found.');
   }
+  throw new Error('Invalid ZIP code or no data found.');
 };
