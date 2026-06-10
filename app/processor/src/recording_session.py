@@ -1020,7 +1020,10 @@ class MotionRecordingSession:
             else:
                 finalize_motion_recording(**finalize_kwargs)
         except Exception as e:
+            from processor_exception_handling import reraise_if_io_critical
+
+            reraise_if_io_critical(e)
             inc_counter("recording_finalize_failures_total")
-            logger.error(e)
+            logger.error("recording_session finalize failed", exc_info=True)
 
         return bool(self.args.input)

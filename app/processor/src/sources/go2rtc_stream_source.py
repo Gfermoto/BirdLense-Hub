@@ -494,6 +494,9 @@ class Go2RTCStreamSource:
                     caps.source,
                 )
         except Exception as exc:
+            from processor_exception_handling import reraise_if_critical
+
+            reraise_if_critical(exc)
             self.logger.debug("stream probe skipped: %s", exc)
 
     def refresh_record_stream_geometry(self) -> tuple[int, int] | None:
@@ -509,6 +512,9 @@ class Go2RTCStreamSource:
 
             caps = probe_stream_url(self.stream_url)
         except Exception as exc:
+            from processor_exception_handling import reraise_if_critical
+
+            reraise_if_critical(exc)
             self.logger.debug("record stream probe skipped: %s", exc)
             return self.main_size
         if caps is None or caps.width <= 0 or caps.height <= 0:
