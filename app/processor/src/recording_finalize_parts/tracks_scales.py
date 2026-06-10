@@ -45,5 +45,15 @@ def _tracks_for_finalize(
     if isinstance(recording_context, dict):
         snap = recording_context.get("tracks_snapshot")
         if isinstance(snap, dict):
-            return snap
-    return getattr(frame_processor, "tracks", None) or {}
+            raw = snap
+        else:
+            raw = getattr(frame_processor, "tracks", None) or {}
+    else:
+        raw = getattr(frame_processor, "tracks", None) or {}
+    try:
+        from app_config.app_config import app_config
+        from track_spatial_split import split_tracks_by_spatial_jumps
+
+        return split_tracks_by_spatial_jumps(raw, app_config)
+    except ImportError:
+        return dict(raw)

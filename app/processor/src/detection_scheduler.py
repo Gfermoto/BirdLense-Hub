@@ -184,9 +184,11 @@ def resolve_detect_first_confirm_min_hits(
 
 
 def frame_counts_as_detect_first_hit(last_run_stats: Mapping[str, Any] | None) -> bool:
-    """Detect-first progress: ByteTrack id or accepted box — not raw-only blind hits."""
+    """Detect-first progress: accepted track, or raw YOLO boxes before post-filters."""
     stats = last_run_stats or {}
     if bool(stats.get("yolo_track_found")) or int(stats.get("result_count") or 0) > 0:
+        return True
+    if int(stats.get("yolo_raw_boxes") or 0) > 0:
         return True
     return False
 

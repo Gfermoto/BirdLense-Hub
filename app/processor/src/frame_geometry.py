@@ -203,17 +203,30 @@ def resolve_binary_track_imgsz(
         runtime_cfg,
         default=default_square if default_square is not None else 640,
     )
-    if backend == "openvino":
-        return square
     try:
         det_h, det_w = int(frame.shape[0]), int(frame.shape[1])
     except (AttributeError, IndexError, TypeError, ValueError):
         det_h, det_w = 0, 0
     wh = parse_inference_lores_wh(runtime_cfg.get("processor.inference_lores_wh"))
-    if det_h > 0 and det_w > 0 and wh is not None:
-        tw, th = int(wh[0]), int(wh[1])
-        if abs(det_w - tw) <= 2 and abs(det_h - th) <= 2 and det_w != det_h:
-            return [det_h, det_w]
+    if (
+        det_h > 0
+        and det_w > 0
+        and wh is not None
+        and abs(det_w - int(wh[0])) <= 2
+        and abs(det_h - int(wh[1])) <= 2
+        and det_w != det_h
+    ):
+        if backend == "openvino":
+            native_lores = runtime_cfg.get("processor.openvino_native_lores_imgsz")
+            if native_lores is None:
+                native_lores = True
+            elif isinstance(native_lores, str):
+                native_lores = native_lores.strip().lower() in ("1", "true", "yes", "on")
+            if not native_lores:
+                return square
+        return [det_h, det_w]
+    if backend == "openvino":
+        return square
     return square
 
 
