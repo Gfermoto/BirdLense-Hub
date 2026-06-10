@@ -1,4 +1,3 @@
-import axios from 'axios';
 import {
   BASE_API_URL,
   ApiHttpError,
@@ -82,19 +81,20 @@ export const purgeStorageRecordings = async (
 export const fetchCoordinatesByZip = async (
   zip: string,
 ): Promise<{ lat: string; lon: string }> => {
-  const response = await axios.get(
-    'https://nominatim.openstreetmap.org/search',
-    {
-      params: {
-        format: 'json',
-        postalcode: zip,
-        countrycodes: 'ru,us,de,gb',
-      },
-    },
+  const params = new URLSearchParams({
+    format: 'json',
+    postalcode: zip,
+    countrycodes: 'ru,us,de,gb',
+  });
+  const response = await fetch(
+    `https://nominatim.openstreetmap.org/search?${params}`,
   );
-  const data = response.data;
+  if (!response.ok) {
+    throw new Error(`Nominatim request failed: ${response.status}`);
+  }
+  const data = (await response.json()) as Array<{ lat: string; lon: string }>;
 
-  if (data && data.length > 0) {
+  if (data.length > 0) {
     return {
       lat: data[0].lat,
       lon: data[0].lon,
