@@ -32,8 +32,9 @@ general:
 #   detect_first_confirm_min_hits, detect_first_confirm_min_track_seconds, detect_first_window_seconds.
 # min_track_duration — только gate persist/ByteTrack после старта записи (#612).
 processor:
+  # tier: expert — pipeline surface (Refactor-0.4)
   # linear: trigger → detect/track → classify+helpers → reid/behavior → persist
-  # legacy: pre-2026-06 multi-gate decision path (opt-in rollback)
+  # deprecated: value "legacy" — pre-2026-06 multi-gate path; use linear (alias removed in #621)
   pipeline_mode: linear
   # linear + scoring_engine: phantom/static filter on live (TG-aligned); legacy static cascade stays off
   linear_live_scoring_engine_enabled: true
@@ -239,12 +240,12 @@ processor:
   scoring_static_phantom_square_aspect_max: 1.22
   scoring_static_phantom_max_conf: 0.52
   frame_decision_trace_enabled: true
-  # Legacy cascade (ignored when scoring_engine_enabled=true)
+  # deprecated: legacy cascade (ignored when scoring_engine_enabled=true; do not re-enable on prod)
   static_object_suppression_enabled: false
   static_box_aspect_ratio_min: 0.8
   static_box_aspect_ratio_max: 1.2
   static_box_conf_threshold: 0.45
-  # Defaults align with min_confidence_binary_bird (code fallback); do not exceed bird floor.
+  # deprecated: legacy static cascade scalar — remove from user_config; use scoring_* thresholds
   static_square_hard_reject_max_conf: 0.22
   static_scene_bird_min_confidence: 0.25
   static_scene_bird_like_min_confidence: 0.4
@@ -265,7 +266,7 @@ processor:
   detection_ignore_masks: []
   detection_interest_zones: []
   detection_interest_zones_required: false
-  # MOG2 background subtraction (OpenCV): reject boxes that sit on learned static background.
+  # deprecated: MOG2 background subtraction — use scoring_engine + linear_live_scoring_engine_enabled
   background_subtraction_enabled: false
   background_subtraction_method: mog2
   background_subtraction_history: 400
@@ -279,9 +280,11 @@ processor:
   scene_adaptive_static_boost: 0.08
   scene_adaptive_night_boost: 0.10
   scene_adaptive_conf_cap: 0.48
+  # deprecated: motion-verified gate — replaced by scoring_engine (SOTA 2.0)
   motion_verified_detection_enabled: false
   motion_verified_min_pixel_change: 10
   motion_global_static_reject_enabled: true
+  # deprecated: legacy motion global gate — use scoring_engine thresholds
   motion_global_max_mean_absdiff: 2.0
   motion_strict_consecutive_frames: 3
   motion_hard_conf_ceiling: 0.55
@@ -436,7 +439,7 @@ processor:
   auto_unstick_tracker_night: "bytetrack_birdlense_night_unstick.yaml"
   # Guardrail against detector collapse into near full-frame boxes.
   max_box_area_norm: 0.85
-  # Точечные per-camera override'ы для дальних/крупноплановых камер.
+  # deprecated: per-camera map — prefer video.cameras[].tuning_role + camera_tuning_by_role + detection_interest_zones
   # Ключ = video.cameras[].id. Поддерживаются те же processor-* поля, что и в adaptive profile overrides
   # (например min_box_size_px, min_confidence_binary_bird, min_confidence_to_process, min_track_duration).
   camera_overrides: {}
@@ -858,7 +861,7 @@ detection:
   persist_mode: binary_track_first
   # Слой «судья» между classifier и persist — выкл. по умолчанию (упрощение live path).
   hypothesis_arbitration_enabled: false
-  # Frigate — fallback при пустых YOLO-треках (blind-gate и force_after_no_yolo остаются).
+  # deprecated: Frigate as persist source — hints/prior only (standalone-first); keep false
   frigate_standalone_when_no_yolo: false
   # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).
   frigate_standalone_require_blind_yolo: true

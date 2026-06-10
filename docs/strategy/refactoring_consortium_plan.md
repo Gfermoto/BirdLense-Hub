@@ -242,4 +242,22 @@ flowchart TB
 
 ---
 
+## Appendix A — Legacy config keys (Refactor-0.4 / #616)
+
+| Dot-path | Tier | Note |
+|----------|------|------|
+| `processor.pipeline_mode` = `legacy` | expert | Use `linear`; alias removal in #621 |
+| `processor.camera_overrides` | expert | Prefer `camera_tuning_by_role` + `video.cameras` zones |
+| `detection.camera_overrides` | expert | Legacy per-camera merge (if present in user_config) |
+| `processor.motion_verified_detection_enabled` | deprecated | ScoringEngine replaces motion gate |
+| `processor.background_subtraction_enabled` | deprecated | ScoringEngine + linear live scoring |
+| `processor.static_object_suppression_enabled` | deprecated | Ignored when `scoring_engine_enabled` |
+| `processor.static_square_hard_reject_max_conf` | deprecated | Use `scoring_*` thresholds |
+| `processor.motion_global_max_mean_absdiff` | deprecated | Use `scoring_*` thresholds |
+| `detection.frigate_standalone_when_no_yolo` | deprecated | Frigate = prior/hint, not persist source |
+
+**Freeze:** new `processor.auto_*` flags require ADR + funnel metric in PR checklist (`deprecated_keys.py` + `check_legacy_processor_config.py`).
+
+---
+
 *Синтезатор консилиума рефакторинга — 2026-06-10. Execution через child issues [#614–#627](https://github.com/Gfermoto/BirdLense-Hub/issues/601).*
