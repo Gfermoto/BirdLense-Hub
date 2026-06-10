@@ -128,9 +128,9 @@ python3 scripts/ml_openvino_async_profile.py \
 - `processor.openvino.model_cache_enabled: true` — кэш IR на диске, быстрее рестарт.
 - При нехватке памяти: classifier на `intel:cpu`, binary на `intel:gpu` (разнести устройства).
 
-### Gap (аудит #644)
+### OpenVINO tuning (#644, `dev`)
 
-Ключи `processor.openvino.profile` / `num_requests` резолвятся в `processor_runtime_profile.resolve_openvino_tuning()` и `inference/selector.py`, но **не пробрасываются** в Ultralytics `YOLO.track()` напрямую — эффект сейчас через env `BIRDLENSE_OPENVINO_*` и внешние скрипты. Для live достаточно `device=intel:gpu` + native lores.
+`processor.openvino.profile` / `num_requests` → `resolve_openvino_tuning()` → `inference/openvino_ultralytics_tuning.py` → `PERFORMANCE_HINT` / `NUM_STREAMS` при compile Ultralytics OV backend и Birder IR. Live detect: latency (+ warmup `ensure_openvino_track_tuning` до первого `track()`). Regen worker: throughput override через `_openvino_track_profile_overrides`. Лог: `OpenVINO YOLO tuning applied: profile=… num_requests=… device=GPU`.
 
 ---
 
@@ -195,7 +195,7 @@ print('boxes', len(r[0].boxes))
 | `inference_lores_wh: [704, 576]` | OK |
 | `openvino.profile: latency`, `num_requests: 0` | OK |
 | `openvino_native_lores_imgsz` в user_config | наследуется из `default_config` после деплоя |
-| Контейнер `birdlense` running | **DOWN** на момент аудита — логи `intel:gpu` не сняты |
+| Контейнер `birdlense` running | OK (2026-06-10 19:50 UTC) |
 | `video.record_with_vaapi` | `false` на проде — decode/encode на CPU; OV infer на GPU отдельно |
 
 ---
@@ -210,10 +210,9 @@ print('boxes', len(r[0].boxes))
 
 ### Следующие шаги (не блокеры)
 
-- Поднять контейнер и подтвердить `ultralytics_device_label=intel:gpu` в логах.
+- После деплоя `#644` (`059e0d552+`): подтвердить `OpenVINO YOLO tuning applied` в логах (сейчас на VPS только `Inference startup … intel:gpu`).
 - После деплоя `2ff464057+`: явно прописать `track_spatial_split_*` в prod `user_config` (сейчас из default).
 - Рассмотреть `video.capture_backend: ffmpeg_vaapi` при `encoding: intel` для разгрузки CPU decode (отдельно от OV).
-- Wire `resolve_openvino_tuning()` → Ultralytics OV compile hints (сейчас dead config для binary).
 
 ---
 
