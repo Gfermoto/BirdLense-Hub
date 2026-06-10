@@ -520,6 +520,11 @@ processor:
   inference_device: cpu
   # false — экстренный стоп OV (вернуть torch + openvino_binary_enabled: false).
   openvino_binary_enabled: true
+  # OpenVINO runtime tuning (live: latency + num_requests 0|1). См. docs/strategy/intel_igpu_inference_guide.md
+  openvino:
+    profile: latency
+    num_requests: 0
+    model_cache_enabled: true
   # birder_eu (707 EU, Collins / birder-project eu-common) | efficientnet_b2 (global 525) | yolo (legacy)
   classifier_engine: birder_eu
   birder_eu_variant: convnext_v2_tiny_eu-common256px
