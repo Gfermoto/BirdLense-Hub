@@ -312,6 +312,8 @@ processor:
   classifier_crop_source: best_frame_lores
   reid_crop_source: auto
   enrichment_crop_pad_frac: 0.06
+  # Linear: TG/hires crop from best keyframe bbox+timestamp only (no blind mid-track seek).
+  enrichment_crop_require_keyframe: true
   # Linear pipeline: reject static-pinned tracks (feeder FP #608).
   linear_static_pinned_reject_enabled: true
   # Seek offset (sec) when cropping main MP4 for TG/overlay; per-camera in camera_tuning_by_role
