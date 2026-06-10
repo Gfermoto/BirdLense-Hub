@@ -134,6 +134,9 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
+            ), patch(
+                'recording_finalize.linear_skip_legacy_fusion_safeguards',
+                return_value=False,
             ):
                 finalize_motion_recording(
                     api,
@@ -532,6 +535,9 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
+            ), patch(
+                'recording_finalize.linear_skip_legacy_fusion_safeguards',
+                return_value=False,
             ):
                 finalize_motion_recording(
                     api,
@@ -834,6 +840,9 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
+            ), patch(
+                'recording_finalize.linear_skip_legacy_fusion_safeguards',
+                return_value=False,
             ):
                 finalize_motion_recording(
                     api,
@@ -1038,6 +1047,9 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
+            ), patch(
+                'recording_finalize.linear_skip_frigate_salvage_paths',
+                return_value=False,
             ):
                 finalize_motion_recording(
                     api,
