@@ -93,7 +93,10 @@ processor:
   # Анти-конкуренция trigger-веток: окно (сек) после первого fire, в котором
   # конкурирующие триггеры не стартуют новую запись (логируются как trigger_moratorium).
   trigger_moratorium_seconds: 2
-  # Trigger -> lowres detect-first window; recording starts only after confirmed YOLO+ByteTrack bbox.
+  # Wave 1 (#635): motion/trigger → main FFmpeg immediately; YOLO runs inside session (Frigate-like).
+  # Legacy rollback: detect_first — lores YOLO+track anchor before main record (ADR #634).
+  recording_gate_mode: motion_immediate
+  # Trigger -> lowres detect-first window (legacy gate when recording_gate_mode: detect_first).
   detect_first_enabled: true
   detect_first_triggers: ["opencv", "frigate", "motion_sensor", "scales"]
   detect_first_window_seconds: 4.0

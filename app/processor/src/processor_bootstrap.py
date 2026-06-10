@@ -376,7 +376,7 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
                     except Exception:
                         logger.debug("detect_first_no_anchor activity log failed", exc_info=True)
                     continue
-        elif should_run_probe(trigger_source=trigger_source, app_config=app_config):
+        elif should_run_probe(trigger_source=trigger_source, app_config=app_config, args=session_args):
             probe_ok = bool(
                 ctx.session.run_detection_probe_window(
                     camera_id=camera_id,

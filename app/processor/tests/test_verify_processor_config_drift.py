@@ -89,3 +89,23 @@ def test_detects_legacy_bool_when_scoring_enabled():
         item["path"] == "processor.background_subtraction_enabled"
         for item in report["drifts"]
     )
+
+
+def test_detects_frigate_standalone_detector_forbidden():
+    mod = _load_mod()
+    default = {"detection": {"frigate_standalone_when_no_yolo": False}}
+    user = {"detection": {"frigate_standalone_when_no_yolo": True}}
+    report = mod.evaluate_processor_config_drift(default=default, user=user)
+    assert report["critical_ok"] is False
+    paths = {item["path"] for item in report["drifts"]}
+    assert "detection.frigate_standalone_when_no_yolo" in paths
+
+
+def test_detects_frigate_salvage_without_yolo_tracks_forbidden():
+    mod = _load_mod()
+    default = {"processor": {"frigate_trigger_review_salvage_allow_without_yolo_tracks": False}}
+    user = {"processor": {"frigate_trigger_review_salvage_allow_without_yolo_tracks": True}}
+    report = mod.evaluate_processor_config_drift(default=default, user=user)
+    assert report["critical_ok"] is False
+    paths = {item["path"] for item in report["drifts"]}
+    assert "processor.frigate_trigger_review_salvage_allow_without_yolo_tracks" in paths

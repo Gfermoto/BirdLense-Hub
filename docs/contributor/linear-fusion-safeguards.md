@@ -1,6 +1,6 @@
 # Linear pipeline — fusion safeguards (#622)
 
-[Русский](../ru/linear-fusion-safeguards.ru.md) · [Architecture](./architecture.md)
+[Русский](../ru/linear-fusion-safeguards.ru.md) · [Architecture](./architecture.md) · [ADR: classifier hints only](../strategy/adr-classifier-hints-only.md) (#634)
 
 ## Product profiles
 

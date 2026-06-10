@@ -45,7 +45,17 @@ _CRITICAL_FORBIDDEN: tuple[tuple[str, ...], Any, str] = (
     (
         ("detection", "frigate_standalone_when_no_yolo"),
         True,
-        "Frigate must remain prior-only, not standalone detector",
+        "Frigate must remain prior-only, not standalone detector (ADR #634)",
+    ),
+    (
+        ("processor", "frigate_trigger_review_salvage_allow_without_yolo_tracks"),
+        True,
+        "Frigate must not persist without YOLO tracks (ADR #634 classifier hints)",
+    ),
+    (
+        ("processor", "yolo_weak_track_salvage_enabled"),
+        True,
+        "weak salvage must not bypass YOLO+ByteTrack primary persist (ADR #634)",
     ),
 )
 
