@@ -22,8 +22,18 @@ permission:
 
 Репозиторий BirdLense: Flask `app/web`, React `app/ui`, Python `app/processor`.
 
-- Для полного гейта с корня: `make ci-local` (см. `AGENTS.md`). При странных import errors в pytest — `unset PYTHONPATH` и снова.
-- Быстрее: `make test-web-contract-local`, `cd app/ui && npm run typecheck` — по ситуации.
+## Gates (выбирай по запросу или diff)
+
+| Gate | Команда | Когда |
+|------|---------|-------|
+| **Full** | `make ci-local` | Крупные изменения перед merge — зеркало CI без Docker (Bandit, pip-audit, Ruff, весь `pytest web/tests/`, UI codegen drift, Vitest, typecheck, lint, build, MkDocs) |
+| **Fast contract** | `make test-web-contract-local` | Только OpenAPI / strict UI auth — узкий pytest на хосте, минуты |
+| **UI-only** | `cd app/ui && npm run typecheck` | TS/React без API |
+| **Docker parity** | `make ci-local-docker` | Перед релизом — образ + Playwright smoke |
+
+Док: `docs/contributor/hub-mcp-dev.md` (MCP smoke + эта таблица).
+
+- При странных import errors в pytest — `unset PYTHONPATH` и снова.
 - Итог: что прошло, что упало, файл и первая строка ошибки.
 
 Только отчёт, без правок файлов.

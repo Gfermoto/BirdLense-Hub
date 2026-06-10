@@ -192,6 +192,7 @@ nav:
       - Security: contributor/security.md
       - Local development: contributor/local-dev.md
       - MCP setup: contributor/mcp-setup.md
+      - Hub MCP dev: contributor/hub-mcp-dev.md
       - Testing: contributor/testing.md
       - CI and quality: contributor/ci-and-quality.md
       - Datasets: contributor/datasets.md
