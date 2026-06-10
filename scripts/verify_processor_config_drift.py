@@ -130,7 +130,7 @@ def _compare_scalar(
     }
 
 
-def _evaluate_critical_forbidden(merged: dict[str, Any]) -> list[dict[str, Any]]:
+def _evaluate_critical_forbidden(merged: dict[str, Any], user: dict[str, Any]) -> list[dict[str, Any]]:
     drifts: list[dict[str, Any]] = []
     for path, forbidden, reason in _CRITICAL_FORBIDDEN:
         val = _get_nested(merged, path)
@@ -169,12 +169,13 @@ def _evaluate_critical_forbidden(merged: dict[str, Any]) -> list[dict[str, Any]]
                     }
                 )
         for section, key in _DEPRECATED_SCALAR_WHEN_SCORING:
-            if _get_nested(merged, (section, key)) is not None:
+            user_val = _get_nested(user, (section, key))
+            if user_val is not None:
                 drifts.append(
                     {
                         "path": f"{section}.{key}",
                         "default": None,
-                        "merged": _get_nested(merged, (section, key)),
+                        "merged": user_val,
                         "direction": "deprecated_scalar",
                         "severity": "critical",
                         "reason": "remove; use scoring_* thresholds",
@@ -237,7 +238,7 @@ def evaluate_processor_config_drift(
                         }
                     )
 
-    drifts.extend(_evaluate_critical_forbidden(merged))
+    drifts.extend(_evaluate_critical_forbidden(merged, user))
 
     critical = [d for d in drifts if d.get("severity") == "critical"]
     warn = [d for d in drifts if d.get("severity") == "warn"]
