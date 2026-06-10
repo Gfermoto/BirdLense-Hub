@@ -845,6 +845,55 @@ class TwoStageStrategy(DetectionStrategy):
     def _normalize_detector_label(self, name: str) -> str:
         return normalize_detector_label(name, native=bool(getattr(self, "_detector_native_labels", False)))
 
+    def _update_best_raw_bird_candidate(
+        self,
+        *,
+        track_ids: Sequence[Any],
+        class_indexes: Sequence[int],
+        confidences: Sequence[float],
+        xyxyn: np.ndarray,
+    ) -> None:
+        """Keep strongest bird bbox for detect-first raw-hits anchor salvage."""
+        from track_first_contract import is_valid_norm_bbox
+
+        best_conf = -1.0
+        best: dict[str, Any] | None = None
+        for track_id, class_idx, conf, bbox_norm in zip(
+            track_ids, class_indexes, confidences, xyxyn
+        ):
+            detector_label = self._normalize_detector_label(self.binary_model.names[class_idx])
+            if detector_label != "Bird":
+                continue
+            try:
+                bbox = [float(v) for v in bbox_norm[:4]]
+            except (TypeError, ValueError, IndexError):
+                continue
+            if not is_valid_norm_bbox(bbox):
+                continue
+            cf = float(conf or 0.0)
+            if cf <= best_conf:
+                continue
+            try:
+                tid = int(track_id)
+            except (TypeError, ValueError):
+                tid = 1
+            best_conf = cf
+            best = {
+                "track_id": tid if tid > 0 else 1,
+                "bbox": bbox,
+                "confidence": cf,
+                "detector_label": "Bird",
+            }
+        if best is None:
+            return
+        prev = getattr(self, "_best_raw_bird_candidate", None)
+        if not isinstance(prev, dict) or float(best["confidence"]) >= float(prev.get("confidence") or 0.0):
+            self._best_raw_bird_candidate = best
+
+    def get_best_raw_bird_candidate(self) -> dict[str, Any] | None:
+        candidate = getattr(self, "_best_raw_bird_candidate", None)
+        return dict(candidate) if isinstance(candidate, dict) else None
+
     def _binary_class_allowlist(self, runtime_cfg: Mapping[str, Any]) -> set[int] | None:
         """Классы бинарного детектора, которые разрешено передавать в predict/track (пустой конфиг → без фильтра)."""
         raw = runtime_cfg.get("processor.binary_predict_class_allowlist")
@@ -1347,6 +1396,13 @@ class TwoStageStrategy(DetectionStrategy):
                 class_indexes = [class_indexes[i] for i in keep_idx]
                 confidences = [confidences[i] for i in keep_idx]
                 xyxyn = xyxyn[keep_idx]
+
+        self._update_best_raw_bird_candidate(
+            track_ids=track_ids,
+            class_indexes=class_indexes,
+            confidences=confidences,
+            xyxyn=xyxyn,
+        )
 
         h, w, _ = frame.shape
         cls_frame = resolve_classifier_crop_frame(

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Mapping
 
 from runtime_contract import apply_runtime_contract
 from app_config.visit_eligibility import visit_eligible_for_named_species
@@ -338,6 +338,86 @@ def restore_detect_first_persist_rows(
             return [anchor_row], True
 
     return rows, False
+
+
+def _detect_first_gate_min_confidence(
+    app_config,
+    cam_overrides: Mapping[str, Any] | None,
+) -> float:
+    """Relaxed conf floor for detect-first gate (recall over session persist floors)."""
+    try:
+        bird_floor = float(
+            (cam_overrides or {}).get("min_confidence_binary_bird")
+            if (cam_overrides or {}).get("min_confidence_binary_bird") is not None
+            else (
+                app_config.get("processor.min_confidence_binary_bird")
+                or app_config.get("processor.min_confidence_binary")
+                or 0.05
+            )
+        )
+    except (TypeError, ValueError):
+        bird_floor = 0.05
+    try:
+        process_floor = float(
+            (cam_overrides or {}).get("min_confidence_to_process")
+            if (cam_overrides or {}).get("min_confidence_to_process") is not None
+            else (app_config.get("processor.min_confidence_to_process") or bird_floor)
+        )
+    except (TypeError, ValueError):
+        process_floor = bird_floor
+    return min(bird_floor, process_floor)
+
+
+def build_raw_hits_detect_first_anchor(
+    *,
+    frame_processor,
+    app_config,
+    cam_overrides: Mapping[str, Any] | None,
+    hits: int,
+    camera_id: str | None = None,
+) -> dict[str, Any] | None:
+    """Gate-only anchor when raw YOLO hits exist but ByteTrack/acceptance missed."""
+    if hits < 1:
+        return None
+    if not bool(app_config.get("processor.detect_first_raw_hits_anchor_enabled", True)):
+        return None
+    gate_min_conf = _detect_first_gate_min_confidence(app_config, cam_overrides)
+    relaxed = frame_processor.confirmed_track_anchor(
+        app_config=app_config,
+        min_track_duration=0.0,
+        min_confidence_to_process=gate_min_conf,
+    )
+    if relaxed is not None:
+        relaxed["detect_first_raw_hits_relaxed"] = True
+        return relaxed
+
+    strategy = getattr(frame_processor, "strategy", None)
+    get_cand = getattr(strategy, "get_best_raw_bird_candidate", None)
+    candidate = get_cand() if callable(get_cand) else None
+    if not isinstance(candidate, dict):
+        return None
+    if float(candidate.get("confidence") or 0.0) < gate_min_conf:
+        return None
+    if not is_valid_norm_bbox(candidate.get("bbox")):
+        return None
+    logger.info(
+        "detect_first: raw-hits anchor camera=%s conf=%.3f hits=%s (ByteTrack/acceptance missed)",
+        camera_id or "?",
+        float(candidate.get("confidence") or 0.0),
+        hits,
+    )
+    bbox = [float(v) for v in candidate["bbox"][:4]]
+    return {
+        "track_id": candidate.get("track_id") or 1,
+        "bbox": bbox,
+        "confidence": float(candidate.get("confidence") or 0.0),
+        "detector_label": str(candidate.get("detector_label") or "Bird"),
+        "detector_confidence": float(candidate.get("confidence") or 0.0),
+        "start_time": 0.0,
+        "end_time": 0.0,
+        "frames": [{"t": 0.0, "bbox": bbox}],
+        "detect_first_raw_hits_anchor": True,
+    }
 
 
 def build_frigate_assisted_detect_first_anchor(
