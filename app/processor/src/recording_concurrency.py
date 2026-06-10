@@ -1,4 +1,9 @@
-"""Per-camera concurrent recording registry (#589)."""
+"""Per-camera concurrent recording registry (#589, #639).
+
+Each camera may record in parallel. ``try_register`` blocks only the *same*
+camera key (re-entrant guard), not peers. Shared YOLO inference is serialized
+via ``inference_lock`` (resource cap), not a fusion/recording gate.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +12,7 @@ from typing import Any
 
 
 class RecordingConcurrency:
-    """Track active recording sessions and serialize shared YOLO inference."""
+    """Track active per-camera sessions; serialize shared YOLO inference only."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()

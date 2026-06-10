@@ -80,16 +80,17 @@ def frigate_salvage_allow_without_yolo(app_config, *, camera_id: str | None = No
 
 
 def linear_skip_legacy_fusion_safeguards(app_config) -> bool:
-    """Linear mode: skip legacy post-fusion veto and yolo_core_anchor restore.
+    """Linear mode: skip legacy post-fusion veto, salvage persist, and anchor restore.
 
-    Skipped when linear (standalone-first):
+    Skipped when linear (standalone-first, ADR classifier-hints-only):
     - ``collect_post_fusion_rejections`` (second-guess accepted pre-fusion rows)
     - ``yolo_core_anchor_enabled`` forced False (no fusion-drop anchor restore)
+    - ``restore_detect_first_persist_rows`` (detect-first persist bypass)
+    - weak YOLO salvage and Frigate trigger salvage (opt-in via ``frigate_salvage_opted_in`` only)
 
     Still active in linear:
-    - ``restore_detect_first_persist_rows`` (detect-first contract)
-    - weak YOLO salvage when ``detect_first_confirmed`` + ``yolo_frames_with_tracks``
     - bbox contract, track_first gate, dual_stream_timeline remap
+    - normal YOLO+ByteTrack persist through classify flow
     """
     return is_linear_pipeline(app_config)
 

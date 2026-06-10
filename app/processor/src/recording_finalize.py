@@ -426,15 +426,16 @@ def finalize_motion_recording(
         session_duration_s = max(0.0, float((end_time - start_time).total_seconds()))
     except (TypeError, AttributeError):
         session_duration_s = 0.0
-    video_detections, detect_first_restored = restore_detect_first_persist_rows(
-        video_detections,
-        recording_context=recording_context if isinstance(recording_context, dict) else None,
-        accepted_pre_fusion=accepted_pre_fusion,
-        frame_processor_tracks=session_tracks,
-        video_duration_s=session_duration_s,
-    )
-    if detect_first_restored:
-        inc_counter("detect_first_persist_safeguard_total")
+    if not linear_skip_legacy_fusion_safeguards(app_config):
+        video_detections, detect_first_restored = restore_detect_first_persist_rows(
+            video_detections,
+            recording_context=recording_context if isinstance(recording_context, dict) else None,
+            accepted_pre_fusion=accepted_pre_fusion,
+            frame_processor_tracks=session_tracks,
+            video_duration_s=session_duration_s,
+        )
+        if detect_first_restored:
+            inc_counter("detect_first_persist_safeguard_total")
     try:
         from dense_track_persist import restore_dense_persist_frames
 
@@ -446,13 +447,12 @@ def finalize_motion_recording(
             inc_counter("dense_track_persist_restored_total", dense_restored)
     except ImportError:
         dense_restored = 0
-    weak_salvage_linear_ok = bool(rs_ctx.get("detect_first_confirmed")) and bool(rs_ctx.get("yolo_frames_with_tracks"))
     skip_weak_salvage = bool(rs_ctx.get("detect_first_confirmed")) and not detect_first_restored
     if (
         not video_detections
         and yolo_tracks_count > 0
         and bool(app_config.get("detection.yolo_weak_track_salvage_enabled", True))
-        and (not linear_skip_legacy_fusion_safeguards(app_config) or weak_salvage_linear_ok)
+        and not linear_skip_legacy_fusion_safeguards(app_config)
         and not skip_weak_salvage
     ):
         try:

@@ -781,6 +781,84 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
         self.assertEqual(persisted[0].get("detection_provider"), "frigate")
         self.assertEqual(persisted[0].get("frames"), [])
 
+    def test_linear_skips_weak_yolo_salvage_when_fused_empty(self):
+        api = MagicMock()
+        api.create_video.return_value = {'video_id': 199}
+        motion_detector = MagicMock()
+        mqtt_aggregator = None
+        frame = np.zeros((32, 32, 3), dtype=np.uint8)
+        frame_processor = MagicMock(
+            tracks={
+                11: {
+                    'start_time': 0.0,
+                    'end_time': 3.2,
+                    'frames': [{'t': 0.0, 'bbox': [0.0, 0.0, 1.0, 1.0]}],
+                    'detector_events': [{'label': 'Bird', 'confidence': 0.19}],
+                    'best_frame': frame,
+                    'best_frame_score': 7.2,
+                }
+            }
+        )
+        decision_maker = MagicMock()
+        decision_maker.get_decisions.return_value = []
+
+        def fake_cfg_get(key, default=None):
+            mapping = {
+                'processor.pipeline_mode': 'linear',
+                'detection.merge_window_seconds': 5,
+                'processor.min_track_duration': 1,
+                'processor.save_dataset_crops': False,
+                'integrations.scales.enabled': False,
+                'processor.min_confidence_to_notify': 0.3,
+                'processor.min_confidence_to_process': 0.3,
+                'detection.min_confidence_to_store': 0.22,
+                'processor.dataset_min_confidence': 0.5,
+                'detection.yolo_weak_track_salvage_enabled': True,
+                'detection.yolo_weak_track_salvage_min_confidence': 0.1,
+            }
+            return mapping.get(key, default)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = os.path.join(tmp, 'session')
+            os.makedirs(out_dir, exist_ok=True)
+            video_path = os.path.join(out_dir, 'clip.mp4')
+            vw = cv2.VideoWriter(
+                video_path,
+                cv2.VideoWriter_fourcc(*'mp4v'),
+                2.0,
+                (32, 32),
+            )
+            vw.write(frame)
+            vw.release()
+            with patch.object(
+                recording_finalize_mod.app_config,
+                'get',
+                side_effect=fake_cfg_get,
+            ), patch(
+                'recording_finalize.build_fused_video_detections',
+                return_value=[],
+            ), patch(
+                'recording_finalize._is_playable_video_file',
+                return_value=True,
+            ):
+                finalize_motion_recording(
+                    api,
+                    motion_detector,
+                    mqtt_aggregator,
+                    frame_processor,
+                    decision_maker,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    output_path_physical=out_dir,
+                    output_path_logical='data/recordings/2026/05/11/210500',
+                    video_output=video_path,
+                    video_path_for_api='data/recordings/2026/05/11/210500/video.mp4',
+                    scales_topic_arg=None,
+                    data_dir=tmp,
+                )
+
+        api.create_video.assert_not_called()
+
     def test_salvages_weak_yolo_track_as_review_only_when_fused_empty(self):
         api = MagicMock()
         api.create_video.return_value = {'video_id': 103}

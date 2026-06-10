@@ -335,15 +335,6 @@ def run_motion_loop(ctx: ProcessorRunContext) -> None:
         registry = getattr(ctx, "recording_concurrency", None)
         concurrent = bool(getattr(ctx, "concurrent_recording_enabled", False) and registry is not None)
         if requires_detect_first_before_record(args=session_args, app_config=app_config):
-            if concurrent and registry is not None and registry.any_active():
-                requeued = requeue_motion_trigger(ctx.session.motion_detector)
-                inc_counter("recording_trigger_deferred_detect_first_busy_total")
-                logger.info(
-                    "Deferring detect-first: shared inference busy (requeued=%s camera=%s)",
-                    requeued,
-                    camera_id or "?",
-                )
-                continue
             if not trigger_requires_detect_first(trigger_source=trigger_source, app_config=app_config):
                 detect_first_anchor = None
             else:
