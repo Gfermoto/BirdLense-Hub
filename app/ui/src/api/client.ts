@@ -75,3 +75,78 @@ axios.interceptors.request.use(async (config) => {
   config.withCredentials = true;
   return config;
 });
+
+export class ApiHttpError extends Error {
+  readonly status: number;
+  readonly data: unknown;
+
+  constructor(status: number, message: string, data: unknown = null) {
+    super(message);
+    this.name = 'ApiHttpError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
+async function readApiErrorBody(res: Response): Promise<{ message: string; data: unknown }> {
+  const data: unknown = await res.json().catch(() => null);
+  if (data && typeof data === 'object' && data !== null && 'error' in data) {
+    const msg = (data as { error?: unknown }).error;
+    if (typeof msg === 'string' && msg.trim()) {
+      return { message: msg, data };
+    }
+  }
+  return { message: res.statusText || `HTTP ${res.status}`, data };
+}
+
+/** JSON API via csrfFetch; throws ApiHttpError on non-2xx. */
+export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  if (!headers.has('Accept')) {
+    headers.set('Accept', 'application/json');
+  }
+  const res = await csrfFetch(url, {
+    ...init,
+    credentials: init.credentials ?? 'include',
+    headers,
+  });
+  if (!res.ok) {
+    const { message, data } = await readApiErrorBody(res);
+    throw new ApiHttpError(res.status, message, data);
+  }
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  return (await res.json()) as T;
+}
+
+export type ApiBlobResult = {
+  blob: Blob;
+  filename?: string;
+  contentDisposition: string | null;
+};
+
+/** Binary GET/POST via csrfFetch; throws ApiHttpError on non-2xx. */
+export async function apiBlob(url: string, init: RequestInit = {}): Promise<ApiBlobResult> {
+  const res = await csrfFetch(url, {
+    ...init,
+    credentials: init.credentials ?? 'include',
+  });
+  if (!res.ok) {
+    const { message, data } = await readApiErrorBody(res);
+    throw new ApiHttpError(res.status, message, data);
+  }
+  const blob = await res.blob();
+  const contentDisposition = res.headers.get('Content-Disposition');
+  const match = contentDisposition?.match(/filename="?([^";\n]+)"?/);
+  return { blob, filename: match?.[1], contentDisposition };
+}
+
+export function triggerBlobDownload(blob: Blob, filename: string): void {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
