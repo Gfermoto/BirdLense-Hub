@@ -33,4 +33,5 @@ python3 ./scripts/verify_processor_config_drift.py \
   --user-config "${LOCAL_TMP}" \
   --out-json docs/reports/governance/processor_config_drift_prod_latest.json \
   --out-md docs/reports/governance/processor_config_drift_prod_latest.md \
+  --fail-on-critical \
   "$@"

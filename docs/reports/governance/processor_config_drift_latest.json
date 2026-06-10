@@ -1,7 +1,27 @@
 {
-  "schema": "processor_config_drift@v1",
-  "generated_at": "2026-06-02T08:14:10Z",
-  "drift_count": 0,
-  "drifts": [],
-  "ok": true
+  "schema": "processor_config_drift@v2",
+  "generated_at": "2026-06-10T13:14:48Z",
+  "drift_count": 2,
+  "critical_count": 2,
+  "warn_count": 0,
+  "drifts": [
+    {
+      "path": "processor.static_square_hard_reject_max_conf",
+      "default": null,
+      "merged": 0.22,
+      "direction": "deprecated_scalar",
+      "severity": "critical",
+      "reason": "remove; use scoring_* thresholds"
+    },
+    {
+      "path": "processor.motion_global_max_mean_absdiff",
+      "default": null,
+      "merged": 2.0,
+      "direction": "deprecated_scalar",
+      "severity": "critical",
+      "reason": "remove; use scoring_* thresholds"
+    }
+  ],
+  "ok": false,
+  "critical_ok": false
 }
