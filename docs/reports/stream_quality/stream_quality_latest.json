@@ -1,6 +1,6 @@
 {
   "schema": "stream_quality_metrics@v1",
-  "generated_at": "2026-06-08T07:16:25Z",
+  "generated_at": "2026-06-10T12:59:31Z",
   "streams": {
     "detector": {
       "precision": 0.302857,
@@ -10,10 +10,10 @@
       "support": {
         "lifecycle_entered_windows_24h": 106.0,
         "lifecycle_rejected_only_windows_24h": 244.0,
-        "sessions_total": 186,
+        "sessions_total": 59,
         "empty_bbox_rate": 0.0,
-        "tracks_coverage": 0.0,
-        "trigger_to_first_bbox_latency_p95_s": 0.3
+        "tracks_coverage": 0.59322,
+        "trigger_to_first_bbox_latency_p95_s": 11.756555
       }
     },
     "classifier": {
@@ -48,8 +48,8 @@
     "classifier_required_metrics_ok": true,
     "behavior_required_metrics_ok": true,
     "reid_required_metrics_ok": true,
-    "detector_thresholds_ok": false,
-    "classifier_thresholds_ok": false,
+    "detector_thresholds_ok": true,
+    "classifier_thresholds_ok": true,
     "behavior_thresholds_ok": true,
     "reid_thresholds_ok": true
   },
@@ -59,5 +59,5 @@
     "behavior_missing_metrics": [],
     "reid_missing_metrics": []
   },
-  "ok": false
+  "ok": true
 }

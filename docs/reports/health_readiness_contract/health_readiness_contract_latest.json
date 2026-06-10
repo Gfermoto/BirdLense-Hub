@@ -1,14 +1,14 @@
 {
   "schema": "health_readiness_contract@v1",
-  "generated_at": "2026-06-08T11:07:18Z",
+  "generated_at": "2026-06-10T13:02:08Z",
   "checks": {
     "health_ok": true,
-    "readiness_ok": false,
+    "readiness_ok": true,
     "status_web_ok": true,
     "status_processor_ok": true,
-    "false_green_detected": true
+    "false_green_detected": false
   },
-  "ok": false,
+  "ok": true,
   "base_url": "http://185.218.111.196:8085",
   "responses": {
     "health": {
@@ -18,8 +18,260 @@
       }
     },
     "readiness": {
-      "status_code": 503,
-      "payload": null
+      "status_code": 200,
+      "payload": {
+        "checked_at": "2026-06-10T13:02:09.508361+00:00",
+        "checks": {
+          "app_config_dir": {
+            "exists": true,
+            "is_dir": true,
+            "path": "app_config/",
+            "status": "ok",
+            "writable": true
+          },
+          "cache_backend": {
+            "backend": "redis",
+            "configured": true,
+            "status": "ok"
+          },
+          "data_dir": {
+            "exists": true,
+            "is_dir": true,
+            "path": "data/",
+            "status": "ok",
+            "writable": true
+          },
+          "database": {
+            "status": "ok"
+          },
+          "pipeline_funnel": {
+            "alerts": [],
+            "fp_empty_opencv_rate": 0.0,
+            "fusion_drop_rate": 0.0,
+            "healthy_persist_rate": 0.5932,
+            "persist_substage_breakdown": {
+              "dominant_substage_p95": "persist",
+              "schema": "persist_substage_breakdown@v1",
+              "sessions_sampled": 59,
+              "substages": {
+                "behavior": {
+                  "max_ms": 95.998,
+                  "n": 42,
+                  "p50_ms": 1.406,
+                  "p95_ms": 7.664
+                },
+                "create_video": {
+                  "max_ms": 13980.956,
+                  "n": 42,
+                  "p50_ms": 25.471,
+                  "p95_ms": 2381.343
+                },
+                "create_video_ingest": {
+                  "commit": {
+                    "max_ms": 3.046,
+                    "n": 42,
+                    "p50_ms": 0.708,
+                    "p95_ms": 1.678
+                  },
+                  "visit_processor": {
+                    "max_ms": 66.544,
+                    "n": 42,
+                    "p50_ms": 10.944,
+                    "p95_ms": 25.519
+                  },
+                  "weather": {
+                    "max_ms": 6.218,
+                    "n": 42,
+                    "p50_ms": 0.289,
+                    "p95_ms": 1.356
+                  }
+                },
+                "dataset_crops": {
+                  "max_ms": 937.606,
+                  "n": 42,
+                  "p50_ms": 0.916,
+                  "p95_ms": 773.087
+                },
+                "persist": {
+                  "max_ms": 14083.514,
+                  "n": 59,
+                  "p50_ms": 67.348,
+                  "p95_ms": 2456.352
+                },
+                "reid_enrich": {
+                  "max_ms": 1895.187,
+                  "n": 42,
+                  "p50_ms": 0.321,
+                  "p95_ms": 1164.969
+                },
+                "scales": {
+                  "max_ms": 94.9,
+                  "n": 42,
+                  "p50_ms": 37.585,
+                  "p95_ms": 56.989
+                }
+              },
+              "window_hours": 24
+            },
+            "sessions_total": 59,
+            "status": "ok",
+            "top_root_causes": [
+              "healthy_persisted_gt_0",
+              "confidence_gate_collapse_raw_gt_0_accepted_0",
+              "detector_silent_raw0"
+            ]
+          },
+          "processor_heartbeat": {
+            "age_seconds": 116.266,
+            "bootstrap_phase": false,
+            "last_heartbeat_utc": "2026-06-10T13:00:13.200456+00:00",
+            "max_age_seconds": 180,
+            "reason": "ok",
+            "status": "ok"
+          },
+          "yolo_detector": {
+            "inference_backend_effective": "openvino",
+            "inference_backend_requested": "openvino",
+            "last_motion_age_sec": 3.009,
+            "source": "heartbeat",
+            "status": "ok"
+          }
+        },
+        "components": {
+          "active_triggers": [
+            "opencv",
+            "frigate"
+          ],
+          "birdnet_url": "https://birdnet.eyera.info",
+          "esphome": "ok",
+          "motion_source": "opencv,frigate",
+          "mqtt": "ok",
+          "processor": "ok",
+          "trigger_display": "opencv + frigate",
+          "video": "ok",
+          "web": "ok",
+          "yolo": "ok"
+        },
+        "pipeline_funnel": {
+          "alerts": [],
+          "by_camera": {
+            "BirdBox": {
+              "confidence_gate_collapse_raw_gt_0_accepted_0": 6,
+              "detector_silent_raw0": 10,
+              "healthy_persisted_gt_0": 8
+            },
+            "Forest": {
+              "confidence_gate_collapse_raw_gt_0_accepted_0": 7,
+              "detector_silent_raw0": 1,
+              "healthy_persisted_gt_0": 27
+            }
+          },
+          "fp_empty_opencv_rate": 0.0,
+          "fp_empty_opencv_sessions": 0,
+          "fusion_drop_rate": 0.0,
+          "fusion_drop_sessions": 0,
+          "global_funnel": {
+            "confidence_gate_collapse_raw_gt_0_accepted_0": 13,
+            "detector_silent_raw0": 11,
+            "healthy_persisted_gt_0": 35
+          },
+          "healthy_persist_count": 35,
+          "healthy_persist_rate": 0.5932,
+          "persist_substage_breakdown": {
+            "dominant_substage_p95": "persist",
+            "schema": "persist_substage_breakdown@v1",
+            "sessions_sampled": 59,
+            "substages": {
+              "behavior": {
+                "max_ms": 95.998,
+                "n": 42,
+                "p50_ms": 1.406,
+                "p95_ms": 7.664
+              },
+              "create_video": {
+                "max_ms": 13980.956,
+                "n": 42,
+                "p50_ms": 25.471,
+                "p95_ms": 2381.343
+              },
+              "create_video_ingest": {
+                "commit": {
+                  "max_ms": 3.046,
+                  "n": 42,
+                  "p50_ms": 0.708,
+                  "p95_ms": 1.678
+                },
+                "visit_processor": {
+                  "max_ms": 66.544,
+                  "n": 42,
+                  "p50_ms": 10.944,
+                  "p95_ms": 25.519
+                },
+                "weather": {
+                  "max_ms": 6.218,
+                  "n": 42,
+                  "p50_ms": 0.289,
+                  "p95_ms": 1.356
+                }
+              },
+              "dataset_crops": {
+                "max_ms": 937.606,
+                "n": 42,
+                "p50_ms": 0.916,
+                "p95_ms": 773.087
+              },
+              "persist": {
+                "max_ms": 14083.514,
+                "n": 59,
+                "p50_ms": 67.348,
+                "p95_ms": 2456.352
+              },
+              "reid_enrich": {
+                "max_ms": 1895.187,
+                "n": 42,
+                "p50_ms": 0.321,
+                "p95_ms": 1164.969
+              },
+              "scales": {
+                "max_ms": 94.9,
+                "n": 42,
+                "p50_ms": 37.585,
+                "p95_ms": 56.989
+              }
+            },
+            "window_hours": 24
+          },
+          "schema": "persist_funnel_summary@v1",
+          "sessions_total": 59,
+          "status": "ok",
+          "top_root_causes": [
+            "healthy_persisted_gt_0",
+            "confidence_gate_collapse_raw_gt_0_accepted_0",
+            "detector_silent_raw0"
+          ],
+          "window_hours": 24
+        },
+        "quality_ready": true,
+        "ready": true,
+        "security_gates": {
+          "items": [
+            {
+              "id": "strict_api_auth",
+              "status": "ok"
+            },
+            {
+              "id": "flask_secret_key",
+              "status": "ok"
+            },
+            {
+              "id": "processor_secret",
+              "status": "ok"
+            }
+          ],
+          "runtime": "production"
+        },
+        "status": "ok"
+      }
     },
     "status": {
       "status_code": 200,
@@ -36,15 +288,9 @@
         "trigger_display": "opencv + frigate",
         "video": "ok",
         "web": "ok",
-        "yolo": "degraded"
+        "yolo": "ok"
       }
     }
   },
-  "errors": [
-    {
-      "path": "/api/ui/readiness",
-      "status_code": 503,
-      "error": "http_503"
-    }
-  ]
+  "errors": []
 }

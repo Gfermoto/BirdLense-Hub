@@ -1,16 +1,16 @@
 # Health Readiness Contract
 
-- generated_at: `2026-06-08T11:07:18Z`
-- ok: `False`
+- generated_at: `2026-06-10T13:02:08Z`
+- ok: `True`
 
 ## Checks
 
 - health_ok: `True`
-- readiness_ok: `False`
+- readiness_ok: `True`
 - status_web_ok: `True`
 - status_processor_ok: `True`
-- false_green_detected: `True`
+- false_green_detected: `False`
 
 ## Errors
 
-- `/api/ui/readiness` status=503 error=http_503
+- none

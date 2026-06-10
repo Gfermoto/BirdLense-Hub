@@ -42,18 +42,20 @@
 
 ## Потоки данных
 
-### Видео
+### Видео (dual-stream)
 
-1. **Go2RTC** (внешний) → RTSP/HLS поток
-2. **Processor** подключается к Go2RTC, получает кадры
-3. **Триггер** (OpenCV, Frigate, MQTT, ESPHome) → начало записи
-4. **Detector** — подтверждение target первого уровня (`Bird | Rodent`)
-5. **YOLO classifier** — классификация вида для detector-confirmed треков
-6. **ByteTrack** — трекинг и bbox по кадрам
-7. **Fusion** — общий post-inference слой: detector/classifier outcome, promotion от Frigate, confidence boosters
-8. **Запись** → `data/recordings/YYYY/MM/DD/HHMMSS/video.mp4`
-9. **Спектрограмма** → FFmpeg (аудио) + librosa (mel) → `spectrogram_200.jpg`
-10. **API** → processor отправляет POST `/api/processor/videos` с fused-детекциями
+1. **Go2RTC** (внешний) — на камеру: **main** (`stream_name`) для FFmpeg MP4; **detect** (`detect_stream_name`, обязателен) — lores для motion + YOLO
+2. **Processor** читает detect-поток непрерывно; по триггеру пишет main (`media_runtime.py`, `go2rtc_stream_source.py`)
+3. **Триггер** (OpenCV на lores, Frigate, MQTT, ESPHome) → начало записи
+4. **Detect-first** — ранний якорь YOLO на lores до finalize (`detect_first.py`)
+5. **Detector** — подтверждение target первого уровня (`Bird | Rodent`)
+6. **YOLO classifier** — классификация вида для detector-confirmed треков
+7. **ByteTrack** — трекинг и bbox по кадрам
+8. **Fusion** — detector/classifier outcome, promotion от Frigate, confidence boosters
+9. **Timeline remap** — сдвиг bbox detect→main (`dual_stream_timeline.py`, `detect_record_time_offset_sec`)
+10. **Запись** → `data/recordings/YYYY/MM/DD/HHMMSS/video.mp4`
+11. **Спектрограмма** → FFmpeg + librosa → `spectrogram_200.jpg`
+12. **API** → POST `/api/processor/videos` с fused-детекциями
 
 ### Доменные границы времени
 

@@ -1,6 +1,6 @@
 # Release Policy-as-Code Report
 
-- generated_at: `2026-06-08T11:05:13Z`
+- generated_at: `2026-06-10T12:59:29Z`
 - audit_rows_total: `5`
 - policy_coverage_ratio: `1.0` (target `1.0`)
 - manual_override_ratio: `0.0` (limit `0.5`)
