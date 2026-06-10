@@ -1,9 +1,12 @@
-"""Detection scheduler: wake detector first; recording starts only from confirmed track."""
+"""Detection scheduler: probe/detect-first gates; motion_immediate starts record on trigger."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Mapping
+
+RECORDING_GATE_MOTION_IMMEDIATE = "motion_immediate"
+RECORDING_GATE_DETECT_FIRST = "detect_first"
 
 
 @dataclass(frozen=True)
@@ -124,12 +127,26 @@ def build_detect_first_config(app_config) -> DetectFirstConfig:
     )
 
 
-def requires_detect_first_before_record(*, args, app_config) -> bool:
-    """Go2RTC live: lores detect+track gate before FFmpeg touches main stream."""
+def resolve_recording_gate_mode(app_config) -> str:
+    """motion_immediate (default): trigger → main record; YOLO inside session. detect_first: legacy lores gate."""
+    raw = str(app_config.get("processor.recording_gate_mode") or RECORDING_GATE_MOTION_IMMEDIATE).strip().lower()
+    if raw in (RECORDING_GATE_DETECT_FIRST, "detect-first"):
+        return RECORDING_GATE_DETECT_FIRST
+    return RECORDING_GATE_MOTION_IMMEDIATE
+
+
+def _is_go2rtc_live(*, args, app_config) -> bool:
     if args is not None and getattr(args, "input", None):
         return False
-    source = (app_config.get("video.source") or "go2rtc").strip().lower()
-    if source != "go2rtc":
+    source = str(app_config.get("video.source") or "go2rtc").strip().lower()
+    return source == "go2rtc"
+
+
+def requires_detect_first_before_record(*, args, app_config) -> bool:
+    """Go2RTC live + detect_first gate mode: lores YOLO+track before FFmpeg on main stream."""
+    if not _is_go2rtc_live(args=args, app_config=app_config):
+        return False
+    if resolve_recording_gate_mode(app_config) != RECORDING_GATE_DETECT_FIRST:
         return False
     return bool(build_detect_first_config(app_config).enabled)
 
@@ -193,7 +210,10 @@ def frame_counts_as_detect_first_hit(last_run_stats: Mapping[str, Any] | None) -
     return False
 
 
-def should_run_probe(*, trigger_source: str | None, app_config) -> bool:
+def should_run_probe(*, trigger_source: str | None, app_config, args=None) -> bool:
+    if _is_go2rtc_live(args=args, app_config=app_config):
+        if resolve_recording_gate_mode(app_config) == RECORDING_GATE_MOTION_IMMEDIATE:
+            return False
     cfg = build_probe_config(app_config)
     if not cfg.enabled:
         return False

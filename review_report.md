@@ -17,7 +17,7 @@
 | Область | Где в коде | Суть |
 |---------|-----------|------|
 | Dual-stream detect/main | `media_runtime.py`, `go2rtc_stream_source.py`, `dual_stream_timeline.py` | Отдельный lores detect-поток Go2RTC; смещение таймлайна детекций к main/playback. |
-| Detect-first | `detect_first.py`, `recording_session.py` | Ранний якорь по YOLO/Frigate до полного finalize; persist-строки и safeguard. |
+| Detect-first / recording gate | `detect_first.py`, `detection_scheduler.py`, `recording_session.py` | Default `recording_gate_mode: motion_immediate` (#635): trigger → main record, YOLO in-session. Legacy `detect_first` — lores anchor gate. ADR: [adr-classifier-hints-only.md](docs/strategy/adr-classifier-hints-only.md) (#634). |
 | Bbox remap | `frame_geometry.py` | Letterbox, unpad/pad, remap norm bbox между canvas/source/overlay/crop. |
 | API-контракт | `app/web/openapi.yaml` | Источник правды для web + codegen UI. |
 | Production gates | `scripts/verify-prod-env.sh`, `app/web/config.py` | Обязательные секреты и strict auth в production. |
