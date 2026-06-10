@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, apiFetch } from './client';
 
 export type ExpertQueueItem = {
   id: number;
@@ -27,15 +26,23 @@ export type ReidGalleryCluster = {
   }>;
 };
 
-const withCreds = { withCredentials: true as const };
+function queryString(params: Record<string, unknown>): string {
+  const q = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      q.set(key, String(value));
+    }
+  }
+  const qs = q.toString();
+  return qs ? `?${qs}` : '';
+}
 
 export async function fetchReidGalleryStatus() {
-  const { data } = await axios.get<{
+  return apiFetch<{
     reid_gallery_enabled: boolean;
     reid_track_clustering_enabled: boolean;
     reid_expert_queue_enabled: boolean;
-  }>(`${BASE_API_URL}/reid/gallery/status`, withCreds);
-  return data;
+  }>(`${BASE_API_URL}/reid/gallery/status`);
 }
 
 export async function fetchReidGallery(params?: {
@@ -43,23 +50,26 @@ export async function fetchReidGallery(params?: {
   species_id?: number;
   limit?: number;
 }) {
-  const { data } = await axios.get<{
+  return apiFetch<{
     enabled: boolean;
     clusters: ReidGalleryCluster[];
     message?: string;
-  }>(`${BASE_API_URL}/reid/gallery`, { ...withCreds, params });
-  return data;
+  }>(`${BASE_API_URL}/reid/gallery${queryString(params ?? {})}`);
 }
 
-export async function fetchExpertQueue(params?: { status?: string; limit?: number; sync?: boolean }) {
-  const { data } = await axios.get<{ enabled: boolean; items: ExpertQueueItem[]; count: number }>(
-    `${BASE_API_URL}/expert/queue`,
-    {
-      ...withCreds,
-      params: { sync: params?.sync === false ? 0 : 1, ...params },
-    },
+export async function fetchExpertQueue(params?: {
+  status?: string;
+  limit?: number;
+  sync?: boolean;
+}) {
+  const query = {
+    sync: params?.sync === false ? 0 : 1,
+    ...(params?.status !== undefined ? { status: params.status } : {}),
+    ...(params?.limit !== undefined ? { limit: params.limit } : {}),
+  };
+  return apiFetch<{ enabled: boolean; items: ExpertQueueItem[]; count: number }>(
+    `${BASE_API_URL}/expert/queue${queryString(query)}`,
   );
-  return data;
 }
 
 export async function resolveExpertTask(body: {
@@ -70,6 +80,9 @@ export async function resolveExpertTask(body: {
   source_profile_id?: number;
   note?: string;
 }) {
-  const { data } = await axios.post(`${BASE_API_URL}/expert/resolve`, body, withCreds);
-  return data;
+  return apiFetch(`${BASE_API_URL}/expert/resolve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 }
