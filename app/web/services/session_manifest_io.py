@@ -111,9 +111,6 @@ def orphan_purge_grace_skip(
     min_bytes: int,
 ) -> bool:
     """True when orphan purge must skip this session (active or too fresh/small)."""
-    if int(video_bytes or 0) == 0:
-        return False
-
     if session_has_processor_in_progress_marker(session_dir):
         return True
 
@@ -126,7 +123,16 @@ def orphan_purge_grace_skip(
     if age_sec < grace_minutes * 60.0:
         return True
 
-    if int(video_bytes) < min_bytes:
+    nbytes = int(video_bytes or 0)
+    if nbytes == 0:
+        raw = read_session_manifest(session_dir)
+        if raw is not None:
+            state = str(raw.get("state") or "").strip().lower() or None
+            if state is not None and state not in _TERMINAL_IMPORT_STATES:
+                return True
+        return False
+
+    if nbytes < min_bytes:
         return True
 
     return False

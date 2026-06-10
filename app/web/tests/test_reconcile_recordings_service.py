@@ -198,11 +198,51 @@ def test_scan_skips_incomplete_manifest_without_end_time(app, tmp_path, monkeypa
         assert db.session.query(Video).count() == 0
 
 
+def test_reconcile_skips_active_empty_orphan_purge(app, tmp_path, monkeypatch):
+    rec_root = tmp_path / "data" / "recordings"
+    active_dir = rec_root / "2026" / "06" / "09" / "120150"
+    active_dir.mkdir(parents=True)
+    mp4 = active_dir / "video.mp4"
+    mp4.write_bytes(b"")
+    start = datetime(2026, 6, 9, 12, 1, 50, tzinfo=timezone.utc)
+    (active_dir / "manifest.json").write_text(
+        json.dumps(
+            {
+                "schema": "recording_session_manifest@v1",
+                "state": "recording",
+                "start_time": start.isoformat(),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr("services.system_maintenance_service.recordings_dir", lambda: str(rec_root))
+    monkeypatch.setattr("services.recording_orphan_purge_service.recordings_dir", lambda: str(rec_root))
+    monkeypatch.setattr("services.recording_orphan_inventory.recordings_dir", lambda: str(rec_root))
+    monkeypatch.setattr(
+        "services.reconcile_recordings_service.apply_broken_video_rows_purge",
+        lambda **kwargs: {"deleted_count": 0},
+    )
+
+    from services.reconcile_recordings_service import run_disk_db_reconcile
+
+    with app.app_context():
+        body = run_disk_db_reconcile(app)
+
+    assert body["ok"] is True
+    assert body["imported"] == 0
+    assert body["purge_orphan_disk"]["deleted_count"] == 0
+    assert body["purge_orphan_disk"]["skipped_grace"] == 1
+    assert active_dir.is_dir()
+
+
 def test_reconcile_purges_unimportable_orphan_disk(app, tmp_path, monkeypatch):
     rec_root = tmp_path / "data" / "recordings"
     orphan_dir = rec_root / "2026" / "06" / "09" / "120001"
     orphan_dir.mkdir(parents=True)
-    (orphan_dir / "video.mp4").write_bytes(b"")
+    mp4 = orphan_dir / "video.mp4"
+    mp4.write_bytes(b"")
+    _age_file(mp4)
 
     monkeypatch.setattr("services.system_maintenance_service.recordings_dir", lambda: str(rec_root))
     monkeypatch.setattr("services.recording_orphan_purge_service.recordings_dir", lambda: str(rec_root))
@@ -258,7 +298,9 @@ def test_reconcile_purge_dry_run_skips_deletes(app, tmp_path, monkeypatch):
     rec_root = tmp_path / "data" / "recordings"
     orphan_dir = rec_root / "2026" / "06" / "09" / "120002"
     orphan_dir.mkdir(parents=True)
-    (orphan_dir / "video.mp4").write_bytes(b"")
+    mp4 = orphan_dir / "video.mp4"
+    mp4.write_bytes(b"")
+    _age_file(mp4)
 
     monkeypatch.setattr("services.system_maintenance_service.recordings_dir", lambda: str(rec_root))
     monkeypatch.setattr("services.recording_orphan_purge_service.recordings_dir", lambda: str(rec_root))
