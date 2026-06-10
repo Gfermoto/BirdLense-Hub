@@ -24,6 +24,9 @@ processor_status = {
     "last_motion_at": None,
     "yolo_inference_ready_at": None,
     "yolo_inference_backend": None,
+    "inference_backend_requested": None,
+    "inference_backend_effective": None,
+    "inference_auto_torch_fallback": None,
     "bootstrap_error": None,
     "bootstrap_error_code": None,
 }
@@ -146,6 +149,15 @@ def _heartbeat_payload() -> dict:
         data["yolo_inference_ready"] = True
     if processor_status.get("yolo_inference_backend"):
         data["yolo_inference_backend"] = processor_status["yolo_inference_backend"]
+    if processor_status.get("inference_backend_requested"):
+        data["inference_backend_requested"] = processor_status["inference_backend_requested"]
+    if processor_status.get("inference_backend_effective"):
+        data["inference_backend_effective"] = processor_status["inference_backend_effective"]
+    if processor_status.get("inference_auto_torch_fallback"):
+        data["inference_auto_torch_fallback"] = True
+        reason = processor_status.get("inference_auto_torch_fallback_reason")
+        if reason:
+            data["inference_auto_torch_fallback_reason"] = str(reason)
     last_motion_at = processor_status.get("last_motion_at")
     if last_motion_at:
         data["last_motion_at"] = last_motion_at

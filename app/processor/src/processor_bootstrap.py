@@ -139,10 +139,28 @@ def build_processor_run_context(args: Namespace) -> ProcessorRunContext:
         frigate_label_filter=frigate_label_filter,
     )
 
+    from inference_bootstrap import record_inference_bootstrap_metrics, validate_inference_at_bootstrap
+
+    bootstrap_plan = validate_inference_at_bootstrap(app_config)
+    record_inference_bootstrap_metrics(bootstrap_plan)
+
     frame_processor, decision_maker, merged_overrides = build_detection_stack(
         app_config,
         save_images=bool(app_config.get("processor.save_images")),
         warn_two_stage_fallback=False,
+    )
+    from inference.selector import resolve_inference_backend
+    from inference_bootstrap import publish_inference_backend_effective
+
+    _requested_inf = resolve_inference_backend(app_config)
+    _effective_inf = str(
+        getattr(getattr(frame_processor, "strategy", None), "inference_backend", "torch") or "torch",
+    ).strip().lower()
+    _auto_fb = _requested_inf == "auto" and _effective_inf == "torch"
+    publish_inference_backend_effective(
+        requested_backend=_requested_inf,
+        effective_backend=_effective_inf,
+        auto_fallback=_auto_fb,
     )
     finalize_worker = maybe_start_finalize_worker(app_config)
     _start_runtime_reid_prewarm_async()

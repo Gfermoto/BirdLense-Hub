@@ -23,6 +23,20 @@ def test_yolo_detector_idle_inference_ready_without_motion(app):
     assert "between_session_blind" not in check
 
 
+def test_yolo_detector_inference_backend_effective_from_heartbeat(app):
+    hb = {
+        "yolo_inference_ready": True,
+        "inference_backend_requested": "auto",
+        "inference_backend_effective": "torch",
+        "inference_auto_torch_fallback": True,
+    }
+    check = _build_yolo_detector_check(hb, "ok")
+    assert check["inference_backend_effective"] == "torch"
+    assert check["inference_backend_requested"] == "auto"
+    assert check["status"] == "degraded"
+    assert check["inference_auto_torch_fallback"] is True
+
+
 def test_yolo_detector_between_session_blind_with_recent_motion(app):
     hb = {
         "yolo_inference_ready": True,
