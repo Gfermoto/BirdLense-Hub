@@ -1,0 +1,57 @@
+---
+description: OpenCode — максимальная отдача (TUI, headless, Cursor MCP, агенты)
+alwaysApply: true
+---
+
+# OpenCode: как выжать максимум
+
+Binary: `opencode` (часто `~/.opencode/bin/opencode`). Конфиг сливается: `~/.config/opencode/opencode.json` + **`opencode.json` в корне репо** (см. [config](https://dev.opencode.ai/docs/config/)).
+
+## В TUI (интерактив)
+
+- **Build / Plan (Tab)**: Build — обычная разработка; **Plan** — анализ и план **без записи на диск** (file edits / bash в ask). Сначала Plan, потом переключение на Build для внедрения.
+- **Субагенты @**: `@explore` — быстрый read-only обход кода; `@general` — длинные многошаговые задачи с полным доступом. Проектные: **`@birdlense-ci`** (прогон `make ci-local` и отчёт), **`@birdlense-reviewer`** (ревью под OpenAPI/AGENTS, без правок).
+- **Сессии**: `opencode -c` — продолжить последнюю; `--session`, `--fork` — для ветвления контекста.
+
+## Headless (терминал, без блокировки чата)
+
+- `opencode run "…"`: длинные автономные задачи. Полезно: `--format json` для стрима событий, `-m provider/model`, `--file` вложения, `--title` для поиска сессий.
+- `opencode pr <N>`: checkout ветки PR + запуск opencode в контексте PR.
+- `opencode serve` / `opencode web` — headless/веб; к attach из других клиентов.
+
+## Cursor: MCP `opencode` (пакет `opencode-mcp`)
+
+После перезагрузки Cursor: инструменты вида **`opencode_*`**. Практика: сначала **`opencode_setup`** (здоровье, провайдеры), затем крупные блоки — **`opencode_run`** / **`opencode_ask`**, дальше сессия — `opencode_reply` / `opencode_check` / `opencode_review_changes`. Параллель: этот агент правит в чате, OpenCode — отдельные длинные прогоны.
+
+## MCP внутри OpenCode (уже в `opencode.json` репо)
+
+- `birdlense-repo` — filesystem MCP для корня репо.
+- `sequential-thinking` — пошаговое рассуждение. HTTP-запросы: встроенный инструмент **webfetch** (в `permission` уже `allow`, отдельный пакет `@modelcontextprotocol/server-fetch` в npm **нет** — битая конфигурация убрана). Список/статус: `opencode mcp list` из корня `BirdLense`.
+
+**Секреты (GitHub API и т.д.)** — не в репозиторий: `opencode mcp add` или `~/.config/opencode/opencode.json` + переменные окружения; плагин **`opencode github`**.
+
+## Глобальные `permission` в `opencode.json` репо
+
+- Bash: по умолчанию `ask`, без подтверждения — ветки **`make`**, **`npm`/`npx`**, **`cd`**, **чтение git** (`status`/`diff`/`log`/`branch`). `git push` — по-прежнему **ask** (и так безопаснее). Опасные вещи не `allow` бездумно.
+
+## Cursor vs OpenCode — division of labor
+
+| Задача | Где |
+|--------|-----|
+| Мелкая правка, 1–2 файла, ясный diff | **Cursor** (этот чат) |
+| Длинный refactor, PR context, multi-file explore | **OpenCode** `opencode run` / `@explore` |
+| План без записи на диск | OpenCode **Plan** mode |
+| CI gate, отчёт без правок | `@birdlense-ci` (`make ci-local` vs `make test-web-contract-local` — см. `docs/contributor/hub-mcp-dev.md`) |
+| Ревью без правок | `@birdlense-reviewer` |
+| Параллель | Cursor правит; OpenCode — второй воркер (`opencode-mcp` в Cursor) |
+
+**MCP hygiene:** `birdlense-repo` (filesystem в OpenCode) ≠ Hub API MCP (`/mcp`, `birdlense_mcp.py`). Секреты — только env / `opencode mcp add`, не в репозиторий.
+
+## Когда НЕ плодить OpenCode
+
+Мелкие правки, один файл, ясный diff — **здесь в Cursor**. OpenCode — второй воркер, тяжёлые ревью, длинные циклы, отдельная ветка PR.
+
+## Ссылки
+
+- Агенты: [dev.opencode.ai/docs/agents](https://dev.opencode.ai/docs/agents/) — кастомные: `.opencode/agents/`.
+- MCP: [mcp-servers](https://dev.opencode.ai/docs/mcp-servers/).
