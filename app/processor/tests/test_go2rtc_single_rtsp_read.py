@@ -47,6 +47,16 @@ def _minimal_single_read_src(**overrides) -> Go2RTCStreamSource:
     return src
 
 
+class TestSingleReadDefaults(unittest.TestCase):
+    def test_single_read_idle_false_when_flag_off(self):
+        src = _minimal_single_read_src(_single_rtsp_read=False, _recording=False)
+        self.assertFalse(src._single_read_idle())
+
+    def test_single_read_idle_false_while_recording_even_when_flag_on(self):
+        src = _minimal_single_read_src(_recording=True)
+        self.assertFalse(src._single_read_idle())
+
+
 class TestDeriveDetectFrame(unittest.TestCase):
     def test_letterboxes_main_to_lores_wh(self):
         src = _minimal_single_read_src()
