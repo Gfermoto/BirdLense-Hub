@@ -1,7 +1,7 @@
-import axios from 'axios';
+/** Species directory, overview, detections, bird profiles API (#343, #617). */
 import type { TimeOfDay } from '../utils/timeUtils';
 import type { OverviewData, Species, SpeciesSummary } from '../types';
-import { BASE_API_URL, csrfFetch } from './client';
+import { BASE_API_URL, apiFetch } from './client';
 
 export type SpeciesCatalogScope = 'allowlist' | 'project' | 'observed' | 'all';
 
@@ -42,16 +42,16 @@ export const fetchBirdDirectory = async (options?: {
   missing_audio?: boolean;
   catalog_incomplete?: boolean;
 }): Promise<Species[] | SpeciesDirectoryResponse> => {
-  const response = await axios.get(`${BASE_API_URL}/species`, {
-    params: {
-      exclude_suspects: 1,
-      scope: options?.scope ?? 'project',
-      ...(options?.meta ? { meta: 1 } : {}),
-      ...(options?.missing_audio ? { missing_audio: 1 } : {}),
-      ...(options?.catalog_incomplete ? { catalog_incomplete: 1 } : {}),
-    },
+  const q = new URLSearchParams({
+    exclude_suspects: '1',
+    scope: options?.scope ?? 'project',
   });
-  const data = response.data;
+  if (options?.meta) q.set('meta', '1');
+  if (options?.missing_audio) q.set('missing_audio', '1');
+  if (options?.catalog_incomplete) q.set('catalog_incomplete', '1');
+  const data = await apiFetch<Species[] | SpeciesDirectoryResponse>(
+    `${BASE_API_URL}/species?${q}`,
+  );
   if (
     options?.meta &&
     data &&
@@ -66,20 +66,12 @@ export const fetchBirdDirectory = async (options?: {
 /** Lightweight: only species with count > 0 (for Settings exclude list). */
 export const fetchObservedSpecies = async (): Promise<
   Array<{ id: number; name: string; count: number }>
-> => {
-  const response = await axios.get(`${BASE_API_URL}/species/observed`);
-  return response.data;
-};
+> => apiFetch(`${BASE_API_URL}/species/observed`);
 
 /** Species present on recordings (VideoSpecies); use for track regen picker. */
 export const fetchTrackRegenSpeciesOptions = async (): Promise<
   Array<{ id: number; name: string; count: number }>
-> => {
-  const response = await axios.get(
-    `${BASE_API_URL}/species/track-regen-options`,
-  );
-  return response.data;
-};
+> => apiFetch(`${BASE_API_URL}/species/track-regen-options`);
 
 /** Поля прогресса из `/system/regenerate-tracks/status` (воркер + single-video pre-queue). */
 export interface TrackRegenProgress {
@@ -106,33 +98,20 @@ export interface TrackRegenerationJobStatus {
 }
 
 export const fetchTrackRegenerationStatus =
-  async (): Promise<TrackRegenerationJobStatus> => {
-    const response = await axios.get(
-      `${BASE_API_URL}/system/regenerate-tracks/status`,
-      { withCredentials: true },
-    );
-    return response.data;
-  };
+  async (): Promise<TrackRegenerationJobStatus> =>
+    apiFetch(`${BASE_API_URL}/system/regenerate-tracks/status`);
 
 export const fetchOverviewData = async (
   date: string,
 ): Promise<OverviewData> => {
-  const response = await axios.get(`${BASE_API_URL}/overview`, {
-    params: {
-      date,
-    },
-  });
-  return response.data;
+  const q = new URLSearchParams({ date });
+  return apiFetch(`${BASE_API_URL}/overview?${q}`);
 };
 
 export const fetchSpeciesSummary = async (
   speciesId: number,
-): Promise<SpeciesSummary> => {
-  const response = await axios.get(
-    `${BASE_API_URL}/species/${speciesId}/summary`,
-  );
-  return response.data;
-};
+): Promise<SpeciesSummary> =>
+  apiFetch(`${BASE_API_URL}/species/${speciesId}/summary`);
 
 export interface RefreshSpeciesMetadataResponse {
   ok: boolean;
@@ -147,14 +126,12 @@ export interface RefreshSpeciesMetadataResponse {
 /** Перезапрос фото/описания для одной карточки вида (нужен пароль настроек, withCredentials). */
 export const refreshSpeciesMetadata = async (
   speciesId: number,
-): Promise<RefreshSpeciesMetadataResponse> => {
-  const response = await axios.post<RefreshSpeciesMetadataResponse>(
-    `${BASE_API_URL}/species/${speciesId}/refresh-metadata`,
-    {},
-    { withCredentials: true },
-  );
-  return response.data;
-};
+): Promise<RefreshSpeciesMetadataResponse> =>
+  apiFetch(`${BASE_API_URL}/species/${speciesId}/refresh-metadata`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
 
 export interface TuningTargetEntry {
   id: number;
@@ -169,12 +146,8 @@ export interface TuningTargetsResponse {
   targets: TuningTargetEntry[];
 }
 
-export const fetchTuningTargets = async (): Promise<TuningTargetsResponse> => {
-  const response = await axios.get(`${BASE_API_URL}/species/tuning-targets`, {
-    withCredentials: true,
-  });
-  return response.data;
-};
+export const fetchTuningTargets = async (): Promise<TuningTargetsResponse> =>
+  apiFetch(`${BASE_API_URL}/species/tuning-targets`);
 
 export const setSpeciesTuningTarget = async (
   speciesId: number,
@@ -184,26 +157,20 @@ export const setSpeciesTuningTarget = async (
   species_id: number;
   enabled: boolean;
   tuning_target_species_ids: number[];
-}> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/species/${speciesId}/tuning-target`,
-    { enabled },
-    { withCredentials: true },
-  );
-  return response.data;
-};
+}> =>
+  apiFetch(`${BASE_API_URL}/species/${speciesId}/tuning-target`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  });
 
 export const fetchTuningTargetsExport = async (
   format: 'json' | 'csv' = 'json',
 ): Promise<{ count: number; targets: Array<{ id: number; name: string }> }> => {
-  const response = await axios.get(
-    `${BASE_API_URL}/system/species-registry/tuning-targets/export`,
-    {
-      params: { format },
-      withCredentials: true,
-    },
+  const q = new URLSearchParams({ format });
+  return apiFetch(
+    `${BASE_API_URL}/system/species-registry/tuning-targets/export?${q}`,
   );
-  return response.data;
 };
 
 export interface XenoCantoRecording {
@@ -221,12 +188,7 @@ export const fetchXenoCantoRecordings = async (
   recordings: XenoCantoRecording[];
   species_name: string;
   xeno_canto_search_url: string | null;
-}> => {
-  const response = await axios.get(
-    `${BASE_API_URL}/species/${speciesId}/xeno-canto`,
-  );
-  return response.data;
-};
+}> => apiFetch(`${BASE_API_URL}/species/${speciesId}/xeno-canto`);
 
 export interface ReviewQueueDeletePreviewVideo {
   video_id: number;
@@ -276,32 +238,26 @@ export const updateDetectionSpecies = async (
   speciesId: number,
   source?: 'unknowns' | 'video',
   applyScope?: 'single_track' | 'whole_visit' | 'legacy_fanout',
-): Promise<{ message: string; species_id: number; updated_count?: number }> => {
-  const response = await axios.patch(
-    `${BASE_API_URL}/detections/${detectionId}`,
-    {
+): Promise<{ message: string; species_id: number; updated_count?: number }> =>
+  apiFetch(`${BASE_API_URL}/detections/${detectionId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       species_id: speciesId,
       source,
       ...(applyScope ? { apply_scope: applyScope } : {}),
-    },
-    { withCredentials: true },
-  );
-  return response.data;
-};
+    }),
+  });
 
 export const updateDetectionNickname = async (
   detectionId: number,
   individualNickname: string | null,
-): Promise<{ message: string; detection_id: number; individual_nickname: string | null }> => {
-  const response = await axios.patch(
-    `${BASE_API_URL}/detections/${detectionId}`,
-    {
-      individual_nickname: individualNickname,
-    },
-    { withCredentials: true },
-  );
-  return response.data;
-};
+): Promise<{ message: string; detection_id: number; individual_nickname: string | null }> =>
+  apiFetch(`${BASE_API_URL}/detections/${detectionId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ individual_nickname: individualNickname }),
+  });
 
 export type BirdProfile = {
   id: number;
@@ -338,15 +294,14 @@ export const fetchBirdProfiles = async (params?: {
   speciesId?: number;
   limit?: number;
 }): Promise<{ items: BirdProfile[] }> => {
-  const response = await axios.get(`${BASE_API_URL}/bird-profiles`, {
-    params: {
-      ...(params?.query ? { query: params.query } : {}),
-      ...(params?.speciesId ? { species_id: params.speciesId } : {}),
-      ...(params?.limit ? { limit: params.limit } : {}),
-    },
-    withCredentials: true,
-  });
-  return response.data;
+  const q = new URLSearchParams();
+  if (params?.query) q.set('query', params.query);
+  if (params?.speciesId) q.set('species_id', String(params.speciesId));
+  if (params?.limit) q.set('limit', String(params.limit));
+  const suffix = q.toString();
+  return apiFetch(
+    `${BASE_API_URL}/bird-profiles${suffix ? `?${suffix}` : ''}`,
+  );
 };
 
 export const createBirdProfile = async (body: {
@@ -354,12 +309,12 @@ export const createBirdProfile = async (body: {
   species_id?: number | null;
   avatar_url?: string | null;
   status?: string;
-}): Promise<BirdProfile> => {
-  const response = await axios.post(`${BASE_API_URL}/bird-profiles`, body, {
-    withCredentials: true,
+}): Promise<BirdProfile> =>
+  apiFetch(`${BASE_API_URL}/bird-profiles`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
-  return response.data;
-};
 
 export const patchBirdProfile = async (
   profileId: number,
@@ -368,30 +323,22 @@ export const patchBirdProfile = async (
     avatar_url?: string | null;
     status?: string;
   },
-): Promise<BirdProfile> => {
-  const response = await axios.patch(
-    `${BASE_API_URL}/bird-profiles/${profileId}`,
-    body,
-    {
-      withCredentials: true,
-    },
-  );
-  return response.data;
-};
+): Promise<BirdProfile> =>
+  apiFetch(`${BASE_API_URL}/bird-profiles/${profileId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 
 export const assignDetectionBirdProfile = async (
   detectionId: number,
   birdProfileId: number,
-): Promise<{ detection_id: number; video_id: number; bird_profile_id: number; updated_count: number }> => {
-  const response = await axios.patch(
-    `${BASE_API_URL}/detections/${detectionId}`,
-    {
-      bird_profile_id: birdProfileId,
-    },
-    { withCredentials: true },
-  );
-  return response.data;
-};
+): Promise<{ detection_id: number; video_id: number; bird_profile_id: number; updated_count: number }> =>
+  apiFetch(`${BASE_API_URL}/detections/${detectionId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bird_profile_id: birdProfileId }),
+  });
 
 export const deleteBirdProfile = async (
   profileId: number,
@@ -399,25 +346,19 @@ export const deleteBirdProfile = async (
   id: number;
   display_name: string;
   unlinked_detections: number;
-}> => {
-  const response = await axios.delete(`${BASE_API_URL}/bird-profiles/${profileId}`, {
-    withCredentials: true,
+}> =>
+  apiFetch(`${BASE_API_URL}/bird-profiles/${profileId}`, {
+    method: 'DELETE',
   });
-  return response.data;
-};
 
 export const fetchBirdProfileSummary = async (
   profileId: number,
   recentLimit = 8,
 ): Promise<BirdProfileSummary> => {
-  const response = await axios.get(
-    `${BASE_API_URL}/bird-profiles/${profileId}/summary`,
-    {
-      params: { recent_limit: recentLimit },
-      withCredentials: true,
-    },
+  const q = new URLSearchParams({ recent_limit: String(recentLimit) });
+  return apiFetch(
+    `${BASE_API_URL}/bird-profiles/${profileId}/summary?${q}`,
   );
-  return response.data;
 };
 
 export const clearDetectionBirdProfile = async (
@@ -427,16 +368,12 @@ export const clearDetectionBirdProfile = async (
   video_id: number;
   bird_profile_id: null;
   updated_count: number;
-}> => {
-  const response = await axios.patch(
-    `${BASE_API_URL}/detections/${detectionId}`,
-    {
-      bird_profile_id: null,
-    },
-    { withCredentials: true },
-  );
-  return response.data;
-};
+}> =>
+  apiFetch(`${BASE_API_URL}/detections/${detectionId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bird_profile_id: null }),
+  });
 
 export type BirdProfileLinkCandidate = {
   profile_id: number;
@@ -469,8 +406,11 @@ export const fetchBirdProfileSuggestLinks = async (
     profileId && profileId > 0
       ? `${BASE_API_URL}/bird-profiles/${profileId}/suggest-links`
       : `${BASE_API_URL}/bird-profiles/suggest-links`;
-  const response = await axios.post(path, body, { withCredentials: true });
-  return response.data;
+  return apiFetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 };
 
 export const recordBirdProfileLinkFeedback = async (body: {
@@ -479,12 +419,12 @@ export const recordBirdProfileLinkFeedback = async (body: {
   anchor_profile_id?: number | null;
   video_species_id?: number;
   similarity?: number;
-}): Promise<{ ok: boolean; label: string }> => {
-  const response = await axios.post(`${BASE_API_URL}/bird-profiles/link-feedback`, body, {
-    withCredentials: true,
+}): Promise<{ ok: boolean; label: string }> =>
+  apiFetch(`${BASE_API_URL}/bird-profiles/link-feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
-  return response.data;
-};
 
 export const mergeBirdProfiles = async (
   targetProfileId: number,
@@ -494,14 +434,12 @@ export const mergeBirdProfiles = async (
   source_profile_id: number;
   merged_detections: number;
   display_name: string;
-}> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/bird-profiles/${targetProfileId}/merge`,
-    { source_profile_id: sourceProfileId },
-    { withCredentials: true },
-  );
-  return response.data;
-};
+}> =>
+  apiFetch(`${BASE_API_URL}/bird-profiles/${targetProfileId}/merge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source_profile_id: sourceProfileId }),
+  });
 
 export const setDetectionSemanticReview = async (
   detectionId: number,
@@ -510,27 +448,23 @@ export const setDetectionSemanticReview = async (
     semantic_review_note?: string;
     source?: string;
   },
-): Promise<{ detection_id: number; required: boolean; review_reason: string | null }> => {
-  const response = await axios.patch(
-    `${BASE_API_URL}/detections/${detectionId}`,
-    body,
-    { withCredentials: true },
-  );
-  return response.data;
-};
+): Promise<{ detection_id: number; required: boolean; review_reason: string | null }> =>
+  apiFetch(`${BASE_API_URL}/detections/${detectionId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 
 /** Confirm detection: mark as verified (manually_corrected), remove from Unknowns. */
 export const confirmDetection = async (
   detectionId: number,
   source?: 'unknowns' | 'video',
-): Promise<{ message: string; updated_count: number }> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/detections/${detectionId}/confirm`,
-    { source },
-    { withCredentials: true },
-  );
-  return response.data;
-};
+): Promise<{ message: string; updated_count: number }> =>
+  apiFetch(`${BASE_API_URL}/detections/${detectionId}/confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source }),
+  });
 
 export const deleteDetection = async (
   detectionId: number,
@@ -541,19 +475,12 @@ export const deleteDetection = async (
   video_id: number;
   track_id: number | null;
   removed_dataset_crops: number;
-}> => {
-  const res = await csrfFetch(`${BASE_API_URL}/detections/${detectionId}`, {
+}> =>
+  apiFetch(`${BASE_API_URL}/detections/${detectionId}`, {
     method: 'DELETE',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body || {}),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
-  return res.json();
-};
 
 export const deleteVisit = async (
   visitId: number,
@@ -562,37 +489,29 @@ export const deleteVisit = async (
   message: string;
   visit_id: number;
   deleted_detections: number;
-}> => {
-  const res = await csrfFetch(`${BASE_API_URL}/visits/${visitId}`, {
+}> =>
+  apiFetch(`${BASE_API_URL}/visits/${visitId}`, {
     method: 'DELETE',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body || {}),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
-  return res.json();
-};
 
 export const previewReviewQueueDelete = async (params: {
   date: string;
   timeOfDay: TimeOfDay;
   hour?: number | null;
   unknownIds: number[];
-}): Promise<ReviewQueueDeletePreview> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/system/review-queue/delete-preview`,
-    {
+}): Promise<ReviewQueueDeletePreview> =>
+  apiFetch(`${BASE_API_URL}/system/review-queue/delete-preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       date: params.date,
       time_of_day: params.timeOfDay,
       ...(params.hour != null ? { hour: params.hour } : {}),
       unknown_ids: params.unknownIds,
-    },
-  );
-  return response.data;
-};
+    }),
+  });
 
 export const deleteReviewQueueVideos = async (params: {
   date: string;
@@ -608,19 +527,18 @@ export const deleteReviewQueueVideos = async (params: {
   deletedFiles: number;
   deletedSize: number;
   confirmation_phrase: string;
-}> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/system/review-queue/delete`,
-    {
+}> =>
+  apiFetch(`${BASE_API_URL}/system/review-queue/delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
       date: params.date,
       time_of_day: params.timeOfDay,
       ...(params.hour != null ? { hour: params.hour } : {}),
       unknown_ids: params.unknownIds,
       confirm_text: params.confirmText,
-    },
-  );
-  return response.data;
-};
+    }),
+  });
 
 export type CorrectionHistoryEntry = {
   id: number;
@@ -636,9 +554,6 @@ export type CorrectionHistoryEntry = {
 export const fetchRecentCorrections = async (
   limit = 10,
 ): Promise<CorrectionHistoryEntry[]> => {
-  const response = await axios.get(`${BASE_API_URL}/corrections/recent`, {
-    params: { limit },
-    withCredentials: true,
-  });
-  return response.data;
+  const q = new URLSearchParams({ limit: String(limit) });
+  return apiFetch(`${BASE_API_URL}/corrections/recent?${q}`);
 };
