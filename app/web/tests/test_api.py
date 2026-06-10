@@ -314,7 +314,7 @@ class TestTrackRegenFallback:
         assert same_species is False
 
     def test_derive_track_regen_species_scope_uses_mapping_and_prior_observed(self, app):
-        from models import Species, Video, VideoSpecies, db
+        from models import Video, VideoSpecies, db
         from services.track_regen_service import derive_track_regen_species_scope
         from app_config.app_config import app_config
         from datetime import datetime
@@ -2258,7 +2258,7 @@ class TestDatabaseBackupRestore:
 class TestStoragePurge:
     def test_purge_storage_deletes_db_rows_and_files(self, app, client, tmp_path, monkeypatch):
         from app_config.app_config import app_config
-        from models import Species, SpeciesVisit, Video, VideoSpecies, db
+        from models import SpeciesVisit, Video, VideoSpecies, db
         import util as util_mod
 
         old_admin = app_config.get("general.settings_password")
