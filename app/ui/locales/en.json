@@ -2404,6 +2404,23 @@
       "decision_fusion_drop_tracks_gt_0_persisted_0": "Fusion drop — tracks present, nothing persisted",
       "healthy_persisted_gt_0": "Healthy — rows persisted"
     },
+    "readinessOperatorTitle": "Operator snapshot (disk · quota · orphans)",
+    "readinessOperatorHint": "Host disk, indexed recordings size, retention quota headroom, and orphan files on disk — no SSH needed.",
+    "readinessOperator": {
+      "disk": "Host disk",
+      "diskValue": "{{used}} / {{total}} GB ({{percent}}%)",
+      "recordings": "Indexed recordings",
+      "recordingsValue": "{{size}} · {{files}} files",
+      "quota": "Retention quota",
+      "quotaValue": "Cap {{maxGb}} GB · headroom {{headroom}}",
+      "quotaUnlimited": "No max_gb cap configured",
+      "orphan": "Orphan files on disk",
+      "orphanValue": "{{count}} sessions · {{size}}",
+      "unavailable": "Unavailable",
+      "linkStorage": "Library → storage & retention",
+      "linkCatalogReconcile": "Catalog ops & reconcile",
+      "linkYoloBlind": "YOLO blind runbook"
+    },
     "domainTrustTitle": "Data quality & release gate (24h)",
     "domainTrustHint": "Explains why automated deploy may exit non‑zero while the hub stays online: strict_quality checks recent recordings and detection rows, not liveness.",
     "domainTrustLoadError": "Could not load domain health snapshot",
