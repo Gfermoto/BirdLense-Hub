@@ -1,7 +1,10 @@
 {
-  "schema": "processor_config_drift@v1",
-  "generated_at": "2026-06-10T12:59:11Z",
+  "schema": "processor_config_drift@v2",
+  "generated_at": "2026-06-10T14:26:54Z",
   "drift_count": 0,
+  "critical_count": 0,
+  "warn_count": 0,
   "drifts": [],
-  "ok": true
+  "ok": true,
+  "critical_ok": true
 }

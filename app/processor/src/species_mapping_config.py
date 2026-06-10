@@ -19,9 +19,13 @@ def _title_case_label(label: str) -> str:
     clean = " ".join(str(label or "").strip().split())
     if not clean:
         return clean
-    if clean.isupper():
-        return clean.title()
-    return clean
+    out: list[str] = []
+    for word in clean.split():
+        if "-" in word:
+            out.append("-".join(seg.capitalize() for seg in word.split("-") if seg))
+        else:
+            out.append(word.capitalize())
+    return " ".join(out)
 
 
 def _birder_eu_label_mapping(app_config: Any) -> dict[str, str]:
