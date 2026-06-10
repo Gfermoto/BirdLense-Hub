@@ -12,7 +12,15 @@ processor:
   detector_native_class_labels: true
   binary_predict_class_allowlist: [0, 5]
   inference_lores_wh: [704, 576]
+  openvino_native_lores_imgsz: true
   binary_imgsz: 704
+  openvino:
+    profile: latency
+    num_requests: 0
+    model_cache_enabled: true
+  track_spatial_split_enabled: true
+  track_spatial_split_max_center_jump_norm: 0.18
+  track_spatial_split_min_segment_frames: 2
   tracker: models/tracker/bytetrack_birdlense_lowfps.yaml
   tracker_profiles:
     night: models/tracker/bytetrack_birdlense_night.yaml
