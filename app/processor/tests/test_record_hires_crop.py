@@ -5,6 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from record_hires_crop import (
+    enrichment_crop_require_best_keyframe,
     pick_bbox_and_timestamp,
     resolve_enrichment_crop,
     resolve_enrichment_crop_source,
@@ -21,6 +22,29 @@ def test_resolve_enrichment_crop_source_defaults_auto():
         )
         == "record_hires"
     )
+
+
+def test_enrichment_crop_require_keyframe_default_linear():
+    assert enrichment_crop_require_best_keyframe({"processor.pipeline_mode": "linear"}) is True
+    assert enrichment_crop_require_best_keyframe({"processor.pipeline_mode": "legacy"}) is False
+    assert (
+        enrichment_crop_require_best_keyframe(
+            {"processor.pipeline_mode": "legacy", "processor.enrichment_crop_require_keyframe": True}
+        )
+        is True
+    )
+
+
+def test_pick_bbox_rejects_blind_mid_frame_when_keyframe_required():
+    det = {
+        "start_time": 1.0,
+        "end_time": 3.0,
+        "frames": [{"t": 2.0, "bbox": [0.1, 0.2, 0.3, 0.4]}],
+        "key_frames": [],
+    }
+    bbox, ts = pick_bbox_and_timestamp(det, require_best_keyframe=True)
+    assert bbox is None
+    assert ts == 2.0
 
 
 def test_pick_bbox_and_timestamp_uses_key_frame_bbox():

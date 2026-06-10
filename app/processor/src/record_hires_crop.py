@@ -128,12 +128,27 @@ def remap_bbox_for_record_crop(
     return [float(v) for v in mapped]
 
 
+def enrichment_crop_require_best_keyframe(runtime_cfg: Mapping[str, Any] | None) -> bool:
+    """Linear default: crop/TG seek only from scored keyframe, not blind mid-track frame."""
+    if runtime_cfg is None:
+        return False
+    raw = runtime_cfg.get("processor.enrichment_crop_require_keyframe")
+    if raw is not None:
+        if isinstance(raw, str):
+            return raw.strip().lower() in {"1", "true", "yes", "on"}
+        return bool(raw)
+    return str(runtime_cfg.get("processor.pipeline_mode") or "").strip().lower() == "linear"
+
+
 def pick_bbox_and_timestamp(
     detection: Mapping[str, Any],
     *,
     runtime_cfg: Mapping[str, Any] | None = None,
+    require_best_keyframe: bool | None = None,
 ) -> tuple[list[float] | None, float]:
     """Normalized bbox + record-timeline seconds (same rules as notify preview)."""
+    if require_best_keyframe is None:
+        require_best_keyframe = enrichment_crop_require_best_keyframe(runtime_cfg)
 
     def _pick_timestamp() -> float:
         try:
@@ -177,6 +192,9 @@ def pick_bbox_and_timestamp(
         t = _apply_record_offset(float(best_kf.get("t") or _pick_timestamp()))
         if bbox is not None:
             return bbox, float(t)
+
+    if require_best_keyframe:
+        return None, float(_pick_timestamp())
 
     frames = detection.get("frames") or []
     mid = frames[len(frames) // 2] if isinstance(frames, list) and frames else None

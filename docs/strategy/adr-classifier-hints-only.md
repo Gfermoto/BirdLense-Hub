@@ -53,6 +53,8 @@ Paths that currently elevate external metadata beyond hints. Wave 1+ demotes or 
 | `_aggregate_birdnet_scores` / `_birdnet_prior` | `detection_fusion.py` | Fusion confidence prior | **Keep** as hint |
 | `merge_species_confidence_overrides_with_ebird_top` | `ebird_regional_confidence.py` | Lower species thresholds | **Keep** as hint |
 | `apply_multi_camera_confidence_boost` | `multi_camera_confidence.py` | Cross-cam fusion boost | **Keep** as hint |
+| `_same_multi_camera_group` | `detect_first.py` | Frigate assist bbox from peer cam in same group | **Hint scope only** — never blocks peer camera recording (#639) |
+| `RecordingConcurrency.try_register` | `recording_concurrency.py` | Per-camera session registry | **Independent sessions:** blocks same camera only; `inference_lock` serializes YOLO (resource cap), not a fusion gate |
 | `trigger_graph` `detect_first_ok` gate | `trigger_graph.py` | Suppresses nodes without detect-first | **Demote:** diagnostic only under `motion_immediate` |
 | `frigate_activity_hold_seconds` | `recording_session.py` | Extends clip on Frigate MQTT | **Session extension hint** — must not be sole start condition |
 
