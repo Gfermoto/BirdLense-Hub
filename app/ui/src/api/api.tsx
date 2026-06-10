@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { BASE_URL } from './client';
+import { ApiHttpError, BASE_URL } from './client';
 
 export { BASE_URL, BASE_API_URL, JOB_STATUS_POLL_TIMEOUT_MS } from './client';
 
@@ -12,6 +12,9 @@ export function getApiErrorMessage(err: unknown, fallback: string): string {
       if (typeof msg === 'string' && msg.trim()) return msg;
     }
     if (err.message) return err.message;
+  }
+  if (err instanceof ApiHttpError) {
+    if (typeof err.message === 'string' && err.message.trim()) return err.message;
   }
   if (err instanceof Error && err.message) return err.message;
   return fallback;

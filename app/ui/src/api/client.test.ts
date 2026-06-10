@@ -177,4 +177,66 @@ describe('api client', () => {
     expect(config?.withCredentials).toBeUndefined();
     expect(vi.mocked(globalThis.fetch)).not.toHaveBeenCalled();
   });
+
+
+  it('apiFetch returns parsed JSON on success', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ items: [], count: 0 }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { apiFetch } = await import('./client');
+    await expect(apiFetch('/api/ui/labelling/cases')).resolves.toEqual({
+      items: [],
+      count: 0,
+    });
+    expect(fetchMock).toHaveBeenCalledWith('/api/ui/labelling/cases', {
+      credentials: 'include',
+      headers: expect.any(Headers),
+    });
+  });
+
+  it('apiFetch throws ApiHttpError with backend message', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ csrf_token: 'csrf-token-post' }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        json: async () => ({ error: 'denied' }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { apiFetch, ApiHttpError } = await import('./client');
+    await expect(apiFetch('/api/ui/dataset/clean', { method: 'POST' })).rejects.toMatchObject({
+      name: 'ApiHttpError',
+      status: 403,
+      message: 'denied',
+    });
+    expect(ApiHttpError).toBeDefined();
+  });
+
+  it('apiBlob returns blob and parsed filename', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      blob: async () => new Blob(['zip']),
+      headers: {
+        get: (name: string) =>
+          name === 'Content-Disposition' ? 'attachment; filename="data.zip"' : null,
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { apiBlob } = await import('./client');
+    await expect(apiBlob('/api/ui/dataset/export')).resolves.toMatchObject({
+      filename: 'data.zip',
+    });
+  });
 });

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { describe, expect, it } from 'vitest';
+import { ApiHttpError } from './client';
 import { fetchReadiness, getApiErrorMessage, resolveImageUrl } from './api';
 import { afterEach, vi } from 'vitest';
 
@@ -30,6 +31,12 @@ describe('resolveImageUrl', () => {
 });
 
 describe('getApiErrorMessage', () => {
+  it('reads message from ApiHttpError', () => {
+    expect(getApiErrorMessage(new ApiHttpError(403, 'denied'), 'fallback')).toBe(
+      'denied',
+    );
+  });
+
   it('prefers backend JSON error text from axios errors', () => {
     const err = {
       isAxiosError: true,

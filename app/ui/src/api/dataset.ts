@@ -1,4 +1,9 @@
-import { BASE_API_URL, csrfFetch } from './client';
+import {
+  BASE_API_URL,
+  apiBlob,
+  apiFetch,
+  triggerBlobDownload,
+} from './client';
 
 /** Export dataset crops as ZIP. Requires settings access. */
 export const exportDataset = async (params?: {
@@ -19,22 +24,8 @@ export const exportDataset = async (params?: {
   }
   if (params?.strict_quality) q.set('strict_quality', '1');
   const url = `${BASE_API_URL}/dataset/export${q.toString() ? `?${q}` : ''}`;
-  const res = await fetch(url, {
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
-  const blob = await res.blob();
-  const cd = res.headers.get('Content-Disposition');
-  const match = cd?.match(/filename="?([^";\n]+)"?/);
-  const filename = match?.[1] || 'birdlense_dataset.zip';
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const { blob, filename } = await apiBlob(url);
+  triggerBlobDownload(blob, filename || 'birdlense_dataset.zip');
 };
 
 /** Retro-export: extract crops from all video detections into dataset. */
@@ -55,17 +46,11 @@ export const retroExportDataset = async (
   if (period?.end_date) body.end_date = period.end_date;
   if (onlyManuallyCorrected) body.only_manually_corrected = true;
   if (rebuild) body.rebuild = true;
-  const res = await csrfFetch(`${BASE_API_URL}/dataset/retro-export`, {
+  return apiFetch(`${BASE_API_URL}/dataset/retro-export`, {
     method: 'POST',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
-  return res.json();
 };
 
 /** Clean dataset: remove suspected full-frame and/or orphaned files. */
@@ -78,40 +63,25 @@ export const cleanDataset = async (params?: {
   deleted_orphaned: number;
   errors: string[];
   dry_run: boolean;
-}> => {
-  const res = await csrfFetch(`${BASE_API_URL}/dataset/clean`, {
+}> =>
+  apiFetch(`${BASE_API_URL}/dataset/clean`, {
     method: 'POST',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params || {}),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
-  return res.json();
-};
 
 /** Download detection crop for iNaturalist. Opens iNaturalist upload in new tab. */
 export const downloadDetectionCropForINaturalist = async (
   detectionId: number,
   speciesName: string,
 ): Promise<void> => {
-  const res = await fetch(`${BASE_API_URL}/detections/${detectionId}/crop`);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
-  const blob = await res.blob();
-  const disp = res.headers.get('Content-Disposition');
-  const filename =
-    disp?.match(/filename="?([^";\n]+)"?/)?.[1] ||
-    `${speciesName.replace(/\s+/g, '_')}.jpg`;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const { blob, filename } = await apiBlob(
+    `${BASE_API_URL}/detections/${detectionId}/crop`,
+  );
+  triggerBlobDownload(
+    blob,
+    filename || `${speciesName.replace(/\s+/g, '_')}.jpg`,
+  );
   window.open(
     'https://www.inaturalist.org/observations/upload',
     '_blank',

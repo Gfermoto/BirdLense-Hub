@@ -1,4 +1,4 @@
-import { BASE_API_URL, csrfFetch } from './client';
+import { BASE_API_URL, apiFetch } from './client';
 
 export type LabellingCaseStatus = 'pending' | 'approved' | 'rejected' | 'semantic_review_required';
 
@@ -54,11 +54,9 @@ export const fetchLabellingCases = async (
   if (status !== 'all') q.set('status', status);
   q.set('limit', String(limit));
   if (withMediaOnly) q.set('with_media_only', '1');
-  const res = await fetch(`${BASE_API_URL}/labelling/cases?${q.toString()}`, {
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  return apiFetch<LabellingCasesResponse>(
+    `${BASE_API_URL}/labelling/cases?${q.toString()}`,
+  );
 };
 
 export const mineLabellingCases = async (body?: {
@@ -68,45 +66,33 @@ export const mineLabellingCases = async (body?: {
   fallback_ratio_threshold?: number;
   conf_min?: number;
   conf_max?: number;
-}): Promise<{ ok: boolean; created: number; skipped: number }> => {
-  const res = await csrfFetch(`${BASE_API_URL}/labelling/cases/mine`, {
+}): Promise<{ ok: boolean; created: number; skipped: number }> =>
+  apiFetch(`${BASE_API_URL}/labelling/cases/mine`, {
     method: 'POST',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body || {}),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-};
 
 export const patchLabellingCase = async (
   id: number,
   status: LabellingCaseStatus,
   note?: string,
-): Promise<{ id: number; status: LabellingCaseStatus }> => {
-  const res = await csrfFetch(`${BASE_API_URL}/labelling/cases/${id}`, {
+): Promise<{ id: number; status: LabellingCaseStatus }> =>
+  apiFetch(`${BASE_API_URL}/labelling/cases/${id}`, {
     method: 'PATCH',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status, note }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-};
 
 export const exportLabellingCases = async (
   format: 'yolo' | 'coco',
   status: LabellingCaseStatus = 'approved',
-): Promise<{ version: string; path: string; format: string }> => {
-  const res = await csrfFetch(`${BASE_API_URL}/labelling/export`, {
+): Promise<{ version: string; path: string; format: string }> =>
+  apiFetch(`${BASE_API_URL}/labelling/export`, {
     method: 'POST',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ format, status }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-};
 
 export const postLabellingFeedback = async (
   id: number,
@@ -115,16 +101,12 @@ export const postLabellingFeedback = async (
     behavior_tag?: string;
     species_tag?: string;
   },
-): Promise<{ id: number; status: LabellingCaseStatus; action: string }> => {
-  const res = await csrfFetch(`${BASE_API_URL}/labelling/cases/${id}/feedback`, {
+): Promise<{ id: number; status: LabellingCaseStatus; action: string }> =>
+  apiFetch(`${BASE_API_URL}/labelling/cases/${id}/feedback`, {
     method: 'POST',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-};
 
 export type LabellingBatchOperation =
   | {
@@ -143,13 +125,9 @@ export type LabellingBatchOperation =
 
 export const postLabellingBatchFeedback = async (
   operations: LabellingBatchOperation[],
-): Promise<{ ok: boolean; count: number; processed: Array<{ id: number; status: LabellingCaseStatus }> }> => {
-  const res = await csrfFetch(`${BASE_API_URL}/labelling/batch-feedback`, {
+): Promise<{ ok: boolean; count: number; processed: Array<{ id: number; status: LabellingCaseStatus }> }> =>
+  apiFetch(`${BASE_API_URL}/labelling/batch-feedback`, {
     method: 'POST',
-    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ operations }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-};
