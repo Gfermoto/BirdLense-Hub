@@ -27,12 +27,14 @@ import {
   type EbirdMappingSuggestionsResponse,
 } from '../../../api/settingsSession';
 
+import { showAdvancedProcessorBlocks, type SettingsTier } from '../settingsTier';
+
 type Props = {
   form: ReactFormExtendedApi<Settings, undefined>;
-  simpleMode?: boolean;
+  settingsTier?: SettingsTier;
 };
 
-export function IntegrationsSection({ form, simpleMode = true }: Props) {
+export function IntegrationsSection({ form, settingsTier = 'basic' }: Props) {
   const { t } = useTranslation();
   const [ebirdSuggestLoading, setEbirdSuggestLoading] = useState(false);
   const [ebirdSuggestError, setEbirdSuggestError] = useState<string | null>(
@@ -365,7 +367,9 @@ export function IntegrationsSection({ form, simpleMode = true }: Props) {
             </Grid>
           </ServiceBlock>
 
-          {!simpleMode ? <SpeciesCatalogSettingsBlock form={form} /> : null}
+          {showAdvancedProcessorBlocks(settingsTier) ? (
+            <SpeciesCatalogSettingsBlock form={form} />
+          ) : null}
         </Box>
       </AccordionDetails>
     </Accordion>

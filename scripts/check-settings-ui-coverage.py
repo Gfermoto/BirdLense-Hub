@@ -646,6 +646,21 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Hub upload size cap for Library file replay; tunable in YAML.",
         "next_step": "Optional expose in Library advanced later.",
     },
+    "video.video_width": {
+        "category": "advanced",
+        "reason": "Legacy file-replay resolution override; ignored unless force_recording_resolution.",
+        "next_step": "Optional expert Settings field after file-test UX spec.",
+    },
+    "video.video_height": {
+        "category": "advanced",
+        "reason": "Legacy file-replay resolution override; ignored unless force_recording_resolution.",
+        "next_step": "Optional expert Settings field after file-test UX spec.",
+    },
+    "video.force_recording_resolution": {
+        "category": "advanced",
+        "reason": "Legacy file-replay only: enables video_width/height override; not main operator path.",
+        "next_step": "Expose in expert tier or Library file-test advanced.",
+    },
     "retention.days": {
         "category": "library-ui",
         "reason": "Retention knobs are shown and run from Library → Database maintenance (RetentionPolicy), not Settings forms.",
@@ -2044,6 +2059,11 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "backend-managed",
         "reason": "Live overlay TTL/tick knobs for SSE trace fallback; tuned via default_config.",
         "next_step": "Optional Live UI advanced panel.",
+    },
+    "ui.frigate_live_bbox_max_age_seconds": {
+        "category": "advanced",
+        "reason": "Frigate MQTT live bbox staleness cap for overlay; expert tuning via YAML.",
+        "next_step": "Optional Live/Frigate expert panel with validation.",
     },
     "video.camera_slots": {
         "category": "advanced",
