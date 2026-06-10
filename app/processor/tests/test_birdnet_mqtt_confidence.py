@@ -46,8 +46,8 @@ class TestBirdnetMqttConfidence(unittest.TestCase):
             'detection.species_mapping': {},
         }
         out = merge_birdnet_mqtt_bias_into_overrides({}, cfg, agg)
-        self.assertIn('Great tit', out)
-        self.assertAlmostEqual(out['Great tit'], 0.25)
+        self.assertIn('Great Tit', out)
+        self.assertAlmostEqual(out['Great Tit'], 0.25)
 
     def test_manual_override_preserved(self):
         agg = MagicMock()
@@ -76,7 +76,7 @@ class TestBirdnetMqttConfidence(unittest.TestCase):
             'detection.species_mapping': {},
         }
         out = merge_birdnet_mqtt_bias_into_overrides({}, cfg, agg)
-        self.assertAlmostEqual(out['Great tit'], 0.28)
+        self.assertAlmostEqual(out['Great Tit'], 0.28)
 
     def test_deprecated_window_seconds_alias_used_when_hours_missing(self):
         agg = MagicMock()
