@@ -107,5 +107,42 @@ class TestApplyOpenvinoUltralyticsTuning(unittest.TestCase):
         self.assertEqual(autoback.inference_mode, "LATENCY")
 
 
+class TestOpenvinoTrackProfileOverrides(unittest.TestCase):
+    def test_live_keeps_overrides(self):
+        from detection_strategy import _openvino_track_profile_overrides
+
+        out = _openvino_track_profile_overrides(
+            {"processor.openvino.profile": "latency"},
+            for_track_regen=False,
+            profile_overrides={"min_center_dist": 0.05},
+        )
+        self.assertEqual(out, {"min_center_dist": 0.05})
+
+    def test_regen_forces_throughput(self):
+        from detection_strategy import _openvino_track_profile_overrides
+
+        out = _openvino_track_profile_overrides(
+            {"processor.openvino.num_requests": 4},
+            for_track_regen=True,
+        )
+        self.assertEqual(out["openvino_profile"], "throughput")
+        self.assertEqual(out["openvino_num_requests"], 4)
+
+
+class TestEnsureOpenvinoTrackTuning(unittest.TestCase):
+    def test_skips_non_openvino_backend(self):
+        from inference.openvino_ultralytics_tuning import ensure_openvino_track_tuning
+
+        class FakeYolo:
+            pass
+
+        ensure_openvino_track_tuning(
+            FakeYolo(),
+            {},
+            inference_backend="torch",
+            device="cpu",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

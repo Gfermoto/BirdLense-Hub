@@ -838,6 +838,14 @@ class TwoStageStrategy(DetectionStrategy):
             )
 
         # Warmup
+        from inference.openvino_ultralytics_tuning import ensure_openvino_track_tuning
+
+        ensure_openvino_track_tuning(
+            self.binary_model,
+            app_config,
+            inference_backend=self.inference_backend,
+            device=self._binary_track_device,
+        )
         _warm: dict = {"tracker": "bytetrack.yaml", "persist": True, "verbose": False}
         if self._binary_track_device:
             _warm["device"] = self._binary_track_device
@@ -1227,12 +1235,17 @@ class TwoStageStrategy(DetectionStrategy):
         if inference_backend == "openvino":
             from inference.openvino_ultralytics_tuning import ensure_openvino_track_tuning
 
+            _ov_overrides = _openvino_track_profile_overrides(
+                runtime_cfg,
+                for_track_regen=track_regen_ctx,
+                profile_overrides=profile_overrides,
+            )
             ensure_openvino_track_tuning(
                 self.binary_model,
                 runtime_cfg,
                 inference_backend=inference_backend,
                 device=_bdev,
-                profile_overrides=profile_overrides,
+                profile_overrides=_ov_overrides,
             )
         results = (
             self.binary_model.track(frame, **_tkw)
