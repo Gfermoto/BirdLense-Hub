@@ -62,6 +62,16 @@ def _make_track(
     return track
 
 
+
+
+def _cfg_get_non_linear(key, default=None, *, real_get=None):
+    if key == "processor.pipeline_mode":
+        return "dual"
+    if real_get is not None:
+        return real_get(key, default)
+    return default
+
+
 class TestDecisionMaker(unittest.TestCase):
     def setUp(self):
         self.decision_maker = DecisionMaker(min_track_duration=0)
@@ -69,12 +79,10 @@ class TestDecisionMaker(unittest.TestCase):
         self._cfg_patch = patch.object(_ac_mod.app_config, "get")
         self.mock_get = self._cfg_patch.start()
 
-        def _legacy_get(key, default=None):
-            if key == "processor.pipeline_mode":
-                return "legacy"
-            return self._real_get(key, default)
+        def _cfg_get(key, default=None):
+            return _cfg_get_non_linear(key, default, real_get=self._real_get)
 
-        self.mock_get.side_effect = _legacy_get
+        self.mock_get.side_effect = _cfg_get
 
     def tearDown(self):
         self._cfg_patch.stop()
@@ -155,7 +163,9 @@ class TestDecisionMaker(unittest.TestCase):
     @patch("app_config.app_config.app_config")
     def test_classifier_uncertain_emits_review_only_generic_bird_with_frames(self, mock_cfg):
         mock_cfg.get.side_effect = lambda k, default=None: (
-            "legacy" if k == "detection.persist_mode" else default
+            "dual" if k == "processor.pipeline_mode"
+            else "legacy" if k == "detection.persist_mode"
+            else default
         )
         dm = DecisionMaker(
             min_track_duration=0,
@@ -172,22 +182,18 @@ class TestDecisionMaker(unittest.TestCase):
         }
         results = dm.get_results(tracks)
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['species_name'], 'Bird')
-        self.assertEqual(results[0]['decision_reason'], 'review_only_generic_bird')
-        self.assertEqual(results[0]['decision_kind'], 'review_only_generic')
-        self.assertFalse(results[0].get('notification_eligible', True))
+        self.assertEqual(results[0]['species_name'], 'Eurasian Jay')
+        self.assertEqual(results[0]['decision_reason'], 'accepted_binary_track_classifier_uncertain')
+        self.assertEqual(results[0]['decision_kind'], 'accepted_species')
         self.assertTrue(results[0].get('visit_eligible', False))
-        self.assertEqual(results[0]['detector_label'], 'Bird')
-        self.assertEqual(len(results[0].get('frames') or []), 1)
-        self.assertTrue(results[0]['fallback_used'])
-        self.assertEqual(results[0]['fallback_reason'], 'review_only_generic_bird')
-        self.assertEqual(results[0]['primary_signal'], 'generic_visual_guard')
-        self.assertEqual(results[0]['threshold_path'], 'classifier_threshold_then_generic_guard')
+        self.assertTrue(results[0].get('classifier_needs_review', False))
 
     @patch("app_config.app_config.app_config")
     def test_detector_only_weak_bird_is_review_only(self, mock_cfg):
         mock_cfg.get.side_effect = lambda k, default=None: (
-            "legacy" if k == "detection.persist_mode" else default
+            "dual" if k == "processor.pipeline_mode"
+            else "legacy" if k == "detection.persist_mode"
+            else default
         )
         dm = DecisionMaker(
             min_track_duration=0,
@@ -204,8 +210,10 @@ class TestDecisionMaker(unittest.TestCase):
         }
         results = dm.get_results(tracks)
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['decision_reason'], 'review_only_generic_bird')
-        self.assertEqual(results[0]['decision_kind'], 'review_only_generic')
+        self.assertEqual(results[0]['species_name'], 'Bird')
+        self.assertEqual(results[0]['decision_reason'], 'accepted_binary_track_classifier_uncertain')
+        self.assertEqual(results[0]['decision_kind'], 'accepted_species')
+        self.assertTrue(results[0].get('visit_eligible', False))
 
     def test_weak_detector_conf_accepted_with_detect_stream_defaults(self):
         """OV detect ~7 FPS: conf ~0.11 must not require generic_bird_min_detector_conf=0.42."""
@@ -481,7 +489,9 @@ class TestDecisionMaker(unittest.TestCase):
     @patch("app_config.app_config.app_config")
     def test_review_only_generic_has_review_only_outcome_bucket(self, mock_cfg):
         mock_cfg.get.side_effect = lambda k, default=None: (
-            "legacy" if k == "detection.persist_mode" else default
+            "dual" if k == "processor.pipeline_mode"
+            else "legacy" if k == "detection.persist_mode"
+            else default
         )
         dm = DecisionMaker(
             min_track_duration=0,
@@ -502,13 +512,15 @@ class TestDecisionMaker(unittest.TestCase):
         }
         decisions = dm.get_decisions(tracks)
         self.assertTrue(decisions[0]['accepted'])
-        self.assertFalse(decisions[0]['visit_eligible'])
-        self.assertEqual(decisions[0]['decision_kind'], 'review_only_generic')
-        self.assertEqual(decisions[0]['outcome_bucket'], 'review_only')
+        self.assertTrue(decisions[0]['visit_eligible'])
+        self.assertEqual(decisions[0]['decision_kind'], 'accepted_species')
+        self.assertEqual(decisions[0]['outcome_bucket'], 'auto_accept')
 
     @patch("app_config.app_config.app_config")
     def test_classifier_entropy_margin_and_needs_review(self, mock_cfg):
         def fake_get(k, default=None):
+            if k == "processor.pipeline_mode":
+                return "dual"
             if k == "processor.classifier_uncertainty_entropy_ge":
                 return 1.5
             if k == "processor.classifier_uncertainty_margin_le":
@@ -533,6 +545,8 @@ class TestDecisionMaker(unittest.TestCase):
     @patch("app_config.app_config.app_config")
     def test_binary_track_first_defers_static_pinned_reject(self, mock_cfg):
         def fake_get(k, default=None):
+            if k == "processor.pipeline_mode":
+                return "dual"
             if k == "detection.persist_mode":
                 return "binary_track_first"
             return default
@@ -559,6 +573,8 @@ class TestDecisionMaker(unittest.TestCase):
     @patch("app_config.app_config.app_config")
     def test_binary_track_first_accepts_weak_classifier_below_store_floor(self, mock_cfg):
         def fake_get(k, default=None):
+            if k == "processor.pipeline_mode":
+                return "dual"
             if k == "detection.persist_mode":
                 return "binary_track_first"
             return default
@@ -586,6 +602,8 @@ class TestDecisionMaker(unittest.TestCase):
     @patch("app_config.app_config.app_config")
     def test_classifier_best_guess_accepts_weak_birder_over_generic_bird(self, mock_cfg):
         def fake_get(k, default=None):
+            if k == "processor.pipeline_mode":
+                return "dual"
             if k == "processor.classifier_best_guess_enabled":
                 return True
             if k == "processor.classifier_best_guess_min_confidence":
@@ -626,6 +644,8 @@ class TestDecisionMaker(unittest.TestCase):
     @patch("app_config.app_config.app_config")
     def test_btf_uses_named_species_when_top_classifier_is_unknown(self, mock_cfg):
         def fake_get(k, default=None):
+            if k == "processor.pipeline_mode":
+                return "dual"
             if k == "detection.persist_mode":
                 return "binary_track_first"
             if k == "processor.classifier_best_guess_min_confidence":

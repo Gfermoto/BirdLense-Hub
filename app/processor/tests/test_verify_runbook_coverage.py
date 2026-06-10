@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -34,7 +35,7 @@ def test_report_ok_when_coverage_and_cadence_satisfied():
                 }
             ]
         },
-        validation_history=[{"checked_at": "2026-05-31T00:00:00Z"}],
+        validation_history=[{"checked_at": (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")}],
         min_cycles_per_week=1,
     )
     assert report["ok"] is True

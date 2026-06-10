@@ -229,6 +229,9 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
 
         src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
         src.logger = _Log()
+        src._read_lock = threading.Lock()
+        src._record_cap = None
+        src._reconnect_capture_if_url_changed = lambda: None
         src.stream_url = "rtsp://example/stream"
         src._encoding_mode = "intel"
         src._record_with_vaapi = False
@@ -283,6 +286,9 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
 
         src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
         src.logger = _Logger()
+        src._read_lock = threading.Lock()
+        src._record_cap = None
+        src._reconnect_capture_if_url_changed = lambda: None
         src._ffmpeg_process = _FakeProc()
         src._recording_used_vaapi = True
         src._vaapi_record_available = True
@@ -315,6 +321,9 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
 
         src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
         src.logger = _Logger()
+        src._read_lock = threading.Lock()
+        src._record_cap = None
+        src._reconnect_capture_if_url_changed = lambda: None
         src._ffmpeg_process = _FakeProc(
             rc=255,
             stderr=b"Exiting normally, received signal 15.\n",
