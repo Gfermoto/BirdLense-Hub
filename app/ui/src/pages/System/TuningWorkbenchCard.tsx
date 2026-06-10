@@ -21,7 +21,10 @@ import {
 } from '../../api/systemAuditMetrics';
 import { queryKeys } from '../../api/queryKeys';
 import { SystemCardShell } from './SystemCardShell';
-import { CAMERA_TUNING_FIELD_DEFS } from '../Settings/shared/cameraTuningFields';
+import {
+  CAMERA_TUNING_FIELD_DEFS,
+  cameraTuningRoleLabelKey,
+} from '../Settings/shared/cameraTuningFields';
 
 type CameraOverrideDraft = Record<string, string>;
 
@@ -182,7 +185,12 @@ export function TuningWorkbenchCard() {
           <Stack spacing={1}>
             {activeCamera?.tuning_role ? (
               <Typography variant="caption" color="text.secondary">
-                role={activeCamera.tuning_role}
+                {t('settings.cameraTuningRole')}:{' '}
+                {(() => {
+                  const role = String(activeCamera.tuning_role);
+                  const labelKey = cameraTuningRoleLabelKey(role);
+                  return labelKey ? t(labelKey) : role;
+                })()}
               </Typography>
             ) : null}
             <Typography variant="body2" color="text.secondary">

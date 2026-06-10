@@ -125,3 +125,12 @@ export const CAMERA_TUNING_FIELD_DEFS: CameraTuningFieldDef[] = [
 
 export const CAMERA_TUNING_ROLES = ['feeder_close', 'feeder_far', 'custom'] as const;
 export type CameraTuningRole = (typeof CAMERA_TUNING_ROLES)[number];
+
+const TRANSLATABLE_CAMERA_TUNING_ROLES = new Set<string>(['feeder_close', 'feeder_far']);
+
+/** i18n key under settings.* for known tuning roles; null = show raw role id. */
+export function cameraTuningRoleLabelKey(role: string): string | null {
+  const trimmed = role.trim();
+  if (!trimmed || !TRANSLATABLE_CAMERA_TUNING_ROLES.has(trimmed)) return null;
+  return `settings.cameraTuningRole_${trimmed}`;
+}
