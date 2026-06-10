@@ -1,16 +1,11 @@
-import axios from 'axios';
 import type { components } from '../generated/openapi-types';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, apiFetch } from './client';
 
 /** Ответ `GET /system/config-audit` (см. OpenAPI `ConfigAuditResponse`). */
 export type ConfigAudit = components['schemas']['ConfigAuditResponse'];
 
-export const fetchConfigAudit = async (): Promise<ConfigAudit> => {
-  const response = await axios.get(`${BASE_API_URL}/system/config-audit`, {
-    withCredentials: true,
-  });
-  return response.data;
-};
+export const fetchConfigAudit = async (): Promise<ConfigAudit> =>
+  apiFetch(`${BASE_API_URL}/system/config-audit`);
 
 export type TuningEstimate = {
   estimated_recall: number;
@@ -71,44 +66,34 @@ export type TuningWorkbenchPayload = {
   } | null;
 };
 
-export const fetchTuningWorkbench = async (): Promise<TuningWorkbenchPayload> => {
-  const response = await axios.get(`${BASE_API_URL}/system/tuning-workbench`, {
-    withCredentials: true,
-  });
-  return response.data;
-};
+export const fetchTuningWorkbench = async (): Promise<TuningWorkbenchPayload> =>
+  apiFetch(`${BASE_API_URL}/system/tuning-workbench`);
 
 export const applyTuningPreset = async (
   presetId: string,
-): Promise<Record<string, unknown>> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/system/tuning-workbench/apply-preset`,
-    { preset_id: presetId },
-    { withCredentials: true },
-  );
-  return response.data;
-};
+): Promise<Record<string, unknown>> =>
+  apiFetch(`${BASE_API_URL}/system/tuning-workbench/apply-preset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ preset_id: presetId }),
+  });
 
 export const saveCameraTuningProfile = async (
   cameraId: string,
   overrides: Record<string, unknown>,
-): Promise<Record<string, unknown>> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/system/tuning-workbench/camera-profile`,
-    { camera_id: cameraId, overrides },
-    { withCredentials: true },
-  );
-  return response.data;
-};
+): Promise<Record<string, unknown>> =>
+  apiFetch(`${BASE_API_URL}/system/tuning-workbench/camera-profile`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ camera_id: cameraId, overrides }),
+  });
 
-export const rollbackTuningProfile = async (): Promise<Record<string, unknown>> => {
-  const response = await axios.post(
-    `${BASE_API_URL}/system/tuning-workbench/rollback`,
-    {},
-    { withCredentials: true },
-  );
-  return response.data;
-};
+export const rollbackTuningProfile = async (): Promise<Record<string, unknown>> =>
+  apiFetch(`${BASE_API_URL}/system/tuning-workbench/rollback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
 
 export type ObservabilityPayload = {
   notify_preview_generated_24h: Record<string, number>;
@@ -163,19 +148,12 @@ export type ProcessorBackpressurePayload = {
   snapshot_stale?: boolean | null;
 };
 
-export const fetchProcessorBackpressure = async (): Promise<ProcessorBackpressurePayload> => {
-  const response = await axios.get(`${BASE_API_URL}/system/diagnostics/backpressure`, {
-    withCredentials: true,
-  });
-  return response.data;
-};
+export const fetchProcessorBackpressure =
+  async (): Promise<ProcessorBackpressurePayload> =>
+    apiFetch(`${BASE_API_URL}/system/diagnostics/backpressure`);
 
-export const fetchObservability = async (): Promise<ObservabilityPayload> => {
-  const response = await axios.get(`${BASE_API_URL}/system/observability`, {
-    withCredentials: true,
-  });
-  return response.data;
-};
+export const fetchObservability = async (): Promise<ObservabilityPayload> =>
+  apiFetch(`${BASE_API_URL}/system/observability`);
 
 export type MlRuntimeStatus = {
   schema: string;
@@ -195,12 +173,8 @@ export type MlRuntimeStatus = {
   };
 };
 
-export const fetchMlRuntimeStatus = async (): Promise<MlRuntimeStatus> => {
-  const response = await axios.get(`${BASE_API_URL}/system/ml-runtime`, {
-    withCredentials: true,
-  });
-  return response.data;
-};
+export const fetchMlRuntimeStatus = async (): Promise<MlRuntimeStatus> =>
+  apiFetch(`${BASE_API_URL}/system/ml-runtime`);
 
 export type DatasetStreamSummary = {
   stream: string;
@@ -234,12 +208,8 @@ export type DatasetStreamsSummaryResponse = {
 };
 
 export const fetchDatasetStreamsSummary =
-  async (): Promise<DatasetStreamsSummaryResponse> => {
-    const response = await axios.get(`${BASE_API_URL}/system/dataset-streams`, {
-      withCredentials: true,
-    });
-    return response.data;
-  };
+  async (): Promise<DatasetStreamsSummaryResponse> =>
+    apiFetch(`${BASE_API_URL}/system/dataset-streams`);
 
 export type FeedbackLoopStatus = {
   schema: string;
@@ -256,12 +226,8 @@ export type FeedbackLoopStatus = {
   } | null;
 };
 
-export const fetchFeedbackLoopStatus = async (): Promise<FeedbackLoopStatus> => {
-  const response = await axios.get(`${BASE_API_URL}/system/feedback-loop/status`, {
-    withCredentials: true,
-  });
-  return response.data;
-};
+export const fetchFeedbackLoopStatus = async (): Promise<FeedbackLoopStatus> =>
+  apiFetch(`${BASE_API_URL}/system/feedback-loop/status`);
 
 export type ClassifierCalibrationReport = {
   schema: string;
@@ -282,19 +248,17 @@ export type ClassifierCalibrationReport = {
 export const fetchClassifierCalibrationReport = async (
   pairLimit = 15,
 ): Promise<ClassifierCalibrationReport> => {
-  const response = await axios.get(
-    `${BASE_API_URL}/system/classifier-calibration-report`,
-    {
-      params: { pair_limit: pairLimit },
-      withCredentials: true,
-    },
+  const q = new URLSearchParams({ pair_limit: String(pairLimit) });
+  return apiFetch(
+    `${BASE_API_URL}/system/classifier-calibration-report?${q}`,
   );
-  return response.data;
 };
 
 export const trackSiteVisitor = async (browserId: string): Promise<void> => {
-  await axios.post(`${BASE_API_URL}/system/visitors/track`, {
-    browser_id: browserId,
+  await apiFetch(`${BASE_API_URL}/system/visitors/track`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ browser_id: browserId }),
   });
 };
 
@@ -330,28 +294,25 @@ export type SystemVisitorStats = {
   method: string;
 };
 
-export const fetchSystemMetricsLive = async (): Promise<SystemMetricsLive> => {
-  const response = await axios.get(`${BASE_API_URL}/system/metrics`);
-  return response.data;
-};
+export const fetchSystemMetricsLive = async (): Promise<SystemMetricsLive> =>
+  apiFetch(`${BASE_API_URL}/system/metrics`);
 
 export const fetchSystemMetricsHistory = async (
   hours: number,
   maxPoints = 500,
 ): Promise<SystemMetricsHistoryResponse> => {
-  const response = await axios.get(`${BASE_API_URL}/system/metrics/history`, {
-    params: { hours, max_points: maxPoints },
+  const q = new URLSearchParams({
+    hours: String(hours),
+    max_points: String(maxPoints),
   });
-  return response.data;
+  return apiFetch(`${BASE_API_URL}/system/metrics/history?${q}`);
 };
 
 export const fetchSystemVisitors = async (
   days: number,
 ): Promise<SystemVisitorStats> => {
-  const response = await axios.get(`${BASE_API_URL}/system/visitors`, {
-    params: { days },
-  });
-  return response.data;
+  const q = new URLSearchParams({ days: String(days) });
+  return apiFetch(`${BASE_API_URL}/system/visitors?${q}`);
 };
 
 export type ProcessorLogsResponse = {
@@ -362,11 +323,8 @@ export type ProcessorLogsResponse = {
 export const fetchProcessorLogs = async (
   lines: number,
 ): Promise<ProcessorLogsResponse> => {
-  const response = await axios.get(`${BASE_API_URL}/system/logs`, {
-    params: { lines },
-    withCredentials: true,
-  });
-  return response.data;
+  const q = new URLSearchParams({ lines: String(lines) });
+  return apiFetch(`${BASE_API_URL}/system/logs?${q}`);
 };
 
 export type QualityTimeseriesBucket = {
@@ -413,21 +371,15 @@ export type QualityHealthResponse = {
 export const fetchQualityTimeseries = async (
   bucket: 'hour' | 'day' = 'hour',
 ): Promise<QualityTimeseriesResponse> => {
-  const response = await axios.get(`${BASE_API_URL}/analytics/visits-timeseries`, {
-    params: { bucket },
-    withCredentials: true,
-  });
-  return response.data;
+  const q = new URLSearchParams({ bucket });
+  return apiFetch(`${BASE_API_URL}/analytics/visits-timeseries?${q}`);
 };
 
 export const fetchQualityHealth = async (
   hours = 24,
 ): Promise<QualityHealthResponse> => {
-  const response = await axios.get(`${BASE_API_URL}/analytics/quality-health`, {
-    params: { hours },
-    withCredentials: true,
-  });
-  return response.data;
+  const q = new URLSearchParams({ hours: String(hours) });
+  return apiFetch(`${BASE_API_URL}/analytics/quality-health?${q}`);
 };
 
 export type YoloDetectorHealthStatus = 'healthy' | 'degraded' | 'blind';
@@ -486,19 +438,13 @@ export interface TriggerGraphResponse {
 }
 
 export const fetchTriggerGraph = async (hours = 24): Promise<TriggerGraphResponse> => {
-  const response = await axios.get(`${BASE_API_URL}/analytics/trigger-graph`, {
-    params: { hours },
-    withCredentials: true,
-  });
-  return response.data;
+  const q = new URLSearchParams({ hours: String(hours) });
+  return apiFetch(`${BASE_API_URL}/analytics/trigger-graph?${q}`);
 };
 
 export const fetchYoloDetectorHealth = async (
   hours = 24,
 ): Promise<YoloDetectorHealthResponse> => {
-  const response = await axios.get(`${BASE_API_URL}/system/yolo-detector-health`, {
-    params: { hours },
-    withCredentials: true,
-  });
-  return response.data;
+  const q = new URLSearchParams({ hours: String(hours) });
+  return apiFetch(`${BASE_API_URL}/system/yolo-detector-health?${q}`);
 };
