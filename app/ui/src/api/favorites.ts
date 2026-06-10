@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, apiFetch } from './client';
 
 export type FavoriteVideoSpecies = {
   id: number;
@@ -50,7 +49,5 @@ export type FavoritesBySpeciesPayload = {
 };
 
 export const fetchFavoritesBySpecies =
-  async (): Promise<FavoritesBySpeciesPayload> => {
-    const response = await axios.get(`${BASE_API_URL}/favorites/by-species`);
-    return response.data;
-  };
+  async (): Promise<FavoritesBySpeciesPayload> =>
+    apiFetch(`${BASE_API_URL}/favorites/by-species`);
