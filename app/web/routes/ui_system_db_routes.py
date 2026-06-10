@@ -136,21 +136,7 @@ def register_ui_system_db_routes(app):
         """Get retention configuration and last run stats."""
         from app_config.app_config import app_config as cfg
 
-        rc = cfg.get("retention", {})
-        # safe public values
-        safe = {
-            "mode": rc.get("mode", "cascade"),
-            "days": rc.get("days"),
-            "max_gb": rc.get("max_gb"),
-            "dataset_max_age_days": rc.get("dataset_max_age_days", 0),
-            "migration_max_age_days": rc.get("migration_max_age_days", 0),
-            "protect_favorites": rc.get("protect_favorites", True),
-            "min_age_hours": rc.get("min_age_hours", 1),
-            "batch_size": rc.get("batch_size", 50),
-            "max_deletes_per_run": rc.get("max_deletes_per_run", 500),
-            "auto_run_enabled": rc.get("auto_run_enabled", False),
-            "auto_run_interval_hours": rc.get("auto_run_interval_hours", 6),
-        }
+        safe = cfg.build_retention_safe_public_config()
         # add last-run metrics
         try:
             from services.retention_service import _fetch_metrics

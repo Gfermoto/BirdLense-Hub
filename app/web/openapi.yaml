@@ -4497,8 +4497,10 @@ components:
           type: integer
         auto_run_enabled:
           type: boolean
+          description: Scheduled retention auto-run; default false in default_config.yaml (distinct from reconcile.auto_run_enabled).
         auto_run_interval_hours:
           type: integer
+          description: Hours between scheduled retention checks when auto_run_enabled is true; default 6.
         last_run:
           type: string
           format: date-time
