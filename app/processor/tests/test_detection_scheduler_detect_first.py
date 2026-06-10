@@ -60,8 +60,8 @@ class TestDetectFirstSchedulerHelpers(unittest.TestCase):
         self.assertEqual(resolve_detect_first_confirm_min_hits(cfg, cam), 1)
         self.assertEqual(resolve_detect_first_confirm_min_hits(cfg, {}), 2)
 
-    def test_raw_boxes_alone_do_not_count_as_hit(self):
-        self.assertFalse(
+    def test_raw_boxes_count_as_detect_first_hit(self):
+        self.assertTrue(
             frame_counts_as_detect_first_hit(
                 {"yolo_raw_boxes": 2, "yolo_track_found": False, "result_count": 0},
             ),

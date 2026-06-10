@@ -60,12 +60,23 @@ class TestLetterboxBGR(unittest.TestCase):
         }
         self.assertEqual(resolve_binary_track_imgsz(frame, cfg), [576, 704])
 
-    def test_resolve_binary_track_imgsz_openvino_square_only(self):
+    def test_resolve_binary_track_imgsz_openvino_native_lores(self):
         frame = np.zeros((576, 704, 3), dtype=np.uint8)
         cfg = {
             "processor.inference_lores_wh": [704, 576],
             "processor.binary_imgsz": 704,
             "processor.inference_backend": "openvino",
+            "processor.openvino_native_lores_imgsz": True,
+        }
+        self.assertEqual(resolve_binary_track_imgsz(frame, cfg), [576, 704])
+
+    def test_resolve_binary_track_imgsz_openvino_square_when_disabled(self):
+        frame = np.zeros((576, 704, 3), dtype=np.uint8)
+        cfg = {
+            "processor.inference_lores_wh": [704, 576],
+            "processor.binary_imgsz": 704,
+            "processor.inference_backend": "openvino",
+            "processor.openvino_native_lores_imgsz": False,
         }
         self.assertEqual(resolve_binary_track_imgsz(frame, cfg), 704)
 

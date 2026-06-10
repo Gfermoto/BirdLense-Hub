@@ -409,6 +409,12 @@ processor:
   min_center_dist: 0.01
   # Trapper OpenVINO: экспорт imgsz=704 (max side detect 704×576). IR = 704×704 letterbox внутри YOLO.
   binary_imgsz: 704
+  # OpenVINO on native 704×576 lores: use [H,W] imgsz (not square 704²) when frame matches inference_lores_wh.
+  openvino_native_lores_imgsz: true
+  # ByteTrack merge across distant zones → bad crops; split before classify/finalize (incident a656199a).
+  track_spatial_split_enabled: true
+  track_spatial_split_max_center_jump_norm: 0.18
+  track_spatial_split_min_segment_frames: 2
   # NMS в Ultralytics track(): выше — мягче подавление частично перекрывающихся боксов (плотная кормушка).
   binary_track_iou: 0.62
   # Потолок детекций на кадр (по умолчанию у YOLO часто 300).
@@ -447,7 +453,11 @@ processor:
   # Новые инсталляции без ручного BirdBox/Forest — feeder_close / feeder_far.
   camera_tuning_by_role:
     feeder_close:
+      detect_use_native_resolution: true
+      light_gate_min_brightness: 8
+      light_gate_min_contrast: 6
       detect_first_confirm_min_track_seconds: 0.35
+      detect_first_confirm_min_hits: 1
       min_confidence_binary: 0.08
       min_confidence_binary_bird: 0.06
       min_confidence_to_process: 0.08
