@@ -226,7 +226,8 @@ def evaluate(
                     payload = parsed
             except json.JSONDecodeError:
                 payload = {}
-        if _session_fp_empty_recording(payload):
+        is_fp_empty = _session_fp_empty_recording(payload)
+        if is_fp_empty:
             sessions_fp_empty_recording += 1
         if frigate_only > 0 and yolo_raw_total == 0:
             frigate_catches_missed_birds_sessions += 1
@@ -248,22 +249,23 @@ def evaluate(
                 reason_counts.get("empty_bbox_frames")
             )
 
-        latency_from_columns = _safe_float(
-            row["trigger_to_first_bbox_latency_s"]
-        )
-        if latency_from_columns > 0:
-            latency_samples.append(latency_from_columns)
-        else:
-            for key in (
-                "trigger_to_first_bbox_latency_s",
-                "first_bbox_latency_s",
-                "first_track_latency_s",
-            ):
-                if key in payload:
-                    latency = _safe_float(payload.get(key))
-                    if latency > 0:
-                        latency_samples.append(latency)
-                    break
+        if not is_fp_empty:
+            latency_from_columns = _safe_float(
+                row["trigger_to_first_bbox_latency_s"]
+            )
+            if latency_from_columns > 0:
+                latency_samples.append(latency_from_columns)
+            else:
+                for key in (
+                    "trigger_to_first_bbox_latency_s",
+                    "first_bbox_latency_s",
+                    "first_track_latency_s",
+                ):
+                    if key in payload:
+                        latency = _safe_float(payload.get(key))
+                        if latency > 0:
+                            latency_samples.append(latency)
+                        break
         finalize_duration_ms = _safe_float(row["finalize_duration_ms"])
         if finalize_duration_ms > 0:
             finalize_duration_samples.append(finalize_duration_ms)
