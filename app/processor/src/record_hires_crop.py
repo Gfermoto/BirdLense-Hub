@@ -192,8 +192,11 @@ def pick_bbox_and_timestamp(
         t = _apply_record_offset(float(best_kf.get("t") or _pick_timestamp()))
         if bbox is not None:
             return bbox, float(t)
+        if require_best_keyframe and isinstance(key_frames, list) and key_frames:
+            return None, float(t)
 
-    if require_best_keyframe:
+    # key_frames may be stripped from notify payload (key_frame_count only); use frames.
+    if require_best_keyframe and isinstance(key_frames, list) and key_frames:
         return None, float(_pick_timestamp())
 
     frames = detection.get("frames") or []
@@ -306,14 +309,14 @@ def read_record_hires_crop(
         crop_hw = (int(frame.shape[0]), int(frame.shape[1]))
         if not (isinstance(bbox, (list, tuple)) and len(bbox) == 4):
             logger.info(
-                "record_hires: no bbox, returning full frame path=%s ts=%.3f camera=%s shape=%sx%s",
+                "record_hires: no bbox, skip full-frame fallback path=%s ts=%.3f camera=%s shape=%sx%s",
                 video_path,
                 ts,
                 cam or "?",
                 crop_hw[0],
                 crop_hw[1],
             )
-            return frame
+            return None
         bbox_list = [float(v) for v in bbox]
         det_hw, overlay_hw, playback_hw = resolve_record_crop_geometry(
             detection,
