@@ -333,7 +333,8 @@ def build_readiness_payload(session) -> tuple[dict[str, object], int]:
         funnel_status=funnel_status,
         heartbeat_data=heartbeat_data,
     )
-    if not funnel_ok or str(checks["yolo_detector"].get("status") or "") in ("error", "degraded"):
+    # Historical funnel degradation → quality_ready only; core `ready` stays for deploy/bootstrap.
+    if str(checks["yolo_detector"].get("status") or "") in ("error", "degraded"):
         ready = False
 
     payload = {
