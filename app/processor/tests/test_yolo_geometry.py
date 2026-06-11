@@ -106,6 +106,24 @@ class TestLetterboxBGR(unittest.TestCase):
         }
         self.assertEqual(resolve_binary_track_imgsz(frame, cfg), 704)
 
+    def test_openvino_square_letterbox_overrides_native_detect_resolution(self):
+        from pipeline_config import resolve_openvino_square_letterbox_wh
+
+        here = os.path.dirname(os.path.abspath(__file__))
+        proc_root = os.path.abspath(os.path.join(here, ".."))
+        ov_rel = "models/detection/weights/trapper_ai_v02_2024_openvino_model"
+        if not os.path.isdir(os.path.join(proc_root, ov_rel)):
+            self.skipTest("trapper openvino bundle missing")
+        cfg = {
+            "processor": {
+                "inference_backend": "openvino",
+                "detect_use_native_resolution": True,
+                "models": {"binary_openvino": ov_rel},
+                "binary_imgsz": 704,
+            }
+        }
+        self.assertEqual(resolve_openvino_square_letterbox_wh(cfg), (704, 704))
+
     def test_map_norm_bbox_between_detect_and_playback_shapes(self):
         src_bbox = [0.2, 0.2, 0.5, 0.6]
         mapped = map_norm_bbox_xyxy_between_frame_shapes(

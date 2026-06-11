@@ -78,6 +78,34 @@ def resolve_binary_model_imgsz(
     return max(320, int(default))
 
 
+def resolve_openvino_square_letterbox_wh(runtime_cfg: Mapping[str, Any]) -> LoResSize | None:
+    """Square letterbox canvas when OpenVINO IR expects square input (Trapper 704²).
+
+    Overrides ``detect_use_native_resolution`` so detector tensor shape matches IR/imgsz
+    and bbox roundtrip gates stay consistent.
+    """
+    backend = str(_cfg_get(runtime_cfg, "processor.inference_backend") or "torch").strip().lower()
+    if backend != "openvino":
+        return None
+    ov_rel = str(_cfg_get(runtime_cfg, "processor.models.binary_openvino") or "").strip()
+    if not ov_rel:
+        return None
+    from inference.binary_paths import (
+        openvino_expected_input_size,
+        processor_package_root,
+        resolve_relative_to_processor_root,
+    )
+
+    ov_abs = resolve_relative_to_processor_root(ov_rel, processor_package_root())
+    expected = openvino_expected_input_size(ov_abs)
+    if expected is not None:
+        return (int(expected), int(expected))
+    if not _parse_bool(runtime_cfg, "processor.openvino_native_lores_imgsz", True):
+        side = resolve_binary_model_imgsz(runtime_cfg)
+        return (side, side)
+    return None
+
+
 def resolve_detector_letterbox_wh(
     runtime_cfg: Mapping[str, Any],
     frame_shape: tuple[int, int] | None = None,
@@ -87,10 +115,14 @@ def resolve_detector_letterbox_wh(
     """
     Target WxH for letterbox before YOLO, or None to use frame as-is.
 
-    Priority: ``detect_use_native_resolution`` → None;
+    Priority: OpenVINO square IR → export imgsz;
+    ``detect_use_native_resolution`` → None;
     else ``inference_lores_wh`` / ``inference_lores_px``;
     else frame / stream probe (not global record resolution).
     """
+    ov_wh = resolve_openvino_square_letterbox_wh(runtime_cfg)
+    if ov_wh is not None:
+        return ov_wh
     if detect_use_native_resolution(runtime_cfg):
         return None
     wh = parse_inference_lores_wh(_cfg_get(runtime_cfg, "processor.inference_lores_wh"))
