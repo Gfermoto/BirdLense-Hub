@@ -134,13 +134,18 @@ def _openvino_binary_bird_threshold_override(
     *,
     inference_backend: str | None,
 ) -> float:
-    """При ``openvino`` и непустом ``processor.openvino_min_confidence_binary_bird`` — заменить порог Bird."""
+    """OpenVINO Bird floor: min(role/camera bird_m, global openvino cap).
+
+    Role presets (e.g. feeder_far) may set a lower bird_m for weak distant boxes; the global
+  ``openvino_min_confidence_binary_bird`` must not raise that floor above the role value.
+    """
     if (inference_backend or "").strip().lower() != "openvino":
         return bird_m
     ov = _parse_optional_processor_float(config, "processor.openvino_min_confidence_binary_bird")
     if ov is None:
         return bird_m
-    return max(0.001, min(0.99, float(ov)))
+    ov = max(0.001, min(0.99, float(ov)))
+    return min(float(bird_m), ov)
 
 
 def openvino_binary_bird_score_scale(config: Mapping[str, Any], *, inference_backend: str | None) -> float:

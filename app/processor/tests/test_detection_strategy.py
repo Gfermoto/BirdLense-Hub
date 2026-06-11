@@ -827,6 +827,19 @@ class TestBinaryConfHelpers(unittest.TestCase):
         )
         self.assertAlmostEqual(per_label_binary_conf_threshold("Bird", 0.3, cfg, inference_backend="torch"), 0.5)
 
+    def test_openvino_bird_threshold_respects_lower_role_preset(self):
+        """feeder_far role (0.08) must not be raised by global openvino_min (0.12)."""
+        if per_label_binary_conf_threshold is None:
+            self.skipTest("detection_strategy import failed")
+        cfg = {
+            "processor.min_confidence_binary_bird": 0.08,
+            "processor.openvino_min_confidence_binary_bird": 0.12,
+        }
+        self.assertAlmostEqual(
+            per_label_binary_conf_threshold("Bird", 0.12, cfg, inference_backend="openvino"),
+            0.08,
+        )
+
     def test_openvino_bird_score_scale_helper(self):
         if openvino_binary_bird_score_scale is None:
             self.skipTest("detection_strategy import failed")
