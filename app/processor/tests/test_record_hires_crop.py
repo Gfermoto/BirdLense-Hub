@@ -35,7 +35,8 @@ def test_enrichment_crop_require_keyframe_default_linear():
     )
 
 
-def test_pick_bbox_rejects_blind_mid_frame_when_keyframe_required():
+def test_pick_bbox_uses_frames_when_keyframes_stripped_from_notify_payload():
+    """Notify payload keeps frames + key_frame_count but not key_frames array."""
     det = {
         "start_time": 1.0,
         "end_time": 3.0,
@@ -43,8 +44,20 @@ def test_pick_bbox_rejects_blind_mid_frame_when_keyframe_required():
         "key_frames": [],
     }
     bbox, ts = pick_bbox_and_timestamp(det, require_best_keyframe=True)
-    assert bbox is None
+    assert bbox == [0.1, 0.2, 0.3, 0.4]
     assert ts == 2.0
+
+
+def test_pick_bbox_rejects_blind_mid_frame_when_keyframes_present_but_invalid():
+    det = {
+        "start_time": 1.0,
+        "end_time": 3.0,
+        "frames": [{"t": 2.0, "bbox": [0.1, 0.2, 0.3, 0.4]}],
+        "key_frames": [{"t": 2.5, "score": 9.0}],
+    }
+    bbox, ts = pick_bbox_and_timestamp(det, require_best_keyframe=True)
+    assert bbox is None
+    assert ts == 2.5
 
 
 def test_pick_bbox_and_timestamp_uses_key_frame_bbox():
