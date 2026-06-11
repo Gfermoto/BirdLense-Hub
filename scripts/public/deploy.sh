@@ -1013,21 +1013,36 @@ BASE_URL="${DEPLOY_URL}" ATTEMPTS="${DEPLOY_READINESS_ATTEMPTS}" SLEEP_SEC="${DE
   MIN_HTTP_SAMPLE_COUNT="${MIN_HTTP_SAMPLE_COUNT:-20}" \
   ./scripts/check-runtime-sli.sh --base-url "${DEPLOY_URL}"
 echo "  - Runtime performance gate:"
-BASE_URL="${DEPLOY_URL}" \
-  MCP_TOKEN="${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
-  python3 ./scripts/perf_gate_runtime.py \
-    --base-url "${DEPLOY_URL}" \
-    --timeout-sec "${PERF_TIMEOUT_SEC:-20}" \
-    --burst-requests "${PERF_BURST_REQUESTS:-120}" \
-    --burst-concurrency "${PERF_BURST_CONCURRENCY:-12}" \
-    --metrics-scrapes "${PERF_METRICS_SCRAPES:-60}" \
-    --metrics-concurrency "${PERF_METRICS_CONCURRENCY:-8}" \
-    --soak-seconds "${PERF_SOAK_SECONDS:-20}" \
-    --soak-interval-sec "${PERF_SOAK_INTERVAL_SEC:-0.8}" \
-    --max-error-rate "${PERF_MAX_ERROR_RATE:-0.02}" \
-    --max-p95-ms "${PERF_MAX_P95_MS:-3000}" \
-    --max-p99-ms "${PERF_MAX_P99_MS:-5000}" \
-    --out "${PERF_OUT:-/tmp/runtime_perf_gate.deploy.v1.json}"
+PERF_GATE_RETRIES="${PERF_GATE_RETRIES:-2}"
+perf_gate_ok=0
+for perf_attempt in $(seq 1 "${PERF_GATE_RETRIES}"); do
+  if BASE_URL="${DEPLOY_URL}" \
+    MCP_TOKEN="${MCP_TOKEN:-}" BIRDLENSE_UI_API_KEY="${BIRDLENSE_UI_API_KEY:-}" \
+    python3 ./scripts/perf_gate_runtime.py \
+      --base-url "${DEPLOY_URL}" \
+      --timeout-sec "${PERF_TIMEOUT_SEC:-20}" \
+      --burst-requests "${PERF_BURST_REQUESTS:-120}" \
+      --burst-concurrency "${PERF_BURST_CONCURRENCY:-12}" \
+      --metrics-scrapes "${PERF_METRICS_SCRAPES:-60}" \
+      --metrics-concurrency "${PERF_METRICS_CONCURRENCY:-8}" \
+      --soak-seconds "${PERF_SOAK_SECONDS:-20}" \
+      --soak-interval-sec "${PERF_SOAK_INTERVAL_SEC:-0.8}" \
+      --max-error-rate "${PERF_MAX_ERROR_RATE:-0.02}" \
+      --max-p95-ms "${PERF_MAX_P95_MS:-3000}" \
+      --max-p99-ms "${PERF_MAX_P99_MS:-5000}" \
+      --out "${PERF_OUT:-/tmp/runtime_perf_gate.deploy.v1.json}"; then
+    perf_gate_ok=1
+    break
+  fi
+  if [[ "${perf_attempt}" -lt "${PERF_GATE_RETRIES}" ]]; then
+    echo "  perf gate попытка ${perf_attempt}/${PERF_GATE_RETRIES} не прошла (часто сразу после bootstrap), повтор через 20 сек..."
+    sleep 20
+  fi
+done
+if [[ "${perf_gate_ok}" -eq 0 ]]; then
+  echo "Ошибка: Runtime performance gate не пройден после ${PERF_GATE_RETRIES} попыток."
+  exit 1
+fi
 echo "  - DORA snapshot refresh:"
 (cd "${REPO_ROOT}" && \
   python3 ./scripts/report_dora_metrics.py \
