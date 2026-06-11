@@ -478,8 +478,17 @@ processor:
       track_static_reject_max_bbox_iou_first_last_min: 0.72
       scoring_moving_roi_min_motion_score: 0.30
     feeder_far:
+      # Distant / Forest-style: weak OpenVINO conf 0.04–0.12; must accept before ByteTrack IDs stabilize.
+      detect_use_native_resolution: false
+      min_confidence_binary: 0.06
+      min_confidence_binary_bird: 0.05
+      openvino_min_confidence_binary_bird: 0.05
+      min_confidence_to_process: 0.06
+      min_box_size_px: 8
+      min_center_dist: 0.01
+      max_box_area_norm: 0.92
+      track_to_predict_fallback_enabled: true
       min_track_duration: 0.5
-      min_confidence_binary_bird: 0.08
       detect_record_time_offset_sec: -0.12
       track_static_reject_enabled: false
       track_static_reject_max_center_dispersion_norm: 0.10
