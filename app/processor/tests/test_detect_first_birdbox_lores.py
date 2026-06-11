@@ -17,7 +17,7 @@ from frame_geometry import resolve_binary_track_imgsz  # noqa: E402
 
 
 class TestDetectFirstBirdBoxLores(unittest.TestCase):
-    def test_openvino_native_lores_imgsz_for_576x704(self):
+    def test_openvino_native_lores_imgsz_for_576x704_without_square_ir(self):
         frame = np.zeros((576, 704, 3), dtype=np.uint8)
         cfg = {
             "processor.inference_lores_wh": [704, 576],

@@ -70,6 +70,32 @@ class TestLetterboxBGR(unittest.TestCase):
         }
         self.assertEqual(resolve_binary_track_imgsz(frame, cfg), [576, 704])
 
+    def test_resolve_binary_track_imgsz_openvino_square_ir_overrides_native_lores(self):
+        import tempfile
+        import textwrap
+
+        frame = np.zeros((576, 704, 3), dtype=np.uint8)
+        cfg = {
+            "processor.inference_lores_wh": [704, 576],
+            "processor.binary_imgsz": 704,
+            "processor.inference_backend": "openvino",
+            "processor.openvino_native_lores_imgsz": True,
+        }
+        with tempfile.TemporaryDirectory() as td:
+            meta = textwrap.dedent(
+                """\
+                imgsz:
+                - 704
+                - 704
+                """
+            )
+            with open(f"{td}/metadata.yaml", "w", encoding="utf-8") as fh:
+                fh.write(meta)
+            self.assertEqual(
+                resolve_binary_track_imgsz(frame, cfg, binary_openvino_path=td),
+                704,
+            )
+
     def test_resolve_binary_track_imgsz_openvino_square_when_disabled(self):
         frame = np.zeros((576, 704, 3), dtype=np.uint8)
         cfg = {

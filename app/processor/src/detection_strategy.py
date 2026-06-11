@@ -695,6 +695,7 @@ class TwoStageStrategy(DetectionStrategy):
         self.max_classifications_per_frame = max(1, int(max_classifications_per_frame or 1))
         self.classification_scheduler = str(classification_scheduler or "priority").strip().lower()
         self.binary_imgsz = max(320, int(binary_imgsz or 320))
+        self._binary_model_path = str(binary_model_path or "").strip() or None
         from app_config.app_config import app_config
 
         self._roi_sr = build_roi_super_resolution(app_config)
@@ -1143,6 +1144,7 @@ class TwoStageStrategy(DetectionStrategy):
             default_square=int(
                 runtime_cfg.resolve_strategy_field("processor.binary_imgsz", self, "binary_imgsz", 320) or 320
             ),
+            binary_openvino_path=self._binary_model_path if inference_backend == "openvino" else None,
         )
         min_center_dist = float(
             runtime_cfg.resolve_strategy_field("processor.min_center_dist", self, "min_center_dist", 0.1) or 0.1
