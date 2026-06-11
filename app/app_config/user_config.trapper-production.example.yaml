@@ -12,7 +12,7 @@ processor:
   detector_native_class_labels: true
   binary_predict_class_allowlist: [0, 5]
   inference_lores_wh: [704, 576]
-  openvino_native_lores_imgsz: false
+  openvino_native_lores_imgsz: true
   binary_imgsz: 704
   openvino:
     profile: latency

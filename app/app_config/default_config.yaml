@@ -412,10 +412,10 @@ processor:
   # Центр bbox не ближе этого расстояния к краю кадра (норм. координаты 0..1).
   # Кормушка у кромки: 0.035–0.04; ещё ближе к краю — до 0.03.
   min_center_dist: 0.01
-  # Trapper OpenVINO: экспорт imgsz=704 (max side detect 704×576). IR = 704×704 letterbox внутри YOLO.
+  # Trapper OpenVINO: экспорт imgsz=704 (max side detect 704×576). IR = 704×704 — letterbox в Hub до track().
   binary_imgsz: 704
-  # Native [H,W] imgsz only for non-square OpenVINO IR. Square exports (Trapper 704²) need false or auto-fallback in code.
-  openvino_native_lores_imgsz: false
+  # true: [H,W] imgsz для прямоугольного IR; для квадратного Trapper 704² код авто-выбирает square imgsz + letterbox canvas.
+  openvino_native_lores_imgsz: true
   # ByteTrack merge across distant zones → bad crops; split before classify/finalize (incident a656199a).
   track_spatial_split_enabled: true
   track_spatial_split_max_center_jump_norm: 0.18
@@ -454,7 +454,8 @@ processor:
   # Новые инсталляции без ручного BirdBox/Forest — feeder_close / feeder_far.
   camera_tuning_by_role:
     feeder_close:
-      detect_use_native_resolution: true
+      # Frigate-style: явный detect substream inference_lores_wh [704,576], не «native без letterbox».
+      detect_use_native_resolution: false
       light_gate_min_brightness: 8
       light_gate_min_contrast: 6
       detect_first_confirm_min_track_seconds: 0.35

@@ -179,3 +179,59 @@ class TestLetterboxBGR(unittest.TestCase):
             to_shape_hw=(720, 1280),
         )
         self.assertEqual(tuple(src_bbox), mapped)
+
+    def test_birdbox_openvino_square_ir_full_pipeline(self):
+        """BirdBox prod path: detect 704×576 → letterbox 704² → imgsz 704 → remap 2688×1520."""
+        from detection_strategy import _storage_bbox_norm_for_overlay
+        from frame_geometry import (
+            letterbox_roundtrip_iou,
+            prepare_detector_pipeline_frame,
+        )
+
+        here = os.path.dirname(os.path.abspath(__file__))
+        proc_root = os.path.abspath(os.path.join(here, ".."))
+        ov_rel = "models/detection/weights/trapper_ai_v02_2024_openvino_model"
+        if not os.path.isdir(os.path.join(proc_root, ov_rel)):
+            self.skipTest("trapper openvino bundle missing")
+
+        frame = np.zeros((576, 704, 3), dtype=np.uint8)
+        cfg = {
+            "processor.inference_backend": "openvino",
+            "processor.models.binary_openvino": ov_rel,
+            "processor.binary_imgsz": 704,
+            "processor.inference_lores_wh": [704, 576],
+            "processor.openvino_native_lores_imgsz": True,
+            "processor.detect_use_native_resolution": False,
+        }
+        det, det_hw, overlay_hw, _meta = prepare_detector_pipeline_frame(frame, cfg)
+        self.assertEqual(det_hw, (704, 704))
+        self.assertEqual(overlay_hw, (576, 704))
+        self.assertEqual(det.shape[:2], det_hw)
+
+        imgsz = resolve_binary_track_imgsz(
+            det,
+            cfg,
+            inference_backend="openvino",
+            binary_openvino_path=ov_rel,
+        )
+        self.assertEqual(imgsz, 704)
+
+        bbox = (0.35, 0.35, 0.65, 0.65)
+        iou = letterbox_roundtrip_iou(
+            bbox,
+            source_shape_hw=overlay_hw,
+            letterbox_shape_hw=det_hw,
+        )
+        self.assertGreaterEqual(iou, 0.99)
+
+        stored = _storage_bbox_norm_for_overlay(
+            list(bbox),
+            detector_frame_shape=det_hw,
+            overlay_frame_shape=overlay_hw,
+            playback_frame_shape=(1520, 2688),
+        )
+        self.assertEqual(len(stored), 4)
+        self.assertGreater(stored[2], stored[0])
+        self.assertGreater(stored[3], stored[1])
+        self.assertGreaterEqual(stored[0], 0.0)
+        self.assertLessEqual(stored[2], 1.0)
