@@ -15,7 +15,7 @@ except ImportError:  # Python < 3.11
     UTC = timezone.utc  # type: ignore[misc,assignment]
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -40,6 +40,28 @@ def _safe_float(value: Any) -> float:
         return float(value or 0.0)
     except (TypeError, ValueError):
         return 0.0
+
+
+def _session_fp_empty_recording(payload: Mapping[str, Any]) -> bool:
+    """True when trigger_graph marks init_source as fp_empty_recording (#I9).
+
+    Those sessions legitimately have zero tracks; they must not deflate tracks_coverage.
+    """
+    tg = payload.get("trigger_graph")
+    if not isinstance(tg, dict):
+        return False
+    init_source = str(
+        tg.get("init_source") or payload.get("trigger_source") or ""
+    ).strip()
+    if not init_source:
+        return False
+    metrics_by_source = tg.get("metrics_by_source")
+    if not isinstance(metrics_by_source, dict):
+        return False
+    source_metrics = metrics_by_source.get(init_source)
+    if not isinstance(source_metrics, dict):
+        return False
+    return _safe_int(source_metrics.get("fp_empty_recording")) > 0
 
 
 def _load_rows(db_path: Path, lookback_hours: int) -> list[sqlite3.Row]:
@@ -165,6 +187,7 @@ def evaluate(
     sessions_total = len(rows)
     sessions_with_yolo = 0
     sessions_with_tracks = 0
+    sessions_fp_empty_recording = 0
     blind_confirmed = 0
     yolo_frames_with_tracks_sum = 0
     empty_bbox_rejections = 0
@@ -203,6 +226,8 @@ def evaluate(
                     payload = parsed
             except json.JSONDecodeError:
                 payload = {}
+        if _session_fp_empty_recording(payload):
+            sessions_fp_empty_recording += 1
         if frigate_only > 0 and yolo_raw_total == 0:
             frigate_catches_missed_birds_sessions += 1
             source = str(payload.get("trigger_source") or "unknown").strip()
@@ -319,11 +344,15 @@ def evaluate(
     blind_rate = (
         (blind_confirmed / sessions_total) if sessions_total > 0 else 1.0
     )
-    tracks_coverage = (
-        sessions_with_tracks / sessions_with_yolo
-        if sessions_with_yolo > 0
-        else 0.0
+    tracks_eligible_sessions = max(
+        0, int(sessions_with_yolo) - int(sessions_fp_empty_recording)
     )
+    if tracks_eligible_sessions > 0:
+        tracks_coverage = sessions_with_tracks / tracks_eligible_sessions
+    elif sessions_with_yolo > 0:
+        tracks_coverage = 1.0
+    else:
+        tracks_coverage = 0.0
     tracks_missing_rate = (
         (1.0 - tracks_coverage) if sessions_with_yolo > 0 else 1.0
     )
@@ -452,6 +481,8 @@ def evaluate(
             "sessions_total": int(sessions_total),
             "sessions_with_yolo": int(sessions_with_yolo),
             "sessions_with_tracks": int(sessions_with_tracks),
+            "sessions_fp_empty_recording": int(sessions_fp_empty_recording),
+            "tracks_eligible_sessions": int(tracks_eligible_sessions),
             "blind_rate": float(round(blind_rate, 6)),
             "yolo_frames_with_tracks": int(yolo_frames_with_tracks_sum),
             "empty_bbox_rate": float(round(empty_bbox_rate, 6)),
@@ -608,6 +639,10 @@ def _to_md(report: dict[str, Any]) -> str:
         "- yolo_frames_with_tracks: "
         f"`{metrics.get('yolo_frames_with_tracks')}`",
         f"- empty_bbox_rate: `{metrics.get('empty_bbox_rate')}`",
+        "- sessions_fp_empty_recording: "
+        f"`{metrics.get('sessions_fp_empty_recording')}`",
+        "- tracks_eligible_sessions: "
+        f"`{metrics.get('tracks_eligible_sessions')}`",
         f"- tracks_coverage: `{metrics.get('tracks_coverage')}`",
         "- tracks_missing_rate: "
         f"`{metrics.get('tracks_missing_rate')}`",

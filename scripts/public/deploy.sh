@@ -714,7 +714,15 @@ if [[ "${node_major}" -lt 22 ]]; then
   echo "Подсказка: проверьте app/ui/.nvmrc и выполните: cd app/ui && nvm use" >&2
   exit 1
 fi
-(cd app/ui && npm ci --no-audit --no-fund && npm run build) || { echo "Ошибка: npm ci / npm run build не удались"; exit 1; }
+if [[ -f app/ui/dist/index.html ]]; then
+  echo "  Using pre-built UI dist (app/ui/dist/index.html)"
+else
+  if [[ "${BIRDLENSE_SKIP_LOCAL_UI_NPM_CI:-}" =~ ^(1|true|yes)$ ]]; then
+    (cd app/ui && npm run build) || { echo "Ошибка: npm run build не удался (SKIP_LOCAL_UI_NPM_CI=1)"; exit 1; }
+  else
+    (cd app/ui && npm ci --no-audit --no-fund && npm run build) || { echo "Ошибка: npm ci / npm run build не удались"; exit 1; }
+  fi
+fi
 
 # 0.95 Бэкап user_config на сервере перед rsync (восстановление: scripts/restore-config.sh или .bak.deploy-*)
 if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
