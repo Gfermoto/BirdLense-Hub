@@ -414,8 +414,8 @@ processor:
   min_center_dist: 0.01
   # Trapper OpenVINO: экспорт imgsz=704 (max side detect 704×576). IR = 704×704 letterbox внутри YOLO.
   binary_imgsz: 704
-  # OpenVINO on native 704×576 lores: use [H,W] imgsz (not square 704²) when frame matches inference_lores_wh.
-  openvino_native_lores_imgsz: true
+  # Native [H,W] imgsz only for non-square OpenVINO IR. Square exports (Trapper 704²) need false or auto-fallback in code.
+  openvino_native_lores_imgsz: false
   # ByteTrack merge across distant zones → bad crops; split before classify/finalize (incident a656199a).
   track_spatial_split_enabled: true
   track_spatial_split_max_center_jump_norm: 0.18

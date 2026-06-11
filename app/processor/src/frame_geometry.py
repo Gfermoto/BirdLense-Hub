@@ -194,6 +194,7 @@ def resolve_binary_track_imgsz(
     *,
     inference_backend: str | None = None,
     default_square: int | None = None,
+    binary_openvino_path: str | None = None,
 ) -> int | list[int]:
     from inference_lores import parse_inference_lores_wh
     from pipeline_config import resolve_binary_model_imgsz
@@ -216,6 +217,7 @@ def resolve_binary_track_imgsz(
         and abs(det_h - int(wh[1])) <= 2
         and det_w != det_h
     ):
+        use_native_hw = True
         if backend == "openvino":
             native_lores = runtime_cfg.get("processor.openvino_native_lores_imgsz")
             if native_lores is None:
@@ -223,8 +225,14 @@ def resolve_binary_track_imgsz(
             elif isinstance(native_lores, str):
                 native_lores = native_lores.strip().lower() in ("1", "true", "yes", "on")
             if not native_lores:
-                return square
-        return [det_h, det_w]
+                use_native_hw = False
+            elif binary_openvino_path:
+                from inference.binary_paths import openvino_expected_input_size
+
+                if openvino_expected_input_size(binary_openvino_path) is not None:
+                    use_native_hw = False
+        if use_native_hw:
+            return [det_h, det_w]
     if backend == "openvino":
         return square
     return square
