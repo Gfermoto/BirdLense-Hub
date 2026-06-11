@@ -159,6 +159,15 @@ class TestBinaryPaths(unittest.TestCase):
                 f.write(xml)
             self.assertEqual(openvino_expected_input_size(d), 640)
 
+    def test_openvino_expected_input_size_resolves_relative_model_path(self):
+        from inference.binary_paths import openvino_expected_input_size, processor_package_root
+
+        rel = "models/detection/weights/trapper_ai_v02_2024_openvino_model"
+        abs_path = os.path.join(processor_package_root(), rel)
+        if not os.path.isdir(abs_path):
+            self.skipTest("trapper openvino bundle missing")
+        self.assertEqual(openvino_expected_input_size(rel), 704)
+
 
 if __name__ == '__main__':
     unittest.main()

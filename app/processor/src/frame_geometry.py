@@ -6,6 +6,7 @@ Single source of truth for canvas resolution, letterbox padding, bbox unmap/rema
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Any, Literal, Mapping
 
@@ -227,9 +228,16 @@ def resolve_binary_track_imgsz(
             if not native_lores:
                 use_native_hw = False
             elif binary_openvino_path:
-                from inference.binary_paths import openvino_expected_input_size
+                from inference.binary_paths import (
+                    openvino_expected_input_size,
+                    processor_package_root,
+                    resolve_relative_to_processor_root,
+                )
 
-                if openvino_expected_input_size(binary_openvino_path) is not None:
+                ov_path = binary_openvino_path
+                if not os.path.isabs(str(ov_path)):
+                    ov_path = resolve_relative_to_processor_root(str(ov_path), processor_package_root())
+                if openvino_expected_input_size(ov_path) is not None:
                     use_native_hw = False
         if use_native_hw:
             return [det_h, det_w]

@@ -153,6 +153,12 @@ def openvino_expected_input_size(path: str | None) -> int | None:
     """
     if not path:
         return None
+    path = str(path).strip()
+    if not os.path.isabs(path):
+        root = processor_package_root()
+        resolved = resolve_relative_to_processor_root(path, root)
+        if os.path.isdir(resolved) or (os.path.isfile(resolved) and resolved.endswith(".xml")):
+            path = resolved
     if os.path.isdir(path):
         meta = os.path.join(path, "metadata.yaml")
         xml = _first_xml_in_dir(path)
