@@ -52,36 +52,19 @@ logger = logging.getLogger(__name__)
 
 
 def _camera_processor_overrides(camera_id: str | None) -> dict:
-    """Per-camera overrides: role preset → ``detection.camera_overrides`` (legacy) → ``processor.camera_overrides``."""
-    cam = str(camera_id or "").strip()
-    if not cam:
-        return {}
-    merged: dict = {}
-    cameras = get_valid_cameras(video_config=(app_config.get("video") or {}))
-    tuning_role = ""
-    if isinstance(cameras, list):
-        for row in cameras:
-            if not isinstance(row, dict):
-                continue
-            if str(row.get("id") or "").strip() != cam:
-                continue
-            tuning_role = str(row.get("tuning_role") or "").strip()
-            zones = row.get("detection_interest_zones")
-            if zones is not None:
-                merged["processor.detection_interest_zones"] = zones
-                merged["processor.detection_interest_zones_required"] = bool(zones)
-            break
-    if tuning_role:
-        role_raw = app_config.get(f"processor.camera_tuning_by_role.{tuning_role}")
-        if isinstance(role_raw, dict):
-            merged.update(dict(role_raw))
-    legacy = app_config.get(f"detection.camera_overrides.{cam}")
-    if isinstance(legacy, dict):
-        merged.update(dict(legacy))
-    raw = app_config.get(f"processor.camera_overrides.{cam}")
-    if isinstance(raw, dict):
-        merged.update(dict(raw))
-    return merged
+    """Per-camera overrides via ``threshold_resolution`` (role → camera)."""
+    from threshold_resolution import build_camera_processor_overrides
+
+    merged = build_camera_processor_overrides(app_config, camera_id)
+    out: dict = {}
+    for key, val in merged.items():
+        if key == "detection_interest_zones":
+            out["processor.detection_interest_zones"] = val
+        elif key == "detection_interest_zones_required":
+            out["processor.detection_interest_zones_required"] = val
+        else:
+            out[key] = val
+    return out
 
 
 def _camera_slot_for_id(camera_id: str | None) -> str | None:

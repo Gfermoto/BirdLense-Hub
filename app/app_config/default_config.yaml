@@ -462,6 +462,8 @@ processor:
       detect_first_confirm_min_hits: 1
       min_confidence_binary: 0.08
       min_confidence_binary_bird: 0.06
+      openvino_min_confidence_binary_bird: 0.06
+      openvino_binary_track_ultralytics_conf: 0.08
       min_confidence_to_process: 0.08
       min_track_duration: 0.35
       min_box_size_px: 10

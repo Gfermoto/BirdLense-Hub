@@ -21,7 +21,7 @@ def _default_feeder_far_role() -> dict:
 
 
 class TestCameraTuningRole(unittest.TestCase):
-    @patch("recording_session.get_valid_cameras")
+    @patch("app_config.cameras.get_valid_cameras")
     @patch("recording_session.app_config")
     def test_role_preset_merged_before_per_camera(self, mock_cfg, mock_cameras):
         mock_cameras.return_value = [
@@ -39,7 +39,7 @@ class TestCameraTuningRole(unittest.TestCase):
         out = _camera_processor_overrides("Forest")
         self.assertEqual(out["track_static_reject_min_frames"], 5)
 
-    @patch("recording_session.get_valid_cameras")
+    @patch("app_config.cameras.get_valid_cameras")
     @patch("recording_session.app_config")
     def test_role_only_when_no_per_camera(self, mock_cfg, mock_cameras):
         mock_cameras.return_value = [
@@ -61,7 +61,7 @@ class TestCameraTuningRole(unittest.TestCase):
         self.assertLessEqual(int(role.get("min_box_size_px") or 999), 10)
         self.assertTrue(bool(role.get("track_to_predict_fallback_enabled")))
 
-    @patch("recording_session.get_valid_cameras")
+    @patch("app_config.cameras.get_valid_cameras")
     @patch("recording_session.app_config")
     def test_legacy_detection_overrides_merged_before_processor(self, mock_cfg, mock_cameras):
         mock_cameras.return_value = [{"id": "BirdBox"}]
