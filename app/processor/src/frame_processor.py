@@ -7,6 +7,7 @@ from light_level_detector import LightLevelDetector
 from interfaces import DetectionStrategyProtocol
 from app_config.app_config import app_config
 from processor_runtime_profile import light_gate_allows_frame, resolve_runtime_profile
+from threshold_resolution import merge_adaptive_profile_overrides
 from processor_runtime_stats import inc_counter, observe_timing, set_gauge
 from tracker_paths import resolve_tracker_config_path
 from tracker_low_fps import resolve_adaptive_tracker_path
@@ -256,16 +257,15 @@ class FrameProcessor:
         )
 
         metrics = self._frame_light_metrics(img)
-        profile_name, profile_overrides = resolve_runtime_profile(
+        profile_name, adaptive_overrides = resolve_runtime_profile(
             app_config,
             brightness=metrics.get("brightness"),
             contrast=metrics.get("contrast"),
         )
-        profile_overrides = dict(profile_overrides or {})
-        # Camera-specific tuning (e.g. distant camera with smaller birds) overlays
-        # profile values and applies even outside night profile.
-        if isinstance(camera_overrides, dict) and camera_overrides:
-            profile_overrides.update(camera_overrides)
+        profile_overrides = merge_adaptive_profile_overrides(
+            dict(camera_overrides or {}),
+            adaptive_overrides,
+        )
         policy = getattr(self, "tracking_policy", None) or getattr(self.strategy, "_tracking_policy", None)
         if policy is not None and not policy.unified_with_live and policy.for_track_regen:
             from tracking_policy import apply_policy_profile_overrides
