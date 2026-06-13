@@ -89,10 +89,30 @@ class TestLinearPipeline(unittest.TestCase):
         self.assertEqual(ev["evidence_state"], "detector_only")
         self.assertTrue(ev["visit_eligible"])
 
-    def test_static_frozen_track_rejected_in_linear(self):
+    def test_static_frozen_track_deferred_under_binary_track_first(self):
         frozen = [{"t": float(i), "bbox": [0.40, 0.30, 0.48, 0.38]} for i in range(12)]
         cfg = _Cfg(
             {
+                "detection.persist_mode": "binary_track_first",
+                "processor.pipeline_mode": "linear",
+                "processor.linear_static_pinned_reject_enabled": True,
+                "processor.track_static_reject_enabled": True,
+            }
+        )
+        ev = evaluate_track_linear(
+            app_config=cfg,
+            track=_track(conf=0.25, frames=frozen),
+            min_track_duration=0.5,
+            min_confidence_to_process=0.12,
+        )
+        self.assertTrue(ev["accepted"])
+        self.assertEqual(ev["decision_reason"], "accepted_binary_track_classifier_deferred")
+
+    def test_static_frozen_track_rejected_when_legacy_persist(self):
+        frozen = [{"t": float(i), "bbox": [0.40, 0.30, 0.48, 0.38]} for i in range(12)]
+        cfg = _Cfg(
+            {
+                "detection.persist_mode": "legacy",
                 "processor.pipeline_mode": "linear",
                 "processor.linear_static_pinned_reject_enabled": True,
                 "processor.track_static_reject_enabled": True,

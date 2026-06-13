@@ -14,7 +14,11 @@ import logging
 from typing import Any
 
 from object_confirm import track_object_confirmed
-from persist_mode import binary_track_first_min_detector_conf, track_has_bbox_frames
+from persist_mode import (
+    binary_track_first_min_detector_conf,
+    defer_static_pinned_reject,
+    track_has_bbox_frames,
+)
 from processor_config_defaults import (
     BIRDER_EU_MIN_CONFIDENCE,
     CLASSIFIER_BEST_GUESS_MIN_CONFIDENCE,
@@ -194,6 +198,7 @@ def evaluate_track_linear(
     track: dict[str, Any],
     min_track_duration: float,
     min_confidence_to_process: float,
+    static_pinned_cfg: Any | None = None,
 ) -> dict[str, Any]:
     """Stage detect_track → persist decision. Optional static_pinned reject (#608)."""
     try:
@@ -252,16 +257,24 @@ def evaluate_track_linear(
         raw = app_config.get("processor.linear_static_pinned_reject_enabled")
         static_enabled = True if raw is None else bool(raw)
         if static_enabled:
-            static_cfg = StaticPinnedTrackConfig.from_runtime_cfg(app_config)
-            static_reason = static_pinned_track_reason(track, static_cfg)
-            if static_reason:
-                return _reject_linear(
-                    "rejected_static_pinned_track",
-                    "insufficient_frames",
-                    detector_label,
-                    detector_conf,
-                    det_count,
-                )
+            static_cfg = static_pinned_cfg or StaticPinnedTrackConfig.from_runtime_cfg(app_config)
+            if static_cfg.enabled:
+                static_reason = static_pinned_track_reason(track, static_cfg)
+                if static_reason and defer_static_pinned_reject(
+                    app_config=app_config,
+                    track=track,
+                    detector_events=track.get("detector_events") or [],
+                    min_confidence_to_process=float(min_confidence_to_process),
+                ):
+                    static_reason = None
+                if static_reason:
+                    return _reject_linear(
+                        "rejected_static_pinned_track",
+                        "insufficient_frames",
+                        detector_label,
+                        detector_conf,
+                        det_count,
+                    )
     except ImportError:
         pass
 
@@ -356,6 +369,8 @@ def build_linear_decisions(decision_maker, tracks: dict, app_config) -> list[dic
     entropy_ge = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_entropy_ge"))
     margin_le = _parse_optional_threshold(app_config.get("processor.classifier_uncertainty_margin_le"))
 
+    static_pinned_cfg = decision_maker._resolve_static_pinned_cfg()
+
     for track_id, track in tracks.items():
         if not track.get("detector_events"):
             continue
@@ -364,6 +379,7 @@ def build_linear_decisions(decision_maker, tracks: dict, app_config) -> list[dic
             track=track,
             min_track_duration=float(decision_maker.min_track_duration),
             min_confidence_to_process=float(decision_maker.min_confidence_to_process),
+            static_pinned_cfg=static_pinned_cfg,
         )
         clf = ev.get("classifier_candidate")
         clf_entropy = clf.get("avg_entropy") if isinstance(clf, dict) else None
