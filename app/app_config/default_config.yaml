@@ -479,6 +479,8 @@ processor:
       track_static_reject_max_relative_center_dispersion: 0.11
       track_static_reject_max_bbox_iou_first_last_min: 0.72
       scoring_moving_roi_min_motion_score: 0.30
+      scoring_default_low_threshold: 0.14
+      scoring_relaxed_min_confidence: 0.06
     feeder_far:
       # Distant / Forest-style: weak OpenVINO conf 0.04–0.12; must accept before ByteTrack IDs stabilize.
       detect_use_native_resolution: false
@@ -498,6 +500,8 @@ processor:
       track_static_reject_min_duration_sec: 2.5
       track_static_reject_min_frames: 3
       track_static_reject_min_frames_sparse: 2
+      scoring_default_low_threshold: 0.10
+      scoring_relaxed_min_confidence: 0.05
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
   # Не 0.42: на OV+detect слабые conf 0.04–0.15 — иначе только review_only salvage.
   generic_bird_min_detector_conf: 0.10
