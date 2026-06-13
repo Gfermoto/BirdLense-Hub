@@ -470,7 +470,8 @@ processor:
       max_box_area_norm: 0.92
       track_to_predict_fallback_enabled: true
       detect_record_time_offset_sec: -0.10
-      track_static_reject_enabled: true
+      # Feeder birds sit still while eating; static reject caused false empty UI (linear #608).
+      track_static_reject_enabled: false
       track_static_reject_min_duration_sec: 1.5
       track_static_reject_min_frames: 3
       track_static_reject_min_frames_sparse: 2
