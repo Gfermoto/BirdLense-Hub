@@ -29,6 +29,10 @@ CONFIDENCE_FLOORS = {
     "processor.min_box_size_px": 12,
 }
 
+# Global min_confidence_to_process floor shrinks to min(role presets) so default 0.12
+# is not raised to 0.20 when feeder_close/feeder_far ship at 0.08/0.06.
+ROLE_AWARE_CONFIDENCE_FLOOR_PATHS = frozenset({"processor.min_confidence_to_process"})
+
 # Ключи с секретами — маскируются в API, не перезаписываются при сохранении placeholder
 SENSITIVE_KEYS = frozenset(
     {
@@ -494,6 +498,31 @@ class AppConfig:
                         overrides["min_confidence_binary_rodent"] = legacy_r
 
     @classmethod
+    def _role_preset_min_for_key(cls, config, short_key: str) -> float | None:
+        roles = cls._get_nested(config, "processor.camera_tuning_by_role")
+        if not isinstance(roles, dict):
+            return None
+        vals: list[float] = []
+        for preset in roles.values():
+            if not isinstance(preset, dict) or short_key not in preset:
+                continue
+            try:
+                vals.append(float(preset[short_key]))
+            except (TypeError, ValueError):
+                continue
+        return min(vals) if vals else None
+
+    @classmethod
+    def _effective_confidence_floor(cls, config, path: str, nominal_floor: float) -> float:
+        if path not in ROLE_AWARE_CONFIDENCE_FLOOR_PATHS:
+            return nominal_floor
+        short_key = path.rsplit(".", 1)[-1]
+        role_min = cls._role_preset_min_for_key(config, short_key)
+        if role_min is None:
+            return nominal_floor
+        return min(float(nominal_floor), float(role_min))
+
+    @classmethod
     def _enforce_confidence_floors(cls, config):
         """Clamp stale low-confidence settings to safe minimums."""
         source = str(cls._get_nested(config, "video.source") or "").strip().lower()
@@ -508,7 +537,8 @@ class AppConfig:
             return False
         changed = False
         adjusted: list[str] = []
-        for path, floor in CONFIDENCE_FLOORS.items():
+        for path, nominal_floor in CONFIDENCE_FLOORS.items():
+            floor = cls._effective_confidence_floor(config, path, nominal_floor)
             current = cls._get_nested(config, path)
             if current is None:
                 continue

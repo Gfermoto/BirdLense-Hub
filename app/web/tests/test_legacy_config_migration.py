@@ -141,7 +141,7 @@ def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
 
         assert app_config.get("detection.min_confidence_to_store") == 0.08
         assert app_config.get("processor.min_confidence_binary") == 0.08
-        assert app_config.get("processor.min_confidence_to_process") == 0.20
+        assert app_config.get("processor.min_confidence_to_process") == 0.06
         assert app_config.get("processor.min_track_duration") == 0.25
         assert app_config.get("processor.min_box_size_px") == 24
 
@@ -149,12 +149,28 @@ def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
         saved = yaml.safe_load(user_config.read_text(encoding="utf-8")) or {}
         assert float(saved["detection"]["min_confidence_to_store"]) == 0.08
         assert float(saved["processor"]["min_confidence_binary"]) == 0.08
-        assert float(saved["processor"]["min_confidence_to_process"]) == 0.20
+        assert float(saved["processor"]["min_confidence_to_process"]) == 0.06
         assert float(saved["processor"]["min_track_duration"]) == 0.25
         assert int(saved["processor"]["min_box_size_px"]) == 24
     finally:
         app_config.user_config_file = old_user_config_file
         app_config.reload()
+
+
+def test_confidence_floors_global_not_above_role_presets(monkeypatch):
+    """Global min_confidence_to_process must not be raised above feeder role presets."""
+    from app_config.app_config import AppConfig, app_config
+
+    default = yaml.safe_load(
+        open(app_config.default_config_file, encoding="utf-8")
+    ) or {}
+    merged = AppConfig.merge_dicts(default, {})
+    AppConfig._enforce_confidence_floors(merged)
+    proc = merged.get("processor") or {}
+    roles = proc.get("camera_tuning_by_role") or {}
+    assert float(roles["feeder_close"]["min_confidence_to_process"]) == 0.08
+    assert float(roles["feeder_far"]["min_confidence_to_process"]) == 0.06
+    assert float(proc["min_confidence_to_process"]) == 0.12
 
 
 def test_migrate_legacy_trigger_topics_copies_into_new_domains():
