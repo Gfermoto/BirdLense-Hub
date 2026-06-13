@@ -229,10 +229,11 @@ processor:
   scoring_weight_shape: 0.15
   scoring_weight_background: 0.15
   scoring_frigate_prior_boost: 0.20
-  scoring_default_low_threshold: 0.32
+  scoring_default_low_threshold: 0.14
   scoring_default_high_threshold: 0.48
   scoring_review_band_width: 0.14
   scoring_calibration_frames: 60
+  scoring_calibration_low_floor: 0.06
   scoring_calibration_max_noise_rate: 0.01
   scoring_calibration_percentile: 0.95
   # Квадратные низко-motion боксы (кормушка/автомат) — hard reject до score band.
@@ -482,12 +483,14 @@ processor:
       scoring_moving_roi_min_motion_score: 0.30
       scoring_default_low_threshold: 0.14
       scoring_relaxed_min_confidence: 0.06
+      scoring_static_phantom_reject_enabled: false
     feeder_far:
       # Distant / Forest-style: weak OpenVINO conf 0.04–0.12; must accept before ByteTrack IDs stabilize.
       detect_use_native_resolution: false
       min_confidence_binary: 0.06
       min_confidence_binary_bird: 0.05
       openvino_min_confidence_binary_bird: 0.05
+      openvino_binary_track_ultralytics_conf: 0.06
       min_confidence_to_process: 0.06
       min_box_size_px: 8
       min_center_dist: 0.01
@@ -503,6 +506,7 @@ processor:
       track_static_reject_min_frames_sparse: 2
       scoring_default_low_threshold: 0.10
       scoring_relaxed_min_confidence: 0.05
+      scoring_static_phantom_reject_enabled: false
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
   # Не 0.42: на OV+detect слабые conf 0.04–0.15 — иначе только review_only salvage.
   generic_bird_min_detector_conf: 0.10

@@ -625,8 +625,22 @@ class MotionRecordingSession:
                 "blind_quickcheck_hits": 0,
                 "yolo_frames_raw_unaccepted": 0,
                 "yolo_frames_raw_no_track": 0,
+                "quality_reject_counts": {},
                 **detect_first_runtime_signal_fields(detect_first_anchor),
             }
+            _quality_reject_keys = (
+                "rejected_static_objects",
+                "rejected_phantom_boxes",
+                "rejected_ignore_mask",
+                "rejected_interest_zone",
+                "rejected_motion_verified",
+                "rejected_global_static",
+                "rejected_texture",
+                "rejected_background_subtraction",
+                "scoring_rejected",
+                "scoring_review",
+                "scoring_accepted",
+            )
             blind_suspected_since_monotonic: float | None = None
             blind_quickcheck_until_monotonic = 0.0
             try:
@@ -703,6 +717,14 @@ class MotionRecordingSession:
                 )
                 if local_stats.get("light_gate_blocked"):
                     runtime_signals["low_light_blocked_frames"] += 1
+                qrc = runtime_signals.setdefault("quality_reject_counts", {})
+                if not isinstance(qrc, dict):
+                    qrc = {}
+                    runtime_signals["quality_reject_counts"] = qrc
+                for _qk in _quality_reject_keys:
+                    delta = int(local_stats.get(_qk) or 0)
+                    if delta:
+                        qrc[_qk] = int(qrc.get(_qk) or 0) + delta
                 return raw_boxes_local
 
             frame_n = 0

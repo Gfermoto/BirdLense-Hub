@@ -84,6 +84,7 @@ class ScoringEngineConfig:
     static_phantom_square_aspect_max: float = 1.22
     static_phantom_max_conf: float = 0.52
     relaxed_scoring_min_confidence: float = 0.08
+    calibration_low_floor: float = 0.06
     moving_roi_review_enabled: bool = True
     moving_roi_min_motion_score: float = 0.32
     scene: SceneAdaptiveConfig = field(default_factory=SceneAdaptiveConfig)
@@ -121,6 +122,7 @@ class ScoringEngineConfig:
             ),
             static_phantom_max_conf=_parse_float(runtime_cfg, "processor.scoring_static_phantom_max_conf", 0.52),
             relaxed_scoring_min_confidence=_parse_float(runtime_cfg, "processor.scoring_relaxed_min_confidence", 0.08),
+            calibration_low_floor=_parse_float(runtime_cfg, "processor.scoring_calibration_low_floor", 0.06),
             moving_roi_review_enabled=_parse_bool(runtime_cfg, "processor.scoring_moving_roi_review_enabled", True),
             moving_roi_min_motion_score=_parse_float(
                 runtime_cfg, "processor.scoring_moving_roi_min_motion_score", 0.32
@@ -282,10 +284,14 @@ class ScoringEngine:
             if cal.noise_scores:
                 arr = np.array(list(cal.noise_scores), dtype=np.float64)
                 p = float(np.percentile(arr, self.cfg.calibration_percentile * 100.0))
+                cal_floor = max(
+                    float(self.cfg.calibration_low_floor),
+                    float(self.cfg.default_low_threshold) * 0.75,
+                )
                 cal.low_threshold = float(
                     np.clip(
                         max(p + 0.02, self.cfg.default_low_threshold * 0.85),
-                        0.25,
+                        cal_floor,
                         0.75,
                     )
                 )
@@ -417,20 +423,25 @@ class ScoringEngine:
                 trace["reason_code"] = "relaxed_small_object_scoring_floor"
             elif (
                 decision.zone == DecisionZone.REJECT
-                and self.cfg.moving_roi_review_enabled
-                and decision.breakdown.motion_score >= self.cfg.moving_roi_min_motion_score
                 and float(box.get("conf") or 0.0) >= self.cfg.relaxed_scoring_min_confidence
                 and decision.reject_reason
                 and str(decision.reject_reason).startswith("score_below_low_threshold")
             ):
+                if (
+                    self.cfg.moving_roi_review_enabled
+                    and decision.breakdown.motion_score >= self.cfg.moving_roi_min_motion_score
+                ):
+                    salvage_reason = "moving_roi_scoring_review"
+                else:
+                    salvage_reason = "detector_gate_scoring_review"
                 decision = ScoringDecision(
                     zone=DecisionZone.REVIEW,
                     breakdown=decision.breakdown,
-                    reject_reason="moving_roi_scoring_review",
+                    reject_reason=salvage_reason,
                 )
                 trace["final_decision"] = decision.zone.value
                 trace["reject_reason"] = decision.reject_reason
-                trace["reason_code"] = "moving_roi_scoring_review"
+                trace["reason_code"] = salvage_reason
             if decision.zone == DecisionZone.ACCEPT:
                 kept.append(box)
                 self.last_stats["scoring_accepted"] += 1

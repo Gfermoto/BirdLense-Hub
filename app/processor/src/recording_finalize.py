@@ -992,6 +992,7 @@ def finalize_motion_recording(
             "detection_acceptance_gap": bool(
                 int(rs.get("yolo_raw_boxes_total") or 0) > 0 and int(rs.get("yolo_accepted_boxes_total") or 0) == 0
             ),
+            "quality_reject_counts": dict(rs.get("quality_reject_counts") or {}),
             "low_light_blocked_frames": int(rs.get("low_light_blocked_frames") or 0),
             "session_extended_by_frigate_only": int(rs.get("session_extended_by_frigate_only") or 0),
             "bytetrack_rows": yolo_tracks_count,

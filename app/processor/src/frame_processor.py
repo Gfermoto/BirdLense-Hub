@@ -436,6 +436,20 @@ class FrameProcessor:
         self.last_run_stats["yolo_raw_boxes"] = int(dm.get("raw_boxes") or 0)
         self.last_run_stats["yolo_boxes_with_track_id"] = int(dm.get("boxes_with_track_id") or 0)
         self.last_run_stats["yolo_accepted_boxes"] = int(dm.get("accepted") or 0)
+        for _qk in (
+            "rejected_static_objects",
+            "rejected_phantom_boxes",
+            "rejected_ignore_mask",
+            "rejected_interest_zone",
+            "rejected_motion_verified",
+            "rejected_global_static",
+            "rejected_texture",
+            "rejected_background_subtraction",
+            "scoring_rejected",
+            "scoring_review",
+            "scoring_accepted",
+        ):
+            self.last_run_stats[_qk] = int(self.last_run_stats.get(_qk) or 0) + int(dm.get(_qk) or 0)
         self.last_frame_context.yolo_raw_boxes = self.last_run_stats["yolo_raw_boxes"]
         self.last_frame_context.yolo_accepted_boxes = self.last_run_stats["yolo_accepted_boxes"]
         self.last_frame_context.tracker_used = tracker_cfg
