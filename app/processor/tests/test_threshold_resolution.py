@@ -106,6 +106,66 @@ class TestFeederCloseDefaults(unittest.TestCase):
         self.assertLessEqual(float(far["scoring_default_low_threshold"]), 0.12)
 
 
+class TestFeederRoleEffectiveAfterConfigMerge(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from app_config.app_config import AppConfig, app_config
+
+        default = yaml.safe_load(
+            open(app_config.default_config_file, encoding="utf-8")
+        ) or {}
+        merged = AppConfig.merge_dicts(default, {})
+        AppConfig._enforce_confidence_floors(merged)
+        cls.merged_cfg = merged
+
+    @staticmethod
+    def _dotted_get(root: dict, key: str, default=None):
+        val = root
+        for part in key.split("."):
+            if not isinstance(val, dict):
+                return default
+            val = val.get(part, default)
+            if val is None:
+                return default
+        return val
+
+    @patch("threshold_resolution.resolve_camera_tuning_role")
+    def test_feeder_close_min_confidence_to_process(self, mock_role):
+        mock_role.return_value = "feeder_close"
+        root = self.merged_cfg
+
+        class AppCfg:
+            def get(self, key, default=None):
+                return TestFeederRoleEffectiveAfterConfigMerge._dotted_get(root, key, default)
+
+        self.assertAlmostEqual(
+            resolve_effective_threshold(
+                AppCfg(),
+                "min_confidence_to_process",
+                camera_id="BirdBox",
+            ),
+            0.08,
+        )
+
+    @patch("threshold_resolution.resolve_camera_tuning_role")
+    def test_feeder_far_min_confidence_to_process(self, mock_role):
+        mock_role.return_value = "feeder_far"
+        root = self.merged_cfg
+
+        class AppCfg:
+            def get(self, key, default=None):
+                return TestFeederRoleEffectiveAfterConfigMerge._dotted_get(root, key, default)
+
+        self.assertAlmostEqual(
+            resolve_effective_threshold(
+                AppCfg(),
+                "min_confidence_to_process",
+                camera_id="Forest",
+            ),
+            0.06,
+        )
+
+
 class TestBuildCameraProcessorOverrides(unittest.TestCase):
     @patch("app_config.cameras.get_valid_cameras")
     def test_birdbox_gets_feeder_close(self, mock_cameras):
