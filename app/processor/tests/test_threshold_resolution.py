@@ -99,6 +99,12 @@ class TestFeederCloseDefaults(unittest.TestCase):
         self.assertIn("openvino_min_confidence_binary_bird", role)
         self.assertLessEqual(float(role["openvino_min_confidence_binary_bird"]), 0.08)
 
+    def test_feeder_roles_have_scoring_floors(self):
+        close = _default_feeder_role("feeder_close")
+        far = _default_feeder_role("feeder_far")
+        self.assertLessEqual(float(close["scoring_default_low_threshold"]), 0.16)
+        self.assertLessEqual(float(far["scoring_default_low_threshold"]), 0.12)
+
 
 class TestBuildCameraProcessorOverrides(unittest.TestCase):
     @patch("app_config.cameras.get_valid_cameras")
