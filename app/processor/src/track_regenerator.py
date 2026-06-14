@@ -133,6 +133,7 @@ def process_video_for_tracks(
     progress_hook=None,
     progress_hook_interval: int = 20,
     metrics_out: dict | None = None,
+    camera_id: str | None = None,
 ):
     """
     Run YOLO+ByteTrack on video file. Returns list of detections with frames.
@@ -177,6 +178,7 @@ def process_video_for_tracks(
     with _track_regen_interprocess_lock(interprocess_serialize):
         service.process_video(
             video_path,
+            camera_id=camera_id,
             frame_step=frame_step,
             max_runtime_sec=max_runtime_sec,
             progress_hook=progress_hook,

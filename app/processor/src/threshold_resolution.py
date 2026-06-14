@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import logging
+import os
+import sqlite3
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # Acceptance floors: lower = more sensitive. Adaptive/night must not raise above role/camera.
 THRESHOLD_ACCEPTANCE_KEYS: frozenset[str] = frozenset(
@@ -137,6 +143,98 @@ def resolve_effective_threshold(
             break
 
     return effective
+
+
+def _recording_path_match_candidates(video_path: str) -> list[str]:
+    """Suffixes for matching ``video.video_path`` rows (relative/absolute layouts)."""
+    raw = str(video_path or "").strip().replace("\\", "/")
+    if not raw:
+        return []
+    out: list[str] = []
+    for candidate in (raw, raw.lstrip("/")):
+        if candidate and candidate not in out:
+            out.append(candidate)
+        if "/data/recordings/" in candidate:
+            tail = candidate.split("/data/recordings/", 1)[1]
+            for variant in (tail, f"recordings/{tail}", f"data/recordings/{tail}"):
+                if variant not in out:
+                    out.append(variant)
+        base = os.path.basename(candidate)
+        if base and base not in out:
+            out.append(base)
+    return out
+
+
+def _default_sqlite_db_path(app_config: Any) -> str | None:
+    env = (os.environ.get("BIRDLENSE_DB_PATH") or "").strip()
+    if env and os.path.isfile(env):
+        return env
+    try:
+        from session_state_repository import _db_path
+
+        p = str(_db_path())
+        if os.path.isfile(p):
+            return p
+    except ImportError:
+        pass
+    try:
+        from processor_support import get_data_dir
+
+        p = os.path.join(get_data_dir(), "db", "birdlense.db")
+        if os.path.isfile(p):
+            return p
+    except ImportError:
+        pass
+    proc_root = Path(__file__).resolve().parents[1]
+    for rel in ("data/db/birdlense.db", "../data/db/birdlense.db"):
+        p = (proc_root / rel).resolve()
+        if p.is_file():
+            return str(p)
+    return None
+
+
+def resolve_camera_id_for_recording_path(
+    app_config: Any,
+    video_path: str,
+    *,
+    db_path: str | None = None,
+) -> str | None:
+    """Resolve camera id for offline regen/smoke so role presets match live."""
+    path = str(video_path or "").strip()
+    if not path:
+        return None
+    db = str(db_path or _default_sqlite_db_path(app_config) or "").strip()
+    if db and os.path.isfile(db):
+        try:
+            conn = sqlite3.connect(db, timeout=5.0)
+            try:
+                cur = conn.cursor()
+                for suffix in _recording_path_match_candidates(path):
+                    row = cur.execute(
+                        "SELECT camera_id FROM video "
+                        "WHERE camera_id IS NOT NULL AND TRIM(camera_id) != '' "
+                        "AND (video_path = ? OR video_path LIKE ? OR video_path LIKE ?) "
+                        "ORDER BY id DESC LIMIT 1",
+                        (suffix, f"%/{suffix}", f"%{suffix}"),
+                    ).fetchone()
+                    if row and row[0]:
+                        cam = str(row[0]).strip()
+                        if cam:
+                            return cam
+            finally:
+                conn.close()
+        except sqlite3.Error:
+            logger.debug("resolve_camera_id_for_recording_path: sqlite lookup failed", exc_info=True)
+    try:
+        from app_config.cameras import get_valid_cameras
+
+        cameras = get_valid_cameras(video_config=(app_config.get("video") or {}))
+        ids = [str(c.get("id") or "").strip() for c in cameras if str(c.get("id") or "").strip()]
+        if len(ids) == 1:
+            return ids[0]
+    except ImportError:
+        pass
+    return None
 
 
 def build_camera_processor_overrides(app_config: Any, camera_id: str | None) -> dict[str, Any]:
