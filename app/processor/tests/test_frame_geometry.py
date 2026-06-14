@@ -156,5 +156,17 @@ class TestPrepareDetectorFrame(unittest.TestCase):
         self.assertEqual(out.shape[1], 704)
 
 
+class TestDetectorGeometryOverlay(unittest.TestCase):
+    def test_box_center_overlay_norm_after_square_letterbox(self):
+        from frame_geometry import DetectorGeometry, box_center_overlay_norm
+
+        geometry = DetectorGeometry(detector_shape_hw=(704, 704), overlay_shape_hw=(576, 704))
+        # Active image top band: y≈80 on detector canvas (64px pad + ~16px into 576 content)
+        cx, cy = box_center_overlay_norm((300, 80, 400, 160), geometry=geometry)
+        self.assertGreater(cx, 0.4)
+        self.assertLess(cy, 0.15)
+        self.assertGreater(cy, 0.02)
+
+
 if __name__ == "__main__":
     unittest.main()

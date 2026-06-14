@@ -50,20 +50,40 @@ def _point_in_polygon(px: float, py: float, poly: Sequence[tuple[float, float]])
     return inside
 
 
-def _box_center_norm(box: dict[str, Any], fw: int, fh: int) -> tuple[float, float]:
-    x1, y1, x2, y2 = box["crop_coords"]
-    return ((float(x1) + float(x2)) * 0.5 / max(fw, 1)), ((float(y1) + float(y2)) * 0.5 / max(fh, 1))
+def _box_center_norm(
+    box: dict[str, Any],
+    fw: int,
+    fh: int,
+    *,
+    geometry: Any | None = None,
+) -> tuple[float, float]:
+    from frame_geometry import box_center_overlay_norm
+
+    coords = box.get("crop_coords")
+    if coords is None:
+        return (0.5, 0.5)
+    return box_center_overlay_norm(
+        coords,
+        geometry=geometry,
+        frame_shape=(fh, fw, 3),
+    )
 
 
 class DetectionMaskFilter:
     def __init__(self, cfg: DetectionMaskConfig | None = None) -> None:
         self.cfg = cfg or DetectionMaskConfig([], [], False)
 
-    def reject_reason(self, box: dict[str, Any], *, frame_shape: tuple[int, int, int]) -> str | None:
+    def reject_reason(
+        self,
+        box: dict[str, Any],
+        *,
+        frame_shape: tuple[int, int, int],
+        geometry: Any | None = None,
+    ) -> str | None:
         if not self.cfg.ignore_masks and not self.cfg.interest_zones:
             return None
         fh, fw = frame_shape[:2]
-        cx, cy = _box_center_norm(box, fw, fh)
+        cx, cy = _box_center_norm(box, fw, fh, geometry=geometry)
         for poly in self.cfg.ignore_masks:
             if _point_in_polygon(cx, cy, poly):
                 return f"ignore_mask_hit(cx={cx:.3f},cy={cy:.3f})"

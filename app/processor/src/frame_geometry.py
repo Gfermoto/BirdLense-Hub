@@ -617,6 +617,70 @@ def letterbox_roundtrip_iou(
     return bbox_iou_norm(bbox_norm, back)
 
 
+@dataclass(frozen=True)
+class DetectorGeometry:
+    """Live/regen coordinate spaces: overlay (detect substream) vs letterbox canvas."""
+
+    detector_shape_hw: tuple[int, int]
+    overlay_shape_hw: tuple[int, int]
+
+    @property
+    def letterbox_active(self) -> bool:
+        return not _shape_hw_equal(self.detector_shape_hw, self.overlay_shape_hw)
+
+
+def bbox_norm_detector_to_overlay(
+    bbox_norm: tuple[float, ...] | list[float],
+    *,
+    geometry: DetectorGeometry,
+) -> tuple[float, float, float, float] | None:
+    """Normalized xyxy on detector letterbox canvas → overlay (detect stream) norm."""
+    if not geometry.letterbox_active:
+        if len(bbox_norm) != 4:
+            return None
+        return (
+            max(0.0, min(1.0, float(bbox_norm[0]))),
+            max(0.0, min(1.0, float(bbox_norm[1]))),
+            max(0.0, min(1.0, float(bbox_norm[2]))),
+            max(0.0, min(1.0, float(bbox_norm[3]))),
+        )
+    return unmap_letterbox_norm_xyxy_to_source_norm_xyxy(
+        bbox_norm,
+        source_shape=geometry.overlay_shape_hw,
+        letterbox_shape=geometry.detector_shape_hw,
+    )
+
+
+def box_center_overlay_norm(
+    crop_coords: tuple[int, int, int, int] | list[int],
+    *,
+    geometry: DetectorGeometry | None = None,
+    frame_shape: tuple[int, int, int] | None = None,
+) -> tuple[float, float]:
+    """Box center in overlay-normalized coords for masks/zones (not letterbox padding)."""
+    x1, y1, x2, y2 = (int(crop_coords[0]), int(crop_coords[1]), int(crop_coords[2]), int(crop_coords[3]))
+    if geometry is not None and geometry.letterbox_active:
+        det_h, det_w = int(geometry.detector_shape_hw[0]), int(geometry.detector_shape_hw[1])
+        if det_h > 0 and det_w > 0:
+            bbox_norm = (
+                max(0.0, min(1.0, float(x1) / det_w)),
+                max(0.0, min(1.0, float(y1) / det_h)),
+                max(0.0, min(1.0, float(x2) / det_w)),
+                max(0.0, min(1.0, float(y2) / det_h)),
+            )
+            overlay_norm = bbox_norm_detector_to_overlay(bbox_norm, geometry=geometry)
+            if overlay_norm is not None:
+                return (
+                    (float(overlay_norm[0]) + float(overlay_norm[2])) * 0.5,
+                    (float(overlay_norm[1]) + float(overlay_norm[3])) * 0.5,
+                )
+    if frame_shape is not None and len(frame_shape) >= 2:
+        fh, fw = int(frame_shape[0]), int(frame_shape[1])
+        if fh > 0 and fw > 0:
+            return ((float(x1) + float(x2)) * 0.5 / fw, (float(y1) + float(y2)) * 0.5 / fh)
+    return (0.5, 0.5)
+
+
 def xyxy_pixels_to_norm(
     xyxy: tuple[float, float, float, float],
     shape_hw: tuple[int, int],

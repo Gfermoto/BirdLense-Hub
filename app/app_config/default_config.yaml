@@ -267,6 +267,7 @@ processor:
   # Fallback FPS для static/temporal фильтров, если поток не отдаёт FPS (0 = только probe потока).
   detection_quality_assumed_fps: 7
   # Optional user-drawn masks (UI); empty by default — core FP control is algorithmic (MOG2 + motion).
+  # NVR ignore polygons in **detect overlay** normalized coords (704×576 substream), not letterbox canvas.
   detection_ignore_masks: []
   detection_interest_zones: []
   detection_interest_zones_required: false
