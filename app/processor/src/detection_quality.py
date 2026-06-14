@@ -308,12 +308,13 @@ class DetectionQualityPipeline:
         *,
         frame_bgr: np.ndarray,
         processor_cwd: str | None,
+        geometry: Any | None = None,
     ) -> list[dict[str, Any]]:
         if not boxes:
             return boxes
         kept: list[dict[str, Any]] = []
         for box in boxes:
-            reason = self._mask.reject_reason(box, frame_shape=frame_bgr.shape)
+            reason = self._mask.reject_reason(box, frame_shape=frame_bgr.shape, geometry=geometry)
             if reason:
                 if "ignore_mask" in reason:
                     self.last_stats["rejected_ignore_mask"] += 1
@@ -334,9 +335,15 @@ class DetectionQualityPipeline:
         processor_cwd: str | None = None,
         bird_trust_floor: float | None = None,
         frigate_prior_active: bool = False,
+        geometry: Any | None = None,
     ) -> list[dict[str, Any]]:
         self.last_stats = {k: 0 for k in self.last_stats}
-        boxes = self._apply_mask_gate(boxes, frame_bgr=frame_bgr, processor_cwd=processor_cwd)
+        boxes = self._apply_mask_gate(
+            boxes,
+            frame_bgr=frame_bgr,
+            processor_cwd=processor_cwd,
+            geometry=geometry,
+        )
         if not boxes:
             return boxes
         if self._scoring is not None:
@@ -392,7 +399,7 @@ class DetectionQualityPipeline:
                 self._save_hard_negative(frame_bgr, box, reason, processor_cwd=processor_cwd)
                 self._log_reject(box, reason)
                 continue
-            reason = self._mask.reject_reason(box, frame_shape=frame_bgr.shape)
+            reason = self._mask.reject_reason(box, frame_shape=frame_bgr.shape, geometry=geometry)
             if reason:
                 if "ignore_mask" in reason:
                     self.last_stats["rejected_ignore_mask"] += 1

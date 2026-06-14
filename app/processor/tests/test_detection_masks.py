@@ -39,6 +39,26 @@ class TestDetectionMasks(unittest.TestCase):
         box = {"crop_coords": (100, 100, 200, 200), "detector_label": "Bird"}
         self.assertIsNotNone(filt.reject_reason(box, frame_shape=(720, 1280, 3)))
 
+    def test_interest_zone_uses_overlay_not_letterbox_padding(self):
+        """Letterbox vertical pad shifts cy; zone gate must use overlay norm."""
+        from frame_geometry import DetectorGeometry
+
+        cfg = DetectionMaskConfig(
+            ignore_masks=[],
+            interest_zones=[[[0.2, 0.7], [0.8, 0.7], [0.8, 1.0], [0.2, 1.0]]],
+            interest_zones_required=True,
+        )
+        filt = DetectionMaskFilter(cfg)
+        geometry = DetectorGeometry(detector_shape_hw=(704, 704), overlay_shape_hw=(576, 704))
+        # Bottom band of overlay (cy≈0.705) is inside zone y>=0.7; letterbox cy≈0.668 falsely rejects.
+        box = {"crop_coords": (280, 430, 420, 510), "detector_label": "Bird"}
+        self.assertIsNone(
+            filt.reject_reason(box, frame_shape=(704, 704, 3), geometry=geometry),
+        )
+        self.assertIsNotNone(
+            filt.reject_reason(box, frame_shape=(704, 704, 3), geometry=None),
+        )
+
     def test_global_static_trusts_bird_floor(self):
         cfg = DetectionQualityConfig(
             motion_verified_enabled=True,

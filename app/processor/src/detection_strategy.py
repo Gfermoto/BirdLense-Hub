@@ -1145,6 +1145,13 @@ class TwoStageStrategy(DetectionStrategy):
         )
         self._detector_frame_shape = det_shape_hw
         self._overlay_frame_shape = overlay_shape_hw
+        from frame_geometry import DetectorGeometry
+
+        detect_geometry = DetectorGeometry(
+            detector_shape_hw=tuple(det_shape_hw),
+            overlay_shape_hw=tuple(overlay_shape_hw),
+        )
+        self._detect_geometry = detect_geometry
         frame = det_frame
 
         imgsz = resolve_binary_track_imgsz(
@@ -1485,6 +1492,23 @@ class TwoStageStrategy(DetectionStrategy):
             classification_frame,
             profile_overrides=profile_overrides,
         )
+        from frame_geometry import bbox_norm_detector_to_overlay
+
+        detect_geometry = getattr(self, "_detect_geometry", None)
+        overlay_hw = tuple(getattr(self, "_overlay_frame_shape", frame.shape[:2]))
+        det_hw = tuple(getattr(self, "_detector_frame_shape", frame.shape[:2]))
+
+        def _overlay_norm_bbox(bbox_norm: Sequence[float]) -> tuple[float, float, float, float]:
+            if detect_geometry is not None and detect_geometry.letterbox_active:
+                mapped = bbox_norm_detector_to_overlay(bbox_norm, geometry=detect_geometry)
+                if mapped is not None:
+                    return mapped
+            return (
+                float(bbox_norm[0]),
+                float(bbox_norm[1]),
+                float(bbox_norm[2]),
+                float(bbox_norm[3]),
+            )
 
         _ov_bird_scale = openvino_binary_bird_score_scale(
             runtime_cfg,
@@ -1535,7 +1559,7 @@ class TwoStageStrategy(DetectionStrategy):
                 if detector_label == "Bird" and _ov_bird_scale > 1.0:
                     cmp_conf *= _ov_bird_scale
                 if not self.is_valid_detection(
-                    bbox_norm,
+                    list(_overlay_norm_bbox(bbox_norm)),
                     cmp_conf,
                     eff_min,
                     min_center_dist=min_center,
@@ -1673,6 +1697,7 @@ class TwoStageStrategy(DetectionStrategy):
             processor_cwd=proc_cwd,
             bird_trust_floor=float(scene_bird_floor),
             frigate_prior_active=frigate_prior,
+            geometry=detect_geometry,
         )
         _quality_reject_stats.update(self._detection_quality.last_stats)
         if pre_quality_n > len(valid_boxes):
