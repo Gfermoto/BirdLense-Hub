@@ -218,7 +218,23 @@ def apply_policy_profile_overrides(
 ) -> dict[str, Any]:
     out = dict(profile_overrides or {})
     if policy.min_confidence_binary_override is not None:
-        out["min_confidence_binary"] = float(policy.min_confidence_binary_override)
+        regen_val = float(policy.min_confidence_binary_override)
+        existing = out.get("min_confidence_binary")
+        try:
+            existing_f = float(existing) if existing is not None else None
+        except (TypeError, ValueError):
+            existing_f = None
+        out["min_confidence_binary"] = (
+            min(regen_val, existing_f) if existing_f is not None else regen_val
+        )
     if policy.min_confidence_binary_bird_override is not None:
-        out["min_confidence_binary_bird"] = float(policy.min_confidence_binary_bird_override)
+        regen_val = float(policy.min_confidence_binary_bird_override)
+        existing = out.get("min_confidence_binary_bird")
+        try:
+            existing_f = float(existing) if existing is not None else None
+        except (TypeError, ValueError):
+            existing_f = None
+        out["min_confidence_binary_bird"] = (
+            min(regen_val, existing_f) if existing_f is not None else regen_val
+        )
     return out

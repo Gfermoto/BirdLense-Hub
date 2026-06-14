@@ -64,6 +64,7 @@ class TrackingService:
         self,
         video_path: str,
         *,
+        camera_id: str | None = None,
         frame_step: int | None = None,
         max_runtime_sec: int | None = None,
         progress_hook: Callable[[dict[str, Any]], None] | None = None,
@@ -132,6 +133,36 @@ class TrackingService:
 
             cfg = app_config.config or {}
 
+        camera_overrides: dict[str, Any] | None = None
+        resolved_camera = str(camera_id or "").strip() or None
+        if not resolved_camera:
+            try:
+                from threshold_resolution import resolve_camera_id_for_recording_path
+
+                from app_config.app_config import app_config as _ac
+
+                resolved_camera = resolve_camera_id_for_recording_path(_ac, video_path)
+            except ImportError:
+                resolved_camera = None
+        if resolved_camera:
+            try:
+                from threshold_resolution import build_camera_processor_overrides
+
+                from app_config.app_config import app_config as _ac
+
+                camera_overrides = build_camera_processor_overrides(_ac, resolved_camera)
+                if camera_overrides:
+                    logger.info(
+                        "TrackingService regen: camera=%s role/scoring overrides applied (%s keys)",
+                        resolved_camera,
+                        len(camera_overrides),
+                    )
+            except ImportError:
+                camera_overrides = None
+        if metrics_out is not None and resolved_camera:
+            metrics_out["camera_id"] = resolved_camera
+            metrics_out["camera_overrides_applied"] = bool(camera_overrides)
+
         try:
             while True:
                 if max_runtime_sec and (time.monotonic() - started) > max_runtime_sec:
@@ -153,6 +184,7 @@ class TrackingService:
                             frame_time=frame_time_sec,
                             skip_light_gate=self.policy.skip_light_gate,
                             classification_frame=frame,
+                            camera_overrides=camera_overrides,
                         )
 
                     if infer_lock is not None:
