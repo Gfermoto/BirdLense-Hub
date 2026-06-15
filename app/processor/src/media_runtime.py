@@ -289,11 +289,21 @@ def setup_processor_media(
                 s = str(rwv).strip().lower()
                 record_with_vaapi = s not in ("0", "false", "no", "off")
             cam_main_size = main_size
+            cam_override = None
             try:
-                from stream_probe import force_recording_resolution, probe_stream_url, resolve_main_size
+                from stream_probe import (
+                    force_recording_resolution,
+                    parse_camera_record_size,
+                    probe_stream_url,
+                    resolve_main_size,
+                )
 
-                cam_probe = probe_stream_url(record_url)
-                cam_main_size = resolve_main_size(app_config, cam_probe)
+                cam_override = parse_camera_record_size(cam)
+                if cam_override is not None:
+                    cam_main_size = cam_override
+                else:
+                    cam_probe = probe_stream_url(record_url)
+                    cam_main_size = resolve_main_size(app_config, cam_probe)
             except Exception:
                 if force_recording_resolution(app_config):
                     cam_main_size = main_size

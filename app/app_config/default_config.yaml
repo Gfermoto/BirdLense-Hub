@@ -472,6 +472,7 @@ processor:
       min_confidence_to_process: 0.04
       min_track_duration: 0.35
       min_box_size_px: 8
+      min_center_dist: 0.01
       max_box_area_norm: 0.92
       track_to_predict_fallback_enabled: true
       detect_record_time_offset_sec: -0.10
@@ -484,7 +485,8 @@ processor:
       track_static_reject_max_center_dispersion_norm: 0.055
       track_static_reject_max_relative_center_dispersion: 0.11
       track_static_reject_max_bbox_iou_first_last_min: 0.72
-      scoring_moving_roi_min_motion_score: 0.30
+      # Close feeder: birds often static while eating — 0.30 rejected all raw boxes on BirdBox (2026-06).
+      scoring_moving_roi_min_motion_score: 0.18
       scoring_default_low_threshold: 0.10
       scoring_relaxed_min_confidence: 0.02
       scoring_static_phantom_reject_enabled: false
@@ -704,6 +706,8 @@ video:
   # stream_name (main) — только FFmpeg-запись MP4; без detect_stream_name processor не стартует.
   # RTSP Dahua/Hik: detect_stream_name = lores substream (subtype=1, 704×576), как Frigate detect.
   # stream_name / main / запись — subtype=0 (2688p/1080p). subtype=0 на detect → VA-API letterbox, YOLO blind.
+  # Опционально per camera: record_width/record_height (WxH main) если probe ненадёжен.
+  # Dahua IPC-HDPW1420F (BirdBox): record 2688×1520; DH-TPC-BF3221-T (Forest): 1920×1080.
   # Go2RTC-имя потока site-specific; см. user_config.trapper-production.example.yaml.
   # Detect substream в Go2RTC/Frigate: 704×576@~7fps. Hub: inference_lores_wh [704,576] — без даунскейла в 640².
   cameras: []
@@ -722,8 +726,11 @@ video:
   #     name: "Двор"
   #   - id: feeder_hd
   #     stream_name: feeder_hd
+  #     detect_stream_name: rtsp://.../realmonitor?channel=1&subtype=1
   #     name: "Кормушка"
   #     tuning_role: feeder_close   # → processor.camera_tuning_by_role.feeder_close
+  #     record_width: 2688          # Dahua IPC-HDPW1420F main; omit when ffprobe probe is reliable
+  #     record_height: 1520
   # Пример slot-конфига:
   # camera_profiles:
   #   feeder_closeup:

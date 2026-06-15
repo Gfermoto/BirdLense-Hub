@@ -13,6 +13,7 @@ from stream_probe import (
     _parse_fps_value,
     attach_stream_capabilities,
     force_recording_resolution,
+    parse_camera_record_size,
     parse_configured_video_size,
     probe_processor_startup,
     probe_stream_ffprobe,
@@ -163,3 +164,18 @@ def test_probe_stream_url_opencv_fallback(_ff, mock_cv):
     caps = probe_stream_url("rtsp://x", prefer="auto")
     assert caps is not None
     assert caps.fps == 10.0
+
+
+def test_parse_camera_record_size_prefers_record_width_height():
+    cam = {"id": "BirdBox", "record_width": 2688, "record_height": 1520}
+    assert parse_camera_record_size(cam) == (2688, 1520)
+
+
+def test_parse_camera_record_size_accepts_video_width_aliases():
+    cam = {"video_width": 1920, "video_height": 1080}
+    assert parse_camera_record_size(cam) == (1920, 1080)
+
+
+def test_parse_camera_record_size_empty_when_unset():
+    assert parse_camera_record_size({}) is None
+    assert parse_camera_record_size(None) is None

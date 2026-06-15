@@ -20,6 +20,13 @@ def _default_feeder_far_role() -> dict:
     return (cfg.get("processor") or {}).get("camera_tuning_by_role", {}).get("feeder_far") or {}
 
 
+def _default_feeder_close_role() -> dict:
+    path = os.path.join(project_root, "app", "app_config", "default_config.yaml")
+    with open(path, encoding="utf-8") as fh:
+        cfg = yaml.safe_load(fh)
+    return (cfg.get("processor") or {}).get("camera_tuning_by_role", {}).get("feeder_close") or {}
+
+
 class TestCameraTuningRole(unittest.TestCase):
     @patch("app_config.cameras.get_valid_cameras")
     @patch("recording_session.app_config")
@@ -60,6 +67,12 @@ class TestCameraTuningRole(unittest.TestCase):
         self.assertLessEqual(float(role.get("openvino_min_confidence_binary_bird") or 1.0), 0.08)
         self.assertLessEqual(int(role.get("min_box_size_px") or 999), 10)
         self.assertTrue(bool(role.get("track_to_predict_fallback_enabled")))
+
+    def test_feeder_close_defaults_allow_edge_perches_and_static_birds(self):
+        role = _default_feeder_close_role()
+        self.assertLessEqual(float(role.get("min_center_dist") or 1.0), 0.02)
+        self.assertLessEqual(float(role.get("scoring_moving_roi_min_motion_score") or 1.0), 0.22)
+        self.assertLessEqual(float(role.get("min_confidence_binary_bird") or 1.0), 0.03)
 
     @patch("app_config.cameras.get_valid_cameras")
     @patch("recording_session.app_config")
