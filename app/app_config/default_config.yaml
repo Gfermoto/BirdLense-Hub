@@ -702,8 +702,8 @@ video:
   # Камеры — добавлять по одной. stream_name = имя потока в Go2RTC (main / запись, как Frigate record).
   # detect_stream_name — ОБЯЗАТЕЛЕН: второй поток Go2RTC для motion + YOLO (lores).
   # stream_name (main) — только FFmpeg-запись MP4; без detect_stream_name processor не стартует.
-  # RTSP Dahua/Hik: detect_stream должен совпадать с Frigate detect (тот же кадр/масштаб).
-  # Trapper VPS (2026-06): subtype=0 в RTSP URL, НЕ subtype=1 — иначе YOLO «слепой» vs Frigate.
+  # RTSP Dahua/Hik: detect_stream_name = lores substream (subtype=1, 704×576), как Frigate detect.
+  # stream_name / main / запись — subtype=0 (2688p/1080p). subtype=0 на detect → VA-API letterbox, YOLO blind.
   # Go2RTC-имя потока site-specific; см. user_config.trapper-production.example.yaml.
   # Detect substream в Go2RTC/Frigate: 704×576@~7fps. Hub: inference_lores_wh [704,576] — без даунскейла в 640².
   cameras: []
