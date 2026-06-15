@@ -1,5 +1,10 @@
 # TrapperAI v02.2024 — прод (фрагменты для user_config.yaml).
 # Классы: class_maps/trapper_ai_v02_2024.yaml + patch_prod_trapper_user_config.py
+#
+# detect_stream / Frigate parity (YOLO blind fix 2026-06):
+# RTSP Dahua/Hik detect_stream_name MUST match Frigate detect stream — same frame/scale.
+# Trapper VPS: subtype=0 in RTSP URL, NOT subtype=1 (wrong substream → YOLO blind vs Frigate).
+# Go2RTC stream name is site-specific; set per camera in video.cameras[].
 
 processor:
   inference_backend: openvino
@@ -12,7 +17,8 @@ processor:
   detector_native_class_labels: true
   binary_predict_class_allowlist: [0, 5]
   inference_lores_wh: [704, 576]
-  openvino_native_lores_imgsz: true
+  # Trapper 704² IR + intel:gpu — false: letterbox до binary_imgsz; true ломает OV track.
+  openvino_native_lores_imgsz: false
   binary_imgsz: 704
   openvino:
     profile: latency
@@ -29,6 +35,8 @@ processor:
   min_confidence_binary_squirrel: 0.32
   openvino_min_confidence_binary_bird: 0.35
   openvino_binary_track_ultralytics_conf: 0.30
+  species_confidence_overrides:
+    Bird: 0.08  # persist gate; 0.32 blocked weak YOLO conf on detect 704×576
   auto_unstick_enabled: false
   auto_small_object_relax_enabled: false
   binary_track_iou: 0.62
@@ -38,3 +46,11 @@ processor:
 video:
   capture_backend: auto
   encoding: intel
+  # cameras:
+  #   - id: BirdBox
+  #     stream_name: BirdBox          # main / record (FFmpeg MP4)
+  #     detect_stream_name: BirdBox   # MUST match Frigate detect; RTSP subtype=0 on trapper VPS
+  #     tuning_role: feeder_close
+
+detection:
+  yolo_weak_track_salvage_enabled: true

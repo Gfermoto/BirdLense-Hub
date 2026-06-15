@@ -100,7 +100,7 @@ def resolve_openvino_square_letterbox_wh(runtime_cfg: Mapping[str, Any]) -> LoRe
     expected = openvino_expected_input_size(ov_abs)
     if expected is not None:
         return (int(expected), int(expected))
-    if not _parse_bool(runtime_cfg, "processor.openvino_native_lores_imgsz", True):
+    if not _parse_bool(runtime_cfg, "processor.openvino_native_lores_imgsz", False):
         side = resolve_binary_model_imgsz(runtime_cfg)
         return (side, side)
     return None

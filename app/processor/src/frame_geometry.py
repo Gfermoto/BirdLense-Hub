@@ -222,7 +222,7 @@ def resolve_binary_track_imgsz(
         if backend == "openvino":
             native_lores = runtime_cfg.get("processor.openvino_native_lores_imgsz")
             if native_lores is None:
-                native_lores = True
+                native_lores = False
             elif isinstance(native_lores, str):
                 native_lores = native_lores.strip().lower() in ("1", "true", "yes", "on")
             if not native_lores:

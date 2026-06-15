@@ -352,7 +352,8 @@ processor:
   frame_processing_warn_ms: 450
   # Offline track regen по mp4 обходит light gate (см. FrameProcessor.run skip_light_gate) — иначе ночные ролики без YOLO.
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
-  species_confidence_overrides: {}  # напр. {"Rodent": 0.28}; пустой {} в user_config не затирает кодовый порог для Rodent
+  species_confidence_overrides:
+    Bird: 0.08  # ниже 0.32 — иначе persist блокирует слабые YOLO conf на detect 704×576
   # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
   ebird_regional_top_auto_confidence: true
   # Вычитается из min_confidence_to_process для каждого вида из топа (после detection.species_mapping)
@@ -416,8 +417,9 @@ processor:
   min_center_dist: 0.01
   # Trapper OpenVINO: экспорт imgsz=704 (max side detect 704×576). IR = 704×704 — letterbox в Hub до track().
   binary_imgsz: 704
-  # true: [H,W] imgsz для прямоугольного IR; для квадратного Trapper 704² код авто-выбирает square imgsz + letterbox canvas.
-  openvino_native_lores_imgsz: true
+  # false (default): Trapper 704² IR + intel:gpu — native [H,W] imgsz ломает OV; letterbox до binary_imgsz.
+  # true только для прямоугольного IR / torch; см. frame_geometry.resolve_binary_track_imgsz.
+  openvino_native_lores_imgsz: false
   # ByteTrack merge across distant zones → bad crops; split before classify/finalize (incident a656199a).
   track_spatial_split_enabled: true
   track_spatial_split_max_center_jump_norm: 0.18
@@ -700,6 +702,9 @@ video:
   # Камеры — добавлять по одной. stream_name = имя потока в Go2RTC (main / запись, как Frigate record).
   # detect_stream_name — ОБЯЗАТЕЛЕН: второй поток Go2RTC для motion + YOLO (lores).
   # stream_name (main) — только FFmpeg-запись MP4; без detect_stream_name processor не стартует.
+  # RTSP Dahua/Hik: detect_stream должен совпадать с Frigate detect (тот же кадр/масштаб).
+  # Trapper VPS (2026-06): subtype=0 в RTSP URL, НЕ subtype=1 — иначе YOLO «слепой» vs Frigate.
+  # Go2RTC-имя потока site-specific; см. user_config.trapper-production.example.yaml.
   # Detect substream в Go2RTC/Frigate: 704×576@~7fps. Hub: inference_lores_wh [704,576] — без даунскейла в 640².
   cameras: []
   # Config v2 (slot-centric, для разного числа камер у разных инсталляций):
@@ -968,7 +973,8 @@ detection:
   panic_gate_enabled: true
   panic_gate_min_frigate_events: 8
   panic_gate_min_duration_seconds: 20
-  # Weak-track salvage keys removed (#643); linear pipeline uses YOLO+ByteTrack persist only.
+  # Weak-track salvage: persist слабых YOLO-треков после detect-first (binary_track_first).
+  yolo_weak_track_salvage_enabled: true
   # После fusion: до N лучших YOLO-рядов, если fusion убрал все YOLO (legacy band-aid).
   # По умолчанию выкл. при persist_mode=binary_track_first (см. recording_finalize).
   yolo_core_anchor_enabled: false
