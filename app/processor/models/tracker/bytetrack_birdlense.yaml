@@ -5,9 +5,9 @@
 # upstream: ultralytics/cfg/trackers/bytetrack.yaml (8.4.x)
 tracker_type: bytetrack
 # Универсальный профиль: мягче старт трека, чтобы не терять дальний/мелкий объект.
-track_high_thresh: 0.12
-track_low_thresh: 0.05
-new_track_thresh: 0.12
+track_high_thresh: 0.08
+track_low_thresh: 0.04
+new_track_thresh: 0.08
 track_buffer: 20
 match_thresh: 0.86
 fuse_score: true

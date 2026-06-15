@@ -351,7 +351,7 @@ def _reject_linear(
         "detector_label": detector_label,
         "detector_conf": detector_conf,
         "detector_event_count": det_count,
-        "out_species": detector_label or "Bird",
+        "out_species": detector_label,
         "out_conf": float(detector_conf),
         "visit_eligible": False,
         "notification_eligible": False,

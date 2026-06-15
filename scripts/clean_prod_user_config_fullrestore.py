@@ -57,20 +57,37 @@ ROLE_CONFIDENCE_REMOVE = frozenset(
         "min_confidence_to_process",
         "openvino_min_confidence_binary_bird",
         "openvino_binary_track_ultralytics_conf",
+        "scoring_default_low_threshold",
+        "scoring_relaxed_min_confidence",
     }
 )
 
-FEEDER_CLOSE_ROLE_EXTRA_REMOVE = frozenset({"min_track_duration"})
+FEEDER_CLOSE_ROLE_EXTRA_REMOVE = frozenset({"min_track_duration", "scene_adaptive_conf_enabled"})
 
 FEEDER_FAR_ROLE_EXTRA_REMOVE = frozenset(
     {
-        "min_confidence_binary_bird",
         "track_static_reject_enabled",
         "track_static_reject_max_center_dispersion_norm",
         "track_static_reject_max_relative_center_dispersion",
         "track_static_reject_min_duration_sec",
         "track_static_reject_min_frames",
         "track_static_reject_min_frames_sparse",
+        "scene_adaptive_conf_enabled",
+    }
+)
+
+DETECTION_GLOBAL_REMOVE = frozenset(
+    {
+        "frigate_standalone_when_no_yolo",
+    }
+)
+
+PROCESSOR_REDUNDANT_REMOVE = frozenset(
+    {
+        "classifier_crop_source",
+        "detection_interest_zones_required",
+        "auto_unstick_min_confidence_binary",
+        "auto_unstick_min_confidence_binary_bird",
     }
 )
 
@@ -103,6 +120,14 @@ def clean(data: dict) -> list[str]:
 
     for key in _strip_keys(proc, PROCESSOR_GLOBAL_REMOVE):
         changes.append(f"processor.{key}")
+
+    for key in _strip_keys(proc, PROCESSOR_REDUNDANT_REMOVE):
+        changes.append(f"processor.{key}")
+
+    det = data.get("detection")
+    if isinstance(det, dict):
+        for key in _strip_keys(det, DETECTION_GLOBAL_REMOVE):
+            changes.append(f"detection.{key}")
 
     adaptive = proc.get("adaptive_profiles")
     if isinstance(adaptive, dict):

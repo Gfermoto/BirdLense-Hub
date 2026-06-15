@@ -54,7 +54,7 @@ def inspect_bytetrack_conf_contract(
     out["new_track_thresh"] = round(new, 4)
     out["track_low_thresh"] = round(low, 4)
     out["track_buffer"] = buf
-    ceiling = max(0.01, float(track_conf) - 0.04)
+    ceiling = max(0.01, float(track_conf) - 0.02)
     if high >= float(track_conf) or new >= float(track_conf):
         out["contract_ok"] = False
         out["risk"] = "thresholds_gte_track_conf"

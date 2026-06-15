@@ -386,10 +386,10 @@ def _track_maybe_retry(
         conf = float(kwargs.get("conf") or 0.1)
     except (TypeError, ValueError):
         conf = 0.1
-    if conf <= 0.035:
+    if conf <= 0.02:
         return results
     retry_kw = dict(kwargs)
-    retry_kw["conf"] = round(max(0.02, conf * 0.45), 4)
+    retry_kw["conf"] = round(max(0.008, conf * 0.45), 4)
     results = model.track(frame, **retry_kw)
     return results
 
@@ -1138,8 +1138,9 @@ class TwoStageStrategy(DetectionStrategy):
             _geom_mode = _pol.geometry_mode_for_frame()
         else:
             _geom_mode = "regen" if bool(getattr(self, "_for_track_regen", False)) else "live"
+        overlay_bgr = np.ascontiguousarray(frame)
         det_frame, det_shape_hw, overlay_shape_hw = prepare_yolo_detector_frame(
-            frame,
+            overlay_bgr,
             runtime_cfg,
             mode=_geom_mode,
         )
@@ -1522,7 +1523,7 @@ class TwoStageStrategy(DetectionStrategy):
             )
         else:
             self._detection_quality.sync_from_runtime_cfg(runtime_cfg)
-        self._detection_quality.scene_analyzer.update(frame)
+        self._detection_quality.scene_analyzer.update(overlay_bgr)
         try:
             base_bird_min = float(
                 runtime_cfg.get("processor.min_confidence_binary_bird")
@@ -1692,7 +1693,7 @@ class TwoStageStrategy(DetectionStrategy):
         frigate_prior = bool(_po.get("_scoring_frigate_prior_active", False))
         valid_boxes = self._detection_quality.filter_boxes(
             valid_boxes,
-            frame_bgr=frame,
+            frame_bgr=overlay_bgr,
             frame_index=int(self._frame_index),
             processor_cwd=proc_cwd,
             bird_trust_floor=float(scene_bird_floor),
