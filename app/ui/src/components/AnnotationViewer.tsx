@@ -94,6 +94,39 @@ export const AnnotationViewer: React.FC<AnnotationViewerProps> = ({
       if (!canvas || !ctx) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       for (const track of tracks) {
+        const trailFrames = track.frames
+          .filter((f) => f.t != null && Number.isFinite(f.t) && (f.t as number) <= (currentTime ?? Infinity) + 0.1)
+          .sort((a, b) => (a.t as number) - (b.t as number));
+        if (trailFrames.length >= 2) {
+          ctx.save();
+          ctx.strokeStyle = track.color;
+          ctx.globalAlpha = 0.65;
+          ctx.lineWidth = 2;
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          trailFrames.forEach((f, idx) => {
+            const [x, y, w, h] = f.bbox;
+            const cx = (x + w / 2) * canvas.width;
+            const cy = (y + h / 2) * canvas.height;
+            if (idx === 0) ctx.moveTo(cx, cy);
+            else ctx.lineTo(cx, cy);
+          });
+          ctx.stroke();
+          const last = trailFrames[trailFrames.length - 1].bbox;
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = track.color;
+          ctx.beginPath();
+          ctx.arc(
+            (last[0] + last[2] / 2) * canvas.width,
+            (last[1] + last[3] / 2) * canvas.height,
+            4,
+            0,
+            Math.PI * 2,
+          );
+          ctx.fill();
+          ctx.restore();
+        }
         const frame = resolveFrameAtTime(track.frames, currentTime);
         if (!frame) continue;
         const [x, y, w, h] = frame.bbox;

@@ -89,6 +89,31 @@ def test_pick_bbox_prefers_key_frame_over_mid_frame():
     assert ts == 1.2
 
 
+def test_shape_hw_from_metadata_parses_height_width_lists():
+    from record_hires_crop import _shape_hw_from_metadata
+
+    assert _shape_hw_from_metadata([1520, 2688]) == (1520, 2688)
+
+
+def test_remap_skips_overlay_remap_when_bbox_already_playback_normalized():
+    from record_hires_crop import remap_bbox_for_record_crop
+
+    bbox = [0.25, 0.23, 0.41, 0.42]
+    det = {
+        "playback_timeline_synced": True,
+        "detector_shape_hw": [704, 704],
+        "overlay_shape_hw": [576, 704],
+        "playback_shape_hw": [1520, 2688],
+        "frames": [{"t": 5.0, "bbox": bbox}],
+    }
+    mapped = remap_bbox_for_record_crop(
+        bbox,
+        det,
+        crop_shape_hw=(1520, 2688),
+    )
+    assert mapped == bbox
+
+
 def test_remap_bbox_detect_overlay_to_main_playback_shape():
     from record_hires_crop import remap_bbox_for_record_crop
 
