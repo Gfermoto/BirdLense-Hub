@@ -11,16 +11,16 @@
 На VPS (пример):
 
 ```bash
-curl -sf http://185.218.111.196:8085/api/ui/health
-curl -sf http://185.218.111.196:8085/api/ui/readiness
+curl -sf https://birdlense.eyera.info/api/ui/health
+curl -sf https://birdlense.eyera.info/api/ui/readiness
 ```
 
 Ожидание:
 
 | URL | Что смотреть |
 |-----|----------------|
-| `http://185.218.111.196:8085/api/ui/health` | `"status":"ok"` |
-| `http://185.218.111.196:8085/api/ui/readiness` | `checks.database`, `checks.cache_backend`, `checks.processor_heartbeat` — без критичных `status:"error"` |
+| `https://birdlense.eyera.info/api/ui/health` | `"status":"ok"` |
+| `https://birdlense.eyera.info/api/ui/readiness` | `checks.database`, `checks.cache_backend`, `checks.processor_heartbeat` — без критичных `status:"error"` |
 
 Публичные пути **`/health`** и **`/readiness`** на том же порту могут отдавать SPA; для автоматики и деплоя используйте **`/api/ui/*`** (контракт: [health-readiness-contract](./health-readiness-contract.md)).
 

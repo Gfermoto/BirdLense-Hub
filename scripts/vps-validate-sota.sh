@@ -8,7 +8,7 @@ cd "$REPO_ROOT"
 BIRDLENSE_CONTAINER="${BIRDLENSE_CONTAINER:-birdlense}"
 
 # Public DEPLOY_URL for browser/MCP; on VPS itself use loopback (hairpin to public IP often times out).
-: "${DEPLOY_URL:?Set DEPLOY_URL (e.g. http://185.218.111.196:8085)}"
+: "${DEPLOY_URL:?Set DEPLOY_URL (e.g. https://birdlense.eyera.info)}"
 VERIFY_URL="${VPS_VERIFY_URL:-${DEPLOY_URL}}"
 : "${SOTA_GOLDEN_CLIP_1819:?Set path to golden clip 1819 mp4 on VPS}"
 SOTA_GOLDEN_CLIP_1816="${SOTA_GOLDEN_CLIP_1816:-$SOTA_GOLDEN_CLIP_1819}"
