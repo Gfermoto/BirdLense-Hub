@@ -1,21 +1,24 @@
+#!/usr/bin/env bash
 # Локальные настройки деплоя — скопируйте в deploy.local.sh
 # cp scripts/deploy.local.sh.example scripts/deploy.local.sh
 # deploy.local.sh не коммитится в git
 #
-# Важно: держите активным ОДИН режим — LAN (на площадке в той же сети) или VPS (удалённо).
-# Перед поездкой на LAN / возвратом к удалёнке — переключите блоки ниже.
+# Важно: держите активным ОДИН режим — A (LAN), B (VPS1) или C (VPS2).
+# Перед поездкой на LAN / сменой VPS — переключите блоки ниже.
 #
 # Публичный доступ без домена: достаточно http://IP:порт в DEPLOY_URL и (при CORS) CORS_ORIGINS.
 # Отдельный reverse proxy и TLS — позже; до тех пор не блокируйте деплой их отсутствием.
+# Пользователь SSH задаётся в DEPLOY_HOST (user@host); отдельной DEPLOY_USER в deploy.sh нет.
 
 # =============================================================================
 # Режим A — на площадке (LAN): пара дней в сети с сервером
 # =============================================================================
-export DEPLOY_HOST="root@192.168.1.11"
-unset DEPLOY_SSH_PORT
-export DEPLOY_URL="http://192.168.1.11:8085"
+# export DEPLOY_HOST="root@192.168.1.11"
+# unset DEPLOY_SSH_PORT
+# export DEPLOY_URL="http://192.168.1.11:8085"
+# export DEPLOY_REMOTE_DIR="/root/BirdLense"
 # CORS на сервере (app/.env): например CORS_ORIGINS=http://192.168.1.11:8085
-
+#
 # Или ~/.ssh/config:
 #   Host birdlense-lan
 #     HostName 192.168.1.11
@@ -24,25 +27,42 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 # export DEPLOY_HOST="birdlense-lan"
 
 # =============================================================================
-# Режим B — удалённо (VPS / публичный URL): раскомментируйте и закомментируйте блок A
+# Режим B — VPS1 (birdlense.eyera.info, root, SSH 2222)
 # =============================================================================
-# unset DEPLOY_SSH_PORT
-# export DEPLOY_HOST="root@203.0.113.10"
+# export DEPLOY_HOST="root@185.218.111.196"
 # export DEPLOY_SSH_PORT="2222"
 # export DEPLOY_URL="https://birdlense.eyera.info"
+# export DEPLOY_REMOTE_DIR="/root/BirdLense"
 # CORS на сервере (app/.env): например CORS_ORIGINS=https://birdlense.eyera.info
 #
-# Опционально A1: перед rsync прогнать verify-prod-env по локальной копии server app/.env:
+# Или ~/.ssh/config:
+#   Host birdlense-vps
+#     HostName 185.218.111.196
+#     Port 2222
+#     User root
+# export DEPLOY_HOST="birdlense-vps"
+#
+# Опционально: перед rsync прогнать verify-prod-env по локальной копии server app/.env:
 # export RUN_VERIFY_PROD_BEFORE_DEPLOY=1
-# export VERIFY_PROD_ENV_FILE=/path/to/copy-of-server.env   # по умолчанию: app/.env в корне репо
-# По умолчанию strict-quality не блокирует deploy (только отчёт в логах).
-# export DEPLOY_STRICT_QUALITY_REQUIRED=1  # включить blocking режим для strict-quality
-# Защита от частых деплоев (снижает пропуски визитов из-за частых restart-окон).
+# export VERIFY_PROD_ENV_FILE=/path/to/copy-of-server.env
+# export DEPLOY_STRICT_QUALITY_REQUIRED=1
 # export DEPLOY_MIN_INTERVAL_MINUTES=20
 # export DEPLOY_MIN_INTERVAL_BYPASS=1  # только для аварийного исключения
 
-# Куда rsync заливает код на сервере (по умолчанию в deploy.sh: /root/BirdLense)
-# export DEPLOY_REMOTE_DIR="/root/BirdLense"
+# =============================================================================
+# Режим C — VPS2 (aeon-stack, gfer, SSH 2223, UI по IP:8085)
+# =============================================================================
+# export DEPLOY_HOST="gfer@185.218.111.196"
+# export DEPLOY_SSH_PORT="2223"
+# export DEPLOY_URL="http://185.218.111.196:8085"
+# export DEPLOY_REMOTE_DIR="/home/gfer/BirdLense"
+# CORS на сервере (app/.env): CORS_ORIGINS=http://185.218.111.196:8085
+#
+# Первый деплой / bootstrap (убрать после стабилизации):
+# export DEPLOY_MIN_INTERVAL_BYPASS=1
+# export BIRDLENSE_SKIP_CONFIG_DRIFT_GATE=1
+# export BIRDLENSE_SKIP_OUTCOME_METRICS_GATE=1
+# VPS2 (2 vCPU): export BIRDLENSE_COMPOSE_CPUS=1.9
 
 # Секреты (make deploy сольёт в app/.env на сервере, если заданы):
 # export FLASK_SECRET_KEY="..."
