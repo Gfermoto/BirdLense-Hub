@@ -12,6 +12,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Alert from '@mui/material/Alert';
 import type { Settings } from '../../../types';
 import { ProcessorConfidenceBlock } from './processor/ProcessorConfidenceBlock';
+import { ProcessorScoringBlock } from './processor/ProcessorScoringBlock';
 import { ProcessorSessionTimingBlock } from './processor/ProcessorSessionTimingBlock';
 import { ProcessorMultiCameraBirdnetBlock } from './processor/ProcessorMultiCameraBirdnetBlock';
 import { ProcessorConfidenceAdvancedBlock } from './processor/ProcessorConfidenceAdvancedBlock';
@@ -143,6 +144,7 @@ export function ProcessorSection({ form, settingsTier = 'basic' }: Props) {
           {advanced ? <ProcessorBirdnetExtendedBlock form={form} /> : null}
           {advanced ? (
             <>
+              <ProcessorScoringBlock form={form} />
               <ProcessorConfidenceAdvancedBlock form={form} />
               <ProcessorFalsePositiveGuardrailsBlock form={form} />
             </>

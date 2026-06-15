@@ -24,6 +24,11 @@ export const PROCESSOR_DEFAULTS = {
   background_subtraction_var_threshold: 16,
   background_subtraction_min_fg_ratio: 0.07,
   background_subtraction_warmup_frames: 45,
+  scoring_default_low_threshold: 0.1,
+  scoring_default_high_threshold: 0.48,
+  scoring_relaxed_min_confidence: 0.08,
+  scoring_frigate_prior_boost: 0.2,
+  scoring_moving_roi_min_motion_score: 0.24,
 } as const;
 
 export type ProcessorDefaultKey = keyof typeof PROCESSOR_DEFAULTS;
