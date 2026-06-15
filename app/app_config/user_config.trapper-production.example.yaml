@@ -48,9 +48,17 @@ video:
   encoding: intel
   # cameras:
   #   - id: BirdBox
-  #     stream_name: BirdBox          # main / record (FFmpeg MP4)
+  #     stream_name: BirdBox          # main / record (FFmpeg MP4), go2rtc subtype=0
   #     detect_stream_name: rtsp://.../realmonitor?channel=1&subtype=1  # Frigate detect parity
   #     tuning_role: feeder_close
+  #     record_width: 2688            # Dahua IPC-HDPW1420F native main (optional; ffprobe usually enough)
+  #     record_height: 1520
+  #   - id: Forest
+  #     stream_name: Forest
+  #     detect_stream_name: rtsp://.../realmonitor?channel=1&subtype=1
+  #     tuning_role: feeder_far
+  #     record_width: 1920            # DH-TPC-BF3221-T visible stream
+  #     record_height: 1080
 
 detection:
   yolo_weak_track_salvage_enabled: true

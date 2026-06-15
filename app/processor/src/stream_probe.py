@@ -285,6 +285,20 @@ def parse_configured_video_size(runtime_cfg: Mapping[str, Any]) -> tuple[int, in
     return None
 
 
+def parse_camera_record_size(camera: Mapping[str, Any] | None) -> tuple[int, int] | None:
+    """Per-camera main/record WxH override (``record_width``/``record_height`` or ``video_width``/``video_height``)."""
+    if not isinstance(camera, Mapping):
+        return None
+    try:
+        w = int(camera.get("record_width") or camera.get("video_width") or 0)
+        h = int(camera.get("record_height") or camera.get("video_height") or 0)
+    except (TypeError, ValueError):
+        return None
+    if w > 0 and h > 0:
+        return (w, h)
+    return None
+
+
 def force_recording_resolution(runtime_cfg: Mapping[str, Any]) -> bool:
     """Legacy override: fixed config WxH wins over stream probe."""
     raw = _cfg_get(runtime_cfg, "video.force_recording_resolution", False)
