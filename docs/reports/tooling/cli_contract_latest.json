@@ -1,6 +1,6 @@
 {
   "schema": "cli_contract_standardization_report@v1",
-  "generated_at": "2026-06-10T12:59:29Z",
+  "generated_at": "2026-06-15T11:57:03Z",
   "checks": {
     "min_cli_total_ok": true,
     "required_cli_ids_ok": true,

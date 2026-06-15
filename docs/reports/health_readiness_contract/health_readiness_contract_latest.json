@@ -1,6 +1,6 @@
 {
   "schema": "health_readiness_contract@v1",
-  "generated_at": "2026-06-10T13:02:08Z",
+  "generated_at": "2026-06-15T12:08:40Z",
   "checks": {
     "health_ok": true,
     "readiness_ok": true,
@@ -9,7 +9,7 @@
     "false_green_detected": false
   },
   "ok": true,
-  "base_url": "http://185.218.111.196:8085",
+  "base_url": "https://birdlense.eyera.info",
   "responses": {
     "health": {
       "status_code": 200,
@@ -20,7 +20,9 @@
     "readiness": {
       "status_code": 200,
       "payload": {
-        "checked_at": "2026-06-10T13:02:09.508361+00:00",
+        "bbox_slo_ok": false,
+        "bbox_slo_reason": "funnel_degraded",
+        "checked_at": "2026-06-15T12:08:40.654109+00:00",
         "checks": {
           "app_config_dir": {
             "exists": true,
@@ -45,96 +47,97 @@
             "status": "ok"
           },
           "pipeline_funnel": {
-            "alerts": [],
-            "fp_empty_opencv_rate": 0.0,
-            "fusion_drop_rate": 0.0,
-            "healthy_persist_rate": 0.5932,
+            "alerts": [
+              "fp_empty_recording opencv rate 37.3% > 35.0%",
+              "healthy_persist rate 14.5% < 30.0%"
+            ],
+            "fp_empty_opencv_rate": 0.3731,
+            "fusion_drop_rate": 0.0855,
+            "healthy_persist_rate": 0.1451,
             "persist_substage_breakdown": {
-              "dominant_substage_p95": "persist",
+              "dominant_substage_p95": "create_video",
               "schema": "persist_substage_breakdown@v1",
-              "sessions_sampled": 59,
+              "sessions_sampled": 386,
               "substages": {
                 "behavior": {
-                  "max_ms": 95.998,
-                  "n": 42,
-                  "p50_ms": 1.406,
-                  "p95_ms": 7.664
+                  "max_ms": 873.778,
+                  "n": 56,
+                  "p50_ms": 1.624,
+                  "p95_ms": 169.15
                 },
                 "create_video": {
-                  "max_ms": 13980.956,
-                  "n": 42,
-                  "p50_ms": 25.471,
-                  "p95_ms": 2381.343
+                  "max_ms": 53694.74,
+                  "n": 56,
+                  "p50_ms": 34.911,
+                  "p95_ms": 5452.005
                 },
                 "create_video_ingest": {
                   "commit": {
-                    "max_ms": 3.046,
-                    "n": 42,
-                    "p50_ms": 0.708,
-                    "p95_ms": 1.678
+                    "max_ms": 2.285,
+                    "n": 56,
+                    "p50_ms": 0.762,
+                    "p95_ms": 1.3
                   },
                   "visit_processor": {
-                    "max_ms": 66.544,
-                    "n": 42,
-                    "p50_ms": 10.944,
-                    "p95_ms": 25.519
+                    "max_ms": 1126.156,
+                    "n": 56,
+                    "p50_ms": 12.701,
+                    "p95_ms": 159.24
                   },
                   "weather": {
-                    "max_ms": 6.218,
-                    "n": 42,
-                    "p50_ms": 0.289,
-                    "p95_ms": 1.356
+                    "max_ms": 1.775,
+                    "n": 56,
+                    "p50_ms": 0.116,
+                    "p95_ms": 0.87
                   }
                 },
                 "dataset_crops": {
-                  "max_ms": 937.606,
-                  "n": 42,
-                  "p50_ms": 0.916,
-                  "p95_ms": 773.087
+                  "max_ms": 249.1,
+                  "n": 56,
+                  "p50_ms": 1.949,
+                  "p95_ms": 54.495
                 },
                 "persist": {
-                  "max_ms": 14083.514,
-                  "n": 59,
-                  "p50_ms": 67.348,
-                  "p95_ms": 2456.352
+                  "max_ms": 53753.655,
+                  "n": 386,
+                  "p50_ms": 0.002,
+                  "p95_ms": 395.71
                 },
                 "reid_enrich": {
-                  "max_ms": 1895.187,
-                  "n": 42,
-                  "p50_ms": 0.321,
-                  "p95_ms": 1164.969
+                  "max_ms": 4360.694,
+                  "n": 56,
+                  "p50_ms": 1659.011,
+                  "p95_ms": 3524.595
                 },
                 "scales": {
-                  "max_ms": 94.9,
-                  "n": 42,
-                  "p50_ms": 37.585,
-                  "p95_ms": 56.989
+                  "max_ms": 9912.707,
+                  "n": 56,
+                  "p50_ms": 39.487,
+                  "p95_ms": 107.594
                 }
               },
               "window_hours": 24
             },
-            "sessions_total": 59,
-            "status": "ok",
+            "sessions_total": 386,
+            "status": "degraded",
             "top_root_causes": [
-              "healthy_persisted_gt_0",
               "confidence_gate_collapse_raw_gt_0_accepted_0",
-              "detector_silent_raw0"
+              "detector_silent_raw0",
+              "healthy_persisted_gt_0",
+              "decision_fusion_drop_tracks_gt_0_persisted_0"
             ]
           },
           "processor_heartbeat": {
-            "age_seconds": 116.266,
-            "bootstrap_phase": false,
-            "last_heartbeat_utc": "2026-06-10T13:00:13.200456+00:00",
+            "age_seconds": 8.592,
+            "bootstrap_phase": true,
+            "last_heartbeat_utc": "2026-06-15T12:08:32+00:00",
             "max_age_seconds": 180,
             "reason": "ok",
             "status": "ok"
           },
           "yolo_detector": {
-            "inference_backend_effective": "openvino",
-            "inference_backend_requested": "openvino",
-            "last_motion_age_sec": 3.009,
             "source": "heartbeat",
-            "status": "ok"
+            "status": "unknown"
           }
         },
         "components": {
@@ -146,112 +149,119 @@
           "esphome": "ok",
           "motion_source": "opencv,frigate",
           "mqtt": "ok",
-          "processor": "ok",
+          "processor": "offline",
           "trigger_display": "opencv + frigate",
           "video": "ok",
           "web": "ok",
-          "yolo": "ok"
+          "yolo": "unknown"
         },
         "pipeline_funnel": {
-          "alerts": [],
+          "alerts": [
+            "fp_empty_recording opencv rate 37.3% > 35.0%",
+            "healthy_persist rate 14.5% < 30.0%"
+          ],
           "by_camera": {
             "BirdBox": {
-              "confidence_gate_collapse_raw_gt_0_accepted_0": 6,
-              "detector_silent_raw0": 10,
-              "healthy_persisted_gt_0": 8
+              "confidence_gate_collapse_raw_gt_0_accepted_0": 49,
+              "decision_fusion_drop_tracks_gt_0_persisted_0": 23,
+              "detector_silent_raw0": 91,
+              "healthy_persisted_gt_0": 13
             },
             "Forest": {
-              "confidence_gate_collapse_raw_gt_0_accepted_0": 7,
-              "detector_silent_raw0": 1,
-              "healthy_persisted_gt_0": 27
+              "confidence_gate_collapse_raw_gt_0_accepted_0": 151,
+              "decision_fusion_drop_tracks_gt_0_persisted_0": 10,
+              "detector_silent_raw0": 6,
+              "healthy_persisted_gt_0": 43
             }
           },
-          "fp_empty_opencv_rate": 0.0,
-          "fp_empty_opencv_sessions": 0,
-          "fusion_drop_rate": 0.0,
-          "fusion_drop_sessions": 0,
+          "fp_empty_opencv_rate": 0.3731,
+          "fp_empty_opencv_sessions": 144,
+          "fusion_drop_rate": 0.0855,
+          "fusion_drop_sessions": 33,
           "global_funnel": {
-            "confidence_gate_collapse_raw_gt_0_accepted_0": 13,
-            "detector_silent_raw0": 11,
-            "healthy_persisted_gt_0": 35
+            "confidence_gate_collapse_raw_gt_0_accepted_0": 200,
+            "decision_fusion_drop_tracks_gt_0_persisted_0": 33,
+            "detector_silent_raw0": 97,
+            "healthy_persisted_gt_0": 56
           },
-          "healthy_persist_count": 35,
-          "healthy_persist_rate": 0.5932,
+          "healthy_persist_count": 56,
+          "healthy_persist_rate": 0.1451,
           "persist_substage_breakdown": {
-            "dominant_substage_p95": "persist",
+            "dominant_substage_p95": "create_video",
             "schema": "persist_substage_breakdown@v1",
-            "sessions_sampled": 59,
+            "sessions_sampled": 386,
             "substages": {
               "behavior": {
-                "max_ms": 95.998,
-                "n": 42,
-                "p50_ms": 1.406,
-                "p95_ms": 7.664
+                "max_ms": 873.778,
+                "n": 56,
+                "p50_ms": 1.624,
+                "p95_ms": 169.15
               },
               "create_video": {
-                "max_ms": 13980.956,
-                "n": 42,
-                "p50_ms": 25.471,
-                "p95_ms": 2381.343
+                "max_ms": 53694.74,
+                "n": 56,
+                "p50_ms": 34.911,
+                "p95_ms": 5452.005
               },
               "create_video_ingest": {
                 "commit": {
-                  "max_ms": 3.046,
-                  "n": 42,
-                  "p50_ms": 0.708,
-                  "p95_ms": 1.678
+                  "max_ms": 2.285,
+                  "n": 56,
+                  "p50_ms": 0.762,
+                  "p95_ms": 1.3
                 },
                 "visit_processor": {
-                  "max_ms": 66.544,
-                  "n": 42,
-                  "p50_ms": 10.944,
-                  "p95_ms": 25.519
+                  "max_ms": 1126.156,
+                  "n": 56,
+                  "p50_ms": 12.701,
+                  "p95_ms": 159.24
                 },
                 "weather": {
-                  "max_ms": 6.218,
-                  "n": 42,
-                  "p50_ms": 0.289,
-                  "p95_ms": 1.356
+                  "max_ms": 1.775,
+                  "n": 56,
+                  "p50_ms": 0.116,
+                  "p95_ms": 0.87
                 }
               },
               "dataset_crops": {
-                "max_ms": 937.606,
-                "n": 42,
-                "p50_ms": 0.916,
-                "p95_ms": 773.087
+                "max_ms": 249.1,
+                "n": 56,
+                "p50_ms": 1.949,
+                "p95_ms": 54.495
               },
               "persist": {
-                "max_ms": 14083.514,
-                "n": 59,
-                "p50_ms": 67.348,
-                "p95_ms": 2456.352
+                "max_ms": 53753.655,
+                "n": 386,
+                "p50_ms": 0.002,
+                "p95_ms": 395.71
               },
               "reid_enrich": {
-                "max_ms": 1895.187,
-                "n": 42,
-                "p50_ms": 0.321,
-                "p95_ms": 1164.969
+                "max_ms": 4360.694,
+                "n": 56,
+                "p50_ms": 1659.011,
+                "p95_ms": 3524.595
               },
               "scales": {
-                "max_ms": 94.9,
-                "n": 42,
-                "p50_ms": 37.585,
-                "p95_ms": 56.989
+                "max_ms": 9912.707,
+                "n": 56,
+                "p50_ms": 39.487,
+                "p95_ms": 107.594
               }
             },
             "window_hours": 24
           },
           "schema": "persist_funnel_summary@v1",
-          "sessions_total": 59,
-          "status": "ok",
+          "sessions_total": 386,
+          "status": "degraded",
           "top_root_causes": [
-            "healthy_persisted_gt_0",
             "confidence_gate_collapse_raw_gt_0_accepted_0",
-            "detector_silent_raw0"
+            "detector_silent_raw0",
+            "healthy_persisted_gt_0",
+            "decision_fusion_drop_tracks_gt_0_persisted_0"
           ],
           "window_hours": 24
         },
-        "quality_ready": true,
+        "quality_ready": false,
         "ready": true,
         "security_gates": {
           "items": [
@@ -284,11 +294,11 @@
         "esphome": "ok",
         "motion_source": "opencv,frigate",
         "mqtt": "ok",
-        "processor": "ok",
+        "processor": "offline",
         "trigger_display": "opencv + frigate",
         "video": "ok",
         "web": "ok",
-        "yolo": "ok"
+        "yolo": "unknown"
       }
     }
   },

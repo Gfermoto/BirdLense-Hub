@@ -1,6 +1,6 @@
 # Error Budget Gate
 
-- generated_at: `2026-06-10T12:59:11Z`
+- generated_at: `2026-06-15T13:29:32Z`
 - state: `ok`
 - consumed_pct: `75`
 - remaining_pct: `25`

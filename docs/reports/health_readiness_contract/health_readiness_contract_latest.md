@@ -1,6 +1,6 @@
 # Health Readiness Contract
 
-- generated_at: `2026-06-10T13:02:08Z`
+- generated_at: `2026-06-15T12:08:40Z`
 - ok: `True`
 
 ## Checks
