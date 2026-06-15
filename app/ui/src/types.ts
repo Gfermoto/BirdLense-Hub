@@ -388,8 +388,13 @@ export interface Settings {
     track_static_reject_enabled?: boolean;
     track_static_reject_min_duration_sec?: number;
     track_static_reject_min_frames?: number;
+    scoring_default_low_threshold?: number;
+    scoring_default_high_threshold?: number;
+    scoring_relaxed_min_confidence?: number;
+    scoring_frigate_prior_boost?: number;
     scoring_moving_roi_review_enabled?: boolean;
     scoring_moving_roi_min_motion_score?: number;
+    scene_adaptive_conf_enabled?: boolean;
     linear_live_scoring_engine_enabled?: boolean;
     behavior_recognition?: {
       enabled?: boolean;
@@ -588,6 +593,9 @@ export interface Settings {
     absorb_generic_bird?: boolean;
     absorb_generic_bird_overlap_min_sec?: number;
     absorb_generic_bird_min_classifier_confidence?: number;
+    bbox_iou_gate_enabled?: boolean;
+    bbox_iou_gate_min?: number;
+    bbox_iou_gate_action?: 'warn' | 'reject' | string;
   };
   mcp?: {
     enabled?: boolean;
