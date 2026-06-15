@@ -13,6 +13,7 @@ import logging
 from typing import Any
 
 from track_first_contract import is_valid_norm_bbox, valid_track_frames
+from processor_config_defaults import MIN_CONFIDENCE_TO_PROCESS
 
 
 _legacy_persist_warned = False
@@ -107,7 +108,7 @@ def passes_binary_track_first_store_floor(
     if not track_has_bbox_frames(row):
         return False
     try:
-        min_proc = float(app_config.get("processor.min_confidence_to_process") or 0.12)
+        min_proc = float(app_config.get("processor.min_confidence_to_process") or MIN_CONFIDENCE_TO_PROCESS)
     except (TypeError, ValueError):
         min_proc = 0.12
     det_conf = float(row.get("detector_confidence") or conf)

@@ -29,8 +29,8 @@ CONFIDENCE_FLOORS = {
     "processor.min_box_size_px": 12,
 }
 
-# Global min_confidence_to_process floor shrinks to min(role presets) so default 0.12
-# is not raised to 0.20 when feeder_close/feeder_far ship at 0.08/0.06.
+# Global min_confidence_to_process floor shrinks to min(role presets) so default 0.08
+# is not raised to 0.20 when feeder_close/feeder_far ship at 0.04.
 ROLE_AWARE_CONFIDENCE_FLOOR_PATHS = frozenset({"processor.min_confidence_to_process"})
 
 # Ключи с секретами — маскируются в API, не перезаписываются при сохранении placeholder

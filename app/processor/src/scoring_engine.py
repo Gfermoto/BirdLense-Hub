@@ -359,16 +359,28 @@ class ScoringEngine:
 
         return ScoringDecision(zone=zone, breakdown=bd, reject_reason=reason)
 
+    def _salvage_conf_floor(self, bird_trust_floor: float | None) -> float:
+        """Min conf for scoring salvage — align with detector bird floor, not only relaxed default."""
+        floors = [self.cfg.relaxed_scoring_min_confidence, self.cfg.calibration_low_floor]
+        if bird_trust_floor is not None:
+            try:
+                floors.append(float(bird_trust_floor))
+            except (TypeError, ValueError):
+                pass
+        return max(0.001, min(floors))
+
     def filter_boxes(
         self,
         boxes: list[dict[str, Any]],
         *,
         frame_bgr: np.ndarray,
         frame_index: int,
+        bird_trust_floor: float | None = None,
         frigate_prior_active: bool = False,
     ) -> list[dict[str, Any]]:
         self.last_stats = {k: 0 for k in self.last_stats}
         self.last_decisions = []
+        salvage_conf_floor = self._salvage_conf_floor(bird_trust_floor)
         self._scene.update(frame_bgr)
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
 
@@ -411,7 +423,7 @@ class ScoringEngine:
             if (
                 decision.zone == DecisionZone.REJECT
                 and bool(box.get("relaxed_small_object"))
-                and float(box.get("conf") or 0.0) >= self.cfg.relaxed_scoring_min_confidence
+                and float(box.get("conf") or 0.0) >= salvage_conf_floor
             ):
                 decision = ScoringDecision(
                     zone=DecisionZone.REVIEW,
@@ -423,7 +435,7 @@ class ScoringEngine:
                 trace["reason_code"] = "relaxed_small_object_scoring_floor"
             elif (
                 decision.zone == DecisionZone.REJECT
-                and float(box.get("conf") or 0.0) >= self.cfg.relaxed_scoring_min_confidence
+                and float(box.get("conf") or 0.0) >= salvage_conf_floor
                 and decision.reject_reason
                 and str(decision.reject_reason).startswith("score_below_low_threshold")
             ):

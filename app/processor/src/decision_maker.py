@@ -85,7 +85,7 @@ class DecisionMaker:
         generic_bird_min_detector_conf=None,
         generic_bird_min_frames=3,
         generic_bird_min_area_frac=0.01,
-        generic_bird_min_best_frame_score=6.5,
+        generic_bird_min_best_frame_score=5.0,
         generic_rodent_min_frames=1,
         generic_rodent_max_area_frac=1.0,
         generic_rodent_min_best_frame_score=0.0,
@@ -132,7 +132,7 @@ class DecisionMaker:
         try:
             self.generic_bird_min_best_frame_score = float(generic_bird_min_best_frame_score)
         except (TypeError, ValueError):
-            self.generic_bird_min_best_frame_score = 6.5
+            self.generic_bird_min_best_frame_score = 5.0
         try:
             self.generic_rodent_min_frames = max(1, int(generic_rodent_min_frames))
         except (TypeError, ValueError):

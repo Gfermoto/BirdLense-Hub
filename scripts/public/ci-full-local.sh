@@ -99,7 +99,7 @@ ensure_venv_docs() {
 }
 
 log "verify-prod-env.sh (A1 CI parity / synthetic secrets)"
-SYNTH_SECRET="$(printf 'ci_%028d' 0)"
+SYNTH_SECRET="$(printf 'ci_%029d' 0)"
 VERIFY_PROD_ENV=1 BIRDLENSE_STRICT_API_AUTH=1 \
   FLASK_SECRET_KEY="${SYNTH_SECRET}" \
   PROCESSOR_SECRET="${SYNTH_SECRET}" \

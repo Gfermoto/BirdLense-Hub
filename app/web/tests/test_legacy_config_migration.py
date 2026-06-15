@@ -141,7 +141,7 @@ def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
 
         assert app_config.get("detection.min_confidence_to_store") == 0.08
         assert app_config.get("processor.min_confidence_binary") == 0.08
-        assert app_config.get("processor.min_confidence_to_process") == 0.06
+        assert app_config.get("processor.min_confidence_to_process") == 0.04
         assert app_config.get("processor.min_track_duration") == 0.25
         assert app_config.get("processor.min_box_size_px") == 24
 
@@ -149,7 +149,7 @@ def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
         saved = yaml.safe_load(user_config.read_text(encoding="utf-8")) or {}
         assert float(saved["detection"]["min_confidence_to_store"]) == 0.08
         assert float(saved["processor"]["min_confidence_binary"]) == 0.08
-        assert float(saved["processor"]["min_confidence_to_process"]) == 0.06
+        assert float(saved["processor"]["min_confidence_to_process"]) == 0.04
         assert float(saved["processor"]["min_track_duration"]) == 0.25
         assert int(saved["processor"]["min_box_size_px"]) == 24
     finally:
@@ -168,9 +168,9 @@ def test_confidence_floors_global_not_above_role_presets(monkeypatch):
     AppConfig._enforce_confidence_floors(merged)
     proc = merged.get("processor") or {}
     roles = proc.get("camera_tuning_by_role") or {}
-    assert float(roles["feeder_close"]["min_confidence_to_process"]) == 0.08
-    assert float(roles["feeder_far"]["min_confidence_to_process"]) == 0.06
-    assert float(proc["min_confidence_to_process"]) == 0.12
+    assert float(roles["feeder_close"]["min_confidence_to_process"]) == 0.04
+    assert float(roles["feeder_far"]["min_confidence_to_process"]) == 0.04
+    assert float(proc["min_confidence_to_process"]) == 0.08
 
 
 def test_migrate_legacy_trigger_topics_copies_into_new_domains():

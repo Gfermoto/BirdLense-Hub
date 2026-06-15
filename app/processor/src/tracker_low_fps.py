@@ -102,7 +102,11 @@ def clamp_bytetrack_track_thresholds(doc: dict[str, Any], track_conf_cap: float 
     """Ensure track_high_thresh/new_track_thresh < Ultralytics track(conf)."""
     if track_conf_cap is None or str(doc.get("tracker_type") or "").strip().lower() != "bytetrack":
         return
-    ceiling = max(0.01, float(track_conf_cap) - 0.04)
+    cap = float(track_conf_cap)
+    # Keep ~0.02 below YOLO track(conf); matches bytetrack_contract guidance.
+    ceiling = max(0.005, cap - 0.02)
+    if cap <= 0.06:
+        ceiling = min(ceiling, cap * 0.65)
     for key in ("track_high_thresh", "new_track_thresh"):
         try:
             cur = float(doc.get(key) or 0.1)
@@ -148,6 +152,16 @@ def _materialize_adaptive_tracker(
     if not out_path.is_file():
         out_path.write_text(yaml.safe_dump(doc, sort_keys=False), encoding="utf-8")
     return str(out_path.resolve())
+
+
+def build_tracker_runtime_cfg(
+    app_config: Any,
+    profile_overrides: Mapping[str, Any] | None = None,
+) -> Mapping[str, Any]:
+    """Runtime overlay for tracker clamp — must match detection_strategy track(conf)."""
+    from processor_runtime_profile import RuntimeProfileConfigOverlay
+
+    return RuntimeProfileConfigOverlay(app_config, profile_overrides)
 
 
 def resolve_adaptive_tracker_path(

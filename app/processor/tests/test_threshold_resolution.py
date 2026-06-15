@@ -14,6 +14,7 @@ from threshold_resolution import (  # noqa: E402
     build_camera_processor_overrides,
     merge_adaptive_profile_overrides,
     resolve_effective_threshold,
+    THRESHOLD_ACCEPTANCE_KEYS,
 )
 
 
@@ -24,13 +25,19 @@ def _default_feeder_role(role: str) -> dict:
     return (cfg.get("processor") or {}).get("camera_tuning_by_role", {}).get(role) or {}
 
 
+def _load_default_config() -> dict:
+    path = os.path.join(project_root, "app", "app_config", "default_config.yaml")
+    with open(path, encoding="utf-8") as fh:
+        return yaml.safe_load(fh) or {}
+
+
 class TestMergeAdaptiveProfileOverrides(unittest.TestCase):
     def test_night_cannot_raise_role_bird_threshold(self):
         out = merge_adaptive_profile_overrides(
-            {"min_confidence_binary_bird": 0.06},
+            {"min_confidence_binary_bird": 0.02},
             {"min_confidence_binary_bird": 0.28, "min_box_size_px": 14},
         )
-        self.assertAlmostEqual(out["min_confidence_binary_bird"], 0.06)
+        self.assertAlmostEqual(out["min_confidence_binary_bird"], 0.02)
         self.assertEqual(out["min_box_size_px"], 14)
 
     def test_camera_wins_non_acceptance_over_adaptive(self):
@@ -46,23 +53,23 @@ class TestResolveEffectiveThreshold(unittest.TestCase):
     def test_role_beats_global(self, mock_role):
         mock_role.return_value = "feeder_far"
         cfg = {
-            "processor.min_confidence_binary_bird": 0.12,
-            "processor.camera_tuning_by_role.feeder_far": {"min_confidence_binary_bird": 0.05},
+            "processor.min_confidence_binary_bird": 0.06,
+            "processor.camera_tuning_by_role.feeder_far": {"min_confidence_binary_bird": 0.03},
         }
         self.assertAlmostEqual(
             resolve_effective_threshold(cfg, "min_confidence_binary_bird", camera_id="Forest"),
-            0.05,
+            0.03,
         )
 
     @patch("threshold_resolution.resolve_camera_tuning_role")
     def test_openvino_cap_does_not_raise_role(self, mock_role):
         mock_role.return_value = "feeder_close"
         cfg = {
-            "processor.min_confidence_binary_bird": 0.12,
-            "processor.openvino_min_confidence_binary_bird": 0.12,
+            "processor.min_confidence_binary_bird": 0.06,
+            "processor.openvino_min_confidence_binary_bird": 0.06,
             "processor.camera_tuning_by_role.feeder_close": {
-                "min_confidence_binary_bird": 0.06,
-                "openvino_min_confidence_binary_bird": 0.06,
+                "min_confidence_binary_bird": 0.02,
+                "openvino_min_confidence_binary_bird": 0.02,
             },
         }
         self.assertAlmostEqual(
@@ -72,15 +79,15 @@ class TestResolveEffectiveThreshold(unittest.TestCase):
                 camera_id="BirdBox",
                 inference_backend="openvino",
             ),
-            0.06,
+            0.02,
         )
 
     @patch("threshold_resolution.resolve_camera_tuning_role")
     def test_adaptive_min_with_role(self, mock_role):
         mock_role.return_value = "feeder_far"
         cfg = {
-            "processor.min_confidence_binary_bird": 0.12,
-            "processor.camera_tuning_by_role.feeder_far": {"min_confidence_binary_bird": 0.08},
+            "processor.min_confidence_binary_bird": 0.06,
+            "processor.camera_tuning_by_role.feeder_far": {"min_confidence_binary_bird": 0.03},
         }
         self.assertAlmostEqual(
             resolve_effective_threshold(
@@ -89,21 +96,48 @@ class TestResolveEffectiveThreshold(unittest.TestCase):
                 camera_id="Forest",
                 adaptive_overrides={"min_confidence_binary_bird": 0.28},
             ),
-            0.08,
+            0.03,
         )
 
 
 class TestFeederCloseDefaults(unittest.TestCase):
+    def test_feeder_close_bird_threshold_at_most_0_02(self):
+        role = _default_feeder_role("feeder_close")
+        self.assertLessEqual(float(role["min_confidence_binary_bird"]), 0.02)
+        self.assertLessEqual(float(role["openvino_min_confidence_binary_bird"]), 0.02)
+
     def test_feeder_close_has_openvino_keys(self):
         role = _default_feeder_role("feeder_close")
         self.assertIn("openvino_min_confidence_binary_bird", role)
-        self.assertLessEqual(float(role["openvino_min_confidence_binary_bird"]), 0.08)
+        self.assertIn("openvino_binary_track_ultralytics_conf", role)
 
     def test_feeder_roles_have_scoring_floors(self):
         close = _default_feeder_role("feeder_close")
         far = _default_feeder_role("feeder_far")
-        self.assertLessEqual(float(close["scoring_default_low_threshold"]), 0.16)
+        self.assertLessEqual(float(close["scoring_default_low_threshold"]), 0.12)
         self.assertLessEqual(float(far["scoring_default_low_threshold"]), 0.12)
+        self.assertLessEqual(float(close["scoring_relaxed_min_confidence"]), 0.02)
+
+    def test_feeder_close_track_conf_aligned_with_bird(self):
+        close = _default_feeder_role("feeder_close")
+        bird = float(close["min_confidence_binary_bird"])
+        ov_track = float(close["openvino_binary_track_ultralytics_conf"])
+        self.assertLessEqual(abs(ov_track - bird), 0.02)
+        self.assertAlmostEqual(ov_track, 0.025)
+
+    def test_feeder_far_openvino_track_conf_aligned_with_bird(self):
+        far = _default_feeder_role("feeder_far")
+        bird = float(far["min_confidence_binary_bird"])
+        ov_track = float(far["openvino_binary_track_ultralytics_conf"])
+        self.assertLessEqual(bird, 0.08)
+        self.assertLessEqual(ov_track, 0.10)
+        self.assertGreaterEqual(ov_track, bird)
+
+    def test_feeder_roles_disable_scene_adaptive_boost(self):
+        close = _default_feeder_role("feeder_close")
+        far = _default_feeder_role("feeder_far")
+        self.assertFalse(close.get("scene_adaptive_conf_enabled", True))
+        self.assertFalse(far.get("scene_adaptive_conf_enabled", True))
 
 
 class TestFeederRoleEffectiveAfterConfigMerge(unittest.TestCase):
@@ -144,7 +178,7 @@ class TestFeederRoleEffectiveAfterConfigMerge(unittest.TestCase):
                 "min_confidence_to_process",
                 camera_id="BirdBox",
             ),
-            0.08,
+            0.04,
         )
 
     @patch("threshold_resolution.resolve_camera_tuning_role")
@@ -162,7 +196,7 @@ class TestFeederRoleEffectiveAfterConfigMerge(unittest.TestCase):
                 "min_confidence_to_process",
                 camera_id="Forest",
             ),
-            0.06,
+            0.04,
         )
 
 
@@ -176,11 +210,70 @@ class TestBuildCameraProcessorOverrides(unittest.TestCase):
                 if key == "video":
                     return {}
                 if key == "processor.camera_tuning_by_role.feeder_close":
-                    return {"min_confidence_binary_bird": 0.06}
+                    return {"min_confidence_binary_bird": 0.02}
                 return default
 
         out = build_camera_processor_overrides(AppCfg(), "BirdBox")
-        self.assertAlmostEqual(out.get("min_confidence_binary_bird"), 0.06)
+        self.assertAlmostEqual(out.get("min_confidence_binary_bird"), 0.02)
+
+
+class TestConfigCodeDefaultsConsistency(unittest.TestCase):
+    """Verify YAML defaults match code fallbacks for all threshold keys."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.config = _load_default_config()
+        from processor_config_defaults import (
+            AUTO_UNSTICK_MIN_CONFIDENCE_BINARY,
+            AUTO_UNSTICK_MIN_CONFIDENCE_BINARY_BIRD,
+            MIN_CONFIDENCE_BINARY,
+            MIN_CONFIDENCE_BINARY_BIRD,
+            MIN_CONFIDENCE_TO_PROCESS,
+            MIN_CONFIDENCE_TO_STORE,
+            OPENVO_BINARY_TRACK_ULTRALYTICS_CONF,
+        )
+
+        cls.code = {
+            "min_confidence_to_process": MIN_CONFIDENCE_TO_PROCESS,
+            "min_confidence_binary": MIN_CONFIDENCE_BINARY,
+            "min_confidence_binary_bird": MIN_CONFIDENCE_BINARY_BIRD,
+            "openvino_binary_track_ultralytics_conf": OPENVO_BINARY_TRACK_ULTRALYTICS_CONF,
+            "auto_unstick_min_confidence_binary": AUTO_UNSTICK_MIN_CONFIDENCE_BINARY,
+            "auto_unstick_min_confidence_binary_bird": AUTO_UNSTICK_MIN_CONFIDENCE_BINARY_BIRD,
+            "min_confidence_to_store": MIN_CONFIDENCE_TO_STORE,
+        }
+
+    def test_generic_bird_min_best_frame_score_consistency(self):
+        yaml_val = (self.config.get("processor") or {}).get("generic_bird_min_best_frame_score")
+        code_default = 5.0
+        self.assertEqual(
+            yaml_val, code_default,
+            f"YAML generic_bird_min_best_frame_score={yaml_val} != code default {code_default}"
+        )
+
+    def test_feeder_role_thresholds_match_config(self):
+        close = _default_feeder_role("feeder_close")
+        far = _default_feeder_role("feeder_far")
+        self.assertAlmostEqual(float(close.get("min_confidence_binary_bird", 0.12)), 0.02)
+        self.assertAlmostEqual(float(far.get("min_confidence_binary_bird", 0.12)), 0.03)
+
+    def test_global_processor_defaults_match_code(self):
+        proc = self.config.get("processor") or {}
+        det = self.config.get("detection") or {}
+        for key, code_val in self.code.items():
+            if key == "min_confidence_to_store":
+                yaml_val = det.get(key)
+            else:
+                yaml_val = proc.get(key)
+            self.assertEqual(yaml_val, code_val, f"YAML {key}={yaml_val} != code {code_val}")
+
+    def test_detection_frigate_standalone_off(self):
+        det = self.config.get("detection") or {}
+        self.assertFalse(det.get("frigate_standalone_when_no_yolo", True))
+
+    def test_classifier_crop_source_record_hires(self):
+        proc = self.config.get("processor") or {}
+        self.assertEqual(proc.get("classifier_crop_source"), "record_hires")
 
 
 if __name__ == "__main__":

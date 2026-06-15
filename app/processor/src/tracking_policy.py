@@ -8,7 +8,7 @@ from typing import Any, Literal, Mapping
 
 from app_config.app_config import app_config
 from pipeline_policy import build_pipeline_policy_snapshot
-from tracker_low_fps import resolve_adaptive_tracker_path
+from tracker_low_fps import build_tracker_runtime_cfg, resolve_adaptive_tracker_path
 from tracker_registry import resolve_tracker_preset
 
 _LOG = logging.getLogger(__name__)
@@ -89,7 +89,12 @@ class UnifiedTrackingPolicy:
             "tracking_unified_with_live": bool(self.unified_with_live),
         }
 
-    def resolve_tracker_path(self, profile_tracker: str | None = None) -> str:
+    def resolve_tracker_path(
+        self,
+        profile_tracker: str | None = None,
+        *,
+        profile_overrides: Mapping[str, Any] | None = None,
+    ) -> str:
         """FPS buckets + adaptive MOG2 buffer (SOTA-10)."""
         picked = resolve_tracker_preset(profile_tracker or self.base_tracker)
         cfg = app_config.config or {}
@@ -110,7 +115,8 @@ class UnifiedTrackingPolicy:
                 gt = str(raw.get("gt_15") or "").strip()
                 if gt and fps > 15.0:
                     picked = resolve_tracker_preset(gt)
-        return resolve_adaptive_tracker_path(picked, fps)
+        runtime_cfg = build_tracker_runtime_cfg(app_config, profile_overrides)
+        return resolve_adaptive_tracker_path(picked, fps, runtime_cfg=runtime_cfg)
 
     def geometry_mode_for_frame(self) -> Mode:
         return self.geometry_mode

@@ -46,6 +46,20 @@ class TestScoringEngineFeederWeak(unittest.TestCase):
         self.assertEqual(len(kept), 1)
         self.assertGreater(eng.last_stats["scoring_review"] + eng.last_stats["scoring_accepted"], 0)
 
+    def test_bird_trust_floor_enables_salvage_below_relaxed(self):
+        eng = self._feeder_engine()
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        for i in range(6):
+            eng.filter_boxes([], frame_bgr=frame, frame_index=i)
+        kept = eng.filter_boxes(
+            [self._static_bird_box(0.03)],
+            frame_bgr=frame,
+            frame_index=7,
+            bird_trust_floor=0.025,
+        )
+        self.assertEqual(len(kept), 1)
+        self.assertGreater(eng.last_stats["scoring_review"] + eng.last_stats["scoring_accepted"], 0)
+
     def test_static_phantom_off_allows_low_motion_bird(self):
         cfg = ScoringEngineConfig(
             enabled=True,

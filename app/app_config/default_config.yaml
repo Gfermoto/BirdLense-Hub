@@ -211,17 +211,17 @@ processor:
   track_regen_parallel_auto_with_manual: false
   # Дефолты: строже по мусору в TG, мягче по грызунам (Rodent override ниже).
   # Trapper @ conf 0.25 на 1816/1819: визуально без ложных (showdown 2026-05).
-  min_confidence_binary: 0.12
-  min_confidence_binary_bird: 0.12
+  min_confidence_binary: 0.08
+  min_confidence_binary_bird: 0.06
   # Trapper class 5 (белка): отдельный порог после track(); калибровать по val-клипам (не ниже bird без причины).
   min_confidence_binary_rodent: 0.30
   # DEPRECATED (nabirds-pivot): Rodent не детектируется; ключ только для legacy user_config (игнорируется при detector_scope: [Bird]).
   # OpenVINO NABirds: conf на IR часто ВЫШЕ torch, не ниже — scale 8.5 (legacy BRG) раздувает FP.
   # track(conf) cap — не ниже bird-порога; scale 1.0 = без искусственного завышения при фильтрации.
   # conf для YOLO track(); должен быть < min_confidence_binary_bird и > track_high в ByteTrack YAML.
-  openvino_binary_track_ultralytics_conf: 0.12
+  openvino_binary_track_ultralytics_conf: 0.06
   openvino_binary_bird_score_scale: 1.0
-  openvino_min_confidence_binary_bird: 0.12
+  openvino_min_confidence_binary_bird: 0.06
   # --- SOTA 2.0: unified ScoringEngine (replaces legacy filter cascade) ---
   scoring_engine_enabled: true
   scoring_weight_conf: 0.45
@@ -229,7 +229,7 @@ processor:
   scoring_weight_shape: 0.15
   scoring_weight_background: 0.15
   scoring_frigate_prior_boost: 0.20
-  scoring_default_low_threshold: 0.14
+  scoring_default_low_threshold: 0.10
   scoring_default_high_threshold: 0.48
   scoring_review_band_width: 0.14
   scoring_calibration_frames: 60
@@ -270,7 +270,7 @@ processor:
   # NVR ignore polygons in **detect overlay** normalized coords (704×576 substream), not letterbox canvas.
   detection_ignore_masks: []
   detection_interest_zones: []
-  detection_interest_zones_required: false
+  detection_interest_zones_required: true
   # deprecated: MOG2 background subtraction — use scoring_engine + linear_live_scoring_engine_enabled
   background_subtraction_enabled: false
   background_subtraction_method: mog2
@@ -303,7 +303,7 @@ processor:
   # Доля площади кадра (0..1): Bird с bbox ≤ порога — без видового классификатора. 0 = выкл. (рекомендуется для видов на кормушке).
   # 0 = не пропускать Birder на мелких птицах (кормушка / дальняя камера).
   bird_skip_classifier_max_area_frac: 0
-  min_confidence_to_process: 0.12  # combined для БД; detect 704×576@7fps — слабые YOLO conf ~0.08–0.15
+  min_confidence_to_process: 0.08  # combined для БД; detect 704×576@7fps — слабые YOLO conf ~0.04–0.15
   # Отдельный порог для Telegram: только уверенные визиты (может быть > min_confidence_to_process).
   min_confidence_to_notify: 0.46
   # TG preview: best_frame_lores (detect crop) | record_hires (main MP4) | auto (hires then lores)
@@ -311,7 +311,7 @@ processor:
   notify_preview_crop_pad_frac: 0.06
   # Classifier uses lores best_frame until detect→record bbox/timing parity is calibrated.
   # ReID/TG can still use hi-res MP4 crops below.
-  classifier_crop_source: best_frame_lores
+  classifier_crop_source: record_hires
   reid_crop_source: auto
   enrichment_crop_pad_frac: 0.06
   # Linear: TG/hires crop from best keyframe bbox+timestamp only (no blind mid-track seek).
@@ -321,7 +321,7 @@ processor:
   # Seek offset (sec) when cropping main MP4 for TG/overlay; per-camera in camera_tuning_by_role
   detect_record_time_offset_sec: 0
   scoring_moving_roi_review_enabled: true
-  scoring_moving_roi_min_motion_score: 0.32
+  scoring_moving_roi_min_motion_score: 0.24
   # Перед YOLO: отсечь совсем тёмные кадры. ИК/сумерки: слишком жёсткие пороги = YOLO почти не работает.
   light_gate_enabled: false
   light_gate_min_brightness: 14
@@ -440,8 +440,8 @@ processor:
   auto_unstick_enabled: true
   # ~4 с при detect ~7 FPS (60 кадров ≈ 8.5 с — поздно для коротких визитов).
   auto_unstick_no_track_frames: 10
-  auto_unstick_min_confidence_binary: 0.08
-  auto_unstick_min_confidence_binary_bird: 0.03
+  auto_unstick_min_confidence_binary: 0.04
+  auto_unstick_min_confidence_binary_bird: 0.025
   auto_unstick_min_box_size_px: 14
   auto_unstick_min_center_dist: 0.01
   auto_unstick_tracker: "models/tracker/bytetrack_birdlense_unstick.yaml"
@@ -457,18 +457,19 @@ processor:
   camera_tuning_by_role:
     feeder_close:
       # Frigate-style: явный detect substream inference_lores_wh [704,576], не «native без letterbox».
+      # Prod-proven (VPS 2026-06): low OV conf + ByteTrack track(conf) ~0.025; scene_adaptive off.
       detect_use_native_resolution: false
       light_gate_min_brightness: 8
       light_gate_min_contrast: 6
       detect_first_confirm_min_track_seconds: 0.35
       detect_first_confirm_min_hits: 1
-      min_confidence_binary: 0.08
-      min_confidence_binary_bird: 0.06
-      openvino_min_confidence_binary_bird: 0.06
-      openvino_binary_track_ultralytics_conf: 0.08
-      min_confidence_to_process: 0.08
+      min_confidence_binary: 0.04
+      min_confidence_binary_bird: 0.02
+      openvino_min_confidence_binary_bird: 0.02
+      openvino_binary_track_ultralytics_conf: 0.025
+      min_confidence_to_process: 0.04
       min_track_duration: 0.35
-      min_box_size_px: 10
+      min_box_size_px: 8
       max_box_area_norm: 0.92
       track_to_predict_fallback_enabled: true
       detect_record_time_offset_sec: -0.10
@@ -482,17 +483,18 @@ processor:
       track_static_reject_max_relative_center_dispersion: 0.11
       track_static_reject_max_bbox_iou_first_last_min: 0.72
       scoring_moving_roi_min_motion_score: 0.30
-      scoring_default_low_threshold: 0.14
-      scoring_relaxed_min_confidence: 0.06
+      scoring_default_low_threshold: 0.10
+      scoring_relaxed_min_confidence: 0.02
       scoring_static_phantom_reject_enabled: false
+      scene_adaptive_conf_enabled: false
     feeder_far:
-      # Distant / Forest-style: weak OpenVINO conf 0.04–0.12; must accept before ByteTrack IDs stabilize.
+      # Distant / Forest-style: weak OpenVINO conf 0.03–0.12; must accept before ByteTrack IDs stabilize.
       detect_use_native_resolution: false
       min_confidence_binary: 0.06
-      min_confidence_binary_bird: 0.05
-      openvino_min_confidence_binary_bird: 0.05
+      min_confidence_binary_bird: 0.03
+      openvino_min_confidence_binary_bird: 0.03
       openvino_binary_track_ultralytics_conf: 0.06
-      min_confidence_to_process: 0.06
+      min_confidence_to_process: 0.04
       min_box_size_px: 8
       min_center_dist: 0.01
       max_box_area_norm: 0.92
@@ -508,6 +510,8 @@ processor:
       scoring_default_low_threshold: 0.10
       scoring_relaxed_min_confidence: 0.05
       scoring_static_phantom_reject_enabled: false
+      scoring_moving_roi_min_motion_score: 0.22
+      scene_adaptive_conf_enabled: false
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
   # Не 0.42: на OV+detect слабые conf 0.04–0.15 — иначе только review_only salvage.
   generic_bird_min_detector_conf: 0.10
@@ -889,7 +893,7 @@ detection:
   track_fragment_merge_min_iou: 0.08
   track_fragment_merge_max_center_dist: 0.18
   # Ниже порога детекция отбрасывается после fusion; должно быть ≤ processor.min_confidence_to_process.
-  min_confidence_to_store: 0.12
+  min_confidence_to_store: 0.08
   # Track-first: keep bbox in DB for ingest contract; UI may hide via overlay_suppressed.
   strip_review_only_overlay_frames: false
   # Final gate before create_video: drop frameless video rows (no 400 on API contract).
