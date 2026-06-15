@@ -6,7 +6,7 @@
 
 **Не чините только thresholds.** Сначала по порядку:
 
-1. **Stream parity** — Hub `detect_stream` = тот же кадр, что Frigate detect. RTSP Dahua/Hik: **`subtype=0`**, не `subtype=1`.
+1. **Stream parity** — Hub `detect_stream` = тот же кадр, что Frigate detect. RTSP Dahua/Hik detect: **`subtype=1`** (704×576 lores), не `subtype=0` (main 2688p/1080p).
 2. **Lores / imgsz** — `processor.openvino_native_lores_imgsz: false` для Trapper @704²; `true` ломает square IR.
 3. **Blind funnel** — в логах `recording_session_summary`: `yolo_frames_with_raw_boxes`, `yolo_frames_with_tracks`.
 4. **Пороги** — только после 1–3; смотреть **merged** config (`default_config` + `user_config`), не только UI.

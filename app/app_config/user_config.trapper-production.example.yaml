@@ -2,8 +2,8 @@
 # Классы: class_maps/trapper_ai_v02_2024.yaml + patch_prod_trapper_user_config.py
 #
 # detect_stream / Frigate parity (YOLO blind fix 2026-06):
-# RTSP Dahua/Hik detect_stream_name MUST match Frigate detect stream — same frame/scale.
-# Trapper VPS: subtype=0 in RTSP URL, NOT subtype=1 (wrong substream → YOLO blind vs Frigate).
+# RTSP Dahua/Hik detect_stream_name MUST match Frigate detect — lores substream subtype=1 (704×576).
+# Main/record stream_name uses subtype=0. subtype=0 on detect = main 2688p → letterbox 704² kills conf.
 # Go2RTC stream name is site-specific; set per camera in video.cameras[].
 
 processor:
@@ -49,7 +49,7 @@ video:
   # cameras:
   #   - id: BirdBox
   #     stream_name: BirdBox          # main / record (FFmpeg MP4)
-  #     detect_stream_name: BirdBox   # MUST match Frigate detect; RTSP subtype=0 on trapper VPS
+  #     detect_stream_name: rtsp://.../realmonitor?channel=1&subtype=1  # Frigate detect parity
   #     tuning_role: feeder_close
 
 detection:

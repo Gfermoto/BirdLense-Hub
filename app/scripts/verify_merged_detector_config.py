@@ -10,8 +10,63 @@ import sys
 from pathlib import Path
 from typing import Any
 
-_SUBTYPE_BAD = re.compile(r"subtype\s*=\s*1\b", re.IGNORECASE)
+_DAHUA_DETECT_MAIN = re.compile(
+    r"realmonitor.*subtype\s*=\s*0\b",
+    re.IGNORECASE,
+)
 _MAX_BIRD_OVERRIDE = 0.1
+_LORES_TOLERANCE_PX = 2
+
+
+def capture_wh_matches_inference_lores(
+    capture_wh: tuple[int, int],
+    lores_wh: tuple[int, int],
+    *,
+    tolerance_px: int = _LORES_TOLERANCE_PX,
+) -> bool:
+    """True when live detect capture WxH matches processor.inference_lores_wh."""
+    cw, ch = int(capture_wh[0]), int(capture_wh[1])
+    lw, lh = int(lores_wh[0]), int(lores_wh[1])
+    tol = max(0, int(tolerance_px))
+    return abs(cw - lw) <= tol and abs(ch - lh) <= tol
+
+
+def _parse_lores_wh(proc: dict[str, Any]) -> tuple[int, int] | None:
+    raw = proc.get("inference_lores_wh")
+    if isinstance(raw, (list, tuple)) and len(raw) >= 2:
+        try:
+            return int(raw[0]), int(raw[1])
+        except (TypeError, ValueError):
+            return None
+    px = proc.get("inference_lores_px")
+    if px is not None:
+        try:
+            side = int(px)
+            return side, side
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def _collect_detect_rtsp_urls(cfg: dict[str, Any]) -> list[str]:
+    out: list[str] = []
+    video = cfg.get("video") or {}
+    for cam in video.get("cameras") or []:
+        if not isinstance(cam, dict):
+            continue
+        val = cam.get("detect_stream_name")
+        if isinstance(val, str) and val.strip().lower().startswith("rtsp"):
+            out.append(val.strip())
+    proc = cfg.get("processor") or {}
+    overrides = proc.get("camera_overrides") or {}
+    if isinstance(overrides, dict):
+        for cam_cfg in overrides.values():
+            if not isinstance(cam_cfg, dict):
+                continue
+            val = cam_cfg.get("detect_stream_name")
+            if isinstance(val, str) and val.strip().lower().startswith("rtsp"):
+                out.append(val.strip())
+    return out
 
 
 def _repo_layout() -> tuple[Path, Path, Path]:
@@ -139,14 +194,14 @@ def evaluate_detector_guards(
             }
         )
 
-    for text in _collect_rtsp_strings(merged):
-        if _SUBTYPE_BAD.search(text):
+    for text in _collect_detect_rtsp_urls(merged):
+        if _DAHUA_DETECT_MAIN.search(text):
             warns.append(
                 {
-                    "key": "video.rtsp.subtype",
+                    "key": "video.cameras[].detect_stream_name",
                     "value": text[:120],
                     "severity": "warn",
-                    "reason": "subtype=1 often mismatches Frigate detect (subtype=0) → YOLO blind",
+                    "reason": "Dahua detect must use subtype=1 (704×576); subtype=0 is main → YOLO blind",
                 }
             )
 
@@ -162,6 +217,59 @@ def evaluate_detector_guards(
             "species_confidence_overrides.Bird": bird_val,
         },
     }
+
+
+def evaluate_detect_probe_resolution(cfg: dict[str, Any]) -> list[dict[str, Any]]:
+    """Probe detect RTSP URLs; fail when WxH ≠ inference_lores_wh."""
+    proc = cfg.get("processor") or {}
+    lores_wh = _parse_lores_wh(proc)
+    if lores_wh is None:
+        return []
+    issues: list[dict[str, Any]] = []
+    for text in _collect_detect_rtsp_urls(cfg):
+        try:
+            import cv2
+
+            cap = cv2.VideoCapture(text)
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            frame = None
+            for _ in range(25):
+                ok, fr = cap.read()
+                if ok and fr is not None:
+                    frame = fr
+                    break
+            cap.release()
+            if frame is None:
+                issues.append(
+                    {
+                        "key": "detect_probe_resolution",
+                        "value": text[:80],
+                        "severity": "critical",
+                        "reason": "detect RTSP probe: no frame",
+                    }
+                )
+                continue
+            wh = (int(frame.shape[1]), int(frame.shape[0]))
+            if not capture_wh_matches_inference_lores(wh, lores_wh):
+                issues.append(
+                    {
+                        "key": "detect_probe_resolution",
+                        "capture_wh": list(wh),
+                        "expected_lores_wh": list(lores_wh),
+                        "severity": "critical",
+                        "reason": "detect capture resolution must match inference_lores_wh",
+                    }
+                )
+        except Exception as exc:  # noqa: BLE001
+            issues.append(
+                {
+                    "key": "detect_probe_resolution",
+                    "value": text[:80],
+                    "severity": "critical",
+                    "reason": f"probe failed: {type(exc).__name__}",
+                }
+            )
+    return issues
 
 
 def _yolo_one_frame_smoke() -> dict[str, Any]:
@@ -231,12 +339,23 @@ def main() -> int:
     ap.add_argument("--default-config", type=Path, default=_DEFAULT)
     ap.add_argument("--user-config", type=Path, default=_USER)
     ap.add_argument("--yolo-smoke", action="store_true", help="optional one-frame detector smoke")
+    ap.add_argument(
+        "--probe-resolution",
+        action="store_true",
+        help="probe detect RTSP and assert WxH matches inference_lores_wh",
+    )
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
     default = _load_yaml(args.default_config)
     user = _load_yaml(args.user_config) if args.user_config.is_file() else {}
     report = evaluate_detector_guards(default=default, user=user)
+    merged = _merge(default, user)
+    if args.probe_resolution:
+        probe_issues = evaluate_detect_probe_resolution(merged)
+        report["issues"] = list(report.get("issues") or []) + probe_issues
+        report["critical_count"] = len(report.get("issues") or [])
+        report["ok"] = report["critical_count"] == 0
     if args.yolo_smoke:
         report["yolo_smoke"] = _yolo_one_frame_smoke()
 
