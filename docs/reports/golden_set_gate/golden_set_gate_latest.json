@@ -1,12 +1,11 @@
 {
   "schema": "golden_set_mandatory_gate@v1",
-  "generated_at": "2026-06-10T12:59:11Z",
+  "generated_at": "2026-06-15T13:29:31Z",
   "base_ref": "HEAD~1",
   "head_ref": "HEAD",
-  "changed_files_count": 2,
+  "changed_files_count": 1,
   "changed_files": [
-    "app/ui/src/api/systemAuditMetrics.test.ts",
-    "app/ui/src/api/systemAuditMetrics.ts"
+    "app/ui/src/pages/Settings/sections/processor/ProcessorConfidenceBlock.tsx"
   ],
   "gate_required": false,
   "gate_trigger_files": [],

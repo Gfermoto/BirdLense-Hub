@@ -1,6 +1,6 @@
 {
   "schema": "secrets_vuln_response_gate@v1",
-  "generated_at": "2026-06-10T12:59:12Z",
+  "generated_at": "2026-06-15T13:29:36Z",
   "gates": {
     "gitleaks_config_present": true,
     "ci_bandit_enabled": true,

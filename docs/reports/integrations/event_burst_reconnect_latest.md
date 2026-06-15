@@ -1,6 +1,6 @@
 # Event Burst & Reconnect Resilience Report
 
-- generated_at: `2026-06-10T12:59:29Z`
+- generated_at: `2026-06-15T11:57:03Z`
 - history_rows: `4`
 - pass_rate: `0.99125`
 - event_loss_rate: `0.007495`
