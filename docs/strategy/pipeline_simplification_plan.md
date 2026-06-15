@@ -28,10 +28,10 @@ Frigate / BirdNET / eBird / multicamera — **только weighted hints в sco
 |-------|-----|--------|-----------|
 | [#634](https://github.com/Gfermoto/BirdLense-Hub/issues/634) ADR hints | [`9df7dc5b8`](https://github.com/Gfermoto/BirdLense-Hub/commit/9df7dc5b8) | **DONE** | `adr-classifier-hints-only.md`, drift lint (2+ forbidden patterns), `review_report.md` link |
 | [#635](https://github.com/Gfermoto/BirdLense-Hub/issues/635) Recording contract | [`9df7dc5b8`](https://github.com/Gfermoto/BirdLense-Hub/commit/9df7dc5b8), [`7570c297f`](https://github.com/Gfermoto/BirdLense-Hub/commit/7570c297f) | **DONE** | `recording_gate_mode: motion_immediate` default; `requires_detect_first_before_record` off; legacy `detect_first` rollback + tests |
-| [#636](https://github.com/Gfermoto/BirdLense-Hub/issues/636) Dual-stream geometry | [`2ff464057`](https://github.com/Gfermoto/BirdLense-Hub/commit/2ff464057) | **PARTIAL** | `openvino_native_lores_imgsz`, native 704×576 track imgsz, `track_spatial_split` default-on |
+| [#636](https://github.com/Gfermoto/BirdLense-Hub/issues/636) Dual-stream geometry | [`2ff464057`](https://github.com/Gfermoto/BirdLense-Hub/commit/2ff464057) | **PARTIAL→mostly DONE** | `openvino_native_lores_imgsz`, native lores; ✅ `frame_shape` parsers, single bbox space + ffprobe validation (`adr-frame-geometry-contract.md`); ⬜ golden IoU CI (#640) |
 | — | [`2ff464057`](https://github.com/Gfermoto/BirdLense-Hub/commit/2ff464057) | partial | Raw-hits detect-first anchor (diagnostic under `motion_immediate`) |
 
-**Остаётся в Wave 1:** единый bbox space detect→crop→overlay (#636), golden IoU CI (#640), best-keyframe crop (#637).
+**Остаётся в Wave 1:** golden IoU CI (#640), best-keyframe crop (#637).
 
 ---
 
@@ -117,7 +117,7 @@ flowchart TB
 |------|-------|----------|--------|-------------------|
 | W0 | [#634](https://github.com/Gfermoto/BirdLense-Hub/issues/634) ADR classifier hints | P0 | **DONE** | `9df7dc5b8` — ADR + drift lint |
 | W0 | [#635](https://github.com/Gfermoto/BirdLense-Hub/issues/635) Recording contract | P0 | **DONE** | `9df7dc5b8`, `7570c297f` — `motion_immediate` on prod |
-| W1 | [#636](https://github.com/Gfermoto/BirdLense-Hub/issues/636) Dual-stream geometry | P0 | **PARTIAL** | `2ff464057` — native lores; ⬜ single bbox space + ffprobe |
+| W1 | [#636](https://github.com/Gfermoto/BirdLense-Hub/issues/636) Dual-stream geometry | P0 | **mostly DONE** | `2ff464057` native lores; ✅ metadata contract (`frame_shape.py`), playback bbox space, ffprobe gap; ⬜ #640 IoU CI |
 | W1 | [#637](https://github.com/Gfermoto/BirdLense-Hub/issues/637) Track hygiene | P1 | open | best-keyframe crop E2E |
 | W1 | [#639](https://github.com/Gfermoto/BirdLense-Hub/issues/639) Multicam sessions | P1 | open | no peer recording block |
 | W1 | [#640](https://github.com/Gfermoto/BirdLense-Hub/issues/640) Frigate-parity IoU CI | P1 | open | `compare_detector_bboxes` smoke |
@@ -166,7 +166,7 @@ flowchart TB
 - `track_spatial_split` before classify  
 - Frigate assist unchanged (opt-in hint)
 
-**Not done (Wave 1+):** single bbox space (#636 remainder), salvage demotion (#638), multicam lock (#639), CI parity gate (#640), best-keyframe crop (#637).
+**Not done (Wave 1+):** golden IoU CI gate (#640), salvage demotion (#638), multicam lock (#639), best-keyframe crop (#637).
 
 **Done since incident fix:** ADR hints (#634 `9df7dc5b8`), recording gate removal (#635 `9df7dc5b8`), native lores partial (#636 `2ff464057`).
 

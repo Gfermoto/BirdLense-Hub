@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 
 import numpy as np
+import pytest
 
 from frame_geometry import (
     bbox_iou_norm,
@@ -170,3 +171,71 @@ class TestDetectorGeometryOverlay(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@pytest.mark.parametrize(
+    ("main_wh", "det_wh", "letterbox_wh", "bbox"),
+    [
+        ((1920, 1080), (704, 576), None, (0.3, 0.35, 0.55, 0.65)),
+        ((1280, 720), (640, 480), None, (0.2, 0.25, 0.6, 0.7)),
+        ((1920, 1080), (704, 576), (640, 640), (0.35, 0.35, 0.65, 0.65)),
+        ((2688, 1520), (704, 576), None, (0.28, 0.32, 0.52, 0.62)),
+        ((1600, 900), (800, 600), (800, 800), (0.3, 0.3, 0.7, 0.7)),
+    ],
+)
+def test_geometry_roundtrip_iou_parametrized(main_wh, det_wh, letterbox_wh, bbox):
+    """Arbitrary main×detect resolutions: letterbox roundtrip IoU ≥ 0.99."""
+    from frame_geometry import (
+        letterbox_roundtrip_iou,
+        map_norm_bbox_xyxy_between_frame_shapes,
+        prepare_detector_pipeline_frame,
+        remap_norm_bbox_for_crop,
+    )
+    from shared.frame_shape import wh_to_hw
+
+    main_hw = wh_to_hw(main_wh)
+    det_hw = wh_to_hw(det_wh)
+    overlay_frame = np.zeros((det_hw[0], det_hw[1], 3), dtype=np.uint8)
+
+    if letterbox_wh is not None:
+        cfg = {
+            "processor.inference_lores_wh": list(letterbox_wh),
+            "processor.detect_use_native_resolution": False,
+            "processor.inference_backend": "torch",
+        }
+        _det_frame, det_shape, overlay_shape, _meta = prepare_detector_pipeline_frame(
+            overlay_frame,
+            cfg,
+        )
+        iou = letterbox_roundtrip_iou(
+            bbox,
+            source_shape_hw=overlay_shape,
+            letterbox_shape_hw=det_shape,
+        )
+        assert iou >= 0.99
+        mapped = remap_norm_bbox_for_crop(
+            list(bbox),
+            detector_shape_hw=det_shape,
+            overlay_shape_hw=overlay_shape,
+            crop_shape_hw=main_hw,
+            playback_shape_hw=main_hw,
+        )
+    else:
+        mapped = remap_norm_bbox_for_crop(
+            list(bbox),
+            detector_shape_hw=det_hw,
+            overlay_shape_hw=det_hw,
+            crop_shape_hw=main_hw,
+            playback_shape_hw=main_hw,
+        )
+        expected = map_norm_bbox_xyxy_between_frame_shapes(
+            list(bbox),
+            from_shape_hw=det_hw,
+            to_shape_hw=main_hw,
+        )
+        assert mapped == expected
+
+    assert mapped is not None
+    x1, y1, x2, y2 = mapped
+    assert x2 > x1 and y2 > y1
+    assert 0.0 <= x1 <= 1.0 and 0.0 <= x2 <= 1.0

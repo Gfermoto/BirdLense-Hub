@@ -528,9 +528,14 @@ def finalize_motion_recording(
             has_ingestible_track_rows(video_detections),
         )
     try:
-        from playback_geometry import enrich_detections_playback_geometry
+        from playback_geometry import enrich_detections_playback_geometry, probe_video_file_shape_hw
 
-        video_detections = enrich_detections_playback_geometry(video_detections, frame_processor)
+        mp4_hw = probe_video_file_shape_hw(video_output) if video_output else None
+        video_detections = enrich_detections_playback_geometry(
+            video_detections,
+            frame_processor,
+            mp4_shape_hw=mp4_hw,
+        )
     except ImportError:
         pass
     reid_enrich_duration_ms: float | None = None
