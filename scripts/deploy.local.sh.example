@@ -55,5 +55,7 @@ export DEPLOY_URL="http://192.168.1.11:8085"
 
 # Один сервер с Intel iGPU: VA-API (видео) + OpenVINO GPU при пробросе DRI (deploy.sh генерирует docker-compose.override.yml).
 # В user_config: processor.inference_backend: openvino (или auto), models.binary_openvino, inference_device: intel:gpu
+# detect_stream parity: video.cameras[].detect_stream_name must match Frigate detect (same RTSP substream).
+# Trapper VPS: RTSP subtype=0, NOT subtype=1 — wrong substream → YOLO blind. See user_config.trapper-production.example.yaml.
 # Либо в app/.env на сервере: BIRDLENSE_INFERENCE_DEVICE=intel:gpu (перекрывает пустой inference_device в YAML).
 # Если без renderD* деплой не должен проходить как «полный GPU»: export BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=1

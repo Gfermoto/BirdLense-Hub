@@ -275,6 +275,19 @@ class TestConfigCodeDefaultsConsistency(unittest.TestCase):
         proc = self.config.get("processor") or {}
         self.assertEqual(proc.get("classifier_crop_source"), "record_hires")
 
+    def test_openvino_native_lores_imgsz_default_false(self):
+        proc = self.config.get("processor") or {}
+        self.assertFalse(proc.get("openvino_native_lores_imgsz", True))
+
+    def test_species_confidence_override_bird(self):
+        proc = self.config.get("processor") or {}
+        overrides = proc.get("species_confidence_overrides") or {}
+        self.assertAlmostEqual(float(overrides.get("Bird")), 0.08)
+
+    def test_yolo_weak_track_salvage_enabled_default(self):
+        det = self.config.get("detection") or {}
+        self.assertTrue(det.get("yolo_weak_track_salvage_enabled", False))
+
 
 if __name__ == "__main__":
     unittest.main()
