@@ -15,6 +15,16 @@ BirdLense определяет **реальное** разрешение и FPS 
 
 `processor.binary_imgsz` — размер **экспорта модели** YOLO/OpenVINO, не размер потока.
 
+## WxH vs H×W (контракт геометрии)
+
+| Поле / API | Порядок | Пример Full HD | Модуль |
+|------------|---------|----------------|--------|
+| `video_width` × `video_height`, `main_size`, `inference_lores_wh` | **ширина×высота (W×H)** | `1920`, `1080` | config, ffprobe |
+| `*_shape_hw` в detection metadata, `frame.shape` | **высота×ширина (H×W)** | `[1080, 1920]` | OpenCV, persist |
+| Нормализованный bbox `xyxy` | доли от **W** и **H** кадра хранения | playback = main MP4 | `detection_strategy` |
+
+Парсеры: `app/shared/frame_shape.py`. ADR: [adr-frame-geometry-contract.md](../strategy/adr-frame-geometry-contract.md).
+
 ## Бэкенды probe
 
 | Режим | Переменная | Поведение |
@@ -31,6 +41,7 @@ Gauges (processor runtime stats):
 
 - `stream_probe_width`, `stream_probe_height`, `stream_probe_fps`
 - `stream_probe_source` — `ffprobe`, `opencv`, `measured`
+- `geometry_metadata_invalid_total` — metadata `playback_shape_hw` не совпал с `main_size`/MP4 ffprobe
 
 ## Конфиг
 

@@ -394,7 +394,12 @@ class MotionRecordingSession:
         )
         if shape_hw is None:
             return
-        if not apply_playback_shape_to_strategy(self.frame_processor, shape_hw, source=source):
+        if not apply_playback_shape_to_strategy(
+            self.frame_processor,
+            shape_hw,
+            source=source,
+            main_size_wh=main_size if main_size and len(main_size) >= 2 else None,
+        ):
             return
         if main_size and len(main_size) >= 2:
             try:

@@ -90,9 +90,9 @@ def test_pick_bbox_prefers_key_frame_over_mid_frame():
 
 
 def test_shape_hw_from_metadata_parses_height_width_lists():
-    from record_hires_crop import _shape_hw_from_metadata
+    from shared.frame_shape import parse_metadata_hw
 
-    assert _shape_hw_from_metadata([1520, 2688]) == (1520, 2688)
+    assert parse_metadata_hw([1520, 2688]) == (1520, 2688)
 
 
 def test_remap_skips_overlay_remap_when_bbox_already_playback_normalized():

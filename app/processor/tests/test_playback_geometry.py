@@ -11,10 +11,12 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(current_dir, "../src"))
 
 from playback_geometry import (  # noqa: E402
+    assert_playback_metadata_consistent,
     enrich_detections_playback_geometry,
     remap_track_bboxes_playback_shape,
     resolve_playback_shape_hw,
 )
+from processor_runtime_stats import reset_runtime_stats_for_tests, runtime_stats_snapshot  # noqa: E402
 
 
 class TestPlaybackGeometry(unittest.TestCase):
@@ -82,6 +84,26 @@ class TestPlaybackGeometry(unittest.TestCase):
         )
         self.assertEqual(rows[0]["playback_shape_hw"], [1080, 1920])
         self.assertEqual(rows[0]["overlay_shape_hw"], [576, 704])
+
+    def test_assert_playback_metadata_mismatch_increments_metric(self):
+        reset_runtime_stats_for_tests()
+        ok = assert_playback_metadata_consistent(
+            playback_shape_hw=[720, 1280],
+            main_size_wh=(1920, 1080),
+            context="test",
+        )
+        counters = runtime_stats_snapshot()["counters"]
+        self.assertFalse(ok)
+        self.assertEqual(int(counters.get("geometry_metadata_invalid_total", 0)), 1)
+
+    def test_assert_playback_metadata_match_ok(self):
+        self.assertTrue(
+            assert_playback_metadata_consistent(
+                playback_shape_hw=[1080, 1920],
+                main_size_wh=(1920, 1080),
+                context="test",
+            )
+        )
 
 
 if __name__ == "__main__":
