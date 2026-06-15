@@ -50,6 +50,7 @@ def resolve_crop_pad_frac(
 
 
 def _shape_hw_from_wh(wh: Any) -> tuple[int, int] | None:
+    """Parse config-style [width, height] (e.g. processor.inference_lores_wh)."""
     if not isinstance(wh, (list, tuple)) or len(wh) < 2:
         return None
     try:
@@ -57,6 +58,19 @@ def _shape_hw_from_wh(wh: Any) -> tuple[int, int] | None:
     except (TypeError, ValueError):
         return None
     if w <= 0 or h <= 0:
+        return None
+    return (h, w)
+
+
+def _shape_hw_from_metadata(wh: Any) -> tuple[int, int] | None:
+    """Parse detection *_shape_hw lists stored as [height, width]."""
+    if not isinstance(wh, (list, tuple)) or len(wh) < 2:
+        return None
+    try:
+        h, w = int(wh[0]), int(wh[1])
+    except (TypeError, ValueError):
+        return None
+    if h <= 0 or w <= 0:
         return None
     return (h, w)
 
@@ -71,7 +85,7 @@ def resolve_record_crop_geometry(
     playback_hw = crop_shape_hw
     for key in ("playback_shape_hw", "record_shape_hw"):
         raw = detection.get(key)
-        shaped = _shape_hw_from_wh(raw) if isinstance(raw, (list, tuple)) else None
+        shaped = _shape_hw_from_metadata(raw) if isinstance(raw, (list, tuple)) else None
         if shaped is not None:
             playback_hw = shaped
             break
@@ -79,7 +93,7 @@ def resolve_record_crop_geometry(
     overlay_hw = playback_hw
     for key in ("overlay_shape_hw", "detect_shape_hw"):
         raw = detection.get(key)
-        shaped = _shape_hw_from_wh(raw) if isinstance(raw, (list, tuple)) else None
+        shaped = _shape_hw_from_metadata(raw) if isinstance(raw, (list, tuple)) else None
         if shaped is not None:
             overlay_hw = shaped
             break
@@ -91,12 +105,31 @@ def resolve_record_crop_geometry(
     detector_hw = overlay_hw
     for key in ("detector_shape_hw",):
         raw = detection.get(key)
-        shaped = _shape_hw_from_wh(raw) if isinstance(raw, (list, tuple)) else None
+        shaped = _shape_hw_from_metadata(raw) if isinstance(raw, (list, tuple)) else None
         if shaped is not None:
             detector_hw = shaped
             break
 
     return detector_hw, overlay_hw, playback_hw
+
+
+def _bbox_stored_in_playback_space(
+    detection: Mapping[str, Any],
+    *,
+    crop_shape_hw: tuple[int, int],
+    runtime_cfg: Mapping[str, Any] | None = None,
+) -> bool:
+    """Persisted track frames use playback-normalized xyxy when metadata says so."""
+    raw_playback = detection.get("playback_shape_hw") or detection.get("record_shape_hw")
+    playback_shaped = _shape_hw_from_metadata(raw_playback) if isinstance(raw_playback, (list, tuple)) else None
+    if playback_shaped is None or playback_shaped != crop_shape_hw:
+        return False
+    _, overlay_hw, playback_hw = resolve_record_crop_geometry(
+        detection,
+        crop_shape_hw=crop_shape_hw,
+        runtime_cfg=runtime_cfg,
+    )
+    return overlay_hw != playback_hw
 
 
 def remap_bbox_for_record_crop(
@@ -114,6 +147,12 @@ def remap_bbox_for_record_crop(
         crop_shape_hw=crop_shape_hw,
         runtime_cfg=runtime_cfg,
     )
+    if _bbox_stored_in_playback_space(
+        detection,
+        crop_shape_hw=crop_shape_hw,
+        runtime_cfg=runtime_cfg,
+    ):
+        return [float(v) for v in bbox]
     if overlay_hw == crop_shape_hw and det_hw == overlay_hw:
         return bbox
     mapped = remap_norm_bbox_for_crop(
@@ -323,9 +362,30 @@ def read_record_hires_crop(
             crop_shape_hw=crop_hw,
             runtime_cfg=runtime_cfg,
         )
-        crop = _crop_from_frame(frame, bbox_list, pad_frac=pad)
-        if crop is not None:
-            return crop
+        playback_bbox = _bbox_stored_in_playback_space(
+            detection,
+            crop_shape_hw=crop_hw,
+            runtime_cfg=runtime_cfg,
+        )
+        for extra_pad in (pad, min(0.25, pad + 0.06), min(0.25, pad + 0.12)):
+            crop = _crop_from_frame(frame, bbox_list, pad_frac=extra_pad)
+            if crop is not None:
+                if extra_pad != pad:
+                    logger.info(
+                        "record_hires: playback pad retry ok camera=%s pad=%.3f",
+                        cam or "?",
+                        extra_pad,
+                    )
+                return crop
+        if playback_bbox:
+            logger.warning(
+                "record_hires: playback bbox crop empty path=%s ts=%.3f camera=%s bbox=%s",
+                video_path,
+                ts,
+                cam or "?",
+                [round(v, 4) for v in bbox_list],
+            )
+            return None
         remapped = remap_bbox_for_record_crop(
             bbox_list,
             detection,

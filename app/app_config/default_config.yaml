@@ -463,14 +463,17 @@ processor:
       detect_use_native_resolution: false
       light_gate_min_brightness: 8
       light_gate_min_contrast: 6
-      detect_first_confirm_min_track_seconds: 0.35
+      detect_first_confirm_min_track_seconds: 0.25
       detect_first_confirm_min_hits: 1
       min_confidence_binary: 0.04
       min_confidence_binary_bird: 0.02
       openvino_min_confidence_binary_bird: 0.02
       openvino_binary_track_ultralytics_conf: 0.025
       min_confidence_to_process: 0.04
-      min_track_duration: 0.35
+      min_track_duration: 0.25
+      # Fast foreground birds @ 7 FPS: looser IoU match, shorter buffer (see bytetrack_birdlense_close.yaml).
+      tracker: models/tracker/bytetrack_birdlense_close.yaml
+      tracker_remember_seconds: 1.2
       min_box_size_px: 8
       min_center_dist: 0.01
       max_box_area_norm: 0.92
@@ -500,7 +503,7 @@ processor:
       openvino_binary_track_ultralytics_conf: 0.06
       min_confidence_to_process: 0.04
       min_box_size_px: 8
-      min_center_dist: 0.01
+      min_center_dist: 0.012
       max_box_area_norm: 0.92
       track_to_predict_fallback_enabled: true
       min_track_duration: 0.5
@@ -901,9 +904,9 @@ detection:
   # Склейка соседних YOLO-фрагментов (ID switch) в один визит: одинаковый вид, малый gap и
   # пространственная непрерывность (IoU/center distance).
   track_fragment_merge_enabled: true
-  track_fragment_merge_gap_sec: 1.2
+  track_fragment_merge_gap_sec: 1.5
   track_fragment_merge_min_iou: 0.08
-  track_fragment_merge_max_center_dist: 0.18
+  track_fragment_merge_max_center_dist: 0.22
   # Ниже порога детекция отбрасывается после fusion; должно быть ≤ processor.min_confidence_to_process.
   min_confidence_to_store: 0.08
   # Track-first: keep bbox in DB for ingest contract; UI may hide via overlay_suppressed.

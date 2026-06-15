@@ -1,0 +1,8 @@
+# BirdBox / feeder_close @ ~7 FPS: faster motion, shorter association window.
+tracker_type: bytetrack
+track_high_thresh: 0.04
+track_low_thresh: 0.02
+new_track_thresh: 0.04
+track_buffer: 10
+match_thresh: 0.72
+fuse_score: true
