@@ -62,7 +62,7 @@ def main() -> int:
     ap.add_argument("--label", default="msk0710")
     args = ap.parse_args()
 
-    base = _env("DEPLOY_URL", "http://185.218.111.196:8085").rstrip("/")
+    base = _env("DEPLOY_URL", "https://birdlense.eyera.info").rstrip("/")
     token = _env("MCP_TOKEN")
     host = _env("DEPLOY_HOST", "root@185.218.111.196")
     port = _env("DEPLOY_SSH_PORT", "2222")

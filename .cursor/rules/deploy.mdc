@@ -23,9 +23,9 @@ alwaysApply: true
 
 **SSH:** например **`203.0.113.10`** ([TEST-NET-3](https://datatracker.ietf.org/doc/html/rfc5737), подставьте свой VPS), порт **`2222`** — задать `DEPLOY_SSH_PORT=2222` в `deploy.local.sh`.
 
-**Веб-UI:** **`http://185.218.111.196:8085/`** — **`DEPLOY_URL`** для health после деплоя и в браузере (сейчас достаточно IP:порт без домена; при появлении hostname подставьте свой URL).
+**Веб-UI:** **`https://birdlense.eyera.info/`** — **`DEPLOY_URL`** для health после деплоя и в браузере.
 
-**MCP:** `http://185.218.111.196:8085/mcp` (Bearer — `MCP_TOKEN` / настройки MCP в UI).
+**MCP:** `https://birdlense.eyera.info/mcp` (Bearer — `MCP_TOKEN` / настройки MCP в UI).
 
 ---
 
@@ -108,3 +108,15 @@ Host birdlense-vps
 ## YOLO «слепой», Frigate видит (VPS / кормушка)
 
 **По умолчанию в `default_config.yaml`:** torch/cpu, unstick-трекер, `min_confidence_binary` 0.12, `merge_window_seconds` 12. Старый `user_config` с openvino/0.22 перекрывает дефолты — проверьте merge. Метрика: `recording_session_summary` → `yolo_frames_with_tracks` > 0. OpenVINO: **`user_config.openvino-intel.example.yaml`**. После смены **`app/.env`** — **`docker compose up -d --force-recreate birdlense`**.
+
+## Политика агентов на prod VPS (2026-06-11)
+
+**Без явного OK пользователя агенты НЕ трогают:**
+
+- Frigate (`/home/user/ssd/frigate/config/`, `docker restart/stop frigate`)
+- DeepStack, CompreFace, Minecraft и любые контейнеры вне `birdlense` / `birdlense-redis`
+- Coral/USB, удаление записей, `docker stop` чужих сервисов
+
+**Разрешено только с согласия:** правки `app/app_config/user_config.yaml`, деплой BirdLense (`make deploy`), рестарт `birdlense` / `birdlense-redis`.
+
+Перед правкой prod-конфига — бэкап с суффиксом `.bak.YYYYMMDD_<reason>`. Откат — из бэкапа, не «донастройка».
