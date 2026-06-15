@@ -49,6 +49,8 @@ CI/локально: `app/processor/tests/test_threshold_resolution.py` + `scrip
 
 ## Связанные документы
 
+- [prod-rollback-points.md](./prod-rollback-points.md) — зафиксированные рабочие состояния prod (tag + VPS backup)
+- [hub-detection-postmortem-2026-06.md](./hub-detection-postmortem-2026-06.md) — хронология инцидента июнь 2026
 - [yolo-blind-runbook.ru](../ru/yolo-blind-runbook.ru.md) — полная диагностика
 - [morning-bird-checklist](../runbooks/morning-bird-checklist.md) — утренний 5‑мин чек
 - [deploy.mdc](../../.cursor/rules/deploy.mdc) — VPS/LAN, политика агентов
