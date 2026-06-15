@@ -180,7 +180,11 @@ jobs:
             processor/tests/test_inference_weight_contract.py \
             processor/tests/test_compare_detector_bboxes_gate.py \
             processor/tests/test_classifier_hints.py \
+            processor/tests/test_threshold_resolution.py \
             -q --tb=short
+
+      - name: Merged detector config guards (default_config)
+        run: python3 scripts/verify_merged_detector_config.py
 
       - name: OpenAPI contract smoke tests
         run: python -m pytest web/tests/test_openapi_contract.py -q

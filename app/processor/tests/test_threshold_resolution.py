@@ -282,7 +282,9 @@ class TestConfigCodeDefaultsConsistency(unittest.TestCase):
     def test_species_confidence_override_bird(self):
         proc = self.config.get("processor") or {}
         overrides = proc.get("species_confidence_overrides") or {}
-        self.assertAlmostEqual(float(overrides.get("Bird")), 0.08)
+        bird = float(overrides.get("Bird"))
+        self.assertAlmostEqual(bird, 0.08)
+        self.assertLessEqual(bird, 0.1, "Bird override must not exceed 0.1 in default_config")
 
     def test_yolo_weak_track_salvage_enabled_default(self):
         det = self.config.get("detection") or {}

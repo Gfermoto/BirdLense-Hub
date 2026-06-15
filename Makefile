@@ -284,6 +284,11 @@ verify-prod-config-drift:
 	chmod +x ./scripts/verify-prod-config-drift.sh; \
 	./scripts/verify-prod-config-drift.sh
 
+verify-prod-detector-smoke:
+	@set -e; cd "$(CURDIR)"; \
+	chmod +x ./scripts/verify-prod-detector-smoke.sh; \
+	./scripts/verify-prod-detector-smoke.sh
+
 verify-processor-config-drift:
 	@set -e; cd "$(CURDIR)"; \
 	python3 ./scripts/verify_processor_config_drift.py --fail-on-critical

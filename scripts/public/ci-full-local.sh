@@ -122,6 +122,14 @@ ensure_venv_ci
     "${VENV_CI}/bin/python" -m pytest web/tests/ -q --tb=short
 )
 
+log "processor: threshold + detector config guards (lightweight)"
+(
+  cd "${ROOT}/app"
+  env -u PIP_USER PYTHONNOUSERSITE=1 PYTHONPATH="${PWD}:${PWD}/processor/src" \
+    "${VENV_CI}/bin/python" -m pytest processor/tests/test_threshold_resolution.py -q --tb=short
+  env -u PIP_USER PYTHONNOUSERSITE=1 "${VENV_CI}/bin/python" "${ROOT}/scripts/verify_merged_detector_config.py"
+)
+
 log "VERSION / docs version"
 "${PYTHON}" scripts/check-docs-version.py
 

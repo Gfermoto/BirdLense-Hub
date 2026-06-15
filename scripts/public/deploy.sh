@@ -1062,6 +1062,15 @@ echo "  - Deploy contract refresh:"
   python3 ./scripts/report_deploy_contract.py \
     --out-json "docs/reports/deploy_contract/deploy_contract_latest.json" \
     --out-md "docs/reports/deploy_contract/deploy_contract_latest.md")
+# 3.1 Post-deploy detector config smoke (warn-only; see docs/contributor/hub-detector-runbook.md).
+if [[ -f "${REPO_ROOT}/scripts/verify-prod-detector-smoke.sh" ]]; then
+  echo "  - Detector config smoke (warn-only):"
+  if ! (cd "${REPO_ROOT}" && chmod +x ./scripts/verify-prod-detector-smoke.sh && \
+        ./scripts/verify-prod-detector-smoke.sh --no-yolo-smoke); then
+    echo "  WARN: verify-prod-detector-smoke failed — check merged config (native_lores, Bird override, subtype=0)."
+    echo "  Подсказка: make verify-prod-detector-smoke; docs/contributor/hub-detector-runbook.md"
+  fi
+fi
 echo ""
 echo "=== Готово. UI: ${DEPLOY_URL} ==="
 echo "Записи и БД не трогаем; user_config.yaml не синхронизируем (есть бэкап .bak.deploy-* перед rsync)."

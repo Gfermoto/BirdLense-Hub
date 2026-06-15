@@ -57,6 +57,11 @@ _CRITICAL_FORBIDDEN: tuple[tuple[str, ...], Any, str] = (
         True,
         "weak salvage must not bypass YOLO+ByteTrack primary persist (ADR #634)",
     ),
+    (
+        ("processor", "openvino_native_lores_imgsz"),
+        True,
+        "704x704 Trapper IR breaks with native lores; keep false (hub-detector-runbook)",
+    ),
 )
 
 _LEGACY_BOOL_WHEN_SCORING = (
@@ -249,6 +254,22 @@ def evaluate_processor_config_drift(
                     )
 
     drifts.extend(_evaluate_critical_forbidden(merged, user))
+
+    bird_override = None
+    _overrides = _dot_get(merged, "processor.species_confidence_overrides")
+    if isinstance(_overrides, dict):
+        bird_override = _safe_float(_overrides.get("Bird"))
+    if bird_override is not None and bird_override > 0.1:
+        drifts.append(
+            {
+                "path": "processor.species_confidence_overrides.Bird",
+                "default": 0.08,
+                "merged": bird_override,
+                "direction": "higher_than_bird_cap",
+                "severity": "critical",
+                "reason": "Bird override must be <= 0.1 (hub-detector-runbook)",
+            }
+        )
 
     critical = [d for d in drifts if d.get("severity") == "critical"]
     warn = [d for d in drifts if d.get("severity") == "warn"]
