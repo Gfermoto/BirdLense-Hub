@@ -123,6 +123,8 @@ export const Overview = () => {
   const topSpecies = overviewData?.topSpecies ?? [];
   const triggerBySource = stats?.triggerBySource ?? {};
   const hasTriggerBySource = Object.keys(triggerBySource).length > 0;
+  const detectionByProvider = stats?.detectionByProvider ?? {};
+  const hasDetectionByProvider = Object.keys(detectionByProvider).length > 0;
   const triggerSourceLabel = (source: string): string => {
     const key = String(source || '').trim().toLowerCase();
     if (key === 'opencv') return t('timeline.triggerSourceOpencv');
@@ -131,6 +133,14 @@ export const Overview = () => {
     if (key === 'scales') return t('timeline.triggerSourceScales');
     if (key === 'all') return t('timeline.triggerSourceAll');
     return key || t('timeline.triggerSourceUnknown');
+  };
+  const detectionProviderLabel = (provider: string): string => {
+    const key = String(provider || '').trim().toLowerCase();
+    if (key === 'yolo') return 'YOLO';
+    if (key === 'frigate') return 'Frigate';
+    if (key === 'birdnet_mqtt') return 'BirdNET MQTT';
+    if (key === 'legacy') return t('overview.detectionProviderLegacy');
+    return key || t('overview.detectionProviderUnknown');
   };
 
   return (
@@ -334,6 +344,33 @@ export const Overview = () => {
                 {Object.entries(triggerBySource).map(([source, count]) => (
                   <Typography key={source} variant="body2">
                     <strong>{triggerSourceLabel(source)}</strong>: {count}
+                  </Typography>
+                ))}
+              </Box>
+            </Paper>
+          )}
+          {hasDetectionByProvider && (
+            <Paper sx={{ p: 2, mt: 2 }}>
+              <Typography
+                component="p"
+                variant="subtitle2"
+                gutterBottom
+                color="text.secondary"
+              >
+                {t('overview.byDetectionProvider')}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ mb: 1 }}
+              >
+                {t('overview.byDetectionProviderHint')}
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+                {Object.entries(detectionByProvider).map(([provider, count]) => (
+                  <Typography key={provider} variant="body2">
+                    <strong>{detectionProviderLabel(provider)}</strong>: {count}
                   </Typography>
                 ))}
               </Box>

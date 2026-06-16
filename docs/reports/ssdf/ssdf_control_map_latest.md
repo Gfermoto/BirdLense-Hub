@@ -1,6 +1,6 @@
 # SSDF Control Map Report
 
-- generated_at: `2026-06-15T13:29:36Z`
+- generated_at: `2026-06-15T18:33:35Z`
 - source_file: `/home/gfer/BirdLense/docs/reports/ssdf/ssdf_control_map.json`
 - coverage: `8/8`
 - coverage_pct: `100.0`

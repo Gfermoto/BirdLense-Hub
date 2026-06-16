@@ -1,6 +1,6 @@
 {
   "schema": "stream_quality_metrics@v1",
-  "generated_at": "2026-06-15T11:57:05Z",
+  "generated_at": "2026-06-15T18:34:05Z",
   "streams": {
     "detector": {
       "precision": 0.302857,
@@ -10,9 +10,9 @@
       "support": {
         "lifecycle_entered_windows_24h": 106.0,
         "lifecycle_rejected_only_windows_24h": 244.0,
-        "sessions_total": 386,
+        "sessions_total": 407,
         "empty_bbox_rate": 0.0,
-        "tracks_coverage": 1.1125,
+        "tracks_coverage": 1.08046,
         "trigger_to_first_bbox_latency_p95_s": 9.717975
       }
     },

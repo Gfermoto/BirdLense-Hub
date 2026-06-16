@@ -1,11 +1,25 @@
 {
   "schema": "golden_set_mandatory_gate@v1",
-  "generated_at": "2026-06-15T13:29:31Z",
+  "generated_at": "2026-06-15T18:33:34Z",
   "base_ref": "HEAD~1",
   "head_ref": "HEAD",
-  "changed_files_count": 1,
+  "changed_files_count": 15,
   "changed_files": [
-    "app/ui/src/pages/Settings/sections/processor/ProcessorConfidenceBlock.tsx"
+    "app/processor/src/inference_lores.py",
+    "app/processor/src/playback_geometry.py",
+    "app/processor/src/record_hires_crop.py",
+    "app/processor/src/recording_finalize.py",
+    "app/processor/src/recording_session.py",
+    "app/processor/tests/test_frame_geometry.py",
+    "app/processor/tests/test_frame_shape.py",
+    "app/processor/tests/test_playback_geometry.py",
+    "app/processor/tests/test_record_hires_crop.py",
+    "app/shared/frame_shape.py",
+    "app/ui/locales/en.json",
+    "app/ui/locales/ru.json",
+    "docs/ru/stream-probe.ru.md",
+    "docs/strategy/adr-frame-geometry-contract.md",
+    "docs/strategy/pipeline_simplification_plan.md"
   ],
   "gate_required": false,
   "gate_trigger_files": [],
