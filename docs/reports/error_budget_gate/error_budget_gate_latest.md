@@ -1,25 +1,25 @@
 # Error Budget Gate
 
-- generated_at: `2026-06-15T13:29:32Z`
-- state: `ok`
-- consumed_pct: `75`
-- remaining_pct: `25`
+- generated_at: `2026-06-15T18:33:34Z`
+- state: `hub_unreachable`
+- consumed_pct: `0`
+- remaining_pct: `100`
 - gate_ok: `True`
 
 ## Inputs
 
-- critical_breaches: `1`
+- critical_breaches: `0`
 - warning_breaches: `0`
-- slo_dashboard_not_ok: `True`
-- per_camera_warn_count_24h: `2`
+- slo_dashboard_not_ok: `False`
+- per_camera_warn_count_24h: `0`
 - recording_artifact_failures: `False`
 
 ## Costs
 
-- critical_breaches: `45`
+- critical_breaches: `0`
 - warning_breaches: `0`
-- dashboard_not_ok: `20`
-- per_camera_warn_count: `10`
+- dashboard_not_ok: `0`
+- per_camera_warn_count: `0`
 - recording_artifact_failures: `0`
 
 ## Gate

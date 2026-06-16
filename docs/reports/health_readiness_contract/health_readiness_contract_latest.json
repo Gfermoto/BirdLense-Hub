@@ -1,6 +1,6 @@
 {
   "schema": "health_readiness_contract@v1",
-  "generated_at": "2026-06-15T12:08:40Z",
+  "generated_at": "2026-06-15T18:12:01Z",
   "checks": {
     "health_ok": true,
     "readiness_ok": true,
@@ -22,7 +22,7 @@
       "payload": {
         "bbox_slo_ok": false,
         "bbox_slo_reason": "funnel_degraded",
-        "checked_at": "2026-06-15T12:08:40.654109+00:00",
+        "checked_at": "2026-06-15T18:12:02.475621+00:00",
         "checks": {
           "app_config_dir": {
             "exists": true,
@@ -48,77 +48,77 @@
           },
           "pipeline_funnel": {
             "alerts": [
-              "fp_empty_recording opencv rate 37.3% > 35.0%",
+              "fp_empty_recording opencv rate 36.6% > 35.0%",
               "healthy_persist rate 14.5% < 30.0%"
             ],
-            "fp_empty_opencv_rate": 0.3731,
-            "fusion_drop_rate": 0.0855,
-            "healthy_persist_rate": 0.1451,
+            "fp_empty_opencv_rate": 0.3661,
+            "fusion_drop_rate": 0.086,
+            "healthy_persist_rate": 0.145,
             "persist_substage_breakdown": {
               "dominant_substage_p95": "create_video",
               "schema": "persist_substage_breakdown@v1",
-              "sessions_sampled": 386,
+              "sessions_sampled": 407,
               "substages": {
                 "behavior": {
                   "max_ms": 873.778,
-                  "n": 56,
-                  "p50_ms": 1.624,
-                  "p95_ms": 169.15
+                  "n": 59,
+                  "p50_ms": 1.936,
+                  "p95_ms": 205.34
                 },
                 "create_video": {
-                  "max_ms": 53694.74,
-                  "n": 56,
-                  "p50_ms": 34.911,
-                  "p95_ms": 5452.005
+                  "max_ms": 94988.308,
+                  "n": 59,
+                  "p50_ms": 35.646,
+                  "p95_ms": 5545.204
                 },
                 "create_video_ingest": {
                   "commit": {
                     "max_ms": 2.285,
-                    "n": 56,
-                    "p50_ms": 0.762,
+                    "n": 59,
+                    "p50_ms": 0.742,
                     "p95_ms": 1.3
                   },
                   "visit_processor": {
                     "max_ms": 1126.156,
-                    "n": 56,
+                    "n": 59,
                     "p50_ms": 12.701,
-                    "p95_ms": 159.24
+                    "p95_ms": 899.357
                   },
                   "weather": {
                     "max_ms": 1.775,
-                    "n": 56,
-                    "p50_ms": 0.116,
+                    "n": 59,
+                    "p50_ms": 0.238,
                     "p95_ms": 0.87
                   }
                 },
                 "dataset_crops": {
                   "max_ms": 249.1,
-                  "n": 56,
-                  "p50_ms": 1.949,
+                  "n": 59,
+                  "p50_ms": 2.02,
                   "p95_ms": 54.495
                 },
                 "persist": {
-                  "max_ms": 53753.655,
-                  "n": 386,
+                  "max_ms": 95386.606,
+                  "n": 407,
                   "p50_ms": 0.002,
-                  "p95_ms": 395.71
+                  "p95_ms": 904.17
                 },
                 "reid_enrich": {
                   "max_ms": 4360.694,
-                  "n": 56,
+                  "n": 59,
                   "p50_ms": 1659.011,
                   "p95_ms": 3524.595
                 },
                 "scales": {
                   "max_ms": 9912.707,
-                  "n": 56,
-                  "p50_ms": 39.487,
+                  "n": 59,
+                  "p50_ms": 40.077,
                   "p95_ms": 107.594
                 }
               },
               "window_hours": 24
             },
-            "sessions_total": 386,
+            "sessions_total": 407,
             "status": "degraded",
             "top_root_causes": [
               "confidence_gate_collapse_raw_gt_0_accepted_0",
@@ -128,9 +128,9 @@
             ]
           },
           "processor_heartbeat": {
-            "age_seconds": 8.592,
+            "age_seconds": 8.416,
             "bootstrap_phase": true,
-            "last_heartbeat_utc": "2026-06-15T12:08:32+00:00",
+            "last_heartbeat_utc": "2026-06-15T18:11:54+00:00",
             "max_age_seconds": 180,
             "reason": "ok",
             "status": "ok"
@@ -151,107 +151,107 @@
           "mqtt": "ok",
           "processor": "offline",
           "trigger_display": "opencv + frigate",
-          "video": "ok",
+          "video": "error",
           "web": "ok",
           "yolo": "unknown"
         },
         "pipeline_funnel": {
           "alerts": [
-            "fp_empty_recording opencv rate 37.3% > 35.0%",
+            "fp_empty_recording opencv rate 36.6% > 35.0%",
             "healthy_persist rate 14.5% < 30.0%"
           ],
           "by_camera": {
             "BirdBox": {
-              "confidence_gate_collapse_raw_gt_0_accepted_0": 49,
-              "decision_fusion_drop_tracks_gt_0_persisted_0": 23,
-              "detector_silent_raw0": 91,
-              "healthy_persisted_gt_0": 13
+              "confidence_gate_collapse_raw_gt_0_accepted_0": 50,
+              "decision_fusion_drop_tracks_gt_0_persisted_0": 24,
+              "detector_silent_raw0": 101,
+              "healthy_persisted_gt_0": 16
             },
             "Forest": {
               "confidence_gate_collapse_raw_gt_0_accepted_0": 151,
-              "decision_fusion_drop_tracks_gt_0_persisted_0": 10,
-              "detector_silent_raw0": 6,
+              "decision_fusion_drop_tracks_gt_0_persisted_0": 11,
+              "detector_silent_raw0": 11,
               "healthy_persisted_gt_0": 43
             }
           },
-          "fp_empty_opencv_rate": 0.3731,
-          "fp_empty_opencv_sessions": 144,
-          "fusion_drop_rate": 0.0855,
-          "fusion_drop_sessions": 33,
+          "fp_empty_opencv_rate": 0.3661,
+          "fp_empty_opencv_sessions": 149,
+          "fusion_drop_rate": 0.086,
+          "fusion_drop_sessions": 35,
           "global_funnel": {
-            "confidence_gate_collapse_raw_gt_0_accepted_0": 200,
-            "decision_fusion_drop_tracks_gt_0_persisted_0": 33,
-            "detector_silent_raw0": 97,
-            "healthy_persisted_gt_0": 56
+            "confidence_gate_collapse_raw_gt_0_accepted_0": 201,
+            "decision_fusion_drop_tracks_gt_0_persisted_0": 35,
+            "detector_silent_raw0": 112,
+            "healthy_persisted_gt_0": 59
           },
-          "healthy_persist_count": 56,
-          "healthy_persist_rate": 0.1451,
+          "healthy_persist_count": 59,
+          "healthy_persist_rate": 0.145,
           "persist_substage_breakdown": {
             "dominant_substage_p95": "create_video",
             "schema": "persist_substage_breakdown@v1",
-            "sessions_sampled": 386,
+            "sessions_sampled": 407,
             "substages": {
               "behavior": {
                 "max_ms": 873.778,
-                "n": 56,
-                "p50_ms": 1.624,
-                "p95_ms": 169.15
+                "n": 59,
+                "p50_ms": 1.936,
+                "p95_ms": 205.34
               },
               "create_video": {
-                "max_ms": 53694.74,
-                "n": 56,
-                "p50_ms": 34.911,
-                "p95_ms": 5452.005
+                "max_ms": 94988.308,
+                "n": 59,
+                "p50_ms": 35.646,
+                "p95_ms": 5545.204
               },
               "create_video_ingest": {
                 "commit": {
                   "max_ms": 2.285,
-                  "n": 56,
-                  "p50_ms": 0.762,
+                  "n": 59,
+                  "p50_ms": 0.742,
                   "p95_ms": 1.3
                 },
                 "visit_processor": {
                   "max_ms": 1126.156,
-                  "n": 56,
+                  "n": 59,
                   "p50_ms": 12.701,
-                  "p95_ms": 159.24
+                  "p95_ms": 899.357
                 },
                 "weather": {
                   "max_ms": 1.775,
-                  "n": 56,
-                  "p50_ms": 0.116,
+                  "n": 59,
+                  "p50_ms": 0.238,
                   "p95_ms": 0.87
                 }
               },
               "dataset_crops": {
                 "max_ms": 249.1,
-                "n": 56,
-                "p50_ms": 1.949,
+                "n": 59,
+                "p50_ms": 2.02,
                 "p95_ms": 54.495
               },
               "persist": {
-                "max_ms": 53753.655,
-                "n": 386,
+                "max_ms": 95386.606,
+                "n": 407,
                 "p50_ms": 0.002,
-                "p95_ms": 395.71
+                "p95_ms": 904.17
               },
               "reid_enrich": {
                 "max_ms": 4360.694,
-                "n": 56,
+                "n": 59,
                 "p50_ms": 1659.011,
                 "p95_ms": 3524.595
               },
               "scales": {
                 "max_ms": 9912.707,
-                "n": 56,
-                "p50_ms": 39.487,
+                "n": 59,
+                "p50_ms": 40.077,
                 "p95_ms": 107.594
               }
             },
             "window_hours": 24
           },
           "schema": "persist_funnel_summary@v1",
-          "sessions_total": 386,
+          "sessions_total": 407,
           "status": "degraded",
           "top_root_causes": [
             "confidence_gate_collapse_raw_gt_0_accepted_0",
@@ -296,7 +296,7 @@
         "mqtt": "ok",
         "processor": "offline",
         "trigger_display": "opencv + frigate",
-        "video": "ok",
+        "video": "error",
         "web": "ok",
         "yolo": "unknown"
       }

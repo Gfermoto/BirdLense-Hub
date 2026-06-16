@@ -497,16 +497,16 @@ processor:
     feeder_far:
       # Distant / Forest-style: weak OpenVINO conf 0.03–0.12; must accept before ByteTrack IDs stabilize.
       detect_use_native_resolution: false
-      min_confidence_binary: 0.06
-      min_confidence_binary_bird: 0.03
-      openvino_min_confidence_binary_bird: 0.03
+      min_confidence_binary: 0.05
+      min_confidence_binary_bird: 0.04
+      openvino_min_confidence_binary_bird: 0.04
       openvino_binary_track_ultralytics_conf: 0.06
       min_confidence_to_process: 0.04
       min_box_size_px: 8
       min_center_dist: 0.012
       max_box_area_norm: 0.92
       track_to_predict_fallback_enabled: true
-      min_track_duration: 0.5
+      min_track_duration: 0.25
       detect_record_time_offset_sec: -0.12
       track_static_reject_enabled: false
       track_static_reject_max_center_dispersion_norm: 0.10
@@ -514,7 +514,7 @@ processor:
       track_static_reject_min_duration_sec: 2.5
       track_static_reject_min_frames: 3
       track_static_reject_min_frames_sparse: 2
-      scoring_default_low_threshold: 0.10
+      scoring_default_low_threshold: 0.08
       scoring_relaxed_min_confidence: 0.05
       scoring_static_phantom_reject_enabled: false
       scoring_moving_roi_min_motion_score: 0.22
@@ -698,7 +698,7 @@ video:
   # false — стабильнее на части iGPU/драйверов (ошибка encode issue 24 / битый moov), при этом
   # при capture_backend=auto захват для YOLO по-прежнему может идти через VA-API.
   record_with_vaapi: true
-  # Захват кадров для motion/detection: auto | opencv | ffmpeg_vaapi.
+  # Захват кадров для motion/detection: auto | opencv | ffmpeg_vaapi | ffmpeg_nvdec (planned, Jetson NVDEC).
   # auto: при encoding=intel пробует FFmpeg VA-API, иначе OpenCV; при ошибке fallback на OpenCV.
   capture_backend: auto
   # Запись с RTSP: h264 — перекодировать в H.264 (воспроизведение в браузере, меньше сюрпризов с HEVC).
@@ -943,7 +943,7 @@ detection:
   yolo_blind_score_threshold: 0.7
   yolo_blind_quickcheck_seconds: 2.0
   yolo_blind_quickcheck_min_confidence_binary: 0.05
-  yolo_blind_quickcheck_min_confidence_binary_bird: 0.03
+  yolo_blind_quickcheck_min_confidence_binary_bird: 0.04
   yolo_blind_quickcheck_min_box_size_px: 10
   yolo_blind_min_frigate_only_frames: 120
   # Self-healing (phase-1): при подтверждённой слепоте запросить мягкий рестарт процессора через flag-файл.

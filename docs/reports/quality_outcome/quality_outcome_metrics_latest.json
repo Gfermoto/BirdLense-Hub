@@ -1,22 +1,22 @@
 {
   "schema": "quality_outcome_metrics@v1",
-  "generated_at": "2026-06-15T11:57:04Z",
+  "generated_at": "2026-06-15T17:48:08Z",
   "data_source": "remote:root@185.218.111.196:/root/BirdLense/app/data/db/birdlense.db",
   "window_hours": 24,
   "metrics": {
-    "sessions_total": 386,
-    "sessions_with_yolo": 386,
-    "sessions_with_tracks": 89,
-    "sessions_fp_empty_recording": 306,
-    "tracks_eligible_sessions": 80,
-    "blind_rate": 0.012953,
-    "yolo_frames_with_tracks": 3315,
+    "sessions_total": 407,
+    "sessions_with_yolo": 407,
+    "sessions_with_tracks": 94,
+    "sessions_fp_empty_recording": 320,
+    "tracks_eligible_sessions": 87,
+    "blind_rate": 0.014742,
+    "yolo_frames_with_tracks": 3329,
     "empty_bbox_rate": 0.0,
-    "tracks_coverage": 1.1125,
-    "tracks_missing_rate": -0.1125,
+    "tracks_coverage": 1.08046,
+    "tracks_missing_rate": -0.08046,
     "bbox_quality_score": 1.0,
     "trigger_to_first_bbox_latency_p95_s": 9.717975,
-    "finalize_duration_p95_ms": 6433.812,
+    "finalize_duration_p95_ms": 7611.573,
     "ingest_bbox_contract_pruned_events": 0,
     "ingest_bbox_contract_empty_events": 0,
     "ingest_bbox_contract_pruned_rows_total": 0,
@@ -30,16 +30,16 @@
     "trigger_moratorium_events_per_hour": 0.0,
     "trigger_moratorium_events_per_hour_7d_baseline": 0.0,
     "trigger_moratorium_events_per_hour_delta_vs_7d": 0.0,
-    "frigate_catches_missed_birds_sessions": 8,
-    "frigate_catches_missed_birds_rate": 0.020725,
+    "frigate_catches_missed_birds_sessions": 17,
+    "frigate_catches_missed_birds_rate": 0.041769,
     "frigate_catches_missed_birds_by_trigger_source": {
-      "frigate": 8
+      "frigate": 17
     },
     "frigate_catches_missed_birds_by_trigger_source_rate": {
       "frigate": 1.0
     },
-    "frigate_catches_missed_birds_rate_7d_baseline": 0.018371,
-    "frigate_catches_missed_birds_rate_delta_vs_7d": 0.002355
+    "frigate_catches_missed_birds_rate_7d_baseline": 0.025137,
+    "frigate_catches_missed_birds_rate_delta_vs_7d": 0.016632
   },
   "thresholds": {
     "max_blind_rate": 0.3,

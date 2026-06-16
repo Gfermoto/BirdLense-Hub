@@ -1,16 +1,16 @@
 {
   "schema": "dora_metrics@v1",
-  "generated_at": "2026-06-15T12:09:43Z",
+  "generated_at": "2026-06-15T18:13:07Z",
   "window_days": 28,
   "deployment_source": "deploy_events_log",
   "metrics": {
-    "deployment_frequency_per_day": 3.0714,
+    "deployment_frequency_per_day": 3.1786,
     "lead_time_for_changes_hours_p50": 0.0,
     "change_failure_rate": 0.0,
     "time_to_restore_service_hours_mean": 0.0
   },
   "samples": {
-    "deployments_total": 86,
+    "deployments_total": 89,
     "failed_deployments_total": 0,
     "lead_time_samples": 0,
     "incidents_resolved_samples": 0

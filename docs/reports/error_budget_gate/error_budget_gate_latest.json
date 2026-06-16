@@ -1,35 +1,27 @@
 {
   "schema": "error_budget_gate@v1",
-  "generated_at": "2026-06-15T13:29:32Z",
-  "policy": {
-    "window": "rolling_28d",
-    "budget_pct_total": 100,
-    "warn_at_pct": 80,
-    "exhausted_at_pct": 100,
-    "critical_breach_cost_pct": 45,
-    "warning_breach_cost_pct": 15,
-    "dashboard_not_ok_cost_pct": 20,
-    "per_camera_warn_cost_pct": 5,
-    "recording_artifact_fail_cost_pct": 10
-  },
+  "generated_at": "2026-06-15T18:33:34Z",
+  "base_url": "http://185.218.111.196:8085",
   "inputs": {
-    "critical_breaches": 1,
+    "hub_unreachable": true,
+    "hub_error": "url_error:[Errno 111] Connection refused: http://185.218.111.196:8085/api/ui/system/domain-health",
+    "critical_breaches": 0,
     "warning_breaches": 0,
-    "slo_dashboard_not_ok": true,
-    "per_camera_warn_count_24h": 2,
+    "slo_dashboard_not_ok": false,
+    "per_camera_warn_count_24h": 0,
     "recording_artifact_failures": false
   },
   "costs": {
-    "critical_breaches": 45,
+    "critical_breaches": 0,
     "warning_breaches": 0,
-    "dashboard_not_ok": 20,
-    "per_camera_warn_count": 10,
+    "dashboard_not_ok": 0,
+    "per_camera_warn_count": 0,
     "recording_artifact_failures": 0
   },
   "budget": {
-    "consumed_pct": 75,
-    "remaining_pct": 25,
-    "state": "ok",
+    "consumed_pct": 0,
+    "remaining_pct": 100,
+    "state": "hub_unreachable",
     "exhausted": false
   },
   "gate": {
@@ -40,6 +32,7 @@
     "requires_override": false,
     "warning_override_active": false,
     "block_release": false,
+    "hub_unreachable": true,
     "ok": true
   }
 }

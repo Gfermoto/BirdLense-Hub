@@ -1,6 +1,6 @@
 {
   "schema": "dataset_contract_registry_report@v1",
-  "generated_at": "2026-06-15T11:57:03Z",
+  "generated_at": "2026-06-15T18:34:05Z",
   "checks": {
     "required_streams_present_ok": true,
     "all_stream_contracts_valid_ok": true,

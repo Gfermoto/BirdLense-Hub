@@ -1,6 +1,6 @@
 {
   "schema": "nas_storage_contract_report@v1",
-  "generated_at": "2026-06-15T11:57:03Z",
+  "generated_at": "2026-06-15T18:34:05Z",
   "checks": {
     "components_exist_ok": true,
     "required_modes_ok": true,
