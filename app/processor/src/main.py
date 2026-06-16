@@ -18,8 +18,10 @@ from processor_support import start_heartbeat_daemon, start_opencv_overlay_daemo
 def main() -> None:
     """Запуск фонового heartbeat, сборка пайплайна и главный цикл до выхода."""
     from api import API
+    from platform_profile import log_platform_profile
     from processor_config_guard import assert_processor_config_valid
 
+    log_platform_profile()
     assert_processor_config_valid()
     try:
         API().activity_log("heartbeat", {"status": "bootstrap"})
