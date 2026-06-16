@@ -1,9 +1,18 @@
 .PHONY: all clean build start stop logs verify deploy pull setup test test-processor-light test-web test-web-contract-local test-web-local venv-web venv-web-reset test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
 
+# Platform: intel_nuc (default) | jetson_nano — см. scripts/platform-profile.sh, deploy/profiles/
+BIRDLENSE_PLATFORM ?= intel_nuc
+COMPOSE ?= docker compose
+COMPOSE_FILES := docker-compose.yml
+ifeq ($(BIRDLENSE_PLATFORM),jetson_nano)
+COMPOSE_FILES := docker-compose.yml docker-compose.jetson.yml
+endif
+COMPOSE_CMD = $(COMPOSE) $(foreach f,$(COMPOSE_FILES),-f $(f))
+
 all: build
 
 clean:
-	@docker compose down --remove-orphans 2>/dev/null || true
+	@$(COMPOSE_CMD) down --remove-orphans 2>/dev/null || true
 	@rm -rf htmlcov .coverage
 
 # Локальный venv для pytest без Docker (тот же requirements, что в CI openapi job).
@@ -25,19 +34,19 @@ local: setup local-build start
 local-build:
 	@echo "1. Сборка UI..."
 	@(cd ui && npm ci && npm run build) || { echo "Ошибка: npm ci / npm run build. Проверьте Node/npm (см. app/ui/package.json engines)."; exit 1; }
-	@echo "2. Сборка Docker-образа..."
-	@docker compose build
+	@echo "2. Сборка Docker-образа (platform=${BIRDLENSE_PLATFORM})..."
+	@$(COMPOSE_CMD) build
 	@echo "Build finished."
 
 # Сборка и запуск
 build:
 	@echo "Building BirdLense Hub..."
-	@docker compose build
+	@$(COMPOSE_CMD) build
 	@echo "Build finished."
 
 start: setup
 	@echo "Starting BirdLense Hub..."
-	@docker compose up -d
+	@$(COMPOSE_CMD) up -d
 	@echo "BirdLense Hub on port $${BIRDLENSE_PORT:-8085}. Logs: make logs"
 
 # Запуск из готового образа (без сборки)
@@ -47,10 +56,10 @@ pull: setup
 	@echo "BirdLense Hub on port $${BIRDLENSE_PORT:-8085}. Logs: make logs"
 
 stop:
-	@docker compose down
+	@$(COMPOSE_CMD) down
 
 logs:
-	@docker compose logs -f --tail=200
+	@$(COMPOSE_CMD) logs -f --tail=200
 
 verify:
 	@set -e; \

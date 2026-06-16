@@ -9,6 +9,10 @@ set -euo pipefail
 # Загрузить локальные переопределения (создайте из deploy.local.sh.example)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 [ -f "${SCRIPT_DIR}/../deploy.local.sh" ] && . "${SCRIPT_DIR}/../deploy.local.sh"
+# shellcheck source=../platform-profile.sh
+. "${SCRIPT_DIR}/../platform-profile.sh"
+BIRDLENSE_PLATFORM="$(birdlense_normalize_platform)" || exit 1
+export BIRDLENSE_PLATFORM
 
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 HOST="${DEPLOY_HOST:-birdlense}"
@@ -79,7 +83,7 @@ if [ -n "${DEPLOY_SSH_PORT:-}" ] && [ "${DEPLOY_SSH_PORT}" != "22" ]; then
 fi
 SSH_OPTS="${_PORT_OPT} -o ServerAliveInterval=30 -o ServerAliveCountMax=60"
 SCP_OPTS="${_SCP_PORT_OPT} -o ServerAliveInterval=30 -o ServerAliveCountMax=60"
-echo "=== Деплой BirdLense Hub на ${HOST} ==="
+echo "=== Деплой BirdLense Hub на ${HOST} (platform=${BIRDLENSE_PLATFORM}) ==="
 if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]] && [[ "${DEPLOY_URL}" == *"localhost"* ]]; then
   echo "ВНИМАНИЕ: DEPLOY_URL=${DEPLOY_URL} — health check будет с локальной машины. Для удалённого сервера задайте DEPLOY_URL в deploy.local.sh (например http://YOUR_HOST:8085)"
 fi
@@ -786,8 +790,35 @@ if [[ -d "${REPO_ROOT}/app/data/images" ]]; then
   fi
 fi
 
-# 1.1 Trapper (prod) или legacy NABirds OpenVINO IR
+# 1.1 Trapper (prod) или legacy NABirds OpenVINO IR — только intel_nuc; Jetson: .pt без IR
 echo "1.1 Проверка весов бинарного детектора..."
+_check_pt_only_weights() {
+  local w="${REPO_ROOT}/app/processor/models/detection/weights"
+  local pt=""
+  if [[ -f "${w}/trapper_ai_v02_2024.pt" ]]; then
+    pt="${w}/trapper_ai_v02_2024.pt"
+  elif [[ -f "${w}/best_NABirds.pt" ]]; then
+    pt="${w}/best_NABirds.pt"
+  elif [[ -f "${w}/best.pt" ]]; then
+    pt="${w}/best.pt"
+  fi
+  if [[ -z "${pt}" ]]; then
+    echo "Ошибка: для Jetson нужен хотя бы один .pt в app/processor/models/detection/weights/" >&2
+    return 1
+  fi
+  echo "  Jetson PT-only: OK local (${pt})"
+  if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
+    ssh ${SSH_OPTS} "${HOST}" "w='${REMOTE_DIR}/app/processor/models/detection/weights'; \
+      for f in trapper_ai_v02_2024.pt best_NABirds.pt best.pt; do test -f \"\${w}/\${f}\" && exit 0; done; exit 1" || {
+      echo "Ошибка: на сервере нет .pt детектора для Jetson." >&2
+      return 1
+    }
+    echo "  Jetson PT-only: OK (сервер)"
+  fi
+}
+if birdlense_platform_is_jetson; then
+  _check_pt_only_weights || exit 1
+else
 if (cd "${REPO_ROOT}" && bash scripts/sync_trapper_weights.sh --check); then
   echo "  TrapperAI @704: OK (локально)"
   if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
@@ -810,6 +841,7 @@ else
     }
   fi
 fi
+fi
 
 # 1.5 Секреты в app/.env
 # PROCESSOR_SECRET — всегда задаём (генерируем при отсутствии)
@@ -817,7 +849,7 @@ if [ -z "${PROCESSOR_SECRET:-}" ]; then
   PROCESSOR_SECRET=$(openssl rand -hex 16)
   echo "1.5 PROCESSOR_SECRET сгенерирован. Добавьте в deploy.local.sh: export PROCESSOR_SECRET='${PROCESSOR_SECRET}'"
 fi
-if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SECRET_KEY:-}" ] || [ -n "${BIRDLENSE_ENV:-}" ] || [ -n "${BIRDLENSE_STRICT_API_AUTH:-}" ] || [ -n "${BIRDLENSE_UI_API_KEY:-}" ] || [ -n "${BIRDLENSE_REID_HUB_CACHE_DIR:-}" ]; then
+if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SECRET_KEY:-}" ] || [ -n "${BIRDLENSE_ENV:-}" ] || [ -n "${BIRDLENSE_STRICT_API_AUTH:-}" ] || [ -n "${BIRDLENSE_UI_API_KEY:-}" ] || [ -n "${BIRDLENSE_REID_HUB_CACHE_DIR:-}" ] || [ -n "${BIRDLENSE_PLATFORM:-}" ]; then
   echo "1.5 Запись секретов в app/.env на сервере (точечная подмена ключей; остальные строки .env сохраняются)..."
   # shellcheck disable=SC2090
   ssh ${SSH_OPTS} "${HOST}" \
@@ -830,6 +862,7 @@ if [ -n "${MCP_TOKEN:-}" ] || [ -n "${PROCESSOR_SECRET:-}" ] || [ -n "${FLASK_SE
     "BIRDLENSE_STRICT_API_AUTH=${BIRDLENSE_STRICT_API_AUTH:-}" \
     "BIRDLENSE_UI_API_KEY=${BIRDLENSE_UI_API_KEY:-}" \
     "BIRDLENSE_REID_HUB_CACHE_DIR=${BIRDLENSE_REID_HUB_CACHE_DIR:-}" \
+    "BIRDLENSE_PLATFORM=${BIRDLENSE_PLATFORM:-}" \
     bash -s <<'ENDSSH_MERGE_ENV'
 set -euo pipefail
 F="${REMOTE_DIR}/app/.env"
@@ -854,6 +887,7 @@ _merge_env_kv BIRDLENSE_ENV "${BIRDLENSE_ENV:-}"
 _merge_env_kv BIRDLENSE_STRICT_API_AUTH "${BIRDLENSE_STRICT_API_AUTH:-}"
 _merge_env_kv BIRDLENSE_UI_API_KEY "${BIRDLENSE_UI_API_KEY:-}"
 _merge_env_kv BIRDLENSE_REID_HUB_CACHE_DIR "${BIRDLENSE_REID_HUB_CACHE_DIR:-}"
+_merge_env_kv BIRDLENSE_PLATFORM "${BIRDLENSE_PLATFORM:-}"
 if [ -f "$F" ]; then
   grep -v -E '^PROCESSOR_SECRET=' "$F" >"${F}.new" || true
   mv "${F}.new" "$F"
@@ -876,8 +910,8 @@ if [ "${BIRDLENSE_ENV:-}" = "production" ] && [[ "${HOST}" != "localhost" && "${
     grep -qE '^BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=' \"\$F\" || echo 'BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=1' >> \"\$F\""
 fi
 
-# 1.8 Intel GPU: при наличии renderD* — сгенерировать override (card+render, group_add video/render хоста, sysfs, PERFMON)
-# 1.8b PMU / intel_gpu_top: дефолт 3 (и иногда даже 1) режет perf в контейнере при CAP_PERFMON → «Failed to initialize PMU». Значение 0 проверено на VPS; −1 только при необходимости.
+# 1.8 Intel GPU: при наличии renderD* — сгенерировать override (пропуск для jetson_nano)
+if ! birdlense_platform_is_jetson; then
 echo "1.8 Проверка Intel GPU на сервере..."
 ssh ${SSH_OPTS} "${HOST}" "set -e; cd '${REMOTE_DIR}/app' && bash scripts/docker-compose-intel-override-gen.sh; \
   if [ -f docker-compose.override.yml ]; then \
@@ -885,10 +919,14 @@ ssh ${SSH_OPTS} "${HOST}" "set -e; cd '${REMOTE_DIR}/app' && bash scripts/docker
     printf '%s\n' 'kernel.perf_event_paranoid=0' > /etc/sysctl.d/99-birdlense-perf.conf; \
     sysctl -p /etc/sysctl.d/99-birdlense-perf.conf || true; \
   fi"
+else
+  echo "1.8 Intel GPU override: пропуск (platform=jetson_nano)"
+  ssh ${SSH_OPTS} "${HOST}" "rm -f '${REMOTE_DIR}/app/docker-compose.override.yml' 2>/dev/null || true"
+fi
 
 # 1.8c Жёсткий режим: боевой хаб с OpenVINO GPU — на сервере должны быть renderD* и сгенерирован override.
 _raw_req="${BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU:-}"
-if [[ "${_raw_req}" =~ ^(1|true|yes|on)$ ]]; then
+if [[ "${_raw_req}" =~ ^(1|true|yes|on)$ ]] && ! birdlense_platform_is_jetson; then
   echo "1.8c BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=${_raw_req} — проверка docker-compose.override.yml на сервере..."
   if ! ssh ${SSH_OPTS} "${HOST}" "test -f '${REMOTE_DIR}/app/docker-compose.override.yml'"; then
     echo "Ошибка: на хосте нет /dev/dri/renderD* или override не создан — OpenVINO GPU в контейнере недоступен."
@@ -906,7 +944,7 @@ for attempt in $(seq 1 ${BUILD_RETRIES}); do
   if ssh ${SSH_OPTS} "${HOST}" "mkdir -p ${REMOTE_DIR}/app/data/recordings ${REMOTE_DIR}/app/data/db ${REMOTE_DIR}/app/app_config && cd ${REMOTE_DIR}/app && \
     old_images=\$(docker images -q 'app-birdlense' 2>/dev/null || true); \
     if [ -n \"\${old_images}\" ]; then docker rmi -f \${old_images} || true; fi; \
-    make stop 2>/dev/null; make build && make start"; then
+    BIRDLENSE_PLATFORM='${BIRDLENSE_PLATFORM}' make stop 2>/dev/null; BIRDLENSE_PLATFORM='${BIRDLENSE_PLATFORM}' make build && BIRDLENSE_PLATFORM='${BIRDLENSE_PLATFORM}' make start"; then
     build_ok=1
     break
   fi

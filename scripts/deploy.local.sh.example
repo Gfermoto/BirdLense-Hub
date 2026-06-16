@@ -79,3 +79,14 @@
 # Trapper VPS: RTSP subtype=0, NOT subtype=1 — wrong substream → YOLO blind. See user_config.trapper-production.example.yaml.
 # Либо в app/.env на сервере: BIRDLENSE_INFERENCE_DEVICE=intel:gpu (перекрывает пустой inference_device в YAML).
 # Если без renderD* деплой не должен проходить как «полный GPU»: export BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=1
+
+# =============================================================================
+# Платформа (intel_nuc — дефолт; jetson_nano — aarch64 / torch)
+# =============================================================================
+# export BIRDLENSE_PLATFORM=intel_nuc   # по умолчанию, можно не задавать
+# export BIRDLENSE_PLATFORM=jetson_nano   # Jetson: Dockerfile.jetson + docker-compose.jetson.yml
+# См. deploy/profiles/intel-nuc/ и deploy/profiles/jetson-nano/ (.env.example, config.overlay.yaml)
+# Пример Jetson:
+# export DEPLOY_HOST="gfer@192.168.8.199"
+# export DEPLOY_URL="http://192.168.8.199:8085"
+# export BIRDLENSE_PLATFORM=jetson_nano

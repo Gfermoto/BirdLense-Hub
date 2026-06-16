@@ -1,0 +1,16 @@
+# Дельты user_config для Jetson Nano. Merge вручную; deploy не перезаписывает user_config.yaml.
+
+processor:
+  inference_backend: torch
+  inference_device: cpu
+  openvino_binary_enabled: false
+  classifier_inference_backend: torch
+  classifier_inference_device: cpu
+  models:
+    binary: models/detection/weights/trapper_ai_v02_2024.pt
+  # binary_openvino — не задавать на Jetson
+
+video:
+  encoding: cpu
+  record_with_vaapi: false
+  capture_backend: opencv
