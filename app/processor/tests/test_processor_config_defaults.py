@@ -16,6 +16,9 @@ sys.path.insert(0, os.path.join(project_root, "app"))
 
 from processor_config_defaults import (  # noqa: E402
     ABSORB_GENERIC_BIRD_MIN_CLASSIFIER_CONFIDENCE,
+    BINARY_IMGSZ,
+    DETECT_USE_NATIVE_RESOLUTION,
+    INFERENCE_LORES_WH,
     AUTO_UNSTICK_MIN_BOX_SIZE_PX,
     AUTO_UNSTICK_MIN_CENTER_DIST,
     AUTO_UNSTICK_MIN_CONFIDENCE_BINARY,
@@ -53,6 +56,11 @@ class TestProcessorConfigDefaults(unittest.TestCase):
 
     def test_pipeline_mode_linear(self):
         self.assertEqual(PIPELINE_MODE, self.proc["pipeline_mode"])
+
+    def test_lores_yolo_defaults_match_yaml(self):
+        self.assertEqual(list(INFERENCE_LORES_WH), list(self.proc["inference_lores_wh"]))
+        self.assertEqual(BINARY_IMGSZ, self.proc["binary_imgsz"])
+        self.assertEqual(DETECT_USE_NATIVE_RESOLUTION, self.proc["detect_use_native_resolution"])
 
     def test_min_confidence_to_process(self):
         self.assertEqual(MIN_CONFIDENCE_TO_PROCESS, self.proc["min_confidence_to_process"])

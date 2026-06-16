@@ -109,7 +109,7 @@ class TestRuntimeProfile(unittest.TestCase):
 
         with patch("frame_processor.app_config.get", side_effect=cfg_get), patch(
             "frame_processor.resolve_adaptive_tracker_path",
-            side_effect=lambda path, _fps: path,
+            side_effect=lambda path, _fps, **kwargs: path,
         ):
             fp = FrameProcessor(strategy)
             fp.light_detector = _FakeLightDetector(brightness=10.0, contrast=8.0)
