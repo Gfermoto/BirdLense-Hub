@@ -15,8 +15,14 @@ from frame_geometry import (
     live_regen_canvas_parity,
     pad_boxes,
     prepare_detector_frame,
+    prepare_yolo_detector_frame,
     remap_norm_bbox_for_crop,
     unpad_boxes,
+)
+from processor_config_defaults import (  # noqa: E402
+    BINARY_IMGSZ,
+    DETECT_USE_NATIVE_RESOLUTION,
+    INFERENCE_LORES_WH,
 )
 
 
@@ -143,6 +149,21 @@ class TestRemapNormBboxForCrop(unittest.TestCase):
 
 
 class TestPrepareDetectorFrame(unittest.TestCase):
+    def test_yolo_detector_canvas_is_lores_not_main_native(self):
+        """Main-sized frame must letterbox to inference_lores_wh before YOLO (not 1080p native)."""
+        main_hw = (1080, 1920)
+        main_frame = np.zeros((*main_hw, 3), dtype=np.uint8)
+        cfg = {
+            "processor.inference_lores_wh": list(INFERENCE_LORES_WH),
+            "processor.detect_use_native_resolution": DETECT_USE_NATIVE_RESOLUTION,
+            "processor.binary_imgsz": BINARY_IMGSZ,
+        }
+        _det, det_hw, overlay_hw = prepare_yolo_detector_frame(main_frame, cfg)
+        lores_hw = (INFERENCE_LORES_WH[1], INFERENCE_LORES_WH[0])
+        self.assertEqual(overlay_hw, main_hw)
+        self.assertEqual(det_hw, lores_hw)
+        self.assertNotEqual(det_hw, main_hw)
+
     def test_no_stretch_on_wide(self):
         frame = np.zeros((360, 640, 3), dtype=np.uint8)
         out = letterbox_bgr_to_wh(frame, (640, 640))
