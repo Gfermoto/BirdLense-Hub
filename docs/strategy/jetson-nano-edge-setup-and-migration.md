@@ -1,21 +1,46 @@
-# Jetson Nano B01 — аппаратная и программная настройка под BirdLense Hub
+# Jetson Nano B01 — runbook и архитектура BirdLense Hub
 
-**Статус:** Final review plan + external review (2026-06-17)  
-**Исполнять:** раздел **2** (шаги 1–21), сверху вниз. Разделы 3–6 — справочник.  
-**Связано:** [ADR platform profiles](adr-platform-profiles-intel-jetson.md), epic «Jetson NVIDIA-native pipeline»
+**Статус:** Ornimetrics + TensorRT plan (2026-06-17, **rev.3**)  
+**Исполнять:** §**2** (шаги 1–21) сверху вниз. §**3–6** — справочник, контракты, научные gates.  
+**Visual stack:** [Ornimetrics/ornimetrics-edge](https://huggingface.co/Ornimetrics/ornimetrics-edge) → ONNX → **TensorRT `.engine`**.  
+**Не на Jetson:** Hailo `.hef`, Intel-пайплайн «как есть».  
+**Связано:** [ADR platform profiles](adr-platform-profiles-intel-jetson.md), [#645](https://github.com/Gfermoto/BirdLense-Hub/issues/645)
+
+| § | Содержание |
+|---|------------|
+| 0–1 | Сводка платформ, роль Jetson |
+| 2 | **Runbook 1–21** (единственный порядок работ) |
+| 3 | Стек, perf-budget, веса, behavior, issues |
+| 4–5 | Камеры, RTSP |
+| 6 | Архитектура, деградация, научный контур |
+| 7–8 | Чек-лист, риски |
+
+## 0. Сводка платформ
+
+| Платформа | Детектор | Классификатор | ReID / welfare | Behavior |
+|-----------|----------|---------------|----------------|----------|
+| **Intel NUC** | Trapper + OpenVINO | Birder ConvNeXt EU-707 | DINOv2 deferred | meta + video (OpenVINO) |
+| **Jetson Nano** | YOLOv11n TRT | EfficientNetV2-S (Ornimetrics) | ArcFace + Mahalanobis | tracklet heuristics + **X3D-XS** deferred (#660) |
+
+Переключатель species-пакета Ornimetrics — **`ebird.country`** (уже в Settings). Lat/lon — для eBird export и погоды.
 
 ---
 
-## 1. Роль Jetson в проекте
+## 1. Роль Jetson
 
-Jetson Nano B01 (4 ГБ) — **вторая боевая платформа** BirdLense Hub (рядом с Intel NUC). Цель:
+Jetson Nano B01 (4 ГБ) — вторая боевая платформа (рядом с Intel NUC).
 
-- детекция и трекинг на **lores** (704×576) с минимальной нагрузкой на CPU;
-- **event-triggered** запись main/high-res (не непрерывный dual-stream decode);
-- классификация и эмбеддинг **по требованию** на кропах;
-- общая логика (визиты, MQTT, UI, геометрия) — **тот же код**, платформа через `BIRDLENSE_PLATFORM=jetson_nano`.
+**Делает Jetson:**
+- сторож: детекция + трекинг на **lores** 704×576 (YOLOv11n TRT + NvDCF);
+- охотник: event-triggered запись main/high-res (NVENC);
+- enrichment на кропе: Ornimetrics species + welfare + ReID;
+- опционально behavior: meta heuristics (tier 0) + X3D-XS deferred (tier 1, #660).
 
-**Не цель:** запустить текущий Intel-пайплайн «как есть» на CPU/torch — это уже доказало перегрузку и слепоту на слабом железе.
+**Не делает Jetson:** Intel-пайплайн torch/cpu; Hailo `.hef`; EU-707 classifier.
+
+**Общее с NUC:** визиты, triggers/hints (ADR #634), UI, геометрия, BirdNET MQTT, `BIRDLENSE_PLATFORM=jetson_nano`.
+
+**Конфиг (уже в Hub):** `secrets.latitude/longitude`, `ebird.country/state` — см. таблицу в шапке и §3.0.
 
 ---
 
@@ -384,41 +409,68 @@ curl -sf "http://127.0.0.1:${BIRDLENSE_PORT:-8085}/health"
 
 ---
 
-### Шаг 15. Конвертировать веса в TensorRT на этом Jetson
+### Шаг 15. Скачать Ornimetrics ONNX и собрать TensorRT на Jetson
 
-**Где:** Jetson (engine несовместим, если собран на другом устройстве).
+**Где:** dev (скачать) + Jetson (сборка `.engine` только на целевом устройстве).
 
-**Что сделать:**
+**Источник:** [Ornimetrics/ornimetrics-edge](https://huggingface.co/Ornimetrics/ornimetrics-edge)
 
-```bash
-# После реализации scripts/convert_to_trt.sh:
-./scripts/convert_to_trt.sh \
-  --detector processor/models/detection/weights/trapper_ai_v02_2024.pt --imgsz 704,576 \
-  --classifier processor/models/classification/weights/convnext_v2_tiny_eu-common256px.pt --imgsz 256
-```
+**Что скачать:**
 
-Скрипт должен:
-
-1. Собрать `.engine` FP16; **кэшировать** по hash весов + JetPack/L4T (не пересобирать при каждом deploy).
-2. Прогнать parity на 20–50 golden clips.
-3. Упасть, если recall drop >5% или IoU <0.85.
-4. Записать hashes в `weights/trt_manifest.json`.
-
-OpenVINO IR на Jetson **не использовать**. Модели: trapper, convnext — обязательны; **DINOv2 ReID — experimental (фаза 2)**.
-
-Проверка DINOv2 до включения в hot path:
+| Артефакт | Назначение |
+|----------|------------|
+| `models/model_feeder4.onnx` | детектор YOLOv11n: `bird`, `squirrel`, `person`, `dog` |
+| `models/species_classifier_nabirds.onnx` + `.json` | species **US** (`ebird.country: US`), 555 видов |
+| `models/species_classifier_inat.onnx` | species **non-US** (CC), 302 вида |
+| `models/embedder.onnx` + `welfare_scorer.npz` | welfare (Mahalanobis) |
+| `models/reid_embedder.onnx` | ReID (ArcFace 256-d) |
 
 ```bash
-# OOM на Nano 4 ГБ — типичный fail; при ошибке — ReID из ConvNeXt backbone или defer
-trtexec --onnx=dinov2_vits14.onnx --fp16 --workspace=512 --saveEngine=/tmp/dino_test.engine
+pip install huggingface_hub
+# Только ONNX и sidecar-файлы; .hef не качаем (RPi+Hailo)
+huggingface-cli download Ornimetrics/ornimetrics-edge \
+  --local-dir ./ornimetrics-edge \
+  --exclude "*.hef"
 ```
 
-**Готово когда:** `.hef` (Hailo) или `.engine` (TensorRT) для **EfficientNetV2-S** (region EU/NA) лежат на Jetson; parity gate (species + welfare + ReID) зелёный.
+Ожидаемый layout после скачивания: `ornimetrics-edge/models/*.onnx`, `welfare_scorer.npz`, `species_classifier_nabirds.json`, `detector.names`.
 
-**Region switch (EU ↔ NA):**  
-- При старте `processor` читает координаты (`config.yaml` / env) → определяет регион (`region_by_coords`).  
-- Выбирает соответствующий `.hef` (например, `species_classifier_inat.hef` для EU, `species_classifier_nabirds.hef` для NA).  
-- **BirdNET** (аудио) остаётся без изменений — подсказки через MQTT.
+**Сборка TensorRT** (только на целевом Jetson):
+
+```bash
+./scripts/convert_ornimetrics_trt.sh \
+  --detector ornimetrics-edge/models/model_feeder4.onnx \
+  --classifier-pack nabirds \
+  --output processor/models/ornimetrics/jetson/
+```
+
+Скрипт (#650): FP16 `.engine`, кэш по hash, parity gate, manifest.
+
+**Оптимизация после MVP (#650 backlog):** fused TRT — один forward EfficientNetV2-S → species + embed 1280-d + ReID head (сейчас в HF четыре отдельных ONNX).
+
+**Пакет классификатора — из существующего конфига Hub:**
+
+```yaml
+secrets:
+  latitude: "55.934"      # уже есть: погода, eBird CSV export
+  longitude: "36.61"
+ebird:
+  country: "RU"           # уже есть: регион eBird + выбор пакета Ornimetrics
+  state: "MOS"
+```
+
+| `ebird.country` | ONNX / `.engine` pack | Классов |
+|-----------------|----------------------|---------|
+| `US` | `species_classifier_nabirds` | 555 |
+| иначе | `species_classifier_inat` | 302 |
+
+Переключатель — **`ebird.country`** (тот же ключ, что `ebird_region_core._build_region_code`). Координаты lat/lon **не вычисляют** пакет сами — пользователь их уже задаёт для eBird; страна задаётся явно рядом.
+
+**Ограничение:** оба классификатора Ornimetrics — североамериканская таксономия. EU-площадка с `country: RU` получает CC-пакет (302) как компромисс «из коробки»; Birder EU-707 на Intel остаётся эталоном для Европы.
+
+**BirdNET:** без изменений (MQTT hint).
+
+**Готово когда:** `.engine` detector + classifier (pack по `ebird.country`) + welfare + reid на Jetson; parity зелёный.
 
 ---
 
@@ -429,11 +481,13 @@ trtexec --onnx=dinov2_vits14.onnx --fp16 --workspace=512 --saveEngine=/tmp/dino_
 **Что сделать:**
 
 ```bash
-# Реализация: scripts/benchmark_jetson.py (#650 / #657) — пока заглушка в плане
+# Реализация: scripts/benchmark_jetson.py (#656 E10; полный отчёт — #657 E11)
 python scripts/benchmark_jetson.py \
-  --detector-engine processor/models/detection/weights/trapper.engine \
-  --classifier-engine processor/models/classification/weights/convnext.engine \
-  --frames 1000 --lores 704,576 --interval 4
+  --detector-engine processor/models/ornimetrics/jetson/feeder4.engine \
+  --classifier-engine processor/models/ornimetrics/jetson/species_nabirds.engine \
+  --embedder-engine processor/models/ornimetrics/jetson/embedder.engine \
+  --reid-engine processor/models/ornimetrics/jetson/reid.engine \
+  --frames 1000 --crop 256,256 --interval 4
 ```
 
 **Контракт скрипта (реализация, не блокер плана):**
@@ -453,6 +507,7 @@ python scripts/benchmark_jetson.py \
 | Классификатор (species) на 1 кроп | **<100 ms** p95 |
 | **Welfare (Mahalanobis)** | <50 ms p95 на кроп |
 | **ReID (ArcFace)** | <50 ms p95 на кроп |
+| **Behavior X3D-XS** (опц., E14) | <500 ms p95 на tracklet-клип |
 | RAM container idle | зафиксировать baseline (цель <2.5 ГБ до live) |
 
 Лог: CSV `jetson_bench_YYYYMMDD.csv` (latency, FPS, queue depth) — для сравнения после тюнинга.
@@ -571,18 +626,94 @@ docker logs birdlense --tail 50 | grep -iE 'rtsp|reconnect|error'
 
 ## 3. Справочник: целевой стек
 
-| Слой | Технология | Статус в репо |
-|------|------------|---------------|
-| Hub UI/API | Flask + nginx в контейнере | `Dockerfile.jetson` (bookworm → deepstream-l4t:6.2) |
-| Live detect/track | **YOLOv11n (Hailo `.hef`)** или DeepStream GIE fallback | #648 / E2 |
-| Inference weights | **EfficientNetV2-S (ONNX → Hailo `.hef`)**, region-switch EU/NA | #650 / E4 |
-| **Welfare (здоровье)** | Mahalanobis anomaly (EfficientNetV2-S features) | #650 / E4 |
-| **ReID (индивид)** | ArcFace 256-d embedding (EfficientNetV2-S backbone) | #650 / E4 |
-| Live decode lores | NVDEC / DeepStream или GStreamer NVMM | planned |
-| High-res capture | Ring buffer + event trigger | новый модуль |
-| Record encode | NVENC (`nvv4l2h264enc`) | planned |
-| Classifier / ReID / Welfare | **Shared backbone EfficientNetV2-S** (species + welfare + ReID) | #650 |
-| Offline regen | `track_regenerator` на `.pt`/`.engine` | общий код |
+### 3.0 Ornimetrics visual pack
+
+Источник: [Ornimetrics/ornimetrics-edge](https://huggingface.co/Ornimetrics/ornimetrics-edge). Jetson: **ONNX → TensorRT**; `.hef` — для RPi5+Hailo-8, на Nano **игнорируем**.
+
+| Компонент | Архитектура | Выход | Когда |
+|-----------|-------------|-------|-------|
+| **Детектор** | YOLOv11n, 416×416 | bird / squirrel / person / dog | live lores (сторож) |
+| **Species** | EfficientNetV2-S, 256×256 | 555 (US) или 302 (CC) | 1 кроп / событие (охотник) |
+| **Welfare** | backbone → Mahalanobis | anomaly score | 1 кроп / событие |
+| **ReID** | ArcFace | 256-d | 1 кроп / visit |
+| **BirdNET** | DS-CNN (вне Hub) | species hint | MQTT, ADR #634 |
+
+**Species pack** — `ebird.country`. Lat/lon — погода и eBird CSV, не выбор `.engine`.
+
+| `ebird.country` | Pack | Классов |
+|-----------------|------|---------|
+| `US` | `species_classifier_nabirds` | 555 |
+| иначе | `species_classifier_inat` | 302 |
+
+NA-таксономия; EU-707 Birder — на Intel. Welfare — перекалибровка healthy baseline на своих кропах ([caveats Ornimetrics](https://huggingface.co/Ornimetrics/ornimetrics-edge)).
+
+### 3.1 Бюджет производительности (Nano 4 ГБ)
+
+Ornimetrics на Hailo: ~28 fps detector+species. Nano без NPU — enrichment **только event-triggered**.
+
+| Ресурс | MVP | При перегрузе |
+|--------|-----|---------------|
+| RAM | ≤3.0 ГБ | ring buffer ↓, ReID off |
+| GPU | ≤85% | `interval+1` |
+| Детектор | >10 FPS eff., interval 3–4 | IOU tracker |
+| Species | <100 ms p95 / кроп | defer |
+| Welfare + ReID | <50 ms p95 | welfare off → ReID off |
+| Behavior E14 | <500 ms p95 / клип | **off** (первым в deferred) |
+
+Video + bbox persist **не ждут** ML.
+
+### 3.2 Скачивание весов (без Hailo)
+
+Исполняется в **шаге 15**. Список файлов:
+
+| Файл | Jetson |
+|------|--------|
+| `model_feeder4.onnx` | да |
+| `species_classifier_{nabirds,inat}.onnx` + `.json` | один pack |
+| `embedder.onnx`, `welfare_scorer.npz`, `reid_embedder.onnx` | да |
+| `*.hef` | **нет** |
+
+Скрипт (#650): `scripts/fetch_ornimetrics.sh --exclude-hef`. Fused TRT backbone — backlog #650.
+
+### 3.3 Behavior (#660 E14)
+
+Ornimetrics behavior не даёт. Три уровня:
+
+**Уровень 0 — tracklet heuristics (MVP, 0 GPU):** `behavior_baseline_runtime`, NvDCF metadata — `perching`, `flying_away`, `intrusion` (person/dog/squirrel), `unknown`. `engine: meta`.
+
+**Уровень 1 — X3D-XS (рекомендованный 3D-CNN):**
+
+| | |
+|--|--|
+| Архитектура | [X3D-XS](https://arxiv.org/abs/2004.04730), [PyTorchVideo zoo](https://pytorchvideo.readthedocs.io/en/latest/model_zoo.html) |
+| Params / FLOPs | ~3.8 M / **0.91 G** per clip |
+| Вход | 4 frames, stride 12, **182×182** bbox-crop |
+| Деплой | PyTorch → ONNX → TRT FP16 |
+| Gate | <500 ms p95 на клипе 2–4 с |
+
+SlowFast на Nano [не взлетает](https://www.ridgerun.ai/post/optimization-of-an-action-recognition-dl-model-for-the-nvidia-jetson-platform). Запасной по accuracy: X3D-S (2.96 G). Запасной по стеку: [MoViNet-A0-Stream](https://github.com/tensorflow/models/tree/master/official/projects/movinet) (2.7 G, TF/TFLite) — только если X3D-XS провалит benchmark.
+
+**Контракт:** deferred на mp4 охотника; метки `feeding`, `perching`, `flying_away`, `courtship`, `intrusion`, `unknown` — fine-tune на yard data; Kinetics pretrained не маппится. Jetson default: `behavior_recognition.enabled: false` до soak 2 cam.
+
+### 3.4 Issues → runbook
+
+| E | Issue | Runbook | Слой |
+|---|-------|---------|------|
+| E0 | [#646](https://github.com/Gfermoto/BirdLense-Hub/issues/646) | 1–11 | SSD, Docker, MAXN, ZRAM |
+| E1 | [#647](https://github.com/Gfermoto/BirdLense-Hub/issues/647) | 12 | NVDEC/NVENC, GStreamer |
+| E2 | [#648](https://github.com/Gfermoto/BirdLense-Hub/issues/648) | 12 | DeepStream сторож + NvDCF |
+| E3 | [#649](https://github.com/Gfermoto/BirdLense-Hub/issues/649) | 12, 6.1 | Ring buffer + охотник |
+| E4 | [#650](https://github.com/Gfermoto/BirdLense-Hub/issues/650) | 15 | Ornimetrics ONNX→TRT |
+| E5 | [#651](https://github.com/Gfermoto/BirdLense-Hub/issues/651) | 13–14, 19 | Platform, deploy, CI |
+| E6 | [#652](https://github.com/Gfermoto/BirdLense-Hub/issues/652) | 6.1 | Hub ingest adapter |
+| E7 | [#653](https://github.com/Gfermoto/BirdLense-Hub/issues/653) | 17–21 | Field test 2 cam |
+| E8 | [#654](https://github.com/Gfermoto/BirdLense-Hub/issues/654) | весь doc | Docs / ADR sync |
+| E9 | [#655](https://github.com/Gfermoto/BirdLense-Hub/issues/655) | 18, 21 | RTSP reconnect |
+| E10 | [#656](https://github.com/Gfermoto/BirdLense-Hub/issues/656) | 16, 6.11 | Perf budget, throttle |
+| E11 | [#657](https://github.com/Gfermoto/BirdLense-Hub/issues/657) | 16, 6.10, 7 | Scientific benchmark |
+| E12 | [#658](https://github.com/Gfermoto/BirdLense-Hub/issues/658) | 6.10 | FAIR / Camtrap DP |
+| E13 | [#659](https://github.com/Gfermoto/BirdLense-Hub/issues/659) | 6.10, 7 | HITL review queue |
+| E14 | [#660](https://github.com/Gfermoto/BirdLense-Hub/issues/660) | 3.3, 16 | Behavior X3D-XS deferred |
 
 ---
 
@@ -600,7 +731,7 @@ docker logs birdlense --tail 50 | grep -iE 'rtsp|reconnect|error'
 
 ---
 
-## 5. RTSP и сеть (замечания ревью, адаптировано под BirdLense)
+## 5. RTSP и сеть (Jetson)
 
 ### 5.1 Источник потоков: go2rtc vs прямой RTSP
 
@@ -684,8 +815,8 @@ gst-launch-1.0 rtspsrc location=rtsp://.../lores latency=300 drop-on-latency=tru
 2. **Кольцевой буфер high-res:** лёгкий GStreamer `uridecodebin ! nvvidconv ! appsink` на main stream;  
    `deque` последних 60–90 кадров (~2–3 с). **Не** пишем на диск до триггера.
 
-3. **Охотник (Python):** по триггеру — pre-roll из deque + post-roll 8–10 с → **NVENC** → mp4 на SSD.  
-   Один репрезентативный кроп → **тот же** Birder convnext + DINOv2 ReID (TRT/torch), не замена моделей.
+3. **Охотник (Python):** по триггеру — pre-roll + post-roll → **NVENC** → mp4.  
+   Один кроп → **EfficientNetV2-S** (Ornimetrics): species + welfare + ReID за один проход backbone.
 
 4. **Hub persist:** существующий API/SQLite — ingest метаданных и путь к файлу (адаптер, не переписывать UI с нуля).
 
@@ -727,7 +858,7 @@ Go2RTC разгружает камеру от множества подключ�
 
 | Подсказка | Когда есть | Что делает | Чего не делает |
 |-----------|------------|------------|----------------|
-| **BirdNET MQTT** | аудио на площадке | FIFO 24h, prior/confidence bias для классификатора | не создаёт финальный вид, не стартует запись |
+| **BirdNET MQTT** | аудио на площадке (отдельный сервис) | FIFO 24h, prior/confidence bias | **не multimodal**; не заменяет visual classifier; hint only (ADR #634) |
 | **eBird regional** | API key + регион | снижает пороги для типичных видов региона | не фильтрует детектор жёстко |
 | **Frigate label/sub_label** | MQTT в окне сессии | species prior, fusion bonus | не substitute за отсутствие YOLO anchor (кроме legacy `detect_first`) |
 | **multicam group** | `multi_camera_groups` | boost confidence, hint scope между close/far | не блокирует параллельную запись второй камеры |
@@ -738,51 +869,66 @@ Go2RTC разгружает камеру от множества подключ�
 
 Сборка: `collect_hints()` → scorer → fusion/classifier. Веса (`birdnet_prior`, `regional_prior`, …) — **взвешивание при наличии**, не ранжирование «кто главный».
 
-**Behavior 3D-CNN** (опционально, фаза 2+): только на готовом high-res клипе охотника; метки `feeding`, `perching`, `flying_away`, …; результат в `event.enrichment.behavior`, может догонять persist.
+**Behavior** — см. §3.3: tier 0 tracklet heuristics (MVP); tier 1 **X3D-XS** deferred на клипе (#660). При overload behavior отключается **первым** в deferred queue.
 
-### 6.3 Альтернатива (фаза 2): один high-res поток на камеру в DeepStream
+### 6.3 Intel vs Jetson — разделение ответственности
 
-Primary GIE `network-width/height=704×576` на **main** stream — без рассинхрона lores/main.  
-Требует больше GPU на decode; оценить на полевом тесте после MVP сторожа.
+| | Intel NUC | Jetson Nano |
+|--|-----------|-------------|
+| Профиль | `intel_nuc` (default) | `jetson_nano` |
+| Детектор | Trapper 704² | YOLOv11n 416² TRT |
+| Classifier | Birder EU-707 | Ornimetrics EfficientNetV2-S |
+| ReID | DINOv2 deferred | ArcFace Ornimetrics |
+| Welfare | — | Mahalanobis |
+| Behavior video | OpenVINO (существующий путь) | meta heuristics + X3D-XS TRT (E14) |
+| Deploy | `make deploy` без изменений | `BIRDLENSE_PLATFORM=jetson_nano` |
+
+Общий код: visits, triggers/hints (ADR #634), UI, `track_regenerator`, BirdNET MQTT.
 
 ### 6.4 Что сохраняем из текущего Hub
 
 - `feeder_close` / `feeder_far`, `camera_tuning_by_role`, geometry contract (`frame_shape.py`)
-- Linear stages: trigger → detect_track → classify → persist (реализация стадий разная)
-- **Контракт триггеров vs подсказок** (ADR #634): Frigate/BirdNET/eBird/multicam — **только hints** для classifier/fusion; Frigate **может** быть триггером записи (`triggers.frigate`), но label/species Frigate — не замена YOLO при `motion_immediate`
-- **Модели:** trapper детектор, Birder convnext классификатор, DINOv2 ReID — те же веса, TRT-обёртка
+- Linear stages: trigger → detect_track → classify → persist
+- **Контракт триггеров vs подсказок** (ADR #634)
+- **Конфиг eBird:** `secrets.latitude`, `secrets.longitude`, `ebird.country`, `ebird.state` — уже в UI; Jetson читает те же ключи для пакета Ornimetrics и regional hints
+- **Intel NUC** — без изменений (Trapper + Birder EU-707)
 - OpenAPI, UI, Telegram, visit model
 
-### 6.5 Jetson execution contract — не повторять Intel hot path
+### 6.5 Jetson execution contract (Ornimetrics)
 
-Сохраняем модели, но меняем **когда** они вызываются:
-
-| Стадия | Intel текущий путь | Jetson контракт |
-|--------|--------------------|-----------------|
-| Detector | YOLO/OpenVINO на detect frames | Trapper TRT FP16, lores only, `interval=3–5`; tracker закрывает промежутки |
-| Tracker | ByteTrack в Python/Ultralytics | DeepStream NvDCF `max_perf`, tracker resolution близко к infer resolution |
-| Classifier | до 3 key frames / finalize | **1 лучший кроп на событие**, convnext TRT; 2-й кроп только если confidence/margin плохие |
-| ReID | finalize enrichment | DINOv2 lazy/deferred; live ReID выключен; максимум 1 embedding на visit |
-| Behavior | Python эвристики | tracker metadata first; **3D-CNN только deferred/event-only**, не live hot path |
-| Persist | после full finalize | video+bbox persist first; classifier/ReID могут догонять async |
+| Стадия | Intel (NUC) | Jetson (Ornimetrics) |
+|--------|-------------|----------------------|
+| Detector | Trapper YOLO + OpenVINO/torch | YOLOv11n TRT, lores, `interval=3–5` |
+| Tracker | ByteTrack | NvDCF или IOU fallback |
+| Classifier | Birder ConvNeXt EU-707 | EfficientNetV2-S TRT; pack по `ebird.country` |
+| Welfare | — | Mahalanobis (embedder TRT) |
+| ReID | DINOv2 deferred (Intel) | ArcFace 256-d (Ornimetrics TRT) |
+| Behavior | meta + OpenVINO video (Intel) | tier 0 meta + X3D-XS deferred (E14) |
+| Audio hint | BirdNET MQTT | **то же** — без изменений |
+| Persist | finalize | video+bbox first; enrich async |
 
 Правило деградации:
 
 1. Всегда сохраняем событие и bbox metadata.
 2. Если GPU/RAM high → classifier skipped/deferred.
 3. Если RAM high → ReID off.
-4. Если latency high → `interval += 1`, затем `imgsz 704→640`.
-5. Если deferred queue растёт → отключить Behavior 3D-CNN первым, потом ReID.
+4. Если latency high → `interval += 1`, затем detector input **416→384** (letterbox).
+5. Если deferred queue растёт → behavior off → ReID off (species/welfare уже defer по п.2).
 6. Если event quality низкая → не меняем модель сразу; сначала проверяем RTSP, tracker, threshold parity.
 
-### 6.6 Модели: сохранить, но добавить parity gates
+### 6.6 Parity gates (по платформе)
 
-`trapper`, `convnext_v2_tiny_eu-common256px`, DINOv2 остаются каноническими моделями продукта. Для Jetson вводим gates:
+**Intel NUC (без изменений):** Trapper detector, Birder ConvNeXt EU-707, DINOv2 ReID deferred.
 
-- **Detector parity:** `.pt` vs `.engine` на 20–50 клипах; IoU bbox ≥0.85, drop in recall ≤5%.
-- **Classifier parity:** Top-1/Top-5 и margin на экспортированных кропах; exotic labels regression fail.
-- **ReID parity:** cosine distance distribution на тех же crops; если DINOv2 TRT тяжёлый — оставить torch+cuda/deferred, не заменять на OSNet без A/B.
-- **Golden clips:** отдельные `feeder_close` и `feeder_far`; night/IR clips обязательны.
+**Jetson (Ornimetrics):**
+
+- **Detector:** `model_feeder4.onnx` vs `.engine`; IoU ≥0.85, recall drop ≤5% на golden clips.
+- **Classifier:** top-1/top-5, margin; pack `nabirds` vs `inat` по `ebird.country`.
+- **Welfare:** Mahalanobis score distribution vs Ornimetrics baseline.
+- **ReID:** ArcFace cosine distance vs ONNX reference.
+- **Golden clips:** `feeder_close` + `feeder_far`; day/night/IR обязательны.
+
+Переключатель пакета — **`ebird.country`** (уже в Settings); lat/lon — для eBird export и погоды, не для выбора `.engine`.
 
 ### 6.7 Tracker choice: NvDCF сначала, IOU fallback
 
@@ -799,14 +945,14 @@ Tracker — вторая по важности точка после детек�
 
 - **Motion gate first** (BirdWatcher, HUMBIRDY): до 90% экономии CPU. RTSP motion уже в DeepStream, но для сторожа lores добавить `gstreamer:motioncells` или простую метрику.
 - **YOLO interval + tracker fill** (NVIDIA bench): `interval=3–5`, NvDCF/NvSORT заполняет промежутки.
-- **Shared backbone для classifier/ReID** (Ornimetrics): один кроп → DINOv2 → species+welfare+ReID. На Nano: ConvNeXt достаточно; DINOv2 ReID оставить deferred/lazy.
+- **Shared backbone** (Ornimetrics): один кроп EfficientNetV2-S → species + welfare + ReID (ArcFace) за один проход.
 - **Fine-tune на yard data** (BirdClass-NA, Backyard watcher): 20–30 кропов/вид обязательны до деплоя. Dataset: `gfermoto/birdlense-annotations`.
 - **Pre-roll buffer** (Orpheus): гарантированный pre-roll 1–2 c до события. Ring buffer реализует эту практику.
 - **MegaDetector/Wildlife Insights pattern:** animal/empty filtering, uncertainty routing, HITL review. В BirdLense это не runtime-модель, а benchmark/reference gate: наши detector+trigger графы должны давать сопоставимый FN/FP профиль на golden clips.
 - **Active learning:** неизвестные, low-margin и конфликтные случаи не прячем; отправляем в review queue/dataset export. Цель — уменьшать ручную разметку, не «доверять AI вслепую».
 - **FAIR / Camtrap DP:** внутренний формат Hub сохраняется, но внешний экспорт должен быть совместим с Camtrap DP/Darwin Core/Audubon Core.
 
-### 6.9 Много-modal и power-aware распространение
+### 6.9 Мультимодальность и edge-развёртывание
 
 **Acoustic+Visual fusion** (SPARROW, Orpheus): BirdNET-Audio может работать на отдельном SBC/ESP32-S3, результаты через MQTT/LoRaWAN присоединяться к визуальному событию. Это даёт 2-й шанс на идентификацию.
 
@@ -853,7 +999,7 @@ Nano 4 ГБ нельзя вести как «маленький сервер». 
 | Ресурс | Бюджет MVP | Если вышли за бюджет |
 |--------|------------|----------------------|
 | RAM container | ≤3.0 ГБ sustained, без OOM | уменьшить ring buffer, отключить ReID live, classifier keyframes=1 |
-| GPU | ≤80–85% sustained | поднять `interval`, снизить detector input до 640, отключить secondary live |
+| GPU | ≤80–85% sustained | `interval+1`, detector **416→384**, defer enrichment |
 | CPU | ≤250% sustained (из 4 cores) | убрать OpenCV hot path, только GStreamer/DS metadata |
 | Температура | <75–80°C | fan/jetson_clocks policy, снизить FPS/interval |
 | Latency event | pre-roll 2–3 c + post-roll 8–10 c | сохранять клип даже без classifier/ReID, enrich позже |
@@ -861,7 +1007,7 @@ Nano 4 ГБ нельзя вести как «маленький сервер». 
 **Правило:** если ML-обогащение не укладывается, сохраняем видео + bbox metadata, а classification/ReID переносим в deferred job. Потеря вида лучше, чем потеря события.
 
 - `tegrastats --interval 1000 --format json` → парсить GPU util, RAM, temp, power, **NVDEC load** (две камеры).
-- Простой Python-probe в DeepStream appsink / `processor` watchdog: если sustained GPU >85% или RAM container >2.8 ГБ → поднять `interval`, снизить `imgsz`, отключить secondary GIE (classifier).
+- Watchdog: GPU >85% или RAM >2.8 ГБ → `interval+1`, detector input ↓, **defer** species/welfare/ReID (не live GIE на Jetson).
 - **Адаптивный `interval`:** при GPU >80% sustained автоматически `interval += 1` (до max 6); при GPU <50% — `interval -= 1`. Backlog E10.
 - **CSV-лог** latency/FPS/очередей (`jetson_perf_YYYYMMDD.csv`) — для полевого сравнения и регрессий.
 - Alert при throttle (temp >78°C) или OOM risk → Telegram + log; graceful: classifier off → ReID off → Behavior deferred.
@@ -897,14 +1043,30 @@ Yocto даёт минимальный rootfs и контроль над kernel/d
 | Риск | Вероятность | Митигация в плане |
 |------|-------------|-------------------|
 | DeepStream ↔ Python интеграция | **высокая** | Plan B (appsink + TRT); ×2–3 время E1–E3; шаг 12 |
-| DINOv2 OOM на 4 ГБ | **высокая** | `trtexec` probe; defer / ConvNeXt ReID; шаг 15 |
+| Ornimetrics TRT RAM на 4 ГБ | средняя | отдельные `.engine`, welfare/ReID defer при overload; шаг 15–16 |
 | NVDEC bottleneck (2× RTSP) | средняя | `tegrastats` NVDEC; снизить substream FPS; шаг 12 |
 | `extlinux.conf` сброс после apt | средняя | `birdlense-fix-extlinux.sh` + apt hook; шаг 8 |
 | Buffer starvation / jitter | средняя | `num-extra-surfaces=2`, leaky queue; шаг 18 |
 | Нет benchmark перед боем | — | шаг 16: >10 FPS detect, <100 ms classify |
 | Нет recovery test | — | шаг 21: RTSP reconnect без restart контейнера |
 
-**Не в MVP (backlog):** кэш TRT engine по hash (шаг 15), адаптивный interval (6.11), API сброса буферов (шаг 21), CSV perf log (6.11).
+**Не в MVP (backlog):** адаптивный interval в коде (6.11, #656), API сброса буферов (шаг 21, #655), fused TRT backbone (#650).
+
+### 6.15 Научный контур продукта (E11–E13)
+
+Jetson-план совместим с полевым протоколом для заповедников и citizen science — не отдельный «research fork», а gates в том же runbook:
+
+| Принцип | Где в плане | Issue |
+|---------|-------------|-------|
+| Воспроизводимость (версии, hashes, config snapshot) | §6.10, шаг 16 CSV | #657 |
+| Golden clips + parity ONNX↔TRT | §6.6, шаг 16 | #657, #650 |
+| Uncertainty (confidence, margin, hints ≠ истина) | §6.2.2, §6.10 | #659 |
+| HITL / review queue | §6.10, чек-лист §7 | #659 |
+| FAIR export (Camtrap DP, DwC) | §6.10 | #658 |
+| Ethics (person/dog ≠ biodiversity record) | §6.10, детектор Ornimetrics | — |
+| 24h soak + recovery | шаги 20–21, §7 | #653, #655 |
+
+**Порядок:** operational gates (шаг 16) **до** полевого деплоя; полный scientific bundle (#657) — после 2-cam soak, перед публикацией/обменом данными.
 
 ---
 
@@ -915,15 +1077,14 @@ Yocto даёт минимальный rootfs и контроль над kernel/d
 - [ ] **Шаги 1–2:** БП 5V/4A, вентилятор, SSD, SD с JetPack записана
 - [ ] **Шаги 3–8:** SSH, apt upgrade, rootfs на SSD, `df -h /` → SSD, extlinux guard
 - [ ] **Шаги 9–12:** Docker nvidia runtime, MAXN, ZRAM/headless, `gst-inspect` OK, путь DS vs Plan B зафиксирован
-- [ ] **Шаги 13–15:** env, build (`restart: unless-stopped`, host network), `.engine` + parity + DINOv2 probe
-- [ ] **Шаг 16:** benchmark зелёный (>10 FPS detect, <100 ms classify), CSV сохранён
-- [ ] **Шаги 17–18:** камеры в конфиге, RTSP NVMM без артефактов ≥5 мин
-- [ ] **Шаги 19–20:** `make deploy`, health OK, запись с persist, `yolo_frames_with_tracks > 0`, idle RAM baseline
-- [ ] **Шаг 21:** recovery test — reconnect без restart контейнера; **`yolo_frames_with_tracks > 0`** после восстановления
-- [ ] **24h soak** (ручной): нет OOM/throttle, reconnect сработал; *backlog:* `scripts/jetson_soak_24h.sh` (tegrastats + docker logs → OOM/restart)
-- [ ] Golden clips: day/night/IR, close/far, empty negatives
-- [ ] Model hashes + JetPack/L4T/DeepStream versions сохранены
-- [ ] Low-confidence cases → review/dataset export
+- [ ] **Шаги 13–15:** env, build (`restart: unless-stopped`, host network), Ornimetrics `.engine` + parity
+- [ ] **Шаг 16:** benchmark зелёный (#656); CSV + hashes для #657
+- [ ] **Шаги 17–18:** камеры, RTSP NVMM ≥5 мин
+- [ ] **Шаги 19–20:** deploy, smoke, `yolo_frames_with_tracks > 0`, idle RAM
+- [ ] **Шаг 21:** recovery без restart контейнера
+- [ ] **24h soak** (#653): OOM/throttle/reconnect
+- [ ] **Scientific bundle** (#657–#659): golden clips, parity report, HITL export path
+- [ ] Model hashes + JetPack/L4T/DeepStream в deployment notes
 
 ---
 
@@ -932,10 +1093,10 @@ Yocto даёт минимальный rootfs и контроль над kernel/d
 | Симптом | Действие |
 |---------|----------|
 | OOM / swap | уменьшить ring buffer, `interval`, отключить ReID live |
-| GPU throttle | охлаждение, снизить `binary_imgsz` до 640 |
+| GPU throttle | охлаждение, `interval+1`, detector 416→384 |
 | NVDEC saturated | снизить substream FPS; event-only high-res decode |
 | DeepStream↔Python зависание | Plan B (appsink + TRT); не блокировать MVP |
-| DINOv2 OOM | defer ReID; ConvNeXt embedding fallback |
+| ReID/welfare overload | defer welfare → ReID off; interval+1 |
 | Загрузка с SD после apt | шаг 8: `birdlense-fix-extlinux.sh` |
 | 2 камеры не тянут | event-only high-res обязателен; иначе **Orin Nano 8GB** |
 | Engine mismatch | пересобрать TRT на устройстве |
@@ -947,13 +1108,20 @@ Yocto даёт минимальный rootfs и контроль над kernel/d
 - `deploy/profiles/jetson-nano/`
 - `app/Dockerfile.jetson`, `app/docker-compose.jetson.yml`
 - `scripts/platform-profile.sh`
-- Epic GitHub: [#645](https://github.com/Gfermoto/BirdLense-Hub/issues/645)
-- RTSP monitoring: [#655](https://github.com/Gfermoto/BirdLense-Hub/issues/655) (E9)
-- Performance budget / graceful degradation: [#656](https://github.com/Gfermoto/BirdLense-Hub/issues/656) (E10)
+- Epic: [#645](https://github.com/Gfermoto/BirdLense-Hub/issues/645)
+- Scientific gates: [#657](https://github.com/Gfermoto/BirdLense-Hub/issues/657) (E11), [#658](https://github.com/Gfermoto/BirdLense-Hub/issues/658) (E12), [#659](https://github.com/Gfermoto/BirdLense-Hub/issues/659) (E13)
+- Behavior: [#660](https://github.com/Gfermoto/BirdLense-Hub/issues/660) (E14)
+- RTSP: [#655](https://github.com/Gfermoto/BirdLense-Hub/issues/655) (E9)
+- Perf budget: [#656](https://github.com/Gfermoto/BirdLense-Hub/issues/656) (E10)
+
+---
 
 ## 10. Внешние источники
 
-- NVIDIA DeepStream troubleshooting: RTSP `live-source=1`, sink `sync=0`, latency/jitter trade-offs, decoder buffer starvation — <https://docs.nvidia.com/metropolis/deepstream/6.2/dev-guide/text/DS_troubleshooting.html>
-- NVIDIA DeepStream performance: Jetson Nano uses FP16, `interval=5`, NvDCF `max_perf`, reduced tracker resolution — <https://docs.nvidia.com/metropolis/deepstream/6.0.1/dev-guide/text/DS_Performance.html>
-- RidgeRun Jetson GStreamer encoder latency: `nvv4l2h264enc` / `nvv4l2h265enc`, `maxperf-enable` impact — <https://developer.ridgerun.com/wiki/index.php/GStreamer_Encoding_Latency_in_NVIDIA_Jetson_Platforms>
-- NVIDIA forum notes: `low-latency-mode` and `num-extra-surfaces=0` reduce latency but can stutter with jitter/B-frames — <https://forums.developer.nvidia.com/t/deepstream-performance-issue-1s-latency-and-periodic-stutter-with-rtsp-streams/342100/17>
+- Ornimetrics model card + limitations: <https://huggingface.co/Ornimetrics/ornimetrics-edge>
+- X3D (efficient video nets): <https://arxiv.org/abs/2004.04730>, PyTorchVideo zoo — <https://pytorchvideo.readthedocs.io/en/latest/model_zoo.html>
+- MoViNet (mobile video, fallback): <https://github.com/tensorflow/models/tree/master/official/projects/movinet>
+- RidgeRun action recognition on Jetson (SlowFast ≠ Nano): <https://www.ridgerun.ai/post/optimization-of-an-action-recognition-dl-model-for-the-nvidia-jetson-platform>
+- NVIDIA DeepStream troubleshooting: <https://docs.nvidia.com/metropolis/deepstream/6.2/dev-guide/text/DS_troubleshooting.html>
+- NVIDIA DeepStream performance (Nano FP16, interval, NvDCF): <https://docs.nvidia.com/metropolis/deepstream/6.0.1/dev-guide/text/DS_Performance.html>
+- RidgeRun GStreamer encoder latency: <https://developer.ridgerun.com/wiki/index.php/GStreamer_Encoding_Latency_in_NVIDIA_Jetson_Platforms>

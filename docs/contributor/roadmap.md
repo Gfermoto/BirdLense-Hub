@@ -31,9 +31,9 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 |-------|------|--------|
 | **Storage / NVR parity** | [#601](https://github.com/Gfermoto/BirdLense-Hub/issues/601) | FinalizeTransaction, QuotaMaintainer, ReconcileJob, honest readiness [#605](https://github.com/Gfermoto/BirdLense-Hub/issues/605) |
 | **CV pipeline recovery** | [#606](https://github.com/Gfermoto/BirdLense-Hub/issues/606) | Tracks, false bbox, species — `docs/strategy/CV_PIPELINE_RECOVERY_PLAN_2026-06.md` |
-| **Jetson Nano edge** | [#645](https://github.com/Gfermoto/BirdLense-Hub/issues/645) | **EfficientNetV2-S** (Ornimetrics) — species + welfare + ReID shared backbone, region switch EU/NA, Hailo `.hef` — [runbook 21 шаг](../strategy/jetson-nano-edge-setup-and-migration.md) |
+| **Jetson Nano edge** | [#645](https://github.com/Gfermoto/BirdLense-Hub/issues/645) | Ornimetrics TRT, `ebird.country` pack; behavior X3D-XS (#660); scientific gates #657–#659 — [runbook rev.3](../strategy/jetson-nano-edge-setup-and-migration.md) |
 
-**Jetson sub-issues (E0–E14):** [#646](https://github.com/Gfermoto/BirdLense-Hub/issues/646)–[#660](https://github.com/Gfermoto/BirdLense-Hub/issues/660). Runbook: шаги 1–8 provisioning, 9–15 stack/TRT/benchmark gate, 17–18 камеры/RTSP, 19–21 deploy/smoke/recovery.
+**Jetson E0–E14:** [#646](https://github.com/Gfermoto/BirdLense-Hub/issues/646)–[#660](https://github.com/Gfermoto/BirdLense-Hub/issues/660). Runbook: **1–8** provisioning · **9–12** runtime · **13–14** build · **15–16** TRT+benchmark · **17–18** cameras · **19–21** deploy/smoke/recovery.
 
 **Field symptoms (Jun 2026):** no tracks, false/sticky bboxes, classifier stuck on Bird → #607–#611.
 
