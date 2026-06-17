@@ -1,6 +1,7 @@
 # Jetson Nano B01 — аппаратная и программная настройка под BirdLense Hub
 
 **Статус:** Final review plan (2026-06-17)  
+**Исполнять:** раздел **2** (шаги 1–18), сверху вниз. Разделы 3–6 — справочник.  
 **Связано:** [ADR platform profiles](adr-platform-profiles-intel-jetson.md), epic «Jetson NVIDIA-native pipeline»
 
 ---
@@ -18,188 +19,162 @@ Jetson Nano B01 (4 ГБ) — **вторая боевая платформа** Bi
 
 ---
 
-## 2. Аппаратная подготовка (обязательно)
+## 2. Runbook — выполнять строго по порядку
 
-### 2.1 Питание и охлаждение
+Один путь. Не перескакивать шаги. Каждый шаг: **где**, **что сделать**, **команды**, **готово когда**.
 
-| Компонент | Требование | Почему |
-|-----------|------------|--------|
-| БП | **5 В / 4 А (20 Вт)**, barrel jack 5.5×2.1 мм | micro-USB не даёт MAXN; троттлинг GPU |
-| Радиатор + вентилятор | активное охлаждение SoC и RAM | при `jetson_clocks` >75°C → сброс частот |
-| Накопитель | **USB 3.0 SSD** или NVMe через HAT (не дешёвая microSD) | запись клипов + wear; swap на SD убить |
-
-### 2.2 Режимы мощности
-
-После каждой загрузки (или через systemd unit):
-
-```bash
-sudo nvpmodel -m 0          # 10W MAXN
-sudo jetson_clocks          # фикс. макс. частоты (нужен вентилятор!)
-```
-
-Проверка: `jtop` (пакет `jetson-stats`) — GPU ~921 MHz, CPU ~1479 MHz, TEMP <80°C.
-
-### 2.3 Память (4 ГБ — узкое место)
-
-```bash
-sudo apt install -y zram-config
-sudo systemctl enable zram-config
-```
-
-- **Headless:** `sudo systemctl set-default multi-user.target` (+300–500 МБ RAM).
-- **Не использовать** swap на microSD для постоянной нагрузки.
-- Ожидаемый бюджет RAM (2 камеры, event pipeline):
-  - DeepStream сторож (2× lores): ~0.8 ГБ
-  - Ring buffer high-res (2× ~2 с I420): ~0.2–0.4 ГБ (с ZRAM меньше)
-  - Пик записи NVENC + classifier: до ~1.5 ГБ на 10 с
-  - ОС + Hub API/UI: ~0.5–1 ГБ  
-  **Итого:** укладываемся при headless + ZRAM + лимите контейнера 3 ГБ.
-
-### 2.4 Performance budget и graceful degradation
-
-Nano нельзя вести как «маленький сервер». Для него нужен бюджет, который enforced кодом:
-
-| Ресурс | Бюджет MVP | Если вышли за бюджет |
-|--------|------------|----------------------|
-| RAM container | ≤3.0 ГБ sustained, без OOM | уменьшить ring buffer, отключить ReID live, classifier keyframes=1 |
-| GPU | ≤80–85% sustained | поднять `interval`, снизить detector input до 640, отключить secondary live |
-| CPU | ≤250% sustained (из 4 cores) | убрать OpenCV hot path, только GStreamer/DS metadata |
-| Температура | <75–80°C | fan/jetson_clocks policy, снизить FPS/interval |
-| Latency event | pre-roll 2–3 c + post-roll 8–10 c | сохранять клип даже без classifier/ReID, enrich позже |
-
-**Правило:** если ML-обогащение не укладывается, сохраняем видео + bbox metadata, а classification/ReID переносим в deferred job. Потеря вида лучше, чем потеря события.
+| Шаг | Где | Суть |
+|-----|-----|------|
+| 1 | стол, Jetson выкл. | железо |
+| 2 | ПК, Jetson выкл. | образ на SD |
+| 3–11 | Jetson | ОС, SSD, Docker, performance |
+| 12–14 | Jetson + dev | env, build, TRT weights |
+| 15–16 | Jetson / UI | камеры и RTSP |
+| 17–18 | dev → Jetson | deploy и smoke |
 
 ---
 
-## 3. Программная база
+### Шаг 1. Подготовить железо
 
-### 3.1 ОС и JetPack
+**Где:** стол, Jetson **выключен**.
 
-- Рекомендуется **JetPack 4.6.x** (L4T R32.7) на Nano B01 — проверенная связка с DeepStream 6.x.
-- Docker + **NVIDIA Container Toolkit** (`runtime: nvidia`).
-- Пользователь в группе `docker`.
+**Что сделать:**
 
-### 3.2 Стек BirdLense на Jetson (целевой)
+1. Подключить БП **5 В / 4 А (20 Вт)** через barrel jack 5.5×2.1 мм (не micro-USB).
+2. Установить радиатор и **активный** вентилятор.
+3. Подключить **USB 3.0 SSD** (или NVMe через HAT). Диск пока не трогать — только физическое подключение.
 
-| Слой | Технология | Статус в репо |
-|------|------------|---------------|
-| Hub UI/API | существующий Flask + nginx в контейнере | `Dockerfile.jetson` (эволюция → DeepStream base) |
-| Live detect/track | **DeepStream** Primary GIE + NvDCF | план |
-| Inference weights | **TensorRT FP16** `.engine` | `tensorrt` в `selector.py` — planned |
-| Live decode lores | NVDEC / DeepStream | `ffmpeg_nvdec` — planned |
-| High-res capture | Ring buffer + event trigger | новый модуль |
-| Record encode | **NVENC** (`nvv4l2h264enc`) | `video.encoding: nvidia` — planned |
-| Classifier / ReID | Secondary GIE или TRT на 1 кроп/событие | план |
-| Offline regen | существующий `track_regenerator` на `.pt`/`.engine` | общий код |
+**Готово когда:** питание, охлаждение и SSD подключены; Jetson ещё не включали.
 
-### 3.3 Переменные окружения (Jetson)
+---
+
+### Шаг 2. Записать JetPack на microSD
+
+**Где:** ПК, Jetson **выключен**.
+
+**Что сделать:**
+
+1. Скачать [JetPack 4.6.1 SD Card Image](https://developer.nvidia.com/embedded/jetpack-sdk-461) → `jetson-nano-sd-r32.7.1.img.zip`.
+2. Записать образ на microSD (≥16 ГБ, A2/V30): `balenaEtcher` или `dd`.
+3. Вставить SD в Jetson.
+
+**Готово когда:** SD записана и вставлена.
+
+---
+
+### Шаг 3. Первый boot и SSH
+
+**Где:** Jetson, первый запуск с SD.
+
+**Что сделать:**
+
+1. Включить Jetson, пройти OEM wizard:
+   - пользователь: `gfer`
+   - hostname: `birdlense-jetson`
+2. Включить SSH:
 
 ```bash
-export BIRDLENSE_PLATFORM=jetson_nano
-export BIRDLENSE_INFERENCE_BACKEND=tensorrt   # после реализации
-export BIRDLENSE_OPENVINO_BINARY_ENABLED=0
-export BIRDLENSE_INFERENCE_DEVICE=cuda
-# GO2RTC_URL — на площадке (LAN), не копировать с VPS без правки
+sudo systemctl enable ssh --now
 ```
 
-Overlay: `deploy/profiles/jetson-nano/config.overlay.yaml`, `.env.example`.
+**Готово когда:** вход по SSH с dev-машины работает: `ssh gfer@birdlense-jetson`.
 
-### 3.4 Сборка и деплой
+---
 
-```bash
-# Локально на Jetson
-cd app
-BIRDLENSE_PLATFORM=jetson_nano docker compose -f docker-compose.yml -f docker-compose.jetson.yml up -d --build
+### Шаг 4. Обновить JetPack до 4.6.x
 
-# С dev-машины
-# scripts/deploy.local.sh:
-export BIRDLENSE_PLATFORM=jetson_nano
-export DEPLOY_HOST="gfer@192.168.8.199"
-export DEPLOY_URL="http://192.168.8.199:8085"
-make deploy
-```
+**Где:** Jetson по SSH.
 
-### 3.5 E0 — Ручные шаги подготовки железа (Manual Provisioning)
-
-**Цель:** Надежная база — SSD под систему/данные, SD только для загрузчика. Время: ~30–45 мин.
-
-#### 1. Образ ОС
-- **Базовый:** **NVIDIA JetPack 4.6.1 (L4T R32.7.1)** — установить на SD-карту.
-- Скачать: [JetPack 4.6.1 SD Card Image](https://developer.nvidia.com/embedded/jetpack-sdk-461) → `jetson-nano-sd-r32.7.1.img.zip`.
-- Записать на microSD (минимум 16 ГБ, класс A2/V30): `balenaEtcher` / `dd`.
-
-#### 2. Обновление до JetPack 4.6.4 через пакетный менеджер
-После первой загрузки с базовой SD:
+**Что сделать:**
 
 ```bash
-# Обновить доступные пакеты L4T/JetPack из NVIDIA apt repo
 sudo apt update
-sudo apt update && sudo apt full-upgrade -y
-
-# Поставить/обновить JetPack meta-package без переустановки образа
+sudo apt full-upgrade -y
 sudo apt install -y nvidia-jetpack
-
-# Проверка версии
 cat /etc/nv_tegra_release
 ```
 
-Ожидаемо: `R32.7.x`; если apt не поднимает до `R32.7.4`, фиксируем фактическую `L4T`-версию в deployment notes и не смешиваем DeepStream/JetPack версии.
+**Готово когда:** `cat /etc/nv_tegra_release` показывает `R32.7.x`. Зафиксировать точную версию в deployment notes.
 
-#### 3. Первичная загрузка (на SD)
-```bash
-# Включить Jetson с SD, пройти OEM config (locale, user, pass, hostname)
-# Пользователь: gfer (как на проде), пароль: <ваш>
-# Hostname: birdlense-jetson
-# Включить SSH: sudo systemctl enable ssh --now
-```
+---
 
-#### 4. Подключение и подготовка SSD (USB 3.0 или NVMe через HAT)
+### Шаг 5. Разметить SSD
+
+**Где:** Jetson по SSH.
+
+**Что сделать:**
+
 ```bash
-# Определить диск (обычно /dev/sda или /dev/nvme0n1)
 lsblk
+# USB SSD обычно /dev/sda, NVMe — /dev/nvme0n1
+# Ниже пример для /dev/sda — подставь свой диск!
 
-# Разметка: одна partition ext4 на весь диск
 sudo parted /dev/sda mklabel gpt
 sudo parted /dev/sda mkpart primary ext4 0% 100%
 sudo mkfs.ext4 -L birdlense-data /dev/sda1
 ```
 
-#### 5. Перенос rootfs на SSD (rootfs-on-SSD способ — надежнее symlink)
+**Готово когда:** `lsblk` показывает `/dev/sda1` с типом ext4.
+
+---
+
+### Шаг 6. Перенести rootfs на SSD
+
+**Где:** Jetson по SSH.
+
+**Что сделать:**
+
 ```bash
-# Смонтировать SSD
-sudo mkdir /mnt/ssd
+sudo mkdir -p /mnt/ssd
 sudo mount /dev/sda1 /mnt/ssd
 
-# rsync текущей системы (исключаем /mnt, /proc, /sys, /dev, /run, /tmp)
-sudo rsync -aAXv --exclude={"/mnt/*","/proc/*","/sys/*","/dev/*","/run/*","/tmp/*","/lost+found"} / /mnt/ssd/
+sudo rsync -aAXv \
+  --exclude={"/mnt/*","/proc/*","/sys/*","/dev/*","/run/*","/tmp/*","/lost+found"} \
+  / /mnt/ssd/
 
-# Редактировать /mnt/ssd/etc/fstab: добавить запись для SSD как /
-# UUID=<ssd-uuid>  /  ext4  defaults,noatime  0  1
-# (UUID узнать: blkid /dev/sda1)
+SSD_UUID=$(blkid -s UUID -o value /dev/sda1)
+SSD_PARTUUID=$(blkid -s PARTUUID -o value /dev/sda1)
 
-# Обновить extlinux.conf на SD для загрузки с SSD
-# Файл: /boot/extlinux/extlinux.conf (на SD)
-# В APPEND строку ядра добавить: root=PARTUUID=<partuuid-of-ssd-partition> rootwait
-# PARTUUID: blkid -s PARTUUID -o value /dev/sda1
+echo "UUID=${SSD_UUID}  /  ext4  defaults,noatime  0  1" | sudo tee -a /mnt/ssd/etc/fstab
 
-# Перезагрузка — должна загрузиться с SSD
+sudo cp /boot/extlinux/extlinux.conf /boot/extlinux/extlinux.conf.bak
+sudo sed -i "s|root=[^ ]*|root=PARTUUID=${SSD_PARTUUID}|" /boot/extlinux/extlinux.conf
+
 sudo reboot
 ```
 
-#### 6. Проверка и настройка после перезагрузки
-```bash
-# Проверить, что корень на SSD
-df -h /          # должен показывать /dev/sda1
-lsblk            # SD (mmcblk0) — только /boot, SSD (sda) — /
+**Готово когда:** после reboot команда `df -h /` показывает SSD (`/dev/sda1` или `nvme0n1p1`), не `mmcblk0`.
 
-# Форматировать SD в FAT32 для загрузчика (опционально, оставить как есть — тоже ок)
-# Основное: на SD больше нет записей — износ минимален.
+---
+
+### Шаг 7. Проверить загрузку с SSD
+
+**Где:** Jetson после reboot.
+
+**Что сделать:**
+
+```bash
+df -h /
+lsblk
 ```
 
-#### 7. Docker data-root на SSD (критично для надежности контейнеров)
+**Готово когда:**
+
+- `/` на SSD
+- `mmcblk0` — только `/boot` (загрузчик), не корневая ФС
+
+---
+
+### Шаг 8. Настроить Docker с NVIDIA runtime
+
+**Где:** Jetson.
+
+**Что сделать:**
+
 ```bash
+sudo usermod -aG docker "$USER"
 sudo mkdir -p /etc/docker
-cat <<EOF | sudo tee /etc/docker/daemon.json
+sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
 {
   "data-root": "/var/lib/docker",
   "log-driver": "json-file",
@@ -216,10 +191,20 @@ EOF
 sudo systemctl restart docker
 ```
 
-#### 8. Jetson-специфичные настройки (автоматизировать через systemd unit)
+Перелогиниться (или `newgrp docker`), чтобы группа `docker` применилась.
+
+**Готово когда:** `docker ps` работает без `sudo`.
+
+---
+
+### Шаг 9. Включить MAXN (nvpmodel + jetson_clocks)
+
+**Где:** Jetson.
+
+**Что сделать:**
+
 ```bash
-# /etc/systemd/system/jetson-performance.service
-cat <<EOF | sudo tee /etc/systemd/system/jetson-performance.service
+sudo tee /etc/systemd/system/jetson-performance.service >/dev/null <<'EOF'
 [Unit]
 Description=Jetson MAXN Performance
 After=multi-user.target
@@ -233,59 +218,227 @@ RemainAfterExit=yes
 [Install]
 WantedBy=multi-user.target
 EOF
+
 sudo systemctl enable --now jetson-performance
+sudo nvpmodel -m 0
+sudo jetson_clocks
 ```
 
-#### 9. ZRAM и headless (как в разделе 2.3/2.4)
+**Готово когда:** `jtop` (после `sudo apt install -y jetson-stats`) показывает GPU ~921 MHz, CPU ~1479 MHz, temp <80°C в idle.
+
+---
+
+### Шаг 10. ZRAM и headless
+
+**Где:** Jetson.
+
+**Что сделать:**
+
 ```bash
-sudo apt update && sudo apt install -y zram-config
+sudo apt update
+sudo apt install -y zram-config
 sudo systemctl enable zram-config
-sudo systemctl set-default multi-user.target   # headless, +300–500 MB RAM
+sudo systemctl set-default multi-user.target
 ```
 
-#### 10. Проверка перед деплоем кода
+**Готово когда:** `systemctl is-enabled zram-config` → `enabled`; default target → `multi-user`.
+
+---
+
+### Шаг 11. Проверить NVIDIA runtime и GStreamer
+
+**Где:** Jetson.
+
+**Что сделать:**
+
 ```bash
-# Должно показать: GPU 921 MHz, CPU 1479 MHz, Temp <50°C в idle
-jtop
+docker run --rm --runtime nvidia nvcr.io/nvidia/l4t-base:r32.7.1 \
+  bash -lc 'ls /usr/local/cuda && echo OK'
 
-# Docker + nvidia runtime на Jetson Nano проверяем через L4T image, не nvidia-smi
-docker run --rm --runtime nvidia nvcr.io/nvidia/l4t-base:r32.7.1 bash -lc 'ls /usr/local/cuda && echo OK'
-
-# DeepStream/NVENC plugins (после установки DeepStream base/runtime)
 gst-inspect-1.0 nvv4l2decoder
 gst-inspect-1.0 nvv4l2h264enc
 ```
 
+**Готово когда:** Docker выводит `OK`; оба `gst-inspect` находят плагины (после установки DeepStream/runtime, если ещё нет — поставить до шага 17).
+
 ---
 
-**После E0 ручной части:** Jetson загружается с SSD, Docker хранит образы/контейнеры на SSD, система в MAXN, headless, ZRAM активен. Готово к `make deploy`.
+### Шаг 12. Задать переменные окружения
 
-### 3.6 Конвертация весов — **те же модели, другой runtime**
+**Где:** dev-машина (`scripts/deploy.local.sh`) и при необходимости `app/.env` на Jetson.
 
-**Принцип:** не меняем обученные сети на «лёгкие замены» (MobileNet/OSNet из чужих гайдов). Меняем только **backend экспорта**: `.pt` → TensorRT `.engine` на Jetson.
-
-| Роль | Текущая модель (prod Intel) | Путь в репо | Jetson export |
-|------|----------------------------|-------------|---------------|
-| **Детектор** | `trapper_ai_v02_2024` (YOLO binary) | `processor/models/detection/weights/trapper_ai_v02_2024.pt` | TRT FP16, input **704×576** (letterbox как сейчас) |
-| **Классификатор** | Birder EU `convnext_v2_tiny_eu-common256px` | `processor/models/classification/weights/convnext_v2_tiny_eu-common256px.pt` | TRT FP16, input **256×256** (не 224) |
-| **Эмбеддинг / ReID** | DINOv2 (runtime hub cache) | `processor.reid.*`, `models/reid/hub_cache` | TRT или torch+cuda на 1 кроп/событие; **не** заменять на OSNet без A/B |
-
-OpenVINO IR (`*_openvino_model/`) на Jetson **не используем** — только как эталон parity при конвертации.
+**Что сделать:**
 
 ```bash
-# План: scripts/convert_to_trt.sh
-# --detector trapper_ai_v02_2024.pt --imgsz 704,576
-# --classifier convnext_v2_tiny_eu-common256px.pt --imgsz 256
-# --reid dinov2 (опционально, фаза 2)
+# scripts/deploy.local.sh
+export BIRDLENSE_PLATFORM=jetson_nano
+export DEPLOY_HOST="gfer@192.168.8.199"
+export DEPLOY_URL="http://192.168.8.199:8085"
 ```
 
-Конвертацию **выполнять на целевом Jetson** (или в контейнере с тем же TRT), иначе engine несовместим.
+В `app/.env` на Jetson (если нужно локально):
+
+```bash
+BIRDLENSE_PLATFORM=jetson_nano
+BIRDLENSE_INFERENCE_BACKEND=tensorrt
+BIRDLENSE_OPENVINO_BINARY_ENABLED=0
+BIRDLENSE_INFERENCE_DEVICE=cuda
+# GO2RTC_URL=http://<lan-ip-go2rtc>:1984  — LAN площадки, не копировать с VPS
+```
+
+Overlay: `deploy/profiles/jetson-nano/config.overlay.yaml`.
+
+**Готово когда:** `echo $BIRDLENSE_PLATFORM` на dev → `jetson_nano`; `DEPLOY_HOST`/`DEPLOY_URL` указывают на Jetson в LAN.
 
 ---
 
-## 4. RTSP и сеть (замечания ревью, адаптировано под BirdLense)
+### Шаг 13. Базовая сборка контейнера на Jetson
 
-### 4.0 Источник потоков: go2rtc vs прямой RTSP
+**Где:** Jetson, каталог `app/` репозитория.
+
+**Что сделать:**
+
+```bash
+cd app
+BIRDLENSE_PLATFORM=jetson_nano \
+  docker compose -f docker-compose.yml -f docker-compose.jetson.yml up -d --build
+```
+
+**Готово когда:** `docker compose ps` — контейнер `birdlense` в состоянии `running`; `curl -sf http://127.0.0.1:8085/health` (или ваш `BIRDLENSE_PORT`) → OK.
+
+---
+
+### Шаг 14. Конвертировать веса в TensorRT на этом Jetson
+
+**Где:** Jetson (engine несовместим, если собран на другом устройстве).
+
+**Что сделать:**
+
+```bash
+# После реализации scripts/convert_to_trt.sh:
+./scripts/convert_to_trt.sh \
+  --detector processor/models/detection/weights/trapper_ai_v02_2024.pt --imgsz 704,576 \
+  --classifier processor/models/classification/weights/convnext_v2_tiny_eu-common256px.pt --imgsz 256
+```
+
+Скрипт должен:
+
+1. Собрать `.engine` FP16.
+2. Прогнать parity на 20–50 golden clips.
+3. Упасть, если recall drop >5% или IoU <0.85.
+4. Записать hashes в `weights/trt_manifest.json`.
+
+OpenVINO IR на Jetson **не использовать**. Модели те же: trapper, convnext, DINOv2 (ReID — фаза 2).
+
+**Готово когда:** `.engine` для detector + classifier есть на Jetson; parity gate зелёный.
+
+---
+
+### Шаг 15. Настроить камеры в Hub
+
+**Где:** `app/app_config/user_config.yaml` (на Jetson или через deploy).
+
+**Что сделать:**
+
+1. Две камеры: `feeder_close`, `feeder_far` в `video.cameras[]`.
+2. Для каждой камеры:
+   - **lores/detect** — прямой RTSP URL камеры (substream 704×576, H.264, 7–15 FPS).
+   - **main/high-res** — через go2rtc (`rtsp://<go2rtc>:8554/...`), 1080p, 15–25 FPS.
+3. Включить NTP на камерах; GOP 2–4 с.
+
+**Готово когда:** в конфиге есть реальные URL обоих потоков для обеих камер; роли `tuning_role` заданы.
+
+---
+
+### Шаг 16. Проверить RTSP-потоки
+
+**Где:** Jetson.
+
+**Что сделать:**
+
+```bash
+# lores напрямую с камеры
+gst-launch-1.0 rtspsrc location=rtsp://CAMERA_IP/lores latency=300 ! \
+  rtph264depay ! h264parse ! fakesink sync=false
+
+# main через go2rtc
+gst-launch-1.0 rtspsrc location=rtsp://GO2RTC_IP:8554/feeder_close latency=300 ! \
+  rtph264depay ! h264parse ! fakesink sync=false
+```
+
+Подставить реальные URL из шага 15.
+
+**Готово когда:** оба pipeline отрабатывают без ошибки «Could not open resource» ≥30 с.
+
+---
+
+### Шаг 17. Финальный deploy
+
+**Где:** dev-машина.
+
+**Что сделать:**
+
+```bash
+cd /path/to/BirdLense
+# deploy.local.sh уже с BIRDLENSE_PLATFORM=jetson_nano (шаг 12)
+make deploy
+```
+
+**Готово когда:** `make deploy` завершился без ошибки; health на `DEPLOY_URL` → OK.
+
+---
+
+### Шаг 18. Smoke после deploy
+
+**Где:** Jetson + браузер/MCP.
+
+**Что сделать:**
+
+1. Открыть `DEPLOY_URL` — UI доступен.
+2. Дождаться события или вызвать тестовую запись.
+3. Проверить:
+
+```bash
+tegrastats --interval 1000 | head -5
+# в Hub: yolo_frames_with_tracks > 0
+```
+
+**Готово когда:** health OK, одна запись с persist в UI, `tegrastats` без throttle/OOM, треки появляются.
+
+---
+
+## 3. Справочник: целевой стек
+
+| Слой | Технология | Статус в репо |
+|------|------------|---------------|
+| Hub UI/API | Flask + nginx в контейнере | `Dockerfile.jetson` |
+| Live detect/track | DeepStream Primary GIE + NvDCF | план |
+| Inference weights | TensorRT FP16 `.engine` | `tensorrt` в `selector.py` — planned |
+| Live decode lores | NVDEC / DeepStream | planned |
+| High-res capture | Ring buffer + event trigger | новый модуль |
+| Record encode | NVENC (`nvv4l2h264enc`) | planned |
+| Classifier / ReID | TRT на 1 кроп/событие | план |
+| Offline regen | `track_regenerator` на `.pt`/`.engine` | общий код |
+
+---
+
+## 4. Справочник: камеры (детали к шагам 15–16)
+
+| Поток | Назначение | Разрешение | FPS | Маршрут |
+|-------|------------|------------|-----|---------|
+| Substream / detect | DeepStream сторож | 704×576 | 7–15 | **прямой RTSP камеры** |
+| Main | ring buffer + запись | 1080p | 15–25 | **через go2rtc** |
+
+- Оба **H.264**, GOP 2–4 с, NTP на камере.
+- `video.cameras[]`: `tuning_role: feeder_close|feeder_far`.
+
+Исполнять: **шаг 15** (конфиг) → **шаг 16** (проверка gst-launch).
+
+---
+
+## 5. RTSP и сеть (замечания ревью, адаптировано под BirdLense)
+
+### 5.1 Источник потоков: go2rtc vs прямой RTSP
 
 На площадке Hub уже использует **go2rtc** (`video.go2rtc_url`). На Jetson — **гибрид**:
 
@@ -296,7 +449,7 @@ OpenVINO IR (`*_openvino_model/`) на Jetson **не используем** — 
 
 `/dev/video0` в Docker **не нужен** для RTSP.
 
-### 4.1 Docker: `network_mode: host`
+### 5.2 Docker: `network_mode: host`
 
 Jetson полностью отдан под Hub — **`network_mode: host` по умолчанию** (проще RTSP/RTP, без NAT).
 
@@ -307,7 +460,7 @@ Jetson полностью отдан под Hub — **`network_mode: host` по 
 
 Профиль: `deploy/profiles/jetson-nano/compose.host-network.yml`.
 
-### 4.2 GStreamer / DeepStream для RTSP
+### 5.3 GStreamer / DeepStream для RTSP
 
 Параметры из ревью — принимаем, но не как жёсткие константы:
 
@@ -320,21 +473,31 @@ Jetson полностью отдан под Hub — **`network_mode: host` по 
 - `appsink sync=false` для ring buffer
 - DeepStream `type=4`, `latency=300`, `live-source=1`, sink `sync=0`
 
-Пример lores (704×576):
+Пример lores (704×576) — tuned для Nano (zero-copy, leaky, минимальный jitter):
 
 ```bash
 gst-launch-1.0 rtspsrc location=rtsp://.../lores latency=300 drop-on-latency=true ! \
-  rtph264depay ! h264parse ! nvv4l2decoder enable-max-performance=1 ! \
+  rtph264depay ! h264parse ! \
+  nvv4l2decoder enable-max-performance=1 num-extra-surfaces=2 ! \
   queue leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0 ! \
-  nvvidconv ! video/x-raw,format=NV12,width=704,height=576 ! \
-  appsink name=lores_sink sync=false
+  nvvidconv ! video/x-raw(memory:NVMM),format=NV12,width=704,height=576 ! \
+  appsink name=lores_sink sync=false emit-signals=true
 ```
 
-### 4.3 Синхронизация lores ↔ high-res
+Ключевые улучшения:
+
+- `num-extra-surfaces=2` (не 0) — баланс latency vs stutter при jitter.
+- `video/x-raw(memory:NVMM)` — zero-copy в nvvidconv / downstream.
+- `leaky=downstream` + малые буферы — защита от backlog при перегрузе.
+- Для high-res ring buffer: `drop-on-latency=false`, больший pre-roll буфер, `sync=false`.
+
+Эти параметры интегрировать в `go2rtc_stream_source.py` / DeepStream pipeline builder.
+
+### 5.4 Синхронизация lores ↔ high-res
 
 Не frame-index, а **timestamp/PTS**: ring buffer `get_frame_at(lores_timestamp)` с допуском ≤200–500 ms (см. ревью `RingBufferSync`).
 
-### 4.4 RTSP reconnect и мониторинг (новый этап E9)
+### 5.5 RTSP reconnect и мониторинг (этап E9)
 
 - Exponential backoff реконнект при обрыве (`max_retries`, base delay 1s).
 - Health: `gst-discoverer-1.0` или probe «кадр за N сек» каждые 60s.
@@ -344,11 +507,11 @@ gst-launch-1.0 rtspsrc location=rtsp://.../lores latency=300 drop-on-latency=tru
 
 ---
 
-## 5. Архитектура пайплайна (рекомендуемая)
+## 6. Архитектура пайплайна (рекомендуемая)
 
 Консультанты предлагали чистый DeepStream на 4 потока — **для Nano 4 ГБ это рискованно**. Согласовано с BirdLense:
 
-### 5.1 «Сторож + охотник» (гибрид)
+### 6.1 «Сторож + охотник» (гибрид)
 
 1. **Сторож (DeepStream):** только **2 потока lores** (по одному на камеру).  
    YOLO TensorRT FP16, `interval=3–4` (~7 FPS effective), NvDCF каждый кадр.  
@@ -360,7 +523,9 @@ gst-launch-1.0 rtspsrc location=rtsp://.../lores latency=300 drop-on-latency=tru
 3. **Охотник (Python):** по триггеру — pre-roll из deque + post-roll 8–10 с → **NVENC** → mp4 на SSD.  
    Один репрезентативный кроп → **тот же** Birder convnext + DINOv2 ReID (TRT/torch), не замена моделей.
 
-### 5.1.A Топология потоков, триггеры и подсказки
+4. **Hub persist:** существующий API/SQLite — ingest метаданных и путь к файлу (адаптер, не переписывать UI с нуля).
+
+### 6.2 Топология потоков, триггеры и подсказки
 
 **Сеть:** `network_mode: host` — основной профиль Jetson (устройство целиком под Hub; проще RTSP/RTP, меньше NAT).
 
@@ -375,9 +540,7 @@ Go2RTC разгружает камеру от множества подключ�
 
 **Две камеры на одной локации:** `feeder_close` / `feeder_far` в `video.cameras[]` + `camera_tuning_by_role`; `multi_camera_groups` — только для подсказок fusion, не для блокировки записи.
 
----
-
-#### Триггеры (старт записи) — отдельный слой
+#### 6.2.1 Триггеры (старт записи)
 
 Триггеры **не опциональны** в смысле контракта: без них запись не стартует. Источники — как в Hub (`triggers.*`, ADR #634, `trigger_graph`):
 
@@ -394,9 +557,7 @@ Go2RTC разгружает камеру от множества подключ�
 
 Анти-дребезг: `trigger_moratorium_seconds`, `min_seconds_between_recordings`, `frigate_activity_hold_seconds` (удержание клипа, не единственный старт).
 
----
-
-#### Подсказки (hints) — опциональный слой
+#### 6.2.2 Подсказки (hints)
 
 Подсказки **всегда опциональны**: если источника нет — Hub работает как раньше. **Нет иерархии приоритетов** между подсказками; они не «перебивают» друг друга и **не могут** стартовать запись (ADR [#634](adr-classifier-hints-only.md), `classifier_hints/`).
 
@@ -415,70 +576,20 @@ Go2RTC разгружает камеру от множества подключ�
 
 **Behavior 3D-CNN** (опционально, фаза 2+): только на готовом high-res клипе охотника; метки `feeding`, `perching`, `flying_away`, …; результат в `event.enrichment.behavior`, может догонять persist.
 
-4. **Hub persist:** существующий API/SQLite — ingest метаданных и путь к файлу (адаптер, не переписывать UI с нуля).
-
-### 5.2 Альтернатива (фаза 2): один high-res поток на камеру в DeepStream
+### 6.3 Альтернатива (фаза 2): один high-res поток на камеру в DeepStream
 
 Primary GIE `network-width/height=704×576` на **main** stream — без рассинхрона lores/main.  
 Требует больше GPU на decode; оценить на полевом тесте после MVP сторожа.
 
-### 5.3 Что сохраняем из текущего Hub
+### 6.4 Что сохраняем из текущего Hub
 
- - `feeder_close` / `feeder_far`, `camera_tuning_by_role`, geometry contract (`frame_shape.py`)
- - Linear stages: trigger → detect_track → classify → persist (реализация стадий разная)
- - **Контракт триггеров vs подсказок** (ADR #634): Frigate/BirdNET/eBird/multicam — **только hints** для classifier/fusion; Frigate **может** быть триггером записи (`triggers.frigate`), но label/species Frigate — не замена YOLO при `motion_immediate`
- - **Модели:** trapper детектор, Birder convnext классификатор, DINOv2 ReID — те же веса, TRT-обёртка
- - OpenAPI, UI, Telegram, visit model
+- `feeder_close` / `feeder_far`, `camera_tuning_by_role`, geometry contract (`frame_shape.py`)
+- Linear stages: trigger → detect_track → classify → persist (реализация стадий разная)
+- **Контракт триггеров vs подсказок** (ADR #634): Frigate/BirdNET/eBird/multicam — **только hints** для classifier/fusion; Frigate **может** быть триггером записи (`triggers.frigate`), но label/species Frigate — не замена YOLO при `motion_immediate`
+- **Модели:** trapper детектор, Birder convnext классификатор, DINOv2 ReID — те же веса, TRT-обёртка
+- OpenAPI, UI, Telegram, visit model
 
-### 5.7 Лучшие практики из экосистемы (adopted)
-
-- **Motion gate first** (BirdWatcher, HUMBIRDY): до 90% экономии CPU. RTSP motion уже в DeepStream, но для сторожа lores добавить `gstreamer:motioncells` или простую метрику.
-- **YOLO interval + tracker fill** (NVIDIA bench): `interval=3–5`, NvDCF/NvSORT заполняет промежутки.
-- **Shared backbone для classifier/ReID** (Ornimetrics): один кроп → DINOv2 → species+welfare+ReID. На Nano: ConvNeXt достаточно; DINOv2 ReID оставить deferred/lazy.
-- **Fine-tune на yard data** (BirdClass-NA, Backyard watcher): 20–30 кропов/вид обязательны до деплоя. Dataset: `gfermoto/birdlense-annotations`.
-- **Pre-roll buffer** (Orpheus): гарантированный pre-roll 1–2 c до события. Ring buffer реализует эту практику.
-- **MegaDetector/Wildlife Insights pattern:** animal/empty filtering, uncertainty routing, HITL review. В BirdLense это не runtime-модель, а benchmark/reference gate: наши detector+trigger графы должны давать сопоставимый FN/FP профиль на golden clips.
-- **Active learning:** неизвестные, low-margin и конфликтные случаи не прячем; отправляем в review queue/dataset export. Цель — уменьшать ручную разметку, не «доверять AI вслепую».
-- **FAIR / Camtrap DP:** внутренний формат Hub сохраняется, но внешний экспорт должен быть совместим с Camtrap DP/Darwin Core/Audubon Core.
-
-### 5.8 Много-modal & Power-aware распространение
-
-**Acoustic+Visual fusion** (SPARROW, Orpheus): BirdNET-Audio может работать на отдельном SBC/ESP32-S3, результаты через MQTT/LoRaWAN присоединяться к визуальному событию. Это даёт 2-й шанс на идентификацию.
-
-**Data standards** (GBIF, TDWG):
-- **Camtrap DP** — основной формат обмена данными (особенно для GBIF)
-- **Darwin Core** — транслировать в DwC-A для внешних платформ
-- **Audubon Core** — метаданные медиафайлов (dc:identifier, ac:subject, dc:created)
-
-**Human-in-the-loop** (HITL):
-- Маловероятные/низкие confidence случаи → UI подтверждение → переобучение
-- Ensemble benchmark: MegaDetector (animal) + BirdNET (audio) + classifier (species)
-- Citizen science: MammalWeb, iNaturalist integration
-
-**Continual learning** (SmartTrap):
-- Не обучать тяжёлые модели на Nano по умолчанию. Nano собирает hard examples и metadata; training/fine-tune идёт на dev/GPU host.
-- Experience replay для предотвращения catastrophic forgetting.
-- Parameter-efficient fine-tune/LoRA допускается только после baseline parity и manual validation.
-
-### 5.9 Publication / reserve-ready gates
-
-Чтобы результат был пригоден для научного сообщества и заповедников, каждая платформа должна проходить не только smoke, но и полевой протокол:
-
-| Gate | Минимум для принятия |
-|------|----------------------|
-| **Reproducibility** | версия JetPack/L4T, DeepStream, TensorRT, model hashes, config snapshot, camera firmware |
-| **Golden clips** | feeder_close + feeder_far, день/ночь/IR, дождь/ветер, empty negatives, rodent/intrusion |
-| **Detector quality** | recall drop TRT vs PT ≤5%, IoU ≥0.85 на matched boxes, FP empty monitored через trigger_graph |
-| **Classifier quality** | top-1/top-5, entropy/margin, Unknown allowed; rare/visually similar species routed to review |
-| **HITL** | все low-margin/conflict cases экспортируются в review queue и dataset crops |
-| **Uncertainty** | хранить raw confidence, entropy, margin, source hints, manual label; не превращать confidence в «истину» |
-| **FAIR export** | Camtrap DP + Darwin Core/Audubon Core mapping; сохранять внутренний CSV/eBird export |
-| **Operational** | 24h soak: no OOM, GPU ≤85%, temp <80°C, reconnect работает, no SD writes кроме boot |
-| **Ethics/privacy** | people/vehicle detections не публиковать как biodiversity records; локальные retention rules |
-
-Научный результат строится не на «самой умной модели», а на воспроизводимом полевом протоколе: сырой клип + bbox + confidence + подсказки + manual validation + экспорт в стандартизированный формат.
-
-### 5.4 Jetson execution contract — не повторять Intel hot path
+### 6.5 Jetson execution contract — не повторять Intel hot path
 
 Сохраняем модели, но меняем **когда** они вызываются:
 
@@ -500,7 +611,7 @@ Primary GIE `network-width/height=704×576` на **main** stream — без ра
 5. Если deferred queue растёт → отключить Behavior 3D-CNN первым, потом ReID.
 6. Если event quality низкая → не меняем модель сразу; сначала проверяем RTSP, tracker, threshold parity.
 
-### 5.5 Модели: сохранить, но добавить parity gates
+### 6.6 Модели: сохранить, но добавить parity gates
 
 `trapper`, `convnext_v2_tiny_eu-common256px`, DINOv2 остаются каноническими моделями продукта. Для Jetson вводим gates:
 
@@ -509,46 +620,127 @@ Primary GIE `network-width/height=704×576` на **main** stream — без ра
 - **ReID parity:** cosine distance distribution на тех же crops; если DINOv2 TRT тяжёлый — оставить torch+cuda/deferred, не заменять на OSNet без A/B.
 - **Golden clips:** отдельные `feeder_close` и `feeder_far`; night/IR clips обязательны.
 
-### 5.6 Tracker choice: NvDCF сначала, IOU fallback
+### 6.7 Tracker choice: NvDCF сначала, IOU fallback
 
-NvDCF точнее, но может съесть FPS на Nano. План:
+NvDCF (DeepStream) даёт лучшее качество треков на Nano при правильной настройке, но требует explicit tuning:
 
-1. Start: NvDCF `max_perf`, reduced tracker resolution (`704×576` или меньше, кратно 32), HOG off если bottleneck.
-2. Если FPS/thermal плохие — IOU tracker fallback (меньше качество, меньше память).
-3. `maxTargetsPerStream=10–15`, past-frame history ограничить.
-4. В Hub сохранять `track_provider=deepstream_nvdcf|deepstream_iou|bytetrack`.
+1. **NvDCF primary (max quality):** `tracker-width/height` = infer resolution (704×576 или 640×640), `useColorSimilarity=0`, `featureImgSizeLevel=1` (минимальный HOG/цвет), `maxTargetsPerStream=12`, `past-frame=0` (экономия памяти).
+2. **Fallback:** при sustained GPU>80% или temp>75°C → `deepstream_iou` (простой, низкое потребление).
+3. Конфиг хранится в `nvtracker` element properties или отдельном `config_tracker.yml` (подключается через DeepStream pipeline builder).
+4. В Hub: `track_provider` + метрики `track_fragmentation`, `track_lifetime` для A/B.
 
----
+Tracker — вторая по важности точка после детектора; его деградация сразу бьёт по visit quality.
 
-## 6. Настройка камер (2× dual stream)
+### 6.8 Лучшие практики из экосистемы (adopted)
 
-| Поток | Назначение | Разрешение | FPS |
-|-------|------------|------------|-----|
-| Substream / detect | DeepStream сторож | 704×576 (или близко) | 7–15 |
-| Main | Ring buffer + запись по событию | 1080p типично | 15–25 |
+- **Motion gate first** (BirdWatcher, HUMBIRDY): до 90% экономии CPU. RTSP motion уже в DeepStream, но для сторожа lores добавить `gstreamer:motioncells` или простую метрику.
+- **YOLO interval + tracker fill** (NVIDIA bench): `interval=3–5`, NvDCF/NvSORT заполняет промежутки.
+- **Shared backbone для classifier/ReID** (Ornimetrics): один кроп → DINOv2 → species+welfare+ReID. На Nano: ConvNeXt достаточно; DINOv2 ReID оставить deferred/lazy.
+- **Fine-tune на yard data** (BirdClass-NA, Backyard watcher): 20–30 кропов/вид обязательны до деплоя. Dataset: `gfermoto/birdlense-annotations`.
+- **Pre-roll buffer** (Orpheus): гарантированный pre-roll 1–2 c до события. Ring buffer реализует эту практику.
+- **MegaDetector/Wildlife Insights pattern:** animal/empty filtering, uncertainty routing, HITL review. В BirdLense это не runtime-модель, а benchmark/reference gate: наши detector+trigger графы должны давать сопоставимый FN/FP профиль на golden clips.
+- **Active learning:** неизвестные, low-margin и конфликтные случаи не прячем; отправляем в review queue/dataset export. Цель — уменьшать ручную разметку, не «доверять AI вслепую».
+- **FAIR / Camtrap DP:** внутренний формат Hub сохраняется, но внешний экспорт должен быть совместим с Camtrap DP/Darwin Core/Audubon Core.
 
-- Оба **H.264**, согласованный GOP (I-frame каждые 2–4 с).
-- NTP на камере — для PTS и `sync-inputs` если понадобится DeepStream mux.
-- В `video.cameras[]`: `tuning_role: feeder_close|feeder_far`, `detect_stream_name` / main URL через go2rtc.
+### 6.9 Много-modal и power-aware распространение
+
+**Acoustic+Visual fusion** (SPARROW, Orpheus): BirdNET-Audio может работать на отдельном SBC/ESP32-S3, результаты через MQTT/LoRaWAN присоединяться к визуальному событию. Это даёт 2-й шанс на идентификацию.
+
+**Data standards** (GBIF, TDWG):
+
+- **Camtrap DP** — основной формат обмена данными (особенно для GBIF)
+- **Darwin Core** — транслировать в DwC-A для внешних платформ
+- **Audubon Core** — метаданные медиафайлов (dc:identifier, ac:subject, dc:created)
+
+**Human-in-the-loop** (HITL):
+
+- Маловероятные/низкие confidence случаи → UI подтверждение → переобучение
+- Ensemble benchmark: MegaDetector (animal) + BirdNET (audio) + classifier (species)
+- Citizen science: MammalWeb, iNaturalist integration
+
+**Continual learning** (SmartTrap):
+
+- Не обучать тяжёлые модели на Nano по умолчанию. Nano собирает hard examples и metadata; training/fine-tune идёт на dev/GPU host.
+- Experience replay для предотвращения catastrophic forgetting.
+- Parameter-efficient fine-tune/LoRA допускается только после baseline parity и manual validation.
+
+### 6.10 Publication / reserve-ready gates
+
+Чтобы результат был пригоден для научного сообщества и заповедников, каждая платформа должна проходить не только smoke, но и полевой протокол:
+
+| Gate | Минимум для принятия |
+|------|----------------------|
+| **Reproducibility** | версия JetPack/L4T, DeepStream, TensorRT, model hashes, config snapshot, camera firmware |
+| **Golden clips** | feeder_close + feeder_far, день/ночь/IR, дождь/ветер, empty negatives, rodent/intrusion |
+| **Detector quality** | recall drop TRT vs PT ≤5%, IoU ≥0.85 на matched boxes, FP empty monitored через trigger_graph |
+| **Classifier quality** | top-1/top-5, entropy/margin, Unknown allowed; rare/visually similar species routed to review |
+| **HITL** | все low-margin/conflict cases экспортируются в review queue и dataset crops |
+| **Uncertainty** | хранить raw confidence, entropy, margin, source hints, manual label; не превращать confidence в «истину» |
+| **FAIR export** | Camtrap DP + Darwin Core/Audubon Core mapping; сохранять внутренний CSV/eBird export |
+| **Operational** | 24h soak: no OOM, GPU ≤85%, temp <80°C, reconnect работает, no SD writes кроме boot |
+| **Ethics/privacy** | people/vehicle detections не публиковать как biodiversity records; локальные retention rules |
+
+Научный результат строится не на «самой умной модели», а на воспроизводимом полевом протоколе: сырой клип + bbox + confidence + подсказки + manual validation + экспорт в стандартизированный формат.
+
+### 6.11 Runtime monitoring, budget enforcement и auto-throttle (E10+)
+
+Nano 4 ГБ нельзя вести как «маленький сервер». Для него нужен runtime budget, который enforced кодом.
+
+| Ресурс | Бюджет MVP | Если вышли за бюджет |
+|--------|------------|----------------------|
+| RAM container | ≤3.0 ГБ sustained, без OOM | уменьшить ring buffer, отключить ReID live, classifier keyframes=1 |
+| GPU | ≤80–85% sustained | поднять `interval`, снизить detector input до 640, отключить secondary live |
+| CPU | ≤250% sustained (из 4 cores) | убрать OpenCV hot path, только GStreamer/DS metadata |
+| Температура | <75–80°C | fan/jetson_clocks policy, снизить FPS/interval |
+| Latency event | pre-roll 2–3 c + post-roll 8–10 c | сохранять клип даже без classifier/ReID, enrich позже |
+
+**Правило:** если ML-обогащение не укладывается, сохраняем видео + bbox metadata, а classification/ReID переносим в deferred job. Потеря вида лучше, чем потеря события.
+
+- `tegrastats --interval 1000 --format json` → парсить GPU util, RAM, temp, power.
+- Простой Python-probe в DeepStream appsink / `processor` watchdog: если sustained GPU >85% или RAM container >2.8 ГБ → поднять `interval`, снизить `imgsz`, отключить secondary GIE (classifier).
+- Alert при throttle (temp >78°C) или OOM risk → Telegram + log; graceful: classifier off → ReID off → Behavior deferred.
+- Интеграция: `scripts/jetson_monitor.py` (или в `media_runtime`) + systemd timer; экспорт метрик в Hub `/metrics` или MQTT.
+
+Это усиливает E10 graceful degradation — не только «если вышли», а «предотвращать выход».
+
+### 6.12 Критический review предложенных оптимизаций (итог)
+
+Предыдущие предложения (Yocto, single-engine bundle, hybrid split containers, self-update) оценены заново:
+
+- **Yocto** — мощный, но избыточен для MVP; отложен (см. 6.13).
+- **Single .engine bundle + INT8** — риск качества (калибровка) и сложности (разные input sizes); оставляем separate FP16 engines + parity gate.
+- **Split containers (DeepStream + Python trim)** — лишний IPC overhead; сохраняем single-container hybrid.
+- **Self-update engines** — nice-to-have, но security surface; defer.
+- **Усилено:** GStreamer pipeline tuning (zero-copy, leaky, num-extra-surfaces), NvDCF explicit config, runtime tegrastats enforcement, model conversion parity gate.
+
+Итог: план заточен под 4 ГБ Nano — максимум hardware acceleration при жёстком контроле ресурсов и качества. Нет «магии», только проверенные практики + enforced degradation.
+
+### 6.13 Yocto / custom minimal image — optional advanced (отложено)
+
+Yocto даёт минимальный rootfs и контроль над kernel/device-tree, но:
+
+- Высокая сложность поддержки (meta-jetson, L4T layers).
+- JetPack 4.6.x + headless + ZRAM + Docker data-root на SSD уже даёт достаточный запас RAM/износ для MVP.
+- **Решение:** Yocto рассматривать в E15+ только если после 24h soak на JetPack останутся проблемы с памятью/стабильностью или потребуется production-grade tamper-proof image.
+
+Приоритет: сначала довести JetPack baseline до production quality, потом минимализм.
 
 ---
 
 ## 7. Чек-лист перед боем на площадке
 
-- [ ] 5V/4A barrel, вентилятор, SSD
-- [ ] `nvpmodel -m 0`, `jetson_clocks`, ZRAM, headless
-- [ ] `nvidia-smi` / `tegrastats` в контейнере
-- [ ] `.engine` для **trapper + convnext** собраны на этом Jetson
-- [ ] go2rtc/MQTT/камеры в LAN (не IP VPS)
-- [ ] RTSP: `latency=300`, health-check, reconnect policy
-- [ ] `BIRDLENSE_PLATFORM=jetson_nano`, OpenVINO отключён
-- [ ] Smoke: health OK, одна тестовая запись с persist
-- [ ] Мониторинг: `jtop`, Hub `yolo_frames_with_tracks`, температура
-- [ ] 24h soak: нет OOM/throttle, reconnect сработал хотя бы в dry-run
-- [ ] Golden clips: day/night/IR, close/far, empty negatives, rodent/intrusion
-- [ ] Сохранены model hashes + config snapshot + JetPack/L4T/DeepStream versions
-- [ ] Low-confidence/conflict cases попали в review/dataset export
-- [ ] Проверен экспорт: текущий CSV/eBird + планируемый Camtrap DP/Darwin Core mapping
+Соответствие runbook:
+
+- [ ] **Шаги 1–2:** БП 5V/4A, вентилятор, SSD, SD с JetPack записана
+- [ ] **Шаги 3–7:** SSH, apt upgrade, rootfs на SSD, `df -h /` → SSD
+- [ ] **Шаги 8–11:** Docker nvidia runtime, MAXN, ZRAM/headless, `gst-inspect` OK
+- [ ] **Шаги 12–14:** env, базовый build, `.engine` + parity gate на этом Jetson
+- [ ] **Шаги 15–16:** камеры в конфиге, RTSP gst-launch без ошибок
+- [ ] **Шаги 17–18:** `make deploy`, health OK, запись с persist, `yolo_frames_with_tracks > 0`
+- [ ] 24h soak: нет OOM/throttle, reconnect сработал
+- [ ] Golden clips: day/night/IR, close/far, empty negatives
+- [ ] Model hashes + JetPack/L4T/DeepStream versions сохранены
+- [ ] Low-confidence cases → review/dataset export
 
 ---
 
