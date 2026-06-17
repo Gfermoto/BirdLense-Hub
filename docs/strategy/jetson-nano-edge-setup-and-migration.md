@@ -1,6 +1,6 @@
 # Jetson Nano B01 — runbook и архитектура BirdLense Hub
 
-**Статус:** Ornimetrics + TensorRT plan (2026-06-17, **rev.3**)  
+**Статус:** Ornimetrics + TensorRT plan (2026-06-17, **rev.4**)  
 **Исполнять:** §**2** (шаги 1–21) сверху вниз. §**3–6** — справочник, контракты, научные gates.  
 **Visual stack:** [Ornimetrics/ornimetrics-edge](https://huggingface.co/Ornimetrics/ornimetrics-edge) → ONNX → **TensorRT `.engine`**.  
 **Не на Jetson:** Hailo `.hef`, Intel-пайплайн «как есть».  
@@ -328,10 +328,12 @@ gst-inspect-1.0 nvtracker    # NvDCF / IOU tracker
 
 | Путь | Когда | Запас времени |
 |------|-------|---------------|
-| **A — DeepStream Primary GIE + probe** | целевой MVP | базовая оценка × **2–3** на отладку Python↔DS |
-| **B — GStreamer `appsink` + TRT в Python** | если A нестабилен >1 недели | медленнее, проще отладка |
+| **B — GStreamer `appsink` + TRT в Python** | **первый рабочий прототип** (ревью 2026-06) | проще отладка; NVDEC + TRT в Python |
+| **A — DeepStream Primary GIE + probe** | после стабильного B или запаса GPU | × **2–3** на DS↔Python |
 
-Plan B: `rtspsrc ! nvv4l2decoder ! nvvidconv ! video/x-raw(memory:NVMM) ! appsink` → Ultralytics/TRT в Python. Не блокировать деплой ожиданием идеального DeepStream.
+Plan B: `rtspsrc ! nvv4l2decoder ! nvvidconv ! video/x-raw(memory:NVMM) ! appsink` → YOLO TRT + трекер в Python. Не блокировать MVP ожиданием идеального DeepStream.
+
+Plan A: целевой production-path при зелёном benchmark и запасе по GPU.
 
 **NVDEC:** при двух камерах мониторить decode load:
 
@@ -492,23 +494,26 @@ python scripts/benchmark_jetson.py \
 
 **Контракт скрипта (реализация, не блокер плана):**
 
-1. Загрузить `.engine` detector + classifier на **этом** Jetson.
-2. Прогнать **N кадров** (предпочтительно кропы/кадры из golden clips, не синтетика).
-3. Детектор: FPS sustained с учётом `interval`; **p95 latency** на inference.
-4. Классификатор: **p95 <100 ms** на один кроп.
-5. Проверить RAM контейнера (`docker stats`) — не выше лимита compose (`mem_limit: 3g`) в idle после прогона.
-6. Записать CSV `jetson_bench_YYYYMMDD.csv` (latency, FPS, RAM, interval).
+1. Зафиксировать **реальный FPS lores** (ожидаемо **5–9**, обычно ~7 — не 10–15).
+2. Загрузить `.engine` на **этом** Jetson.
+3. **YOLO infer:** p95 latency на один forward (416² FP16).
+4. **Cadence:** sustained infer rate ≥ `stream_fps / interval × 0.9` без роста очереди 5 мин (пример: 7 FPS, interval=3 → ≥2.0 infer/s).
+5. **Classifier** (event-only): p95 на один кроп; при miss <100 ms — defer OK, если persist не ждёт.
+6. RAM (`docker stats`), CPU (`tegrastats`) — baseline в CSV.
+7. Опционально X3D-XS (#660): `trtexec` probe до поля; gate <500 ms или снизить frames/resolution.
 
-**Пороги (не деплоить, если не выполнены):**
+**Пороги (не деплоить на 2 cam live, если не выполнены):**
 
 | Метрика | Минимум |
 |---------|---------|
-| Детектор на lores | **>10 FPS** sustained (с `interval=3–4`) |
-| Классификатор (species) на 1 кроп | **<100 ms** p95 |
-| **Welfare (Mahalanobis)** | <50 ms p95 на кроп |
-| **ReID (ArcFace)** | <50 ms p95 на кроп |
-| **Behavior X3D-XS** (опц., E14) | <500 ms p95 на tracklet-клип |
-| RAM container idle | зафиксировать baseline (цель <2.5 ГБ до live) |
+| Lores FPS (зафиксировать) | **5–9** типично; документировать факт |
+| YOLO infer p95 | **<100 ms** на forward |
+| Infer cadence | ≥ `stream_fps/interval × 0.9` sustained 5 min, очередь не растёт |
+| Классификатор (1 кроп, event) | **цель** <100 ms p95; **hard** <200 ms или только async |
+| Welfare + ReID | **цель** <50 ms p95 (после defer path) |
+| Behavior X3D-XS (опц.) | **цель** <500 ms p95; fallback 2 frames / 128² |
+| GPU sustained | ≤85%; CPU ≤250% |
+| RAM container idle | baseline <2.5 ГБ до live |
 
 Лог: CSV `jetson_bench_YYYYMMDD.csv` (latency, FPS, queue depth) — для сравнения после тюнинга.
 
@@ -524,7 +529,7 @@ python scripts/benchmark_jetson.py \
 
 1. Две камеры: `feeder_close`, `feeder_far` в `video.cameras[]`.
 2. Для каждой камеры:
-   - **lores/detect** — прямой RTSP URL камеры (substream 704×576, H.264, 7–15 FPS).
+   - **lores/detect** — прямой RTSP (substream 704×576, H.264, **~5–9 FPS**, типично **~7**).
    - **main/high-res** — через go2rtc (`rtsp://<go2rtc>:8554/...`), 1080p, 15–25 FPS.
 3. Включить NTP на камерах; GOP 2–4 с.
 
@@ -649,16 +654,21 @@ NA-таксономия; EU-707 Birder — на Intel. Welfare — перека�
 
 ### 3.1 Бюджет производительности (Nano 4 ГБ)
 
-Ornimetrics на Hailo: ~28 fps detector+species. Nano без NPU — enrichment **только event-triggered**.
+Ornimetrics на Hailo ~28 fps — **с NPU**. Nano без NPU; detect substream у нас **~5–9 FPS** (типично **~7**, см. `default_config` / Frigate lores), **строго <10 FPS** — не закладывать 10–15 FPS на lores.
+
+Enrichment **только event-triggered** (охотник), не в live loop.
 
 | Ресурс | MVP | При перегрузе |
 |--------|-----|---------------|
 | RAM | ≤3.0 ГБ | ring buffer ↓, ReID off |
-| GPU | ≤85% | `interval+1` |
-| Детектор | >10 FPS eff., interval 3–4 | IOU tracker |
-| Species | <100 ms p95 / кроп | defer |
-| Welfare + ReID | <50 ms p95 | welfare off → ReID off |
-| Behavior E14 | <500 ms p95 / клип | **off** (первым в deferred) |
+| GPU | ≤85% | `interval+1` (до 5–6), detector 416→384 |
+| CPU | ≤250% sustained (4 cores) | Plan B проще; меньше буферов |
+| **Детектор** | см. шаг 16 | IOU tracker, interval+1 |
+| Species | **цель** <100 ms p95 / кроп | **обязательно** defer async; 100–200 ms допустимо |
+| Welfare + ReID | **цель** <50 ms p95 | welfare off → ReID off |
+| Behavior E14 | **цель** <500 ms p95 / клип | off; X3D: 4→2 frames, 182→128 |
+
+**Детектор — не «>10 FPS».** На 7 FPS lores + `interval=3` реально **~2.3 infer/s**. Gate: latency + не отставать от потока (шаг 16).
 
 Video + bbox persist **не ждут** ML.
 
@@ -721,7 +731,7 @@ SlowFast на Nano [не взлетает](https://www.ridgerun.ai/post/optimiza
 
 | Поток | Назначение | Разрешение | FPS | Маршрут |
 |-------|------------|------------|-----|---------|
-| Substream / detect | DeepStream сторож | 704×576 | 7–15 | **прямой RTSP камеры** |
+| Substream / detect | DeepStream сторож | 704×576 | **5–9** (~7) | **прямой RTSP камеры** |
 | Main | ring buffer + запись | 1080p | 15–25 | **через go2rtc** |
 
 - Оба **H.264**, GOP 2–4 с, NTP на камере.
@@ -739,8 +749,10 @@ SlowFast на Nano [не взлетает](https://www.ridgerun.ai/post/optimiza
 
 | Поток | Маршрут | Зачем |
 |-------|---------|-------|
-| **main / high-res** | `rtsp://<go2rtc>:8554/...` | одно подключение к камере на main; ring buffer + NVENC |
-| **lores / detect** | **прямой RTSP камеры** | минимальная задержка для DeepStream сторожа |
+| **main / high-res** | `rtsp://<go2rtc>:8554/...` | ring buffer + NVENC |
+| **lores / detect** | **прямой RTSP камеры** | сторож; **не** через go2rtc (latency) |
+
+**go2rtc:** обычно на **том же LAN-хосте**, что и камеры (Intel NUC, VPS, отдельный SBC) — `GO2RTC_URL` / `video.go2rtc_url` в Hub. Jetson — **клиент** main-потока. Если go2rtc на единственном хосте — единая точка отказа; зафиксировать в deployment notes.
 
 `/dev/video0` в Docker **не нужен** для RTSP.
 
@@ -808,8 +820,8 @@ gst-launch-1.0 rtspsrc location=rtsp://.../lores latency=300 drop-on-latency=tru
 
 ### 6.1 «Сторож + охотник» (гибрид)
 
-1. **Сторож (DeepStream):** только **2 потока lores** (по одному на камеру).  
-   YOLO TensorRT FP16, `interval=3–4` (~7 FPS effective), NvDCF каждый кадр.  
+1. **Сторож (DeepStream или Plan B):** 2× lores **~7 FPS**.  
+   YOLO TRT FP16, `interval=3–5` → **~1.4–2.3 infer/s** при 7 FPS; NvDCF **каждый** кадр заполняет промежутки.  
    Probe → событие `TRIGGER_RECORD(camera_id, track_id, bbox, ts)`.
 
 2. **Кольцевой буфер high-res:** лёгкий GStreamer `uridecodebin ! nvvidconv ! appsink` на main stream;  
@@ -1047,7 +1059,7 @@ Yocto даёт минимальный rootfs и контроль над kernel/d
 | NVDEC bottleneck (2× RTSP) | средняя | `tegrastats` NVDEC; снизить substream FPS; шаг 12 |
 | `extlinux.conf` сброс после apt | средняя | `birdlense-fix-extlinux.sh` + apt hook; шаг 8 |
 | Buffer starvation / jitter | средняя | `num-extra-surfaces=2`, leaky queue; шаг 18 |
-| Нет benchmark перед боем | — | шаг 16: >10 FPS detect, <100 ms classify |
+| Нет benchmark перед боем | — | шаг 16: cadence + p95, не «>10 FPS» |
 | Нет recovery test | — | шаг 21: RTSP reconnect без restart контейнера |
 
 **Не в MVP (backlog):** адаптивный interval в коде (6.11, #656), API сброса буферов (шаг 21, #655), fused TRT backbone (#650).
@@ -1068,6 +1080,19 @@ Jetson-план совместим с полевым протоколом для
 
 **Порядок:** operational gates (шаг 16) **до** полевого деплоя; полный scientific bundle (#657) — после 2-cam soak, перед публикацией/обменом данными.
 
+### 6.16 Внешнее ревью (2026-06, rev.4) — принято
+
+| Рекомендация | Решение в плане |
+|--------------|----------------|
+| Lores **<10 FPS** на площадке | Gate **cadence + p95**, не >10 FPS infer (шаг 16, §3.1) |
+| Species <100 ms может быть жёстко | **Цель**; defer async обязателен; hard <200 ms |
+| Plan B раньше Plan A | Шаг 12: **B = прототип**, A = production |
+| X3D-XS — `trtexec` до поля | Шаг 16 п.7; fallback 2 frames / 128² |
+| CPU ≤250% в мониторинг | §6.11, шаг 16 CSV |
+| `nvinfer` только в DeepStream 6.2 | Шаги 12, 14 |
+| go2rtc — где крутится | §5.1, шаг 13 `GO2RTC_URL` |
+| Первые действия на железе | TRT convert → benchmark 16 → решение Orin |
+
 ---
 
 ## 7. Чек-лист перед боем на площадке
@@ -1078,7 +1103,7 @@ Jetson-план совместим с полевым протоколом для
 - [ ] **Шаги 3–8:** SSH, apt upgrade, rootfs на SSD, `df -h /` → SSD, extlinux guard
 - [ ] **Шаги 9–12:** Docker nvidia runtime, MAXN, ZRAM/headless, `gst-inspect` OK, путь DS vs Plan B зафиксирован
 - [ ] **Шаги 13–15:** env, build (`restart: unless-stopped`, host network), Ornimetrics `.engine` + parity
-- [ ] **Шаг 16:** benchmark зелёный (#656); CSV + hashes для #657
+- [ ] **Шаг 16:** benchmark (#656): lores FPS записан, YOLO p95 <100 ms, cadence ≥ stream/interval×0.9
 - [ ] **Шаги 17–18:** камеры, RTSP NVMM ≥5 мин
 - [ ] **Шаги 19–20:** deploy, smoke, `yolo_frames_with_tracks > 0`, idle RAM
 - [ ] **Шаг 21:** recovery без restart контейнера
