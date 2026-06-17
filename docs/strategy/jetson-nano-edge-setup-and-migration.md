@@ -226,11 +226,19 @@ Primary GIE `network-width/height=704×576` на **main** stream — без ра
 
 ### 5.3 Что сохраняем из текущего Hub
 
-- `feeder_close` / `feeder_far`, `camera_tuning_by_role`, geometry contract (`frame_shape.py`)
-- Linear stages: trigger → detect_track → classify → persist (реализация стадий разная)
-- Frigate MQTT как **триггер-подсказка**, не замена детектора
-- **Модели:** trapper детектор, Birder convnext классификатор, DINOv2 ReID — те же веса, TRT-обёртка
-- OpenAPI, UI, Telegram, visit model
+ - `feeder_close` / `feeder_far`, `camera_tuning_by_role`, geometry contract (`frame_shape.py`)
+ - Linear stages: trigger → detect_track → classify → persist (реализация стадий разная)
+ - Frigate MQTT как **триггер-подсказка**, не замена детектора
+ - **Модели:** trapper детектор, Birder convnext классификатор, DINOv2 ReID — те же веса, TRT-обёртка
+ - OpenAPI, UI, Telegram, visit model
+
+### 5.7 Лучшие практики из экосистемы (adopted)
+
++- **Motion gate first** (BirdWatcher, HUMBIRDY): до 90% экономии CPU. RTSP motion уже в DeepStream, но для сторожа lores добавить `gstreamer:motioncells` или простую метрику.
++- **YOLO interval + tracker fill** (NVIDIA bench): `interval=3–5`, NvDCF/NvSORT заполняет промежутки.
++- **Shared backbone для classifier/ReID** (Ornimetrics): один кроп → DINOv2 → species+welfare+ReID. На Nano: ConvNeXt достаточно; DINOv2 ReID оставить deferred/lazy.
++- **Fine-tune на yard data** (BirdClass-NA, Backyard watcher): 20–30 кропов/вид обязательны до деплоя. Dataset: `gfermoto/birdlense-annotations`.
++- **Pre-roll buffer** (Orpheus): гарантированный pre-roll 1–2 c до события. Ring buffer реализует эту практику.
 
 ### 5.4 Jetson execution contract — не повторять Intel hot path
 
