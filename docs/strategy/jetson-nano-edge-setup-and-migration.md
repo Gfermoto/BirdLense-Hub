@@ -105,24 +105,88 @@ export DEPLOY_URL="http://192.168.8.199:8085"
 make deploy
 ```
 
-### 3.5 Конвертация весов (на Jetson или x86 с trtexec для aarch64)
+### 3.5 Конвертация весов — **те же модели, другой runtime**
+
+**Принцип:** не меняем обученные сети на «лёгкие замены» (MobileNet/OSNet из чужих гайдов). Меняем только **backend экспорта**: `.pt` → TensorRT `.engine` на Jetson.
+
+| Роль | Текущая модель (prod Intel) | Путь в репо | Jetson export |
+|------|----------------------------|-------------|---------------|
+| **Детектор** | `trapper_ai_v02_2024` (YOLO binary) | `processor/models/detection/weights/trapper_ai_v02_2024.pt` | TRT FP16, input **704×576** (letterbox как сейчас) |
+| **Классификатор** | Birder EU `convnext_v2_tiny_eu-common256px` | `processor/models/classification/weights/convnext_v2_tiny_eu-common256px.pt` | TRT FP16, input **256×256** (не 224) |
+| **Эмбеддинг / ReID** | DINOv2 (runtime hub cache) | `processor.reid.*`, `models/reid/hub_cache` | TRT или torch+cuda на 1 кроп/событие; **не** заменять на OSNet без A/B |
+
+OpenVINO IR (`*_openvino_model/`) на Jetson **не используем** — только как эталон parity при конвертации.
 
 ```bash
-# Скрипт (план): scripts/convert_to_trt.sh
-# Вход: trapper_ai_v02_2024.pt, classifier best.pt
-# Выход: app/processor/models/detection/weights/*.engine
-# FP16, фиксированный input под lores 704×576 (детектор) и 224×224 (классификатор)
+# План: scripts/convert_to_trt.sh
+# --detector trapper_ai_v02_2024.pt --imgsz 704,576
+# --classifier convnext_v2_tiny_eu-common256px.pt --imgsz 256
+# --reid dinov2 (опционально, фаза 2)
 ```
 
 Конвертацию **выполнять на целевом Jetson** (или в контейнере с тем же TRT), иначе engine несовместим.
 
 ---
 
-## 4. Архитектура пайплайна (рекомендуемая)
+## 4. RTSP и сеть (замечания ревью, адаптировано под BirdLense)
+
+### 4.0 Источник потоков: go2rtc vs прямой RTSP
+
+На площадке Hub уже использует **go2rtc** (`video.go2rtc_url`, RTSP substream/main). На Jetson:
+
+- **Предпочтительно:** RTSP URL из go2rtc на LAN (`rtsp://<go2rtc>:8554/...`) — единая точка как на Intel.
+- **Альтернатива:** прямой RTSP с камеры в DeepStream/GStreamer — если go2rtc не нужен на Nano.
+
+`/dev/video0` в Docker **не нужен** для RTSP.
+
+### 4.1 Docker: `network_mode: host`
+
+Ревьювер прав: RTSP/RTP использует динамические UDP-порты; проброс через bridge болезненен.
+
+| Режим | Плюсы | Минусы для Hub |
+|-------|-------|----------------|
+| **`network_mode: host`** | нулевая NAT-задержка, проще RTSP | нет `ports: 8085:8080` — UI на **8080** хоста или `BIRDLENSE_PORT=8080` |
+| **bridge** (как сейчас) | изоляция, проброс 8085 | RTSP из контейнера к LAN-камерам обычно ок; RTP иногда ломается |
+
+**Решение для E0:** профиль `deploy/profiles/jetson-nano/compose.host-network.yml` (опционально) с `network_mode: host`; дефолт — bridge до полевого теста.
+
+### 4.2 GStreamer / DeepStream для RTSP
+
+Параметры из ревью — принимаем:
+
+- `rtspsrc latency=300 drop-on-latency=true`
+- `nvv4l2decoder enable-max-performance=1`
+- `appsink sync=false` для ring buffer
+- DeepStream `type=4`, `latency=300`, `cudadec-memtype=0`
+
+Пример lores (704×576):
+
+```bash
+gst-launch-1.0 rtspsrc location=rtsp://.../lores latency=300 drop-on-latency=true ! \
+  rtph264depay ! h264parse ! nvv4l2decoder enable-max-performance=1 ! \
+  nvvidconv ! video/x-raw,format=NV12,width=704,height=576 ! \
+  appsink name=lores_sink sync=false
+```
+
+### 4.3 Синхронизация lores ↔ high-res
+
+Не frame-index, а **timestamp/PTS**: ring buffer `get_frame_at(lores_timestamp)` с допуском ≤200–500 ms (см. ревью `RingBufferSync`).
+
+### 4.4 RTSP reconnect и мониторинг (новый этап E9)
+
+- Exponential backoff реконнект при обрыве (`max_retries`, base delay 1s).
+- Health: `gst-discoverer-1.0` или probe «кадр за N сек» каждые 60s.
+- 3 fail подряд → алерт (Telegram / Hub activity log).
+
+Задача: GitHub **#655** (E9), связана с E1/E7.
+
+---
+
+## 5. Архитектура пайплайна (рекомендуемая)
 
 Консультанты предлагали чистый DeepStream на 4 потока — **для Nano 4 ГБ это рискованно**. Согласовано с BirdLense:
 
-### 4.1 «Сторож + охотник» (гибрид)
+### 5.1 «Сторож + охотник» (гибрид)
 
 1. **Сторож (DeepStream):** только **2 потока lores** (по одному на камеру).  
    YOLO TensorRT FP16, `interval=3–4` (~7 FPS effective), NvDCF каждый кадр.  
@@ -132,25 +196,26 @@ make deploy
    `deque` последних 60–90 кадров (~2–3 с). **Не** пишем на диск до триггера.
 
 3. **Охотник (Python):** по триггеру — pre-roll из deque + post-roll 8–10 с → **NVENC** → mp4 на SSD.  
-   Один репрезентативный кроп → TensorRT classifier + embedder → JSON рядом с mp4.
+   Один репрезентативный кроп → **тот же** Birder convnext + DINOv2 ReID (TRT/torch), не замена моделей.
 
 4. **Hub persist:** существующий API/SQLite — ingest метаданных и путь к файлу (адаптер, не переписывать UI с нуля).
 
-### 4.2 Альтернатива (фаза 2): один high-res поток на камеру в DeepStream
+### 5.2 Альтернатива (фаза 2): один high-res поток на камеру в DeepStream
 
 Primary GIE `network-width/height=704×576` на **main** stream — без рассинхрона lores/main.  
 Требует больше GPU на decode; оценить на полевом тесте после MVP сторожа.
 
-### 4.3 Что сохраняем из текущего Hub
+### 5.3 Что сохраняем из текущего Hub
 
 - `feeder_close` / `feeder_far`, `camera_tuning_by_role`, geometry contract (`frame_shape.py`)
 - Linear stages: trigger → detect_track → classify → persist (реализация стадий разная)
 - Frigate MQTT как **триггер-подсказка**, не замена детектора
+- **Модели:** trapper детектор, Birder convnext классификатор, DINOv2 ReID — те же веса, TRT-обёртка
 - OpenAPI, UI, Telegram, visit model
 
 ---
 
-## 5. Настройка камер (2× dual stream)
+## 6. Настройка камер (2× dual stream)
 
 | Поток | Назначение | Разрешение | FPS |
 |-------|------------|------------|-----|
@@ -163,20 +228,21 @@ Primary GIE `network-width/height=704×576` на **main** stream — без ра
 
 ---
 
-## 6. Чек-лист перед боем на площадке
+## 7. Чек-лист перед боем на площадке
 
 - [ ] 5V/4A barrel, вентилятор, SSD
 - [ ] `nvpmodel -m 0`, `jetson_clocks`, ZRAM, headless
 - [ ] `nvidia-smi` / `tegrastats` в контейнере
-- [ ] `.engine` детектор + классификатор собраны **на этом Jetson**
+- [ ] `.engine` для **trapper + convnext** собраны на этом Jetson
 - [ ] go2rtc/MQTT/камеры в LAN (не IP VPS)
+- [ ] RTSP: `latency=300`, health-check, reconnect policy
 - [ ] `BIRDLENSE_PLATFORM=jetson_nano`, OpenVINO отключён
 - [ ] Smoke: health OK, одна тестовая запись с persist
 - [ ] Мониторинг: `jtop`, Hub `yolo_frames_with_tracks`, температура
 
 ---
 
-## 7. Риски и эскалация железа
+## 8. Риски и эскалация железа
 
 | Симптом | Действие |
 |---------|----------|
@@ -187,9 +253,10 @@ Primary GIE `network-width/height=704×576` на **main** stream — без ра
 
 ---
 
-## 8. Ссылки
+## 9. Ссылки
 
 - `deploy/profiles/jetson-nano/`
 - `app/Dockerfile.jetson`, `app/docker-compose.jetson.yml`
 - `scripts/platform-profile.sh`
-- Epic GitHub: «Jetson NVIDIA-native pipeline» (родительский issue)
+- Epic GitHub: [#645](https://github.com/Gfermoto/BirdLense-Hub/issues/645)
+- RTSP monitoring: [#655](https://github.com/Gfermoto/BirdLense-Hub/issues/655) (E9)
