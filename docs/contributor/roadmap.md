@@ -31,7 +31,7 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 |-------|------|--------|
 | **Storage / NVR parity** | [#601](https://github.com/Gfermoto/BirdLense-Hub/issues/601) | FinalizeTransaction, QuotaMaintainer, ReconcileJob, honest readiness [#605](https://github.com/Gfermoto/BirdLense-Hub/issues/605) |
 | **CV pipeline recovery** | [#606](https://github.com/Gfermoto/BirdLense-Hub/issues/606) | Tracks, false bbox, species — `docs/strategy/CV_PIPELINE_RECOVERY_PLAN_2026-06.md` |
-| **Jetson Nano edge** | [#645](https://github.com/Gfermoto/BirdLense-Hub/issues/645) | DeepStream/TRT/NVDEC, гибрид «сторож + охотник» — [runbook 21 шаг](../strategy/jetson-nano-edge-setup-and-migration.md) |
+| **Jetson Nano edge** | [#645](https://github.com/Gfermoto/BirdLense-Hub/issues/645) | **EfficientNetV2-S** (Ornimetrics) — species + welfare + ReID shared backbone, region switch EU/NA, Hailo `.hef` — [runbook 21 шаг](../strategy/jetson-nano-edge-setup-and-migration.md) |
 
 **Jetson sub-issues (E0–E14):** [#646](https://github.com/Gfermoto/BirdLense-Hub/issues/646)–[#660](https://github.com/Gfermoto/BirdLense-Hub/issues/660). Runbook: шаги 1–8 provisioning, 9–15 stack/TRT/benchmark gate, 17–18 камеры/RTSP, 19–21 deploy/smoke/recovery.
 
