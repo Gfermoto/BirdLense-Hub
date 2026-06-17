@@ -337,13 +337,13 @@ processor:
         # Позволить YOLO работать в сумерках/ИК без полного снятия light gate.
         light_gate_min_brightness: 8
         light_gate_min_contrast: 6
-        # Ночь/ИК: не задираем пороги выше дневных, иначе теряем реальные визиты.
+        # Ночь/ИК: пороги не выше дневных — иначе accepted=0 при живых raw boxes.
         # Шум/FP режутся scoring/motion/filter-цепочкой, а не агрессивным conf floor.
-        min_confidence_binary: 0.25
-        min_confidence_binary_bird: 0.23
-        openvino_min_confidence_binary_bird: 0.23
+        min_confidence_binary: 0.08
+        min_confidence_binary_bird: 0.06
+        openvino_min_confidence_binary_bird: 0.06
         min_track_duration: 1.0
-        min_confidence_to_process: 0.35
+        min_confidence_to_process: 0.08
         min_box_size_px: 14
         min_center_dist: 0.01
         max_classifications_per_frame: 4
