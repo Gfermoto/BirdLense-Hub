@@ -288,11 +288,16 @@ sudo systemctl set-default multi-user.target
 docker run --rm --runtime nvidia nvcr.io/nvidia/l4t-base:r32.7.1 \
   bash -lc 'ls /usr/local/cuda && echo OK'
 
+# На хосте JetPack (или внутри будущего DeepStream-образа — шаг 14):
 gst-inspect-1.0 nvv4l2decoder
 gst-inspect-1.0 nvv4l2h264enc
+gst-inspect-1.0 nvinfer      # DeepStream Primary GIE — обязателен для Plan A
+gst-inspect-1.0 nvtracker    # NvDCF / IOU tracker
 ```
 
-**Готово когда:** Docker выводит `OK`; оба `gst-inspect` находят плагины (после установки DeepStream/runtime, если ещё нет — поставить до шага 20).
+**Версия DeepStream:** для JetPack **4.6.x (R32.7.x)** — **DeepStream 6.2** (`nvcr.io/nvidia/deepstream-l4t:6.2-*-r32.7.1`). Элементы `nvinfer` / `nvtracker` **не** входят в `l4t-base` и **не** в текущий `Dockerfile.jetson` (`python:3.11-bookworm`) — только в DeepStream SDK или образ `deepstream-l4t`.
+
+**Готово когда:** Docker выводит `OK`; `nvv4l2*` на хосте; для Plan A — `nvinfer` и `nvtracker` находятся (хост или контейнер из шага 14). Если `nvinfer` нет — до шага 20 поставить DeepStream 6.2 или зафиксировать **Plan B** в deployment notes.
 
 **Путь интеграции (главный риск E1–E3):**
 
@@ -346,6 +351,15 @@ Overlay: `deploy/profiles/jetson-nano/config.overlay.yaml`.
 
 **Где:** Jetson, каталог `app/` репозитория.
 
+**Базовый образ (Plan A — DeepStream):** `docker-compose.jetson.yml` / `Dockerfile.jetson` должны собираться из образа **с DeepStream SDK**, не из «голого» Debian:
+
+| Путь | Базовый образ | Когда |
+|------|---------------|-------|
+| **Plan A (целевой)** | `nvcr.io/nvidia/deepstream-l4t:6.2-base-r32.7.1` (или `-devel` на этапе сборки TRT) | Primary GIE + `nvinfer` + NvDCF |
+| **Plan B (fallback)** | `nvcr.io/nvidia/l4t-base:r32.7.1` + `nvidia-l4t-jetson-multimedia-api` | GStreamer NVDEC/NVENC + TRT в Python, без `nvinfer` |
+
+> **Сейчас в репо:** `Dockerfile.jetson` = `python:3.11-bookworm` (заглушка для smoke UI/API). Перед E2 (#648) — смена базы на `deepstream-l4t:6.2-*` под R32.7.x.
+
 **Что сделать:**
 
 ```bash
@@ -354,17 +368,19 @@ BIRDLENSE_PLATFORM=jetson_nano \
   docker compose -f docker-compose.yml -f docker-compose.jetson.yml up -d --build
 ```
 
-Проверить в `docker-compose.jetson.yml`:
+Проверить в `docker-compose.jetson.yml` и образе:
 
 - `restart: unless-stopped` — автоподъём после reboot/power glitch.
 - `network_mode: host` — UI на **порту хоста** (`BIRDLENSE_PORT`, по умолчанию **8085**); не искать порт в `ports:` bridge.
+- Внутри контейнера (после смены базы): `gst-inspect-1.0 nvinfer` → OK для Plan A.
 
 ```bash
 grep -E 'restart:|network_mode:' docker-compose.jetson.yml
+docker compose exec birdlense gst-inspect-1.0 nvinfer 2>/dev/null || echo "Plan B или образ ещё без DeepStream"
 curl -sf "http://127.0.0.1:${BIRDLENSE_PORT:-8085}/health"
 ```
 
-**Готово когда:** `birdlense` `running`; health OK на `127.0.0.1:BIRDLENSE_PORT`.
+**Готово когда:** `birdlense` `running`; health OK; для Plan A — образ на базе `deepstream-l4t:6.2` и `nvinfer` в контейнере.
 
 ---
 
@@ -397,7 +413,12 @@ OpenVINO IR на Jetson **не использовать**. Модели: trapper
 trtexec --onnx=dinov2_vits14.onnx --fp16 --workspace=512 --saveEngine=/tmp/dino_test.engine
 ```
 
-**Готово когда:** `.engine` detector + classifier на Jetson; parity gate зелёный; DINOv2 — либо engine OK, либо явно `deferred` в deployment notes.
+**Готово когда:** `.hef` (Hailo) или `.engine` (TensorRT) для **EfficientNetV2-S** (region EU/NA) лежат на Jetson; parity gate (species + welfare + ReID) зелёный.
+
+**Region switch (EU ↔ NA):**  
+- При старте `processor` читает координаты (`config.yaml` / env) → определяет регион (`region_by_coords`).  
+- Выбирает соответствующий `.hef` (например, `species_classifier_inat.hef` для EU, `species_classifier_nabirds.hef` для NA).  
+- **BirdNET** (аудио) остаётся без изменений — подсказки через MQTT.
 
 ---
 
@@ -408,19 +429,30 @@ trtexec --onnx=dinov2_vits14.onnx --fp16 --workspace=512 --saveEngine=/tmp/dino_
 **Что сделать:**
 
 ```bash
-# После scripts/benchmark_jetson.py (или аналог):
+# Реализация: scripts/benchmark_jetson.py (#650 / #657) — пока заглушка в плане
 python scripts/benchmark_jetson.py \
   --detector-engine processor/models/detection/weights/trapper.engine \
   --classifier-engine processor/models/classification/weights/convnext.engine \
-  --frames 1000 --lores 704,576
+  --frames 1000 --lores 704,576 --interval 4
 ```
+
+**Контракт скрипта (реализация, не блокер плана):**
+
+1. Загрузить `.engine` detector + classifier на **этом** Jetson.
+2. Прогнать **N кадров** (предпочтительно кропы/кадры из golden clips, не синтетика).
+3. Детектор: FPS sustained с учётом `interval`; **p95 latency** на inference.
+4. Классификатор: **p95 <100 ms** на один кроп.
+5. Проверить RAM контейнера (`docker stats`) — не выше лимита compose (`mem_limit: 3g`) в idle после прогона.
+6. Записать CSV `jetson_bench_YYYYMMDD.csv` (latency, FPS, RAM, interval).
 
 **Пороги (не деплоить, если не выполнены):**
 
 | Метрика | Минимум |
 |---------|---------|
 | Детектор на lores | **>10 FPS** sustained (с `interval=3–4`) |
-| Классификатор на 1 кроп | **<100 ms** p95 |
+| Классификатор (species) на 1 кроп | **<100 ms** p95 |
+| **Welfare (Mahalanobis)** | <50 ms p95 на кроп |
+| **ReID (ArcFace)** | <50 ms p95 на кроп |
 | RAM container idle | зафиксировать baseline (цель <2.5 ГБ до live) |
 
 Лог: CSV `jetson_bench_YYYYMMDD.csv` (latency, FPS, queue depth) — для сравнения после тюнинга.
@@ -520,6 +552,7 @@ tegrastats --interval 1000 | head -30
 1. Симулировать обрыв RTSP: отключить PoE/порт камеры или `iptables` drop на IP камеры **30–60 с**.
 2. Восстановить сеть.
 3. Убедиться: реконнект без `docker restart birdlense`; в логах — backoff reconnect; через ≤2 мин снова кадры/треки.
+4. В Hub: **`yolo_frames_with_tracks > 0`** в `recording_session_summary` (или эквивалентная метрика live detect) — как в чек-листе §7.
 
 ```bash
 # пример блокировки (подставить IP камеры)
@@ -527,11 +560,12 @@ sudo iptables -A OUTPUT -d CAMERA_IP -j DROP
 sleep 45
 sudo iptables -D OUTPUT -d CAMERA_IP -j DROP
 docker logs birdlense --tail 50 | grep -iE 'rtsp|reconnect|error'
+# после восстановления — дождаться события или проверить summary в UI/API
 ```
 
 Опционально для поля: API **экстренного сброса буферов** GStreamer (`POST /api/.../media/reset-buffers`) — backlog E11.
 
-**Готово когда:** после обрыва поток восстановился автоматически; контейнер не перезапускали вручную.
+**Готово когда:** после обрыва поток восстановился автоматически; контейнер не перезапускали; **`yolo_frames_with_tracks > 0`** снова зафиксирован.
 
 ---
 
@@ -539,13 +573,15 @@ docker logs birdlense --tail 50 | grep -iE 'rtsp|reconnect|error'
 
 | Слой | Технология | Статус в репо |
 |------|------------|---------------|
-| Hub UI/API | Flask + nginx в контейнере | `Dockerfile.jetson` |
-| Live detect/track | DeepStream Primary GIE + NvDCF | план |
-| Inference weights | TensorRT FP16 `.engine` | `tensorrt` в `selector.py` — planned |
-| Live decode lores | NVDEC / DeepStream | planned |
+| Hub UI/API | Flask + nginx в контейнере | `Dockerfile.jetson` (bookworm → deepstream-l4t:6.2) |
+| Live detect/track | **YOLOv11n (Hailo `.hef`)** или DeepStream GIE fallback | #648 / E2 |
+| Inference weights | **EfficientNetV2-S (ONNX → Hailo `.hef`)**, region-switch EU/NA | #650 / E4 |
+| **Welfare (здоровье)** | Mahalanobis anomaly (EfficientNetV2-S features) | #650 / E4 |
+| **ReID (индивид)** | ArcFace 256-d embedding (EfficientNetV2-S backbone) | #650 / E4 |
+| Live decode lores | NVDEC / DeepStream или GStreamer NVMM | planned |
 | High-res capture | Ring buffer + event trigger | новый модуль |
 | Record encode | NVENC (`nvv4l2h264enc`) | planned |
-| Classifier / ReID | TRT на 1 кроп/событие | план |
+| Classifier / ReID / Welfare | **Shared backbone EfficientNetV2-S** (species + welfare + ReID) | #650 |
 | Offline regen | `track_regenerator` на `.pt`/`.engine` | общий код |
 
 ---
@@ -883,8 +919,8 @@ Yocto даёт минимальный rootfs и контроль над kernel/d
 - [ ] **Шаг 16:** benchmark зелёный (>10 FPS detect, <100 ms classify), CSV сохранён
 - [ ] **Шаги 17–18:** камеры в конфиге, RTSP NVMM без артефактов ≥5 мин
 - [ ] **Шаги 19–20:** `make deploy`, health OK, запись с persist, `yolo_frames_with_tracks > 0`, idle RAM baseline
-- [ ] **Шаг 21:** recovery test — reconnect без restart контейнера
-- [ ] 24h soak: нет OOM/throttle, reconnect сработал
+- [ ] **Шаг 21:** recovery test — reconnect без restart контейнера; **`yolo_frames_with_tracks > 0`** после восстановления
+- [ ] **24h soak** (ручной): нет OOM/throttle, reconnect сработал; *backlog:* `scripts/jetson_soak_24h.sh` (tegrastats + docker logs → OOM/restart)
 - [ ] Golden clips: day/night/IR, close/far, empty negatives
 - [ ] Model hashes + JetPack/L4T/DeepStream versions сохранены
 - [ ] Low-confidence cases → review/dataset export
