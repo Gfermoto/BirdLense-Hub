@@ -55,6 +55,20 @@ sudo systemctl enable zram-config
   - ОС + Hub API/UI: ~0.5–1 ГБ  
   **Итого:** укладываемся при headless + ZRAM + лимите контейнера 3 ГБ.
 
+### 2.4 Performance budget и graceful degradation
+
+Nano нельзя вести как «маленький сервер». Для него нужен бюджет, который enforced кодом:
+
+| Ресурс | Бюджет MVP | Если вышли за бюджет |
+|--------|------------|----------------------|
+| RAM container | ≤3.0 ГБ sustained, без OOM | уменьшить ring buffer, отключить ReID live, classifier keyframes=1 |
+| GPU | ≤80–85% sustained | поднять `interval`, снизить detector input до 640, отключить secondary live |
+| CPU | ≤250% sustained (из 4 cores) | убрать OpenCV hot path, только GStreamer/DS metadata |
+| Температура | <75–80°C | fan/jetson_clocks policy, снизить FPS/interval |
+| Latency event | pre-roll 2–3 c + post-roll 8–10 c | сохранять клип даже без classifier/ReID, enrich позже |
+
+**Правило:** если ML-обогащение не укладывается, сохраняем видео + bbox metadata, а classification/ReID переносим в deferred job. Потеря вида лучше, чем потеря события.
+
 ---
 
 ## 3. Программная база
@@ -152,18 +166,23 @@ OpenVINO IR (`*_openvino_model/`) на Jetson **не используем** — 
 
 ### 4.2 GStreamer / DeepStream для RTSP
 
-Параметры из ревью — принимаем:
+Параметры из ревью — принимаем, но не как жёсткие константы:
 
-- `rtspsrc latency=300 drop-on-latency=true`
+- `rtspsrc latency=200–500`; стартовое значение 300 ms
+- `drop-on-latency=true` только для live detect; для high-res ring buffer включать после теста (может портить поток при jitter)
 - `nvv4l2decoder enable-max-performance=1`
+- `low-latency-mode=true` только если камеры не используют B-frames
+- `num-extra-surfaces`: не ставить «0 всегда»; 0 снижает latency, но при сетевом jitter даёт stutter. Старт: 1–2.
+- после decoder ставить `queue leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0`
 - `appsink sync=false` для ring buffer
-- DeepStream `type=4`, `latency=300`, `cudadec-memtype=0`
+- DeepStream `type=4`, `latency=300`, `live-source=1`, sink `sync=0`
 
 Пример lores (704×576):
 
 ```bash
 gst-launch-1.0 rtspsrc location=rtsp://.../lores latency=300 drop-on-latency=true ! \
   rtph264depay ! h264parse ! nvv4l2decoder enable-max-performance=1 ! \
+  queue leaky=downstream max-size-buffers=2 max-size-bytes=0 max-size-time=0 ! \
   nvvidconv ! video/x-raw,format=NV12,width=704,height=576 ! \
   appsink name=lores_sink sync=false
 ```
@@ -213,6 +232,45 @@ Primary GIE `network-width/height=704×576` на **main** stream — без ра
 - **Модели:** trapper детектор, Birder convnext классификатор, DINOv2 ReID — те же веса, TRT-обёртка
 - OpenAPI, UI, Telegram, visit model
 
+### 5.4 Jetson execution contract — не повторять Intel hot path
+
+Сохраняем модели, но меняем **когда** они вызываются:
+
+| Стадия | Intel текущий путь | Jetson контракт |
+|--------|--------------------|-----------------|
+| Detector | YOLO/OpenVINO на detect frames | Trapper TRT FP16, lores only, `interval=3–5`; tracker закрывает промежутки |
+| Tracker | ByteTrack в Python/Ultralytics | DeepStream NvDCF `max_perf`, tracker resolution близко к infer resolution |
+| Classifier | до 3 key frames / finalize | **1 лучший кроп на событие**, convnext TRT; 2-й кроп только если confidence/margin плохие |
+| ReID | finalize enrichment | DINOv2 lazy/deferred; live ReID выключен; максимум 1 embedding на visit |
+| Behavior | Python эвристики | только metadata от tracker (speed/dwell/zone), без 3D-CNN |
+| Persist | после full finalize | video+bbox persist first; classifier/ReID могут догонять async |
+
+Правило деградации:
+
+1. Всегда сохраняем событие и bbox metadata.
+2. Если GPU/RAM high → classifier skipped/deferred.
+3. Если RAM high → ReID off.
+4. Если latency high → `interval += 1`, затем `imgsz 704→640`.
+5. Если event quality низкая → не меняем модель сразу; сначала проверяем RTSP, tracker, threshold parity.
+
+### 5.5 Модели: сохранить, но добавить parity gates
+
+`trapper`, `convnext_v2_tiny_eu-common256px`, DINOv2 остаются каноническими моделями продукта. Для Jetson вводим gates:
+
+- **Detector parity:** `.pt` vs `.engine` на 20–50 клипах; IoU bbox ≥0.85, drop in recall ≤5%.
+- **Classifier parity:** Top-1/Top-5 и margin на экспортированных кропах; exotic labels regression fail.
+- **ReID parity:** cosine distance distribution на тех же crops; если DINOv2 TRT тяжёлый — оставить torch+cuda/deferred, не заменять на OSNet без A/B.
+- **Golden clips:** отдельные `feeder_close` и `feeder_far`; night/IR clips обязательны.
+
+### 5.6 Tracker choice: NvDCF сначала, IOU fallback
+
+NvDCF точнее, но может съесть FPS на Nano. План:
+
+1. Start: NvDCF `max_perf`, reduced tracker resolution (`704×576` или меньше, кратно 32), HOG off если bottleneck.
+2. Если FPS/thermal плохие — IOU tracker fallback (меньше качество, меньше память).
+3. `maxTargetsPerStream=10–15`, past-frame history ограничить.
+4. В Hub сохранять `track_provider=deepstream_nvdcf|deepstream_iou|bytetrack`.
+
 ---
 
 ## 6. Настройка камер (2× dual stream)
@@ -260,3 +318,11 @@ Primary GIE `network-width/height=704×576` на **main** stream — без ра
 - `scripts/platform-profile.sh`
 - Epic GitHub: [#645](https://github.com/Gfermoto/BirdLense-Hub/issues/645)
 - RTSP monitoring: [#655](https://github.com/Gfermoto/BirdLense-Hub/issues/655) (E9)
+- Performance budget / graceful degradation: [#656](https://github.com/Gfermoto/BirdLense-Hub/issues/656) (E10)
+
+## 10. Внешние источники
+
+- NVIDIA DeepStream troubleshooting: RTSP `live-source=1`, sink `sync=0`, latency/jitter trade-offs, decoder buffer starvation — <https://docs.nvidia.com/metropolis/deepstream/6.2/dev-guide/text/DS_troubleshooting.html>
+- NVIDIA DeepStream performance: Jetson Nano uses FP16, `interval=5`, NvDCF `max_perf`, reduced tracker resolution — <https://docs.nvidia.com/metropolis/deepstream/6.0.1/dev-guide/text/DS_Performance.html>
+- RidgeRun Jetson GStreamer encoder latency: `nvv4l2h264enc` / `nvv4l2h265enc`, `maxperf-enable` impact — <https://developer.ridgerun.com/wiki/index.php/GStreamer_Encoding_Latency_in_NVIDIA_Jetson_Platforms>
+- NVIDIA forum notes: `low-latency-mode` and `num-extra-surfaces=0` reduce latency but can stutter with jitter/B-frames — <https://forums.developer.nvidia.com/t/deepstream-performance-issue-1s-latency-and-periodic-stutter-with-rtsp-streams/342100/17>
