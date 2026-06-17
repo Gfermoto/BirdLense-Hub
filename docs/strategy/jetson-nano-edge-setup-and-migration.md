@@ -1,7 +1,7 @@
 # Jetson Nano B01 — аппаратная и программная настройка под BirdLense Hub
 
-**Статус:** Final review plan (2026-06-17)  
-**Исполнять:** раздел **2** (шаги 1–18), сверху вниз. Разделы 3–6 — справочник.  
+**Статус:** Final review plan + external review (2026-06-17)  
+**Исполнять:** раздел **2** (шаги 1–21), сверху вниз. Разделы 3–6 — справочник.  
 **Связано:** [ADR platform profiles](adr-platform-profiles-intel-jetson.md), epic «Jetson NVIDIA-native pipeline»
 
 ---
@@ -25,12 +25,12 @@ Jetson Nano B01 (4 ГБ) — **вторая боевая платформа** Bi
 
 | Шаг | Где | Суть |
 |-----|-----|------|
-| 1 | стол, Jetson выкл. | железо |
-| 2 | ПК, Jetson выкл. | образ на SD |
-| 3–11 | Jetson | ОС, SSD, Docker, performance |
-| 12–14 | Jetson + dev | env, build, TRT weights |
-| 15–16 | Jetson / UI | камеры и RTSP |
-| 17–18 | dev → Jetson | deploy и smoke |
+| 1–2 | стол / ПК | железо, образ на SD |
+| 3–8 | Jetson | boot, SSD, extlinux guard |
+| 9–12 | Jetson | Docker, MAXN, runtime check |
+| 13–16 | Jetson + dev | env, build, TRT, **benchmark** |
+| 17–18 | Jetson / UI | камеры, RTSP + buffer tune |
+| 19–21 | dev → Jetson | deploy, smoke, **recovery test** |
 
 ---
 
@@ -165,7 +165,40 @@ lsblk
 
 ---
 
-### Шаг 8. Настроить Docker с NVIDIA runtime
+### Шаг 8. Защитить загрузку с SSD после apt upgrade
+
+**Где:** Jetson.
+
+**Проблема:** `sudo apt full-upgrade` может перезаписать `/boot/extlinux/extlinux.conf` и сбросить `root=PARTUUID=...` обратно на SD.
+
+**Что сделать:**
+
+```bash
+SSD_PARTUUID=$(blkid -s PARTUUID -o value /dev/sda1)   # или nvme0n1p1
+
+sudo tee /usr/local/sbin/birdlense-fix-extlinux.sh >/dev/null <<SCRIPT
+#!/bin/bash
+set -euo pipefail
+CONF=/boot/extlinux/extlinux.conf
+PARTUUID="${SSD_PARTUUID}"
+grep -q "root=PARTUUID=\${PARTUUID}" "\$CONF" || \
+  sed -i "s|root=[^ ]*|root=PARTUUID=\${PARTUUID}|" "\$CONF"
+SCRIPT
+sudo chmod +x /usr/local/sbin/birdlense-fix-extlinux.sh
+
+sudo tee /etc/apt/apt.conf.d/99-birdlense-extlinux >/dev/null <<'EOF'
+DPkg::Post-Invoke { "/usr/local/sbin/birdlense-fix-extlinux.sh"; };
+EOF
+
+sudo /usr/local/sbin/birdlense-fix-extlinux.sh
+grep root= /boot/extlinux/extlinux.conf
+```
+
+**Готово когда:** `grep root=` показывает `PARTUUID` SSD; скрипт в `DPkg::Post-Invoke` на месте.
+
+---
+
+### Шаг 9. Настроить Docker с NVIDIA runtime
 
 **Где:** Jetson.
 
@@ -197,7 +230,7 @@ sudo systemctl restart docker
 
 ---
 
-### Шаг 9. Включить MAXN (nvpmodel + jetson_clocks)
+### Шаг 10. Включить MAXN
 
 **Где:** Jetson.
 
@@ -228,7 +261,7 @@ sudo jetson_clocks
 
 ---
 
-### Шаг 10. ZRAM и headless
+### Шаг 11. ZRAM и headless
 
 **Где:** Jetson.
 
@@ -245,7 +278,7 @@ sudo systemctl set-default multi-user.target
 
 ---
 
-### Шаг 11. Проверить NVIDIA runtime и GStreamer
+### Шаг 12. Проверить NVIDIA runtime, GStreamer и путь интеграции
 
 **Где:** Jetson.
 
@@ -259,11 +292,28 @@ gst-inspect-1.0 nvv4l2decoder
 gst-inspect-1.0 nvv4l2h264enc
 ```
 
-**Готово когда:** Docker выводит `OK`; оба `gst-inspect` находят плагины (после установки DeepStream/runtime, если ещё нет — поставить до шага 17).
+**Готово когда:** Docker выводит `OK`; оба `gst-inspect` находят плагины (после установки DeepStream/runtime, если ещё нет — поставить до шага 20).
+
+**Путь интеграции (главный риск E1–E3):**
+
+| Путь | Когда | Запас времени |
+|------|-------|---------------|
+| **A — DeepStream Primary GIE + probe** | целевой MVP | базовая оценка × **2–3** на отладку Python↔DS |
+| **B — GStreamer `appsink` + TRT в Python** | если A нестабилен >1 недели | медленнее, проще отладка |
+
+Plan B: `rtspsrc ! nvv4l2decoder ! nvvidconv ! video/x-raw(memory:NVMM) ! appsink` → Ultralytics/TRT в Python. Не блокировать деплой ожиданием идеального DeepStream.
+
+**NVDEC:** при двух камерах мониторить decode load:
+
+```bash
+tegrastats --interval 1000 | head -20   # смотреть NVDEC % / GR3D %
+```
+
+Если NVDEC >90% sustained — снизить FPS substream или перейти на event-only high-res decode.
 
 ---
 
-### Шаг 12. Задать переменные окружения
+### Шаг 13. Задать переменные окружения
 
 **Где:** dev-машина (`scripts/deploy.local.sh`) и при необходимости `app/.env` на Jetson.
 
@@ -292,7 +342,7 @@ Overlay: `deploy/profiles/jetson-nano/config.overlay.yaml`.
 
 ---
 
-### Шаг 13. Базовая сборка контейнера на Jetson
+### Шаг 14. Базовая сборка контейнера на Jetson
 
 **Где:** Jetson, каталог `app/` репозитория.
 
@@ -304,11 +354,21 @@ BIRDLENSE_PLATFORM=jetson_nano \
   docker compose -f docker-compose.yml -f docker-compose.jetson.yml up -d --build
 ```
 
-**Готово когда:** `docker compose ps` — контейнер `birdlense` в состоянии `running`; `curl -sf http://127.0.0.1:8085/health` (или ваш `BIRDLENSE_PORT`) → OK.
+Проверить в `docker-compose.jetson.yml`:
+
+- `restart: unless-stopped` — автоподъём после reboot/power glitch.
+- `network_mode: host` — UI на **порту хоста** (`BIRDLENSE_PORT`, по умолчанию **8085**); не искать порт в `ports:` bridge.
+
+```bash
+grep -E 'restart:|network_mode:' docker-compose.jetson.yml
+curl -sf "http://127.0.0.1:${BIRDLENSE_PORT:-8085}/health"
+```
+
+**Готово когда:** `birdlense` `running`; health OK на `127.0.0.1:BIRDLENSE_PORT`.
 
 ---
 
-### Шаг 14. Конвертировать веса в TensorRT на этом Jetson
+### Шаг 15. Конвертировать веса в TensorRT на этом Jetson
 
 **Где:** Jetson (engine несовместим, если собран на другом устройстве).
 
@@ -323,18 +383,53 @@ BIRDLENSE_PLATFORM=jetson_nano \
 
 Скрипт должен:
 
-1. Собрать `.engine` FP16.
+1. Собрать `.engine` FP16; **кэшировать** по hash весов + JetPack/L4T (не пересобирать при каждом deploy).
 2. Прогнать parity на 20–50 golden clips.
 3. Упасть, если recall drop >5% или IoU <0.85.
 4. Записать hashes в `weights/trt_manifest.json`.
 
-OpenVINO IR на Jetson **не использовать**. Модели те же: trapper, convnext, DINOv2 (ReID — фаза 2).
+OpenVINO IR на Jetson **не использовать**. Модели: trapper, convnext — обязательны; **DINOv2 ReID — experimental (фаза 2)**.
 
-**Готово когда:** `.engine` для detector + classifier есть на Jetson; parity gate зелёный.
+Проверка DINOv2 до включения в hot path:
+
+```bash
+# OOM на Nano 4 ГБ — типичный fail; при ошибке — ReID из ConvNeXt backbone или defer
+trtexec --onnx=dinov2_vits14.onnx --fp16 --workspace=512 --saveEngine=/tmp/dino_test.engine
+```
+
+**Готово когда:** `.engine` detector + classifier на Jetson; parity gate зелёный; DINOv2 — либо engine OK, либо явно `deferred` в deployment notes.
 
 ---
 
-### Шаг 15. Настроить камеры в Hub
+### Шаг 16. Benchmark на Jetson (gate перед камерами/deploy)
+
+**Где:** Jetson, тот же образ и `.engine`, что в шаге 15.
+
+**Что сделать:**
+
+```bash
+# После scripts/benchmark_jetson.py (или аналог):
+python scripts/benchmark_jetson.py \
+  --detector-engine processor/models/detection/weights/trapper.engine \
+  --classifier-engine processor/models/classification/weights/convnext.engine \
+  --frames 1000 --lores 704,576
+```
+
+**Пороги (не деплоить, если не выполнены):**
+
+| Метрика | Минимум |
+|---------|---------|
+| Детектор на lores | **>10 FPS** sustained (с `interval=3–4`) |
+| Классификатор на 1 кроп | **<100 ms** p95 |
+| RAM container idle | зафиксировать baseline (цель <2.5 ГБ до live) |
+
+Лог: CSV `jetson_bench_YYYYMMDD.csv` (latency, FPS, queue depth) — для сравнения после тюнинга.
+
+**Готово когда:** benchmark зелёный; цифры записаны в deployment notes.
+
+---
+
+### Шаг 17. Настроить камеры в Hub
 
 **Где:** `app/app_config/user_config.yaml` (на Jetson или через deploy).
 
@@ -350,29 +445,35 @@ OpenVINO IR на Jetson **не использовать**. Модели те ж�
 
 ---
 
-### Шаг 16. Проверить RTSP-потоки
+### Шаг 18. Проверить RTSP-потоки (NVMM + buffer tuning)
 
 **Где:** Jetson.
 
 **Что сделать:**
 
 ```bash
-# lores напрямую с камеры
-gst-launch-1.0 rtspsrc location=rtsp://CAMERA_IP/lores latency=300 ! \
-  rtph264depay ! h264parse ! fakesink sync=false
+# lores — zero-copy NVMM (как в боевом pipeline)
+gst-launch-1.0 rtspsrc location=rtsp://CAMERA_IP/lores latency=300 drop-on-latency=true ! \
+  rtph264depay ! h264parse ! \
+  nvv4l2decoder enable-max-performance=1 num-extra-surfaces=2 ! \
+  queue leaky=downstream max-size-buffers=2 ! \
+  nvvidconv ! video/x-raw(memory:NVMM),format=NV12,width=704,height=576 ! \
+  fakesink sync=false
 
 # main через go2rtc
 gst-launch-1.0 rtspsrc location=rtsp://GO2RTC_IP:8554/feeder_close latency=300 ! \
-  rtph264depay ! h264parse ! fakesink sync=false
+  rtph264depay ! h264parse ! nvv4l2decoder num-extra-surfaces=2 ! fakesink sync=false
 ```
 
-Подставить реальные URL из шага 15.
+Подставить реальные URL из шага 17.
 
-**Готово когда:** оба pipeline отрабатывают без ошибки «Could not open resource» ≥30 с.
+**Buffer check:** прогнать каждый lores URL **≥5 минут**. Искать артефакты: зелёные блоки, застывание кадра, рост latency. При stutter — `num-extra-surfaces=3`; при избытке latency — `=1` (только после A/B на поле).
+
+**Готово когда:** оба pipeline без «Could not open resource»; нет визуальных артефактов на реальных камерах ≥5 мин.
 
 ---
 
-### Шаг 17. Финальный deploy
+### Шаг 19. Финальный deploy
 
 **Где:** dev-машина.
 
@@ -380,15 +481,15 @@ gst-launch-1.0 rtspsrc location=rtsp://GO2RTC_IP:8554/feeder_close latency=300 !
 
 ```bash
 cd /path/to/BirdLense
-# deploy.local.sh уже с BIRDLENSE_PLATFORM=jetson_nano (шаг 12)
+# deploy.local.sh уже с BIRDLENSE_PLATFORM=jetson_nano (шаг 13)
 make deploy
 ```
 
-**Готово когда:** `make deploy` завершился без ошибки; health на `DEPLOY_URL` → OK.
+**Готово когда:** `make deploy` без ошибки; health на `DEPLOY_URL` → OK.
 
 ---
 
-### Шаг 18. Smoke после deploy
+### Шаг 20. Smoke после deploy
 
 **Где:** Jetson + браузер/MCP.
 
@@ -396,14 +497,41 @@ make deploy
 
 1. Открыть `DEPLOY_URL` — UI доступен.
 2. Дождаться события или вызвать тестовую запись.
-3. Проверить:
+3. Проверить метрики:
 
 ```bash
-tegrastats --interval 1000 | head -5
+tegrastats --interval 1000 | head -30
 # в Hub: yolo_frames_with_tracks > 0
+# recording_session_summary: persist OK
 ```
 
-**Готово когда:** health OK, одна запись с persist в UI, `tegrastats` без throttle/OOM, треки появляются.
+4. Зафиксировать idle RAM/GPU 5 мин после старта (baseline для E10).
+
+**Готово когда:** health OK; одна запись с persist в UI; `tegrastats` без throttle/OOM; треки появляются.
+
+---
+
+### Шаг 21. Recovery test (обрыв сети)
+
+**Где:** Jetson, live stack после шага 20.
+
+**Что сделать:**
+
+1. Симулировать обрыв RTSP: отключить PoE/порт камеры или `iptables` drop на IP камеры **30–60 с**.
+2. Восстановить сеть.
+3. Убедиться: реконнект без `docker restart birdlense`; в логах — backoff reconnect; через ≤2 мин снова кадры/треки.
+
+```bash
+# пример блокировки (подставить IP камеры)
+sudo iptables -A OUTPUT -d CAMERA_IP -j DROP
+sleep 45
+sudo iptables -D OUTPUT -d CAMERA_IP -j DROP
+docker logs birdlense --tail 50 | grep -iE 'rtsp|reconnect|error'
+```
+
+Опционально для поля: API **экстренного сброса буферов** GStreamer (`POST /api/.../media/reset-buffers`) — backlog E11.
+
+**Готово когда:** после обрыва поток восстановился автоматически; контейнер не перезапускали вручную.
 
 ---
 
@@ -422,7 +550,7 @@ tegrastats --interval 1000 | head -5
 
 ---
 
-## 4. Справочник: камеры (детали к шагам 15–16)
+## 4. Справочник: камеры (детали к шагам 17–18)
 
 | Поток | Назначение | Разрешение | FPS | Маршрут |
 |-------|------------|------------|-----|---------|
@@ -432,7 +560,7 @@ tegrastats --interval 1000 | head -5
 - Оба **H.264**, GOP 2–4 с, NTP на камере.
 - `video.cameras[]`: `tuning_role: feeder_close|feeder_far`.
 
-Исполнять: **шаг 15** (конфиг) → **шаг 16** (проверка gst-launch).
+Исполнять: **шаг 17** (конфиг) → **шаг 18** (проверка gst-launch + buffer tune).
 
 ---
 
@@ -696,8 +824,10 @@ Nano 4 ГБ нельзя вести как «маленький сервер». 
 
 **Правило:** если ML-обогащение не укладывается, сохраняем видео + bbox metadata, а classification/ReID переносим в deferred job. Потеря вида лучше, чем потеря события.
 
-- `tegrastats --interval 1000 --format json` → парсить GPU util, RAM, temp, power.
+- `tegrastats --interval 1000 --format json` → парсить GPU util, RAM, temp, power, **NVDEC load** (две камеры).
 - Простой Python-probe в DeepStream appsink / `processor` watchdog: если sustained GPU >85% или RAM container >2.8 ГБ → поднять `interval`, снизить `imgsz`, отключить secondary GIE (classifier).
+- **Адаптивный `interval`:** при GPU >80% sustained автоматически `interval += 1` (до max 6); при GPU <50% — `interval -= 1`. Backlog E10.
+- **CSV-лог** latency/FPS/очередей (`jetson_perf_YYYYMMDD.csv`) — для полевого сравнения и регрессий.
 - Alert при throttle (temp >78°C) или OOM risk → Telegram + log; graceful: classifier off → ReID off → Behavior deferred.
 - Интеграция: `scripts/jetson_monitor.py` (или в `media_runtime`) + systemd timer; экспорт метрик в Hub `/metrics` или MQTT.
 
@@ -711,7 +841,8 @@ Nano 4 ГБ нельзя вести как «маленький сервер». 
 - **Single .engine bundle + INT8** — риск качества (калибровка) и сложности (разные input sizes); оставляем separate FP16 engines + parity gate.
 - **Split containers (DeepStream + Python trim)** — лишний IPC overhead; сохраняем single-container hybrid.
 - **Self-update engines** — nice-to-have, но security surface; defer.
-- **Усилено:** GStreamer pipeline tuning (zero-copy, leaky, num-extra-surfaces), NvDCF explicit config, runtime tegrastats enforcement, model conversion parity gate.
+- **Усилено:** GStreamer pipeline tuning (zero-copy NVMM, leaky, num-extra-surfaces), NvDCF explicit config, runtime tegrastats enforcement, model conversion parity gate, **benchmark gate (шаг 16)**, **recovery test (шаг 21)**.
+- **INT8** — только с калибровкой на полевых кропах; до parity FP16 не включать.
 
 Итог: план заточен под 4 ГБ Nano — максимум hardware acceleration при жёстком контроле ресурсов и качества. Нет «магии», только проверенные практики + enforced degradation.
 
@@ -725,6 +856,20 @@ Yocto даёт минимальный rootfs и контроль над kernel/d
 
 Приоритет: сначала довести JetPack baseline до production quality, потом минимализм.
 
+### 6.14 Внешняя рецензия (2026-06) — принятые риски и митигации
+
+| Риск | Вероятность | Митигация в плане |
+|------|-------------|-------------------|
+| DeepStream ↔ Python интеграция | **высокая** | Plan B (appsink + TRT); ×2–3 время E1–E3; шаг 12 |
+| DINOv2 OOM на 4 ГБ | **высокая** | `trtexec` probe; defer / ConvNeXt ReID; шаг 15 |
+| NVDEC bottleneck (2× RTSP) | средняя | `tegrastats` NVDEC; снизить substream FPS; шаг 12 |
+| `extlinux.conf` сброс после apt | средняя | `birdlense-fix-extlinux.sh` + apt hook; шаг 8 |
+| Buffer starvation / jitter | средняя | `num-extra-surfaces=2`, leaky queue; шаг 18 |
+| Нет benchmark перед боем | — | шаг 16: >10 FPS detect, <100 ms classify |
+| Нет recovery test | — | шаг 21: RTSP reconnect без restart контейнера |
+
+**Не в MVP (backlog):** кэш TRT engine по hash (шаг 15), адаптивный interval (6.11), API сброса буферов (шаг 21), CSV perf log (6.11).
+
 ---
 
 ## 7. Чек-лист перед боем на площадке
@@ -732,11 +877,13 @@ Yocto даёт минимальный rootfs и контроль над kernel/d
 Соответствие runbook:
 
 - [ ] **Шаги 1–2:** БП 5V/4A, вентилятор, SSD, SD с JetPack записана
-- [ ] **Шаги 3–7:** SSH, apt upgrade, rootfs на SSD, `df -h /` → SSD
-- [ ] **Шаги 8–11:** Docker nvidia runtime, MAXN, ZRAM/headless, `gst-inspect` OK
-- [ ] **Шаги 12–14:** env, базовый build, `.engine` + parity gate на этом Jetson
-- [ ] **Шаги 15–16:** камеры в конфиге, RTSP gst-launch без ошибок
-- [ ] **Шаги 17–18:** `make deploy`, health OK, запись с persist, `yolo_frames_with_tracks > 0`
+- [ ] **Шаги 3–8:** SSH, apt upgrade, rootfs на SSD, `df -h /` → SSD, extlinux guard
+- [ ] **Шаги 9–12:** Docker nvidia runtime, MAXN, ZRAM/headless, `gst-inspect` OK, путь DS vs Plan B зафиксирован
+- [ ] **Шаги 13–15:** env, build (`restart: unless-stopped`, host network), `.engine` + parity + DINOv2 probe
+- [ ] **Шаг 16:** benchmark зелёный (>10 FPS detect, <100 ms classify), CSV сохранён
+- [ ] **Шаги 17–18:** камеры в конфиге, RTSP NVMM без артефактов ≥5 мин
+- [ ] **Шаги 19–20:** `make deploy`, health OK, запись с persist, `yolo_frames_with_tracks > 0`, idle RAM baseline
+- [ ] **Шаг 21:** recovery test — reconnect без restart контейнера
 - [ ] 24h soak: нет OOM/throttle, reconnect сработал
 - [ ] Golden clips: day/night/IR, close/far, empty negatives
 - [ ] Model hashes + JetPack/L4T/DeepStream versions сохранены
@@ -750,6 +897,10 @@ Yocto даёт минимальный rootfs и контроль над kernel/d
 |---------|----------|
 | OOM / swap | уменьшить ring buffer, `interval`, отключить ReID live |
 | GPU throttle | охлаждение, снизить `binary_imgsz` до 640 |
+| NVDEC saturated | снизить substream FPS; event-only high-res decode |
+| DeepStream↔Python зависание | Plan B (appsink + TRT); не блокировать MVP |
+| DINOv2 OOM | defer ReID; ConvNeXt embedding fallback |
+| Загрузка с SD после apt | шаг 8: `birdlense-fix-extlinux.sh` |
 | 2 камеры не тянут | event-only high-res обязателен; иначе **Orin Nano 8GB** |
 | Engine mismatch | пересобрать TRT на устройстве |
 
