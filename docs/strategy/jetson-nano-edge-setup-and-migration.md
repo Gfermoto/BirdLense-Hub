@@ -1,6 +1,6 @@
 # Jetson Nano B01 — аппаратная и программная настройка под BirdLense Hub
 
-**Статус:** Draft (2026-06-17)  
+**Статус:** Final review plan (2026-06-17)  
 **Связано:** [ADR platform profiles](adr-platform-profiles-intel-jetson.md), epic «Jetson NVIDIA-native pipeline»
 
 ---
@@ -119,7 +119,148 @@ export DEPLOY_URL="http://192.168.8.199:8085"
 make deploy
 ```
 
-### 3.5 Конвертация весов — **те же модели, другой runtime**
+### 3.5 E0 — Ручные шаги подготовки железа (Manual Provisioning)
+
+**Цель:** Надежная база — SSD под систему/данные, SD только для загрузчика. Время: ~30–45 мин.
+
+#### 1. Образ ОС
+- **Базовый:** **NVIDIA JetPack 4.6.1 (L4T R32.7.1)** — установить на SD-карту.
+- Скачать: [JetPack 4.6.1 SD Card Image](https://developer.nvidia.com/embedded/jetpack-sdk-461) → `jetson-nano-sd-r32.7.1.img.zip`.
+- Записать на microSD (минимум 16 ГБ, класс A2/V30): `balenaEtcher` / `dd`.
+
+#### 2. Обновление до JetPack 4.6.4 через пакетный менеджер
+После первой загрузки с базовой SD:
+
+```bash
+# Обновить доступные пакеты L4T/JetPack из NVIDIA apt repo
+sudo apt update
+sudo apt update && sudo apt full-upgrade -y
+
+# Поставить/обновить JetPack meta-package без переустановки образа
+sudo apt install -y nvidia-jetpack
+
+# Проверка версии
+cat /etc/nv_tegra_release
+```
+
+Ожидаемо: `R32.7.x`; если apt не поднимает до `R32.7.4`, фиксируем фактическую `L4T`-версию в deployment notes и не смешиваем DeepStream/JetPack версии.
+
+#### 3. Первичная загрузка (на SD)
+```bash
+# Включить Jetson с SD, пройти OEM config (locale, user, pass, hostname)
+# Пользователь: gfer (как на проде), пароль: <ваш>
+# Hostname: birdlense-jetson
+# Включить SSH: sudo systemctl enable ssh --now
+```
+
+#### 4. Подключение и подготовка SSD (USB 3.0 или NVMe через HAT)
+```bash
+# Определить диск (обычно /dev/sda или /dev/nvme0n1)
+lsblk
+
+# Разметка: одна partition ext4 на весь диск
+sudo parted /dev/sda mklabel gpt
+sudo parted /dev/sda mkpart primary ext4 0% 100%
+sudo mkfs.ext4 -L birdlense-data /dev/sda1
+```
+
+#### 5. Перенос rootfs на SSD (rootfs-on-SSD способ — надежнее symlink)
+```bash
+# Смонтировать SSD
+sudo mkdir /mnt/ssd
+sudo mount /dev/sda1 /mnt/ssd
+
+# rsync текущей системы (исключаем /mnt, /proc, /sys, /dev, /run, /tmp)
+sudo rsync -aAXv --exclude={"/mnt/*","/proc/*","/sys/*","/dev/*","/run/*","/tmp/*","/lost+found"} / /mnt/ssd/
+
+# Редактировать /mnt/ssd/etc/fstab: добавить запись для SSD как /
+# UUID=<ssd-uuid>  /  ext4  defaults,noatime  0  1
+# (UUID узнать: blkid /dev/sda1)
+
+# Обновить extlinux.conf на SD для загрузки с SSD
+# Файл: /boot/extlinux/extlinux.conf (на SD)
+# В APPEND строку ядра добавить: root=PARTUUID=<partuuid-of-ssd-partition> rootwait
+# PARTUUID: blkid -s PARTUUID -o value /dev/sda1
+
+# Перезагрузка — должна загрузиться с SSD
+sudo reboot
+```
+
+#### 6. Проверка и настройка после перезагрузки
+```bash
+# Проверить, что корень на SSD
+df -h /          # должен показывать /dev/sda1
+lsblk            # SD (mmcblk0) — только /boot, SSD (sda) — /
+
+# Форматировать SD в FAT32 для загрузчика (опционально, оставить как есть — тоже ок)
+# Основное: на SD больше нет записей — износ минимален.
+```
+
+#### 7. Docker data-root на SSD (критично для надежности контейнеров)
+```bash
+sudo mkdir -p /etc/docker
+cat <<EOF | sudo tee /etc/docker/daemon.json
+{
+  "data-root": "/var/lib/docker",
+  "log-driver": "json-file",
+  "log-opts": { "max-size": "10m", "max-file": "3" },
+  "default-runtime": "nvidia",
+  "runtimes": {
+    "nvidia": {
+      "path": "nvidia-container-runtime",
+      "runtimeArgs": []
+    }
+  }
+}
+EOF
+sudo systemctl restart docker
+```
+
+#### 8. Jetson-специфичные настройки (автоматизировать через systemd unit)
+```bash
+# /etc/systemd/system/jetson-performance.service
+cat <<EOF | sudo tee /etc/systemd/system/jetson-performance.service
+[Unit]
+Description=Jetson MAXN Performance
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/nvpmodel -m 0
+ExecStart=/usr/bin/jetson_clocks
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl enable --now jetson-performance
+```
+
+#### 9. ZRAM и headless (как в разделе 2.3/2.4)
+```bash
+sudo apt update && sudo apt install -y zram-config
+sudo systemctl enable zram-config
+sudo systemctl set-default multi-user.target   # headless, +300–500 MB RAM
+```
+
+#### 10. Проверка перед деплоем кода
+```bash
+# Должно показать: GPU 921 MHz, CPU 1479 MHz, Temp <50°C в idle
+jtop
+
+# Docker + nvidia runtime на Jetson Nano проверяем через L4T image, не nvidia-smi
+docker run --rm --runtime nvidia nvcr.io/nvidia/l4t-base:r32.7.1 bash -lc 'ls /usr/local/cuda && echo OK'
+
+# DeepStream/NVENC plugins (после установки DeepStream base/runtime)
+gst-inspect-1.0 nvv4l2decoder
+gst-inspect-1.0 nvv4l2h264enc
+```
+
+---
+
+**После E0 ручной части:** Jetson загружается с SSD, Docker хранит образы/контейнеры на SSD, система в MAXN, headless, ZRAM активен. Готово к `make deploy`.
+
+### 3.6 Конвертация весов — **те же модели, другой runtime**
 
 **Принцип:** не меняем обученные сети на «лёгкие замены» (MobileNet/OSNet из чужих гайдов). Меняем только **backend экспорта**: `.pt` → TensorRT `.engine` на Jetson.
 
@@ -146,23 +287,25 @@ OpenVINO IR (`*_openvino_model/`) на Jetson **не используем** — 
 
 ### 4.0 Источник потоков: go2rtc vs прямой RTSP
 
-На площадке Hub уже использует **go2rtc** (`video.go2rtc_url`, RTSP substream/main). На Jetson:
+На площадке Hub уже использует **go2rtc** (`video.go2rtc_url`). На Jetson — **гибрид**:
 
-- **Предпочтительно:** RTSP URL из go2rtc на LAN (`rtsp://<go2rtc>:8554/...`) — единая точка как на Intel.
-- **Альтернатива:** прямой RTSP с камеры в DeepStream/GStreamer — если go2rtc не нужен на Nano.
+| Поток | Маршрут | Зачем |
+|-------|---------|-------|
+| **main / high-res** | `rtsp://<go2rtc>:8554/...` | одно подключение к камере на main; ring buffer + NVENC |
+| **lores / detect** | **прямой RTSP камеры** | минимальная задержка для DeepStream сторожа |
 
 `/dev/video0` в Docker **не нужен** для RTSP.
 
 ### 4.1 Docker: `network_mode: host`
 
-Ревьювер прав: RTSP/RTP использует динамические UDP-порты; проброс через bridge болезненен.
+Jetson полностью отдан под Hub — **`network_mode: host` по умолчанию** (проще RTSP/RTP, без NAT).
 
-| Режим | Плюсы | Минусы для Hub |
-|-------|-------|----------------|
-| **`network_mode: host`** | нулевая NAT-задержка, проще RTSP | нет `ports: 8085:8080` — UI на **8080** хоста или `BIRDLENSE_PORT=8080` |
-| **bridge** (как сейчас) | изоляция, проброс 8085 | RTSP из контейнера к LAN-камерам обычно ок; RTP иногда ломается |
+| Режим | Когда |
+|-------|-------|
+| **`network_mode: host`** | **дефолт Jetson** — UI на порту хоста (`BIRDLENSE_PORT`, обычно 8085 или 8080) |
+| **bridge** | только для отладки изоляции |
 
-**Решение для E0:** профиль `deploy/profiles/jetson-nano/compose.host-network.yml` (опционально) с `network_mode: host`; дефолт — bridge до полевого теста.
+Профиль: `deploy/profiles/jetson-nano/compose.host-network.yml`.
 
 ### 4.2 GStreamer / DeepStream для RTSP
 
@@ -217,6 +360,61 @@ gst-launch-1.0 rtspsrc location=rtsp://.../lores latency=300 drop-on-latency=tru
 3. **Охотник (Python):** по триггеру — pre-roll из deque + post-roll 8–10 с → **NVENC** → mp4 на SSD.  
    Один репрезентативный кроп → **тот же** Birder convnext + DINOv2 ReID (TRT/torch), не замена моделей.
 
+### 5.1.A Топология потоков, триггеры и подсказки
+
+**Сеть:** `network_mode: host` — основной профиль Jetson (устройство целиком под Hub; проще RTSP/RTP, меньше NAT).
+
+**Потоки (как на Intel, с уточнением):**
+
+| Поток | Источник | Назначение |
+|-------|----------|------------|
+| **lores / detect** | **прямой RTSP камеры** | DeepStream сторож, YOLO, трекер |
+| **main / high-res** | **через Go2RTC** | ring buffer, запись клипа, NVENC |
+
+Go2RTC разгружает камеру от множества подключений к main; lores идёт напрямую — меньше задержка и проще сторож.
+
+**Две камеры на одной локации:** `feeder_close` / `feeder_far` в `video.cameras[]` + `camera_tuning_by_role`; `multi_camera_groups` — только для подсказок fusion, не для блокировки записи.
+
+---
+
+#### Триггеры (старт записи) — отдельный слой
+
+Триггеры **не опциональны** в смысле контракта: без них запись не стартует. Источники — как в Hub (`triggers.*`, ADR #634, `trigger_graph`):
+
+| Источник | Роль | Конфиг |
+|----------|------|--------|
+| **opencv** | motion на lores (MOG2 / frame_diff / hybrid) | `triggers.opencv` |
+| **frigate** | MQTT-событие движения/объекта | `triggers.frigate` |
+| **motion_sensor** | PIR / MQTT | `triggers.motion_sensor` |
+| **scales** | скачок веса кормушки | `triggers.scales` |
+
+На Jetson по умолчанию: `recording_gate_mode: motion_immediate` — триггер **сразу** открывает main + ring buffer; YOLO/DeepStream работает **внутри** сессии (как Frigate/NVR).
+
+**Не путать:** DeepStream probe → `TRIGGER_RECORD` — это не «подсказка», а внутренний путь сторожа после уже начатой или подтверждённой сессии; внешние MQTT-источники не подменяют этот контракт.
+
+Анти-дребезг: `trigger_moratorium_seconds`, `min_seconds_between_recordings`, `frigate_activity_hold_seconds` (удержание клипа, не единственный старт).
+
+---
+
+#### Подсказки (hints) — опциональный слой
+
+Подсказки **всегда опциональны**: если источника нет — Hub работает как раньше. **Нет иерархии приоритетов** между подсказками; они не «перебивают» друг друга и **не могут** стартовать запись (ADR [#634](adr-classifier-hints-only.md), `classifier_hints/`).
+
+| Подсказка | Когда есть | Что делает | Чего не делает |
+|-----------|------------|------------|----------------|
+| **BirdNET MQTT** | аудио на площадке | FIFO 24h, prior/confidence bias для классификатора | не создаёт финальный вид, не стартует запись |
+| **eBird regional** | API key + регион | снижает пороги для типичных видов региона | не фильтрует детектор жёстко |
+| **Frigate label/sub_label** | MQTT в окне сессии | species prior, fusion bonus | не substitute за отсутствие YOLO anchor (кроме legacy `detect_first`) |
+| **multicam group** | `multi_camera_groups` | boost confidence, hint scope между close/far | не блокирует параллельную запись второй камеры |
+| **adaptive_profiles** (night/day) | по освещению | пороги, трекер, preprocess | не триггер |
+| **camera_tuning_by_role** | feeder_close/far | geometry, thresholds | не триггер |
+| **weather** | интеграция | enrichment, аналитика | не триггер |
+| **photogrammetry / geometry** | `frame_geometry` | sanity bbox, px/m | не триггер |
+
+Сборка: `collect_hints()` → scorer → fusion/classifier. Веса (`birdnet_prior`, `regional_prior`, …) — **взвешивание при наличии**, не ранжирование «кто главный».
+
+**Behavior 3D-CNN** (опционально, фаза 2+): только на готовом high-res клипе охотника; метки `feeding`, `perching`, `flying_away`, …; результат в `event.enrichment.behavior`, может догонять persist.
+
 4. **Hub persist:** существующий API/SQLite — ingest метаданных и путь к файлу (адаптер, не переписывать UI с нуля).
 
 ### 5.2 Альтернатива (фаза 2): один high-res поток на камеру в DeepStream
@@ -228,17 +426,57 @@ Primary GIE `network-width/height=704×576` на **main** stream — без ра
 
  - `feeder_close` / `feeder_far`, `camera_tuning_by_role`, geometry contract (`frame_shape.py`)
  - Linear stages: trigger → detect_track → classify → persist (реализация стадий разная)
- - Frigate MQTT как **триггер-подсказка**, не замена детектора
+ - **Контракт триггеров vs подсказок** (ADR #634): Frigate/BirdNET/eBird/multicam — **только hints** для classifier/fusion; Frigate **может** быть триггером записи (`triggers.frigate`), но label/species Frigate — не замена YOLO при `motion_immediate`
  - **Модели:** trapper детектор, Birder convnext классификатор, DINOv2 ReID — те же веса, TRT-обёртка
  - OpenAPI, UI, Telegram, visit model
 
 ### 5.7 Лучшие практики из экосистемы (adopted)
 
-+- **Motion gate first** (BirdWatcher, HUMBIRDY): до 90% экономии CPU. RTSP motion уже в DeepStream, но для сторожа lores добавить `gstreamer:motioncells` или простую метрику.
-+- **YOLO interval + tracker fill** (NVIDIA bench): `interval=3–5`, NvDCF/NvSORT заполняет промежутки.
-+- **Shared backbone для classifier/ReID** (Ornimetrics): один кроп → DINOv2 → species+welfare+ReID. На Nano: ConvNeXt достаточно; DINOv2 ReID оставить deferred/lazy.
-+- **Fine-tune на yard data** (BirdClass-NA, Backyard watcher): 20–30 кропов/вид обязательны до деплоя. Dataset: `gfermoto/birdlense-annotations`.
-+- **Pre-roll buffer** (Orpheus): гарантированный pre-roll 1–2 c до события. Ring buffer реализует эту практику.
+- **Motion gate first** (BirdWatcher, HUMBIRDY): до 90% экономии CPU. RTSP motion уже в DeepStream, но для сторожа lores добавить `gstreamer:motioncells` или простую метрику.
+- **YOLO interval + tracker fill** (NVIDIA bench): `interval=3–5`, NvDCF/NvSORT заполняет промежутки.
+- **Shared backbone для classifier/ReID** (Ornimetrics): один кроп → DINOv2 → species+welfare+ReID. На Nano: ConvNeXt достаточно; DINOv2 ReID оставить deferred/lazy.
+- **Fine-tune на yard data** (BirdClass-NA, Backyard watcher): 20–30 кропов/вид обязательны до деплоя. Dataset: `gfermoto/birdlense-annotations`.
+- **Pre-roll buffer** (Orpheus): гарантированный pre-roll 1–2 c до события. Ring buffer реализует эту практику.
+- **MegaDetector/Wildlife Insights pattern:** animal/empty filtering, uncertainty routing, HITL review. В BirdLense это не runtime-модель, а benchmark/reference gate: наши detector+trigger графы должны давать сопоставимый FN/FP профиль на golden clips.
+- **Active learning:** неизвестные, low-margin и конфликтные случаи не прячем; отправляем в review queue/dataset export. Цель — уменьшать ручную разметку, не «доверять AI вслепую».
+- **FAIR / Camtrap DP:** внутренний формат Hub сохраняется, но внешний экспорт должен быть совместим с Camtrap DP/Darwin Core/Audubon Core.
+
+### 5.8 Много-modal & Power-aware распространение
+
+**Acoustic+Visual fusion** (SPARROW, Orpheus): BirdNET-Audio может работать на отдельном SBC/ESP32-S3, результаты через MQTT/LoRaWAN присоединяться к визуальному событию. Это даёт 2-й шанс на идентификацию.
+
+**Data standards** (GBIF, TDWG):
+- **Camtrap DP** — основной формат обмена данными (особенно для GBIF)
+- **Darwin Core** — транслировать в DwC-A для внешних платформ
+- **Audubon Core** — метаданные медиафайлов (dc:identifier, ac:subject, dc:created)
+
+**Human-in-the-loop** (HITL):
+- Маловероятные/низкие confidence случаи → UI подтверждение → переобучение
+- Ensemble benchmark: MegaDetector (animal) + BirdNET (audio) + classifier (species)
+- Citizen science: MammalWeb, iNaturalist integration
+
+**Continual learning** (SmartTrap):
+- Не обучать тяжёлые модели на Nano по умолчанию. Nano собирает hard examples и metadata; training/fine-tune идёт на dev/GPU host.
+- Experience replay для предотвращения catastrophic forgetting.
+- Parameter-efficient fine-tune/LoRA допускается только после baseline parity и manual validation.
+
+### 5.9 Publication / reserve-ready gates
+
+Чтобы результат был пригоден для научного сообщества и заповедников, каждая платформа должна проходить не только smoke, но и полевой протокол:
+
+| Gate | Минимум для принятия |
+|------|----------------------|
+| **Reproducibility** | версия JetPack/L4T, DeepStream, TensorRT, model hashes, config snapshot, camera firmware |
+| **Golden clips** | feeder_close + feeder_far, день/ночь/IR, дождь/ветер, empty negatives, rodent/intrusion |
+| **Detector quality** | recall drop TRT vs PT ≤5%, IoU ≥0.85 на matched boxes, FP empty monitored через trigger_graph |
+| **Classifier quality** | top-1/top-5, entropy/margin, Unknown allowed; rare/visually similar species routed to review |
+| **HITL** | все low-margin/conflict cases экспортируются в review queue и dataset crops |
+| **Uncertainty** | хранить raw confidence, entropy, margin, source hints, manual label; не превращать confidence в «истину» |
+| **FAIR export** | Camtrap DP + Darwin Core/Audubon Core mapping; сохранять внутренний CSV/eBird export |
+| **Operational** | 24h soak: no OOM, GPU ≤85%, temp <80°C, reconnect работает, no SD writes кроме boot |
+| **Ethics/privacy** | people/vehicle detections не публиковать как biodiversity records; локальные retention rules |
+
+Научный результат строится не на «самой умной модели», а на воспроизводимом полевом протоколе: сырой клип + bbox + confidence + подсказки + manual validation + экспорт в стандартизированный формат.
 
 ### 5.4 Jetson execution contract — не повторять Intel hot path
 
@@ -250,7 +488,7 @@ Primary GIE `network-width/height=704×576` на **main** stream — без ра
 | Tracker | ByteTrack в Python/Ultralytics | DeepStream NvDCF `max_perf`, tracker resolution близко к infer resolution |
 | Classifier | до 3 key frames / finalize | **1 лучший кроп на событие**, convnext TRT; 2-й кроп только если confidence/margin плохие |
 | ReID | finalize enrichment | DINOv2 lazy/deferred; live ReID выключен; максимум 1 embedding на visit |
-| Behavior | Python эвристики | только metadata от tracker (speed/dwell/zone), без 3D-CNN |
+| Behavior | Python эвристики | tracker metadata first; **3D-CNN только deferred/event-only**, не live hot path |
 | Persist | после full finalize | video+bbox persist first; classifier/ReID могут догонять async |
 
 Правило деградации:
@@ -259,7 +497,8 @@ Primary GIE `network-width/height=704×576` на **main** stream — без ра
 2. Если GPU/RAM high → classifier skipped/deferred.
 3. Если RAM high → ReID off.
 4. Если latency high → `interval += 1`, затем `imgsz 704→640`.
-5. Если event quality низкая → не меняем модель сразу; сначала проверяем RTSP, tracker, threshold parity.
+5. Если deferred queue растёт → отключить Behavior 3D-CNN первым, потом ReID.
+6. Если event quality низкая → не меняем модель сразу; сначала проверяем RTSP, tracker, threshold parity.
 
 ### 5.5 Модели: сохранить, но добавить parity gates
 
@@ -305,6 +544,11 @@ NvDCF точнее, но может съесть FPS на Nano. План:
 - [ ] `BIRDLENSE_PLATFORM=jetson_nano`, OpenVINO отключён
 - [ ] Smoke: health OK, одна тестовая запись с persist
 - [ ] Мониторинг: `jtop`, Hub `yolo_frames_with_tracks`, температура
+- [ ] 24h soak: нет OOM/throttle, reconnect сработал хотя бы в dry-run
+- [ ] Golden clips: day/night/IR, close/far, empty negatives, rodent/intrusion
+- [ ] Сохранены model hashes + config snapshot + JetPack/L4T/DeepStream versions
+- [ ] Low-confidence/conflict cases попали в review/dataset export
+- [ ] Проверен экспорт: текущий CSV/eBird + планируемый Camtrap DP/Darwin Core mapping
 
 ---
 
