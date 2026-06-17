@@ -31,9 +31,19 @@ Direction of travel and current stack. **Shipped items** are summarized here; de
 |-------|------|--------|
 | **Storage / NVR parity** | [#601](https://github.com/Gfermoto/BirdLense-Hub/issues/601) | FinalizeTransaction, QuotaMaintainer, ReconcileJob, honest readiness [#605](https://github.com/Gfermoto/BirdLense-Hub/issues/605) |
 | **CV pipeline recovery** | [#606](https://github.com/Gfermoto/BirdLense-Hub/issues/606) | Tracks, false bbox, species — `docs/strategy/CV_PIPELINE_RECOVERY_PLAN_2026-06.md` |
-| **Jetson Nano edge** | [#645](https://github.com/Gfermoto/BirdLense-Hub/issues/645) | Ornimetrics TRT; lores ~7 FPS gates; Plan B→A; [runbook rev.4](../strategy/jetson-nano-edge-setup-and-migration.md) |
+| **Jetson Nano edge** | [#645](https://github.com/Gfermoto/BirdLense-Hub/issues/645) | Ornimetrics TRT, `ebird.country` pack, welfare+ReID; [runbook rev.4](../strategy/jetson-nano-edge-setup-and-migration.md) |
 
-**Jetson E0–E14:** [#646](https://github.com/Gfermoto/BirdLense-Hub/issues/646)–[#660](https://github.com/Gfermoto/BirdLense-Hub/issues/660). Runbook: **1–8** provisioning · **9–12** runtime · **13–14** build · **15–16** TRT+benchmark · **17–18** cameras · **19–21** deploy/smoke/recovery.
+**Jetson E0–E14:** [#646](https://github.com/Gfermoto/BirdLense-Hub/issues/646)–[#660](https://github.com/Gfermoto/BirdLense-Hub/issues/660).
+
+| Runbook block | Steps |
+|---------------|-------|
+| Provisioning | 1–8 (SSD, extlinux guard) |
+| Runtime | 9–12 (Docker, GStreamer; **Plan B→A**) |
+| Build + TRT + bench | 13–16 |
+| Cameras / RTSP | 17–18 |
+| Deploy / soak / recovery | 19–21 |
+
+**rev.4 gates:** lores **5–9 FPS** (~7, `<10`); detector = **YOLO p95 + cadence** (не >10 FPS infer); species **цель** <100 ms + async defer; science [#657](https://github.com/Gfermoto/BirdLense-Hub/issues/657)–[#659](https://github.com/Gfermoto/BirdLense-Hub/issues/659); behavior **X3D-XS** [#660](https://github.com/Gfermoto/BirdLense-Hub/issues/660).
 
 **Field symptoms (Jun 2026):** no tracks, false/sticky bboxes, classifier stuck on Bird → #607–#611.
 
