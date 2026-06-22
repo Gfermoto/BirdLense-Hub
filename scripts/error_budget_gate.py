@@ -325,7 +325,7 @@ def main() -> int:
             )
         except RuntimeError as exc:
             err = str(exc)
-            if "url_error" in err:
+            if "url_error" in err or err.startswith("http_"):
                 payload = build_unreachable_hub_payload(
                     error=err,
                     base_url=args.base_url,
