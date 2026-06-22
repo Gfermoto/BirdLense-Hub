@@ -40,6 +40,9 @@ COPY scripts/install_jetson_processor_venv.sh /tmp/install_jetson_processor_venv
 COPY app/processor/requirements-jetson.txt /tmp/processor-requirements.jetson.txt
 RUN python3 -m pip install --default-timeout=600 --no-cache-dir -r web/requirements.txt
 
+# onnxruntime для chriamue/ornimetrics классификатора
+RUN python3 -m pip install --default-timeout=600 --no-cache-dir onnxruntime
+
 # Processor venv: python3.6 + pip deps (CUDA torch/TRT — следующий stage).
 RUN chmod +x /tmp/install_jetson_processor_venv.sh \
     && JETSON_SKIP_CUDA_VERIFY=1 /tmp/install_jetson_processor_venv.sh
