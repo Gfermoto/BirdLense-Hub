@@ -14,7 +14,7 @@
 
 | Этап | Модель | Backend |
 |------|--------|---------|
-| Детектор | TrapperAI v02.2024 | TensorRT `.engine` @704 *(после Jetson PyTorch в образе)*; bootstrap: torch `.pt` |
+| Детектор | TrapperAI v02.2024 | TensorRT `.engine` @704 |
 | Классификатор | chriamue EfficientNet (525 spp) | ONNX Runtime CUDA |
 | ReID / welfare | Ornimetrics | ONNX CUDA |
 | Behavior | meta | logistic_json |

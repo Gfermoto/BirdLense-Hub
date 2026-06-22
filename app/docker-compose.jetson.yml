@@ -14,6 +14,8 @@ services:
     ports: !reset []
     runtime: nvidia
     restart: unless-stopped
+    group_add:
+      - video
     environment:
       - BIRDLENSE_PLATFORM=jetson_nano
       - BIRDLENSE_PORT=${BIRDLENSE_PORT:-8085}
@@ -21,18 +23,24 @@ services:
       - BIRDLENSE_BINARY_TENSORRT_PATH=${BIRDLENSE_BINARY_TENSORRT_PATH:-models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.engine}
       - BIRDLENSE_CLASSIFIER_ENGINE=${BIRDLENSE_CLASSIFIER_ENGINE:-chriamue}
       - BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=${BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND:-onnxruntime}
+      - JETSON_PROCESSOR_PYTHON=/opt/conda/envs/birdlense/bin/python
       - BIRDLENSE_OPENVINO_BINARY_ENABLED=0
       - API_URL_BASE=http://127.0.0.1:${BIRDLENSE_PORT:-8085}/api/processor
       - GO2RTC_URL=${GO2RTC_URL:-}
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
-      - LD_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu/tegra
+      - LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/lib/aarch64-linux-gnu/tegra
+      - CUDA_HOME=/usr/local/cuda
       - LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1
     volumes:
       - ./processor/models/classification/chriamue_bird_species_classifier:/app/processor/models/classification/chriamue_bird_species_classifier
       - ./processor/models/detection/trapper_ai_v02_2024:/app/processor/models/detection/trapper_ai_v02_2024
       - ./processor/models/welfare/ornimetrics:/app/processor/models/welfare/ornimetrics
       - ./processor/models/reid/ornimetrics:/app/processor/models/reid/ornimetrics
+      # TensorRT python (JP4.6, py3.6) с хоста Jetson
+      - /usr/lib/python3.6/dist-packages/tensorrt:/usr/lib/python3.6/dist-packages/tensorrt:ro
+      # CUDA 10.2 runtime (libcublas.so.10 и др.)
+      - /usr/local/cuda-10.2:/usr/local/cuda:ro
     deploy:
       resources:
         limits:

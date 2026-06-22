@@ -1282,7 +1282,7 @@ ml-run-reid-execution-report:
 		--min-suggestion-count "$${MIN_SUGGESTION_COUNT:-0}"
 
 # --- Jetson Nano (ветка jetson-nano) ---
-.PHONY: jetson-config jetson-config-example jetson-fetch-models jetson-build jetson-up jetson-verify jetson-trt jetson-setup jetson-prune
+.PHONY: jetson-config jetson-config-example jetson-fetch-models jetson-build jetson-up jetson-verify jetson-trt jetson-setup jetson-prune jetson-processor-venv
 
 JETSON_SITE_ENV ?= deploy/profiles/jetson-nano/site.env
 JETSON_BOOTSTRAP ?=
@@ -1303,6 +1303,9 @@ jetson-fetch-models:
 jetson-prune:
 	@JETSON_PRUNE_DRY_RUN=$${JETSON_PRUNE_DRY_RUN:-0} bash scripts/jetson_models_prune.sh app/processor/models
 
+jetson-processor-venv:
+	@bash scripts/install_jetson_processor_venv.sh
+
 jetson-build:
 	@cd app/ui && npm run build
 	@cd app && docker compose -f docker-compose.yml -f docker-compose.jetson.yml build birdlense
@@ -1310,6 +1313,9 @@ jetson-build:
 jetson-up:
 	@cd app && docker compose -f docker-compose.yml -f docker-compose.jetson.yml up -d
 	@bash scripts/jetson-post-recreate-bootstrap.sh app
+
+jetson-processor-venv:
+	@bash scripts/install_jetson_processor_venv.sh
 
 jetson-verify:
 	@curl -sf "http://127.0.0.1:$${BIRDLENSE_PORT:-8085}/api/ui/health"

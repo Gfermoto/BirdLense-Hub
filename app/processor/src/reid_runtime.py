@@ -1,4 +1,4 @@
-"""Runtime DINOv2 Re-ID enrichment for video detections."""
+"""Runtime Re-ID enrichment for video detections (DINOv2 PyTorch / Ornimetrics ONNX / OpenVINO)."""
 
 from __future__ import annotations
 
@@ -83,10 +83,10 @@ def _resolve_reid_device() -> str:
 
 def _resolve_reid_backend(device: str) -> str:
     env = (os.environ.get("BIRDLENSE_REID_BACKEND") or "").strip().lower()
-    if env in ("torch", "openvino"):
+    if env in ("torch", "openvino", "onnxruntime"):
         return env
     cfg = str(_cfg_get("processor.reid.inference_backend", "auto") or "auto").strip().lower()
-    if cfg in ("torch", "openvino"):
+    if cfg in ("torch", "openvino", "onnxruntime"):
         return cfg
     # auto
     if str(device or "").strip().lower().startswith("intel:"):
@@ -196,89 +196,113 @@ def _ensure_model_state() -> dict[str, Any] | None:
         started = time.time()
         try:
             import torch
-            import torch.nn.functional as F
 
-            hub_cache = _hub_cache_dir()
-            if hub_cache:
-                try:
-                    torch.hub.set_dir(hub_cache)
-                except Exception:
-                    _LOG.warning("Cannot set torch.hub dir to %s", hub_cache)
-            local_repo = _hub_repo_local_path()
-            if local_repo and os.path.isdir(local_repo):
-                model = torch.hub.load(  # nosec B614: local_repo is operator-controlled.
-                    local_repo,
-                    model_name,
-                    source="local",
-                )
-                set_gauge("reid.runtime.hub_source", "local")
-            else:
-                prev_timeout = socket.getdefaulttimeout()
-                socket.setdefaulttimeout(_hub_download_timeout_seconds())
-                try:
-                    model = torch.hub.load(  # nosec B614: fallback is official upstream DINOv2 entrypoint.
-                        "facebookresearch/dinov2",
-                        model_name,
+            if backend == "onnxruntime":
+                model_path = str(_cfg_get("processor.models.reid_embedder", "") or "").strip()
+                if not model_path or not os.path.isfile(model_path):
+                    raise FileNotFoundError(
+                        "Ornimetrics ReID ONNX not found: %s" % model_path
                     )
-                finally:
-                    socket.setdefaulttimeout(prev_timeout)
-                set_gauge("reid.runtime.hub_source", "remote")
-            model.eval()
-            side = _infer_input_side(model)
-            if backend == "openvino":
-                import openvino as ov
-
-                class _EmbeddingWrapper(torch.nn.Module):
-                    def __init__(self, base_model):
-                        super().__init__()
-                        self.base_model = base_model
-
-                    def forward(self, x):
-                        feats = self.base_model.forward_features(x)
-                        vec = _pick_cls_embedding(feats)
-                        return F.normalize(vec.float(), dim=-1)
-
-                wrapper = _EmbeddingWrapper(model.to(torch.device("cpu")).eval())
-                example = torch.zeros((1, 3, side, side), dtype=torch.float32)
-                ov_model = ov.convert_model(wrapper, example_input=example)
-                core = ov.Core()
-                ov_device = _resolve_openvino_device_name(raw_device)
-                try:
-                    compiled = core.compile_model(ov_model, ov_device)
-                    effective_device = ov_device
-                except Exception:
-                    compiled = core.compile_model(ov_model, "CPU")
-                    effective_device = "CPU"
+                import onnxruntime as ort
+                ort_device = "CUDA" if raw_device.lower() == "cuda" else "CPU"
+                session = ort.InferenceSession(
+                    model_path, providers=[ort_device]
+                )
+                inp = session.get_inputs()[0]
+                side = int(inp.shape[-1]) if inp.shape[-1] else 224
                 _MODEL_STATE = {
-                    "model_name": model_name,
+                    "model_name": "ornimetrics_reid",
                     "device": raw_device,
-                    "backend": "openvino",
-                    "effective_device": effective_device,
-                    "compiled_model": compiled,
-                    "input_name": compiled.inputs[0].any_name,
+                    "backend": "onnxruntime",
+                    "effective_device": ort_device,
+                    "ort_session": session,
+                    "input_name": inp.name,
                     "side": side,
                 }
             else:
-                torch_device = _resolve_torch_device_name(raw_device)
-                model.to(torch.device(torch_device))
-                _MODEL_STATE = {
-                    "model_name": model_name,
-                    "device": torch_device,
-                    "backend": "torch",
-                    "effective_device": torch_device,
-                    "model": model,
-                    "side": side,
-                }
+                import torch.nn.functional as F
+
+                hub_cache = _hub_cache_dir()
+                if hub_cache:
+                    try:
+                        torch.hub.set_dir(hub_cache)
+                    except Exception:
+                        _LOG.warning("Cannot set torch.hub dir to %s", hub_cache)
+                local_repo = _hub_repo_local_path()
+                if local_repo and os.path.isdir(local_repo):
+                    model = torch.hub.load(  # nosec B614: local_repo is operator-controlled.
+                        local_repo,
+                        model_name,
+                        source="local",
+                    )
+                    set_gauge("reid.runtime.hub_source", "local")
+                else:
+                    prev_timeout = socket.getdefaulttimeout()
+                    socket.setdefaulttimeout(_hub_download_timeout_seconds())
+                    try:
+                        model = torch.hub.load(  # nosec B614: fallback is official upstream DINOv2 entrypoint.
+                            "facebookresearch/dinov2",
+                            model_name,
+                        )
+                    finally:
+                        socket.setdefaulttimeout(prev_timeout)
+                    set_gauge("reid.runtime.hub_source", "remote")
+                model.eval()
+                side = _infer_input_side(model)
+                if backend == "openvino":
+                    import openvino as ov
+
+                    class _EmbeddingWrapper(torch.nn.Module):
+                        def __init__(self, base_model):
+                            super().__init__()
+                            self.base_model = base_model
+
+                        def forward(self, x):
+                            feats = self.base_model.forward_features(x)
+                            vec = _pick_cls_embedding(feats)
+                            return F.normalize(vec.float(), dim=-1)
+
+                    wrapper = _EmbeddingWrapper(model.to(torch.device("cpu")).eval())
+                    example = torch.zeros((1, 3, side, side), dtype=torch.float32)
+                    ov_model = ov.convert_model(wrapper, example_input=example)
+                    core = ov.Core()
+                    ov_device = _resolve_openvino_device_name(raw_device)
+                    try:
+                        compiled = core.compile_model(ov_model, ov_device)
+                        effective_device = ov_device
+                    except Exception:
+                        compiled = core.compile_model(ov_model, "CPU")
+                        effective_device = "CPU"
+                    _MODEL_STATE = {
+                        "model_name": model_name,
+                        "device": raw_device,
+                        "backend": "openvino",
+                        "effective_device": effective_device,
+                        "compiled_model": compiled,
+                        "input_name": compiled.inputs[0].any_name,
+                        "side": side,
+                    }
+                else:
+                    torch_device = _resolve_torch_device_name(raw_device)
+                    model.to(torch.device(torch_device))
+                    _MODEL_STATE = {
+                        "model_name": model_name,
+                        "device": torch_device,
+                        "backend": "torch",
+                        "effective_device": torch_device,
+                        "model": model,
+                        "side": side,
+                    }
             observe_timing("reid_model_load", (time.time() - started) * 1000.0)
             set_gauge("reid.runtime.enabled", True)
             set_gauge("reid.runtime.device", _MODEL_STATE.get("effective_device"))
             set_gauge("reid.runtime.backend", _MODEL_STATE.get("backend"))
-            set_gauge("reid.runtime.model", model_name)
+            set_gauge("reid.runtime.model", _MODEL_STATE.get("model_name", model_name))
             return _MODEL_STATE
         except Exception as exc:
             _MODEL_FAILED = True
             set_gauge("reid.runtime.enabled", False)
-            _LOG.warning("Runtime DINOv2 disabled: failed to load model (%s)", exc)
+            _LOG.warning("Runtime ReID disabled: failed to load model (%s)", exc)
             return None
 
 
@@ -325,7 +349,16 @@ def _to_embedding(crop: Any, *, state: dict[str, Any]) -> np.ndarray | None:
     x = np.transpose(x, (2, 0, 1))
     x4 = np.expand_dims(x, axis=0).astype(np.float32)
     backend = str(state.get("backend") or "torch").strip().lower()
-    if backend == "openvino":
+    if backend == "onnxruntime":
+        try:
+            ort_session = state["ort_session"]
+            inp_name = state["input_name"]
+            out = ort_session.run(None, {inp_name: x4})[0]
+            out = np.squeeze(out).astype(np.float32)
+        except Exception:
+            _LOG.debug("reid: onnxruntime embedding inference failed", exc_info=True)
+            return None
+    elif backend == "openvino":
         try:
             out_data = state["compiled_model"]({state["input_name"]: x4})
             if hasattr(out_data, "values"):
