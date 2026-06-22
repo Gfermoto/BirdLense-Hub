@@ -35,6 +35,11 @@ if [ "$(id -u)" = "0" ]; then
   if [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ] && getent group video >/dev/null 2>&1; then
     usermod -aG video birdlense 2>/dev/null || true
   fi
+  # Jetson chriamue: model.onnx лежит в weights/ поддиректории
+  chriamue_dir="/app/processor/models/classification/chriamue_bird_species_classifier"
+  if [ -f "${chriamue_dir}/weights/model.onnx" ] && [ ! -f "${chriamue_dir}/model.onnx" ]; then
+    ln -sf weights/model.onnx "${chriamue_dir}/model.onnx"
+  fi
   exec gosu birdlense /bin/bash "$0" "$@"
 fi
 
