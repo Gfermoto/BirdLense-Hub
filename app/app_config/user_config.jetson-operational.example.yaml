@@ -54,7 +54,7 @@ general:
 
 homeassistant:
   url: http://192.168.1.10:8123
-  token: CHANGE_ME
+  # token: задайте HA_TOKEN в site.env
 
 notifications:
   base_url: http://192.168.1.127:8085

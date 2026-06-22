@@ -1,12 +1,10 @@
-# Jetson Nano (L4T r32.7): micromamba env has numpy, opencv, onnxruntime.
-# hf-xet compiles Rust on aarch64 — pin hub below 0.26 and disable XET in Dockerfile.
-ultralytics>=8.4,<9
-transformers>=4.40,<5
-huggingface-hub>=0.23,<0.26
-safetensors>=0.4,<1
-scikit-learn>=1.3,<2
-paho-mqtt==2.1.0
-requests==2.33.0
-paramiko>=4,<5
-dill>=0.3.8,<1
-lap>=0.5.12
+# Jetson Nano JP4.6: processor venv python3.6 (CUDA torch + TensorRT from l4t-pytorch).
+numpy>=1.19.0,<1.20
+opencv-python-headless>=4.5.5,<4.6
+onnxruntime>=1.10.0,<1.11
+paho-mqtt>=1.6,<2
+requests==2.27.1
+paramiko>=2.7,<3
+pyyaml>=5.4
+dataclasses>=0.8
+# lap optional (ByteTrack falls back to greedy IoU without it)

@@ -136,6 +136,14 @@ class EfficientNetB2Classifier:
             providers.insert(0, "CUDAExecutionProvider")
         self._ort_session = ort.InferenceSession(onnx_path, providers=providers)
         self._ort_input_name = self._ort_session.get_inputs()[0].name
+        inp_shape = self._ort_session.get_inputs()[0].shape
+        onnx_hw = None
+        if isinstance(inp_shape, (list, tuple)) and len(inp_shape) == 4:
+            h, w = inp_shape[2], inp_shape[3]
+            if isinstance(h, int) and isinstance(w, int) and h > 0 and w > 0:
+                onnx_hw = max(h, w)
+        if self._hf_preprocess_cfg is not None and onnx_hw:
+            self._hf_preprocess_cfg["input_size"] = onnx_hw
         cfg_path = Path(self.weights_dir) / "config.json"
         if cfg_path.is_file():
             cfg = json.loads(cfg_path.read_text(encoding="utf-8"))

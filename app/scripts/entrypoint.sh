@@ -31,6 +31,10 @@ if [ "$(id -u)" = "0" ]; then
       [ -n "$grp" ] && usermod -aG "$grp" birdlense 2>/dev/null || true
     done
   fi
+  # Jetson JP4.6: /dev/nvhost-* owned by group video — без неё torch.cuda недоступен py3.6 worker.
+  if [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ] && getent group video >/dev/null 2>&1; then
+    usermod -aG video birdlense 2>/dev/null || true
+  fi
   exec gosu birdlense /bin/bash "$0" "$@"
 fi
 
@@ -195,8 +199,48 @@ if [ "${BIRDLENSE_PROCESSOR_ENABLED:-1}" = "0" ]; then
   done
 fi
 
+# Jetson TRT worker (python3.6 + CUDA torch + tensorrt) для .engine детектора.
+# Supervised loop: respawns worker on crash with 2s delay.
+if [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ] && [ "${BIRDLENSE_INFERENCE_BACKEND:-}" = "tensorrt" ]; then
+  if [ -x /usr/bin/python3.6 ] && [ -d /opt/jetson-cuda-py36 ]; then
+    if ! pgrep -f "jetson_trt_worker.py" >/dev/null 2>&1; then
+      (
+        while true; do
+          export PYTHONPATH="/opt/jetson-cuda-py36:/usr/lib/python3.6/dist-packages:/app/processor/src"
+          export LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu:${LD_LIBRARY_PATH:-}"
+          /usr/bin/python3.6 /app/processor/src/inference/jetson_trt_worker.py
+          echo "TRT worker crashed, restarting in 2s..."
+          sleep 2
+        done
+      ) &
+      echo "Started jetson_trt_worker (python3.6)"
+      for _ in $(seq 1 90); do
+        [ -S /tmp/birdlense-trt.sock ] && break
+        sleep 1
+      done
+    fi
+  fi
+fi
+
 while true; do
-  PYTHONPATH=/app:/app/web python3 /app/processor/src/main.py || true
+  PROC_PY="${JETSON_PROCESSOR_PYTHON:-}"
+  if [ -z "$PROC_PY" ] && [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ]; then
+    if [ -x /opt/conda/envs/birdlense/bin/python ]; then
+      PROC_PY=/opt/conda/envs/birdlense/bin/python
+    elif [ -d /opt/jetson-cuda-py36 ] && [ -x /usr/bin/python3.6 ]; then
+      PROC_PY=/usr/bin/python3.6
+    elif [ -x /opt/jetson-processor/bin/python ]; then
+      PROC_PY=/opt/jetson-processor/bin/python
+    fi
+  fi
+  if [ -z "$PROC_PY" ]; then
+    PROC_PY=python3
+  fi
+  # TensorRT python bindings (JP4.6) + tegra libs для processor venv.
+  if [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ]; then
+    export LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu:${LD_LIBRARY_PATH:-}"
+  fi
+  PYTHONPATH=/app:/app/web:/app/processor/src "$PROC_PY" /app/processor/src/main.py || true
   echo "Processor exited, restarting in 2s..."
   sleep 2
 done

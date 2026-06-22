@@ -82,6 +82,7 @@ user_config.yaml
 app/app_config/user_config.yaml
 app/app_config/user_config.yaml.bak
 deploy/profiles/jetson-nano/site.env
+deploy/profiles/jetson-nano/wheels/
 # Локальный мусор / артефакты разработки (не в ветку jetson-nano)
 .tmp/
 app/data/decision_traces/
