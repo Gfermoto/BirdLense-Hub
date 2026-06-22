@@ -68,7 +68,7 @@ COPY scripts/validate_ov_parity.py ./scripts/
 COPY scripts/patch_prod_nuclear_user_config.py ./scripts/
 COPY scripts/benchmark_regen_labels.py ./scripts/
 COPY scripts/catalog_deep_polish.py ./scripts/
-COPY scripts/reid/run_daily_ssl_cycle.py ./scripts/reid/
+COPY scripts/internal/reid/run_daily_ssl_cycle.py ./scripts/reid/
 # SHA256 EU-классификатора — синхронизировать с CHECKSUMS (.../classification/weights/best.pt) и fetch-processor-weights.sh.
 ARG CLASSIFIER_SHA256=9e99b6d1b0b7697f671a728bfa887f2f45d574ec932e8a745855e9818aadd46e
 # Детекторные веса — из build context (CI fetch) или volume; классификатор — HF или fallback на детектор.

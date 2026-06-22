@@ -1,0 +1,12 @@
+# Jetson Nano (L4T r32.7): micromamba env has numpy, opencv, onnxruntime.
+# Detector: Ultralytics + TensorRT .engine; classifier: chriamue ONNX or torch/safetensors.
+ultralytics>=8.4,<9
+transformers>=4.40,<5
+huggingface-hub>=0.23,<1
+safetensors>=0.4,<1
+scikit-learn>=1.3,<2
+paho-mqtt==2.1.0
+requests==2.33.0
+paramiko>=4,<5
+dill>=0.3.8,<1
+lap>=0.5.12

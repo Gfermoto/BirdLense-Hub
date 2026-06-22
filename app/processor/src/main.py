@@ -1,6 +1,21 @@
 """Точка входа процессора: heartbeat + цикл движения (сборка в processor_bootstrap)."""
 
 import logging
+import os
+
+
+def _jetson_preload_torch_before_opencv() -> None:
+    """Jetson: cv2/torch/sklearn then libgomp static TLS crash; preload native libs first."""
+    if os.environ.get("BIRDLENSE_PLATFORM", "").strip().lower() != "jetson_nano":
+        return
+    for mod in ("torch", "sklearn"):
+        try:
+            __import__(mod)
+        except ImportError:
+            logging.getLogger(__name__).debug("Jetson preload %s skipped", mod, exc_info=True)
+
+
+_jetson_preload_torch_before_opencv()
 
 from processor_cv2_init import configure_opencv_ffmpeg_logging
 

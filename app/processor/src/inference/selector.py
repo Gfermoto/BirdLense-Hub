@@ -6,8 +6,8 @@ import importlib.util
 import os
 from typing import Any, Mapping
 
-_IMPLEMENTED = frozenset({"torch", "openvino", "onnxruntime", "auto"})
-_PLANNED = frozenset({"onnxruntime", "tensorrt"})
+_IMPLEMENTED = frozenset({"torch", "openvino", "onnxruntime", "tensorrt", "auto"})
+_PLANNED: frozenset[str] = frozenset()
 _BACKEND_ALIASES = {"onnx": "onnxruntime"}
 
 

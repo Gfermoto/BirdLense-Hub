@@ -1,16 +1,39 @@
-# Дельты user_config для Jetson Nano. Merge вручную; deploy не перезаписывает user_config.yaml.
+# Jetson Nano — дельты user_config (merge через scripts/build_jetson_user_config.py).
+# Intel/OpenVINO ключи намеренно отсутствуют.
 
 processor:
-  inference_backend: torch
-  inference_device: cpu
+  inference_backend: tensorrt
   openvino_binary_enabled: false
-  classifier_inference_backend: torch
-  classifier_inference_device: cpu
+  classifier_engine: chriamue
+  classifier_inference_backend: onnxruntime
+  classifier_inference_device: cuda
+  binary_imgsz: 704
+  inference_lores_wh: [704, 576]
+  detector_scope: ["Bird", "Eurasian Red Squirrel"]
+  detector_native_class_labels: true
+  binary_predict_class_allowlist: [0, 5]
   models:
-    binary: models/detection/weights/trapper_ai_v02_2024.pt
-  # binary_openvino — не задавать на Jetson
+    binary: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.pt
+    binary_onnx: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
+    binary_tensorrt: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.engine
+    classifier: models/classification/chriamue_bird_species_classifier
+    classifier_chriamue: models/classification/chriamue_bird_species_classifier
+    classifier_efficientnet_b2: models/classification/chriamue_bird_species_classifier
+    welfare_embedder: models/welfare/ornimetrics/embedder.onnx
+    welfare_scorer: models/welfare/ornimetrics/welfare_scorer.npz
+    reid_embedder: models/reid/ornimetrics/reid_embedder.onnx
+  behavior_recognition:
+    engine: meta
+    inference_backend: logistic_json
+    openvino_fallback_logistic: false
+    weights_path: models/behavior/meta/behavior_logistic_export@v1.json
+  reid:
+    inference_backend: onnxruntime
+    device: cuda
+    runtime_enabled: true
 
 video:
   encoding: cpu
   record_with_vaapi: false
   capture_backend: opencv
+  record_stream_codec: h264

@@ -1,4 +1,8 @@
-"""Resolve classifier weight path (Birder EU prod — flat ``{variant}.pt`` + ``*_openvino_model``)."""
+"""Resolve classifier weight path.
+
+Birder EU prod uses flat ``{variant}.pt`` + ``*_openvino_model``.
+Jetson Ornimetrics uses region-selected ONNX species packs.
+"""
 
 from __future__ import annotations
 
@@ -8,12 +12,22 @@ from typing import Any, Mapping
 
 
 def classifier_engine(app_config: Mapping[str, Any]) -> str:
-    """``birder_eu`` (default) | ``efficientnet_b2`` | ``yolo`` — non-birder needs explicit ``models.classifier``."""
+    """Resolve classifier engine alias."""
     raw = app_config.get("processor.classifier_engine")
     eng = str(raw).strip().lower() if raw is not None else "birder_eu"
     if eng in ("birder", "birder_eu", "birder-eu", "eu-common", "eu_common"):
         return "birder_eu"
-    if eng in ("efficientnet", "efficientnet_b2", "hf_efficientnet_b2", "birds_efficientnet_b2"):
+    if eng in (
+        "efficientnet",
+        "efficientnet_b2",
+        "hf_efficientnet_b2",
+        "birds_efficientnet_b2",
+        "chriamue",
+        "bird_species_classifier",
+        "bird-species-classifier",
+        "ornimetrics",
+        "ornimetrics_species",
+    ):
         return "efficientnet_b2"
     return "yolo"
 
@@ -50,7 +64,10 @@ def _resolve_birder_eu_paths(
         resolve_birder_bundle_dir,
         resolve_birder_pt_path,
     )
-    from inference.selector import openvino_runtime_available, resolve_classifier_inference_backend
+    from inference.selector import (
+        openvino_runtime_available,
+        resolve_classifier_inference_backend,
+    )
 
     resolve_classifier_inference_backend(app_config)
     variant = birder_variant_name(app_config)
@@ -69,7 +86,9 @@ def _resolve_birder_eu_paths(
         or classifier_openvino_rel_dir(variant),
     ).strip()
     p_ov = resolve_birder_bundle_dir(
-        weights_root, variant, Path(resolve_relative_to_processor_root(cfg_ov, processor_root))
+        weights_root,
+        variant,
+        Path(resolve_relative_to_processor_root(cfg_ov, processor_root)),
     )
 
     ov_xml = p_ov / "openvino_model.xml"
@@ -81,7 +100,8 @@ def _resolve_birder_eu_paths(
             return (str(p_ov), "openvino")
         raise FileNotFoundError(
             f"Birder EU OpenVINO IR missing: {ov_xml}. "
-            "Run scripts/download_birder_classifier.py && scripts/export_birder_classifier_to_openvino.py",
+            "Run scripts/download_birder_classifier.py && "
+            "scripts/export_birder_classifier_to_openvino.py",
         )
 
     pt_path = resolve_birder_pt_path(weights_root, variant, p_pt)
@@ -106,7 +126,10 @@ def _resolve_explicit_classifier(
     engine_label: str,
 ) -> tuple[str, str]:
     from inference.binary_paths import resolve_relative_to_processor_root
-    from inference.selector import openvino_runtime_available, resolve_classifier_inference_backend
+    from inference.selector import (
+        openvino_runtime_available,
+        resolve_classifier_inference_backend,
+    )
 
     requested = resolve_classifier_inference_backend(app_config)
     rel = app_config.get("processor.models.classifier")
@@ -121,7 +144,97 @@ def _resolve_explicit_classifier(
         if classifier_weights_available(p_ov) and openvino_runtime_available():
             return (p_ov, "openvino")
     if requested == "openvino":
-        raise FileNotFoundError(f"OpenVINO classifier path missing for engine={engine_label!r}")
+        raise FileNotFoundError(
+            f"OpenVINO classifier path missing for engine={engine_label!r}",
+        )
+    return (p, "torch")
+
+
+def resolve_ornimetrics_species_pack(app_config: Mapping[str, Any]) -> str:
+    """Return ``nabirds`` for North America, otherwise iNat/CC fallback."""
+    override = str(
+        app_config.get("processor.ornimetrics_species_pack") or "auto",
+    ).strip().lower()
+    if override in ("nabirds", "na", "north_america", "north-america"):
+        return "nabirds"
+    if override in ("inat", "cc", "creative_commons", "creative-commons"):
+        return "inat"
+    country = str(app_config.get("ebird.country") or "").strip().upper()
+    return "nabirds" if country in {"US", "CA"} else "inat"
+
+
+def _resolve_chriamue_classifier(
+    app_config: Mapping[str, Any],
+    processor_root: str,
+) -> tuple[str, str]:
+    from inference.binary_paths import resolve_relative_to_processor_root
+    from inference.efficientnet_b2_classifier import EfficientNetB2Classifier
+    from inference.selector import (
+        onnxruntime_classifier_available,
+        resolve_classifier_inference_backend,
+    )
+
+    requested = resolve_classifier_inference_backend(app_config)
+    rel = (
+        app_config.get("processor.models.classifier_chriamue")
+        or app_config.get("processor.models.classifier")
+        or app_config.get("processor.models.classifier_efficientnet_b2")
+        or "models/classification/chriamue_bird_species_classifier"
+    )
+    weights_dir = resolve_relative_to_processor_root(str(rel).strip(), processor_root)
+    if requested in ("onnxruntime", "auto"):
+        try:
+            EfficientNetB2Classifier._resolve_onnx_path(weights_dir)
+            if onnxruntime_classifier_available():
+                return (weights_dir, "onnxruntime")
+        except FileNotFoundError:
+            pass
+    if requested == "onnxruntime":
+        raise FileNotFoundError(
+            f"ONNX chriamue classifier missing under {weights_dir}",
+        )
+    return (weights_dir, "torch")
+
+
+def _resolve_ornimetrics_classifier(
+    app_config: Mapping[str, Any],
+    processor_root: str,
+) -> tuple[str, str]:
+    from inference.binary_paths import resolve_relative_to_processor_root
+    from inference.selector import (
+        onnxruntime_classifier_available,
+        resolve_classifier_inference_backend,
+    )
+
+    requested = resolve_classifier_inference_backend(app_config)
+    pack = resolve_ornimetrics_species_pack(app_config)
+    specific_key = f"processor.models.classifier_ornimetrics_{pack}"
+    rel = (
+        app_config.get("processor.models.classifier")
+        or app_config.get(specific_key)
+        or f"models/classification/ornimetrics/species_classifier_{pack}.onnx"
+    )
+    p = resolve_relative_to_processor_root(str(rel).strip(), processor_root)
+    if requested == "openvino":
+        cfg_ov = app_config.get("processor.models.classifier_openvino")
+        if cfg_ov:
+            p_ov = resolve_relative_to_processor_root(
+                str(cfg_ov).strip(),
+                processor_root,
+            )
+            if classifier_weights_available(p_ov):
+                return (p_ov, "openvino")
+        raise FileNotFoundError(
+            f"OpenVINO Ornimetrics classifier path missing for pack={pack!r}",
+        )
+    if (
+        requested in ("auto", "onnxruntime")
+        and p.endswith(".onnx")
+        and onnxruntime_classifier_available()
+    ):
+        return (p, "onnxruntime")
+    if p.endswith(".onnx"):
+        return (p, "onnxruntime")
     return (p, "torch")
 
 
@@ -137,5 +250,19 @@ def resolve_classifier_weight_path(
     if eng == "birder_eu":
         return _resolve_birder_eu_paths(app_config, processor_root, requested_backend)
     if eng == "efficientnet_b2":
-        return _resolve_explicit_classifier(app_config, processor_root, engine_label="efficientnet_b2")
+        explicit = (
+            app_config.get("processor.models.classifier")
+            or app_config.get("processor.models.classifier_chriamue")
+            or app_config.get("processor.models.classifier_efficientnet_b2")
+        )
+        cfg_engine = str(app_config.get("processor.classifier_engine") or "").strip().lower()
+        if cfg_engine in ("chriamue", "bird_species_classifier", "bird-species-classifier"):
+            return _resolve_chriamue_classifier(app_config, processor_root)
+        if app_config.get("processor.ornimetrics_species_pack") or not explicit:
+            return _resolve_ornimetrics_classifier(app_config, processor_root)
+        return _resolve_explicit_classifier(
+            app_config,
+            processor_root,
+            engine_label="efficientnet_b2",
+        )
     return _resolve_explicit_classifier(app_config, processor_root, engine_label="yolo")

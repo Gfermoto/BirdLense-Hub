@@ -1,16 +1,16 @@
 # Jetson Nano B01 — runbook и архитектура BirdLense Hub
 
-**Статус:** Ornimetrics + TensorRT plan (2026-06-17, **rev.4**)  
-**Исполнять:** §**2** (шаги 1–21) сверху вниз. §**3–6** — справочник, контракты, научные gates.  
-**Visual stack:** [Ornimetrics/ornimetrics-edge](https://huggingface.co/Ornimetrics/ornimetrics-edge) → ONNX → **TensorRT `.engine`**.  
-**Не на Jetson:** Hailo `.hef`, Intel-пайплайн «как есть».  
+**Статус:** Jetson production stack **2026-06-22** (ветка `jetson-nano`; TRT detector + chriamue ONNX + Ornimetrics reid/welfare)
+**Исполнять:** §**2** (шаги 1–20) сверху вниз. §**3–6** — справочник, контракты, научные gates.
+**Visual stack:** TrapperAI v02.2024 → ONNX 704² → **TensorRT FP16 `.engine`**; species **chriamue** ONNX; ReID/welfare **Ornimetrics ONNX**.  
+**Не на Jetson:** OpenVINO IR, Birder EU-707, Intel VA-API encode/decode, Hailo `.hef`.  
 **Связано:** [ADR platform profiles](adr-platform-profiles-intel-jetson.md), [#645](https://github.com/Gfermoto/BirdLense-Hub/issues/645)
 
 | § | Содержание |
 |---|------------|
-| 0–1 | Сводка платформ, роль Jetson |
-| 2 | **Runbook 1–21** (единственный порядок работ) |
-| 3 | Стек, perf-budget, веса, behavior, issues |
+| 0–1 | Сводка платформ, **стек нейросетей Jetson (2026-06)** |
+| 2 | **Runbook 1–20** (единственный порядок работ) |
+| 3 | Perf-budget, веса, behavior, issues |
 | 4–5 | Камеры, RTSP |
 | 6 | Архитектура, деградация, научный контур |
 | 7–8 | Чек-лист, риски |
@@ -19,10 +19,36 @@
 
 | Платформа | Детектор | Классификатор | ReID / welfare | Behavior |
 |-----------|----------|---------------|----------------|----------|
-| **Intel NUC** | Trapper + OpenVINO | Birder ConvNeXt EU-707 | DINOv2 deferred | meta + video (OpenVINO) |
-| **Jetson Nano** | YOLOv11n TRT | EfficientNetV2-S (Ornimetrics) | ArcFace + Mahalanobis | tracklet heuristics + **X3D-XS** deferred (#660) |
+| **Intel NUC** | Trapper + OpenVINO GPU | Birder ConvNeXt EU-707 | DINOv2 deferred | meta + video (OpenVINO) |
+| **Jetson Nano** | **TrapperAI TRT** `.engine` @704 | **chriamue** EfficientNet 525 spp (ONNX CUDA) | **Ornimetrics** ArcFace ONNX + welfare NPZ | **meta** heuristics (logistic JSON) |
 
-Переключатель species-пакета Ornimetrics — **`ebird.country`** (уже в Settings). Lat/lon — для eBird export и погоды.
+Переключатель species-пакета Ornimetrics на Intel — **`ebird.country`**. На Jetson species — **chriamue** (глобальный 525-class pack, не Ornimetrics NA/CC).
+
+### 0.1 Стек нейросетей Jetson (production, 2026-06-22)
+
+Все артефакты — **на устройстве** (`app/processor/models/`, bind на SSD). Сборка конфига: `python3 scripts/build_jetson_user_config.py`.
+
+| Этап | Модель | Backend | Путь (flat layout) | Примечание |
+|------|--------|---------|-------------------|------------|
+| **Детектор** | [TrapperAI v02.2024](https://huggingface.co/OSCF/TrapperAI-v02.2024) | **TensorRT** FP16 | `detection/trapper_ai_v02_2024/trapper_ai_v02_2024.engine` | lores 704×576; классы Bird + Eurasian Red Squirrel; fallback `.pt`+torch если `.engine` нет |
+| **Классификатор** | [chriamue/bird-species-classifier](https://huggingface.co/chriamue/bird-species-classifier) | **ONNX Runtime** (CUDA) | `classification/chriamue_bird_species_classifier/model.onnx` | 525 видов; preprocess из `preprocessor_config.json` (260×260), без OpenVINO |
+| **ReID** | Ornimetrics edge | **ONNX Runtime** (CUDA) | `reid/ornimetrics/reid_embedder.onnx` | `scripts/fetch_ornimetrics_jetson.sh` |
+| **Welfare** | Ornimetrics edge | ONNX + NPZ | `welfare/ornimetrics/embedder.onnx`, `welfare_scorer.npz` | Mahalanobis scorer |
+| **Behavior** | meta baseline | **logistic_json** | `models/behavior/meta/behavior_logistic_export@v1.json` | без OpenVINO fallback на Jetson |
+
+**Видео (Jetson, без Intel):**
+
+| Функция | Значение | Железо |
+|---------|----------|--------|
+| Захват lores (motion/YOLO) | `capture_backend: opencv` | CPU + GStreamer/FFmpeg в контейнере |
+| Запись main | `encoding: cpu`, `libx264` | CPU (NVENC — roadmap, см. §6) |
+| VA-API / Intel iGPU | **выключено** | `record_with_vaapi: false` |
+
+**Env (`app/.env` + `docker-compose.jetson.yml`):** `BIRDLENSE_PLATFORM=jetson_nano`, `BIRDLENSE_INFERENCE_BACKEND=tensorrt`, `BIRDLENSE_CLASSIFIER_ENGINE=chriamue`, `BIRDLENSE_OPENVINO_BINARY_ENABLED=0`, `LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1`.
+
+**Bootstrap без `.engine`:** `python3 scripts/build_jetson_user_config.py --bootstrap-torch` → torch/cpu до `export_trapper_detector_trt.sh`.
+
+**После `docker compose --force-recreate`:** `scripts/jetson-post-recreate-bootstrap.sh` (до пересборки образа с обновлённым `Dockerfile.jetson`).
 
 ---
 
@@ -31,14 +57,16 @@
 Jetson Nano B01 (4 ГБ) — вторая боевая платформа (рядом с Intel NUC).
 
 **Делает Jetson:**
-- сторож: детекция + трекинг на **lores** 704×576 (YOLOv11n TRT + NvDCF);
-- охотник: event-triggered запись main/high-res (NVENC);
-- enrichment на кропе: Ornimetrics species + welfare + ReID;
-- опционально behavior: meta heuristics (tier 0) + X3D-XS deferred (tier 1, #660).
+- сторож: детекция + трекинг на **lores** 704×576 (**TrapperAI TensorRT** + ByteTrack);
+- охотник: event-triggered запись main/high-res (**CPU libx264**, NVENC — roadmap);
+- enrichment на кропе: **chriamue** species (525) + **Ornimetrics** welfare + ReID;
+- behavior: **meta** heuristics (logistic JSON), без OpenVINO.
 
-**Не делает Jetson:** Intel-пайплайн torch/cpu; Hailo `.hef`; EU-707 classifier.
+**Не делает Jetson:** OpenVINO / Birder EU-707 / Intel VA-API; Ornimetrics NA/CC species packs; Hailo `.hef`.
 
 **Общее с NUC:** визиты, triggers/hints (ADR #634), UI, геометрия, BirdNET MQTT, `BIRDLENSE_PLATFORM=jetson_nano`.
+
+**Хранение (rev.7):** система на **SD**, тяжёлые данные на **SSD** — `app/data`, Docker, веса, journal (§2.0). На Jetson держим **runtime bundle**, не полный dev-репозиторий.
 
 **Конфиг (уже в Hub):** `secrets.latitude/longitude`, `ebird.country/state` — см. таблицу в шапке и §3.0.
 
@@ -51,11 +79,102 @@ Jetson Nano B01 (4 ГБ) — вторая боевая платформа (ря�
 | Шаг | Где | Суть |
 |-----|-----|------|
 | 1–2 | стол / ПК | железо, образ на SD |
-| 3–8 | Jetson | boot, SSD, extlinux guard |
-| 9–12 | Jetson | Docker, MAXN, runtime check |
+| 3–4 | Jetson | boot, SSH, JetPack |
+| 5–7 | Jetson | SSD: разметка, **bind-mounts**, проверка |
+| 8–12 | Jetson | Docker на SSD, MAXN, ZRAM, GStreamer |
 | 13–16 | Jetson + dev | env, build, TRT, **benchmark** |
 | 17–18 | Jetson / UI | камеры, RTSP + buffer tune |
-| 19–21 | dev → Jetson | deploy, smoke, **recovery test** |
+| 19–20 | dev → Jetson | deploy, smoke, **recovery test** |
+
+### 2.0 Стратегия хранения: система на SD, тяжёлое на SSD
+
+**Принцип:** корень `/` и `/boot` остаются на **microSD** (перепрошивка SD не трогает клипы и БД). USB/NVMe SSD — только для **write-heavy** и **крупных** каталогов. Без `rsync` rootfs и без правки `extlinux` — меньше риск «не грузится после reboot».
+
+**Runtime-дерево на SD** (`/home/gfer/BirdLense`) — только то, что нужно для запуска/деплоя. Не копировать `docs/`, `.github/`, `datasets/`, venv, тестовые артефакты, старые UI-каталоги, кэши и Markdown-документацию.
+
+```text
+/home/gfer/BirdLense/
+├── app/
+│   ├── .env                         # локальный runtime env
+│   ├── docker-compose.yml
+│   ├── docker-compose.jetson.yml
+│   ├── Dockerfile.jetson
+│   ├── app_config/                  # default/user config
+│   ├── data/                        # bind → /mnt/ssd/birdlense/data
+│   ├── nginx/
+│   ├── processor/                   # runtime code + models bind
+│   │   └── models/                  # bind → /mnt/ssd/birdlense/models
+│   ├── scripts/
+│   ├── shared/
+│   ├── ui/dist/                     # уже собранный UI; не node_modules
+│   └── web/
+├── scripts/                         # только deploy/runtime scripts, не docs tooling
+├── AGENTS.md
+├── Makefile
+└── VERSION
+```
+
+**Фактический clean-layout после ручной гигиены (2026-06-18):**
+
+```text
+/home/gfer/BirdLense/
+├── AGENTS.md
+├── app/
+│   ├── .env
+│   ├── data/                        # SSD bind
+│   └── processor/
+│       └── models/                  # SSD bind
+├── Makefile
+├── scripts/
+└── VERSION
+```
+
+Этот layout малый, но **ещё не полноценный runtime bundle для сборки**: перед `compose build` нужно синхронизировать минимальный allowlist из §2.12, а не весь репозиторий.
+
+**Дерево на SSD** (`/mnt/ssd`):
+
+```text
+/mnt/ssd/
+├── birdlense/
+│   ├── data/              # recordings, SQLite, dataset exports
+│   └── models/            # detection/classification weights, .engine
+├── docker/                # Docker data-root (слои, volumes, build cache)
+├── log/
+│   └── journal/           # systemd journal (лимит размера)
+└── apt-cache/             # опционально: кэш apt
+```
+
+**Фактический clean-layout SSD после гигиены (2026-06-18):**
+
+```text
+/mnt/ssd/
+├── apt-cache/
+├── birdlense/
+├── docker/
+├── log/
+└── lost+found/
+```
+
+Если на SSD после неудачной rootfs migration остались `bin/`, `boot/`, `etc/`, `home/`, `lib/`, `usr/`, `var/` и т.п. — это **мусор**, не runtime state. Удалять только после проверки, что `/` смонтирован с SD (`df /` → `/dev/mmcblk0p1`) и `fstab` использует только перечисленные SSD-каталоги.
+
+**Что куда (tiers):**
+
+| Tier | Каталог | Зачем | Износ SD |
+|------|---------|-------|----------|
+| **A** (обязательно) | `app/data` → SSD | клипы, `birdlense.db`, кропы | снимает **главный** write load |
+| **A** | `docker` data-root | образы Hub, Redis volume, build cache | частые слои при deploy |
+| **B** (рекомендуется) | `processor/models` | `.pt`, ONNX, TRT `.engine` (сотни MB–GB) | deploy и TRT build |
+| **B** | `journal` | логи systemd | постоянные мелкие записи |
+| **C** (опционально) | `apt-cache` | `apt install` / upgrade | умеренно |
+| **— не переносить** | `/`, `/boot`, `~/BirdLense` (код) | система и git | чтение после setup |
+| **— не переносить** | swap-файл на диск | — | только **ZRAM** (шаг 10), не swap на SD/SSD |
+| **— не переносить** | весь `/var/log` bind | риск гонок с journal | достаточно journal + лимиты docker logs |
+
+**Поведение при отвале SSD:** в `fstab` — `nofail`, чтобы Jetson **загрузился с SD**; Hub без данных нерабочен — для боя SSD должен быть подключён до power-on.
+
+**Перепрошивка SD:** записать новый образ → шаги 3–4 → шаги 5–8 (SSD уже с данными, bind заново) → deploy. Клипы и БД на SSD сохраняются.
+
+**Запрещено на Jetson:** полный `rsync` корня репозитория без allowlist. Jetson — edge runtime, не dev-машина.
 
 ---
 
@@ -123,118 +242,171 @@ cat /etc/nv_tegra_release
 
 ---
 
-### Шаг 5. Разметить SSD
+### Шаг 5. Разметить SSD и каталоги
 
 **Где:** Jetson по SSH.
+
+> **Повторная установка:** если на SSD уже есть `birdlense-data` и клипы — **не** выполнять `mkfs.ext4`; только `mount` и шаг 6 (bind). `mkfs` уничтожит данные.
 
 **Что сделать:**
 
 ```bash
 lsblk
 # USB SSD обычно /dev/sda, NVMe — /dev/nvme0n1
-# Ниже пример для /dev/sda — подставь свой диск!
+# Ниже SSD_DEV=/dev/sda1 — подставь свой раздел!
 
-sudo parted /dev/sda mklabel gpt
-sudo parted /dev/sda mkpart primary ext4 0% 100%
-sudo mkfs.ext4 -L birdlense-data /dev/sda1
+export SSD_DEV=/dev/sda1   # пример
+
+sudo parted "${SSD_DEV%1}" mklabel gpt
+sudo parted "${SSD_DEV%1}" mkpart primary ext4 0% 100%
+sudo mkfs.ext4 -L birdlense-data "$SSD_DEV"
+
+sudo mkdir -p /mnt/ssd
+sudo mount "$SSD_DEV" /mnt/ssd
+
+sudo mkdir -p /mnt/ssd/birdlense/data/{recordings,db,dataset}
+sudo mkdir -p /mnt/ssd/birdlense/models/{detection/trapper_ai_v02_2024,classification/chriamue_bird_species_classifier,reid/ornimetrics,welfare/ornimetrics}
+sudo mkdir -p /mnt/ssd/docker /mnt/ssd/log/journal /mnt/ssd/apt-cache/{archives,partial}
+sudo chown -R "$USER:$USER" /mnt/ssd/birdlense
+sudo chown root:root /mnt/ssd/docker /mnt/ssd/log /mnt/ssd/apt-cache
 ```
 
-**Готово когда:** `lsblk` показывает `/dev/sda1` с типом ext4.
+**Готово когда:** `lsblk` показывает `$SSD_DEV` ext4; дерево `/mnt/ssd/birdlense/...` существует.
 
 ---
 
-### Шаг 6. Перенести rootfs на SSD
+### Шаг 6. Смонтировать SSD и bind-mounts (Tier A–C)
 
 **Где:** Jetson по SSH.
 
-**Что сделать:**
+**Переменные** (подставь один раз):
 
 ```bash
-sudo mkdir -p /mnt/ssd
-sudo mount /dev/sda1 /mnt/ssd
-
-sudo rsync -aAXv \
-  --exclude={"/mnt/*","/proc/*","/sys/*","/dev/*","/run/*","/tmp/*","/lost+found"} \
-  / /mnt/ssd/
-
-SSD_UUID=$(blkid -s UUID -o value /dev/sda1)
-SSD_PARTUUID=$(blkid -s PARTUUID -o value /dev/sda1)
-
-echo "UUID=${SSD_UUID}  /  ext4  defaults,noatime  0  1" | sudo tee -a /mnt/ssd/etc/fstab
-
-sudo cp /boot/extlinux/extlinux.conf /boot/extlinux/extlinux.conf.bak
-sudo sed -i "s|root=[^ ]*|root=PARTUUID=${SSD_PARTUUID}|" /boot/extlinux/extlinux.conf
-
-sudo reboot
+export SSD_DEV=/dev/sda1
+export SSD_UUID=$(sudo blkid -s UUID -o value "$SSD_DEV")
+export BIRDLENSE_ROOT="$HOME/BirdLense"
 ```
 
-**Готово когда:** после reboot команда `df -h /` показывает SSD (`/dev/sda1` или `nvme0n1p1`), не `mmcblk0`.
+**6.1 — автомонтирование SSD + bind-mounts одним файлом** (`nofail`: загрузка с SD, если USB отключён).
+
+Не дописывать bind-строки выше SSD-строки. Порядок важен: сначала `/mnt/ssd`, потом bind-mounts.
+
+```bash
+sudo cp /etc/fstab /etc/fstab.bak.birdlense-runtime
+sudo tee /etc/fstab >/dev/null <<EOF
+# /etc/fstab: static file system information.
+# <file system> <mount point> <type> <options> <dump> <pass>
+/dev/root / ext4 defaults 0 1
+UUID=$SSD_UUID /mnt/ssd ext4 defaults,noatime,nofail,x-systemd.device-timeout=10 0 2
+/mnt/ssd/birdlense/data /home/gfer/BirdLense/app/data none bind,nofail,x-systemd.requires=/mnt/ssd,x-systemd.after=/mnt/ssd 0 0
+/mnt/ssd/birdlense/models /home/gfer/BirdLense/app/processor/models none bind,nofail,x-systemd.requires=/mnt/ssd,x-systemd.after=/mnt/ssd 0 0
+/mnt/ssd/docker /var/lib/docker none bind,nofail,x-systemd.requires=/mnt/ssd,x-systemd.after=/mnt/ssd 0 0
+/mnt/ssd/log/journal /var/log/journal none bind,nofail,x-systemd.requires=/mnt/ssd,x-systemd.after=/mnt/ssd 0 0
+/mnt/ssd/apt-cache/archives /var/cache/apt/archives none bind,nofail,x-systemd.requires=/mnt/ssd,x-systemd.after=/mnt/ssd 0 0
+EOF
+```
+
+**6.2 — создать точки монтирования** (пустые точки на SD, данные на SSD):
+
+```bash
+sudo mkdir -p \
+  /mnt/ssd/birdlense/data/{recordings,db,dataset,.ultralytics} \
+  /mnt/ssd/birdlense/models \
+  /mnt/ssd/docker \
+  /mnt/ssd/log/journal \
+  /mnt/ssd/apt-cache/archives \
+  "$BIRDLENSE_ROOT/app/data" \
+  "$BIRDLENSE_ROOT/app/processor/models" \
+  /var/log/journal \
+  /var/cache/apt/archives
+sudo chown -R "$USER:$USER" /mnt/ssd/birdlense "$BIRDLENSE_ROOT/app/data"
+```
+
+**6.3 — Tier B: journal на SSD** (лимит 200 МБ):
+
+```bash
+if [ -d /var/log/journal ] && [ ! -L /var/log/journal ]; then
+  sudo systemctl stop systemd-journald.socket systemd-journald.service 2>/dev/null || true
+  sudo rsync -aH /var/log/journal/ /mnt/ssd/log/journal/
+  sudo rm -rf /var/log/journal
+fi
+sudo tee /etc/systemd/journald.conf.d/birdlense-ssd.conf >/dev/null <<'EOF'
+[Journal]
+Storage=persistent
+SystemMaxUse=200M
+RuntimeMaxUse=50M
+EOF
+sudo systemctl restart systemd-journald
+```
+
+**6.4 — Tier C (опционально): apt cache:**
+
+```bash
+grep -q birdlense-ssd-cache /etc/apt/apt.conf.d/* 2>/dev/null || sudo tee /etc/apt/apt.conf.d/99-birdlense-ssd-cache >/dev/null <<'EOF'
+Dir::Cache "/mnt/ssd/apt-cache";
+Dir::Cache::archives "/mnt/ssd/apt-cache/archives";
+EOF
+```
+
+**6.5 — применить и проверить:**
+
+```bash
+sudo mount -a
+touch "$BIRDLENSE_ROOT/app/data/db/.ssd_test" && ls /mnt/ssd/birdlense/data/db/.ssd_test
+df -h / /mnt/ssd "$BIRDLENSE_ROOT/app/data" "$BIRDLENSE_ROOT/app/processor/models" /var/lib/docker /var/log/journal /var/cache/apt/archives
+```
+
+**Готово когда:** `df` для `app/data` показывает тот же девайс, что `/mnt/ssd`; тестовый файл виден под `/mnt/ssd/birdlense/data/`.
 
 ---
 
-### Шаг 7. Проверить загрузку с SSD
+### Шаг 7. Проверить хранение после reboot
 
-**Где:** Jetson после reboot.
-
-**Что сделать:**
+**Где:** Jetson.
 
 ```bash
-df -h /
-lsblk
+sudo reboot
+```
+
+После входа:
+
+```bash
+df -h / /mnt/ssd ~/BirdLense/app/data ~/BirdLense/app/processor/models
+mount | grep -E 'ssd|birdlense'
 ```
 
 **Готово когда:**
 
-- `/` на SSD
-- `mmcblk0` — только `/boot` (загрузчик), не корневая ФС
+| Проверка | Ожидание |
+|----------|----------|
+| `df /` | **mmcblk0** (SD), не SSD |
+| `df ~/BirdLense/app/data` | **sda1** / nvme (SSD) |
+| `df ~/BirdLense/app/processor/models` | SSD |
+| `ls /mnt/ssd/birdlense/data/db` | каталог есть |
+
+Если bind не поднялся: `sudo mount -a` и смотреть `journalctl -b | tail -50`.
 
 ---
 
-### Шаг 8. Защитить загрузку с SSD после apt upgrade
+### Шаг 8. Docker: NVIDIA runtime и data-root на SSD
 
 **Где:** Jetson.
 
-**Проблема:** `sudo apt full-upgrade` может перезаписать `/boot/extlinux/extlinux.conf` и сбросить `root=PARTUUID=...` обратно на SD.
-
-**Что сделать:**
+**Важно:** задать `data-root` **до** первого `docker pull` / `compose build`. Если Docker уже тянул образы на SD:
 
 ```bash
-SSD_PARTUUID=$(blkid -s PARTUUID -o value /dev/sda1)   # или nvme0n1p1
-
-sudo tee /usr/local/sbin/birdlense-fix-extlinux.sh >/dev/null <<SCRIPT
-#!/bin/bash
-set -euo pipefail
-CONF=/boot/extlinux/extlinux.conf
-PARTUUID="${SSD_PARTUUID}"
-grep -q "root=PARTUUID=\${PARTUUID}" "\$CONF" || \
-  sed -i "s|root=[^ ]*|root=PARTUUID=\${PARTUUID}|" "\$CONF"
-SCRIPT
-sudo chmod +x /usr/local/sbin/birdlense-fix-extlinux.sh
-
-sudo tee /etc/apt/apt.conf.d/99-birdlense-extlinux >/dev/null <<'EOF'
-DPkg::Post-Invoke { "/usr/local/sbin/birdlense-fix-extlinux.sh"; };
-EOF
-
-sudo /usr/local/sbin/birdlense-fix-extlinux.sh
-grep root= /boot/extlinux/extlinux.conf
+sudo systemctl stop docker docker.socket
+sudo rsync -aH /var/lib/docker/ /mnt/ssd/docker/ 2>/dev/null || true
 ```
 
-**Готово когда:** `grep root=` показывает `PARTUUID` SSD; скрипт в `DPkg::Post-Invoke` на месте.
-
----
-
-### Шаг 9. Настроить Docker с NVIDIA runtime
-
-**Где:** Jetson.
-
-**Что сделать:**
+**Настройка:**
 
 ```bash
 sudo usermod -aG docker "$USER"
-sudo mkdir -p /etc/docker
+sudo mkdir -p /etc/docker /mnt/ssd/docker
 sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
 {
-  "data-root": "/var/lib/docker",
+  "data-root": "/mnt/ssd/docker",
   "log-driver": "json-file",
   "log-opts": { "max-size": "10m", "max-file": "3" },
   "default-runtime": "nvidia",
@@ -247,21 +419,21 @@ sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
 }
 EOF
 sudo systemctl restart docker
+newgrp docker   # или перелогиниться
 ```
 
-Перелогиниться (или `newgrp docker`), чтобы группа `docker` применилась.
-
-**Готово когда:** `docker ps` работает без `sudo`.
+**Готово когда:** `docker info --format '{{.DockerRootDir}}'` → `/mnt/ssd/docker`; `docker ps` без `sudo`.
 
 ---
 
-### Шаг 10. Включить MAXN
+### Шаг 9. Включить MAXN
 
 **Где:** Jetson.
 
 **Что сделать:**
 
 ```bash
+# Важно: nvpmodel находится в /usr/sbin/, не в /usr/bin/
 sudo tee /etc/systemd/system/jetson-performance.service >/dev/null <<'EOF'
 [Unit]
 Description=Jetson MAXN Performance
@@ -269,7 +441,7 @@ After=multi-user.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/nvpmodel -m 0
+ExecStart=/usr/sbin/nvpmodel -m 0
 ExecStart=/usr/bin/jetson_clocks
 RemainAfterExit=yes
 
@@ -277,16 +449,17 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 EOF
 
+sudo systemctl daemon-reload
 sudo systemctl enable --now jetson-performance
-sudo nvpmodel -m 0
+sudo nvpmodel -m 0  # или /usr/sbin/nvpmodel -m 0
 sudo jetson_clocks
 ```
 
-**Готово когда:** `jtop` (после `sudo apt install -y jetson-stats`) показывает GPU ~921 MHz, CPU ~1479 MHz, temp <80°C в idle.
+**Готово когда:** `sudo nvpmodel -q` показывает MODE 0 (MAXN); `jtop` (после `sudo apt install -y jetson-stats`) — GPU ~921 MHz, CPU ~1479 MHz, temp <80°C в idle.
 
 ---
 
-### Шаг 11. ZRAM и headless
+### Шаг 10. ZRAM и headless
 
 **Где:** Jetson.
 
@@ -295,34 +468,74 @@ sudo jetson_clocks
 ```bash
 sudo apt update
 sudo apt install -y zram-config
+
+# Настроить размер ZRAM (50% RAM, алгоритм lzo)
+sudo tee /etc/default/zram-config >/dev/null <<'EOF'
+ZRAM_SIZE="50%"
+ZRAM_ALGORITHM="lzo"
+EOF
+
 sudo systemctl enable zram-config
+sudo systemctl restart zram-config
 sudo systemctl set-default multi-user.target
+
+# Отключить GUI (gdm) — освобождает RAM и GPU
+sudo systemctl disable --now gdm 2>/dev/null || true
+sudo systemctl mask gdm 2>/dev/null || true
+
+# Базовые runtime/dev утилиты на Jetson
+sudo apt install -y curl ca-certificates
+
+# Perf tools:
+# - tegrastats уже входит в JetPack/L4T
+# - jtop + jetson_release даёт пакет jetson-stats
+sudo apt install -y python3-pip
+sudo -H pip3 install -U jetson-stats
+sudo systemctl restart jtop.service 2>/dev/null || true
+
+# Docker Compose v2 plugin для aarch64 (если `docker compose` отсутствует)
+if ! docker compose version >/dev/null 2>&1; then
+  curl -fsSL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-aarch64 \
+    -o /tmp/docker-compose-linux-aarch64
+  sudo mkdir -p /usr/local/lib/docker/cli-plugins
+  sudo install -m 0755 /tmp/docker-compose-linux-aarch64 /usr/local/lib/docker/cli-plugins/docker-compose
+fi
 ```
 
-**Готово когда:** `systemctl is-enabled zram-config` → `enabled`; default target → `multi-user`.
+**Готово когда:**
+- `systemctl is-enabled zram-config` → `enabled`
+- `cat /proc/swaps` показывает zram устройство
+- `systemctl get-default` → `multi-user.target`
+- `systemctl is-enabled gdm` → `masked` (GUI отключён)
+- `command -v tegrastats jtop jetson_release` показывает пути
+- `jetson_release` показывает JetPack/L4T, MAXN и `jtop: Service Active`
+- `docker compose version` показывает Compose v2
+- `command -v curl tree rsync docker` показывает пути
 
 ---
 
-### Шаг 12. Проверить NVIDIA runtime, GStreamer и путь интеграции
+### Шаг 11. Проверить NVIDIA runtime, GStreamer и путь интеграции
 
 **Где:** Jetson.
 
 **Что сделать:**
 
 ```bash
+# Проверить, что Docker видит GPU-устройства Nano.
+# На l4t-base нет tegra-smi, поэтому проверяем /dev/nvhost-*.
 docker run --rm --runtime nvidia nvcr.io/nvidia/l4t-base:r32.7.1 \
-  bash -lc 'ls /usr/local/cuda && echo OK'
+  bash -lc 'ls /dev/nvhost-gpu /dev/nvmap && echo OK'
 
-# На хосте JetPack (или внутри будущего DeepStream-образа — шаг 14):
+# На хосте JetPack (или внутри будущего DeepStream-образа — шаг 13):
 gst-inspect-1.0 nvv4l2decoder
 gst-inspect-1.0 nvv4l2h264enc
 gst-inspect-1.0 nvinfer      # DeepStream Primary GIE — обязателен для Plan A
 gst-inspect-1.0 nvtracker    # NvDCF / IOU tracker
 ```
 
-**Версия DeepStream:** для JetPack **4.6.x (R32.7.x)** — **DeepStream 6.2** (`nvcr.io/nvidia/deepstream-l4t:6.2-*-r32.7.1`). Элементы `nvinfer` / `nvtracker` **не** входят в `l4t-base` и **не** в текущий `Dockerfile.jetson` (`python:3.11-bookworm`) — только в DeepStream SDK или образ `deepstream-l4t`.
+**Факт 2026-06-18:** без NGC auth на Jetson доступны `nvcr.io/nvidia/l4t-base:r32.7.1` и NVIDIA runtime devices. `deepstream-l4t:*`, `l4t-ml:*`, `l4t-pytorch:*` через `docker manifest inspect` вернули `Access Denied`. Поэтому текущий проверенный base для `Dockerfile.jetson` — **`nvcr.io/nvidia/l4t-base:r32.7.1`**; DeepStream (`nvinfer` / `nvtracker`) — отдельный gate: NGC login или native DeepStream SDK install.
 
-**Готово когда:** Docker выводит `OK`; `nvv4l2*` на хосте; для Plan A — `nvinfer` и `nvtracker` находятся (хост или контейнер из шага 14). Если `nvinfer` нет — до шага 20 поставить DeepStream 6.2 или зафиксировать **Plan B** в deployment notes.
+**Готово когда:** Docker выводит `GPU_RUNTIME_OK`; `nvv4l2*` на хосте; для Plan A — `nvinfer` и `nvtracker` находятся после NGC auth/native DeepStream install. Если `nvinfer` нет — фиксировать **Plan B** в deployment notes.
 
 **Путь интеграции (главный риск E1–E3):**
 
@@ -345,61 +558,119 @@ tegrastats --interval 1000 | head -20   # смотреть NVDEC % / GR3D %
 
 ---
 
-### Шаг 13. Задать переменные окружения
+### Шаг 12. Задать переменные окружения и синхронизировать runtime bundle
 
-**Где:** dev-машина (`scripts/deploy.local.sh`) и при необходимости `app/.env` на Jetson.
+**Где:** dev-машина (`scripts/deploy.local.sh`) + Jetson.
 
-**Что сделать:**
+**12.1 — env на dev:**
 
 ```bash
 # scripts/deploy.local.sh
 export BIRDLENSE_PLATFORM=jetson_nano
-export DEPLOY_HOST="gfer@192.168.8.199"
-export DEPLOY_URL="http://192.168.8.199:8085"
+export DEPLOY_HOST="gfer@192.168.1.127"
+export DEPLOY_URL="http://192.168.1.127:8085"
 ```
 
-В `app/.env` на Jetson (если нужно локально):
+**12.2 — env на Jetson (`/home/gfer/BirdLense/app/.env`):**
 
 ```bash
 BIRDLENSE_PLATFORM=jetson_nano
 BIRDLENSE_INFERENCE_BACKEND=tensorrt
+BIRDLENSE_BINARY_TENSORRT_PATH=models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.engine
 BIRDLENSE_OPENVINO_BINARY_ENABLED=0
-BIRDLENSE_INFERENCE_DEVICE=cuda
+BIRDLENSE_CLASSIFIER_ENGINE=chriamue
+BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=onnxruntime
+BIRDLENSE_PORT=8085
 # GO2RTC_URL=http://<lan-ip-go2rtc>:1984  — LAN площадки, не копировать с VPS
 ```
 
-Overlay: `deploy/profiles/jetson-nano/config.overlay.yaml`.
+**12.3 — синхронизировать только runtime allowlist, не весь репозиторий:**
 
-**Готово когда:** `echo $BIRDLENSE_PLATFORM` на dev → `jetson_nano`; `DEPLOY_HOST`/`DEPLOY_URL` указывают на Jetson в LAN.
+```bash
+cd /home/gfer/BirdLense
+
+rsync -az --delete \
+  --include='/AGENTS.md' \
+  --include='/.dockerignore' \
+  --include='/Makefile' \
+  --include='/VERSION' \
+  --include='/scripts/' \
+  --include='/scripts/deploy.sh' \
+  --include='/scripts/fetch_ornimetrics.sh' \
+  --include='/scripts/export_yolo11n_detector_onnx.sh' \
+  --include='/scripts/convert_ornimetrics_trt.sh' \
+  --include='/scripts/platform-profile.sh' \
+  --include='/scripts/export_fusion_training_data.py' \
+  --include='/scripts/train_fusion.py' \
+  --include='/scripts/diag_video_detect.py' \
+  --include='/scripts/diag_coco_bird_frames.py' \
+  --include='/scripts/benchmark-track-regen.py' \
+  --include='/scripts/compare_detector_bboxes.py' \
+  --include='/scripts/debug_ov_conversion.py' \
+  --include='/scripts/validate_ov_parity.py' \
+  --include='/scripts/patch_prod_nuclear_user_config.py' \
+  --include='/scripts/benchmark_regen_labels.py' \
+  --include='/scripts/catalog_deep_polish.py' \
+  --include='/scripts/internal/' \
+  --include='/scripts/internal/reid/' \
+  --include='/scripts/internal/reid/run_daily_ssl_cycle.py' \
+  --include='/app/' \
+  --include='/app/.env.example' \
+  --include='/app/Dockerfile.jetson' \
+  --include='/app/docker-compose.yml' \
+  --include='/app/docker-compose.jetson.yml' \
+  --include='/app/Makefile' \
+  --include='/app/app_config/***' \
+  --include='/app/data/' \
+  --include='/app/data/images/***' \
+  --exclude='/app/data/***' \
+  --include='/app/ebird_region_core.py' \
+  --include='/app/nginx/***' \
+  --include='/app/processor/' \
+  --exclude='/app/processor/models/***' \
+  --include='/app/processor/***' \
+  --include='/app/scripts/***' \
+  --include='/app/shared/***' \
+  --include='/app/ui/dist/***' \
+  --include='/app/web/***' \
+  --exclude='*' \
+  ./ gfer@192.168.1.127:/home/gfer/BirdLense/
+```
+
+**Важно по `--delete`:** allowlist должен сохранять mountpoints `app/data` и `app/processor/models`; содержимое этих путей исключено, потому что это SSD‑данные и веса. Перед первым запуском проверить `--dry-run`.
+
+Overlay: `deploy/profiles/jetson-nano/config.overlay.yaml` остаётся на dev-машине; на Jetson попадает только итоговый runtime config.
+
+**Готово когда:** `echo $BIRDLENSE_PLATFORM` на dev → `jetson_nano`; `DEPLOY_HOST`/`DEPLOY_URL` указывают на Jetson в LAN; `tree -L 2 /home/gfer/BirdLense` не показывает `docs`, `.github`, `datasets`, venv, `node_modules`, `site`.
 
 ---
 
-### Шаг 14. Базовая сборка контейнера на Jetson
+### Шаг 13. Базовая сборка контейнера на Jetson
 
 **Где:** Jetson, каталог `app/` репозитория.
 
-**Базовый образ (Plan A — DeepStream):** `docker-compose.jetson.yml` / `Dockerfile.jetson` должны собираться из образа **с DeepStream SDK**, не из «голого» Debian:
+**Базовый образ:** `docker-compose.jetson.yml` / `Dockerfile.jetson` должны соответствовать реально доступному JetPack/L4T stack. Не использовать `nvidia/cuda:*ubuntu20.04` на Nano — это не тот aarch64/L4T путь.
 
 | Путь | Базовый образ | Когда |
 |------|---------------|-------|
-| **Plan A (целевой)** | `nvcr.io/nvidia/deepstream-l4t:6.2-base-r32.7.1` (или `-devel` на этапе сборки TRT) | Primary GIE + `nvinfer` + NvDCF |
-| **Plan B (fallback)** | `nvcr.io/nvidia/l4t-base:r32.7.1` + `nvidia-l4t-jetson-multimedia-api` | GStreamer NVDEC/NVENC + TRT в Python, без `nvinfer` |
+| **Plan B (текущий проверенный)** | `nvcr.io/nvidia/l4t-base:r32.7.1` | GPU devices + L4T userspace; GStreamer/TRT glue дорабатывается |
+| **Plan A (целевой)** | `nvcr.io/nvidia/deepstream-l4t:6.2-base` / `6.2-samples` после NGC auth или native DeepStream SDK | Primary GIE + `nvinfer` + NvDCF |
 
-> **Сейчас в репо:** `Dockerfile.jetson` = `python:3.11-bookworm` (заглушка для smoke UI/API). Перед E2 (#648) — смена базы на `deepstream-l4t:6.2-*` под R32.7.x.
+> **Сейчас в репо:** `Dockerfile.jetson` = `nvcr.io/nvidia/l4t-base:r32.7.1` + micromamba `python=3.11` env (`numpy`, `opencv`, `onnxruntime`). Это честный L4T base без Debian/Bookworm smoke-слоя, без `docker commit` и без GLIBC mismatch с `/usr/lib/aarch64-linux-gnu/tegra`. Full runtime gate всё ещё зависит от detector TensorRT adapter в processor (#648/#651), не от torch/cpu fallback.
 
 **Что сделать:**
 
 ```bash
 cd app
-BIRDLENSE_PLATFORM=jetson_nano \
-  docker compose -f docker-compose.yml -f docker-compose.jetson.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.jetson.yml config >/tmp/birdlense-compose-config.yml
 ```
 
 Проверить в `docker-compose.jetson.yml` и образе:
 
 - `restart: unless-stopped` — автоподъём после reboot/power glitch.
-- `network_mode: host` — UI на **порту хоста** (`BIRDLENSE_PORT`, по умолчанию **8085**); не искать порт в `ports:` bridge.
-- Внутри контейнера (после смены базы): `gst-inspect-1.0 nvinfer` → OK для Plan A.
+- `network_mode: host`; nginx слушает `BIRDLENSE_PORT` (обычно 8085). Не использовать bridge `8085:8080` для целевого Jetson profile.
+- `docker compose ... config` проходит — compose plugin, env и YAML валидны.
+- Внутри DeepStream-контейнера (после NGC auth/native DS): `gst-inspect-1.0 nvinfer` → OK для Plan A.
 
 ```bash
 grep -E 'restart:|network_mode:' docker-compose.jetson.yml
@@ -407,11 +678,80 @@ docker compose exec birdlense gst-inspect-1.0 nvinfer 2>/dev/null || echo "Plan 
 curl -sf "http://127.0.0.1:${BIRDLENSE_PORT:-8085}/health"
 ```
 
-**Готово когда:** `birdlense` `running`; health OK; для Plan A — образ на базе `deepstream-l4t:6.2` и `nvinfer` в контейнере.
+**Готово когда:** runtime bundle чистый; `docker compose ... config` OK; Docker root на SSD; GPU runtime OK; `docker compose ... up -d --build` поднимает web+processor без import crash loop; `cv2`, `numpy`, `onnxruntime` импортируются внутри контейнера; логи не содержат Intel/OpenVINO runtime noise. До реализации detector TRT adapter не считать production-ready и не заменять это torch/cpu fallback.
+
+**Факт desk preflight (2026-06-18):**
+
+- `docker compose -f docker-compose.yml -f docker-compose.jetson.yml config` проходит на Jetson.
+- `DockerRootDir=/mnt/ssd/docker`, `DefaultRuntime=nvidia`.
+- `docker run --rm --runtime nvidia nvcr.io/nvidia/l4t-base:r32.7.1 ...` видит `/dev/nvhost-gpu` и `/dev/nvmap`.
+- `docker build -f app/Dockerfile.jetson ...` дошёл до Python layer и упал на `/bin/sh: 1: pip: not found`.
+- Исторический desk smoke overlay поднял web/nginx, но удалён из target bundle; он не заменяет ML/RTSP gates.
+- NUC `user_config.yaml` перенесён на Jetson без моков: `video.source=go2rtc`, `video.go2rtc_url=rtsp://192.168.1.11:554/stream`, Frigate triggers enabled. С рабочего стола Jetson `192.168.1.11:{1984,1883,554}` timeout — это site-pending до переноса в LAN площадки.
+
+**Вывод:** железо и L4T/Docker runtime были готовы к переносу на площадку в preflight 2026-06-18. Source profile 2026-06-19 очищен от Debian smoke base, Intel env noise и torch/cpu final fallback. Полный app image не считать готовым до отдельного решения detector TensorRT adapter (#651/#648). Не чинить это установкой Ubuntu 18 `python3-pip` как финальным решением: это даст Python 3.6 и не соответствует текущим зависимостям Flask/Pydantic.
 
 ---
 
-### Шаг 15. Скачать Ornimetrics ONNX и собрать TensorRT на Jetson
+### Статус миграции (2026-06-22, ветка `jetson-nano`, хост `185.218.111.196:8080` NAT→8085)
+
+**Конфиг:** `scripts/build_jetson_user_config.py` — VPS operational settings + `deploy/profiles/jetson-nano/config.overlay.yaml`, **strip Intel/OpenVINO**.
+
+**Фактическое дерево весов на Jetson:**
+
+```text
+app/processor/models/
+├── classification/chriamue_bird_species_classifier/
+│   ├── config.json, model.onnx, model.safetensors, preprocessor_config.json
+├── detection/trapper_ai_v02_2024/
+│   ├── trapper_ai_v02_2024.pt, .onnx, .yaml [, .engine после trtexec]
+├── reid/ornimetrics/reid_embedder.onnx
+└── welfare/ornimetrics/embedder.onnx, welfare_scorer.npz
+```
+
+| Компонент | Backend | Статус |
+|-----------|---------|--------|
+| Trapper `.pt` / ONNX 704² | torch / TRT | **На устройстве** |
+| Trapper `.engine` | TensorRT | **Собрать** `export_trapper_detector_trt.sh` на Jetson |
+| chriamue classifier | ONNX CUDA | **Работает** (preprocess без HF на ORT) |
+| Ornimetrics reid/welfare | ONNX CUDA | **На устройстве** |
+| MQTT / Go2RTC / 2 cam | — | **Работает** (BirdBox, Forest) |
+| UI settings password | — | **Работает** |
+
+**Удалено с Jetson:** `detection/weights/` (Intel OV IR), `yolo11n.*`, Ornimetrics species packs, `.hef` — `jetson_models_prune.sh`.
+
+### Статус миграции (архив 2026-06-20, flat layout `192.168.1.127`)
+
+**Фактическое дерево на устройстве** (без подкаталога `weights/`):
+
+```text
+app/processor/models/
+├── classification/chriamue_bird_species_classifier/
+│   ├── config.json, model.onnx, model.safetensors, preprocessor_config.json
+├── detection/trapper_ai_v02_2024/
+│   ├── trapper_ai_v02_2024.pt, .onnx, .yaml
+├── reid/ornimetrics/reid_embedder.onnx
+└── welfare/ornimetrics/embedder.onnx, welfare_scorer.npz
+```
+
+Конфиги Hub (`user_config.yaml`, `.env`) и overlay в репозитории приведены к этому layout (2026-06-20).
+
+| Компонент | Путь (flat layout) | Jetson `192.168.1.127` | Статус |
+|-----------|----------------------|------------------------|--------|
+| Trapper `.pt` / ONNX 704² | `detection/trapper_ai_v02_2024/` | synced | **Готово** |
+| Trapper `.engine` | `detection/trapper_ai_v02_2024/trapper_ai_v02_2024.engine` | `trtexec` FP16 704² | **В процессе** (старый trtexec на `weights/` — после завершения пересобрать с flat paths) |
+| Species classifier | `classification/chriamue_bird_species_classifier/` | `model.onnx` + safetensors | **Готово** ([chriamue/bird-species-classifier](https://huggingface.co/chriamue/bird-species-classifier), 525 видов) |
+| Ornimetrics reid | `reid/ornimetrics/reid_embedder.onnx` | synced | **Готово** |
+| Ornimetrics welfare | `welfare/ornimetrics/` | synced | **Готово** |
+| Legacy `yolo11n.*`, ornimetrics species | — | удалено `jetson_models_prune.sh` | **Готово** |
+
+Детектор: [OSCF/TrapperAI-v02.2024](https://huggingface.co/OSCF/TrapperAI-v02.2024) → ONNX **704²** (desk export) → FP16 `.engine` на Jetson. Классификатор: `classifier_engine: chriamue`, backend `onnxruntime`. Ornimetrics species packs **сняты** с Jetson.
+
+Скрипты: `fetch_chriamue_classifier.sh`, `fetch_ornimetrics_jetson.sh` (только reid+welfare), `jetson_models_prune.sh`, `export_trapper_detector_trt.sh`.
+
+---
+
+### Шаг 14. Скачать Ornimetrics ONNX и собрать TensorRT на Jetson
 
 **Где:** dev (скачать) + Jetson (сборка `.engine` только на целевом устройстве).
 
@@ -427,15 +767,18 @@ curl -sf "http://127.0.0.1:${BIRDLENSE_PORT:-8085}/health"
 | `models/embedder.onnx` + `welfare_scorer.npz` | welfare (Mahalanobis) |
 | `models/reid_embedder.onnx` | ReID (ArcFace 256-d) |
 
+**Факт 2026-06-19:** в публичном HF repo `Ornimetrics/ornimetrics-edge` на revision
+`bd792c12d3bcf30f77be20d84a332e72193c67ba` файла `models/model_feeder4.onnx`
+нет; доступен только `models/model_feeder4.hef` + `models/detector.names`. Для Jetson Nano
+это reference-only Hailo artifact, не TensorRT input. До появления detector ONNX или
+собственного export detector TRT остаётся blocker #650/#648; текущий recovery image
+держит legacy/intermediate detector `models/detection/weights/best.pt`.
+
 ```bash
-pip install huggingface_hub
-# Только ONNX и sidecar-файлы; .hef не качаем (RPi+Hailo)
-huggingface-cli download Ornimetrics/ornimetrics-edge \
-  --local-dir ./ornimetrics-edge \
-  --exclude "*.hef"
+scripts/fetch_ornimetrics.sh /mnt/ssd/birdlense/models/classification/ornimetrics
 ```
 
-Ожидаемый layout после скачивания: `ornimetrics-edge/models/*.onnx`, `welfare_scorer.npz`, `species_classifier_nabirds.json`, `detector.names`.
+Ожидаемый layout после скачивания: `species_classifier_*.onnx`, `embedder.onnx`, `reid_embedder.onnx`, `welfare_scorer.npz`, `species_classifier_nabirds.json`, `detector.names`. `.hef` намеренно не скачиваем как runtime artifact.
 
 **Сборка TensorRT** (только на целевом Jetson):
 
@@ -463,10 +806,10 @@ ebird:
 
 | `ebird.country` | ONNX / `.engine` pack | Классов |
 |-----------------|----------------------|---------|
-| `US` | `species_classifier_nabirds` | 555 |
+| `US` / `CA` | `species_classifier_nabirds` | 555 |
 | иначе | `species_classifier_inat` | 302 |
 
-Переключатель — **`ebird.country`** (тот же ключ, что `ebird_region_core._build_region_code`). Координаты lat/lon **не вычисляют** пакет сами — пользователь их уже задаёт для eBird; страна задаётся явно рядом.
+Переключатель — **`ebird.country`** (тот же ключ, что `ebird_region_core._build_region_code`). Координаты lat/lon **не вычисляют** пакет сами — пользователь их уже задаёт для eBird; страна задаётся явно рядом. Override: `processor.ornimetrics_species_pack: auto|nabirds|inat`.
 
 **Ограничение:** оба классификатора Ornimetrics — североамериканская таксономия. EU-площадка с `country: RU` получает CC-пакет (302) как компромисс «из коробки»; Birder EU-707 на Intel остаётся эталоном для Европы.
 
@@ -474,9 +817,11 @@ ebird:
 
 **Готово когда:** `.engine` detector + classifier (pack по `ebird.country`) + welfare + reid на Jetson; parity зелёный.
 
+**Detector 2026-06-19 (Jetson):** production path — **TrapperAI v02.2024** TensorRT @1024 (`scripts/export_trapper_detector_trt.sh`, `trtexec --fp16`). Ultralytics загружает `.engine` при `inference_backend: tensorrt`. Ornimetrics `model_feeder4.onnx` на HF нет (только Hailo `.hef`); species/welfare — Ornimetrics ONNX packs.
+
 ---
 
-### Шаг 16. Benchmark на Jetson (gate перед камерами/deploy)
+### Шаг 15. Benchmark на Jetson (gate перед камерами/deploy)
 
 **Где:** Jetson, тот же образ и `.engine`, что в шаге 15.
 
@@ -521,7 +866,7 @@ python scripts/benchmark_jetson.py \
 
 ---
 
-### Шаг 17. Настроить камеры в Hub
+### Шаг 16. Настроить камеры в Hub
 
 **Где:** `app/app_config/user_config.yaml` (на Jetson или через deploy).
 
@@ -537,7 +882,7 @@ python scripts/benchmark_jetson.py \
 
 ---
 
-### Шаг 18. Проверить RTSP-потоки (NVMM + buffer tuning)
+### Шаг 17. Проверить RTSP-потоки (NVMM + buffer tuning)
 
 **Где:** Jetson.
 
@@ -565,7 +910,7 @@ gst-launch-1.0 rtspsrc location=rtsp://GO2RTC_IP:8554/feeder_close latency=300 !
 
 ---
 
-### Шаг 19. Финальный deploy
+### Шаг 18. Финальный deploy
 
 **Где:** dev-машина.
 
@@ -573,7 +918,7 @@ gst-launch-1.0 rtspsrc location=rtsp://GO2RTC_IP:8554/feeder_close latency=300 !
 
 ```bash
 cd /path/to/BirdLense
-# deploy.local.sh уже с BIRDLENSE_PLATFORM=jetson_nano (шаг 13)
+# deploy.local.sh уже с BIRDLENSE_PLATFORM=jetson_nano (шаг 12)
 make deploy
 ```
 
@@ -581,15 +926,24 @@ make deploy
 
 ---
 
-### Шаг 20. Smoke после deploy
+### Шаг 19. Smoke после deploy
 
 **Где:** Jetson + браузер/MCP.
 
-**Что сделать:**
+**Desk preflight без камер (исторически выполнено 2026-06-18):**
+
+```bash
+cd app
+docker compose -f docker-compose.yml -f docker-compose.jetson.yml config
+```
+
+Старый `docker-compose.jetson-smoke.yml` удалён. Web-only/processor-disabled запуск больше не считается целевым способом проверки; без detector `.engine` и native adapter Jetson ML gate остаётся красным, а не замещается smoke.
+
+**Live smoke на площадке:**
 
 1. Открыть `DEPLOY_URL` — UI доступен.
-2. Дождаться события или вызвать тестовую запись.
-3. Проверить метрики:
+1. Дождаться события или вызвать тестовую запись.
+1. Проверить метрики:
 
 ```bash
 tegrastats --interval 1000 | head -30
@@ -597,13 +951,13 @@ tegrastats --interval 1000 | head -30
 # recording_session_summary: persist OK
 ```
 
-4. Зафиксировать idle RAM/GPU 5 мин после старта (baseline для E10).
+1. Зафиксировать idle RAM/GPU 5 мин после старта (baseline для E10).
 
 **Готово когда:** health OK; одна запись с persist в UI; `tegrastats` без throttle/OOM; треки появляются.
 
 ---
 
-### Шаг 21. Recovery test (обрыв сети)
+### Шаг 20. Recovery test (обрыв сети)
 
 **Где:** Jetson, live stack после шага 20.
 
@@ -633,7 +987,7 @@ docker logs birdlense --tail 50 | grep -iE 'rtsp|reconnect|error'
 
 ### 3.0 Ornimetrics visual pack
 
-Источник: [Ornimetrics/ornimetrics-edge](https://huggingface.co/Ornimetrics/ornimetrics-edge). Jetson: **ONNX → TensorRT**; `.hef` — для RPi5+Hailo-8, на Nano **игнорируем**.
+Источник: [Ornimetrics/ornimetrics-edge](https://huggingface.co/Ornimetrics/ornimetrics-edge). Jetson target: **ONNX → TensorRT**; `.hef` — для RPi5+Hailo-8, на Nano **reference-only**.
 
 | Компонент | Архитектура | Выход | Когда |
 |-----------|-------------|-------|-------|
@@ -647,10 +1001,10 @@ docker logs birdlense --tail 50 | grep -iE 'rtsp|reconnect|error'
 
 | `ebird.country` | Pack | Классов |
 |-----------------|------|---------|
-| `US` | `species_classifier_nabirds` | 555 |
+| `US` / `CA` | `species_classifier_nabirds` | 555 |
 | иначе | `species_classifier_inat` | 302 |
 
-NA-таксономия; EU-707 Birder — на Intel. Welfare — перекалибровка healthy baseline на своих кропах ([caveats Ornimetrics](https://huggingface.co/Ornimetrics/ornimetrics-edge)).
+Override: `processor.ornimetrics_species_pack: auto|nabirds|inat`. NA-таксономия; EU-707 Birder — на Intel. Welfare — перекалибровка healthy baseline на своих кропах ([caveats Ornimetrics](https://huggingface.co/Ornimetrics/ornimetrics-edge)).
 
 ### 3.1 Бюджет производительности (Nano 4 ГБ)
 
@@ -663,12 +1017,12 @@ Enrichment **только event-triggered** (охотник), не в live loop.
 | RAM | ≤3.0 ГБ | ring buffer ↓, ReID off |
 | GPU | ≤85% | `interval+1` (до 5–6), detector 416→384 |
 | CPU | ≤250% sustained (4 cores) | Plan B проще; меньше буферов |
-| **Детектор** | см. шаг 16 | IOU tracker, interval+1 |
+| **Детектор** | см. шаг 15 | IOU tracker, interval+1 |
 | Species | **цель** <100 ms p95 / кроп | **обязательно** defer async; 100–200 ms допустимо |
 | Welfare + ReID | **цель** <50 ms p95 | welfare off → ReID off |
 | Behavior E14 | **цель** <500 ms p95 / клип | off; X3D: 4→2 frames, 182→128 |
 
-**Детектор — не «>10 FPS».** На 7 FPS lores + `interval=3` реально **~2.3 infer/s**. Gate: latency + не отставать от потока (шаг 16).
+**Детектор — не «>10 FPS».** На 7 FPS lores + `interval=3` реально **~2.3 infer/s**. Gate: latency + не отставать от потока (шаг 15).
 
 Video + bbox persist **не ждут** ML.
 
@@ -678,10 +1032,11 @@ Video + bbox persist **не ждут** ML.
 
 | Файл | Jetson |
 |------|--------|
-| `model_feeder4.onnx` | да |
+| `model_feeder4.onnx` | target, но отсутствует в HF repo на 2026-06-19 |
+| `model_feeder4.hef` | скачан как reference-only; Nano без Hailo не использует |
 | `species_classifier_{nabirds,inat}.onnx` + `.json` | один pack |
 | `embedder.onnx`, `welfare_scorer.npz`, `reid_embedder.onnx` | да |
-| `*.hef` | **нет** |
+| прочие `*.hef` | **нет** |
 
 Скрипт (#650): `scripts/fetch_ornimetrics.sh --exclude-hef`. Fused TRT backbone — backlog #650.
 
@@ -709,21 +1064,21 @@ SlowFast на Nano [не взлетает](https://www.ridgerun.ai/post/optimiza
 
 | E | Issue | Runbook | Слой |
 |---|-------|---------|------|
-| E0 | [#646](https://github.com/Gfermoto/BirdLense-Hub/issues/646) | 1–11 | SSD, Docker, MAXN, ZRAM |
-| E1 | [#647](https://github.com/Gfermoto/BirdLense-Hub/issues/647) | 12 | NVDEC/NVENC, GStreamer |
-| E2 | [#648](https://github.com/Gfermoto/BirdLense-Hub/issues/648) | 12 | DeepStream сторож + NvDCF |
-| E3 | [#649](https://github.com/Gfermoto/BirdLense-Hub/issues/649) | 12, 6.1 | Ring buffer + охотник |
-| E4 | [#650](https://github.com/Gfermoto/BirdLense-Hub/issues/650) | 15 | Ornimetrics ONNX→TRT |
-| E5 | [#651](https://github.com/Gfermoto/BirdLense-Hub/issues/651) | 13–14, 19 | Platform, deploy, CI |
+| E0 | [#646](https://github.com/Gfermoto/BirdLense-Hub/issues/646) | 1–10 | SD+SSD storage, Docker, MAXN, ZRAM |
+| E1 | [#647](https://github.com/Gfermoto/BirdLense-Hub/issues/647) | 11 | NVDEC/NVENC, GStreamer |
+| E2 | [#648](https://github.com/Gfermoto/BirdLense-Hub/issues/648) | 11 | DeepStream сторож + NvDCF |
+| E3 | [#649](https://github.com/Gfermoto/BirdLense-Hub/issues/649) | 11, 6.1 | Ring buffer + охотник |
+| E4 | [#650](https://github.com/Gfermoto/BirdLense-Hub/issues/650) | 14 | Ornimetrics ONNX→TRT |
+| E5 | [#651](https://github.com/Gfermoto/BirdLense-Hub/issues/651) | 12–13, 18 | Platform, deploy, CI |
 | E6 | [#652](https://github.com/Gfermoto/BirdLense-Hub/issues/652) | 6.1 | Hub ingest adapter |
-| E7 | [#653](https://github.com/Gfermoto/BirdLense-Hub/issues/653) | 17–21 | Field test 2 cam |
+| E7 | [#653](https://github.com/Gfermoto/BirdLense-Hub/issues/653) | 16–20 | Field test 2 cam |
 | E8 | [#654](https://github.com/Gfermoto/BirdLense-Hub/issues/654) | весь doc | Docs / ADR sync |
-| E9 | [#655](https://github.com/Gfermoto/BirdLense-Hub/issues/655) | 18, 21 | RTSP reconnect |
-| E10 | [#656](https://github.com/Gfermoto/BirdLense-Hub/issues/656) | 16, 6.11 | Perf budget, throttle |
-| E11 | [#657](https://github.com/Gfermoto/BirdLense-Hub/issues/657) | 16, 6.10, 7 | Scientific benchmark |
+| E9 | [#655](https://github.com/Gfermoto/BirdLense-Hub/issues/655) | 17, 20 | RTSP reconnect |
+| E10 | [#656](https://github.com/Gfermoto/BirdLense-Hub/issues/656) | 15, 6.11 | Perf budget, throttle |
+| E11 | [#657](https://github.com/Gfermoto/BirdLense-Hub/issues/657) | 15, 6.10, 7 | Scientific benchmark |
 | E12 | [#658](https://github.com/Gfermoto/BirdLense-Hub/issues/658) | 6.10 | FAIR / Camtrap DP |
 | E13 | [#659](https://github.com/Gfermoto/BirdLense-Hub/issues/659) | 6.10, 7 | HITL review queue |
-| E14 | [#660](https://github.com/Gfermoto/BirdLense-Hub/issues/660) | 3.3, 16 | Behavior X3D-XS deferred |
+| E14 | [#660](https://github.com/Gfermoto/BirdLense-Hub/issues/660) | 3.3, 15 | Behavior X3D-XS deferred |
 
 ---
 
@@ -737,7 +1092,7 @@ SlowFast на Nano [не взлетает](https://www.ridgerun.ai/post/optimiza
 - Оба **H.264**, GOP 2–4 с, NTP на камере.
 - `video.cameras[]`: `tuning_role: feeder_close|feeder_far`.
 
-Исполнять: **шаг 17** (конфиг) → **шаг 18** (проверка gst-launch + buffer tune).
+Исполнять: **шаг 16** (конфиг) → **шаг 17** (проверка gst-launch + buffer tune).
 
 ---
 
@@ -888,7 +1243,7 @@ Go2RTC разгружает камеру от множества подключ�
 | | Intel NUC | Jetson Nano |
 |--|-----------|-------------|
 | Профиль | `intel_nuc` (default) | `jetson_nano` |
-| Детектор | Trapper 704² | YOLOv11n 416² TRT |
+| Детектор | Trapper 1024² TRT (Jetson) | Trapper 704² OpenVINO (NUC) |
 | Classifier | Birder EU-707 | Ornimetrics EfficientNetV2-S |
 | ReID | DINOv2 deferred | ArcFace Ornimetrics |
 | Welfare | — | Mahalanobis |
@@ -1035,7 +1390,7 @@ Nano 4 ГБ нельзя вести как «маленький сервер». 
 - **Single .engine bundle + INT8** — риск качества (калибровка) и сложности (разные input sizes); оставляем separate FP16 engines + parity gate.
 - **Split containers (DeepStream + Python trim)** — лишний IPC overhead; сохраняем single-container hybrid.
 - **Self-update engines** — nice-to-have, но security surface; defer.
-- **Усилено:** GStreamer pipeline tuning (zero-copy NVMM, leaky, num-extra-surfaces), NvDCF explicit config, runtime tegrastats enforcement, model conversion parity gate, **benchmark gate (шаг 16)**, **recovery test (шаг 21)**.
+- **Усилено:** GStreamer pipeline tuning (zero-copy NVMM, leaky, num-extra-surfaces), NvDCF explicit config, runtime tegrastats enforcement, model conversion parity gate, **benchmark gate (шаг 15)**, **recovery test (шаг 20)**.
 - **INT8** — только с калибровкой на полевых кропах; до parity FP16 не включать.
 
 Итог: план заточен под 4 ГБ Nano — максимум hardware acceleration при жёстком контроле ресурсов и качества. Нет «магии», только проверенные практики + enforced degradation.
@@ -1045,7 +1400,7 @@ Nano 4 ГБ нельзя вести как «маленький сервер». 
 Yocto даёт минимальный rootfs и контроль над kernel/device-tree, но:
 
 - Высокая сложность поддержки (meta-jetson, L4T layers).
-- JetPack 4.6.x + headless + ZRAM + Docker data-root на SSD уже даёт достаточный запас RAM/износ для MVP.
+- JetPack 4.6.x + headless + ZRAM + **Tier A–B на SSD** (data, docker, models, journal) даёт достаточный запас RAM/износ для MVP без rootfs migration.
 - **Решение:** Yocto рассматривать в E15+ только если после 24h soak на JetPack останутся проблемы с памятью/стабильностью или потребуется production-grade tamper-proof image.
 
 Приоритет: сначала довести JetPack baseline до production quality, потом минимализм.
@@ -1054,15 +1409,15 @@ Yocto даёт минимальный rootfs и контроль над kernel/d
 
 | Риск | Вероятность | Митигация в плане |
 |------|-------------|-------------------|
-| DeepStream ↔ Python интеграция | **высокая** | Plan B (appsink + TRT); ×2–3 время E1–E3; шаг 12 |
-| Ornimetrics TRT RAM на 4 ГБ | средняя | отдельные `.engine`, welfare/ReID defer при overload; шаг 15–16 |
-| NVDEC bottleneck (2× RTSP) | средняя | `tegrastats` NVDEC; снизить substream FPS; шаг 12 |
-| `extlinux.conf` сброс после apt | средняя | `birdlense-fix-extlinux.sh` + apt hook; шаг 8 |
-| Buffer starvation / jitter | средняя | `num-extra-surfaces=2`, leaky queue; шаг 18 |
-| Нет benchmark перед боем | — | шаг 16: cadence + p95, не «>10 FPS» |
-| Нет recovery test | — | шаг 21: RTSP reconnect без restart контейнера |
+| DeepStream ↔ Python интеграция | **высокая** | Plan B (appsink + TRT); ×2–3 время E1–E3; шаг 11 |
+| Ornimetrics TRT RAM на 4 ГБ | средняя | отдельные `.engine`, welfare/ReID defer при overload; шаг 14–15 |
+| NVDEC bottleneck (2× RTSP) | средняя | `tegrastats` NVDEC; снизить substream FPS; шаг 11 |
+| SSD/bind не поднялся после reboot | средняя | `nofail` + `mount -a`; шаг 7; SSD подключать до power-on |
+| Buffer starvation / jitter | средняя | `num-extra-surfaces=2`, leaky queue; шаг 17 |
+| Нет benchmark перед боем | — | шаг 15: cadence + p95, не «>10 FPS» |
+| Нет recovery test | — | шаг 20: RTSP reconnect без restart контейнера |
 
-**Не в MVP (backlog):** адаптивный interval в коде (6.11, #656), API сброса буферов (шаг 21, #655), fused TRT backbone (#650).
+**Не в MVP (backlog):** адаптивный interval в коде (6.11, #656), API сброса буферов (шаг 20, #655), fused TRT backbone (#650).
 
 ### 6.15 Научный контур продукта (E11–E13)
 
@@ -1070,43 +1425,86 @@ Jetson-план совместим с полевым протоколом для
 
 | Принцип | Где в плане | Issue |
 |---------|-------------|-------|
-| Воспроизводимость (версии, hashes, config snapshot) | §6.10, шаг 16 CSV | #657 |
-| Golden clips + parity ONNX↔TRT | §6.6, шаг 16 | #657, #650 |
+| Воспроизводимость (версии, hashes, config snapshot) | §6.10, шаг 15 CSV | #657 |
+| Golden clips + parity ONNX↔TRT | §6.6, шаг 15 | #657, #650 |
 | Uncertainty (confidence, margin, hints ≠ истина) | §6.2.2, §6.10 | #659 |
 | HITL / review queue | §6.10, чек-лист §7 | #659 |
 | FAIR export (Camtrap DP, DwC) | §6.10 | #658 |
 | Ethics (person/dog ≠ biodiversity record) | §6.10, детектор Ornimetrics | — |
-| 24h soak + recovery | шаги 20–21, §7 | #653, #655 |
+| 24h soak + recovery | шаги 19–20, §7 | #653, #655 |
 
-**Порядок:** operational gates (шаг 16) **до** полевого деплоя; полный scientific bundle (#657) — после 2-cam soak, перед публикацией/обменом данными.
+**Порядок:** operational gates (шаг 15) **до** полевого деплоя; полный scientific bundle (#657) — после 2-cam soak, перед публикацией/обменом данными.
 
 ### 6.16 Внешнее ревью (2026-06, rev.4) — принято
 
 | Рекомендация | Решение в плане |
 |--------------|----------------|
-| Lores **<10 FPS** на площадке | Gate **cadence + p95**, не >10 FPS infer (шаг 16, §3.1) |
+| Lores **<10 FPS** на площадке | Gate **cadence + p95**, не >10 FPS infer (шаг 15, §3.1) |
 | Species <100 ms может быть жёстко | **Цель**; defer async обязателен; hard <200 ms |
 | Plan B раньше Plan A | Шаг 12: **B = прототип**, A = production |
 | X3D-XS — `trtexec` до поля | Шаг 16 п.7; fallback 2 frames / 128² |
-| CPU ≤250% в мониторинг | §6.11, шаг 16 CSV |
-| `nvinfer` только в DeepStream 6.2 | Шаги 12, 14 |
-| go2rtc — где крутится | §5.1, шаг 13 `GO2RTC_URL` |
+| CPU ≤250% в мониторинг | §6.11, шаг 15 CSV |
+| `nvinfer` только в DeepStream 6.2 | Шаги 11, 13 |
+| go2rtc — где крутится | §5.1, шаг 12 `GO2RTC_URL` |
 | Первые действия на железе | TRT convert → benchmark 16 → решение Orin |
 
 ---
 
 ## 7. Чек-лист перед боем на площадке
 
+### 7.0 Desk preflight — можно выполнить дома, без камер
+
+Фактически выполнено 2026-06-18 на Jetson Nano B01 (`192.168.1.127`):
+
+- [x] Reboot resilience: SSH вернулся после reboot примерно за 1 минуту.
+- [x] Headless: `gdm` inactive/masked, default target `multi-user`.
+- [x] MAXN: `jetson_release` показывает `NV Power Mode [0]: MAXN`.
+- [x] ZRAM: 4× zram по ~506 MB, disk swap отсутствует.
+- [x] SSD binds после reboot: `/mnt/ssd`, `app/data`, `processor/models`, `/var/lib/docker`, `/var/log/journal`, `/var/cache/apt/archives` на `/dev/sda1`.
+- [x] SSD hygiene: старый rootfs-мусор удалён; top-level только `apt-cache`, `birdlense`, `docker`, `log`, `lost+found`.
+- [x] Runtime bundle hygiene: `/home/gfer/BirdLense` около 30 MB; нет `docs/`, `.github/`, `datasets/`, venv, `node_modules`, `site`.
+- [x] Tools: `docker`, `docker compose`, `curl`, `tree`, `rsync`, `tegrastats`, `jtop`, `jetson_release`, `nvpmodel`, `jetson_clocks`.
+- [x] Compose syntax: `docker compose -f docker-compose.yml -f docker-compose.jetson.yml config` OK.
+- [x] GPU runtime: `l4t-base:r32.7.1` видит `/dev/nvhost-gpu` и `/dev/nvmap`.
+- [x] Исторический desk smoke подтвердил web/nginx shell, но smoke overlay удалён из target source bundle.
+- [x] NUC settings transfer: `user_config.yaml` перенесён без моков; `.env` содержит production secrets; target Jetson profile задаёт `BIRDLENSE_PORT=8085` для host network.
+- [x] Site deps classified: `192.168.1.11:{1984,1883,554}` timeout на столе, значит go2rtc/MQTT/RTSP остаются site-pending до переноса в LAN площадки.
+- [x] Idle baseline: RAM ~334–479/3956 MB, swap 0, temp CPU/GPU ~30–31°C на столе.
+
+Статус source-clean pass (2026-06-19):
+
+- [x] `Dockerfile.jetson` возвращён на L4T base `nvcr.io/nvidia/l4t-base:r32.7.1`; Python/runtime deps идут через micromamba env, а не через Debian Bookworm image, `docker commit` или Ubuntu 18 `python3-pip`.
+- [x] Jetson profile очищен от Intel/OpenVINO runtime path: `BIRDLENSE_INFERENCE_BACKEND=tensorrt`, `BIRDLENSE_OPENVINO_BINARY_ENABLED=0`, `BIRDLENSE_CLASSIFIER_ENGINE=ornimetrics`, `BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=onnxruntime`.
+- [x] Compose target — `network_mode: host`, `BIRDLENSE_PORT=8085`, NVIDIA runtime, no `BIRDLENSE_INTEL_*` env.
+- [x] Добавлен resolver contract для `processor.models.binary_tensorrt` / `BIRDLENSE_BINARY_TENSORRT_PATH`; `.engine` считается валидным detector artifact. TensorRT detector loader пока fail-fast, без Hailo `.hef` и без torch/cpu fallback.
+- [x] Ornimetrics species selector: `processor.ornimetrics_species_pack: auto|nabirds|inat`; `auto` выбирает `nabirds` для `ebird.country` `US`/`CA`, иначе `inat`.
+- [x] Добавлены scripts: `fetch_ornimetrics.sh` (без `.hef`, flatten ONNX sidecars), `export_yolo11n_detector_onnx.sh`, `convert_ornimetrics_trt.sh` (`trtexec`, FP16, hash manifest).
+- [x] Добавлен root `.dockerignore`: `app/data`, `app/processor/models`, UI `node_modules`/old dirs, docs/dev artifacts не попадают в Docker build context.
+- [ ] Build validation 2026-06-19: первая попытка упала на 404 micromamba pinned URL; Dockerfile исправлен на `latest`. Вторая попытка не дошла до Dockerfile из-за раздутого context (>330 MB, до добавления `.dockerignore`) и после stop Jetson временно пропал из сети (`No route to host`). Повторить `docker compose ... build birdlense` после восстановления SSH и синхронизации `.dockerignore`.
+- [x] Jetson MVP detector: **TrapperAI v02.2024** (`trapper_ai_v02_2024.pt` → ONNX `imgsz=704` → FP16 `trapper_ai_v02_2024.engine`); классы — `detection/trapper_ai_v02_2024/trapper_ai_v02_2024.yaml`. Ornimetrics `model_feeder4.onnx` на HF по-прежнему нет (только `.hef`).
+- [ ] Validation blocker: на момент source-clean pass Jetson `192.168.1.127:22` снова не отвечал (`No route to host`), поэтому fresh remote build/health/log validation не завершены в этом проходе.
+
+### 7.1 Site transfer checklist — делать при переносе на площадку
+
+- [ ] Подключить тот же SSD до power-on; после boot: `df -h / /mnt/ssd /var/lib/docker ~/BirdLense/app/data`.
+- [ ] Проверить питание barrel jack 5V/4A и активный вентилятор; `tegrastats` idle 5 мин.
+- [ ] Подтвердить LAN IP/SSH: либо сохранить `192.168.1.127`, либо обновить `DEPLOY_HOST` / `DEPLOY_URL`.
+- [ ] Подтвердить, что NUC LAN адреса `192.168.1.11` доступны с Jetson на площадке: `1984` (go2rtc), `1883` (MQTT), `554` (RTSP). Сейчас на столе они перенесены, но недоступны.
+- [ ] Проверить `gst-inspect-1.0 nvv4l2decoder` и `nvv4l2h264enc` на устройстве после финальной сети.
+- [ ] Прогнать каждый lores RTSP через `gst-launch-1.0` ≥5 минут: stutter, зелёные блоки, latency.
+- [ ] Проверить main/high-res через go2rtc, если go2rtc будет отдельным хостом.
+- [ ] Только после RTSP gates — запускать live Hub/deploy smoke.
+
 Соответствие runbook:
 
 - [ ] **Шаги 1–2:** БП 5V/4A, вентилятор, SSD, SD с JetPack записана
-- [ ] **Шаги 3–8:** SSH, apt upgrade, rootfs на SSD, `df -h /` → SSD, extlinux guard
-- [ ] **Шаги 9–12:** Docker nvidia runtime, MAXN, ZRAM/headless, `gst-inspect` OK, путь DS vs Plan B зафиксирован
-- [ ] **Шаги 13–15:** env, build (`restart: unless-stopped`, host network), Ornimetrics `.engine` + parity
-- [ ] **Шаг 16:** benchmark (#656): lores FPS записан, YOLO p95 <100 ms, cadence ≥ stream/interval×0.9
-- [ ] **Шаги 17–18:** камеры, RTSP NVMM ≥5 мин
-- [ ] **Шаги 19–20:** deploy, smoke, `yolo_frames_with_tracks > 0`, idle RAM
-- [ ] **Шаг 21:** recovery без restart контейнера
+- [ ] **Шаги 3–7:** SSH, JetPack, SSD layout + bind-mounts, `df /` → **SD**, `df app/data` → **SSD**
+- [ ] **Шаги 8–11:** Docker data-root на SSD, MAXN, ZRAM/headless, `gst-inspect` OK, путь DS vs Plan B зафиксирован
+- [ ] **Шаги 12–14:** env, build (`restart: unless-stopped`, host network), Ornimetrics `.engine` + parity
+- [ ] **Шаг 15:** benchmark (#656): lores FPS записан, YOLO p95 <100 ms, cadence ≥ stream/interval×0.9
+- [ ] **Шаги 16–17:** камеры, RTSP NVMM ≥5 мин
+- [ ] **Шаги 18–19:** deploy, smoke, `yolo_frames_with_tracks > 0`, idle RAM
+- [ ] **Шаг 20:** recovery без restart контейнера
 - [ ] **24h soak** (#653): OOM/throttle/reconnect
 - [ ] **Scientific bundle** (#657–#659): golden clips, parity report, HITL export path
 - [ ] Model hashes + JetPack/L4T/DeepStream в deployment notes
@@ -1122,7 +1520,7 @@ Jetson-план совместим с полевым протоколом для
 | NVDEC saturated | снизить substream FPS; event-only high-res decode |
 | DeepStream↔Python зависание | Plan B (appsink + TRT); не блокировать MVP |
 | ReID/welfare overload | defer welfare → ReID off; interval+1 |
-| Загрузка с SD после apt | шаг 8: `birdlense-fix-extlinux.sh` |
+| Bind-mount / SSD отвалился | `sudo mount -a`; проверить USB; шаг 7 |
 | 2 камеры не тянут | event-only high-res обязателен; иначе **Orin Nano 8GB** |
 | Engine mismatch | пересобрать TRT на устройстве |
 

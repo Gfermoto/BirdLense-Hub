@@ -59,10 +59,12 @@ def _birder_eu_label_mapping(app_config: Any) -> dict[str, str]:
 
 def _efficientnet_id2label_mapping(app_config: Any) -> dict[str, str]:
     engine = str(app_config.get("processor.classifier_engine", "efficientnet_b2") or "efficientnet_b2").strip().lower()
-    if engine != "efficientnet_b2":
+    if engine not in ("efficientnet_b2", "chriamue", "bird_species_classifier", "bird-species-classifier"):
         return {}
     rel = (
-        app_config.get(
+        app_config.get("processor.models.classifier_chriamue")
+        or app_config.get("processor.models.classifier")
+        or app_config.get(
             "processor.models.classifier_efficientnet_b2",
             "models/classification/weights/efficientnet_b2_global",
         )

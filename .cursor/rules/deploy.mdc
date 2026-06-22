@@ -32,7 +32,7 @@ alwaysApply: true
 ## Платформы (intel_nuc / jetson_nano)
 
 - **Дефолт:** `intel_nuc` — без `BIRDLENSE_PLATFORM` поведение как раньше (`app/Dockerfile`, OpenVINO IR, Intel GPU override).
-- **Jetson:** `export BIRDLENSE_PLATFORM=jetson_nano` в `deploy.local.sh` → `Dockerfile.jetson`, `docker-compose.jetson.yml`, проверка только `.pt`.
+- **Jetson:** `export BIRDLENSE_PLATFORM=jetson_nano` в `deploy.local.sh` → clean runtime bundle (allowlist, не полный репозиторий), `Dockerfile.jetson`, `docker-compose.jetson.yml`, проверка только Jetson-артефактов. Текущий проверенный base — `nvcr.io/nvidia/l4t-base:r32.7.1`; DeepStream/`nvinfer` — отдельный gate после NGC auth/native install.
 - Профили: `deploy/profiles/intel-nuc/`, `deploy/profiles/jetson-nano/`; ADR: `docs/strategy/adr-platform-profiles-intel-jetson.md`.
 
 ---
@@ -50,7 +50,7 @@ make deploy
 
 ## Что делает деплой
 
-1. Синхронизирует код (исключая **`datasets/`**, **`app/data/`** целиком (как в CI), **`app/.env`**, **`.tools/`** (локальный CodeQL), venv и `site/` — данные на сервере не перезаписываются rsync)
+1. Синхронизирует код (для Jetson — только runtime allowlist из runbook; для Intel/VPS — исключая **`datasets/`**, **`app/data/`** целиком (как в CI), **`app/.env`**, **`.tools/`** (локальный CodeQL), venv и `site/` — данные на сервере не перезаписываются rsync)
 2. На сервере: `make stop` → `make build` → `make start`
 3. Intel iGPU на том же хосте: при `/dev/dri/renderD*` генерируется `app/docker-compose.override.yml` (DRI, `group_add`, `LIBVA_DRIVER_NAME=iHD`). В образе OpenCL ICD для OpenVINO на GPU. Опционально `BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=1` — упасть, если override не создался.
 
