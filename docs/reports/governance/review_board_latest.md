@@ -1,6 +1,6 @@
 # Review Board Governance Report
 
-- generated_at: `2026-06-15T18:34:04Z`
+- generated_at: `2026-06-22T17:32:29Z`
 - sessions_total: `3`
 - cadence_adherence_ratio: `1.0` (target `1.0`)
 - untriaged_critical_total: `0` (limit `0`)

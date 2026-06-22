@@ -1,6 +1,6 @@
 # Integration Contract Registry Report
 
-- generated_at: `2026-06-15T18:34:03Z`
+- generated_at: `2026-06-22T17:32:29Z`
 - registry_total: `5` (min `5`)
 - required_total: `5`
 - required_ids_ok: `True`

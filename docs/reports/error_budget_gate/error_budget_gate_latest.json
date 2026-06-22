@@ -1,10 +1,10 @@
 {
   "schema": "error_budget_gate@v1",
-  "generated_at": "2026-06-15T18:33:34Z",
-  "base_url": "http://185.218.111.196:8085",
+  "generated_at": "2026-06-22T17:32:05Z",
+  "base_url": "http://185.218.111.196:8080",
   "inputs": {
     "hub_unreachable": true,
-    "hub_error": "url_error:[Errno 111] Connection refused: http://185.218.111.196:8085/api/ui/system/domain-health",
+    "hub_error": "http_403: http://185.218.111.196:8080/api/ui/system/domain-health",
     "critical_breaches": 0,
     "warning_breaches": 0,
     "slo_dashboard_not_ok": false,
