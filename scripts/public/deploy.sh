@@ -743,7 +743,7 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/app_config/user_config.yaml --excl
 # Локальные venv / сборка док — не на сервер
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --exclude=.venv-ci --exclude=site"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.venv --exclude=.venv-datasets"
-RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv"
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv --exclude=.venv-birder"
 # Временный venv для yolo/openvino экспорта (не на сервер; `.venv` без суффикса выше уже исключён)
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-yolo-fetch"
 # Локальная песочница проверки не должна попадать на сервер.

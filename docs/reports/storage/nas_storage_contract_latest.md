@@ -1,6 +1,6 @@
 # NAS Storage Contract Report
 
-- generated_at: `2026-06-15T18:34:05Z`
+- generated_at: `2026-06-22T17:32:30Z`
 - missing_components: `0`
 - missing_modes: `0`
 - docs_keyword_missing: `0`

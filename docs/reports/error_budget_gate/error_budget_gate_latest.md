@@ -1,6 +1,6 @@
 # Error Budget Gate
 
-- generated_at: `2026-06-15T18:33:34Z`
+- generated_at: `2026-06-22T17:32:05Z`
 - state: `hub_unreachable`
 - consumed_pct: `0`
 - remaining_pct: `100`

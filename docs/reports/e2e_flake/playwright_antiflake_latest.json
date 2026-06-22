@@ -1,6 +1,6 @@
 {
   "schema": "playwright_antiflake@v1",
-  "generated_at": "2026-06-15T18:34:01Z",
+  "generated_at": "2026-06-22T17:32:28Z",
   "policy": {
     "max_hard_wait_ms": 500,
     "max_flaky_rate": 0.15

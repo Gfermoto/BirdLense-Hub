@@ -1,23 +1,86 @@
 {
   "schema": "owasp_api_control_map@v1",
-  "generated_at": "2026-06-15T18:33:35Z",
-  "base_url": "http://185.218.111.196:8085",
+  "generated_at": "2026-06-22T17:30:36Z",
   "inputs": {
-    "hub_unreachable": true,
-    "strict_api_auth_ok": null,
-    "secrets_ok": null
+    "strict_api_auth_ok": true,
+    "secrets_ok": true,
+    "protected_unauth_status": 403,
+    "protected_auth_status": 403,
+    "authz_enforced": true,
+    "authz_allows_authorized": false
   },
   "coverage": {
-    "covered": 10,
+    "covered": 8,
     "total": 10,
-    "percent": 100.0
+    "percent": 80.0
   },
-  "controls": [],
-  "ok": true,
-  "hub_unreachable": true,
+  "controls": [
+    {
+      "id": "API1",
+      "risk": "Broken Object Level Authorization",
+      "covered": false,
+      "control": "auth guards + protected route smoke"
+    },
+    {
+      "id": "API2",
+      "risk": "Broken Authentication",
+      "covered": true,
+      "control": "BIRDLENSE_STRICT_API_AUTH gate"
+    },
+    {
+      "id": "API3",
+      "risk": "Broken Object Property Level Authorization",
+      "covered": true,
+      "control": "require_ui_settings_password on system endpoints"
+    },
+    {
+      "id": "API4",
+      "risk": "Unrestricted Resource Consumption",
+      "covered": true,
+      "control": "password + visitor rate limit and runtime SLI gates"
+    },
+    {
+      "id": "API5",
+      "risk": "Broken Function Level Authorization",
+      "covered": false,
+      "control": "admin/contributor guards on privileged API"
+    },
+    {
+      "id": "API6",
+      "risk": "Unrestricted Access to Sensitive Business Flows",
+      "covered": true,
+      "control": "sensitive system routes require password/token"
+    },
+    {
+      "id": "API7",
+      "risk": "SSRF",
+      "covered": true,
+      "control": "controlled integration config and strict env validation"
+    },
+    {
+      "id": "API8",
+      "risk": "Security Misconfiguration",
+      "covered": true,
+      "control": "verify-prod-env + readiness security_gates"
+    },
+    {
+      "id": "API9",
+      "risk": "Improper Inventory Management",
+      "covered": true,
+      "control": "OpenAPI contract + route tests in CI"
+    },
+    {
+      "id": "API10",
+      "risk": "Unsafe Consumption of APIs",
+      "covered": true,
+      "control": "dependency scans + CI security checks"
+    }
+  ],
+  "ok": false,
+  "base_url": "http://185.218.111.196:8080",
   "errors": {
-    "readiness": "url_error:[Errno 111] Connection refused",
-    "domain_health_unauth": "url_error:[Errno 111] Connection refused",
-    "domain_health_auth": "url_error:[Errno 111] Connection refused"
+    "readiness": null,
+    "domain_health_unauth": null,
+    "domain_health_auth": null
   }
 }
