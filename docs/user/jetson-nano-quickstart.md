@@ -109,4 +109,5 @@ make deploy
 |---------|----------|
 | Processor restart loop | `bash scripts/jetson-post-recreate-bootstrap.sh` после `docker compose up --force-recreate` |
 | Нет `.engine` | `make jetson-trt` или временно `make jetson-config JETSON_BOOTSTRAP=1` |
+| TRT: `torch.version.cuda is None` | В образе пока CPU torch с PyPI — используйте `make jetson-config JETSON_BOOTSTRAP=1` (`.pt` torch) до wheel Jetson PyTorch в `Dockerfile.jetson` |
 | Не пускает в настройки | Проверьте `SETTINGS_PASSWORD` в `site.env`, пересоберите конфиг: `make jetson-config` |

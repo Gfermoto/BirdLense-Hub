@@ -8,8 +8,12 @@ docker cp "$APP_DIR/processor/src/main.py" "$CONTAINER:/app/processor/src/main.p
 docker cp "$APP_DIR/processor/src/inference/selector.py" "$CONTAINER:/app/processor/src/inference/selector.py"
 docker cp "$APP_DIR/processor/src/inference/efficientnet_b2_classifier.py" \
   "$CONTAINER:/app/processor/src/inference/efficientnet_b2_classifier.py"
-docker cp "$APP_DIR/processor/src/inference/binary_paths.py" \
-  "$CONTAINER:/app/processor/src/inference/binary_paths.py"
+docker cp "$APP_DIR/processor/src/inference/torch_backend.py" \
+  "$CONTAINER:/app/processor/src/inference/torch_backend.py"
+docker cp "$APP_DIR/processor/src/detection_strategy.py" \
+  "$CONTAINER:/app/processor/src/detection_strategy.py"
+docker cp "$APP_DIR/processor/src/inference/classifier_paths.py" \
+  "$CONTAINER:/app/processor/src/inference/classifier_paths.py"
 
 docker exec "$CONTAINER" pip3 install --no-cache-dir \
   'ultralytics>=8.4,<9' \
