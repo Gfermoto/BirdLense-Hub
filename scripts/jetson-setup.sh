@@ -109,6 +109,20 @@ _step_config() {
 _sync_jetson_env() {
   # Не затираем секреты; обновляем только Jetson runtime keys из .env.example.
   if [[ "$BOOTSTRAP_TORCH" == "1" ]]; then
+    local envf="$APP_DIR/.env"
+    touch "$envf"
+    for kv in \
+      "BIRDLENSE_INFERENCE_BACKEND=torch" \
+      "BIRDLENSE_INFERENCE_DEVICE=cpu" \
+      "BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=torch" \
+      "BIRDLENSE_OPENVINO_BINARY_ENABLED=0"; do
+      key="${kv%%=*}"
+      if grep -q "^${key}=" "$envf" 2>/dev/null; then
+        sed -i "s|^${key}=.*|${kv}|" "$envf"
+      else
+        echo "$kv" >>"$envf"
+      fi
+    done
     return
   fi
   local example="$PROFILE_DIR/.env.example"
