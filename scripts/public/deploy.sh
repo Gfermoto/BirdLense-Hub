@@ -744,8 +744,10 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/app_config/user_config.yaml --excl
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --exclude=.venv-ci --exclude=site"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.venv --exclude=.venv-datasets"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv --exclude=.venv-birder"
-# Модели и веса — внутри Docker-образа, не нужно на сервере
-RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/processor/models"
+# Локальные тяжёлые веса, не нужные на сервере (на сервере только trapper + классификация)
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/processor/models/detection/weights/snapshots"
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/processor/models/detection/weights/*openvino*"
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/processor/models/classification/weights/*.pt"
 # Временный venv для yolo/openvino экспорта (не на сервер; `.venv` без суффикса выше уже исключён)
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-yolo-fetch"
 # Локальная песочница проверки не должна попадать на сервер.
@@ -763,9 +765,9 @@ RSYNC_FILTER_PROTECT=(
 sync_ok=0
 for attempt in $(seq 1 ${SYNC_RETRIES}); do
   if [[ "${HOST}" == "localhost" || "${HOST}" == "127.0.0.1" ]]; then
-    rsync -a --delete ${RSYNC_EXCLUDES} "${RSYNC_FILTER_PROTECT[@]}" ./ "${REMOTE_DIR}/" && sync_ok=1 && break
+    rsync -a --delete --delete-excluded ${RSYNC_EXCLUDES} "${RSYNC_FILTER_PROTECT[@]}" ./ "${REMOTE_DIR}/" && sync_ok=1 && break
   else
-    rsync -avz --delete -e "ssh ${SSH_OPTS}" ${RSYNC_EXCLUDES} "${RSYNC_FILTER_PROTECT[@]}" ./ "${HOST}:${REMOTE_DIR}/" && sync_ok=1 && break
+    rsync -avz --delete --delete-excluded -e "ssh ${SSH_OPTS}" ${RSYNC_EXCLUDES} "${RSYNC_FILTER_PROTECT[@]}" ./ "${HOST}:${REMOTE_DIR}/" && sync_ok=1 && break
   fi
   echo "  Попытка ${attempt}/${SYNC_RETRIES} не удалась, повтор через 5 сек..."
   sleep 5
