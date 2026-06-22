@@ -744,8 +744,8 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/app_config/user_config.yaml --excl
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --exclude=.venv-ci --exclude=site"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.venv --exclude=.venv-datasets"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv --exclude=.venv-birder"
-# Веса классификации (convnext etc.) — не на Jetson
-RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/processor/models/classification/weights"
+# Модели и веса — внутри Docker-образа, не нужно на сервере
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/processor/models"
 # Временный venv для yolo/openvino экспорта (не на сервер; `.venv` без суффикса выше уже исключён)
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-yolo-fetch"
 # Локальная песочница проверки не должна попадать на сервер.
@@ -756,14 +756,8 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.ruff_cache --exclude=app/.pytest_
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=esphome/.esphome"
 # CodeQL CLI, БД и SARIF (scripts/codeql-local.sh) — десятки МБ/ГБ, на хаб не нужны
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.tools"
-# Не удалять на сервере: веса .pt, NABirds OpenVINO IR; user_config (exclude + P — двойная страховка от --delete).
+# Не удалять на сервере: user_config (exclude + P — двойная страховка от --delete).
 RSYNC_FILTER_PROTECT=(
-  --filter "P app/processor/models/detection/weights/*.pt"
-  --filter "P app/processor/models/detection/weights/best_NABirds_openvino_model/"
-  --filter "P app/processor/models/detection/weights/best_NABirds_openvino_model/***"
-  --filter "P app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/"
-  --filter "P app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/***"
-  --filter "P app/processor/models/classification/weights/*.pt"
   --filter "P app/app_config/user_config.yaml"
 )
 sync_ok=0
