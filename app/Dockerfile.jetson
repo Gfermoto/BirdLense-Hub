@@ -66,6 +66,7 @@ ENV BIRDLENSE_INFERENCE_BACKEND=tensorrt
 ENV BIRDLENSE_BINARY_TENSORRT_PATH=models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.engine
 ENV BIRDLENSE_CLASSIFIER_ENGINE=chriamue
 ENV BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=onnxruntime
+ENV HF_HUB_DISABLE_XET=1
 ENV LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1
 
 CMD ["/bin/bash", "/app/scripts/entrypoint.sh"]
