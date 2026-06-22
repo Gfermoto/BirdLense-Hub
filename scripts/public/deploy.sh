@@ -758,8 +758,9 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.ruff_cache --exclude=app/.pytest_
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=esphome/.esphome"
 # CodeQL CLI, БД и SARIF (scripts/codeql-local.sh) — десятки МБ/ГБ, на хаб не нужны
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.tools"
-# Не удалять на сервере: user_config (exclude + P — двойная страховка от --delete).
+# Не удалять на сервере: user_config, app/data (mounted volume)
 RSYNC_FILTER_PROTECT=(
+  --filter "P app/data"
   --filter "P app/app_config/user_config.yaml"
 )
 sync_ok=0
