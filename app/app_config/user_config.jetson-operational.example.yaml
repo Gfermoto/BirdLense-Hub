@@ -1,0 +1,65 @@
+# Jetson operational template (commit-safe, no secrets).
+# Merge order: default_config.yaml → this file → config.overlay.yaml → site.env
+
+video:
+  source: go2rtc
+  go2rtc_url: http://192.168.1.11:1984
+  go2rtc_username: user
+  go2rtc_password: CHANGE_ME
+  cameras:
+    - id: BirdBox
+      name: In
+      stream_name: BirdBox
+      detect_stream_name: rtsp://admin:CHANGE_ME@192.168.1.129:554/cam/realmonitor?channel=1&subtype=1
+      tuning_role: feeder_close
+      record_width: 2688
+      record_height: 1520
+      camera_slot: camera_1
+    - id: Forest
+      name: Out
+      stream_name: Forest
+      detect_stream_name: rtsp://admin:CHANGE_ME@192.168.1.101:554/cam/realmonitor?channel=1&subtype=1
+      tuning_role: feeder_far
+      camera_slot: camera_2
+
+mqtt:
+  broker: 192.168.1.10
+  port: 1883
+  username: homeassistant
+  password: CHANGE_ME
+  ha_discovery: true
+  frigate_topic: frigate/events
+  birdnet_topic: birdnet
+
+triggers:
+  frigate:
+    enabled: true
+    label_filter: [bird, Bird, jay, Jay, squirrel, Squirrel]
+    min_trigger_score: 0.38
+  opencv:
+    enabled: true
+    detection_method: frame_diff
+    smart_trigger_enabled: true
+
+processor:
+  multi_camera_groups:
+    - [BirdBox, Forest]
+  detector_scope: [Bird, Eurasian Red Squirrel]
+  tracker: models/tracker/bytetrack_birdlense_unstick.yaml
+
+general:
+  app_name: BirdLense
+  settings_password: CHANGE_ME
+  contributor_password: CHANGE_ME
+
+homeassistant:
+  url: http://192.168.1.10:8123
+  token: CHANGE_ME
+
+notifications:
+  base_url: http://192.168.1.127:8085
+  disable_notification: true
+
+ebird:
+  country: RU
+  state: Moscow Oblast

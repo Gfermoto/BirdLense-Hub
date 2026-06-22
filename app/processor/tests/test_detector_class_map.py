@@ -13,6 +13,7 @@ if _src_path not in sys.path:
     sys.path.insert(0, _src_path)
 
 from detector_class_map import (  # noqa: E402
+    _map_path_for_binary,
     resolve_allowed_class_ids,
     resolve_detector_scope_labels,
 )
@@ -30,7 +31,17 @@ def test_trapper_map_only_bird_and_squirrel():
     assert scope == ["Bird", "Eurasian Red Squirrel"]
 
 
-def test_ignore_wins_over_class_to_scope():
+def test_trapper_flat_layout_yaml_path():
+    with tempfile.TemporaryDirectory() as d:
+        proc = os.path.join(d, "processor")
+        det = Path(proc) / "models/detection/trapper_ai_v02_2024"
+        det.mkdir(parents=True)
+        (det / "trapper_ai_v02_2024.yaml").write_text("our_scope: [bird]\n", encoding="utf-8")
+        binary = str(det / "trapper_ai_v02_2024.pt")
+        found = _map_path_for_binary(proc, binary)
+        assert found == det / "trapper_ai_v02_2024.yaml"
+
+
     cfg = {
         "our_scope": ["bird", "squirrel"],
         "class_to_scope": {"bird": [0], "squirrel": [5, 10]},

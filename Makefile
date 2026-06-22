@@ -717,7 +717,7 @@ ml-prepare-reid-dataset:
 reid-ssl-daily:
 	@test -n "$${DB:-}" || (echo "Set DB=path/to/birdlense.db" >&2; exit 1)
 	@test -n "$${REID_SSL_REPORT:-}" || (echo "Set REID_SSL_REPORT=path/to/report.json" >&2; exit 1)
-	@python3 scripts/reid/run_daily_ssl_cycle.py \
+	@python3 scripts/internal/reid/run_daily_ssl_cycle.py \
 		--db "$${DB}" \
 		--window-hours "$${REID_SSL_WINDOW_HOURS:-24}" \
 		--limit "$${REID_SSL_LIMIT:-400}" \
@@ -1280,4 +1280,44 @@ ml-run-reid-execution-report:
 		--max-missing-contract-rows "$${MAX_MISSING_CONTRACT_ROWS:-0}" \
 		--max-stale-hours "$${MAX_STALE_HOURS:-8760}" \
 		--min-suggestion-count "$${MIN_SUGGESTION_COUNT:-0}"
+
+# --- Jetson Nano (ветка jetson-nano) ---
+.PHONY: jetson-config jetson-config-example jetson-fetch-models jetson-build jetson-up jetson-verify jetson-trt jetson-setup jetson-prune
+
+JETSON_SITE_ENV ?= deploy/profiles/jetson-nano/site.env
+JETSON_BOOTSTRAP ?=
+
+jetson-config:
+	@python3 scripts/build_jetson_user_config.py --site-env "$(JETSON_SITE_ENV)" \
+	  $(if $(JETSON_BOOTSTRAP),--bootstrap-torch,) \
+	  $(if $(JETSON_USE_PROD),--use-prod-drift,)
+
+jetson-config-example:
+	@python3 scripts/build_jetson_user_config.py --example
+
+jetson-fetch-models:
+	@bash scripts/fetch_trapper_jetson.sh
+	@bash scripts/fetch_chriamue_classifier.sh
+	@bash scripts/fetch_ornimetrics_jetson.sh
+
+jetson-prune:
+	@JETSON_PRUNE_DRY_RUN=$${JETSON_PRUNE_DRY_RUN:-0} bash scripts/jetson_models_prune.sh app/processor/models
+
+jetson-build:
+	@cd app/ui && npm run build
+	@cd app && docker compose -f docker-compose.yml -f docker-compose.jetson.yml build birdlense
+
+jetson-up:
+	@cd app && docker compose -f docker-compose.yml -f docker-compose.jetson.yml up -d
+	@bash scripts/jetson-post-recreate-bootstrap.sh app
+
+jetson-verify:
+	@curl -sf "http://127.0.0.1:$${BIRDLENSE_PORT:-8085}/api/ui/health"
+	@curl -sf "http://127.0.0.1:$${BIRDLENSE_PORT:-8085}/api/ui/status" | python3 -m json.tool
+
+jetson-trt:
+	@bash scripts/jetson_finish_trapper_trt.sh
+
+jetson-setup:
+	@bash scripts/jetson-setup.sh
 

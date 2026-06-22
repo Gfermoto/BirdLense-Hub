@@ -30,11 +30,11 @@ def resolve_relative_to_processor_root(
 
 
 def detector_weights_available(path: str) -> bool:
-    """``.pt`` файл или валидный OpenVINO IR (xml+bin)."""
+    """``.pt`` file, TensorRT ``.engine``, or valid OpenVINO IR (xml+bin)."""
     if not path:
         return False
     if os.path.isfile(path):
-        if path.endswith(".pt"):
+        if path.endswith((".pt", ".engine")):
             return True
         if path.endswith(".xml"):
             return _xml_has_companion_bin(path)
@@ -84,6 +84,33 @@ def resolve_binary_detector_weight_path(
     env_ov = os.environ.get("BIRDLENSE_BINARY_OPENVINO_PATH") or ""
     binary_env_ov = env_ov.strip()
     ov_allowed = openvino_binary_enabled(app_config)
+    if requested_backend == "tensorrt":
+        raw_trt = (
+            os.environ.get("BIRDLENSE_BINARY_TENSORRT_PATH")
+            or app_config.get("processor.models.binary_tensorrt")
+            or app_config.get("processor.models.binary_engine")
+            or ""
+        )
+        p = ""
+        if raw_trt:
+            p = resolve_relative_to_processor_root(str(raw_trt).strip(), root)
+        if p and detector_weights_available(p):
+            return (p, "tensorrt")
+        rel_pt = str(app_config.get("processor.models.binary") or "").strip()
+        if rel_pt:
+            p_pt = resolve_relative_to_processor_root(rel_pt, root)
+            if detector_weights_available(p_pt):
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "TensorRT engine missing at %s; falling back to torch .pt at %s",
+                    p or raw_trt,
+                    p_pt,
+                )
+                return (p_pt, "torch")
+        if p:
+            return (p, "tensorrt")
+
     if requested_backend in ("openvino", "auto") and ov_allowed:
         if binary_env_ov:
             if os.path.isabs(binary_env_ov):

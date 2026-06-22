@@ -1,0 +1,890 @@
+general:
+  app_name: BirdLense
+  require_auth_for_video_stream: false
+  enable_notifications: false
+  notification_excluded_species: []
+  settings_password: CHANGE_ME
+  contributor_password: CHANGE_ME
+  session_idle_minutes: 30
+  birdnet_url: ''
+  donate_url: ''
+processor:
+  pipeline_mode: linear
+  linear_live_scoring_engine_enabled: true
+  classifier_defer_to_finalize: true
+  classifier_finalize_max_key_frames: 3
+  adaptive_preprocess_enabled: false
+  binary_rescue_enabled: false
+  tracker: models/tracker/bytetrack_birdlense_unstick.yaml
+  tracker_profiles:
+    night: models/tracker/bytetrack_birdlense_night.yaml
+  tracker_fps_profiles:
+    lte_5: models/tracker/bytetrack_birdlense_lowfps.yaml
+    lte_7: models/tracker/bytetrack_birdlense_lowfps.yaml
+    lte_10: models/tracker/bytetrack_birdlense.yaml
+    lte_15: models/tracker/bytetrack_birdlense.yaml
+    gt_15: models/tracker/bytetrack_birdlense.yaml
+  tracker_adaptive_low_fps_enabled: true
+  tracker_low_fps_threshold: 10.0
+  tracker_remember_seconds: 1.6
+  tracker_adaptive_min_buffer: 6
+  tracker_adaptive_max_buffer: 16
+  track_static_reject_enabled: true
+  track_static_reject_min_duration_sec: 2.0
+  track_static_reject_min_frames: 4
+  track_static_reject_min_frames_sparse: 3
+  track_static_reject_min_duration_sparse_sec: 2.5
+  track_static_reject_max_center_dispersion_norm: 0.085
+  track_static_reject_max_relative_center_dispersion: 0.16
+  track_static_reject_max_bbox_iou_first_last_min: 0.74
+  track_id_switch_iou_threshold: 0.25
+  max_record_seconds: 60
+  file_max_record_floor_seconds: 86400
+  max_inactive_seconds: 8
+  readiness_heartbeat_max_age_seconds: 180
+  bootstrap_phase_max_seconds: 600
+  post_record_seconds: 3
+  min_seconds_between_recordings: 8
+  concurrent_recording_enabled: true
+  trigger_moratorium_seconds: 2
+  recording_gate_mode: motion_immediate
+  detect_first_enabled: true
+  detect_first_triggers:
+  - opencv
+  - frigate
+  - motion_sensor
+  - scales
+  detect_first_window_seconds: 4.0
+  detect_first_max_frames: 30
+  detect_first_confirm_min_hits: 1
+  detect_first_raw_hits_anchor_enabled: true
+  detect_first_confirm_min_track_seconds: 0.35
+  detect_first_anchor_only_persist_enabled: false
+  detect_first_frigate_assist_enabled: true
+  detect_first_frigate_assist_min_confidence: 0.5
+  record_prebuffer_seconds: 0
+  record_postroll_seconds: 3
+  detect_scheduler_enabled: true
+  detect_scheduler_triggers:
+  - opencv
+  - frigate
+  - motion_sensor
+  - scales
+  detect_probe_window_seconds: 2.5
+  detect_probe_max_frames: 30
+  detect_probe_min_hits: 2
+  detect_probe_start_recording_on_positive: true
+  frigate_activity_hold_seconds: 10
+  frigate_hold_only_when_frigate_trigger: true
+  frigate_only_extension_max_frames: 0
+  min_track_duration: 0.25
+  track_regen_min_track_duration: 0.05
+  track_regen_frame_step: 5
+  track_regen_serialize_inference: true
+  track_regen_serialize_inference_interprocess: true
+  track_regen_detection_strategy: two_stage
+  track_regen_lores_px: 704
+  track_regen_lores_wh:
+  - 704
+  - 576
+  track_regen_iou_id_fallback: true
+  track_regen_iou_match_threshold: 0.22
+  iou_id_fallback_live_enabled: true
+  iou_id_fallback_live_match_threshold: 0.18
+  classifier_async_enabled: true
+  track_to_predict_fallback_enabled: true
+  track_to_predict_fallback_confidence: 0.002
+  track_regen_video_timeout_sec: 900
+  track_regen_precise_timeout_sec: 420
+  track_regen_precise_detection_strategy: two_stage
+  track_regen_precise_min_center_dist: 0.02
+  track_regen_ignore_regional_species: true
+  detect_use_native_resolution: false
+  inference_lores_wh:
+  - 704
+  - 576
+  inference_lores_px: 704
+  classifier_use_source_frame: true
+  single_rtsp_read: false
+  letterbox_resize_interpolation: linear
+  bbox_parity_debug_enabled: false
+  bbox_parity_debug_max_frames: 20
+  lowres_enhance_enabled: true
+  lowres_enhance_max_input_px: 800
+  lowres_sharpen_amount: 0.32
+  track_regen_match_live_pipeline: true
+  track_regen_binary_only: true
+  track_regen_parallel_auto_with_manual: false
+  min_confidence_binary: 0.08
+  min_confidence_binary_bird: 0.06
+  min_confidence_binary_rodent: 0.3
+  scoring_engine_enabled: true
+  scoring_weight_conf: 0.45
+  scoring_weight_motion: 0.25
+  scoring_weight_shape: 0.15
+  scoring_weight_background: 0.15
+  scoring_frigate_prior_boost: 0.2
+  scoring_default_low_threshold: 0.1
+  scoring_default_high_threshold: 0.48
+  scoring_review_band_width: 0.14
+  scoring_calibration_frames: 60
+  scoring_calibration_low_floor: 0.06
+  scoring_calibration_max_noise_rate: 0.01
+  scoring_calibration_percentile: 0.95
+  scoring_static_phantom_reject_enabled: true
+  scoring_static_phantom_max_motion_score: 0.22
+  scoring_static_phantom_max_shape_score: 0.38
+  scoring_static_phantom_square_aspect_min: 0.82
+  scoring_static_phantom_square_aspect_max: 1.22
+  scoring_static_phantom_max_conf: 0.52
+  frame_decision_trace_enabled: true
+  static_object_suppression_enabled: false
+  static_box_aspect_ratio_min: 0.8
+  static_box_aspect_ratio_max: 1.2
+  static_box_conf_threshold: 0.45
+  static_square_hard_reject_max_conf: 0.22
+  static_scene_bird_min_confidence: 0.25
+  static_scene_bird_like_min_confidence: 0.4
+  static_scene_bird_like_vertical_max_aspect: 0.7
+  static_scene_bird_like_horizontal_min_aspect: 1.4
+  static_temporal_enabled: true
+  static_temporal_min_frames: 4
+  static_temporal_max_area_px: 120000
+  static_temporal_hist_change_max: 0.04
+  static_giant_box_area_frac: 0.5
+  static_giant_box_side_frac: 0.42
+  static_temporal_min_seconds: 8
+  static_temporal_max_jitter_px: 2
+  detection_quality_assumed_fps: 7
+  detection_ignore_masks: []
+  detection_interest_zones: []
+  detection_interest_zones_required: true
+  background_subtraction_enabled: false
+  background_subtraction_method: mog2
+  background_subtraction_history: 400
+  background_subtraction_var_threshold: 16
+  background_subtraction_min_fg_ratio: 0.07
+  background_subtraction_warmup_frames: 45
+  background_subtraction_detect_shadows: true
+  background_subtraction_learning_rate: -1
+  scene_adaptive_conf_enabled: true
+  scene_adaptive_static_boost: 0.08
+  scene_adaptive_night_boost: 0.1
+  scene_adaptive_conf_cap: 0.48
+  motion_verified_detection_enabled: false
+  motion_verified_min_pixel_change: 10
+  motion_global_static_reject_enabled: true
+  motion_global_max_mean_absdiff: 2.0
+  motion_strict_consecutive_frames: 3
+  motion_hard_conf_ceiling: 0.55
+  detection_texture_filter_enabled: true
+  detection_texture_min_laplacian_var: 20
+  hard_negatives_enabled: true
+  hard_negatives_dir: data/hard_negatives
+  hard_negatives_max_per_frame: 8
+  bird_skip_classifier_max_area_frac: 0
+  min_confidence_to_process: 0.08
+  min_confidence_to_notify: 0.46
+  notify_preview_source: auto
+  notify_preview_crop_pad_frac: 0.06
+  classifier_crop_source: record_hires
+  reid_crop_source: auto
+  enrichment_crop_pad_frac: 0.06
+  enrichment_crop_require_keyframe: true
+  linear_static_pinned_reject_enabled: true
+  detect_record_time_offset_sec: 0
+  scoring_moving_roi_review_enabled: true
+  scoring_moving_roi_min_motion_score: 0.24
+  light_gate_enabled: false
+  light_gate_min_brightness: 14
+  light_gate_min_contrast: 10
+  adaptive_profiles:
+    enabled: true
+    night:
+      max_brightness: 18
+      max_contrast: 12
+      overrides:
+        light_gate_min_brightness: 8
+        light_gate_min_contrast: 6
+        min_confidence_binary: 0.08
+        min_confidence_binary_bird: 0.06
+        openvino_min_confidence_binary_bird: 0.06
+        min_track_duration: 1.0
+        min_confidence_to_process: 0.08
+        min_box_size_px: 14
+        min_center_dist: 0.01
+        max_classifications_per_frame: 4
+        binary_imgsz: 704
+  frame_processing_warn_ms: 450
+  species_confidence_overrides:
+    Bird: 0.08
+  ebird_regional_top_auto_confidence: true
+  ebird_regional_top_confidence_delta: 0.03
+  ebird_regional_top_confidence_floor: 0.08
+  birdnet_mqtt_auto_confidence: false
+  birdnet_mqtt_bias_delta: 0.05
+  birdnet_mqtt_bias_floor: 0.05
+  birdnet_mqtt_prior_window_hours: 24
+  birdnet_mqtt_bias_window_seconds: 0
+  birdnet_mqtt_prior_ttl_hours: 25
+  birdnet_mqtt_prior_half_life_hours: 6
+  birdnet_mqtt_prior_min_confidence: 0.0
+  birdnet_mqtt_observability_level: info
+  birdnet_mqtt_observability_debug: false
+  birdnet_fifo_snapshot_enabled: true
+  birdnet_fifo_snapshot_interval_sec: 3
+  birdnet_fifo_snapshot_recent_limit: 80
+  birdnet_fifo_snapshot_stale_sec: 180
+  birdnet_fifo_hearing_active_hours: 24
+  birdnet_fifo_persist_enabled: true
+  birdnet_fifo_sqlite_busy_ms: 30000
+  multi_camera_groups:
+  - - BirdBox
+    - Forest
+  multi_camera_confidence_boost: 0.03
+  runtime_metrics_maintenance_async: true
+  regional_species: []
+  detector_scope:
+  - Bird
+  - Eurasian Red Squirrel
+  detector_native_class_labels: true
+  binary_predict_class_allowlist:
+  - 0
+  - 5
+  classification_scheduler: priority
+  max_classifications_per_frame: 4
+  max_blur_checks: 3
+  blur_threshold: 100.0
+  min_center_dist: 0.01
+  binary_imgsz: 704
+  track_spatial_split_enabled: true
+  track_spatial_split_max_center_jump_norm: 0.18
+  track_spatial_split_min_segment_frames: 2
+  binary_track_iou: 0.62
+  binary_track_max_det: 60
+  min_box_size_px: 14
+  auto_small_object_relax_enabled: false
+  auto_small_object_relax_min_box_size_px: 18
+  auto_small_object_relax_min_center_dist: 0.01
+  auto_small_object_relax_conf_delta: 0.05
+  auto_small_object_relax_max_candidates: 1
+  auto_unstick_enabled: true
+  auto_unstick_no_track_frames: 10
+  auto_unstick_min_confidence_binary: 0.04
+  auto_unstick_min_confidence_binary_bird: 0.025
+  auto_unstick_min_box_size_px: 14
+  auto_unstick_min_center_dist: 0.01
+  auto_unstick_tracker: models/tracker/bytetrack_birdlense_unstick.yaml
+  auto_unstick_tracker_night: models/tracker/bytetrack_birdlense_night_unstick.yaml
+  max_box_area_norm: 0.85
+  camera_overrides: {}
+  camera_tuning_by_role:
+    feeder_close:
+      detect_use_native_resolution: false
+      light_gate_min_brightness: 8
+      light_gate_min_contrast: 6
+      detect_first_confirm_min_track_seconds: 0.25
+      detect_first_confirm_min_hits: 1
+      min_confidence_binary: 0.04
+      min_confidence_binary_bird: 0.02
+      openvino_min_confidence_binary_bird: 0.02
+      openvino_binary_track_ultralytics_conf: 0.025
+      min_confidence_to_process: 0.04
+      min_track_duration: 0.25
+      tracker: models/tracker/bytetrack_birdlense_close.yaml
+      tracker_remember_seconds: 1.2
+      min_box_size_px: 8
+      min_center_dist: 0.01
+      max_box_area_norm: 0.92
+      track_to_predict_fallback_enabled: true
+      detect_record_time_offset_sec: -0.1
+      track_static_reject_enabled: false
+      track_static_reject_min_duration_sec: 1.5
+      track_static_reject_min_frames: 3
+      track_static_reject_min_frames_sparse: 2
+      track_static_reject_min_duration_sparse_sec: 0.8
+      track_static_reject_max_center_dispersion_norm: 0.055
+      track_static_reject_max_relative_center_dispersion: 0.11
+      track_static_reject_max_bbox_iou_first_last_min: 0.72
+      scoring_moving_roi_min_motion_score: 0.18
+      scoring_default_low_threshold: 0.1
+      scoring_relaxed_min_confidence: 0.02
+      scoring_static_phantom_reject_enabled: false
+      scene_adaptive_conf_enabled: false
+    feeder_far:
+      detect_use_native_resolution: false
+      min_confidence_binary: 0.05
+      min_confidence_binary_bird: 0.04
+      openvino_min_confidence_binary_bird: 0.04
+      openvino_binary_track_ultralytics_conf: 0.06
+      min_confidence_to_process: 0.04
+      min_box_size_px: 8
+      min_center_dist: 0.012
+      max_box_area_norm: 0.92
+      track_to_predict_fallback_enabled: true
+      min_track_duration: 0.25
+      detect_record_time_offset_sec: -0.12
+      track_static_reject_enabled: false
+      track_static_reject_max_center_dispersion_norm: 0.1
+      track_static_reject_max_relative_center_dispersion: 0.18
+      track_static_reject_min_duration_sec: 2.5
+      track_static_reject_min_frames: 3
+      track_static_reject_min_frames_sparse: 2
+      scoring_default_low_threshold: 0.08
+      scoring_relaxed_min_confidence: 0.05
+      scoring_static_phantom_reject_enabled: false
+      scoring_moving_roi_min_motion_score: 0.22
+      scene_adaptive_conf_enabled: false
+  generic_bird_min_detector_conf: 0.1
+  generic_bird_min_frames: 2
+  generic_bird_min_area_frac: 0.006
+  generic_bird_min_best_frame_score: 5.0
+  generic_rodent_min_frames: 2
+  generic_rodent_max_area_frac: 0.6
+  generic_rodent_min_best_frame_score: 6.0
+  key_frame_limit: 3
+  classifier_fallback_bird: true
+  included_bird_families:
+  - Perching Birds
+  - Pigeons and Doves
+  - Woodpeckers
+  save_images: false
+  save_dataset_crops: false
+  dataset_min_confidence: 0.58
+  keep_recording_when_no_detections: false
+  detection_strategy: two_stage
+  inference_backend: tensorrt
+  classifier_engine: chriamue
+  classifier_best_guess_enabled: true
+  classifier_best_guess_min_confidence: 0.1
+  classifier_best_guess_min_events: 1
+  efficientnet_b2_min_confidence: 0.22
+  efficientnet_b2_unknown_label: Unknown Bird
+  squirrel_species_label: Rodent
+  classifier_inference_backend: onnxruntime
+  classifier_inference_device: cuda
+  finalize_async_enabled: true
+  finalize_queue_maxsize: 2
+  finalize_enqueue_timeout_ms: 1500
+  finalize_shutdown_grace_seconds: 120
+  latency_budget_trigger_to_first_bbox_warn_s: 5.0
+  latency_budget_trigger_to_first_bbox_critical_s: 8.0
+  latency_budget_finalize_warn_ms: 5000
+  latency_budget_finalize_critical_ms: 15000
+  latency_budget_fusion_warn_ms: 1200
+  latency_budget_fusion_critical_ms: 3500
+  latency_budget_persist_warn_ms: 1500
+  latency_budget_persist_critical_ms: 5000
+  classifier_task_queue_maxsize: 8
+  detector_weight_contract: false
+  models:
+    binary: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.pt
+    classifier: models/classification/chriamue_bird_species_classifier
+    binary_onnx: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
+    binary_tensorrt: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.engine
+    classifier_chriamue: models/classification/chriamue_bird_species_classifier
+    classifier_efficientnet_b2: models/classification/chriamue_bird_species_classifier
+    welfare_embedder: models/welfare/ornimetrics/embedder.onnx
+    welfare_scorer: models/welfare/ornimetrics/welfare_scorer.npz
+    reid_embedder: models/reid/ornimetrics/reid_embedder.onnx
+  classifier_uncertainty_entropy_ge: null
+  classifier_uncertainty_margin_le: null
+  reid_embedding_pipeline_mode: offline_batch
+  reid_suggestions_enabled: true
+  reid_kill_switch: false
+  reid_shadow_mode: false
+  reid_default_similarity_threshold: 0.86
+  reid_different_similarity_threshold: 0.35
+  reid_cross_camera_threshold_boost: 0.04
+  reid_max_embedding_age_hours: 8760
+  reid_species_similarity_thresholds: {}
+  reid_auto_link_enabled: true
+  reid_auto_link_threshold_high: 0.95
+  reid_auto_link_threshold_low: 0.75
+  reid_auto_link_max_candidates: 8
+  reid_gallery_enabled: false
+  reid_track_clustering_enabled: false
+  reid_expert_queue_enabled: false
+  reid_gallery_merge_cosine_threshold: 0.92
+  reid_gallery_duplicate_threshold_low: 0.82
+  reid_gallery_min_track_duration_sec: 0.6
+  reid_gallery_max_cluster_members: 24
+  reid:
+    model: dinov2_vits14
+    hub_cache_dir: models/reid/hub_cache
+    hub_repo_local_path: ''
+    runtime_enabled: true
+    preload_on_start: true
+    device: cuda
+    inference_backend: onnxruntime
+    hub_download_timeout_seconds: 15
+    candidate_cache_ttl_seconds: 120
+    include_embedding_payload: false
+    max_runtime_ms: 250
+  behavior_recognition:
+    enabled: false
+    engine: meta
+    inference_backend: logistic_json
+    openvino_fallback_logistic: false
+    weights_path: models/behavior/meta/behavior_logistic_export@v1.json
+    confidence_store_min: 0.2
+    confidence_review_threshold: 0.45
+    active_video_model: video_v2_1
+    video_model_kind: video_v2_1
+    video_model_version: video-v2-1
+    video_openvino_path: models/behavior/video
+    video_weights_path: models/behavior/video/behavior_video_export.json
+    video_confidence_store_min: 0.35
+    canary_log_discrepancies: true
+    max_runtime_detections: 50
+  openvino_binary_enabled: false
+video:
+  source: go2rtc
+  file_path: ''
+  file_dir: /app/data/file_test
+  file_loop: false
+  file_test_max_upload_mb: 10240
+  file_realtime_simulation: false
+  go2rtc_url: http://192.168.1.11:1984
+  go2rtc_username: user
+  go2rtc_password: CHANGE_ME
+  encoding: cpu
+  record_with_vaapi: false
+  capture_backend: opencv
+  record_stream_codec: h264
+  cameras:
+  - id: BirdBox
+    name: In
+    stream_name: BirdBox
+    detect_stream_name: rtsp://admin:CHANGE_ME@192.168.1.129:554/cam/realmonitor?channel=1&subtype=1
+    tuning_role: feeder_close
+    record_width: 2688
+    record_height: 1520
+    camera_slot: camera_1
+  - id: Forest
+    name: Out
+    stream_name: Forest
+    detect_stream_name: rtsp://admin:CHANGE_ME@192.168.1.101:554/cam/realmonitor?channel=1&subtype=1
+    tuning_role: feeder_far
+    camera_slot: camera_2
+  camera_profiles: {}
+  camera_profile_bindings: {}
+  camera_slots: []
+  pre_record_seconds: 5
+  auto_reconnect: true
+  video_width: 0
+  video_height: 0
+  force_recording_resolution: false
+  detect_fps: 0
+triggers:
+  opencv:
+    enabled: true
+    check_every_n_frames: 1
+    check_interval_seconds: 0.12
+    motion_max_side_px: 512
+    detection_method: frame_diff
+    suppress_warmup_frames: 45
+    auto_profile_enabled: true
+    auto_profile_night_luma_threshold: 58.0
+    diff_threshold: 20
+    day_diff_threshold: 20
+    night_diff_threshold: 16
+    min_contour_area: 360
+    day_min_contour_area: 320
+    night_min_contour_area: 220
+    smart_trigger_enabled: true
+    global_motion_mean_absdiff: 2.5
+    day_global_motion_mean_absdiff: 2.5
+    night_global_motion_mean_absdiff: 2.2
+    min_motion_pixel_fraction: 0.0008
+    day_min_motion_pixel_fraction: 0.0008
+    night_min_motion_pixel_fraction: 0.0006
+    max_contour_area_frac: 0.38
+    day_max_contour_area_frac: 0.38
+    night_max_contour_area_frac: 0.45
+    mog2_history: 300
+    mog2_var_threshold: 24.0
+    mog2_detect_shadows: false
+    mog2_min_motion_pixel_fraction: 0.0006
+    mog2_min_contour_area: 220
+    masks: []
+    min_consecutive_motion_frames: 2
+    scene_change_motion_fraction: 0.8
+    improve_contrast: false
+    morphology_open_iterations: 1
+  frigate:
+    enabled: true
+    topic: frigate/events
+    camera_filter: []
+    label_filter:
+    - bird
+    - Bird
+    - jay
+    - Jay
+    - squirrel
+    - Squirrel
+    label_exclude:
+    - cat
+    - dog
+    trigger_on_tracked_object: true
+    min_trigger_score: 0.38
+    trigger_on_update: false
+    geometry_fallback_enabled: false
+    geometry_fallback_label_exclude:
+    - person
+    - car
+    - vehicle
+    - truck
+    - bus
+    geometry_fallback_cooldown_seconds: 5.0
+  motion_sensor:
+    enabled: false
+    source: mqtt
+    mqtt_topic: ''
+    esphome_url: ''
+    esphome_sensor_id: ''
+    pir_pin: 4
+  scales:
+    enabled: false
+    source: mqtt
+    motion_trigger_min_delta_kg: 0.02
+    motion_trigger_debounce_seconds: 1.5
+mqtt:
+  broker: 192.168.1.10
+  port: 1883
+  username: homeassistant
+  password: CHANGE_ME
+  frigate_topic: frigate/events
+  birdnet_topic: birdnet
+  publish_topic: birdlense/detections
+  max_events: 1200
+  publish_queue_max: 4000
+  feeder_scale_queue_max: 400
+  reconnect_min_delay: 5
+  reconnect_max_delay: 300
+  reconnect_jitter_ratio: 0.15
+  ha_discovery: true
+system_metrics:
+  cpu_sample_interval_seconds: 0.0
+detection:
+  merge_window_seconds: 12
+  dedup_window_seconds: 60
+  one_per_species: true
+  one_per_species_keep_distinct_tracks: true
+  absorb_generic_bird: true
+  absorb_generic_bird_overlap_min_sec: 0.1
+  absorb_generic_bird_min_classifier_confidence: 0.24
+  fusion_non_species_confidence_slack: 0.02
+  source_priority:
+  - yolo
+  - frigate
+  weighted_arbiter_enabled: false
+  weighted_arbiter_conf_weight: 0.55
+  weighted_arbiter_detector_weight: 0.15
+  weighted_arbiter_classifier_weight: 0.12
+  weighted_arbiter_birdnet_weight: 0.08
+  weighted_arbiter_regional_weight: 0.05
+  weighted_arbiter_multicamera_weight: 0.05
+  cross_source_confidence_bonus: 0.02
+  track_fragment_merge_enabled: true
+  track_fragment_merge_gap_sec: 1.5
+  track_fragment_merge_min_iou: 0.08
+  track_fragment_merge_max_center_dist: 0.22
+  min_confidence_to_store: 0.08
+  strip_review_only_overlay_frames: false
+  track_first_gate_enabled: true
+  persist_mode: binary_track_first
+  hypothesis_arbitration_enabled: false
+  frigate_standalone_when_no_yolo: false
+  frigate_standalone_require_blind_yolo: true
+  frigate_standalone_blind_score_threshold: 0.7
+  frigate_standalone_force_after_no_yolo_seconds: 12
+  yolo_blind_required_consecutive_sessions: 1
+  yolo_blind_min_duration_seconds: 30
+  yolo_blind_alert_seconds: 30
+  yolo_between_motion_max_age_seconds: 120
+  bbox_iou_gate_enabled: true
+  bbox_iou_gate_min: 0.85
+  bbox_iou_gate_action: reject
+  yolo_blind_min_frames: 180
+  yolo_blind_min_effective_fps: 2.0
+  yolo_blind_score_threshold: 0.7
+  yolo_blind_quickcheck_seconds: 2.0
+  yolo_blind_quickcheck_min_confidence_binary: 0.05
+  yolo_blind_quickcheck_min_confidence_binary_bird: 0.04
+  yolo_blind_quickcheck_min_box_size_px: 10
+  yolo_blind_min_frigate_only_frames: 120
+  yolo_self_heal_restart_enabled: true
+  yolo_self_heal_cooldown_seconds: 300
+  yolo_self_heal_escalation_window_seconds: 900
+  yolo_watchdog_enabled: true
+  yolo_watchdog_min_effective_fps: 1.2
+  yolo_watchdog_min_duration_seconds: 20
+  yolo_watchdog_min_frames: 40
+  frigate_standalone_when_no_accepted_species: false
+  frigate_standalone_skip_labels:
+  - person
+  - human
+  - car
+  - vehicle
+  - truck
+  - bus
+  frigate_standalone_min_score: 0.52
+  frigate_standalone_missing_score_fallback: 0.72
+  frigate_standalone_excluded_min_score: 0.0
+  frigate_standalone_excluded_missing_score_fallback: 0.58
+  frigate_standalone_notify: true
+  panic_gate_enabled: true
+  panic_gate_min_frigate_events: 8
+  panic_gate_min_duration_seconds: 20
+  yolo_weak_track_salvage_enabled: true
+  yolo_core_anchor_enabled: false
+  yolo_core_anchor_max_rows: 5
+  use_learned_fusion: false
+  fusion_model_path: ''
+  fusion_alpha: 0.6
+  species_mapping:
+    Garrulus glandarius (Eurasian Jay): Eurasian Jay
+    Eurasian_Jay: Eurasian Jay
+    Parus major (Great Tit): Great Tit
+    Great_Tit: Great Tit
+    Cyanistes caeruleus (Eurasian Blue Tit): Eurasian Blue Tit
+    Eurasian_Blue_Tit: Eurasian Blue Tit
+    Parus ater (Coal Tit): Coal Tit
+    Passer domesticus (House Sparrow): House Sparrow
+    Sitta europaea (Eurasian Nuthatch): Eurasian Nuthatch
+    Fringilla coelebs (Common Chaffinch): Common Chaffinch
+    Erithacus rubecula (European Robin): European Robin
+    Carduelis carduelis (European Goldfinch): European Goldfinch
+    Dendrocopos major (Great Spotted Woodpecker): Great Spotted Woodpecker
+    Columba palumbus (Common Wood Pigeon): Common Wood Pigeon
+    Streptopelia decaocto (Eurasian Collared-Dove): Eurasian Collared-Dove
+    Pica pica (Eurasian Magpie): Eurasian Magpie
+    Corvus corone (Carrion Crow): Carrion Crow
+    Tetrastes bonasia (Hazel Grouse): Hazel Grouse
+    Hazel_Grouse: Hazel Grouse
+    Rodent: Rodent
+    Corvus cornix (Hooded Crow): Hooded Crow
+    Corvus_cornix: Hooded Crow
+    Hooded_Crow: Hooded Crow
+    Corvus frugilegus (Rook): Rook
+    Turdus merula (Common Blackbird): Common Blackbird
+    Aegithalos caudatus (Long-tailed Tit): Long-tailed Tit
+    Poecile palustris (Marsh Tit): Marsh Tit
+    Poecile montanus (Willow Tit): Willow Tit
+    Certhia familiaris (Eurasian Treecreeper): Eurasian Treecreeper
+    Pyrrhula pyrrhula (Eurasian Bullfinch): Eurasian Bullfinch
+    Chloris chloris (European Greenfinch): European Greenfinch
+    Linaria cannabina (Common Linnet): Common Linnet
+    Fringilla montifringilla (Brambling): Brambling
+    Sturnus vulgaris (Common Starling): Common Starling
+    Turdus iliacus (Redwing): Redwing
+    Scolopax rusticola (Eurasian Woodcock): Eurasian Woodcock
+    Rallus aquaticus (Water Rail): Water Rail
+    Ixobrychus minutus (Little Bittern): Little Bittern
+    Cuculus optatus (Oriental Cuckoo): Oriental Cuckoo
+    Turdus viscivorus (Mistle Thrush): Mistle Thrush
+    Anas platyrhynchos (Mallard): Mallard
+    Cygnus cygnus (Whooper Swan): Whooper Swan
+    Prunella modularis (Dunnock): Dunnock
+    Ficedula parva (Red-breasted Flycatcher): Red-breasted Flycatcher
+    Oriolus oriolus (Eurasian Golden Oriole): Eurasian Golden Oriole
+    Hieraaetus pennatus (Booted Eagle): Booted Eagle
+    Turdus pilaris (Fieldfare): Fieldfare
+    Coracias garrulus (European Roller): European Roller
+    Curruca curruca (Lesser Whitethroat): Lesser Whitethroat
+    Bubo bubo (Eurasian Eagle-Owl): Eurasian Eagle-Owl
+    Tringa ochropus (Green Sandpiper): Green Sandpiper
+    Spinus spinus (Eurasian Siskin): Eurasian Siskin
+    Gray-headed Woodpecker: Grey-headed Woodpecker
+    Grey-headed Woodpecker: Grey-headed Woodpecker
+    Great Gray Shrike: Great Grey Shrike
+    Great Grey Shrike: Great Grey Shrike
+    squirrel: Rodent
+    Squirrel: Rodent
+    Eastern Gray Squirrel: Rodent
+    Red Squirrel: Rodent
+    Eurasian Red Squirrel: Rodent
+feed:
+  source: mqtt
+  duration_seconds: 3
+  mqtt_topic: cmnd/bird_feeder/Power
+  esphome_url: http://feeder.local
+  esphome_switch_id: bird_feeder
+  esphome_type: switch
+homeassistant:
+  url: http://192.168.1.10:8123
+  token: CHANGE_ME
+weather:
+  source: openweather
+  ha_entity_id: weather.home
+readiness:
+  funnel_lookback_hours: 24
+  max_fusion_drop_session_rate: 0.35
+  max_fp_empty_opencv_rate: 0.35
+  min_healthy_persist_rate: 0.3
+  bbox_slo_gate_enabled: true
+  bbox_slo_min_iou_p50: 0.45
+  bbox_slo_require_funnel_ok: true
+  bbox_slo_allow_unknown_metrics: true
+reconcile:
+  auto_run_enabled: true
+  startup_delay_seconds: 30
+  auto_run_interval_hours: 24
+  purge_orphan_disk_enabled: true
+  purge_orphan_disk_limit: 500
+  purge_broken_db_rows_enabled: true
+  purge_broken_db_rows_limit: 100
+  purge_dry_run: false
+  orphan_purge_grace_minutes: 15
+  orphan_purge_min_bytes: 512
+  scan_import_grace_minutes: 15
+  scan_import_min_bytes: 512
+retention:
+  days: 90
+  max_deletes_per_run: 500
+  auto_run_enabled: false
+  auto_run_interval_hours: 6
+  mode: cascade
+  dataset_max_age_days: 0
+  migration_max_age_days: 0
+  protect_favorites: true
+  min_age_hours: 1
+  batch_size: 50
+  runtime_metrics_days: 14
+  detector_health_days: 30
+  runtime_metrics_maintenance_interval_minutes: 60
+  runtime_metrics_vacuum_interval_hours: 12
+  runtime_metrics_analyze_enabled: true
+notifications:
+  telegram_bot_token: CHANGE_ME
+  telegram_chat_id: ''
+  base_url: http://192.168.1.127:8085
+  telegram_api_base: ''
+  telegram_proxy_type: socks_http
+  telegram_proxy_url: ''
+  telegram_mtproto_host: ''
+  telegram_mtproto_port: 443
+  telegram_mtproto_secret: CHANGE_ME
+  telegram_api_id: 0
+  telegram_api_hash: ''
+  telegram_timeout: 300
+  telegram_retries: 5
+  compress_photo_over_kb: 400
+  telegram_max_side_px: 1024
+  message_thread_id: ''
+  disable_notification: true
+  protect_content: false
+  link_preview_large: false
+  send_photo: true
+  use_custom_emoji: false
+  custom_emoji_id_bird: ''
+  custom_emoji_id_chipmunk: ''
+  custom_emoji_id_open_live: ''
+  paid_media_view_star_count: 0
+  paid_media_forward_star_count: 0
+  smart_alert_rare_species_only: false
+  smart_alert_first_profile_sighting: false
+  smart_alert_rare_species_list: []
+web_push:
+  enabled: false
+  vapid_public_key: ''
+  vapid_private_key: ''
+webhook:
+  url: ''
+integrations:
+  birdnet:
+    mqtt_topic: birdnet
+  scales:
+    enabled: false
+    source: mqtt
+    mqtt_topic: ''
+    mqtt_bird_present_topic: ''
+    mqtt_topic_prefix: birdlense/scale
+    mqtt_command_topic: ''
+    mqtt_tare_payload: TARE
+    esphome_url: ''
+    esphome_weight_sensor_id: weight_live_internal
+    esphome_bird_present_sensor_id: bird_present
+    esphome_tare_button_id: manual_tare
+    homeassistant_entity_id: ''
+    unit: g
+    weight_estimate_enabled: true
+    min_delta_kg_for_estimate: 0.008
+    estimate_require_consecutive_spike: true
+    history_max_lines: 10000
+    motion_trigger_enabled: false
+    motion_trigger_min_delta_kg: 0.02
+    motion_trigger_debounce_seconds: 1.5
+performance:
+  cache_redis_enabled: true
+  redis_url: ''
+ui:
+  unknown_confidence_threshold: 0.48
+  live_detector_overlay_ttl_seconds: 1.0
+  live_overlay_tick_seconds: 0.12
+  live_overlay_track_ttl_seconds: 0.35
+  frigate_live_bbox_max_age_seconds: 2.5
+  live_overlay_trace_fallback_enabled: false
+  live_overlay_trace_fallback_ttl_seconds: 1.5
+mcp:
+  enabled: false
+  token: CHANGE_ME
+ebird:
+  country: RU
+  state: Moscow Oblast
+  location_name: BirdLense Feeder
+  protocol: Stationary
+  species_mapping: {}
+storage:
+  recordings_mirror:
+    enabled: false
+    protocol: sftp
+    host: ''
+    port: 22
+    username: ''
+    sftp_password: ''
+    sftp_key_passphrase: ''
+    remote_base_path: /birdlense/recordings
+    ssh_private_key_path: ''
+    max_concurrent_uploads: 2
+    upload_retries: 3
+    retry_backoff_seconds: 5
+    strict_host_key: true
+    known_hosts_path: ''
+    delete_local_after_success: false
+species:
+  catalog_allowlist_follow_classifier_engine: true
+  catalog_allowlist_use_active_classifier: true
+  catalog_allowlist_file: models/classification/weights/convnext_v2_tiny_eu-common256px_openvino_model/class_labels.txt
+  catalog_allowlist_extra:
+  - Rodent
+  catalog_strict_ingest: true
+  catalog_filter_off_allowlist: false
+  catalog_probe_audio_on_coverage: false
+  tuning_target_species_ids: []
+experimental:
+  sr_enabled: false
+  sr_model: fsrcnn_x2
+  sr_scale: 2
+  sr_min_crop_px: 10
+  sr_max_crop_px: 96
+  sr_max_latency_ms: 20
+  active_learning_auto_mine_enabled: true
+  active_learning_auto_mine_lookback_hours: 6
+  active_learning_auto_mine_max_rows: 200
+  active_learning_blind_score_threshold: 0.5
+  active_learning_fallback_ratio_threshold: 0.35
+  active_learning_conf_min: 0.2
+  active_learning_conf_max: 0.35
+active_learning:
+  enabled: true
+secrets:
+  openweather_api_key: CHANGE_ME
+  xeno_canto_api_key: ''
+  ebird_api_key: CHANGE_ME
+  latitude: '39.8283'
+  longitude: '-98.5795'
+_meta:
+  schema_version: 7
+  platform: jetson_nano

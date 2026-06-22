@@ -57,7 +57,7 @@ python3 scripts/reid/import_embeddings_sqlite.py --db app/data/db/birdlense.db -
 
 ```bash
 # базовый запуск
-python3 scripts/reid/run_daily_ssl_cycle.py \
+python3 scripts/internal/reid/run_daily_ssl_cycle.py \
   --db app/data/db/birdlense.db \
   --window-hours 24 \
   --limit 400 \
@@ -65,7 +65,7 @@ python3 scripts/reid/run_daily_ssl_cycle.py \
   --report-json app/data/reid_ssl_reports/latest.json
 
 # вариант с авто-обновлением пустых individual_nickname в video_species
-python3 scripts/reid/run_daily_ssl_cycle.py \
+python3 scripts/internal/reid/run_daily_ssl_cycle.py \
   --db app/data/db/birdlense.db \
   --window-hours 24 \
   --limit 400 \

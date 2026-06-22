@@ -725,7 +725,7 @@ class TwoStageStrategy(DetectionStrategy):
             self._detector_native_labels,
         )
 
-        if self.inference_backend not in ("torch", "openvino"):
+        if self.inference_backend not in ("torch", "openvino", "tensorrt"):
             raise NotImplementedError(
                 f"Detector backend {self.inference_backend!r} is not implemented (#371).",
             )

@@ -84,6 +84,8 @@ class EfficientNetB2Classifier:
         self.device = (device or "CPU").strip() or "CPU"
         self.regional_species = regional_species
         self._allowed_ids: set[int] | None = None
+        self._ornimetrics_cfg: dict[str, Any] | None = None
+        self._hf_preprocess_cfg: dict[str, Any] | None = None
 
         if self.backend == "torch":
             self._init_torch()
@@ -120,10 +122,14 @@ class EfficientNetB2Classifier:
 
     def _init_onnxruntime(self) -> None:
         import onnxruntime as ort
-        from transformers import EfficientNetImageProcessor
 
         onnx_path = self._resolve_onnx_path(self.weights_dir)
-        self._processor = EfficientNetImageProcessor.from_pretrained(self.weights_dir)  # nosec B615 — local weights dir
+        self._ornimetrics_cfg = self._load_ornimetrics_sidecar(onnx_path)
+        if self._ornimetrics_cfg is None:
+            self._hf_preprocess_cfg = self._load_hf_image_preprocess_cfg(self.weights_dir)
+            self._processor = None
+        else:
+            self._hf_preprocess_cfg = None
         providers = ["CPUExecutionProvider"]
         dev = (self.device or "").lower()
         if "cuda" in dev:
@@ -135,19 +141,60 @@ class EfficientNetB2Classifier:
             cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
             raw = cfg.get("id2label") or {}
             self.id2label = {int(k): _normalize_species_label(v) for k, v in raw.items()}
+        elif self._ornimetrics_cfg is not None:
+            raw_classes = self._ornimetrics_cfg.get("classes") or []
+            self.id2label = {i: _normalize_species_label(v) for i, v in enumerate(raw_classes)}
         else:
             self.id2label = {}
 
     @staticmethod
+    def _load_hf_image_preprocess_cfg(weights_dir: str) -> dict[str, Any] | None:
+        """Load resize/normalize from preprocessor_config.json (Jetson ONNX, no HF runtime)."""
+        p = Path(weights_dir) / "preprocessor_config.json"
+        if not p.is_file():
+            return None
+        cfg = json.loads(p.read_text(encoding="utf-8"))
+        size = cfg.get("size") or {}
+        if isinstance(size, dict):
+            h = int(size.get("height") or size.get("shortest_edge") or 260)
+            w = int(size.get("width") or size.get("shortest_edge") or h)
+        else:
+            h = w = int(size or 260)
+        return {
+            "input_size": h,
+            "rgb_mean": cfg.get("image_mean") or [0.485, 0.456, 0.406],
+            "rgb_std": cfg.get("image_std") or [0.229, 0.224, 0.225],
+        }
+
+    @staticmethod
     def _resolve_onnx_path(weights_dir: str) -> str:
         p = Path(weights_dir)
-        for name in ("birds_classifier_260.onnx", "birds_classifier.onnx", "model.onnx"):
+        for name in (
+            "birds_classifier_260.onnx",
+            "birds_classifier.onnx",
+            "bird_species_classifier.onnx",
+            "model.onnx",
+            "species_classifier_nabirds.onnx",
+            "species_classifier_inat.onnx",
+        ):
             cand = p / name
             if cand.is_file():
                 return str(cand)
         if p.is_file() and p.suffix == ".onnx":
             return str(p)
         raise FileNotFoundError(f"No ONNX classifier in {weights_dir}")
+
+    @staticmethod
+    def _load_ornimetrics_sidecar(onnx_path: str) -> dict[str, Any] | None:
+        p = Path(onnx_path)
+        candidates = [p.with_suffix(".json")]
+        for cand in candidates:
+            if not cand.is_file():
+                continue
+            cfg = json.loads(cand.read_text(encoding="utf-8"))
+            if "classes" in cfg and ("rgb_mean" in cfg or "rgb_std" in cfg):
+                return cfg
+        return None
 
     def _init_openvino(self) -> None:
         import openvino as ov
@@ -217,15 +264,25 @@ class EfficientNetB2Classifier:
 
     def _preprocess_bgr(self, crop_bgr: np.ndarray) -> Any:
         import cv2
+
+        if self._ornimetrics_cfg is not None or self._hf_preprocess_cfg is not None:
+            cfg = self._ornimetrics_cfg or self._hf_preprocess_cfg or {}
+            size = int(cfg.get("input_size") or 256)
+            mean = np.asarray(cfg.get("rgb_mean") or [0.485, 0.456, 0.406], dtype=np.float32)
+            std = np.asarray(cfg.get("rgb_std") or [0.229, 0.224, 0.225], dtype=np.float32)
+            rgb = cv2.cvtColor(cv2.resize(crop_bgr, (size, size)), cv2.COLOR_BGR2RGB)
+            arr = rgb.astype(np.float32) / 255.0
+            arr = (arr - mean.reshape(1, 1, 3)) / std.reshape(1, 1, 3)
+            chw = np.transpose(arr, (2, 0, 1))
+            return {"pixel_values": np.expand_dims(chw, 0).astype(np.float32)}
+
         from PIL import Image
 
         rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
         pil = Image.fromarray(rgb)
-        size = getattr(self._processor, "size", None) or {"height": 260, "width": 260}
         inputs = self._processor(
             images=pil,
             return_tensors="pt" if self.backend == "torch" else "np",
-            size=size,
         )
         return inputs
 

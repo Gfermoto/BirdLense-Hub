@@ -83,6 +83,96 @@ class TestClassifierPaths(unittest.TestCase):
             self.assertEqual(backend, "torch")
             self.assertTrue(path.endswith(".pt"))
 
+    def test_ornimetrics_region_selects_nabirds_for_us_ca(self):
+        from inference.classifier_paths import (
+            resolve_classifier_weight_path,
+            resolve_ornimetrics_species_pack,
+        )
+
+        cfg = {
+            "processor.classifier_engine": "ornimetrics",
+            "processor.classifier_inference_backend": "auto",
+            "ebird.country": "CA",
+        }
+        with patch(
+            "inference.selector.onnxruntime_classifier_available",
+            return_value=True,
+        ):
+            path, backend = resolve_classifier_weight_path(cfg, "/tmp/processor")
+        self.assertEqual(resolve_ornimetrics_species_pack(cfg), "nabirds")
+        self.assertEqual(backend, "onnxruntime")
+        self.assertTrue(
+            path.endswith(
+                "models/classification/ornimetrics/"
+                "species_classifier_nabirds.onnx",
+            ),
+        )
+
+    def test_ornimetrics_region_selects_inat_for_non_na(self):
+        from inference.classifier_paths import (
+            resolve_classifier_weight_path,
+            resolve_ornimetrics_species_pack,
+        )
+
+        cfg = {
+            "processor.classifier_engine": "ornimetrics",
+            "processor.classifier_inference_backend": "auto",
+            "ebird.country": "RU",
+        }
+        with patch(
+            "inference.selector.onnxruntime_classifier_available",
+            return_value=True,
+        ):
+            path, backend = resolve_classifier_weight_path(cfg, "/tmp/processor")
+        self.assertEqual(resolve_ornimetrics_species_pack(cfg), "inat")
+        self.assertEqual(backend, "onnxruntime")
+        self.assertTrue(
+            path.endswith(
+                "models/classification/ornimetrics/"
+                "species_classifier_inat.onnx",
+            ),
+        )
+
+    def test_chriamue_explicit_classifier_path(self):
+        from inference.classifier_paths import resolve_classifier_weight_path
+
+        with tempfile.TemporaryDirectory() as d:
+            proc = os.path.join(d, "processor")
+            weights = os.path.join(
+                proc,
+                "models/classification/chriamue_bird_species_classifier",
+            )
+            os.makedirs(weights, exist_ok=True)
+            with open(os.path.join(weights, "model.onnx"), "wb") as f:
+                f.write(b"x")
+            cfg = {
+                "processor.classifier_engine": "chriamue",
+                "processor.classifier_inference_backend": "onnxruntime",
+                "processor.models.classifier": (
+                    "models/classification/chriamue_bird_species_classifier"
+                ),
+            }
+            with patch(
+                "inference.selector.onnxruntime_classifier_available",
+                return_value=True,
+            ):
+                path, backend = resolve_classifier_weight_path(cfg, proc)
+            self.assertEqual(backend, "onnxruntime")
+            self.assertTrue(path.endswith("chriamue_bird_species_classifier"))
+
+    def test_ornimetrics_pack_override_wins(self):
+        from inference.classifier_paths import resolve_ornimetrics_species_pack
+
+        self.assertEqual(
+            resolve_ornimetrics_species_pack(
+                {
+                    "processor.ornimetrics_species_pack": "inat",
+                    "ebird.country": "US",
+                }
+            ),
+            "inat",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

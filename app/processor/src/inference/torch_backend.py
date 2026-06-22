@@ -1,4 +1,4 @@
-"""Загрузка YOLO через Ultralytics: torch (``.pt``) или OpenVINO IR (export ``format=openvino``, #371)."""
+"""YOLO loading through Ultralytics: torch ``.pt`` or OpenVINO IR."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ def _ensure_openvino_pkg() -> None:
     except ImportError as e:
         raise ImportError(
             "OpenVINO inference requires the openvino package. "
-            "Example: pip install openvino (then export weights with yolo export format=openvino).",
+            "Example: pip install openvino, then export with yolo format=openvino.",
         ) from e
 
 
@@ -20,20 +20,20 @@ def load_yolo_detector(model_path: str, *, backend: str = "torch") -> Any:
     Загрузить бинарный детектор.
 
     - ``torch``: ``.pt`` чекпоинт (дефолт).
-    - ``openvino``: путь к каталогу экспорта OpenVINO или к ``.xml`` (тот же API ``track()`` в Ultralytics).
+    - ``openvino``: export dir or ``.xml`` through Ultralytics ``track()``.
+    - ``tensorrt``: Jetson target ``.engine``; native adapter is gated.
     """
     b = (backend or "torch").strip().lower()
     if b == "onnxruntime":
-        # Селектор по умолчанию всё ещё блокирует onnx в assert_backend_supported (#371).
-        # Когда будем подключать ORT: yolo export format=onnx + onnxruntime.InferenceSession
+        # Future ORT path: yolo export format=onnx + InferenceSession.
         # или API Ultralytics для ONNX — расширить ветку здесь.
         raise NotImplementedError(
             "ONNX Runtime for binary detector is not implemented yet (#371). "
-            "Use torch or openvino, or export OpenVINO IR (yolo export format=openvino).",
+            "Use torch/openvino or export OpenVINO IR.",
         )
     from ultralytics import YOLO
 
-    if b == "torch":
+    if b in {"torch", "tensorrt"}:
         return YOLO(model_path, task="detect")
     if b == "openvino":
         _ensure_openvino_pkg()

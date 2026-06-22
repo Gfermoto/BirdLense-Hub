@@ -15,6 +15,15 @@ def _map_path_for_binary(processor_root: str, binary_path: str) -> Path | None:
     stem = Path(str(binary_path or "").strip()).stem
     if not stem:
         return None
+    nested = (
+        Path(processor_root) / "models" / "detection" / stem / "class_maps"
+    )
+    candidate = nested / f"{stem}.yaml"
+    if candidate.is_file():
+        return candidate
+    flat = Path(processor_root) / "models" / "detection" / stem / f"{stem}.yaml"
+    if flat.is_file():
+        return flat
     for base in (
         Path(processor_root) / "models" / "detection" / "class_maps",
         Path(processor_root) / "models" / "detection" / "weights",

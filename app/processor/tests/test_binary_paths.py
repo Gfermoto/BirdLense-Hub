@@ -102,6 +102,26 @@ class TestBinaryPaths(unittest.TestCase):
             if old_ov_path is not None:
                 os.environ["BIRDLENSE_BINARY_OPENVINO_PATH"] = old_ov_path
 
+    def test_tensorrt_resolves_engine_path(self):
+        from inference.binary_paths import detector_weights_available, resolve_binary_detector_weight_path
+
+        with tempfile.TemporaryDirectory() as d:
+            proc = os.path.join(d, "processor")
+            engine = os.path.join(proc, "models/detection/weights/yolo11n.engine")
+            os.makedirs(os.path.dirname(engine), exist_ok=True)
+            with open(engine, "wb") as f:
+                f.write(b"trt")
+            path, backend = resolve_binary_detector_weight_path(
+                {
+                    "processor.inference_backend": "tensorrt",
+                    "processor.models.binary_tensorrt": "models/detection/weights/yolo11n.engine",
+                },
+                proc,
+            )
+            self.assertTrue(detector_weights_available(path))
+        self.assertEqual(backend, "tensorrt")
+        self.assertTrue(path.endswith("yolo11n.engine"))
+
     def test_auto_falls_back_to_torch_when_openvino_runtime_missing(self):
         from inference.binary_paths import resolve_binary_detector_weight_path
 

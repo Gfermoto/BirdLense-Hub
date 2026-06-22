@@ -188,6 +188,13 @@ fi
 # =============================================================================
 # SECTION 9 — Processor supervisor loop
 # =============================================================================
+if [ "${BIRDLENSE_PROCESSOR_ENABLED:-1}" = "0" ]; then
+  echo "Processor loop disabled by BIRDLENSE_PROCESSOR_ENABLED=0"
+  while true; do
+    sleep 3600
+  done
+fi
+
 while true; do
   PYTHONPATH=/app:/app/web python3 /app/processor/src/main.py || true
   echo "Processor exited, restarting in 2s..."
