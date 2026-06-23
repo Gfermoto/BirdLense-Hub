@@ -31,11 +31,11 @@ def load_yolo_detector(model_path: str, *, backend: str = "torch") -> Any:
 
             return YOLO(path, task="detect")
         raise ValueError(f"ONNX Runtime detector requires .onnx path, got {model_path!r}")
-    from ultralytics import YOLO
-
     if b == "tensorrt":
         path = str(model_path or "")
         if not path.endswith(".engine"):
+            from ultralytics import YOLO
+
             return YOLO(model_path, task="detect")
         import sys
 
@@ -46,6 +46,8 @@ def load_yolo_detector(model_path: str, *, backend: str = "torch") -> Any:
         from inference.tensorrt_yolo_client import load_tensorrt_yolo_client
 
         return load_tensorrt_yolo_client(path)
+    from ultralytics import YOLO
+
     if b == "torch":
         return YOLO(model_path, task="detect")
     if b == "openvino":
