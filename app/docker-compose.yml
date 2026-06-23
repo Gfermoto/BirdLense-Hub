@@ -1,8 +1,8 @@
 # BirdLense Hub — web+processor + Redis (кэш API между перезапусками воркера; см. REDIS_URL).
 # Подключения по хосту (IP): Go2RTC, MQTT. Площадки могут быть разными.
-# Кодирование записи (CPU / Intel GPU) выбирается в Настройках → Видео. Без override — всегда CPU.
-# Intel: при деплое scripts/deploy.sh вызывает scripts/docker-compose-intel-override-gen.sh (DRI + group_add + PERFMON).
-# Вручную: см. docker-compose.intel.example.yml.
+# Кодирование записи (CPU / Jetson NVMPI) выбирается в Настройках → Видео. Без override — всегда CPU.
+# Jetson: при деплое scripts/deploy.sh вызывает docker-compose.jetson.yml (nvidia runtime + video).
+# Вручную: см. docker-compose.jetson.yml.
 
 services:
   # Если в docker logs redis: «Memory overcommit must be enabled» — на Docker-хосте (не в контейнере):
@@ -31,7 +31,7 @@ services:
     build:
       # Контекст — корень репозитория: в образ попадает scripts/export_fusion_training_data.py (fusion export).
       context: ..
-      dockerfile: app/Dockerfile
+      dockerfile: app/Dockerfile.jetson
     container_name: birdlense
     # YOLO/OpenCV в процессоре: дефолтный 64 MB /dev/shm даёт лишние warning и реже — артефакты.
     shm_size: "4gb"

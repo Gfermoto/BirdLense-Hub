@@ -4,7 +4,7 @@
 
 ## Short
 
-Self-hosted bird monitoring for feeders and field setups: YOLO-based detection and species classification, optional BirdNET audio via MQTT, visit timeline, CSV/eBird export, and PWA web UI. Runs in Docker on x86; data stays on your infrastructure.
+Self-hosted bird monitoring for feeders and field setups: YOLO-based detection and species classification, optional BirdNET audio via MQTT, visit timeline, CSV/eBird export, and PWA web UI. Runs in Docker on Jetson Nano; data stays on your infrastructure.
 
 ## Extended
 
