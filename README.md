@@ -10,7 +10,7 @@
 
 Canonical one-liners for **GitHub About**, mirrors, and press: **[SHORT_DESCRIPTION.md](./SHORT_DESCRIPTION.md)** · **[SHORT_DESCRIPTION.ru.md](./SHORT_DESCRIPTION.ru.md)**
 
-Bird monitoring for feeders, gardens, and field setups: computer vision and audio recognition to detect, identify, record, and analyze visits—aimed at ornithology, citizen science, and operators who keep data on their own hardware. Runs in Docker on x86; integrates with Go2RTC, Frigate, BirdNET via MQTT. No vendor cloud required for core processing.
+Bird monitoring for feeders, gardens, and field setups: computer vision and audio recognition to detect, identify, record, and analyze visits—aimed at ornithology, citizen science, and operators who keep data on their own hardware. Runs in Docker on Jetson Nano; integrates with Go2RTC, Frigate, BirdNET via MQTT. No vendor cloud required for core processing.
 
 **Docs:** [Project overview](./docs/user/overview.md) · [Full documentation index](./docs/index.md) · [Documentation site (Pages)](https://gfermoto.github.io/BirdLense-Hub/)
 

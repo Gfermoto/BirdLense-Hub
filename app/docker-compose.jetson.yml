@@ -37,6 +37,7 @@ services:
       - ./processor/models/detection/trapper_ai_v02_2024:/app/processor/models/detection/trapper_ai_v02_2024
       - ./processor/models/welfare/ornimetrics:/app/processor/models/welfare/ornimetrics
       - ./processor/models/reid/ornimetrics:/app/processor/models/reid/ornimetrics
+      - ./processor/models/tracker:/app/processor/models/tracker
       # TensorRT python (JP4.6, py3.6) с хоста Jetson
       - /usr/lib/python3.6/dist-packages/tensorrt:/usr/lib/python3.6/dist-packages/tensorrt:ro
       # CUDA 10.2 runtime (libcublas.so.10 и др.)
