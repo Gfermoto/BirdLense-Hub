@@ -207,7 +207,9 @@ def _ensure_model_state() -> dict[str, Any] | None:
         started = time.time()
         try:
             if backend == "onnxruntime":
-                model_path = str(_cfg_get("processor.models.reid_embedder", "") or "").strip()
+                from inference.binary_paths import processor_package_root, resolve_relative_to_processor_root
+                raw_path = str(_cfg_get("processor.models.reid_embedder", "") or "").strip()
+                model_path = resolve_relative_to_processor_root(raw_path, processor_package_root()) if raw_path else ""
                 if not model_path or not os.path.isfile(model_path):
                     raise FileNotFoundError(
                         "Ornimetrics ReID ONNX not found: %s" % model_path
