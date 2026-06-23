@@ -145,6 +145,7 @@ def _ffmpeg_record_cmd(
     output: str,
     use_vaapi: bool,
     record_stream_codec: str,
+    encoding_mode: str = "cpu",
 ) -> list[str]:
     """Build FFmpeg recording command with robust timestamp/audio handling."""
     cmd = [
@@ -184,6 +185,17 @@ def _ffmpeg_record_cmd(
             "format=nv12,hwupload",
             "-c:v",
             "h264_vaapi",
+            "-b:v",
+            "2M",
+        ]
+    elif encoding_mode == "jetson" and (record_stream_codec or "h264").strip().lower() == "h264":
+        cmd += [
+            "-c:v",
+            "h264_nvenc",
+            "-preset",
+            "p1",
+            "-tune",
+            "hq",
             "-b:v",
             "2M",
         ]
@@ -781,6 +793,7 @@ class Go2RTCStreamSource:
             output=output,
             use_vaapi=bool(use_vaapi),
             record_stream_codec=self._record_stream_codec,
+            encoding_mode=self._encoding_mode,
         )
         try:
             from encoding_status import set_last_encoding_used
@@ -788,6 +801,8 @@ class Go2RTCStreamSource:
             if use_vaapi:
                 self._recording_used_vaapi = True
                 set_last_encoding_used("vaapi")
+            elif self._encoding_mode == "jetson" and self._record_stream_codec == "h264":
+                set_last_encoding_used("nvenc")
             elif self._record_stream_codec == "h264" and not use_vaapi:
                 set_last_encoding_used("x264_cpu")
             else:
@@ -797,7 +812,7 @@ class Go2RTCStreamSource:
         self.logger.info(
             "Starting FFmpeg recording to %s (%s)",
             output,
-            "VA-API" if use_vaapi else "CPU",
+            "VA-API" if use_vaapi else ("NVENC" if self._encoding_mode == "jetson" else "CPU"),
         )
         self._ffmpeg_process = subprocess.Popen(
             cmd,
