@@ -559,6 +559,7 @@ class Go2RTCStreamSource:
         if self._detect_native or not self.lores_size:
             return False
         if self._nvmpi_fallback_permanent:
+            self.logger.debug("NVMPI: permanent fallback active, skip")
             return False
         if time.time() < float(self._force_opencv_until_ts or 0.0):
             return False
