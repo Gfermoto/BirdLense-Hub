@@ -31,6 +31,8 @@ services:
       - LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/lib/aarch64-linux-gnu/tegra
       - CUDA_HOME=/usr/local/cuda
       - LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1
+      - BIRDLENSE_ENCODING=jetson
+      - BIRDLENSE_CAPTURE_BACKEND=ffmpeg_nvmpi
     volumes:
       - ./processor/models/classification/chriamue_bird_species_classifier:/app/processor/models/classification/chriamue_bird_species_classifier
       - ./processor/models/detection/trapper_ai_v02_2024:/app/processor/models/detection/trapper_ai_v02_2024
