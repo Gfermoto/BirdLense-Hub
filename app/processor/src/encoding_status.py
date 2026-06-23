@@ -1,6 +1,6 @@
 """Shared status for recording encoding (CPU vs VA-API). Used by heartbeat."""
 
-_last_encoding_used = None  # "cpu" | "vaapi" | "x264_cpu" | "nvenc"
+_last_encoding_used = None  # "cpu" | "vaapi" | "x264_cpu" | "v4l2m2m" | "omx"
 
 
 def set_last_encoding_used(used: str):
