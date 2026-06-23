@@ -401,6 +401,7 @@ class Go2RTCStreamSource:
         self._vaapi_record_available = True
         self._nvmpi_checked: bool = False
         self._nvmpi_available: bool = False
+        self._nvmpi_fallback_permanent: bool = False
         # When encoding=intel: still use VA-API for ffmpeg capture (auto) unless capture falls back;
         # recording can use libx264 only if record_with_vaapi is false (avoids flaky h264_vaapi on some iGPU drivers).
         if record_with_vaapi is None:
@@ -557,8 +558,14 @@ class Go2RTCStreamSource:
         """Whether to try Jetson GStreamer NVMPI for inference frames."""
         if self._detect_native or not self.lores_size:
             return False
+        if self._nvmpi_fallback_permanent:
+            return False
+        if time.time() < float(self._force_opencv_until_ts or 0.0):
+            return False
         if self._capture_backend == "ffmpeg_nvmpi":
-            return True
+            if not self._nvmpi_fallback_permanent:
+                return True
+            return False
         return self._capture_backend == "auto" and self._encoding_mode == "jetson"
 
     def _connect_ffmpeg_nvmpi_capture(self) -> bool:
@@ -811,6 +818,7 @@ class Go2RTCStreamSource:
         """Read one BGR frame from GStreamer NVMM pipeline (BGRx→BGR via appsink)."""
         proc = self._capture_process
         if not proc or proc.poll() is not None or not proc.stdout:
+            self._ffmpeg_capture_failures += 1
             return None, False
         # appsink outputs BGR — read 3 bytes per pixel
         width, height = int(self.lores_size[0]), int(self.lores_size[1])
@@ -820,12 +828,14 @@ class Go2RTCStreamSource:
         while remaining > 0:
             chunk = proc.stdout.read(remaining)
             if not chunk:
+                self._ffmpeg_capture_failures += 1
                 self.logger.warning("GStreamer NVMPI pipe read returned empty")
                 return None, False
             chunks.append(chunk)
             remaining -= len(chunk)
         data = b"".join(chunks)
         frame = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 3))
+        self._ffmpeg_capture_failures = 0
         return frame, True
 
     def _update_streaming_output(self, frame):
@@ -1045,6 +1055,18 @@ class Go2RTCStreamSource:
                 self.logger.warning(
                     "FFmpeg VA-API capture is unstable, forcing OpenCV fallback for %ss",
                     FFMPEG_CAPTURE_COOLDOWN_SEC,
+                )
+            if (
+                self._capture_backend_used == "ffmpeg_nvmpi"
+                and self._ffmpeg_capture_failures >= FFMPEG_CAPTURE_FAILURE_THRESHOLD
+            ):
+                self._force_opencv_until_ts = time.time() + float(FFMPEG_CAPTURE_COOLDOWN_SEC)
+                self._ffmpeg_capture_failures = 0
+                self._nvmpi_fallback_permanent = True
+                self.logger.warning(
+                    "GStreamer NVMPI unstable (%d empty reads) — "
+                    "permanent fallback to OpenCV for this session",
+                    FFMPEG_CAPTURE_FAILURE_THRESHOLD,
                 )
             if attempt == 0 and self._reconnect_if_needed():
                 continue
