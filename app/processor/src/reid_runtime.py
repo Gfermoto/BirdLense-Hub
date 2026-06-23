@@ -206,8 +206,6 @@ def _ensure_model_state() -> dict[str, Any] | None:
         backend = _resolve_reid_backend(raw_device)
         started = time.time()
         try:
-            import torch
-
             if backend == "onnxruntime":
                 model_path = str(_cfg_get("processor.models.reid_embedder", "") or "").strip()
                 if not model_path or not os.path.isfile(model_path):
