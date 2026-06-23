@@ -1,0 +1,4 @@
+{"event": "session_start", "session_key": "123813", "ts": "2026-06-13T12:38:13.599924+00:00"}
+{"event": "session_end", "session_key": "123813"}
+{"event": "session_start", "session_key": "123813", "ts": "2026-06-13T12:38:13.603242+00:00"}
+{"event": "session_end", "session_key": "123813"}

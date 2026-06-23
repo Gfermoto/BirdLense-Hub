@@ -139,6 +139,40 @@ def _ffmpeg_vaapi_capture_cmd(stream_url: str, lores_size: tuple[int, int]) -> l
     ]
 
 
+def _jetson_v4l2enc_available() -> bool:
+    """Check if ffmpeg has h264_v4l2m2m encoder (Jetson HW via V4L2)."""
+    try:
+        out = subprocess.run(
+            ["ffmpeg", "-encoders"], capture_output=True, timeout=5,
+        ).stdout.decode()
+        return "h264_v4l2m2m" in out
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return False
+
+
+def _ffmpeg_has_omx() -> bool:
+    """Check if ffmpeg has h264_omx encoder."""
+    try:
+        out = subprocess.run(
+            ["ffmpeg", "-encoders"], capture_output=True, timeout=5,
+        ).stdout.decode()
+        return "h264_omx" in out
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return False
+
+
+def _libx264_record_args() -> list[str]:
+    """Standard libx264 recording args (CPU)."""
+    return [
+        "-analyzeduration", "10M",
+        "-probesize", "10M",
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-crf", "23",
+        "-pix_fmt", "yuv420p",
+    ]
+
+
 def _ffmpeg_record_cmd(
     *,
     stream_url: str,
@@ -189,16 +223,22 @@ def _ffmpeg_record_cmd(
             "2M",
         ]
     elif encoding_mode == "jetson" and (record_stream_codec or "h264").strip().lower() == "h264":
-        cmd += [
-            "-c:v",
-            "h264_nvenc",
-            "-preset",
-            "p1",
-            "-tune",
-            "hq",
-            "-b:v",
-            "2M",
-        ]
+        if _jetson_v4l2enc_available():
+            cmd += [
+                "-c:v",
+                "h264_v4l2m2m",
+                "-b:v",
+                "2M",
+            ]
+        elif _ffmpeg_has_omx():
+            cmd += [
+                "-c:v",
+                "h264_omx",
+                "-b:v",
+                "2M",
+            ]
+        else:
+            cmd += _libx264_record_args()
     elif (record_stream_codec or "h264").strip().lower() == "h264":
         cmd += [
             "-analyzeduration",
@@ -802,7 +842,7 @@ class Go2RTCStreamSource:
                 self._recording_used_vaapi = True
                 set_last_encoding_used("vaapi")
             elif self._encoding_mode == "jetson" and self._record_stream_codec == "h264":
-                set_last_encoding_used("nvenc")
+                set_last_encoding_used("v4l2m2m")
             elif self._record_stream_codec == "h264" and not use_vaapi:
                 set_last_encoding_used("x264_cpu")
             else:
