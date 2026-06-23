@@ -10,7 +10,7 @@ from platform_profile import DEFAULT_PLATFORM, normalize_platform
 
 
 class TestPlatformProfile(unittest.TestCase):
-    def test_default_intel_nuc(self):
+    def test_default_jetson_nano(self):
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(normalize_platform(), DEFAULT_PLATFORM)
             self.assertEqual(normalize_platform(""), DEFAULT_PLATFORM)

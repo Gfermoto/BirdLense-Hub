@@ -4,7 +4,7 @@
 set -euo pipefail
 
 birdlense_normalize_platform() {
-  local raw="${1:-${BIRDLENSE_PLATFORM:-intel_nuc}}"
+  local raw="${1:-${BIRDLENSE_PLATFORM:-jetson_nano}}"
   raw="${raw//-/_}"
   case "${raw}" in
     intel_nuc | "") echo "intel_nuc" ;;
