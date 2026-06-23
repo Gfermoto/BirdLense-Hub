@@ -18,8 +18,8 @@ services:
     environment:
       - BIRDLENSE_PLATFORM=jetson_nano
       - BIRDLENSE_PORT=${BIRDLENSE_PORT:-8085}
-      - BIRDLENSE_INFERENCE_BACKEND=${BIRDLENSE_INFERENCE_BACKEND:-torch}
-      - BIRDLENSE_BINARY_TENSORRT_PATH=${BIRDLENSE_BINARY_TENSORRT_PATH:-}
+      - BIRDLENSE_INFERENCE_BACKEND=${BIRDLENSE_INFERENCE_BACKEND:-tensorrt}
+      - BIRDLENSE_BINARY_TENSORRT_PATH=${BIRDLENSE_BINARY_TENSORRT_PATH:-models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.engine}
       - BIRDLENSE_CLASSIFIER_ENGINE=${BIRDLENSE_CLASSIFIER_ENGINE:-chriamue}
       - BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=${BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND:-onnxruntime}
       - JETSON_PROCESSOR_PYTHON=/opt/conda/envs/birdlense/bin/python
@@ -47,8 +47,3 @@ services:
       - /usr/lib/python3.6/dist-packages/tensorrt:/usr/lib/python3.6/dist-packages/tensorrt:ro
       # CUDA 10.2 runtime (libcublas.so.10 и др.)
       - /usr/local/cuda-10.2:/usr/local/cuda:ro
-    deploy:
-      resources:
-        limits:
-          cpus: "4"
-          memory: 3G

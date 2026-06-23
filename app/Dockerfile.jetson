@@ -46,7 +46,7 @@ RUN python3 -m pip install --default-timeout=600 --no-cache-dir onnxruntime
 
 # GLIBCXX fix: conda libstdc++ has GLIBCXX_3.4.34 needed by numpy 2.x on L4T
 RUN cp /opt/conda/envs/birdlense/lib/libstdc++.so.6 /usr/lib/aarch64-linux-gnu/libstdc++.so.6 && \
-    cp /opt/conda/pkgs/$(ls /opt/conda/pkgs/ | grep -E 'libgcc-ng' | sort -V | tail -1)/lib/libgcc_s.so.1 /lib/aarch64-linux-gnu/libgcc_s.so.1 2>/dev/null; \
+    cp /opt/conda/envs/birdlense/lib/libgcc_s.so.1 /lib/aarch64-linux-gnu/libgcc_s.so.1; \
     ldconfig
 
 # Processor venv: python3.6 + pip deps (CUDA torch/TRT — следующий stage).
