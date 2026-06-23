@@ -352,7 +352,6 @@ ml-proof: ml-proof-local ml-proof-hub
 
 ml-proof-local:
 	@python3 -m pytest -q \
-		app/processor/tests/test_ml_openvino_async_profile.py \
 		app/processor/tests/test_ml_decode_path_benchmark.py \
 		app/processor/tests/test_ml_track_continuity_eval.py \
 		app/processor/tests/test_ml_int8_candidate_eval.py \
@@ -364,7 +363,6 @@ ml-proof-local:
 		app/processor/tests/test_ml_behavior_canary_gate.py \
 		app/processor/tests/test_ml_behavior_crop.py \
 		app/processor/tests/test_ml_behavior_export_onnx.py \
-		app/processor/tests/test_processor_runtime_profile_openvino.py \
 		app/processor/tests/test_inference_selector.py
 
 ml-proof-hub:
@@ -988,7 +986,7 @@ snapshot-detector-weights:
 	    --processor-root "$(CURDIR)/app/processor"; \
 	fi
 
-# Подсказка по compare_detector_bboxes.py (PT vs OpenVINO на mp4; см. docstring скрипта).
+# Подсказка по compare_detector_bboxes.py (см. docstring скрипта).
 compare-detector-bboxes-help:
 	@python3 "$(CURDIR)/scripts/compare_detector_bboxes.py" --help
 
@@ -1020,7 +1018,7 @@ download-classifier-effnet:
 	@python3 "$(CURDIR)/scripts/download_birds_classifier_efficientnetb2.py"
 
 export-classifier-effnet:
-	@python3 "$(CURDIR)/scripts/export_classifier_to_openvino.py" --benchmark
+	@python3 "$(CURDIR)/scripts/download_birds_classifier_efficientnetb2.py" --benchmark
 
 test-classifier-effnet-smoke:
 	@python3 "$(CURDIR)/scripts/test_classifier_smoke.py" --backend onnxruntime --video "$(CURDIR)/app/data/stress_clips/storm_bird.mp4"
@@ -1029,36 +1027,19 @@ test-classifier-effnet-smoke:
 download-classifier-birder-eu:
 	@python3 "$(CURDIR)/scripts/download_birder_classifier.py"
 
-export-classifier-birder-eu:
-	@python3 "$(CURDIR)/scripts/export_birder_classifier_to_openvino.py" --benchmark
-
 test-classifier-birder-eu-smoke:
-	@python3 "$(CURDIR)/scripts/test_birder_classifier_smoke.py" --backend openvino --video "$(CURDIR)/app/data/stress_clips/storm_bird.mp4"
+	@python3 "$(CURDIR)/scripts/test_birder_classifier_smoke.py" --backend onnxruntime --video "$(CURDIR)/app/data/stress_clips/storm_bird.mp4"
 
-# Parity PyTorch vs OpenVINO на одном кадре (см. docs/ml/MODEL_EXPORT_GUIDE.md).
+# Parity PyTorch vs ONNX на одном кадре (см. docstring скрипта).
 debug-ov-conversion-help:
 	@python3 "$(CURDIR)/scripts/debug_ov_conversion.py" --help
-
-export-nabirds-openvino:
-	@python3 "$(CURDIR)/scripts/export_nabirds_to_openvino.py" --imgsz 640 --precision fp32
-
-# TrapperAI v02.2024 → OpenVINO @704 (detect substream 704×576). Нужен ultralytics (Docker: см. scripts/sync_trapper_weights.sh).
-export-trapper-openvino:
-	@cd "$(CURDIR)/app" && docker compose run --rm -T -v "$(CURDIR):/repo:rw" birdlense \
-	  bash -lc 'python3 /repo/scripts/export_trapper_to_openvino.py --skip-download --imgsz 704 --precision fp16'
 
 sync-trapper-weights:
 	@bash "$(CURDIR)/scripts/sync_trapper_weights.sh" --check
 
-sync-trapper-weights-vps: export-trapper-openvino
-	@bash "$(CURDIR)/scripts/sync_trapper_weights.sh" --check --rsync-vps
-
-# Проверка best_NABirds.pt + best_NABirds_openvino_model/ перед деплоем (см. scripts/sync_detector_weights.sh).
+# Проверка best_NABirds.pt перед деплоем.
 sync-models:
 	@bash "$(CURDIR)/scripts/sync_detector_weights.sh" --check
-
-validate-nabirds-ov-parity:
-	@python3 "$(CURDIR)/scripts/validate_ov_parity.py"
 
 generate-golden-v2:
 	@python3 "$(CURDIR)/scripts/generate_golden_dataset_v2.py"
@@ -1077,20 +1058,6 @@ stress-test-offline:
 
 check-legacy-config:
 	@python3 "$(CURDIR)/scripts/check_legacy_processor_config.py"
-
-# Profile OpenVINO device/hint combos and emit ov_async_profile_report@v1 (#412).
-# Example:
-# VIDEOS_ROOT=app/data/recordings OUT=/tmp/ov_async_profile.json make ml-openvino-async-profile
-ml-openvino-async-profile:
-	@test -n "$${OUT:-}" || (echo "Set OUT=path/to/ov_async_profile_report.json" >&2; exit 1)
-	@python3 scripts/ml_openvino_async_profile.py \
-		$$(test -n "$${VIDEOS_ROOT:-}" && printf -- '--videos-root "%s" ' "$${VIDEOS_ROOT}") \
-		$$(test -n "$${LABELS_JSON:-}" && printf -- '--labels-json "%s" ' "$${LABELS_JSON}") \
-		$$(test -n "$${MAX_VIDEOS:-}" && printf -- '--max-videos "%s" ' "$${MAX_VIDEOS}") \
-		$$(test -n "$${MAX_RUNTIME_SEC:-}" && printf -- '--max-runtime-sec "%s" ' "$${MAX_RUNTIME_SEC}") \
-		$${VIDEO_ARGS:-} \
-		$${PROFILE_ARGS:-} \
-		--out "$${OUT}"
 
 # Compare opencv vs ffmpeg_vaapi decode paths and emit decode_path_benchmark@v1 (#413).
 # Example:
