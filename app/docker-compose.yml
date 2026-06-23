@@ -34,7 +34,7 @@ services:
       dockerfile: app/Dockerfile.jetson
     container_name: birdlense
     # YOLO/OpenCV в процессоре: дефолтный 64 MB /dev/shm даёт лишние warning и реже — артефакты.
-    shm_size: "4gb"
+    shm_size: "1gb"
     depends_on:
       redis:
         condition: service_healthy
@@ -69,18 +69,11 @@ services:
       - BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=${BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT:-}
     restart: unless-stopped
     stop_grace_period: 45s
-    mem_limit: 6g
-    cpus: "${BIRDLENSE_COMPOSE_CPUS:-4.0}"
     logging:
       driver: json-file
       options:
         max-size: "20m"
         max-file: "7"
-    deploy:
-      resources:
-        limits:
-          cpus: '${BIRDLENSE_COMPOSE_CPUS:-4}'
-          memory: 6G
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://127.0.0.1:8000/api/ui/health"]
       interval: 30s
