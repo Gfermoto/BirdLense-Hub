@@ -6,10 +6,7 @@ ARG MAMBA_ARCH=aarch64
 ENV MAMBA_ROOT_PREFIX=/opt/conda
 ENV PATH=/opt/conda/envs/birdlense/bin:/opt/conda/bin:/opt/jetson-processor/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# NOTE: apt ffmpeg on L4T r32.7.1 lacks h264_nvenc.
-# For NVENC recording support, either:
-#   - bind-mount host ffmpeg: /usr/bin/ffmpeg:/usr/bin/ffmpeg:ro
-#   - compile ffmpeg with --enable-nvenc --enable-ffnvcodec on Jetson
+# Jetson HW encode: ffmpeg apt has h264_v4l2m2m (V4L2 mem2mem) and h264_omx (OpenMAX IL).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash bzip2 ca-certificates curl ffmpeg gosu nginx \
     build-essential python3-dev \
