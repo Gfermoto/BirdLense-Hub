@@ -34,6 +34,10 @@ services:
       - BIRDLENSE_ENCODING=jetson
       - BIRDLENSE_CAPTURE_BACKEND=ffmpeg_nvmpi
     volumes:
+      # L4T multimedia for GStreamer NVMPI/NVDEC and NVENC
+      - /usr/lib/aarch64-linux-gnu/libnvgstreamer.so:/usr/lib/aarch64-linux-gnu/libnvgstreamer.so:ro
+      - /usr/lib/aarch64-linux-gnu/gstreamer-1.0/libnvvidconv.so:/usr/lib/aarch64-linux-gnu/gstreamer-1.0/libnvvidconv.so:ro
+      - /usr/lib/aarch64-linux-gnu/gstreamer-1.0/libnvcamerascpp.so:/usr/lib/aarch64-linux-gnu/gstreamer-1.0/libnvcamerascpp.so:ro
       - ./processor/models/classification/chriamue_bird_species_classifier:/app/processor/models/classification/chriamue_bird_species_classifier
       - ./processor/models/detection/trapper_ai_v02_2024:/app/processor/models/detection/trapper_ai_v02_2024
       - ./processor/models/welfare/ornimetrics:/app/processor/models/welfare/ornimetrics
