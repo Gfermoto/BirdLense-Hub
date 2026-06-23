@@ -9,7 +9,7 @@ from typing import Final
 logger = logging.getLogger(__name__)
 
 KNOWN_PLATFORMS: Final[frozenset[str]] = frozenset({"intel_nuc", "jetson_nano"})
-DEFAULT_PLATFORM: Final[str] = "intel_nuc"
+DEFAULT_PLATFORM: Final[str] = "jetson_nano"
 
 
 def normalize_platform(raw: str | None = None) -> str:
