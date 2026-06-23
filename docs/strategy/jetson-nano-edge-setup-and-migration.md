@@ -31,20 +31,19 @@
 | Этап | Модель | Backend | Путь (flat layout) | Примечание |
 |------|--------|---------|-------------------|------------|
 | **Детектор** | [TrapperAI v02.2024](https://huggingface.co/OSCF/TrapperAI-v02.2024) | **TensorRT** FP16 | `detection/trapper_ai_v02_2024/trapper_ai_v02_2024.engine` | lores 704×576; классы Bird + Eurasian Red Squirrel; fallback `.pt`+torch если `.engine` нет |
-| **Классификатор** | [chriamue/bird-species-classifier](https://huggingface.co/chriamue/bird-species-classifier) | **ONNX Runtime** (CUDA) | `classification/chriamue_bird_species_classifier/model.onnx` | 525 видов; preprocess из `preprocessor_config.json` (260×260), без OpenVINO |
-| **ReID** | Ornimetrics edge | **ONNX Runtime** (CUDA) | `reid/ornimetrics/reid_embedder.onnx` | `scripts/fetch_ornimetrics_jetson.sh` |
+| **Классификатор** | [chriamue/bird-species-classifier](https://huggingface.co/chriamue/bird-species-classifier) | **ONNX Runtime** (CPU, TRT — roadmap) | `classification/chriamue_bird_species_classifier/model.onnx` | 525 видов; preprocess из `preprocessor_config.json` (260×260), без OpenVINO |
+| **ReID** | Ornimetrics edge | **ONNX Runtime** (CPU, TRT — roadmap) | `reid/ornimetrics/reid_embedder.onnx` | `scripts/fetch_ornimetrics_jetson.sh` |
 | **Welfare** | Ornimetrics edge | ONNX + NPZ | `welfare/ornimetrics/embedder.onnx`, `welfare_scorer.npz` | Mahalanobis scorer |
 | **Behavior** | meta baseline | **logistic_json** | `models/behavior/meta/behavior_logistic_export@v1.json` | без OpenVINO fallback на Jetson |
 
-**Видео (Jetson, без Intel):**
+**Видео (Jetson, HW acceleration):**
 
 | Функция | Значение | Железо |
 |---------|----------|--------|
-| Захват lores (motion/YOLO) | `capture_backend: opencv` | CPU + GStreamer/FFmpeg в контейнере |
-| Запись main | `encoding: cpu`, `libx264` | CPU (NVENC — roadmap, см. §6) |
+| Захват lores (motion/YOLO) | `capture_backend: ffmpeg_nvmpi`, GStreamer NVDEC | **HW NVDEC** через `nvv4l2decoder` |
+| Запись main | `encoding: jetson`, `h264_v4l2m2m` → fallback `h264_omx` → `libx264` | **HW V4L2 mem2mem / OpenMAX IL** |
 | VA-API / Intel iGPU | **выключено** | `record_with_vaapi: false` |
-
-**Env (`app/.env` + `docker-compose.jetson.yml`):** `BIRDLENSE_PLATFORM=jetson_nano`, `BIRDLENSE_INFERENCE_BACKEND=tensorrt`, `BIRDLENSE_CLASSIFIER_ENGINE=chriamue`, `BIRDLENSE_OPENVINO_BINARY_ENABLED=0`, `LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1`.
+**Env (`app/.env` + `docker-compose.jetson.yml`):** `BIRDLENSE_PLATFORM=jetson_nano`, `BIRDLENSE_INFERENCE_BACKEND=tensorrt`, `BIRDLENSE_BINARY_TENSORRT_PATH=models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.engine`, `BIRDLENSE_CLASSIFIER_ENGINE=chriamue`, `BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=onnxruntime`, `BIRDLENSE_ENCODING=jetson`, `BIRDLENSE_CAPTURE_BACKEND=ffmpeg_nvmpi`, `BIRDLENSE_OPENVINO_BINARY_ENABLED=0`, `LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libgomp.so.1`.
 
 **Bootstrap без `.engine`:** `python3 scripts/build_jetson_user_config.py --bootstrap-torch` → torch/cpu до `export_trapper_detector_trt.sh`.
 
@@ -58,7 +57,7 @@ Jetson Nano B01 (4 ГБ) — вторая боевая платформа (ря�
 
 **Делает Jetson:**
 - сторож: детекция + трекинг на **lores** 704×576 (**TrapperAI TensorRT** + ByteTrack);
-- охотник: event-triggered запись main/high-res (**CPU libx264**, NVENC — roadmap);
+- охотник: event-triggered запись main/high-res (**HW V4L2 h264_v4l2m2m**, fallback h264_omx → libx264);
 - enrichment на кропе: **chriamue** species (525) + **Ornimetrics** welfare + ReID;
 - behavior: **meta** heuristics (logistic JSON), без OpenVINO.
 

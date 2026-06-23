@@ -40,6 +40,14 @@ def _cfg_bool(key: str, default: bool) -> bool:
     return str(val).strip().lower() in ("1", "true", "yes", "on")
 
 
+def _torch_available() -> bool:
+    try:
+        import torch  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
 def _cfg_int(key: str, default: int) -> int:
     try:
         return int(_cfg_get(key, default))
@@ -91,7 +99,10 @@ def _resolve_reid_backend(device: str) -> str:
     # auto
     if str(device or "").strip().lower().startswith("intel:"):
         return "openvino"
-    return "torch"
+    # pref: onnxruntime > torch если Torch не доступен
+    if _torch_available():
+        return "torch"
+    return "onnxruntime"
 
 
 def _resolve_torch_device_name(device: str) -> str:
