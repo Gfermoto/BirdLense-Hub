@@ -825,16 +825,21 @@ class Go2RTCStreamSource:
             return False
 
     def _probe_nvmpi(self) -> bool:
-        """Check if GStreamer NVMPI pipeline works."""
-        if not shutil.which("gst-launch-1.0"):
-            self.logger.debug("NVMPI probe: gst-launch-1.0 not found")
+        """Check if Jetson hardware decoder is available (gst-inspect-1.0 nvv4l2decoder)."""
+        if not shutil.which("gst-inspect-1.0"):
+            self.logger.debug("NVMPI probe: gst-inspect-1.0 not found")
             return False
-        probe = "videotestsrc num-buffers=1 ! nvvidconv ! fakesink sync=false"
         try:
-            r = subprocess.run(["gst-launch-1.0", "-e", probe], capture_output=True, timeout=10)
+            r = subprocess.run(
+                ["gst-inspect-1.0", "nvv4l2decoder"],
+                capture_output=True, timeout=10,
+            )
             ok = r.returncode == 0
             if not ok:
-                self.logger.debug("NVMPI probe stderr: %s", r.stderr.decode()[:200])
+                self.logger.debug(
+                    "NVMPI probe: nvv4l2decoder not available (%s)",
+                    r.stderr.decode()[:200],
+                )
             return ok
         except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
             self.logger.debug("NVMPI probe failed: %s", e)
