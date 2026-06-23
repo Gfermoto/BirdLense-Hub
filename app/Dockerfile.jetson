@@ -43,6 +43,11 @@ RUN python3 -m pip install --default-timeout=600 --no-cache-dir -r web/requireme
 # onnxruntime для chriamue/ornimetrics классификатора
 RUN python3 -m pip install --default-timeout=600 --no-cache-dir onnxruntime
 
+# GLIBCXX fix: conda libstdc++ has GLIBCXX_3.4.34 needed by numpy 2.x on L4T
+RUN cp /opt/conda/envs/birdlense/lib/libstdc++.so.6 /usr/lib/aarch64-linux-gnu/libstdc++.so.6 && \
+    cp /opt/conda/pkgs/$(ls /opt/conda/pkgs/ | grep -E 'libgcc-ng' | sort -V | tail -1)/lib/libgcc_s.so.1 /lib/aarch64-linux-gnu/libgcc_s.so.1 2>/dev/null; \
+    ldconfig
+
 # Processor venv: python3.6 + pip deps (CUDA torch/TRT — следующий stage).
 RUN chmod +x /tmp/install_jetson_processor_venv.sh \
     && JETSON_SKIP_CUDA_VERIFY=1 /tmp/install_jetson_processor_venv.sh

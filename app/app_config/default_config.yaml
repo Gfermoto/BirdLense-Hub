@@ -698,7 +698,7 @@ video:
   # false — стабильнее на части iGPU/драйверов (ошибка encode issue 24 / битый moov), при этом
   # при capture_backend=auto захват для YOLO по-прежнему может идти через VA-API.
   record_with_vaapi: true
-  # Захват кадров для motion/detection: auto | opencv | ffmpeg_vaapi | ffmpeg_nvdec (planned, Jetson NVDEC).
+  # Захват кадров для motion/detection: auto | opencv | ffmpeg_vaapi | ffmpeg_nvmpi (Jetson GStreamer NVDEC).
   # auto: при encoding=intel пробует FFmpeg VA-API, иначе OpenCV; при ошибке fallback на OpenCV.
   capture_backend: auto
   # Запись с RTSP: h264 — перекодировать в H.264 (воспроизведение в браузере, меньше сюрпризов с HEVC).

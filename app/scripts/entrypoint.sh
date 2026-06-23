@@ -40,6 +40,8 @@ if [ "$(id -u)" = "0" ]; then
   if [ -f "${chriamue_dir}/weights/model.onnx" ] && [ ! -f "${chriamue_dir}/model.onnx" ]; then
     ln -sf weights/model.onnx "${chriamue_dir}/model.onnx"
   fi
+  # Make model dirs readable by birdlense user (bind-mounted from root)
+  chmod -R a+rX /app/processor/models/ 2>/dev/null || true
   exec gosu birdlense /bin/bash "$0" "$@"
 fi
 

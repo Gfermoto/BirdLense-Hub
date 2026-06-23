@@ -1,12 +1,13 @@
 """
 Go2RTC stream source for x86/Docker deployment.
 Reads video from RTSP/HLS URL (Go2RTC), supports auto-reconnect, recording via FFmpeg.
-Encoding: cpu (copy) or intel (VA-API on any Intel integrated GPU, including Celeron).
+Encoding: cpu (copy), intel (VA-API), or jetson (GStreamer NVMPI on Jetson NVDEC).
 """
 
 import logging
 import os
 import re
+import shutil
 import subprocess
 import threading
 import time
@@ -21,6 +22,16 @@ from .streaming_server import start_streaming_server
 logger = logging.getLogger(__name__)
 
 VAAPI_DEVICE = "/dev/dri/renderD128"
+
+NVMPI_GST_TEMPLATE = (
+    "rtspsrc location={url} latency=300 drop-on-latency=true ! "
+    "rtph264depay ! h264parse ! "
+    "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=2 ! "
+    "queue leaky=downstream max-size-buffers=2 ! "
+    "nvvidconv ! video/x-raw,format=BGRx ! "
+    "videoconvert ! video/x-raw,format=BGR,width={w},height={h} ! "
+    "appsink sync=false emit-signals=true"
+)
 
 
 def _set_runtime_gauge(name: str, value) -> None:
@@ -74,7 +85,7 @@ def _sanitize_ffmpeg_stderr_line(line: str) -> str:
 def _normalize_capture_backend(value: str | None) -> str:
     """Normalize live frame capture backend."""
     backend = (value or "auto").strip().lower()
-    if backend in ("auto", "opencv", "ffmpeg_vaapi"):
+    if backend in ("auto", "opencv", "ffmpeg_vaapi", "ffmpeg_nvmpi"):
         return backend
     return "auto"
 
@@ -84,6 +95,7 @@ def _capture_fallback_reason(
     requested_backend: str,
     encoding_mode: str,
     vaapi_available: bool,
+    nvmpi_available: bool = False,
 ) -> str:
     """Classify fallback reason for capture backend telemetry."""
     rb = _normalize_capture_backend(requested_backend)
@@ -92,6 +104,10 @@ def _capture_fallback_reason(
         return "requested_opencv"
     if rb == "ffmpeg_vaapi" and not vaapi_available:
         return "vaapi_unavailable"
+    if rb == "ffmpeg_nvmpi" and not nvmpi_available:
+        return "nvmpi_unavailable"
+    if rb == "auto" and enc == "jetson" and not nvmpi_available:
+        return "auto_nvmpi_probe_failed"
     if rb == "auto" and enc != "intel":
         return "auto_prefers_opencv_for_non_intel_encoding"
     if rb == "auto" and not vaapi_available:
@@ -137,6 +153,13 @@ def _ffmpeg_vaapi_capture_cmd(stream_url: str, lores_size: tuple[int, int]) -> l
         "rawvideo",
         "pipe:1",
     ]
+
+
+def _gst_nvmpi_capture_cmd(stream_url: str, lores_size: tuple[int, int]) -> list[str]:
+    """GStreamer NVMM pipeline for Jetson NVDEC live inference capture."""
+    width, height = int(lores_size[0]), int(lores_size[1])
+    pipeline = NVMPI_GST_TEMPLATE.format(url=stream_url, w=width, h=height)
+    return ["gst-launch-1.0", "-e", pipeline]
 
 
 def _ffmpeg_record_cmd(
@@ -298,7 +321,7 @@ class Go2RTCStreamSource:
         self._detect_native = lores_size is None
         self.auto_reconnect = auto_reconnect
         self._encoding_mode = (encoding_mode or "cpu").strip().lower()
-        if self._encoding_mode not in ("cpu", "intel"):
+        if self._encoding_mode not in ("cpu", "intel", "jetson"):
             self._encoding_mode = "cpu"
         rsc = (record_stream_codec or "h264").strip().lower()
         self._record_stream_codec = rsc if rsc in ("h264", "copy") else "h264"
@@ -324,6 +347,8 @@ class Go2RTCStreamSource:
         self._vaapi_checked = False
         self._vaapi_available = True
         self._vaapi_record_available = True
+        self._nvmpi_checked: bool = False
+        self._nvmpi_available: bool = False
         # When encoding=intel: still use VA-API for ffmpeg capture (auto) unless capture falls back;
         # recording can use libx264 only if record_with_vaapi is false (avoids flaky h264_vaapi on some iGPU drivers).
         if record_with_vaapi is None:
@@ -420,6 +445,8 @@ class Go2RTCStreamSource:
             )
             _set_runtime_gauge("video_capture_backend_fallback_reason", reason)
             _inc_runtime_counter("video_capture_backend_fallback_total", 1)
+        if self._should_use_nvmpi_capture() and self._connect_ffmpeg_nvmpi_capture():
+            return True
         # Не логировать поля из URL (в т.ч. учётка в stream_url) — CodeQL sensitive logging
         self.logger.info("Connecting to video stream (OpenCV, capture/detect)")
         # OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp set in Dockerfile
@@ -472,6 +499,38 @@ class Go2RTCStreamSource:
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
         self._apply_stream_probe()
         self.logger.info("Connected. Capture backend: FFmpeg VA-API")
+        return True
+
+    def _should_use_nvmpi_capture(self) -> bool:
+        """Whether to try Jetson GStreamer NVMPI for inference frames."""
+        if self._detect_native or not self.lores_size:
+            return False
+        if self._capture_backend == "ffmpeg_nvmpi":
+            return True
+        return self._capture_backend == "auto" and self._encoding_mode == "jetson"
+
+    def _connect_ffmpeg_nvmpi_capture(self) -> bool:
+        """Open GStreamer NVMM pipeline for live inference (Jetson NVDEC)."""
+        if not self._use_jetson_nvmpi():
+            if self._capture_backend == "ffmpeg_nvmpi":
+                self.logger.warning("NVMPI requested but unavailable; fallback to OpenCV")
+            return False
+        cmd = _gst_nvmpi_capture_cmd(self._live_capture_url(), self.lores_size)
+        try:
+            self._capture_process = subprocess.Popen(
+                cmd, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        except (FileNotFoundError, OSError) as e:
+            self.logger.warning("Failed to start GStreamer NVMPI: %s", e)
+            self._capture_process = None
+            return False
+        self._capture_backend_used = "ffmpeg_nvmpi"
+        _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
+        self._reconnect_delay = INITIAL_RECONNECT_DELAY
+        self._apply_stream_probe()
+        self.logger.info("Connected. Capture: GStreamer NVMPI (Jetson NVDEC)")
         return True
 
     def _apply_stream_probe(self) -> None:
@@ -665,6 +724,8 @@ class Go2RTCStreamSource:
         """Read one frame. Returns (frame_bgr, success)."""
         if self._capture_backend_used == "ffmpeg_vaapi":
             return self._read_ffmpeg_vaapi_frame()
+        if self._capture_backend_used == "ffmpeg_nvmpi":
+            return self._read_gst_nvmpi_frame()
         if not self._cap or not self._cap.isOpened():
             return None, False
         ret, frame = self._cap.read()
@@ -692,6 +753,27 @@ class Go2RTCStreamSource:
         data = b"".join(chunks)
         frame = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 3))
         self._ffmpeg_capture_failures = 0
+        return frame, True
+
+    def _read_gst_nvmpi_frame(self):
+        """Read one BGR frame from GStreamer NVMM pipeline (BGRx→BGR via appsink)."""
+        proc = self._capture_process
+        if not proc or proc.poll() is not None or not proc.stdout:
+            return None, False
+        # appsink outputs BGR — read 3 bytes per pixel
+        width, height = int(self.lores_size[0]), int(self.lores_size[1])
+        bgr_size = width * height * 3
+        chunks = []
+        remaining = bgr_size
+        while remaining > 0:
+            chunk = proc.stdout.read(remaining)
+            if not chunk:
+                self.logger.warning("GStreamer NVMPI pipe read returned empty")
+                return None, False
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        data = b"".join(chunks)
+        frame = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 3))
         return frame, True
 
     def _update_streaming_output(self, frame):
@@ -742,6 +824,22 @@ class Go2RTCStreamSource:
             self.logger.debug("VA-API probe failed: %s", e)
             return False
 
+    def _probe_nvmpi(self) -> bool:
+        """Check if GStreamer NVMPI pipeline works."""
+        if not shutil.which("gst-launch-1.0"):
+            self.logger.debug("NVMPI probe: gst-launch-1.0 not found")
+            return False
+        probe = "videotestsrc num-buffers=1 ! nvvidconv ! fakesink sync=false"
+        try:
+            r = subprocess.run(["gst-launch-1.0", "-e", probe], capture_output=True, timeout=10)
+            ok = r.returncode == 0
+            if not ok:
+                self.logger.debug("NVMPI probe stderr: %s", r.stderr.decode()[:200])
+            return ok
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
+            self.logger.debug("NVMPI probe failed: %s", e)
+            return False
+
     def _use_intel_vaapi(self) -> bool:
         """True if encoding_mode is intel and VA-API device works (device + libva init)."""
         if self._encoding_mode != "intel":
@@ -764,6 +862,20 @@ class Go2RTCStreamSource:
                     VAAPI_DEVICE,
                 )
         return self._vaapi_available
+
+    def _use_jetson_nvmpi(self) -> bool:
+        """True if on Jetson platform and GStreamer NVMM pipeline works."""
+        if self._encoding_mode != "jetson":
+            return False
+        if not self._nvmpi_checked:
+            self._nvmpi_checked = True
+            self._nvmpi_available = self._probe_nvmpi()
+            if not self._nvmpi_available:
+                self.logger.warning(
+                    "Jetson NVMPI GStreamer probe failed. "
+                    "Check nvidia runtime + gst-inspect-1.0 nvv4l2decoder."
+                )
+        return self._nvmpi_available
 
     def start_recording(self, output: str):
         """Start recording via FFmpeg (video+audio from RTSP). CPU or Intel VA-API."""
