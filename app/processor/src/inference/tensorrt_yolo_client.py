@@ -76,7 +76,7 @@ class TensorRTYoloClient:
         for attempt in range(max_retries):
             try:
                 ping = _rpc({"cmd": "ping"})
-                    if ping.get("ok"):
+                if ping.get("ok"):
                     break
             except (FileNotFoundError, ConnectionRefusedError, OSError) as exc:
                 last_err = exc
