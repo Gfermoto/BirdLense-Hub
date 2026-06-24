@@ -211,24 +211,56 @@ fi
 if [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ] && [ "${BIRDLENSE_INFERENCE_BACKEND:-}" = "tensorrt" ]; then
   if [ -x /usr/bin/python3.6 ] && [ -d /opt/jetson-cuda-py36 ]; then
     if ! pgrep -f "jetson_trt_worker.py" >/dev/null 2>&1; then
+      # Stale socket cleanup: remove old socket before starting worker
+      rm -f /tmp/birdlense-trt.sock
       (
+        _TRT_BACKOFF=2
+        _TRT_BACKOFF_MAX=60
+        _TRT_FAST_EXIT=30
         while true; do
           export PYTHONPATH="/opt/jetson-cuda-py36:/usr/lib/python3.6/dist-packages:/app/processor/src"
           export LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu:${LD_LIBRARY_PATH:-}"
+          _trt_start=$(date +%s)
           /usr/bin/python3.6 /app/processor/src/inference/jetson_trt_worker.py
-          echo "TRT worker crashed, restarting in 2s..."
-          sleep 2
+          _trt_elapsed=$(( $(date +%s) - _trt_start ))
+          echo "TRT worker exited after ${_trt_elapsed}s, restarting in ${_TRT_BACKOFF}s..."
+          # Exponential backoff for crash loops (e.g. OOM)
+          if [ $_trt_elapsed -lt $_TRT_FAST_EXIT ]; then
+            _TRT_BACKOFF=$(( _TRT_BACKOFF * 2 ))
+            [ $_TRT_BACKOFF -gt $_TRT_BACKOFF_MAX ] && _TRT_BACKOFF=$_TRT_BACKOFF_MAX
+          else
+            _TRT_BACKOFF=2
+          fi
+          sleep $_TRT_BACKOFF
         done
       ) &
       echo "Started jetson_trt_worker (python3.6)"
-      for _ in $(seq 1 90); do
-        [ -S /tmp/birdlense-trt.sock ] && break
+      _socket_sec=0
+      for _i in $(seq 1 180); do
+        [ -S /tmp/birdlense-trt.sock ] && { _socket_sec=$_i; break; }
+        _socket_sec=$_i
+        # Check worker is still alive every 5 seconds
+        if [ $((_i % 5)) -eq 0 ]; then
+          if ! pgrep -f "jetson_trt_worker.py" >/dev/null 2>&1; then
+            echo "WARNING: TRT worker process died during socket wait (attempt $_i/180)"
+          fi
+        fi
         sleep 1
       done
+      if [ -S /tmp/birdlense-trt.sock ]; then
+        echo "TRT worker socket ready after ${_socket_sec}s"
+      else
+        echo "WARNING: TRT worker socket NOT ready after 180s — processor may fail to connect"
+      fi
+      unset _socket_sec _i
     fi
   fi
 fi
 
+# Processor supervisor: exponential backoff when processor dies quickly
+_PROC_BACKOFF=2
+_PROC_BACKOFF_MAX=30
+_PROC_FAST_EXIT_THRESHOLD=15
 while true; do
   PROC_PY="${JETSON_PROCESSOR_PYTHON:-}"
   if [ -z "$PROC_PY" ] && [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ]; then
@@ -247,7 +279,17 @@ while true; do
   if [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ]; then
     export LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu:${LD_LIBRARY_PATH:-}"
   fi
+  _proc_start_ts=$(date +%s)
   PYTHONPATH=/app:/app/web:/app/processor/src "$PROC_PY" /app/processor/src/main.py || true
-  echo "Processor exited, restarting in 2s..."
-  sleep 2
+  _proc_elapsed=$(( $(date +%s) - _proc_start_ts ))
+  echo "Processor exited after ${_proc_elapsed}s (exit code $?), restarting in ${_PROC_BACKOFF}s..."
+  # Exponential backoff for crash loops
+  if [ $_proc_elapsed -lt $_PROC_FAST_EXIT_THRESHOLD ]; then
+    _PROC_BACKOFF=$(( _PROC_BACKOFF * 2 ))
+    [ $_PROC_BACKOFF -gt $_PROC_BACKOFF_MAX ] && _PROC_BACKOFF=$_PROC_BACKOFF_MAX
+  else
+    _PROC_BACKOFF=2
+  fi
+  sleep $_PROC_BACKOFF
 done
+unset _PROC_BACKOFF _PROC_BACKOFF_MAX _PROC_FAST_EXIT_THRESHOLD _proc_start_ts _proc_elapsed

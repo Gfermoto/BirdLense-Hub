@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import pickle
 import socket
@@ -68,18 +69,47 @@ class TensorRTYoloClient:
     def __init__(self, engine_path: str) -> None:
         self.engine_path = engine_path
         import time
+        import subprocess
+
+        # Clean stale socket before retry loop
+        stale = False
+        try:
+            if os.path.exists(SOCK):
+                os.unlink(SOCK)
+                stale = True
+        except OSError:
+            pass
 
         last_err = None
-        for _ in range(45):
+        max_retries = 300  # ~5 min total
+        for attempt in range(max_retries):
             try:
                 ping = _rpc({"cmd": "ping"})
                 if ping.get("ok"):
+                    if stale:
+                        logging.getLogger(__name__).info("TRT socket recovered after stale cleanup")
                     break
             except (FileNotFoundError, ConnectionRefusedError, OSError) as exc:
                 last_err = exc
+                # Every 30s: check if TRT worker process is alive
+                if attempt > 0 and attempt % 30 == 0:
+                    try:
+                        proc_check = subprocess.run(
+                            ["pgrep", "-f", "jetson_trt_worker.py"],
+                            capture_output=True, timeout=5,
+                        )
+                        if proc_check.returncode != 0:
+                            logging.getLogger(__name__).warning(
+                                "TRT worker not running (attempt %d/%d); waiting...",
+                                attempt + 1, max_retries,
+                            )
+                    except Exception:
+                        pass
                 time.sleep(1)
         else:
-            raise RuntimeError("TRT worker socket not ready: %s (%s)" % (SOCK, last_err))
+            raise RuntimeError(
+                "TRT worker socket not ready after %ds: %s (%s)" % (max_retries, SOCK, last_err)
+            )
         tracker = BYTETracker()
         self.predictor = _PredictorShim(tracker)
 
