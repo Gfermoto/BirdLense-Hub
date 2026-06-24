@@ -3,6 +3,7 @@
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
     "ms-azuretools.vscode-docker",
-    "GitHub.vscode-codeql"
+    "GitHub.vscode-codeql",
+    "saoudrizwan.claude-dev"
   ]
 }

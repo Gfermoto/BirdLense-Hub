@@ -4,6 +4,7 @@ Reads video from RTSP/HLS URL (Go2RTC), supports auto-reconnect, recording via F
 Encoding: cpu (copy), intel (VA-API), or jetson (GStreamer NVMPI on Jetson NVDEC).
 """
 
+import glob
 import logging
 import os
 import re
@@ -28,9 +29,9 @@ NVMPI_GST_TEMPLATE = (
     "rtph264depay ! h264parse ! "
     "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=2 ! "
     "queue leaky=downstream max-size-buffers=2 ! "
-    "nvvidconv ! video/x-raw,format=BGRx ! "
-    "videoconvert ! video/x-raw,format=BGR,width={w},height={h} ! "
-    "appsink sync=false emit-signals=true"
+    "nvvidconv ! video/x-raw(memory:NVMM),format=BGRx ! "
+    "nvvidconv ! video/x-raw,format=BGRx,width={w},height={h} ! "
+    "fdsink fd=1"
 )
 
 
@@ -163,7 +164,9 @@ def _gst_nvmpi_capture_cmd(stream_url: str, lores_size: tuple[int, int]) -> list
 
 
 def _jetson_v4l2enc_available() -> bool:
-    """Check if ffmpeg has h264_v4l2m2m encoder (Jetson HW via V4L2 mem2mem)."""
+    """Check if V4L2 devices exist AND ffmpeg has h264_v4l2m2m encoder."""
+    if not glob.glob("/dev/video*"):
+        return False
     try:
         out = subprocess.run(
             ["ffmpeg", "-encoders"], capture_output=True, timeout=5,
@@ -194,6 +197,19 @@ def _libx264_record_args() -> list[str]:
         "-crf", "23",
         "-pix_fmt", "yuv420p",
     ]
+
+
+def _gst_record_cmd(stream_url: str, output: str) -> list[str]:
+    """GStreamer pipeline: NVDEC decode + OMX re-encode → MP4."""
+    pipeline = (
+        f"rtspsrc location={stream_url} latency=300 ! "
+        "rtph264depay ! h264parse ! "
+        "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=2 ! "
+        "nvvidconv ! video/x-raw(memory:NVMM),format=I420 ! "
+        "omxh264enc ! h264parse ! mp4mux ! "
+        f"filesink location={output}"
+    )
+    return ["gst-launch-1.0", "-e", pipeline]
 
 
 def _ffmpeg_record_cmd(
@@ -816,16 +832,16 @@ class Go2RTCStreamSource:
         return frame, True
 
     def _read_gst_nvmpi_frame(self):
-        """Read one BGR frame from GStreamer NVMM pipeline (BGRx→BGR via appsink)."""
+        """Read one BGR frame from GStreamer NVMM pipeline (BGRx via fdsink)."""
         proc = self._capture_process
         if not proc or proc.poll() is not None or not proc.stdout:
             self._ffmpeg_capture_failures += 1
             return None, False
-        # appsink outputs BGR — read 3 bytes per pixel
+        # nvvidconv outputs BGRx (4 bytes per pixel), strip alpha channel
         width, height = int(self.lores_size[0]), int(self.lores_size[1])
-        bgr_size = width * height * 3
+        bgrx_size = width * height * 4
         chunks = []
-        remaining = bgr_size
+        remaining = bgrx_size
         while remaining > 0:
             chunk = proc.stdout.read(remaining)
             if not chunk:
@@ -835,7 +851,8 @@ class Go2RTCStreamSource:
             chunks.append(chunk)
             remaining -= len(chunk)
         data = b"".join(chunks)
-        frame = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 3))
+        bgrx = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 4))
+        frame = bgrx[:, :, :3].copy()  # BGRx → BGR
         self._ffmpeg_capture_failures = 0
         return frame, True
 
@@ -946,7 +963,7 @@ class Go2RTCStreamSource:
         return self._nvmpi_available
 
     def start_recording(self, output: str):
-        """Start recording via FFmpeg (video+audio from RTSP). CPU or Intel VA-API."""
+        """Start recording: GStreamer on Jetson, FFmpeg otherwise."""
         self._recording = True
         self._reconnect_capture_if_url_changed()
         self._recording_t0 = time.monotonic()
@@ -956,21 +973,27 @@ class Go2RTCStreamSource:
         use_vaapi = self._encoding_mode == "intel" and self._record_with_vaapi and self._use_intel_vaapi()
         if use_vaapi and not self._vaapi_record_available:
             use_vaapi = False
-        cmd = _ffmpeg_record_cmd(
-            stream_url=self.stream_url,
-            output=output,
-            use_vaapi=bool(use_vaapi),
-            record_stream_codec=self._record_stream_codec,
-            encoding_mode=self._encoding_mode,
-        )
+        use_jetson = self._encoding_mode == "jetson"
+        if use_jetson and self._record_stream_codec == "h264":
+            cmd = _gst_record_cmd(self.stream_url, output)
+            backend_label = "GStreamer OMX (Jetson NVENC)"
+        else:
+            cmd = _ffmpeg_record_cmd(
+                stream_url=self.stream_url,
+                output=output,
+                use_vaapi=bool(use_vaapi),
+                record_stream_codec=self._record_stream_codec,
+                encoding_mode=self._encoding_mode,
+            )
+            backend_label = "VA-API" if use_vaapi else "CPU"
         try:
             from encoding_status import set_last_encoding_used
 
             if use_vaapi:
                 self._recording_used_vaapi = True
                 set_last_encoding_used("vaapi")
-            elif self._encoding_mode == "jetson" and self._record_stream_codec == "h264":
-                set_last_encoding_used("v4l2m2m")
+            elif use_jetson and self._record_stream_codec == "h264":
+                set_last_encoding_used("omx")
             elif self._record_stream_codec == "h264" and not use_vaapi:
                 set_last_encoding_used("x264_cpu")
             else:
@@ -978,9 +1001,9 @@ class Go2RTCStreamSource:
         except Exception:
             self.logger.debug("encoding_status recording path failed", exc_info=True)
         self.logger.info(
-            "Starting FFmpeg recording to %s (%s)",
+            "Starting recording to %s (%s)",
             output,
-            "VA-API" if use_vaapi else ("NVENC" if self._encoding_mode == "jetson" else "CPU"),
+            backend_label,
         )
         self._ffmpeg_process = subprocess.Popen(
             cmd,
