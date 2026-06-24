@@ -71,23 +71,12 @@ class TensorRTYoloClient:
         import time
         import subprocess
 
-        # Clean stale socket before retry loop
-        stale = False
-        try:
-            if os.path.exists(SOCK):
-                os.unlink(SOCK)
-                stale = True
-        except OSError:
-            pass
-
         last_err = None
         max_retries = 300  # ~5 min total
         for attempt in range(max_retries):
             try:
                 ping = _rpc({"cmd": "ping"})
-                if ping.get("ok"):
-                    if stale:
-                        logging.getLogger(__name__).info("TRT socket recovered after stale cleanup")
+                    if ping.get("ok"):
                     break
             except (FileNotFoundError, ConnectionRefusedError, OSError) as exc:
                 last_err = exc
