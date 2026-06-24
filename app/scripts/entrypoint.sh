@@ -206,11 +206,19 @@ if [ "${BIRDLENSE_PROCESSOR_ENABLED:-1}" = "0" ]; then
   done
 fi
 
-# Jetson TRT worker (python3.6 + CUDA torch + tensorrt) для .engine детектора.
+# Jetson GPU worker (python3.6 + CUDA torch): TensorRT (.engine) или TorchScript (.torchscript).
 # Supervised loop: respawns worker on crash with 2s delay.
-if [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ] && [ "${BIRDLENSE_INFERENCE_BACKEND:-}" = "tensorrt" ]; then
+if [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ] && \
+   { [ "${BIRDLENSE_INFERENCE_BACKEND:-}" = "tensorrt" ] || [ "${BIRDLENSE_INFERENCE_BACKEND:-}" = "torch" ]; }; then
   if [ -x /usr/bin/python3.6 ] && [ -d /opt/jetson-cuda-py36 ]; then
-    if ! pgrep -f "jetson_trt_worker.py" >/dev/null 2>&1; then
+    # Choose worker script based on backend
+    _WORKER_SCRIPT="jetson_trt_worker.py"
+    _WORKER_LABEL="TRT"
+    if [ "${BIRDLENSE_INFERENCE_BACKEND:-}" = "torch" ]; then
+      _WORKER_SCRIPT="jetson_torch_worker.py"
+      _WORKER_LABEL="Torch"
+    fi
+    if ! pgrep -f "${_WORKER_SCRIPT}" >/dev/null 2>&1; then
       # Stale socket cleanup: remove old socket before starting worker
       rm -f /tmp/birdlense-trt.sock
       (
@@ -221,9 +229,9 @@ if [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ] && [ "${BIRDLENSE_INFERENCE_BAC
           export PYTHONPATH="/opt/jetson-cuda-py36:/usr/lib/python3.6/dist-packages:/app/processor/src"
           export LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu:${LD_LIBRARY_PATH:-}"
           _trt_start=$(date +%s)
-          /usr/bin/python3.6 /app/processor/src/inference/jetson_trt_worker.py
+          /usr/bin/python3.6 /app/processor/src/inference/${_WORKER_SCRIPT}
           _trt_elapsed=$(( $(date +%s) - _trt_start ))
-          echo "TRT worker exited after ${_trt_elapsed}s, restarting in ${_TRT_BACKOFF}s..."
+          echo "${_WORKER_LABEL} worker exited after ${_trt_elapsed}s, restarting in ${_TRT_BACKOFF}s..."
           # Exponential backoff for crash loops (e.g. OOM)
           if [ $_trt_elapsed -lt $_TRT_FAST_EXIT ]; then
             _TRT_BACKOFF=$(( _TRT_BACKOFF * 2 ))
@@ -234,25 +242,25 @@ if [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ] && [ "${BIRDLENSE_INFERENCE_BAC
           sleep $_TRT_BACKOFF
         done
       ) &
-      echo "Started jetson_trt_worker (python3.6)"
+      echo "Started ${_WORKER_LABEL} worker (python3.6): ${_WORKER_SCRIPT}"
       _socket_sec=0
       for _i in $(seq 1 180); do
         [ -S /tmp/birdlense-trt.sock ] && { _socket_sec=$_i; break; }
         _socket_sec=$_i
         # Check worker is still alive every 5 seconds
         if [ $((_i % 5)) -eq 0 ]; then
-          if ! pgrep -f "jetson_trt_worker.py" >/dev/null 2>&1; then
-            echo "WARNING: TRT worker process died during socket wait (attempt $_i/180)"
+          if ! pgrep -f "${_WORKER_SCRIPT}" >/dev/null 2>&1; then
+            echo "WARNING: ${_WORKER_LABEL} worker process died during socket wait (attempt $_i/180)"
           fi
         fi
         sleep 1
       done
       if [ -S /tmp/birdlense-trt.sock ]; then
-        echo "TRT worker socket ready after ${_socket_sec}s"
+        echo "${_WORKER_LABEL} worker socket ready after ${_socket_sec}s"
       else
-        echo "WARNING: TRT worker socket NOT ready after 180s — processor may fail to connect"
+        echo "WARNING: ${_WORKER_LABEL} worker socket NOT ready after 180s — processor may fail to connect"
       fi
-      unset _socket_sec _i
+      unset _socket_sec _i _WORKER_SCRIPT _WORKER_LABEL
     fi
   fi
 fi

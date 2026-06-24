@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
+
+
+def _is_jetson_py311() -> bool:
+    """Jetson Nano, py3.11 (not the TRT/Torch py3.6 worker)."""
+    import sys
+
+    return (
+        os.environ.get("BIRDLENSE_PLATFORM", "") == "jetson_nano"
+        and sys.version_info[:2] == (3, 11)
+    )
 
 
 def _ensure_openvino_pkg() -> None:
@@ -15,11 +26,19 @@ def _ensure_openvino_pkg() -> None:
         ) from e
 
 
+def _load_via_trt_client(model_path: str) -> Any:
+    """Load detector via Unix socket client (py3.11 → py3.6 CUDA worker)."""
+    from inference.tensorrt_yolo_client import load_tensorrt_yolo_client
+
+    return load_tensorrt_yolo_client(model_path)
+
+
 def load_yolo_detector(model_path: str, *, backend: str = "torch") -> Any:
     """
     Загрузить бинарный детектор.
 
-    - ``torch``: ``.pt`` чекпоинт (дефолт).
+    - ``torch``: ``.pt`` чекпоинт (дефолт) — на Jetson Nano py3.11 уходит
+      в Unix-сокетный воркер (py3.6 CUDA torch / TorchScript).
     - ``openvino``: export dir or ``.xml`` through Ultralytics ``track()``.
     - ``tensorrt``: Jetson target ``.engine``; native adapter is gated.
     """
@@ -46,9 +65,12 @@ def load_yolo_detector(model_path: str, *, backend: str = "torch") -> Any:
         from inference.tensorrt_yolo_client import load_tensorrt_yolo_client
 
         return load_tensorrt_yolo_client(path)
-    from ultralytics import YOLO
-
     if b == "torch":
+        # Jetson Nano py3.11: route through Unix socket to py3.6 CUDA worker
+        if _is_jetson_py311():
+            return _load_via_trt_client(model_path)
+        from ultralytics import YOLO
+
         return YOLO(model_path, task="detect")
     if b == "openvino":
         _ensure_openvino_pkg()
