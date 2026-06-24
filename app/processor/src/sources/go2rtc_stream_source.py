@@ -27,9 +27,10 @@ VAAPI_DEVICE = "/dev/dri/renderD128"
 NVMPI_GST_TEMPLATE = (
     "rtspsrc location={url} latency=300 drop-on-latency=true protocols=4 ! "
     "rtph264depay ! h264parse ! "
-    "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=4 ! "
-    "nvvidconv ! video/x-raw,format=BGRx,width={w},height={h} ! "
-    "fdsink fd=1 sync=false"
+    "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=12 ! "
+    "nvvidconv ! video/x-raw(memory:NVMM),format=I420 ! "
+    "nvvidconv ! video/x-raw,format=I420,width={w},height={h} ! "
+    "fdsink fd=1"
 )
 
 
@@ -830,16 +831,15 @@ class Go2RTCStreamSource:
         return frame, True
 
     def _read_gst_nvmpi_frame(self):
-        """Read one BGR frame from GStreamer NVMM pipeline (BGRx via fdsink)."""
+        """Read one I420 frame from GStreamer NVMM pipeline, convert to BGR."""
         proc = self._capture_process
         if not proc or proc.poll() is not None or not proc.stdout:
             self._ffmpeg_capture_failures += 1
             return None, False
-        # nvvidconv outputs BGRx (4 bytes per pixel), strip alpha channel
         width, height = int(self.lores_size[0]), int(self.lores_size[1])
-        bgrx_size = width * height * 4
+        i420_size = width * height * 3 // 2  # 1.5 bytes/pixel
         chunks = []
-        remaining = bgrx_size
+        remaining = i420_size
         while remaining > 0:
             chunk = proc.stdout.read(remaining)
             if not chunk:
@@ -849,8 +849,8 @@ class Go2RTCStreamSource:
             chunks.append(chunk)
             remaining -= len(chunk)
         data = b"".join(chunks)
-        bgrx = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 4))
-        frame = bgrx[:, :, :3].copy()  # BGRx → BGR
+        i420 = np.frombuffer(data, dtype=np.uint8).reshape((height * 3 // 2, width))
+        frame = cv2.cvtColor(i420, cv2.COLOR_YUV2BGR_I420)
         self._ffmpeg_capture_failures = 0
         return frame, True
 
