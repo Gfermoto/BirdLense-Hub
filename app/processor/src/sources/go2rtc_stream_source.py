@@ -25,13 +25,11 @@ logger = logging.getLogger(__name__)
 VAAPI_DEVICE = "/dev/dri/renderD128"
 
 NVMPI_GST_TEMPLATE = (
-    "rtspsrc location={url} latency=300 drop-on-latency=true ! "
+    "rtspsrc location={url} latency=300 drop-on-latency=true protocols=4 ! "
     "rtph264depay ! h264parse ! "
-    "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=2 ! "
-    "queue leaky=downstream max-size-buffers=2 ! "
-    "nvvidconv ! video/x-raw(memory:NVMM),format=BGRx ! "
+    "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=4 ! "
     "nvvidconv ! video/x-raw,format=BGRx,width={w},height={h} ! "
-    "fdsink fd=1"
+    "fdsink fd=1 sync=false"
 )
 
 
