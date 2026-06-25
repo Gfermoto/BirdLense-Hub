@@ -154,7 +154,7 @@ def _recommendations(
 
     if raw_total > 0 and tr_pct < 25:
         rec.append(
-            f"Треки в {tr_pct}% сессий при наличии raw — проверить bytetrack_birdlense_unstick.yaml, "
+            f"Треки в {tr_pct}% сессий при наличии raw — проверить bytetrack_birdlense.yaml, "
             "iou_id_fallback_live; ByteTrack track_high_thresh vs track(conf)."
         )
 

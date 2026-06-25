@@ -118,7 +118,7 @@ def main() -> int:
     if not isinstance(tp, dict):
         tp = {}
         data["processor"]["tracker_profiles"] = tp
-    tp["night"] = "models/tracker/bytetrack_birdlense_night.yaml"
+    tp["night"] = "models/tracker/bytetrack_birdlense.yaml"
 
     profiles = data["processor"].get("adaptive_profiles")
     if isinstance(profiles, dict):

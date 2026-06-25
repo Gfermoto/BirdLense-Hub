@@ -35,7 +35,7 @@ POLICY = {
         "inference_device": "intel:gpu",
         "classifier_inference_backend": "torch",
         "classifier_inference_device": "cpu",
-        "tracker": "models/tracker/bytetrack_birdlense_unstick.yaml",
+        "tracker": "models/tracker/bytetrack_birdlense.yaml",
         "inference_lores_px": 640,
         "binary_imgsz": 640,
         "lowres_enhance_enabled": True,

@@ -102,7 +102,7 @@ class TestRuntimeProfile(unittest.TestCase):
                 },
                 "processor.tracker": "bytetrack.yaml",
                 "processor.tracker_profiles": {
-                    "night": "models/tracker/bytetrack_birdlense_night.yaml",
+                    "night": "models/tracker/bytetrack_birdlense.yaml",
                 },
             }
             return mapping.get(key, default)
@@ -121,7 +121,7 @@ class TestRuntimeProfile(unittest.TestCase):
         self.assertAlmostEqual(strategy.calls[0]["min_confidence"], 0.18)
         self.assertEqual(
             strategy.calls[0]["tracker_config"],
-            resolve_tracker_config_path("models/tracker/bytetrack_birdlense_night.yaml"),
+            resolve_tracker_config_path("models/tracker/bytetrack_birdlense.yaml"),
         )
         self.assertEqual(strategy.calls[0]["profile_overrides"]["min_box_size_px"], 32)
         self.assertEqual(fp.last_run_stats["runtime_profile"], "night")

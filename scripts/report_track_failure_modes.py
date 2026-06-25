@@ -127,19 +127,19 @@ def build_track_failure_modes_report(
             "models/tracker/bytetrack_birdlense_lowfps.yaml"
         ),
         "fallback_tracker_profile": (
-            "models/tracker/bytetrack_birdlense_unstick.yaml"
+            "models/tracker/bytetrack_birdlense.yaml"
         ),
         "night_tracker_profile": (
-            "models/tracker/bytetrack_birdlense_night.yaml"
+            "models/tracker/bytetrack_birdlense.yaml"
         ),
         "night_fallback_tracker_profile": (
-            "models/tracker/bytetrack_birdlense_night_unstick.yaml"
+            "models/tracker/bytetrack_birdlense.yaml"
         ),
         "runtime_switches": {
             "processor.auto_unstick_enabled": True,
             "processor.track_regen_match_live_pipeline": True,
             "processor.tracker_profiles.night": (
-                "models/tracker/bytetrack_birdlense_night.yaml"
+                "models/tracker/bytetrack_birdlense.yaml"
             ),
         },
     }

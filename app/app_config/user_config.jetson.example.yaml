@@ -15,9 +15,9 @@ processor:
   classifier_finalize_max_key_frames: 3
   adaptive_preprocess_enabled: false
   binary_rescue_enabled: false
-  tracker: models/tracker/bytetrack_birdlense_unstick.yaml
+  tracker: models/tracker/bytetrack_birdlense.yaml
   tracker_profiles:
-    night: models/tracker/bytetrack_birdlense_night.yaml
+    night: models/tracker/bytetrack_birdlense.yaml
   tracker_fps_profiles:
     lte_5: models/tracker/bytetrack_birdlense_lowfps.yaml
     lte_7: models/tracker/bytetrack_birdlense_lowfps.yaml
@@ -274,8 +274,8 @@ processor:
   auto_unstick_min_confidence_binary_bird: 0.025
   auto_unstick_min_box_size_px: 14
   auto_unstick_min_center_dist: 0.01
-  auto_unstick_tracker: models/tracker/bytetrack_birdlense_unstick.yaml
-  auto_unstick_tracker_night: models/tracker/bytetrack_birdlense_night_unstick.yaml
+  auto_unstick_tracker: models/tracker/bytetrack_birdlense.yaml
+  auto_unstick_tracker_night: models/tracker/bytetrack_birdlense.yaml
   max_box_area_norm: 0.85
   camera_overrides: {}
   camera_tuning_by_role:
@@ -291,7 +291,7 @@ processor:
       openvino_binary_track_ultralytics_conf: 0.025
       min_confidence_to_process: 0.04
       min_track_duration: 0.25
-      tracker: models/tracker/bytetrack_birdlense_close.yaml
+      tracker: models/tracker/bytetrack_birdlense.yaml
       tracker_remember_seconds: 1.2
       min_box_size_px: 8
       min_center_dist: 0.01

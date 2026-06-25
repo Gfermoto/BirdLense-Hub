@@ -26,10 +26,10 @@ class TestTrackerPaths(unittest.TestCase):
     def test_resolves_bare_tracker_yaml_under_models_tracker(self):
         here = os.path.dirname(os.path.abspath(__file__))
         proc_root = os.path.abspath(os.path.join(here, ".."))
-        yaml_path = os.path.join(proc_root, "models/tracker/bytetrack_birdlense_unstick.yaml")
+        yaml_path = os.path.join(proc_root, "models/tracker/bytetrack_birdlense.yaml")
         if not os.path.isfile(yaml_path):
-            self.skipTest("bundled unstick tracker yaml missing")
-        resolved = resolve_tracker_config_path("bytetrack_birdlense_unstick.yaml")
+            self.skipTest("bundled tracker yaml missing")
+        resolved = resolve_tracker_config_path("bytetrack_birdlense.yaml")
         self.assertEqual(resolved, yaml_path)
 
     def test_absolute_existing_file(self):

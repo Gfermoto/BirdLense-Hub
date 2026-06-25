@@ -49,7 +49,7 @@ processor:
   tracker: "models/tracker/bytetrack_birdlense_lowfps.yaml"
   # Только ключ ``night`` читается runtime (resolve_runtime_profile). Днём — ``processor.tracker``.
   tracker_profiles:
-    night: "models/tracker/bytetrack_birdlense_night.yaml"
+    night: "models/tracker/bytetrack_birdlense.yaml"
   # Optional tracker presets by effective stream FPS (probe/video.detect_fps).
   tracker_fps_profiles:
     lte_5: "models/tracker/bytetrack_birdlense_lowfps.yaml"
@@ -446,8 +446,8 @@ processor:
   auto_unstick_min_confidence_binary_bird: 0.025
   auto_unstick_min_box_size_px: 14
   auto_unstick_min_center_dist: 0.01
-  auto_unstick_tracker: "models/tracker/bytetrack_birdlense_unstick.yaml"
-  auto_unstick_tracker_night: "models/tracker/bytetrack_birdlense_night_unstick.yaml"
+  auto_unstick_tracker: "models/tracker/bytetrack_birdlense.yaml"
+  auto_unstick_tracker_night: "models/tracker/bytetrack_birdlense.yaml"
   # Guardrail against detector collapse into near full-frame boxes.
   max_box_area_norm: 0.85
   # deprecated: per-camera map — prefer video.cameras[].tuning_role + camera_tuning_by_role + detection_interest_zones
@@ -471,8 +471,7 @@ processor:
       openvino_binary_track_ultralytics_conf: 0.025
       min_confidence_to_process: 0.04
       min_track_duration: 0.25
-      # Fast foreground birds @ 7 FPS: looser IoU match, shorter buffer (see bytetrack_birdlense_close.yaml).
-      tracker: models/tracker/bytetrack_birdlense_close.yaml
+      tracker: models/tracker/bytetrack_birdlense.yaml
       tracker_remember_seconds: 1.2
       min_box_size_px: 8
       min_center_dist: 0.01

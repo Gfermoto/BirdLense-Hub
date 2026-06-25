@@ -45,7 +45,7 @@ processor:
   multi_camera_groups:
     - [BirdBox, Forest]
   detector_scope: [Bird, Eurasian Red Squirrel]
-  tracker: models/tracker/bytetrack_birdlense_unstick.yaml
+  tracker: models/tracker/bytetrack_birdlense.yaml
 
 general:
   app_name: BirdLense

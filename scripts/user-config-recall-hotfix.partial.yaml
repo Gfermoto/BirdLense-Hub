@@ -6,7 +6,7 @@ detection:
   min_confidence_to_store: 0.08
 
 processor:
-  tracker: models/tracker/bytetrack_birdlense_unstick.yaml
+  tracker: models/tracker/bytetrack_birdlense.yaml
   min_box_size_px: 14
   min_confidence_binary_bird: 0.08
   min_confidence_binary: 0.08
