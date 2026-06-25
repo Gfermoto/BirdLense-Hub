@@ -2,45 +2,24 @@
 set -e
 #
 # Single-container startup (order matters): Gunicorn -> HealthCheck -> Nginx
-# Operability / «если зависло»:
-#   docs/user/troubleshooting.md → «Single-container startup (entrypoint)»
-#   archive/internal/docs-legacy/RUNTIME_COUPLING.md — PYTHONPATH, web↔processor, compose dev-split draft
+# Orin variant: ONNX GPU (CUDA EP / TensorRT EP). No DRM/DRI groups,
+# no py3.6 worker (JetPack 6 has Python >=3.10 natively).
 #
 
 # =============================================================================
-# SECTION 1 — Root bootstrap: volume ownership, DRM groups, drop to birdlense
+# SECTION 1 — Root bootstrap: volume ownership, drop to birdlense
 # =============================================================================
 if [ "$(id -u)" = "0" ]; then
   mkdir -p /app/data/.ultralytics
-  # Битый symlink app_config/app_config -> /app/app_config ломает import app_config.app_config
-  # (Python берёт каталог вместо app_config.py). Удаляем только если это symlink.
   if [ -L /app/app_config/app_config ]; then
     rm -f /app/app_config/app_config
   fi
   chown -R birdlense:birdlense /app/data /app/app_config 2>/dev/null || true
-  if [ -d /dev/dri ]; then
-    for dev in /dev/dri/renderD128 /dev/dri/card0; do
-      [ -e "$dev" ] || continue
-      gid="$(stat -c '%g' "$dev" 2>/dev/null || true)"
-      [ -n "$gid" ] || continue
-      [ "$gid" = "0" ] && continue
-      if ! getent group "$gid" >/dev/null 2>&1; then
-        groupadd -g "$gid" "hostgpu_$gid" 2>/dev/null || true
-      fi
-      grp="$(getent group "$gid" | awk -F: 'NR==1{print $1}')"
-      [ -n "$grp" ] && usermod -aG "$grp" birdlense 2>/dev/null || true
-    done
-  fi
-  # Jetson JP4.6: /dev/nvhost-* owned by group video — без неё torch.cuda недоступен py3.6 worker.
-  if [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ] && getent group video >/dev/null 2>&1; then
-    usermod -aG video birdlense 2>/dev/null || true
-  fi
-  # Jetson chriamue: model.onnx лежит в weights/ поддиректории
+  # Orin: nvidia runtime handles GPU access; no DRM group fix needed
   chriamue_dir="/app/processor/models/classification/chriamue_bird_species_classifier"
   if [ -f "${chriamue_dir}/weights/model.onnx" ] && [ ! -f "${chriamue_dir}/model.onnx" ]; then
     ln -sf weights/model.onnx "${chriamue_dir}/model.onnx"
   fi
-  # Make model dirs readable by birdlense user (bind-mounted from root)
   chmod -R a+rX /app/processor/models/ 2>/dev/null || true
   exec gosu birdlense /bin/bash "$0" "$@"
 fi
@@ -65,8 +44,6 @@ if raw_hide:
 else:
     env_name = os.environ.get("BIRDLENSE_ENV", "").strip().lower()
     strict_auth = os.environ.get("BIRDLENSE_STRICT_API_AUTH", "").strip().lower() in truthy
-    # Safer default for public deployments: hide direct static recordings URLs
-    # whenever strict production auth is enabled.
     hide = env_name == "production" and strict_auth
 recordings_block = (
     ""
@@ -91,7 +68,6 @@ open("/etc/nginx/conf.d/default.conf", "w").write(t)
 # =============================================================================
 if [ -d /app/_bundled_data/images ]; then
   mkdir -p /app/data/images
-  # Never clobber good volume files with empty/stale bundled assets (deploy excludes app/data).
   while IFS= read -r -d '' _bundled_src; do
     _rel="${_bundled_src#/app/_bundled_data/images/}"
     _dest="/app/data/images/${_rel}"
@@ -115,19 +91,16 @@ mkdir -p /tmp/nginx-client-body /tmp/nginx-proxy /tmp/nginx-fastcgi /tmp/nginx-u
 # SECTION 4 — Gunicorn (FastAPI on 127.0.0.1:8000)
 # =============================================================================
 GUNICORN_THREADS="${GUNICORN_THREADS:-16}"
-# processor/src — пакет inference (ml_lineage_service, processor_*); см. archive/internal/docs-legacy/RUNTIME_COUPLING.md
 cd /app/web && PYTHONPATH=/app:/app/web:/app/processor/src gunicorn -w 1 -k gthread --threads "$GUNICORN_THREADS" --timeout 0 -b 127.0.0.1:8000 app:app &
 
 # =============================================================================
-# SECTION 4b — Nginx раньше ожидания API (порт :8080 сразу на хосте; до готовности upstream — 502, не «молча»)
+# SECTION 4b — Nginx before API ready (port :8080 responds immediately, 502 if upstream not ready)
 # =============================================================================
-# Иначе CI/прокси ждут до 400 с без ответа на :8085 → curl 56. См. scripts/wait-hub-http.sh, .github/workflows/ci-pr.yml.
 nginx -c /app/nginx/docker-nginx-main.conf &
 
 # =============================================================================
 # SECTION 5 — Wait for web liveness (/api/ui/health)
 # =============================================================================
-# даём Gunicorn время привязаться к порту перед проверкой
 sleep 5
 health_wait_left=400
 until curl -sf --max-time 120 http://127.0.0.1:8000/api/ui/health >/dev/null; do
@@ -206,92 +179,16 @@ if [ "${BIRDLENSE_PROCESSOR_ENABLED:-1}" = "0" ]; then
   done
 fi
 
-# Jetson GPU worker (python3.6 + CUDA torch): TensorRT (.engine) или TorchScript (.torchscript).
-# Supervised loop: respawns worker on crash with 2s delay.
-if [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ] && \
-   { [ "${BIRDLENSE_INFERENCE_BACKEND:-}" = "tensorrt" ] || [ "${BIRDLENSE_INFERENCE_BACKEND:-}" = "torch" ]; }; then
-  if [ -x /usr/bin/python3.6 ] && [ -d /opt/jetson-cuda-py36 ]; then
-    # Choose worker script based on backend
-    _WORKER_SCRIPT="jetson_trt_worker.py"
-    _WORKER_LABEL="TRT"
-    if [ "${BIRDLENSE_INFERENCE_BACKEND:-}" = "torch" ]; then
-      _WORKER_SCRIPT="jetson_torch_worker.py"
-      _WORKER_LABEL="Torch"
-    fi
-    if ! pgrep -f "${_WORKER_SCRIPT}" >/dev/null 2>&1; then
-      # Stale socket cleanup: remove old socket before starting worker
-      rm -f /tmp/birdlense-trt.sock
-      (
-        _TRT_BACKOFF=2
-        _TRT_BACKOFF_MAX=60
-        _TRT_FAST_EXIT=30
-        while true; do
-          export PYTHONPATH="/opt/jetson-cuda-py36:/usr/lib/python3.6/dist-packages:/app/processor/src"
-          export LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu:${LD_LIBRARY_PATH:-}"
-          _trt_start=$(date +%s)
-          /usr/bin/python3.6 /app/processor/src/inference/${_WORKER_SCRIPT}
-          _trt_elapsed=$(( $(date +%s) - _trt_start ))
-          echo "${_WORKER_LABEL} worker exited after ${_trt_elapsed}s, restarting in ${_TRT_BACKOFF}s..."
-          # Exponential backoff for crash loops (e.g. OOM)
-          if [ $_trt_elapsed -lt $_TRT_FAST_EXIT ]; then
-            _TRT_BACKOFF=$(( _TRT_BACKOFF * 2 ))
-            [ $_TRT_BACKOFF -gt $_TRT_BACKOFF_MAX ] && _TRT_BACKOFF=$_TRT_BACKOFF_MAX
-          else
-            _TRT_BACKOFF=2
-          fi
-          sleep $_TRT_BACKOFF
-        done
-      ) &
-      echo "Started ${_WORKER_LABEL} worker (python3.6): ${_WORKER_SCRIPT}"
-      _socket_sec=0
-      for _i in $(seq 1 180); do
-        [ -S /tmp/birdlense-trt.sock ] && { _socket_sec=$_i; break; }
-        _socket_sec=$_i
-        # Check worker is still alive every 5 seconds
-        if [ $((_i % 5)) -eq 0 ]; then
-          if ! pgrep -f "${_WORKER_SCRIPT}" >/dev/null 2>&1; then
-            echo "WARNING: ${_WORKER_LABEL} worker process died during socket wait (attempt $_i/180)"
-          fi
-        fi
-        sleep 1
-      done
-      if [ -S /tmp/birdlense-trt.sock ]; then
-        echo "${_WORKER_LABEL} worker socket ready after ${_socket_sec}s"
-      else
-        echo "WARNING: ${_WORKER_LABEL} worker socket NOT ready after 180s — processor may fail to connect"
-      fi
-      unset _socket_sec _i _WORKER_SCRIPT _WORKER_LABEL
-    fi
-  fi
-fi
-
-# Processor supervisor: exponential backoff when processor dies quickly
+# Orin: no separate GPU worker needed. ONNX Runtime uses CUDA EP / TensorRT EP directly.
+# Processor runs in the main Python process with ONNX GPU.
 _PROC_BACKOFF=2
 _PROC_BACKOFF_MAX=30
 _PROC_FAST_EXIT_THRESHOLD=15
 while true; do
-  PROC_PY="${JETSON_PROCESSOR_PYTHON:-}"
-  if [ -z "$PROC_PY" ] && [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ]; then
-    if [ -x /opt/conda/envs/birdlense/bin/python ]; then
-      PROC_PY=/opt/conda/envs/birdlense/bin/python
-    elif [ -d /opt/jetson-cuda-py36 ] && [ -x /usr/bin/python3.6 ]; then
-      PROC_PY=/usr/bin/python3.6
-    elif [ -x /opt/jetson-processor/bin/python ]; then
-      PROC_PY=/opt/jetson-processor/bin/python
-    fi
-  fi
-  if [ -z "$PROC_PY" ]; then
-    PROC_PY=python3
-  fi
-  # TensorRT python bindings (JP4.6) + tegra libs для processor venv.
-  if [ "${BIRDLENSE_PLATFORM:-}" = "jetson_nano" ]; then
-    export LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu:${LD_LIBRARY_PATH:-}"
-  fi
   _proc_start_ts=$(date +%s)
-  PYTHONPATH=/app:/app/web:/app/processor/src "$PROC_PY" /app/processor/src/main.py || true
+  PYTHONPATH=/app:/app/web:/app/processor/src python3 /app/processor/src/main.py || true
   _proc_elapsed=$(( $(date +%s) - _proc_start_ts ))
   echo "Processor exited after ${_proc_elapsed}s (exit code $?), restarting in ${_PROC_BACKOFF}s..."
-  # Exponential backoff for crash loops
   if [ $_proc_elapsed -lt $_PROC_FAST_EXIT_THRESHOLD ]; then
     _PROC_BACKOFF=$(( _PROC_BACKOFF * 2 ))
     [ $_PROC_BACKOFF -gt $_PROC_BACKOFF_MAX ] && _PROC_BACKOFF=$_PROC_BACKOFF_MAX

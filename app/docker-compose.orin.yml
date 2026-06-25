@@ -1,0 +1,41 @@
+# Orin NX / NANO override — merge: docker compose -f docker-compose.yml -f docker-compose.orin.yml
+# Активируется через BIRDLENSE_PLATFORM=orin (Makefile / deploy.sh).
+
+services:
+  birdlense:
+    build:
+      context: ..
+      dockerfile: app/Dockerfile.orin
+    shm_size: "1gb"
+    network_mode: host
+    ports: !reset []
+    runtime: nvidia
+    privileged: true
+    restart: unless-stopped
+    group_add:
+      - video
+    environment:
+      - BIRDLENSE_PLATFORM=orin
+      - BIRDLENSE_PORT=${BIRDLENSE_PORT:-8085}
+      - BIRDLENSE_INFERENCE_BACKEND=onnxruntime
+      - BIRDLENSE_BINARY_ONNX_PATH=/app/processor/models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
+      - BIRDLENSE_CLASSIFIER_ENGINE=chriamue
+      - BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=onnxruntime
+      - BIRDLENSE_OPENVINO_BINARY_ENABLED=0
+      - API_URL_BASE=http://127.0.0.1:${BIRDLENSE_PORT:-8085}/api/processor
+      - GO2RTC_URL=${GO2RTC_URL:-}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+      - BIRDLENSE_ENCODING=orin
+      - BIRDLENSE_CAPTURE_BACKEND=ffmpeg_nvmpi
+    volumes:
+      - ./processor/models/detection/trapper_ai_v02_2024:/app/processor/models/detection/trapper_ai_v02_2024
+      - ./processor/models/classification/chriamue_bird_species_classifier:/app/processor/models/classification/chriamue_bird_species_classifier
+      - ./processor/models/welfare/ornimetrics:/app/processor/models/welfare/ornimetrics
+      - ./processor/models/reid/ornimetrics:/app/processor/models/reid/ornimetrics
+      - ./processor/models/tracker:/app/processor/models/tracker
+    deploy:
+      resources:
+        limits:
+          cpus: "8"
+          memory: 14G

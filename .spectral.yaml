@@ -1,5 +1,0 @@
-extends:
-  - spectral:oas
-
-rules:
-  operation-operationId: error

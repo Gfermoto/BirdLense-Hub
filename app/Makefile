@@ -1,11 +1,11 @@
 .PHONY: all clean build start stop logs verify deploy pull setup test test-processor-light test-web test-web-contract-local test-web-local venv-web venv-web-reset test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
 
-# Platform: intel_nuc (default) | jetson_nano — см. scripts/platform-profile.sh, deploy/profiles/
+# Platform: intel_nuc (default) | orin — см. scripts/platform-profile.sh, deploy/profiles/
 BIRDLENSE_PLATFORM ?= intel_nuc
 COMPOSE ?= docker compose
 COMPOSE_FILES := docker-compose.yml
-ifeq ($(BIRDLENSE_PLATFORM),jetson_nano)
-COMPOSE_FILES := docker-compose.yml docker-compose.jetson.yml
+ifeq ($(BIRDLENSE_PLATFORM),orin)
+COMPOSE_FILES := docker-compose.yml docker-compose.orin.yml
 endif
 COMPOSE_CMD = $(COMPOSE) $(foreach f,$(COMPOSE_FILES),-f $(f))
 

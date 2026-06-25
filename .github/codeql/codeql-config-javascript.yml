@@ -1,7 +1,0 @@
-# CodeQL: UI (TypeScript / React)
-name: BirdLense JavaScript/TypeScript
-paths:
-  - app/ui/src
-paths-ignore:
-  - app/ui/node_modules
-  - app/ui/dist

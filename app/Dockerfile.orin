@@ -1,0 +1,58 @@
+# BirdLense Hub — Orin NX / NANO (aarch64, JetPack 6, ONNX GPU)
+#
+# - ONNX Runtime GPU (CUDA EP / TensorRT EP)
+# - No Intel VA-API, no OpenVINO
+# - No py3.6 TorchScript worker
+# - nginx + gosu + ffmpeg + curl из apt
+#
+# Контекст сборки — корень репозитория.
+# BIRDLENSE_PLATFORM=orin
+
+FROM python:3.12-slim-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg nginx curl unzip gosu \
+    libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 \
+    git ca-certificates \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Static images for catalog
+COPY app/data/images /app/_bundled_data/images
+
+COPY app/ebird_region_core.py ./
+COPY app/web/ ./web/
+COPY app/shared/ ./shared/
+COPY app/processor/ ./processor/
+COPY app/app_config/ ./app_config/
+COPY app/scripts/ ./scripts/
+
+RUN pip install --default-timeout=600 --no-cache-dir \
+    -r web/requirements.txt \
+    -r processor/requirements.txt \
+    onnxruntime-gpu>=1.20
+
+# UI + nginx
+COPY app/ui/dist /usr/share/nginx/html
+COPY app/nginx/standalone.conf.template /etc/nginx/conf.d/default.conf.template
+COPY app/nginx/docker-nginx-main.conf /app/nginx/docker-nginx-main.conf
+
+RUN groupadd -r birdlense -g 1000 \
+    && useradd -r -u 1000 -g birdlense -d /app -s /bin/bash birdlense \
+    && (usermod -aG video birdlense 2>/dev/null || true) \
+    && mkdir -p /var/log/nginx \
+    && chown -R birdlense:birdlense /app /usr/share/nginx/html /etc/nginx/conf.d /var/log/nginx
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -sf http://127.0.0.1:8000/api/ui/health > /dev/null || exit 1
+
+EXPOSE 8080
+ENV API_URL_BASE=http://127.0.0.1:8000/api/processor
+ENV DATA_DIR=/app/data
+ENV YOLO_CONFIG_DIR=/app/data/.ultralytics
+ENV OPENCV_LOG_LEVEL=ERROR
+ENV OPENCV_FFMPEG_LOGLEVEL=quiet
+ENV BIRDLENSE_PLATFORM=orin
+
+CMD ["/bin/bash", "/app/scripts/entrypoint.sh"]
