@@ -112,8 +112,8 @@ scripts/.git-filter-repo-replacements.local.txt
 # ESPHome: пример секретов — в репозитории (см. esphome/README.md)
 !esphome/secrets.yaml.example
 # Локальный конфиг весов с Wi‑Fi/OTA — в репо шаблон bird-feeder-scale.yaml.example
-esphome/bird-feeder-scale.yaml
-!esphome/bird-feeder-scale.yaml.example
+esphome/*.yaml
+!esphome/*.yaml.example
 esphome/.esphome/
 # Код без секретов: имена файлов совпадают с шаблонами **/*secret* / **/*password*
 !app/app_config/secret_env.py

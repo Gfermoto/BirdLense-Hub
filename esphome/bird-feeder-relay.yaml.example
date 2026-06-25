@@ -1,10 +1,12 @@
+# BirdLense Hub — ESPHome: реле кормушки
+# Шаблон. Скопировать в bird-feeder-relay.yaml и задать свои secrets.
+#
 # Управление кормушкой: ESP8266 (ESP-01 1M), реле на GPIO, кнопка «кормление».
 # Wi‑Fi / OTA — через secrets.yaml (см. secrets.yaml.example).
 #
 # ВАЖНО: GPIO0 — strapping pin (режим загрузки). Надёжнее перенести реле на GPIO2/GPIO3,
 # если схема платы позволяет.
 
-# Имя устройства (DHCP/mDNS) = esphome.name. Подчёркивания допустимы, но ESPHome их не рекомендует.
 substitutions:
   devicename: bird_feeder
 
@@ -25,7 +27,7 @@ web_server:
 api:
   reboot_timeout: 30min
   # encryption:
-  #   key: "your_encryption_key_here"
+  #   key: "!secret api_encryption_key"
 
 ota:
   - platform: esphome
