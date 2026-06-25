@@ -1,85 +1,46 @@
-# BirdLense Hub
+# BirdLense Hub (Orin)
 
 [English](./README.md)
 
-Один контейнер. Подключается к Go2RTC (отдельно или в Frigate), MQTT (BirdNET, Frigate).
+Один контейнер для Jetson Orin. Подключается к Go2RTC (отдельно или в Frigate), MQTT (BirdNET, Frigate).
 
-**Возможности:** Timeline (дата + время суток), экспорт CSV/JSON/eBird, PDF-отчёт, «Неизвестные», iNaturalist, Xeno-canto, Prometheus. См. [docs/ru/features.ru.md](../docs/ru/features.ru.md).
+**Модели (ONNX GPU):** Trapper AI детектор, Birder ConvNeXt классификатор, Ornimetrics ReID + Welfare. Весь инференс — ONNX Runtime CUDA EP / TensorRT EP.
 
-## Запуск
-
-### Локальная разработка (без сервера)
+## Быстрый старт
 
 ```bash
 cd app
-make local
-```
-
-См. [docs/ru/local-dev.ru.md](../docs/ru/local-dev.ru.md) — полная сборка, тесты, E2E.
-
-### Вариант 1: Готовый образ (рекомендуется)
-
-```bash
-cd app
-make pull
-```
-
-Образ: `ghcr.io/gfermoto/birdlense-hub:latest` ([GitHub Packages](https://github.com/Gfermoto/BirdLense-Hub/pkgs/container/birdlense-hub))
-
-### Вариант 2: Сборка из исходников
-
-```bash
-cd app
+cp .env.example .env           # отредактировать токены
 make build && make start
 ```
 
-UI: http://localhost:8085
-
-## Команды
+## Makefile
 
 | Команда | Описание |
 |---------|----------|
-| `make setup` | Создать app/.env с PROCESSOR_SECRET и FLASK_SECRET_KEY (вызывается автоматически) |
-| `make build` | Сборка образа |
-| `make start` | Запуск (после build) |
-| `make pull` | Скачать и запустить готовый образ |
+| `make build` | Сборка Docker образа |
+| `make start` | Запуск стека |
 | `make stop` | Остановка |
 | `make logs` | Логи |
-| `make deploy` | Деплой на сервер (из корня репо; см. [docs/ru/install.ru.md](../docs/ru/install.ru.md)) |
+| `make verify` | Health check |
 
-## Конфигурация
+Подробнее: [`docs/QUICKSTART.md`](../docs/QUICKSTART.md) · [`docs/INSTALL.md`](../docs/INSTALL.md)
 
-- `app_config/default_config.yaml` — значения по умолчанию из образа/репозитория (базовая линия).
-- `app_config/user_config.yaml` — **пользовательские настройки** (глубокий merge поверх default); основной файл для сохранения настроек из UI. При деплое на сервер не перезаписываются живые `data/` и `user_config.yaml` (см. [docs/ru/install.ru.md](../docs/ru/install.ru.md) и правила deploy в репозитории).
-- **Переменные окружения** — слой рантайма для секретов и инфраструктуры: `DATA_DIR`, `MQTT_BROKER`, `MQTT_USERNAME`, `MQTT_PASSWORD`, `GO2RTC_URL`, `PROCESSOR_SECRET`, `FLASK_SECRET_KEY`, `BIRDLENSE_*`, `MCP_TOKEN` и др. Во многих местах порядок **сначала env, потом YAML** (например брокер MQTT в bootstrap процессора и части UI).
-- При загрузке выполняется проверка **типов верхнеуровневых секций** merged-конфига (известные секции должны быть mapping, не скаляр). Ошибки пишутся в лог; `BIRDLENSE_STRICT_CONFIG=1` — **падать при старте**, если валидация не прошла.
+## Структура
 
-- **Go2RTC URL:** Настройки → Видео — `http://IP:1984` (хост, где доступен Go2RTC)
-- Камеры: Настройки → Камеры (stream name из Go2RTC)
-- Примеры: `cp configs/minimal.yaml app_config/user_config.yaml`
-
-## Данные
-
-- `./data/recordings/` — видео (YYYY/MM/DD/HHMMSS/video.mp4)
-- `./data/db/birdlense.db` — SQLite
-- `./app_config/` — конфиг
-
-Записи не видны? System → «Сканировать и импортировать».
-
-## MCP
-
-Настройки → раздел 8. Подключение: [docs/ru/mcp-setup.ru.md](../docs/ru/mcp-setup.ru.md)
-
-## Деплой
-
-```bash
-cd BirdLense
-make deploy
+```
+app/
+├── web/            # Flask API (OpenAPI)
+├── processor/      # ONNX GPU инференс
+├── ui/             # React 19 + MUI (Node 22)
+├── data/           # recordings/, db/
+└── app_config/     # user_config.yaml
 ```
 
-Синхронизирует код на сервер (см. scripts/deploy.local.sh.example), **не трогает** data на сервере.
+## Важно
 
-## Требования
+- Сборка UI перед Docker: `cd app/ui && npm run build && cd ..`
+- Node.js 22 (см. `app/ui/.nvmrc`)
+- NVIDIA runtime обязателен
 
-- Go2RTC — укажите хост в Настройках (`http://IP:1984`)
-- MQTT (опционально)
+См. [`docs/`](../docs/index.md).

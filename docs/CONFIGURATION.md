@@ -1,11 +1,32 @@
-# Configuration (moved)
+# Конфигурация
 
-> **Do not edit this stub.** It exists for old bookmarks and external links to `docs/CONFIGURATION.md`.
+Основной конфиг: `app/app_config/user_config.yaml`. Шаблон: `user_config.orin.example.yaml`.
 
-This page moved to **current documentation**:
+Полный список параметров: `app/app_config/default_config.yaml` (не редактировать — перекрывается user_config).
 
-**[user/configuration.md](user/configuration.md)**
+### Ключевые секции
 
----
+```yaml
+processor:
+  inference_backend: onnx            # только ONNX
+  inference_device: cuda:0           # CUDA GPU
+  models:
+    binary_onnx: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
+    classifier_onnx: models/classification/chriamue_bird_species_classifier/model.onnx
+    reid_onnx: models/reid/ornimetrics/reid_embedder.onnx
+    welfare_onnx: models/welfare/ornimetrics/embedder.onnx
+    welfare_scorer: models/welfare/ornimetrics/welfare_scorer.npz
+  tracker: bot_sort                   # ByteTrack unstick
+  gstreamer:                          # NVDEC/NVENC pipeline
+```
 
-[Documentation index](index.md) · [Contributor guide](contributor/documentation.md)
+Через `.env`:
+
+| Переменная | Описание |
+|-----------|----------|
+| `FLASK_SECRET_KEY` | 32-char hex для сессий |
+| `PROCESSOR_SECRET` | 32-char hex для API |
+| `MCP_TOKEN` | Bearer token для MCP |
+| `BIRDLENSE_ENV` | production |
+
+См. [`user/configuration.md`](user/configuration.md).
