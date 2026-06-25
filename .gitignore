@@ -297,3 +297,5 @@ docs/reports/**/*.jpeg
 docs/reports/**/*.png
 docs/reports/**/*.log
 docs/reports/**/results_visual/
+# RTSP пароли — не коммитить!
+scripts/smoke_detect_subtype_compare.py
