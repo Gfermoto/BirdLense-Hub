@@ -100,6 +100,8 @@ app/configs/env.local
 
 # Deploy — локальные переопределения (IP, URL)
 scripts/deploy.local.sh
+deploy/profiles/
+deploy/profiles/
 # Правила для git filter-repo --replace-text (могут содержать реальные хост/IP)
 scripts/.git-filter-repo-replacements.local.txt
 
@@ -148,8 +150,7 @@ app/ui/coverage/
 # Артефакты (curl -c, debug)
 **/-X
 
-# Обученные модели (веса): игнор под models/, кроме явных текстов/YAML.
-# Примечание: app/processor/models/ целиком ломает negation для подкаталогов — используем models/*.
+# Обученные модели (веса)
 app/processor/models/*
 !app/processor/models/classification/
 app/processor/models/classification/*
@@ -176,37 +177,7 @@ app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/*
 app/processor/models/tracker/*
 !app/processor/models/tracker/README.md
 !app/processor/models/tracker/*.yaml
-!app/processor/models/behavior/
-app/processor/models/behavior/*
-!app/processor/models/behavior/README.md
-!app/processor/models/behavior/behavior_logistic_export@v1.json
-!app/processor/models/behavior/behavior_logistic_openvino/
-!app/processor/models/behavior/behavior_logistic_openvino/behavior_logistic.onnx
-!app/processor/models/behavior_v1_openvino/
-app/processor/models/behavior_v1_openvino/*
-# README + export manifests / IR (как у behavior_v2_*)
-!app/processor/models/behavior_v1_openvino/README.md
-!app/processor/models/behavior_v1_openvino/behavior_video_export.json
-!app/processor/models/behavior_v1_openvino/behavior_openvino_export.json
-!app/processor/models/behavior_v1_openvino/behavior_video_model.xml
-!app/processor/models/behavior_v1_openvino/behavior_video_model.bin
-!app/processor/models/behavior_v1_openvino/behavior_video_model.onnx
-!app/processor/models/behavior_v2_openvino/
-app/processor/models/behavior_v2_openvino/*
-!app/processor/models/behavior_v2_openvino/README.md
-!app/processor/models/behavior_v2_openvino/behavior_video_export.json
-!app/processor/models/behavior_v2_openvino/behavior_openvino_export.json
-!app/processor/models/behavior_v2_openvino/behavior_video_model.xml
-!app/processor/models/behavior_v2_openvino/behavior_video_model.bin
-!app/processor/models/behavior_v2_openvino/behavior_video_model.onnx
-!app/processor/models/behavior_v2_1_openvino/
-app/processor/models/behavior_v2_1_openvino/*
-!app/processor/models/behavior_v2_1_openvino/README.md
-!app/processor/models/behavior_v2_1_openvino/behavior_video_export.json
-!app/processor/models/behavior_v2_1_openvino/behavior_openvino_export.json
-!app/processor/models/behavior_v2_1_openvino/behavior_video_model.xml
-!app/processor/models/behavior_v2_1_openvino/behavior_video_model.bin
-!app/processor/models/behavior_v2_1_openvino/behavior_video_model.onnx
+# Behavior models — resolved through behavior_model_paths legacy aliases
 
 # Zenodo annotation CSVs (full set via scripts/download_wetlandbirds_zenodo.sh)
 app/data/datasets/Visual-WetlandBirds/annotations/

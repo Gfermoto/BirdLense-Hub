@@ -12,7 +12,6 @@
 - [ ] No benchmark/temp artifacts in repository root
 - [ ] `.gitignore` covers local ML/training artifacts
 - [ ] `docs/` has EN-first structure and <=50 markdown files
-- [ ] Internal docs are in `archive/internal/`
 
 ## Build and runtime
 

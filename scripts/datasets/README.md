@@ -118,7 +118,7 @@ make dataset-verify-hard-negatives \
 
 Собрать **`brg/`** в один ZIP под облако (Google Drive и т.д.): `dataset.yaml`, все сплиты, внутри архива `brg/README_UPLOAD.txt` с командой train. Выход: **`datasets/new/detector/BirdLense_detector_brg_<UTC>.zip`**.
 
-Стартовые веса **`bl_best.pt`** и состав датасета **`brg`**: [datasets](../../docs/contributor/datasets.md); Colab: [ML_DETECTOR_COLAB](../../archive/internal/docs-legacy/ML_DETECTOR_COLAB.md).
+Стартовые веса **`bl_best.pt`** и состав датасета **`brg`**: [datasets](../../docs/contributor/datasets.md).
 
 ```bash
 python3 scripts/datasets/pack_brg_for_gdrive.py
