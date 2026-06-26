@@ -1,4 +1,4 @@
-"""Tests for scripts/ml_behavior_export_onnx.py (#416); requires onnx + openvino."""
+"""Tests for scripts/ml_behavior_export_onnx.py (#416); requires onnx + onnxruntime."""
 
 from __future__ import annotations
 
@@ -53,15 +53,11 @@ class TestMlBehaviorExportOnnx(unittest.TestCase):
 
             onx = onnx_pkg.load(str(outp))
             onnx_pkg.checker.check_model(onx)
-            import openvino as ov
+            import onnxruntime as ort
 
-            core = ov.Core()
-            model = core.read_model(str(outp))
-            compiled = core.compile_model(model, "CPU")
-            inp_name = compiled.inputs[0].get_any_name()
+            sess = ort.InferenceSession(str(outp), providers=["CPUExecutionProvider"])
             x = np.array([[0.5, 1.0, 0.25]], dtype=np.float32)
-            out = compiled({inp_name: x})
-            logits_ov = np.asarray(out[compiled.outputs[0]], dtype=np.float64).reshape(-1)
+            logits_ov = np.asarray(sess.run(None, {sess.get_inputs()[0].name: x})[0], dtype=np.float64).reshape(-1)
             w = np.array(export["coef"], dtype=np.float64)
             b = np.array(export["intercept"], dtype=np.float64).reshape(-1)
             logits_np = (x.astype(np.float64) @ w.T).reshape(-1) + b

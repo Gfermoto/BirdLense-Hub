@@ -1,4 +1,4 @@
-"""Regression: weak OpenVINO conf + static feeder birds must survive ScoringEngine."""
+"""Regression: weak detector conf + static feeder birds must survive ScoringEngine."""
 
 from __future__ import annotations
 

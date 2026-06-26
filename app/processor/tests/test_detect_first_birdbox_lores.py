@@ -8,7 +8,9 @@ import unittest
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_path = os.path.abspath(os.path.join(current_dir, "../src"))
-sys.path.insert(0, src_path)
+app_path = os.path.abspath(os.path.join(current_dir, "..", ".."))
+for _p in (app_path, src_path):
+    sys.path.insert(0, _p)
 
 import numpy as np
 

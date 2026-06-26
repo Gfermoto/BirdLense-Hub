@@ -825,40 +825,36 @@ class TestBuildBinaryTrackUltralyticsExtras(unittest.TestCase):
 
 
 class TestTrackMaybeRetry(unittest.TestCase):
-    def test_third_try_lowers_conf_when_enabled(self):
+    def test_retries_when_boxes_have_no_track_id(self):
         if _track_maybe_retry is None:
             self.skipTest("detection_strategy import failed")
         import numpy as np
 
         confs: list[float | None] = []
+        calls = 0
 
         class _Boxes:
-            def __init__(self, n: int, *, with_id: bool):
-                self.id = [1] * n if with_id else None
+            def __init__(self, *, with_id: bool):
+                self.id = [1] if with_id else None
 
             def __len__(self):
-                return 1 if self.id is not None or self.id is None else 0
+                return 1
 
         class _Result:
-            def __init__(self, with_id: bool):
-                self.boxes = _Boxes(1, with_id=with_id)
+            def __init__(self, *, with_id: bool):
+                self.boxes = _Boxes(with_id=with_id)
 
         class _Model:
             def track(self, frame, **kwargs):
+                nonlocal calls
+                calls += 1
                 confs.append(kwargs.get("conf"))
-                # first two calls: boxes without id; third with id
-                return [_Result(with_id=len(confs) >= 3 and confs[-1] == 0.054)]
+                return [_Result(with_id=calls >= 2)]
 
         frame = np.zeros((64, 64, 3), dtype=np.uint8)
-        out = _track_maybe_retry(
-            _Model(),
-            frame,
-            low_conf_retry=True,
-            conf=0.12,
-            persist=True,
-        )
+        out = _track_maybe_retry(_Model(), frame, conf=0.12, persist=True)
         self.assertEqual(len(out[0].boxes.id), 1)
-        self.assertEqual(confs, [0.12, 0.12, 0.054])
+        self.assertEqual(confs, [0.12, 0.12])
 
 
 class TestTwoStageBirdSkipClassifier(unittest.TestCase):

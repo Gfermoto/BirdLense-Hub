@@ -90,7 +90,7 @@ def birder_eu_fixture(tmp_path):
             "species.catalog_allowlist_use_active_classifier": True,
             "species.catalog_allowlist_extra": ["Rodent"],
             "processor.classifier_engine": "birder_eu",
-            "processor.models.classifier_birder_eu_openvino": str(
+            "processor.models.classifier_birder_eu": str(
                 weights.relative_to(processor),
             ),
         }

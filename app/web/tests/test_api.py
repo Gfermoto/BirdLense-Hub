@@ -3441,8 +3441,8 @@ class TestConfigAudit:
             "mqtt": {"broker": ""},
             "video": {"encoding": "cpu"},
             "processor": {
-                "inference_backend": "openvino",
-                "inference_device": "intel:gpu",
+                "inference_backend": "onnxruntime",
+                "inference_device": "cuda:0",
             },
         }
         user_config = tmp_path / "user_config.yaml"
