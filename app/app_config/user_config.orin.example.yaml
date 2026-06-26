@@ -2,18 +2,19 @@
 # Скопировать в user_config.yaml и настроить под свой Orin
 processor:
   models:
-    detection:
-      binary_openvino: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
-    classification:
-      engine: chriamue
-    reid:
-      model_path: models/reid/ornimetrics/reid_embedder.onnx
-    welfare:
-      embedder_path: models/welfare/ornimetrics/embedder.onnx
-      scorer_path: models/welfare/ornimetrics/welfare_scorer.npz
+    binary: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
+    classifier: models/classification/chriamue_bird_species_classifier
+  classifier_engine: chriamue
   inference_backend: onnxruntime
+  classifier_inference_backend: onnxruntime
   inference_device: cuda:0
   binary_imgsz: 640
   min_confidence_binary: 0.12
   merge_window_seconds: 12
-  openvino_binary_enabled: false
+
+reid:
+  model_path: models/reid/ornimetrics/reid_embedder.onnx
+
+welfare:
+  embedder_path: models/welfare/ornimetrics/embedder.onnx
+  scorer_path: models/welfare/ornimetrics/welfare_scorer.npz

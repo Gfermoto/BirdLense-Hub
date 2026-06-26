@@ -14,7 +14,7 @@ from detector_labels import (
     normalize_detector_label,
     resolve_detector_scope_set,
 )
-from inference.torch_backend import load_yolo_classifier, load_yolo_detector
+from ultralytics import YOLO
 from inference.weight_contract import validate_detector_weight_contract
 from processor_runtime_profile import RuntimeProfileConfigOverlay
 from roi_super_resolution import build_roi_super_resolution
@@ -128,55 +128,6 @@ def _parse_optional_processor_float(config: Mapping[str, Any], key: str) -> floa
         return None
 
 
-def _openvino_acceptance_cap(
-    base_m: float,
-    config: Mapping[str, Any],
-    *,
-    inference_backend: str | None,
-) -> float:
-    """OpenVINO: min(role/camera base, openvino cap) — cap must not raise above role preset."""
-    if (inference_backend or "").strip().lower() != "openvino":
-        return base_m
-    ov = _parse_optional_processor_float(config, "processor.openvino_min_confidence_binary_bird")
-    if ov is None:
-        return base_m
-    ov = max(0.001, min(0.99, float(ov)))
-    return min(float(base_m), ov)
-
-
-def _openvino_binary_bird_threshold_override(
-    bird_m: float,
-    config: Mapping[str, Any],
-    *,
-    inference_backend: str | None,
-) -> float:
-    return _openvino_acceptance_cap(bird_m, config, inference_backend=inference_backend)
-
-
-def openvino_binary_bird_score_scale(config: Mapping[str, Any], *, inference_backend: str | None) -> float:
-    """Только Bird + OpenVINO: множитель к conf при сравнении с порогом (сырой conf в БД не меняется). 1.0 = выкл."""
-    if (inference_backend or "").strip().lower() != "openvino":
-        return 1.0
-    s = _parse_optional_processor_float(config, "processor.openvino_binary_bird_score_scale")
-    if s is None:
-        return 1.0
-    return max(1.0, min(25.0, float(s)))
-
-
-def _openvino_binary_track_ultralytics_conf_cap(
-    stock_floor: float,
-    config: Mapping[str, Any],
-    *,
-    inference_backend: str | None,
-) -> float:
-    """При OV: ``min(stock_floor, openvino_binary_track_ultralytics_conf)`` — ослабить ``track(conf=…)`` без второго инференса."""
-    if (inference_backend or "").strip().lower() != "openvino":
-        return stock_floor
-    cap = _parse_optional_processor_float(config, "processor.openvino_binary_track_ultralytics_conf")
-    if cap is None:
-        return stock_floor
-    cap = max(0.01, min(0.50, float(cap)))
-    return min(float(stock_floor), cap)
 
 
 def build_binary_track_ultralytics_extras(runtime_cfg: Mapping[str, Any]) -> dict[str, float | int]:
@@ -225,10 +176,9 @@ def binary_track_ultralytics_conf_floor(
     b_raw = config.get("processor.min_confidence_binary_bird")
     s_raw = _rodent_binary_threshold_raw(config)
     bird_m = float(b_raw) if b_raw is not None else base
-    bird_m = _openvino_binary_bird_threshold_override(bird_m, config, inference_backend=inference_backend)
     rod_m = float(s_raw) if s_raw is not None else base
     stock = min(base, bird_m, rod_m)
-    return _openvino_binary_track_ultralytics_conf_cap(stock, config, inference_backend=inference_backend)
+    return stock
 
 
 def per_label_binary_conf_threshold(
@@ -246,13 +196,12 @@ def per_label_binary_conf_threshold(
     b_raw = config.get("processor.min_confidence_binary_bird")
     s_raw = _rodent_binary_threshold_raw(config)
     bird_m = float(b_raw) if b_raw is not None else base
-    bird_m = _openvino_binary_bird_threshold_override(bird_m, config, inference_backend=inference_backend)
     rod_m = float(s_raw) if s_raw is not None else base
     if detector_label == "Bird":
         return bird_m
     if _is_squirrel_detector_label(detector_label):
         return rod_m
-    return _openvino_acceptance_cap(base, config, inference_backend=inference_backend)
+    return base
 
 
 def bird_skip_classifier_area_limit(app_config: Mapping[str, Any]) -> Optional[float]:
@@ -339,58 +288,18 @@ def _regional_class_ids(
     ]
 
 
-def _openvino_track_profile_overrides(
-    runtime_cfg: Mapping[str, Any],
-    *,
-    for_track_regen: bool,
-    profile_overrides: Mapping[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Live detect: latency (config default). Regen worker: throughput (#644)."""
-    merged = dict(profile_overrides or {})
-    if not for_track_regen:
-        return merged
-    merged.setdefault("openvino_profile", "throughput")
-    if "openvino_num_requests" not in merged:
-        nr = runtime_cfg.get("processor.openvino.regen.num_requests")
-        if nr is None:
-            nr = runtime_cfg.get("processor.openvino.num_requests")
-        if nr is not None:
-            try:
-                merged["openvino_num_requests"] = max(1, int(nr))
-            except (TypeError, ValueError):
-                pass
-    return merged
-
-
 def _track_maybe_retry(
     model,
     frame: np.ndarray,
-    *,
-    openvino_low_conf_retry: bool = False,
     **kwargs,
 ):
-    """ByteTrack иногда возвращает ``boxes.id is None`` — повтор; для OpenVINO ещё снижаем conf."""
+    """ByteTrack иногда возвращает ``boxes.id is None`` — повтор."""
     results = model.track(frame, **kwargs)
     if not results or len(results[0].boxes) == 0:
         return results
     if results[0].boxes.id is not None:
         return results
     results = model.track(frame, **kwargs)
-    if not results or len(results[0].boxes) == 0:
-        return results
-    if results[0].boxes.id is not None:
-        return results
-    if not openvino_low_conf_retry:
-        return results
-    try:
-        conf = float(kwargs.get("conf") or 0.1)
-    except (TypeError, ValueError):
-        conf = 0.1
-    if conf <= 0.02:
-        return results
-    retry_kw = dict(kwargs)
-    retry_kw["conf"] = round(max(0.008, conf * 0.45), 4)
-    results = model.track(frame, **retry_kw)
     return results
 
 
@@ -697,9 +606,7 @@ class TwoStageStrategy(DetectionStrategy):
         _dev = (binary_inference_device or "").strip()
         self._binary_track_device: str | None = _dev or None
         _cls_dev = (classifier_inference_device or "").strip()
-        self._classifier_predict_device: str | None = (
-            _cls_dev if self.classifier_inference_backend == "openvino" and _cls_dev else None
-        )
+        self._classifier_predict_device: str | None = _cls_dev or None
         self.weight_contract_mode = (weight_contract_mode or "warn").strip().lower()
         self.regional_species = regional_species
         self.max_classifications_per_frame = max(1, int(max_classifications_per_frame or 1))
@@ -725,25 +632,16 @@ class TwoStageStrategy(DetectionStrategy):
             self._detector_native_labels,
         )
 
-        if self.inference_backend not in ("torch", "openvino", "tensorrt"):
+        if self.inference_backend not in ("torch", "tensorrt"):
             raise NotImplementedError(
                 f"Detector backend {self.inference_backend!r} is not implemented (#371).",
             )
 
-        self.binary_model = load_yolo_detector(
+        self.binary_model = YOLO(
             binary_model_path,
-            backend=self.inference_backend,
         )
-        if self.inference_backend == "openvino":
-            from inference.openvino_ultralytics_tuning import apply_openvino_ultralytics_tuning
 
-            apply_openvino_ultralytics_tuning(
-                self.binary_model,
-                device=_dev or None,
-                app_config=app_config,
-            )
-
-        _cls_backends = ("torch", "openvino", "onnxruntime")
+        _cls_backends = ("torch", "onnxruntime")
         if self.classifier_inference_backend not in _cls_backends:
             raise NotImplementedError(
                 f"Classifier backend {self.classifier_inference_backend!r} is not implemented (#371).",
@@ -774,13 +672,9 @@ class TwoStageStrategy(DetectionStrategy):
                 app_config=app_config,
             )
         else:
-            if self.classifier_inference_backend not in ("torch", "openvino"):
-                raise NotImplementedError(
-                    "YOLO legacy classifier supports only torch/openvino backends.",
-                )
-            self.classifier_model = load_yolo_classifier(
+            self.classifier_model = YOLO(
                 classifier_model_path,
-                backend=self.classifier_inference_backend,
+                task="classify",
             )
 
         validate_detector_weight_contract(
@@ -807,13 +701,7 @@ class TwoStageStrategy(DetectionStrategy):
         self._classification_task_queue: deque[ClassificationTask] = deque()
         self._classification_task_drops_total = 0
         self._latest_cls_by_track: dict[int, ClassifierOutput] = {}
-        from inference.openvino_ultralytics_tuning import classifier_async_safe_on_openvino_igpu
-
-        self._classifier_async_enabled = classifier_async_safe_on_openvino_igpu(
-            app_config,
-            classifier_backend=self.classifier_inference_backend,
-            classifier_device=_cls_dev or None,
-        )
+        self._classifier_async_enabled = False
         self._classifier_async_lock = threading.Lock()
         self._classifier_worker_stop = threading.Event()
         self._classifier_worker: threading.Thread | None = None
@@ -849,14 +737,6 @@ class TwoStageStrategy(DetectionStrategy):
             )
 
         # Warmup
-        from inference.openvino_ultralytics_tuning import ensure_openvino_track_tuning
-
-        ensure_openvino_track_tuning(
-            self.binary_model,
-            app_config,
-            inference_backend=self.inference_backend,
-            device=self._binary_track_device,
-        )
         _warm: dict = {"tracker": "bytetrack.yaml", "persist": True, "verbose": False}
         if self._binary_track_device:
             _warm["device"] = self._binary_track_device
@@ -1162,7 +1042,6 @@ class TwoStageStrategy(DetectionStrategy):
             default_square=int(
                 runtime_cfg.resolve_strategy_field("processor.binary_imgsz", self, "binary_imgsz", 320) or 320
             ),
-            binary_openvino_path=self._binary_model_path if inference_backend == "openvino" else None,
         )
         min_center_dist = float(
             runtime_cfg.resolve_strategy_field("processor.min_center_dist", self, "min_center_dist", 0.1) or 0.1
@@ -1252,28 +1131,12 @@ class TwoStageStrategy(DetectionStrategy):
         _bdev = getattr(self, "_binary_track_device", None)
         if _bdev:
             _tkw["device"] = _bdev
-        if inference_backend == "openvino":
-            from inference.openvino_ultralytics_tuning import ensure_openvino_track_tuning
-
-            _ov_overrides = _openvino_track_profile_overrides(
-                runtime_cfg,
-                for_track_regen=track_regen_ctx,
-                profile_overrides=profile_overrides,
-            )
-            ensure_openvino_track_tuning(
-                self.binary_model,
-                runtime_cfg,
-                inference_backend=inference_backend,
-                device=_bdev,
-                profile_overrides=_ov_overrides,
-            )
         results = (
             self.binary_model.track(frame, **_tkw)
             if track_regen_ctx and iou_fb
             else _track_maybe_retry(
                 self.binary_model,
                 frame,
-                openvino_low_conf_retry=(inference_backend == "openvino"),
                 **_tkw,
             )
         )
@@ -1511,11 +1374,6 @@ class TwoStageStrategy(DetectionStrategy):
                 float(bbox_norm[3]),
             )
 
-        _ov_bird_scale = openvino_binary_bird_score_scale(
-            runtime_cfg,
-            inference_backend=inference_backend,
-        )
-
         if not hasattr(self, "_detection_quality") or self._detection_quality is None:
             self._detection_quality = DetectionQualityPipeline(
                 DetectionQualityConfig.from_runtime_cfg(runtime_cfg),
@@ -1557,8 +1415,6 @@ class TwoStageStrategy(DetectionStrategy):
                 if detector_label == "Bird":
                     eff_min = max(float(eff_min), float(scene_bird_floor))
                 cmp_conf = float(conf)
-                if detector_label == "Bird" and _ov_bird_scale > 1.0:
-                    cmp_conf *= _ov_bird_scale
                 if not self.is_valid_detection(
                     list(_overlay_norm_bbox(bbox_norm)),
                     cmp_conf,

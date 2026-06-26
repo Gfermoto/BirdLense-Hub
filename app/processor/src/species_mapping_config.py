@@ -32,16 +32,19 @@ def _birder_eu_label_mapping(app_config: Any) -> dict[str, str]:
     engine = str(app_config.get("processor.classifier_engine", "birder_eu") or "birder_eu").strip().lower()
     if engine not in ("birder", "birder_eu", "birder-eu", "eu-common", "eu_common"):
         return {}
-    from inference.classifier_model_layout import birder_variant_name, classifier_openvino_rel_dir
+    from inference.classifier_model_layout import birder_variant_name, resolve_birder_bundle_dir
 
     processor_root = Path(__file__).resolve().parents[1]
     variant = birder_variant_name(app_config)
-    rel = (
-        app_config.get("processor.models.classifier_openvino")
-        or app_config.get("processor.models.classifier_birder_eu_openvino")
-        or classifier_openvino_rel_dir(variant)
+    weights_root = processor_root / "models/classification/weights"
+    cfg_ref = app_config.get("processor.models.classifier") or app_config.get(
+        "processor.models.classifier_birder_eu"
     )
-    base = Path(rel) if os.path.isabs(str(rel)) else processor_root / str(rel)
+    ref: Path | None = None
+    if cfg_ref:
+        p = Path(str(cfg_ref))
+        ref = p if p.is_dir() else p.parent if p.suffix == ".pt" else None
+    base = resolve_birder_bundle_dir(weights_root, variant, ref)
     labels_path = base / "class_labels.txt"
     if not labels_path.is_file():
         return {}

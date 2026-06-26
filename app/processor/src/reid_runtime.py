@@ -1,4 +1,4 @@
-"""Runtime Re-ID enrichment for video detections (DINOv2 PyTorch / Ornimetrics ONNX / OpenVINO)."""
+"""Runtime Re-ID enrichment for video detections (Ornimetrics ONNX on Orin)."""
 
 from __future__ import annotations
 
@@ -91,15 +91,12 @@ def _resolve_reid_device() -> str:
 
 def _resolve_reid_backend(device: str) -> str:
     env = (os.environ.get("BIRDLENSE_REID_BACKEND") or "").strip().lower()
-    if env in ("torch", "openvino", "onnxruntime"):
+    if env in ("torch", "onnxruntime"):
         return env
     cfg = str(_cfg_get("processor.reid.inference_backend", "auto") or "auto").strip().lower()
-    if cfg in ("torch", "openvino", "onnxruntime"):
+    if cfg in ("torch", "onnxruntime"):
         return cfg
-    # auto
-    if str(device or "").strip().lower().startswith("intel:"):
-        return "openvino"
-    # pref: onnxruntime > torch если Torch не доступен
+    # pref: onnxruntime > torch
     if _torch_available():
         return "torch"
     return "onnxruntime"
@@ -117,17 +114,6 @@ def _resolve_torch_device_name(device: str) -> str:
     if d.startswith("intel:"):
         return "cpu"
     return d
-
-
-def _resolve_openvino_device_name(device: str) -> str:
-    d = str(device or "").strip().lower()
-    if d in ("", "auto", "gpu", "intel:gpu"):
-        return "GPU"
-    if d in ("cpu", "intel:cpu"):
-        return "CPU"
-    if d in ("npu", "intel:npu"):
-        return "NPU"
-    return d.upper()
 
 
 def _hub_cache_dir() -> str:
@@ -260,50 +246,16 @@ def _ensure_model_state() -> dict[str, Any] | None:
                     set_gauge("reid.runtime.hub_source", "remote")
                 model.eval()
                 side = _infer_input_side(model)
-                if backend == "openvino":
-                    import openvino as ov
-
-                    class _EmbeddingWrapper(torch.nn.Module):
-                        def __init__(self, base_model):
-                            super().__init__()
-                            self.base_model = base_model
-
-                        def forward(self, x):
-                            feats = self.base_model.forward_features(x)
-                            vec = _pick_cls_embedding(feats)
-                            return F.normalize(vec.float(), dim=-1)
-
-                    wrapper = _EmbeddingWrapper(model.to(torch.device("cpu")).eval())
-                    example = torch.zeros((1, 3, side, side), dtype=torch.float32)
-                    ov_model = ov.convert_model(wrapper, example_input=example)
-                    core = ov.Core()
-                    ov_device = _resolve_openvino_device_name(raw_device)
-                    try:
-                        compiled = core.compile_model(ov_model, ov_device)
-                        effective_device = ov_device
-                    except Exception:
-                        compiled = core.compile_model(ov_model, "CPU")
-                        effective_device = "CPU"
-                    _MODEL_STATE = {
-                        "model_name": model_name,
-                        "device": raw_device,
-                        "backend": "openvino",
-                        "effective_device": effective_device,
-                        "compiled_model": compiled,
-                        "input_name": compiled.inputs[0].any_name,
-                        "side": side,
-                    }
-                else:
-                    torch_device = _resolve_torch_device_name(raw_device)
-                    model.to(torch.device(torch_device))
-                    _MODEL_STATE = {
-                        "model_name": model_name,
-                        "device": torch_device,
-                        "backend": "torch",
-                        "effective_device": torch_device,
-                        "model": model,
-                        "side": side,
-                    }
+                torch_device = _resolve_torch_device_name(raw_device)
+                model.to(torch.device(torch_device))
+                _MODEL_STATE = {
+                    "model_name": model_name,
+                    "device": torch_device,
+                    "backend": "torch",
+                    "effective_device": torch_device,
+                    "model": model,
+                    "side": side,
+                }
             observe_timing("reid_model_load", (time.time() - started) * 1000.0)
             set_gauge("reid.runtime.enabled", True)
             set_gauge("reid.runtime.device", _MODEL_STATE.get("effective_device"))
@@ -368,19 +320,6 @@ def _to_embedding(crop: Any, *, state: dict[str, Any]) -> np.ndarray | None:
             out = np.squeeze(out).astype(np.float32)
         except Exception:
             _LOG.debug("reid: onnxruntime embedding inference failed", exc_info=True)
-            return None
-    elif backend == "openvino":
-        try:
-            out_data = state["compiled_model"]({state["input_name"]: x4})
-            if hasattr(out_data, "values"):
-                out = np.asarray(next(iter(out_data.values())), dtype=np.float32)
-            elif isinstance(out_data, (list, tuple)):
-                out = np.asarray(out_data[0], dtype=np.float32)
-            else:
-                out = np.asarray(out_data, dtype=np.float32)
-            out = np.squeeze(out).astype(np.float32)
-        except Exception:
-            _LOG.debug("reid: openvino embedding inference failed", exc_info=True)
             return None
     else:
         try:

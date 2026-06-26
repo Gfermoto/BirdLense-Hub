@@ -26,7 +26,6 @@ import { ProcessorBirdnetExtendedBlock } from './processor/ProcessorBirdnetExten
 import { ProcessorModelsScopeBlock } from './processor/ProcessorModelsScopeBlock';
 import { ProcessorTrackRegenBlock } from './processor/ProcessorTrackRegenBlock';
 import { ProcessorStreamGeometryBlock } from './processor/ProcessorStreamGeometryBlock';
-import { ProcessorOpenVinoBlock } from './processor/ProcessorOpenVinoBlock';
 import { ProcessorMotionCalibrationBlock } from './processor/ProcessorMotionCalibrationBlock';
 import { ProcessorBehaviorRecognitionBlock } from './processor/ProcessorBehaviorRecognitionBlock';
 import { ProcessorDetectFirstBlock } from './processor/ProcessorDetectFirstBlock';
@@ -131,7 +130,6 @@ export function ProcessorSection({ form, settingsTier = 'basic' }: Props) {
           {advanced ? (
             <>
               <ProcessorModelsScopeBlock form={form} />
-              <ProcessorOpenVinoBlock form={form} />
               <ProcessorMotionCalibrationBlock form={form} />
             </>
           ) : null}

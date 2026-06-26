@@ -1,7 +1,7 @@
 .PHONY: all clean build start stop logs verify deploy pull setup test test-processor-light test-web test-web-contract-local test-web-local venv-web venv-web-reset test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
 
 # Platform: intel_nuc (default) | orin — см. scripts/platform-profile.sh, deploy/profiles/
-BIRDLENSE_PLATFORM ?= intel_nuc
+BIRDLENSE_PLATFORM ?= orin
 COMPOSE ?= docker compose
 COMPOSE_FILES := docker-compose.yml
 ifeq ($(BIRDLENSE_PLATFORM),orin)

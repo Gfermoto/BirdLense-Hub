@@ -80,14 +80,6 @@ export const CAMERA_TUNING_FIELD_DEFS: CameraTuningFieldDef[] = [
     hintKey: 'settings.cameraTuningDetectRecordTimeOffsetSecHint',
   },
   {
-    key: 'openvino_binary_track_ultralytics_conf',
-    kind: 'number',
-    min: 0.03,
-    max: 0.6,
-    step: 0.01,
-    labelKey: 'settings.cameraTuningOpenvinoTrackConf',
-  },
-  {
     key: 'track_static_reject_enabled',
     kind: 'boolean',
     labelKey: 'settings.cameraTuningTrackStaticRejectEnabled',

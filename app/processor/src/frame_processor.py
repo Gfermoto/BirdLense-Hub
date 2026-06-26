@@ -374,20 +374,6 @@ class FrameProcessor:
             except (TypeError, ValueError):
                 profile_overrides["min_confidence_binary_bird"] = auto_unstick_min_conf_bird
             try:
-                curr_ov = profile_overrides.get("openvino_binary_track_ultralytics_conf")
-                if curr_ov is None:
-                    curr_ov = app_config.get("processor.openvino_binary_track_ultralytics_conf")
-                bird_floor = float(profile_overrides.get("min_confidence_binary_bird") or auto_unstick_min_conf_bird)
-                if curr_ov is not None:
-                    profile_overrides["openvino_binary_track_ultralytics_conf"] = min(
-                        float(curr_ov),
-                        bird_floor,
-                    )
-                else:
-                    profile_overrides["openvino_binary_track_ultralytics_conf"] = bird_floor
-            except (TypeError, ValueError):
-                pass
-            try:
                 curr_box = profile_overrides.get("min_box_size_px")
                 if curr_box is None:
                     curr_box = app_config.get("processor.min_box_size_px")

@@ -18,8 +18,6 @@ THRESHOLD_ACCEPTANCE_KEYS: frozenset[str] = frozenset(
         "min_confidence_binary_bird",
         "min_confidence_binary_rodent",
         "min_confidence_binary_squirrel",
-        "openvino_min_confidence_binary_bird",
-        "openvino_binary_track_ultralytics_conf",
         "min_confidence_to_process",
         "min_confidence_to_store",
         "scoring_default_low_threshold",
@@ -32,13 +30,6 @@ THRESHOLD_ACCEPTANCE_KEYS: frozenset[str] = frozenset(
         "static_scene_bird_like_min_confidence",
     }
 )
-
-# OpenVINO caps pair with base bird/binary keys — effective = min(base, cap), never max().
-OPENVINO_CAP_PAIRS: tuple[tuple[str, str], ...] = (
-    ("min_confidence_binary_bird", "openvino_min_confidence_binary_bird"),
-    ("min_confidence_binary", "openvino_min_confidence_binary_bird"),
-)
-
 
 def _parse_optional_float(raw: Any) -> float | None:
     if raw is None:
@@ -125,22 +116,6 @@ def resolve_effective_threshold(
         adv = _parse_optional_float(adaptive_overrides[short])
         if adv is not None and short in THRESHOLD_ACCEPTANCE_KEYS:
             effective = min(float(effective), adv)
-
-    if (inference_backend or "").strip().lower() == "openvino":
-        for base_key, cap_key in OPENVINO_CAP_PAIRS:
-            if short != base_key:
-                continue
-            cap = _parse_optional_float(
-                cam_over.get(cap_key)
-                if cap_key in cam_over
-                else role_preset.get(cap_key)
-                if cap_key in role_preset
-                else app_config.get(f"processor.{cap_key}")
-            )
-            if cap is not None:
-                cap = max(0.001, min(0.99, float(cap)))
-                effective = min(float(effective), cap)
-            break
 
     return effective
 

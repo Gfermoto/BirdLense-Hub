@@ -1,4 +1,4 @@
-"""HuggingFace EfficientNet-B2 bird species classifier (525 classes) + OpenVINO runtime."""
+"""HuggingFace EfficientNet-B2 bird species classifier (525 classes) — ONNX Runtime / torch."""
 
 from __future__ import annotations
 
@@ -15,24 +15,6 @@ _log = logging.getLogger(__name__)
 DEFAULT_MIN_CONFIDENCE = 0.3
 UNKNOWN_BIRD_LABEL = "Unknown Bird"
 SQUIRREL_SPECIES_LABEL = "Rodent"
-
-
-def resolve_efficientnet_openvino_device(device: str | None) -> str:
-    """
-    Map hub device strings to OpenVINO plugin names.
-
-    ``intel:gpu`` / ``igpu`` → ``GPU`` (Intel iGPU on VPS/LAN with ``/dev/dri``).
-    """
-    d = (device or "CPU").strip().lower()
-    if d in ("", "cpu", "intel:cpu"):
-        return "CPU"
-    if d in ("gpu", "igpu", "intel:gpu", "intel_gpu", "gpu.0"):
-        return "GPU"
-    if d == "auto":
-        return "AUTO"
-    if d.upper().startswith("GPU"):
-        return device.strip().upper().replace("INTEL:", "")
-    return device.strip() or "CPU"
 
 
 @dataclass(frozen=True)
@@ -71,14 +53,14 @@ class EfficientNetB2Classifier:
         self,
         *,
         weights_dir: str,
-        backend: str = "openvino",
+        backend: str = "onnxruntime",
         min_confidence: float = DEFAULT_MIN_CONFIDENCE,
         unknown_label: str = UNKNOWN_BIRD_LABEL,
         device: str | None = None,
         regional_species: list[str] | None = None,
     ) -> None:
         self.weights_dir = str(weights_dir)
-        self.backend = (backend or "openvino").strip().lower()
+        self.backend = (backend or "onnxruntime").strip().lower()
         self.min_confidence = float(min_confidence)
         self.unknown_label = str(unknown_label or UNKNOWN_BIRD_LABEL).strip() or UNKNOWN_BIRD_LABEL
         self.device = (device or "CPU").strip() or "CPU"
@@ -91,8 +73,6 @@ class EfficientNetB2Classifier:
             self._init_torch()
         elif self.backend == "onnxruntime":
             self._init_onnxruntime()
-        elif self.backend == "openvino":
-            self._init_openvino()
         else:
             raise ValueError(f"Unsupported EfficientNetB2 backend: {backend!r}")
 
@@ -204,57 +184,6 @@ class EfficientNetB2Classifier:
                 return cfg
         return None
 
-    def _init_openvino(self) -> None:
-        import openvino as ov
-        from transformers import EfficientNetImageProcessor
-
-        xml = self._resolve_xml_path(self.weights_dir)
-        self._processor = EfficientNetImageProcessor.from_pretrained(self.weights_dir)  # nosec B615 — local weights dir
-        core = ov.Core()
-        self._ov_core = core
-        ov_dev = resolve_efficientnet_openvino_device(self.device)
-        compile_cfg: dict = {}
-        if ov_dev in ("GPU", "AUTO") or str(ov_dev).startswith("GPU"):
-            try:
-                import openvino.properties.hints as ov_hints
-
-                compile_cfg[ov_hints.performance_mode()] = ov_hints.PerformanceMode.LATENCY
-            except Exception:
-                pass
-        if compile_cfg:
-            self._compiled = core.compile_model(xml, ov_dev, compile_cfg)
-        else:
-            self._compiled = core.compile_model(xml, ov_dev)
-        self._ov_input = self._compiled.input(0)
-        _log.info("EfficientNetB2 OpenVINO: device=%s xml=%s", ov_dev, xml)
-
-        cfg_path = Path(self.weights_dir) / "config.json"
-        if cfg_path.is_file():
-            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
-            raw = cfg.get("id2label") or {}
-            self.id2label = {int(k): _normalize_species_label(v) for k, v in raw.items()}
-        else:
-            self.id2label = {}
-
-    @staticmethod
-    def _resolve_xml_path(weights_dir: str) -> str:
-        p = Path(weights_dir)
-        if p.is_file() and p.suffix == ".xml":
-            return str(p)
-        for name in (
-            "birds_classifier_260.xml",
-            "openvino_model.xml",
-            "birds_classifier.xml",
-            "model.xml",
-        ):
-            cand = p / name
-            if cand.is_file():
-                return str(cand)
-        xmls = sorted(p.glob("*.xml"))
-        if xmls:
-            return str(xmls[0])
-        raise FileNotFoundError(f"No OpenVINO XML in {weights_dir}")
-
     def _build_regional_filter(self) -> None:
         if not self.regional_species:
             self._allowed_ids = None
@@ -321,16 +250,7 @@ class EfficientNetB2Classifier:
             exp = np.exp(logits - np.max(logits))
             return exp / max(float(exp.sum()), 1e-12)
 
-        pixel = inputs["pixel_values"]
-        if hasattr(pixel, "numpy"):
-            pixel = pixel.numpy()
-        pixel = np.asarray(pixel, dtype=np.float32)
-        if pixel.ndim == 3:
-            pixel = np.expand_dims(pixel, 0)
-        result = self._compiled({self._ov_input: pixel})
-        logits = np.asarray(list(result.values())[0][0], dtype=np.float64)
-        exp = np.exp(logits - np.max(logits))
-        return exp / max(float(exp.sum()), 1e-12)
+        raise ValueError(f"Unsupported backend: {self.backend}")
 
     def classify_crop_bgr(self, crop_bgr: np.ndarray) -> EfficientNetClassifierResult:
         probs = self.predict_probs_bgr(crop_bgr)
@@ -367,7 +287,7 @@ class EfficientNetB2Classifier:
 def load_efficientnet_b2_classifier(
     weights_dir: str,
     *,
-    backend: str = "openvino",
+    backend: str = "onnxruntime",
     min_confidence: float | None = None,
     device: str | None = None,
     regional_species: list[str] | None = None,
@@ -387,15 +307,15 @@ def load_efficientnet_b2_classifier(
             unknown = str(unk).strip()
     if min_confidence is not None:
         min_conf = float(min_confidence)
-    ov_dev = device
-    if ov_dev is None and app_config is not None:
-        ov_dev = str(app_config.get("processor.classifier_inference_device") or "CPU")
+    infer_device = device
+    if infer_device is None and app_config is not None:
+        infer_device = str(app_config.get("processor.classifier_inference_device") or "CPU")
     return EfficientNetB2Classifier(
         weights_dir=weights_dir,
         backend=backend,
         min_confidence=min_conf,
         unknown_label=unknown,
-        device=ov_dev,
+        device=infer_device,
         regional_species=regional_species,
     )
 

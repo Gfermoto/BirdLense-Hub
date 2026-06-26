@@ -118,7 +118,7 @@ def _policy_snapshot(app_config) -> dict[str, Any]:
         "generic_bird_min_frames": _int("processor.generic_bird_min_frames", 3),
         "generic_bird_min_area_frac": _flt("processor.generic_bird_min_area_frac", 0.01),
         "generic_bird_min_best_frame_score": _flt("processor.generic_bird_min_best_frame_score", 6.5),
-        # Runtime backend snapshot for GPU/OpenVINO observability.
+        # Runtime backend snapshot for GPU/ONNX observability.
         "inference_backend": str(_get("processor.inference_backend", "auto") or "auto"),
         "classifier_inference_backend": str(_get("processor.classifier_inference_backend", "auto") or "auto"),
         "inference_device": str(_get("processor.inference_device", "auto") or "auto"),

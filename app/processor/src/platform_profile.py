@@ -8,12 +8,12 @@ from typing import Final
 
 logger = logging.getLogger(__name__)
 
-KNOWN_PLATFORMS: Final[frozenset[str]] = frozenset({"intel_nuc", "jetson_nano"})
-DEFAULT_PLATFORM: Final[str] = "jetson_nano"
+KNOWN_PLATFORMS: Final[frozenset[str]] = frozenset({"orin"})
+DEFAULT_PLATFORM: Final[str] = "orin"
 
 
 def normalize_platform(raw: str | None = None) -> str:
-    """Return canonical platform id: intel_nuc | jetson_nano."""
+    """Return canonical platform id: orin."""
     value = (raw if raw is not None else os.environ.get("BIRDLENSE_PLATFORM", "")).strip()
     value = value.replace("-", "_").lower()
     if not value:

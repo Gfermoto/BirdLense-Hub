@@ -1,4 +1,4 @@
-"""Birder EU-common species classifier (707 Collins species) — torch + OpenVINO."""
+"""Birder EU-common species classifier (707 Collins species) — torch + ONNX Runtime."""
 
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ from inference.efficientnet_b2_classifier import (
     UNKNOWN_BIRD_LABEL,
     _entropy_margin,
     _normalize_species_label,
-    resolve_efficientnet_openvino_device,
 )
 from processor_config_defaults import BIRDER_EU_MIN_CONFIDENCE
 
@@ -60,7 +59,7 @@ class BirderEuClassifier:
         *,
         weights_dir: str,
         variant: str,
-        backend: str = "openvino",
+        backend: str = "torch",
         min_confidence: float = BIRDER_EU_MIN_CONFIDENCE,
         unknown_label: str = UNKNOWN_BIRD_LABEL,
         device: str | None = None,
@@ -69,7 +68,7 @@ class BirderEuClassifier:
     ) -> None:
         self.weights_dir = Path(weights_dir)
         self.variant = str(variant).strip()
-        self.backend = (backend or "openvino").strip().lower()
+        self.backend = (backend or "torch").strip().lower()
         self.min_confidence = float(min_confidence)
         self.unknown_label = str(unknown_label or UNKNOWN_BIRD_LABEL).strip() or UNKNOWN_BIRD_LABEL
         self.device = (device or "CPU").strip() or "CPU"
@@ -87,8 +86,6 @@ class BirderEuClassifier:
 
         if self.backend == "torch":
             self._init_torch()
-        elif self.backend == "openvino":
-            self._init_openvino()
         else:
             raise ValueError(f"Unsupported Birder EU backend: {backend!r}")
 
@@ -113,50 +110,9 @@ class BirderEuClassifier:
             self.variant,
             inference=True,
         )
-        # Sync labels from checkpoint if class_labels.txt stale
         idx2 = {int(v): _normalize_species_label(k) for k, v in self._model_info.class_to_idx.items()}
         if len(idx2) == len(self.id2label):
             self.id2label = idx2
-
-    def _init_openvino(self) -> None:
-        import openvino as ov
-
-        bundle = self.weights_dir
-        xml = bundle / "openvino_model.xml"
-        if not xml.is_file():
-            for name in ("model.xml", f"{self.variant}.xml"):
-                cand = bundle / name
-                if cand.is_file():
-                    xml = cand
-                    break
-        if not xml.is_file():
-            raise FileNotFoundError(
-                f"Birder OpenVINO IR missing under {bundle}. Run scripts/export_birder_classifier_to_openvino.py",
-            )
-        ov_dev = resolve_efficientnet_openvino_device(self.device)
-        core = ov.Core()
-        self._ov_model = core.read_model(str(xml))
-        compile_cfg: dict[str, str] = {}
-        try:
-            from inference.openvino_ultralytics_tuning import build_openvino_compile_config
-            from processor_runtime_profile import resolve_openvino_tuning
-
-            cfg_src = self._app_config if self._app_config is not None else {}
-            tuning = resolve_openvino_tuning(cfg_src)
-            compile_cfg = build_openvino_compile_config(tuning)
-        except ImportError:
-            compile_cfg = {"PERFORMANCE_HINT": "LATENCY", "NUM_STREAMS": "1"}
-        try:
-            self._ov_compiled = core.compile_model(self._ov_model, ov_dev, compile_cfg)
-        except Exception as exc:
-            if str(ov_dev).upper() == "CPU":
-                raise
-            _log.warning(
-                "Birder OpenVINO compile failed on %s, fallback to CPU: %s",
-                ov_dev,
-                exc,
-            )
-            self._ov_compiled = core.compile_model(self._ov_model, "CPU", compile_cfg)
 
     def _build_regional_filter(self) -> None:
         if not self.regional_species:
@@ -211,12 +167,7 @@ class BirderEuClassifier:
             logits = out.detach().cpu().numpy()
             return self._softmax(logits.reshape(-1))
 
-        inp = self._preprocess_bgr(crop_bgr)
-        res = self._ov_compiled([inp])
-        logits = np.asarray(list(res.values())[0])
-        if logits.ndim > 1:
-            logits = logits[0]
-        return self._softmax(logits)
+        raise ValueError(f"Unsupported backend: {self.backend}")
 
     def classify_crop_bgr(self, crop_bgr: np.ndarray) -> BirderEuClassifierResult:
         probs = self._infer_probs(crop_bgr)
@@ -253,7 +204,6 @@ def default_birder_variant(app_config: Mapping[str, Any] | None) -> str:
 
 
 def _normalize_weights_bundle(weights_dir: str, variant: str) -> Path:
-    """Always use ``{variant}_openvino_model/`` for labels + IR (``.pt`` is sibling on disk)."""
     from inference.classifier_model_layout import resolve_birder_bundle_dir
 
     ref = Path(weights_dir)
@@ -268,7 +218,7 @@ def _normalize_weights_bundle(weights_dir: str, variant: str) -> Path:
 def load_birder_eu_classifier(
     weights_dir: str,
     *,
-    backend: str = "openvino",
+    backend: str = "torch",
     variant: str | None = None,
     min_confidence: float | None = None,
     device: str | None = None,

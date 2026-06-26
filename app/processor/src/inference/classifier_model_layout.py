@@ -16,13 +16,9 @@ def classifier_torch_rel_pt(variant: str) -> str:
     return f"models/classification/weights/{variant}.pt"
 
 
-def classifier_openvino_rel_dir(variant: str) -> str:
-    return f"models/classification/weights/{variant}_openvino_model"
-
-
 def resolve_birder_bundle_dir(weights_root: Path, variant: str, ref: Path | None = None) -> Path:
-    """OpenVINO bundle dir (``class_labels.txt``, IR) — sibling of ``{variant}.pt``."""
-    if ref is not None and ref.is_dir() and (ref / "openvino_model.xml").is_file():
+    """Bundle dir with ``class_labels.txt`` — sibling of ``{variant}.pt``."""
+    if ref is not None and ref.is_dir():
         return ref
     return weights_root / f"{variant}_openvino_model"
 

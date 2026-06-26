@@ -9,7 +9,7 @@ INPUT_SIZE = 260
 
 def export_onnx_ov_safe(src_dir: str | Path, onnx_path: str | Path) -> Path:
     """
-    Export classifier with ``ReduceMean`` global pool (OpenVINO/iGPU compatible).
+    Export classifier with ``ReduceMean`` global pool (ONNX safe).
 
     HF ``pooler`` is ``AvgPool2d(kernel_size=1408)`` which breaks OV frontends.
     """
@@ -48,18 +48,3 @@ def export_onnx_ov_safe(src_dir: str | Path, onnx_path: str | Path) -> Path:
             opset_version=18,
         )
     return out
-
-
-def export_openvino_ir_from_onnx(
-    onnx_path: str | Path,
-    xml_path: str | Path,
-    *,
-    fp16: bool = True,
-) -> Path:
-    import openvino as ov
-
-    xml = Path(xml_path)
-    xml.parent.mkdir(parents=True, exist_ok=True)
-    ov_model = ov.convert_model(str(onnx_path))
-    ov.save_model(ov_model, str(xml), compress_to_fp16=fp16)
-    return xml

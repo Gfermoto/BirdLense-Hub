@@ -86,28 +86,10 @@ export function ProcessorBehaviorRecognitionBlock({ form }: Props) {
               >
                 <MenuItem value="auto">{t('settings.processorBehaviorInferenceAuto')}</MenuItem>
                 <MenuItem value="logistic_json">{t('settings.processorBehaviorInferenceLogisticJson')}</MenuItem>
-                <MenuItem value="openvino">{t('settings.processorBehaviorInferenceOpenvino')}</MenuItem>
+                <MenuItem value="onnxruntime">{t('settings.processorBehaviorInferenceOnnxruntime')}</MenuItem>
               </TextField>
             )}
           </form.Field>
-        </Grid>
-        <Grid size={{ xs: 12 }}>
-          <form.Field name="processor.behavior_recognition.openvino_fallback_logistic">
-            {(field) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={Boolean(field.state.value ?? true)}
-                    onChange={(e) => field.handleChange(e.target.checked)}
-                  />
-                }
-                label={t('settings.processorBehaviorOpenvinoFallback')}
-              />
-            )}
-          </form.Field>
-          <FormHelperText sx={{ ml: 0, mt: 0.5 }}>
-            {t('settings.processorBehaviorOpenvinoFallbackHint')}
-          </FormHelperText>
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <form.Field name="processor.behavior_recognition.max_runtime_detections">

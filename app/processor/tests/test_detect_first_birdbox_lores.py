@@ -17,24 +17,21 @@ from frame_geometry import resolve_binary_track_imgsz  # noqa: E402
 
 
 class TestDetectFirstBirdBoxLores(unittest.TestCase):
-    def test_openvino_native_lores_imgsz_for_576x704_without_square_ir(self):
+    def test_native_lores_imgsz_for_576x704(self):
         frame = np.zeros((576, 704, 3), dtype=np.uint8)
         cfg = {
             "processor.inference_lores_wh": [704, 576],
             "processor.binary_imgsz": 704,
-            "processor.inference_backend": "openvino",
-            "processor.openvino_native_lores_imgsz": True,
+            "processor.inference_backend": "onnxruntime",
         }
-        self.assertEqual(resolve_binary_track_imgsz(frame, cfg, inference_backend="openvino"), [576, 704])
+        self.assertEqual(resolve_binary_track_imgsz(frame, cfg, inference_backend="onnxruntime"), [576, 704])
 
-    def test_openvino_square_when_native_lores_disabled(self):
+    def test_square_imgsz_when_lores_mismatch(self):
         frame = np.zeros((576, 704, 3), dtype=np.uint8)
         cfg = {
-            "processor.inference_lores_wh": [704, 576],
             "processor.binary_imgsz": 704,
-            "processor.openvino_native_lores_imgsz": False,
         }
-        self.assertEqual(resolve_binary_track_imgsz(frame, cfg, inference_backend="openvino"), 704)
+        self.assertEqual(resolve_binary_track_imgsz(frame, cfg, inference_backend="torch"), 704)
 
     def test_raw_yolo_boxes_count_as_detect_first_hit(self):
         self.assertTrue(

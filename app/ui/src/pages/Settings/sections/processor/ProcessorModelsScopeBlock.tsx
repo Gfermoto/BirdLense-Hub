@@ -56,8 +56,11 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                     <MenuItem value="torch">
                       {t('settings.processorInferenceBackendTorch')}
                     </MenuItem>
-                    <MenuItem value="openvino">
-                      {t('settings.processorInferenceBackendOpenvino')}
+                    <MenuItem value="onnxruntime">
+                      {t('settings.processorInferenceBackendOnnxruntime')}
+                    </MenuItem>
+                    <MenuItem value="tensorrt">
+                      {t('settings.processorInferenceBackendTensorrt')}
                     </MenuItem>
                   </Select>
                   <FormHelperText>
@@ -86,8 +89,11 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                     <MenuItem value="torch">
                       {t('settings.processorInferenceBackendTorch')}
                     </MenuItem>
-                    <MenuItem value="openvino">
-                      {t('settings.processorInferenceBackendOpenvino')}
+                    <MenuItem value="onnxruntime">
+                      {t('settings.processorInferenceBackendOnnxruntime')}
+                    </MenuItem>
+                    <MenuItem value="tensorrt">
+                      {t('settings.processorInferenceBackendTensorrt')}
                     </MenuItem>
                   </Select>
                   <FormHelperText>
@@ -106,7 +112,7 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                   value={field.state.value ?? ''}
                   onChange={(e) => field.handleChange(e.target.value || undefined)}
                   helperText={t('settings.processorInferenceDeviceHint')}
-                  placeholder="intel:gpu"
+                  placeholder="cuda:0"
                 />
               )}
             </form.Field>
@@ -157,7 +163,7 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
           </Grid>
           <Grid size={{ xs: 12 }}>
             <Alert severity="info" variant="outlined">
-              {t('settings.processorOpenvinoPathsManagedHint')}
+              {t('settings.processorOnnxPathsManagedHint')}
             </Alert>
           </Grid>
           <Grid size={{ xs: 12 }}>

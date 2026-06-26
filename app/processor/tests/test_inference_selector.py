@@ -47,6 +47,10 @@ class TestInferenceSelector(unittest.TestCase):
                 resolve_inference_backend({"processor.inference_backend": "torch"}),
                 "torch",
             )
+            self.assertEqual(
+                resolve_inference_backend({"processor.inference_backend": "onnxruntime"}),
+                "onnxruntime",
+            )
         finally:
             if old is not None:
                 os.environ["BIRDLENSE_INFERENCE_BACKEND"] = old
@@ -68,8 +72,8 @@ class TestInferenceSelector(unittest.TestCase):
 
         old = os.environ.pop("BIRDLENSE_INFERENCE_DEVICE", None)
         try:
-            os.environ["BIRDLENSE_INFERENCE_DEVICE"] = " intel:gpu "
-            self.assertEqual(resolve_inference_device({"processor.inference_device": "cpu"}), "intel:gpu")
+            os.environ["BIRDLENSE_INFERENCE_DEVICE"] = " cuda:0 "
+            self.assertEqual(resolve_inference_device({"processor.inference_device": "cpu"}), "cuda:0")
         finally:
             if old is None:
                 os.environ.pop("BIRDLENSE_INFERENCE_DEVICE", None)
@@ -95,8 +99,8 @@ class TestInferenceSelector(unittest.TestCase):
         try:
             self.assertIsNone(resolve_classifier_inference_device(None))
             self.assertEqual(
-                resolve_classifier_inference_device({"processor.inference_device": "intel:gpu"}),
-                "intel:gpu",
+                resolve_classifier_inference_device({"processor.inference_device": "cuda:0"}),
+                "cuda:0",
             )
         finally:
             if old_cls is not None:
@@ -110,16 +114,16 @@ class TestInferenceSelector(unittest.TestCase):
         old_cls = os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE", None)
         old_det = os.environ.pop("BIRDLENSE_INFERENCE_DEVICE", None)
         try:
-            os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE"] = "intel:gpu"
-            os.environ["BIRDLENSE_INFERENCE_DEVICE"] = "intel:cpu"
+            os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE"] = "cuda:0"
+            os.environ["BIRDLENSE_INFERENCE_DEVICE"] = "cpu"
             self.assertEqual(
                 resolve_classifier_inference_device(
                     {
-                        "processor.classifier_inference_device": "intel:npu",
-                        "processor.inference_device": "intel:cpu",
+                        "processor.classifier_inference_device": "cuda:1",
+                        "processor.inference_device": "cpu",
                     }
                 ),
-                "intel:gpu",
+                "cuda:0",
             )
         finally:
             if old_cls is None:
@@ -136,12 +140,12 @@ class TestInferenceSelector(unittest.TestCase):
 
         old = os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", None)
         try:
-            os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND"] = "OPENVINO"
+            os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND"] = "ONNXRUNTIME"
             self.assertEqual(
                 resolve_classifier_inference_backend(
                     {"processor.classifier_inference_backend": "torch"},
                 ),
-                "openvino",
+                "onnxruntime",
             )
         finally:
             if old is None:
@@ -154,21 +158,21 @@ class TestInferenceSelector(unittest.TestCase):
 
         assert_backend_supported("torch")
 
-    def test_assert_openvino_supported(self):
+    def test_assert_onnxruntime_supported(self):
         from inference.selector import assert_backend_supported
 
-        assert_backend_supported("openvino")
+        assert_backend_supported("onnxruntime")
 
     def test_assert_auto_supported(self):
         from inference.selector import assert_backend_supported
 
         assert_backend_supported("auto")
 
-    def test_assert_planned_backend_raises(self):
+    def test_assert_unsupported_backend_raises(self):
         from inference.selector import assert_backend_supported
 
         with self.assertRaises(NotImplementedError):
-            assert_backend_supported("onnxruntime")
+            assert_backend_supported("openvino")
 
     def test_onnx_alias_resolves_to_onnxruntime(self):
         from inference.selector import assert_backend_supported, resolve_inference_backend
@@ -182,18 +186,17 @@ class TestInferenceSelector(unittest.TestCase):
                 os.environ.pop("BIRDLENSE_INFERENCE_BACKEND", None)
             else:
                 os.environ["BIRDLENSE_INFERENCE_BACKEND"] = old
-        with self.assertRaises(NotImplementedError):
-            assert_backend_supported("onnx")
+        assert_backend_supported("onnxruntime")
 
     def test_resolve_inference_device_env_overrides_config(self):
         from inference.selector import resolve_inference_device
 
         old = os.environ.pop("BIRDLENSE_INFERENCE_DEVICE", None)
         try:
-            os.environ["BIRDLENSE_INFERENCE_DEVICE"] = "intel:gpu"
+            os.environ["BIRDLENSE_INFERENCE_DEVICE"] = "cuda:0"
             self.assertEqual(
                 resolve_inference_device({"processor.inference_device": "cpu"}),
-                "intel:gpu",
+                "cuda:0",
             )
         finally:
             if old is None:
@@ -209,8 +212,8 @@ class TestInferenceSelector(unittest.TestCase):
 
         old = os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", None)
         try:
-            cfg = {"processor.inference_backend": "openvino"}
-            self.assertEqual(resolve_inference_backend(cfg), "openvino")
+            cfg = {"processor.inference_backend": "onnxruntime"}
+            self.assertEqual(resolve_inference_backend(cfg), "onnxruntime")
             self.assertEqual(resolve_classifier_inference_backend(cfg), "torch")
         finally:
             if old is not None:
@@ -221,12 +224,12 @@ class TestInferenceSelector(unittest.TestCase):
 
         old = os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND", None)
         try:
-            os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND"] = "openvino"
+            os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND"] = "onnxruntime"
             self.assertEqual(
                 resolve_classifier_inference_backend(
                     {"processor.classifier_inference_backend": "torch"},
                 ),
-                "openvino",
+                "onnxruntime",
             )
         finally:
             if old is None:
@@ -243,58 +246,14 @@ class TestInferenceSelector(unittest.TestCase):
         old_cls = os.environ.pop("BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE", None)
         old_det = os.environ.pop("BIRDLENSE_INFERENCE_DEVICE", None)
         try:
-            cfg = {"processor.inference_device": "intel:gpu"}
-            self.assertEqual(resolve_inference_device(cfg), "intel:gpu")
-            self.assertEqual(resolve_classifier_inference_device(cfg), "intel:gpu")
+            cfg = {"processor.inference_device": "cuda:0"}
+            self.assertEqual(resolve_inference_device(cfg), "cuda:0")
+            self.assertEqual(resolve_classifier_inference_device(cfg), "cuda:0")
         finally:
             if old_cls is not None:
                 os.environ["BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE"] = old_cls
             if old_det is not None:
                 os.environ["BIRDLENSE_INFERENCE_DEVICE"] = old_det
-
-    def test_openvino_device_policy_auto_prefers_gpu_then_cpu(self):
-        from inference.selector import resolve_openvino_device_policy
-
-        self.assertEqual(
-            resolve_openvino_device_policy("auto"),
-            ["intel:gpu", "intel:cpu"],
-        )
-
-    def test_openvino_device_policy_explicit_cpu(self):
-        from inference.selector import resolve_openvino_device_policy
-
-        self.assertEqual(resolve_openvino_device_policy("intel:cpu"), ["intel:cpu"])
-        self.assertEqual(resolve_openvino_device_policy("cpu"), ["intel:cpu"])
-
-    def test_resolve_openvino_profile_defaults_latency(self):
-        from inference.selector import resolve_openvino_profile
-
-        old = os.environ.pop("BIRDLENSE_OPENVINO_PROFILE", None)
-        try:
-            self.assertEqual(resolve_openvino_profile({}), "latency")
-            self.assertEqual(
-                resolve_openvino_profile({"processor.openvino.profile": "throughput"}),
-                "throughput",
-            )
-        finally:
-            if old is not None:
-                os.environ["BIRDLENSE_OPENVINO_PROFILE"] = old
-
-    def test_resolve_openvino_num_requests_env_override(self):
-        from inference.selector import resolve_openvino_num_requests
-
-        old = os.environ.pop("BIRDLENSE_OPENVINO_NUM_REQUESTS", None)
-        try:
-            os.environ["BIRDLENSE_OPENVINO_NUM_REQUESTS"] = "4"
-            self.assertEqual(
-                resolve_openvino_num_requests({"processor.openvino.num_requests": 1}),
-                4,
-            )
-        finally:
-            if old is None:
-                os.environ.pop("BIRDLENSE_OPENVINO_NUM_REQUESTS", None)
-            else:
-                os.environ["BIRDLENSE_OPENVINO_NUM_REQUESTS"] = old
 
 
 if __name__ == "__main__":

@@ -64,7 +64,6 @@ class TestCameraTuningRole(unittest.TestCase):
     def test_feeder_far_defaults_support_weak_distant_detections(self):
         role = _default_feeder_far_role()
         self.assertLessEqual(float(role.get("min_confidence_binary_bird") or 1.0), 0.08)
-        self.assertLessEqual(float(role.get("openvino_min_confidence_binary_bird") or 1.0), 0.08)
         self.assertLessEqual(int(role.get("min_box_size_px") or 999), 10)
         self.assertTrue(bool(role.get("track_to_predict_fallback_enabled")))
 

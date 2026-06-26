@@ -13,9 +13,6 @@ paramiko>=4,<5
 # numpy 2.x — совместим с opencv, ultralytics
 numpy>=2.0,<3
 
-# OpenVINO runtime для processor.inference_backend=openvino (Ultralytics IR).
-openvino>=2024.0
-
 # EfficientNetB2 species classifier runtime (HF preprocessing + ONNX/OpenVINO bundles).
 transformers>=4.40,<5
 timm>=0.9,<2

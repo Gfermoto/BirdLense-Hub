@@ -9,6 +9,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 src_path = os.path.abspath(os.path.join(current_dir, "../src"))
 project_root = os.path.abspath(os.path.join(current_dir, "../../.."))
 sys.path.insert(0, src_path)
+sys.path.insert(0, os.path.join(project_root, "app"))
 
 from threshold_resolution import (  # noqa: E402
     build_camera_processor_overrides,
@@ -62,27 +63,6 @@ class TestResolveEffectiveThreshold(unittest.TestCase):
         )
 
     @patch("threshold_resolution.resolve_camera_tuning_role")
-    def test_openvino_cap_does_not_raise_role(self, mock_role):
-        mock_role.return_value = "feeder_close"
-        cfg = {
-            "processor.min_confidence_binary_bird": 0.06,
-            "processor.openvino_min_confidence_binary_bird": 0.06,
-            "processor.camera_tuning_by_role.feeder_close": {
-                "min_confidence_binary_bird": 0.02,
-                "openvino_min_confidence_binary_bird": 0.02,
-            },
-        }
-        self.assertAlmostEqual(
-            resolve_effective_threshold(
-                cfg,
-                "min_confidence_binary_bird",
-                camera_id="BirdBox",
-                inference_backend="openvino",
-            ),
-            0.02,
-        )
-
-    @patch("threshold_resolution.resolve_camera_tuning_role")
     def test_adaptive_min_with_role(self, mock_role):
         mock_role.return_value = "feeder_far"
         cfg = {
@@ -104,12 +84,6 @@ class TestFeederCloseDefaults(unittest.TestCase):
     def test_feeder_close_bird_threshold_at_most_0_02(self):
         role = _default_feeder_role("feeder_close")
         self.assertLessEqual(float(role["min_confidence_binary_bird"]), 0.02)
-        self.assertLessEqual(float(role["openvino_min_confidence_binary_bird"]), 0.02)
-
-    def test_feeder_close_has_openvino_keys(self):
-        role = _default_feeder_role("feeder_close")
-        self.assertIn("openvino_min_confidence_binary_bird", role)
-        self.assertIn("openvino_binary_track_ultralytics_conf", role)
 
     def test_feeder_roles_have_scoring_floors(self):
         close = _default_feeder_role("feeder_close")
@@ -117,21 +91,6 @@ class TestFeederCloseDefaults(unittest.TestCase):
         self.assertLessEqual(float(close["scoring_default_low_threshold"]), 0.12)
         self.assertLessEqual(float(far["scoring_default_low_threshold"]), 0.12)
         self.assertLessEqual(float(close["scoring_relaxed_min_confidence"]), 0.02)
-
-    def test_feeder_close_track_conf_aligned_with_bird(self):
-        close = _default_feeder_role("feeder_close")
-        bird = float(close["min_confidence_binary_bird"])
-        ov_track = float(close["openvino_binary_track_ultralytics_conf"])
-        self.assertLessEqual(abs(ov_track - bird), 0.02)
-        self.assertAlmostEqual(ov_track, 0.025)
-
-    def test_feeder_far_openvino_track_conf_aligned_with_bird(self):
-        far = _default_feeder_role("feeder_far")
-        bird = float(far["min_confidence_binary_bird"])
-        ov_track = float(far["openvino_binary_track_ultralytics_conf"])
-        self.assertLessEqual(bird, 0.08)
-        self.assertLessEqual(ov_track, 0.10)
-        self.assertGreaterEqual(ov_track, bird)
 
     def test_feeder_roles_disable_scene_adaptive_boost(self):
         close = _default_feeder_role("feeder_close")
@@ -230,14 +189,12 @@ class TestConfigCodeDefaultsConsistency(unittest.TestCase):
             MIN_CONFIDENCE_BINARY_BIRD,
             MIN_CONFIDENCE_TO_PROCESS,
             MIN_CONFIDENCE_TO_STORE,
-            OPENVO_BINARY_TRACK_ULTRALYTICS_CONF,
         )
 
         cls.code = {
             "min_confidence_to_process": MIN_CONFIDENCE_TO_PROCESS,
             "min_confidence_binary": MIN_CONFIDENCE_BINARY,
             "min_confidence_binary_bird": MIN_CONFIDENCE_BINARY_BIRD,
-            "openvino_binary_track_ultralytics_conf": OPENVO_BINARY_TRACK_ULTRALYTICS_CONF,
             "auto_unstick_min_confidence_binary": AUTO_UNSTICK_MIN_CONFIDENCE_BINARY,
             "auto_unstick_min_confidence_binary_bird": AUTO_UNSTICK_MIN_CONFIDENCE_BINARY_BIRD,
             "min_confidence_to_store": MIN_CONFIDENCE_TO_STORE,
@@ -255,7 +212,7 @@ class TestConfigCodeDefaultsConsistency(unittest.TestCase):
         close = _default_feeder_role("feeder_close")
         far = _default_feeder_role("feeder_far")
         self.assertAlmostEqual(float(close.get("min_confidence_binary_bird", 0.12)), 0.02)
-        self.assertAlmostEqual(float(far.get("min_confidence_binary_bird", 0.12)), 0.03)
+        self.assertAlmostEqual(float(far.get("min_confidence_binary_bird", 0.12)), 0.04)
 
     def test_global_processor_defaults_match_code(self):
         proc = self.config.get("processor") or {}
@@ -274,10 +231,6 @@ class TestConfigCodeDefaultsConsistency(unittest.TestCase):
     def test_classifier_crop_source_record_hires(self):
         proc = self.config.get("processor") or {}
         self.assertEqual(proc.get("classifier_crop_source"), "record_hires")
-
-    def test_openvino_native_lores_imgsz_default_false(self):
-        proc = self.config.get("processor") or {}
-        self.assertFalse(proc.get("openvino_native_lores_imgsz", True))
 
     def test_species_confidence_override_bird(self):
         proc = self.config.get("processor") or {}

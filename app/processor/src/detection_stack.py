@@ -53,7 +53,6 @@ def build_detection_stack(
     from inference.backend_cache import write_inference_backend_cache
     from inference.binary_paths import (
         detector_weights_available,
-        openvino_expected_input_size,
         resolve_binary_detector_weight_path,
         resolve_relative_to_processor_root,
     )
@@ -64,7 +63,6 @@ def build_detection_stack(
     )
     from inference.selector import (
         assert_backend_supported,
-        openvino_binary_enabled,
         resolve_classifier_inference_backend,
         resolve_classifier_inference_device,
         resolve_inference_backend,
@@ -102,97 +100,23 @@ def build_detection_stack(
     assert_backend_supported(_requested_classifier_backend)
 
     binary_path, _inf_backend = resolve_binary_detector_weight_path(app_config, processor_root)
-    if _requested_backend == "openvino" and openvino_binary_enabled(app_config) and not (binary_path or "").strip():
-        raise FileNotFoundError(
-            "OpenVINO binary detector path missing: set processor.models.binary_openvino "
-            "or environment variable BIRDLENSE_BINARY_OPENVINO_PATH "
-            "(export: yolo export ... format=openvino).",
-        )
 
     classifier_path, _cls_backend = resolve_classifier_weight_path(
         app_config,
         processor_root,
     )
-    if _requested_classifier_backend == "openvino" and not (classifier_path or "").strip():
-        raise FileNotFoundError(
-            "OpenVINO classifier path missing: set processor.models.classifier_openvino "
-            "or environment variable BIRDLENSE_CLASSIFIER_OPENVINO_PATH "
-            "(export: yolo export ... format=openvino).",
-        )
-
-    if _inf_backend == "openvino":
-        expected_ov_imgsz = openvino_expected_input_size(binary_path)
-        configured_imgsz_values: set[int] = set()
-        for key in (
-            "processor.binary_imgsz",
-            "processor.adaptive_profiles.night.overrides.binary_imgsz",
-        ):
-            raw = app_config.get(key)
-            if raw is None:
-                continue
-            try:
-                configured_imgsz_values.add(int(raw))
-            except (TypeError, ValueError):
-                continue
-        if not configured_imgsz_values:
-            try:
-                from pipeline_config import resolve_binary_model_imgsz
-
-                configured_imgsz_values.add(resolve_binary_model_imgsz(app_config))
-            except (TypeError, ValueError):
-                from pipeline_config import DEFAULT_MODEL_IMGSZ
-
-                configured_imgsz_values.add(DEFAULT_MODEL_IMGSZ)
-
-        if expected_ov_imgsz and any(v != expected_ov_imgsz for v in configured_imgsz_values):
-            mismatch = ",".join(str(v) for v in sorted(configured_imgsz_values))
-            mismatch_msg = (
-                "OpenVINO detector input-size mismatch: model expects "
-                f"{expected_ov_imgsz}, configured binary_imgsz values={mismatch}. "
-                "Align processor.binary_imgsz (+ adaptive profile overrides) with model export imgsz."
-            )
-            can_auto_fallback = _requested_backend == "auto"
-            if can_auto_fallback:
-                torch_binary_path = resolve_relative_to_processor_root(
-                    str(
-                        app_config.get(
-                            "processor.models.binary",
-                            "models/detection/weights/yolo11n.pt",
-                        ),
-                    ).strip(),
-                    processor_root,
-                )
-                if detector_weights_available(torch_binary_path):
-                    from processor_runtime_stats import inc_counter
-
-                    inc_counter("inference_openvino_auto_torch_fallback_total")
-                    logger.error(
-                        "%s Auto fallback detector backend: openvino -> torch (%s). "
-                        "Runtime uses .pt, not IR — quality/latency differ; fix binary_imgsz to %s for OpenVINO.",
-                        mismatch_msg,
-                        torch_binary_path,
-                        expected_ov_imgsz,
-                    )
-                    binary_path = torch_binary_path
-                    _inf_backend = "torch"
-                else:
-                    raise RuntimeError(mismatch_msg)
-            else:
-                raise RuntimeError(mismatch_msg)
 
     if not detector_weights_available(binary_path):
         raise FileNotFoundError(
             f"YOLO binary detector weights missing or invalid path: {binary_path}. "
-            "For torch set processor.models.binary (.pt); for OpenVINO provide a complete IR "
-            "bundle (.xml + matching .bin) via processor.models.binary_openvino or "
-            "BIRDLENSE_BINARY_OPENVINO_PATH. Fresh clone/deploy: run `make sync-models`.",
+            "Set processor.models.binary (.pt/.onnx) or BIRDLENSE_BINARY_ONNX_PATH. "
+            "Fresh clone/deploy: run `make sync-models`.",
         )
     if not classifier_weights_available(classifier_path):
         _eng = classifier_engine(app_config)
         raise FileNotFoundError(
             f"Classifier weights missing for engine={_eng!r}: {classifier_path}. "
-            "Birder EU: scripts/download_birder_classifier.py + "
-            "scripts/export_birder_classifier_to_openvino.py. "
+            "Birder EU: scripts/download_birder_classifier.py. "
             "EfficientNetB2: scripts/download_birds_classifier_efficientnetb2.py. "
             "Legacy YOLO: processor.models.classifier (.pt).",
         )
@@ -296,47 +220,7 @@ def build_detection_stack(
         assert_ctor_kwargs(TwoStageStrategy.__init__, _ts_kw, label="TwoStageStrategy")
         detection_strategy = TwoStageStrategy(**_ts_kw)
     except Exception:
-        can_fallback_detector = _requested_backend == "auto" and _inf_backend == "openvino"
-        can_fallback_classifier = _requested_classifier_backend == "auto" and _cls_backend == "openvino"
-        if not (can_fallback_detector or can_fallback_classifier):
-            raise
-
-        if can_fallback_detector:
-            from processor_runtime_stats import inc_counter
-
-            inc_counter("inference_openvino_auto_torch_fallback_total")
-            torch_binary_path = resolve_relative_to_processor_root(
-                str(
-                    app_config.get(
-                        "processor.models.binary",
-                        "models/detection/weights/yolo11n.pt",
-                    ),
-                ).strip(),
-                processor_root,
-            )
-            if not detector_weights_available(torch_binary_path):
-                raise
-            binary_path = torch_binary_path
-            _inf_backend = "torch"
-        if can_fallback_classifier:
-            classifier_engine(app_config)
-            torch_classifier_path, _ = resolve_classifier_weight_path(app_config, processor_root)
-            if not classifier_weights_available(torch_classifier_path):
-                raise
-            classifier_path = torch_classifier_path
-            _cls_backend = "torch"
-        logger.exception(
-            "Inference auto backend fallback: detector=(%s,%s)->%s classifier=(%s,%s)->%s",
-            binary_path,
-            _requested_backend,
-            _inf_backend,
-            classifier_path,
-            _requested_classifier_backend,
-            _cls_backend,
-        )
-        _ts_kw_fb = _two_stage_kwargs()
-        assert_ctor_kwargs(TwoStageStrategy.__init__, _ts_kw_fb, label="TwoStageStrategy(fallback)")
-        detection_strategy = TwoStageStrategy(**_ts_kw_fb)
+        raise
     logger.info(
         "Inference startup: detector_backend=%s classifier_backend=%s ultralytics_device_label=%s "
         "binary_inference_device_kw=%s classifier_inference_device_kw=%s binary_path=%s classifier_path=%s "

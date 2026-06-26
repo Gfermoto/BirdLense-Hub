@@ -188,7 +188,7 @@ def _build_yolo_detector_check(heartbeat_data: dict | None, yolo_probe: str) -> 
     )
     requested_backend = str(check.get("inference_backend_requested") or "").strip().lower()
     effective_backend = str(check.get("inference_backend_effective") or "").strip().lower()
-    if not auto_torch_fallback and requested_backend in ("auto", "openvino") and effective_backend == "torch":
+    if not auto_torch_fallback and requested_backend in ("auto", "onnxruntime") and effective_backend == "torch":
         auto_torch_fallback = True
     if auto_torch_fallback and status == "ok":
         status = "degraded"

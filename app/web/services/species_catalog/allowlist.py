@@ -61,8 +61,8 @@ def _classifier_engine_name(app_config_get) -> str:
 def _birder_labels_dir(app_config_get) -> str:
     variant = str(app_config_get("processor.birder_eu_variant") or "convnext_v2_tiny_eu-common256px").strip()
     rel = (
-        app_config_get("processor.models.classifier_openvino")
-        or app_config_get("processor.models.classifier_birder_eu_openvino")
+        app_config_get("processor.models.classifier")
+        or app_config_get("processor.models.classifier_birder_eu")
         or f"models/classification/weights/{variant}_openvino_model"
     )
     return rel if os.path.isabs(rel) else os.path.join(_processor_root(), rel)

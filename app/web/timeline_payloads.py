@@ -87,7 +87,7 @@ def _infer_trigger_source_from_detections(detections: list[dict], *, preferred_t
     }
     if any("frigate" in p for p in providers):
         return "frigate"
-    if any(p in {"yolo", "ultralytics", "openvino"} for p in providers):
+    if any(p in {"yolo", "ultralytics", "onnxruntime"} for p in providers):
         return "opencv"
     if any(p in {"opencv", "motion", "motion_detector", "or_motion"} for p in providers):
         return "opencv"

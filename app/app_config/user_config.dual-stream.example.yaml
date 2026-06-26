@@ -7,7 +7,6 @@ processor:
   scoring_moving_roi_review_enabled: true
   scoring_moving_roi_min_motion_score: 0.32
   inference_lores_wh: [704, 576]
-  openvino_binary_track_ultralytics_conf: 0.12
   min_confidence_binary_bird: 0.12
   linear_live_scoring_engine_enabled: true
 

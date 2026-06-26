@@ -49,7 +49,7 @@ def test_manifest_meta_features_matches_training_script():
     assert v[0] == pytest.approx(np.log1p(10.0))
 
 
-def test_resolve_backend_auto_prefers_logistic_without_openvino_path(tmp_path, tiny_export: Path):
+def test_resolve_backend_auto_prefers_logistic_without_onnx_path(tmp_path, tiny_export: Path):
     from behavior_baseline_runtime import resolve_behavior_inference_backend
 
     cfg = {
@@ -57,7 +57,6 @@ def test_resolve_backend_auto_prefers_logistic_without_openvino_path(tmp_path, t
             "weights_path": str(tiny_export),
             "inference_backend": "auto",
         },
-        "processor.models.behavior_openvino": "",
     }
     assert resolve_behavior_inference_backend(cfg, processor_cwd=str(tmp_path)) == "logistic_json"
 

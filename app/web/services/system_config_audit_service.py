@@ -398,8 +398,8 @@ def _preflight_config_safety(app_config_get) -> dict:
             "status": (
                 "warn"
                 if video_encoding == "cpu"
-                and detector_backend in {"openvino", "auto", "torch"}
-                and detector_device.startswith("intel")
+                and detector_backend in {"onnxruntime", "auto", "torch"}
+                and detector_device.startswith("cuda")
                 else "ok"
             ),
             "severity": "warning",
@@ -495,7 +495,7 @@ def _config_presets() -> list[dict]:
             "id": "balanced",
             "title": "Balanced",
             "overrides": {
-                "processor.inference_backend": "openvino",
+                "processor.inference_backend": "onnxruntime",
                 "video.encoding": "cpu",
                 "processor.binary_imgsz": 640,
                 "processor.min_seconds_between_recordings": 0.0,

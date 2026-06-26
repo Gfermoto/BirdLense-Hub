@@ -167,12 +167,6 @@ export type ProcessorNightProfileOverrides = {
   min_confidence_binary?: number;
   min_confidence_binary_bird?: number;
   min_confidence_binary_rodent?: number;
-  /** Только OpenVINO: нижняя страховка для ``track(conf)`` (см. detection_strategy). */
-  openvino_binary_track_ultralytics_conf?: number | null;
-  /** Только OpenVINO: множитель conf Bird при сравнении с порогом; сырая conf в данных не меняется. */
-  openvino_binary_bird_score_scale?: number | null;
-  /** Только OpenVINO: подмена порога Bird (null = как min_confidence_binary_bird). */
-  openvino_min_confidence_binary_bird?: number | null;
   /** @deprecated см. min_confidence_binary_rodent */
   min_confidence_binary_squirrel?: number;
   min_track_duration?: number;
@@ -259,9 +253,6 @@ export interface Settings {
     min_confidence_binary?: number; // Binary detector threshold (bird vs no-bird); 0.25 = stricter
     /** Строже только для боксов Bird. null / пусто в UI → как min_confidence_binary. */
     min_confidence_binary_bird?: number | null;
-    openvino_binary_track_ultralytics_conf?: number | null;
-    openvino_binary_bird_score_scale?: number | null;
-    openvino_min_confidence_binary_bird?: number | null;
     /** Мягче для Rodent (грызуны). null → как min_confidence_binary. */
     min_confidence_binary_rodent?: number | null;
     /** @deprecated Используйте min_confidence_binary_rodent; читается из YAML для совместимости */
@@ -322,22 +313,21 @@ export interface Settings {
     key_frame_limit?: number;
     keep_recording_when_no_detections?: boolean;
     detection_strategy?: string;
-    inference_backend?: 'auto' | 'torch' | 'openvino' | 'onnxruntime' | string;
+    inference_backend?: 'auto' | 'torch' | 'onnxruntime' | 'tensorrt' | string;
     classifier_inference_backend?:
       | 'auto'
       | 'torch'
-      | 'openvino'
       | 'onnxruntime'
+      | 'tensorrt'
       | string;
     inference_device?: string;
     classifier_inference_device?: string;
     detector_weight_contract?: 'off' | 'warn' | 'enforce' | string;
     models?: {
       binary?: string;
-      binary_openvino?: string;
+      binary_onnx?: string;
+      binary_tensorrt?: string;
       classifier?: string;
-      classifier_openvino?: string;
-      behavior_openvino?: string;
     };
     classifier_uncertainty_entropy_ge?: number | null;
     classifier_uncertainty_margin_le?: number | null;
@@ -399,8 +389,7 @@ export interface Settings {
     behavior_recognition?: {
       enabled?: boolean;
       weights_path?: string;
-      inference_backend?: 'auto' | 'logistic_json' | 'openvino' | string;
-      openvino_fallback_logistic?: boolean;
+      inference_backend?: 'auto' | 'logistic_json' | 'onnxruntime' | string;
       max_runtime_detections?: number;
       confidence_store_min?: number;
       confidence_review_threshold?: number;

@@ -92,31 +92,7 @@ def _resolve_weights_path(raw: str, *, processor_cwd: str | None) -> Path | None
 
 
 def resolve_behavior_inference_backend(app_config: Any, *, processor_cwd: str | None) -> str:
-    """logistic_json | openvino | auto (если есть IR/ONNX и метки из weights_path)."""
-    raw_env = (os.environ.get("BIRDLENSE_BEHAVIOR_INFERENCE_BACKEND") or "").strip().lower()
-    br_raw = app_config.get("processor.behavior_recognition") if app_config else None
-    br = br_raw if isinstance(br_raw, dict) else {}
-    raw_cfg = str(br.get("inference_backend") or "").strip().lower()
-    raw = raw_env or raw_cfg or "auto"
-    if raw in ("json", "logistic", "logistic_json"):
-        return "logistic_json"
-    if raw == "openvino":
-        return "openvino"
-    # auto
-    try:
-        from inference.selector import openvino_runtime_available
-
-        from behavior_openvino_runtime import resolve_behavior_openvino_model_path
-    except ImportError:
-        return "logistic_json"
-    if not openvino_runtime_available():
-        return "logistic_json"
-    ov_path = resolve_behavior_openvino_model_path(app_config, processor_cwd=processor_cwd)
-    if ov_path is None:
-        return "logistic_json"
-    wpath = str(br.get("weights_path") or "").strip()
-    if _export_labels_for_weights(wpath, processor_cwd=processor_cwd):
-        return "openvino"
+    """logistic_json — единственный backend на Orin (ONNX welfare через ornimetrics)."""
     return "logistic_json"
 
 
@@ -217,37 +193,6 @@ def maybe_predict_video_behavior(
     except (TypeError, ValueError):
         max_det = 50
     max_det = max(1, min(max_det, 500))
-
-    backend = resolve_behavior_inference_backend(app_config, processor_cwd=processor_cwd)
-    fallback_ov = bool(br.get("openvino_fallback_logistic", True))
-
-    if backend == "openvino":
-        try:
-            from behavior_openvino_runtime import (
-                maybe_predict_video_behavior_openvino,
-                resolve_behavior_openvino_model_path,
-            )
-        except ImportError:
-            maybe_predict_video_behavior_openvino = None  # type: ignore[misc,assignment]
-            resolve_behavior_openvino_model_path = None  # type: ignore[misc,assignment]
-
-        if maybe_predict_video_behavior_openvino and resolve_behavior_openvino_model_path:
-            ov_path = resolve_behavior_openvino_model_path(app_config, processor_cwd=processor_cwd)
-            labels_ov = _export_labels_for_weights(path, processor_cwd=processor_cwd)
-            if ov_path is not None and labels_ov:
-                bl, bc = maybe_predict_video_behavior_openvino(
-                    app_config,
-                    video_detections,
-                    duration_s=float(duration_s),
-                    processor_cwd=processor_cwd,
-                    onnx_or_xml_path=ov_path,
-                    labels=labels_ov,
-                    max_detections=max_det,
-                )
-                if bl and bc > 0:
-                    return bl, float(bc)
-        if not fallback_ov:
-            return None, 0.0
 
     if not _RUNTIME.load_if_needed(path, processor_cwd=processor_cwd):
         return None, 0.0

@@ -74,7 +74,7 @@ class ProcessorConfig(_SectionBase):
     pipeline_mode: Literal["linear", "legacy"] | str | None = None
     single_rtsp_read: bool | None = None
     detection_strategy: Literal["two_stage"] | str | None = None
-    inference_backend: Literal["torch", "openvino", "auto"] | str | None = None
+    inference_backend: Literal["torch", "onnxruntime", "tensorrt", "auto"] | str | None = None
     inference_device: str | None = None
     detection_device: str | None = None
     binary_imgsz: int | None = Field(default=None, ge=32, le=4096)
@@ -99,17 +99,6 @@ class ProcessorConfig(_SectionBase):
     track_regen_lores_wh: list[int] | tuple[int, int] | None = None
     track_regen_frame_step: int | None = Field(default=None, ge=1, le=120)
     detection_quality_assumed_fps: float | None = Field(default=None, ge=0.0, le=120.0)
-    openvino_binary_track_ultralytics_conf: float | None = Field(
-        default=None,
-        ge=0.0,
-        le=1.0,
-    )
-    openvino_binary_bird_score_scale: float | None = Field(default=None, ge=0.0, le=32.0)
-    openvino_min_confidence_binary_bird: float | None = Field(
-        default=None,
-        ge=0.0,
-        le=1.0,
-    )
     background_subtraction_enabled: bool | None = None
     background_subtraction_history: int | None = Field(default=None, ge=1, le=10000)
     background_subtraction_var_threshold: float | None = Field(

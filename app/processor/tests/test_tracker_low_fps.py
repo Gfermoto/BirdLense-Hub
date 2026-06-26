@@ -90,8 +90,7 @@ class TestTrackerLowFps(unittest.TestCase):
                     data = {
                         "processor.min_confidence_binary": 0.06,
                         "processor.min_confidence_binary_bird": 0.05,
-                        "processor.openvino_binary_track_ultralytics_conf": 0.06,
-                        "processor.inference_backend": "openvino",
+                        "processor.inference_backend": "onnxruntime",
                         "processor.tracker_adaptive_low_fps_enabled": True,
                         "processor.tracker_low_fps_threshold": 10.0,
                     }
@@ -99,7 +98,6 @@ class TestTrackerLowFps(unittest.TestCase):
 
             profile_overrides = {
                 "min_confidence_binary_bird": 0.025,
-                "openvino_binary_track_ultralytics_conf": 0.025,
             }
             runtime_cfg = build_tracker_runtime_cfg(_AppCfg(), profile_overrides)
             out = resolve_adaptive_tracker_path(str(base), 7.0, runtime_cfg=runtime_cfg)
