@@ -56,9 +56,6 @@ def register_routes(app):
     from routes.ui_system_fusion_routes import register_ui_system_fusion_routes
 
     register_ui_system_fusion_routes(app)
-    from routes.ui_system_behavior_routes import register_ui_system_behavior_routes
-
-    register_ui_system_behavior_routes(app)
     from routes.ui_system_recognition_routes import register_ui_system_recognition_routes
 
     register_ui_system_recognition_routes(app)

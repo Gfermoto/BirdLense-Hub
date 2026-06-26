@@ -51,7 +51,6 @@ from processor_config_defaults import (
     config_int,
 )
 from session_state_repository import SessionStateRepository
-from behavior_baseline_runtime import maybe_predict_video_behavior_bundle
 from track_first_contract import (
     apply_track_first_persist_gate,
     count_ingestible_track_rows,
@@ -715,42 +714,16 @@ def finalize_motion_recording(
             3,
         )
         scales_evidence.update(scales_evidence_update)
-        try:
-            duration_behavior_s = max(0.0, (end_time - start_time).total_seconds())
-        except Exception:
-            duration_behavior_s = 0.0
-        proc_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        behavior_started_ts = time.perf_counter()
-        behavior_bundle = maybe_predict_video_behavior_bundle(
-            app_config,
-            video_detections,
-            duration_s=duration_behavior_s,
-            processor_cwd=proc_root,
-            video_path=video_path_for_api,
-        )
-        behavior_duration_ms = round(
-            max(0.0, (time.perf_counter() - behavior_started_ts) * 1000.0),
-            3,
-        )
-        br_cfg = app_config.get("processor.behavior_recognition") or {}
-        if not isinstance(br_cfg, dict):
-            br_cfg = {}
-        store_min = float(br_cfg.get("confidence_store_min") or 0.2)
-        rev_thr = float(br_cfg.get("confidence_review_threshold") or 0.45)
-        behavior_label_kw = None
-        behavior_conf_kw = None
-        bl = behavior_bundle.get("main_label")
-        bc = float(behavior_bundle.get("main_confidence") or 0.0)
-        if bl and bc >= store_min:
-            behavior_label_kw = str(bl)
-            behavior_conf_kw = bc
-            if bc < rev_thr and video_detections:
-                d0 = video_detections[0]
-                if isinstance(d0, dict) and not (d0.get("review_reason") or "").strip():
-                    d0["review_reason"] = "behavior_uncertainty"
-                    d0["classifier_needs_review"] = True
         create_video_started_ts = time.perf_counter()
         resp = None
+        behavior_label_kw = None
+        behavior_conf_kw = None
+        behavior_model_kind = None
+        behavior_model_version = None
+        behavior_shadow_label = None
+        behavior_shadow_confidence = None
+        behavior_shadow_model_kind = None
+        behavior_shadow_model_version = None
         try:
             from recording_session_manifest import (
                 mark_persist_failed,
@@ -769,12 +742,12 @@ def finalize_motion_recording(
                 scales_weight_delta_kg=scales_delta_kg,
                 behavior_label=behavior_label_kw,
                 behavior_confidence=behavior_conf_kw,
-                behavior_model_kind=behavior_bundle.get("model_kind"),
-                behavior_model_version=behavior_bundle.get("model_version"),
-                behavior_shadow_label=behavior_bundle.get("shadow_label"),
-                behavior_shadow_confidence=behavior_bundle.get("shadow_confidence"),
-                behavior_shadow_model_kind=behavior_bundle.get("shadow_model_kind"),
-                behavior_shadow_model_version=behavior_bundle.get("shadow_model_version"),
+                behavior_model_kind=behavior_model_kind,
+                behavior_model_version=behavior_model_version,
+                behavior_shadow_label=behavior_shadow_label,
+                behavior_shadow_confidence=behavior_shadow_confidence,
+                behavior_shadow_model_kind=behavior_shadow_model_kind,
+                behavior_shadow_model_version=behavior_shadow_model_version,
                 camera_id=session_camera_id,
             )
             video_id = response_video_id(resp)
@@ -837,28 +810,18 @@ def finalize_motion_recording(
                     decision_trace["video_id"] = int(video_id)
                 except (TypeError, ValueError):
                     decision_trace["video_id"] = video_id
-            sl = behavior_bundle.get("shadow_label")
-            sc = behavior_bundle.get("shadow_confidence")
-            logging.info(
-                "behavior canary persist video_id=%s shadow=%s(%.3f) saved=%s engine=%s",
-                video_id,
-                sl,
-                float(sc or 0.0),
-                bool(sl and str(sl).strip()),
-                str((br_cfg.get("engine") if isinstance(br_cfg, dict) else "") or ""),
-            )
             api.activity_log_async(
                 type="behavior_shadow_prediction",
                 data={
                     "video_id": video_id,
-                    "main_label": behavior_bundle.get("main_label"),
-                    "main_confidence": behavior_bundle.get("main_confidence"),
-                    "model_kind": behavior_bundle.get("model_kind"),
-                    "model_version": behavior_bundle.get("model_version"),
-                    "shadow_label": behavior_bundle.get("shadow_label"),
-                    "shadow_confidence": behavior_bundle.get("shadow_confidence"),
-                    "shadow_model_kind": behavior_bundle.get("shadow_model_kind"),
-                    "shadow_model_version": behavior_bundle.get("shadow_model_version"),
+                    "main_label": None,
+                    "main_confidence": None,
+                    "model_kind": None,
+                    "model_version": None,
+                    "shadow_label": None,
+                    "shadow_confidence": None,
+                    "shadow_model_kind": None,
+                    "shadow_model_version": None,
                 },
             )
         dataset_crops_started_ts = time.perf_counter()

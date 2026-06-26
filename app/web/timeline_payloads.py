@@ -60,7 +60,7 @@ def _model_behavior_events_from_video(video) -> list[dict]:
         {
             "label": lab,
             "confidence": round(c, 4),
-            "evidence": {"reason": "behavior_recognition_runtime"},
+            "evidence": {"reason": "classifier_runtime"},
         }
     ]
 

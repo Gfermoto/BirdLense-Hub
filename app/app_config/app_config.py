@@ -157,35 +157,7 @@ def validate_merged_config_semantics(merged: dict) -> list[str]:
         )
     proc_root = merged.get("processor")
     if isinstance(proc_root, dict):
-        br = proc_root.get("behavior_recognition")
-        if isinstance(br, dict):
-            for path, label in (
-                (
-                    "processor.behavior_recognition.confidence_store_min",
-                    "processor.behavior_recognition.confidence_store_min",
-                ),
-                (
-                    "processor.behavior_recognition.confidence_review_threshold",
-                    "processor.behavior_recognition.confidence_review_threshold",
-                ),
-            ):
-                v = _semantic_float_or_issue(merged, path, label, issues)
-                if v is not None and (v < 0.0 or v > 1.0 + 1e-9):
-                    issues.append("%s must be between 0 and 1, got %s" % (label, v))
-            raw_md = br.get("max_runtime_detections")
-            if raw_md is not None:
-                try:
-                    md_i = int(raw_md)
-                    if md_i < 1 or md_i > 500:
-                        issues.append(
-                            "processor.behavior_recognition.max_runtime_detections must be 1..500, got %s"
-                            % (md_i,)
-                        )
-                except (TypeError, ValueError):
-                    issues.append(
-                        "processor.behavior_recognition.max_runtime_detections must be int, got %r"
-                        % (raw_md,)
-                    )
+        pass
     video = merged.get("video")
     if isinstance(video, dict):
         from app_config.cameras import get_valid_cameras, validate_go2rtc_detect_streams

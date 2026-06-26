@@ -314,13 +314,13 @@ def build_reid_summary(session) -> tuple[dict[str, Any], int]:
     }, 200
 
 
-def build_similarity_behavior_summary_payload(
+def build_similarity_summary_payload(
     session,
     *,
     top_k: int = 5,
     max_rows: int = 500,
 ) -> tuple[dict[str, Any], int]:
-    """Track-level similarity + behavior quality snapshot (S7)."""
+    """Track-level ReID similarity snapshot (S7). Behavior removed — Orin branch."""
     k = max(1, min(int(top_k or 5), 20))
     lim = max(20, min(int(max_rows or 500), 5000))
     try:
@@ -331,7 +331,7 @@ def build_similarity_behavior_summary_payload(
         session.execute(text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")).scalar()
     )
     payload: dict[str, Any] = {
-        "schema": "similarity_behavior_summary@v1",
+        "schema": "similarity_summary@v1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "top_k": k,
         "max_rows": lim,
@@ -343,12 +343,6 @@ def build_similarity_behavior_summary_payload(
             "top1_hit_rate": 0.0,
             "topk_hit_rate": 0.0,
             "p95_query_ms": 0.0,
-        },
-        "behavior": {
-            "rows_evaluated": 0,
-            "macro_f1": 0.0,
-            "per_label": [],
-            "top_confusions": [],
         },
         "runtime_cost": {
             "guardrail_p95_query_ms": guardrail_ms,
@@ -434,51 +428,6 @@ def build_similarity_behavior_summary_payload(
         }
         payload["runtime_cost"]["retrieval_p95_ok"] = bool(p95_ms <= guardrail_ms)
 
-    behavior_rows_raw = (
-        session.execute(
-            text(
-                """
-                SELECT
-                    lower(trim(behavior_label)) AS truth,
-                    lower(trim(behavior_shadow_label)) AS pred
-                FROM video
-                WHERE deleted_at IS NULL
-                  AND behavior_label IS NOT NULL
-                  AND trim(behavior_label) != ''
-                  AND behavior_shadow_label IS NOT NULL
-                  AND trim(behavior_shadow_label) != ''
-                ORDER BY id DESC
-                LIMIT :lim
-                """
-            ),
-            {"lim": lim},
-        )
-        .mappings()
-        .all()
-    )
-    behavior_pairs = [
-        (str(r["truth"]), str(r["pred"]))
-        for r in behavior_rows_raw
-        if str(r.get("truth") or "").strip() and str(r.get("pred") or "").strip()
-    ]
-    macro_f1, per_label = _macro_f1_from_rows(behavior_pairs)
-    confusion: dict[str, int] = {}
-    for truth, pred in behavior_pairs:
-        if truth == pred:
-            continue
-        key = f"{truth}->{pred}"
-        confusion[key] = confusion.get(key, 0) + 1
-    top_confusions = sorted(
-        ({"pair": pair, "count": int(count)} for pair, count in confusion.items()),
-        key=lambda item: item["count"],
-        reverse=True,
-    )[:10]
-    payload["behavior"] = {
-        "rows_evaluated": len(behavior_pairs),
-        "macro_f1": macro_f1,
-        "per_label": per_label,
-        "top_confusions": top_confusions,
-    }
     return payload, 200
 
 

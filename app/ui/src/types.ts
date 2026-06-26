@@ -386,14 +386,6 @@ export interface Settings {
     scoring_moving_roi_min_motion_score?: number;
     scene_adaptive_conf_enabled?: boolean;
     linear_live_scoring_engine_enabled?: boolean;
-    behavior_recognition?: {
-      enabled?: boolean;
-      weights_path?: string;
-      inference_backend?: 'auto' | 'logistic_json' | 'onnxruntime' | string;
-      max_runtime_detections?: number;
-      confidence_store_min?: number;
-      confidence_review_threshold?: number;
-    };
   };
   secrets: {
     openweather_api_key: string; // API key for OpenWeather

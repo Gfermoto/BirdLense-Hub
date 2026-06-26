@@ -27,7 +27,6 @@ import { ProcessorModelsScopeBlock } from './processor/ProcessorModelsScopeBlock
 import { ProcessorTrackRegenBlock } from './processor/ProcessorTrackRegenBlock';
 import { ProcessorStreamGeometryBlock } from './processor/ProcessorStreamGeometryBlock';
 import { ProcessorMotionCalibrationBlock } from './processor/ProcessorMotionCalibrationBlock';
-import { ProcessorBehaviorRecognitionBlock } from './processor/ProcessorBehaviorRecognitionBlock';
 import { ProcessorDetectFirstBlock } from './processor/ProcessorDetectFirstBlock';
 import { ProcessorCameraProfilesBlock } from './processor/ProcessorCameraProfilesBlock';
 import { ProcessorRolePresetsBlock } from './processor/ProcessorRolePresetsBlock';
@@ -145,16 +144,6 @@ export function ProcessorSection({ form, settingsTier = 'basic' }: Props) {
               <ProcessorScoringBlock form={form} />
               <ProcessorConfidenceAdvancedBlock form={form} />
               <ProcessorFalsePositiveGuardrailsBlock form={form} />
-            </>
-          ) : null}
-
-          {advanced ? (
-            <>
-              <Divider sx={{ my: 2 }} />
-              <SectionHeading>4. Поведение</SectionHeading>
-              <Box id="processor-behavior">
-                <ProcessorBehaviorRecognitionBlock form={form} />
-              </Box>
             </>
           ) : null}
 

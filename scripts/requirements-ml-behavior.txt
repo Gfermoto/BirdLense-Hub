@@ -1,6 +1,0 @@
-# Host-only ML pipeline for Behavior v2 (not in processor Docker image).
-numpy>=1.26
-opencv-python-headless>=4.8
-scikit-learn>=1.4
-onnx>=1.16
-openvino>=2024.1

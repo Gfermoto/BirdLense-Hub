@@ -1,153 +1,122 @@
-# Orin NX / NANO — runbook и архитектура BirdLense Hub
+# Orin NX / NANO — runbook BirdLense Hub
 
-**Статус:** ONNX GPU (CUDA EP / TensorRT EP), Trapper + Birder + Ornimetrics (2026-06-25)  
-**Исполнять:** §2 (шаги 1–18) сверху вниз. §3–6 — справочник.  
-**Целевые платформы:** Orin NX 16GB (песочница) → Orin NANO 8GB (production).  
-**Модельный стек:**
+**Статус:** ветка `orin`, ONNX GPU (CUDA EP / TensorRT EP), без OpenVINO/Intel  
+**Платформы:** Orin NX 16GB (песочница) → Orin NANO 8GB (production)  
+**Хранилище:** один загрузочный диск **M.2 NVMe** — отдельного SSD для данных **нет** (записи и Docker на том же NVMe)
+
+**Модельный стек (ветка `orin`):**
 
 | Компонент | Модель | Формат | Бэкенд |
 |-----------|--------|--------|--------|
-| Детектор | Trapper AI v02 2024 | ONNX | ONNX Runtime CUDA EP / TensorRT EP |
-| Классификатор | Birder ConvNeXt EU-707 (chriamue) | ONNX | ONNX Runtime CUDA EP |
-| ReID | Ornimetrics reid_embedder | ONNX | ONNX Runtime CUDA EP |
-| Welfare | Ornimetrics embedder + welfare_scorer.npz | ONNX + NPZ | ONNX Runtime CUDA EP |
-| Трекер | BotSORT / ByteTrack | YAML-конфиги | CPU (боксы) |
-| Behavior | Logistic ONNX + meta/video | ONNX | ONNX Runtime CPU |
+| Детектор | Trapper AI v02 2024 | ONNX (опц. `.engine`) | ONNX Runtime CUDA EP / TensorRT EP |
+| Классификатор | chriamue Birder (ConvNeXt EU) | ONNX | ONNX Runtime CUDA EP |
+| ReID | Ornimetrics `reid_embedder` | ONNX | ONNX Runtime CUDA EP |
+| Welfare | Ornimetrics embedder + `welfare_scorer.npz` | ONNX + NPZ | ONNX Runtime CUDA EP |
+| Трекер | ByteTrack / BotSORT | YAML | CPU |
+
+**Исполнять:** §2 сверху вниз. §3–7 — справочник и тюнинг.
 
 ---
 
-## 1. Состав ветки `orin`
+## 1. Что в ветке `orin`
+
+Ключевые артефакты (остальное — как в Hub: `web/`, `ui/`, `app_config/`):
 
 ```
-BirdLense/
-├── app/
-│   ├── Dockerfile.orin          # Сборка под Orin (Python 3.12, onnxruntime-gpu)
-│   ├── docker-compose.orin.yml  # Override: nvidia runtime, host network, privileged
-│   ├── docker-compose.yml       # Базовый compose (Redis + birdlense)
-│   ├── Makefile                 # build / start / stop / logs / test
-│   ├── scripts/
-│   │   ├── entrypoint.sh        # Orin: без DRM/DRI, без py3.6 worker
-│   │   ├── deploy.sh
-│   │   ├── deploy.local.sh.example
-│   │   ├── verify-stack.sh
-│   │   ├── verify-prod-env.sh
-│   │   ├── platform-profile.sh
-│   │   ├── wait-hub-http.sh
-│   │   ├── restore-config.sh
-│   │   └── esphome/             # Кормушка (сохранена)
-│   ├── processor/
-│   │   ├── src/                 # Основной код процессора
-│   │   └── models/
-│   │       ├── detection/trapper_ai_v02_2024/
-│   │       │   ├── trapper_ai_v02_2024.onnx    # Детектор ONNX
-│   │       │   ├── trapper_ai_v02_2024.yaml
-│   │       │   └── class_maps/
-│   │       ├── classification/chriamue_bird_species_classifier/
-│   │       │   ├── model.onnx                   # Классификатор ONNX
-│   │       │   ├── config.json
-│   │       │   ├── preprocessor_config.json
-│   │       │   └── class_names.txt
-│   │       ├── reid/ornimetrics/
-│   │       │   └── reid_embedder.onnx           # ReID ONNX
-│   │       ├── welfare/ornimetrics/
-│   │       │   ├── embedder.onnx                # Welfare ONNX
-│   │       │   └── welfare_scorer.npz
-│   │       ├── tracker/                         # YAML-конфиги трекера
-│   │       └── behavior/                        # Поведение ONNX
-│   ├── web/                     # Flask API
-│   ├── app_config/
-│   │   ├── default_config.yaml
-│   │   └── user_config.orin.example.yaml        # Шаблон под Orin (не трекается)
-│   └── ui/                      # React 19 + MUI
-├── docs/
-│   ├── strategy/orin-setup-and-migration.md     # Данный документ
-│   ├── user/troubleshooting.md
-│   ├── user/configuration.md
-│   ├── user/install.md
-│   ├── user/quickstart.md
-│   ├── user/overview.md
-│   ├── CONFIGURATION.md
-│   ├── INSTALL.md
-│   ├── OVERVIEW.md
-│   ├── QUICKSTART.md
-│   └── TROUBLESHOOTING.md
-├── esphome/                    # ESPHome кормушка
-├── Makefile                    # deploy / build / start / stop / logs / verify
-├── .gitignore
-├── .nvmrc
-├── AGENTS.md
-├── install.sh
-└── LICENSE
+app/
+├── Dockerfile.orin              # aarch64, Python 3.12, onnxruntime-gpu
+├── docker-compose.orin.yml      # nvidia runtime, host network, NVENC capture
+├── Makefile                     # BIRDLENSE_PLATFORM=orin по умолчанию
+├── app_config/
+│   └── user_config.orin.example.yaml
+└── processor/models/            # веса в .gitignore — копируются вручную
+    ├── detection/trapper_ai_v02_2024/
+    │   └── trapper_ai_v02_2024.onnx
+    ├── classification/chriamue_bird_species_classifier/
+    │   └── model.onnx
+    ├── reid/ornimetrics/reid_embedder.onnx
+    ├── welfare/ornimetrics/
+    │   ├── embedder.onnx
+    │   └── welfare_scorer.npz
+    └── tracker/                   # bytetrack_birdlense*.yaml, botsort_*.yaml
 ```
+
+Деплой с dev-машины: `make deploy` (rsync + `make build` + `make start` на Orin).  
+Сборка на самом Orin: `make local-build && make start` (нужен Node 22 для UI).
 
 ---
 
-## 2. Runbook — порядок развёртывания
+## 2. Runbook — развёртывание на Orin (M.2 boot)
 
 | Шаг | Где | Суть |
 |-----|-----|------|
-| 1–2 | dev / хост | Подготовить JetPack 6 SD-образ, записать, загрузиться |
-| 3–4 | Orin по SSH | Настроить SSH, apt update/upgrade |
-| 5–6 | Orin | Разметить SSD, перенести rootfs |
-| 7–8 | Orin | Защитить загрузку с SSD, настроить Docker + NVIDIA runtime |
-| 9–10 | Orin | MAXN / jetson_clocks, ZRAM / headless |
-| 11–12 | dev → Orin | Склонировать ветку `orin`, создать `.env`, настроить `user_config.yaml` |
-| 13–14 | Orin | `make build && make start`, smoke-тест |
-| 15–16 | Orin | Развернуть ONNX-модели (подробнее §3), проверить GPU |
-| 17–18 | Orin / dev | Настроить камеры, запустить полный пайплайн |
+| 1 | Host PC (x86, Ubuntu) | Прошить **JetPack 6** сразу на **M.2 NVMe** (SDK Manager) |
+| 2 | Orin | Первый boot, пользователь, hostname, SSH |
+| 3 | Orin | `apt` + `nvidia-jetpack`, проверка `R36.x` |
+| 4 | Orin | Проверить, что **root на NVMe** (`lsblk`, `df`) |
+| 5 | Orin | Docker + `nvidia-container-runtime` |
+| 6 | Orin | Тюнинг: MAXN, `jetson_clocks`, ZRAM, headless (§4) |
+| 7 | Orin / dev | Клон `orin`, веса ONNX, `.env`, `user_config.yaml` |
+| 8 | Orin | `make local-build` или `make deploy` с dev |
+| 9 | Orin | Smoke: health, CUDA providers, камера |
+| 10 | Orin | Полный пайплайн: треки в `recording_session_summary` |
 
-### Шаг 1. Подготовить SD-карту
+### Шаг 1. Прошивка JetPack 6 на M.2 NVMe
 
-Скачать JetPack 6 для Orin NX/NANO с [nvidia.com](https://developer.nvidia.com/embedded/jetpack), записать `balenaEtcher` или `dd`.
+На **host PC** (Ubuntu 20.04/22.04 x86_64):
+
+1. Установить [NVIDIA SDK Manager](https://developer.nvidia.com/sdk-manager).
+2. Подключить Orin по USB (recovery) или по сети — по [Flashing Guide JP6](https://docs.nvidia.com/jetson/archives/r36.4/DeveloperGuide/SD/FlashingSupport.html).
+3. В SDK Manager выбрать **JetPack 6.x**, целевую плату (**Orin NX** или **Orin NANO**).
+4. В разделе storage указать **NVMe (M.2)** как целевой носитель — **не** SD + перенос на «второй SSD».
+5. Дождаться окончания flash, отключить recovery, загрузиться с NVMe.
+
+> Отдельного SATA/USB SSD в этой схеме нет: один M.2 — и ОС, и Docker, и `app/data/recordings/`. Следите за `df -h /`.
 
 ### Шаг 2. Первый boot
 
-Подключить питание, монитор, клавиатуру. Пройти OEM wizard:
-- пользователь: `gfer` (или ваш)
+OEM wizard (или headless через serial):
+
+- пользователь: `gfer` (или свой)
 - hostname: `birdlense-orin`
+- SSH: `sudo systemctl enable ssh --now`
 
-Включить SSH: `sudo systemctl enable ssh --now`
-
-### Шаг 3. SSH и обновление
+### Шаг 3. Базовая система
 
 ```bash
 ssh gfer@birdlense-orin
 sudo apt update && sudo apt full-upgrade -y
-sudo apt install -y nvidia-jetpack
+sudo apt install -y nvidia-jetpack git curl
 sudo reboot
 ```
 
-**Готово когда:** после reboot `cat /etc/nv_tegra_release` показывает `R36.x` (JP6).
+**Готово когда:** `cat /etc/nv_tegra_release` → `R36.x` (JetPack 6), `nvidia-smi` без ошибок.
 
-### Шаг 4. Разметить SSD
+### Шаг 4. Проверка диска (только M.2)
 
 ```bash
-lsblk
-sudo parted /dev/nvme0n1 mklabel gpt
-sudo parted /dev/nvme0n1 mkpart primary ext4 0% 100%
-sudo mkfs.ext4 -L birdlense-data /dev/nvme0n1p1
+lsblk -f
+df -h /
 ```
 
-### Шаг 5. Перенести rootfs на SSD
+Ожидается: `nvme0n1` (или аналог) смонтирован как `/`.  
+Нет второго диска под root — **шаги «разметить SSD / rsync rootfs» не нужны**.
 
-```bash
-sudo mkdir -p /mnt/ssd && sudo mount /dev/nvme0n1p1 /mnt/ssd
-sudo rsync -aAXv --exclude={"/mnt/*","/proc/*","/sys/*","/dev/*","/run/*","/tmp/*","/lost+found"} / /mnt/ssd/
-SSD_PARTUUID=$(blkid -s PARTUUID -o value /dev/nvme0n1p1)
-echo "PARTUUID=${SSD_PARTUUID}  /  ext4  defaults,noatime  0  1" | sudo tee -a /mnt/ssd/etc/fstab
-sudo sed -i "s|root=[^ ]*|root=PARTUUID=${SSD_PARTUUID}|" /boot/extlinux/extlinux.conf
-sudo reboot
+Рекомендация для одного NVMe (опционально, в `/etc/fstab` для `/`):
+
+```text
+defaults,noatime
 ```
 
-**Готово когда:** `df -h /` показывает NVMe SSD.
+Оставить запас ≥30 GB под Docker-слои и записи (`app/data/recordings/`).
 
-### Шаг 6. Docker с NVIDIA runtime
+### Шаг 5. Docker + NVIDIA runtime
 
 ```bash
+# JetPack 6 обычно уже ставит nvidia-container-toolkit; если нет — пакет из репозитория NVIDIA.
 sudo usermod -aG docker "$USER"
 sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
 {
-  "data-root": "/var/lib/docker",
   "log-driver": "json-file",
   "log-opts": { "max-size": "10m", "max-file": "3" },
   "default-runtime": "nvidia",
@@ -160,102 +129,189 @@ sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
 }
 EOF
 sudo systemctl restart docker
+newgrp docker
+docker run --rm --runtime=nvidia nvidia/cuda:12.2.0-base-ubuntu22.04 nvidia-smi
 ```
 
-### Шаг 7. MAXN и производительность
+### Шаг 6. Тюнинг Orin (см. §4)
 
 ```bash
-sudo nvpmodel -m 0 && sudo jetson_clocks
+sudo nvpmodel -m 0          # MAXN (для NANO 8GB см. §4.2)
+sudo jetson_clocks
 sudo apt install -y zram-config && sudo systemctl enable zram-config
-sudo systemctl set-default multi-user.target
+sudo systemctl set-default multi-user.target   # без GUI
 ```
 
-### Шаг 8. Клонировать ветку `orin`
+### Шаг 7. Репозиторий, веса, конфиг
 
 ```bash
 cd /home/gfer
 git clone --branch orin git@github.com:Gfermoto/BirdLense-Hub.git BirdLense
-cd BirdLense
-cp app/app_config/user_config.orin.example.yaml app/app_config/user_config.yaml
-cp app/.env.example app/.env  # если есть
+cd BirdLense/app
+
+cp app_config/user_config.orin.example.yaml app_config/user_config.yaml
+make setup    # создаёт .env из шаблона — заполнить секреты
 ```
 
-### Шаг 9. Сборка и запуск
+**Веса** (не в git) — положить на Orin в те же пути, что в `docker-compose.orin.yml` volumes:
+
+| Файл | Путь на хосте |
+|------|----------------|
+| Trapper ONNX | `processor/models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx` |
+| Классификатор | `processor/models/classification/chriamue_bird_species_classifier/model.onnx` (+ `config.json`, labels) |
+| ReID | `processor/models/reid/ornimetrics/reid_embedder.onnx` |
+| Welfare | `processor/models/welfare/ornimetrics/embedder.onnx`, `welfare_scorer.npz` |
+
+С dev-машины можно `rsync` каталоги `processor/models/` (как при `make deploy`, без перезаписи `app/data/`).
+
+### Шаг 8. Сборка и запуск
+
+**На Orin** (нужен Node 22: `nvm use` в `ui/`):
 
 ```bash
-cd BirdLense
-BIRDLENSE_PLATFORM=orin make build
-BIRDLENSE_PLATFORM=orin make start
+cd /home/gfer/BirdLense/app
+export BIRDLENSE_PLATFORM=orin
+make local-build    # ui build + docker build
+make start
 ```
 
-**Готово когда:** `docker ps` показывает `birdlense` и `birdlense-redis` оба `Up`.
-
-### Шаг 10. Проверка GPU и детекции
+**С dev-машины** (UI уже собран локально):
 
 ```bash
-# Проверить, что ONNX видит CUDA
-docker exec birdlense python3 -c "import onnxruntime; print(onnxruntime.get_available_providers())"
-# Ожидается: ['CUDAExecutionProvider', 'TensorrtExecutionProvider', 'CPUExecutionProvider']
+# scripts/deploy.local.sh: DEPLOY_HOST=birdlense-orin, BIRDLENSE_PLATFORM=orin
+cd /path/to/BirdLense && make deploy
 ```
 
-### Шаг 11. Камеры
+**Готово когда:** `docker ps` → `birdlense` и `birdlense-redis` в статусе `Up`.
 
-Настроить потоки в UI: Settings → Cameras → Add stream.
-RTSP-адрес камеры, учётные данные.
-
-### Шаг 12. Smoke-тест
+### Шаг 9. Smoke-тест
 
 ```bash
 curl -sf http://localhost:8085/api/ui/health
+
+docker exec birdlense python3 -c "
+import onnxruntime as ort
+print(ort.get_available_providers())
+"
+# Ожидается: CUDAExecutionProvider, TensorrtExecutionProvider (если TRT в образе), CPUExecutionProvider
 ```
+
+### Шаг 10. Камеры и пайплайн
+
+1. UI → Settings → Cameras: RTSP URL, логин/пароль.
+2. System → «Сканировать и импортировать» (если записи с Frigate/NVR).
+3. Метрика: в сводке сессии `yolo_frames_with_tracks > 0`.
 
 ---
 
-## 3. Модели и ONNX Runtime GPU
+## 3. Модели и инференс
 
-### 3.1 Установка моделей
+### 3.1 Пути и бэкенды
 
-ONNX-файлы моделей находятся под `.gitignore` и НЕ трекаются в git.  
-Их нужно положить вручную или смонтировать через volume.
+- Детектор: `processor.models.binary` → ONNX Trapper; опционально TensorRT `.engine` при `inference_backend: tensorrt`.
+- Классификатор: `classifier_engine: chriamue`, каталог с `model.onnx`.
+- ReID / welfare: ключи `reid.model_path`, `welfare.embedder_path`, `welfare.scorer_path` (см. example yaml).
 
-**Детектор Trapper ONNX:** `app/processor/models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx`  
-**Классификатор Birder (chriamue):** `app/processor/models/classification/chriamue_bird_species_classifier/model.onnx`  
-**ReID Ornimetrics:** `app/processor/models/reid/ornimetrics/reid_embedder.onnx`  
-**Welfare Ornimetrics:** `app/processor/models/welfare/ornimetrics/embedder.onnx` + `welfare_scorer.npz`
+OpenVINO, Intel GPU и Jetson Nano legacy в ветке `orin` **не используются**.
 
-### 3.2 ONNX Runtime GPU
+### 3.2 Проверка CUDA внутри контейнера
 
 ```bash
-pip install onnxruntime-gpu>=1.20
-```
-
-Провайдеры (CUDA EP / TensorRT EP) определяются автоматически.  
-Для принудительного выбора: `BIRDLENSE_INFERENCE_DEVICE=cuda:0`
-
-### 3.3 Проверка GPU-инференса
-
-```python
+docker exec birdlense python3 <<'PY'
 import onnxruntime as ort
-sess = ort.InferenceSession("model.onnx", providers=["CUDAExecutionProvider"])
-print(sess.get_providers())  # ['CUDAExecutionProvider', ...]
+s = ort.InferenceSession(
+    "/app/processor/models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx",
+    providers=["CUDAExecutionProvider"],
+)
+print("providers:", s.get_providers())
+PY
+```
+
+### 3.3 TensorRT (опционально, максимум FPS)
+
+На Orin можно собрать `.engine` из ONNX и указать в конфиге:
+
+```yaml
+processor:
+  inference_backend: tensorrt
+  models:
+    binary_tensorrt: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.engine
+```
+
+Первый прогон — на устройстве (зависит от версии TRT в JetPack). Для отладки достаточно `inference_backend: onnxruntime`.
+
+---
+
+## 4. Оптимизация под Orin
+
+### 4.1 Orin NX 16GB (песочница)
+
+| Параметр | Рекомендация |
+|----------|----------------|
+| Power | `sudo nvpmodel -m 0` + `sudo jetson_clocks` |
+| Docker | `docker-compose.orin.yml`: `shm_size: 1gb`, `memory: 14G` — ок для 16GB |
+| Детектор | `binary_imgsz: 640` (баланс); 704 если Trapper экспортирован под 704 |
+| Захват RTSP | `BIRDLENSE_CAPTURE_BACKEND=ffmpeg_nvmpi` (NVDEC, уже в compose) |
+| Инференс | `BIRDLENSE_INFERENCE_BACKEND=onnxruntime`, `BIRDLENSE_INFERENCE_DEVICE=cuda:0` |
+| Записи | тот же NVMe — периодически чистить старые `app/data/recordings/` |
+
+### 4.2 Orin NANO 8GB (production)
+
+| Параметр | Рекомендация |
+|----------|----------------|
+| Power | `nvpmodel` — режим с меньшим TDP, если греется; иначе MAXN краткими сессиями |
+| RAM | **обязательно** ZRAM; в `docker-compose.orin.yml` снизить `deploy.resources.limits.memory` до **~6G** |
+| Детектор | `binary_imgsz: 640`, один поток камеры до стабилизации |
+| Классификатор | `max_classifications_per_frame: 2` в `user_config` |
+| TensorRT | предпочтительнее ORT-only на этапе отладки (меньше пиков памяти при build engine) |
+| Диск | один M.2 — жёсткий лимит retention записей (System / политика хранения) |
+
+### 4.3 Захват и кодирование (в compose уже задано)
+
+```bash
+BIRDLENSE_CAPTURE_BACKEND=ffmpeg_nvmpi   # аппаратный decode RTSP
+BIRDLENSE_ENCODING=orin                  # профиль медиа-пайплайна под Jetson
+```
+
+### 4.4 Процессор (`user_config.yaml`)
+
+Стартовая точка — `user_config.orin.example.yaml`:
+
+```yaml
+processor:
+  models:
+    binary: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
+    classifier: models/classification/chriamue_bird_species_classifier
+  classifier_engine: chriamue
+  inference_backend: onnxruntime
+  classifier_inference_backend: onnxruntime
+  inference_device: cuda:0
+  binary_imgsz: 640
+  min_confidence_binary: 0.12
+  merge_window_seconds: 12
+
+reid:
+  model_path: models/reid/ornimetrics/reid_embedder.onnx
+
+welfare:
+  embedder_path: models/welfare/ornimetrics/embedder.onnx
+  scorer_path: models/welfare/ornimetrics/welfare_scorer.npz
+```
+
+После правки `user_config.yaml`: `docker compose -f docker-compose.yml -f docker-compose.orin.yml up -d --force-recreate birdlense`.
+
+### 4.5 Мониторинг
+
+```bash
+sudo apt install -y python3-pip && sudo pip3 install jetson-stats
+sudo jtop    # CPU/GPU/RAM/NVMe temp
 ```
 
 ---
 
-## 4. Производительность
+## 5. Переменные окружения (`app/.env`)
 
-| Метрика | Orin NX 16GB | Orin NANO 8GB |
-|---------|-------------|---------------|
-| GPU | 1024-core Ampere | 1024-core Ampere |
-| RAM | 16 GB | 8 GB |
-| Детектор | >30 FPS (640x640) | >20 FPS (640x640) |
-| Классификатор | <50 ms на кроп | <80 ms на кроп |
-| ReID | <30 ms на кроп | <50 ms на кроп |
-| NVENC/NVDEC | Да (оба) | Да (оба) |
-
----
-
-## 5. Переменные окружения (app/.env)
+Минимум для Orin (дополняет `docker-compose.orin.yml`):
 
 ```bash
 BIRDLENSE_PORT=8085
@@ -264,47 +320,48 @@ BIRDLENSE_INFERENCE_BACKEND=onnxruntime
 BIRDLENSE_INFERENCE_DEVICE=cuda:0
 BIRDLENSE_CAPTURE_BACKEND=ffmpeg_nvmpi
 BIRDLENSE_ENCODING=orin
-PROCESSOR_SECRET=<32-char-hex>
+
 FLASK_SECRET_KEY=<32-char-hex>
+PROCESSOR_SECRET=<32-char-hex>
 MCP_TOKEN=<token>
 ```
 
----
-
-## 6. user_config.yaml (Orin)
-
-Пример: `app/app_config/user_config.orin.example.yaml`
-
-```yaml
-processor:
-  models:
-    detection:
-      binary_openvino: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
-    classification:
-      engine: chriamue
-    reid:
-      model_path: models/reid/ornimetrics/reid_embedder.onnx
-    welfare:
-      embedder_path: models/welfare/ornimetrics/embedder.onnx
-      scorer_path: models/welfare/ornimetrics/welfare_scorer.npz
-  inference_backend: onnxruntime
-  inference_device: cuda:0
-  binary_imgsz: 640
-  min_confidence_binary: 0.12
-  merge_window_seconds: 12
-```
+Production: `BIRDLENSE_ENV=production`, `BIRDLENSE_STRICT_API_AUTH=1`.
 
 ---
 
-## 7. Чек-лист перед деплоем
+## 6. Ориентиры по производительности
 
-- [ ] JetPack 6, NVIDIA driver, CUDA 12.x
-- [ ] Docker + nvidia-container-runtime
-- [ ] `user_config.yaml` настроен
-- [ ] `.env` настроен (секреты)
-- [ ] ONNX-модели подмонтированы или скопированы
-- [ ] `make build && BIRDLENSE_PLATFORM=orin make start`
-- [ ] Health-check: `curl -sf http://localhost:8085/api/ui/health`
-- [ ] ONNX Runtime видит CUDA: `onnxruntime.get_available_providers()`
-- [ ] Камеры добавлены, потоки идут
-- [ ] Детекция работает: `recording_session_summary.yolo_frames_with_tracks > 0`
+| Метрика | Orin NX 16GB | Orin NANO 8GB |
+|---------|--------------|---------------|
+| GPU | 1024-core Ampere | 1024-core Ampere |
+| RAM | 16 GB | 8 GB |
+| Детектор 640² | >25 FPS (ORT CUDA) | >15 FPS |
+| Классификатор / кроп | <50 ms | <80 ms |
+| NVENC/NVDEC | да | да |
+| Диск | один NVMe | один NVMe |
+
+Цифры зависят от числа камер, `binary_imgsz` и TRT vs ORT.
+
+---
+
+## 7. Чек-лист перед production
+
+- [ ] JetPack 6 (`R36.x`), `nvidia-smi` на хосте и в контейнере
+- [ ] Root на **M.2 NVMe**, запас места на диске ≥30 GB
+- [ ] Docker `default-runtime: nvidia`
+- [ ] `nvpmodel` + `jetson_clocks`; на NANO — ZRAM и лимит памяти контейнера ~6G
+- [ ] Веса ONNX на месте (§2 шаг 7)
+- [ ] `user_config.yaml` из `user_config.orin.example.yaml`, без ключей `openvino_*`
+- [ ] `.env` с секретами
+- [ ] `BIRDLENSE_PLATFORM=orin make build && make start` (или `make deploy`)
+- [ ] `curl -sf http://localhost:8085/api/ui/health`
+- [ ] `onnxruntime.get_available_providers()` содержит `CUDAExecutionProvider`
+- [ ] Камера(ы) в UI, `yolo_frames_with_tracks > 0`
+
+---
+
+## 8. Миграция с Intel / Jetson Nano
+
+Ветка `orin` **не** совместима с `user_config` от OpenVINO/Intel NUC или Jetson Nano (torch worker, `binary_openvino`, `jetson_nano` platform).  
+Перенос: новый `user_config.yaml` из example, веса ONNX, деплой ветки `orin` — без rsync старых IR/OpenVINO каталогов.
