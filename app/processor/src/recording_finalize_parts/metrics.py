@@ -18,7 +18,6 @@ from recording_finalize_parts.overlay_helpers import _is_valid_track_bbox, _safe
 
 PERSIST_SUBSTAGE_SUMMARY_KEYS: tuple[str, ...] = (
     "scales_duration_ms",
-    "behavior_duration_ms",
     "create_video_duration_ms",
     "dataset_crops_duration_ms",
     "reid_enrich_duration_ms",
@@ -34,7 +33,6 @@ CREATE_VIDEO_INGEST_SUBSTAGE_KEYS: tuple[str, ...] = (
 def build_persist_substage_ms(
     *,
     scales_duration_ms: float | None,
-    behavior_duration_ms: float | None,
     create_video_duration_ms: float | None,
     create_video_ingest_timing_ms: dict[str, float] | None,
     dataset_crops_duration_ms: float | None,
@@ -43,7 +41,6 @@ def build_persist_substage_ms(
     """Grouped persist-tail timers for session_summary and readiness aggregation."""
     substage: dict[str, Any] = {
         "scales_ms": scales_duration_ms,
-        "behavior_ms": behavior_duration_ms,
         "create_video_ms": create_video_duration_ms,
         "dataset_crops_ms": dataset_crops_duration_ms,
         "reid_enrich_ms": reid_enrich_duration_ms,

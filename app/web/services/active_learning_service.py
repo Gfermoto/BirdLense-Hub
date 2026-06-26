@@ -367,9 +367,7 @@ def list_cases(*, status: str | None = None, limit: int = 100, with_media_only: 
             beh_conf = float(getattr(video, "behavior_confidence", 0.0) or 0.0) if video else 0.0
             pre_approved = conf >= 0.95 or beh_conf >= 0.95
         suggested_species = species.name if species else None
-        suggested_behavior = (getattr(video, "behavior_label", None) if video else None) or (
-            getattr(video, "behavior_shadow_label", None) if video else None
-        )
+        suggested_behavior = (getattr(video, "behavior_label", None) if video else None)
         item = {
             "id": int(case.id),
             "created_at": case.created_at.astimezone(timezone.utc).isoformat() if case.created_at else None,
@@ -400,8 +398,6 @@ def list_cases(*, status: str | None = None, limit: int = 100, with_media_only: 
             "suggested_behavior": suggested_behavior,
             "behavior_label": getattr(video, "behavior_label", None) if video else None,
             "behavior_confidence": getattr(video, "behavior_confidence", None) if video else None,
-            "behavior_shadow_label": getattr(video, "behavior_shadow_label", None) if video else None,
-            "behavior_shadow_confidence": getattr(video, "behavior_shadow_confidence", None) if video else None,
         }
         if with_media_only:
             has_media = (

@@ -32,7 +32,7 @@ from recording_notify_dispatch import notify_unique_species
 from recording_post_fusion_rejections import collect_post_fusion_rejections
 from linear_pipeline import (
     STAGE_CLASSIFY_ENRICH,
-    STAGE_REID_BEHAVIOR,
+    STAGE_REID_ENRICH,
     frigate_salvage_allow_without_yolo,
     frigate_salvage_opted_in,
     is_linear_pipeline,
@@ -558,7 +558,7 @@ def finalize_motion_recording(
         if is_linear_pipeline(app_config):
             logging.info(
                 "Linear pipeline stage=%s rows=%s duration_ms=%s",
-                STAGE_REID_BEHAVIOR,
+                STAGE_REID_ENRICH,
                 len(video_detections or []),
                 reid_enrich_duration_ms,
             )
@@ -694,7 +694,6 @@ def finalize_motion_recording(
 
     persist_started_ts = time.perf_counter()
     scales_duration_ms: float | None = None
-    behavior_duration_ms: float | None = None
     create_video_duration_ms: float | None = None
     create_video_ingest_timing_ms: dict[str, float] | None = None
     dataset_crops_duration_ms: float | None = None
@@ -720,10 +719,6 @@ def finalize_motion_recording(
         behavior_conf_kw = None
         behavior_model_kind = None
         behavior_model_version = None
-        behavior_shadow_label = None
-        behavior_shadow_confidence = None
-        behavior_shadow_model_kind = None
-        behavior_shadow_model_version = None
         try:
             from recording_session_manifest import (
                 mark_persist_failed,
@@ -744,10 +739,6 @@ def finalize_motion_recording(
                 behavior_confidence=behavior_conf_kw,
                 behavior_model_kind=behavior_model_kind,
                 behavior_model_version=behavior_model_version,
-                behavior_shadow_label=behavior_shadow_label,
-                behavior_shadow_confidence=behavior_shadow_confidence,
-                behavior_shadow_model_kind=behavior_shadow_model_kind,
-                behavior_shadow_model_version=behavior_shadow_model_version,
                 camera_id=session_camera_id,
             )
             video_id = response_video_id(resp)
@@ -810,20 +801,6 @@ def finalize_motion_recording(
                     decision_trace["video_id"] = int(video_id)
                 except (TypeError, ValueError):
                     decision_trace["video_id"] = video_id
-            api.activity_log_async(
-                type="behavior_shadow_prediction",
-                data={
-                    "video_id": video_id,
-                    "main_label": None,
-                    "main_confidence": None,
-                    "model_kind": None,
-                    "model_version": None,
-                    "shadow_label": None,
-                    "shadow_confidence": None,
-                    "shadow_model_kind": None,
-                    "shadow_model_version": None,
-                },
-            )
         dataset_crops_started_ts = time.perf_counter()
         maybe_save_dataset_crops(
             app_config,
@@ -996,7 +973,6 @@ def finalize_motion_recording(
             "dataset_crops_duration_ms": dataset_crops_duration_ms,
             "persist_substage_ms": build_persist_substage_ms(
                 scales_duration_ms=scales_duration_ms,
-                behavior_duration_ms=behavior_duration_ms,
                 create_video_duration_ms=create_video_duration_ms,
                 create_video_ingest_timing_ms=create_video_ingest_timing_ms,
                 dataset_crops_duration_ms=dataset_crops_duration_ms,

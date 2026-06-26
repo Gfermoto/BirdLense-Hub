@@ -63,7 +63,7 @@ def _birder_labels_dir(app_config_get) -> str:
     rel = (
         app_config_get("processor.models.classifier")
         or app_config_get("processor.models.classifier_birder_eu")
-        or f"models/classification/weights/{variant}_openvino_model"
+        or f"models/classification/weights/{variant}"
     )
     return rel if os.path.isabs(rel) else os.path.join(_processor_root(), rel)
 

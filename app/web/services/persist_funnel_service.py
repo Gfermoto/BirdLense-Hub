@@ -13,10 +13,10 @@ from models import SessionRuntimeMetrics
 PERSIST_SUBSTAGE_PAYLOAD_KEYS: tuple[str, ...] = (
     "persist_duration_ms",
     "scales_duration_ms",
-    "behavior_duration_ms",
     "create_video_duration_ms",
     "dataset_crops_duration_ms",
     "reid_enrich_duration_ms",
+)
 )
 
 CREATE_VIDEO_INGEST_SUBSTAGE_KEYS: tuple[str, ...] = (
@@ -67,7 +67,6 @@ def _collect_persist_substage_samples(
             mapping = {
                 "persist_duration_ms": payload.get("persist_duration_ms"),
                 "scales_duration_ms": grouped.get("scales_ms"),
-                "behavior_duration_ms": grouped.get("behavior_ms"),
                 "create_video_duration_ms": grouped.get("create_video_ms"),
                 "dataset_crops_duration_ms": grouped.get("dataset_crops_ms"),
                 "reid_enrich_duration_ms": grouped.get("reid_enrich_ms"),

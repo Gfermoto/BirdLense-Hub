@@ -19,8 +19,6 @@ def _seed(app):
             video_path="/tmp/a.mp4",
             behavior_label="alert",
             behavior_confidence=0.96,
-            behavior_shadow_label="feeding",
-            behavior_shadow_confidence=0.66,
         )
         db.session.add_all([sp, video])
         db.session.flush()

@@ -44,9 +44,9 @@ def register_ui_ml_ops_routes(app):
     def reid_summary():
         return build_reid_summary(db.session)
 
-    @app.route("/api/ui/system/similarity-behavior/summary", methods=["GET"])
+    @app.route("/api/ui/system/reid/similarity-summary", methods=["GET"])
     @require_ui_contributor_or_admin
-    def similarity_behavior_summary():
+    def reid_similarity_summary():
         return build_similarity_summary_payload(
             db.session,
             top_k=request.args.get("top_k", 5, type=int),

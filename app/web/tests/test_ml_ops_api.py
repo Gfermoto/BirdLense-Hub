@@ -327,7 +327,7 @@ def test_video_reid_match_returns_candidate(app, client):
     assert body["matches"][0]["candidate_video_id"] != vid
 
 
-def test_similarity_behavior_summary_endpoint(app, client):
+def test_similarity_summary_endpoint(app, client):
     from models import Species, Video, VideoSpecies, db
 
     with app.app_context():
@@ -337,16 +337,12 @@ def test_similarity_behavior_summary_endpoint(app, client):
             start_time=datetime(2026, 4, 29, 12, 0, 0, tzinfo=timezone.utc),
             end_time=datetime(2026, 4, 29, 12, 0, 20, tzinfo=timezone.utc),
             video_path="data/recordings/reid/s1.mp4",
-            behavior_label="feeding",
-            behavior_shadow_label="feeding",
         )
         v2 = Video(
             processor_version="t",
             start_time=datetime(2026, 4, 29, 12, 5, 0, tzinfo=timezone.utc),
             end_time=datetime(2026, 4, 29, 12, 5, 20, tzinfo=timezone.utc),
             video_path="data/recordings/reid/s2.mp4",
-            behavior_label="feeding",
-            behavior_shadow_label="foraging",
         )
         db.session.add_all([species, v1, v2])
         db.session.flush()
@@ -445,23 +441,21 @@ def test_similarity_behavior_summary_endpoint(app, client):
 
     with client.session_transaction() as sess:
         sess["access_role"] = "contributor"
-    r = client.get("/api/ui/system/similarity-behavior/summary?top_k=5&max_rows=200")
+    r = client.get("/api/ui/system/reid/similarity-summary?top_k=5&max_rows=200")
     assert r.status_code == 200
     body = r.get_json()
-    assert body["schema"] == "similarity_behavior_summary@v1"
+    assert body["schema"] == "similarity_summary@v1"
     assert body["similarity"]["available"] is True
     assert body["similarity"]["anchors_evaluated"] >= 1
-    assert body["behavior"]["rows_evaluated"] >= 1
-    assert "macro_f1" in body["behavior"]
 
 
-def test_similarity_behavior_summary_without_reid_table(client):
+def test_similarity_summary_without_reid_table(client):
     with client.session_transaction() as sess:
         sess["access_role"] = "contributor"
-    r = client.get("/api/ui/system/similarity-behavior/summary")
+    r = client.get("/api/ui/system/reid/similarity-summary")
     assert r.status_code == 200
     body = r.get_json()
-    assert body["schema"] == "similarity_behavior_summary@v1"
+    assert body["schema"] == "similarity_summary@v1"
     assert body["similarity"]["available"] is False
 
 

@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 STAGE_TRIGGER = "trigger"
 STAGE_DETECT_TRACK = "detect_track"
 STAGE_CLASSIFY_ENRICH = "classify_enrich"
-STAGE_REID_BEHAVIOR = "reid_behavior"
+STAGE_REID_ENRICH = "reid_enrich"
 STAGE_PERSIST = "persist"
 
 

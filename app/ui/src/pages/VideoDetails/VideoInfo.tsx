@@ -16,8 +16,6 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
-import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -25,7 +23,6 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import Tooltip from '@mui/material/Tooltip';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -39,7 +36,6 @@ import { BASE_API_URL } from '../../api/client';
 import {
   deleteVideo,
   patchVideoFavorite,
-  patchVideoRecording,
   fetchVideoFusionTrace,
   type FusionTracePayload,
   type FusionTraceStep,
@@ -48,7 +44,6 @@ import {
 import { queryKeys } from '../../api/queryKeys';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { formatLocalDateTime } from '../../util';
-import { BEHAVIOR_TAG_OPTIONS } from '../../constants/behaviorTags';
 import {
   WeightChangeMetric,
   hasVisibleWeightChange,
@@ -147,17 +142,6 @@ export const VideoInfo = ({
   video: Video;
 }) => {
   const { t } = useTranslation();
-  const behaviorLabelText = useCallback(
-    (value: string | null | undefined) => {
-      const normalized = String(value || '').trim();
-      if (!normalized) return '';
-      const opt = BEHAVIOR_TAG_OPTIONS.find((row) => row.value === normalized);
-      if (!opt) return normalized;
-      const translated = t(opt.labelKey);
-      return translated === opt.labelKey ? normalized : translated;
-    },
-    [t],
-  );
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -165,9 +149,6 @@ export const VideoInfo = ({
   const theme = useTheme();
   const weightMetricCompact = useMediaQuery(theme.breakpoints.down('sm'));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [behaviorDialogOpen, setBehaviorDialogOpen] = useState(false);
-  const [behaviorDraftLabel, setBehaviorDraftLabel] = useState('');
-  const [behaviorDraftConf, setBehaviorDraftConf] = useState('');
   const [fusionOpen, setFusionOpen] = useState(false);
   const [fusionLoading, setFusionLoading] = useState(false);
   const [fusionErr, setFusionErr] = useState<string | null>(null);
@@ -201,26 +182,6 @@ export const VideoInfo = ({
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.video.detail(String(video.id)),
-      });
-    },
-  });
-
-  const behaviorMutation = useMutation({
-    mutationFn: (payload: { label: string; conf: string }) =>
-      patchVideoRecording(Number(video.id), {
-        behavior_label: payload.label.trim() || '',
-        behavior_confidence:
-          payload.conf.trim() === ''
-            ? null
-            : Math.min(1, Math.max(0, Number(payload.conf))),
-      }),
-    onSuccess: async () => {
-      setBehaviorDialogOpen(false);
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.video.detail(String(video.id)),
-      });
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.calendar.timelineTab,
       });
     },
   });
@@ -276,8 +237,6 @@ export const VideoInfo = ({
     weather,
     food,
     scales,
-    behavior_label,
-    behavior_confidence,
   } = video;
 
   const formatDate = (date: string | Date) => formatLocalDateTime(date);
@@ -393,122 +352,11 @@ export const VideoInfo = ({
         )
       )}
 
-      {(canEdit || behavior_label) && (
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            {t('videoInfo.behaviorTitle')}
-          </Typography>
-          {behavior_label ? (
-            <Tooltip
-              title={canEdit ? t('videoInfo.behaviorEditHint') : ''}
-              disableHoverListener={!canEdit}
-              arrow
-            >
-              <Chip
-                label={`${behaviorLabelText(behavior_label)}${
-                  canEdit &&
-                  behavior_confidence != null &&
-                  !Number.isNaN(Number(behavior_confidence))
-                    ? ` (${(Number(behavior_confidence) * 100).toFixed(0)}%)`
-                    : ''
-                }`}
-                size="small"
-                sx={{ mb: 1, alignSelf: 'flex-start' }}
-              />
-            </Tooltip>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {t('videoInfo.behaviorNone')}
-            </Typography>
-          )}
-          {canEdit && (
-            <>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => {
-                  setBehaviorDraftLabel(behavior_label || '');
-                  setBehaviorDraftConf(
-                    behavior_confidence != null
-                      ? String(behavior_confidence)
-                      : '',
-                  );
-                  setBehaviorDialogOpen(true);
-                }}
-              >
-                {t('videoInfo.behaviorEdit')}
-              </Button>
-              <Dialog
-                open={behaviorDialogOpen}
-                onClose={() =>
-                  !behaviorMutation.isPending && setBehaviorDialogOpen(false)
-                }
-              >
-                <DialogTitle>{t('videoInfo.behaviorDialogTitle')}</DialogTitle>
-                <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-                  <TextField
-                    select
-                    label={t('videoInfo.behaviorLabelField')}
-                    value={behaviorDraftLabel}
-                    onChange={(e) => setBehaviorDraftLabel(e.target.value)}
-                    size="small"
-                    fullWidth
-                    helperText={t('videoInfo.behaviorLabelHint')}
-                  >
-                    <MenuItem value="">
-                      {t('videoInfo.behaviorTagNone')}
-                    </MenuItem>
-                    {BEHAVIOR_TAG_OPTIONS.map((opt) => (
-                      <MenuItem key={opt.value} value={opt.value}>
-                        {behaviorLabelText(opt.value)}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    label={t('videoInfo.behaviorConfField')}
-                    value={behaviorDraftConf}
-                    onChange={(e) => setBehaviorDraftConf(e.target.value)}
-                    size="small"
-                    fullWidth
-                    type="number"
-                    inputProps={{ min: 0, max: 1, step: 0.05 }}
-                    helperText={t('videoInfo.behaviorConfHint')}
-                  />
-                </DialogContent>
-                <DialogActions>
-                  <Button
-                    onClick={() => setBehaviorDialogOpen(false)}
-                    disabled={behaviorMutation.isPending}
-                  >
-                    {t('common.cancel')}
-                  </Button>
-                  <Button
-                    variant="contained"
-                    disabled={behaviorMutation.isPending}
-                    onClick={() => {
-                      const c = behaviorDraftConf.trim();
-                      if (c !== '' && Number.isNaN(Number(c))) return;
-                      behaviorMutation.mutate({
-                        label: behaviorDraftLabel,
-                        conf: behaviorDraftConf,
-                      });
-                    }}
-                  >
-                    {behaviorMutation.isPending
-                      ? t('videoInfo.behaviorSaving')
-                      : t('videoInfo.behaviorSave')}
-                  </Button>
-                </DialogActions>
-              </Dialog>
-            </>
-          )}
-          {hasVisibleWeightChange(scales) && (
+      {hasVisibleWeightChange(scales) && (
             <Box sx={{ mt: 1.5 }}>
               <WeightChangeMetric scales={scales} compact={weightMetricCompact} />
             </Box>
           )}
-        </Paper>
-      )}
 
       {/* Recording Info Card */}
       <Paper sx={{ p: 2 }}>
@@ -530,7 +378,7 @@ export const VideoInfo = ({
           <Typography variant="body2" color="text.secondary">
             <strong>{t('videoInfo.duration')}:</strong> {duration}s
           </Typography>
-          {!(behavior_label || canEdit) && hasVisibleWeightChange(scales) && (
+          {!canEdit && hasVisibleWeightChange(scales) && (
             <Box sx={{ mt: 0.5 }}>
               <WeightChangeMetric scales={scales} compact={weightMetricCompact} />
             </Box>

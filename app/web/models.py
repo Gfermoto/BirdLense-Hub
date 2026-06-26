@@ -310,10 +310,7 @@ class Video(db.Model):
     behavior_confidence: Mapped[float | None] = mapped_column(Float(), nullable=True)
     behavior_model_kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
     behavior_model_version: Mapped[str | None] = mapped_column(String(96), nullable=True)
-    behavior_shadow_label: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    behavior_shadow_confidence: Mapped[float | None] = mapped_column(Float(), nullable=True)
-    behavior_shadow_model_kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    behavior_shadow_model_version: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    # Поля поведения (оставлены для обратной совместимости с существующими записями)
 
     # Relations
     video_species: Mapped[List["VideoSpecies"]] = relationship(back_populates="video")

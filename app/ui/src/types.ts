@@ -135,10 +135,6 @@ export interface Video {
   behavior_confidence?: number | null;
   behavior_model_kind?: string | null;
   behavior_model_version?: string | null;
-  behavior_shadow_label?: string | null;
-  behavior_shadow_confidence?: number | null;
-  behavior_shadow_model_kind?: string | null;
-  behavior_shadow_model_version?: string | null;
 }
 
 /** См. OpenAPI `BirdFood`; для списка из API поля id/name/active приходят заполненными. */

@@ -29,11 +29,11 @@ alwaysApply: true
 
 ---
 
-## Платформы (intel_nuc / jetson_nano)
+## Платформы (orin / intel_nuc)
 
-- **Дефолт:** `intel_nuc` — без `BIRDLENSE_PLATFORM` поведение как раньше (`app/Dockerfile`, OpenVINO IR, Intel GPU override).
-- **Jetson:** `export BIRDLENSE_PLATFORM=jetson_nano` в `deploy.local.sh` → clean runtime bundle (allowlist, не полный репозиторий), `Dockerfile.jetson`, `docker-compose.jetson.yml`, проверка только Jetson-артефактов. Текущий проверенный base — `nvcr.io/nvidia/l4t-base:r32.7.1`; DeepStream/`nvinfer` — отдельный gate после NGC auth/native install.
-- Профили: `deploy/profiles/intel-nuc/`, `deploy/profiles/jetson-nano/`; ADR: `docs/strategy/adr-platform-profiles-intel-jetson.md`.
+- **Дефолт:** `orin` — `BIRDLENSE_PLATFORM` не задана = Orin (`app/Dockerfile.orin`, `docker-compose.orin.yml`, ONNX GPU CUDA EP).
+- **Intel NUC:** `export BIRDLENSE_PLATFORM=intel_nuc` в `deploy.local.sh` → `app/Dockerfile`, OpenVINO IR, Intel GPU override.
+- Профили: `deploy/profiles/intel-nuc/`, `deploy/profiles/orin/`.
 
 ---
 
@@ -50,9 +50,9 @@ make deploy
 
 ## Что делает деплой
 
-1. Синхронизирует код (для Jetson — только runtime allowlist из runbook; для Intel/VPS — исключая **`datasets/`**, **`app/data/`** целиком (как в CI), **`app/.env`**, **`.tools/`** (локальный CodeQL), venv и `site/` — данные на сервере не перезаписываются rsync)
+1. Синхронизирует код (для Orin — только runtime allowlist из runbook; для Intel/VPS — исключая **`datasets/`**, **`app/data/`** целиком (как в CI), **`app/.env`**, **`.tools/`** (локальный CodeQL), venv и `site/` — данные на сервере не перезаписываются rsync)
 2. На сервере: `make stop` → `make build` → `make start`
-3. Intel iGPU на том же хосте: при `/dev/dri/renderD*` генерируется `app/docker-compose.override.yml` (DRI, `group_add`, `LIBVA_DRIVER_NAME=iHD`). В образе OpenCL ICD для OpenVINO на GPU. Опционально `BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=1` — упасть, если override не создался.
+3. Intel iGPU (только платформа intel_nuc): при `/dev/dri/renderD*` генерируется `app/docker-compose.override.yml` (DRI, `group_add`, `LIBVA_DRIVER_NAME=iHD`). На Orin не требуется.
 
 ## Данные на сервере (не теряются)
 
@@ -99,23 +99,20 @@ Host birdlense-vps
 - `app/app_config/user_config.yaml` — настройки
 - Старые контейнеры — удаляются перед деплоем по логике `deploy.sh`
 
-## BRG веса + OpenVINO на Intel GPU (площадка)
+## BRG веса + инференс на Orin (ONNX GPU)
 
-1. Локально: положить `best.pt` и каталог `best_openvino_model/` под `app/processor/models/detection/weights/` (как после распаковки zip). Резерв старого набора — отдельная папка на сервере или `weights_backup_*`.
-2. `make deploy` подтягивает код и артефакты в образ; rsync **не** удаляет защищённые `*.pt` на сервере без замены с вашей стороны — при смене файлов локально они **обновятся** при синхронизации.
-3. На сервере в **`user_config.yaml`** (деплой его не затирает):  
-   `processor.models.binary_openvino: models/detection/weights/best_openvino_model`,  
-   `processor.inference_backend: openvino` (или `auto` после smoke),  
-   `processor.inference_device: intel:gpu`,  
-   `processor.binary_imgsz: 640` под экспорт.  
-   Путь к IR — **относительно `app/processor/`** или существующий абсолютный путь с реальным каталогом `*.xml`. Абсолютный путь вида `/app/app_config/models/…` без файлов даёт цикл падений процессора (`FileNotFoundError` в логах контейнера).
-4. Либо то же через **`app/.env`**: `BIRDLENSE_INFERENCE_DEVICE=intel:gpu`, при необходимости `BIRDLENSE_BINARY_OPENVINO_PATH=...`.
-5. Intel iGPU: деплой уже вызывает `docker-compose-intel-override-gen.sh` при наличии `renderD*`; нужны драйверы и рабочий `/dev/dri` в контейнере.
-6. Сравнение рамок со старым бинарником офлайн: `scripts/compare_detector_bboxes.py` (два `.pt`, те же ролики); полный пайплайн с треками: `scripts/benchmark-track-regen.py` с `--inference-backend` / `--inference-device`.
+1. ONNX-веса монтируются через volumes в `docker-compose.orin.yml`: `./processor/models/...:/app/processor/models/...`.
+2. `user_config.yaml` на устройстве: `inference_backend: onnxruntime`, `inference_device: cuda:0`, пути к `.onnx`.
+3. Либо через **`app/.env`**: `BIRDLENSE_INFERENCE_DEVICE=cuda:0`, `BIRDLENSE_INFERENCE_BACKEND=onnxruntime`.
 
-## YOLO «слепой», Frigate видит (VPS / кормушка)
+## Intel NUC (альтернативная платформа)
 
-**По умолчанию в `default_config.yaml`:** torch/cpu, unstick-трекер, `min_confidence_binary` 0.12, `merge_window_seconds` 12. Старый `user_config` с openvino/0.22 перекрывает дефолты — проверьте merge. Метрика: `recording_session_summary` → `yolo_frames_with_tracks` > 0. OpenVINO: **`user_config.openvino-intel.example.yaml`**. После смены **`app/.env`** — **`docker compose up -d --force-recreate birdlense`**.
+Intel NUC с OpenVINO: `export BIRDLENSE_PLATFORM=intel_nuc`, OpenVINO IR, Intel GPU override.  
+См. `deploy/profiles/intel-nuc/`.
+
+## YOLO «слепой», Frigate видит (Orin / VPS)
+
+**По умолчанию в `default_config.yaml`:** torch/cpu, unstick-трекер, `min_confidence_binary` 0.12, `merge_window_seconds` 12. На Orin: **`user_config.orin.example.yaml`**. После смены **`app/.env`** — **`docker compose -f docker-compose.yml -f docker-compose.orin.yml up -d --force-recreate birdlense`**.
 
 ## Политика агентов на prod VPS (2026-06-11)
 

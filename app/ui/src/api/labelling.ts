@@ -32,8 +32,6 @@ export type LabellingCase = {
   fallback_ratio: number | null;
   behavior_label?: string | null;
   behavior_confidence?: number | null;
-  behavior_shadow_label?: string | null;
-  behavior_shadow_confidence?: number | null;
   pre_approved?: boolean;
   suggested_species?: string | null;
   suggested_behavior?: string | null;

@@ -17,7 +17,6 @@ import InputLabel from '@mui/material/InputLabel';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
 import { BirdProfileFilterAutocomplete } from '../../components/filters/BirdProfileFilterAutocomplete';
-import { BehaviorFilterSelect } from '../../components/filters/BehaviorFilterSelect';
 import { CameraFilterMultiSelect } from '../../components/filters/CameraFilterMultiSelect';
 import { BirdProfilesCatalogDialog } from '../../components/BirdProfilesCatalogDialog';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
@@ -56,8 +55,6 @@ import { timelineHelpConfig } from '../../page-help-config';
 import { type TimeOfDay } from '../../utils/timeUtils';
 import {
   getVisitNickname,
-  getVisitBehaviorSortValue,
-  visitMatchesBehavior,
   visitMatchesBirdProfile,
   visitMatchesCameras,
   parseCameraIdsFromSearchParams,
@@ -105,8 +102,7 @@ type TimelineSortBy =
   | 'species'
   | 'nickname'
   | 'confidence'
-  | 'duration'
-  | 'behavior';
+  | 'duration';
 type TimelineTriggerSource =
   | 'all'
   | 'opencv'
@@ -191,9 +187,6 @@ export function TimelinePage() {
   const [birdProfileFilterId, setBirdProfileFilterId] = useState<number | null>(
     () => parseBirdProfileIdFromSearchParams(searchParams),
   );
-  const [behaviorFilter, setBehaviorFilter] = useState(
-    () => searchParams.get('behavior')?.trim() ?? '',
-  );
   const [cameraFilterIds, setCameraFilterIds] = useState<string[]>(() =>
     parseCameraIdsFromSearchParams(searchParams),
   );
@@ -238,20 +231,6 @@ export function TimelinePage() {
     [searchParams, setSearchParams],
   );
 
-  const updateBehaviorFilter = useCallback(
-    (behavior: string) => {
-      setBehaviorFilter(behavior);
-      const next = new URLSearchParams(searchParams);
-      if (behavior) {
-        next.set('behavior', behavior);
-      } else {
-        next.delete('behavior');
-      }
-      setSearchParams(next, { replace: true });
-    },
-    [searchParams, setSearchParams],
-  );
-
   const updateCameraFilter = useCallback(
     (cameraIds: string[]) => {
       setCameraFilterIds(cameraIds);
@@ -269,7 +248,6 @@ export function TimelinePage() {
 
   useEffect(() => {
     setBirdProfileFilterId(parseBirdProfileIdFromSearchParams(searchParams));
-    setBehaviorFilter(searchParams.get('behavior')?.trim() ?? '');
     setCameraFilterIds(parseCameraIdsFromSearchParams(searchParams));
   }, [searchParams]);
 
@@ -461,9 +439,6 @@ export function TimelinePage() {
       ) {
         return false;
       }
-      if (!visitMatchesBehavior(visit, behaviorFilter)) {
-        return false;
-      }
       if (!visitMatchesCameras(visit, cameraFilterIds)) {
         return false;
       }
@@ -501,18 +476,13 @@ export function TimelinePage() {
         const durDiff = getVisitDurationSeconds(b) - getVisitDurationSeconds(a);
         return durDiff !== 0 ? durDiff : bStart - aStart;
       }
-      const cmp = getVisitBehaviorSortValue(a).localeCompare(
-        getVisitBehaviorSortValue(b),
-        i18n.language,
-      );
-      return cmp !== 0 ? cmp : bStart - aStart;
+      return bStart - aStart;
     });
     return sorted;
   }, [
     selectedBySpeciesVisits,
     birdProfileFilterId,
     birdProfilesById,
-    behaviorFilter,
     cameraFilterIds,
     sortBy,
     i18n.language,
@@ -841,11 +811,6 @@ export function TimelinePage() {
                 </Tooltip>
               ) : null}
             </Stack>
-            <BehaviorFilterSelect
-              value={behaviorFilter}
-              onChange={updateBehaviorFilter}
-              sx={{ minWidth: { xs: '100%', md: 240 } }}
-            />
             <CameraFilterMultiSelect
               value={cameraFilterIds}
               onChange={updateCameraFilter}
@@ -895,9 +860,6 @@ export function TimelinePage() {
                 </MenuItem>
                 <MenuItem value="duration">
                   {t('timeline.sortDuration')}
-                </MenuItem>
-                <MenuItem value="behavior">
-                  {t('timeline.sortBehavior')}
                 </MenuItem>
               </Select>
             </FormControl>

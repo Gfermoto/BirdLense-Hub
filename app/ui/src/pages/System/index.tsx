@@ -16,7 +16,6 @@ import { SystemReadinessCard } from './SystemReadinessCard';
 import { DomainTrustCard } from './DomainTrustCard';
 import { SystemHero } from './SystemHero';
 import { RecognitionImprovementCard } from './RecognitionImprovementCard';
-import { BehaviorBaselineRetrainCard } from './BehaviorBaselineRetrainCard';
 import { DetectionQualityDashboardCard } from './DetectionQualityDashboardCard';
 import { YoloDetectorHealthCard } from './YoloDetectorHealthCard';
 import { TriggerGraphDashboardCard } from './TriggerGraphDashboardCard';
@@ -81,8 +80,8 @@ export const System: React.FC = () => {
   }, [location.hash]);
 
   React.useEffect(() => {
-    if (location.hash !== '#behavior-baseline-retrain') return;
-    const node = document.getElementById('behavior-baseline-retrain');
+    if (location.hash !== '#catalog-diagnostics') return;
+    const node = document.getElementById('catalog-diagnostics');
     if (!node) return;
     requestAnimationFrame(() => {
       node.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -138,12 +137,6 @@ export const System: React.FC = () => {
                 sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}
               >
                 <RecognitionImprovementCard />
-              </Box>
-              <Box
-                id="behavior-baseline-retrain"
-                sx={{ scrollMarginTop: { xs: 1, sm: 2 }, minWidth: 0 }}
-              >
-                <BehaviorBaselineRetrainCard />
               </Box>
               <MlRuntimeCard />
               <ConfigAuditCard simple={!isAdvanced} />

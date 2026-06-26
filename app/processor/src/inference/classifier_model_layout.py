@@ -17,10 +17,10 @@ def classifier_torch_rel_pt(variant: str) -> str:
 
 
 def resolve_birder_bundle_dir(weights_root: Path, variant: str, ref: Path | None = None) -> Path:
-    """Bundle dir with ``class_labels.txt`` — sibling of ``{variant}.pt``."""
+    """Bundle dir with ``class_labels.txt``."""
     if ref is not None and ref.is_dir():
         return ref
-    return weights_root / f"{variant}_openvino_model"
+    return weights_root / variant
 
 
 def resolve_birder_pt_path(weights_root: Path, variant: str, ref: Path | None = None) -> Path:

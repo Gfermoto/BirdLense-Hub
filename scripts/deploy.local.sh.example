@@ -81,22 +81,15 @@
 # Если без renderD* деплой не должен проходить как «полный GPU»: export BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=1
 
 # =============================================================================
-# Платформа (intel_nuc — дефолт; jetson_nano — aarch64 / torch)
+# Платформа (orin — дефолт; intel_nuc — x86 с OpenVINO)
 # =============================================================================
-# export BIRDLENSE_PLATFORM=intel_nuc   # по умолчанию, можно не задавать
-# export BIRDLENSE_PLATFORM=jetson_nano   # Jetson: Dockerfile.jetson + docker-compose.jetson.yml
+# export BIRDLENSE_PLATFORM=orin          # дефолт, можно не задавать
+# export BIRDLENSE_PLATFORM=intel_nuc     # Intel NUC: OpenVINO IR
 # Важно: make deploy запускается на dev-машине, но build образа выполняется на целевом хосте по SSH.
 # Камеры/go2rtc/mqtt берутся из app/app_config/user_config.yaml на сервере (user_config не перезаписывается rsync).
 # app/processor/models на сервере не должен меняться деплоем; проверяется только наличие нужных артефактов.
-# См. deploy/profiles/intel-nuc/ и deploy/profiles/jetson-nano/ (.env.example, config.overlay.yaml)
-# Пример Jetson:
-# Jetson Nano on site (LAN):
+# См. deploy/profiles/intel-nuc/ и deploy/profiles/orin/ (.env.example, config.overlay.yaml)
+# Пример Orin на площадке (LAN):
 # export DEPLOY_HOST="gfer@192.168.1.127"
 # export DEPLOY_URL="http://192.168.1.127:8085"
-# Jetson Nano remote (WAN):
-# export DEPLOY_HOST="gfer@185.218.111.196"
-# export DEPLOY_SSH_PORT="2224"
-# export DEPLOY_URL="http://185.218.111.196:8080"
-# export BIRDLENSE_PLATFORM=jetson_nano
-# export DEPLOY_SSH_PORT=22
-# export BIRDLENSE_PLATFORM=jetson_nano
+#

@@ -352,14 +352,4 @@ export const purgeNoSpeciesVideosBatch = async (
     limit: 500,
   });
 
-export type BehaviorBaselineRetrainResult = {
-  ok?: boolean;
-  export_path?: string;
-  n_training_videos?: number;
-  labels?: string[];
-  generated_at?: string;
-};
-
-export const startBehaviorBaselineRetrainFromHub =
-  async (): Promise<BehaviorBaselineRetrainResult> =>
-    postSystemAction('/system/behavior-baseline/retrain', {}) as Promise<BehaviorBaselineRetrainResult>;
+// ----------------------------------------------------------------

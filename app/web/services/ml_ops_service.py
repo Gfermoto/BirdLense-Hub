@@ -557,14 +557,6 @@ def build_dataset_streams_summary() -> tuple[dict[str, Any], int]:
             ],
         },
         {
-            "stream": "behavior",
-            "operations": [
-                "package_dataset_bundle",
-                "version_snapshot",
-                "export_to_community",
-            ],
-        },
-        {
             "stream": "reid",
             "operations": [
                 "package_dataset_bundle",
