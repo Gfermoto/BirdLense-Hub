@@ -57,14 +57,12 @@ export function useLabellingFeedbackMutation() {
     mutationFn: ({
       id,
       action,
-      behavior_tag,
       species_tag,
     }: {
       id: number;
-      action: 'confirm_behavior' | 'reject_box' | 'tag_species' | 'flag_semantic_error';
-      behavior_tag?: string;
+      action: 'reject_box' | 'tag_species' | 'flag_semantic_error';
       species_tag?: string;
-    }) => postLabellingFeedback(id, { action, behavior_tag, species_tag }),
+    }) => postLabellingFeedback(id, { action, species_tag }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.labelling.casesAll });
     },

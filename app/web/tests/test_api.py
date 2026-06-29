@@ -878,8 +878,8 @@ class TestTimeline:
         assert sc["weight_change_grams"] == 15.0
         assert sc["weight_trend"] == "up"
 
-    def test_timeline_visit_includes_nickname_and_model_behavior(self, app, client):
-        """Visit payload keeps individual nickname and model behavior label."""
+    def test_timeline_visit_includes_nickname(self, app, client):
+        """Visit payload keeps individual nickname."""
         from app_config.app_config import app_config
         from models import Species, SpeciesVisit, Video, VideoSpecies, db
         from services.http_response_cache import bust_response_caches
@@ -902,8 +902,6 @@ class TestTimeline:
                 start_time=datetime(2026, 3, 25, 15, 0, 0),
                 end_time=datetime(2026, 3, 25, 15, 0, 30),
                 video_path=f"data/recordings/2026/03/25/150002/identity_{id(app)}.mp4",
-                behavior_label="feeding",
-                behavior_confidence=0.88,
             )
             db.session.add_all([visit, video])
             db.session.flush()
@@ -932,8 +930,6 @@ class TestTimeline:
         )
         assert row is not None
         assert row.get("individual_nickname") == "Sparky"
-        labels = [e.get("label") for e in row.get("behavior_events") or []]
-        assert labels == ["feeding"]
         first_det = (row.get("detections") or [{}])[0]
         assert first_det.get("individual_nickname") == "Sparky"
 
@@ -968,8 +964,8 @@ class TestTimeline:
         assert unlinked and all(row["id"] < 0 for row in unlinked)
         assert all(row.get("detections") == [] for row in unlinked)
 
-    def test_timeline_unlinked_video_keeps_nickname_and_model_behavior(self, app, client):
-        """Unlinked video payload must keep nickname and model behavior contract parity."""
+    def test_timeline_unlinked_video_keeps_nickname(self, app, client):
+        """Unlinked video payload must keep nickname contract parity."""
         from datetime import datetime, timezone
         from models import Species, Video, VideoSpecies, db
         from services.http_response_cache import bust_response_caches
@@ -983,8 +979,6 @@ class TestTimeline:
                 processor_version="test",
                 start_time=st,
                 end_time=st.replace(minute=1),
-                behavior_label="feeding",
-                behavior_confidence=0.91,
                 trigger_source="opencv",
                 video_path=f"2026/03/24/160000/orphan_identity_{id(app)}.mp4",
             )
@@ -1025,8 +1019,6 @@ class TestTimeline:
         )
         assert row is not None
         assert row.get("individual_nickname") == "Nova"
-        labels = [e.get("label") for e in (row.get("behavior_events") or [])]
-        assert labels == ["feeding"]
         first_det = (row.get("detections") or [{}])[0]
         assert first_det.get("individual_nickname") == "Nova"
         assert first_det.get("detection_provider") == "yolo"
@@ -1907,8 +1899,8 @@ class TestVideos:
             app_config.set("general.settings_password", old_admin)
             app_config.set("general.contributor_password", old_contrib)
 
-    def test_patch_video_behavior_and_get_detail(self, app, client):
-        """PATCH behavior_label/confidence; GET detail includes behavior_* (#416)."""
+    def test_patch_video_favorite(self, app, client):
+        """PATCH favorite flag; GET detail includes it."""
         from datetime import datetime, timezone
 
         from app_config.app_config import app_config
@@ -1933,30 +1925,26 @@ class TestVideos:
 
             rp = client.patch(
                 f"/api/ui/videos/{vid}",
-                json={"behavior_label": "feeding", "behavior_confidence": 0.82},
+                json={"favorite": True},
             )
             assert rp.status_code == 200
             body = rp.get_json()
-            assert body.get("behavior_label") == "feeding"
-            assert abs(float(body.get("behavior_confidence") or 0) - 0.82) < 1e-6
+            assert body.get("favorite") is True
 
             rg = client.get(f"/api/ui/videos/{vid}")
             assert rg.status_code == 200
             detail = rg.get_json()
-            assert detail.get("behavior_label") == "feeding"
-            assert abs(float(detail.get("behavior_confidence") or 0) - 0.82) < 1e-6
+            assert detail.get("favorite") is True
 
-            rc = client.patch(f"/api/ui/videos/{vid}", json={"behavior_label": ""})
+            rc = client.patch(f"/api/ui/videos/{vid}", json={"favorite": False})
             assert rc.status_code == 200
             cleared = rc.get_json()
-            assert not cleared.get("behavior_label")
-            assert cleared.get("behavior_confidence") in (None, 0, 0.0)
+            assert cleared.get("favorite") is False
 
             rg2 = client.get(f"/api/ui/videos/{vid}")
             assert rg2.status_code == 200
             d2 = rg2.get_json()
-            assert not d2.get("behavior_label")
-            assert d2.get("behavior_confidence") in (None, 0, 0.0)
+            assert d2.get("favorite") is False
         finally:
             app_config.set("general.settings_password", old_admin)
             app_config.set("general.contributor_password", old_contrib)

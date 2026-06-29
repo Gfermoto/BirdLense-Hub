@@ -247,14 +247,6 @@ export const VisitCard = memo(function VisitCard({
       setSaveError(getApiErrorMessage(err, t('errors.loadSightings')));
     },
   });
-  const behaviorLabels = [
-    ...new Set(
-      (visit.behavior_events ?? [])
-        .map((e) => String(e.label || '').trim().toLowerCase())
-        .filter(Boolean),
-    ),
-  ];
-  const behaviorText = behaviorLabels.join(', ');
   const detections = visit.detections ?? [];
   const bestConfidence = detections.length
     ? Math.max(...detections.map((d) => Number(d.confidence) || 0))
@@ -317,12 +309,10 @@ export const VisitCard = memo(function VisitCard({
                 >
                   {visit.species.name}
                 </Typography>
-                {(nickname || behaviorText) && (
+                {(nickname) && (
                   <Box display="flex" alignItems="center" gap={0.5} flexWrap="wrap">
                     <Typography variant="body2" color="text.secondary">
                       {nickname ? `${t('video.nickname')}: ${nickname}` : ''}
-                      {nickname && behaviorText ? ' • ' : ''}
-                      {behaviorText ? `${t('video.behavior')}: ${behaviorText}` : ''}
                     </Typography>
                     {nickname && firstVideoDetectionId && canEdit ? (
                       <>

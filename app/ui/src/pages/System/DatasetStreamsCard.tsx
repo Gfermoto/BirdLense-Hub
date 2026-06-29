@@ -50,7 +50,7 @@ export function DatasetStreamsCard() {
     <SystemCardShell
       id="dataset-streams"
       title="Dataset streams"
-      description="Contracts and export policy for detector/classifier/behavior/ReID."
+      description="Contracts and export policy for detector/classifier/ReID."
       statusLabel={statusLabel(streams)}
       statusTone={payload.gate.ok ? 'success' : 'warning'}
     >

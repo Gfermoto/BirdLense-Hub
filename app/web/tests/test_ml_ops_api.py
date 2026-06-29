@@ -18,8 +18,6 @@ def test_video_action_events_endpoint_removed(app, client):
             start_time=datetime(2026, 4, 29, 10, 0, 0, tzinfo=timezone.utc),
             end_time=datetime(2026, 4, 29, 10, 1, 0, tzinfo=timezone.utc),
             video_path="data/recordings/actions/video.mp4",
-            behavior_label="feeding",
-            behavior_confidence=0.82,
         )
         db.session.add(video)
         db.session.commit()
@@ -100,7 +98,6 @@ def test_dataset_streams_summary_endpoint(client):
     body = r.get_json()
     assert body["schema"] == "dataset_streams_summary@v1"
     assert sorted(body["required_streams"]) == [
-        "behavior",
         "classifier",
         "detector",
         "reid",

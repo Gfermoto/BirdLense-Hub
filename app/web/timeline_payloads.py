@@ -43,28 +43,6 @@ def resolve_video_camera_id(session, video) -> str | None:
     return None
 
 
-def _model_behavior_events_from_video(video) -> list[dict]:
-    """Runtime behavior baseline persisted on Video (#416)."""
-    if not video:
-        return []
-    lab = getattr(video, "behavior_label", None) or ""
-    lab = str(lab).strip()
-    if not lab:
-        return []
-    conf = getattr(video, "behavior_confidence", None)
-    try:
-        c = max(0.0, min(1.0, float(conf))) if conf is not None else 0.0
-    except (TypeError, ValueError):
-        c = 0.0
-    return [
-        {
-            "label": lab,
-            "confidence": round(c, 4),
-            "evidence": {"reason": "classifier_runtime"},
-        }
-    ]
-
-
 def _infer_trigger_source_from_detections(detections: list[dict], *, preferred_trigger: str | None = None) -> str:
     """Best-effort trigger source for timeline semantics.
 
@@ -175,7 +153,6 @@ def format_visit_for_timeline(visit, *, session=None) -> dict:
         if vs.detection_provider:
             det["detection_provider"] = vs.detection_provider
         detections.append(det)
-    behavior_events = _model_behavior_events_from_video(video)
     return {
         "id": visit.id,
         "start_time": ensure_utc(visit.start_time).isoformat(),
@@ -199,7 +176,7 @@ def format_visit_for_timeline(visit, *, session=None) -> dict:
         "detections": detections,
         "individual_nickname": nickname,
         "bird_profile_id": bird_profile_id,
-        "behavior_events": behavior_events,
+        "behavior_events": [],
         "timeline_kind": "visit",
         "trigger_source": _infer_trigger_source_from_detections(
             detections,
@@ -284,7 +261,7 @@ def format_unlinked_video_for_timeline(video, *, fallback_species, session=None)
         "detections": detections,
         "individual_nickname": nickname,
         "bird_profile_id": bird_profile_id,
-        "behavior_events": _model_behavior_events_from_video(video),
+        "behavior_events": [],
         "timeline_kind": "unlinked_video",
         "trigger_source": _infer_trigger_source_from_detections(
             detections,

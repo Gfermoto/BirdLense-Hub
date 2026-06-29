@@ -17,8 +17,6 @@ def _seed(app):
             start_time=start,
             end_time=start + timedelta(seconds=20),
             video_path="/tmp/a.mp4",
-            behavior_label="alert",
-            behavior_confidence=0.96,
         )
         db.session.add_all([sp, video])
         db.session.flush()
@@ -63,7 +61,6 @@ def test_labelling_flow(client, app):
     first = body["items"][0]
     assert "pre_approved" in first
     assert "suggested_species" in first
-    assert "suggested_behavior" in first
     assert any((row.get("individual_nickname") == "Синичка Соня") for row in body["items"])
 
     rows_media_only = client.get("/api/ui/labelling/cases?status=all&with_media_only=1")
@@ -83,17 +80,17 @@ def test_labelling_flow(client, app):
 
     fb = client.post(
         f"/api/ui/labelling/cases/{first['id']}/feedback",
-        json={"action": "confirm_behavior", "behavior_tag": "feeding"},
+        json={"action": "tag_species", "species_tag": "Robin"},
     )
     assert fb.status_code == 200, fb.get_data(as_text=True)
-    assert fb.get_json()["action"] == "confirm_behavior"
+    assert fb.get_json()["action"] == "tag_species"
 
     batch = client.post(
         "/api/ui/labelling/batch-feedback",
         json={
             "operations": [
                 {"kind": "feedback", "case_id": first["id"], "action": "tag_species", "species_tag": "Robin"},
-                {"kind": "feedback", "case_id": first["id"], "action": "confirm_behavior", "behavior_tag": "feeding"},
+                {"kind": "feedback", "case_id": first["id"], "action": "tag_species", "species_tag": "Robin"},
                 {"kind": "status", "case_id": first["id"], "status": "approved"},
             ]
         },

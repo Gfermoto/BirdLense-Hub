@@ -70,8 +70,7 @@ export function ProcessorSection({ form, settingsTier = 'basic' }: Props) {
   const { t } = useTranslation();
   const location = useLocation();
   const expandProcessor =
-    location.hash === '#processor-models' ||
-    location.hash === '#processor-behavior';
+      location.hash === '#processor-models';
 
   return (
     <Accordion

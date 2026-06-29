@@ -20,7 +20,7 @@ _REASON_HARD_NEGATIVE = "hard_negative_ui"
 _REASON_HARD_POSITIVE = "hard_positive_ui"
 _REASON_UNKNOWN_CONFIRMED = "unknown_confirmed_ui"
 _ALLOWED_STATUS = {"pending", "approved", "rejected", "semantic_review_required"}
-_ALLOWED_FEEDBACK_ACTION = {"confirm_behavior", "reject_box", "tag_species", "flag_semantic_error"}
+_ALLOWED_FEEDBACK_ACTION = {"reject_box", "tag_species", "flag_semantic_error"}
 _ALLOWED_BATCH_OP = {"feedback", "status"}
 
 
@@ -364,10 +364,8 @@ def list_cases(*, status: str | None = None, limit: int = 100, with_media_only: 
         pre_approved = False
         if case.status == "pending":
             conf = float(case.confidence or 0.0)
-            beh_conf = float(getattr(video, "behavior_confidence", 0.0) or 0.0) if video else 0.0
-            pre_approved = conf >= 0.95 or beh_conf >= 0.95
+            pre_approved = conf >= 0.95
         suggested_species = species.name if species else None
-        suggested_behavior = (getattr(video, "behavior_label", None) if video else None)
         item = {
             "id": int(case.id),
             "created_at": case.created_at.astimezone(timezone.utc).isoformat() if case.created_at else None,
@@ -395,9 +393,6 @@ def list_cases(*, status: str | None = None, limit: int = 100, with_media_only: 
             "track_frames": track_frames,
             "pre_approved": pre_approved,
             "suggested_species": suggested_species,
-            "suggested_behavior": suggested_behavior,
-            "behavior_label": getattr(video, "behavior_label", None) if video else None,
-            "behavior_confidence": getattr(video, "behavior_confidence", None) if video else None,
         }
         if with_media_only:
             has_media = (
@@ -431,32 +426,19 @@ def apply_case_feedback(
     *,
     case_id: int,
     action: str,
-    behavior_tag: str | None = None,
     species_tag: str | None = None,
     commit: bool = True,
 ) -> dict[str, Any]:
     action_norm = str(action or "").strip().lower()
     if action_norm not in _ALLOWED_FEEDBACK_ACTION:
-        raise ValueError("action must be confirm_behavior|reject_box|tag_species|flag_semantic_error")
+        raise ValueError("action must be reject_box|tag_species|flag_semantic_error")
     row = db.session.get(ActiveLearningCase, int(case_id))
     if row is None:
         raise LookupError("case not found")
     payload = _parse_payload(row.payload_json)
     payload["last_feedback_action"] = action_norm
 
-    if action_norm == "confirm_behavior":
-        label = (str(behavior_tag or "").strip().lower() or payload.get("behavior_tag") or "").strip()
-        if not label:
-            raise ValueError("behavior_tag is required for confirm_behavior")
-        payload["behavior_tag"] = label
-        if row.video_id is not None:
-            video = db.session.get(Video, int(row.video_id))
-            if video is not None:
-                video.behavior_label = label[:32]
-                video.behavior_confidence = 1.0
-        row.status = "approved"
-
-    elif action_norm == "reject_box":
+    if action_norm == "reject_box":
         payload["localization_status"] = "rejected"
         if row.video_species_id is not None:
             vs = db.session.get(VideoSpecies, int(row.video_species_id))
@@ -537,7 +519,6 @@ def apply_batch_feedback(*, operations: list[dict[str, Any]]) -> dict[str, Any]:
                 apply_case_feedback(
                     case_id=case_id,
                     action=str(op.get("action") or ""),
-                    behavior_tag=op.get("behavior_tag"),
                     species_tag=op.get("species_tag"),
                     commit=False,
                 )

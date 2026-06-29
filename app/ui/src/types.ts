@@ -44,8 +44,6 @@ export interface SpeciesVisit {
   /** Re-ID nickname from backend visit payload when present (#390 UI). */
   individual_nickname?: string | null;
   bird_profile_id?: number | null;
-  /** Model-derived behavior events for this visit. */
-  behavior_events?: { label?: string }[];
   /** Trigger semantics for timeline filtering (opencv/frigate/motion_sensor/scales/unknown). */
   trigger_source?: string;
   /** Hub camera id (video.cameras[].id) when known. */
@@ -131,10 +129,6 @@ export interface Video {
     weight_change_grams?: number;
     weight_trend?: 'up' | 'down' | 'stable';
   } | null;
-  behavior_label?: string | null;
-  behavior_confidence?: number | null;
-  behavior_model_kind?: string | null;
-  behavior_model_version?: string | null;
 }
 
 /** См. OpenAPI `BirdFood`; для списка из API поля id/name/active приходят заполненными. */

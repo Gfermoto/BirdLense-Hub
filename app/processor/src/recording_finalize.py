@@ -715,10 +715,6 @@ def finalize_motion_recording(
         scales_evidence.update(scales_evidence_update)
         create_video_started_ts = time.perf_counter()
         resp = None
-        behavior_label_kw = None
-        behavior_conf_kw = None
-        behavior_model_kind = None
-        behavior_model_version = None
         try:
             from recording_session_manifest import (
                 mark_persist_failed,
@@ -735,10 +731,6 @@ def finalize_motion_recording(
                 video_path_for_api,
                 trigger_source=trigger_source,
                 scales_weight_delta_kg=scales_delta_kg,
-                behavior_label=behavior_label_kw,
-                behavior_confidence=behavior_conf_kw,
-                behavior_model_kind=behavior_model_kind,
-                behavior_model_version=behavior_model_version,
                 camera_id=session_camera_id,
             )
             video_id = response_video_id(resp)
@@ -966,7 +958,6 @@ def finalize_motion_recording(
             "fusion_duration_ms": fusion_duration_ms,
             "persist_duration_ms": persist_duration_ms,
             "scales_duration_ms": scales_duration_ms,
-            "behavior_duration_ms": behavior_duration_ms,
             "create_video_duration_ms": create_video_duration_ms,
             "create_video_ingest_timing_ms": create_video_ingest_timing_ms,
             "reid_enrich_duration_ms": reid_enrich_duration_ms,

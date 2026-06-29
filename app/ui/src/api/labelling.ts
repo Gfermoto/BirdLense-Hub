@@ -30,11 +30,8 @@ export type LabellingCase = {
   confidence: number | null;
   blind_score: number | null;
   fallback_ratio: number | null;
-  behavior_label?: string | null;
-  behavior_confidence?: number | null;
   pre_approved?: boolean;
   suggested_species?: string | null;
-  suggested_behavior?: string | null;
   payload: Record<string, unknown> | null;
 };
 
@@ -95,8 +92,7 @@ export const exportLabellingCases = async (
 export const postLabellingFeedback = async (
   id: number,
   body: {
-    action: 'confirm_behavior' | 'reject_box' | 'tag_species' | 'flag_semantic_error';
-    behavior_tag?: string;
+    action: 'reject_box' | 'tag_species' | 'flag_semantic_error';
     species_tag?: string;
   },
 ): Promise<{ id: number; status: LabellingCaseStatus; action: string }> =>
@@ -110,8 +106,7 @@ export type LabellingBatchOperation =
   | {
       kind: 'feedback';
       case_id: number;
-      action: 'confirm_behavior' | 'reject_box' | 'tag_species' | 'flag_semantic_error';
-      behavior_tag?: string;
+      action: 'reject_box' | 'tag_species' | 'flag_semantic_error';
       species_tag?: string;
     }
   | {

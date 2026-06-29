@@ -94,7 +94,6 @@ def register_ui_labelling_routes(app):
                 apply_case_feedback(
                     case_id=case_id,
                     action=str(body.get("action") or ""),
-                    behavior_tag=body.get("behavior_tag"),
                     species_tag=body.get("species_tag"),
                 ),
                 200,

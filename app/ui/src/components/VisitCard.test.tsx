@@ -20,7 +20,7 @@ vi.mock('../contexts/ProtectedAreaContext', () => ({
 }));
 
 describe('VisitCard', () => {
-  it('renders nickname and behavior labels when present', () => {
+  it('renders nickname when present', () => {
     const qc = new QueryClient();
     const visit: SpeciesVisit = {
       id: 1,
@@ -33,9 +33,6 @@ describe('VisitCard', () => {
         name: 'Great Tit',
       },
       individual_nickname: 'Nova',
-      behavior_events: [
-        { label: 'feeding' },
-      ],
       detections: [
         {
           id: 100,
@@ -57,9 +54,6 @@ describe('VisitCard', () => {
     );
 
     expect(screen.getByText(/Nova/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/(feeding|кормление)/i),
-    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
         name: /(Set nickname|Задать кличку|Unlink bird)/i,

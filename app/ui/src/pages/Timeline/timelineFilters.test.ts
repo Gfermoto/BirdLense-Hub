@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { SpeciesVisit } from '../../types';
 import {
   getVisitBirdProfileId,
-  visitMatchesBehavior,
   visitMatchesBirdProfile,
 } from './timelineFilters';
 
@@ -69,14 +68,5 @@ describe('timelineFilters', () => {
       ],
     });
     expect(getVisitBirdProfileId(visit)).toBe(12);
-  });
-
-  it('matches behavior by exact label', () => {
-    const visit = baseVisit({
-      behavior_events: [{ label: 'feeding' }],
-    });
-    expect(visitMatchesBehavior(visit, 'feeding')).toBe(true);
-    expect(visitMatchesBehavior(visit, 'flying')).toBe(false);
-    expect(visitMatchesBehavior(visit, '')).toBe(true);
   });
 });

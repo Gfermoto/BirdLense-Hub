@@ -488,7 +488,7 @@ def _dataset_contract_paths() -> tuple[Path, Path]:
 
 
 def build_dataset_streams_summary() -> tuple[dict[str, Any], int]:
-    """Expose detector/classifier/behavior/reid dataset stream contracts (#557)."""
+    """Expose detector/classifier/reid dataset stream contracts (#557)."""
     contract_file, latest_file = _dataset_contract_paths()
     contract_payload = _read_json_file(contract_file)
     latest_payload = _read_json_file(latest_file)

@@ -66,7 +66,6 @@ class TestFinalizeTransactionRollback(unittest.TestCase):
                     "processor.min_confidence_to_process": 0.12,
                     "detection.yolo_blind_score_threshold": 0.7,
                     "detection.track_first_gate_enabled": True,
-                    "processor.behavior_recognition": {},
                 }.get(key, default)
                 mock_cfg.config = {}
                 finalize_motion_recording(

@@ -137,11 +137,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "OpenVINO classifier bundle path is deployment-specific and managed server-side.",
         "next_step": "Keep hidden from Settings form; surface only backend selector in UI.",
     },
-    "processor.models.behavior_openvino": {
-        "category": "ops-only",
-        "reason": "Behavior OpenVINO bundle path is deployment-specific.",
-        "next_step": "Same policy as binary_openvino; not in Settings form.",
-    },
     "processor.openvino_binary_track_ultralytics_conf": {
         "category": "advanced",
         "reason": "OpenVINO-only YOLO.track(conf) floor cap; compensates OV vs torch score gap without a second inference.",
@@ -1040,46 +1035,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
     },
     "processor.background_subtraction_warmup_frames": {
         "category": "advanced",
-        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
-        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
-    },
-    "processor.behavior_recognition.active_video_model": {
-        "category": "ops-only",
-        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
-        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
-    },
-    "processor.behavior_recognition.canary_log_discrepancies": {
-        "category": "ops-only",
-        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
-        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
-    },
-    "processor.behavior_recognition.engine": {
-        "category": "ops-only",
-        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
-        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
-    },
-    "processor.behavior_recognition.video_confidence_store_min": {
-        "category": "ops-only",
-        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
-        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
-    },
-    "processor.behavior_recognition.video_model_kind": {
-        "category": "ops-only",
-        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
-        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
-    },
-    "processor.behavior_recognition.video_model_version": {
-        "category": "ops-only",
-        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
-        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
-    },
-    "processor.behavior_recognition.video_openvino_path": {
-        "category": "ops-only",
-        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
-        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
-    },
-    "processor.behavior_recognition.video_weights_path": {
-        "category": "ops-only",
         "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
         "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
     },

@@ -109,7 +109,7 @@ const MediaCanvas: React.FC<{
         tracks={[
           {
             id: `case-${item.id}`,
-            label: `${item.species_name || t('labelling.labels.speciesUnknown')}${item.individual_nickname ? ` • ${item.individual_nickname}` : ''} (${Math.round((item.confidence || 0) * 100)}%)${item.behavior_label || item.suggested_behavior ? ` • ${item.behavior_label || item.suggested_behavior}` : ''}`,
+            label: `${item.species_name || t('labelling.labels.speciesUnknown')}${item.individual_nickname ? ` • ${item.individual_nickname}` : ''} (${Math.round((item.confidence || 0) * 100)}%)`,
             color: item.status === 'approved' ? '#22c55e' : item.status === 'rejected' ? '#ef4444' : '#eab308',
             frames: (() => {
               const rows = (item.track_frames || [])
@@ -314,7 +314,6 @@ export const LabellingPage: React.FC = () => {
                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
                   <Typography variant="body1"><strong>{t('labelling.meta.species')}:</strong> {current.species_name || current.suggested_species || '-'}</Typography>
                   <Typography variant="body1"><strong>{t('labelling.meta.nickname')}:</strong> {current.individual_nickname || '-'}</Typography>
-                  <Typography variant="body1"><strong>{t('labelling.meta.behavior')}:</strong> {current.behavior_label || current.suggested_behavior || '-'}</Typography>
                 </Stack>
                 <Stack direction="row" spacing={1}>
                   <Button size="small" variant={viewMode === 'snapshot' ? 'contained' : 'outlined'} onClick={() => setViewMode('snapshot')}>

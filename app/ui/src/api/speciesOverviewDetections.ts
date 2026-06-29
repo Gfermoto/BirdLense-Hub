@@ -278,14 +278,12 @@ export type BirdProfileSummary = {
   first_seen?: string | null;
   last_seen?: string | null;
   top_species: Array<{ name: string; count: number }>;
-  top_behaviors: Array<{ label: string; count: number }>;
   recent_detections: Array<{
     detection_id: number;
     video_id: number;
     species_name?: string | null;
     confidence: number;
     individual_nickname?: string | null;
-    behavior_label?: string | null;
   }>;
 };
 

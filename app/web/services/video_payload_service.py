@@ -93,21 +93,6 @@ def build_video_detail_dict(video) -> dict:
         "food": [{"id": bf.id, "name": bf.name, "image_url": bf.image_url} for bf in video.food],
         "scales": video_scales_estimate_payload(video),
     }
-    bl = getattr(video, "behavior_label", None)
-    if bl:
-        out["behavior_label"] = str(bl).strip()
-    bc = getattr(video, "behavior_confidence", None)
-    if bc is not None:
-        try:
-            out["behavior_confidence"] = round(float(bc), 6)
-        except (TypeError, ValueError):
-            pass
-    mk = getattr(video, "behavior_model_kind", None)
-    if mk:
-        out["behavior_model_kind"] = str(mk).strip()
-    mv = getattr(video, "behavior_model_version", None)
-    if mv:
-        out["behavior_model_version"] = str(mv).strip()
     return out
 
 

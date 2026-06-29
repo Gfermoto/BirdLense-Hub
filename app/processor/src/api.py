@@ -103,10 +103,6 @@ class API:
         video_path,
         trigger_source=None,
         scales_weight_delta_kg=None,
-        behavior_label=None,
-        behavior_confidence=None,
-        behavior_model_kind=None,
-        behavior_model_version=None,
         camera_id=None,
     ):
         # Fields to exclude from API payload (non-serializable or internal)
@@ -130,17 +126,6 @@ class API:
             video_data["camera_id"] = str(camera_id).strip()[:64]
         if scales_weight_delta_kg is not None:
             video_data["scales_weight_delta_kg"] = float(scales_weight_delta_kg)
-        if behavior_label is not None and str(behavior_label).strip():
-            video_data["behavior_label"] = str(behavior_label).strip()[:32]
-            if behavior_confidence is not None:
-                try:
-                    video_data["behavior_confidence"] = float(behavior_confidence)
-                except (TypeError, ValueError):
-                    pass
-        if behavior_model_kind is not None and str(behavior_model_kind).strip():
-            video_data["behavior_model_kind"] = str(behavior_model_kind).strip()[:32]
-        if behavior_model_version is not None and str(behavior_model_version).strip():
-            video_data["behavior_model_version"] = str(behavior_model_version).strip()[:96]
         response = self._send_request(
             "POST",
             "videos",

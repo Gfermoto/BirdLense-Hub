@@ -118,8 +118,6 @@ export const fetchNearestRecordingDay = async (
 /** Mark recording as favorite (retention may skip it when protect favorites is on). Contributor/admin. */
 export type PatchVideoRecordingBody = {
   favorite?: boolean;
-  behavior_label?: string | null;
-  behavior_confidence?: number | null;
 };
 
 export const patchVideoRecording = async (
