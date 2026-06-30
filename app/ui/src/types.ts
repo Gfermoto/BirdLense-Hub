@@ -437,7 +437,7 @@ export interface Settings {
     go2rtc_password?: string;
     /** jetson (NVENC на Orin) | cpu (libx264) — кодек для записи видео. */
     encoding?: string;
-    /** При encoding=intel: true — h264_vaapi для файла записи; false — libx264 (стабильнее на части iGPU). */
+    /** true — аппаратное кодирование записи (NVENC на Orin/jetson); false — libx264 (CPU). */
     record_with_vaapi?: boolean;
     /** auto | opencv | ffmpeg_nvmpi — live capture path for motion/detection. */
     capture_backend?: 'auto' | 'opencv' | 'ffmpeg_nvmpi' | string;

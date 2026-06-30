@@ -270,14 +270,16 @@ def setup_processor_media(
                 (i for i, c in enumerate(cameras) if c["id"] == camera_id),
                 0,
             )
-            encoding = (app_config.get("video.encoding") or "cpu").strip().lower()
-            if encoding not in ("cpu", "intel"):
-                encoding = "cpu"
+            encoding = (app_config.get("video.encoding") or "jetson").strip().lower()
+            if encoding in ("orin", "nvenc"):
+                encoding = "jetson"
+            if encoding not in ("cpu", "jetson"):
+                encoding = "jetson"
             rcodec = (app_config.get("video.record_stream_codec") or "h264").strip().lower()
             if rcodec not in ("h264", "copy"):
                 rcodec = "h264"
             capture_backend = (app_config.get("video.capture_backend") or "auto").strip().lower()
-            if capture_backend not in ("auto", "opencv", "ffmpeg_vaapi"):
+            if capture_backend not in ("auto", "opencv", "ffmpeg_nvmpi"):
                 capture_backend = "auto"
             single_rtsp_read = parse_single_rtsp_read_flag(app_config)
             rwv = app_config.get("video.record_with_vaapi")

@@ -9,6 +9,41 @@ import psutil
 from app_config.app_config import app_config
 
 
+def _normalize_encoding_setting(raw: str | None) -> str:
+    value = (raw or "jetson").strip().lower()
+    if value in ("jetson", "nvenc", "nvmpi", "orin"):
+        return "jetson"
+    return "cpu"
+
+
+def _platform_id() -> str:
+    return (os.environ.get("BIRDLENSE_PLATFORM") or "orin").strip().lower()
+
+
+def _nvidia_gpu_percent() -> float | None:
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+        if result.returncode != 0:
+            return None
+        line = (result.stdout or "").strip().splitlines()[0].strip()
+        if not line or line.upper() == "N/A":
+            return None
+        val = float(line)
+        return round(val, 1) if 0 <= val <= 100 else None
+    except (OSError, ValueError, subprocess.TimeoutExpired, IndexError):
+        return None
+
+
 def collect_live_system_metrics(app):
     """Мгновенный снимок: CPU, память, диск, GPU."""
     try:
