@@ -27,7 +27,7 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
       - BIRDLENSE_ENCODING=orin
-      - BIRDLENSE_CAPTURE_BACKEND=ffmpeg_nvmpi
+      - BIRDLENSE_CAPTURE_BACKEND=${BIRDLENSE_CAPTURE_BACKEND:-auto}
     volumes:
       - ./processor/models/detection/trapper_ai_v02_2024:/app/processor/models/detection/trapper_ai_v02_2024
       - ./processor/models/welfare/ornimetrics:/app/processor/models/welfare/ornimetrics
