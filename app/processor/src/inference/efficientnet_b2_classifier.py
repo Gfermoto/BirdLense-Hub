@@ -309,7 +309,7 @@ def load_efficientnet_b2_classifier(
         min_conf = float(min_confidence)
     infer_device = device
     if infer_device is None and app_config is not None:
-        infer_device = str(app_config.get("processor.classifier_inference_device") or "CPU")
+        infer_device = str(app_config.get("processor.classifier_inference_device") or "cuda:0")
     return EfficientNetB2Classifier(
         weights_dir=weights_dir,
         backend=backend,

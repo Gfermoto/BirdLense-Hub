@@ -2042,7 +2042,7 @@
     "encodingUsed": "Сейчас",
     "encodingCpu": "CPU",
     "encodingVaapi": "Intel GPU (VA-API)",
-    "encodingGpuUnavailable": "В настройках выбран Intel GPU, но устройство недоступно в контейнере. Добавьте devices в compose (см. docker-compose.intel.example.yml).",
+    "encodingGpuUnavailable": "В настройках выбран аппаратный энкодер, но устройство недоступно в контейнере. Проверьте runtime: nvidia и devices в compose.",
     "processorMqtt": "MQTT процессора (внешние события/BirdNET)",
     "gpu": "GPU",
     "gpuNoData": "Нет данных по загрузке GPU (ни sysfs, ни опрос Intel). Если запись с Intel не идёт — в Настройках → Видео выберите CPU.",

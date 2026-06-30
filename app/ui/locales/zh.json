@@ -1810,7 +1810,7 @@
     "encodingUsed": "使用中",
     "encodingCpu": "中央处理器",
     "encodingVaapi": "英特尔 GPU (VA-API)",
-    "encodingGpuUnavailable": "在设置中选择了 Intel GPU，但该设备在容器中不可用。添加要撰写的设备（请参阅 docker-compose.intel.example.yml）。",
+    "encodingGpuUnavailable": "设置中选择了硬件编码器，但设备在容器中不可用。请检查 runtime: nvidia 和 compose 中的 devices。",
     "processorMqtt": "处理器 MQTT (Frigate/BirdNET)",
     "gpu": "图形处理器",
     "gpuNoData": "无 GPU 负载数据（sysfs 和 Intel 探针不可用）。如果 Intel 录制失败，请在“设置”→“视频”中切换到 CPU。",

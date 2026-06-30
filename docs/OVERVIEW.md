@@ -36,7 +36,7 @@ IP-камера → RTSP → BirdLense Hub
 | Компонент | Модель | Путь |
 |-----------|--------|------|
 | Детектор | Trapper AI v02 2024 (YOLO) | `models/detection/trapper_ai_v02_2024/` |
-| Классификатор | Birder ConvNeXt EU-707 (birder_eu) | `birder package` |
+| Классификатор | Birder ConvNeXt EU-707 (birder_eu) | `models/classification/convnext_v2_tiny_eu-common256px/` |
 | ReID | Ornimetrics reid_embedder | `models/reid/ornimetrics/` |
 | Welfare | Ornimetrics embedder + scorer | `models/welfare/ornimetrics/` |
 | Трекер | ByteTrack unstick | — |

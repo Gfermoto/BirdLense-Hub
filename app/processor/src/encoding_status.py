@@ -1,4 +1,4 @@
-"""Shared status for recording encoding (CPU vs VA-API). Used by heartbeat."""
+"""Shared status for recording encoding. Used by heartbeat (jetson NVENC or cpu)."""
 
 _last_encoding_used = None  # "cpu" | "vaapi" | "x264_cpu" | "v4l2m2m" | "omx"
 

@@ -403,7 +403,7 @@ def _preflight_config_safety(app_config_get) -> dict:
                 else "ok"
             ),
             "severity": "warning",
-            "message": "Detector on Intel device with CPU video encoding may hide regressions in split runtime path.",
+            "message": "Detector on GPU with CPU video encoding may hide regressions in split runtime path.",
         }
     )
     checks.append(

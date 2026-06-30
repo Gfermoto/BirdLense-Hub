@@ -11,11 +11,9 @@ from app_config.app_config import app_config
 
 
 def _normalize_encoding_setting(raw: str | None) -> str:
-    value = (raw or "cpu").strip().lower()
-    if value in ("jetson", "nvenc", "nvmpi"):
+    value = (raw or "jetson").strip().lower()
+    if value in ("jetson", "nvenc", "nvmpi", "orin"):
         return "jetson"
-    if value == "intel":
-        return "intel"
     return "cpu"
 
 

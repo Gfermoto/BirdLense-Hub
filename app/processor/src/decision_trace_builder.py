@@ -122,7 +122,7 @@ def _policy_snapshot(app_config) -> dict[str, Any]:
         "inference_backend": str(_get("processor.inference_backend", "auto") or "auto"),
         "classifier_inference_backend": str(_get("processor.classifier_inference_backend", "auto") or "auto"),
         "inference_device": str(_get("processor.inference_device", "auto") or "auto"),
-        "video_encoding": str(_get("video.encoding", "cpu") or "cpu"),
+        "video_encoding": str(_get("video.encoding", "jetson") or "jetson"),
         "video_capture_backend": str(_get("video.capture_backend", "auto") or "auto"),
         "reid_runtime_enabled": bool(_get("processor.reid.runtime_enabled", True)),
         "reid_device": str(_get("processor.reid.device", "auto") or "auto"),

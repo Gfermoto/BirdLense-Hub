@@ -1,7 +1,7 @@
 """
-Go2RTC stream source for x86/Docker deployment.
-Reads video from RTSP/HLS URL (Go2RTC), supports auto-reconnect, recording via FFmpeg.
-Encoding: cpu (copy), intel (VA-API), or jetson (GStreamer NVMPI on Jetson NVDEC).
+Go2RTC stream source for Orin (ARM64 Docker).
+Reads video from RTSP/HLS URL (Go2RTC), supports auto-reconnect, recording via FFmpeg/GStreamer.
+Encoding: jetson (GStreamer NVDEC/NVENC on Orin) or cpu (software fallback).
 """
 
 import glob
@@ -434,7 +434,7 @@ class Go2RTCStreamSource:
         self._encoding_mode = (encoding_mode or "jetson").strip().lower()
         if self._encoding_mode in ("orin", "nvenc"):
             self._encoding_mode = "jetson"
-        if self._encoding_mode not in ("cpu", "intel", "jetson"):
+        if self._encoding_mode not in ("cpu", "jetson"):
             self._encoding_mode = "jetson"
         rsc = (record_stream_codec or "h264").strip().lower()
         self._record_stream_codec = rsc if rsc in ("h264", "copy") else "h264"
