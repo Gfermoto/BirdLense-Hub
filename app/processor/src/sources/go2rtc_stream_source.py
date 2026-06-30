@@ -186,6 +186,37 @@ def _ffmpeg_has_omx() -> bool:
         return False
 
 
+def _ffmpeg_has_nvenc() -> bool:
+    """Check if ffmpeg has h264_nvenc (NVIDIA NVENC, Orin Docker / desktop)."""
+    try:
+        out = subprocess.run(
+            ["ffmpeg", "-encoders"], capture_output=True, timeout=5,
+        ).stdout.decode()
+        return "h264_nvenc" in out
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return False
+
+
+def _gst_jetson_record_available() -> bool:
+    """GStreamer NVMM record path (L4T native Jetson, not generic CUDA Docker)."""
+    try:
+        out = subprocess.run(
+            ["gst-inspect-1.0", "nvv4l2decoder"],
+            capture_output=True,
+            timeout=5,
+        )
+        if out.returncode != 0:
+            return False
+        out2 = subprocess.run(
+            ["gst-inspect-1.0", "omxh264enc"],
+            capture_output=True,
+            timeout=5,
+        )
+        return out2.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return False
+
+
 def _libx264_record_args() -> list[str]:
     """Standard libx264 recording args (CPU)."""
     return [
@@ -274,6 +305,19 @@ def _ffmpeg_record_cmd(
                 "h264_omx",
                 "-b:v",
                 "2M",
+            ]
+        elif _ffmpeg_has_nvenc():
+            cmd += [
+                "-hwaccel",
+                "cuda",
+                "-hwaccel_output_format",
+                "cuda",
+                "-c:v",
+                "h264_nvenc",
+                "-b:v",
+                "2M",
+                "-preset",
+                "p4",
             ]
         else:
             cmd += _libx264_record_args()
@@ -974,7 +1018,7 @@ class Go2RTCStreamSource:
         if use_vaapi and not self._vaapi_record_available:
             use_vaapi = False
         use_jetson = self._encoding_mode == "jetson"
-        if use_jetson and self._record_stream_codec == "h264":
+        if use_jetson and self._record_stream_codec == "h264" and _gst_jetson_record_available():
             cmd = _gst_record_cmd(self.stream_url, output)
             backend_label = "GStreamer OMX (Jetson NVENC)"
         else:
@@ -985,15 +1029,20 @@ class Go2RTCStreamSource:
                 record_stream_codec=self._record_stream_codec,
                 encoding_mode=self._encoding_mode,
             )
-            backend_label = "VA-API" if use_vaapi else "CPU"
+            if use_jetson and self._record_stream_codec == "h264" and _ffmpeg_has_nvenc():
+                backend_label = "FFmpeg NVENC (CUDA)"
+            else:
+                backend_label = "VA-API" if use_vaapi else "CPU"
         try:
             from encoding_status import set_last_encoding_used
 
             if use_vaapi:
                 self._recording_used_vaapi = True
                 set_last_encoding_used("vaapi")
-            elif use_jetson and self._record_stream_codec == "h264":
+            elif use_jetson and self._record_stream_codec == "h264" and _gst_jetson_record_available():
                 set_last_encoding_used("omx")
+            elif use_jetson and self._record_stream_codec == "h264" and _ffmpeg_has_nvenc():
+                set_last_encoding_used("nvenc")
             elif self._record_stream_codec == "h264" and not use_vaapi:
                 set_last_encoding_used("x264_cpu")
             else:

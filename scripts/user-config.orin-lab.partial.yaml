@@ -22,7 +22,7 @@ welfare:
   scorer_path: models/welfare/ornimetrics/welfare_scorer.npz
 video:
   encoding: jetson
-  capture_backend: ffmpeg_nvmpi
+  capture_backend: auto
   record_with_vaapi: false
   force_recording_resolution: true
   video_width: 2688

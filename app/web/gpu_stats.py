@@ -171,6 +171,9 @@ def get_intel_gpu_percent() -> float | None:
     Загрузка Intel GPU в % (0–100).
     Сначала DRM fdinfo (быстро, Gen 12+). При неудаче — intel_gpu_top (Gen 1–11).
     """
+    platform = (os.environ.get("BIRDLENSE_PLATFORM") or "").strip().lower()
+    if platform in ("orin", "jetson"):
+        return None
     fdinfo_pct = _fdinfo_percent()
     if fdinfo_pct is not None:
         return fdinfo_pct

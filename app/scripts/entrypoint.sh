@@ -16,7 +16,14 @@ if [ "$(id -u)" = "0" ]; then
   fi
   chown -R birdlense:birdlense /app/data /app/app_config 2>/dev/null || true
   chmod -R a+rX /app/processor/models/ 2>/dev/null || true
-  exec gosu birdlense /bin/bash "$0" "$@"
+  # Orin (privileged Jetson): gosu drops Linux caps — CUDA EP returns 801 for non-root.
+  _orin_keep_root="${BIRDLENSE_ORIN_KEEP_ROOT:-1}"
+  case "${_orin_keep_root}" in 1|true|TRUE|yes|YES|on|ON) _orin_keep_root=1 ;; *) _orin_keep_root=0 ;; esac
+  if [ "${BIRDLENSE_PLATFORM:-orin}" = "orin" ] && [ "$_orin_keep_root" = "1" ]; then
+  : # stay root for ONNX CUDA / NVENC in privileged container
+  else
+    exec gosu birdlense /bin/bash "$0" "$@"
+  fi
 fi
 
 # Orin: nvidia pip wheels (cublas/cudnn) must be on LD_LIBRARY_PATH for ONNX Runtime CUDA EP.

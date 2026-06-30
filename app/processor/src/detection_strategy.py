@@ -604,7 +604,11 @@ class TwoStageStrategy(DetectionStrategy):
         self.inference_backend = (inference_backend or "torch").strip().lower()
         self.classifier_inference_backend = (classifier_inference_backend or "torch").strip().lower()
         _dev = (binary_inference_device or "").strip()
-        self._binary_track_device: str | None = _dev or None
+        # Ultralytics YOLO(.onnx): ORT owns GPU; torch CUDA device breaks warmup on Jetson Docker.
+        if self.inference_backend == "onnxruntime":
+            self._binary_track_device = None
+        else:
+            self._binary_track_device = _dev or None
         _cls_dev = (classifier_inference_device or "").strip()
         self._classifier_predict_device: str | None = _cls_dev or None
         self.weight_contract_mode = (weight_contract_mode or "warn").strip().lower()
