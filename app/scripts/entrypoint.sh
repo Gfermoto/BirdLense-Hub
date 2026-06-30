@@ -101,7 +101,7 @@ mkdir -p /app/data/file_test
 mkdir -p /tmp/nginx-client-body /tmp/nginx-proxy /tmp/nginx-fastcgi /tmp/nginx-uwsgi /tmp/nginx-scgi
 
 # =============================================================================
-# SECTION 4 — Gunicorn (FastAPI on 127.0.0.1:8000)
+# SECTION 4 — Gunicorn (Flask on 127.0.0.1:8000)
 # =============================================================================
 GUNICORN_THREADS="${GUNICORN_THREADS:-16}"
 # processor/src — пакет inference (ml_lineage_service, processor_*); см. archive/internal/docs-legacy/RUNTIME_COUPLING.md

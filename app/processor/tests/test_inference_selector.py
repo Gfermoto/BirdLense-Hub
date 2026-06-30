@@ -168,7 +168,13 @@ class TestInferenceSelector(unittest.TestCase):
         from inference.selector import assert_backend_supported
 
         with self.assertRaises(NotImplementedError):
-            assert_backend_supported("onnxruntime")
+            assert_backend_supported("nonexistent_dummy")
+
+    def test_assert_openvino_is_unsupported(self):
+        from inference.selector import assert_backend_supported
+
+        with self.assertRaises(NotImplementedError):
+            assert_backend_supported("openvino")
 
     def test_onnx_alias_resolves_to_onnxruntime(self):
         from inference.selector import assert_backend_supported, resolve_inference_backend

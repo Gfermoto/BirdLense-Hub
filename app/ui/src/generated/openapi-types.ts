@@ -8797,7 +8797,7 @@ export interface components {
                 used?: number;
                 percent?: number;
             };
-            /** @description Video encoding setting (cpu or intel); hints whether GPU chart may apply. */
+            /** @description Video encoding (orin/jetson for NVIDIA NVENC; always HW on Orin). */
             encoding?: string;
             gpu_percent?: number | null;
         };

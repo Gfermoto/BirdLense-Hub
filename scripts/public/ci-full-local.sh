@@ -225,12 +225,12 @@ trap cleanup_stack EXIT
 
 log "Веса processor (при необходимости)"
 for attempt in 1 2 3; do
-  if "${ROOT}/scripts/fetch-processor-weights.sh"; then
+  if "${ROOT}/scripts/fetch-processor-models-orin.sh"; then
     break
   fi
   sleep $((attempt * 10))
   if [[ "${attempt}" -eq 3 ]]; then
-    echo "fetch-processor-weights.sh: не удалось после 3 попыток" >&2
+    echo "fetch-processor-models-orin.sh: не удалось после 3 попыток" >&2
     exit 1
   fi
 done

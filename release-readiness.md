@@ -4,7 +4,7 @@
 
 - [ ] No hardcoded tokens/passwords in tracked files
 - [ ] No private IPs/hosts leaked in user-facing docs
-- [ ] `SECURITY.md` and disclosure path are up to date
+- [ ] `release-readiness.md` checklist is current for Orin-only platform
 - [ ] `gitleaks` scan is clean
 
 ## Repository hygiene
