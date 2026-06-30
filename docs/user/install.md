@@ -28,7 +28,7 @@ sudo systemctl restart docker
 ```bash
 git clone <url> /home/birdlense/hub
 cd /home/birdlense/hub
-git checkout orin
+git checkout dev
 ```
 
 ## Шаг 3: Модели
@@ -37,9 +37,7 @@ git checkout orin
 
 ```bash
 mkdir -p app/processor/models/detection/trapper_ai_v02_2024
-mkdir -p app/processor/models/detection/trapper_ai_v02_2024
-  mkdir -p app/processor/models/reid/ornimetrics
-  mkdir -p app/processor/models/welfare/ornimetrics
+mkdir -p app/processor/models/classification/convnext_v2_tiny_eu-common256px
 mkdir -p app/processor/models/reid/ornimetrics
 mkdir -p app/processor/models/welfare/ornimetrics
 ```

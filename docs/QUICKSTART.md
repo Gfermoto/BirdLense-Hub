@@ -6,7 +6,7 @@ git clone <url> /home/birdlense/hub
 cd /home/birdlense/hub
 
 # 2. Переключиться на ветку Orin
-git checkout orin
+git checkout dev
 
 # 3. Создать .env из шаблона
 cp app/.env.example app/.env

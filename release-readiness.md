@@ -4,7 +4,7 @@
 
 - [ ] No hardcoded tokens/passwords in tracked files
 - [ ] No private IPs/hosts leaked in user-facing docs
-- [ ] `SECURITY.md` and disclosure path are up to date
+- [ ] `RELEASE_STRATEGY.md` and disclosure path are up to date
 - [ ] `gitleaks` scan is clean
 
 ## Repository hygiene
@@ -16,9 +16,8 @@
 ## Build and runtime
 
 - [ ] `bash scripts/public/ci-full-local.sh` passes (или целевой CI gate репозитория)
-- [ ] `make verify-prod-env` passes with deployment `.env`
-- [ ] `./install.sh --dry-run` passes
-- [ ] Fresh install validated on clean machine
+- [ ] `./install.sh --dry-run --gpu nvidia` passes
+- [ ] Fresh install validated on clean Orin
 
 ## Deployment
 

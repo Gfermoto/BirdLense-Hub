@@ -24,7 +24,7 @@ make build && make start
 | `make logs` | Логи |
 | `make verify` | Health check |
 
-Подробнее: [`docs/QUICKSTART.md`](../docs/QUICKSTART.md) · [`docs/INSTALL.md`](../docs/INSTALL.md)
+Подробнее: [Быстрый старт](../docs/QUICKSTART.md) · [Установка](../docs/user/install.md)
 
 ## Структура
 

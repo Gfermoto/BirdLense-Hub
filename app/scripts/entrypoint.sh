@@ -129,14 +129,14 @@ if ! curl -sf --max-time 120 http://127.0.0.1:8000/api/ui/health >/dev/null; the
 fi
 
 # =============================================================================
-# SECTION 7 — Optional MCP (127.0.0.1:8001)
+# SECTION 6 — Optional MCP (127.0.0.1:8001)
 # =============================================================================
 if python3 /app/scripts/check_mcp_enabled.py 2>/dev/null; then
   PYTHONPATH=/app python3 /app/web/birdlense_mcp.py --transport streamable-http --port 8001 --host 127.0.0.1 &
 fi
 
 # =============================================================================
-# SECTION 8 — Optional daily Re-ID SSL scheduler (inside container only)
+# SECTION 7 — Optional daily Re-ID SSL scheduler (inside container only)
 # =============================================================================
 is_true() {
   case "${1:-}" in
@@ -186,7 +186,7 @@ if is_true "${BIRDLENSE_REID_SSL_DAILY_ENABLED:-0}"; then
 fi
 
 # =============================================================================
-# SECTION 9 — Processor supervisor loop
+# SECTION 8 — Processor supervisor loop
 # =============================================================================
 if [ "${BIRDLENSE_PROCESSOR_ENABLED:-1}" = "0" ]; then
   echo "Processor loop disabled by BIRDLENSE_PROCESSOR_ENABLED=0"

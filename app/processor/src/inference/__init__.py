@@ -18,6 +18,3 @@ if sys.version_info >= (3, 7):
         "resolve_classifier_inference_device",
         "resolve_inference_device",
     ]
-else:
-    # Jetson TRT worker (python3.6): selector uses py3.7+ syntax.
-    __all__ = []

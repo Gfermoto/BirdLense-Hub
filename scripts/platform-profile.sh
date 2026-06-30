@@ -31,5 +31,5 @@ birdlense_platform_dockerfile() {
 }
 
 birdlense_platform_profile_dir() {
-  echo "deploy/profiles/orin"
+  echo "app"
 }

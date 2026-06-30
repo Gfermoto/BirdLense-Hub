@@ -148,7 +148,7 @@ sudo systemctl set-default multi-user.target   # без GUI
 
 ```bash
 cd /home/gfer
-git clone --branch orin git@github.com:Gfermoto/BirdLense-Hub.git BirdLense
+git clone --branch dev git@github.com:Gfermoto/BirdLense-Hub.git BirdLense
 cd BirdLense/app
 
 cp app_config/user_config.orin.example.yaml app_config/user_config.yaml

@@ -29,7 +29,7 @@ make deploy          # rsync + build + start на Orin
 bash scripts/fetch-processor-models-orin.sh
 ```
 
-Пути: `app/processor/models/` — см. `models/README.md`.
+Пути: `app/processor/models/`.
 
 ## Деплой не перезаписывает
 

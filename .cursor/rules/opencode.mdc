@@ -41,10 +41,10 @@ Binary: `opencode` (часто `~/.opencode/bin/opencode`). Конфиг сли�
 | Мелкая правка, 1–2 файла, ясный diff | **Cursor** (этот чат) |
 | Длинный refactor, PR context, multi-file explore | **OpenCode** `opencode run` / `@explore` |
 | План без записи на диск | OpenCode **Plan** mode |
-| CI gate, отчёт без правок | `@birdlense-ci` (`make ci-local` vs `make test-web-contract-local` — см. `docs/contributor/hub-mcp-dev.md`) |
+| CI gate, отчёт без правок | `@birdlense-ci` (`make ci-local`) |
 | Ревью без правок | `@birdlense-reviewer` |
-| Runbook / docs Q&A (grounded) | `@birdlense-runbook-qa` — см. `hub-mcp-dev.md` § Phase B |
-| Live Hub: visits/health/funnel | `@birdlense-operator-router` — dev-only; ADR `docs/strategy/adr-dev-only-operator-router.md` |
+| Runbook / docs Q&A (grounded) | `@birdlense-runbook-qa` |
+| Live Hub: visits/health/funnel | `@birdlense-operator-router` (dev-only) |
 | Параллель | Cursor правит; OpenCode — второй воркер (`opencode-mcp` в Cursor) |
 
 **MCP hygiene:** `birdlense-repo` (filesystem в OpenCode) ≠ Hub API MCP (`/mcp`, `birdlense_mcp.py`). Секреты — только env / `opencode mcp add`, не в репозиторий.

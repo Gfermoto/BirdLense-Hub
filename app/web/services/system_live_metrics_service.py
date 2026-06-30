@@ -79,18 +79,8 @@ def collect_live_system_metrics(app):
             continue
     encoding_setting = _normalize_encoding_setting(app_config.get("video.encoding"))
     platform = _platform_id()
-    intel_gpu = platform not in ("orin", "jetson") and (
-        encoding_setting == "intel" or os.path.exists("/dev/dri/renderD128")
-    )
     if gpu_percent is None and platform == "orin":
         gpu_percent = _nvidia_gpu_percent()
-    if gpu_percent is None and intel_gpu:
-        try:
-            from gpu_stats import get_intel_gpu_percent
-
-            gpu_percent = get_intel_gpu_percent()
-        except Exception as e:
-            app.logger.warning("gpu_stats: %s", e)
 
     return {
         "cpu": {"percent": cpu_percent},

@@ -86,9 +86,7 @@ app/app_config/user_config.jetson-bootstrap.yaml
 app/app_config/user_config.*.bootstrap.yaml
 # Локальные примеси, переопределения
 app/app_config/*.local.yaml
-deploy/profiles/jetson-nano/site.env
-deploy/profiles/jetson-nano/wheels/
-# Локальный мусор / артефакты разработки (не в ветку jetson-nano)
+# Локальные примеси, переопределения
 .tmp/
 app/data/decision_traces/
 deploy_status*.txt

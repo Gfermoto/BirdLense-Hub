@@ -9,7 +9,7 @@ processor:
   classifier_inference_backend: onnxruntime
   inference_device: cuda:0
   classifier_inference_device: cuda:0
-  binary_imgsz: 640
+  binary_imgsz: 704
   min_confidence_binary: 0.12
   merge_window_seconds: 12
   tracker: models/tracker/bytetrack_birdlense.yaml
@@ -29,7 +29,7 @@ welfare:
 
 video:
   encoding: jetson
-  capture_backend: ffmpeg_nvmpi
+  capture_backend: auto
   record_with_vaapi: false
 
 species:
