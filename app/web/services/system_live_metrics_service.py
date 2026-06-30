@@ -3,10 +3,48 @@
 from __future__ import annotations
 
 import os
+import subprocess
 
 import psutil
 
 from app_config.app_config import app_config
+
+
+def _normalize_encoding_setting(raw: str | None) -> str:
+    value = (raw or "cpu").strip().lower()
+    if value in ("jetson", "nvenc", "nvmpi"):
+        return "jetson"
+    if value == "intel":
+        return "intel"
+    return "cpu"
+
+
+def _platform_id() -> str:
+    return (os.environ.get("BIRDLENSE_PLATFORM") or "orin").strip().lower()
+
+
+def _nvidia_gpu_percent() -> float | None:
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+        if result.returncode != 0:
+            return None
+        line = (result.stdout or "").strip().splitlines()[0].strip()
+        if not line or line.upper() == "N/A":
+            return None
+        val = float(line)
+        return round(val, 1) if 0 <= val <= 100 else None
+    except (OSError, ValueError, subprocess.TimeoutExpired, IndexError):
+        return None
 
 
 def collect_live_system_metrics(app):
@@ -39,10 +77,13 @@ def collect_live_system_metrics(app):
                 break
         except (OSError, ValueError):
             continue
-    encoding_setting = (app_config.get("video.encoding") or "cpu").strip().lower()
-    if encoding_setting not in ("cpu", "intel"):
-        encoding_setting = "cpu"
-    intel_gpu = encoding_setting == "intel" or os.path.exists("/dev/dri/renderD128")
+    encoding_setting = _normalize_encoding_setting(app_config.get("video.encoding"))
+    platform = _platform_id()
+    intel_gpu = platform not in ("orin", "jetson") and (
+        encoding_setting == "intel" or os.path.exists("/dev/dri/renderD128")
+    )
+    if gpu_percent is None and platform == "orin":
+        gpu_percent = _nvidia_gpu_percent()
     if gpu_percent is None and intel_gpu:
         try:
             from gpu_stats import get_intel_gpu_percent
