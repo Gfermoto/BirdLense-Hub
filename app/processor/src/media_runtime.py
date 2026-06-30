@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, List
 from api import API
 from app_config.app_config import app_config
 from app_config.cameras import get_valid_cameras, validate_go2rtc_detect_streams
+from encoding_utils import normalize_capture_backend, normalize_video_encoding
 from processor_support import check_restart_flag, processor_status
 from file_test_paths import scan_video_files_in_dir
 from sources.go2rtc_stream_source import Go2RTCStreamSource, _build_stream_url
@@ -270,17 +271,11 @@ def setup_processor_media(
                 (i for i, c in enumerate(cameras) if c["id"] == camera_id),
                 0,
             )
-            encoding = (app_config.get("video.encoding") or "jetson").strip().lower()
-            if encoding in ("orin", "nvenc"):
-                encoding = "jetson"
-            if encoding not in ("cpu", "jetson"):
-                encoding = "jetson"
+            encoding = normalize_video_encoding(app_config.get("video.encoding"), "jetson")
             rcodec = (app_config.get("video.record_stream_codec") or "h264").strip().lower()
             if rcodec not in ("h264", "copy"):
                 rcodec = "h264"
-            capture_backend = (app_config.get("video.capture_backend") or "auto").strip().lower()
-            if capture_backend not in ("auto", "opencv", "ffmpeg_nvmpi"):
-                capture_backend = "auto"
+            capture_backend = normalize_capture_backend(app_config.get("video.capture_backend"), "auto")
             single_rtsp_read = parse_single_rtsp_read_flag(app_config)
             rwv = app_config.get("video.record_with_vaapi")
             if rwv is None:

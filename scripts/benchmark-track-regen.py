@@ -84,7 +84,7 @@ def main() -> int:
         default='',
         help=(
             'Sets BIRDLENSE_INFERENCE_DEVICE for this run '
-            '(e.g. intel:gpu for OpenVINO on Intel iGPU). Empty = env/config.'
+            '(e.g. cuda:0 for ONNX Runtime on NVIDIA GPU). Empty = env/config.'
         ),
     )
     parser.add_argument(

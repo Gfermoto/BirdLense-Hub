@@ -50,7 +50,7 @@ class TestMlDecodePathBenchmark(unittest.TestCase):
             height=640,
         )
         self.assertFalse(out["ok"])
-        self.assertFalse(out["gates"]["ffmpeg_vaapi_ok"])
+        self.assertFalse(out["gates"].get("ffmpeg_vaapi_ok", True))  # Orin: NVMPI, not VA-API
 
     def test_zero_drop_baseline_treated_as_no_regression(self):
         from ml_decode_path_benchmark import build_decode_path_benchmark_report
