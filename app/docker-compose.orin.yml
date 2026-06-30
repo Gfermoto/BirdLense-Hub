@@ -2,6 +2,10 @@
 # Активируется через BIRDLENSE_PLATFORM=orin (Makefile / deploy.sh).
 
 services:
+  redis:
+    network_mode: host
+    ports: !reset []
+
   birdlense:
     build:
       context: ..
@@ -15,6 +19,7 @@ services:
     group_add:
       - video
     environment:
+      - REDIS_URL=${REDIS_URL:-redis://127.0.0.1:6379/0}
       - BIRDLENSE_PLATFORM=orin
       - BIRDLENSE_PORT=${BIRDLENSE_PORT:-8085}
       - BIRDLENSE_INFERENCE_BACKEND=onnxruntime
