@@ -33,9 +33,9 @@ TRACKER_PRESETS: dict[str, TrackerPreset] = {
     ),
     "bytetrack_birdlense_lowfps": TrackerPreset(
         id="bytetrack_birdlense_lowfps",
-        yaml_rel="models/tracker/bytetrack_birdlense_lowfps.yaml",
+        yaml_rel="models/tracker/bytetrack_birdlense.yaml",
         tracker_type="bytetrack",
-        description="ByteTrack with longer track_buffer for low FPS",
+        description="Alias → bytetrack_birdlense (adaptive low-FPS)",
     ),
     "botsort_birdlense": TrackerPreset(
         id="botsort_birdlense",

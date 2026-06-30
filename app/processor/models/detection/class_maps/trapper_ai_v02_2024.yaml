@@ -1,7 +1,6 @@
 # TrapperAI v02.2024 (YOLOv8-m) — прод: только птица + белка (остальные id в ignore_class_ids).
 model_id: trapper_ai_v02_2024
-weights_pt: models/detection/weights/trapper_ai_v02_2024.pt
-weights_openvino: models/detection/weights/trapper_ai_v02_2024_openvino_model
+weights_onnx: models/detection/trapper_ai_v02_2024/weights/trapper_ai_v02_2024.onnx
 export_imgsz: 704
 our_scope:
   - bird

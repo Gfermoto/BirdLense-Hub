@@ -155,28 +155,6 @@ def evaluate_detector_guards(
     issues: list[dict[str, Any]] = []
     warns: list[dict[str, Any]] = []
 
-    native_lores = _as_bool(proc.get("openvino_native_lores_imgsz"), default=False)
-    if native_lores:
-        issues.append(
-            {
-                "key": "processor.openvino_native_lores_imgsz",
-                "merged": True,
-                "severity": "critical",
-                "reason": "704x704 Trapper IR breaks with native lores; keep false",
-            }
-        )
-
-    default_native = _as_bool(default_proc.get("openvino_native_lores_imgsz"), default=False)
-    if default_native:
-        issues.append(
-            {
-                "key": "default_config.processor.openvino_native_lores_imgsz",
-                "merged": True,
-                "severity": "critical",
-                "reason": "repo default_config must ship openvino_native_lores_imgsz: false",
-            }
-        )
-
     overrides = proc.get("species_confidence_overrides") or {}
     bird_val: float | None = None
     if isinstance(overrides, dict) and overrides.get("Bird") is not None:
@@ -213,7 +191,6 @@ def evaluate_detector_guards(
         "issues": issues,
         "warnings": warns,
         "merged_snapshot": {
-            "openvino_native_lores_imgsz": native_lores,
             "species_confidence_overrides.Bird": bird_val,
         },
     }
@@ -276,19 +253,17 @@ def _yolo_one_frame_smoke() -> dict[str, Any]:
     """Optional in-container smoke: one predict on bundled or latest recording frame."""
     import cv2
 
-    weights = Path("/app/processor/models/detection/weights")
+    weights = Path("/app/processor/models/detection/trapper_ai_v02_2024")
     if not weights.is_dir():
         weights = (
-            REPO / "processor/models/detection/weights"
+            REPO / "processor/models/detection/trapper_ai_v02_2024"
             if (REPO / "processor").is_dir()
-            else REPO / "app/processor/models/detection/weights"
+            else REPO / "app/processor/models/detection/trapper_ai_v02_2024"
         )
     model_path: Path | None = None
     for cand in (
-        weights / "trapper_ai_v02_2024_openvino_model",
-        weights / "best_openvino_model",
-        weights / "best.pt",
-        weights / "yolo11n.pt",
+        weights / "trapper_ai_v02_2024.onnx",
+        weights / "trapper_ai_v02_2024.pt",
     ):
         if cand.exists():
             model_path = cand

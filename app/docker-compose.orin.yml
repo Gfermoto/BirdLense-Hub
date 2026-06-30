@@ -19,7 +19,7 @@ services:
       - BIRDLENSE_PORT=${BIRDLENSE_PORT:-8085}
       - BIRDLENSE_INFERENCE_BACKEND=onnxruntime
       - BIRDLENSE_BINARY_ONNX_PATH=/app/processor/models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
-      - BIRDLENSE_CLASSIFIER_ENGINE=chriamue
+      - BIRDLENSE_CLASSIFIER_ENGINE=birder_eu
       - BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=onnxruntime
       - BIRDLENSE_OPENVINO_BINARY_ENABLED=0
       - API_URL_BASE=http://127.0.0.1:${BIRDLENSE_PORT:-8085}/api/processor
@@ -30,12 +30,12 @@ services:
       - BIRDLENSE_CAPTURE_BACKEND=ffmpeg_nvmpi
     volumes:
       - ./processor/models/detection/trapper_ai_v02_2024:/app/processor/models/detection/trapper_ai_v02_2024
-      - ./processor/models/classification/chriamue_bird_species_classifier:/app/processor/models/classification/chriamue_bird_species_classifier
       - ./processor/models/welfare/ornimetrics:/app/processor/models/welfare/ornimetrics
       - ./processor/models/reid/ornimetrics:/app/processor/models/reid/ornimetrics
+      - ./processor/models/classification/convnext_v2_tiny_eu-common256px:/app/processor/models/classification/convnext_v2_tiny_eu-common256px
       - ./processor/models/tracker:/app/processor/models/tracker
     deploy:
       resources:
         limits:
-          cpus: "8"
+          cpus: "4"
           memory: 14G

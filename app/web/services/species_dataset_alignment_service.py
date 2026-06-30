@@ -62,7 +62,7 @@ def resolve_classifier_weights_path(app_config_get) -> tuple[str, str]:
     else:
         rel = app_config_get(
             "processor.models.classifier",
-            "models/classification/weights/convnext_v2_tiny_eu-common256px.pt",
+            "models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.pt",
         )
     if os.path.isabs(rel):
         return rel, rel

@@ -31,12 +31,12 @@ IP-камера → RTSP → BirdLense Hub
 
 ## Модельный стек
 
-Все модели — ONNX, инференс через ONNX Runtime CUDA EP / TensorRT EP на `cuda:0`.
+Все модели — ONNX, инференс через ONNX Runtime CUDA EP на `cuda:0`.
 
 | Компонент | Модель | Путь |
 |-----------|--------|------|
 | Детектор | Trapper AI v02 2024 (YOLO) | `models/detection/trapper_ai_v02_2024/` |
-| Классификатор | Birder ConvNeXt EU-707 (chriamue) | `models/classification/chriamue_bird_species_classifier/` |
+| Классификатор | Birder ConvNeXt EU-707 (birder_eu) | `birder package` |
 | ReID | Ornimetrics reid_embedder | `models/reid/ornimetrics/` |
 | Welfare | Ornimetrics embedder + scorer | `models/welfare/ornimetrics/` |
 | Трекер | ByteTrack unstick | — |

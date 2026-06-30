@@ -15,7 +15,7 @@
 
 - Jetson Orin NX 16GB / Orin NANO 8GB
 - Docker, NVIDIA runtime
-- ONNX Runtime CUDA EP / TensorRT EP
+- ONNX Runtime CUDA EP
 - NVDEC/NVENC аппаратное кодирование
 
 ## Модельный стек

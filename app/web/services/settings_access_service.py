@@ -11,8 +11,6 @@ def settings_gate_requires_password() -> bool:
     """Нужен ли ввод пароля для unlock (как GET requires-password)."""
     admin_pw = (app_config.get("general.settings_password") or "").strip()
     contrib_pw = (app_config.get("general.contributor_password") or "").strip()
-    if not admin_pw and not contrib_pw:
-        return is_production_runtime()
     return bool(admin_pw or contrib_pw)
 
 
@@ -27,12 +25,10 @@ def is_production_env() -> bool:
 
 
 def empty_passwords_block_verify_in_production() -> bool:
-    """Оба пароля пусты и production — verify-password должен отказать."""
+    """Оба пароля пусты — verify-password должен разрешить (открытый доступ)."""
     admin_pw = (app_config.get("general.settings_password") or "").strip()
     contrib_pw = (app_config.get("general.contributor_password") or "").strip()
-    if admin_pw or contrib_pw:
-        return False
-    return is_production_env()
+    return False
 
 
 def resolve_password_unlock_role(submitted_password: str) -> str | None:

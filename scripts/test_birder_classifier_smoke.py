@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke test Birder EU classifier (torch + optional OpenVINO) on a bird crop or video frame."""
+"""Smoke test Birder EU classifier (onnxruntime or torch) on a bird crop or video frame."""
 
 from __future__ import annotations
 
@@ -15,13 +15,13 @@ if str(PROC_SRC) not in sys.path:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--backend", choices=("torch", "openvino"), default="openvino")
+    ap.add_argument("--backend", choices=("onnxruntime", "torch"), default="onnxruntime")
     ap.add_argument("--variant", default="convnext_v2_tiny_eu-common256px")
     ap.add_argument(
         "--weights-dir",
         type=Path,
         default=None,
-        help="Torch weights dir (OpenVINO uses sibling *_openvino)",
+        help="Bundle dir with class_labels.txt (default: weights/{variant}/)",
     )
     ap.add_argument(
         "--video",
@@ -31,10 +31,8 @@ def main() -> int:
     ap.add_argument("--frame", type=int, default=50)
     args = ap.parse_args()
 
-    base = REPO / "app" / "processor" / "models" / "classification" / "weights"
-    wdir = args.weights_dir or (base / f"birder_{args.variant.replace('-', '_')}")
-    if args.backend == "openvino":
-        wdir = Path(f"{wdir}_openvino")
+    base = REPO / "app" / "processor" / "models" / "classification"
+    wdir = args.weights_dir or (base / args.variant)
 
     from inference.birder_eu_classifier import load_birder_eu_classifier
 
@@ -43,6 +41,7 @@ def main() -> int:
         backend=args.backend,
         variant=args.variant,
         min_confidence=0.1,
+        device="cuda:0" if args.backend == "onnxruntime" else None,
     )
 
     import cv2

@@ -745,10 +745,8 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-docs-tmp --exclude=.venv-docs --
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.venv --exclude=.venv-datasets"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv --exclude=.venv-birder"
 # Локальные тяжёлые веса, не нужные на сервере (на сервере только trapper + классификация)
-RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/processor/models/detection/weights/snapshots"
-RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/processor/models/detection/weights/*openvino*"
-RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/processor/models/classification/weights/*.pt"
-# Временный venv для yolo/openvino экспорта (не на сервер; `.venv` без суффикса выше уже исключён)
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/processor/models/classification/convnext_v2_tiny_eu-common256px/*.pt"
+# Временный venv для export (не на сервер)
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-yolo-fetch"
 # Локальная песочница проверки не должна попадать на сервер.
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.sandbox"
@@ -768,7 +766,7 @@ for attempt in $(seq 1 ${SYNC_RETRIES}); do
   if [[ "${HOST}" == "localhost" || "${HOST}" == "127.0.0.1" ]]; then
     rsync -a --delete --delete-excluded ${RSYNC_EXCLUDES} "${RSYNC_FILTER_PROTECT[@]}" ./ "${REMOTE_DIR}/" && sync_ok=1 && break
   else
-    rsync -avz --delete --delete-excluded --ignore-errors -e "ssh ${SSH_OPTS}" ${RSYNC_EXCLUDES} "${RSYNC_FILTER_PROTECT[@]}" ./ "${HOST}:${REMOTE_DIR}/" && sync_ok=1 && break
+    rsync -avz --no-group --delete --delete-excluded --ignore-errors -e "ssh ${SSH_OPTS}" ${RSYNC_EXCLUDES} "${RSYNC_FILTER_PROTECT[@]}" ./ "${HOST}:${REMOTE_DIR}/" && sync_ok=1 && break
   fi
   echo "  Попытка ${attempt}/${SYNC_RETRIES} не удалась, повтор через 5 сек..."
   sleep 5
@@ -785,61 +783,26 @@ if [[ -d "${REPO_ROOT}/app/data/images" ]]; then
   if [[ "${HOST}" == "localhost" || "${HOST}" == "127.0.0.1" ]]; then
     rsync -a "${REPO_ROOT}/app/data/images/" "${REMOTE_DIR}/app/data/images/"
   else
-    rsync -avz -e "ssh ${SSH_OPTS}" "${REPO_ROOT}/app/data/images/" "${HOST}:${REMOTE_DIR}/app/data/images/"
+    rsync -avz --no-group -e "ssh ${SSH_OPTS}" "${REPO_ROOT}/app/data/images/" "${HOST}:${REMOTE_DIR}/app/data/images/"
   fi
 fi
 
-# 1.1 Trapper (prod) или legacy NABirds OpenVINO IR — только intel_nuc; Jetson: .pt без IR
-echo "1.1 Проверка весов бинарного детектора..."
-_check_pt_only_weights() {
-  local w="${REPO_ROOT}/app/processor/models/detection/weights"
-  local pt=""
-  if [[ -f "${w}/trapper_ai_v02_2024.pt" ]]; then
-    pt="${w}/trapper_ai_v02_2024.pt"
-  elif [[ -f "${w}/best_NABirds.pt" ]]; then
-    pt="${w}/best_NABirds.pt"
-  elif [[ -f "${w}/best.pt" ]]; then
-    pt="${w}/best.pt"
-  fi
-  if [[ -z "${pt}" ]]; then
-    echo "Ошибка: для Jetson нужен хотя бы один .pt в app/processor/models/detection/weights/" >&2
-    return 1
-  fi
-  echo "  Jetson PT-only: OK local (${pt})"
-  if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
-    ssh ${SSH_OPTS} "${HOST}" "w='${REMOTE_DIR}/app/processor/models/detection/weights'; \
-      for f in trapper_ai_v02_2024.pt best_NABirds.pt best.pt; do test -f \"\${w}/\${f}\" && exit 0; done; exit 1" || {
-      echo "Ошибка: на сервере нет .pt детектора для Jetson." >&2
-      return 1
-    }
-    echo "  Jetson PT-only: OK (сервер)"
-  fi
-}
-if birdlense_platform_is_jetson; then
-  _check_pt_only_weights || exit 1
-else
-if (cd "${REPO_ROOT}" && bash scripts/sync_trapper_weights.sh --check); then
-  echo "  TrapperAI @704: OK (локально)"
-  if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
-    ssh ${SSH_OPTS} "${HOST}" "cd '${REMOTE_DIR}' && bash scripts/sync_trapper_weights.sh --check" || {
-      echo "Ошибка: на сервере нет trapper_ai_v02_2024_openvino_model @704." >&2
-      exit 1
-    }
-    echo "  TrapperAI @704: OK (сервер)"
-  fi
-else
-  (cd "${REPO_ROOT}" && bash scripts/sync_detector_weights.sh --check) || {
-    echo "Ошибка: нет Trapper @704 и нет best_NABirds OpenVINO." >&2
-    echo "  make export-trapper-openvino  или  make export-nabirds-openvino" >&2
+# 1.1 Orin: ONNX детектор на сервере
+echo "1.1 Проверка ONNX-весов детектора..."
+TRAPPER_ONNX_REL="app/processor/models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx"
+if [[ ! -f "${REPO_ROOT}/${TRAPPER_ONNX_REL}" ]]; then
+  echo "Ошибка: локально нет ${TRAPPER_ONNX_REL}" >&2
+  echo "  bash scripts/fetch-processor-models-orin.sh" >&2
+  exit 1
+fi
+echo "  Orin ONNX: OK (локально)"
+if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
+  ssh ${SSH_OPTS} "${HOST}" "test -f '${REMOTE_DIR}/${TRAPPER_ONNX_REL}'" || {
+    echo "Ошибка: на сервере нет ${TRAPPER_ONNX_REL}" >&2
+    echo "  bash scripts/fetch-processor-models-orin.sh (на сервере или rsync models/)" >&2
     exit 1
   }
-  if [[ "${HOST}" != "localhost" && "${HOST}" != "127.0.0.1" ]]; then
-    ssh ${SSH_OPTS} "${HOST}" "cd '${REMOTE_DIR}' && bash scripts/sync_detector_weights.sh --check" || {
-      echo "Ошибка: на сервере после rsync нет полного набора весов NABirds OpenVINO." >&2
-      exit 1
-    }
-  fi
-fi
+  echo "  Orin ONNX: OK (сервер)"
 fi
 
 # 1.5 Секреты в app/.env
@@ -909,31 +872,9 @@ if [ "${BIRDLENSE_ENV:-}" = "production" ] && [[ "${HOST}" != "localhost" && "${
     grep -qE '^BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=' \"\$F\" || echo 'BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=1' >> \"\$F\""
 fi
 
-# 1.8 Intel GPU: при наличии renderD* — сгенерировать override (пропуск для jetson_nano)
-if ! birdlense_platform_is_jetson; then
-echo "1.8 Проверка Intel GPU на сервере..."
-ssh ${SSH_OPTS} "${HOST}" "set -e; cd '${REMOTE_DIR}/app' && bash scripts/docker-compose-intel-override-gen.sh; \
-  if [ -f docker-compose.override.yml ]; then \
-    echo '1.8b sysctl kernel.perf_event_paranoid=0 → /etc/sysctl.d/99-birdlense-perf.conf'; \
-    printf '%s\n' 'kernel.perf_event_paranoid=0' > /etc/sysctl.d/99-birdlense-perf.conf; \
-    sysctl -p /etc/sysctl.d/99-birdlense-perf.conf || true; \
-  fi"
-else
-  echo "1.8 Intel GPU override: пропуск (platform=jetson_nano)"
-  ssh ${SSH_OPTS} "${HOST}" "rm -f '${REMOTE_DIR}/app/docker-compose.override.yml' 2>/dev/null || true"
-fi
-
-# 1.8c Жёсткий режим: боевой хаб с OpenVINO GPU — на сервере должны быть renderD* и сгенерирован override.
-_raw_req="${BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU:-}"
-if [[ "${_raw_req}" =~ ^(1|true|yes|on)$ ]] && ! birdlense_platform_is_jetson; then
-  echo "1.8c BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=${_raw_req} — проверка docker-compose.override.yml на сервере..."
-  if ! ssh ${SSH_OPTS} "${HOST}" "test -f '${REMOTE_DIR}/app/docker-compose.override.yml'"; then
-    echo "Ошибка: на хосте нет /dev/dri/renderD* или override не создан — OpenVINO GPU в контейнере недоступен."
-    echo "  Проверьте Intel iGPU на сервере, драйверы и перезапуск деплоя. Для VPS без GPU не задавайте BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU."
-    exit 1
-  fi
-  echo "  OK: ${REMOTE_DIR}/app/docker-compose.override.yml есть"
-fi
+# 1.8 Orin: без Intel GPU override
+echo "1.8 Intel GPU override: пропуск (Orin-only)"
+ssh ${SSH_OPTS} "${HOST}" "rm -f '${REMOTE_DIR}/app/docker-compose.override.yml' 2>/dev/null || true"
 
 # 2. Сборка и запуск (повтор при сбое — Docker pull, сеть)
 echo "2. Сборка и запуск..."

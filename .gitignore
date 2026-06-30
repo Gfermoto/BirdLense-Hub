@@ -152,24 +152,27 @@ app/ui/coverage/
 
 # Обученные модели (веса)
 app/processor/models/*
+!app/processor/models/README.md
 !app/processor/models/classification/
 app/processor/models/classification/*
-!app/processor/models/classification/weights/
-app/processor/models/classification/weights/*
-!app/processor/models/classification/weights/class_names.txt
+!app/processor/models/classification/README.md
 !app/processor/models/detection/
 app/processor/models/detection/*
 !app/processor/models/detection/README.md
 !app/processor/models/detection/class_maps/
 !app/processor/models/detection/class_maps/*.yaml
-# Детекторные веса: в git только манифесты IR; .pt/.bin — rsync/deploy (см. scripts/sync_trapper_weights.sh).
-!app/processor/models/detection/weights/
-app/processor/models/detection/weights/*
-app/processor/models/detection/weights/snapshots/**
-!app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/
-app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/*
-!app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/metadata.yaml
-!app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model/export_report.json
+!app/processor/models/detection/trapper_ai_v02_2024/
+app/processor/models/detection/trapper_ai_v02_2024/*
+!app/processor/models/reid/
+app/processor/models/reid/*
+!app/processor/models/reid/ornimetrics/
+!app/processor/models/reid/ornimetrics/README.md
+!app/processor/models/welfare/
+app/processor/models/welfare/*
+!app/processor/models/welfare/ornimetrics/
+!app/processor/models/welfare/ornimetrics/README.md
+!app/processor/models/classification/convnext_v2_tiny_eu-common256px/
+app/processor/models/classification/convnext_v2_tiny_eu-common256px/*
 
 # Windows / экспорт мусор рядом с весами
 **/Zone.Identifier

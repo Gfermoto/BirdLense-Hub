@@ -116,7 +116,7 @@ def build_detection_stack(
         _eng = classifier_engine(app_config)
         raise FileNotFoundError(
             f"Classifier weights missing for engine={_eng!r}: {classifier_path}. "
-            "Birder EU: scripts/download_birder_classifier.py. "
+            "Birder EU: scripts/download_birder_classifier.py --export-onnx. "
             "EfficientNetB2: scripts/download_birds_classifier_efficientnetb2.py. "
             "Legacy YOLO: processor.models.classifier (.pt).",
         )

@@ -137,7 +137,8 @@
             {
               "enum": [
                 "torch",
-                "openvino",
+                "onnxruntime",
+                "tensorrt",
                 "auto"
               ],
               "type": "string"
@@ -440,48 +441,6 @@
           ],
           "default": null,
           "title": "Detection Quality Assumed Fps"
-        },
-        "openvino_binary_track_ultralytics_conf": {
-          "anyOf": [
-            {
-              "maximum": 1.0,
-              "minimum": 0.0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Openvino Binary Track Ultralytics Conf"
-        },
-        "openvino_binary_bird_score_scale": {
-          "anyOf": [
-            {
-              "maximum": 32.0,
-              "minimum": 0.0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Openvino Binary Bird Score Scale"
-        },
-        "openvino_min_confidence_binary_bird": {
-          "anyOf": [
-            {
-              "maximum": 1.0,
-              "minimum": 0.0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Openvino Min Confidence Binary Bird"
         },
         "background_subtraction_enabled": {
           "anyOf": [

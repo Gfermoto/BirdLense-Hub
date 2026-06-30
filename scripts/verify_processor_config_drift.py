@@ -35,7 +35,6 @@ _CONF_KEYS = (
     "min_confidence_binary",
     "min_confidence_binary_bird",
     "min_confidence_to_process",
-    "openvino_min_confidence_binary_bird",
 )
 
 # P0 forbidden merged values — block deploy/CI (#626).
@@ -56,11 +55,6 @@ _CRITICAL_FORBIDDEN: tuple[tuple[str, ...], Any, str] = (
         ("processor", "yolo_weak_track_salvage_enabled"),
         True,
         "weak salvage must not bypass YOLO+ByteTrack primary persist (ADR #634)",
-    ),
-    (
-        ("processor", "openvino_native_lores_imgsz"),
-        True,
-        "704x704 Trapper IR breaks with native lores; keep false (hub-detector-runbook)",
     ),
 )
 

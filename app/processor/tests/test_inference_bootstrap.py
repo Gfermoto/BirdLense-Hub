@@ -32,14 +32,18 @@ class TestInferenceBootstrap(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as d:
             proc = os.path.join(d, "processor")
-            engine = os.path.join(proc, "models/detection/weights/yolo11n.engine")
+            engine = os.path.join(
+                proc, "models/detection/trapper_ai_v02_2024/trapper.engine"
+            )
             os.makedirs(os.path.dirname(engine), exist_ok=True)
             with open(engine, "wb") as f:
                 f.write(b"trt")
             plan = validate_inference_at_bootstrap(
                 {
                     "processor.inference_backend": "tensorrt",
-                    "processor.models.binary_tensorrt": "models/detection/weights/yolo11n.engine",
+                    "processor.models.binary_tensorrt": (
+                        "models/detection/trapper_ai_v02_2024/trapper.engine"
+                    ),
                 },
             )
         self.assertEqual(plan.effective_backend, "tensorrt")

@@ -11,7 +11,7 @@ from sqlalchemy import inspect
 
 
 revision = "017_global_bird_profiles"
-down_revision = "016_behavior_shadow_fields"
+down_revision = "015_active_learning_cases"
 branch_labels = None
 depends_on = None
 

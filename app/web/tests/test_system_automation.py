@@ -13,7 +13,7 @@ class _ImmediateThread:
 
 
 def test_shipped_fusion_scripts_match_container_contract():
-    """Every path in REQUIRED_SHIPPED_SCRIPT_RELPATHS must exist (keep in sync with app/Dockerfile)."""
+    """Every path in REQUIRED_SHIPPED_SCRIPT_RELPATHS must exist (keep in sync with app/Dockerfile.orin)."""
     from services import fusion_training_service as fts
 
     root = fts.repo_root()
@@ -22,11 +22,11 @@ def test_shipped_fusion_scripts_match_container_contract():
 
 
 def test_dockerfile_copy_scripts_exist_in_repo():
-    """Every ``COPY scripts/...`` from app/Dockerfile must exist at repo root (build context)."""
+    """Every ``COPY scripts/...`` from app/Dockerfile.orin must exist at repo root (build context)."""
     from services import fusion_training_service as fts
 
     root = fts.repo_root()
-    dockerfile = root / "app" / "Dockerfile"
+    dockerfile = root / "app" / "Dockerfile.orin"
     assert dockerfile.is_file(), f"missing {dockerfile}"
     missing: list[str] = []
     for line in dockerfile.read_text(encoding="utf-8").splitlines():

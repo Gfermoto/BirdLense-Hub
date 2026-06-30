@@ -126,13 +126,13 @@ paths:
                             type: string
                           inference_backend_effective:
                             type: string
-                            description: Effective detector backend after bootstrap (torch/openvino).
+                            description: Effective detector backend after bootstrap (torch/onnxruntime/tensorrt).
                           inference_backend_requested:
                             type: string
                             description: Requested processor.inference_backend (may differ when auto fallback).
                           inference_auto_torch_fallback:
                             type: boolean
-                            description: True when auto/openvino resolved to torch at bootstrap.
+                            description: True when auto resolved to torch at bootstrap.
                   components:
                     type: object
                     properties:
@@ -266,13 +266,13 @@ paths:
                             type: string
                           inference_backend_effective:
                             type: string
-                            description: Effective detector backend after bootstrap (torch/openvino).
+                            description: Effective detector backend after bootstrap (torch/onnxruntime/tensorrt).
                           inference_backend_requested:
                             type: string
                             description: Requested processor.inference_backend (may differ when auto fallback).
                           inference_auto_torch_fallback:
                             type: boolean
-                            description: True when auto/openvino resolved to torch at bootstrap.
+                            description: True when auto resolved to torch at bootstrap.
                   components:
                     type: object
                     properties:
@@ -5579,20 +5579,6 @@ components:
               type: number
               nullable: true
               description: Deprecated alias for min_confidence_binary_rodent (legacy YAML only).
-            openvino_binary_track_ultralytics_conf:
-              type: number
-              nullable: true
-              description: >
-                OpenVINO-only cap for YOLO.track(conf); min(stock_floor, this). Compensates lower OV scores vs torch.
-            openvino_binary_bird_score_scale:
-              type: number
-              nullable: true
-              description: >
-                OpenVINO-only Bird confidence multiplier for threshold compare only; stored conf stays raw.
-            openvino_min_confidence_binary_bird:
-              type: number
-              nullable: true
-              description: Optional OpenVINO-only replacement for min_confidence_binary_bird in floor + per-label.
             bird_skip_classifier_max_area_frac:
               type: number
               nullable: true

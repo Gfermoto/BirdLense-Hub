@@ -387,9 +387,11 @@ class Go2RTCStreamSource:
         self.lores_size = lores_size  # None = native RTSP resolution for detect/YOLO
         self._detect_native = lores_size is None
         self.auto_reconnect = auto_reconnect
-        self._encoding_mode = (encoding_mode or "cpu").strip().lower()
+        self._encoding_mode = (encoding_mode or "jetson").strip().lower()
+        if self._encoding_mode in ("orin", "nvenc"):
+            self._encoding_mode = "jetson"
         if self._encoding_mode not in ("cpu", "intel", "jetson"):
-            self._encoding_mode = "cpu"
+            self._encoding_mode = "jetson"
         rsc = (record_stream_codec or "h264").strip().lower()
         self._record_stream_codec = rsc if rsc in ("h264", "copy") else "h264"
         self._capture_backend = _normalize_capture_backend(capture_backend)

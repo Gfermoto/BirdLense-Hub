@@ -3,7 +3,7 @@
 ## Требования
 
 - Jetson Orin NX 16GB или Orin NANO 8GB
-- JetPack 5+ (L4T r35+)
+- JetPack 6+ (L4T r36+)
 - Docker с NVIDIA Container Toolkit
 - Модели ONNX в `app/processor/models/`
 
@@ -30,7 +30,6 @@ sudo systemctl restart docker
 ```bash
 # Создать структуру
 mkdir -p app/processor/models/detection/trapper_ai_v02_2024
-mkdir -p app/processor/models/classification/chriamue_bird_species_classifier
 mkdir -p app/processor/models/reid/ornimetrics
 mkdir -p app/processor/models/welfare/ornimetrics
 

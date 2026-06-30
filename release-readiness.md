@@ -15,7 +15,7 @@
 
 ## Build and runtime
 
-- [ ] `make ci-local` passes
+- [ ] `bash scripts/public/ci-full-local.sh` passes (или целевой CI gate репозитория)
 - [ ] `make verify-prod-env` passes with deployment `.env`
 - [ ] `./install.sh --dry-run` passes
 - [ ] Fresh install validated on clean machine

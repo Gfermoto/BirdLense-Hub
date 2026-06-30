@@ -124,7 +124,8 @@ def build_track_failure_modes_report(
 
     recommendations = {
         "baseline_tracker_profile": (
-            "models/tracker/bytetrack_birdlense_lowfps.yaml"
+            "models/tracker/bytetrack_birdlense.yaml"
+            "models/tracker/bytetrack_birdlense.yaml"
         ),
         "fallback_tracker_profile": (
             "models/tracker/bytetrack_birdlense.yaml"

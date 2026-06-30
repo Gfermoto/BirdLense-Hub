@@ -11,7 +11,7 @@ Bird monitoring for feeders on **Jetson Orin**: computer vision (ONNX GPU) for d
 | Component | Model | Backend |
 |-----------|-------|---------|
 | Detector | Trapper AI v02 2024 (YOLO) | ONNX Runtime CUDA EP / TensorRT EP |
-| Classifier | Birder ConvNeXt EU-707 (chriamue) | ONNX Runtime CUDA EP |
+| Classifier | Birder ConvNeXt EU-707 (birder_eu) | ONNX Runtime CUDA EP |
 | ReID | Ornimetrics reid_embedder | ONNX Runtime CUDA EP |
 | Welfare | Ornimetrics embedder + scorer | ONNX Runtime CUDA EP |
 | Tracker | ByteTrack unstick | CPU (boxes) |

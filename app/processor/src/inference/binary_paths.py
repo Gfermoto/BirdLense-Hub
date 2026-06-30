@@ -1,12 +1,16 @@
 """Резолв пути к весам бинарного детектора.
 
-torch ``.pt`` / ONNX / TensorRT.
+ONNX (Orin) / torch ``.pt`` / TensorRT ``.engine``.
 """
 
 from __future__ import annotations
 
 import os
 from typing import Any, Mapping
+
+DEFAULT_BINARY_ONNX = (
+    "models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx"
+)
 
 
 def processor_package_root() -> str:
@@ -33,6 +37,17 @@ def detector_weights_available(path: str) -> bool:
     if os.path.isfile(path):
         return path.endswith((".pt", ".onnx", ".engine"))
     return False
+
+
+def _backend_for_weight_path(path: str, requested_backend: str) -> str:
+    lower = path.lower()
+    if lower.endswith(".engine"):
+        return "tensorrt"
+    if lower.endswith(".onnx"):
+        return "onnxruntime"
+    if requested_backend in ("onnxruntime", "tensorrt"):
+        return requested_backend
+    return "torch"
 
 
 def resolve_binary_detector_weight_path(
@@ -64,15 +79,15 @@ def resolve_binary_detector_weight_path(
                 import logging
 
                 logging.getLogger(__name__).warning(
-                    "TensorRT engine missing at %s; falling back to torch .pt at %s",
+                    "TensorRT engine missing at %s; falling back to %s at %s",
                     p or raw_trt,
+                    _backend_for_weight_path(p_pt, requested_backend),
                     p_pt,
                 )
-                return (p_pt, "torch")
+                return (p_pt, _backend_for_weight_path(p_pt, requested_backend))
         if p:
             return (p, "tensorrt")
 
-    default_bin = "models/detection/weights/yolo11n.pt"
-    rel = app_config.get("processor.models.binary", default_bin)
-    p = resolve_relative_to_processor_root(str(rel).strip(), root)
-    return (p, "torch")
+    rel = str(app_config.get("processor.models.binary") or DEFAULT_BINARY_ONNX).strip()
+    p = resolve_relative_to_processor_root(rel, root)
+    return (p, _backend_for_weight_path(p, requested_backend))

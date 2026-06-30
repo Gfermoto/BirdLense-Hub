@@ -3,7 +3,7 @@
 ## Требования
 
 - Jetson Orin NX 16GB или Orin NANO 8GB
-- JetPack 5+ (L4T r35+), NVIDIA drivers
+- JetPack 6+ (L4T r36+), NVIDIA drivers
 - Docker + NVIDIA Container Toolkit
 - ~20GB свободного места (образ + модели)
 
@@ -37,7 +37,9 @@ git checkout orin
 
 ```bash
 mkdir -p app/processor/models/detection/trapper_ai_v02_2024
-mkdir -p app/processor/models/classification/chriamue_bird_species_classifier
+mkdir -p app/processor/models/detection/trapper_ai_v02_2024
+  mkdir -p app/processor/models/reid/ornimetrics
+  mkdir -p app/processor/models/welfare/ornimetrics
 mkdir -p app/processor/models/reid/ornimetrics
 mkdir -p app/processor/models/welfare/ornimetrics
 ```

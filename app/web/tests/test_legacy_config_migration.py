@@ -267,7 +267,7 @@ def test_migrate_processor_classifier_best_eu_relative_path():
     }
     assert migrate_processor_classifier_best_eu_path(user) is True
     assert user["processor"]["models"]["classifier"] == (
-        "models/classification/weights/convnext_v2_tiny_eu-common256px.pt"
+        "models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx"
     )
 
 
@@ -281,7 +281,7 @@ def test_migrate_processor_classifier_best_eu_absolute_path():
     }
     assert migrate_processor_classifier_best_eu_path(user) is True
     assert user["processor"]["models"]["classifier"] == (
-        "models/classification/weights/convnext_v2_tiny_eu-common256px.pt"
+        "models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx"
     )
 
 
@@ -294,7 +294,7 @@ def test_migrate_processor_classifier_best_pt_to_birder_layout():
     }
     assert migrate_processor_classifier_best_eu_path(user) is True
     assert user["processor"]["models"]["classifier"] == (
-        "models/classification/weights/convnext_v2_tiny_eu-common256px.pt"
+        "models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx"
     )
 
 

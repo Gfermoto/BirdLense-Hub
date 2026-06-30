@@ -1,127 +1,49 @@
 ---
-description: Деплой BirdLense Hub — LAN/VPS, UI-порт, MCP, rsync-исключения
+description: Деплой BirdLense Hub — Orin, LAN/VPS, rsync
 alwaysApply: true
 ---
 
-# Деплой BirdLense Hub
+# Деплой BirdLense Hub (Orin)
 
-## Два режима (переключайте `deploy.local.sh`)
+**Платформа:** только `BIRDLENSE_PLATFORM=orin` (`Dockerfile.orin`, `docker-compose.orin.yml`, ONNX Runtime CUDA EP).
 
-Часть времени хаб в **домашней/LAN-сети**, часть — **удалённо** (VPS). В **`scripts/deploy.local.sh`** должен быть активен **ровно один** набор `DEPLOY_HOST` / `DEPLOY_SSH_PORT` / `DEPLOY_URL` под текущую ситуацию (шаблон: **`deploy.local.sh.example`**).
+В **`scripts/deploy.local.sh`** — один активный блок `DEPLOY_HOST` / `DEPLOY_SSH_PORT` / `DEPLOY_URL` (шаблон: `deploy.local.sh.example`).
 
-**Пока без домена:** нормально работать по **`http://IP:порт`** — задайте **`DEPLOY_URL`** и при необходимости **`CORS_ORIGINS`** на сервере тем же URL. Отдельный reverse proxy перед контейнером и HTTPS **не обязательны**; домен и прокси можно добавить позже и обновить URL/`TRUSTED_PROXY`.
+## Режимы
 
-### На площадке (LAN)
+**LAN:** `http://192.168.1.11:8085/` · **VPS:** `https://birdlense.eyera.info/` (или `http://IP:порт` без домена).
 
-**SSH:** `192.168.1.11`, порт **22** (пользователь по вашей схеме, часто `root`).
+**MCP:** `{DEPLOY_URL}/mcp` (Bearer — `MCP_TOKEN`).
 
-**Веб-UI:** `http://192.168.1.11:8085/` (порт хаба по умолчанию — **8085**, см. `BIRDLENSE_PORT`).
-
-**MCP:** `http://192.168.1.11:8085/mcp` (Bearer — `MCP_TOKEN` / настройки MCP в UI).
-
-### Удалённо (публичный хост)
-
-**SSH:** например **`203.0.113.10`** ([TEST-NET-3](https://datatracker.ietf.org/doc/html/rfc5737), подставьте свой VPS), порт **`2222`** — задать `DEPLOY_SSH_PORT=2222` в `deploy.local.sh`.
-
-**Веб-UI:** **`https://birdlense.eyera.info/`** — **`DEPLOY_URL`** для health после деплоя и в браузере.
-
-**MCP:** `https://birdlense.eyera.info/mcp` (Bearer — `MCP_TOKEN` / настройки MCP в UI).
-
----
-
-## Платформы (orin / intel_nuc)
-
-- **Дефолт:** `orin` — `BIRDLENSE_PLATFORM` не задана = Orin (`app/Dockerfile.orin`, `docker-compose.orin.yml`, ONNX GPU CUDA EP).
-- **Intel NUC:** `export BIRDLENSE_PLATFORM=intel_nuc` в `deploy.local.sh` → `app/Dockerfile`, OpenVINO IR, Intel GPU override.
-- Профили: `deploy/profiles/intel-nuc/`, `deploy/profiles/orin/`.
-
----
-
-**После изменений в коде** — по запросу: `make deploy` из корня репозитория. Не запускать автоматически при открытии проекта.
-
-До деплоя: **`make verify`** (контракт по **`DEPLOY_URL`**), опционально **`make preflight-deploy`** (= проверка локальной копии **`app/.env`** + живой хаб). Перед **`make deploy`** можно задать в **`deploy.local.sh`** **`RUN_VERIFY_PROD_BEFORE_DEPLOY=1`**, чтобы **`deploy.sh`** сначала вызвал **`verify-prod-env`**.
-
-## Команда деплоя
+## Команды
 
 ```bash
-cd /home/gfer/BirdLense
-make deploy
+make verify          # health по DEPLOY_URL
+make preflight-deploy
+make deploy          # rsync + build + start на Orin
 ```
 
-## Что делает деплой
+## Модели на сервере (не в git)
 
-1. Синхронизирует код (для Orin — только runtime allowlist из runbook; для Intel/VPS — исключая **`datasets/`**, **`app/data/`** целиком (как в CI), **`app/.env`**, **`.tools/`** (локальный CodeQL), venv и `site/` — данные на сервере не перезаписываются rsync)
-2. На сервере: `make stop` → `make build` → `make start`
-3. Intel iGPU (только платформа intel_nuc): при `/dev/dri/renderD*` генерируется `app/docker-compose.override.yml` (DRI, `group_add`, `LIBVA_DRIVER_NAME=iHD`). На Orin не требуется.
-
-## Данные на сервере (не теряются)
-
-- `./app/data/recordings/` — видео
-- `./app/data/db/birdlense.db` — SQLite
-- `./app/app_config/` — default_config синхронизируется; **user_config.yaml не перезаписывается**
-
-## SSH (пример `~/.ssh/config`)
-
-LAN:
-
-```
-Host birdlense-lan
-  HostName 192.168.1.11
-  Port 22
-  User root
+```bash
+bash scripts/fetch-processor-models-orin.sh
 ```
 
-Тогда: `export DEPLOY_HOST="birdlense-lan"` (порт 22 по умолчанию).
+Пути: `app/processor/models/` — см. `models/README.md`.
 
-VPS:
+## Деплой не перезаписывает
 
-```
-Host birdlense-vps
-  HostName 203.0.113.10
-  Port 2222
-  User root
-```
+- `app/data/` — записи, БД
+- `app/app_config/user_config.yaml`
+- `app/.env` на сервере (точечный merge секретов)
 
-Тогда: `export DEPLOY_HOST="birdlense-vps"` и **`export DEPLOY_SSH_PORT="2222"`**.
+## После деплоя
 
-## Порт
+1. System → «Сканировать и импортировать» если записи не видны
+2. `docker logs birdlense --tail=50` при проблемах
 
-По умолчанию **8085**. На сервере: `BIRDLENSE_PORT=8080 make start` и т.п.
+## Политика агентов на prod
 
-## Записи не видны
+Без явного OK пользователя **не трогать** Frigate, сторонние контейнеры, Coral/USB, чужие `docker stop`.
 
-1. System → «Сканировать и импортировать»
-2. Проверить: `./app/data/recordings/YYYY/MM/DD/HHMMSS/video.mp4` на сервере
-
-## Что НЕ перезаписывается при деплое
-
-- `app/data/` — записи и БД
-- `app/app_config/user_config.yaml` — настройки
-- Старые контейнеры — удаляются перед деплоем по логике `deploy.sh`
-
-## BRG веса + инференс на Orin (ONNX GPU)
-
-1. ONNX-веса монтируются через volumes в `docker-compose.orin.yml`: `./processor/models/...:/app/processor/models/...`.
-2. `user_config.yaml` на устройстве: `inference_backend: onnxruntime`, `inference_device: cuda:0`, пути к `.onnx`.
-3. Либо через **`app/.env`**: `BIRDLENSE_INFERENCE_DEVICE=cuda:0`, `BIRDLENSE_INFERENCE_BACKEND=onnxruntime`.
-
-## Intel NUC (альтернативная платформа)
-
-Intel NUC с OpenVINO: `export BIRDLENSE_PLATFORM=intel_nuc`, OpenVINO IR, Intel GPU override.  
-См. `deploy/profiles/intel-nuc/`.
-
-## YOLO «слепой», Frigate видит (Orin / VPS)
-
-**По умолчанию в `default_config.yaml`:** torch/cpu, unstick-трекер, `min_confidence_binary` 0.12, `merge_window_seconds` 12. На Orin: **`user_config.orin.example.yaml`**. После смены **`app/.env`** — **`docker compose -f docker-compose.yml -f docker-compose.orin.yml up -d --force-recreate birdlense`**.
-
-## Политика агентов на prod VPS (2026-06-11)
-
-**Без явного OK пользователя агенты НЕ трогают:**
-
-- Frigate (`/home/user/ssd/frigate/config/`, `docker restart/stop frigate`)
-- DeepStack, CompreFace, Minecraft и любые контейнеры вне `birdlense` / `birdlense-redis`
-- Coral/USB, удаление записей, `docker stop` чужих сервисов
-
-**Разрешено только с согласия:** правки `app/app_config/user_config.yaml`, деплой BirdLense (`make deploy`), рестарт `birdlense` / `birdlense-redis`.
-
-Перед правкой prod-конфига — бэкап с суффиксом `.bak.YYYYMMDD_<reason>`. Откат — из бэкапа, не «донастройка».
+Разрешено с согласия: `make deploy`, рестарт `birdlense` / `birdlense-redis`, бэкап перед правкой `user_config.yaml`.

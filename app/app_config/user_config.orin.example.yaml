@@ -3,18 +3,34 @@
 processor:
   models:
     binary: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
-    classifier: models/classification/chriamue_bird_species_classifier
-  classifier_engine: chriamue
+    classifier: models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx
+  classifier_engine: birder_eu
   inference_backend: onnxruntime
   classifier_inference_backend: onnxruntime
   inference_device: cuda:0
+  classifier_inference_device: cuda:0
   binary_imgsz: 640
   min_confidence_binary: 0.12
   merge_window_seconds: 12
+  tracker: models/tracker/bytetrack_birdlense.yaml
+  tracker_profiles:
+    night: models/tracker/bytetrack_birdlense.yaml
+  auto_unstick_tracker: models/tracker/bytetrack_birdlense.yaml
+  auto_unstick_tracker_night: models/tracker/bytetrack_birdlense.yaml
 
 reid:
   model_path: models/reid/ornimetrics/reid_embedder.onnx
+  device: cuda:0
+  inference_backend: onnxruntime
 
 welfare:
   embedder_path: models/welfare/ornimetrics/embedder.onnx
   scorer_path: models/welfare/ornimetrics/welfare_scorer.npz
+
+video:
+  encoding: jetson
+  capture_backend: ffmpeg_nvmpi
+  record_with_vaapi: false
+
+species:
+  catalog_allowlist_file: models/classification/convnext_v2_tiny_eu-common256px/class_labels.txt

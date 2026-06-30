@@ -27,6 +27,6 @@
 ## Платформа
 
 - Jetson Orin NX 16GB / Orin NANO 8GB
-- ONNX Runtime CUDA EP / TensorRT EP
+- ONNX Runtime CUDA EP
 - NVDEC/NVENC аппаратное кодирование
 - Docker контейнеризация

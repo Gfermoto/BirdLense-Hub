@@ -57,27 +57,50 @@ def _resolve_birder_eu_paths(
     from inference.binary_paths import resolve_relative_to_processor_root
     from inference.classifier_model_layout import (
         birder_variant_name,
-        classifier_torch_rel_pt,
+        classifier_onnx_rel,
         resolve_birder_bundle_dir,
+        resolve_birder_model_dir,
+        resolve_birder_onnx_path,
         resolve_birder_pt_path,
     )
-    from inference.selector import resolve_classifier_inference_backend
+    from inference.selector import (
+        onnxruntime_classifier_available,
+        resolve_classifier_inference_backend,
+    )
 
     resolve_classifier_inference_backend(app_config)
     variant = birder_variant_name(app_config)
-    weights_root = Path(processor_root) / "models/classification/weights"
+    cls_root = Path(processor_root) / "models/classification"
+    model_dir = resolve_birder_model_dir(cls_root, variant)
+    bundle_dir = resolve_birder_bundle_dir(cls_root, variant, model_dir)
 
-    cfg_pt = str(
+    cfg_cls = str(
         app_config.get("processor.models.classifier")
         or app_config.get("processor.models.classifier_birder_eu")
-        or classifier_torch_rel_pt(variant),
+        or classifier_onnx_rel(variant),
     ).strip()
-    p_pt = Path(resolve_relative_to_processor_root(cfg_pt, processor_root))
+    p_cls = Path(resolve_relative_to_processor_root(cfg_cls, processor_root))
 
-    pt_path = resolve_birder_pt_path(weights_root, variant, p_pt)
+    onnx_path = resolve_birder_onnx_path(model_dir, variant, p_cls if p_cls.suffix == ".onnx" else None)
+    if requested_backend in ("onnxruntime", "auto"):
+        if onnx_path.is_file() and onnxruntime_classifier_available():
+            return (str(bundle_dir), "onnxruntime")
+        if requested_backend == "onnxruntime":
+            raise FileNotFoundError(
+                f"Birder EU ONNX missing at {onnx_path}. "
+                "Run: python3 scripts/download_birder_classifier.py --export-onnx",
+            )
+
+    pt_path = resolve_birder_pt_path(
+        model_dir,
+        variant,
+        p_cls if p_cls.suffix == ".pt" else None,
+    )
     if pt_path.is_file():
         return (str(pt_path), "torch")
-    return (str(p_pt), "torch")
+    if p_cls.suffix == ".pt":
+        return (str(p_cls), "torch")
+    return (str(model_dir / f"{variant}.pt"), "torch")
 
 
 def _resolve_explicit_classifier(
@@ -128,7 +151,7 @@ def _resolve_chriamue_classifier(
         app_config.get("processor.models.classifier_chriamue")
         or app_config.get("processor.models.classifier")
         or app_config.get("processor.models.classifier_efficientnet_b2")
-        or "models/classification/chriamue_bird_species_classifier"
+        or "models/classification/convnext_v2_tiny_eu-common256px"
     )
     weights_dir = resolve_relative_to_processor_root(str(rel).strip(), processor_root)
     if requested in ("onnxruntime", "auto"):

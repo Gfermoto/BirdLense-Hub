@@ -1,8 +1,0 @@
-# Live recall on OpenVINO substream: align PT/OV gates + scoring with bird floor.
-processor:
-  min_confidence_binary: 0.22
-  openvino_binary_track_ultralytics_conf: 0.18
-  scoring_default_low_threshold: 0.24
-  scoring_default_high_threshold: 0.40
-  auto_small_object_relax_enabled: true
-  scoring_relaxed_min_confidence: 0.08

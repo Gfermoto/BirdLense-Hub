@@ -66,6 +66,7 @@ def run_user_config_migrations(user_config: dict[str, Any]) -> bool:
         migrate_legacy_scales_source,
         migrate_legacy_trigger_topics,
         migrate_processor_classifier_best_eu_path,
+        migrate_processor_models_layout,
     )
     from app_config.trigger_config import migrate_legacy_motion_block
 
@@ -75,6 +76,7 @@ def run_user_config_migrations(user_config: dict[str, Any]) -> bool:
         migrate_legacy_trigger_topics,
         migrate_legacy_homeassistant_from_weather,
         migrate_processor_classifier_best_eu_path,
+        migrate_processor_models_layout,
         migrate_legacy_motion_block,
     ):
         try:

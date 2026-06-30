@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# OSCF/TrapperAI-v02.2024 → Jetson flat layout (detection/trapper_ai_v02_2024/).
+# OSCF/TrapperAI-v02.2024 → models/detection/trapper_ai_v02_2024/ (.pt для export ONNX).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

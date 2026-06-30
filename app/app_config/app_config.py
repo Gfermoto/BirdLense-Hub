@@ -292,16 +292,22 @@ def migrate_processor_classifier_best_eu_path(user_config: dict) -> bool:
         return False
 
     variant = str(processor.get("birder_eu_variant") or "convnext_v2_tiny_eu-common256px").strip()
-    canon_torch = f"models/classification/weights/{variant}.pt"
-    canon_ov = f"models/classification/weights/{variant}_openvino_model"
+    canon_torch = f"models/classification/{variant}/{variant}.pt"
+    canon_onnx = f"models/classification/{variant}/{variant}.onnx"
+    canon_bundle = f"models/classification/{variant}"
 
     replacements = {
-        "models/classification/weights/best.pt": canon_torch,
-        f"models/classification/weights/{variant}": canon_torch,
-        f"models/classification/weights/birder_{variant.replace('-', '_')}": canon_torch,
-        f"models/classification/weights/birder_{variant.replace('-', '_')}_openvino": canon_ov,
-        f"models/classification/weights/{variant}_openvino": canon_ov,
-        "models/classification/weights/best_openvino_model": canon_ov,
+        "models/classification/weights/best.pt": canon_onnx,
+        f"models/classification/weights/{variant}": canon_onnx,
+        f"models/classification/weights/{variant}.onnx": canon_onnx,
+        f"models/classification/weights/{variant}.pt": canon_torch,
+        f"models/classification/{variant}": canon_onnx,
+        f"models/classification/weights/birder_{variant.replace('-', '_')}": canon_onnx,
+        f"models/classification/weights/birder_{variant.replace('-', '_')}_openvino": canon_bundle,
+        f"models/classification/weights/{variant}_openvino": canon_bundle,
+        f"models/classification/weights/{variant}_openvino_model": canon_bundle,
+        "models/classification/weights/best_openvino_model": canon_bundle,
+        canon_torch: canon_onnx,
     }
 
     changed = False
@@ -319,9 +325,7 @@ def migrate_processor_classifier_best_eu_path(user_config: dict) -> bool:
         if s in replacements:
             new_key = "classifier" if key.startswith("classifier_birder") and "openvino" not in key else key
             if "openvino" in key or "birder_eu_openvino" in key:
-                models["classifier_openvino"] = replacements[s]
-                if key != "classifier_openvino":
-                    models.pop(key, None)
+                models.pop(key, None)
             else:
                 models["classifier"] = replacements[s]
                 if key != "classifier":
@@ -334,12 +338,73 @@ def migrate_processor_classifier_best_eu_path(user_config: dict) -> bool:
         if not cur_cls or cur_cls in (
             "models/classification/weights/best.pt",
             f"models/classification/weights/{variant}",
-        ) or "birder_convnext" in cur_cls:
-            models["classifier"] = canon_torch
+            f"models/classification/weights/{variant}.onnx",
+            f"models/classification/weights/{variant}.pt",
+            canon_torch,
+        ) or "birder_convnext" in cur_cls or cur_cls.endswith(".pt"):
+            models["classifier"] = canon_onnx
             changed = True
-        if not models.get("classifier_openvino"):
-            models["classifier_openvino"] = canon_ov
+        models.pop("classifier_openvino", None)
+    return changed
+
+
+def migrate_processor_models_layout(user_config: dict) -> bool:
+    """Flatten legacy paths: detection/.../weights/, classification/weights/, tracker lowfps yaml."""
+    if not isinstance(user_config, dict):
+        return False
+    processor = user_config.get("processor")
+    if not isinstance(processor, dict):
+        return False
+    changed = False
+
+    models = processor.get("models")
+    if isinstance(models, dict):
+        binary = str(models.get("binary") or "").strip().replace("\\", "/")
+        if "/trapper_ai_v02_2024/weights/" in binary:
+            models["binary"] = binary.replace(
+                "/trapper_ai_v02_2024/weights/",
+                "/trapper_ai_v02_2024/",
+            )
             changed = True
+
+    def _fix_tracker_path(raw: object) -> object:
+        nonlocal changed
+        if not isinstance(raw, str):
+            return raw
+        s = raw.strip().replace("\\", "/")
+        if "bytetrack_birdlense_lowfps.yaml" in s:
+            changed = True
+            return s.replace(
+                "bytetrack_birdlense_lowfps.yaml",
+                "bytetrack_birdlense.yaml",
+            )
+        return raw
+
+    for key in ("tracker", "auto_unstick_tracker", "auto_unstick_tracker_night"):
+        if key in processor:
+            fixed = _fix_tracker_path(processor.get(key))
+            if fixed != processor.get(key):
+                processor[key] = fixed
+
+    for nested_key in ("tracker_profiles", "tracker_fps_profiles"):
+        profiles = processor.get(nested_key)
+        if not isinstance(profiles, dict):
+            continue
+        for pk, pv in list(profiles.items()):
+            fixed = _fix_tracker_path(pv)
+            if fixed != pv:
+                profiles[pk] = fixed
+
+    species = user_config.get("species")
+    if isinstance(species, dict):
+        allow = str(species.get("catalog_allowlist_file") or "").strip().replace("\\", "/")
+        if allow and "/classification/weights/" in allow:
+            species["catalog_allowlist_file"] = allow.replace(
+                "/classification/weights/",
+                "/classification/",
+            )
+            changed = True
+
     return changed
 
 

@@ -15,11 +15,6 @@ if [ "$(id -u)" = "0" ]; then
     rm -f /app/app_config/app_config
   fi
   chown -R birdlense:birdlense /app/data /app/app_config 2>/dev/null || true
-  # Orin: nvidia runtime handles GPU access; no DRM group fix needed
-  chriamue_dir="/app/processor/models/classification/chriamue_bird_species_classifier"
-  if [ -f "${chriamue_dir}/weights/model.onnx" ] && [ ! -f "${chriamue_dir}/model.onnx" ]; then
-    ln -sf weights/model.onnx "${chriamue_dir}/model.onnx"
-  fi
   chmod -R a+rX /app/processor/models/ 2>/dev/null || true
   exec gosu birdlense /bin/bash "$0" "$@"
 fi

@@ -17,7 +17,6 @@ PERSIST_SUBSTAGE_PAYLOAD_KEYS: tuple[str, ...] = (
     "dataset_crops_duration_ms",
     "reid_enrich_duration_ms",
 )
-)
 
 CREATE_VIDEO_INGEST_SUBSTAGE_KEYS: tuple[str, ...] = (
     "visit_processor_ms",

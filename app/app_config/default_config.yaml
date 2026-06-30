@@ -46,14 +46,14 @@ processor:
   adaptive_preprocess_enabled: false
   binary_rescue_enabled: false
   # ByteTrack YAML: имя из Ultralytics («bytetrack.yaml») или путь models/tracker/… под app/processor
-  tracker: "models/tracker/bytetrack_birdlense_lowfps.yaml"
+  tracker: "models/tracker/bytetrack_birdlense.yaml"
   # Только ключ ``night`` читается runtime (resolve_runtime_profile). Днём — ``processor.tracker``.
   tracker_profiles:
     night: "models/tracker/bytetrack_birdlense.yaml"
   # Optional tracker presets by effective stream FPS (probe/video.detect_fps).
   tracker_fps_profiles:
-    lte_5: "models/tracker/bytetrack_birdlense_lowfps.yaml"
-    lte_7: "models/tracker/bytetrack_birdlense_lowfps.yaml"
+    lte_5: "models/tracker/bytetrack_birdlense.yaml"
+    lte_7: "models/tracker/bytetrack_birdlense.yaml"
     lte_10: "models/tracker/bytetrack_birdlense.yaml"
     lte_15: "models/tracker/bytetrack_birdlense.yaml"
     gt_15: "models/tracker/bytetrack_birdlense.yaml"
@@ -136,7 +136,7 @@ processor:
   # Между обрабатываемыми кадрами декодирование не делается (OpenCV grab), иначе ускорения почти нет.
   # На слабом/прерывистом бинарнике шаг 4+ часто даёт пустой regen или короткий трек — для качества одного ролика ставьте 1–2.
   track_regen_frame_step: 5
-  # Защитный mutex внутри процесса для OpenVINO track regen: снижает риск segfault при конкурентных regen-запросах.
+  # Защитный mutex внутри процесса для track regen: снижает риск segfault при конкурентных regen-запросах.
   track_regen_serialize_inference: true
   # Доп. межпроцессный lock (/tmp/birdlense_track_regen.lock): не даёт нескольким воркерам/CLI
   # одновременно гонять тяжелый full-regen и выбивать контейнер по OOM (exit 137).
@@ -216,12 +216,6 @@ processor:
   # Trapper class 5 (белка): отдельный порог после track(); калибровать по val-клипам (не ниже bird без причины).
   min_confidence_binary_rodent: 0.30
   # DEPRECATED (nabirds-pivot): Rodent не детектируется; ключ только для legacy user_config (игнорируется при detector_scope: [Bird]).
-  # OpenVINO NABirds: conf на IR часто ВЫШЕ torch, не ниже — scale 8.5 (legacy BRG) раздувает FP.
-  # track(conf) cap — не ниже bird-порога; scale 1.0 = без искусственного завышения при фильтрации.
-  # conf для YOLO track(); должен быть < min_confidence_binary_bird и > track_high в ByteTrack YAML.
-  openvino_binary_track_ultralytics_conf: 0.06
-  openvino_binary_bird_score_scale: 1.0
-  openvino_min_confidence_binary_bird: 0.06
   # --- SOTA 2.0: unified ScoringEngine (replaces legacy filter cascade) ---
   scoring_engine_enabled: true
   scoring_weight_conf: 0.45
@@ -341,7 +335,6 @@ processor:
         # Шум/FP режутся scoring/motion/filter-цепочкой, а не агрессивным conf floor.
         min_confidence_binary: 0.08
         min_confidence_binary_bird: 0.06
-        openvino_min_confidence_binary_bird: 0.06
         min_track_duration: 1.0
         min_confidence_to_process: 0.08
         min_box_size_px: 14
@@ -415,11 +408,8 @@ processor:
   # Центр bbox не ближе этого расстояния к краю кадра (норм. координаты 0..1).
   # Кормушка у кромки: 0.035–0.04; ещё ближе к краю — до 0.03.
   min_center_dist: 0.01
-  # Trapper OpenVINO: экспорт imgsz=704 (max side detect 704×576). IR = 704×704 — letterbox в Hub до track().
+  # Trapper ONNX: экспорт imgsz=704 (max side detect 704×576). Letterbox в Hub до track().
   binary_imgsz: 704
-  # false (default): Trapper 704² IR + intel:gpu — native [H,W] imgsz ломает OV; letterbox до binary_imgsz.
-  # true только для прямоугольного IR / torch; см. frame_geometry.resolve_binary_track_imgsz.
-  openvino_native_lores_imgsz: false
   # ByteTrack merge across distant zones → bad crops; split before classify/finalize (incident a656199a).
   track_spatial_split_enabled: true
   track_spatial_split_max_center_jump_norm: 0.18
@@ -459,7 +449,7 @@ processor:
   camera_tuning_by_role:
     feeder_close:
       # Frigate-style: явный detect substream inference_lores_wh [704,576], не «native без letterbox».
-      # Prod-proven (VPS 2026-06): low OV conf + ByteTrack track(conf) ~0.025; scene_adaptive off.
+      # Prod-proven (VPS 2026-06): low conf + ByteTrack; scene_adaptive off.
       detect_use_native_resolution: false
       light_gate_min_brightness: 8
       light_gate_min_contrast: 6
@@ -467,8 +457,6 @@ processor:
       detect_first_confirm_min_hits: 1
       min_confidence_binary: 0.04
       min_confidence_binary_bird: 0.02
-      openvino_min_confidence_binary_bird: 0.02
-      openvino_binary_track_ultralytics_conf: 0.025
       min_confidence_to_process: 0.04
       min_track_duration: 0.25
       tracker: models/tracker/bytetrack_birdlense.yaml
@@ -494,12 +482,10 @@ processor:
       scoring_static_phantom_reject_enabled: false
       scene_adaptive_conf_enabled: false
     feeder_far:
-      # Distant / Forest-style: weak OpenVINO conf 0.03–0.12; must accept before ByteTrack IDs stabilize.
+      # Distant / Forest-style: weak conf 0.03–0.12; must accept before ByteTrack IDs stabilize.
       detect_use_native_resolution: false
       min_confidence_binary: 0.05
       min_confidence_binary_bird: 0.04
-      openvino_min_confidence_binary_bird: 0.04
-      openvino_binary_track_ultralytics_conf: 0.06
       min_confidence_to_process: 0.04
       min_box_size_px: 8
       min_center_dist: 0.012
@@ -519,7 +505,7 @@ processor:
       scoring_moving_roi_min_motion_score: 0.22
       scene_adaptive_conf_enabled: false
   # Generic Bird: когда классификатор не дотягивает, но есть уверенный «Bird», не гоним всё в ручной review.
-  # Не 0.42: на OV+detect слабые conf 0.04–0.15 — иначе только review_only salvage.
+  # Не 0.42: на detect substream слабые conf 0.04–0.15 — иначе только review_only salvage.
   generic_bird_min_detector_conf: 0.10
   generic_bird_min_frames: 2
   generic_bird_min_area_frac: 0.006
@@ -543,17 +529,10 @@ processor:
   # video.source=file: оставить папку сессии с записанным mp4 при 0 детекций (без create_video / кропов из пайплайна)
   keep_recording_when_no_detections: false
   detection_strategy: "two_stage"
-  # Detector runtime (OpenVINO primary for production).
-  inference_backend: openvino
-  inference_device: cpu
-  # false — экстренный стоп OV (вернуть torch + openvino_binary_enabled: false).
-  openvino_binary_enabled: true
-  # OpenVINO runtime tuning (live: latency + num_requests 0|1). См. docs/strategy/intel_igpu_inference_guide.md
-  openvino:
-    profile: latency
-    num_requests: 0
-    model_cache_enabled: true
-  # birder_eu (707 EU, Collins / birder-project eu-common) | efficientnet_b2 (global 525) | yolo (legacy)
+  # Detector runtime (Orin: ONNX Runtime CUDA EP).
+  inference_backend: onnxruntime
+  inference_device: cuda:0
+  # birder_eu (707 EU, Collins / birder-project eu-common) | efficientnet_b2 (legacy) | yolo (legacy)
   classifier_engine: birder_eu
   birder_eu_variant: convnext_v2_tiny_eu-common256px
   birder_eu_min_confidence: 0.15
@@ -566,11 +545,9 @@ processor:
   efficientnet_b2_unknown_label: "Unknown Bird"
   # Trapper squirrel → каталог Rodent (не класс EfficientNet 525)
   squirrel_species_label: "Rodent"
-  # auto: OpenVINO IR (birds_classifier_260.xml) if present, else ONNX Runtime
-  classifier_inference_backend: auto
-  # Безопасный дефолт: AUTO (CPU fallback без обязательного /dev/dri на VPS/CPU-only).
-  # Для явного Intel iGPU задайте intel:gpu в user_config/.env.
-  classifier_inference_device: auto
+  # ONNX Runtime CUDA EP (Orin).
+  classifier_inference_backend: onnxruntime
+  classifier_inference_device: cuda:0
   # W1.1: async finalize worker to decouple hot session loop.
   finalize_async_enabled: true
   finalize_queue_maxsize: 2
@@ -589,13 +566,10 @@ processor:
   # Детектор-контракт не фиксируется на Bird-only: используем mixed class detector.
   detector_weight_contract: off
   models:
-    # Candidate A (current default): TrapperAI v02.2024.
-    # Fresh clone: перед запуском проверьте наличие весов (make sync-models).
-    binary: "models/detection/weights/trapper_ai_v02_2024.pt"
-    binary_openvino: "models/detection/weights/trapper_ai_v02_2024_openvino_model"
-    # EU classifier (Birder 707): как trapper — .pt в корне weights + *_openvino_model/
-    classifier: "models/classification/weights/convnext_v2_tiny_eu-common256px.pt"
-    classifier_openvino: "models/classification/weights/convnext_v2_tiny_eu-common256px_openvino_model"
+    # TrapperAI v02.2024 — ONNX на Orin (CUDA EP).
+    binary: "models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx"
+    # Birder EU-707: models/classification/{variant}/ (скачать: scripts/download_birder_classifier.py --export-onnx)
+    classifier: "models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx"
   # Неопределённость YOLO-cls (#370): энтропия (наты) и margin top1−top2 по полному вектору probs.
   # null — не выставлять classifier_needs_review в decision rows; задайте пороги для AL/аналитики.
   classifier_uncertainty_entropy_ge: null
@@ -664,15 +638,11 @@ video:
   go2rtc_url: ""
   go2rtc_username: ""
   go2rtc_password: ""
-  # Кодирование записи: cpu | intel (встроенная видеокарта Intel — VA-API)
-  encoding: cpu
-  # При encoding=intel: использовать h264_vaapi для записи MP4 (true) или libx264 (false).
-  # false — стабильнее на части iGPU/драйверов (ошибка encode issue 24 / битый moov), при этом
-  # при capture_backend=auto захват для YOLO по-прежнему может идти через VA-API.
-  record_with_vaapi: true
-  # Захват кадров для motion/detection: auto | opencv | ffmpeg_vaapi | ffmpeg_nvmpi (Jetson GStreamer NVDEC).
-  # auto: при encoding=intel пробует FFmpeg VA-API, иначе OpenCV; при ошибке fallback на OpenCV.
-  capture_backend: auto
+  # Кодирование записи: jetson (NVENC/NVMPI на Orin) | cpu (libx264 fallback)
+  encoding: jetson
+  record_with_vaapi: false
+  # Захват кадров для motion/detection: ffmpeg_nvmpi (Orin NVDEC) | opencv | auto
+  capture_backend: ffmpeg_nvmpi
   # Запись с RTSP: h264 — перекодировать в H.264 (воспроизведение в браузере, меньше сюрпризов с HEVC).
   # copy — без перекодирования (ниже CPU; если поток HEVC, в Chrome может быть «Не удалось загрузить видео»).
   record_stream_codec: h264
@@ -1263,9 +1233,9 @@ species:
   # Каталог: scope=project (по умолчанию) = классификатор + арбитраж (species_mapping, registry).
   # scope=allowlist = только id2label активного классификатора (707+Rodent).
   catalog_allowlist_use_active_classifier: true
-  catalog_allowlist_file: "models/classification/weights/convnext_v2_tiny_eu-common256px_openvino_model/class_labels.txt"
+  catalog_allowlist_file: "models/classification/convnext_v2_tiny_eu-common256px/class_labels.txt"
   # Явный доп. файл (опционально); catalog_allowlist_file при follow_engine НЕ подмешивается автоматически.
-  # catalog_allowlist_supplement_file: "models/classification/weights/class_names.txt"
+  # catalog_allowlist_supplement_file: "models/classification/class_names.txt"
   # Вне class_labels.txt; materialize + strict ingest (белка → Rodent).
   catalog_allowlist_extra:
     - Rodent

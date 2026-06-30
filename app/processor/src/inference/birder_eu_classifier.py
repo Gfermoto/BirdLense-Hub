@@ -86,6 +86,8 @@ class BirderEuClassifier:
 
         if self.backend == "torch":
             self._init_torch()
+        elif self.backend == "onnxruntime":
+            self._init_onnxruntime()
         else:
             raise ValueError(f"Unsupported Birder EU backend: {backend!r}")
 
@@ -113,6 +115,33 @@ class BirderEuClassifier:
         idx2 = {int(v): _normalize_species_label(k) for k, v in self._model_info.class_to_idx.items()}
         if len(idx2) == len(self.id2label):
             self.id2label = idx2
+
+    def _resolve_onnx_path(self) -> Path:
+        from inference.classifier_model_layout import resolve_birder_onnx_path
+
+        onnx = resolve_birder_onnx_path(self.weights_dir, self.variant)
+        if onnx.is_file():
+            return onnx
+        raise FileNotFoundError(
+            f"Birder EU ONNX not found (expected {onnx}). "
+            "Run: python3 scripts/download_birder_classifier.py --export-onnx",
+        )
+
+    def _init_onnxruntime(self) -> None:
+        import onnxruntime as ort
+
+        onnx_path = self._resolve_onnx_path()
+        providers = ["CPUExecutionProvider"]
+        dev = (self.device or "").lower()
+        if "cuda" in dev:
+            providers.insert(0, "CUDAExecutionProvider")
+        self._ort_session = ort.InferenceSession(str(onnx_path), providers=providers)
+        self._ort_input_name = self._ort_session.get_inputs()[0].name
+        inp_shape = self._ort_session.get_inputs()[0].shape
+        if isinstance(inp_shape, (list, tuple)) and len(inp_shape) == 4:
+            h, w = inp_shape[2], inp_shape[3]
+            if isinstance(h, int) and isinstance(w, int) and h > 0 and w > 0:
+                self._input_size = max(h, w)
 
     def _build_regional_filter(self) -> None:
         if not self.regional_species:
@@ -167,6 +196,14 @@ class BirderEuClassifier:
             logits = out.detach().cpu().numpy()
             return self._softmax(logits.reshape(-1))
 
+        if self.backend == "onnxruntime":
+            chw = self._preprocess_bgr(crop_bgr)
+            logits = self._ort_session.run(
+                None,
+                {self._ort_input_name: chw},
+            )[0]
+            return self._softmax(np.asarray(logits, dtype=np.float64).reshape(-1))
+
         raise ValueError(f"Unsupported backend: {self.backend}")
 
     def classify_crop_bgr(self, crop_bgr: np.ndarray) -> BirderEuClassifierResult:
@@ -207,12 +244,13 @@ def _normalize_weights_bundle(weights_dir: str, variant: str) -> Path:
     from inference.classifier_model_layout import resolve_birder_bundle_dir
 
     ref = Path(weights_dir)
-    root = ref.parent
-    if ref.is_file() and ref.suffix == ".pt":
-        root = ref.parent
+    if ref.is_file():
+        cls_root = ref.parent.parent
     elif ref.is_dir() and ref.name == variant:
-        root = ref.parent
-    return resolve_birder_bundle_dir(root, variant, ref if ref.is_dir() else None)
+        cls_root = ref.parent
+    else:
+        cls_root = ref.parent if ref.is_dir() else ref.parent.parent
+    return resolve_birder_bundle_dir(cls_root, variant, ref if ref.is_dir() else None)
 
 
 def load_birder_eu_classifier(

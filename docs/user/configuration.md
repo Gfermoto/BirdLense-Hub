@@ -14,7 +14,7 @@ processor:
   inference_device: cuda:0           # GPU
 
   binary_onnx: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
-  classifier_onnx: models/classification/chriamue_bird_species_classifier/model.onnx
+  classifier_onnx: models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx
   reid_onnx: models/reid/ornimetrics/reid_embedder.onnx
   welfare_onnx: models/welfare/ornimetrics/embedder.onnx
   welfare_scorer: models/welfare/ornimetrics/welfare_scorer.npz

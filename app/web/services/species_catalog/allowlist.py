@@ -63,9 +63,12 @@ def _birder_labels_dir(app_config_get) -> str:
     rel = (
         app_config_get("processor.models.classifier")
         or app_config_get("processor.models.classifier_birder_eu")
-        or f"models/classification/weights/{variant}"
+        or f"models/classification/{variant}/{variant}.onnx"
     )
-    return rel if os.path.isabs(rel) else os.path.join(_processor_root(), rel)
+    base = rel if os.path.isabs(rel) else os.path.join(_processor_root(), rel)
+    if base.endswith((".onnx", ".pt")):
+        return os.path.dirname(base)
+    return base
 
 
 def _efficientnet_weights_dir(app_config_get) -> str:

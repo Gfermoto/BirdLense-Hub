@@ -1,6 +1,6 @@
 # Orin NX / NANO — runbook BirdLense Hub
 
-**Статус:** ветка `orin`, ONNX GPU (CUDA EP / TensorRT EP), без OpenVINO/Intel  
+**Статус:** ветка `orin`, ONNX GPU (CUDA EP), без OpenVINO/Intel  
 **Платформы:** Orin NX 16GB (песочница) → Orin NANO 8GB (production)  
 **Хранилище:** один загрузочный диск **M.2 NVMe** — отдельного SSD для данных **нет** (записи и Docker на том же NVMe)
 
@@ -8,8 +8,8 @@
 
 | Компонент | Модель | Формат | Бэкенд |
 |-----------|--------|--------|--------|
-| Детектор | Trapper AI v02 2024 | ONNX (опц. `.engine`) | ONNX Runtime CUDA EP / TensorRT EP |
-| Классификатор | chriamue Birder (ConvNeXt EU) | ONNX | ONNX Runtime CUDA EP |
+| Детектор | Trapper AI v02 2024 | ONNX | ONNX Runtime CUDA EP |
+| Классификатор | Birder ConvNeXt EU-707 (birder_eu) | PyTorch → ONNX | ONNX Runtime CUDA EP |
 | ReID | Ornimetrics `reid_embedder` | ONNX | ONNX Runtime CUDA EP |
 | Welfare | Ornimetrics embedder + `welfare_scorer.npz` | ONNX + NPZ | ONNX Runtime CUDA EP |
 | Трекер | ByteTrack / BotSORT | YAML | CPU |
@@ -32,15 +32,17 @@ app/
 └── processor/models/            # веса в .gitignore — копируются вручную
     ├── detection/trapper_ai_v02_2024/
     │   └── trapper_ai_v02_2024.onnx
-    ├── classification/chriamue_bird_species_classifier/
-    │   └── model.onnx
     ├── reid/ornimetrics/reid_embedder.onnx
     ├── welfare/ornimetrics/
     │   ├── embedder.onnx
     │   └── welfare_scorer.npz
-    └── tracker/                   # bytetrack_birdlense*.yaml, botsort_*.yaml
+    ├── classification/convnext_v2_tiny_eu-common256px/
+    │   ├── convnext_v2_tiny_eu-common256px.onnx
+    │   └── class_labels.txt
+    └── tracker/                   # bytetrack_birdlense.yaml, botsort_birdlense.yaml
 ```
 
+Классификатор — ONNX Birder EU-707: `scripts/download_birder_classifier.py --export-onnx`.  
 Деплой с dev-машины: `make deploy` (rsync + `make build` + `make start` на Orin).  
 Сборка на самом Orin: `make local-build && make start` (нужен Node 22 для UI).
 
@@ -108,7 +110,7 @@ df -h /
 defaults,noatime
 ```
 
-Оставить запас ≥30 GB под Docker-слои и записи (`app/data/recordings/`).
+Оставить запас ≥30 GB под Docker-слои и записи (`app/data/recordings/`).
 
 ### Шаг 5. Docker + NVIDIA runtime
 
@@ -150,7 +152,7 @@ git clone --branch orin git@github.com:Gfermoto/BirdLense-Hub.git BirdLense
 cd BirdLense/app
 
 cp app_config/user_config.orin.example.yaml app_config/user_config.yaml
-make setup    # создаёт .env из шаблона — заполнить секреты
+bash scripts/setup-orin.sh
 ```
 
 **Веса** (не в git) — положить на Orin в те же пути, что в `docker-compose.orin.yml` volumes:
@@ -158,9 +160,18 @@ make setup    # создаёт .env из шаблона — заполнить �
 | Файл | Путь на хосте |
 |------|----------------|
 | Trapper ONNX | `processor/models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx` |
-| Классификатор | `processor/models/classification/chriamue_bird_species_classifier/model.onnx` (+ `config.json`, labels) |
+| Birder classifier ONNX | `processor/models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx` |
+| Birder labels | `processor/models/classification/convnext_v2_tiny_eu-common256px/class_labels.txt` |
 | ReID | `processor/models/reid/ornimetrics/reid_embedder.onnx` |
 | Welfare | `processor/models/welfare/ornimetrics/embedder.onnx`, `welfare_scorer.npz` |
+
+Скачать классификатор (на dev-машине или Orin):
+
+```bash
+python3 scripts/download_birder_classifier.py --export-onnx
+# или всё сразу:
+bash scripts/fetch-processor-models-orin.sh
+```
 
 С dev-машины можно `rsync` каталоги `processor/models/` (как при `make deploy`, без перезаписи `app/data/`).
 
@@ -193,7 +204,7 @@ docker exec birdlense python3 -c "
 import onnxruntime as ort
 print(ort.get_available_providers())
 "
-# Ожидается: CUDAExecutionProvider, TensorrtExecutionProvider (если TRT в образе), CPUExecutionProvider
+# Ожидается: CUDAExecutionProvider, CPUExecutionProvider
 ```
 
 ### Шаг 10. Камеры и пайплайн
@@ -208,11 +219,11 @@ print(ort.get_available_providers())
 
 ### 3.1 Пути и бэкенды
 
-- Детектор: `processor.models.binary` → ONNX Trapper; опционально TensorRT `.engine` при `inference_backend: tensorrt`.
-- Классификатор: `classifier_engine: chriamue`, каталог с `model.onnx`.
+- Детектор: `processor.models.binary` → ONNX Trapper.
+- Классификатор: `classifier_engine: birder_eu`, ONNX `weights/{variant}.onnx` + bundle `{variant}/class_labels.txt`.
 - ReID / welfare: ключи `reid.model_path`, `welfare.embedder_path`, `welfare.scorer_path` (см. example yaml).
 
-OpenVINO, Intel GPU и Jetson Nano legacy в ветке `orin` **не используются**.
+OpenVINO, Intel GPU, TensorRT и Jetson Nano legacy в ветке `orin` **не используются**.
 
 ### 3.2 Проверка CUDA внутри контейнера
 
@@ -226,19 +237,6 @@ s = ort.InferenceSession(
 print("providers:", s.get_providers())
 PY
 ```
-
-### 3.3 TensorRT (опционально, максимум FPS)
-
-На Orin можно собрать `.engine` из ONNX и указать в конфиге:
-
-```yaml
-processor:
-  inference_backend: tensorrt
-  models:
-    binary_tensorrt: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.engine
-```
-
-Первый прогон — на устройстве (зависит от версии TRT в JetPack). Для отладки достаточно `inference_backend: onnxruntime`.
 
 ---
 
@@ -263,7 +261,6 @@ processor:
 | RAM | **обязательно** ZRAM; в `docker-compose.orin.yml` снизить `deploy.resources.limits.memory` до **~6G** |
 | Детектор | `binary_imgsz: 640`, один поток камеры до стабилизации |
 | Классификатор | `max_classifications_per_frame: 2` в `user_config` |
-| TensorRT | предпочтительнее ORT-only на этапе отладки (меньше пиков памяти при build engine) |
 | Диск | один M.2 — жёсткий лимит retention записей (System / политика хранения) |
 
 ### 4.3 Захват и кодирование (в compose уже задано)
@@ -281,8 +278,8 @@ BIRDLENSE_ENCODING=orin                  # профиль медиа-пайпл�
 processor:
   models:
     binary: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
-    classifier: models/classification/chriamue_bird_species_classifier
-  classifier_engine: chriamue
+    classifier: models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx
+  classifier_engine: birder_eu
   inference_backend: onnxruntime
   classifier_inference_backend: onnxruntime
   inference_device: cuda:0
@@ -326,7 +323,9 @@ PROCESSOR_SECRET=<32-char-hex>
 MCP_TOKEN=<token>
 ```
 
-Production: `BIRDLENSE_ENV=production`, `BIRDLENSE_STRICT_API_AUTH=1`.
+Production: `BIRDLENSE_ENV=production`.  
+При задании пароля в `user_config.yaml:general.settings_password` — система запросит авторизацию.  
+Пока пароль не задан — свободный вход (даже в production).
 
 ---
 
@@ -341,14 +340,14 @@ Production: `BIRDLENSE_ENV=production`, `BIRDLENSE_STRICT_API_AUTH=1`.
 | NVENC/NVDEC | да | да |
 | Диск | один NVMe | один NVMe |
 
-Цифры зависят от числа камер, `binary_imgsz` и TRT vs ORT.
+Цифры зависят от числа камер, `binary_imgsz`.
 
 ---
 
 ## 7. Чек-лист перед production
 
 - [ ] JetPack 6 (`R36.x`), `nvidia-smi` на хосте и в контейнере
-- [ ] Root на **M.2 NVMe**, запас места на диске ≥30 GB
+- [ ] Root на **M.2 NVMe**, запас места на диске ≥30 GB
 - [ ] Docker `default-runtime: nvidia`
 - [ ] `nvpmodel` + `jetson_clocks`; на NANO — ZRAM и лимит памяти контейнера ~6G
 - [ ] Веса ONNX на месте (§2 шаг 7)

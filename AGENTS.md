@@ -15,6 +15,7 @@
 | `make stop` | Stop Docker stack |
 | `make logs` | Tail container logs |
 | `make verify` | Health check against DEPLOY_URL |
+| `bash scripts/fetch-processor-models-orin.sh` | Download ONNX models into `app/processor/models/` |
 
 ## Architecture
 

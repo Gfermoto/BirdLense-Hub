@@ -270,9 +270,11 @@ def setup_processor_media(
                 (i for i, c in enumerate(cameras) if c["id"] == camera_id),
                 0,
             )
-            encoding = (app_config.get("video.encoding") or "cpu").strip().lower()
+            encoding = (app_config.get("video.encoding") or "jetson").strip().lower()
+            if encoding in ("orin", "nvenc"):
+                encoding = "jetson"
             if encoding not in ("cpu", "intel", "jetson"):
-                encoding = "cpu"
+                encoding = "jetson"
             rcodec = (app_config.get("video.record_stream_codec") or "h264").strip().lower()
             if rcodec not in ("h264", "copy"):
                 rcodec = "h264"

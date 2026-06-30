@@ -164,10 +164,14 @@ class TestDetectionStrategy(unittest.TestCase):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self.project_root = os.path.abspath(os.path.join(current_dir, "../../.."))
 
-        # PyTorch two_stage (.pt): см. scripts/fetch-processor-weights.sh и Dockerfile.
-        self.binary_model_path = os.path.join(self.project_root, "app/processor/models/detection/weights/yolo11n.pt")
+        # two_stage: Trapper ONNX + Birder EU weights (optional on CI).
+        self.binary_model_path = os.path.join(
+            self.project_root,
+            "app/processor/models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx",
+        )
         self.classifier_model_path = os.path.join(
-            self.project_root, "app/processor/models/classification/weights/best.pt"
+            self.project_root,
+            "app/processor/models/classification/weights/convnext_v2_tiny_eu-common256px.pt",
         )
         self.sample_img_path = os.path.join(self.project_root, "app/data/samples/photos/1.jpg")
 

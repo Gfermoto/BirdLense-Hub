@@ -73,21 +73,13 @@
 # export BIRDLENSE_STRICT_API_AUTH=1
 # export BIRDLENSE_UI_API_KEY="..."   # для curl/интеграций без браузерной сессии
 
-# Один сервер с Intel iGPU: VA-API (видео) + OpenVINO GPU при пробросе DRI (deploy.sh генерирует docker-compose.override.yml).
-# В user_config: processor.inference_backend: openvino (или auto), models.binary_openvino, inference_device: intel:gpu
-# detect_stream parity: video.cameras[].detect_stream_name must match Frigate detect (same RTSP substream).
-# Trapper VPS: RTSP subtype=0, NOT subtype=1 — wrong substream → YOLO blind. See user_config.trapper-production.example.yaml.
-# Либо в app/.env на сервере: BIRDLENSE_INFERENCE_DEVICE=intel:gpu (перекрывает пустой inference_device в YAML).
-# Если без renderD* деплой не должен проходить как «полный GPU»: export BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=1
-
 # =============================================================================
-# Платформа (orin — дефолт; intel_nuc — x86 с OpenVINO)
+# Платформа — Orin (единственная)
 # =============================================================================
-# export BIRDLENSE_PLATFORM=orin          # дефолт, можно не задавать
-# export BIRDLENSE_PLATFORM=intel_nuc     # Intel NUC: OpenVINO IR
-# Важно: make deploy запускается на dev-машине, но build образа выполняется на целевом хосте по SSH.
-# Камеры/go2rtc/mqtt берутся из app/app_config/user_config.yaml на сервере (user_config не перезаписывается rsync).
-# app/processor/models на сервере не должен меняться деплоем; проверяется только наличие нужных артефактов.
+# export BIRDLENSE_PLATFORM=orin   # дефолт
+# Модели на Orin: bash scripts/fetch-processor-models-orin.sh
+# make deploy — rsync на DEPLOY_HOST, build + start на целевом Orin.
+# user_config.yaml на сервере не перезаписывается rsync.
 # См. deploy/profiles/intel-nuc/ и deploy/profiles/orin/ (.env.example, config.overlay.yaml)
 # Пример Orin на площадке (LAN):
 # export DEPLOY_HOST="gfer@192.168.1.127"

@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy import inspect
 
 revision = "012_session_runtime_and_detector_health"
-down_revision = "010_video_behavior_recognition"
+down_revision = "010_backfill_ingest_payload_hash_and_partial_idempotency"
 branch_labels = None
 depends_on = None
 

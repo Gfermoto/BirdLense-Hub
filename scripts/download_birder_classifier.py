@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Download Birder EU-common weights — flat layout like detection (``.pt`` + ``*_openvino_model/``)."""
+"""Download Birder EU-common weights — ``models/classification/{variant}/``."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -31,18 +33,18 @@ MODELS: dict[str, dict[str, str]] = {
 DEFAULT_VARIANT = "convnext_v2_tiny_eu-common256px"
 
 
-def download_variant(variant: str, base: Path) -> Path:
+def download_variant(variant: str, classification_root: Path) -> Path:
     from huggingface_hub import hf_hub_download
 
     spec = MODELS[variant]
-    base.mkdir(parents=True, exist_ok=True)
-    ov_dir = base / f"{variant}_openvino_model"
-    ov_dir.mkdir(parents=True, exist_ok=True)
+    classification_root.mkdir(parents=True, exist_ok=True)
+    model_dir = classification_root / variant
+    model_dir.mkdir(parents=True, exist_ok=True)
 
     for key in ("pt", "meta"):
         fname = spec[key]
         cached = hf_hub_download(repo_id=spec["hf_repo"], filename=fname)
-        dest = base / fname if key == "pt" else ov_dir / fname
+        dest = model_dir / fname
         shutil.copy2(cached, dest)
 
     import birder
@@ -51,7 +53,7 @@ def download_variant(variant: str, base: Path) -> Path:
     del net
     idx2label = {int(v): str(k) for k, v in info.class_to_idx.items()}
     lines = [idx2label[i] for i in range(len(idx2label))]
-    (ov_dir / "class_labels.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (model_dir / "class_labels.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     manifest = {
         "model_id": spec["hf_repo"],
@@ -61,14 +63,14 @@ def download_variant(variant: str, base: Path) -> Path:
         "rgb_stats": info.rgb_stats,
         "architecture": variant,
     }
-    (ov_dir / "birdlense_manifest.json").write_text(
+    (model_dir / "birdlense_manifest.json").write_text(
         json.dumps(manifest, indent=2) + "\n",
         encoding="utf-8",
     )
-    print(f"OK {base / spec['pt']} + {ov_dir}/ labels={len(idx2label)}")
+    print(f"OK {model_dir}/ labels={len(idx2label)}")
     jays = [n for n in lines if "jay" in n.lower()]
     print("jay classes:", jays)
-    return base
+    return model_dir
 
 
 def main() -> None:
@@ -77,11 +79,22 @@ def main() -> None:
     parser.add_argument(
         "--dest",
         type=Path,
-        default=REPO / "app" / "processor" / "models" / "classification" / "weights",
-        help="Classification weights directory (default: app/processor/models/classification/weights)",
+        default=REPO / "app" / "processor" / "models" / "classification",
+        help="Classification root (default: app/processor/models/classification)",
+    )
+    parser.add_argument(
+        "--export-onnx",
+        action="store_true",
+        help="After download, run scripts/export_birder_classifier_to_onnx.py",
     )
     args = parser.parse_args()
     download_variant(args.variant, args.dest)
+    if args.export_onnx:
+        export_script = REPO / "scripts" / "export_birder_classifier_to_onnx.py"
+        subprocess.run(
+            [sys.executable, str(export_script), "--variant", args.variant, "--dest", str(args.dest)],
+            check=True,
+        )
 
 
 if __name__ == "__main__":

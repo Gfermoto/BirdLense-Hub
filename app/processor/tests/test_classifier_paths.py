@@ -11,6 +11,8 @@ _src_path = os.path.abspath(os.path.join(_current_dir, "../src"))
 if _src_path not in sys.path:
     sys.path.insert(0, _src_path)
 
+VARIANT = "convnext_v2_tiny_eu-common256px"
+
 
 class TestClassifierPaths(unittest.TestCase):
     """Classifier path resolution and availability checks."""
@@ -32,9 +34,9 @@ class TestClassifierPaths(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as d:
             proc = os.path.join(d, "processor")
-            w = os.path.join(proc, "models/classification/weights")
-            os.makedirs(w, exist_ok=True)
-            pt = os.path.join(w, "convnext_v2_tiny_eu-common256px.pt")
+            model_dir = os.path.join(proc, "models/classification", VARIANT)
+            os.makedirs(model_dir, exist_ok=True)
+            pt = os.path.join(model_dir, f"{VARIANT}.pt")
             with open(pt, "wb") as f:
                 f.write(b"x")
             path, backend = resolve_classifier_weight_path(
@@ -94,23 +96,24 @@ class TestClassifierPaths(unittest.TestCase):
             ),
         )
 
-    def test_chriamue_explicit_classifier_path(self):
+    def test_birder_eu_onnx_path(self):
         from inference.classifier_paths import resolve_classifier_weight_path
 
         with tempfile.TemporaryDirectory() as d:
             proc = os.path.join(d, "processor")
-            weights = os.path.join(
-                proc,
-                "models/classification/chriamue_bird_species_classifier",
-            )
-            os.makedirs(weights, exist_ok=True)
-            with open(os.path.join(weights, "model.onnx"), "wb") as f:
+            model_dir = os.path.join(proc, "models/classification", VARIANT)
+            os.makedirs(model_dir, exist_ok=True)
+            onnx = os.path.join(model_dir, f"{VARIANT}.onnx")
+            labels = os.path.join(model_dir, "class_labels.txt")
+            with open(onnx, "wb") as f:
                 f.write(b"x")
+            with open(labels, "w", encoding="utf-8") as f:
+                f.write("Eurasian jay\n")
             cfg = {
-                "processor.classifier_engine": "chriamue",
+                "processor.classifier_engine": "birder_eu",
                 "processor.classifier_inference_backend": "onnxruntime",
                 "processor.models.classifier": (
-                    "models/classification/chriamue_bird_species_classifier"
+                    f"models/classification/{VARIANT}/{VARIANT}.onnx"
                 ),
             }
             with patch(
@@ -119,7 +122,28 @@ class TestClassifierPaths(unittest.TestCase):
             ):
                 path, backend = resolve_classifier_weight_path(cfg, proc)
             self.assertEqual(backend, "onnxruntime")
-            self.assertTrue(path.endswith("chriamue_bird_species_classifier"))
+            self.assertTrue(path.endswith(VARIANT))
+
+    def test_birder_eu_weights_classifier_path(self):
+        from inference.classifier_paths import resolve_classifier_weight_path
+
+        with tempfile.TemporaryDirectory() as d:
+            proc = os.path.join(d, "processor")
+            model_dir = os.path.join(proc, "models/classification", VARIANT)
+            os.makedirs(model_dir, exist_ok=True)
+            pt = os.path.join(model_dir, f"{VARIANT}.pt")
+            with open(pt, "wb") as f:
+                f.write(b"x")
+            cfg = {
+                "processor.classifier_engine": "birder_eu",
+                "processor.classifier_inference_backend": "torch",
+                "processor.models.classifier": (
+                    f"models/classification/{VARIANT}/{VARIANT}.pt"
+                ),
+            }
+            path, backend = resolve_classifier_weight_path(cfg, proc)
+            self.assertEqual(backend, "torch")
+            self.assertTrue(path.endswith(f"{VARIANT}.pt"))
 
     def test_ornimetrics_pack_override_wins(self):
         from inference.classifier_paths import resolve_ornimetrics_species_pack
