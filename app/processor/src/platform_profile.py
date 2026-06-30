@@ -1,4 +1,4 @@
-"""Runtime platform profile (BIRDLENSE_PLATFORM) for logging and ops."""
+"""Runtime platform profile (BIRDLENSE_PLATFORM) for logging and ops — Orin only."""
 
 from __future__ import annotations
 

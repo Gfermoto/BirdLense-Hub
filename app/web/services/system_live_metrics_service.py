@@ -76,8 +76,7 @@ def collect_live_system_metrics(app):
         except (OSError, ValueError):
             continue
     encoding_setting = _normalize_encoding_setting(app_config.get("video.encoding"))
-    platform = _platform_id()
-    if gpu_percent is None and platform == "orin":
+    if gpu_percent is None:
         gpu_percent = _nvidia_gpu_percent()
 
     return {
