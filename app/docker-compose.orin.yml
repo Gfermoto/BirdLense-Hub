@@ -31,14 +31,15 @@ services:
       - GO2RTC_URL=${GO2RTC_URL:-}
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
-      - BIRDLENSE_ENCODING=orin
-      - BIRDLENSE_CAPTURE_BACKEND=${BIRDLENSE_CAPTURE_BACKEND:-auto}
     volumes:
+      - ./data:/app/data
+      - ./app_config:/app/app_config
       - ./processor/models/detection/trapper_ai_v02_2024:/app/processor/models/detection/trapper_ai_v02_2024
       - ./processor/models/welfare/ornimetrics:/app/processor/models/welfare/ornimetrics
       - ./processor/models/reid/ornimetrics:/app/processor/models/reid/ornimetrics
       - ./processor/models/classification/convnext_v2_tiny_eu-common256px:/app/processor/models/classification/convnext_v2_tiny_eu-common256px
       - ./processor/models/tracker:/app/processor/models/tracker
+    depends_on: {}
     deploy:
       resources:
         limits:

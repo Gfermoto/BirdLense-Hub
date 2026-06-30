@@ -641,8 +641,8 @@ video:
   # Кодирование записи: jetson (NVENC/NVMPI на Orin) | cpu (libx264 fallback)
   encoding: jetson
   record_with_vaapi: false
-  # Захват кадров для motion/detection: ffmpeg_nvmpi (Orin NVDEC) | opencv | auto
-  capture_backend: ffmpeg_nvmpi
+  # Захват кадров для motion/detection: auto (определяет ffmpeg_nvmpi/opencv при старте)
+  capture_backend: auto
   # Запись с RTSP: h264 — перекодировать в H.264 (воспроизведение в браузере, меньше сюрпризов с HEVC).
   # copy — без перекодирования (ниже CPU; если поток HEVC, в Chrome может быть «Не удалось загрузить видео»).
   record_stream_codec: h264
