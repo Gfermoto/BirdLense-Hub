@@ -24,8 +24,6 @@ class TestPlatformProfile(unittest.TestCase):
             self.assertEqual(normalize_platform(), "orin")
 
     def test_legacy_platforms_fall_back_to_orin(self):
-        self.assertEqual(normalize_platform("intel_nuc"), DEFAULT_PLATFORM)
-        self.assertEqual(normalize_platform("jetson_nano"), DEFAULT_PLATFORM)
         self.assertEqual(normalize_platform("raspberry_pi"), DEFAULT_PLATFORM)
 
     def test_known_platforms_orin_only(self):

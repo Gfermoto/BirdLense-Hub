@@ -104,7 +104,7 @@ mkdir -p /app/data/file_test
 mkdir -p /tmp/nginx-client-body /tmp/nginx-proxy /tmp/nginx-fastcgi /tmp/nginx-uwsgi /tmp/nginx-scgi
 
 # =============================================================================
-# SECTION 4 — Gunicorn (FastAPI on 127.0.0.1:8000)
+# SECTION 4 — Gunicorn (Flask on 127.0.0.1:8000)
 # =============================================================================
 GUNICORN_THREADS="${GUNICORN_THREADS:-16}"
 cd /app/web && PYTHONPATH=/app:/app/web:/app/processor/src gunicorn -w 1 -k gthread --threads "$GUNICORN_THREADS" --timeout 0 -b 127.0.0.1:8000 app:app &

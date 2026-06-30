@@ -11,12 +11,12 @@
 | Компонент | Модель | Бэкенд |
 |-----------|--------|--------|
 | Детектор | Trapper AI v02 2024 (YOLO) | ONNX Runtime CUDA EP / TensorRT EP |
-| Классификатор | Birder ConvNeXt EU-707 (chriamue) | ONNX Runtime CUDA EP |
+| Классификатор | Birder ConvNeXt EU-707 (birder_eu) | ONNX Runtime CUDA EP |
 | ReID | Ornimetrics reid_embedder | ONNX Runtime CUDA EP |
 | Welfare | Ornimetrics embedder + scorer | ONNX Runtime CUDA EP |
 | Трекер | ByteTrack unstick | CPU (боксы) |
 
-**Документация:** [`docs/`](docs/index.md) · [`docs/user/overview.md`](docs/user/overview.md) · [`QUICKSTART.md`](docs/QUICKSTART.md)
+**Документация:** [`docs/`](docs/index.md) · [Быстрый старт](docs/QUICKSTART.md) · [Обзор](docs/user/overview.md)
 
 ## Быстрый старт
 

@@ -5380,7 +5380,7 @@ components:
               type: number
         encoding:
           type: string
-          description: Video encoding setting (cpu or intel); hints whether GPU chart may apply.
+          description: Video encoding (orin/jetson for NVIDIA NVENC; always HW on Orin).
         gpu_percent:
           type: number
           nullable: true
