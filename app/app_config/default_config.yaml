@@ -692,14 +692,10 @@ video:
   go2rtc_url: ""
   go2rtc_username: ""
   go2rtc_password: ""
-  # Кодирование записи: cpu | intel (встроенная видеокарта Intel — VA-API)
-  encoding: cpu
-  # При encoding=intel: использовать h264_vaapi для записи MP4 (true) или libx264 (false).
-  # false — стабильнее на части iGPU/драйверов (ошибка encode issue 24 / битый moov), при этом
-  # при capture_backend=auto захват для YOLO по-прежнему может идти через VA-API.
-  record_with_vaapi: true
-  # Захват кадров для motion/detection: auto | opencv | ffmpeg_vaapi | ffmpeg_nvdec (planned, Jetson NVDEC).
-  # auto: при encoding=intel пробует FFmpeg VA-API, иначе OpenCV; при ошибке fallback на OpenCV.
+  # Кодирование записи: jetson (NVENC/NVMPI на Orin) | cpu (libx264 fallback)
+  encoding: jetson
+  record_with_vaapi: false
+  # Захват кадров для motion/detection: auto (определяет ffmpeg_nvmpi/opencv при старте)
   capture_backend: auto
   # Запись с RTSP: h264 — перекодировать в H.264 (воспроизведение в браузере, меньше сюрпризов с HEVC).
   # copy — без перекодирования (ниже CPU; если поток HEVC, в Chrome может быть «Не удалось загрузить видео»).

@@ -435,12 +435,12 @@ export interface Settings {
     }>;
     go2rtc_username?: string;
     go2rtc_password?: string;
-    /** cpu | intel — VA-API vs CPU для записи (intel = уже H.264). */
+    /** jetson (NVENC на Orin) | cpu (libx264) — кодек для записи видео. */
     encoding?: string;
     /** При encoding=intel: true — h264_vaapi для файла записи; false — libx264 (стабильнее на части iGPU). */
     record_with_vaapi?: boolean;
-    /** auto | opencv | ffmpeg_vaapi — live capture path for motion/detection. */
-    capture_backend?: 'auto' | 'opencv' | 'ffmpeg_vaapi' | string;
+    /** auto | opencv | ffmpeg_nvmpi — live capture path for motion/detection. */
+    capture_backend?: 'auto' | 'opencv' | 'ffmpeg_nvmpi' | string;
     /** h264 | copy — перекодировать RTSP в H.264 для браузера или копировать веб-кодек как есть. */
     record_stream_codec?: 'h264' | 'copy' | string;
     video_width?: number;

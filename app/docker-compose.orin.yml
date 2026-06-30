@@ -1,0 +1,47 @@
+# Orin NX / NANO override — merge: docker compose -f docker-compose.yml -f docker-compose.orin.yml
+# Активируется через BIRDLENSE_PLATFORM=orin (Makefile / deploy.sh).
+
+services:
+  redis:
+    network_mode: host
+    ports: !reset []
+
+  birdlense:
+    build:
+      context: ..
+      dockerfile: app/Dockerfile.orin
+    shm_size: "1gb"
+    network_mode: host
+    ports: !reset []
+    runtime: nvidia
+    privileged: true
+    restart: unless-stopped
+    group_add:
+      - video
+    environment:
+      - REDIS_URL=${REDIS_URL:-redis://127.0.0.1:6379/0}
+      - BIRDLENSE_PLATFORM=orin
+      - BIRDLENSE_PORT=${BIRDLENSE_PORT:-8085}
+      - BIRDLENSE_INFERENCE_BACKEND=onnxruntime
+      - BIRDLENSE_BINARY_ONNX_PATH=/app/processor/models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
+      - BIRDLENSE_CLASSIFIER_ENGINE=birder_eu
+      - BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=onnxruntime
+      - LD_LIBRARY_PATH=/usr/local/lib/python3.12/site-packages/nvidia/cu13/lib:/usr/local/lib/python3.12/site-packages/nvidia/cudnn/lib
+      - API_URL_BASE=http://127.0.0.1:${BIRDLENSE_PORT:-8085}/api/processor
+      - GO2RTC_URL=${GO2RTC_URL:-}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+    volumes:
+      - ./data:/app/data
+      - ./app_config:/app/app_config
+      - ./processor/models/detection/trapper_ai_v02_2024:/app/processor/models/detection/trapper_ai_v02_2024
+      - ./processor/models/welfare/ornimetrics:/app/processor/models/welfare/ornimetrics
+      - ./processor/models/reid/ornimetrics:/app/processor/models/reid/ornimetrics
+      - ./processor/models/classification/convnext_v2_tiny_eu-common256px:/app/processor/models/classification/convnext_v2_tiny_eu-common256px
+      - ./processor/models/tracker:/app/processor/models/tracker
+    depends_on: {}
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 14G
