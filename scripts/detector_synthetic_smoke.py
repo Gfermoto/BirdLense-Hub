@@ -97,7 +97,7 @@ def main() -> int:
         '--device',
         type=str,
         default='',
-        help='cpu / 0 / intel:gpu; пусто — авто',
+        help='cpu / 0 / cuda:0; пусто — авто',
     )
     ap.add_argument(
         '--mode',

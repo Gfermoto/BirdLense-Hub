@@ -198,7 +198,7 @@ def main() -> int:
     ap.add_argument("--db", default="/app/data/db/birdlense.db")
     ap.add_argument("--ov-dir", default="/app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model")
     ap.add_argument("--out-dir", default="/tmp/trapper_test_1952")
-    ap.add_argument("--device", default="intel:gpu")
+    ap.add_argument("--device", default="cuda:0")
     ap.add_argument("--imgsz", type=int, default=704)
     ap.add_argument("--conf", type=float, default=0.25)
     ap.add_argument("--target-fps", type=float, default=7.0)

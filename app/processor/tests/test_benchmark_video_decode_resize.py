@@ -40,12 +40,13 @@ class TestBenchmarkVideoDecodeResize(unittest.TestCase):
         self.assertIn("drop_rate", data)
         self.assertIn("platform", data)
 
-    def test_ffmpeg_vaapi_cmd_rawvideo(self):
-        cmd = self.mod._ffmpeg_vaapi_cmd("clip.mp4", 640, 640, "/dev/dri/renderD128")
-        joined = " ".join(cmd)
-        self.assertIn("-hwaccel vaapi", joined)
-        self.assertIn("scale_vaapi=w=640:h=640", joined)
-        self.assertEqual(cmd[-2:], ["rawvideo", "pipe:1"])
+    def test_ffmpeg_nvmpi_cmd_shape(self):
+        from sources.go2rtc_stream_source import NVMPI_GST_TEMPLATE
+
+        pipeline = NVMPI_GST_TEMPLATE.format(url="rtsp://x", w=640, h=640)
+        self.assertIn("nvv4l2decoder", pipeline)
+        self.assertIn("nvvidconv", pipeline)
+        self.assertIn("width=640,height=640", pipeline)
 
     def test_drop_rate(self):
         self.assertEqual(self.mod._drop_rate(decoded_frames=90, requested_frames=100), 0.1)

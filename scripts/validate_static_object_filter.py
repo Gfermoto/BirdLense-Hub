@@ -131,7 +131,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-root", type=Path, default=Path("/app/data"))
     ap.add_argument("--model", type=Path, default=Path("/app/processor/models/detection/weights/best_NABirds_openvino_model"))
-    ap.add_argument("--device", default="intel:gpu")
+    ap.add_argument("--device", default="cuda:0")
     ap.add_argument("--min-conf", type=float, default=0.28)
     ap.add_argument("--track-conf", type=float, default=0.12)
     args = ap.parse_args()

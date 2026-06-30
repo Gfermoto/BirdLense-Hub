@@ -82,12 +82,7 @@ def _sanitize_ffmpeg_stderr_line(line: str) -> str:
     return _RTSP_URL_AUTH_RE.sub(r"\1***:***@", line)
 
 
-def _normalize_capture_backend(value: str | None) -> str:
-    """Normalize live frame capture backend."""
-    backend = (value or "auto").strip().lower()
-    if backend in ("auto", "opencv", "ffmpeg_vaapi", "ffmpeg_nvmpi"):
-        return backend
-    return "auto"
+from encoding_utils import normalize_capture_backend as _normalize_capture_backend
 
 
 def _capture_fallback_reason(
@@ -431,11 +426,9 @@ class Go2RTCStreamSource:
         self.lores_size = lores_size  # None = native RTSP resolution for detect/YOLO
         self._detect_native = lores_size is None
         self.auto_reconnect = auto_reconnect
-        self._encoding_mode = (encoding_mode or "jetson").strip().lower()
-        if self._encoding_mode in ("orin", "nvenc"):
-            self._encoding_mode = "jetson"
-        if self._encoding_mode not in ("cpu", "jetson"):
-            self._encoding_mode = "jetson"
+        from encoding_utils import normalize_video_encoding
+
+        self._encoding_mode = normalize_video_encoding(encoding_mode, "jetson")
         rsc = (record_stream_codec or "h264").strip().lower()
         self._record_stream_codec = rsc if rsc in ("h264", "copy") else "h264"
         self._capture_backend = _normalize_capture_backend(capture_backend)

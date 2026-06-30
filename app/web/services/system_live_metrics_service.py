@@ -8,13 +8,11 @@ import subprocess
 import psutil
 
 from app_config.app_config import app_config
+from encoding_utils import normalize_video_encoding
 
 
 def _normalize_encoding_setting(raw: str | None) -> str:
-    value = (raw or "jetson").strip().lower()
-    if value in ("jetson", "nvenc", "nvmpi", "orin"):
-        return "jetson"
-    return "cpu"
+    return normalize_video_encoding(raw, "jetson")
 
 
 def _platform_id() -> str:
