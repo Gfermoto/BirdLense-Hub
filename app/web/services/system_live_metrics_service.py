@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 
 import psutil
+import subprocess
 
 from app_config.app_config import app_config
 
@@ -74,17 +75,9 @@ def collect_live_system_metrics(app):
                 break
         except (OSError, ValueError):
             continue
-    encoding_setting = (app_config.get("video.encoding") or "cpu").strip().lower()
-    if encoding_setting not in ("cpu", "intel"):
-        encoding_setting = "cpu"
-    intel_gpu = encoding_setting == "intel" or os.path.exists("/dev/dri/renderD128")
-    if gpu_percent is None and intel_gpu:
-        try:
-            from gpu_stats import get_intel_gpu_percent
-
-            gpu_percent = get_intel_gpu_percent()
-        except Exception as e:
-            app.logger.warning("gpu_stats: %s", e)
+    encoding_setting = _normalize_encoding_setting(app_config.get("video.encoding"))
+    if gpu_percent is None:
+        gpu_percent = _nvidia_gpu_percent()
 
     return {
         "cpu": {"percent": cpu_percent},
