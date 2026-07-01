@@ -28,7 +28,7 @@ def empty_passwords_block_verify_in_production() -> bool:
     """Оба пароля пусты — verify-password должен разрешить (открытый доступ)."""
     admin_pw = (app_config.get("general.settings_password") or "").strip()
     contrib_pw = (app_config.get("general.contributor_password") or "").strip()
-    return False
+    return bool(admin_pw or contrib_pw)
 
 
 def resolve_password_unlock_role(submitted_password: str) -> str | None:
