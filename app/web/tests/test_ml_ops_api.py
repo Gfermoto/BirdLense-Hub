@@ -79,15 +79,27 @@ def test_reid_summary_handles_missing_sidecar_table(client):
     assert body["contract"]["status"] == "missing_table"
 
 
-def test_ml_runtime_reports_config_state(client):
-    r = client.get("/api/ui/system/ml-runtime")
-    assert r.status_code == 200
-    body = r.get_json()
-    assert body["schema"] == "ml_runtime_status@v1"
-    assert "capture_backend_config" in body["video"]
-    assert "record_hw_encode" in body["video"]
-    assert "inference_backend" in body["processor"]
-    assert "classifier_inference_backend" in body["processor"]
+def test_ml_runtime_reports_config_state(app, client):
+    from app_config.app_config import app_config
+
+    old_admin = app_config.get("general.settings_password")
+    old_contrib = app_config.get("general.contributor_password")
+    app_config.set("general.settings_password", "")
+    app_config.set("general.contributor_password", "")
+    try:
+        r = client.get("/api/ui/system/ml-runtime")
+        assert r.status_code == 200
+        body = r.get_json()
+        assert body["schema"] == "ml_runtime_status@v1"
+        assert "capture_backend_config" in body["video"]
+        assert "record_hw_encode" in body["video"]
+        assert "inference_backend" in body["processor"]
+        assert "classifier_inference_backend" in body["processor"]
+        assert "reid_runtime_enabled" in body["processor"]
+        assert "welfare_runtime_enabled" in body["processor"]
+    finally:
+        app_config.set("general.settings_password", old_admin or "")
+        app_config.set("general.contributor_password", old_contrib or "")
 
 
 def test_dataset_streams_summary_endpoint(client):

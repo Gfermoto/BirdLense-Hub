@@ -110,5 +110,5 @@ def assert_backend_supported(backend: str) -> None:
 
 
 def onnxruntime_classifier_available() -> bool:
-    """ONNX Runtime для EfficientNetB2 (production path)."""
+    """ONNX Runtime available for birder_eu classifier path."""
     return importlib.util.find_spec("onnxruntime") is not None

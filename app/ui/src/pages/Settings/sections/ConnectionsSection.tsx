@@ -371,6 +371,24 @@ export function ConnectionsSection({ form }: Props) {
                 </form.Field>
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="video.record_hw_encode">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={Boolean(field.state.value)}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                        />
+                      }
+                      label={t('settings.recordHwEncodeLabel')}
+                    />
+                  )}
+                </form.Field>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: -1, ml: 0.5 }}>
+                  {t('settings.recordHwEncodeHint')}
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <form.Field name="video.record_stream_codec">
                   {(field) => (
                     <FormControl fullWidth>

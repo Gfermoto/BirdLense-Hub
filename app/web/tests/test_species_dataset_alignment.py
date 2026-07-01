@@ -41,7 +41,7 @@ def test_resolve_classifier_weights_birder_engine(monkeypatch):
 def test_load_classifier_labels_reads_class_labels_txt(tmp_path):
     from services.species_dataset_alignment_service import load_classifier_labels_or_error
 
-    model_dir = tmp_path / "birds_classifier_efficientnetb2"
+    model_dir = tmp_path / "birder_eu_classifier"
     model_dir.mkdir(parents=True)
     (model_dir / "class_labels.txt").write_text("Bird A\nBird B\n", encoding="utf-8")
 

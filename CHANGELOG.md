@@ -21,6 +21,9 @@ All notable changes to BirdLense Hub (Orin).
 - `encoding_utils.py` — unified encoding/capture backend normalisation
 - `BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE` env var
 - Host network mode for Redis on Orin
+- **Welfare runtime** — `welfare_runtime.py`, Mahalanobis screening after ReID in finalize
+- **`video.record_hw_encode`** — replaces `record_with_vaapi`; Settings UI toggle (NVENC vs libx264)
+- ML runtime status: `reid_runtime_enabled`, `welfare_runtime_enabled`
 
 ### Developer
 - Ruff auto-fix for unused imports and dead code

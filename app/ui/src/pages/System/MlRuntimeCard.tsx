@@ -48,6 +48,15 @@ export function MlRuntimeCard() {
           label={`capture: ${valueOrDash(runtime.data.video.capture_backend_config)}`}
         />
         <Chip
+          label={`record_hw: ${runtime.data.video.record_hw_encode === false ? 'libx264' : 'hw'}`}
+        />
+        <Chip
+          label={`reid: ${valueOrDash(runtime.data.processor.reid_runtime_enabled)}`}
+        />
+        <Chip
+          label={`welfare: ${valueOrDash(runtime.data.processor.welfare_runtime_enabled)}`}
+        />
+        <Chip
           label={`detector backend: ${valueOrDash(runtime.data.processor.inference_backend)}`}
         />
         <Chip

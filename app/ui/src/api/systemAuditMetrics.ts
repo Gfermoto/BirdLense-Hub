@@ -170,6 +170,8 @@ export type MlRuntimeStatus = {
     detector_weight_contract?: string;
     binary_imgsz?: number;
     frame_processing_warn_ms?: number;
+    reid_runtime_enabled?: boolean;
+    welfare_runtime_enabled?: boolean;
   };
 };
 

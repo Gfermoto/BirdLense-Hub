@@ -446,6 +446,10 @@ def build_ml_runtime_status() -> tuple[dict[str, Any], int]:
             "detector_weight_contract": app_config.get("processor.detector_weight_contract"),
             "binary_imgsz": app_config.get("processor.binary_imgsz"),
             "frame_processing_warn_ms": app_config.get("processor.frame_processing_warn_ms"),
+            "inference_device": app_config.get("processor.inference_device"),
+            "classifier_inference_device": app_config.get("processor.classifier_inference_device"),
+            "reid_runtime_enabled": app_config.get("processor.reid.runtime_enabled"),
+            "welfare_runtime_enabled": app_config.get("processor.welfare.runtime_enabled"),
         },
     }, 200
 
