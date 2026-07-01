@@ -11,7 +11,6 @@ from app_config.trigger_config import (
     build_motion_settings_mirror_for_api,
     copy_legacy_topic_if_missing,
     fold_legacy_motion_out_of_merged_config,
-    migrate_legacy_motion_block,
 )
 
 logger = logging.getLogger(__name__)
