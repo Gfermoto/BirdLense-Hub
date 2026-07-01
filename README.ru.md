@@ -4,19 +4,33 @@
 
 # BirdLense Hub
 
-Мониторинг птиц у кормушек на **Jetson Orin**: компьютерное зрение (ONNX GPU) для детекции, классификации, идентификации и анализа визитов. Всё на своём железе, без облака.
+Мониторинг птиц у кормушек на **Jetson Orin**: пять нейросетей последовательно — детекция, классификация вида, идентификация конкретной особи, оценка её здоровья и построение траектории. Всё локально, без облака.
 
-**Полный ONNX GPU стек:**
+## Модельный стек — ONNX GPU
 
-| Компонент | Модель | Бэкенд |
-|-----------|--------|--------|
-| Детектор | Trapper AI v02 2024 (YOLO) | ONNX Runtime CUDA EP / TensorRT EP |
-| Классификатор | Birder ConvNeXt EU-707 (birder_eu) | ONNX Runtime CUDA EP |
-| ReID | Ornimetrics reid_embedder | ONNX Runtime CUDA EP |
-| Welfare | Ornimetrics embedder + scorer | ONNX Runtime CUDA EP |
-| Трекер | ByteTrack unstick | CPU (боксы) |
+Каждая модель работает на **ONNX Runtime CUDA EP** (`cuda:0`) на GPU Jetson Orin.
 
-**Документация:** [`docs/`](docs/index.md) · [Быстрый старт](docs/QUICKSTART.md) · [Обзор](docs/user/overview.md)
+| # | Компонент | Модель | Что делает | Бэкенд |
+|---|-----------|--------|------------|--------|
+| ① | **Детектор** | Trapper AI v02 2024 (YOLO) | Находит птицу или Rodent в кадре, bounding box | ORT CUDA EP |
+| ② | **Классификатор** | Birder ConvNeXt EU-707 (birder_eu) | Определяет вид: 707 европейских птиц | ORT CUDA EP |
+| ③ | **Трекер** | ByteTrack unstick | Связывает боксы в треки → траектория движения | CPU |
+| ④ | **ReID** | Ornimetrics DINOv2 | Узнаёт особь: тот же воробей или другой? | ORT CUDA EP |
+| ⑤ | **Welfare** | Ornimetrics embedder + scorer | Оценка здоровья: оперение, упитанность, активность | ORT CUDA EP |
+
+**Документация:** [`docs/`](docs/index.md) · [Обзор архитектуры](docs/OVERVIEW.md) · [Быстрый старт](docs/QUICKSTART.md)
+
+## Как это работает
+
+```
+IP-камера → Детектор (птица?) → Классификатор (какой вид?)
+                                  → Трекер (траектория)
+                                  → ReID (кто именно?)
+                                  → Welfare (здоров?)
+                                  → Запись + UI
+```
+
+Scoring Engine отсеивает ложные срабатывания (confidence + motion + форма + фон). Первые 60 секунд — авто-калибровка под сцену. Результат — Accept / Review / Reject.
 
 ## Быстрый старт
 
@@ -26,29 +40,29 @@ cp .env.example .env          # отредактировать токены
 make build && make start
 ```
 
-Подробнее: [`docs/INSTALL.md`](docs/INSTALL.md) · [`docs/QUICKSTART.md`](docs/QUICKSTART.md)
+Подробнее: [Установка](docs/user/install.md) · [Быстрый старт](docs/user/quickstart.md)
 
 ## Архитектура
 
 ```
 app/
-├── web/          # Flask API (OpenAPI)
-├── processor/    # ONNX GPU — детекция, классификация, ReID
+├── web/          # Flask API (OpenAPI), MQTT, Go2RTC
+├── processor/    # ONNX GPU: детекция, классификация, ReID, Welfare
 ├── ui/           # React 19 + MUI (Node 22)
-├── data/         # записи, БД
-└── app_config/   # конфигурация
+├── data/         # записи MP4, БД, кропы
+└── app_config/   # user_config.yaml
 ```
 
 Makefile: `deploy`, `build`, `start`, `stop`, `logs`, `verify`.
 
 ## Орнитология
 
-- Timeline (дата + время суток)
-- Экспорт CSV / JSON / eBird
-- PDF-отчёт
-- Неизвестные птицы
-- iNaturalist, Xeno-canto
+- **Timeline** — дата + время суток (утро/день/вечер/ночь)
+- **CSV / JSON / eBird** — экспорт визитов для анализа
+- **PDF-отчёт** — месячная сводка: виды, топ-5, графики
+- **Неизвестные птицы** — Review-зона + best-guess классификатор
+- **Интеграции** — iNaturalist, Xeno-canto, BirdNET (аудио), Telegram
 
 ---
 
-**Платформа:** Jetson Orin NX 16GB / Orin NANO 8GB · Docker · NVIDIA runtime · ONNX Runtime · NVDEC/NVENC · GStreamer
+**Платформа:** Jetson Orin NX 16GB / Orin NANO 8GB · Docker · NVIDIA runtime · ONNX Runtime CUDA EP · GStreamer NVDEC/NVENC
