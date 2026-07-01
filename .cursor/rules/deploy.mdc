@@ -55,16 +55,6 @@ bash scripts/fetch-processor-models-orin.sh
 - `app/app_config/user_config.yaml` — настройки
 - Старые контейнеры — удаляются перед деплоем по логике `deploy.sh`
 
-## BRG веса + OpenVINO на Intel GPU (площадка)
-
-1. Локально: положить `best.pt` и каталог `best_openvino_model/` под `app/processor/models/detection/weights/` (как после распаковки zip). Резерв старого набора — отдельная папка на сервере или `weights_backup_*`.
-2. `make deploy` подтягивает код и артефакты в образ; rsync **не** удаляет защищённые `*.pt` на сервере без замены с вашей стороны — при смене файлов локально они **обновятся** при синхронизации.
-3. На сервере в **`user_config.yaml`** (деплой его не затирает):  
-   `processor.models.binary_openvino: models/detection/weights/best_openvino_model`,  
-   `processor.inference_backend: openvino` (или `auto` после smoke),  
-   `processor.inference_device: intel:gpu`,  
-   `processor.binary_imgsz: 640` под экспорт.  
-   Путь к IR — **относительно `app/processor/`** или существующий абсолютный путь с реальным каталогом `*.xml`. Абсолютный путь вида `/app/app_config/models/…` без файлов даёт цикл падений процессора (`FileNotFoundError` в логах контейнера).
 ## YOLO «слепой», Frigate видит (Orin / кормушка)
 
 **По умолчанию в `default_config.yaml`:** onnxruntime/cuda:0, `min_confidence_binary` 0.12, `merge_window_seconds` 12. Метрика: `recording_session_summary` → `yolo_frames_with_tracks` > 0. После смены **`app/.env`** — **`docker compose up -d --force-recreate birdlense`**. Проверка GPU: `nvidia-smi` в контейнере или на хосте.
