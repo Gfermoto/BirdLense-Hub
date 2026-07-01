@@ -23,4 +23,4 @@ verify:
 	  ./scripts/verify-stack.sh --base-url "$$_url"
 
 docs:
-	@cd docs && mkdocs build
+	@mkdocs build
