@@ -16,7 +16,7 @@ from app_config.visit_eligibility import (  # noqa: F401
 # Родительская категория в дереве каталога — не класс YOLO
 CATALOG_BIRDS_GROUP_SPECIES = "Birds"
 
-# Вид каталога для грызунов (Trapper squirrel → без классификатора EfficientNet).
+# Вид каталога для грызунов (Trapper Rodent → без birder_eu классификатора).
 CATALOG_RODENT_SPECIES = "Rodent"
 
 # Имена, которые не сравниваем с головой классификатора: родитель каталога + служебные.

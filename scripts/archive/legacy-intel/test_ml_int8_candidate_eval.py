@@ -5,10 +5,8 @@ import sys
 import unittest
 
 _current_dir = os.path.dirname(os.path.abspath(__file__))
-_repo_root = os.path.abspath(os.path.join(_current_dir, "../../.."))
-_scripts_path = os.path.join(_repo_root, "scripts")
-if _scripts_path not in sys.path:
-    sys.path.insert(0, _scripts_path)
+if _current_dir not in sys.path:
+    sys.path.insert(0, _current_dir)
 
 
 def _mk_report(runtime_s: float, matched: int, gold: int) -> dict:

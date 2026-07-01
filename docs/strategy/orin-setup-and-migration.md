@@ -148,7 +148,7 @@ sudo systemctl set-default multi-user.target   # без GUI
 
 ```bash
 cd /home/gfer
-git clone --branch dev git@github.com:Gfermoto/BirdLense-Hub.git BirdLense
+git clone --branch orin git@github.com:Gfermoto/BirdLense-Hub.git BirdLense
 cd BirdLense/app
 
 cp app_config/user_config.orin.example.yaml app_config/user_config.yaml
@@ -165,7 +165,7 @@ bash scripts/setup-orin.sh
 | ReID | `processor/models/reid/ornimetrics/reid_embedder.onnx` |
 | Welfare | `processor/models/welfare/ornimetrics/embedder.onnx`, `welfare_scorer.npz` |
 
-Скачать классификатор (на dev-машине или Orin):
+Скачать классификатор (на build-машине или Orin):
 
 ```bash
 python3 scripts/download_birder_classifier.py --export-onnx

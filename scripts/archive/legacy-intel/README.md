@@ -13,5 +13,6 @@ PT vs OV geometry audits, and Intel NUC-era detector training.
 | `snapshot_detector_weights.py` | Backup `best.pt` + `best_openvino_model/` |
 | `detector_synthetic_smoke.py` | Synthetic frames → OV/PT detector smoke |
 | `validate_static_object_filter.py` | Static-object filter eval (OV default path) |
+| `ml_int8_candidate_eval.py` | INT8 detector candidate gate vs baseline benchmark |
 
 Active Orin diagnostics: `scripts/diag_video_detect.py`, `scripts/diagnose_detection_funnel.py`.

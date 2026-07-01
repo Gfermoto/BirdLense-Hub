@@ -541,7 +541,7 @@ processor:
   classifier_best_guess_enabled: true
   classifier_best_guess_min_confidence: 0.10
   classifier_best_guess_min_events: 1
-  # Trapper squirrel → каталог Rodent (не класс EfficientNet 525)
+  # Trapper Rodent → каталог Rodent (не birder_eu)
   squirrel_species_label: "Rodent"
   # ONNX Runtime CUDA EP (Orin).
   classifier_inference_backend: onnxruntime

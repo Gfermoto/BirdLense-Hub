@@ -906,7 +906,7 @@ fi
 # 3. Проверка после деплоя
 echo ""
 echo "3. Проверка после деплоя..."
-# OpenVINO/bootstrap может занимать 3–5 мин; readiness retry — в verify-stack (ATTEMPTS×SLEEP_SEC).
+# ONNX model prewarm / first inference может занимать 3–5 мин; readiness retry — в verify-stack.
 DEPLOY_READINESS_ATTEMPTS="${DEPLOY_READINESS_ATTEMPTS:-60}"
 DEPLOY_READINESS_SLEEP_SEC="${DEPLOY_READINESS_SLEEP_SEC:-5}"
 echo "  - Post-deploy readiness wait: up to $((DEPLOY_READINESS_ATTEMPTS * DEPLOY_READINESS_SLEEP_SEC))s (${DEPLOY_READINESS_ATTEMPTS}×${DEPLOY_READINESS_SLEEP_SEC}s)"

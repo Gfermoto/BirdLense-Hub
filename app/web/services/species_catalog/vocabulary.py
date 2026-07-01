@@ -2,7 +2,7 @@
 
 Источник правды для:
 - strict ingest (что можно сохранять как вид, не Unknown);
-- scope=project в каталоге (все участники пайплайна, не только 525 EfficientNet);
+- scope=project в каталоге (все участники пайплайна, birder_eu + служебные виды);
 - согласование с ``detection.species_mapping`` в processor.
 """
 
