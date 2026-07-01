@@ -4,7 +4,7 @@ Daily offline SSL/Re-ID maintenance cycle.
 
 Pipeline:
 1) extract recent crops from video_species (frames + video_path),
-2) build DINOv2 embeddings via runtime ReID backend,
+2) build Ornimetrics reid_embedder embeddings via runtime ReID backend,
 3) upsert embeddings into reid_embedding,
 4) recluster embeddings per species,
 5) refresh Re-ID candidate labels (individual_label) and optional video nicknames,
@@ -307,7 +307,7 @@ def run_cycle(args: argparse.Namespace) -> dict[str, Any]:
                 sample.species_id,
                 sample.track_id,
                 crop_path,
-                str(state.get("model_name") or "dinov2_vits14"),
+                str(state.get("model_name") or "ornimetrics_reid"),
                 int(row["embedding"].shape[0]),
                 json.dumps([float(x) for x in row["embedding"].tolist()], separators=(",", ":")),
                 sample.species_name,

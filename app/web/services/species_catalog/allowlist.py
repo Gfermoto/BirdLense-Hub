@@ -71,31 +71,12 @@ def _birder_labels_dir(app_config_get) -> str:
     return base
 
 
-def _efficientnet_weights_dir(app_config_get) -> str:
-    rel = (
-        app_config_get(
-            "processor.models.classifier_efficientnet_b2",
-            "models/classification/weights/efficientnet_b2_global",
-        )
-        or "models/classification/weights/efficientnet_b2_global"
-    )
-    return rel if os.path.isabs(rel) else os.path.join(_processor_root(), rel)
-
-
 def _classifier_engine_allowlist_path(app_config_get) -> str | None:
     engine = _classifier_engine_name(app_config_get)
     if engine == "birder_eu":
         base = _birder_labels_dir(app_config_get)
         return os.path.join(base, "class_labels.txt")
-    if engine != "efficientnet_b2":
-        return None
-    base = _efficientnet_weights_dir(app_config_get)
-    if os.path.isdir(base):
-        candidate = os.path.join(base, "class_labels.txt")
-        return candidate
-    if base.endswith(".txt"):
-        return base
-    return os.path.join(base, "class_labels.txt")
+    return _resolve_configured_allowlist_path(app_config_get)
 
 
 def _catalog_use_active_classifier_labels(app_config_get) -> bool:
@@ -110,21 +91,6 @@ def _normalize_classifier_label(name: str) -> str:
     return str(name or "").replace("_OR_", "/").replace("_", " ").strip()
 
 
-@lru_cache(maxsize=4)
-def _load_efficientnet_id2label_cached(weights_dir: str) -> tuple[str, ...]:
-    cfg_path = Path(weights_dir) / "config.json"
-    if not cfg_path.is_file():
-        return ()
-    cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
-    raw = cfg.get("id2label") or {}
-    out: list[str] = []
-    for _k in sorted(raw.keys(), key=lambda x: int(x)):
-        label = _normalize_classifier_label(raw[_k])
-        if label:
-            out.append(label)
-    return tuple(out)
-
-
 def load_active_classifier_label_names(app_config_get) -> tuple[str, ...] | None:
     """Имена классов, которые активный классификатор может выдать на кропе."""
     engine = _classifier_engine_name(app_config_get)
@@ -133,9 +99,6 @@ def load_active_classifier_label_names(app_config_get) -> tuple[str, ...] | None
         if os.path.isfile(path):
             return _load_allowlist_names_cached(os.path.abspath(path))
         return None
-    if engine == "efficientnet_b2":
-        labels = _load_efficientnet_id2label_cached(_efficientnet_weights_dir(app_config_get))
-        return labels if labels else None
     path = _resolve_configured_allowlist_path(app_config_get) or _classifier_engine_allowlist_path(app_config_get)
     if path and os.path.isfile(path):
         return _load_allowlist_names_cached(os.path.abspath(path))
@@ -161,7 +124,7 @@ def _norm_key(name: str) -> str:
 
 
 def _catalog_allowlist_extra_names(app_config_get) -> tuple[str, ...]:
-    """Классы вне EfficientNet (напр. Rodent из детектора Trapper), не в class_labels.txt."""
+    """Классы вне Birder allowlist (напр. Rodent из детектора Trapper)."""
     raw = app_config_get("species.catalog_allowlist_extra") or ["Rodent"]
     if isinstance(raw, str):
         raw = [raw]
@@ -305,7 +268,6 @@ def clear_allowlist_cache() -> None:
     """Очистить lru_cache загрузки allowlist (после смене файла или конфига)."""
     _load_allowlist_norm_keys_cached.cache_clear()
     _load_allowlist_names_cached.cache_clear()
-    _load_efficientnet_id2label_cached.cache_clear()
     try:
         from services.species_catalog.vocabulary import clear_species_vocabulary_cache
 

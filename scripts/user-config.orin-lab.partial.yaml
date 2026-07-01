@@ -13,13 +13,10 @@ processor:
   models:
     binary: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
     classifier: models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx
-reid:
-  model_path: models/reid/ornimetrics/reid_embedder.onnx
-  device: "cuda:0"
-  inference_backend: onnxruntime
-welfare:
-  embedder_path: models/welfare/ornimetrics/embedder.onnx
-  scorer_path: models/welfare/ornimetrics/welfare_scorer.npz
+    reid_embedder: models/reid/ornimetrics/reid_embedder.onnx
+  reid:
+    device: "cuda:0"
+    inference_backend: onnxruntime
 video:
   encoding: jetson
   capture_backend: auto

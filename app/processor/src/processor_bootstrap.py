@@ -34,12 +34,13 @@ from recording_finalize_worker import FinalizeWorker, maybe_start_finalize_worke
 from recording_session import MotionRecordingSession
 from recording_concurrency import RecordingConcurrency, concurrent_recording_enabled
 from reid_runtime import prewarm_runtime_reid_model
+from welfare_runtime import prewarm_runtime_welfare_model
 
 logger = logging.getLogger(__name__)
 
 
 def _start_runtime_reid_prewarm_async() -> None:
-    """Warm up runtime ReID model in background without blocking motion loop startup."""
+    """Warm up runtime ReID and welfare models in background without blocking motion loop startup."""
 
     def _run() -> None:
         try:
@@ -50,10 +51,18 @@ def _start_runtime_reid_prewarm_async() -> None:
                 logger.info("Runtime ReID prewarm: skipped_or_failed")
         except Exception as exc:
             logger.warning("Runtime ReID prewarm failed: %s", exc)
+        try:
+            prewarmed_welfare = prewarm_runtime_welfare_model()
+            if prewarmed_welfare:
+                logger.info("Runtime welfare prewarm: ok")
+            else:
+                logger.info("Runtime welfare prewarm: skipped_or_failed")
+        except Exception as exc:
+            logger.warning("Runtime welfare prewarm failed: %s", exc)
 
     threading.Thread(
         target=_run,
-        name="runtime-reid-prewarm",
+        name="runtime-enrichment-prewarm",
         daemon=True,
     ).start()
 

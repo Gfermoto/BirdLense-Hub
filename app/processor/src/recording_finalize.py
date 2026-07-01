@@ -33,6 +33,7 @@ from recording_post_fusion_rejections import collect_post_fusion_rejections
 from linear_pipeline import (
     STAGE_CLASSIFY_ENRICH,
     STAGE_REID_ENRICH,
+    STAGE_WELFARE_ENRICH,
     frigate_salvage_allow_without_yolo,
     frigate_salvage_opted_in,
     is_linear_pipeline,
@@ -44,6 +45,7 @@ from recording_session_cleanup import remove_session_dir
 from recording_video_response import response_video_id
 from recordings_remote_mirror import schedule_recordings_session_mirror
 from reid_runtime import enrich_runtime_reid_detections
+from welfare_runtime import enrich_runtime_welfare_detections
 from processor_diagnostics import collect_root_cause_snapshot, write_root_cause_dump
 from processor_config_defaults import (
     YOLO_BLIND_MIN_FRAMES,
@@ -562,6 +564,31 @@ def finalize_motion_recording(
                 len(video_detections or []),
                 reid_enrich_duration_ms,
             )
+    welfare_enrich_duration_ms: float | None = None
+    if video_detections:
+        welfare_enrich_started_ts = time.perf_counter()
+        try:
+            video_detections = enrich_runtime_welfare_detections(
+                video_detections,
+                video_path=video_path_for_api,
+            )
+        except Exception as exc:
+            from processor_exception_handling import reraise_if_io_critical
+
+            reraise_if_io_critical(exc)
+            inc_counter("welfare_runtime_enrich_fail_total")
+            logging.warning("Runtime welfare enrich failed; keep fused detections: %s", exc)
+        welfare_enrich_duration_ms = round(
+            max(0.0, (time.perf_counter() - welfare_enrich_started_ts) * 1000.0),
+            3,
+        )
+        if is_linear_pipeline(app_config):
+            logging.info(
+                "Linear pipeline stage=%s rows=%s duration_ms=%s",
+                STAGE_WELFARE_ENRICH,
+                len(video_detections or []),
+                welfare_enrich_duration_ms,
+            )
     fusion_finished_ts = time.perf_counter()
 
     fusion_fs = sum(1 for d in video_detections if d.get("frigate_standalone"))
@@ -961,6 +988,7 @@ def finalize_motion_recording(
             "create_video_duration_ms": create_video_duration_ms,
             "create_video_ingest_timing_ms": create_video_ingest_timing_ms,
             "reid_enrich_duration_ms": reid_enrich_duration_ms,
+            "welfare_enrich_duration_ms": welfare_enrich_duration_ms,
             "dataset_crops_duration_ms": dataset_crops_duration_ms,
             "persist_substage_ms": build_persist_substage_ms(
                 scales_duration_ms=scales_duration_ms,
@@ -968,6 +996,7 @@ def finalize_motion_recording(
                 create_video_ingest_timing_ms=create_video_ingest_timing_ms,
                 dataset_crops_duration_ms=dataset_crops_duration_ms,
                 reid_enrich_duration_ms=reid_enrich_duration_ms,
+                welfare_enrich_duration_ms=welfare_enrich_duration_ms,
             ),
             "trigger_to_first_bbox_latency_s": (
                 None if trigger_to_first_bbox_s is None else round(float(trigger_to_first_bbox_s), 6)

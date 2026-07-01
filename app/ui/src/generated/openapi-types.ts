@@ -80,7 +80,7 @@ export interface paths {
                             ready: boolean;
                             /** @description True when historical pipeline-quality checks are healthy. Core service readiness may be true while this is false. */
                             quality_ready?: boolean;
-                            /** @description True when bbox/crop geometry SLO gate is green (#642); DINOv2/behavior layers allowed. */
+                            /** @description True when bbox/crop geometry SLO gate is green (#642); ReID/behavior layers allowed. */
                             bbox_slo_ok?: boolean;
                             /** @description Gate evaluation reason (e.g. ok, funnel_degraded, bbox_iou_p50=...). */
                             bbox_slo_reason?: string;

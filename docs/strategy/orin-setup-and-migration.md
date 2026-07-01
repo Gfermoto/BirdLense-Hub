@@ -221,7 +221,8 @@ print(ort.get_available_providers())
 
 - Детектор: `processor.models.binary` → ONNX Trapper.
 - Классификатор: `classifier_engine: birder_eu`, ONNX `weights/{variant}.onnx` + bundle `{variant}/class_labels.txt`.
-- ReID / welfare: ключи `reid.model_path`, `welfare.embedder_path`, `welfare.scorer_path` (см. example yaml).
+- ReID: `processor.models.reid_embedder`, `processor.reid.*` (см. `user_config.orin.example.yaml`).
+- Welfare: `welfare_runtime.py` в finalize после ReID; модели в `processor/models/welfare/ornimetrics/` (volume в compose). Порог: `processor.welfare.distance_review_threshold`.
 
 OpenVINO, Intel GPU, TensorRT и Jetson Nano legacy в ветке `orin` **не используются**.
 
@@ -279,20 +280,17 @@ processor:
   models:
     binary: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
     classifier: models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx
+    reid_embedder: models/reid/ornimetrics/reid_embedder.onnx
   classifier_engine: birder_eu
   inference_backend: onnxruntime
   classifier_inference_backend: onnxruntime
   inference_device: cuda:0
-  binary_imgsz: 640
+  binary_imgsz: 704
   min_confidence_binary: 0.12
   merge_window_seconds: 12
-
-reid:
-  model_path: models/reid/ornimetrics/reid_embedder.onnx
-
-welfare:
-  embedder_path: models/welfare/ornimetrics/embedder.onnx
-  scorer_path: models/welfare/ornimetrics/welfare_scorer.npz
+  reid:
+    device: cuda:0
+    inference_backend: onnxruntime
 ```
 
 После правки `user_config.yaml`: `docker compose -f docker-compose.yml -f docker-compose.orin.yml up -d --force-recreate birdlense`.

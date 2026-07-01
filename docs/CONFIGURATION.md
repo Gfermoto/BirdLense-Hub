@@ -4,20 +4,25 @@
 
 Полный список параметров: `app/app_config/default_config.yaml` (не редактировать — перекрывается user_config).
 
-### Ключевые секции
+### Ключевые секции (Orin)
 
 ```yaml
 processor:
-  inference_backend: onnx            # только ONNX
-  inference_device: cuda:0           # CUDA GPU
+  inference_backend: onnxruntime
+  inference_device: cuda:0
+  classifier_engine: birder_eu
   models:
-    binary_onnx: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
-    classifier_onnx: models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx
-    reid_onnx: models/reid/ornimetrics/reid_embedder.onnx
-    welfare_onnx: models/welfare/ornimetrics/embedder.onnx
-    welfare_scorer: models/welfare/ornimetrics/welfare_scorer.npz
-  tracker: bot_sort                   # ByteTrack unstick
-  gstreamer:                          # NVDEC/NVENC pipeline
+    binary: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
+    classifier: models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx
+    reid_embedder: models/reid/ornimetrics/reid_embedder.onnx
+  tracker: models/tracker/bytetrack_birdlense.yaml
+  reid:
+    device: cuda:0
+    inference_backend: onnxruntime
+
+video:
+  encoding: jetson
+  capture_backend: auto
 ```
 
 Через `.env`:

@@ -10,19 +10,18 @@ import pytest
 @pytest.fixture
 def vocab_env(tmp_path):
     processor = tmp_path / "processor"
-    weights = processor / "models" / "classification" / "weights" / "birds_classifier_efficientnetb2"
-    weights.mkdir(parents=True)
-    import json
-
-    (weights / "config.json").write_text(
-        json.dumps({"id2label": {"0": "EURASIAN MAGPIE", "1": "AZURE JAY"}}),
+    bundle = processor / "models" / "classification" / "convnext_v2_tiny_eu-common256px"
+    bundle.mkdir(parents=True)
+    (bundle / "class_labels.txt").write_text(
+        "Pica pica (Eurasian Magpie)\nCyanolyca mirabilis (Azure Jay)\n",
         encoding="utf-8",
     )
 
     def getter(key, default=None):
         cfg = {
-            "processor.classifier_engine": "efficientnet_b2",
-            "processor.models.classifier_efficientnet_b2": str(weights.relative_to(processor)),
+            "processor.classifier_engine": "birder_eu",
+            "processor.birder_eu_variant": "convnext_v2_tiny_eu-common256px",
+            "processor.models.classifier": str(bundle.relative_to(processor)) + "/convnext_v2_tiny_eu-common256px.onnx",
             "species.catalog_allowlist_extra": ["Rodent"],
             "species.catalog_strict_ingest": True,
             "detection.species_mapping": {
@@ -63,5 +62,5 @@ def test_vocabulary_classifier_canonical_keys(vocab_env):
 
             clear_species_vocabulary_cache()
             snap = get_species_vocabulary_snapshot()
-            assert snap.allows_ingest_name("EURASIAN MAGPIE")
+            assert snap.allows_ingest_name("Pica pica (Eurasian Magpie)")
             assert snap.allows_ingest_name("Eurasian Magpie")

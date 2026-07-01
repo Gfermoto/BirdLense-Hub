@@ -63,37 +63,6 @@ def _birder_eu_label_mapping(app_config: Any) -> dict[str, str]:
     return out
 
 
-def _efficientnet_id2label_mapping(app_config: Any) -> dict[str, str]:
-    engine = str(app_config.get("processor.classifier_engine", "efficientnet_b2") or "efficientnet_b2").strip().lower()
-    if engine not in ("efficientnet_b2", "chriamue", "bird_species_classifier", "bird-species-classifier"):
-        return {}
-    rel = (
-        app_config.get("processor.models.classifier_chriamue")
-        or app_config.get("processor.models.classifier")
-        or app_config.get(
-            "processor.models.classifier_efficientnet_b2",
-            "models/classification/weights/efficientnet_b2_global",
-        )
-        or "models/classification/weights/efficientnet_b2_global"
-    )
-    processor_root = Path(__file__).resolve().parents[1]
-    base = Path(rel) if os.path.isabs(str(rel)) else processor_root / str(rel)
-    cfg_path = base / "config.json"
-    if not cfg_path.is_file():
-        return {}
-    raw = json.loads(cfg_path.read_text(encoding="utf-8"))
-    out: dict[str, str] = {}
-    for label in (raw.get("id2label") or {}).values():
-        line = str(label or "").strip()
-        if not line:
-            continue
-        canon = _title_case_label(line)
-        out[line] = canon
-        if _norm_merge_key(line) != _norm_merge_key(canon):
-            out[canon] = canon
-    return out
-
-
 def build_species_mapping(app_config: Any) -> dict:
     detection_map = app_config.get("detection.species_mapping") or {}
     ebird_map = app_config.get("ebird.species_mapping") or {}
@@ -103,7 +72,5 @@ def build_species_mapping(app_config: Any) -> dict:
         ebird_map = {}
     merged: dict[str, str] = {**detection_map, **ebird_map}
     for variant, canonical in _birder_eu_label_mapping(app_config).items():
-        merged.setdefault(variant, canonical)
-    for variant, canonical in _efficientnet_id2label_mapping(app_config).items():
         merged.setdefault(variant, canonical)
     return merged

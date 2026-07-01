@@ -52,18 +52,13 @@ def resolve_classifier_weights_path(app_config_get) -> tuple[str, str]:
     Путь к весам классификатора как у процессора.
     Возвращает (абсолютный_путь, путь_для_логов).
     """
-    engine = str(app_config_get("processor.classifier_engine", "efficientnet_b2") or "efficientnet_b2").strip().lower()
-    if engine == "efficientnet_b2":
-        rel = app_config_get(
-            "processor.models.classifier_efficientnet_b2",
-            "models/classification/weights/efficientnet_b2_global",
-        )
-        rel = rel or "models/classification/weights/efficientnet_b2_global"
-    else:
-        rel = app_config_get(
-            "processor.models.classifier",
-            "models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.pt",
-        )
+    engine = str(app_config_get("processor.classifier_engine", "birder_eu") or "birder_eu").strip().lower()
+    variant = str(app_config_get("processor.birder_eu_variant") or "convnext_v2_tiny_eu-common256px").strip()
+    rel = (
+        app_config_get("processor.models.classifier")
+        or app_config_get("processor.models.classifier_birder_eu")
+        or f"models/classification/{variant}/{variant}.onnx"
+    )
     if os.path.isabs(rel):
         return rel, rel
     abs_path = os.path.join(_processor_root(), rel)

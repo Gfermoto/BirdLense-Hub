@@ -4,7 +4,7 @@
 
 ---
 
-## Video: Intel GPU recording falls back to CPU
+## Video: Jetson NVENC recording falls back to CPU
 
 **Settings → Video → Recording encode** can target Jetson (NVENC) or CPU. If logs show `Recording ... (CPU)` while Jetson is selected, the container cannot access NVIDIA GPU.
 
@@ -14,7 +14,7 @@
 docker exec birdlense nvidia-smi
 ```
 
-Re-select **Jetson** in settings. **System** should show GPU metrics. No Intel override needed on Orin.
+Re-select **Jetson** in settings. **System** should show GPU metrics via `nvidia-smi`.
 
 ---
 

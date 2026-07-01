@@ -23,7 +23,7 @@ def test_existing_observed_species_not_demoted_to_unknown(app, monkeypatch):
     from services.species_catalog.vocabulary import SpeciesVocabularySnapshot
 
     narrow = SpeciesVocabularySnapshot(
-        classifier_engine="efficientnet_b2",
+        classifier_engine="birder_eu",
         classifier_class_count=1,
         classifier_norm_keys=frozenset({"eurasian magpie"}),
         arbitration_norm_keys=frozenset(),

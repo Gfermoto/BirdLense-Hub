@@ -232,7 +232,7 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Track regeneration parallelism when mixing auto and manual scope; heavy ops.",
         "next_step": "Expose under System/track regen advanced if users need it without YAML.",
     },
-    # Re-ID / DINOv2 sidecar policy (#389/#390) — operator YAML until review UX ships.
+    # Re-ID sidecar policy (#389/#390) — operator YAML until review UX ships.
     "processor.reid_embedding_pipeline_mode": {
         "category": "ops-only",
         "reason": "Embedding generation runs out-of-band; mode is informational + policy input.",
@@ -1616,16 +1616,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "next_step": "YAML-only or Processor advanced / diagnostics panel.",
     },
     "processor.detector_native_class_labels": {
-        "category": "advanced",
-        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
-        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
-    },
-    "processor.efficientnet_b2_min_confidence": {
-        "category": "advanced",
-        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
-        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
-    },
-    "processor.efficientnet_b2_unknown_label": {
         "category": "advanced",
         "reason": "Processor pipeline knob not yet exposed in Settings UI.",
         "next_step": "YAML-only or Processor advanced / diagnostics panel.",

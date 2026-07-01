@@ -2,7 +2,7 @@
 
 [English](../user/install.md)
 
-BirdLense Hub — мониторинг кормушки: детекция птиц по видео и аудио, записи, аналитика. Docker только на **x86_64** (Intel или AMD).
+BirdLense Hub — мониторинг кормушки на **Jetson Orin**: детекция птиц по видео, записи, аналитика. Docker на **aarch64** (Orin NX/NANO).
 
 **Сначала:** [OVERVIEW](./overview.ru.md) · **Сценарии:** [SCENARIOS](./scenarios.ru.md)
 
@@ -10,7 +10,7 @@ BirdLense Hub — мониторинг кормушки: детекция пти
 
 | Компонент | Описание |
 |-----------|----------|
-| **Docker** | **x86_64 / amd64** (Intel или AMD), Compose v2 — ARM/aarch64 не поддерживаются |
+| **Docker** | **aarch64** (Jetson Orin NX/NANO), Compose v2, NVIDIA Container Runtime |
 | **Go2RTC** | Видеопотоки с IP-камер (standalone или Frigate) |
 | **MQTT** (опционально) | Frigate events; BirdNET (любой совместимый источник JSON, чаще BirdNET-Go или BirdNET-Pi) |
 

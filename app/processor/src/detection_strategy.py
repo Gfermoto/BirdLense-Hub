@@ -651,24 +651,12 @@ class TwoStageStrategy(DetectionStrategy):
                 f"Classifier backend {self.classifier_inference_backend!r} is not implemented (#371).",
             )
 
-        self._classifier_is_efficientnet = False
         self._classifier_is_birder_eu = False
         if self._classifier_engine == "birder_eu":
             from inference.birder_eu_classifier import load_birder_eu_classifier
 
             self._classifier_is_birder_eu = True
             self.classifier_model = load_birder_eu_classifier(
-                classifier_model_path,
-                backend=self.classifier_inference_backend,
-                device=_cls_dev or None,
-                regional_species=self.regional_species,
-                app_config=app_config,
-            )
-        elif self._classifier_engine == "efficientnet_b2":
-            from inference.efficientnet_b2_classifier import load_efficientnet_b2_classifier
-
-            self._classifier_is_efficientnet = True
-            self.classifier_model = load_efficientnet_b2_classifier(
                 classifier_model_path,
                 backend=self.classifier_inference_backend,
                 device=_cls_dev or None,
@@ -720,7 +708,7 @@ class TwoStageStrategy(DetectionStrategy):
 
         # Pre-calculate allowed class IDs for regional species (YOLO-cls path only).
         self.classes = None
-        if self.regional_species and not getattr(self, "_classifier_is_efficientnet", False):
+        if self.regional_species and not getattr(self, "_classifier_is_birder_eu", False):
             self.logger.info(
                 "Initializing with regional species filters: %s",
                 self.regional_species,
@@ -733,7 +721,7 @@ class TwoStageStrategy(DetectionStrategy):
             )
             self.logger.info("Enabled classes: %s", enabled_classes)
         elif self.regional_species and (
-            getattr(self, "_classifier_is_efficientnet", False) or getattr(self, "_classifier_is_birder_eu", False)
+            getattr(self, "_classifier_is_birder_eu", False)
         ):
             self.logger.info(
                 "Regional species filter delegated to neural classifier (%s entries).",
@@ -745,7 +733,7 @@ class TwoStageStrategy(DetectionStrategy):
         if self._binary_track_device:
             _warm["device"] = self._binary_track_device
         self.binary_model.track(np.zeros((320, 320, 3), dtype=np.uint8), **_warm)
-        if getattr(self, "_classifier_is_efficientnet", False) or getattr(self, "_classifier_is_birder_eu", False):
+        if getattr(self, "_classifier_is_birder_eu", False):
             self.classifier_model.warmup()
         else:
             _cls_warm: dict = {"verbose": False}
@@ -908,7 +896,7 @@ class TwoStageStrategy(DetectionStrategy):
         crop_bgr, _copied = crop_for_classifier(crop)
         if crop_bgr.size == 0:
             return ClassifierOutput(None, 0.0, 0.0, 0.0)
-        if getattr(self, "_classifier_is_efficientnet", False) or getattr(self, "_classifier_is_birder_eu", False):
+        if getattr(self, "_classifier_is_birder_eu", False):
             out = self.classifier_model.classify_crop_bgr(crop_bgr)
             return ClassifierOutput(
                 out.species_name,

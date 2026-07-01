@@ -21,6 +21,7 @@ PERSIST_SUBSTAGE_SUMMARY_KEYS: tuple[str, ...] = (
     "create_video_duration_ms",
     "dataset_crops_duration_ms",
     "reid_enrich_duration_ms",
+    "welfare_enrich_duration_ms",
 )
 
 CREATE_VIDEO_INGEST_SUBSTAGE_KEYS: tuple[str, ...] = (
@@ -37,6 +38,7 @@ def build_persist_substage_ms(
     create_video_ingest_timing_ms: dict[str, float] | None,
     dataset_crops_duration_ms: float | None,
     reid_enrich_duration_ms: float | None = None,
+    welfare_enrich_duration_ms: float | None = None,
 ) -> dict[str, Any]:
     """Grouped persist-tail timers for session_summary and readiness aggregation."""
     substage: dict[str, Any] = {
@@ -44,6 +46,7 @@ def build_persist_substage_ms(
         "create_video_ms": create_video_duration_ms,
         "dataset_crops_ms": dataset_crops_duration_ms,
         "reid_enrich_ms": reid_enrich_duration_ms,
+        "welfare_enrich_ms": welfare_enrich_duration_ms,
     }
     if isinstance(create_video_ingest_timing_ms, dict) and create_video_ingest_timing_ms:
         substage["create_video_ingest_ms"] = dict(create_video_ingest_timing_ms)

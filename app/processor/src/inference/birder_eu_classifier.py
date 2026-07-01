@@ -10,10 +10,10 @@ from typing import Any, Mapping
 
 import numpy as np
 
-from inference.efficientnet_b2_classifier import (
+from inference.classifier_common import (
     UNKNOWN_BIRD_LABEL,
-    _entropy_margin,
-    _normalize_species_label,
+    entropy_margin as _entropy_margin,
+    normalize_species_label as _normalize_species_label,
 )
 from processor_config_defaults import BIRDER_EU_MIN_CONFIDENCE
 

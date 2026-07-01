@@ -15,8 +15,8 @@ Every model runs on **ONNX Runtime CUDA EP** (`cuda:0`) on Jetson Orin GPU.
 | ① | **Detector** | Trapper AI v02 2024 (YOLO) | Finds bird or Rodent in frame, bounding box | ORT CUDA EP |
 | ② | **Classifier** | Birder ConvNeXt EU-707 (birder_eu) | Identifies species: 707 European birds | ORT CUDA EP |
 | ③ | **Tracker** | ByteTrack unstick | Links boxes into tracks → movement trajectory | CPU |
-| ④ | **ReID** | Ornimetrics DINOv2 | Recognizes individual: same sparrow or different? | ORT CUDA EP |
-| ⑤ | **Welfare** | Ornimetrics embedder + scorer | Health assessment: plumage, body condition, activity | ORT CUDA EP |
+| ④ | **ReID** | Ornimetrics reid_embedder | Recognizes individual: same sparrow or different? | ORT CUDA EP |
+| ⑤ | **Welfare** | Ornimetrics embedder + scorer | Mahalanobis screening vs healthy baseline → review flag | ORT CUDA EP |
 
 **Docs:** [`docs/index.md`](docs/index.md) · [Architecture overview](docs/OVERVIEW.md) · [Quick start](docs/QUICKSTART.md)
 

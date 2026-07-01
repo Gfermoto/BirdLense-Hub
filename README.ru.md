@@ -15,8 +15,8 @@
 | ① | **Детектор** | Trapper AI v02 2024 (YOLO) | Находит птицу или Rodent в кадре, bounding box | ORT CUDA EP |
 | ② | **Классификатор** | Birder ConvNeXt EU-707 (birder_eu) | Определяет вид: 707 европейских птиц | ORT CUDA EP |
 | ③ | **Трекер** | ByteTrack unstick | Связывает боксы в треки → траектория движения | CPU |
-| ④ | **ReID** | Ornimetrics DINOv2 | Узнаёт особь: тот же воробей или другой? | ORT CUDA EP |
-| ⑤ | **Welfare** | Ornimetrics embedder + scorer | Оценка здоровья: оперение, упитанность, активность | ORT CUDA EP |
+| ④ | **ReID** | Ornimetrics reid_embedder | Узнаёт особь: тот же воробей или другой? | ORT CUDA EP |
+| ⑤ | **Welfare** | Ornimetrics embedder + scorer | Mahalanobis-скрининг vs здоровый baseline → флаг на просмотр | ORT CUDA EP |
 
 **Документация:** [`docs/`](docs/index.md) · [Обзор архитектуры](docs/OVERVIEW.md) · [Быстрый старт](docs/QUICKSTART.md)
 

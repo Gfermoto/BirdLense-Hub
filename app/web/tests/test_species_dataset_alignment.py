@@ -26,16 +26,16 @@ def test_normalize_classifier_label_matches_processor_style():
     assert normalize_classifier_label("Blue_OR_Jay") == "Blue/Jay"
 
 
-def test_resolve_classifier_weights_prefers_efficientnet_engine(monkeypatch):
+def test_resolve_classifier_weights_birder_engine(monkeypatch):
     from services.species_dataset_alignment_service import resolve_classifier_weights_path
 
     cfg = {
-        "processor.classifier_engine": "efficientnet_b2",
-        "processor.models.classifier_efficientnet_b2": "models/classification/weights/custom_b2",
+        "processor.classifier_engine": "birder_eu",
+        "processor.models.classifier": "models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx",
     }
     abs_path, log_path = resolve_classifier_weights_path(lambda key, default=None: cfg.get(key, default))
-    assert log_path == "models/classification/weights/custom_b2"
-    assert abs_path.endswith("/app/processor/models/classification/weights/custom_b2")
+    assert log_path.endswith("convnext_v2_tiny_eu-common256px.onnx")
+    assert abs_path.endswith("/app/processor/models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx")
 
 
 def test_load_classifier_labels_reads_class_labels_txt(tmp_path):

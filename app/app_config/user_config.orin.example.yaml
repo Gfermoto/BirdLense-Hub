@@ -4,6 +4,9 @@ processor:
   models:
     binary: models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx
     classifier: models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx
+    reid_embedder: models/reid/ornimetrics/reid_embedder.onnx
+    welfare_embedder: models/welfare/ornimetrics/embedder.onnx
+    welfare_scorer: models/welfare/ornimetrics/welfare_scorer.npz
   classifier_engine: birder_eu
   inference_backend: onnxruntime
   classifier_inference_backend: onnxruntime
@@ -17,15 +20,13 @@ processor:
     night: models/tracker/bytetrack_birdlense.yaml
   auto_unstick_tracker: models/tracker/bytetrack_birdlense.yaml
   auto_unstick_tracker_night: models/tracker/bytetrack_birdlense.yaml
-
-reid:
-  model_path: models/reid/ornimetrics/reid_embedder.onnx
-  device: cuda:0
-  inference_backend: onnxruntime
-
-welfare:
-  embedder_path: models/welfare/ornimetrics/embedder.onnx
-  scorer_path: models/welfare/ornimetrics/welfare_scorer.npz
+  reid:
+    device: cuda:0
+    inference_backend: onnxruntime
+  welfare:
+    device: cuda:0
+    inference_backend: onnxruntime
+    distance_review_threshold: 75.0
 
 video:
   encoding: jetson

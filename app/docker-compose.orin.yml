@@ -27,6 +27,8 @@ services:
       - BIRDLENSE_CLASSIFIER_ENGINE=birder_eu
       - BIRDLENSE_CLASSIFIER_INFERENCE_BACKEND=onnxruntime
       - BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE=${BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE:-cuda:0}
+      - BIRDLENSE_REID_BACKEND=onnxruntime
+      - BIRDLENSE_REID_DEVICE=${BIRDLENSE_REID_DEVICE:-cuda:0}
       - LD_LIBRARY_PATH=/usr/local/lib/python3.12/site-packages/nvidia/cu13/lib:/usr/local/lib/python3.12/site-packages/nvidia/cudnn/lib
       - API_URL_BASE=http://127.0.0.1:${BIRDLENSE_PORT:-8085}/api/processor
       - GO2RTC_URL=${GO2RTC_URL:-}

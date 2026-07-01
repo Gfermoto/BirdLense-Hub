@@ -36,7 +36,7 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         cmd = _ffmpeg_record_cmd(
             stream_url="rtsp://example/stream",
             output="/tmp/out.mp4",
-            use_vaapi=False,
+            use_jetson_hw_encode=True,
             record_stream_codec="h264",
             encoding_mode="jetson",
         )
@@ -49,13 +49,28 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         self.assertIn("-af aresample=async=1:first_pts=0", joined)
         self.assertIn("-c:a aac", joined)
 
+    def test_ffmpeg_record_cmd_jetson_without_hw_uses_libx264(self):
+        from sources.go2rtc_stream_source import _ffmpeg_record_cmd
+
+        cmd = _ffmpeg_record_cmd(
+            stream_url="rtsp://example/stream",
+            output="/tmp/out.mp4",
+            use_jetson_hw_encode=False,
+            record_stream_codec="h264",
+            encoding_mode="jetson",
+        )
+        joined = " ".join(cmd)
+        self.assertIn("-c:v libx264", joined)
+        self.assertNotIn("h264_nvenc", joined)
+        self.assertNotIn("h264_vaapi", joined)
+
     def test_ffmpeg_record_cmd_for_copy_uses_copy_video(self):
         from sources.go2rtc_stream_source import _ffmpeg_record_cmd
 
         cmd = _ffmpeg_record_cmd(
             stream_url="rtsp://example/stream",
             output="/tmp/out.mp4",
-            use_vaapi=False,
+            use_jetson_hw_encode=True,
             record_stream_codec="copy",
             encoding_mode="jetson",
         )
@@ -113,6 +128,34 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         self.assertIsNone(src.capture())
         self.assertEqual(calls["reconnect"], 1)
         self.assertEqual(calls["read"], 2)
+
+    def test_capture_fallback_reason_orin_only(self):
+        from sources.go2rtc_stream_source import _capture_fallback_reason
+
+        self.assertEqual(
+            _capture_fallback_reason(requested_backend="opencv", encoding_mode="jetson"),
+            "requested_opencv",
+        )
+        self.assertEqual(
+            _capture_fallback_reason(
+                requested_backend="ffmpeg_nvmpi",
+                encoding_mode="jetson",
+                nvmpi_available=False,
+            ),
+            "nvmpi_unavailable",
+        )
+        self.assertEqual(
+            _capture_fallback_reason(
+                requested_backend="auto",
+                encoding_mode="jetson",
+                nvmpi_available=False,
+            ),
+            "auto_nvmpi_probe_failed",
+        )
+        self.assertEqual(
+            _capture_fallback_reason(requested_backend="auto", encoding_mode="cpu"),
+            "auto_prefers_opencv_for_cpu_encoding",
+        )
 
     def test_encoding_utils_normalize_video_encoding(self):
         from encoding_utils import normalize_video_encoding

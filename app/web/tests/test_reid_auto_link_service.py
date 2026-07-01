@@ -42,7 +42,7 @@ def _insert_emb(*, vsid: int, vid: int, sid: int, emb: list[float], crop: str) -
         text(
             "INSERT INTO reid_embedding "
             "(video_species_id, video_id, species_id, track_id, crop_path, model, dim, embedding_json) "
-            "VALUES (:vsid, :vid, :sid, 1, :crop, 'dinov2', :dim, :emb)"
+            "VALUES (:vsid, :vid, :sid, 1, :crop, 'ornimetrics_reid', :dim, :emb)"
         ),
         {
             "vsid": int(vsid),

@@ -63,7 +63,7 @@ def test_species_patch_updates_reid_embedding_species(app):
                     video_species_id, video_id, species_id, track_id, crop_path, model, dim,
                     embedding_json, species_name, individual_label
                 ) VALUES (
-                    :vsid, :vid, :sid, :tid, :crop, 'dinov2_vits14', 3, :emb, 'Bird', NULL
+                    :vsid, :vid, :sid, :tid, :crop, 'ornimetrics_reid', 3, :emb, 'Bird', NULL
                 )
                 """
             ),

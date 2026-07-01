@@ -732,7 +732,7 @@ def test_processor_videos_runtime_reid_payload_persists_nickname_and_sidecar(
             "frames": [],
             "track_id": 7,
             "individual_nickname": "Рыжик",
-            "reid_model": "dinov2_vits14",
+            "reid_model": "ornimetrics_reid",
             "reid_dim": 4,
             "reid_embedding": [0.1, 0.2, 0.3, 0.4],
             "reid_crop_key": f"runtime://pytest/{token}/track/7",
@@ -764,11 +764,11 @@ def test_processor_videos_runtime_reid_payload_persists_nickname_and_sidecar(
             .first()
         )
         assert row is not None
-        assert row["model"] == "dinov2_vits14"
+        assert row["model"] == "ornimetrics_reid"
         assert int(row["dim"]) == 4
         assert row["individual_label"] == "Рыжик"
         assert row["embedding_schema"] == "embedding_schema@v1"
-        assert row["embedding_model_id"] == "dinov2_vits14"
+        assert row["embedding_model_id"] == "ornimetrics_reid"
         assert row["embedding_model_sha16"]
         assert row["crop_fingerprint_sha16"]
         assert row["jsonl_created_at_utc"]

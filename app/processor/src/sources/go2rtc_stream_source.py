@@ -22,8 +22,6 @@ from .streaming_server import start_streaming_server
 
 logger = logging.getLogger(__name__)
 
-VAAPI_DEVICE = "/dev/dri/renderD128"
-
 NVMPI_GST_TEMPLATE = (
     "rtspsrc location={url} latency=300 drop-on-latency=true protocols=4 ! "
     "rtph264depay ! h264parse ! "
@@ -89,7 +87,6 @@ def _capture_fallback_reason(
     *,
     requested_backend: str,
     encoding_mode: str,
-    vaapi_available: bool,
     nvmpi_available: bool = False,
 ) -> str:
     """Classify fallback reason for capture backend telemetry."""
@@ -97,57 +94,13 @@ def _capture_fallback_reason(
     enc = (encoding_mode or "cpu").strip().lower()
     if rb == "opencv":
         return "requested_opencv"
-    if rb == "ffmpeg_vaapi" and not vaapi_available:
-        return "vaapi_unavailable"
     if rb == "ffmpeg_nvmpi" and not nvmpi_available:
         return "nvmpi_unavailable"
     if rb == "auto" and enc == "jetson" and not nvmpi_available:
         return "auto_nvmpi_probe_failed"
-    if rb == "auto" and enc != "intel":
-        return "auto_prefers_opencv_for_non_intel_encoding"
-    if rb == "auto" and not vaapi_available:
-        return "auto_vaapi_probe_failed"
+    if rb == "auto" and enc == "cpu":
+        return "auto_prefers_opencv_for_cpu_encoding"
     return "fallback_to_opencv"
-
-
-def _ffmpeg_vaapi_capture_cmd(stream_url: str, lores_size: tuple[int, int]) -> list[str]:
-    """FFmpeg rawvideo command for VA-API live inference capture."""
-    width, height = int(lores_size[0]), int(lores_size[1])
-    # Preserve source aspect ratio and pad to inference canvas (letterbox),
-    # matching OpenCV capture path semantics.
-    vf = (
-        f"scale_vaapi=w={width}:h={height}:force_original_aspect_ratio=decrease,"
-        f"hwdownload,format=nv12,pad=w={width}:h={height}:x=(ow-iw)/2:y=(oh-ih)/2,"
-        "format=bgr24"
-    )
-    return [
-        "ffmpeg",
-        "-hide_banner",
-        "-loglevel",
-        "warning",
-        "-fflags",
-        "+genpts",
-        "-use_wallclock_as_timestamps",
-        "1",
-        "-rtsp_transport",
-        "tcp",
-        "-hwaccel",
-        "vaapi",
-        "-hwaccel_device",
-        VAAPI_DEVICE,
-        "-hwaccel_output_format",
-        "vaapi",
-        "-i",
-        stream_url,
-        "-an",
-        "-vf",
-        vf,
-        "-pix_fmt",
-        "bgr24",
-        "-f",
-        "rawvideo",
-        "pipe:1",
-    ]
 
 
 def _gst_nvmpi_capture_cmd(stream_url: str, lores_size: tuple[int, int]) -> list[str]:
@@ -241,7 +194,7 @@ def _ffmpeg_record_cmd(
     *,
     stream_url: str,
     output: str,
-    use_vaapi: bool,
+    use_jetson_hw_encode: bool,
     record_stream_codec: str,
     encoding_mode: str = "cpu",
 ) -> list[str]:
@@ -257,15 +210,6 @@ def _ffmpeg_record_cmd(
         "make_zero",
         "-max_interleave_delta",
         "0",
-    ]
-    if use_vaapi:
-        # More stable than mixed hw decode+encode on some iGPU/driver combos:
-        # decode in software and upload NV12 frames for VA-API encoder explicitly.
-        cmd += [
-            "-vaapi_device",
-            VAAPI_DEVICE,
-        ]
-    cmd += [
         "-rtsp_transport",
         "tcp",
         "-i",
@@ -277,16 +221,11 @@ def _ffmpeg_record_cmd(
         "-map",
         "0:a:0?",
     ]
-    if use_vaapi:
-        cmd += [
-            "-vf",
-            "format=nv12,hwupload",
-            "-c:v",
-            "h264_vaapi",
-            "-b:v",
-            "2M",
-        ]
-    elif encoding_mode == "jetson" and (record_stream_codec or "h264").strip().lower() == "h264":
+    if (
+        encoding_mode == "jetson"
+        and use_jetson_hw_encode
+        and (record_stream_codec or "h264").strip().lower() == "h264"
+    ):
         if _jetson_v4l2enc_available():
             cmd += [
                 "-c:v",
@@ -450,14 +389,10 @@ class Go2RTCStreamSource:
         self._source_fps = 0.0
         self.stream_capabilities = None
         self._read_lock = threading.Lock()
-        self._vaapi_checked = False
-        self._vaapi_available = True
-        self._vaapi_record_available = True
         self._nvmpi_checked: bool = False
         self._nvmpi_available: bool = False
         self._nvmpi_fallback_permanent: bool = False
-        # When encoding=intel: still use VA-API for ffmpeg capture (auto) unless capture falls back;
-        # recording can use libx264 only if record_with_vaapi is false (avoids flaky h264_vaapi on some iGPU drivers).
+        # API compat name: on jetson, True → NVENC/v4l2m2m/OMX; False → libx264.
         if record_with_vaapi is None:
             self._record_with_vaapi = True
         elif isinstance(record_with_vaapi, bool):
@@ -465,7 +400,6 @@ class Go2RTCStreamSource:
         else:
             s = str(record_with_vaapi).strip().lower()
             self._record_with_vaapi = s not in ("0", "false", "no", "off")
-        self._recording_used_vaapi = False
         self._ffmpeg_capture_failures = 0
         self._force_opencv_until_ts = 0.0
         self._last_classifier_source_frame = None
@@ -509,7 +443,7 @@ class Go2RTCStreamSource:
         return self._capture_stream_url
 
     def _reconnect_capture_if_url_changed(self) -> None:
-        """Reconnect OpenCV/VA-API capture when idle↔recording toggles capture URL."""
+        """Reconnect capture when idle↔recording toggles capture URL."""
         with self._read_lock:
             expected = self._live_capture_url()
             current = getattr(self, "_capture_url_connected", None)
@@ -542,18 +476,16 @@ class Go2RTCStreamSource:
     def _connect(self) -> bool:
         """Open RTSP connection. Returns True if successful."""
         self._disconnect()
-        if self._should_use_ffmpeg_vaapi_capture() and self._connect_ffmpeg_vaapi_capture():
+        if self._should_use_nvmpi_capture() and self._connect_ffmpeg_nvmpi_capture():
             return True
-        if self._should_use_ffmpeg_vaapi_capture():
+        if self._should_use_nvmpi_capture():
             reason = _capture_fallback_reason(
                 requested_backend=self._capture_backend,
                 encoding_mode=self._encoding_mode,
-                vaapi_available=self._vaapi_available,
+                nvmpi_available=self._nvmpi_available,
             )
             _set_runtime_gauge("video_capture_backend_fallback_reason", reason)
             _inc_runtime_counter("video_capture_backend_fallback_total", 1)
-        if self._should_use_nvmpi_capture() and self._connect_ffmpeg_nvmpi_capture():
-            return True
         # Не логировать поля из URL (в т.ч. учётка в stream_url) — CodeQL sensitive logging
         self.logger.info("Connecting to video stream (OpenCV, capture/detect)")
         # OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp set in Dockerfile
@@ -571,41 +503,6 @@ class Go2RTCStreamSource:
         _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
         self.logger.info(f"Connected. FPS: {self._source_fps}")
-        return True
-
-    def _should_use_ffmpeg_vaapi_capture(self) -> bool:
-        """Whether live inference capture should try FFmpeg VA-API."""
-        if self._detect_native or not self.lores_size:
-            return False
-        if time.time() < float(self._force_opencv_until_ts or 0.0):
-            return False
-        if self._capture_backend == "ffmpeg_vaapi":
-            return True
-        return self._capture_backend == "auto" and self._encoding_mode == "intel"
-
-    def _connect_ffmpeg_vaapi_capture(self) -> bool:
-        """Open FFmpeg rawvideo pipe for live inference frames."""
-        if not self._use_intel_vaapi():
-            if self._capture_backend == "ffmpeg_vaapi":
-                self.logger.warning("FFmpeg VA-API capture requested but VA-API is unavailable; falling back to OpenCV")
-            return False
-        cmd = _ffmpeg_vaapi_capture_cmd(self._live_capture_url(), self.lores_size)
-        try:
-            self._capture_process = subprocess.Popen(
-                cmd,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-            )
-        except (FileNotFoundError, OSError) as e:
-            self.logger.warning("Failed to start FFmpeg VA-API capture: %s", e)
-            self._capture_process = None
-            return False
-        self._capture_backend_used = "ffmpeg_vaapi"
-        _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
-        self._reconnect_delay = INITIAL_RECONNECT_DELAY
-        self._apply_stream_probe()
-        self.logger.info("Connected. Capture backend: FFmpeg VA-API")
         return True
 
     def _should_use_nvmpi_capture(self) -> bool:
@@ -836,8 +733,6 @@ class Go2RTCStreamSource:
 
     def _read_frame(self):
         """Read one frame. Returns (frame_bgr, success)."""
-        if self._capture_backend_used == "ffmpeg_vaapi":
-            return self._read_ffmpeg_vaapi_frame()
         if self._capture_backend_used == "ffmpeg_nvmpi":
             return self._read_gst_nvmpi_frame()
         if not self._cap or not self._cap.isOpened():
@@ -845,28 +740,6 @@ class Go2RTCStreamSource:
         ret, frame = self._cap.read()
         if not ret or frame is None:
             return None, False
-        return frame, True
-
-    def _read_ffmpeg_vaapi_frame(self):
-        """Read one BGR lores frame from FFmpeg rawvideo stdout."""
-        proc = self._capture_process
-        if not proc or proc.poll() is not None or not proc.stdout:
-            self._ffmpeg_capture_failures += 1
-            return None, False
-        width, height = int(self.lores_size[0]), int(self.lores_size[1])
-        need = width * height * 3
-        chunks = []
-        remaining = need
-        while remaining > 0:
-            chunk = proc.stdout.read(remaining)
-            if not chunk:
-                self._ffmpeg_capture_failures += 1
-                return None, False
-            chunks.append(chunk)
-            remaining -= len(chunk)
-        data = b"".join(chunks)
-        frame = np.frombuffer(data, dtype=np.uint8).reshape((height, width, 3))
-        self._ffmpeg_capture_failures = 0
         return frame, True
 
     def _read_gst_nvmpi_frame(self):
@@ -900,47 +773,6 @@ class Go2RTCStreamSource:
             if jpeg is not None:
                 self._streaming_output.write(jpeg.tobytes())
 
-    def _probe_vaapi(self) -> bool:
-        """Check if VA-API encode path works in this container."""
-        probe_out = "/tmp/birdlense_vaapi_probe.mp4"
-        try:
-            r = subprocess.run(
-                [
-                    "ffmpeg",
-                    "-y",
-                    "-loglevel",
-                    "error",
-                    "-vaapi_device",
-                    VAAPI_DEVICE,
-                    "-f",
-                    "lavfi",
-                    "-i",
-                    "testsrc2=size=640x360:rate=5:duration=1",
-                    "-vf",
-                    "format=nv12,hwupload",
-                    "-c:v",
-                    "h264_vaapi",
-                    "-frames:v",
-                    "5",
-                    "-an",
-                    probe_out,
-                ],
-                capture_output=True,
-                timeout=10,
-            )
-            if r.returncode != 0 and r.stderr:
-                self.logger.debug("VA-API probe stderr: %s", r.stderr.decode("utf-8", errors="replace")[:300])
-            ok = r.returncode == 0 and os.path.exists(probe_out) and os.path.getsize(probe_out) > 1024
-            try:
-                if os.path.exists(probe_out):
-                    os.remove(probe_out)
-            except OSError:
-                pass
-            return ok
-        except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
-            self.logger.debug("VA-API probe failed: %s", e)
-            return False
-
     def _probe_nvmpi(self) -> bool:
         """Check if Jetson hardware decoder is available (gst-inspect-1.0 nvv4l2decoder)."""
         if not shutil.which("gst-inspect-1.0"):
@@ -962,29 +794,6 @@ class Go2RTCStreamSource:
             self.logger.debug("NVMPI probe failed: %s", e)
             return False
 
-    def _use_intel_vaapi(self) -> bool:
-        """True if encoding_mode is intel and VA-API device works (device + libva init)."""
-        if self._encoding_mode != "intel":
-            return False
-        if not os.path.exists(VAAPI_DEVICE):
-            self.logger.warning(
-                "video.encoding=intel but %s not found — recording with CPU. "
-                "Для GPU: проверьте runtime: nvidia и devices в compose.",
-                VAAPI_DEVICE,
-            )
-            return False
-        if not self._vaapi_checked:
-            self._vaapi_checked = True
-            self._vaapi_available = self._probe_vaapi()
-            if not self._vaapi_available:
-                self.logger.warning(
-                    "VA-API: %s есть, но init не прошёл — запись на CPU. "
-                    "Частая причина: нет group_add групп video/render хоста в compose. "
-                    "На сервере: проверьте NVIDIA runtime, nvidia-smi, и пересоздайте контейнер.",
-                    VAAPI_DEVICE,
-                )
-        return self._vaapi_available
-
     def _use_jetson_nvmpi(self) -> bool:
         """True if on Jetson platform and GStreamer NVMM pipeline works."""
         if self._encoding_mode != "jetson":
@@ -1004,39 +813,39 @@ class Go2RTCStreamSource:
         self._recording = True
         self._reconnect_capture_if_url_changed()
         self._recording_t0 = time.monotonic()
-        self._recording_used_vaapi = False
         self._video_output = output
         os.makedirs(os.path.dirname(output), exist_ok=True)
-        use_vaapi = self._encoding_mode == "intel" and self._record_with_vaapi and self._use_intel_vaapi()
-        if use_vaapi and not self._vaapi_record_available:
-            use_vaapi = False
         use_jetson = self._encoding_mode == "jetson"
-        if use_jetson and self._record_stream_codec == "h264" and _gst_jetson_record_available():
+        use_jetson_hw = use_jetson and self._record_with_vaapi
+        if (
+            use_jetson_hw
+            and self._record_stream_codec == "h264"
+            and _gst_jetson_record_available()
+        ):
             cmd = _gst_record_cmd(self.stream_url, output)
             backend_label = "GStreamer OMX (Jetson NVENC)"
         else:
             cmd = _ffmpeg_record_cmd(
                 stream_url=self.stream_url,
                 output=output,
-                use_vaapi=bool(use_vaapi),
+                use_jetson_hw_encode=bool(use_jetson_hw),
                 record_stream_codec=self._record_stream_codec,
                 encoding_mode=self._encoding_mode,
             )
-            if use_jetson and self._record_stream_codec == "h264" and _ffmpeg_has_nvenc():
+            if use_jetson_hw and self._record_stream_codec == "h264" and _ffmpeg_has_nvenc():
                 backend_label = "FFmpeg NVENC (CUDA)"
+            elif use_jetson_hw and self._record_stream_codec == "h264":
+                backend_label = "Jetson HW"
             else:
-                backend_label = "VA-API" if use_vaapi else "CPU"
+                backend_label = "CPU (libx264)"
         try:
             from encoding_status import set_last_encoding_used
 
-            if use_vaapi:
-                self._recording_used_vaapi = True
-                set_last_encoding_used("vaapi")
-            elif use_jetson and self._record_stream_codec == "h264" and _gst_jetson_record_available():
+            if use_jetson_hw and self._record_stream_codec == "h264" and _gst_jetson_record_available():
                 set_last_encoding_used("omx")
-            elif use_jetson and self._record_stream_codec == "h264" and _ffmpeg_has_nvenc():
+            elif use_jetson_hw and self._record_stream_codec == "h264" and _ffmpeg_has_nvenc():
                 set_last_encoding_used("nvenc")
-            elif self._record_stream_codec == "h264" and not use_vaapi:
+            elif self._record_stream_codec == "h264":
                 set_last_encoding_used("x264_cpu")
             else:
                 set_last_encoding_used("cpu")
@@ -1084,19 +893,7 @@ class Go2RTCStreamSource:
                             self.logger.log(lvl, "FFmpeg: %s", safe)
                 except Exception:
                     self.logger.debug("FFmpeg stderr drain failed", exc_info=True)
-            graceful_sigterm = int(return_code or 0) == 255 and ("Exiting normally, received signal 15." in stderr_text)
-            if self._recording_used_vaapi and (return_code is None or (int(return_code) != 0 and not graceful_sigterm)):
-                # Quarantine only VA-API recording path after encode failure.
-                # Keep capture path independent (it may remain healthy).
-                self._vaapi_record_available = False
-                _inc_runtime_counter("video_recording_vaapi_fail_total", 1)
-                self.logger.error(
-                    "VA-API recording failed (ffmpeg rc=%s). Fallback to CPU recording for next clips "
-                    "until processor restart/reprobe.",
-                    return_code,
-                )
             self._ffmpeg_process = None
-        self._recording_used_vaapi = False
         self.logger.info("Recording stopped")
 
     def capture(self):
@@ -1112,16 +909,6 @@ class Go2RTCStreamSource:
                 frame, ok = self._read_frame()
             if ok and frame is not None:
                 break
-            if (
-                self._capture_backend_used == "ffmpeg_vaapi"
-                and self._ffmpeg_capture_failures >= FFMPEG_CAPTURE_FAILURE_THRESHOLD
-            ):
-                self._force_opencv_until_ts = time.time() + float(FFMPEG_CAPTURE_COOLDOWN_SEC)
-                self._ffmpeg_capture_failures = 0
-                self.logger.warning(
-                    "FFmpeg VA-API capture is unstable, forcing OpenCV fallback for %ss",
-                    FFMPEG_CAPTURE_COOLDOWN_SEC,
-                )
             if (
                 self._capture_backend_used == "ffmpeg_nvmpi"
                 and self._ffmpeg_capture_failures >= FFMPEG_CAPTURE_FAILURE_THRESHOLD

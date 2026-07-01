@@ -532,7 +532,7 @@ processor:
   # Detector runtime (Orin: ONNX Runtime CUDA EP).
   inference_backend: onnxruntime
   inference_device: cuda:0
-  # birder_eu (707 EU, Collins / birder-project eu-common) | efficientnet_b2 (legacy) | yolo (legacy)
+  # birder_eu (707 EU) | yolo (legacy YOLO-cls path only)
   classifier_engine: birder_eu
   birder_eu_variant: convnext_v2_tiny_eu-common256px
   birder_eu_min_confidence: 0.15
@@ -541,8 +541,6 @@ processor:
   classifier_best_guess_enabled: true
   classifier_best_guess_min_confidence: 0.10
   classifier_best_guess_min_events: 1
-  efficientnet_b2_min_confidence: 0.22
-  efficientnet_b2_unknown_label: "Unknown Bird"
   # Trapper squirrel → каталог Rodent (не класс EfficientNet 525)
   squirrel_species_label: "Rodent"
   # ONNX Runtime CUDA EP (Orin).
@@ -570,11 +568,14 @@ processor:
     binary: "models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx"
     # Birder EU-707: models/classification/{variant}/ (скачать: scripts/download_birder_classifier.py --export-onnx)
     classifier: "models/classification/convnext_v2_tiny_eu-common256px/convnext_v2_tiny_eu-common256px.onnx"
+    reid_embedder: "models/reid/ornimetrics/reid_embedder.onnx"
+    welfare_embedder: "models/welfare/ornimetrics/embedder.onnx"
+    welfare_scorer: "models/welfare/ornimetrics/welfare_scorer.npz"
   # Неопределённость YOLO-cls (#370): энтропия (наты) и margin top1−top2 по полному вектору probs.
   # null — не выставлять classifier_needs_review в decision rows; задайте пороги для AL/аналитики.
   classifier_uncertainty_entropy_ge: null
   classifier_uncertainty_margin_le: null
-  # --- Re-ID / DINOv2 sidecar (SQLite table `reid_embedding`, offline/nearline jobs) (#389/#390)
+  # --- Re-ID sidecar (SQLite table `reid_embedding`, offline/nearline jobs) (#389/#390)
   # Pipeline mode is informational for operators (realtime belongs to processor only after explicit pilot).
   reid_embedding_pipeline_mode: offline_batch
   # Product-facing similarity suggestions on video pages (requires contract metadata in `reid_embedding`).
@@ -606,18 +607,28 @@ processor:
   reid_gallery_duplicate_threshold_low: 0.82
   reid_gallery_min_track_duration_sec: 0.6
   reid_gallery_max_cluster_members: 24
-  # Runtime DINOv2 (finalize) — веса/кэш: models/reid/ (см. models/reid/README.md)
+  # Runtime ReID — Ornimetrics ONNX (Orin production path)
   reid:
-    model: dinov2_vits14
-    hub_cache_dir: models/reid/hub_cache
-    hub_repo_local_path: ""
+    model: ornimetrics_reid
     runtime_enabled: true
     preload_on_start: true
-    device: auto
-    inference_backend: auto
-    hub_download_timeout_seconds: 15
+    device: cuda:0
+    inference_backend: onnxruntime
     candidate_cache_ttl_seconds: 120
     include_embedding_payload: false
+    max_runtime_ms: 250
+
+  # Runtime welfare — Ornimetrics ONNX embedder + Mahalanobis NPZ (Orin production path)
+  welfare:
+    runtime_enabled: true
+    preload_on_start: true
+    device: cuda:0
+    inference_backend: onnxruntime
+    # Mahalanobis distance vs healthy baseline; higher = more unusual. Tune per site.
+    distance_review_threshold: 75.0
+    flag_for_review: true
+    max_detections_per_recording: 6
+    min_best_frame_score: 0.0
     max_runtime_ms: 250
 
 # Video source: go2rtc | file
@@ -650,7 +661,7 @@ video:
   # detect_stream_name — ОБЯЗАТЕЛЕН: второй поток Go2RTC для motion + YOLO (lores).
   # stream_name (main) — только FFmpeg-запись MP4; без detect_stream_name processor не стартует.
   # RTSP Dahua/Hik: detect_stream_name = lores substream (subtype=1, 704×576), как Frigate detect.
-  # stream_name / main / запись — subtype=0 (2688p/1080p). subtype=0 на detect → VA-API letterbox, YOLO blind.
+  # stream_name / main / запись — subtype=0 (2688p/1080p). subtype=0 на detect → тяжёлый кадр, YOLO может «слепнуть».
   # Опционально per camera: record_width/record_height (WxH main) если probe ненадёжен.
   # Dahua IPC-HDPW1420F (BirdBox): record 2688×1520; DH-TPC-BF3221-T (Forest): 1920×1080.
   # Go2RTC-имя потока site-specific; см. user_config.trapper-production.example.yaml.
@@ -1031,7 +1042,7 @@ readiness:
   max_fusion_drop_session_rate: 0.35
   max_fp_empty_opencv_rate: 0.35
   min_healthy_persist_rate: 0.30
-  # Bbox/crop SLO gate (#642): DINOv2 skip when red
+  # Bbox/crop SLO gate (#642): skip ReID when red
   bbox_slo_gate_enabled: true
   bbox_slo_min_iou_p50: 0.45
   bbox_slo_require_funnel_ok: true

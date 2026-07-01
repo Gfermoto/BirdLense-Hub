@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import logging
 import os
 import re
-import socket
 import sqlite3
 import threading
 import time
@@ -40,14 +39,6 @@ def _cfg_bool(key: str, default: bool) -> bool:
     return str(val).strip().lower() in ("1", "true", "yes", "on")
 
 
-def _torch_available() -> bool:
-    try:
-        import torch  # noqa: F401
-        return True
-    except ImportError:
-        return False
-
-
 def _cfg_int(key: str, default: int) -> int:
     try:
         return int(_cfg_get(key, default))
@@ -73,104 +64,20 @@ def _resolve_reid_device() -> str:
     env = (os.environ.get("BIRDLENSE_REID_DEVICE") or "").strip()
     if env:
         return env
-    cfg = str(_cfg_get("processor.reid.device", "auto") or "auto").strip()
+    cfg = str(_cfg_get("processor.reid.device", "cuda:0") or "cuda:0").strip()
     if cfg and cfg.lower() != "auto":
         return cfg
     inferred = (os.environ.get("BIRDLENSE_INFERENCE_DEVICE") or "").strip()
     if not inferred:
-        inferred = str(_cfg_get("processor.inference_device", "") or "").strip()
-    if inferred.lower().startswith("intel:"):
-        return inferred
-    try:
-        import torch
-    except ImportError:
-        _LOG.debug("reid: torch unavailable, device=cpu")
-        return "cpu"
-    return "cuda" if torch.cuda.is_available() else "cpu"
+        inferred = str(_cfg_get("processor.inference_device", "cuda:0") or "cuda:0").strip()
+    return inferred or "cuda:0"
 
 
-def _resolve_reid_backend(device: str) -> str:
-    env = (os.environ.get("BIRDLENSE_REID_BACKEND") or "").strip().lower()
-    if env in ("torch", "onnxruntime"):
-        return env
-    cfg = str(_cfg_get("processor.reid.inference_backend", "auto") or "auto").strip().lower()
-    if cfg in ("torch", "onnxruntime"):
-        return cfg
-    # pref: onnxruntime > torch
-    if _torch_available():
-        return "torch"
-    return "onnxruntime"
-
-
-def _resolve_torch_device_name(device: str) -> str:
+def _ort_providers(device: str) -> list[str]:
     d = str(device or "").strip().lower()
-    if not d or d == "auto":
-        try:
-            import torch
-
-            return "cuda" if torch.cuda.is_available() else "cpu"
-        except Exception:
-            return "cpu"
-    if d.startswith("intel:"):
-        return "cpu"
-    return d
-
-
-def _hub_cache_dir() -> str:
-    env = (os.environ.get("BIRDLENSE_REID_HUB_CACHE_DIR") or "").strip()
-    if env:
-        return env
-    cfg = str(_cfg_get("processor.reid.hub_cache_dir", "") or "").strip()
-    if cfg:
-        return cfg
-    return "models/reid/hub_cache"
-
-
-def _hub_repo_local_path() -> str:
-    env = (os.environ.get("BIRDLENSE_REID_HUB_REPO_LOCAL_PATH") or "").strip()
-    if env:
-        return env
-    return str(_cfg_get("processor.reid.hub_repo_local_path", "") or "").strip()
-
-
-def _hub_download_timeout_seconds() -> float:
-    try:
-        val = float(_cfg_get("processor.reid.hub_download_timeout_seconds", 15.0))
-    except (TypeError, ValueError):
-        val = 15.0
-    return max(1.0, val)
-
-
-def _pick_cls_embedding(features: Any) -> Any:
-    import torch
-
-    if isinstance(features, torch.Tensor):
-        if features.dim() == 3:
-            return features[:, 0, :]
-        if features.dim() == 2:
-            return features
-        raise RuntimeError(f"unexpected tensor shape {tuple(features.shape)}")
-    if isinstance(features, dict):
-        for key in ("x_norm_clstoken", "x_prenorm_clstoken", "cls_token"):
-            t = features.get(key)
-            if torch.is_tensor(t):
-                return t.squeeze(1) if t.dim() == 3 else t
-        for value in features.values():
-            if torch.is_tensor(value) and value.dim() in (2, 3):
-                return value.squeeze(1) if value.dim() == 3 else value
-    raise RuntimeError("cannot interpret DINOv2 forward_features output")
-
-
-def _infer_input_side(model: Any) -> int:
-    patch_embed = getattr(model, "patch_embed", None)
-    if patch_embed is None:
-        return 518
-    img_size = getattr(patch_embed, "img_size", None)
-    if isinstance(img_size, tuple) and img_size:
-        return int(img_size[0])
-    if isinstance(img_size, int):
-        return int(img_size)
-    return 518
+    if d.startswith("cuda") or d.startswith("gpu"):
+        return ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    return ["CPUExecutionProvider"]
 
 
 def _ensure_model_state() -> dict[str, Any] | None:
@@ -187,79 +94,37 @@ def _ensure_model_state() -> dict[str, Any] | None:
             return _MODEL_STATE
         if _MODEL_FAILED:
             return None
-        model_name = str(_cfg_get("processor.reid.model", "dinov2_vits14") or "dinov2_vits14").strip()
+
         raw_device = _resolve_reid_device()
-        backend = _resolve_reid_backend(raw_device)
         started = time.time()
         try:
-            if backend == "onnxruntime":
-                from inference.binary_paths import processor_package_root, resolve_relative_to_processor_root
-                raw_path = str(_cfg_get("processor.models.reid_embedder", "") or "").strip()
-                model_path = resolve_relative_to_processor_root(raw_path, processor_package_root()) if raw_path else ""
-                if not model_path or not os.path.isfile(model_path):
-                    raise FileNotFoundError(
-                        "Ornimetrics ReID ONNX not found: %s" % model_path
-                    )
-                import onnxruntime as ort
-                ort_device = "CUDA" if raw_device.lower() == "cuda" else "CPU"
-                session = ort.InferenceSession(
-                    model_path, providers=[ort_device]
-                )
-                inp = session.get_inputs()[0]
-                side = int(inp.shape[-1]) if inp.shape[-1] else 224
-                _MODEL_STATE = {
-                    "model_name": "ornimetrics_reid",
-                    "device": raw_device,
-                    "backend": "onnxruntime",
-                    "effective_device": ort_device,
-                    "ort_session": session,
-                    "input_name": inp.name,
-                    "side": side,
-                }
-            else:
+            from inference.binary_paths import processor_package_root, resolve_relative_to_processor_root
 
-                hub_cache = _hub_cache_dir()
-                if hub_cache:
-                    try:
-                        torch.hub.set_dir(hub_cache)
-                    except Exception:
-                        _LOG.warning("Cannot set torch.hub dir to %s", hub_cache)
-                local_repo = _hub_repo_local_path()
-                if local_repo and os.path.isdir(local_repo):
-                    model = torch.hub.load(  # nosec B614: local_repo is operator-controlled.
-                        local_repo,
-                        model_name,
-                        source="local",
-                    )
-                    set_gauge("reid.runtime.hub_source", "local")
-                else:
-                    prev_timeout = socket.getdefaulttimeout()
-                    socket.setdefaulttimeout(_hub_download_timeout_seconds())
-                    try:
-                        model = torch.hub.load(  # nosec B614: fallback is official upstream DINOv2 entrypoint.
-                            "facebookresearch/dinov2",
-                            model_name,
-                        )
-                    finally:
-                        socket.setdefaulttimeout(prev_timeout)
-                    set_gauge("reid.runtime.hub_source", "remote")
-                model.eval()
-                side = _infer_input_side(model)
-                torch_device = _resolve_torch_device_name(raw_device)
-                model.to(torch.device(torch_device))
-                _MODEL_STATE = {
-                    "model_name": model_name,
-                    "device": torch_device,
-                    "backend": "torch",
-                    "effective_device": torch_device,
-                    "model": model,
-                    "side": side,
-                }
+            raw_path = str(_cfg_get("processor.models.reid_embedder", "") or "").strip()
+            model_path = (
+                resolve_relative_to_processor_root(raw_path, processor_package_root()) if raw_path else ""
+            )
+            if not model_path or not os.path.isfile(model_path):
+                raise FileNotFoundError("Ornimetrics ReID ONNX not found: %s" % model_path)
+
+            import onnxruntime as ort
+
+            session = ort.InferenceSession(model_path, providers=_ort_providers(raw_device))
+            inp = session.get_inputs()[0]
+            side = int(inp.shape[-1]) if inp.shape[-1] else 224
+            _MODEL_STATE = {
+                "model_name": "ornimetrics_reid",
+                "device": raw_device,
+                "backend": "onnxruntime",
+                "ort_session": session,
+                "input_name": inp.name,
+                "side": side,
+            }
             observe_timing("reid_model_load", (time.time() - started) * 1000.0)
             set_gauge("reid.runtime.enabled", True)
-            set_gauge("reid.runtime.device", _MODEL_STATE.get("effective_device"))
-            set_gauge("reid.runtime.backend", _MODEL_STATE.get("backend"))
-            set_gauge("reid.runtime.model", _MODEL_STATE.get("model_name", model_name))
+            set_gauge("reid.runtime.device", raw_device)
+            set_gauge("reid.runtime.backend", "onnxruntime")
+            set_gauge("reid.runtime.model", "ornimetrics_reid")
             return _MODEL_STATE
         except Exception as exc:
             _MODEL_FAILED = True
@@ -298,7 +163,7 @@ def _to_embedding(crop: Any, *, state: dict[str, Any]) -> np.ndarray | None:
     try:
         import cv2
     except Exception:
-        _LOG.debug("reid: cv2/torch import failed for embedding", exc_info=True)
+        _LOG.debug("reid: cv2 import failed for embedding", exc_info=True)
         return None
 
     rgb = arr[:, :, ::-1]
@@ -310,29 +175,14 @@ def _to_embedding(crop: Any, *, state: dict[str, Any]) -> np.ndarray | None:
     x = (x - mean) / std
     x = np.transpose(x, (2, 0, 1))
     x4 = np.expand_dims(x, axis=0).astype(np.float32)
-    backend = str(state.get("backend") or "torch").strip().lower()
-    if backend == "onnxruntime":
-        try:
-            ort_session = state["ort_session"]
-            inp_name = state["input_name"]
-            out = ort_session.run(None, {inp_name: x4})[0]
-            out = np.squeeze(out).astype(np.float32)
-        except Exception:
-            _LOG.debug("reid: onnxruntime embedding inference failed", exc_info=True)
-            return None
-    else:
-        try:
-            import torch
-            import torch.nn.functional as F
-        except Exception:
-            _LOG.debug("reid: torch import failed for embedding", exc_info=True)
-            return None
-        t = torch.from_numpy(x4).to(torch.device(state["device"]))
-        with torch.inference_mode():
-            feats = state["model"].forward_features(t)
-            vec = _pick_cls_embedding(feats)
-            vec = F.normalize(vec.float(), dim=-1).squeeze(0)
-        out = vec.detach().cpu().numpy().astype(np.float32)
+    try:
+        ort_session = state["ort_session"]
+        inp_name = state["input_name"]
+        out = ort_session.run(None, {inp_name: x4})[0]
+        out = np.squeeze(out).astype(np.float32)
+    except Exception:
+        _LOG.debug("reid: onnxruntime embedding inference failed", exc_info=True)
+        return None
     if out.ndim != 1 or out.shape[0] <= 0:
         return None
     return out

@@ -290,7 +290,6 @@ EOF
 
 "[SOTA-13] ReID: gallery policies + expert queue hardening|enhancement,area:processor,area:web|$(cat <<'EOF'
 ## Задачи
-- [ ] DINOv2 embed quality metrics (intra/inter species)
 - [ ] Auto-link thresholds в конфиг + UI
 - [ ] Expert queue: batch approve, conflict resolution
 

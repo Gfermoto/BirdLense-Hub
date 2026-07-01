@@ -1,4 +1,4 @@
-"""Bbox/crop SLO gate — DINOv2 re-id and behavior layers run only when geometry is green (#642)."""
+"""Bbox/crop SLO gate — ReID, welfare and behavior layers run only when geometry is green (#642)."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ def evaluate_bbox_slo_ok(
     heartbeat_data: dict[str, Any] | None = None,
     funnel_status: str | None = None,
 ) -> tuple[bool, str]:
-    """Return (ok, reason). When False, skip DINOv2 re-id and behavior video layers."""
+    """Return (ok, reason). When False, skip ReID, welfare and behavior video layers."""
     cfg = app_config if isinstance(app_config, Mapping) else {}
 
     env = (os.environ.get("BIRDLENSE_BBOX_SLO_OK") or "").strip().lower()
@@ -86,12 +86,12 @@ def bbox_layers_allowed(
     heartbeat_data: dict[str, Any] | None = None,
     funnel_status: str | None = None,
 ) -> bool:
-    """Processor-side gate for re-id / behavior enrichment."""
+    """Processor-side gate for re-id / welfare / behavior enrichment."""
     ok, reason = evaluate_bbox_slo_ok(
         app_config,
         heartbeat_data=heartbeat_data,
         funnel_status=funnel_status,
     )
     if not ok:
-        logger.info("bbox_slo gate red: skip DINOv2/behavior layers (%s)", reason)
+        logger.info("bbox_slo gate red: skip ReID/behavior layers (%s)", reason)
     return ok

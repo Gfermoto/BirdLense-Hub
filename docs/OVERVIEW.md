@@ -26,7 +26,7 @@ IP-камера → RTSP → Go2RTC (NVDEC)
                   Привязка боксов к трекам → траектория
                   │
                   ▼
-              ④  ReID (Ornimetrics DINOv2 ONNX)
+              ④  ReID (Ornimetrics reid_embedder ONNX)
                   Эмбеддинг особи → кто именно прилетел?
                   Cosine similarity по галерее кандидатов
                   │
@@ -71,27 +71,32 @@ IP-камера → RTSP → Go2RTC (NVDEC)
 - **Конфиг:** `models/tracker/bytetrack_birdlense.yaml`
 - **Особенность:** unstick-режим — восстановление потерянных треков для кормушек с возвратом птиц на то же место
 
-### ④ ReID — Ornimetrics DINOv2
+### ④ ReID — Ornimetrics reid_embedder
 
 - **Задача:** узнать конкретную особь — тот же самый воробей или другой?
-- **Архитектура:** DINOv2 ViT-S/14 (Facebook Research), дообучен на птицах (Ornimetrics)
+- **Модель:** Ornimetrics reid_embedder (обучен на птицах, прод-веса ONNX)
 - **Формат:** ONNX
 - **Бэкенд:** ONNX Runtime CUDA EP
 - **Как работает:**
-  - Извлекает 384-мерный эмбеддинг из кропа птицы
+  - Извлекает эмбеддинг из кропа птицы
   - Сравнивает (cosine similarity) с галереей ранее виденных особей того же вида
   - Порог совпадения: `cosine ≥ 0.92` → та же особь
   - Галерея кандидатов кэшируется (TTL 120с) для быстрого поиска
 - **Путь:** `models/reid/ornimetrics/reid_embedder.onnx`
 
-### ⑤ Welfare — Ornimetrics
+### ⑤ Welfare — Ornimetrics embedder + welfare_scorer
 
-- **Задача:** оценить здоровье/состояние особи — оперение, упитанность, активность
-- **Архитектура:** Ornimetrics embedder + scorer (двухэтапная: эмбеддинг → классификатор состояния)
-- **Формат:** ONNX (embedder) + NPZ (scorer)
+- **Задача:** скрининг аномалий состояния — насколько птица отклоняется от распределения «здоровых» в feature space
+- **Модели:** `embedder.onnx` (1280-d эмбеддинг кропа) + `welfare_scorer.npz` (`mean`, `inv_cov`)
+- **Формат:** ONNX + NPZ
 - **Бэкенд:** ONNX Runtime CUDA EP
-- **Путь:** `models/welfare/ornimetrics/embedder.onnx` + `welfare_scorer.npz`
-- **Особенность:** работает только при включённом ReID (требует эмбеддинг особи)
+- **Как работает:**
+  - После ReID извлекается эмбеддинг из кропа птицы
+  - Mahalanobis distance к здоровому baseline: выше = необычнее (не диагноз, флаг на ручной просмотр)
+  - Порог: `processor.welfare.distance_review_threshold` (по умолчанию 75 — калибровать на площадке)
+  - При превышении: `welfare_needs_review` + `review_reason=welfare_anomaly`
+- **Пути:** `models/welfare/ornimetrics/embedder.onnx`, `models/welfare/ornimetrics/welfare_scorer.npz`
+- **Runtime:** `welfare_runtime.py` → `enrich_runtime_welfare_detections()` в finalize после ReID
 
 ## Scoring Engine — фильтр ложных срабатываний
 

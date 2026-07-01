@@ -5,7 +5,8 @@ Stages:
   2. detect_track (YOLO binary + ByteTrack — frame_processor, live)
   3. classify     (Birder + MQTT helpers — enrich species at finalize)
   5. reid_enrich (optional — after classify, before DB)
-  5. persist      (create_video)
+  6. welfare_enrich (optional — Mahalanobis screening, after reid)
+  7. persist      (create_video)
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ STAGE_TRIGGER = "trigger"
 STAGE_DETECT_TRACK = "detect_track"
 STAGE_CLASSIFY_ENRICH = "classify_enrich"
 STAGE_REID_ENRICH = "reid_enrich"
+STAGE_WELFARE_ENRICH = "welfare_enrich"
 STAGE_PERSIST = "persist"
 
 

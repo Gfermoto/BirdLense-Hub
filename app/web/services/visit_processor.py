@@ -203,9 +203,9 @@ class VisitProcessor:
         dim = int(detection_row.get("reid_dim") or len(vals))
         if dim <= 0 or dim != len(vals):
             return
-        model = str(detection_row.get("reid_model") or "dinov2_vits14").strip()
+        model = str(detection_row.get("reid_model") or "ornimetrics_reid").strip()
         if not model:
-            model = "dinov2_vits14"
+            model = "ornimetrics_reid"
         crop_key = str(detection_row.get("reid_crop_key") or "").strip()
         if not crop_key:
             crop_key = f"runtime://video/{video_species.video_id}/vs/{video_species.id}"

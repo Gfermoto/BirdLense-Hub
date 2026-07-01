@@ -69,6 +69,10 @@ def processor_detection_payload(raw: dict) -> dict:
         "reid_embedding",
         "reid_crop_key",
         "reid_similarity",
+        "welfare_model",
+        "welfare_embed_dim",
+        "welfare_distance",
+        "welfare_needs_review",
     }
     return {k: raw[k] for k in allowed if k in raw}
 
