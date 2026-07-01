@@ -123,7 +123,7 @@ EOF
 Область **1**.
 
 ## Проблемы
-- Критичные ключи только в YAML (`track_regen_*`, OpenVINO, MOG2)
+- Критичные ключи только в YAML (`track_regen_*`, ONNX runtime, MOG2)
 - UI fallback `640` в Processor*Block
 
 ## Задачи
@@ -145,14 +145,14 @@ EOF
 Frigate видит объект, YOLO/Trapper на хабе — нет (`yolo_frames_with_tracks = 0`).
 
 ## Текущее
-- Trapper v02 prod @ 704, torch/OpenVINO
-- `user_config` может перекрывать `default_config` (openvino, пороги)
+- Trapper v02 prod @ 704, ONNX Runtime CUDA EP
+- `user_config` может перекрывать `default_config` (пороги, binary_imgsz)
 
 ## Задачи
 - [ ] Runbook: checklist (backend, imgsz, lores_wh, conf, scope, heartbeat)
 - [ ] Метрика в `recording_session_summary` + алерт в System UI
 - [ ] Quality gate: `yolo_frames_with_tracks` на эталонных клипах 1816/1819
-- [ ] Сравнение torch vs OpenVINO на одном mp4 (`compare_detector_bboxes.py`)
+- [ ] Диагностика ONNX на одном mp4 (`scripts/diag_video_detect.py`)
 
 ## DoD
 На VPS после деплоя smoke: regen эталонных роликов > 0 треков; документирован root-cause tree.

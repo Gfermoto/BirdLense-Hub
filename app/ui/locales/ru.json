@@ -1482,6 +1482,8 @@
     "reviewReasonSemanticConflict": "Требует проверки эксперта",
     "reviewReasonOperatorFlagged": "Оператор отметил ошибку",
     "reviewReasonBboxRejected": "Ошибочная рамка детекции",
+    "reviewReasonReidNoMatch": "ReID: особь не узнана",
+    "reviewReasonWelfareAnomaly": "Welfare: отклонение от нормы (скрининг)",
     "reviewStateExpert": "Экспертная проверка",
     "reviewStateReviewed": "Проверено",
     "expertTaskDone": "Задача выполнена. Список обновлён.",

@@ -16,6 +16,7 @@ PERSIST_SUBSTAGE_PAYLOAD_KEYS: tuple[str, ...] = (
     "create_video_duration_ms",
     "dataset_crops_duration_ms",
     "reid_enrich_duration_ms",
+    "welfare_enrich_duration_ms",
 )
 
 CREATE_VIDEO_INGEST_SUBSTAGE_KEYS: tuple[str, ...] = (
@@ -69,6 +70,7 @@ def _collect_persist_substage_samples(
                 "create_video_duration_ms": grouped.get("create_video_ms"),
                 "dataset_crops_duration_ms": grouped.get("dataset_crops_ms"),
                 "reid_enrich_duration_ms": grouped.get("reid_enrich_ms"),
+                "welfare_enrich_duration_ms": grouped.get("welfare_enrich_ms"),
             }
             ingest_group = grouped.get("create_video_ingest_ms")
         else:

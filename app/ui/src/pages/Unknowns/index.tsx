@@ -72,6 +72,10 @@ function reviewReasonLabel(t: (key: string) => string, reason?: string) {
       return t('unknowns.reviewReasonOperatorFlagged');
     case 'bbox_rejected':
       return t('unknowns.reviewReasonBboxRejected');
+    case 'reid_no_match':
+      return t('unknowns.reviewReasonReidNoMatch');
+    case 'welfare_anomaly':
+      return t('unknowns.reviewReasonWelfareAnomaly');
     default:
       return '';
   }

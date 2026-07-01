@@ -1094,7 +1094,11 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                                   ? t('unknowns.reviewReasonClassifierUncertainty')
                                   : bestDet.review_reason === 'low_confidence'
                                     ? t('unknowns.reviewReasonLowConfidence')
-                                    : t('video.semanticReviewQueued')}
+                                    : bestDet.review_reason === 'reid_no_match'
+                                      ? t('unknowns.reviewReasonReidNoMatch')
+                                      : bestDet.review_reason === 'welfare_anomaly'
+                                        ? t('unknowns.reviewReasonWelfareAnomaly')
+                                        : t('video.semanticReviewQueued')}
                             </Typography>
                           </Alert>
                         ) : null}

@@ -65,6 +65,7 @@ def test_persist_substage_breakdown_aggregates_payload(app):
             "create_video_duration_ms": 200.0,
             "dataset_crops_duration_ms": 30.0,
             "reid_enrich_duration_ms": 80.0,
+            "welfare_enrich_duration_ms": 45.0,
             "create_video_ingest_timing_ms": {
                 "visit_processor_ms": 90.0,
                 "commit_ms": 40.0,
@@ -75,6 +76,7 @@ def test_persist_substage_breakdown_aggregates_payload(app):
                 "create_video_ms": 200.0,
                 "dataset_crops_ms": 30.0,
                 "reid_enrich_ms": 80.0,
+                "welfare_enrich_ms": 45.0,
                 "create_video_ingest_ms": {
                     "visit_processor_ms": 90.0,
                     "commit_ms": 40.0,
@@ -93,8 +95,8 @@ def test_persist_substage_breakdown_aggregates_payload(app):
         breakdown = build_persist_substage_breakdown(db.session)
         assert breakdown["schema"] == "persist_substage_breakdown@v1"
         assert breakdown["sessions_sampled"] == 1
-        assert breakdown["substages"]["behavior"]["n"] == 1
-        assert breakdown["substages"]["behavior"]["p95_ms"] == 120.0
+        assert breakdown["substages"]["reid_enrich"]["p95_ms"] == 80.0
+        assert breakdown["substages"]["welfare_enrich"]["p95_ms"] == 45.0
         assert breakdown["substages"]["create_video_ingest"]["visit_processor"]["p95_ms"] == 90.0
 
         summary = build_persist_funnel_summary(db.session)

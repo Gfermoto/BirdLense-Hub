@@ -11,7 +11,7 @@ Usage:
     --output app/processor/models/classification/ornimetrics/species_classifier_inat.json
 
 Template stats (input_size, rgb_mean, rgb_std) are copied from species_classifier_nabirds.json
-on Hugging Face — same EfficientNetV2-S head layout as the NABirds pack.
+on Hugging Face — same Ornimetrics backbone head layout as the NABirds pack.
 """
 from __future__ import annotations
 

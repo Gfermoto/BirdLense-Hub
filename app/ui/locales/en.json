@@ -1482,6 +1482,8 @@
     "reviewReasonSemanticConflict": "Needs expert review",
     "reviewReasonOperatorFlagged": "Flagged by operator",
     "reviewReasonBboxRejected": "Incorrect detection box",
+    "reviewReasonReidNoMatch": "ReID: no matching individual",
+    "reviewReasonWelfareAnomaly": "Welfare screening: unusual vs healthy baseline",
     "reviewStateExpert": "Expert review",
     "reviewStateReviewed": "Reviewed",
     "expertTaskDone": "Task completed. Queue updated.",

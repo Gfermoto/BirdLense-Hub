@@ -5105,7 +5105,16 @@ components:
         review_reason:
           type: string
           nullable: true
-          enum: [low_confidence, generic_bird, classifier_uncertainty]
+          enum:
+            [
+              low_confidence,
+              generic_bird,
+              classifier_uncertainty,
+              semantic_review_required,
+              bbox_rejected,
+              reid_no_match,
+              welfare_anomaly,
+            ]
         review_source:
           type: string
           nullable: true
