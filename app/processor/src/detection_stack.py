@@ -55,7 +55,6 @@ def build_detection_stack(
         detector_weights_available,
         openvino_expected_input_size,
         resolve_binary_detector_weight_path,
-        resolve_relative_to_processor_root,
     )
     from inference.classifier_paths import (
         classifier_engine,

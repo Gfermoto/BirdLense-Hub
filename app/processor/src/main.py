@@ -2,6 +2,7 @@
 
 import logging
 
+
 from processor_cv2_init import configure_opencv_ffmpeg_logging
 
 configure_opencv_ffmpeg_logging()
