@@ -1484,6 +1484,8 @@
     "reviewReasonBboxRejected": "Ошибочная рамка детекции",
     "reviewReasonReidNoMatch": "ReID: особь не узнана",
     "reviewReasonWelfareAnomaly": "Welfare: отклонение от нормы (скрининг)",
+    "reviewReasonFilter": "Причина проверки",
+    "reviewReasonFilterAll": "Все причины",
     "reviewStateExpert": "Экспертная проверка",
     "reviewStateReviewed": "Проверено",
     "expertTaskDone": "Задача выполнена. Список обновлён.",

@@ -1338,6 +1338,8 @@
     "reviewReasonBboxRejected": "检测框有误",
     "reviewReasonReidNoMatch": "ReID：未匹配个体",
     "reviewReasonWelfareAnomaly": "Welfare：与健康基线异常",
+    "reviewReasonFilter": "复核原因",
+    "reviewReasonFilterAll": "全部原因",
     "reviewStateExpert": "专家复核",
     "reviewStateReviewed": "已复核",
     "expertTaskDone": "任务已完成，列表已更新。",

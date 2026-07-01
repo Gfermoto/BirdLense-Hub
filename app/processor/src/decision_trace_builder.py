@@ -65,6 +65,11 @@ _DECISION_TRACE_FIELDS = (
     "fallback_used",
     "fallback_reason",
     "yolo_track_present",
+    "review_reason",
+    "reid_model",
+    "welfare_model",
+    "welfare_distance",
+    "welfare_needs_review",
 )
 _DECISION_TRACE_LIMIT = 40
 
@@ -126,6 +131,8 @@ def _policy_snapshot(app_config) -> dict[str, Any]:
         "video_capture_backend": str(_get("video.capture_backend", "auto") or "auto"),
         "reid_runtime_enabled": bool(_get("processor.reid.runtime_enabled", True)),
         "reid_device": str(_get("processor.reid.device", "auto") or "auto"),
+        "welfare_runtime_enabled": bool(_get("processor.welfare.runtime_enabled", True)),
+        "welfare_device": str(_get("processor.welfare.device", "auto") or "auto"),
     }
 
 

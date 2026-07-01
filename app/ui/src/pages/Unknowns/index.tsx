@@ -81,6 +81,16 @@ function reviewReasonLabel(t: (key: string) => string, reason?: string) {
   }
 }
 
+const REVIEW_REASON_FILTERS = [
+  'low_confidence',
+  'generic_bird',
+  'classifier_uncertainty',
+  'semantic_review_required',
+  'bbox_rejected',
+  'reid_no_match',
+  'welfare_anomaly',
+] as const;
+
 function reviewStateLabel(t: (key: string) => string, state?: string) {
   switch (state) {
     case 'pending':
@@ -369,6 +379,17 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
       ? (value as TimeOfDay)
       : 'all';
   });
+
+  const setReviewReasonFilter = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    const normalized = value.trim().toLowerCase();
+    if (normalized) {
+      next.set('review_reason', normalized);
+    } else {
+      next.delete('review_reason');
+    }
+    setSearchParams(next, { replace: true });
+  };
 
   const unknownsListKey = useMemo(
     () =>
@@ -746,6 +767,32 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
             <MenuItem value="day">{t('timeline.timeDay')}</MenuItem>
             <MenuItem value="afternoon">{t('timeline.timeAfternoon')}</MenuItem>
             <MenuItem value="evening">{t('timeline.timeEvening')}</MenuItem>
+          </Select>
+        </FormControl>
+        <FormControl sx={{ minWidth: 220 }}>
+          <InputLabel id="unknowns-review-reason-label">
+            {t('unknowns.reviewReasonFilter')}
+          </InputLabel>
+          <Select
+            labelId="unknowns-review-reason-label"
+            value={
+              REVIEW_REASON_FILTERS.includes(
+                reviewReasonParam as (typeof REVIEW_REASON_FILTERS)[number],
+              )
+                ? reviewReasonParam
+                : ''
+            }
+            onChange={(e) => setReviewReasonFilter(String(e.target.value))}
+            label={t('unknowns.reviewReasonFilter')}
+          >
+            <MenuItem value="">
+              <em>{t('unknowns.reviewReasonFilterAll')}</em>
+            </MenuItem>
+            {REVIEW_REASON_FILTERS.map((reason) => (
+              <MenuItem key={reason} value={reason}>
+                {reviewReasonLabel(t, reason)}
+              </MenuItem>
+            ))}
           </Select>
         </FormControl>
       </Box>

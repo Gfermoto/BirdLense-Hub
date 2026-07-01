@@ -655,6 +655,8 @@ def _recent_runtime_backend_metrics(hours: int = 24, limit: int = 1000) -> dict[
     capture_backend_counts: dict[str, int] = defaultdict(int)
     reid_device_counts: dict[str, int] = defaultdict(int)
     reid_model_counts: dict[str, int] = defaultdict(int)
+    welfare_device_counts: dict[str, int] = defaultdict(int)
+    welfare_model_counts: dict[str, int] = defaultdict(int)
     timeline: list[tuple[datetime | None, str]] = []
     scanned = 0
     for row in rows:
@@ -675,16 +677,21 @@ def _recent_runtime_backend_metrics(hours: int = 24, limit: int = 1000) -> dict[
         video_encoding = str(policy.get("video_encoding") or "unknown").strip().lower()
         capture_backend = str(policy.get("video_capture_backend") or "unknown").strip().lower()
         reid_device = str(policy.get("reid_device") or "unknown").strip().lower()
+        welfare_device = str(policy.get("welfare_device") or "unknown").strip().lower()
         if video_encoding and video_encoding != "unknown":
             timeline.append((row.created_at, video_encoding))
         inference_device_counts[inference_device] += 1
         video_encoding_counts[video_encoding] += 1
         capture_backend_counts[capture_backend] += 1
         reid_device_counts[reid_device] += 1
+        welfare_device_counts[welfare_device] += 1
         for track in payload.get("persisted_tracks") or []:
             model = str((track or {}).get("reid_model") or "").strip()
             if model:
                 reid_model_counts[model] += 1
+            welfare_model = str((track or {}).get("welfare_model") or "").strip()
+            if welfare_model:
+                welfare_model_counts[welfare_model] += 1
     transitions = 0
     prev: str | None = None
     for _, encoding in sorted(timeline, key=lambda item: item[0] or datetime.min.replace(tzinfo=timezone.utc)):
@@ -703,6 +710,8 @@ def _recent_runtime_backend_metrics(hours: int = 24, limit: int = 1000) -> dict[
         "capture_backend_counts_24h": dict(sorted(capture_backend_counts.items())),
         "reid_device_counts_24h": dict(sorted(reid_device_counts.items())),
         "reid_model_counts_24h": dict(sorted(reid_model_counts.items())),
+        "welfare_device_counts_24h": dict(sorted(welfare_device_counts.items())),
+        "welfare_model_counts_24h": dict(sorted(welfare_model_counts.items())),
         "video_encoding_transitions_24h": int(transitions),
     }
 
@@ -1403,6 +1412,8 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
             "capture_backend_counts_24h": runtime_backend_metrics["capture_backend_counts_24h"],
             "reid_device_counts_24h": runtime_backend_metrics["reid_device_counts_24h"],
             "reid_model_counts_24h": runtime_backend_metrics["reid_model_counts_24h"],
+            "welfare_device_counts_24h": runtime_backend_metrics["welfare_device_counts_24h"],
+            "welfare_model_counts_24h": runtime_backend_metrics["welfare_model_counts_24h"],
             "ingest_gate_reason_code_counts_24h": ingest_gate_reason_metrics["ingest_gate_reason_code_counts_24h"],
             "parity_top_mismatch_reasons_24h": parity_diagnostics_metrics["parity_top_mismatch_reasons_24h"],
             "parity_camera_split_24h": parity_diagnostics_metrics["parity_camera_split_24h"],
@@ -1534,6 +1545,8 @@ def build_domain_health_payload() -> tuple[dict[str, Any], int]:
                 "capture_backend_counts_24h": {},
                 "reid_device_counts_24h": {},
                 "reid_model_counts_24h": {},
+                "welfare_device_counts_24h": {},
+                "welfare_model_counts_24h": {},
                 "ingest_gate_reason_code_counts_24h": {},
                 "parity_top_mismatch_reasons_24h": {},
                 "parity_camera_split_24h": [],

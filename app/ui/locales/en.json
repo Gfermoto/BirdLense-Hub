@@ -1484,6 +1484,8 @@
     "reviewReasonBboxRejected": "Incorrect detection box",
     "reviewReasonReidNoMatch": "ReID: no matching individual",
     "reviewReasonWelfareAnomaly": "Welfare screening: unusual vs healthy baseline",
+    "reviewReasonFilter": "Review reason",
+    "reviewReasonFilterAll": "All reasons",
     "reviewStateExpert": "Expert review",
     "reviewStateReviewed": "Reviewed",
     "expertTaskDone": "Task completed. Queue updated.",
