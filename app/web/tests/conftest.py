@@ -79,6 +79,9 @@ def app():
     app_config.set("homeassistant.url", "")
     app_config.set("notifications.telegram_proxy_type", "")
     app_config.set("notifications.telegram_proxy_url", "")
+    gen = app_config.config.setdefault("general", {})
+    gen["settings_password"] = ""
+    gen["contributor_password"] = ""
     app = create_app()
     app.config["TESTING"] = True
     return app

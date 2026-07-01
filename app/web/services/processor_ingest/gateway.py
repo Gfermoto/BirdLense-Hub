@@ -69,6 +69,8 @@ def processor_detection_payload(raw: dict) -> dict:
         "reid_embedding",
         "reid_crop_key",
         "reid_similarity",
+        "reid_model_sha16",
+        "reid_crop_fingerprint_sha16",
         "welfare_model",
         "welfare_embed_dim",
         "welfare_distance",

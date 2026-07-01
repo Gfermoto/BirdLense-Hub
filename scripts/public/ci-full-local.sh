@@ -126,7 +126,13 @@ log "processor: threshold + detector config guards (lightweight)"
 (
   cd "${ROOT}/app"
   env -u PIP_USER PYTHONNOUSERSITE=1 PYTHONPATH="${PWD}:${PWD}/processor/src" \
-    "${VENV_CI}/bin/python" -m pytest processor/tests/test_threshold_resolution.py -q --tb=short
+    "${VENV_CI}/bin/python" -m pytest \
+    processor/tests/test_threshold_resolution.py \
+    processor/tests/test_welfare_runtime.py \
+    processor/tests/test_reid_runtime.py \
+    processor/tests/test_encoding_utils.py \
+    processor/tests/test_decision_trace_builder.py \
+    -q --tb=short
   env -u PIP_USER PYTHONNOUSERSITE=1 "${VENV_CI}/bin/python" "${ROOT}/scripts/verify_merged_detector_config.py"
 )
 

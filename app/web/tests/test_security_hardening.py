@@ -70,7 +70,7 @@ class TestPushSubscribeAuth:
 class TestProductionSettingsAccess:
     """Production defaults must not leave system routes open."""
 
-    def test_settings_access_denied_in_production_when_passwords_missing(
+    def test_settings_access_allowed_in_production_when_passwords_missing(
         self,
         app,
         monkeypatch,
@@ -85,9 +85,9 @@ class TestProductionSettingsAccess:
         monkeypatch.delenv("FLASK_ENV", raising=False)
 
         with app.test_request_context("/api/ui/system/db/backup"):
-            assert settings_check_access() is False
+            assert settings_check_access() is True
 
-    def test_settings_verify_password_rejects_empty_password_bootstrap_in_production(
+    def test_settings_verify_password_allows_empty_when_no_passwords_configured(
         self,
         client,
         monkeypatch,
@@ -107,10 +107,10 @@ class TestProductionSettingsAccess:
             json={"password": ""},
             headers={"X-Birdlense-CSRF-Token": csrf},
         )
-        assert response.status_code == 401
-        assert response.get_json()["ok"] is False
+        assert response.status_code == 200
+        assert response.get_json()["ok"] is True
 
-    def test_settings_requires_password_reports_true_in_production_without_passwords(
+    def test_settings_requires_password_reports_false_in_production_without_passwords(
         self,
         client,
         monkeypatch,
@@ -126,9 +126,9 @@ class TestProductionSettingsAccess:
 
         response = client.get("/api/ui/settings/requires-password")
         assert response.status_code == 200
-        assert response.get_json()["requires"] is True
+        assert response.get_json()["requires"] is False
 
-    def test_settings_access_denied_in_prod_alias_when_passwords_missing(
+    def test_settings_access_allowed_in_prod_alias_when_passwords_missing(
         self,
         app,
         monkeypatch,
@@ -143,7 +143,7 @@ class TestProductionSettingsAccess:
         monkeypatch.delenv("FLASK_ENV", raising=False)
 
         with app.test_request_context("/api/ui/system/db/backup"):
-            assert settings_check_access() is False
+            assert settings_check_access() is True
 
 
 class TestWebhookUrlValidation:

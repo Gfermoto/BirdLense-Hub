@@ -4,7 +4,8 @@ Stages:
   1. trigger      (motion / MQTT — recording_session)
   2. detect_track (YOLO binary + ByteTrack — frame_processor, live)
   3. classify     (Birder + MQTT helpers — enrich species at finalize)
-  5. reid_enrich (optional — after classify, before DB)
+  4. arbitrate    (decision_maker — accept/reject tracks)
+  5. reid_enrich  (optional — after classify, before DB)
   6. welfare_enrich (optional — Mahalanobis screening, after reid)
   7. persist      (create_video)
 """

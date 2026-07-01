@@ -67,6 +67,8 @@ _DECISION_TRACE_FIELDS = (
     "yolo_track_present",
     "review_reason",
     "reid_model",
+    "reid_similarity",
+    "individual_nickname",
     "welfare_model",
     "welfare_distance",
     "welfare_needs_review",

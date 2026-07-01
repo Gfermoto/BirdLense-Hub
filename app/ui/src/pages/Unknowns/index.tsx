@@ -76,6 +76,10 @@ function reviewReasonLabel(t: (key: string) => string, reason?: string) {
       return t('unknowns.reviewReasonReidNoMatch');
     case 'welfare_anomaly':
       return t('unknowns.reviewReasonWelfareAnomaly');
+    case 'unknown_label':
+      return t('unknowns.reviewReasonUnknownLabel');
+    case 'detect_first_anchor_only':
+      return t('unknowns.reviewReasonDetectFirstAnchor');
     default:
       return '';
   }
@@ -89,6 +93,8 @@ const REVIEW_REASON_FILTERS = [
   'bbox_rejected',
   'reid_no_match',
   'welfare_anomaly',
+  'unknown_label',
+  'detect_first_anchor_only',
 ] as const;
 
 function reviewStateLabel(t: (key: string) => string, state?: string) {

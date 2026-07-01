@@ -1096,9 +1096,18 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                                     ? t('unknowns.reviewReasonLowConfidence')
                                     : bestDet.review_reason === 'reid_no_match'
                                       ? t('unknowns.reviewReasonReidNoMatch')
-                                      : bestDet.review_reason === 'welfare_anomaly'
-                                        ? t('unknowns.reviewReasonWelfareAnomaly')
-                                        : t('video.semanticReviewQueued')}
+                                    : bestDet.review_reason === 'welfare_anomaly'
+                                      ? t('unknowns.reviewReasonWelfareAnomaly')
+                                      : bestDet.review_reason === 'generic_bird'
+                                        ? t('unknowns.reviewReasonGenericBird')
+                                        : bestDet.review_reason === 'bbox_rejected'
+                                          ? t('unknowns.reviewReasonBboxRejected')
+                                          : bestDet.review_reason === 'unknown_label'
+                                            ? t('unknowns.reviewReasonUnknownLabel')
+                                            : bestDet.review_reason ===
+                                                'detect_first_anchor_only'
+                                              ? t('unknowns.reviewReasonDetectFirstAnchor')
+                                              : t('video.semanticReviewQueued')}
                             </Typography>
                           </Alert>
                         ) : null}

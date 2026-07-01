@@ -615,7 +615,8 @@ processor:
     device: cuda:0
     inference_backend: onnxruntime
     candidate_cache_ttl_seconds: 120
-    include_embedding_payload: false
+    include_embedding_payload: true
+    nickname_similarity_threshold: 0.86
     max_runtime_ms: 250
 
   # Runtime welfare — Ornimetrics ONNX embedder + Mahalanobis NPZ (Orin production path)
@@ -1071,7 +1072,7 @@ reconcile:
 # Retention
 retention:
   days: 90
-  # max_gb: 50
+  max_gb: 32
   # Лимит каталога recordings (GB); cascade удаляет старейшие Video до порога.
   # max_deletes_per_run — за один auto-run или POST: не более N сессий (старейшие / просроченные).
   max_deletes_per_run: 500

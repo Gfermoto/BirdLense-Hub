@@ -23,6 +23,8 @@ processor:
   reid:
     device: cuda:0
     inference_backend: onnxruntime
+    include_embedding_payload: true
+    nickname_similarity_threshold: 0.86
   welfare:
     device: cuda:0
     inference_backend: onnxruntime

@@ -42,11 +42,11 @@ def test_build_retention_safe_public_config_matches_default_yaml(app):
 def test_retention_get_api_matches_default_yaml(client, app):
     defaults = _default_retention_yaml()
     old_admin = app_config.get("general.settings_password")
+    old_contrib = app_config.get("general.contributor_password")
     old_auto = app_config.get("retention.auto_run_enabled")
     try:
         app_config.set("general.settings_password", "")
-        app_config.set("retention.auto_run_enabled", None)
-        app_config.reload()
+        app_config.set("general.contributor_password", "")
         res = client.get("/api/ui/system/retention")
         assert res.status_code == 200, res.get_data(as_text=True)
         payload = res.get_json() or {}
@@ -56,10 +56,8 @@ def test_retention_get_api_matches_default_yaml(client, app):
     finally:
         if old_auto is not None:
             app_config.set("retention.auto_run_enabled", old_auto)
-        else:
-            app_config.set("retention.auto_run_enabled", defaults.get("auto_run_enabled"))
         app_config.set("general.settings_password", old_admin)
-        app_config.reload()
+        app_config.set("general.contributor_password", old_contrib)
 
 
 def test_retention_put_response_auto_run_default_false(client, app, tmp_path, monkeypatch):

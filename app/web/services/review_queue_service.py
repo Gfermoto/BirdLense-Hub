@@ -68,6 +68,7 @@ def fetch_review_queue_items(
                 VideoSpecies.confidence < threshold,
                 VideoSpecies.classifier_needs_review.is_(True),
                 Species.name == GENERIC_BIRD_SPECIES,
+                VideoSpecies.review_reason.isnot(None),
             ),
         )
         .order_by(VideoSpecies.created_at.desc())

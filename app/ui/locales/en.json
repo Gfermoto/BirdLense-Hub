@@ -1486,6 +1486,8 @@
     "reviewReasonWelfareAnomaly": "Welfare screening: unusual vs healthy baseline",
     "reviewReasonFilter": "Review reason",
     "reviewReasonFilterAll": "All reasons",
+    "reviewReasonUnknownLabel": "Unresolved species label",
+    "reviewReasonDetectFirstAnchor": "Detect-first anchor (review)",
     "reviewStateExpert": "Expert review",
     "reviewStateReviewed": "Reviewed",
     "expertTaskDone": "Task completed. Queue updated.",

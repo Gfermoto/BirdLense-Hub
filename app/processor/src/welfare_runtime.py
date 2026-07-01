@@ -198,9 +198,11 @@ def _to_embedding(crop: Any, *, state: dict[str, Any]) -> np.ndarray | None:
     x = np.transpose(x, (2, 0, 1))
     x4 = np.expand_dims(x, axis=0).astype(np.float32)
     try:
+        from onnx_runtime_guard import ort_run
+
         ort_session = state["ort_session"]
         inp_name = state["input_name"]
-        out = ort_session.run(None, {inp_name: x4})[0]
+        out = ort_run(ort_session, None, {inp_name: x4})[0]
         out = np.squeeze(out).astype(np.float32)
     except Exception:
         _LOG.debug("welfare: onnxruntime embedding inference failed", exc_info=True)

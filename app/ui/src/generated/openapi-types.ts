@@ -8657,7 +8657,7 @@ export interface components {
             /** @enum {string|null} */
             review_state?: "pending" | "reviewed" | "not_applicable" | null;
             /** @enum {string|null} */
-            review_reason?: "low_confidence" | "generic_bird" | "classifier_uncertainty" | "semantic_review_required" | "bbox_rejected" | "reid_no_match" | "welfare_anomaly" | null;
+            review_reason?: "low_confidence" | "generic_bird" | "classifier_uncertainty" | "semantic_review_required" | "bbox_rejected" | "reid_no_match" | "welfare_anomaly" | "unknown_label" | "detect_first_anchor_only" | null;
             review_source?: string | null;
             classifier_entropy?: number | null;
             classifier_top1_top2_margin?: number | null;

@@ -1486,6 +1486,8 @@
     "reviewReasonWelfareAnomaly": "Welfare: отклонение от нормы (скрининг)",
     "reviewReasonFilter": "Причина проверки",
     "reviewReasonFilterAll": "Все причины",
+    "reviewReasonUnknownLabel": "Неопределённый вид",
+    "reviewReasonDetectFirstAnchor": "Detect-first якорь (проверка)",
     "reviewStateExpert": "Экспертная проверка",
     "reviewStateReviewed": "Проверено",
     "expertTaskDone": "Задача выполнена. Список обновлён.",

@@ -32,10 +32,10 @@ class TestEncodingUtils(unittest.TestCase):
         self.assertTrue(resolve_record_hw_encode(_Cfg({"video.record_with_vaapi": True})))
         self.assertFalse(resolve_record_hw_encode(_Cfg({"video.record_with_vaapi": "off"})))
 
-    def test_resolve_record_hw_encode_default_true(self):
+    def test_resolve_record_hw_encode_default_false(self):
         from encoding_utils import resolve_record_hw_encode
 
-        self.assertTrue(resolve_record_hw_encode(_Cfg({})))
+        self.assertFalse(resolve_record_hw_encode(_Cfg({})))
 
 
 if __name__ == "__main__":

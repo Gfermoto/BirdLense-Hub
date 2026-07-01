@@ -60,4 +60,4 @@ def resolve_record_hw_encode(cfg: object) -> bool:
     val = get("video.record_hw_encode")
     if val is None:
         val = get("video.record_with_vaapi")
-    return parse_bool_config_flag(val, default=True)
+    return parse_bool_config_flag(val, default=False)
