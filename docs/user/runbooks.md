@@ -187,7 +187,7 @@ Symptom: processor log or FPS summary shows **YOLO / frame pipeline** taking lon
 2. **Settings → Processor → Models & scope** — reduce **`processor.binary_imgsz`** (try **640**, then **512**) so the binary pass is cheaper; re-save settings and watch logs.
 3. If logs are **noisy but UX is fine**, raise **`processor.frame_processing_warn_ms`** (this does **not** speed up inference; it only reduces warning spam).
 4. **Light gate / night** — if many frames are skipped before YOLO, revisit `processor.light_gate_*` and night overrides (recall vs CPU load).
-5. **GPU / VA-API on the VPS** — confirm the container actually uses the expected path: `docker logs birdlense` for VA-API / FFmpeg lines; on the host, `intel_gpu_top` / `vainfo` where applicable. If GPU is missing, you are on CPU-only inference — expect slow frames at high resolution.
+5. **GPU (Orin)** — confirm the container uses NVIDIA runtime: `docker logs birdlense` for NVENC / GStreamer lines; on the host, `nvidia-smi`. If GPU is missing, you are on CPU-only.
 
 Related: [PROCESSOR_PERFORMANCE](./processor-performance.md) (resolution × `binary_imgsz` guidance), [CONFIGURATION](./configuration.md) (`processor.*`, `detection.*`), [RELEASE_READINESS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/release-readiness.md). Release gate: [DEFINITION_OF_DONE](../../archive/internal/docs-legacy/DEFINITION_OF_DONE.md).
 

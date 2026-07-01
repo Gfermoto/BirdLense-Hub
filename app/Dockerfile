@@ -12,13 +12,9 @@ RUN test -f dist/index.html && echo "Using pre-built UI" || (npm install --legac
 # Базовый образ держим на 8.4.21: сборка ngx_brotli под nginx из образа проверена в CI.
 # Версию Python-пакета ultralytics задаём в processor/requirements.txt (pip ниже).
 FROM ultralytics/ultralytics:8.4.21
-# Intel VA-API: драйвер, vainfo, intel_gpu_top (метрики как во Frigate NVR).
-# OpenCL ICD — пользовательский стек для OpenVINO «GPU» внутри контейнера при пробросе /dev/dri
-# (docker-compose.override.yml от docker-compose-intel-override-gen.sh). Без ICD Ultralytics часто падает на CPU.
+# No Intel VA-API / intel_gpu_top / OpenVINO — Orin-only (ONNX GPU, NVIDIA runtime).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg nginx curl unzip gosu \
-    intel-media-va-driver-non-free vainfo intel-gpu-tools \
-    ocl-icd-libopencl1 intel-opencl-icd clinfo \
     libbrotli1 \
     && apt-get clean && rm -rf /var/cache/apt /var/lib/apt/lists/*
 # Brotli: в Ubuntu 22.04 нет пакета libnginx-mod-http-brotli — собираем ngx_brotli как динамический модуль к версии nginx из образа

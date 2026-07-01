@@ -10,7 +10,7 @@ Guidance for **two-stage** detection when video is heavy (high resolution, VA-AP
 |------|------|
 | `processor.binary_imgsz` | Downscale before binary detector; smaller → faster, less detail. |
 | `processor.frame_processing_warn_ms` | Log threshold for “slow frame”; raising it reduces **noise** in logs without speeding up work. |
-| GPU / VA-API | If VA-API or GPU path is broken or missing, CPU fallback is slower — verify drivers (`vainfo`, `intel_gpu_top`) per [RUNBOOKS](./runbooks.md). |
+| GPU (Orin) | If NVIDIA runtime is missing, CPU fallback is slower — verify with `nvidia-smi` per [RUNBOOKS](./runbooks.md). |
 | Light gate / night profiles | Frequent “no YOLO tracks” can interact with exposure — tune profiles before blaming YOLO. |
 
 ## Qualitative table (not a SLA)

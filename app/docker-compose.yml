@@ -1,8 +1,6 @@
 # BirdLense Hub — web+processor + Redis (кэш API между перезапусками воркера; см. REDIS_URL).
 # Подключения по хосту (IP): Go2RTC, MQTT. Площадки могут быть разными.
-# Кодирование записи (CPU / Intel GPU) выбирается в Настройках → Видео. Без override — всегда CPU.
-# Intel: при деплое scripts/deploy.sh вызывает scripts/docker-compose-intel-override-gen.sh (DRI + group_add + PERFMON).
-# Вручную: см. docker-compose.intel.example.yml.
+# Кодирование записи: jetson (NVENC на Orin) или cpu (libx264).
 
 services:
   # Если в docker logs redis: «Memory overcommit must be enabled» — на Docker-хосте (не в контейнере):

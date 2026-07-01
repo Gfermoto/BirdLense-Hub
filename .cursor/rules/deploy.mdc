@@ -109,13 +109,9 @@ Host birdlense-vps
    `processor.inference_device: intel:gpu`,  
    `processor.binary_imgsz: 640` под экспорт.  
    Путь к IR — **относительно `app/processor/`** или существующий абсолютный путь с реальным каталогом `*.xml`. Абсолютный путь вида `/app/app_config/models/…` без файлов даёт цикл падений процессора (`FileNotFoundError` в логах контейнера).
-4. Либо то же через **`app/.env`**: `BIRDLENSE_INFERENCE_DEVICE=intel:gpu`, при необходимости `BIRDLENSE_BINARY_OPENVINO_PATH=...`.
-5. Intel iGPU: деплой уже вызывает `docker-compose-intel-override-gen.sh` при наличии `renderD*`; нужны драйверы и рабочий `/dev/dri` в контейнере.
-6. Сравнение рамок со старым бинарником офлайн: `scripts/compare_detector_bboxes.py` (два `.pt`, те же ролики); полный пайплайн с треками: `scripts/benchmark-track-regen.py` с `--inference-backend` / `--inference-device`.
+## YOLO «слепой», Frigate видит (Orin / кормушка)
 
-## YOLO «слепой», Frigate видит (VPS / кормушка)
-
-**По умолчанию в `default_config.yaml`:** torch/cpu, unstick-трекер, `min_confidence_binary` 0.12, `merge_window_seconds` 12. Старый `user_config` с openvino/0.22 перекрывает дефолты — проверьте merge. Метрика: `recording_session_summary` → `yolo_frames_with_tracks` > 0. OpenVINO: **`user_config.openvino-intel.example.yaml`**. После смены **`app/.env`** — **`docker compose up -d --force-recreate birdlense`**.
+**По умолчанию в `default_config.yaml`:** onnxruntime/cuda:0, `min_confidence_binary` 0.12, `merge_window_seconds` 12. Метрика: `recording_session_summary` → `yolo_frames_with_tracks` > 0. После смены **`app/.env`** — **`docker compose up -d --force-recreate birdlense`**. Проверка GPU: `nvidia-smi` в контейнере или на хосте.
 
 ## Политика агентов на prod VPS (2026-06-11)
 

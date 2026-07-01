@@ -158,7 +158,7 @@ ssh ВАШ_SSH_ХОСТ "tail -100 ВАШ_УДАЛЁННЫЙ_КАТАЛОГ/app/
 2. **Настройки → Процессор → Модели** — уменьшите **`processor.binary_imgsz`** (например **640**, затем **512**), сохраните настройки и снова посмотрите логи.
 3. Если **шум в логах** приемлем по UX — поднимите **`processor.frame_processing_warn_ms`** (это **не ускоряет** инференс, только реже предупреждает).
 4. **Свет / ночь** — если YOLO часто не вызывается из‑за light gate, см. `processor.light_gate_*` и ночные оверрайды (recall vs нагрузка).
-5. **GPU / VA-API на VPS** — убедитесь, что контейнер реально использует ожидаемый путь: `docker logs birdlense` (строки VA-API / FFmpeg); на хосте при необходимости `intel_gpu_top`, `vainfo`. Без GPU остаётся CPU — на высоком разрешении slow frame ожидаемы.
+5. **GPU (Orin)** — убедитесь, что контейнер использует NVIDIA runtime: `docker logs birdlense` (строки NVENC / GStreamer). Без GPU остаётся CPU.
 
 См. также [PROCESSOR_PERFORMANCE](./processor-performance.ru.md), [CONFIGURATION](./configuration.ru.md), [release-readiness](../../release-readiness.md). Ворота релиза: [DEFINITION_OF_DONE](../../archive/internal/docs-legacy/DEFINITION_OF_DONE.ru.md).
 

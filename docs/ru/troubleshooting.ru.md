@@ -6,14 +6,13 @@
 
 ## Intel GPU: запись идёт как CPU
 
-В **Настройки → Видео → Кодирование записи** можно выбрать CPU или Intel GPU. Если в логах «Starting FFmpeg recording ... (CPU)» при выборе Intel — в контейнере нет доступа к `/dev/dri/renderD128`.
+В **Настройки → Видео → Кодирование записи** можно выбрать Jetson (NVENC) или CPU. Если в логах «Recording ... (CPU)» при выборе Jetson — в контейнере нет доступа к NVIDIA GPU.
 
-**Решение:** скопировать override:
+**Решение:** проверить NVIDIA runtime:
 ```bash
-cp app/docker-compose.intel.example.yml app/docker-compose.override.yml
-make stop && make start
+docker exec birdlense nvidia-smi
 ```
-В настройках выбрать «Intel GPU». На странице System должно появиться «Сейчас: Intel GPU (VA-API)».
+В настройках выбрать «Jetson». На странице System должны появиться метрики GPU.
 
 ---
 
@@ -115,7 +114,7 @@ docker logs birdlense --tail 200 2>&1
 
 **Что сделать:**
 
-1. **Ресурсы хоста и Docker** — в `app/docker-compose.yml` по умолчанию лимит **4 CPU / 4G RAM**. При необходимости поднимите `cpus` и `mem_limit` через `docker-compose.override.yml` (см. `docker-compose.intel.example.yml` как образец override).
+1. **Ресурсы хоста и Docker** — в `app/docker-compose.yml` по умолчанию лимит **4 CPU / 4G RAM**. При необходимости поднимите `cpus` и `mem_limit` через `docker-compose.override.yml`.
 2. **Кэш API** — **Настройки → Производительность**: включите Redis (`performance.cache_redis_enabled`), проверьте `REDIS_URL` в `.env` (в compose обычно `redis://redis:6379/0`). Без Redis кэш только в памяти процесса и менее эффективен при перезапусках.
 3. **Параллельные запросы** — один процесс gunicorn, потоки `gthread` (по умолчанию **16**). Увеличить очередь: в `app/.env` задать `GUNICORN_THREADS=24` (или выше, если RAM и CPU позволяют), затем перезапуск контейнера: `cd app && docker compose restart birdlense` (или `make stop && make start`).
 4. **Диск и БД** — очень большой `birdlense.db` или медленный диск усиливают задержки; страница **Система** показывает загрузку. При необходимости сделайте бэкап (**Система → Хранилище**), остановите хаб и выполните обслуживание SQLite (например `sqlite3 birdlense.db "VACUUM;"`).

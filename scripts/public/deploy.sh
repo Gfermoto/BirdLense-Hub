@@ -910,31 +910,9 @@ if [ "${BIRDLENSE_ENV:-}" = "production" ] && [[ "${HOST}" != "localhost" && "${
     grep -qE '^BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=' \"\$F\" || echo 'BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=1' >> \"\$F\""
 fi
 
-# 1.8 Intel GPU: при наличии renderD* — сгенерировать override (пропуск для jetson_nano)
-if ! birdlense_platform_is_jetson; then
-echo "1.8 Проверка Intel GPU на сервере..."
-ssh ${SSH_OPTS} "${HOST}" "set -e; cd '${REMOTE_DIR}/app' && bash scripts/docker-compose-intel-override-gen.sh; \
-  if [ -f docker-compose.override.yml ]; then \
-    echo '1.8b sysctl kernel.perf_event_paranoid=0 → /etc/sysctl.d/99-birdlense-perf.conf'; \
-    printf '%s\n' 'kernel.perf_event_paranoid=0' > /etc/sysctl.d/99-birdlense-perf.conf; \
-    sysctl -p /etc/sysctl.d/99-birdlense-perf.conf || true; \
-  fi"
-else
-  echo "1.8 Intel GPU override: пропуск (platform=jetson_nano)"
-  ssh ${SSH_OPTS} "${HOST}" "rm -f '${REMOTE_DIR}/app/docker-compose.override.yml' 2>/dev/null || true"
-fi
-
-# 1.8c Жёсткий режим: боевой хаб с OpenVINO GPU — на сервере должны быть renderD* и сгенерирован override.
-_raw_req="${BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU:-}"
-if [[ "${_raw_req}" =~ ^(1|true|yes|on)$ ]] && ! birdlense_platform_is_jetson; then
-  echo "1.8c BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU=${_raw_req} — проверка docker-compose.override.yml на сервере..."
-  if ! ssh ${SSH_OPTS} "${HOST}" "test -f '${REMOTE_DIR}/app/docker-compose.override.yml'"; then
-    echo "Ошибка: на хосте нет /dev/dri/renderD* или override не создан — OpenVINO GPU в контейнере недоступен."
-    echo "  Проверьте Intel iGPU на сервере, драйверы и перезапуск деплоя. Для VPS без GPU не задавайте BIRDLENSE_DEPLOY_REQUIRE_INTEL_GPU."
-    exit 1
-  fi
-  echo "  OK: ${REMOTE_DIR}/app/docker-compose.override.yml есть"
-fi
+# 1.8 Orin: NVIDIA GPU автоматически через runtime: nvidia, override не нужен.
+echo "1.8 Orin platform: NVIDIA GPU available via runtime:nvidia (no override needed)"
+ssh ${SSH_OPTS} "${HOST}" "rm -f '${REMOTE_DIR}/app/docker-compose.override.yml' 2>/dev/null || true"
 
 # 2. Сборка и запуск (повтор при сбое — Docker pull, сеть)
 echo "2. Сборка и запуск..."

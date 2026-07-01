@@ -1,46 +1,33 @@
 #!/usr/bin/env bash
-# Resolve BIRDLENSE_PLATFORM and compose/dockerfile hints.
+# Resolve BIRDLENSE_PLATFORM and compose/dockerfile hints — Orin only.
 # Source from deploy.sh or Makefile (do not execute standalone).
 set -euo pipefail
 
 birdlense_normalize_platform() {
-  local raw="${1:-${BIRDLENSE_PLATFORM:-jetson_nano}}"
+  local raw="${1:-${BIRDLENSE_PLATFORM:-orin}}"
   raw="${raw//-/_}"
   case "${raw}" in
-    intel_nuc | "") echo "intel_nuc" ;;
-    jetson_nano) echo "jetson_nano" ;;
+    orin | "") echo "orin" ;;
     *)
-      echo "ERROR: unknown BIRDLENSE_PLATFORM=${raw} (use intel_nuc or jetson_nano)" >&2
+      echo "ERROR: unknown BIRDLENSE_PLATFORM=${raw} (only orin is supported)" >&2
       return 1
       ;;
   esac
 }
 
 birdlense_platform_is_jetson() {
-  [[ "$(birdlense_normalize_platform "${1:-}")" == "jetson_nano" ]]
+  # Always true on Orin — NVIDIA Jetson platform
+  [[ "$(birdlense_normalize_platform "${1:-}")" == "orin" ]]
 }
 
 birdlense_platform_compose_files() {
-  if birdlense_platform_is_jetson; then
-    echo "docker-compose.yml docker-compose.jetson.yml"
-  else
-    echo "docker-compose.yml"
-  fi
+  echo "docker-compose.yml docker-compose.orin.yml"
 }
 
 birdlense_platform_dockerfile() {
-  if birdlense_platform_is_jetson; then
-    echo "app/Dockerfile.jetson"
-  else
-    echo "app/Dockerfile"
-  fi
+  echo "app/Dockerfile"
 }
 
 birdlense_platform_profile_dir() {
-  local p
-  p="$(birdlense_normalize_platform)"
-  case "${p}" in
-    intel_nuc) echo "deploy/profiles/intel-nuc" ;;
-    jetson_nano) echo "deploy/profiles/jetson-nano" ;;
-  esac
+  echo "app"
 }

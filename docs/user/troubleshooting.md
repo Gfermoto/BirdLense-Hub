@@ -6,16 +6,15 @@
 
 ## Video: Intel GPU recording falls back to CPU
 
-**Settings → Video → Recording encode** can target CPU or Intel GPU. If logs show `Starting FFmpeg recording ... (CPU)` while Intel is selected, the container cannot access `/dev/dri/renderD128`.
+**Settings → Video → Recording encode** can target Jetson (NVENC) or CPU. If logs show `Recording ... (CPU)` while Jetson is selected, the container cannot access NVIDIA GPU.
 
-**Fix:** install the Intel override and restart:
+**Fix:** verify NVIDIA runtime, `nvidia-smi` in container:
 
 ```bash
-cp app/docker-compose.intel.example.yml app/docker-compose.override.yml
-make stop && make start
+docker exec birdlense nvidia-smi
 ```
 
-Re-select **Intel GPU** in settings. **System** should show **Intel GPU (VA-API)** as active.
+Re-select **Jetson** in settings. **System** should show GPU metrics. No Intel override needed on Orin.
 
 ---
 
@@ -118,7 +117,7 @@ docker logs birdlense --tail 200 2>&1
 
 **What to try:**
 
-1. **Docker resources** — default in `app/docker-compose.yml` is **4 CPUs / 4G RAM**. Raise `cpus` and `mem_limit` via `docker-compose.override.yml` (see `docker-compose.intel.example.yml` as an override pattern).
+1. **Docker resources** — default in `app/docker-compose.yml` is **4 CPUs / 4G RAM**. Raise `cpus` and `mem_limit` via `docker-compose.override.yml`.
 2. **API cache** — **Settings → Performance**: enable Redis (`performance.cache_redis_enabled`), confirm `REDIS_URL` in `.env` (compose default: `redis://redis:6379/0`). Without Redis, cache is in-process only.
 3. **Concurrent requests** — single gunicorn worker with `gthread` (default **16** threads). Increase further: set `GUNICORN_THREADS=24` (or higher if the host allows) in `app/.env`, then restart the app container: `cd app && docker compose restart birdlense` (or `make stop && make start`).
 4. **Disk / DB** — a very large `birdlense.db` or slow storage increases latency; **System** shows load. If needed, back up (**System → Storage**), stop the hub, then maintain SQLite (e.g. `sqlite3 birdlense.db "VACUUM;"`).
