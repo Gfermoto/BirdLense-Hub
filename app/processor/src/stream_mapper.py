@@ -7,10 +7,9 @@ and analysis targets. Integrates with frame_geometry for consistent geometry han
 from __future__ import annotations
 
 import numpy as np
-from typing import Any, Literal, Tuple
+from typing import Any, Tuple
 from .frame_geometry import (
     DetectorGeometry,
-    DetectorMode,
     frame_matches_target_wh,
     letterbox_bgr_to_wh,
     map_norm_bbox_xyxy_between_frame_shapes,

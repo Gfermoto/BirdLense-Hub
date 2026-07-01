@@ -217,7 +217,6 @@ def _ensure_model_state() -> dict[str, Any] | None:
                     "side": side,
                 }
             else:
-                import torch.nn.functional as F
 
                 hub_cache = _hub_cache_dir()
                 if hub_cache:

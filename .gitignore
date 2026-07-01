@@ -53,6 +53,9 @@ scripts/datasets/background_yolo/
 scripts/datasets/birds_rodent_background_yolo/
 scripts/datasets/coco_birds_yolo/
 scripts/datasets/.venv-detector/
+.venv-classifier/
+# Ruff cache at repo root
+.ruff_cache/
 .venv-datasets/
 # Local ReID/torch hub cache — must not shadow web/models.py when PYTHONPATH includes app/
 app/models/

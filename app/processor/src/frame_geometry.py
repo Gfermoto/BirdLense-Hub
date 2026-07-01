@@ -16,7 +16,6 @@ DetectorMode = Literal["live", "regen"]
 
 
 def _resolve_resize_interpolation() -> int:
-    import os
 
     import cv2
 

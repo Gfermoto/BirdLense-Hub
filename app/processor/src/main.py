@@ -1,7 +1,6 @@
 """Точка входа процессора: heartbeat + цикл движения (сборка в processor_bootstrap)."""
 
 import logging
-import os
 
 
 from processor_cv2_init import configure_opencv_ffmpeg_logging

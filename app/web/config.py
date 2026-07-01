@@ -3,7 +3,7 @@
 import logging
 import os
 
-from services.runtime_env import env_flag_enabled, is_production_runtime
+from services.runtime_env import is_production_runtime
 
 
 # Secret key for Flask session (settings unlock)
