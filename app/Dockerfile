@@ -11,7 +11,7 @@ RUN test -f dist/index.html && echo "Using pre-built UI" || (npm install --legac
 # Stage 2: всё в одном
 # Базовый образ держим на 8.4.21: сборка ngx_brotli под nginx из образа проверена в CI.
 # Версию Python-пакета ultralytics задаём в processor/requirements.txt (pip ниже).
-FROM ultralytics/ultralytics:8.4.21
+FROM ultralytics/ultralytics:8.4.83
 # Intel VA-API: драйвер, vainfo, intel_gpu_top (метрики как во Frigate NVR).
 # OpenCL ICD — пользовательский стек для OpenVINO «GPU» внутри контейнера при пробросе /dev/dri
 # (docker-compose.override.yml от docker-compose-intel-override-gen.sh). Без ICD Ultralytics часто падает на CPU.
