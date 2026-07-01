@@ -142,7 +142,7 @@ Symptom: processor log or FPS summary shows **YOLO / frame pipeline** taking lon
 4. **Light gate / night** — if many frames are skipped before YOLO, revisit `processor.light_gate_*` and night overrides (recall vs CPU load).
 5. **GPU (Orin)** — confirm the container uses NVIDIA runtime: `docker logs birdlense` for NVENC / GStreamer lines; on the host, `nvidia-smi`. If GPU is missing, you are on CPU-only.
 
-Related: [PROCESSOR_PERFORMANCE](./processor-performance.md) (resolution × `binary_imgsz` guidance), [CONFIGURATION](./configuration.md) (`processor.*`, `detection.*`), [RELEASE_READINESS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/release-readiness.md). Release gate: [DEFINITION_OF_DONE](../../archive/internal/docs-legacy/DEFINITION_OF_DONE.md).
+Related: [PROCESSOR_PERFORMANCE](./processor-performance.md) (resolution × `binary_imgsz` guidance), [CONFIGURATION](./configuration.md) (`processor.*`, `detection.*`), [RELEASE_READINESS](https://github.com/Gfermoto/BirdLense-Hub/blob/main/release-readiness.md). Release gate: DEFINITION_OF_DONE (archived).
 
 ## Install or deploy verification fails on readiness
 

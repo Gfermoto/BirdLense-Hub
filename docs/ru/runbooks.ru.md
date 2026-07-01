@@ -29,9 +29,9 @@
 
 Для `scripts/verify-stack.sh` добавьте `--check-domain-health` и задайте `BIRDLENSE_UI_API_KEY` (или `UI_API_KEY`), чтобы запросы к доменным и registry-эндпоинтам проходили с авторизацией.
 
-Деплой через GitHub Actions: опциональный секрет репозитория **`BIRDLENSE_UI_API_KEY`** (то же значение, что в `app/.env` на сервере) включает проверки domain-health на шаге Verify — см. [release-readiness](../../release-readiness.md).
+Деплой через GitHub Actions: опциональный секрет репозитория **`BIRDLENSE_UI_API_KEY`** (то же значение, что в `app/.env` на сервере) включает проверки domain-health на шаге Verify — см. [release-readiness](../release-readiness.md).
 
-Чеклист релиза: [release-readiness](../../release-readiness.md).
+Чеклист релиза: [release-readiness](../release-readiness.md).
 
 ## Матрица rollback для release-gate (C1)
 
@@ -160,7 +160,7 @@ ssh ВАШ_SSH_ХОСТ "tail -100 ВАШ_УДАЛЁННЫЙ_КАТАЛОГ/app/
 4. **Свет / ночь** — если YOLO часто не вызывается из‑за light gate, см. `processor.light_gate_*` и ночные оверрайды (recall vs нагрузка).
 5. **GPU (Orin)** — убедитесь, что контейнер использует NVIDIA runtime: `docker logs birdlense` (строки NVENC / GStreamer). Без GPU остаётся CPU.
 
-См. также [PROCESSOR_PERFORMANCE](./processor-performance.ru.md), [CONFIGURATION](./configuration.ru.md), [release-readiness](../../release-readiness.md). Ворота релиза: [DEFINITION_OF_DONE](../../archive/internal/docs-legacy/DEFINITION_OF_DONE.ru.md).
+См. также [PROCESSOR_PERFORMANCE](./processor-performance.ru.md), [CONFIGURATION](./configuration.ru.md), [release-readiness](../release-readiness.md). Ворота релиза: [DEFINITION_OF_DONE](../archive/internal/docs-legacy/DEFINITION_OF_DONE.ru.md).
 
 ## Падает readiness при установке или после деплоя
 
@@ -191,7 +191,7 @@ python3 scripts/prune_deprecated_user_config.py --path app/app_config/user_confi
 cd app && docker compose restart birdlense
 ```
 
-Перед записью создаётся резервная копия `user_config.yaml.bak`. См. также [SECRETS_ROTATION](../../archive/internal/docs-legacy/SECRETS_ROTATION.ru.md).
+Перед записью создаётся резервная копия `user_config.yaml.bak`. См. также [SECRETS_ROTATION](../archive/internal/docs-legacy/SECRETS_ROTATION.ru.md).
 
 ## Быстрая проверка MCP (Bearer)
 
@@ -206,7 +206,7 @@ export MCP_TOKEN='ваш-токен-с-сервера'
 
 ## PostgreSQL как БД хаба
 
-Compose overlay, `DATABASE_URL`, пул, greenfield vs перенос с SQLite и разделение с файлом процессора **`birdlense.db`**: [POSTGRES_MIGRATION.ru](../../archive/internal/docs-legacy/POSTGRES_MIGRATION.ru.md).
+Compose overlay, `DATABASE_URL`, пул, greenfield vs перенос с SQLite и разделение с файлом процессора **`birdlense.db`**: [POSTGRES_MIGRATION.ru](../archive/internal/docs-legacy/POSTGRES_MIGRATION.ru.md).
 
 ## Отладка по запросам
 

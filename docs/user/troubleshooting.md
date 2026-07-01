@@ -32,7 +32,7 @@ Notification tuning: [CONFIGURATION](./configuration.md) → Notifications.
 
 ## Single-container startup (entrypoint): if stuck {#single-container-startup-stuck}
 
-The container runs **`app/scripts/entrypoint.sh`**: nginx → gunicorn → wait for **`GET /api/ui/health`** (up to ~400s) → optional MCP → **processor** loop (`processor/src/main.py`). See [ARCHITECTURE](../contributor/architecture.md#runtime-processes-ports-and-health-signals) and [RUNTIME_COUPLING](../../archive/internal/docs-legacy/RUNTIME_COUPLING.md).
+The container runs **`app/scripts/entrypoint.sh`**: nginx → gunicorn → wait for **`GET /api/ui/health`** (up to ~400s) → optional MCP → **processor** loop (`processor/src/main.py`). See [ARCHITECTURE](../contributor/architecture.md#runtime-processes-ports-and-health-signals) and [RUNTIME_COUPLING](../archive/internal/docs-legacy/RUNTIME_COUPLING.md).
 
 | Symptom | Where to look |
 | -------- | ---------------- |
@@ -85,9 +85,9 @@ python3 -c "import secrets; print(secrets.token_hex(16))"
 
 **Not a crash** when `processor.detector_weight_contract` is `warn` (default). In `enforce` mode startup fails until weights and scope align.
 
-**What to do:** (1) Set `processor.detector_scope` to match `model.names` / your training manifest. (2) Or deploy weights that include every scoped label, then restart the processor. (3) Do not put `Background` in scope — see [CV_ML_PREP.md](../../archive/internal/docs-legacy/CV_ML_PREP.md).
+**What to do:** (1) Set `processor.detector_scope` to match `model.names` / your training manifest. (2) Or deploy weights that include every scoped label, then restart the processor. (3) Do not put `Background` in scope — see [CV_ML_PREP.md](../archive/internal/docs-legacy/CV_ML_PREP.md).
 
-**Related:** [CV_ML_ROADMAP_PHASES.md](../../archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.md) (#368).
+**Related:** [CV_ML_ROADMAP_PHASES.md](../archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.md) (#368).
 
 ---
 
