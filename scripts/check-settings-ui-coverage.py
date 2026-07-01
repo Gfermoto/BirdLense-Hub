@@ -127,35 +127,30 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Model path is environment/deployment-specific.",
         "next_step": "Upload/reset via System → Processor weights (#276); not in Settings form.",
     },
-    "processor.models.binary_openvino": {
+    "processor.models.reid_embedder": {
         "category": "ops-only",
-        "reason": "OpenVINO detector bundle path is deployment-specific and managed server-side.",
-        "next_step": "Keep hidden from Settings form; surface only backend selector in UI.",
+        "reason": "Ornimetrics ReID ONNX path is deployment-specific (fetch-processor-models-orin.sh).",
+        "next_step": "Keep YAML-only; surface via System model health if needed.",
     },
-    "processor.models.classifier_openvino": {
+    "processor.models.welfare_embedder": {
         "category": "ops-only",
-        "reason": "OpenVINO classifier bundle path is deployment-specific and managed server-side.",
-        "next_step": "Keep hidden from Settings form; surface only backend selector in UI.",
+        "reason": "Ornimetrics welfare embedder ONNX path is deployment-specific.",
+        "next_step": "Keep YAML-only; surface via System model health if needed.",
     },
-    "processor.openvino_binary_track_ultralytics_conf": {
-        "category": "advanced",
-        "reason": "OpenVINO-only YOLO.track(conf) floor cap; compensates OV vs torch score gap without a second inference.",
-        "next_step": "YAML-only; document alongside processor.inference_backend=openvino.",
-    },
-    "processor.openvino_binary_bird_score_scale": {
-        "category": "advanced",
-        "reason": "OpenVINO-only Bird confidence scale for threshold compare; raw conf stored unchanged.",
-        "next_step": "YAML-only; tune if false bird positives rise.",
-    },
-    "processor.openvino_min_confidence_binary_bird": {
-        "category": "advanced",
-        "reason": "Optional OpenVINO-only replacement for min_confidence_binary_bird in binary floor + per-label.",
-        "next_step": "YAML-only; prefer track cap + score_scale first.",
+    "processor.models.welfare_scorer": {
+        "category": "ops-only",
+        "reason": "Ornimetrics welfare_scorer.npz path is deployment-specific.",
+        "next_step": "Keep YAML-only.",
     },
     "processor.readiness_heartbeat_max_age_seconds": {
         "category": "ops-only",
         "reason": "Readiness gate threshold for processor heartbeat freshness; deployment/ops tuning.",
         "next_step": "YAML-only; reflected in /api/ui/readiness payload.",
+    },
+    "processor.recording_gate_mode": {
+        "category": "advanced",
+        "reason": "motion_immediate vs detect_first recording gate; expert trigger policy.",
+        "next_step": "Expose in Processor trigger advanced when productized.",
     },
     "processor.regional_species": {
         "category": "planned-ui",
@@ -524,21 +519,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Ultra-weak salvage confidence gate is low-level recovery tuning.",
         "next_step": "Expose only in expert mode with warnings.",
     },
-    "processor.openvino.model_cache_enabled": {
-        "category": "ops-only",
-        "reason": "OpenVINO runtime cache behavior is host/runtime optimization, not end-user settings.",
-        "next_step": "Expose only in expert diagnostics mode with restart guidance.",
-    },
-    "processor.openvino.num_requests": {
-        "category": "ops-only",
-        "reason": "OpenVINO parallel inference requests are hardware/performance tuning knobs.",
-        "next_step": "Keep config-level until benchmark-backed presets exist.",
-    },
-    "processor.openvino.profile": {
-        "category": "ops-only",
-        "reason": "OpenVINO profile switch is an optimization preset for deployment engineers.",
-        "next_step": "Potentially map to simplified performance profiles later.",
-    },
     "processor.reid.device": {
         "category": "ops-only",
         "reason": "ReID execution device is hardware-specific and deployment-tuned.",
@@ -548,16 +528,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "advanced",
         "reason": "Review workflow sensitivity setting for low-similarity ReID matches.",
         "next_step": "Add when ReID reviewer UX includes explicit confidence controls.",
-    },
-    "processor.reid.hub_cache_dir": {
-        "category": "ops-only",
-        "reason": "Filesystem path for model cache is environment-specific.",
-        "next_step": "Keep YAML-only.",
-    },
-    "processor.reid.hub_repo_local_path": {
-        "category": "ops-only",
-        "reason": "Optional local HF repo mirror path is deployment-specific.",
-        "next_step": "Keep YAML-only.",
     },
     "processor.reid.max_detections_per_recording": {
         "category": "advanced",
@@ -655,6 +625,11 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "advanced",
         "reason": "Legacy file-replay only: enables video_width/height override; not main operator path.",
         "next_step": "Expose in expert tier or Library file-test advanced.",
+    },
+    "video.record_with_vaapi": {
+        "category": "advanced",
+        "reason": "Hardware vs software MP4 encode on Jetson (NVENC/libx264); deployment tuning.",
+        "next_step": "Rename to record_hw_encode and expose in Video encoding Settings.",
     },
     "retention.days": {
         "category": "library-ui",
@@ -993,11 +968,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
         "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
     },
-    "processor.adaptive_profiles.night.overrides.openvino_min_confidence_binary_bird": {
-        "category": "advanced",
-        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
-        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
-    },
     "processor.background_subtraction_detect_shadows": {
         "category": "advanced",
         "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
@@ -1213,11 +1183,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
         "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
     },
-    "processor.openvino_binary_enabled": {
-        "category": "advanced",
-        "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
-        "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
-    },
     "processor.reid_auto_link_enabled": {
         "category": "ops-only",
         "reason": "Config-level processor/detection knob not yet exposed in Settings UI.",
@@ -1272,6 +1237,11 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "advanced",
         "reason": "SOTA 2.0 unified scoring engine; operator tuning via YAML until Settings expert panel.",
         "next_step": "YAML-only or future Processor advanced / diagnostics panel.",
+    },
+    "processor.scoring_calibration_low_floor": {
+        "category": "advanced",
+        "reason": "Minimum calibrated scoring threshold floor during auto-calibration.",
+        "next_step": "YAML-only or scoring advanced panel.",
     },
     "processor.scoring_default_high_threshold": {
         "category": "advanced",
@@ -1690,11 +1660,6 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Processor pipeline knob not yet exposed in Settings UI.",
         "next_step": "YAML-only or Processor advanced / diagnostics panel.",
     },
-    "processor.reid.hub_download_timeout_seconds": {
-        "category": "advanced",
-        "reason": "Processor pipeline knob not yet exposed in Settings UI.",
-        "next_step": "YAML-only or Processor advanced / diagnostics panel.",
-    },
     "processor.reid.include_embedding_payload": {
         "category": "advanced",
         "reason": "Processor pipeline knob not yet exposed in Settings UI.",
@@ -1709,6 +1674,51 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "advanced",
         "reason": "Processor pipeline knob not yet exposed in Settings UI.",
         "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.welfare.device": {
+        "category": "ops-only",
+        "reason": "Welfare embedder execution device is hardware-specific (Orin CUDA).",
+        "next_step": "Keep YAML-only.",
+    },
+    "processor.welfare.distance_review_threshold": {
+        "category": "advanced",
+        "reason": "Mahalanobis screening threshold; site-specific calibration required.",
+        "next_step": "Expose in ML ops / welfare review panel when UI exists.",
+    },
+    "processor.welfare.flag_for_review": {
+        "category": "advanced",
+        "reason": "Whether high welfare distance sets classifier_needs_review.",
+        "next_step": "YAML-only until welfare review UX ships.",
+    },
+    "processor.welfare.inference_backend": {
+        "category": "ops-only",
+        "reason": "Welfare ONNX backend is fixed to onnxruntime on Orin.",
+        "next_step": "Keep YAML-only.",
+    },
+    "processor.welfare.max_detections_per_recording": {
+        "category": "advanced",
+        "reason": "Cap welfare enrich calls per recording for latency budget.",
+        "next_step": "YAML-only.",
+    },
+    "processor.welfare.max_runtime_ms": {
+        "category": "advanced",
+        "reason": "Wall-clock budget for welfare enrich stage.",
+        "next_step": "YAML-only.",
+    },
+    "processor.welfare.min_best_frame_score": {
+        "category": "advanced",
+        "reason": "Minimum crop quality gate before welfare embedding.",
+        "next_step": "YAML-only.",
+    },
+    "processor.welfare.preload_on_start": {
+        "category": "ops-only",
+        "reason": "Startup prewarm toggle for welfare ONNX session.",
+        "next_step": "Keep YAML-only.",
+    },
+    "processor.welfare.runtime_enabled": {
+        "category": "advanced",
+        "reason": "Master switch for welfare Mahalanobis screening in finalize.",
+        "next_step": "YAML-only or env BIRDLENSE_WELFARE_RUNTIME_ENABLED.",
     },
     "processor.reid_expert_queue_enabled": {
         "category": "advanced",
@@ -1759,6 +1769,21 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "category": "advanced",
         "reason": "Processor pipeline knob not yet exposed in Settings UI.",
         "next_step": "YAML-only or Processor advanced / diagnostics panel.",
+    },
+    "processor.track_spatial_split_enabled": {
+        "category": "advanced",
+        "reason": "Split tracks when bbox center jumps imply multiple birds in one ID.",
+        "next_step": "YAML-only or tracker advanced panel.",
+    },
+    "processor.track_spatial_split_max_center_jump_norm": {
+        "category": "advanced",
+        "reason": "Normalized center jump threshold for spatial track split.",
+        "next_step": "YAML-only.",
+    },
+    "processor.track_spatial_split_min_segment_frames": {
+        "category": "advanced",
+        "reason": "Minimum frames per segment after spatial track split.",
+        "next_step": "YAML-only.",
     },
     "processor.track_static_reject_enabled": {
         "category": "advanced",
@@ -2136,6 +2161,11 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Species enrichment crop padding.",
         "next_step": "Advanced classifier/enrichment block.",
     },
+    "processor.enrichment_crop_require_keyframe": {
+        "category": "advanced",
+        "reason": "Require keyframe before hi-res enrichment crop decode.",
+        "next_step": "YAML-only until enrichment UX exists.",
+    },
     "processor.frigate_hold_only_when_frigate_trigger": {
         "category": "advanced",
         "reason": "Frigate-trigger hold policy; fusion tuning.",
@@ -2207,6 +2237,14 @@ TERMINAL_MAP_KEYS = {
 # Prefix allowlist for nested preset trees and System-surfaced ops keys (#623).
 ALLOWLIST_PREFIXES: tuple[tuple[str, dict[str, str]], ...] = (
     (
+        "processor.species_confidence_overrides.",
+        {
+            "category": "advanced",
+            "reason": "Per-species confidence overrides; expert ML tuning via YAML.",
+            "next_step": "Species catalog advanced editor or ML ops panel.",
+        },
+    ),
+    (
         "processor.camera_tuning_by_role.",
         {
             "category": "advanced",
@@ -2241,7 +2279,6 @@ _CAMERA_TUNING_FIELD_KEYS = (
     "max_box_area_norm",
     "scoring_giant_box_area_frac",
     "detect_record_time_offset_sec",
-    "openvino_binary_track_ultralytics_conf",
     "track_static_reject_enabled",
     "track_static_reject_min_duration_sec",
     "track_static_reject_min_frames",

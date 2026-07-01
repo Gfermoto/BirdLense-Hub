@@ -174,7 +174,7 @@ def main() -> int:
     rt_m = fp.strategy.binary_model
     imgsz = int(app_config.get("processor.binary_imgsz") or 640)
     backend = str(getattr(fp.strategy, "inference_backend", "torch")).lower()
-    ov_prefix = "OPENVINO_runtime" if backend == "openvino" else f"PREDICT_{backend}_binary_model"
+    runtime_prefix = f"{backend.upper()}_runtime_binary_model"
 
     torch_paths = resolve_torch_binary_paths(args.torch_pt)
 
@@ -211,7 +211,7 @@ def main() -> int:
             if n - 1 not in positions:
                 positions.append(n - 1)
 
-        ov_sum = sparse_sweep_maxconf(rt_m, cap, positions, imgsz, args.sparse_conf, ov_prefix)
+        ov_sum = sparse_sweep_maxconf(rt_m, cap, positions, imgsz, args.sparse_conf, runtime_prefix)
 
         mid = positions[len(positions) // 2] if positions else 0
         probe_frames: list[int] = []

@@ -54,10 +54,7 @@ def main() -> int:
     binary_model = strategy.binary_model
     tracker = str(app_config.get("processor.tracker") or "bytetrack.yaml")
     min_conf = float(app_config.get("processor.min_confidence_binary") or 0.28)
-    track_conf = min(
-        0.25,
-        float(app_config.get("processor.openvino_binary_track_ultralytics_conf") or 0.25),
-    )
+    track_conf = min(0.25, float(min_conf))
     imgsz = resolve_binary_model_imgsz(app_config)
 
     totals = {
