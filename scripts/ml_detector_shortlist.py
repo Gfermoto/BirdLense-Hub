@@ -27,7 +27,7 @@ def _default_candidates() -> list[dict[str, Any]]:
             'name': 'BirdLense current YOLO11n binary detector',
             'quality_score': 0.74,
             'latency_ms': 12.0,
-            'openvino_compatible': True,
+            'onnx_deployable': True,
             'integration_risk': 'low',
             'license': {
                 'spdx': 'AGPL-3.0',
@@ -42,7 +42,7 @@ def _default_candidates() -> list[dict[str, Any]]:
             'name': 'Birds-Classification YOLOv9 candidate',
             'quality_score': 0.79,
             'latency_ms': 18.0,
-            'openvino_compatible': True,
+            'onnx_deployable': True,
             'integration_risk': 'high',
             'license': {
                 'spdx': 'NOASSERTION',
@@ -53,11 +53,11 @@ def _default_candidates() -> list[dict[str, Any]]:
             'notes': 'Quality-promising, but onboarding blocked by compliance ambiguity.',
         },
         {
-            'id': 'yolov8n-openvino-int8',
-            'name': 'YOLOv8n OpenVINO INT8 candidate',
+            'id': 'yolov8n-onnx-int8',
+            'name': 'YOLOv8n ONNX INT8 candidate',
             'quality_score': 0.72,
             'latency_ms': 9.0,
-            'openvino_compatible': True,
+            'onnx_deployable': True,
             'integration_risk': 'medium',
             'license': {
                 'spdx': 'AGPL-3.0',
@@ -72,7 +72,7 @@ def _default_candidates() -> list[dict[str, Any]]:
             'name': 'Bird-only detector + Frigate rodent hybrid',
             'quality_score': 0.70,
             'latency_ms': 10.0,
-            'openvino_compatible': True,
+            'onnx_deployable': True,
             'integration_risk': 'medium',
             'license': {
                 'spdx': 'MIXED',
@@ -120,10 +120,10 @@ def _latency_score(latency_ms: float) -> float:
 def _candidate_rank_score(candidate: dict[str, Any]) -> float:
     quality = float(candidate.get('quality_score') or 0.0)
     latency = _latency_score(float(candidate.get('latency_ms') or 0.0))
-    ov = 1.0 if bool(candidate.get('openvino_compatible')) else 0.0
+    onnx = 1.0 if bool(candidate.get('onnx_deployable')) else 0.0
     risk_p = _risk_penalty(str(candidate.get('integration_risk') or 'medium'))
     lic_p = _license_penalty(str((candidate.get('license') or {}).get('status') or 'review_required'))
-    score = 0.6 * quality + 0.25 * latency + 0.15 * ov - risk_p - lic_p
+    score = 0.6 * quality + 0.25 * latency + 0.15 * onnx - risk_p - lic_p
     return round(score, 6)
 
 

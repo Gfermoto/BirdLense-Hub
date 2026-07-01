@@ -20,7 +20,7 @@ processor:
 video:
   encoding: jetson
   capture_backend: auto
-  record_with_vaapi: false
+  record_hw_encode: false
   force_recording_resolution: true
   video_width: 2688
   video_height: 1520

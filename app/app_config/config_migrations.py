@@ -8,7 +8,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Bump when adding a new migration tranche; persisted in user_config._meta.schema_version.
-USER_CONFIG_SCHEMA_VERSION = 7
+USER_CONFIG_SCHEMA_VERSION = 8
 
 _META_KEY = "_meta"
 
@@ -143,6 +143,26 @@ def run_user_config_migrations(user_config: dict[str, Any]) -> bool:
         except Exception as exc:
             logger.warning(
                 "user_config migration migrate_remove_pipeline_persist_legacy_aliases failed: %s",
+                exc,
+            )
+
+    if version < 8:
+        from app_config.track_first_migrations import (
+            migrate_remove_openvino_processor_stack,
+            migrate_video_record_hw_encode,
+        )
+
+        try:
+            if migrate_video_record_hw_encode(user_config):
+                changed = True
+        except Exception as exc:
+            logger.warning("user_config migration migrate_video_record_hw_encode failed: %s", exc)
+        try:
+            if migrate_remove_openvino_processor_stack(user_config):
+                changed = True
+        except Exception as exc:
+            logger.warning(
+                "user_config migration migrate_remove_openvino_processor_stack failed: %s",
                 exc,
             )
 

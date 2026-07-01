@@ -76,7 +76,7 @@ def main() -> int:
         default='',
         help=(
             'Sets BIRDLENSE_INFERENCE_BACKEND for this run '
-            '(e.g. torch, openvino). Empty = env/config.'
+            '(e.g. torch, onnxruntime). Empty = env/config.'
         ),
     )
     parser.add_argument(

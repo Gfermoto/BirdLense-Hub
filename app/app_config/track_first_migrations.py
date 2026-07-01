@@ -212,3 +212,65 @@ def migrate_remove_pipeline_persist_legacy_aliases(user_config: dict[str, Any]) 
             det["persist_mode"] = "binary_track_first"
             changed = True
     return changed
+
+
+def migrate_video_record_hw_encode(user_config: dict[str, Any]) -> bool:
+    """Rename video.record_with_vaapi → video.record_hw_encode."""
+    if not isinstance(user_config, dict):
+        return False
+    video = user_config.get("video")
+    if not isinstance(video, dict):
+        return False
+    changed = False
+    if "record_hw_encode" not in video and "record_with_vaapi" in video:
+        video["record_hw_encode"] = video["record_with_vaapi"]
+        changed = True
+    if "record_with_vaapi" in video:
+        del video["record_with_vaapi"]
+        changed = True
+    return changed
+
+
+def migrate_remove_openvino_processor_stack(user_config: dict[str, Any]) -> bool:
+    """Drop OpenVINO-only processor keys; map inference_backend openvino → onnxruntime."""
+    if not isinstance(user_config, dict):
+        return False
+    processor = user_config.get("processor")
+    if not isinstance(processor, dict):
+        return False
+    changed = False
+    backend = str(processor.get("inference_backend") or "").strip().lower()
+    if backend == "openvino":
+        processor["inference_backend"] = "onnxruntime"
+        changed = True
+    cls_backend = str(processor.get("classifier_inference_backend") or "").strip().lower()
+    if cls_backend == "openvino":
+        processor["classifier_inference_backend"] = "onnxruntime"
+        changed = True
+    models = processor.get("models")
+    if isinstance(models, dict):
+        for legacy_key in ("binary_openvino", "classifier_openvino"):
+            if legacy_key in models:
+                models.pop(legacy_key, None)
+                changed = True
+    for key in list(processor.keys()):
+        if "openvino" in str(key).lower():
+            processor.pop(key, None)
+            changed = True
+    ov_nested = processor.get("openvino")
+    if isinstance(ov_nested, dict) and ov_nested:
+        processor.pop("openvino", None)
+        changed = True
+    profiles = processor.get("adaptive_profiles")
+    if isinstance(profiles, dict):
+        for prof in profiles.values():
+            if not isinstance(prof, dict):
+                continue
+            overrides = prof.get("overrides")
+            if not isinstance(overrides, dict):
+                continue
+            for ok in list(overrides.keys()):
+                if "openvino" in str(ok).lower():
+                    overrides.pop(ok, None)
+                    changed = True
+    return changed

@@ -31,7 +31,7 @@ processor:
 video:
   encoding: jetson
   capture_backend: auto
-  record_with_vaapi: false
+  record_hw_encode: false
 
 species:
   catalog_allowlist_file: models/classification/convnext_v2_tiny_eu-common256px/class_labels.txt

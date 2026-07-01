@@ -277,14 +277,9 @@ def setup_processor_media(
                 rcodec = "h264"
             capture_backend = normalize_capture_backend(app_config.get("video.capture_backend"), "auto")
             single_rtsp_read = parse_single_rtsp_read_flag(app_config)
-            rwv = app_config.get("video.record_with_vaapi")
-            if rwv is None:
-                record_with_vaapi = True
-            elif isinstance(rwv, bool):
-                record_with_vaapi = rwv
-            else:
-                s = str(rwv).strip().lower()
-                record_with_vaapi = s not in ("0", "false", "no", "off")
+            from encoding_utils import resolve_record_hw_encode
+
+            record_hw_encode = resolve_record_hw_encode(app_config)
             cam_main_size = main_size
             cam_override = None
             try:
@@ -327,7 +322,7 @@ def setup_processor_media(
                 record_stream_codec=rcodec,
                 capture_backend=capture_backend,
                 capture_stream_url=capture_url,
-                record_with_vaapi=record_with_vaapi,
+                record_hw_encode=record_hw_encode,
                 single_rtsp_read=single_rtsp_read,
             )
         return media_sources_cache[camera_id]

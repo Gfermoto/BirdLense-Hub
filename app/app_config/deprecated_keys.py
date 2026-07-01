@@ -29,6 +29,9 @@ DEPRECATED_USER_CONFIG_KEYS: tuple[str, ...] = (
     "detection.frigate_trigger_review_salvage_allow_without_yolo_tracks",
     "weather.ha_token",
     "weather.ha_url",
+    "video.record_with_vaapi",
+    "processor.models.binary_openvino",
+    "processor.models.classifier_openvino",
 )
 
 # processor.pipeline_mode value "legacy" removed (#621); migrate to linear via user_config.

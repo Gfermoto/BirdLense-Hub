@@ -342,7 +342,7 @@ class Go2RTCStreamSource:
         capture_backend="auto",
         capture_stream_url: str | None = None,
         *,
-        record_with_vaapi: bool | None = None,
+        record_hw_encode: bool | None = None,
         single_rtsp_read: bool = False,
     ):
         self.logger = logging.getLogger(__name__)
@@ -393,13 +393,14 @@ class Go2RTCStreamSource:
         self._nvmpi_available: bool = False
         self._nvmpi_fallback_permanent: bool = False
         # API compat name: on jetson, True → NVENC/v4l2m2m/OMX; False → libx264.
-        if record_with_vaapi is None:
-            self._record_with_vaapi = True
-        elif isinstance(record_with_vaapi, bool):
-            self._record_with_vaapi = record_with_vaapi
+        if record_hw_encode is None:
+            self._record_hw_encode = True
+        elif isinstance(record_hw_encode, bool):
+            self._record_hw_encode = record_hw_encode
         else:
-            s = str(record_with_vaapi).strip().lower()
-            self._record_with_vaapi = s not in ("0", "false", "no", "off")
+            from encoding_utils import parse_bool_config_flag
+
+            self._record_hw_encode = parse_bool_config_flag(record_hw_encode, default=True)
         self._ffmpeg_capture_failures = 0
         self._force_opencv_until_ts = 0.0
         self._last_classifier_source_frame = None
@@ -816,7 +817,7 @@ class Go2RTCStreamSource:
         self._video_output = output
         os.makedirs(os.path.dirname(output), exist_ok=True)
         use_jetson = self._encoding_mode == "jetson"
-        use_jetson_hw = use_jetson and self._record_with_vaapi
+        use_jetson_hw = use_jetson and self._record_hw_encode
         if (
             use_jetson_hw
             and self._record_stream_codec == "h264"

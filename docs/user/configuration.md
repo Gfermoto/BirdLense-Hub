@@ -29,7 +29,7 @@ processor:
 video:
   encoding: jetson          # NVENC/NVDEC
   capture_backend: auto     # ffmpeg_nvmpi или opencv
-  record_with_vaapi: false  # false = libx264 для MP4; true = аппаратная запись (NVENC)
+  record_hw_encode: false  # false = libx264 для MP4; true = аппаратная запись (NVENC)
 ```
 
 Модели welfare (`embedder.onnx`, `welfare_scorer.npz`) монтируются в контейнер и обрабатываются в finalize (`welfare_runtime.py`) после ReID. Порог скрининга: `processor.welfare.distance_review_threshold`. См. [OVERVIEW](../OVERVIEW.md).

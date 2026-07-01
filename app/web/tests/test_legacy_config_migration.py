@@ -298,6 +298,32 @@ def test_migrate_processor_classifier_best_pt_to_birder_layout():
     )
 
 
+def test_migrate_video_record_hw_encode_renames_legacy_key():
+    from app_config.track_first_migrations import migrate_video_record_hw_encode
+
+    user = {"video": {"record_with_vaapi": False}}
+    assert migrate_video_record_hw_encode(user) is True
+    assert user["video"]["record_hw_encode"] is False
+    assert "record_with_vaapi" not in user["video"]
+
+
+def test_migrate_remove_openvino_processor_stack():
+    from app_config.track_first_migrations import migrate_remove_openvino_processor_stack
+
+    user = {
+        "processor": {
+            "inference_backend": "openvino",
+            "openvino_binary_enabled": True,
+            "models": {"binary_openvino": "legacy/path", "binary": "models/detection/x.onnx"},
+        },
+    }
+    assert migrate_remove_openvino_processor_stack(user) is True
+    proc = user["processor"]
+    assert proc["inference_backend"] == "onnxruntime"
+    assert "binary_openvino" not in proc["models"]
+    assert "openvino_binary_enabled" not in proc
+
+
 def test_fold_motion_settings_patch_into_triggers():
     from app_config.trigger_config import fold_motion_settings_patch_into_triggers
 

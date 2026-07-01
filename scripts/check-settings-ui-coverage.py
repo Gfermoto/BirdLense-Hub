@@ -626,10 +626,10 @@ ALLOWED_NON_UI_KEYS: dict[str, dict[str, str]] = {
         "reason": "Legacy file-replay only: enables video_width/height override; not main operator path.",
         "next_step": "Expose in expert tier or Library file-test advanced.",
     },
-    "video.record_with_vaapi": {
+    "video.record_hw_encode": {
         "category": "advanced",
         "reason": "Hardware vs software MP4 encode on Jetson (NVENC/libx264); deployment tuning.",
-        "next_step": "Rename to record_hw_encode and expose in Video encoding Settings.",
+        "next_step": "Expose in Video encoding Settings block.",
     },
     "retention.days": {
         "category": "library-ui",

@@ -651,7 +651,8 @@ video:
   go2rtc_password: ""
   # Кодирование записи: jetson (NVENC/NVMPI на Orin) | cpu (libx264 fallback)
   encoding: jetson
-  record_with_vaapi: false
+  # true — аппаратная запись MP4 (NVENC/GStreamer на Jetson); false — libx264 (CPU).
+  record_hw_encode: false
   # Захват кадров для motion/detection: auto (определяет ffmpeg_nvmpi/opencv при старте)
   capture_backend: auto
   # Запись с RTSP: h264 — перекодировать в H.264 (воспроизведение в браузере, меньше сюрпризов с HEVC).

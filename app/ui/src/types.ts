@@ -409,7 +409,7 @@ export interface Settings {
     /** jetson (NVENC на Orin) | cpu (libx264) — кодек для записи видео. */
     encoding?: string;
     /** true — аппаратное кодирование записи (NVENC на Orin/jetson); false — libx264 (CPU). */
-    record_with_vaapi?: boolean;
+    record_hw_encode?: boolean;
     /** auto | opencv | ffmpeg_nvmpi — live capture path for motion/detection. */
     capture_backend?: 'auto' | 'opencv' | 'ffmpeg_nvmpi' | string;
     /** h264 | copy — перекодировать RTSP в H.264 для браузера или копировать веб-кодек как есть. */
