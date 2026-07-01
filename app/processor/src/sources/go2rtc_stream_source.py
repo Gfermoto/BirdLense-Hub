@@ -980,7 +980,7 @@ class Go2RTCStreamSource:
                 self.logger.warning(
                     "VA-API: %s есть, но init не прошёл — запись на CPU. "
                     "Частая причина: нет group_add групп video/render хоста в compose. "
-                    "На сервере: bash scripts/docker-compose-intel-override-gen.sh и пересоздайте контейнер.",
+                    "На сервере: проверьте NVIDIA runtime, nvidia-smi, и пересоздайте контейнер.",
                     VAAPI_DEVICE,
                 )
         return self._vaapi_available

@@ -1,12 +1,9 @@
 .PHONY: all clean build start stop logs verify deploy pull setup test test-processor-light test-web test-web-contract-local test-web-local venv-web venv-web-reset test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
 
-# Platform: orin (Jetson Orin NX/NANO) — см. scripts/platform-profile.sh
+# Platform: orin — см. scripts/platform-profile.sh
 BIRDLENSE_PLATFORM ?= orin
 COMPOSE ?= docker compose
-COMPOSE_FILES := docker-compose.yml
-ifeq ($(BIRDLENSE_PLATFORM),orin)
 COMPOSE_FILES := docker-compose.yml docker-compose.orin.yml
-endif
 COMPOSE_CMD = $(COMPOSE) $(foreach f,$(COMPOSE_FILES),-f $(f))
 
 all: build

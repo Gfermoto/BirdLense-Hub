@@ -1,5 +1,6 @@
-# BirdLense Hub — Orin NX / NANO (ONNX GPU, NVIDIA runtime)
-# Go2RTC + MQTT по IP. Кодирование: jetson/NVENC (см. video.encoding в user_config).
+# BirdLense Hub — web+processor + Redis (кэш API между перезапусками воркера; см. REDIS_URL).
+# Подключения по хосту (IP): Go2RTC, MQTT. Площадки могут быть разными.
+# Кодирование записи: jetson (NVENC на Orin) или cpu (libx264).
 
 services:
   redis:

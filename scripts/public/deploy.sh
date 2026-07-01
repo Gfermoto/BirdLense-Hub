@@ -872,8 +872,8 @@ if [ "${BIRDLENSE_ENV:-}" = "production" ] && [[ "${HOST}" != "localhost" && "${
     grep -qE '^BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=' \"\$F\" || echo 'BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=1' >> \"\$F\""
 fi
 
-# 1.8 Orin: без Intel GPU override
-echo "1.8 Intel GPU override: пропуск (Orin-only)"
+# 1.8 Orin: NVIDIA GPU автоматически через runtime: nvidia, override не нужен.
+echo "1.8 Orin platform: NVIDIA GPU available via runtime:nvidia (no override needed)"
 ssh ${SSH_OPTS} "${HOST}" "rm -f '${REMOTE_DIR}/app/docker-compose.override.yml' 2>/dev/null || true"
 
 # 2. Сборка и запуск (повтор при сбое — Docker pull, сеть)

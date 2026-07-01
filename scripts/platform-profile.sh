@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# BIRDLENSE_PLATFORM — Orin-only.
+# Resolve BIRDLENSE_PLATFORM and compose/dockerfile hints — Orin only.
+# Source from deploy.sh or Makefile (do not execute standalone).
 set -euo pipefail
 
 birdlense_normalize_platform() {
@@ -8,18 +9,15 @@ birdlense_normalize_platform() {
   case "${raw}" in
     orin | "") echo "orin" ;;
     *)
-      echo "ERROR: BIRDLENSE_PLATFORM=${raw} — only orin is supported" >&2
+      echo "ERROR: unknown BIRDLENSE_PLATFORM=${raw} (only orin is supported)" >&2
       return 1
       ;;
   esac
 }
 
 birdlense_platform_is_jetson() {
-  return 1
-}
-
-birdlense_platform_is_orin() {
-  return 0
+  # Always true on Orin — NVIDIA Jetson platform
+  [[ "$(birdlense_normalize_platform "${1:-}")" == "orin" ]]
 }
 
 birdlense_platform_compose_files() {
@@ -27,7 +25,7 @@ birdlense_platform_compose_files() {
 }
 
 birdlense_platform_dockerfile() {
-  echo "app/Dockerfile.orin"
+  echo "app/Dockerfile"
 }
 
 birdlense_platform_profile_dir() {
