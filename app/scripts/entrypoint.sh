@@ -28,12 +28,15 @@ fi
 
 # Orin: nvidia pip wheels (cublas/cudnn) must be on LD_LIBRARY_PATH for ONNX Runtime CUDA EP.
 if [ "${BIRDLENSE_PLATFORM:-orin}" = "orin" ]; then
-  _py_site="/usr/local/lib/python3.12/site-packages"
   _ort_ld=""
-  for _d in "${_py_site}/nvidia/cu13/lib" "${_py_site}/nvidia/cudnn/lib"; do
-    if [ -d "$_d" ]; then
-      _ort_ld="${_ort_ld:+${_ort_ld}:}${_d}"
-    fi
+  for _py_site in \
+    /usr/local/lib/python3.12/site-packages \
+    /usr/local/lib/python3.12/dist-packages; do
+    for _d in "${_py_site}/nvidia/cu13/lib" "${_py_site}/nvidia/cudnn/lib"; do
+      if [ -d "$_d" ]; then
+        _ort_ld="${_ort_ld:+${_ort_ld}:}${_d}"
+      fi
+    done
   done
   if [ -n "$_ort_ld" ]; then
     export LD_LIBRARY_PATH="${_ort_ld}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"

@@ -145,6 +145,22 @@ def _ffmpeg_has_nvenc() -> bool:
         return False
 
 
+def _gst_jetson_h264_encoder() -> str | None:
+    """GStreamer HW H.264 encoder for this Jetson generation (JP7: nvv4l2h264enc)."""
+    for enc in ("nvv4l2h264enc", "omxh264enc"):
+        try:
+            out = subprocess.run(
+                ["gst-inspect-1.0", enc],
+                capture_output=True,
+                timeout=5,
+            )
+            if out.returncode == 0:
+                return enc
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+            return None
+    return None
+
+
 def _gst_jetson_record_available() -> bool:
     """GStreamer NVMM record path (L4T native Jetson, not generic CUDA Docker)."""
     try:
@@ -155,12 +171,7 @@ def _gst_jetson_record_available() -> bool:
         )
         if out.returncode != 0:
             return False
-        out2 = subprocess.run(
-            ["gst-inspect-1.0", "omxh264enc"],
-            capture_output=True,
-            timeout=5,
-        )
-        return out2.returncode == 0
+        return _gst_jetson_h264_encoder() is not None
     except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         return False
 
@@ -178,13 +189,14 @@ def _libx264_record_args() -> list[str]:
 
 
 def _gst_record_cmd(stream_url: str, output: str) -> list[str]:
-    """GStreamer pipeline: NVDEC decode + OMX re-encode → MP4."""
+    """GStreamer pipeline: NVDEC decode + L4T HW re-encode → MP4."""
+    enc = _gst_jetson_h264_encoder() or "nvv4l2h264enc"
     pipeline = (
         f"rtspsrc location={stream_url} latency=300 ! "
         "rtph264depay ! h264parse ! "
         "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=2 ! "
         "nvvidconv ! video/x-raw(memory:NVMM),format=I420 ! "
-        "omxh264enc ! h264parse ! mp4mux ! "
+        f"{enc} ! h264parse ! mp4mux ! "
         f"filesink location={output}"
     )
     return ["gst-launch-1.0", "-e", pipeline]
@@ -824,7 +836,8 @@ class Go2RTCStreamSource:
             and _gst_jetson_record_available()
         ):
             cmd = _gst_record_cmd(self.stream_url, output)
-            backend_label = "GStreamer OMX (Jetson NVENC)"
+            enc = _gst_jetson_h264_encoder() or "nvv4l2h264enc"
+            backend_label = f"GStreamer {enc} (Jetson HW)"
         else:
             cmd = _ffmpeg_record_cmd(
                 stream_url=self.stream_url,
@@ -843,7 +856,8 @@ class Go2RTCStreamSource:
             from encoding_status import set_last_encoding_used
 
             if use_jetson_hw and self._record_stream_codec == "h264" and _gst_jetson_record_available():
-                set_last_encoding_used("omx")
+                enc = _gst_jetson_h264_encoder() or ""
+                set_last_encoding_used("v4l2m2m" if enc == "nvv4l2h264enc" else "omx")
             elif use_jetson_hw and self._record_stream_codec == "h264" and _ffmpeg_has_nvenc():
                 set_last_encoding_used("nvenc")
             elif self._record_stream_codec == "h264":

@@ -2047,7 +2047,6 @@
     "encoding": "Кодирование записи",
     "encodingUsed": "Сейчас",
     "encodingCpu": "CPU",
-    "encodingVaapi": "Jetson NVENC (Orin)",
     "encodingGpuUnavailable": "В настройках выбран аппаратный энкодер, но устройство недоступно в контейнере. Проверьте runtime: nvidia и devices в compose.",
     "processorMqtt": "MQTT процессора (внешние события/BirdNET)",
     "gpu": "GPU",

@@ -764,6 +764,7 @@ RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.venv-yolo-fetch"
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=.sandbox"
 # Кэши линтера/тестов (часто root после docker compose run) — иначе rsync code 23 Permission denied
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/.ruff_cache --exclude=app/.pytest_cache"
+RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=app/app_config/__pycache__ --exclude=app/app_config/.patch-orin-lab.yaml"
 # Локальный build-кэш ESPHome может быть гигабайтным — на сервер Hub не нужен.
 RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude=esphome/.esphome"
 # CodeQL CLI, БД и SARIF (scripts/codeql-local.sh) — десятки МБ/ГБ, на хаб не нужны
@@ -776,9 +777,9 @@ RSYNC_FILTER_PROTECT=(
 sync_ok=0
 for attempt in $(seq 1 ${SYNC_RETRIES}); do
   if [[ "${HOST}" == "localhost" || "${HOST}" == "127.0.0.1" ]]; then
-    rsync -a --delete --delete-excluded ${RSYNC_EXCLUDES} "${RSYNC_FILTER_PROTECT[@]}" ./ "${REMOTE_DIR}/" && sync_ok=1 && break
+    rsync -a --omit-dir-times --delete --delete-excluded ${RSYNC_EXCLUDES} "${RSYNC_FILTER_PROTECT[@]}" ./ "${REMOTE_DIR}/" && sync_ok=1 && break
   else
-    rsync -avz --no-group --delete --delete-excluded --ignore-errors -e "ssh ${SSH_OPTS}" ${RSYNC_EXCLUDES} "${RSYNC_FILTER_PROTECT[@]}" ./ "${HOST}:${REMOTE_DIR}/" && sync_ok=1 && break
+    rsync -avz --omit-dir-times --no-group --delete --delete-excluded --ignore-errors -e "ssh ${SSH_OPTS}" ${RSYNC_EXCLUDES} "${RSYNC_FILTER_PROTECT[@]}" ./ "${HOST}:${REMOTE_DIR}/" && sync_ok=1 && break
   fi
   echo "  Попытка ${attempt}/${SYNC_RETRIES} не удалась, повтор через 5 сек..."
   sleep 5
@@ -1035,15 +1036,20 @@ echo "  - DORA snapshot refresh:"
     --window-days "${DORA_WINDOW_DAYS:-28}" \
     --out-json "docs/reports/dora/dora_metrics_latest.json" \
     --out-md "docs/reports/dora/dora_metrics_latest.md")
-echo "  - Deploy contract refresh:"
-(cd "${REPO_ROOT}" && \
-  python3 ./scripts/report_deploy_contract.py \
-    --record-run \
-    --status success \
-    --skip-report && \
-  python3 ./scripts/report_deploy_contract.py \
-    --out-json "docs/reports/deploy_contract/deploy_contract_latest.json" \
-    --out-md "docs/reports/deploy_contract/deploy_contract_latest.md")
+if [[ "${BIRDLENSE_PLATFORM}" == "orin" ]] || [[ "${BIRDLENSE_SKIP_DEPLOY_CONTRACT_REFRESH:-}" =~ ^(1|true|yes)$ ]]; then
+  echo "  - Deploy contract refresh: skip (orin / BIRDLENSE_SKIP_DEPLOY_CONTRACT_REFRESH)"
+else
+  echo "  - Deploy contract refresh:"
+  (cd "${REPO_ROOT}" && \
+    python3 ./scripts/report_deploy_contract.py \
+      --record-run \
+      --status success \
+      --skip-report && \
+    python3 ./scripts/report_deploy_contract.py \
+      --out-json "docs/reports/deploy_contract/deploy_contract_latest.json" \
+      --out-md "docs/reports/deploy_contract/deploy_contract_latest.md") || \
+    echo "  WARN: deploy contract refresh failed (non-fatal on orin)"
+fi
 # 3.1 Post-deploy detector config smoke (warn-only; see docs/contributor/hub-detector-runbook.md).
 if [[ -f "${REPO_ROOT}/scripts/verify-prod-detector-smoke.sh" ]]; then
   echo "  - Detector config smoke (warn-only):"

@@ -27,18 +27,29 @@ local: setup local-build start
 	@echo "BirdLense Hub: http://localhost:$${BIRDLENSE_PORT:-8085}"
 	@echo "Логи: make logs"
 
+# Orin: L4T apt в Dockerfile.orin требует docker build --privileged (см. scripts/orin/docker-build.sh).
+ORIN_BUILD_SCRIPT := ../scripts/orin/docker-build.sh
+
 # Полная сборка для локального запуска: UI + Docker-образ
 local-build:
 	@echo "1. Сборка UI..."
 	@(cd ui && npm ci && npm run build) || { echo "Ошибка: npm ci / npm run build. Проверьте Node/npm (см. app/ui/package.json engines)."; exit 1; }
 	@echo "2. Сборка Docker-образа (platform=${BIRDLENSE_PLATFORM})..."
-	@$(COMPOSE_CMD) build
+	@if [ "${BIRDLENSE_PLATFORM}" = "orin" ]; then \
+		chmod +x "$(ORIN_BUILD_SCRIPT)" && "$(ORIN_BUILD_SCRIPT)"; \
+	else \
+		$(COMPOSE_CMD) build; \
+	fi
 	@echo "Build finished."
 
 # Сборка и запуск
 build:
-	@echo "Building BirdLense Hub..."
-	@$(COMPOSE_CMD) build
+	@echo "Building BirdLense Hub (platform=${BIRDLENSE_PLATFORM})..."
+	@if [ "${BIRDLENSE_PLATFORM}" = "orin" ]; then \
+		chmod +x "$(ORIN_BUILD_SCRIPT)" && "$(ORIN_BUILD_SCRIPT)"; \
+	else \
+		$(COMPOSE_CMD) build; \
+	fi
 	@echo "Build finished."
 
 start: setup

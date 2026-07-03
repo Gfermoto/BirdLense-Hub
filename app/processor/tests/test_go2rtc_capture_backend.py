@@ -30,6 +30,15 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         self.assertEqual(_normalize_capture_backend("ffmpeg_vaapi"), "auto")  # not valid on Orin
         self.assertEqual(_normalize_capture_backend("broken"), "auto")
 
+    def test_gst_record_cmd_uses_l4t_hw_encoder(self):
+        from sources.go2rtc_stream_source import _gst_record_cmd
+
+        cmd = _gst_record_cmd("rtsp://example/stream", "/tmp/out.mp4")
+        joined = " ".join(cmd)
+        self.assertIn("nvv4l2decoder", joined)
+        self.assertIn("nvvidconv", joined)
+        self.assertIn("nvv4l2h264enc", joined)
+
     def test_ffmpeg_record_cmd_for_jetson_uses_nvmpi_codec(self):
         from sources.go2rtc_stream_source import _ffmpeg_record_cmd
 

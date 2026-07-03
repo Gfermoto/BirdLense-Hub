@@ -2038,7 +2038,6 @@
     "encoding": "Recording encoding",
     "encodingUsed": "In use",
     "encodingCpu": "CPU",
-    "encodingVaapi": "Jetson NVENC (Orin)",
     "encodingGpuUnavailable": "Hardware encoder is selected but the device is not available in the container. Check runtime: nvidia and devices in compose.",
     "processorMqtt": "Processor MQTT (external events/BirdNET)",
     "gpu": "GPU",

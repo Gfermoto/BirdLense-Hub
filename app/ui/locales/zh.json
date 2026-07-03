@@ -1815,7 +1815,6 @@
     "encoding": "录音编码",
     "encodingUsed": "使用中",
     "encodingCpu": "中央处理器",
-    "encodingVaapi": "Jetson NVENC (Orin)",
     "encodingGpuUnavailable": "设置中选择了硬件编码器，但设备在容器中不可用。请检查 runtime: nvidia 和 compose 中的 devices。",
     "processorMqtt": "处理器 MQTT (Frigate/BirdNET)",
     "gpu": "图形处理器",

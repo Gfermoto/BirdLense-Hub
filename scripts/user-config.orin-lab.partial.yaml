@@ -18,11 +18,14 @@ processor:
     device: "cuda:0"
     inference_backend: onnxruntime
 video:
+  source: file
   encoding: jetson
   capture_backend: auto
   record_hw_encode: false
   force_recording_resolution: true
   video_width: 2688
   video_height: 1520
+  frigate:
+    enabled: false
 species:
   catalog_allowlist_file: models/classification/convnext_v2_tiny_eu-common256px/class_labels.txt

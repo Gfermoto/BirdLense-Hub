@@ -72,8 +72,9 @@ def evaluate_contract(runs: list[dict[str, Any]]) -> dict[str, Any]:
     )
     rollback_checks = {
         "restore_script_present": (
-            REPO / "scripts" / "restore-config.sh"
-        ).is_file(),
+            (REPO / "scripts" / "public" / "restore-config.sh").is_file()
+            or (REPO / "scripts" / "restore-config.sh").is_file()
+        ),
         "rollback_runbook_present": (
             REPO / "docs" / "runbooks" / "deploy-rollback-contract.md"
         ).is_file(),

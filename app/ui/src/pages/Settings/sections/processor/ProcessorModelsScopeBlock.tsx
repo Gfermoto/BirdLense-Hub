@@ -46,15 +46,12 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                   </InputLabel>
                   <Select
                     labelId="processor-inference-backend-label"
-                    value={(field.state.value ?? 'torch').toLowerCase()}
+                    value={(field.state.value ?? 'onnxruntime').toLowerCase()}
                     label={t('settings.processorInferenceBackend')}
                     onChange={(e) => field.handleChange(e.target.value)}
                   >
                     <MenuItem value="auto">
                       {t('settings.processorInferenceBackendAuto')}
-                    </MenuItem>
-                    <MenuItem value="torch">
-                      {t('settings.processorInferenceBackendTorch')}
                     </MenuItem>
                     <MenuItem value="onnxruntime">
                       {t('settings.processorInferenceBackendOnnxruntime')}
@@ -79,15 +76,12 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                   </InputLabel>
                   <Select
                     labelId="processor-classifier-inference-backend-label"
-                    value={(field.state.value ?? 'torch').toLowerCase()}
+                    value={(field.state.value ?? 'onnxruntime').toLowerCase()}
                     label={t('settings.processorClassifierInferenceBackend')}
                     onChange={(e) => field.handleChange(e.target.value)}
                   >
                     <MenuItem value="auto">
                       {t('settings.processorInferenceBackendAuto')}
-                    </MenuItem>
-                    <MenuItem value="torch">
-                      {t('settings.processorInferenceBackendTorch')}
                     </MenuItem>
                     <MenuItem value="onnxruntime">
                       {t('settings.processorInferenceBackendOnnxruntime')}
