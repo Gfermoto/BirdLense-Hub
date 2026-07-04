@@ -148,8 +148,7 @@ processor:
   track_regen_detection_strategy: two_stage
   # Размер кадра для batch-перегенерации (квадрат, legacy). При track_regen_lores_wh не используется.
   track_regen_lores_px: 704
-  # Regen = live detect: 704×576 (как Go2RTC detect substream).
-  track_regen_lores_wh: [704, 576]
+  # Regen = live detect: letterbox до 704×704 (square для YOLO ONNX).
   # Offline regen: при boxes.id=None — склейка кадров по IoU; ниже порог терпимее к дрожащим bbox (меньше «рваных» track_id).
   track_regen_iou_id_fallback: true
   track_regen_iou_match_threshold: 0.22
@@ -174,11 +173,11 @@ processor:
   # (иначе пропадают виды вне списка — типично EU-синицы при US-ориентированном регионе).
   track_regen_ignore_regional_species: true
   # Нативный detect substream (Go2RTC/Frigate): без даунскейла в квадрат 640².
-  # Кадр 704×576 → YOLO один раз letterbox до binary_imgsz (704). См. inference_lores_px (legacy max side).
+  # Кадр 704×576 → letterbox до 704×704 (square для YOLO ONNX). См. inference_lores_px (legacy max side).
   # Родное разрешение камеры: true — без принудительного letterbox на capture (YOLO готовит кадр в detect).
   detect_use_native_resolution: false
   # Опционально: WxH detect-потока (если не native). Пусто — inference_lores_px или probe кадра.
-  inference_lores_wh: [704, 576]
+  inference_lores_wh: [704, 704]
   inference_lores_px: 704
   # Best-practice split pipeline: YOLO detect/track on lores, classifier/ReID crops from source frame.
   # false — классификатор/ ReID используют тот же lores-кадр (быстрее, но хуже детализация).
@@ -261,7 +260,7 @@ processor:
   # Fallback FPS для static/temporal фильтров, если поток не отдаёт FPS (0 = только probe потока).
   detection_quality_assumed_fps: 7
   # Optional user-drawn masks (UI); empty by default — core FP control is algorithmic (MOG2 + motion).
-  # NVR ignore polygons in **detect overlay** normalized coords (704×576 substream), not letterbox canvas.
+  # NVR ignore polygons in **detect overlay** normalized coords (704×704 substream), not letterbox canvas.
   detection_ignore_masks: []
   detection_interest_zones: []
   detection_interest_zones_required: true
@@ -297,7 +296,7 @@ processor:
   # Доля площади кадра (0..1): Bird с bbox ≤ порога — без видового классификатора. 0 = выкл. (рекомендуется для видов на кормушке).
   # 0 = не пропускать Birder на мелких птицах (кормушка / дальняя камера).
   bird_skip_classifier_max_area_frac: 0
-  min_confidence_to_process: 0.08  # combined для БД; detect 704×576@7fps — слабые YOLO conf ~0.04–0.15
+  min_confidence_to_process: 0.08  # combined для БД; detect 704×704@~7fps — слабые YOLO conf ~0.04–0.15
   # Отдельный порог для Telegram: только уверенные визиты (может быть > min_confidence_to_process).
   min_confidence_to_notify: 0.46
   # TG preview: best_frame_lores (detect crop) | record_hires (main MP4) | auto (hires then lores)
@@ -346,7 +345,7 @@ processor:
   # Offline track regen по mp4 обходит light gate (см. FrameProcessor.run skip_light_gate) — иначе ночные ролики без YOLO.
   # Пороги по видам (редкие — ниже). Ключ: имя вида, значение: порог (0.0–1.0)
   species_confidence_overrides:
-    Bird: 0.08  # ниже 0.32 — иначе persist блокирует слабые YOLO conf на detect 704×576
+    Bird: 0.08  # ниже 0.32 — иначе persist блокирует слабые YOLO conf на detect 704×704
   # Авто-пороги для видов из регионального топа eBird (#128). Ручные ключи в species_confidence_overrides важнее.
   ebird_regional_top_auto_confidence: true
   # Вычитается из min_confidence_to_process для каждого вида из топа (после detection.species_mapping)
@@ -408,7 +407,7 @@ processor:
   # Центр bbox не ближе этого расстояния к краю кадра (норм. координаты 0..1).
   # Кормушка у кромки: 0.035–0.04; ещё ближе к краю — до 0.03.
   min_center_dist: 0.01
-  # Trapper ONNX: экспорт imgsz=704 (max side detect 704×576). Letterbox в Hub до track().
+  # Trapper ONNX: экспорт imgsz=704 (max side detect 704×704). Letterbox в Hub до track().
   binary_imgsz: 704
   # ByteTrack merge across distant zones → bad crops; split before classify/finalize (incident a656199a).
   track_spatial_split_enabled: true
@@ -418,7 +417,7 @@ processor:
   binary_track_iou: 0.62
   # Потолок детекций на кадр (по умолчанию у YOLO часто 300).
   binary_track_max_det: 60
-  # Detect substream 704×576: птицы далеко — мелкие bbox; не душить как на main 2K.
+  # Detect substream 704×704: птицы далеко — мелкие bbox; не душить как на main 2K.
   min_box_size_px: 14
   # Универсальный fallback для всех камер/доменов: если после базовых фильтров валидных боксов нет,
   # дать второй шанс мелким объектам с мягкими геометрическими/уверенностными порогами.
@@ -448,7 +447,7 @@ processor:
   # Новые инсталляции без ручного BirdBox/Forest — feeder_close / feeder_far.
   camera_tuning_by_role:
     feeder_close:
-      # Frigate-style: явный detect substream inference_lores_wh [704,576], не «native без letterbox».
+      # Frigate-style: явный detect substream inference_lores_wh [704,704], не «native без letterbox».
       # Prod-proven (VPS 2026-06): low conf + ByteTrack; scene_adaptive off.
       detect_use_native_resolution: false
       light_gate_min_brightness: 8
@@ -663,11 +662,12 @@ video:
   # detect_stream_name — ОБЯЗАТЕЛЕН: второй поток Go2RTC для motion + YOLO (lores).
   # stream_name (main) — только FFmpeg-запись MP4; без detect_stream_name processor не стартует.
   # RTSP Dahua/Hik: detect_stream_name = lores substream (subtype=1, 704×576), как Frigate detect.
+  # Hub: letterbox до 704×704 (square для YOLO ONNX).
   # stream_name / main / запись — subtype=0 (2688p/1080p). subtype=0 на detect → тяжёлый кадр, YOLO может «слепнуть».
   # Опционально per camera: record_width/record_height (WxH main) если probe ненадёжен.
   # Dahua IPC-HDPW1420F (BirdBox): record 2688×1520; DH-TPC-BF3221-T (Forest): 1920×1080.
   # Go2RTC-имя потока site-specific; см. user_config.trapper-production.example.yaml.
-  # Detect substream в Go2RTC/Frigate: 704×576@~7fps. Hub: inference_lores_wh [704,576] — без даунскейла в 640².
+  # Detect substream в Go2RTC/Frigate: 704×576@~7fps. Hub: inference_lores_wh [704,704] — letterbox до square для ONNX.
   cameras: []
   # Config v2 (slot-centric, для разного числа камер у разных инсталляций):
   # - camera_profiles: шаблоны (имя/потоки/маски) без привязки к конкретному пользователю.
