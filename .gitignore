@@ -148,6 +148,7 @@ app/ui/coverage/
 !.cursor/rules/deploy.mdc
 !.cursor/rules/dev-workflow.mdc
 !.cursor/rules/opencode.mdc
+!.cursor/rules/security-reports.mdc
 
 # Артефакты (curl -c, debug)
 **/-X
@@ -277,5 +278,9 @@ docs/reports/**/results_visual/
 # Генерируемые отчёты деплоя и DORA — не коммитить (создаются при make deploy/verify)
 docs/reports/deploy_contract/
 docs/reports/dora/
+# Агентские/операционные baseline-отчёты — могут содержать хосты и секреты; не коммитить
+docs/reports/orin-stack-baseline-*.md
+docs/reports/*-stack-baseline-*.md
+docs/reports/agent-*.md
 # RTSP пароли — не коммитить!
 scripts/smoke_detect_subtype_compare.py
