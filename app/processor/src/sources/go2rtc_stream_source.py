@@ -2,7 +2,6 @@
 Go2RTC stream source for Orin (ARM64 Docker).
 Reads video from RTSP/HLS URL (Go2RTC), supports auto-reconnect, recording via FFmpeg/GStreamer.
 Encoding: jetson (GStreamer NVDEC/NVENC on Orin) or cpu (software fallback).
-NVMPI capture via PyGObject GStreamer nvv4l2decoder → appsink (hardware decode + NVMM).
 """
 
 import glob
@@ -18,32 +17,10 @@ from collections import deque
 import cv2
 import numpy as np
 
-try:
-    import gi
-    gi.require_version("Gst", "1.0")
-    gi.require_version("GstApp", "1.0")
-    from gi.repository import Gst, GstApp
-
-    Gst.init(None)
-    _HAS_PYGOBJECT = True
-except (ImportError, ValueError):
-    _HAS_PYGOBJECT = False
 
 from .streaming_server import start_streaming_server
 
 logger = logging.getLogger(__name__)
-
-_NVMPI_STARTUP_LOCK = threading.Lock()
-
-# Known working NVMPI pipeline string (BGRx → videoconvert → BGR)
-NVMPI_GST_PIPELINE = (
-    "rtspsrc location=%s latency=2000 protocols=tcp ! "
-    "rtph264depay ! h264parse ! queue ! "
-    "nvv4l2decoder enable-max-performance=1 ! queue ! "
-    "nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! "
-    "video/x-raw,format=BGR,width=%d,height=%d ! "
-    "appsink name=sink sync=false drop=true max-buffers=1 wait-on-eos=false"
-)
 
 
 def _set_runtime_gauge(name: str, value) -> None:
@@ -382,8 +359,7 @@ class Go2RTCStreamSource:
         self._source_fps = 0.0
         self.stream_capabilities = None
         self._read_lock = threading.Lock()
-        self._nvmpi_checked: bool = False
-        self._nvmpi_available: bool = False
+        self._nvmpi_checked = False
         self._nvmpi_fallback_permanent: bool = False
         # API compat name: on jetson, True → NVENC/v4l2m2m/OMX; False → libx264.
         if record_hw_encode is None:
@@ -468,21 +444,9 @@ class Go2RTCStreamSource:
         return letterbox_bgr_to_wh(main_frame, out_wh)
 
     def _connect(self) -> bool:
-        """Open RTSP connection. Returns True if successful."""
+        """Open RTSP connection via OpenCV FFMPEG. Returns True if successful."""
         self._disconnect()
-        if self._should_use_nvmpi_capture() and self._connect_ffmpeg_nvmpi_capture():
-            return True
-        if self._should_use_nvmpi_capture():
-            reason = _capture_fallback_reason(
-                requested_backend=self._capture_backend,
-                encoding_mode=self._encoding_mode,
-                nvmpi_available=self._nvmpi_available,
-            )
-            _set_runtime_gauge("video_capture_backend_fallback_reason", reason)
-            _inc_runtime_counter("video_capture_backend_fallback_total", 1)
-        # Не логировать поля из URL (в т.ч. учётка в stream_url) — CodeQL sensitive logging
         self.logger.info("Connecting to video stream (OpenCV, capture/detect)")
-        # OPENCV_FFMPEG_CAPTURE_OPTIONS=rtsp_transport;tcp set in Dockerfile
         cap = cv2.VideoCapture(self._live_capture_url(), cv2.CAP_FFMPEG)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         if not cap.isOpened():
@@ -496,95 +460,8 @@ class Go2RTCStreamSource:
         self._capture_backend_used = "opencv"
         _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
-        self.logger.info(f"Connected. FPS: {self._source_fps}")
+        self.logger.info("Connected. FPS: %s", self._source_fps)
         return True
-
-    def _should_use_nvmpi_capture(self) -> bool:
-        """Whether to try Jetson GStreamer NVMPI for inference frames."""
-        if self._detect_native or not self.lores_size:
-            return False
-        if self._capture_backend == "ffmpeg_nvmpi":
-            return True
-        return self._capture_backend == "auto" and self._encoding_mode == "jetson"
-
-    def _connect_ffmpeg_nvmpi_capture(self) -> bool:
-        """Open GStreamer NVMM pipeline via PyGObject (Jetson NVDEC)."""
-        if not self._use_jetson_nvmpi():
-            if self._capture_backend == "ffmpeg_nvmpi":
-                self.logger.warning("NVMPI requested but nvv4l2decoder unavailable")
-            return False
-        if not _HAS_PYGOBJECT:
-            self.logger.warning("PyGObject GStreamer not available — fallback to OpenCV")
-            return False
-        url = self._live_capture_url()
-        w, h = int(self.lores_size[0]), int(self.lores_size[1])
-        pipeline_str = NVMPI_GST_PIPELINE % (url, w, h)
-        with _NVMPI_STARTUP_LOCK:
-            try:
-                pipeline = Gst.parse_launch(pipeline_str)
-                sink = pipeline.get_by_name("sink")
-                sink.set_property("emit-signals", False)
-                pipeline.set_state(Gst.State.PLAYING)
-                time.sleep(5.0)  # RTSP + NVDEC warmup
-                sample = sink.emit("pull-sample")
-                if not sample:
-                    pipeline.set_state(Gst.State.NULL)
-                    self.logger.warning("NVMPI: no frame after warmup")
-                    return False
-                buf = sample.get_buffer()
-                if not buf or buf.get_size() < 1024:
-                    pipeline.set_state(Gst.State.NULL)
-                    self.logger.warning("NVMPI: empty buffer after warmup")
-                    return False
-            except Exception as e:
-                self.logger.warning("NVMPI pipeline startup failed: %s", e)
-                return False
-        self._gst_pipeline = pipeline
-        self._gst_sink = sink
-        self._capture_backend_used = "ffmpeg_nvmpi"
-        _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
-        self._reconnect_delay = INITIAL_RECONNECT_DELAY
-        self._ffmpeg_capture_failures = 0
-        self._apply_stream_probe()
-        self.logger.info("Connected. Capture: GStreamer NVMPI (Jetson NVDEC)")
-        return True
-
-    def _read_gst_nvmpi_frame(self):
-        """Read one BGR frame from PyGObject GStreamer appsink."""
-        if not self._gst_sink:
-            self._ffmpeg_capture_failures += 1
-            return None, False
-        try:
-            sample = self._gst_sink.emit("pull-sample")
-            if not sample:
-                self._ffmpeg_capture_failures += 1
-                return None, False
-            buf = sample.get_buffer()
-            success, map_info = buf.map(Gst.MapFlags.READ)
-            if not success:
-                self._ffmpeg_capture_failures += 1
-                return None, False
-            data = map_info.data
-            buf.unmap(map_info)
-            w, h = int(self.lores_size[0]), int(self.lores_size[1])
-            frame = np.frombuffer(data, dtype=np.uint8).reshape((h, w, 3))
-            self._ffmpeg_capture_failures = 0
-            return frame, True
-        except Exception as e:
-            self._ffmpeg_capture_failures += 1
-            self.logger.debug("NVMPI read error: %s", e, exc_info=True)
-            return None, False
-
-    def _disconnect_gst(self) -> None:
-        """Stop and destroy GStreamer pipeline."""
-        pipe = getattr(self, "_gst_pipeline", None)
-        if pipe:
-            try:
-                pipe.set_state(Gst.State.NULL)
-            except Exception:
-                pass
-        self._gst_pipeline = None
-        self._gst_sink = None
 
     def _apply_stream_probe(self) -> None:
         """Probe detect/capture stream and attach StreamCapabilities."""
@@ -747,7 +624,6 @@ class Go2RTCStreamSource:
         if self._cap:
             self._cap.release()
             self._cap = None
-        self._disconnect_gst()
         self._capture_backend_used = "opencv"
 
     def _reconnect_if_needed(self) -> bool:

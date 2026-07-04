@@ -30,18 +30,6 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         self.assertEqual(_normalize_capture_backend("ffmpeg_vaapi"), "auto")  # not valid on Orin
         self.assertEqual(_normalize_capture_backend("broken"), "auto")
 
-    def test_gst_nvmpi_pipeline_format(self):
-        """Verify NVMPI_GST_PIPELINE resolves known working pipeline."""
-        from sources.go2rtc_stream_source import NVMPI_GST_PIPELINE
-
-        url = "rtsp://test:pass@192.168.1.129/stream1"
-        pipeline = NVMPI_GST_PIPELINE % (url, 704, 576)
-        self.assertIn("nvv4l2decoder", pipeline)
-        self.assertIn("nvv4l2decoder enable-max-performance=1", pipeline)
-        self.assertIn("appsink", pipeline)
-        self.assertIn("70", pipeline)  # metadata test
-        self.assertNotIn("fdsink", pipeline)
-
     def test_ffmpeg_record_cmd_for_jetson_uses_nvmpi_codec(self):
         from sources.go2rtc_stream_source import _ffmpeg_record_cmd
 
