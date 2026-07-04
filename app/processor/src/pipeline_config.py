@@ -90,11 +90,18 @@ def resolve_detector_letterbox_wh(
     ``detect_use_native_resolution`` → None;
     else ``inference_lores_wh`` / ``inference_lores_px``;
     else frame / stream probe (not global record resolution).
+
+    ONNX Runtime requires square input matching binary_imgsz — non-square
+    inference_lores_wh like [704, 576] is only valid for torch backend.
     """
     if detect_use_native_resolution(runtime_cfg):
         return None
+    backend = str(_cfg_get(runtime_cfg, "processor.inference_backend") or "torch").strip().lower()
     wh = parse_inference_lores_wh(_cfg_get(runtime_cfg, "processor.inference_lores_wh"))
     if wh is not None:
+        if backend == "onnxruntime" and wh[0] != wh[1]:
+            square = resolve_binary_model_imgsz(runtime_cfg, default=704)
+            return (square, square)
         return wh
     try:
         lpx = int(_cfg_get(runtime_cfg, "processor.inference_lores_px") or 0)

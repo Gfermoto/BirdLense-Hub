@@ -216,6 +216,10 @@ def resolve_binary_track_imgsz(
         and abs(det_h - int(wh[1])) <= 2
         and det_w != det_h
     ):
+        # ONNX Runtime требует square imgsz (модель экспортирована с фикс. 704x704).
+        # Non-square [det_h, det_w] ломает ONNX — "Got: 576 Expected: 704".
+        if backend == "onnxruntime":
+            return square
         return [det_h, det_w]
     return square
 
