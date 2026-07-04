@@ -2,6 +2,7 @@
 Go2RTC stream source for Orin (ARM64 Docker).
 Reads video from RTSP/HLS URL (Go2RTC), supports auto-reconnect, recording via FFmpeg/GStreamer.
 Encoding: jetson (GStreamer NVDEC/NVENC on Orin) or cpu (software fallback).
+NVMPI capture via PyGObject GStreamer nvv4l2decoder → appsink (hardware decode + NVMM).
 """
 
 import glob
@@ -17,24 +18,32 @@ from collections import deque
 import cv2
 import numpy as np
 
+try:
+    import gi
+    gi.require_version("Gst", "1.0")
+    gi.require_version("GstApp", "1.0")
+    from gi.repository import Gst, GstApp
+
+    Gst.init(None)
+    _HAS_PYGOBJECT = True
+except (ImportError, ValueError):
+    _HAS_PYGOBJECT = False
 
 from .streaming_server import start_streaming_server
 
 logger = logging.getLogger(__name__)
 
-NVMPI_GST_TEMPLATE = (
-    "rtspsrc location={url} latency=2000 drop-on-latency=true protocols=4 buffer-mode=3 ! "
-    "queue max-size-buffers=16 ! "
-    "rtph264depay ! h264parse ! "
-    "queue max-size-buffers=16 ! "
-    "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=8 ! "
-    "queue max-size-buffers=16 ! "
-    "nvvidconv ! video/x-raw(memory:NVMM),format=I420 ! "
-    "nvvidconv ! video/x-raw,format=I420,width={w},height={h} ! "
-    "fdsink fd=1 sync=false async=false"
-)
-
 _NVMPI_STARTUP_LOCK = threading.Lock()
+
+# Known working NVMPI pipeline string (BGRx → videoconvert → BGR)
+NVMPI_GST_PIPELINE = (
+    "rtspsrc location=%s latency=2000 protocols=tcp ! "
+    "rtph264depay ! h264parse ! queue ! "
+    "nvv4l2decoder enable-max-performance=1 ! queue ! "
+    "nvvidconv ! video/x-raw,format=BGRx ! videoconvert ! "
+    "video/x-raw,format=BGR,width=%d,height=%d ! "
+    "appsink name=sink sync=false drop=true max-buffers=1 wait-on-eos=false"
+)
 
 
 def _set_runtime_gauge(name: str, value) -> None:
@@ -108,37 +117,6 @@ def _capture_fallback_reason(
     return "fallback_to_opencv"
 
 
-def _gst_nvmpi_capture_cmd(stream_url: str, lores_size: tuple[int, int]) -> list[str]:
-    """GStreamer NVMM pipeline for Jetson NVDEC live inference capture."""
-    width, height = int(lores_size[0]), int(lores_size[1])
-    pipeline = NVMPI_GST_TEMPLATE.format(url=stream_url, w=width, h=height)
-    return ["gst-launch-1.0", "-e", pipeline]
-
-
-def _jetson_v4l2enc_available() -> bool:
-    """Check if V4L2 devices exist AND ffmpeg has h264_v4l2m2m encoder."""
-    if not glob.glob("/dev/video*"):
-        return False
-    try:
-        out = subprocess.run(
-            ["ffmpeg", "-encoders"], capture_output=True, timeout=5,
-        ).stdout.decode()
-        return "h264_v4l2m2m" in out
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-        return False
-
-
-def _ffmpeg_has_omx() -> bool:
-    """Check if ffmpeg has h264_omx encoder (OpenMAX IL on Jetson)."""
-    try:
-        out = subprocess.run(
-            ["ffmpeg", "-encoders"], capture_output=True, timeout=5,
-        ).stdout.decode()
-        return "h264_omx" in out
-    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-        return False
-
-
 def _ffmpeg_has_nvenc() -> bool:
     """Check if ffmpeg has h264_nvenc (NVIDIA NVENC, Orin Docker / desktop)."""
     try:
@@ -156,8 +134,7 @@ def _gst_jetson_h264_encoder() -> str | None:
         try:
             out = subprocess.run(
                 ["gst-inspect-1.0", enc],
-                capture_output=True,
-                timeout=5,
+                capture_output=True, timeout=5,
             )
             if out.returncode == 0:
                 return enc
@@ -171,8 +148,7 @@ def _gst_jetson_record_available() -> bool:
     try:
         out = subprocess.run(
             ["gst-inspect-1.0", "nvv4l2decoder"],
-            capture_output=True,
-            timeout=5,
+            capture_output=True, timeout=5,
         )
         if out.returncode != 0:
             return False
@@ -246,21 +222,19 @@ def _ffmpeg_record_cmd(
         and use_jetson_hw_encode
         and (record_stream_codec or "h264").strip().lower() == "h264"
     ):
-        if _jetson_v4l2enc_available():
+        if _ffmpeg_has_nvenc():  # defined below
             cmd += [
+                "-hwaccel",
+                "cuda",
+                "-hwaccel_output_format",
+                "cuda",
                 "-c:v",
-                "h264_v4l2m2m",
+                "h264_nvenc",
                 "-b:v",
                 "2M",
+                "-preset",
+                "p4",
             ]
-        elif _ffmpeg_has_omx():
-            cmd += [
-                "-c:v",
-                "h264_omx",
-                "-b:v",
-                "2M",
-            ]
-        elif _ffmpeg_has_nvenc():
             cmd += [
                 "-hwaccel",
                 "cuda",
@@ -534,36 +508,39 @@ class Go2RTCStreamSource:
         return self._capture_backend == "auto" and self._encoding_mode == "jetson"
 
     def _connect_ffmpeg_nvmpi_capture(self) -> bool:
-        """Open GStreamer NVMM pipeline for live inference (Jetson NVDEC)."""
+        """Open GStreamer NVMM pipeline via PyGObject (Jetson NVDEC)."""
         if not self._use_jetson_nvmpi():
             if self._capture_backend == "ffmpeg_nvmpi":
-                self.logger.warning("NVMPI requested but unavailable; fallback to OpenCV")
+                self.logger.warning("NVMPI requested but nvv4l2decoder unavailable")
             return False
-        cmd = _gst_nvmpi_capture_cmd(self._live_capture_url(), self.lores_size)
-
-        # Serialized startup: 2 камеры = 2 потока nvv4l2decoder —
-        # NVMM surface pool ограничен. Popen внутри lock тоже.
+        if not _HAS_PYGOBJECT:
+            self.logger.warning("PyGObject GStreamer not available — fallback to OpenCV")
+            return False
+        url = self._live_capture_url()
+        w, h = int(self.lores_size[0]), int(self.lores_size[1])
+        pipeline_str = NVMPI_GST_PIPELINE % (url, w, h)
         with _NVMPI_STARTUP_LOCK:
             try:
-                proc = subprocess.Popen(
-                    cmd, stdin=subprocess.DEVNULL,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
-            except (FileNotFoundError, OSError) as e:
-                self.logger.warning("Failed to start GStreamer NVMPI: %s", e)
+                pipeline = Gst.parse_launch(pipeline_str)
+                sink = pipeline.get_by_name("sink")
+                sink.set_property("emit-signals", False)
+                pipeline.set_state(Gst.State.PLAYING)
+                time.sleep(5.0)  # RTSP + NVDEC warmup
+                sample = sink.emit("pull-sample")
+                if not sample:
+                    pipeline.set_state(Gst.State.NULL)
+                    self.logger.warning("NVMPI: no frame after warmup")
+                    return False
+                buf = sample.get_buffer()
+                if not buf or buf.get_size() < 1024:
+                    pipeline.set_state(Gst.State.NULL)
+                    self.logger.warning("NVMPI: empty buffer after warmup")
+                    return False
+            except Exception as e:
+                self.logger.warning("NVMPI pipeline startup failed: %s", e)
                 return False
-            time.sleep(5.0)
-            _, ok = self._read_gst_nvmpi_frame_with_proc(proc)
-
-        if not ok:
-            proc.terminate()
-            proc.wait()
-            self._capture_backend_used = "opencv"
-            self.logger.warning("NVMPI prime read failed — fallback to OpenCV")
-            return False
-
-        self._capture_process = proc
+        self._gst_pipeline = pipeline
+        self._gst_sink = sink
         self._capture_backend_used = "ffmpeg_nvmpi"
         _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
@@ -572,30 +549,42 @@ class Go2RTCStreamSource:
         self.logger.info("Connected. Capture: GStreamer NVMPI (Jetson NVDEC)")
         return True
 
-    @staticmethod
-    def _read_gst_nvmpi_frame_with_proc(proc):
-        """Read I420 frame from specific proc (used during warmup)."""
-        if not proc or proc.poll() is not None or not proc.stdout:
+    def _read_gst_nvmpi_frame(self):
+        """Read one BGR frame from PyGObject GStreamer appsink."""
+        if not self._gst_sink:
+            self._ffmpeg_capture_failures += 1
             return None, False
-        i420_size = 704 * 576 * 3 // 2
-        chunks = []
-        remaining = i420_size
-        deadline = time.monotonic() + 8.0
-        while remaining > 0 and time.monotonic() < deadline:
-            chunk = proc.stdout.read(min(remaining, 65536))
-            if not chunk:
-                time.sleep(0.05)
-                chunk = proc.stdout.read(min(remaining, 65536))
-                if not chunk:
-                    return None, False
-            chunks.append(chunk)
-            remaining -= len(chunk)
-        if remaining > 0:
+        try:
+            sample = self._gst_sink.emit("pull-sample")
+            if not sample:
+                self._ffmpeg_capture_failures += 1
+                return None, False
+            buf = sample.get_buffer()
+            success, map_info = buf.map(Gst.MapFlags.READ)
+            if not success:
+                self._ffmpeg_capture_failures += 1
+                return None, False
+            data = map_info.data
+            buf.unmap(map_info)
+            w, h = int(self.lores_size[0]), int(self.lores_size[1])
+            frame = np.frombuffer(data, dtype=np.uint8).reshape((h, w, 3))
+            self._ffmpeg_capture_failures = 0
+            return frame, True
+        except Exception as e:
+            self._ffmpeg_capture_failures += 1
+            self.logger.debug("NVMPI read error: %s", e, exc_info=True)
             return None, False
-        data = b"".join(chunks)
-        i420 = np.frombuffer(data, dtype=np.uint8).reshape((576 * 3 // 2, 704))
-        frame = cv2.cvtColor(i420, cv2.COLOR_YUV2BGR_I420)
-        return frame, True
+
+    def _disconnect_gst(self) -> None:
+        """Stop and destroy GStreamer pipeline."""
+        pipe = getattr(self, "_gst_pipeline", None)
+        if pipe:
+            try:
+                pipe.set_state(Gst.State.NULL)
+            except Exception:
+                pass
+        self._gst_pipeline = None
+        self._gst_sink = None
 
     def _apply_stream_probe(self) -> None:
         """Probe detect/capture stream and attach StreamCapabilities."""
@@ -758,16 +747,7 @@ class Go2RTCStreamSource:
         if self._cap:
             self._cap.release()
             self._cap = None
-        if self._capture_process:
-            try:
-                self._capture_process.terminate()
-                self._capture_process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                self._capture_process.kill()
-                self._capture_process.wait(timeout=2)
-            except Exception:
-                logger.debug("ffmpeg capture process shutdown cleanup failed", exc_info=True)
-            self._capture_process = None
+        self._disconnect_gst()
         self._capture_backend_used = "opencv"
 
     def _reconnect_if_needed(self) -> bool:
@@ -793,37 +773,6 @@ class Go2RTCStreamSource:
         ret, frame = self._cap.read()
         if not ret or frame is None:
             return None, False
-        return frame, True
-
-    def _read_gst_nvmpi_frame(self):
-        """Read one I420 frame from GStreamer NVMM pipeline, convert to BGR."""
-        proc = self._capture_process
-        if not proc or proc.poll() is not None or not proc.stdout:
-            self._ffmpeg_capture_failures += 1
-            return None, False
-        width, height = int(self.lores_size[0]), int(self.lores_size[1])
-        i420_size = width * height * 3 // 2
-        # NVMM fdsink выдаёт кадры блоками по ~60KB — читаем в цикле с timeout
-        chunks = []
-        remaining = i420_size
-        deadline = time.monotonic() + 8.0
-        while remaining > 0 and time.monotonic() < deadline:
-            chunk = proc.stdout.read(min(remaining, 65536))
-            if not chunk:
-                time.sleep(0.05)  # даём pipe ещё шанс перед фейлом
-                chunk = proc.stdout.read(min(remaining, 65536))
-                if not chunk:
-                    self._ffmpeg_capture_failures += 1
-                    return None, False
-            chunks.append(chunk)
-            remaining -= len(chunk)
-        if remaining > 0:
-            self._ffmpeg_capture_failures += 1
-            return None, False
-        data = b"".join(chunks)
-        i420 = np.frombuffer(data, dtype=np.uint8).reshape((height * 3 // 2, width))
-        frame = cv2.cvtColor(i420, cv2.COLOR_YUV2BGR_I420)
-        self._ffmpeg_capture_failures = 0
         return frame, True
 
     def _update_streaming_output(self, frame):

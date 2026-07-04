@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libnginx-mod-http-brotli-filter libnginx-mod-http-brotli-static \
     gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
+    python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
     && ln -sf /usr/bin/python3.12 /usr/local/bin/python3 \
     && ln -sf /usr/bin/python3.12 /usr/local/bin/python \
     && python3.12 -m pip install --upgrade pip setuptools wheel --break-system-packages --ignore-installed pip \
