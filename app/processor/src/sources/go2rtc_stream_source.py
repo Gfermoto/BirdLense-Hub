@@ -23,13 +23,18 @@ from .streaming_server import start_streaming_server
 logger = logging.getLogger(__name__)
 
 NVMPI_GST_TEMPLATE = (
-    "rtspsrc location={url} latency=300 drop-on-latency=true protocols=4 ! "
+    "rtspsrc location={url} latency=2000 drop-on-latency=true protocols=4 buffer-mode=3 ! "
+    "queue max-size-buffers=16 ! "
     "rtph264depay ! h264parse ! "
-    "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=12 ! "
+    "queue max-size-buffers=16 ! "
+    "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=8 ! "
+    "queue max-size-buffers=16 ! "
     "nvvidconv ! video/x-raw(memory:NVMM),format=I420 ! "
     "nvvidconv ! video/x-raw,format=I420,width={w},height={h} ! "
-    "fdsink fd=1"
+    "fdsink fd=1 sync=false async=false"
 )
+
+_NVMPI_STARTUP_LOCK = threading.Lock()
 
 
 def _set_runtime_gauge(name: str, value) -> None:
@@ -192,9 +197,12 @@ def _gst_record_cmd(stream_url: str, output: str) -> list[str]:
     """GStreamer pipeline: NVDEC decode + L4T HW re-encode → MP4."""
     enc = _gst_jetson_h264_encoder() or "nvv4l2h264enc"
     pipeline = (
-        f"rtspsrc location={stream_url} latency=300 ! "
+        f"rtspsrc location={stream_url} latency=2000 protocols=4 buffer-mode=3 ! "
+        "queue max-size-buffers=16 ! "
         "rtph264depay ! h264parse ! "
-        "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=2 ! "
+        "queue max-size-buffers=16 ! "
+        "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=4 ! "
+        "queue max-size-buffers=16 ! "
         "nvvidconv ! video/x-raw(memory:NVMM),format=I420 ! "
         f"{enc} ! h264parse ! mp4mux ! "
         f"filesink location={output}"
@@ -304,8 +312,7 @@ def _ffmpeg_record_cmd(
 # Reconnect backoff: 1, 2, 4, 8, 16, max 30 sec
 MAX_RECONNECT_DELAY = 30
 INITIAL_RECONNECT_DELAY = 1
-FFMPEG_CAPTURE_FAILURE_THRESHOLD = 3
-FFMPEG_CAPTURE_COOLDOWN_SEC = 60
+FFMPEG_CAPTURE_FAILURE_THRESHOLD = 3  # fdsink async=false даёт стабильные кадры
 CLASSIFIER_RECORD_BUFFER_SIZE = 8
 DEFAULT_CLASSIFIER_RECORD_MAX_SKEW_SEC = 0.35
 
@@ -522,15 +529,8 @@ class Go2RTCStreamSource:
         """Whether to try Jetson GStreamer NVMPI for inference frames."""
         if self._detect_native or not self.lores_size:
             return False
-        if self._nvmpi_fallback_permanent:
-            self.logger.debug("NVMPI: permanent fallback active, skip")
-            return False
-        if time.time() < float(self._force_opencv_until_ts or 0.0):
-            return False
         if self._capture_backend == "ffmpeg_nvmpi":
-            if not self._nvmpi_fallback_permanent:
-                return True
-            return False
+            return True
         return self._capture_backend == "auto" and self._encoding_mode == "jetson"
 
     def _connect_ffmpeg_nvmpi_capture(self) -> bool:
@@ -540,22 +540,62 @@ class Go2RTCStreamSource:
                 self.logger.warning("NVMPI requested but unavailable; fallback to OpenCV")
             return False
         cmd = _gst_nvmpi_capture_cmd(self._live_capture_url(), self.lores_size)
-        try:
-            self._capture_process = subprocess.Popen(
-                cmd, stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-        except (FileNotFoundError, OSError) as e:
-            self.logger.warning("Failed to start GStreamer NVMPI: %s", e)
-            self._capture_process = None
+
+        # Serialized startup: 2 камеры = 2 потока nvv4l2decoder —
+        # NVMM surface pool ограничен. Popen внутри lock тоже.
+        with _NVMPI_STARTUP_LOCK:
+            try:
+                proc = subprocess.Popen(
+                    cmd, stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            except (FileNotFoundError, OSError) as e:
+                self.logger.warning("Failed to start GStreamer NVMPI: %s", e)
+                return False
+            time.sleep(5.0)
+            _, ok = self._read_gst_nvmpi_frame_with_proc(proc)
+
+        if not ok:
+            proc.terminate()
+            proc.wait()
+            self._capture_backend_used = "opencv"
+            self.logger.warning("NVMPI prime read failed — fallback to OpenCV")
             return False
+
+        self._capture_process = proc
         self._capture_backend_used = "ffmpeg_nvmpi"
         _set_runtime_gauge("video_capture_backend_used", self._capture_backend_used)
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
+        self._ffmpeg_capture_failures = 0
         self._apply_stream_probe()
         self.logger.info("Connected. Capture: GStreamer NVMPI (Jetson NVDEC)")
         return True
+
+    @staticmethod
+    def _read_gst_nvmpi_frame_with_proc(proc):
+        """Read I420 frame from specific proc (used during warmup)."""
+        if not proc or proc.poll() is not None or not proc.stdout:
+            return None, False
+        i420_size = 704 * 576 * 3 // 2
+        chunks = []
+        remaining = i420_size
+        deadline = time.monotonic() + 8.0
+        while remaining > 0 and time.monotonic() < deadline:
+            chunk = proc.stdout.read(min(remaining, 65536))
+            if not chunk:
+                time.sleep(0.05)
+                chunk = proc.stdout.read(min(remaining, 65536))
+                if not chunk:
+                    return None, False
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        if remaining > 0:
+            return None, False
+        data = b"".join(chunks)
+        i420 = np.frombuffer(data, dtype=np.uint8).reshape((576 * 3 // 2, 704))
+        frame = cv2.cvtColor(i420, cv2.COLOR_YUV2BGR_I420)
+        return frame, True
 
     def _apply_stream_probe(self) -> None:
         """Probe detect/capture stream and attach StreamCapabilities."""
@@ -762,17 +802,24 @@ class Go2RTCStreamSource:
             self._ffmpeg_capture_failures += 1
             return None, False
         width, height = int(self.lores_size[0]), int(self.lores_size[1])
-        i420_size = width * height * 3 // 2  # 1.5 bytes/pixel
+        i420_size = width * height * 3 // 2
+        # NVMM fdsink выдаёт кадры блоками по ~60KB — читаем в цикле с timeout
         chunks = []
         remaining = i420_size
-        while remaining > 0:
-            chunk = proc.stdout.read(remaining)
+        deadline = time.monotonic() + 8.0
+        while remaining > 0 and time.monotonic() < deadline:
+            chunk = proc.stdout.read(min(remaining, 65536))
             if not chunk:
-                self._ffmpeg_capture_failures += 1
-                self.logger.warning("GStreamer NVMPI pipe read returned empty")
-                return None, False
+                time.sleep(0.05)  # даём pipe ещё шанс перед фейлом
+                chunk = proc.stdout.read(min(remaining, 65536))
+                if not chunk:
+                    self._ffmpeg_capture_failures += 1
+                    return None, False
             chunks.append(chunk)
             remaining -= len(chunk)
+        if remaining > 0:
+            self._ffmpeg_capture_failures += 1
+            return None, False
         data = b"".join(chunks)
         i420 = np.frombuffer(data, dtype=np.uint8).reshape((height * 3 // 2, width))
         frame = cv2.cvtColor(i420, cv2.COLOR_YUV2BGR_I420)
@@ -928,12 +975,10 @@ class Go2RTCStreamSource:
                 self._capture_backend_used == "ffmpeg_nvmpi"
                 and self._ffmpeg_capture_failures >= FFMPEG_CAPTURE_FAILURE_THRESHOLD
             ):
-                self._force_opencv_until_ts = time.time() + float(FFMPEG_CAPTURE_COOLDOWN_SEC)
-                self._ffmpeg_capture_failures = 0
                 self._nvmpi_fallback_permanent = True
                 self.logger.warning(
                     "GStreamer NVMPI unstable (%d empty reads) — "
-                    "permanent fallback to OpenCV for this session",
+                    "fallback to OpenCV for this session",
                     FFMPEG_CAPTURE_FAILURE_THRESHOLD,
                 )
             if attempt == 0 and self._reconnect_if_needed():
