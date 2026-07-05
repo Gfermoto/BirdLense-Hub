@@ -11,6 +11,9 @@ from typing import Any
 _IN_PROGRESS_STATES = frozenset({"recording", "persisting"})
 _TERMINAL_IMPORT_STATES = frozenset({"ready", "failed"})
 _PROCESSOR_TMP_MARKERS = ("video.h264.tmp.mp4",)
+_VALID_MANIFEST_TRIGGER_SOURCES = frozenset(
+    {"opencv", "frigate", "motion_sensor", "scales", "unknown"},
+)
 
 
 def read_session_manifest(session_dir: str) -> dict[str, Any] | None:
@@ -39,6 +42,20 @@ def read_session_manifest_times(session_dir: str) -> tuple[datetime | None, date
     if not raw:
         return None, None
     return _parse_manifest_ts(raw, "start_time"), _parse_manifest_ts(raw, "end_time")
+
+
+def read_session_manifest_import_metadata(session_dir: str) -> tuple[str | None, str | None]:
+    """trigger_source and camera_id from manifest for disk scan import."""
+    raw = read_session_manifest(session_dir)
+    if not raw:
+        return None, None
+    trigger = str(raw.get("trigger_source") or "").strip().lower() or None
+    if trigger not in _VALID_MANIFEST_TRIGGER_SOURCES:
+        trigger = None
+    camera = str(raw.get("camera_id") or "").strip() or None
+    if camera:
+        camera = camera[:64]
+    return trigger, camera
 
 
 def read_session_manifest_state(session_dir: str) -> str | None:

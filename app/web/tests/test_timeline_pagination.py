@@ -46,3 +46,31 @@ def test_infer_trigger_source_prefers_explicit_video_trigger():
 def test_infer_trigger_source_does_not_map_yolo_to_opencv():
     detections = [{"detection_provider": "yolo", "source": "video"}]
     assert _infer_trigger_source_from_detections(detections) == "opencv"
+
+
+def test_timeline_all_mode_keeps_unknown_trigger_items(app):
+    with app.app_context():
+        from datetime import datetime, timedelta, timezone
+
+        from models import Video, db
+
+        start = datetime(2026, 7, 4, 12, 0, 0, tzinfo=timezone.utc)
+        end = start + timedelta(hours=12)
+        video = Video(
+            processor_version="1",
+            start_time=start,
+            end_time=start + timedelta(seconds=30),
+            video_path="data/recordings/2026/07/04/120000/video.mp4",
+        )
+        db.session.add(video)
+        db.session.commit()
+
+        out = build_merged_timeline_items(
+            db.session,
+            start,
+            end,
+            active_trigger_sources={"frigate", "opencv"},
+        )
+        assert len(out) == 1
+        assert out[0]["timeline_kind"] == "unlinked_video"
+        assert out[0]["trigger_source"] == "unknown"

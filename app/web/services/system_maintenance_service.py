@@ -27,6 +27,7 @@ from services.species_visit_maintenance_service import (
     preview_split_large_gap_visits,
 )
 from services.session_manifest_io import (
+    read_session_manifest_import_metadata,
     read_session_manifest_times,
     session_importable_from_disk,
 )
@@ -152,12 +153,17 @@ def run_recordings_scan(flask_app: Flask) -> tuple[dict, int]:
                                     )
                                     end_time = start_time + timedelta(seconds=30)
 
+                                manifest_trigger, manifest_camera = read_session_manifest_import_metadata(ts_path)
                                 video = Video(
                                     processor_version="1",
                                     start_time=start_time,
                                     end_time=end_time,
                                     video_path=rel_path,
                                 )
+                                if manifest_trigger:
+                                    video.trigger_source = manifest_trigger
+                                if manifest_camera:
+                                    video.camera_id = manifest_camera
                                 db.session.add(video)
                             existing_paths.add(rel_path)
                             imported += 1

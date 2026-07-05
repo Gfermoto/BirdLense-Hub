@@ -129,7 +129,12 @@ def build_merged_timeline_items(
     if trigger_source == "all":
         active = {str(x or "").strip().lower() for x in (active_trigger_sources or set()) if str(x or "").strip()}
         if active:
-            merged = [item for item in merged if str(item.get("trigger_source") or "").strip().lower() in active]
+            merged = [
+                item
+                for item in merged
+                if str(item.get("trigger_source") or "").strip().lower() in active
+                or str(item.get("trigger_source") or "").strip().lower() in {"", "unknown"}
+            ]
     else:
         merged = [item for item in merged if _timeline_item_matches_trigger(item, trigger_source)]
     total = len(merged)
