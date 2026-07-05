@@ -189,6 +189,23 @@ class TestLinearPipeline(unittest.TestCase):
         self.assertTrue(rows[0]["accepted"])
         self.assertEqual(rows[0]["pipeline_stage"], STAGE_DETECT_TRACK)
 
+    def test_build_linear_decisions_accepts_spatial_split_track_id(self):
+        dm = DecisionMaker(min_track_duration=0.5, min_confidence_to_process=0.12)
+        cfg = _Cfg(
+            {
+                "processor.pipeline_mode": "linear",
+                "processor.min_confidence_binary_bird": 0.08,
+                "processor.classifier_best_guess_min_confidence": 0.10,
+                "processor.birder_eu_min_confidence": 0.15,
+                "processor.linear_static_pinned_reject_enabled": False,
+            }
+        )
+        tracks = {"1:s1": _track(conf=0.15)}
+        rows = build_linear_decisions(dm, tracks, cfg)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["track_id"], "1:s1")
+        self.assertTrue(rows[0]["accepted"])
+
     def test_get_decisions_routes_linear(self):
         dm = DecisionMaker(min_track_duration=0.0, min_confidence_to_process=0.12)
         mock_cfg = MagicMock()

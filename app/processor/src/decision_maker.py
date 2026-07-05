@@ -12,7 +12,7 @@ from persist_mode import (
     track_has_bbox_frames,
 )
 from app_config.visit_eligibility import visit_eligible_for_named_species
-from runtime_contract import apply_runtime_contract
+from runtime_contract import apply_runtime_contract, track_id_sort_key
 from processor_config_defaults import MIN_CONFIDENCE_TO_PROCESS
 from track_geometry import StaticPinnedTrackConfig, static_pinned_track_reason
 
@@ -1116,7 +1116,7 @@ class DecisionMaker:
             key=lambda item: (
                 int(not item.get("accepted", False)),
                 -float(item.get("confidence") or 0.0),
-                int(item.get("track_id") or 0),
+                track_id_sort_key(item.get("track_id")),
             )
         )
         return decisions

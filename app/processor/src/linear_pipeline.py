@@ -28,6 +28,7 @@ from processor_config_defaults import (
 )
 from app_config.visit_eligibility import GENERIC_BIRD_SPECIES, visit_eligible_for_named_species
 from pipeline_mode_utils import is_linear_pipeline
+from runtime_contract import track_id_sort_key
 from runtime_contract import apply_runtime_contract
 
 logger = logging.getLogger(__name__)
@@ -441,7 +442,7 @@ def build_linear_decisions(decision_maker, tracks: dict, app_config) -> list[dic
         key=lambda item: (
             int(not item.get("accepted", False)),
             -float(item.get("confidence") or 0.0),
-            int(item.get("track_id") or 0),
+            track_id_sort_key(item.get("track_id")),
         )
     )
     return decisions
