@@ -33,6 +33,7 @@ import { UnlinkBirdProfileButton } from '../../components/UnlinkBirdProfileButto
 import { DeleteBirdProfileButton } from '../../components/DeleteBirdProfileButton';
 import { formatBirdProfileOptionLabel } from '../../components/filters/BirdProfileFilterAutocomplete';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+import { SettingsPasswordDialog } from '../../components/SettingsPasswordDialog';
 import { getApiErrorMessage, resolveImageUrl } from '../../api/api';
 import { downloadDetectionCropForINaturalist } from '../../api/dataset';
 import {
@@ -283,7 +284,8 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
 }) => {
   const { t } = useTranslation();
   const safeSpecies = species ?? [];
-  const { canEdit } = useProtectedArea();
+  const { canEdit, requiresPassword, setUnlocked } = useProtectedArea();
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const quickCorrectionOnly = true;
   const allowNicknameEdit = canEdit;
   const queryClient = useQueryClient();
@@ -481,6 +483,32 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
         <Typography variant="h6" gutterBottom>
           {t('video.speciesInVideo')}
         </Typography>
+        {!canEdit && requiresPassword && groupedSpecies.length > 0 && (
+          <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              justifyContent="space-between"
+            >
+              <Box>
+                <Typography variant="body2" fontWeight={600}>
+                  {t('video.guestCorrectionTitle')}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {t('video.guestCorrectionHint')}
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setShowPasswordDialog(true)}
+              >
+                {t('video.unlockToCorrect')}
+              </Button>
+            </Stack>
+          </Alert>
+        )}
         {groupedSpecies.length >= 2 && videoId && canEdit && !quickCorrectionOnly && (
           <Box
             sx={{
@@ -636,6 +664,15 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     {t('video.confidence')}: {group.confidenceRange}
                   </Typography>
+                  {group.detections.some((d) => d.review_reason === 'welfare_anomaly') ? (
+                    <Chip
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                      label={t('video.welfareAnomalyChip')}
+                      sx={{ mt: 0.5, alignSelf: 'flex-start' }}
+                    />
+                  ) : null}
                   {group.detections[0]?.scoring_hint ? (
                     <Tooltip
                       title={
@@ -1120,6 +1157,14 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
           ))}
         </Grid>
       </Box>
+      <SettingsPasswordDialog
+        open={showPasswordDialog}
+        onSuccess={(role) => {
+          setUnlocked(true, role);
+          setShowPasswordDialog(false);
+        }}
+        onClose={() => setShowPasswordDialog(false)}
+      />
       <Snackbar
         open={!!correctError}
         autoHideDuration={6000}

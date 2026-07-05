@@ -414,6 +414,12 @@ export const VideoDetails = () => {
               </Tooltip>
             </Stack>
           )}
+          {showTracksRegenHint &&
+            (displayVideo ?? video).species.some((s) => s.source === 'video') && (
+              <Alert severity="info" variant="outlined" sx={{ mb: 1 }}>
+                {t('video.speciesWithoutOverlayHint')}
+              </Alert>
+            )}
           <VideoPlayer
             video={(displayVideo ?? video) as Video}
             showTracksRegenHint={showTracksRegenHint}
