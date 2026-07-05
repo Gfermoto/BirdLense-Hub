@@ -84,18 +84,32 @@ def adaptive_match_thresh(stream_fps: float, base_thresh: float, low_fps_thresho
 
 def _track_conf_cap_from_config(cfg: Mapping[str, Any]) -> float | None:
     """Upper bound for ByteTrack high/new thresholds (must stay below YOLO track conf)."""
-    from detection_strategy import binary_track_ultralytics_conf_floor
-
     try:
         base = config_float(cfg, "processor.min_confidence_binary", MIN_CONFIDENCE_BINARY)
     except (AttributeError, TypeError):
         base = MIN_CONFIDENCE_BINARY
     try:
-        backend = str(cfg.get("processor.inference_backend") or app_config.get("processor.inference_backend") or "")
+        bird_raw = cfg.get("processor.min_confidence_binary_bird")
     except (AttributeError, TypeError):
-        backend = str(app_config.get("processor.inference_backend") or "")
-    backend = backend.strip().lower() or None
-    return binary_track_ultralytics_conf_floor(base, cfg, inference_backend=backend)
+        bird_raw = None
+    try:
+        rodent_raw = cfg.get("processor.min_confidence_binary_rodent")
+    except (AttributeError, TypeError):
+        rodent_raw = None
+    try:
+        squirrel_raw = cfg.get("processor.min_confidence_binary_squirrel")
+    except (AttributeError, TypeError):
+        squirrel_raw = None
+    try:
+        bird = float(bird_raw) if bird_raw is not None else float(base)
+    except (TypeError, ValueError):
+        bird = float(base)
+    rodent_source = rodent_raw if rodent_raw is not None else squirrel_raw
+    try:
+        rodent = float(rodent_source) if rodent_source is not None else float(base)
+    except (TypeError, ValueError):
+        rodent = float(base)
+    return min(float(base), bird, rodent)
 
 
 def clamp_bytetrack_track_thresholds(doc: dict[str, Any], track_conf_cap: float | None) -> None:

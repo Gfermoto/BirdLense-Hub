@@ -23,7 +23,7 @@ CONFIDENCE_FLOORS = {
     "processor.min_confidence_to_process": 0.20,
     "processor.min_confidence_to_notify": 0.28,
     "processor.min_confidence_binary": 0.08,
-    "processor.min_track_duration": 0.25,
+    "processor.min_track_duration": 0.15,
     # Small-object / distant scenes: keep floor usable without site-specific camera hacks.
     "processor.min_box_size_px": 12,
 }

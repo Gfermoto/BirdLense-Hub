@@ -186,8 +186,8 @@ def _collect_guardrail_feedback(proc_cfg: dict[str, Any]) -> dict[str, list[str]
         errs.append("processor.min_confidence_to_process must be in [0.03, 0.60]")
     if min_box < 8 or min_box > 160:
         errs.append("processor.min_box_size_px must be in [8, 160]")
-    if min_track < 0.2 or min_track > 6.0:
-        errs.append("processor.min_track_duration must be in [0.2, 6.0]")
+    if min_track < 0.15 or min_track > 6.0:
+        errs.append("processor.min_track_duration must be in [0.15, 6.0]")
     if imgsz < 320 or imgsz > 1280:
         errs.append("processor.binary_imgsz must be in [320, 1280]")
     if conf_binary <= 0.1 and conf_process <= 0.1 and not bool(proc_cfg.get("light_gate_enabled", True)):

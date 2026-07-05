@@ -61,9 +61,10 @@ processor:
   tracker_adaptive_low_fps_enabled: true
   tracker_low_fps_threshold: 10.0
   # Длинный buffer → «залипший» bbox на весь клип при ~7 FPS (ByteTrack держит lost track).
-  tracker_remember_seconds: 1.6
+  # 2.4s keeps fast feeder hops alive without stretching across full clips.
+  tracker_remember_seconds: 2.4
   tracker_adaptive_min_buffer: 6
-  tracker_adaptive_max_buffer: 16
+  tracker_adaptive_max_buffer: 24
   # Отклонить трек, если центр bbox почти не двигается дольше N сек (кормушка / phantom).
   track_static_reject_enabled: true
   track_static_reject_min_duration_sec: 2.0
@@ -129,7 +130,8 @@ processor:
   # Защита от долгих сессий без raw boxes: после лимита клип больше не продлевается только Frigate-активностью.
   frigate_only_extension_max_frames: 0
   # Мин. длительность трека ByteTrack (сек) для persist после старта записи. Detect-first anchor — см. detect_first_confirm_min_track_seconds.
-  min_track_duration: 0.25
+  # Fast feeder hops can last <0.25s on a 7fps detect stream; scoring gates handle FP pressure.
+  min_track_duration: 0.15
   # Только офлайн-перегенерация треков: ниже live, иначе короткие визиты и рваные track_id → rejected_short_track и пустые overlays в UI.
   track_regen_min_track_duration: 0.05
   # Шаг кадров для batch-перегенерации треков: 1=каждый кадр (точно, медленно), 6+=быстро.
@@ -457,9 +459,9 @@ processor:
       min_confidence_binary: 0.04
       min_confidence_binary_bird: 0.02
       min_confidence_to_process: 0.04
-      min_track_duration: 0.25
+      min_track_duration: 0.15
       tracker: models/tracker/bytetrack_birdlense.yaml
-      tracker_remember_seconds: 1.2
+      tracker_remember_seconds: 2.4
       min_box_size_px: 8
       min_center_dist: 0.01
       max_box_area_norm: 0.92
@@ -490,7 +492,8 @@ processor:
       min_center_dist: 0.012
       max_box_area_norm: 0.92
       track_to_predict_fallback_enabled: true
-      min_track_duration: 0.25
+      min_track_duration: 0.15
+      tracker_remember_seconds: 2.4
       detect_record_time_offset_sec: -0.12
       track_static_reject_enabled: false
       track_static_reject_max_center_dispersion_norm: 0.10
@@ -538,8 +541,8 @@ processor:
   birder_eu_unknown_label: "Unknown Bird"
   # Ниже порога Birder, но выше min — сохранить best-guess вид + review (classification-first).
   classifier_best_guess_enabled: true
-  classifier_best_guess_min_confidence: 0.10
-  classifier_best_guess_min_events: 1
+  classifier_best_guess_min_confidence: 0.20
+  classifier_best_guess_min_events: 2
   # Trapper Rodent → каталог Rodent (не birder_eu)
   squirrel_species_label: "Rodent"
   # ONNX Runtime CUDA EP (Orin).

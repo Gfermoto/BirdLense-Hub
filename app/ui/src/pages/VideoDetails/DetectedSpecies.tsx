@@ -643,40 +643,51 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     {t('video.confidence')}: {group.confidenceRange}
                   </Typography>
-                  {group.detections.some(
-                    (d) =>
-                      d.review_reason === 'welfare_anomaly' ||
-                      d.welfare_distance != null,
-                  ) ? (
-                    <Tooltip
-                      title={t('video.welfareAnomalyHint')}
-                      placement="top"
-                    >
-                      <Chip
-                        size="small"
-                        color="warning"
-                        variant="outlined"
-                        label={(() => {
-                          const distances = group.detections
-                            .map((d) => d.welfare_distance)
-                            .filter(
-                              (v): v is number =>
-                                v != null && Number.isFinite(Number(v)),
-                            );
-                          const maxDistance =
-                            distances.length > 0
-                              ? Math.max(...distances.map(Number))
-                              : null;
-                          return maxDistance != null
-                            ? t('video.welfareDistanceChip', {
-                                distance: maxDistance.toFixed(1),
-                              })
-                            : t('video.welfareAnomalyChip');
-                        })()}
-                        sx={{ mt: 0.5, alignSelf: 'flex-start' }}
-                      />
-                    </Tooltip>
-                  ) : null}
+                  {(() => {
+                    const videoDetections = group.detections.filter(
+                      (d) => d.source === 'video',
+                    );
+                    if (videoDetections.length === 0) return null;
+                    const distances = videoDetections
+                      .map((d) => d.welfare_distance)
+                      .filter(
+                        (v): v is number =>
+                          v != null && Number.isFinite(Number(v)),
+                      );
+                    const maxDistance =
+                      distances.length > 0
+                        ? Math.max(...distances.map(Number))
+                        : null;
+                    const hasAnomaly = videoDetections.some(
+                      (d) => d.review_reason === 'welfare_anomaly',
+                    );
+                    const label =
+                      maxDistance != null
+                        ? t('video.welfareDistanceChip', {
+                            distance: maxDistance.toFixed(1),
+                          })
+                        : hasAnomaly
+                          ? t('video.welfareAnomalyChip')
+                          : t('video.welfareUnavailableChip');
+                    return (
+                      <Tooltip
+                        title={
+                          maxDistance != null || hasAnomaly
+                            ? t('video.welfareAnomalyHint')
+                            : t('video.welfareUnavailableHint')
+                        }
+                        placement="top"
+                      >
+                        <Chip
+                          size="small"
+                          color={maxDistance != null || hasAnomaly ? 'warning' : 'default'}
+                          variant="outlined"
+                          label={label}
+                          sx={{ mt: 0.5, alignSelf: 'flex-start' }}
+                        />
+                      </Tooltip>
+                    );
+                  })()}
                   {group.detections[0]?.scoring_hint ? (
                     <Tooltip
                       title={

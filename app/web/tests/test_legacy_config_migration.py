@@ -127,7 +127,7 @@ def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
         "processor": {
             "min_confidence_binary": 0.05,
             "min_confidence_to_process": 0.03,
-            "min_track_duration": 0.2,
+            "min_track_duration": 0.1,
             "min_box_size_px": 24,
         },
     }
@@ -142,7 +142,7 @@ def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
         assert app_config.get("detection.min_confidence_to_store") == 0.08
         assert app_config.get("processor.min_confidence_binary") == 0.08
         assert app_config.get("processor.min_confidence_to_process") == 0.04
-        assert app_config.get("processor.min_track_duration") == 0.25
+        assert app_config.get("processor.min_track_duration") == 0.15
         assert app_config.get("processor.min_box_size_px") == 24
 
         app_config.save()
@@ -150,7 +150,7 @@ def test_confidence_floors_clamp_legacy_soft_values(tmp_path, monkeypatch):
         assert float(saved["detection"]["min_confidence_to_store"]) == 0.08
         assert float(saved["processor"]["min_confidence_binary"]) == 0.08
         assert float(saved["processor"]["min_confidence_to_process"]) == 0.04
-        assert float(saved["processor"]["min_track_duration"]) == 0.25
+        assert float(saved["processor"]["min_track_duration"]) == 0.15
         assert int(saved["processor"]["min_box_size_px"]) == 24
     finally:
         app_config.user_config_file = old_user_config_file
