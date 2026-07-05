@@ -73,6 +73,22 @@
 # export BIRDLENSE_STRICT_API_AUTH=1
 # export BIRDLENSE_UI_API_KEY="..."   # для curl/интеграций без браузерной сессии
 
+
+# =============================================================================
+# Режим D — VPS Orin remote (gfer, SSH 2225, UI :8085)
+# =============================================================================
+# export DEPLOY_HOST="gfer@185.218.111.196"
+# export DEPLOY_SSH_PORT="2225"
+# export DEPLOY_URL="http://185.218.111.196:8085"
+# export DEPLOY_REMOTE_DIR="/home/gfer/BirdLense"
+# export BIRDLENSE_PLATFORM=orin
+# CORS на сервере (app/.env): CORS_ORIGINS=http://185.218.111.196:8085
+#
+# Первый деплой / bootstrap (убрать после стабилизации):
+# export DEPLOY_MIN_INTERVAL_BYPASS=1
+# export BIRDLENSE_SKIP_CONFIG_DRIFT_GATE=1
+# export BIRDLENSE_SKIP_OUTCOME_METRICS_GATE=1
+
 # =============================================================================
 # Платформа — Orin (единственная)
 # =============================================================================
