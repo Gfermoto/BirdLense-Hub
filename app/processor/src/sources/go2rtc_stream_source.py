@@ -8,7 +8,9 @@ import glob
 import logging
 import os
 import re
+import shlex
 import shutil
+import signal
 import subprocess
 import threading
 import time
@@ -147,20 +149,21 @@ def _libx264_record_args() -> list[str]:
 
 
 def _gst_record_cmd(stream_url: str, output: str) -> list[str]:
-    """GStreamer pipeline: NVDEC decode + L4T HW re-encode → MP4."""
+    """GStreamer pipeline: NVDEC decode + L4T HW re-encode → MP4 (qtmux — official NVIDIA)."""
     enc = _gst_jetson_h264_encoder() or "nvv4l2h264enc"
+    # GStreamer pipeline parser treats bare & as pad separator even inside
+    # quoted rtspsrc location.  URL-encode & → %26 to keep the query string intact.
+    safe_url = stream_url.replace("&", "%26")
     pipeline = (
-        f"rtspsrc location={stream_url} latency=2000 protocols=4 buffer-mode=3 ! "
-        "queue max-size-buffers=16 ! "
+        f'rtspsrc location="{safe_url}" latency=2000 protocols=tcp ! '
         "rtph264depay ! h264parse ! "
-        "queue max-size-buffers=16 ! "
         "nvv4l2decoder enable-max-performance=1 num-extra-surfaces=4 ! "
-        "queue max-size-buffers=16 ! "
         "nvvidconv ! video/x-raw(memory:NVMM),format=I420 ! "
-        f"{enc} ! h264parse ! mp4mux ! "
+        f"{enc} ! h264parse ! qtmux ! "
         f"filesink location={output}"
     )
-    return ["gst-launch-1.0", "-e", pipeline]
+    # gst-launch parses "!" only when argv is tokenized; a single pipeline string fails.
+    return ["gst-launch-1.0", "-e", *shlex.split(pipeline)]
 
 
 def _ffmpeg_record_cmd(
@@ -200,18 +203,6 @@ def _ffmpeg_record_cmd(
         and (record_stream_codec or "h264").strip().lower() == "h264"
     ):
         if _ffmpeg_has_nvenc():  # defined below
-            cmd += [
-                "-hwaccel",
-                "cuda",
-                "-hwaccel_output_format",
-                "cuda",
-                "-c:v",
-                "h264_nvenc",
-                "-b:v",
-                "2M",
-                "-preset",
-                "p4",
-            ]
             cmd += [
                 "-hwaccel",
                 "cuda",
@@ -359,8 +350,6 @@ class Go2RTCStreamSource:
         self._source_fps = 0.0
         self.stream_capabilities = None
         self._read_lock = threading.Lock()
-        self._nvmpi_checked = False
-        self._nvmpi_fallback_permanent: bool = False
         # API compat name: on jetson, True → NVENC/v4l2m2m/OMX; False → libx264.
         if record_hw_encode is None:
             self._record_hw_encode = True
@@ -641,9 +630,7 @@ class Go2RTCStreamSource:
             self._reconnect_delay = min(self._reconnect_delay * 2, MAX_RECONNECT_DELAY)
 
     def _read_frame(self):
-        """Read one frame. Returns (frame_bgr, success)."""
-        if self._capture_backend_used == "ffmpeg_nvmpi":
-            return self._read_gst_nvmpi_frame()
+        """Read one frame via OpenCV. Returns (frame_bgr, success)."""
         if not self._cap or not self._cap.isOpened():
             return None, False
         ret, frame = self._cap.read()
@@ -657,42 +644,6 @@ class Go2RTCStreamSource:
             _, jpeg = cv2.imencode(".jpg", frame)
             if jpeg is not None:
                 self._streaming_output.write(jpeg.tobytes())
-
-    def _probe_nvmpi(self) -> bool:
-        """Check if Jetson hardware decoder is available (gst-inspect-1.0 nvv4l2decoder)."""
-        if not shutil.which("gst-inspect-1.0"):
-            self.logger.debug("NVMPI probe: gst-inspect-1.0 not found")
-            return False
-        try:
-            r = subprocess.run(
-                ["gst-inspect-1.0", "nvv4l2decoder"],
-                capture_output=True, timeout=10,
-            )
-            ok = r.returncode == 0
-            if not ok:
-                self.logger.debug(
-                    "NVMPI probe: nvv4l2decoder not available (%s)",
-                    r.stderr.decode()[:200],
-                )
-            return ok
-        except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
-            self.logger.debug("NVMPI probe failed: %s", e)
-            return False
-
-    def _use_jetson_nvmpi(self) -> bool:
-        """True if on Jetson platform and GStreamer NVMM pipeline works."""
-        if self._encoding_mode != "jetson":
-            return False
-        if not self._nvmpi_checked:
-            self._nvmpi_checked = True
-            self._nvmpi_available = self._probe_nvmpi()
-            if not self._nvmpi_available:
-                self.logger.warning(
-                    "Jetson NVMPI GStreamer probe failed. "
-                    "Check nvidia runtime + gst-inspect-1.0 nvv4l2decoder."
-                )
-        return self._nvmpi_available
-
     def start_recording(self, output: str):
         """Start recording: GStreamer on Jetson, FFmpeg otherwise."""
         self._recording = True
@@ -762,8 +713,18 @@ class Go2RTCStreamSource:
             return_code = None
             stderr_text = ""
             try:
-                self._ffmpeg_process.terminate()
-                return_code = self._ffmpeg_process.wait(timeout=5)
+                # gst-launch -e finalizes qtmux/mp4 on SIGINT; SIGTERM drops the file.
+                proc_args = self._ffmpeg_process.args
+                uses_gst = (
+                    isinstance(proc_args, (list, tuple))
+                    and proc_args
+                    and os.path.basename(str(proc_args[0])) == "gst-launch-1.0"
+                )
+                if uses_gst:
+                    self._ffmpeg_process.send_signal(signal.SIGINT)
+                else:
+                    self._ffmpeg_process.terminate()
+                return_code = self._ffmpeg_process.wait(timeout=10 if uses_gst else 5)
             except subprocess.TimeoutExpired:
                 self._ffmpeg_process.kill()
                 return_code = self._ffmpeg_process.wait(timeout=2)
@@ -796,16 +757,6 @@ class Go2RTCStreamSource:
                 frame, ok = self._read_frame()
             if ok and frame is not None:
                 break
-            if (
-                self._capture_backend_used == "ffmpeg_nvmpi"
-                and self._ffmpeg_capture_failures >= FFMPEG_CAPTURE_FAILURE_THRESHOLD
-            ):
-                self._nvmpi_fallback_permanent = True
-                self.logger.warning(
-                    "GStreamer NVMPI unstable (%d empty reads) — "
-                    "fallback to OpenCV for this session",
-                    FFMPEG_CAPTURE_FAILURE_THRESHOLD,
-                )
             if attempt == 0 and self._reconnect_if_needed():
                 continue
             return None
