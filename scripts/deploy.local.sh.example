@@ -75,14 +75,14 @@
 
 
 # =============================================================================
-# Режим D — VPS Orin remote (gfer, SSH 2225, UI :8085)
+# Режим D — VPS Orin remote (gfer, SSH 2225, UI :8088)
 # =============================================================================
 # export DEPLOY_HOST="gfer@185.218.111.196"
 # export DEPLOY_SSH_PORT="2225"
-# export DEPLOY_URL="http://185.218.111.196:8085"
+# export DEPLOY_URL="http://185.218.111.196:8088"
 # export DEPLOY_REMOTE_DIR="/home/gfer/BirdLense"
 # export BIRDLENSE_PLATFORM=orin
-# CORS на сервере (app/.env): CORS_ORIGINS=http://185.218.111.196:8085
+# CORS на сервере (app/.env): CORS_ORIGINS=http://185.218.111.196:8088
 #
 # Первый деплой / bootstrap (убрать после стабилизации):
 # export DEPLOY_MIN_INTERVAL_BYPASS=1
