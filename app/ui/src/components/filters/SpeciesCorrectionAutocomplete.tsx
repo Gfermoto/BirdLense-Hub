@@ -32,7 +32,7 @@ export function SpeciesCorrectionAutocomplete({
   const { data: speciesList = [], isLoading } = useQuery({
     queryKey: queryKeys.speciesDirectory.correctionCatalog,
     queryFn: async () =>
-      speciesDirectoryItems(await fetchBirdDirectory({ scope: 'all' })),
+      speciesDirectoryItems(await fetchBirdDirectory({ scope: 'allowlist' })),
     staleTime: 5 * 60 * 1000,
   });
 

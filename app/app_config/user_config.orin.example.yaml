@@ -29,6 +29,12 @@ processor:
     device: cuda:0
     inference_backend: onnxruntime
     distance_review_threshold: 75.0
+  # finalize: record_hires TG preview seeks 2688p MP4 (~90s on Orin) — use lores crop
+  notify_preview_source: best_frame_lores
+  inference_lores_wh: [704, 704]
+  # feeder: spatial split duplicates one bird into parallel tracks/bboxes
+  track_spatial_split_enabled: false
+  classifier_crop_source: record_hires
 
 video:
   encoding: jetson
