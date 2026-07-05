@@ -42,6 +42,7 @@ class VideoSpecies(db.Model):
     classifier_top1_top2_margin: Mapped[float | None] = mapped_column(Float, nullable=True)
     classifier_needs_review: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
     review_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    welfare_distance: Mapped[float | None] = mapped_column(Float, nullable=True)
     individual_nickname: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # True if user corrected species — track regen must not overwrite
     manually_corrected: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")

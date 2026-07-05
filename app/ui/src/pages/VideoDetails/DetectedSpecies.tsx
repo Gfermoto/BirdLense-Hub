@@ -19,9 +19,6 @@ import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import Chip from '@mui/material/Chip';
 import { Link as RouterLink } from 'react-router-dom';
@@ -32,6 +29,7 @@ import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { UnlinkBirdProfileButton } from '../../components/UnlinkBirdProfileButton';
 import { DeleteBirdProfileButton } from '../../components/DeleteBirdProfileButton';
 import { formatBirdProfileOptionLabel } from '../../components/filters/BirdProfileFilterAutocomplete';
+import { SpeciesCorrectionAutocomplete } from '../../components/filters/SpeciesCorrectionAutocomplete';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { SettingsPasswordDialog } from '../../components/SettingsPasswordDialog';
 import { getApiErrorMessage, resolveImageUrl } from '../../api/api';
@@ -39,8 +37,6 @@ import { downloadDetectionCropForINaturalist } from '../../api/dataset';
 import {
   assignDetectionBirdProfile,
   createBirdProfile,
-  fetchBirdDirectory,
-  speciesDirectoryItems,
   fetchBirdProfileSuggestLinks,
   fetchBirdProfiles,
   mergeBirdProfiles,
@@ -290,11 +286,6 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   const allowNicknameEdit = canEdit;
   const queryClient = useQueryClient();
 
-  const { data: speciesList = [] } = useQuery({
-    queryKey: queryKeys.species.directory,
-    queryFn: async () => speciesDirectoryItems(await fetchBirdDirectory()),
-    staleTime: 5 * 60 * 1000,
-  });
   const { data: birdProfilesResponse } = useQuery({
     queryKey: queryKeys.birdProfiles.videoDetails,
     queryFn: () => fetchBirdProfiles({ limit: 200 }),
@@ -537,27 +528,15 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
             >
               <FormControl
                 size="small"
-                sx={{ minWidth: 200 }}
+                sx={{ minWidth: 240, flex: 1 }}
                 disabled={!canEdit}
               >
-                <InputLabel id="video-merge-species-label">
-                  {t('video.mergeAllToSpecies')}
-                </InputLabel>
-                <Select
-                  labelId="video-merge-species-label"
+                <SpeciesCorrectionAutocomplete
                   value={mergeSpeciesId}
+                  onChange={setMergeSpeciesId}
+                  disabled={!canEdit}
                   label={t('video.mergeAllToSpecies')}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setMergeSpeciesId(v === '' ? '' : Number(v));
-                  }}
-                >
-                  {speciesList.map((s) => (
-                    <MenuItem key={s.id} value={s.id}>
-                      {s.name}
-                    </MenuItem>
-                  ))}
-                </Select>
+                />
               </FormControl>
               <Button
                 size="small"
@@ -664,14 +643,39 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     {t('video.confidence')}: {group.confidenceRange}
                   </Typography>
-                  {group.detections.some((d) => d.review_reason === 'welfare_anomaly') ? (
-                    <Chip
-                      size="small"
-                      color="warning"
-                      variant="outlined"
-                      label={t('video.welfareAnomalyChip')}
-                      sx={{ mt: 0.5, alignSelf: 'flex-start' }}
-                    />
+                  {group.detections.some(
+                    (d) =>
+                      d.review_reason === 'welfare_anomaly' ||
+                      d.welfare_distance != null,
+                  ) ? (
+                    <Tooltip
+                      title={t('video.welfareAnomalyHint')}
+                      placement="top"
+                    >
+                      <Chip
+                        size="small"
+                        color="warning"
+                        variant="outlined"
+                        label={(() => {
+                          const distances = group.detections
+                            .map((d) => d.welfare_distance)
+                            .filter(
+                              (v): v is number =>
+                                v != null && Number.isFinite(Number(v)),
+                            );
+                          const maxDistance =
+                            distances.length > 0
+                              ? Math.max(...distances.map(Number))
+                              : null;
+                          return maxDistance != null
+                            ? t('video.welfareDistanceChip', {
+                                distance: maxDistance.toFixed(1),
+                              })
+                            : t('video.welfareAnomalyChip');
+                        })()}
+                        sx={{ mt: 0.5, alignSelf: 'flex-start' }}
+                      />
+                    </Tooltip>
                   ) : null}
                   {group.detections[0]?.scoring_hint ? (
                     <Tooltip
@@ -872,42 +876,13 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                       spacing={1}
                       sx={{ width: '100%', minWidth: 0, mt: 0.5 }}
                     >
-                      <FormControl
-                        fullWidth
-                        size="small"
+                      <SpeciesCorrectionAutocomplete
+                        value={selectedSpeciesId}
+                        onChange={setSelectedSpeciesId}
                         disabled={!canEdit}
-                        sx={{ minWidth: 0 }}
-                      >
-                        <InputLabel
-                          id={`video-correct-species-${group.species_id}`}
-                        >
-                          {t('unknowns.correctSpecies')}
-                        </InputLabel>
-                        <Select
-                          labelId={`video-correct-species-${group.species_id}`}
-                          value={selectedSpeciesId}
-                          label={t('unknowns.correctSpecies')}
-                          renderValue={(v: number | string) => {
-                            if (v === '' || v === undefined) return '';
-                            const id = Number(v);
-                            const row = speciesList.find(
-                              (s) => Number(s.id) === id,
-                            );
-                            return row?.name ?? `#${id}`;
-                          }}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setSelectedSpeciesId(v === '' ? '' : Number(v));
-                          }}
-                          MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
-                        >
-                          {speciesList.map((s) => (
-                            <MenuItem key={s.id} value={s.id}>
-                              {s.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                        excludeSpeciesId={group.species_id}
+                        label={t('unknowns.correctSpecies')}
+                      />
                       <Stack
                         direction="row"
                         spacing={1}

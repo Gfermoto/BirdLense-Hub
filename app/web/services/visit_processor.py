@@ -28,6 +28,16 @@ def _review_reason_from_detection(det: dict) -> str | None:
     return None
 
 
+def _welfare_distance_from_detection(det: dict) -> float | None:
+    val = det.get("welfare_distance")
+    if val is None:
+        return None
+    try:
+        return round(float(val), 4)
+    except (TypeError, ValueError):
+        return None
+
+
 _reid_embedding_table_ready = False
 
 
@@ -64,6 +74,7 @@ class VisitProcessor:
         classifier_top1_top2_margin: float | None = None,
         classifier_needs_review: bool = False,
         review_reason: str | None = None,
+        welfare_distance: float | None = None,
         individual_nickname: str | None = None,
     ) -> Tuple[SpeciesVisit, VideoSpecies]:
         """
@@ -88,6 +99,7 @@ class VisitProcessor:
             classifier_top1_top2_margin=classifier_top1_top2_margin,
             classifier_needs_review=bool(classifier_needs_review),
             review_reason=review_reason,
+            welfare_distance=welfare_distance,
             individual_nickname=individual_nickname,
             created_at=detection_time,
             species_visit=visit,
@@ -113,6 +125,7 @@ class VisitProcessor:
         classifier_top1_top2_margin: float | None = None,
         classifier_needs_review: bool = False,
         review_reason: str | None = None,
+        welfare_distance: float | None = None,
         individual_nickname: str | None = None,
     ) -> VideoSpecies:
         """Persist a video detection without creating/extending a SpeciesVisit."""
@@ -130,6 +143,7 @@ class VisitProcessor:
             classifier_top1_top2_margin=classifier_top1_top2_margin,
             classifier_needs_review=bool(classifier_needs_review),
             review_reason=review_reason,
+            welfare_distance=welfare_distance,
             individual_nickname=individual_nickname,
             created_at=detection_time,
             species_visit_id=None,
@@ -355,6 +369,7 @@ class VisitProcessor:
                         classifier_top1_top2_margin=det.get("classifier_top1_top2_margin"),
                         classifier_needs_review=bool(det.get("classifier_needs_review")),
                         review_reason=_review_reason_from_detection(det),
+                        welfare_distance=_welfare_distance_from_detection(det),
                         individual_nickname=(det.get("individual_nickname") or None),
                     )
                     self._upsert_reid_embedding_from_detection(
@@ -380,6 +395,7 @@ class VisitProcessor:
                         classifier_top1_top2_margin=det.get("classifier_top1_top2_margin"),
                         classifier_needs_review=bool(det.get("classifier_needs_review")),
                         review_reason=_review_reason_from_detection(det),
+                        welfare_distance=_welfare_distance_from_detection(det),
                         individual_nickname=(det.get("individual_nickname") or None),
                     )
                     self._upsert_reid_embedding_from_detection(

@@ -96,6 +96,8 @@ export const queryKeys = {
   speciesDirectory: {
     list: ['species-directory'] as const,
     allowlistHub: ['species-directory', 'allowlist', 'hub'] as const,
+    /** Full catalog for manual species correction (scope=all). */
+    correctionCatalog: ['species-directory', 'correction', 'all'] as const,
   },
   favorites: {
     bySpecies: ['favorites', 'by-species'] as const,

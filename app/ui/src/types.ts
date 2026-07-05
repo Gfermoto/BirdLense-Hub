@@ -72,6 +72,7 @@ export interface VideoSpecies {
   bird_profile_status?: string | null;
   classifier_needs_review?: boolean;
   review_reason?: string | null;
+  welfare_distance?: number | null;
   classifier_entropy?: number | null;
   classifier_top1_top2_margin?: number | null;
   scoring_hint?: {

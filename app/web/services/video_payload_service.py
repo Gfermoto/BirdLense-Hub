@@ -30,6 +30,9 @@ def _species_row(vs) -> dict:
         "classifier_needs_review": bool(getattr(vs, "classifier_needs_review", False)),
         "review_reason": getattr(vs, "review_reason", None),
     }
+    welfare_distance = getattr(vs, "welfare_distance", None)
+    if welfare_distance is not None:
+        data["welfare_distance"] = round(float(welfare_distance), 4)
     if vs.detection_provider:
         data["detection_provider"] = vs.detection_provider
     ent = getattr(vs, "classifier_entropy", None)

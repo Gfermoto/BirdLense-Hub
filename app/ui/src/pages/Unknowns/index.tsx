@@ -15,8 +15,9 @@ import CardActionArea from '@mui/material/CardActionArea';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import FormControl from '@mui/material/FormControl';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import { SpeciesCorrectionAutocomplete } from '../../components/filters/SpeciesCorrectionAutocomplete';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
@@ -46,8 +47,6 @@ import type { UnknownDetection } from '../../api/timeline';
 import {
   confirmDetection,
   deleteReviewQueueVideos,
-  fetchBirdDirectory,
-  speciesDirectoryItems,
   fetchRecentCorrections,
   previewReviewQueueDelete,
   updateDetectionSpecies,
@@ -112,7 +111,6 @@ function reviewStateLabel(t: (key: string) => string, state?: string) {
 
 export function UnknownCard({
   detection,
-  speciesList,
   onCorrect,
   onConfirm,
   canEdit,
@@ -121,7 +119,6 @@ export function UnknownCard({
   onToggleSelected,
 }: {
   detection: UnknownDetection;
-  speciesList: { id: number; name: string }[];
   onCorrect: (detectionId: number, speciesId: number) => void;
   onConfirm: (detectionId: number) => void;
   canEdit: boolean;
@@ -267,50 +264,13 @@ export function UnknownCard({
             )}
             {canEdit && (
               <>
-                <FormControl size="small" fullWidth>
-                  <InputLabel
-                    id={`unknowns-correct-species-${detection.id}`}
-                    shrink
-                  >
-                    {t('unknowns.correctSpecies')}
-                  </InputLabel>
-                  <Select
-                    labelId={`unknowns-correct-species-${detection.id}`}
-                    displayEmpty
-                    value={selectedSpeciesId === '' ? '' : selectedSpeciesId}
-                    label={t('unknowns.correctSpecies')}
-                    renderValue={(v: number | string) => {
-                      if (v === '' || v === undefined) {
-                        return (
-                          <Typography
-                            component="span"
-                            variant="body2"
-                            color="text.secondary"
-                          >
-                            {t('unknowns.speciesSelectPlaceholder')}
-                          </Typography>
-                        );
-                      }
-                      const id = Number(v);
-                      const row = speciesList.find((s) => Number(s.id) === id);
-                      return row?.name ?? String(v);
-                    }}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setSelectedSpeciesId(v === '' ? '' : Number(v));
-                    }}
-                    MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
-                  >
-                    <MenuItem value="">
-                      <em>{t('unknowns.speciesSelectPlaceholder')}</em>
-                    </MenuItem>
-                    {speciesList.map((s) => (
-                      <MenuItem key={s.id} value={s.id}>
-                        {s.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <SpeciesCorrectionAutocomplete
+                  value={selectedSpeciesId}
+                  onChange={setSelectedSpeciesId}
+                  disabled={!canEdit}
+                  excludeSpeciesId={detection.species_id}
+                  label={t('unknowns.correctSpecies')}
+                />
                 <Button
                   variant="contained"
                   size="small"
@@ -426,11 +386,6 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
     enabled: !!selectedDate,
   });
 
-  const { data: speciesList = [] } = useQuery({
-    queryKey: queryKeys.species.directory,
-    queryFn: async () => speciesDirectoryItems(await fetchBirdDirectory()),
-    staleTime: 5 * 60 * 1000,
-  });
   const { data: recentCorrections = [] } = useQuery({
     queryKey: queryKeys.corrections.recent,
     queryFn: () => fetchRecentCorrections(8),
@@ -946,7 +901,6 @@ export function UnknownsPage({ afterTitleSlot }: UnknownsPageProps) {
         <UnknownCard
           key={`${d.id}-${d.species_id}`}
           detection={d}
-          speciesList={speciesList}
           onCorrect={handleCorrect}
           onConfirm={handleConfirm}
           canEdit={canEdit}
