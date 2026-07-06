@@ -49,10 +49,19 @@ def collect_birdnet_hints(mqtt_events: Iterable[dict], *, default_weight: float)
     ]
 
 
-def collect_frigate_hints(mqtt_events: Iterable[dict], *, default_weight: float) -> list[HintPayload]:
+def collect_frigate_hints(
+    mqtt_events: Iterable[dict],
+    *,
+    default_weight: float,
+    camera_id: str | None = None,
+) -> list[HintPayload]:
     best: dict[str, float] = {}
+    camera_key = _norm(camera_id)
     for ev in mqtt_events or []:
         if _norm(ev.get("source")) != "frigate":
+            continue
+        event_camera = _norm(ev.get("camera"))
+        if camera_key and event_camera and event_camera != camera_key:
             continue
         species = _frigate_species(ev)
         if not species:
@@ -107,12 +116,12 @@ def collect_hints(
     window_sec: float = 0.0,
 ) -> list[HintPayload]:
     """Aggregate external hint signals for one scoring pass."""
-    del camera_id, track, window_sec  # reserved for repeat-confirmation (#641 follow-up)
+    del track, window_sec  # reserved for repeat-confirmation (#641 follow-up)
     from classifier_hints.config import load_hint_weights
 
     weights = load_hint_weights(app_config)
     hints: list[HintPayload] = []
     hints.extend(collect_birdnet_hints(mqtt_events, default_weight=weights.birdnet_prior))
-    hints.extend(collect_frigate_hints(mqtt_events, default_weight=weights.frigate_label))
+    hints.extend(collect_frigate_hints(mqtt_events, default_weight=weights.frigate_label, camera_id=camera_id))
     hints.extend(collect_ebird_regional_hints(app_config, default_weight=weights.regional_prior))
     return hints

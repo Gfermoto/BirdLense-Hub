@@ -38,6 +38,43 @@ def _welfare_distance_from_detection(det: dict) -> float | None:
         return None
 
 
+def _audio_evidence_from_detection(det: dict) -> str | None:
+    raw = str(det.get("audio_evidence") or "").strip().lower()
+    return raw or None
+
+
+def _birdnet_prior_from_detection(det: dict) -> float | None:
+    val = det.get("birdnet_prior", det.get("_birdnet_prior"))
+    if val is None:
+        return None
+    try:
+        return round(float(val), 6)
+    except (TypeError, ValueError):
+        return None
+
+
+def _weighted_arbiter_score_from_detection(det: dict) -> float | None:
+    val = det.get("weighted_arbiter_score", det.get("_weighted_arbiter_score"))
+    if val is None:
+        return None
+    try:
+        return round(float(val), 6)
+    except (TypeError, ValueError):
+        return None
+
+
+def _hint_trace_from_detection(det: dict) -> str | None:
+    trace = det.get("hint_trace")
+    if trace is None:
+        return None
+    if isinstance(trace, str):
+        return trace.strip() or None
+    try:
+        return json.dumps(trace, ensure_ascii=False, separators=(",", ":"))
+    except (TypeError, ValueError):
+        return None
+
+
 _reid_embedding_table_ready = False
 
 
@@ -75,6 +112,10 @@ class VisitProcessor:
         classifier_needs_review: bool = False,
         review_reason: str | None = None,
         welfare_distance: float | None = None,
+        audio_evidence: str | None = None,
+        birdnet_prior: float | None = None,
+        weighted_arbiter_score: float | None = None,
+        hint_trace: str | None = None,
         individual_nickname: str | None = None,
     ) -> Tuple[SpeciesVisit, VideoSpecies]:
         """
@@ -100,6 +141,10 @@ class VisitProcessor:
             classifier_needs_review=bool(classifier_needs_review),
             review_reason=review_reason,
             welfare_distance=welfare_distance,
+            audio_evidence=audio_evidence,
+            birdnet_prior=birdnet_prior,
+            weighted_arbiter_score=weighted_arbiter_score,
+            hint_trace=hint_trace,
             individual_nickname=individual_nickname,
             created_at=detection_time,
             species_visit=visit,
@@ -126,6 +171,10 @@ class VisitProcessor:
         classifier_needs_review: bool = False,
         review_reason: str | None = None,
         welfare_distance: float | None = None,
+        audio_evidence: str | None = None,
+        birdnet_prior: float | None = None,
+        weighted_arbiter_score: float | None = None,
+        hint_trace: str | None = None,
         individual_nickname: str | None = None,
     ) -> VideoSpecies:
         """Persist a video detection without creating/extending a SpeciesVisit."""
@@ -144,6 +193,10 @@ class VisitProcessor:
             classifier_needs_review=bool(classifier_needs_review),
             review_reason=review_reason,
             welfare_distance=welfare_distance,
+            audio_evidence=audio_evidence,
+            birdnet_prior=birdnet_prior,
+            weighted_arbiter_score=weighted_arbiter_score,
+            hint_trace=hint_trace,
             individual_nickname=individual_nickname,
             created_at=detection_time,
             species_visit_id=None,
@@ -370,6 +423,10 @@ class VisitProcessor:
                         classifier_needs_review=bool(det.get("classifier_needs_review")),
                         review_reason=_review_reason_from_detection(det),
                         welfare_distance=_welfare_distance_from_detection(det),
+                        audio_evidence=_audio_evidence_from_detection(det),
+                        birdnet_prior=_birdnet_prior_from_detection(det),
+                        weighted_arbiter_score=_weighted_arbiter_score_from_detection(det),
+                        hint_trace=_hint_trace_from_detection(det),
                         individual_nickname=(det.get("individual_nickname") or None),
                     )
                     self._upsert_reid_embedding_from_detection(
@@ -396,6 +453,10 @@ class VisitProcessor:
                         classifier_needs_review=bool(det.get("classifier_needs_review")),
                         review_reason=_review_reason_from_detection(det),
                         welfare_distance=_welfare_distance_from_detection(det),
+                        audio_evidence=_audio_evidence_from_detection(det),
+                        birdnet_prior=_birdnet_prior_from_detection(det),
+                        weighted_arbiter_score=_weighted_arbiter_score_from_detection(det),
+                        hint_trace=_hint_trace_from_detection(det),
                         individual_nickname=(det.get("individual_nickname") or None),
                     )
                     self._upsert_reid_embedding_from_detection(

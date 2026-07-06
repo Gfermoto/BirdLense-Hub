@@ -295,3 +295,46 @@ def test_process_detections_drops_duplicate_rows(app):
 
         assert VideoSpecies.query.filter_by(video_id=video.id).count() == 1
         assert SpeciesVisit.query.count() == 1
+
+
+def test_process_detections_persists_multimodal_evidence(app):
+    """Fusion evidence should survive ingest for audit/training."""
+    with app.app_context():
+        species = Species(name="Evidence Tit")
+        video = Video(
+            processor_version="test",
+            start_time=datetime(2026, 4, 7, 12, 0, 0),
+            end_time=datetime(2026, 4, 7, 12, 0, 10),
+            video_path="data/recordings/2026/04/07/120011/video.mp4",
+        )
+        db.session.add_all([species, video])
+        db.session.commit()
+
+        vp = VisitProcessor(db, app.logger, visit_timeout=60)
+        vp.process_detections(
+            video,
+            [
+                {
+                    "species_name": species.name,
+                    "start_time": 1.0,
+                    "end_time": 2.5,
+                    "confidence": 0.62,
+                    "source": "video",
+                    "visit_eligible": True,
+                    "track_id": 11,
+                    "frames": [],
+                    "detection_provider": "yolo",
+                    "audio_evidence": "support",
+                    "_birdnet_prior": 0.73,
+                    "_weighted_arbiter_score": 0.68,
+                    "hint_trace": [{"source": "birdnet", "score": 0.73}],
+                }
+            ],
+        )
+        db.session.commit()
+
+        row = VideoSpecies.query.filter_by(video_id=video.id).one()
+        assert row.audio_evidence == "support"
+        assert row.birdnet_prior == 0.73
+        assert row.weighted_arbiter_score == 0.68
+        assert '"birdnet"' in row.hint_trace

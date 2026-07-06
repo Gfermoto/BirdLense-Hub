@@ -12,9 +12,11 @@ def apply_weighted_species_arbiter(
     *,
     mqtt_events: Iterable[dict],
     app_config,
+    camera_id: str | None = None,
 ) -> list[dict]:
     return apply_classifier_hints(
         rows,
         mqtt_events=mqtt_events,
         app_config=app_config,
+        camera_id=camera_id,
     )

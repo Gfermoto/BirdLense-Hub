@@ -260,6 +260,51 @@ def test_frigate_standalone_disabled_keeps_empty_without_yolo():
     assert out == []
 
 
+def test_weighted_arbiter_ignores_frigate_label_from_other_camera():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.05,
+        'detection.weighted_arbiter_enabled': True,
+        'processor.birdnet_mqtt_half_life_hours': 6.0,
+        'processor.multi_camera_groups': [],
+        'video': {
+            'cameras': [
+                {'id': 'BirdBox', 'stream_name': 'BirdBox', 'enabled': True},
+                {'id': 'Forest', 'stream_name': 'Forest', 'enabled': True},
+            ],
+        },
+    })
+    detections = [
+        {**_base_detection('Eurasian Blue Tit'), 'track_id': 1, 'confidence': 0.35, 'classifier_confidence': 0.35},
+        {**_base_detection('Great Tit'), 'track_id': 2, 'confidence': 0.36, 'classifier_confidence': 0.36},
+    ]
+    mqtt = [
+        {
+            'source': 'frigate',
+            'camera': 'Forest',
+            'species': 'Eurasian Blue Tit',
+            'confidence': 0.95,
+            'timestamp': end.isoformat(),
+        },
+    ]
+    out = build_fused_video_detections(
+        detections,
+        mqtt,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+        triggered_camera='BirdBox',
+    )
+    by_species = {row['species_name']: row for row in out}
+    assert by_species['Great Tit']['confidence'] > by_species['Eurasian Blue Tit']['confidence']
+
+
 def test_frigate_standalone_creates_row_when_no_yolo():
     start = datetime.now(timezone.utc)
     end = start + timedelta(seconds=20)

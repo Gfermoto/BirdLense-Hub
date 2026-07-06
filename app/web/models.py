@@ -43,6 +43,10 @@ class VideoSpecies(db.Model):
     classifier_needs_review: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")
     review_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
     welfare_distance: Mapped[float | None] = mapped_column(Float, nullable=True)
+    audio_evidence: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    birdnet_prior: Mapped[float | None] = mapped_column(Float, nullable=True)
+    weighted_arbiter_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hint_trace: Mapped[str | None] = mapped_column(String, nullable=True)
     individual_nickname: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # True if user corrected species — track regen must not overwrite
     manually_corrected: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="0")

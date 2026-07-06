@@ -36,6 +36,19 @@ class TestCollectHints(unittest.TestCase):
         )
         self.assertEqual(hints, [])
 
+    def test_ignores_frigate_label_from_other_camera(self):
+        hints = collect_hints(
+            camera_id="BirdBox",
+            track=None,
+            mqtt_events=[
+                {"source": "frigate", "camera": "Forest", "species": "Eurasian Blue Tit", "confidence": 0.95},
+                {"source": "birdnet", "species": "great tit", "confidence": 0.8},
+            ],
+            app_config={},
+        )
+        self.assertNotIn(HintSource.FRIGATE_LABEL, {h.source for h in hints})
+        self.assertIn(HintSource.BIRDNET, {h.source for h in hints})
+
 
 class TestApplyHints(unittest.TestCase):
     def test_empty_rows_unchanged(self):

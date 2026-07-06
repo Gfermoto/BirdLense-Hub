@@ -808,6 +808,7 @@ def build_fused_video_detections(
         fused,
         mqtt_events=mqtt_events,
         app_config=app_config,
+        camera_id=triggered_camera,
     )
     if bool(app_config.get("detection.hypothesis_arbitration_enabled", False)):
         fused = apply_hypothesis_arbitration(fused)
