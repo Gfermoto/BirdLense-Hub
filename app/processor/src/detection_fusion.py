@@ -308,6 +308,20 @@ def _frigate_standalone_prepared_rows(
             "frigate_standalone": True,
             "frigate_merge_suppressed": suppressed,
         }
+        bbox = pack.get("frigate_bbox_norm")
+        preserve_bbox = bool(app_config.get("detection.frigate_standalone_preserve_bbox_frames", False))
+        if preserve_bbox and isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
+            try:
+                rel_t = max(
+                    0.0,
+                    min(
+                        video_duration,
+                        (datetime.fromisoformat(str(pack.get("timestamp")).replace("Z", "+00:00")) - start_time).total_seconds(),
+                    ),
+                )
+                row["frames"] = [{"t": round(rel_t, 3), "bbox": [float(x) for x in bbox[:4]]}]
+            except (TypeError, ValueError, AttributeError):
+                logger.debug("frigate standalone bbox frame build failed", exc_info=True)
         aliases: list[str] = []
         for key in ("species", "sub_label", "label"):
             raw_name = str((pack or {}).get(key) or "").strip()
@@ -485,6 +499,57 @@ def _row_bbox_first_last(row: dict) -> tuple[list[float] | None, list[float] | N
     )
 
 
+def _frame_time_key(frame: dict) -> float | None:
+    try:
+        return round(float(frame.get("t") or 0.0), 2)
+    except (TypeError, ValueError):
+        return None
+
+
+def _max_same_timestamp_iou(a_frames: list[dict], b_frames: list[dict]) -> float:
+    by_t: dict[float, list[float]] = {}
+    for fr in a_frames:
+        if not isinstance(fr, dict):
+            continue
+        key = _frame_time_key(fr)
+        bbox = fr.get("bbox")
+        if key is not None and bbox is not None:
+            by_t[key] = bbox
+    best = 0.0
+    for fr in b_frames:
+        if not isinstance(fr, dict):
+            continue
+        key = _frame_time_key(fr)
+        bbox = fr.get("bbox")
+        if key is None or bbox is None or key not in by_t:
+            continue
+        best = max(best, _bbox_iou_norm(by_t[key], bbox))
+    return best
+
+
+def _merged_track_frames(prev: dict, row: dict) -> list[dict]:
+    prev_frames = prev.get("frames") if isinstance(prev.get("frames"), list) else []
+    row_frames = row.get("frames") if isinstance(row.get("frames"), list) else []
+    if not prev_frames and not row_frames:
+        return []
+    prev_conf = float(prev.get("confidence") or 0.0)
+    row_conf = float(row.get("confidence") or 0.0)
+    by_t: dict[float, tuple[float, int, dict]] = {}
+    order = 0
+    for conf, frames in ((prev_conf, prev_frames), (row_conf, row_frames)):
+        for fr in frames:
+            if not isinstance(fr, dict):
+                continue
+            key = _frame_time_key(fr)
+            if key is None:
+                continue
+            current = by_t.get(key)
+            if current is None or conf >= current[0]:
+                by_t[key] = (conf, order, fr)
+            order += 1
+    return [item[2] for _key, item in sorted(by_t.items(), key=lambda kv: (kv[0], kv[1][1]))]
+
+
 def _merge_adjacent_yolo_fragments(detections: list[dict], app_config: Any) -> list[dict]:
     """Merge same-species adjacent YOLO fragments (short gap + spatial continuity)."""
     if not detections:
@@ -507,9 +572,16 @@ def _merge_adjacent_yolo_fragments(detections: list[dict], app_config: Any) -> l
         max_center = float((app_config or {}).get("detection.track_fragment_merge_max_center_dist") or 0.18)
     except (TypeError, ValueError):
         max_center = 0.18
+    try:
+        overlap_min_iou = float(
+            (app_config or {}).get("detection.track_fragment_overlap_merge_min_iou") or 0.45
+        )
+    except (TypeError, ValueError):
+        overlap_min_iou = 0.45
     max_gap = max(0.0, min(5.0, max_gap))
     min_iou = max(0.0, min(1.0, min_iou))
     max_center = max(0.0, min(1.0, max_center))
+    overlap_min_iou = max(0.0, min(1.0, overlap_min_iou))
 
     rows = sorted(detections, key=lambda r: float(r.get("start_time") or 0.0))
     out: list[dict] = []
@@ -531,21 +603,26 @@ def _merge_adjacent_yolo_fragments(detections: list[dict], app_config: Any) -> l
         prev_end = float(prev.get("end_time") or 0.0)
         cur_start = float(row.get("start_time") or 0.0)
         gap = cur_start - prev_end
-        if gap < 0.0 or gap > max_gap:
-            out.append(row)
-            continue
         _, prev_last = _row_bbox_first_last(prev)
         row_first, _ = _row_bbox_first_last(row)
-        if prev_last is None or row_first is None:
-            out.append(row)
-            continue
-        iou = _bbox_iou_norm(prev_last, row_first)
-        cdist = _bbox_center_dist_norm(prev_last, row_first)
-        if iou < min_iou and cdist > max_center:
-            out.append(row)
-            continue
         prev_frames = prev.get("frames") if isinstance(prev.get("frames"), list) else []
         row_frames = row.get("frames") if isinstance(row.get("frames"), list) else []
+        if gap < 0.0:
+            if _max_same_timestamp_iou(prev_frames, row_frames) < overlap_min_iou:
+                out.append(row)
+                continue
+        elif gap > max_gap:
+            out.append(row)
+            continue
+        elif prev_last is None or row_first is None:
+            out.append(row)
+            continue
+        else:
+            iou = _bbox_iou_norm(prev_last, row_first)
+            cdist = _bbox_center_dist_norm(prev_last, row_first)
+            if iou < min_iou and cdist > max_center:
+                out.append(row)
+                continue
         merged = {**prev}
         merged["end_time"] = max(float(prev.get("end_time") or 0.0), float(row.get("end_time") or 0.0))
         merged["confidence"] = max(float(prev.get("confidence") or 0.0), float(row.get("confidence") or 0.0))
@@ -553,8 +630,9 @@ def _merge_adjacent_yolo_fragments(detections: list[dict], app_config: Any) -> l
             float(prev.get("detector_confidence") or 0.0),
             float(row.get("detector_confidence") or 0.0),
         )
-        if prev_frames or row_frames:
-            merged["frames"] = prev_frames + row_frames
+        merged_frames = _merged_track_frames(prev, row)
+        if merged_frames:
+            merged["frames"] = merged_frames
         merged["track_fragment_merged"] = True
         merged["merged_track_ids"] = sorted(
             {

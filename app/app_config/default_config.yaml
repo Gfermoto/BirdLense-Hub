@@ -865,6 +865,7 @@ detection:
   track_fragment_merge_gap_sec: 1.5
   track_fragment_merge_min_iou: 0.08
   track_fragment_merge_max_center_dist: 0.22
+  track_fragment_overlap_merge_min_iou: 0.45
   # Ниже порога детекция отбрасывается после fusion; должно быть ≤ processor.min_confidence_to_process.
   min_confidence_to_store: 0.08
   # Track-first: keep bbox in DB for ingest contract; UI may hide via overlay_suppressed.
@@ -877,6 +878,8 @@ detection:
   hypothesis_arbitration_enabled: false
   # deprecated: Frigate as persist source — hints/prior only (standalone-first); keep false
   frigate_standalone_when_no_yolo: false
+  # Off by default: one MQTT bbox frame can look like a stuck overlay across the whole clip.
+  frigate_standalone_preserve_bbox_frames: false
   # Hard guard: standalone разрешён только при подтверждённой слепоте YOLO (несколько подряд blind-сессий).
   frigate_standalone_require_blind_yolo: true
   frigate_standalone_blind_score_threshold: 0.7

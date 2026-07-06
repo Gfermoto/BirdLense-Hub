@@ -1306,6 +1306,47 @@ def test_build_fused_video_detections_absorbs_generic_bird_into_frigate_species(
     assert out[0]['detection_provider'] == 'frigate'
 
 
+def test_frigate_standalone_preserves_mqtt_bbox_as_frames():
+    start = datetime.now(timezone.utc)
+    end = start + timedelta(seconds=20)
+    cfg = DummyConfig({
+        'detection.merge_window_seconds': 5,
+        'detection.dedup_window_seconds': 45,
+        'detection.one_per_species': True,
+        'detection.source_priority': ['yolo', 'frigate'],
+        'detection.cross_source_confidence_bonus': 0.0,
+        'detection.min_confidence_to_store': 0.05,
+        'detection.frigate_standalone_when_no_yolo': True,
+        'detection.frigate_standalone_min_score': 0.4,
+        'detection.frigate_standalone_require_geometry': True,
+        'detection.frigate_standalone_preserve_bbox_frames': True,
+        'processor.multi_camera_groups': [],
+        'video.cameras': [],
+    })
+    mqtt_events = [
+        {
+            'source': 'frigate',
+            'species': 'Great Tit',
+            'confidence': 0.77,
+            'timestamp': (start + timedelta(seconds=4.25)).isoformat(),
+            '_frigate_has_geometry': True,
+            'frigate_bbox_norm': [0.1, 0.2, 0.3, 0.4],
+        },
+    ]
+
+    out = build_fused_video_detections(
+        [],
+        mqtt_events,
+        start_time=start,
+        end_time=end,
+        app_config=cfg,
+    )
+
+    assert len(out) == 1
+    assert out[0]['detection_provider'] == 'frigate'
+    assert out[0]['frames'] == [{'t': 4.25, 'bbox': [0.1, 0.2, 0.3, 0.4]}]
+
+
 def test_build_fused_video_detections_keeps_fragmented_generic_bird_visits_separate():
     start = datetime.now(timezone.utc)
     end = start + timedelta(seconds=60)
@@ -1435,6 +1476,52 @@ def test_merge_adjacent_yolo_fragments_same_species_small_gap():
     assert out[0]['track_fragment_merged'] is True
     assert out[0]['merged_track_ids'] == [10, 11]
     assert float(out[0]['end_time']) == 4.0
+
+
+def test_merge_adjacent_yolo_fragments_overlapping_same_bird_tracklets():
+    rows = [
+        {
+            'track_id': 1,
+            'species_name': 'Bird',
+            'confidence': 0.67,
+            'start_time': 2.6,
+            'end_time': 7.2,
+            'detection_provider': 'yolo',
+            'detector_confidence': 0.67,
+            'frames': [
+                {'t': 5.8, 'bbox': [0.42, 0.36, 0.51, 0.50]},
+                {'t': 6.0, 'bbox': [0.42, 0.36, 0.50, 0.49]},
+            ],
+        },
+        {
+            'track_id': 4,
+            'species_name': 'Bird',
+            'confidence': 0.84,
+            'start_time': 5.6,
+            'end_time': 24.0,
+            'detection_provider': 'yolo',
+            'detector_confidence': 0.84,
+            'frames': [
+                {'t': 5.8, 'bbox': [0.423, 0.365, 0.512, 0.505]},
+                {'t': 6.0, 'bbox': [0.424, 0.362, 0.503, 0.492]},
+                {'t': 23.9, 'bbox': [0.36, 0.38, 0.45, 0.48]},
+            ],
+        },
+    ]
+    cfg = DummyConfig({
+        'detection.track_fragment_merge_enabled': True,
+        'detection.track_fragment_merge_gap_sec': 1.2,
+        'detection.track_fragment_merge_min_iou': 0.08,
+        'detection.track_fragment_merge_max_center_dist': 0.18,
+        'detection.track_fragment_overlap_merge_min_iou': 0.45,
+    })
+    out = detection_fusion_mod._merge_adjacent_yolo_fragments(rows, cfg)
+    assert len(out) == 1
+    assert out[0]['track_fragment_merged'] is True
+    assert out[0]['merged_track_ids'] == [1, 4]
+    assert float(out[0]['confidence']) == 0.84
+    assert [fr['t'] for fr in out[0]['frames']] == [5.8, 6.0, 23.9]
+    assert out[0]['frames'][0]['bbox'] == [0.423, 0.365, 0.512, 0.505]
 
 
 def test_merge_adjacent_yolo_fragments_keeps_distant_rows_separate():
