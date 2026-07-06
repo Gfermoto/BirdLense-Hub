@@ -152,6 +152,14 @@ def format_visit_for_timeline(visit, *, session=None) -> dict:
             det["bird_profile_id"] = int(vs.bird_profile_id)
         if vs.detection_provider:
             det["detection_provider"] = vs.detection_provider
+        if getattr(vs, "audio_evidence", None):
+            det["audio_evidence"] = vs.audio_evidence
+        if getattr(vs, "birdnet_prior", None) is not None:
+            det["birdnet_prior"] = vs.birdnet_prior
+        if getattr(vs, "weighted_arbiter_score", None) is not None:
+            det["weighted_arbiter_score"] = vs.weighted_arbiter_score
+        if getattr(vs, "hint_trace", None):
+            det["hint_trace"] = vs.hint_trace
         detections.append(det)
     return {
         "id": visit.id,
@@ -220,6 +228,14 @@ def format_unlinked_video_for_timeline(video, *, fallback_species, session=None)
             det["bird_profile_id"] = int(vs.bird_profile_id)
         if vs.detection_provider:
             det["detection_provider"] = vs.detection_provider
+        if getattr(vs, "audio_evidence", None):
+            det["audio_evidence"] = vs.audio_evidence
+        if getattr(vs, "birdnet_prior", None) is not None:
+            det["birdnet_prior"] = vs.birdnet_prior
+        if getattr(vs, "weighted_arbiter_score", None) is not None:
+            det["weighted_arbiter_score"] = vs.weighted_arbiter_score
+        if getattr(vs, "hint_trace", None):
+            det["hint_trace"] = vs.hint_trace
         detections.append(det)
     if vss:
         sp = vss[0].species

@@ -42,6 +42,18 @@ def _species_row(vs) -> dict:
     if margin is not None:
         data["classifier_top1_top2_margin"] = round(float(margin), 4)
     data["scoring_hint"] = _detection_scoring_hint(vs)
+    audio_ev = getattr(vs, "audio_evidence", None)
+    if audio_ev:
+        data["audio_evidence"] = audio_ev
+    bn = getattr(vs, "birdnet_prior", None)
+    if bn is not None:
+        data["birdnet_prior"] = round(float(bn), 6)
+    was = getattr(vs, "weighted_arbiter_score", None)
+    if was is not None:
+        data["weighted_arbiter_score"] = round(float(was), 6)
+    ht = getattr(vs, "hint_trace", None)
+    if ht:
+        data["hint_trace"] = ht
     return data
 
 

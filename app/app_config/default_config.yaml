@@ -850,13 +850,16 @@ detection:
   source_priority: ["yolo", "frigate"]
   # Weighted signal arbiter (BirdNET/regional/multi-camera priors).
   # classification-first: выкл. — вид из Birder на треке, без пересчёта confidence.
-  weighted_arbiter_enabled: false
+  # Classifier hints pipeline: Frigate, BirdNET, eBird regional, multi-camera
+  classifier_hints_enabled: true
+  weighted_arbiter_enabled: true
   weighted_arbiter_conf_weight: 0.55
   weighted_arbiter_detector_weight: 0.15
   weighted_arbiter_classifier_weight: 0.12
   weighted_arbiter_birdnet_weight: 0.08
   weighted_arbiter_regional_weight: 0.05
   weighted_arbiter_multicamera_weight: 0.05
+  weighted_arbiter_frigate_weight: 0.06
   # При первом совпадении YOLO track и Frigate species в окне ролика — разово +bonus к confidence (потолок 1.0)
   cross_source_confidence_bonus: 0.02
   # Склейка соседних YOLO-фрагментов (ID switch) в один визит: одинаковый вид, малый gap и
