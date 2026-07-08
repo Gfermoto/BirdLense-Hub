@@ -822,7 +822,7 @@ mqtt:
   publish_queue_max: 4000
   # Очередь фоновых записей веса кормушки.
   feeder_scale_queue_max: 400
-  reconnect_min_delay: 5  # сек; стартовый backoff при потере связи
+  reconnect_min_delay: 10  # сек; стартовый backoff при потере связи
   reconnect_max_delay: 300  # сек; потолок backoff
   reconnect_jitter_ratio: 0.15  # ±15% jitter для несинхронных reconnect storm
   # Home Assistant MQTT Autodiscovery — публикация config и state для автообнаружения
@@ -857,9 +857,9 @@ detection:
   weighted_arbiter_detector_weight: 0.15
   weighted_arbiter_classifier_weight: 0.12
   weighted_arbiter_birdnet_weight: 0.08
-  weighted_arbiter_regional_weight: 0.05
+  weighted_arbiter_regional_weight: 0.20
   weighted_arbiter_multicamera_weight: 0.05
-  weighted_arbiter_frigate_weight: 0.06
+  weighted_arbiter_frigate_weight: 0.10
   # При первом совпадении YOLO track и Frigate species в окне ролика — разово +bonus к confidence (потолок 1.0)
   cross_source_confidence_bonus: 0.02
   # Склейка соседних YOLO-фрагментов (ID switch) в один визит: одинаковый вид, малый gap и

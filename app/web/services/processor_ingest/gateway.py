@@ -75,6 +75,11 @@ def processor_detection_payload(raw: dict) -> dict:
         "welfare_embed_dim",
         "welfare_distance",
         "welfare_needs_review",
+        "audio_evidence",
+        "birdnet_prior",
+        "weighted_arbiter_score",
+        "_weighted_arbiter_score",
+        "hint_trace",
     }
     return {k: raw[k] for k in allowed if k in raw}
 
