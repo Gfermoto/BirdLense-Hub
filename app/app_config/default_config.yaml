@@ -1114,7 +1114,10 @@ notifications:
   base_url: ""                # URL Hub для ссылок (http://birdlense.local:8085)
   telegram_api_base: ""       # Пусто = api.telegram.org. Прокси/альтернатива: https://your-proxy/bot
   # Тип прокси: none | socks_http | mtproto (как в приложении Telegram: сервер/порт/секрет).
-  telegram_proxy_type: socks_http
+  # По умолчанию none — прямой доступ к api.telegram.org (ботам не нужен прокси).
+  # Если в РФ нужен SOCKS5h/HTTP прокси: socks_http (и telegram_proxy_url).
+  # Если Telegram заблокирован — MTProto (telegram_mtproto_*, telegram_api_id/hash).
+  telegram_proxy_type: none
   # При socks_http — SOCKS5h или HTTP(S) для HTTPS-запросов к api.telegram.org
   telegram_proxy_url: ""      # socks5h://127.0.0.1:9050 или http://127.0.0.1:8118
   # При mtproto — отдельные поля + telegram_api_id / telegram_api_hash (my.telegram.org)
