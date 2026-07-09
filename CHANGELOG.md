@@ -2,6 +2,25 @@
 
 All notable changes to BirdLense Hub (Orin).
 
+## [0.5.0] — 2026-07-09
+
+### Added
+- Weighted arbiter + eBird regional species hints in the multimodal scoring pipeline
+- Welfare distance chip and health anomaly review on recording species cards
+- Live overlay editor polish: OpenCV/YOLO toggles, shorter status line, save-polygon helper
+
+### Fixed
+- Species card layout: welfare chip and «Why this species?» on separate lines
+- Live layout jitter from long OpenCV contour status text
+- Telegram connectivity on Orin (API host pin / proxy defaults)
+- Gateway arbiter field allowlist and Frigate camera-scoped hints
+- Recording/track pipeline stability (qtmux, YOLO dims, overlapping tracklets, spatial-split finalize)
+
+### Changed
+- UI i18n: health/welfare labels translated; Live how-to synced with switch labels
+- Touch video controls stay visible longer on coarse pointers
+- Live camera grid capped at 4 columns for readability
+
 ## [0.4.0] — 2026-07-01
 
 ### Platform
