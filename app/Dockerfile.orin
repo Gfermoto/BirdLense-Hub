@@ -77,7 +77,9 @@ COPY app/processor/requirements.txt ./processor/requirements.txt
 COPY app/web/requirements.txt ./web/requirements.txt
 RUN python3.12 -m pip install --default-timeout=600 --no-cache-dir --break-system-packages \
     -r web/requirements.txt \
-    -r processor/requirements.txt
+    -r processor/requirements.txt \
+    && python3.12 -m pip uninstall -y opencv-python opencv-contrib-python 2>/dev/null || true \
+    && apt-get install -y --no-install-recommends python3-opencv 2>/dev/null || true
 
 RUN python3.12 -m pip install --default-timeout=600 --no-cache-dir --break-system-packages \
     flatbuffers numpy packaging protobuf sympy coloredlogs \

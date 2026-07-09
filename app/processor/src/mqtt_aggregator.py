@@ -1053,6 +1053,7 @@ class MQTTEventAggregator:
                 self._client.will_set("birdlense/status", "offline", qos=1, retain=True)
                 self._client.connect(self.broker, self.port, 60)
                 self._client.subscribe(self.frigate_topic, qos=1)
+                logger.info("MQTT: subscribed Frigate events topic %s", self.frigate_topic)
                 if self._frigate_snapshot_topic and self._frigate_snapshot_topic != self.frigate_topic:
                     self._client.subscribe(self._frigate_snapshot_topic, qos=0)
                     logger.info(
