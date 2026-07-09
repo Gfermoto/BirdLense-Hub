@@ -1,39 +1,42 @@
-# BirdLense Hub Documentation
+# BirdLense Hub — документация (Orin)
 
-Welcome to the BirdLense Hub docs.
+Документация системы мониторинга птиц на Jetson Orin с полным ONNX GPU стеком.
 
-- **Primary language:** English (`docs/user/`, `docs/contributor/`)
-- **Russian:** `docs/ru/*.ru.md` (operator + contributor topics mirrored where maintained)
+## Навигация
 
-**Published site:** [gfermoto.github.io/BirdLense-Hub](https://gfermoto.github.io/BirdLense-Hub/) (built from root `mkdocs.yml`).
+| Раздел | Описание |
+|--------|----------|
+| [Обзор](OVERVIEW.md) | Архитектура Hub на Orin |
+| [Быстрый старт](QUICKSTART.md) | Запуск за 5 минут |
+| [Установка](INSTALL.md) | Полная установка на Orin |
+| [Конфигурация](CONFIGURATION.md) | Настройки (default_config.yaml) |
+| [Runbook оператора](RUNBOOKS.md) | Ежедневные операции |
+| [Устранение проблем](TROUBLESHOOTING.md) | FAQ / частые ошибки |
 
-## Quick navigation
+### Пользовательская документация
 
-| Audience | Start here |
-|----------|------------|
-| Operators | [User Guide](user/index.md) → [Overview](user/overview.md), [Quickstart](user/quickstart.md) |
-| Developers | [Contributor Guide](contributor/index.md) → [Architecture](contributor/architecture.md), [Local dev](contributor/local-dev.md) |
-| Russian | [Русский раздел](ru/index.md) |
+| Файл | Описание |
+|------|----------|
+| [user/overview.md](user/overview.md) | Обзор возможностей |
+| [user/quickstart.md](user/quickstart.md) | Быстрый старт |
+| [user/install.md](user/install.md) | Установка на Orin NX/NANO |
+| [user/configuration.md](user/configuration.md) | Конфигурация |
+| [user/features.md](user/features.md) | Список функций |
+| [user/glossary.md](user/glossary.md) | Глоссарий |
+| [user/deploy-server.md](user/deploy-server.md) | Деплой на сервер |
+| [user/processor-performance.md](user/processor-performance.md) | Производительность |
+| [user/public-recordings.md](user/public-recordings.md) | Публичные записи |
+| [user/recovery-config.md](user/recovery-config.md) | Восстановление конфига |
+| [user/runbooks.md](user/runbooks.md) | Runbook оператора |
+| [user/troubleshooting.md](user/troubleshooting.md) | Устранение проблем |
+| [user/scenarios.md](user/scenarios.md) | Сценарии использования |
 
-## Layout
+### Стратегия
 
-| Path | Role |
-|------|------|
-| `docs/user/` | Install, config, deploy, runbooks, troubleshooting |
-| `docs/contributor/` | Architecture, API, testing, CI, security, MCP |
-| `docs/ru/` | Russian pages (paired with EN where available) |
-| `archive/internal/docs-legacy/` | Historical / ML-deep-dive pages (repo-only; not in MkDocs nav) |
-| Repo root | `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `release-readiness.md`, `GOVERNANCE.md` |
+| Файл | Описание |
+|------|----------|
+| [strategy/orin-setup-and-migration.md](strategy/orin-setup-and-migration.md) | Runbook и архитектура Orin |
 
-## Governance & contributing
+---
 
-- [README](https://github.com/Gfermoto/BirdLense-Hub/blob/main/README.md)
-- [CONTRIBUTING](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CONTRIBUTING.md)
-- [CODE_OF_CONDUCT](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CODE_OF_CONDUCT.md)
-- [SECURITY](https://github.com/Gfermoto/BirdLense-Hub/blob/main/SECURITY.md)
-- [LICENSE](https://github.com/Gfermoto/BirdLense-Hub/blob/main/LICENSE)
-
-## Maintainers
-
-- **Doc conventions:** [contributor/documentation.md](contributor/documentation.md)
-- **Inventory:** [\_meta/docs_inventory.csv](_meta/docs_inventory.csv)
+**См. также:** [`strategy/orin-setup-and-migration.md`](strategy/orin-setup-and-migration.md) — полный runbook развёртывания.

@@ -8,6 +8,7 @@ from services.species_catalog_api_service import (
     fetch_bird_families_list_safe,
     fetch_observed_species_list,
     fetch_species_catalog_list,
+    fetch_species_catalog_meta,
     fetch_track_regen_species_options,
 )
 
@@ -23,14 +24,33 @@ def register_ui_species_catalog_routes(app):
     @app.route("/api/ui/species", methods=["GET"])
     def get_all_species():
         exclude_suspects = request.args.get("exclude_suspects", "").strip().lower() in ("1", "true", "yes")
-        cache_key = f"species_list:v3:ex{1 if exclude_suspects else 0}"
+        scope = (request.args.get("scope") or "project").strip().lower()
+        include_meta = request.args.get("meta", "").strip().lower() in ("1", "true", "yes")
+        missing_audio = request.args.get("missing_audio", "").strip().lower() in ("1", "true", "yes")
+        catalog_incomplete = request.args.get("catalog_incomplete", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        cache_key = (
+            f"species_list:v5:ex{1 if exclude_suspects else 0}:sc{scope}"
+            f":ma{1 if missing_audio else 0}:ci{1 if catalog_incomplete else 0}"
+        )
         hit, scached = cache_get(cache_key)
-        if hit:
+        if hit and not include_meta and not missing_audio and not catalog_incomplete:
             return scached
         result = fetch_species_catalog_list(
             db.session,
             exclude_suspects=exclude_suspects,
+            scope=scope,
+            missing_audio=missing_audio,
+            catalog_incomplete=catalog_incomplete,
         )
+        if include_meta:
+            meta = fetch_species_catalog_meta(db.session, exclude_suspects=exclude_suspects)
+            payload = {"items": result, "meta": meta}
+            cache_set(cache_key, result, CACHE_SPECIES_LIST_SEC)
+            return payload
         cache_set(cache_key, result, CACHE_SPECIES_LIST_SEC)
         return result
 

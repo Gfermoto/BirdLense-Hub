@@ -6,13 +6,12 @@
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+[ -f "${SCRIPT_DIR}/../deploy.local.sh" ] && . "${SCRIPT_DIR}/../deploy.local.sh"
 HOST="${DEPLOY_HOST:-birdlense}"
 REMOTE_DIR="${DEPLOY_REMOTE_DIR:-/root/BirdLense}"
 REMOTE_CFG="${REMOTE_DIR}/app/app_config/user_config.yaml"
 REMOTE_BAK="${REMOTE_DIR}/app/app_config/user_config.yaml.bak"
 LOCAL_CFG="${PROJECT_DIR}/app/app_config/user_config.yaml"
-
-[ -f "${SCRIPT_DIR}/../deploy.local.sh" ] && . "${SCRIPT_DIR}/../deploy.local.sh"
 
 echo "=== Восстановление настроек BirdLense ==="
 

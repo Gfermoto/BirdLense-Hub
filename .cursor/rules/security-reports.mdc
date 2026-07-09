@@ -1,0 +1,29 @@
+---
+description: Запрет секретов в отчётах, документации и артефактах агентов
+alwaysApply: true
+---
+
+# Секреты в отчётах и документации
+
+**Никогда** не записывать в markdown/JSON/логи/чаты репозитория:
+
+- пароли (admin, sudo, SSH, MQTT, RTSP, UI settings/contributor)
+- значения `FLASK_SECRET_KEY`, `PROCESSOR_SECRET`, `MCP_TOKEN`, API keys
+- содержимое `.env`, `user_config.yaml`, `deploy.local.sh`
+- Bearer-токены и строки подключения с credentials
+
+## Вместо значений
+
+- `[REDACTED]` или `<32-char-hex>` / `<token>` в примерах
+- только **имена** переменных и **категории** (например «admin password configured»)
+
+## Отчёты в `docs/reports/`
+
+- Операционные baseline/stack-отчёты — **локально**, пути из `.gitignore` (`orin-stack-baseline-*.md`, `agent-*.md`)
+- Перед записью файла: `python3 scripts/report_redact.py --check путь` или `--in-place путь`
+- При сомнении — не создавать файл, выдать сводку в чат без секретов
+
+## SSH / деплой
+
+- Креды только из env / `deploy.local.sh` (не в git)
+- В командах агента не дублировать пароли в отчёты и транскрипты

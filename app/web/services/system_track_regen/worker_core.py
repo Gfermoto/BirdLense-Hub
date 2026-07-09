@@ -105,24 +105,22 @@ def run_regenerate_tracks_worker(
             from detection_fusion import build_fused_video_detections
 
             match_live = bool(
-                app_config.get("processor.track_regen_match_live_pipeline", False),
+                app_config.get("processor.track_regen_match_live_pipeline", True),
             )
             single_video_mode = len(target_video_ids) == 1
             profile = "match_live" if match_live else "batch"
+            from inference_lores import (
+                resolve_inference_lores_size,
+                resolve_track_regen_lores_size,
+            )
+
             if match_live:
-                try:
-                    lores_px = int(
-                        app_config.get("processor.inference_lores_px") or 640,
-                    )
-                except (TypeError, ValueError):
-                    lores_px = 640
-                lores_px = max(320, min(lores_px, 960))
-                lores_size = (lores_px, lores_px)
+                lores_size = resolve_inference_lores_size(app_config)
+                lores_px = max(lores_size)
                 frame_step = 1
             else:
-                lores_px = int(app_config.get("processor.track_regen_lores_px") or 640)
-                lores_px = max(320, min(lores_px, 960))
-                lores_size = (lores_px, lores_px)
+                lores_size = resolve_track_regen_lores_size(app_config)
+                lores_px = max(lores_size)
                 frame_step = int(frame_step_override or app_config.get("processor.track_regen_frame_step") or 1)
                 frame_step = max(1, min(frame_step, 30))
             regen_strategy = (
@@ -132,10 +130,12 @@ def run_regenerate_tracks_worker(
             )
             max_runtime_sec = int(app_config.get("processor.track_regen_video_timeout_sec") or 300)
             if single_video_mode and not match_live:
-                inference_lores_px = int(app_config.get("processor.inference_lores_px") or lores_px or 640)
-                inference_lores_px = max(320, min(inference_lores_px, 960))
-                lores_px = max(lores_px, inference_lores_px)
-                lores_size = (lores_px, lores_px)
+                live_wh = resolve_inference_lores_size(app_config)
+                lores_size = (
+                    max(lores_size[0], live_wh[0]),
+                    max(lores_size[1], live_wh[1]),
+                )
+                lores_px = max(lores_size)
                 frame_step = min(frame_step, 2)
                 max_runtime_sec = max(
                     max_runtime_sec,
@@ -260,7 +260,7 @@ def run_regenerate_tracks_worker(
                 for_track_regen=True,
                 regional_species_override=regional_species_override,
             )
-            precise_lores_px = max(lores_px, 640)
+            precise_lores_px = max(lores_px, max(resolve_inference_lores_size(app_config)))
             precise_frame_step = 1 if single_video_mode else min(frame_step, 2)
             precise_strategy = (
                 app_config.get("processor.track_regen_precise_detection_strategy")
@@ -377,6 +377,22 @@ def run_regenerate_tracks_worker(
                 return False
 
             for video in videos:
+                if job_state._regenerate_tracks_cancel_requested:
+                    job_state._regenerate_tracks_status = {
+                        "status": "cancelled",
+                        "result": {
+                            "generated": generated,
+                            "failed": failed,
+                            "skipped": skipped,
+                            "frames_updated": frames_updated,
+                            "cancelled": True,
+                        },
+                        "error": None,
+                        "progress": job_state._regenerate_tracks_status.get("progress"),
+                    }
+                    job_state._regenerate_tracks_cancel_requested = False
+                    return
+
                 species_name_to_id_cache.clear()
 
                 def _regen_progress(meta: dict):

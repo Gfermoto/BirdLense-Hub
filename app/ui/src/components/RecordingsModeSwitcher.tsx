@@ -88,7 +88,7 @@ export function RecordingsModeSwitcher({ sx }: RecordingsModeSwitcherProps) {
     queryFn: async () => {
       const rows = await fetchUnknownsForObserverDate(
         observerToday.format('YYYY-MM-DD'),
-        { timeOfDay: 'all', limit: 500 },
+        { timeOfDay: 'all', limit: 500, queue: 'expert' },
       );
       return rows.length;
     },
@@ -102,6 +102,8 @@ export function RecordingsModeSwitcher({ sx }: RecordingsModeSwitcherProps) {
     }
     const next = new URLSearchParams(searchParams);
     next.delete('review');
+    next.delete('queue');
+    next.delete('review_reason');
     next.delete('favorites');
     next.delete('favorite_only');
     setSearchParams(next, { replace: true });
@@ -118,6 +120,7 @@ export function RecordingsModeSwitcher({ sx }: RecordingsModeSwitcherProps) {
     }
     const next = new URLSearchParams(searchParams);
     next.set('review', '1');
+    next.set('queue', 'expert');
     next.delete('favorites');
     next.delete('favorite_only');
     setSearchParams(next, { replace: true });

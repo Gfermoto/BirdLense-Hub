@@ -79,6 +79,31 @@ class TestRecordingNoDetectionLog(unittest.TestCase):
         payload = api.activity_log.call_args.kwargs["data"]
         self.assertEqual(payload["reason_code"], "FUSION_NO_ACCEPTED")
         self.assertEqual(payload["rejected_count"], 2)
+        self.assertEqual(payload["rejected_reason_counts"], {})
+
+    def test_logs_fusion_no_accepted_static_pinned_reason(self):
+        api = MagicMock()
+        log_no_detection_activity(
+            api,
+            track_count=3,
+            mqtt_event_count=1,
+            rejected_count=3,
+            rejected_reason_counts={
+                "rejected_static_pinned_track": 2,
+                "rejected_short_track": 1,
+            },
+            video_path_for_api="data/recordings/2026/05/16/120000/video.mp4",
+        )
+        api.activity_log.assert_called_once()
+        payload = api.activity_log.call_args.kwargs["data"]
+        self.assertEqual(
+            payload["reason_code"],
+            "FUSION_NO_ACCEPTED_STATIC_PINNED",
+        )
+        self.assertEqual(
+            payload["rejected_reason_counts"]["rejected_static_pinned_track"],
+            2,
+        )
 
     def test_skips_unknown_when_no_signals(self):
         api = MagicMock()

@@ -192,6 +192,7 @@ nav:
       - Security: contributor/security.md
       - Local development: contributor/local-dev.md
       - MCP setup: contributor/mcp-setup.md
+      - Hub MCP dev: contributor/hub-mcp-dev.md
       - Testing: contributor/testing.md
       - CI and quality: contributor/ci-and-quality.md
       - Datasets: contributor/datasets.md
@@ -224,7 +225,7 @@ nav:
       - Тестирование: ru/testing.ru.md
 
 extra:
-  site_version: "0.3.7"
+  site_version: "0.5.0"
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/Gfermoto/BirdLense-Hub

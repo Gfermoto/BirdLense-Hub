@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "description": "Golden frames for NABirds PyTorch vs OpenVINO parity (<5%). VPS-validated 2026-05-20.",
+  "imgsz": 640,
+  "conf": 0.08,
+  "bird_class_id": 0,
+  "frames": [
+    {
+      "id": "morning_052840_f16",
+      "label": "morning_feeder",
+      "video": "recordings/2026/05/20/052840/video.mp4",
+      "frame_index": 16
+    },
+    {
+      "id": "dawn_025517_f10",
+      "label": "dawn_session",
+      "video": "recordings/2026/05/20/025517/video.mp4",
+      "frame_index": 10
+    },
+    {
+      "id": "dawn_025405_f2",
+      "label": "dawn_session",
+      "video": "recordings/2026/05/20/025405/video.mp4",
+      "frame_index": 2
+    },
+    {
+      "id": "morning_052840_f20",
+      "label": "morning_multi_bird",
+      "video": "recordings/2026/05/20/052840/video.mp4",
+      "frame_index": 20
+    },
+    {
+      "id": "morning_052840_f22",
+      "label": "morning_feeder",
+      "video": "recordings/2026/05/20/052840/video.mp4",
+      "frame_index": 22
+    },
+    {
+      "id": "dawn_025517_f16",
+      "label": "dawn_session",
+      "video": "recordings/2026/05/20/025517/video.mp4",
+      "frame_index": 16
+    },
+    {
+      "id": "dawn_025405_f0",
+      "label": "dawn_session",
+      "video": "recordings/2026/05/20/025405/video.mp4",
+      "frame_index": 0
+    }
+  ]
+}

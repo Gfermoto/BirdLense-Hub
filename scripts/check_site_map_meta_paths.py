@@ -107,7 +107,7 @@ def main() -> None:
     if _is_redirect_stub(site_map) or _is_redirect_stub(site_map_ru):
         print(
             "check_site_map_meta_paths: SKIP (docs/SITE_MAP*.md are redirect stubs; "
-            "canonical maps: archive/internal/docs-legacy/SITE_MAP*.md)"
+            "canonical maps: docs/ (see mkdocs.yml nav)"
         )
         return
     if not site_map.exists() or not site_map_ru.exists():

@@ -11,9 +11,12 @@ from routes.http_guards import (
 )
 from services.ml_ops_service import (
     build_active_learning_pool_preview,
+    build_classifier_calibration_report_payload,
+    build_dataset_streams_summary,
     build_feedback_loop_export_payload,
     build_feedback_loop_status_payload,
     build_ml_runtime_status,
+    build_similarity_summary_payload,
     build_video_reid_match_payload,
     build_reid_summary,
 )
@@ -41,6 +44,15 @@ def register_ui_ml_ops_routes(app):
     def reid_summary():
         return build_reid_summary(db.session)
 
+    @app.route("/api/ui/system/reid/similarity-summary", methods=["GET"])
+    @require_ui_contributor_or_admin
+    def reid_similarity_summary():
+        return build_similarity_summary_payload(
+            db.session,
+            top_k=request.args.get("top_k", 5, type=int),
+            max_rows=request.args.get("max_rows", 500, type=int),
+        )
+
     @app.route("/api/ui/system/feedback-loop/status", methods=["GET"])
     @require_ui_contributor_or_admin
     def feedback_loop_status():
@@ -58,3 +70,15 @@ def register_ui_ml_ops_routes(app):
     @require_ui_settings_unauthorized
     def ml_runtime_status():
         return build_ml_runtime_status()
+
+    @app.route("/api/ui/system/dataset-streams", methods=["GET"])
+    @require_ui_contributor_or_admin
+    def dataset_streams_summary():
+        return build_dataset_streams_summary()
+
+    @app.route("/api/ui/system/classifier-calibration-report", methods=["GET"])
+    @require_ui_contributor_or_admin
+    def classifier_calibration_report():
+        return build_classifier_calibration_report_payload(
+            pair_limit=request.args.get("pair_limit", 15, type=int),
+        )

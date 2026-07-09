@@ -36,22 +36,49 @@ try:
     from detection_strategy import (
         TwoStageStrategy,
         _regional_class_ids,
+        _track_maybe_retry,
         binary_track_ultralytics_conf_floor,
         bird_skip_classifier_area_limit,
         build_binary_track_ultralytics_extras,
-        openvino_binary_bird_score_scale,
         per_label_binary_conf_threshold,
         should_skip_bird_species_classifier,
     )
 except ImportError:
     TwoStageStrategy = None  # type: ignore
+    _track_maybe_retry = None  # type: ignore
     build_binary_track_ultralytics_extras = None  # type: ignore
     _regional_class_ids = None  # type: ignore
     binary_track_ultralytics_conf_floor = None  # type: ignore
     bird_skip_classifier_area_limit = None  # type: ignore
-    openvino_binary_bird_score_scale = None  # type: ignore
     per_label_binary_conf_threshold = None  # type: ignore
     should_skip_bird_species_classifier = None  # type: ignore
+
+# Unit tests reuse frozen frames; motion/global-static gates would reject all boxes.
+_DETECT_TEST_QUALITY_OFF = {
+    "processor.static_object_suppression_enabled": False,
+    "processor.motion_verified_detection_enabled": False,
+    "processor.motion_global_static_reject_enabled": False,
+    "processor.detection_texture_filter_enabled": False,
+    "processor.hard_negatives_enabled": False,
+    "processor.background_subtraction_enabled": False,
+    "processor.scene_adaptive_conf_enabled": False,
+    "processor.pipeline_mode": "dual",
+}
+
+
+def _detect_test_cfg_get(key, default=None):
+    if key in _DETECT_TEST_QUALITY_OFF:
+        return _DETECT_TEST_QUALITY_OFF[key]
+    return default
+
+
+def _detect_test_cfg_merge(extra: dict):
+    def _get(key, default=None):
+        if key in _DETECT_TEST_QUALITY_OFF:
+            return _DETECT_TEST_QUALITY_OFF[key]
+        return extra.get(key, default)
+
+    return _get
 
 
 class _FakeTensor:
@@ -107,23 +134,44 @@ class _FakeClassifierModel:
         self._per_crop_probs = per_crop_probs
 
     def __call__(self, crop, verbose=False):
-        crop_key = int(crop[0, 0, 0])
-        return [_FakeClassifierResult(self.names, self._per_crop_probs[crop_key])]
+        if crop.ndim == 3:
+            sig = int(np.max(crop[:, :, 0]))
+        else:
+            sig = int(crop.reshape(-1)[0])
+        if sig not in self._per_crop_probs:
+            sig = min(self._per_crop_probs.keys(), key=lambda k: abs(k - sig))
+        return [_FakeClassifierResult(self.names, self._per_crop_probs[sig])]
 
 
 class TestDetectionStrategy(unittest.TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger("TestDetectionStrategy")
+        self._cfg_patcher = None
+        try:
+            import app_config.app_config as ac_mod
+        except ImportError:
+            ac_mod = None
+        if ac_mod is not None:
+            self._cfg_patcher = patch.object(
+                ac_mod,
+                "app_config",
+                MagicMock(get=MagicMock(side_effect=_detect_test_cfg_get)),
+            )
+            self._cfg_patcher.start()
 
         # Resolve project root from this file location: app/processor/tests/ -> ../../../
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self.project_root = os.path.abspath(os.path.join(current_dir, "../../.."))
 
-        # PyTorch two_stage (.pt): см. scripts/fetch-processor-weights.sh и Dockerfile.
-        self.binary_model_path = os.path.join(self.project_root, "app/processor/models/detection/weights/yolo11n.pt")
+        # two_stage: Trapper ONNX + Birder EU weights (optional on CI).
+        self.binary_model_path = os.path.join(
+            self.project_root,
+            "app/processor/models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx",
+        )
         self.classifier_model_path = os.path.join(
-            self.project_root, "app/processor/models/classification/weights/best.pt"
+            self.project_root,
+            "app/processor/models/classification/weights/convnext_v2_tiny_eu-common256px.pt",
         )
         self.sample_img_path = os.path.join(self.project_root, "app/data/samples/photos/1.jpg")
 
@@ -137,6 +185,10 @@ class TestDetectionStrategy(unittest.TestCase):
             self.frame = np.zeros((720, 1280, 3), dtype=np.uint8)
         else:
             self.frame = cv2.imread(self.sample_img_path)
+
+    def tearDown(self):
+        if self._cfg_patcher is not None:
+            self._cfg_patcher.stop()
 
     def test_two_stage_strategy_integration(self):
         heavy_skip.maybe_skip_heavy(self)
@@ -388,6 +440,73 @@ class TestDetectionStrategy(unittest.TestCase):
         self.assertIn(1, classified)
         self.assertTrue(set(classified.values()).issubset({"Blue Jay", "Great Tit", "Eurasian Jay", "Robin"}))
 
+    def test_two_stage_uses_classification_frame_for_crop_when_provided(self):
+        if TwoStageStrategy is None:
+            self.skipTest("TwoStageStrategy not available (import failed).")
+        try:
+            import app_config.app_config as ac_mod
+        except ImportError:
+            self.skipTest("app_config not available on PYTHONPATH")
+
+        detector_frame = np.zeros((640, 640, 3), dtype=np.uint8)
+        detector_frame[160:480, 160:480] = 10
+        classification_frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        # Inverse-letterbox mapping for bbox_norm [0.25,0.25,0.75,0.75]:
+        # x: 320..960, y: 40..680 for source 1280x720 -> detector 640x640.
+        classification_frame[40:680, 320:960] = 77
+
+        boxes = _FakeBoxes(
+            track_ids=[1],
+            class_indexes=[14],
+            confidences=[0.9],
+            boxes_norm=[[0.25, 0.25, 0.75, 0.75]],
+            boxes_abs=[[160, 160, 480, 480]],
+        )
+
+        strategy = TwoStageStrategy.__new__(TwoStageStrategy)
+        strategy.binary_model = type(
+            "FakeBinaryModel",
+            (),
+            {
+                "track": lambda *args, **kwargs: [_FakeDetectResult(boxes)],
+                "names": {14: "bird"},
+            },
+        )()
+        strategy.classifier_model = _FakeClassifierModel(
+            {0: "Blue_Jay", 1: "Great_Tit"},
+            {
+                10: [0.9, 0.1],
+                77: [0.1, 0.9],
+            },
+        )
+        strategy.classes = None
+        strategy.regional_species = None
+        strategy.logger = self.logger
+        strategy.detector_scope = {"Bird", "Rodent"}
+        strategy.min_center_dist = 0.0
+        strategy.min_box_size_px = 1
+        strategy.blur_threshold = 0.0
+        strategy.max_blur_checks = 3
+        strategy.max_classifications_per_frame = 1
+        strategy._classification_index = 0
+        strategy.classification_scheduler = "priority"
+        strategy.binary_imgsz = 640
+        strategy.inference_backend = "torch"
+        strategy._roi_sr = None
+        strategy._for_track_regen = False
+        strategy.is_blurry = lambda crop: (False, 250.0)
+
+        mock_cfg = MagicMock(get=MagicMock(side_effect=_detect_test_cfg_get))
+        with patch.object(ac_mod, "app_config", mock_cfg):
+            results = strategy.detect(
+                detector_frame,
+                "bytetrack.yaml",
+                0.1,
+                classification_frame=classification_frame,
+            )
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].class_name, "Great Tit")
+
 
 class _FakeBoxesNoTrackId:
     """ByteTrack edge case: detections present but ``boxes.id`` is None."""
@@ -496,8 +615,16 @@ class TestTrackIdMissingBehavior(unittest.TestCase):
         strategy.max_classifications_per_frame = 2
         strategy._classification_index = 0
         strategy.is_blurry = lambda crop: (False, 250.0)
+        strategy._roi_sr = None
 
-        results = strategy.detect(frame, "bytetrack.yaml", 0.1)
+        try:
+            import app_config.app_config as ac_mod
+        except ImportError:
+            self.skipTest("app_config not available on PYTHONPATH")
+
+        mock_cfg = MagicMock(get=MagicMock(side_effect=_detect_test_cfg_get))
+        with patch.object(ac_mod, "app_config", mock_cfg):
+            results = strategy.detect(frame, "bytetrack.yaml", 0.1)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].track_id, 1)
 
@@ -588,10 +715,7 @@ class TestRegenSyntheticTrackIds(unittest.TestCase):
             "processor.binary_imgsz": 640,
         }
 
-        def _cfg_get(key, default=None):
-            return cfg_map.get(key, default)
-
-        mock_cfg = MagicMock(get=MagicMock(side_effect=_cfg_get))
+        mock_cfg = MagicMock(get=MagicMock(side_effect=_detect_test_cfg_merge(cfg_map)))
         with patch.object(ac_mod, "app_config", mock_cfg):
             r1 = strategy.detect(frame, "bytetrack.yaml", 0.12)
             r2 = strategy.detect(frame, "bytetrack.yaml", 0.12)
@@ -663,44 +787,9 @@ class TestBinaryConfHelpers(unittest.TestCase):
         self.assertAlmostEqual(per_label_binary_conf_threshold("Bird", 0.3, cfg), 0.5)
         self.assertAlmostEqual(per_label_binary_conf_threshold("Rodent", 0.3, cfg), 0.2)
         self.assertAlmostEqual(per_label_binary_conf_threshold("Squirrel", 0.3, cfg), 0.2)
-
-    def test_openvino_track_conf_cap_lowers_floor(self):
-        if binary_track_ultralytics_conf_floor is None:
-            self.skipTest("detection_strategy import failed")
-        cfg = {
-            "processor.min_confidence_binary_bird": 0.55,
-            "processor.min_confidence_binary_rodent": 0.22,
-            "processor.openvino_binary_track_ultralytics_conf": 0.05,
-        }
-        self.assertAlmostEqual(binary_track_ultralytics_conf_floor(0.30, cfg, inference_backend="torch"), 0.22)
-        self.assertAlmostEqual(binary_track_ultralytics_conf_floor(0.30, cfg, inference_backend="openvino"), 0.05)
-
-    def test_openvino_bird_threshold_override(self):
-        if per_label_binary_conf_threshold is None:
-            self.skipTest("detection_strategy import failed")
-        cfg = {
-            "processor.min_confidence_binary_bird": 0.5,
-            "processor.openvino_min_confidence_binary_bird": 0.19,
-        }
         self.assertAlmostEqual(
-            per_label_binary_conf_threshold("Bird", 0.3, cfg, inference_backend="openvino"),
-            0.19,
-        )
-        self.assertAlmostEqual(per_label_binary_conf_threshold("Bird", 0.3, cfg, inference_backend="torch"), 0.5)
-
-    def test_openvino_bird_score_scale_helper(self):
-        if openvino_binary_bird_score_scale is None:
-            self.skipTest("detection_strategy import failed")
-        self.assertAlmostEqual(
-            openvino_binary_bird_score_scale({}, inference_backend="torch"),
-            1.0,
-        )
-        self.assertAlmostEqual(
-            openvino_binary_bird_score_scale(
-                {"processor.openvino_binary_bird_score_scale": 6.0},
-                inference_backend="openvino",
-            ),
-            6.0,
+            per_label_binary_conf_threshold("Eurasian Red Squirrel", 0.3, cfg),
+            0.2,
         )
 
     def test_bird_skip_classifier_area(self):
@@ -737,6 +826,39 @@ class TestBuildBinaryTrackUltralyticsExtras(unittest.TestCase):
             build_binary_track_ultralytics_extras({"processor.binary_track_max_det": 5000}),
             {},
         )
+
+
+class TestTrackMaybeRetry(unittest.TestCase):
+    def test_retries_when_boxes_have_no_track_id(self):
+        if _track_maybe_retry is None:
+            self.skipTest("detection_strategy import failed")
+        import numpy as np
+
+        confs: list[float | None] = []
+        calls = 0
+
+        class _Boxes:
+            def __init__(self, *, with_id: bool):
+                self.id = [1] if with_id else None
+
+            def __len__(self):
+                return 1
+
+        class _Result:
+            def __init__(self, *, with_id: bool):
+                self.boxes = _Boxes(with_id=with_id)
+
+        class _Model:
+            def track(self, frame, **kwargs):
+                nonlocal calls
+                calls += 1
+                confs.append(kwargs.get("conf"))
+                return [_Result(with_id=calls >= 2)]
+
+        frame = np.zeros((64, 64, 3), dtype=np.uint8)
+        out = _track_maybe_retry(_Model(), frame, conf=0.12, persist=True)
+        self.assertEqual(len(out[0].boxes.id), 1)
+        self.assertEqual(confs, [0.12, 0.12])
 
 
 class TestTwoStageBirdSkipClassifier(unittest.TestCase):
@@ -784,12 +906,13 @@ class TestTwoStageBirdSkipClassifier(unittest.TestCase):
         strategy._classification_index = 0
         strategy.is_blurry = lambda crop: (False, 250.0)
 
-        def _cfg_get(key, default=None):
-            if key == "processor.bird_skip_classifier_max_area_frac":
-                return 0.10
-            return default
-
-        mock_cfg = MagicMock(get=MagicMock(side_effect=_cfg_get))
+        mock_cfg = MagicMock(
+            get=MagicMock(
+                side_effect=_detect_test_cfg_merge(
+                    {"processor.bird_skip_classifier_max_area_frac": 0.10}
+                )
+            )
+        )
         with patch.object(ac_mod, "app_config", mock_cfg):
             results = strategy.detect(frame, "bytetrack.yaml", 0.1)
 
@@ -812,7 +935,7 @@ class TestSmallObjectAutoRelax(unittest.TestCase):
         boxes = _FakeBoxes(
             track_ids=[7],
             class_indexes=[14],
-            confidences=[0.23],
+            confidences=[0.26],
             boxes_norm=[[0.08, 0.08, 0.22, 0.22]],
             boxes_abs=[[10, 10, 26, 26]],
         )
@@ -844,21 +967,20 @@ class TestSmallObjectAutoRelax(unittest.TestCase):
         strategy.classification_scheduler = "priority"
         strategy.binary_imgsz = 640
         strategy._for_track_regen = False
+        strategy._roi_sr = None
 
-        def _cfg_get(key, default=None):
-            mapping = {
-                "processor.auto_small_object_relax_enabled": True,
-                "processor.auto_small_object_relax_min_box_size_px": 12,
-                "processor.auto_small_object_relax_min_center_dist": 0.0,
-                "processor.auto_small_object_relax_conf_delta": 0.08,
-                "processor.auto_small_object_relax_max_candidates": 2,
-                "processor.min_confidence_binary_bird": 0.24,
-            }
-            return mapping.get(key, default)
-
-        mock_cfg = MagicMock(get=MagicMock(side_effect=_cfg_get))
+        relax_map = {
+            "processor.auto_small_object_relax_enabled": True,
+            "processor.auto_small_object_relax_min_box_size_px": 12,
+            "processor.auto_small_object_relax_min_center_dist": 0.0,
+            "processor.auto_small_object_relax_conf_delta": 0.08,
+            "processor.auto_small_object_relax_max_candidates": 2,
+            "processor.min_box_size_px": 12,
+            "processor.min_confidence_binary_bird": 0.24,
+        }
+        mock_cfg = MagicMock(get=MagicMock(side_effect=_detect_test_cfg_merge(relax_map)))
         with patch.object(ac_mod, "app_config", mock_cfg):
-            results = strategy.detect(frame, "bytetrack.yaml", 0.24)
+            results = strategy.detect(frame, "bytetrack.yaml", 0.22)
 
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0].track_id, 7)

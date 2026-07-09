@@ -32,7 +32,9 @@ def resolve_motion_recording_camera_id(
         try:
             from app_config.cameras import cameras_for_processor, get_valid_cameras
 
-            proc_cams = cameras_for_processor(get_valid_cameras(app_config.get("video.cameras") or []))
+            proc_cams = cameras_for_processor(
+                get_valid_cameras(video_config=(app_config.get("video") or {})),
+            )
             camera_ids = [str(c.get("id") or "").strip() for c in proc_cams if str(c.get("id") or "").strip()]
         except Exception:
             camera_ids = []

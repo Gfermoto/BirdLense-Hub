@@ -5,8 +5,27 @@ from __future__ import annotations
 import os
 
 from flask import Flask, request
-from flask_limiter import Limiter
 from flask_migrate import Migrate
+
+try:
+    from flask_limiter import Limiter
+except ModuleNotFoundError:  # pragma: no cover - local/dev env fallback
+
+    class Limiter:  # type: ignore[override]
+        """No-op fallback when flask_limiter is unavailable."""
+
+        def __init__(self, *args, **kwargs):
+            self.enabled = False
+
+        def init_app(self, app: Flask) -> None:
+            app.logger.warning("flask_limiter not installed; rate limiter disabled")
+
+        def limit(self, *args, **kwargs):
+            def _decorator(fn):
+                return fn
+
+            return _decorator
+
 
 from auth import client_ip_for_rate_limit
 from flask_extensions import apply_cors, register_sqlite_connect_pragmas

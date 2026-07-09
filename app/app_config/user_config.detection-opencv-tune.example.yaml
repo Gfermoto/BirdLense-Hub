@@ -1,0 +1,16 @@
+# Пример: снизить шум OpenCV и стабилизировать детектор на проде (Forest).
+# Слить в user_config.yaml вручную; не включать всё сразу без diagnose_detection_funnel.
+
+triggers:
+  opencv:
+    check_every_n_frames: 2
+    min_contour_area: 320
+    day_min_contour_area: 320
+    night_min_contour_area: 220
+
+processor:
+  # Если bbox «уезжают» при native 720p — попробовать false + inference_lores_wh [704, 576]
+  # detect_use_native_resolution: false
+  min_confidence_binary_bird: 0.22
+  bbox_parity_debug_enabled: true
+  bbox_parity_debug_max_frames: 15

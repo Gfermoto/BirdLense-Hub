@@ -1,12 +1,8 @@
 # BirdLense Hub — web+processor + Redis (кэш API между перезапусками воркера; см. REDIS_URL).
 # Подключения по хосту (IP): Go2RTC, MQTT. Площадки могут быть разными.
-# Кодирование записи (CPU / Intel GPU) выбирается в Настройках → Видео. Без override — всегда CPU.
-# Intel: при деплое scripts/deploy.sh вызывает scripts/docker-compose-intel-override-gen.sh (DRI + group_add + PERFMON).
-# Вручную: см. docker-compose.intel.example.yml.
+# Кодирование записи: jetson (NVENC на Orin) или cpu (libx264).
 
 services:
-  # Если в docker logs redis: «Memory overcommit must be enabled» — на Docker-хосте (не в контейнере):
-  # bash scripts/host-enable-vm-overcommit-memory.sh
   redis:
     image: redis:7-alpine
     container_name: birdlense-redis
@@ -29,12 +25,10 @@ services:
 
   birdlense:
     build:
-      # Контекст — корень репозитория: в образ попадает scripts/export_fusion_training_data.py (fusion export).
       context: ..
-      dockerfile: app/Dockerfile
+      dockerfile: app/Dockerfile.orin
     container_name: birdlense
-    # YOLO/OpenCV в процессоре: дефолтный 64 MB /dev/shm даёт лишние warning и реже — артефакты.
-    shm_size: "2gb"
+    shm_size: "1gb"
     depends_on:
       redis:
         condition: service_healthy
@@ -43,16 +37,23 @@ services:
     volumes:
       - ./data:/app/data
       - ./app_config:/app/app_config
+      - ./processor/models/detection/trapper_ai_v02_2024:/app/processor/models/detection/trapper_ai_v02_2024
+      - ./processor/models/classification:/app/processor/models/classification
+      - ./processor/models/reid/ornimetrics:/app/processor/models/reid/ornimetrics
+      - ./processor/models/welfare/ornimetrics:/app/processor/models/welfare/ornimetrics
+      - ./processor/models/tracker:/app/processor/models/tracker
     env_file:
       - .env
     environment:
       - DATA_DIR=/app/data
-      # Кэш API: Redis (см. services/cache.py). В UI «Производительность» держите включённым (дефолт true). URL переопределяется в .env при внешнем Redis.
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - API_URL_BASE=http://127.0.0.1:8000/api/processor
+      - API_URL_BASE=http://127.0.0.1:8080/api/processor
       - PROCESSOR_SECRET=${PROCESSOR_SECRET:-}
       - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-}
       - BIRDLENSE_ENV=${BIRDLENSE_ENV:-}
+      - BIRDLENSE_PLATFORM=orin
+      - BIRDLENSE_INFERENCE_BACKEND=onnxruntime
+      - BIRDLENSE_INFERENCE_DEVICE=cuda:0
       - GO2RTC_URL=${GO2RTC_URL:-}
       - MQTT_BROKER=${MQTT_BROKER:-}
       - MQTT_USERNAME=${MQTT_USERNAME:-}
@@ -64,23 +65,21 @@ services:
       - BIRDLENSE_HIDE_DIRECT_RECORDINGS=${BIRDLENSE_HIDE_DIRECT_RECORDINGS:-}
       - TRUSTED_PROXY=${TRUSTED_PROXY:-}
       - BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT=${BIRDLENSE_STARTUP_CLEANUP_LEGACY_IMPORT:-}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+    extra_hosts:
+      - "api.telegram.org:149.154.167.220"
+    runtime: nvidia
     restart: unless-stopped
     stop_grace_period: 45s
-    mem_limit: 4g
-    cpus: "4.0"
     logging:
       driver: json-file
       options:
         max-size: "20m"
         max-file: "7"
-    deploy:
-      resources:
-        limits:
-          cpus: '4'
-          memory: 4G
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/ui/readiness"]
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8000/api/ui/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 25s
+      start_period: 60s

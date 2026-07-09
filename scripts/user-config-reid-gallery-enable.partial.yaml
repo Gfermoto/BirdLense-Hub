@@ -1,0 +1,5 @@
+# SOTA-13: enable after live recall patch (see user-config-live-recall.partial.yaml).
+processor:
+  reid_gallery_enabled: true
+  reid_gallery_clustering_enabled: true
+  expert_review_queue_enabled: true

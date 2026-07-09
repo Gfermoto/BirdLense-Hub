@@ -60,17 +60,39 @@ def choose_primary_provider(row: dict) -> str:
     return provider or "unknown"
 
 
+def track_id_sort_key(value) -> tuple[int, int]:
+    """Sort key for int or spatial-split composite ids (e.g. ``1:s1``)."""
+    if value is None:
+        return (0, 0)
+    text = str(value).strip()
+    if ":" in text:
+        base, seg = text.split(":", 1)
+        try:
+            seg_n = int(seg.lstrip("sS") or "0")
+        except ValueError:
+            seg_n = 0
+        try:
+            return (int(base), seg_n)
+        except ValueError:
+            return (0, seg_n)
+    try:
+        return (int(text), 0)
+    except (TypeError, ValueError):
+        return (0, 0)
+
+
+def track_id_is_positive(value) -> bool:
+    base, _ = track_id_sort_key(value)
+    return base > 0
+
+
 def yolo_track_present(row: dict) -> bool:
     if "yolo" in provider_lineage(row):
         return True
     provider = choose_primary_provider(row)
     if provider == "yolo":
         return True
-    track_id = row.get("track_id")
-    try:
-        return track_id is not None and int(track_id) > 0
-    except (TypeError, ValueError):
-        return False
+    return track_id_is_positive(row.get("track_id"))
 
 
 def _fallback_reason_from_value(value: str | None) -> str | None:

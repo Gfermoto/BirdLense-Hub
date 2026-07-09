@@ -1,0 +1,18 @@
+# Hotfix 2026-05-28: пропуски Forest (YOLO reject) + BirdBox (Frigate update).
+# Слить в user_config.yaml на VPS, затем: docker compose restart birdlense
+
+detection:
+  # YOLO видит bbox, но DecisionMaker всё режет — Frigate MQTT должен спасать клип.
+  frigate_standalone_require_blind_yolo: false
+
+triggers:
+  frigate:
+    # sub_label (Great Tit) часто приходит на update/end, не только new.
+    trigger_on_update: true
+
+processor:
+  min_seconds_between_recordings: 5
+  # Было 0.028 — слишком жёстко для мелких синиц (static_pinned).
+  track_static_reject_max_center_dispersion_norm: 0.075
+  track_regen_video_timeout_sec: 900
+  track_regen_frame_step: 3

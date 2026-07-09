@@ -4,7 +4,7 @@
 как после нормализации процессора: ``Scientific (Common)`` с пробелами.
 
 Типичный источник: ``scripts/datasets/dump_classifier_allowlist.py`` →
-``processor/models/classification/weights/class_names.txt`` рядом с ``best.pt``.
+``{variant}/class_labels.txt`` активного Birder EU классификатора (#516).
 
 Ключ конфигурации: ``species.catalog_allowlist_file`` (путь относительно корня
 ``app/processor`` или абсолютный). Пусто — allowlist выключен.
@@ -15,9 +15,11 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from functools import lru_cache
+from pathlib import Path
 
 from util import load_species_canonical_mapping, normalize_species_to_canonical
 
@@ -52,6 +54,66 @@ def _processor_root() -> str:
     return os.path.abspath(os.path.join(web_dir, "..", "processor"))
 
 
+def _classifier_engine_name(app_config_get) -> str:
+    return str(app_config_get("processor.classifier_engine", "birder_eu") or "birder_eu").strip().lower()
+
+
+def _birder_labels_dir(app_config_get) -> str:
+    variant = str(app_config_get("processor.birder_eu_variant") or "convnext_v2_tiny_eu-common256px").strip()
+    rel = (
+        app_config_get("processor.models.classifier")
+        or app_config_get("processor.models.classifier_birder_eu")
+        or f"models/classification/{variant}/{variant}.onnx"
+    )
+    base = rel if os.path.isabs(rel) else os.path.join(_processor_root(), rel)
+    if base.endswith((".onnx", ".pt")):
+        return os.path.dirname(base)
+    return base
+
+
+def _classifier_engine_allowlist_path(app_config_get) -> str | None:
+    engine = _classifier_engine_name(app_config_get)
+    if engine == "birder_eu":
+        base = _birder_labels_dir(app_config_get)
+        return os.path.join(base, "class_labels.txt")
+    return _resolve_configured_allowlist_path(app_config_get)
+
+
+def _catalog_use_active_classifier_labels(app_config_get) -> bool:
+    """Каталог allowlist = метки активного классификатора (не union с legacy YOLO)."""
+    raw = app_config_get("species.catalog_allowlist_use_active_classifier")
+    if raw is None:
+        return True
+    return str(raw).strip().lower() in ("1", "true", "yes", "on")
+
+
+def _normalize_classifier_label(name: str) -> str:
+    return str(name or "").replace("_OR_", "/").replace("_", " ").strip()
+
+
+def load_active_classifier_label_names(app_config_get) -> tuple[str, ...] | None:
+    """Имена классов, которые активный классификатор может выдать на кропе."""
+    engine = _classifier_engine_name(app_config_get)
+    if engine == "birder_eu":
+        path = os.path.join(_birder_labels_dir(app_config_get), "class_labels.txt")
+        if os.path.isfile(path):
+            return _load_allowlist_names_cached(os.path.abspath(path))
+        return None
+    path = _resolve_configured_allowlist_path(app_config_get) or _classifier_engine_allowlist_path(app_config_get)
+    if path and os.path.isfile(path):
+        return _load_allowlist_names_cached(os.path.abspath(path))
+    return None
+
+
+def catalog_classifier_meta(app_config_get) -> dict[str, str | int]:
+    engine = _classifier_engine_name(app_config_get)
+    labels = load_active_classifier_label_names(app_config_get) or ()
+    return {
+        "classifier_engine": engine,
+        "classifier_class_count": len(labels),
+    }
+
+
 def _norm_key(name: str) -> str:
     if not name:
         return ""
@@ -61,14 +123,79 @@ def _norm_key(name: str) -> str:
     return s
 
 
-def resolve_allowlist_path(app_config_get) -> str | None:
-    """Абсолютный путь к файлу allowlist классификатора или None, если не задан."""
+def _catalog_allowlist_extra_names(app_config_get) -> tuple[str, ...]:
+    """Классы вне Birder allowlist (напр. Rodent из детектора Trapper)."""
+    raw = app_config_get("species.catalog_allowlist_extra") or ["Rodent"]
+    if isinstance(raw, str):
+        raw = [raw]
+    names: list[str] = []
+    if isinstance(raw, (list, tuple)):
+        for item in raw:
+            line = str(item or "").split("#", 1)[0].strip()
+            if line:
+                names.append(line)
+    return tuple(names)
+
+
+def _resolve_configured_allowlist_path(app_config_get) -> str | None:
     rel = (app_config_get("species.catalog_allowlist_file") or "").strip()
     if not rel:
         return None
     if os.path.isabs(rel):
         return rel
     return os.path.join(_processor_root(), rel)
+
+
+def _resolve_supplement_allowlist_paths(app_config_get) -> list[str]:
+    """Явный supplement (не legacy YOLO class_names из catalog_allowlist_file)."""
+    out: list[str] = []
+    rel = (app_config_get("species.catalog_allowlist_supplement_file") or "").strip()
+    if not rel:
+        return out
+    path = rel if os.path.isabs(rel) else os.path.join(_processor_root(), rel)
+    if os.path.isfile(path):
+        out.append(os.path.abspath(path))
+    return out
+
+
+def resolve_all_allowlist_paths(app_config_get) -> list[str]:
+    """Файлы allowlist (если не используем id2label активного классификатора)."""
+    follow_engine = str(app_config_get("species.catalog_allowlist_follow_classifier_engine", True)).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    if follow_engine and _catalog_use_active_classifier_labels(app_config_get):
+        return list(_resolve_supplement_allowlist_paths(app_config_get))
+
+    paths: list[str] = []
+    seen: set[str] = set()
+
+    def add(path: str | None) -> None:
+        if not path:
+            return
+        abspath = os.path.abspath(path)
+        if not os.path.isfile(abspath) or abspath in seen:
+            return
+        seen.add(abspath)
+        paths.append(abspath)
+
+    if follow_engine:
+        add(_classifier_engine_allowlist_path(app_config_get))
+    else:
+        add(_resolve_configured_allowlist_path(app_config_get))
+    for sup in _resolve_supplement_allowlist_paths(app_config_get):
+        add(sup)
+    if not paths:
+        add(_resolve_configured_allowlist_path(app_config_get))
+    return paths
+
+
+def resolve_allowlist_path(app_config_get) -> str | None:
+    """Первичный файл allowlist (обратная совместимость)."""
+    paths = resolve_all_allowlist_paths(app_config_get)
+    return paths[0] if paths else None
 
 
 @lru_cache(maxsize=4)
@@ -93,18 +220,60 @@ def _load_allowlist_norm_keys_cached(abspath: str) -> frozenset[str]:
     return frozenset(keys)
 
 
+def _norm_keys_from_label_lines(lines: tuple[str, ...] | list[str]) -> set[str]:
+    keys: set[str] = set()
+    for raw in lines:
+        line = str(raw).split("#", 1)[0].strip()
+        if not line:
+            continue
+        keys.add(_norm_key(line))
+        pair = _split_scientific_common_display(line)
+        if pair:
+            keys.add(_norm_key(pair[0]))
+            keys.add(_norm_key(pair[1]))
+    return keys
+
+
 def load_catalog_allowlist_norm_keys(app_config_get) -> frozenset[str] | None:
-    """Множество нормализованных ключей или None, если allowlist не задан / файла нет."""
-    path = resolve_allowlist_path(app_config_get)
-    if not path or not os.path.isfile(path):
-        return None
-    return _load_allowlist_norm_keys_cached(os.path.abspath(path))
+    """Нормализованные ключи allowlist = активный классификатор (+ extras), не union YOLO EU."""
+    follow_engine = str(app_config_get("species.catalog_allowlist_follow_classifier_engine", True)).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    if follow_engine and _catalog_use_active_classifier_labels(app_config_get):
+        labels = load_active_classifier_label_names(app_config_get)
+        if labels:
+            keys = _norm_keys_from_label_lines(labels)
+            for extra in _catalog_allowlist_extra_names(app_config_get):
+                keys.add(_norm_key(extra))
+            return frozenset(keys)
+
+    paths = resolve_all_allowlist_paths(app_config_get)
+    if not paths:
+        extras = _catalog_allowlist_extra_names(app_config_get)
+        if not extras:
+            return None
+        return frozenset(_norm_key(n) for n in extras)
+    keys: set[str] = set()
+    for path in paths:
+        keys |= set(_load_allowlist_norm_keys_cached(path))
+    for extra in _catalog_allowlist_extra_names(app_config_get):
+        keys.add(_norm_key(extra))
+    return frozenset(keys)
 
 
 def clear_allowlist_cache() -> None:
-    """Очистить lru_cache загрузки allowlist (после смены файла или конфига)."""
+    """Очистить lru_cache загрузки allowlist (после смене файла или конфига)."""
     _load_allowlist_norm_keys_cached.cache_clear()
     _load_allowlist_names_cached.cache_clear()
+    try:
+        from services.species_catalog.vocabulary import clear_species_vocabulary_cache
+
+        clear_species_vocabulary_cache()
+    except ImportError:
+        pass
 
 
 def species_name_match_norm_keys(name: str, mapping: dict[str, str] | None = None) -> set[str]:
@@ -159,11 +328,61 @@ def _load_allowlist_names_cached(abspath: str) -> tuple[str, ...]:
 
 
 def load_catalog_allowlist_names(app_config_get) -> tuple[str, ...] | None:
-    """Список имён классов из allowlist-файла или None, если не задан."""
-    path = resolve_allowlist_path(app_config_get)
-    if not path or not os.path.isfile(path):
+    """Список имён классов активного классификатора + extras (дедуп по norm key)."""
+    follow_engine = str(app_config_get("species.catalog_allowlist_follow_classifier_engine", True)).strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    extras = _catalog_allowlist_extra_names(app_config_get)
+    names: list[str] = []
+    seen: set[str] = set()
+
+    def add_line(raw: str) -> None:
+        nk = _norm_key(raw)
+        if nk and nk not in seen:
+            names.append(raw)
+            seen.add(nk)
+
+    if follow_engine and _catalog_use_active_classifier_labels(app_config_get):
+        for raw in load_active_classifier_label_names(app_config_get) or ():
+            add_line(raw)
+        for extra in extras:
+            add_line(extra)
+        return tuple(names) if names else None
+
+    paths = resolve_all_allowlist_paths(app_config_get)
+    if not paths and not extras:
         return None
-    return _load_allowlist_names_cached(os.path.abspath(path))
+    for path in paths:
+        for raw in _load_allowlist_names_cached(path):
+            add_line(raw)
+    for extra in extras:
+        add_line(extra)
+    return tuple(names) if names else None
+
+
+def scientific_name_from_canonical_mapping(
+    display_name: str,
+    mapping: dict[str, str] | None = None,
+) -> str | None:
+    """Бином из строки mapping ``Scientific (Common)|Canonical`` при совпадении common name."""
+    if not (display_name or "").strip():
+        return None
+    mapping = mapping or load_species_canonical_mapping()
+    target_keys = species_name_match_norm_keys(display_name, mapping)
+    if not target_keys:
+        return None
+    for variant, canonical in mapping.items():
+        if not (variant or "").strip() or not (canonical or "").strip():
+            continue
+        if not (species_name_match_norm_keys(canonical, mapping) & target_keys):
+            continue
+        pair = _split_scientific_common_display(str(variant).strip())
+        if pair:
+            return pair[0].strip()
+    return None
 
 
 def allowlist_scientific_name_for_display_name(
@@ -181,11 +400,7 @@ def allowlist_scientific_name_for_display_name(
     target_keys = species_name_match_norm_keys(display_name)
     if not target_keys:
         return None
-    path = resolve_allowlist_path(app_config_get)
-    if not path or not os.path.isfile(path):
-        return None
-    abspath = os.path.abspath(path)
-    for raw in _load_allowlist_names_cached(abspath):
+    for raw in load_catalog_allowlist_names(app_config_get) or ():
         pair = _split_scientific_common_display(raw)
         if not pair:
             continue
@@ -202,10 +417,14 @@ def allowlist_scientific_name_for_display_name(
 
 __all__ = [
     "allowlist_scientific_name_for_display_name",
+    "scientific_name_from_canonical_mapping",
+    "catalog_classifier_meta",
     "clear_allowlist_cache",
     "ingest_name_matches_allowlist",
+    "load_active_classifier_label_names",
     "load_catalog_allowlist_names",
     "load_catalog_allowlist_norm_keys",
+    "resolve_all_allowlist_paths",
     "resolve_allowlist_path",
     "species_matches_allowlist",
     "species_name_match_norm_keys",

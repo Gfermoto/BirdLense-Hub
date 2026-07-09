@@ -4,7 +4,7 @@
 
 - [ ] No hardcoded tokens/passwords in tracked files
 - [ ] No private IPs/hosts leaked in user-facing docs
-- [ ] `SECURITY.md` and disclosure path are up to date
+- [ ] `release-readiness.md` checklist is current for Orin-only platform
 - [ ] `gitleaks` scan is clean
 
 ## Repository hygiene
@@ -12,14 +12,12 @@
 - [ ] No benchmark/temp artifacts in repository root
 - [ ] `.gitignore` covers local ML/training artifacts
 - [ ] `docs/` has EN-first structure and <=50 markdown files
-- [ ] Internal docs are in `archive/internal/`
 
 ## Build and runtime
 
-- [ ] `make ci-local` passes
-- [ ] `make verify-prod-env` passes with deployment `.env`
-- [ ] `./install.sh --dry-run` passes
-- [ ] Fresh install validated on clean machine
+- [ ] `bash scripts/public/ci-full-local.sh` passes (или целевой CI gate репозитория)
+- [ ] `./install.sh --dry-run --gpu nvidia` passes
+- [ ] Fresh install validated on clean Orin
 
 ## Deployment
 

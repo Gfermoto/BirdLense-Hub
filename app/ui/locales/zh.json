@@ -16,6 +16,7 @@
     "system": "服务",
     "systemHint": "站点状态、物种目录与不常用的维护工具。",
     "library": "数据",
+    "labelling": "标注",
     "libraryHint": "磁盘归档、训练导出与存储维护。日常看录像请用「记录」。",
     "supportProject": "支持",
     "logout": "退出",
@@ -138,8 +139,11 @@
     "serviceNotice": "归档与数据维护。日常观看录像请前往「记录」。"
   },
   "overview": {
-    "lastBird": "今天最后一只鸟",
-    "lastBirdUnknown": "鸟（种类不明）",
+    "lastBird": "今日最近活动",
+    "lastBirdUnknown": "鸟（检测器，种类未识别）",
+    "lastRodentUnknown": "啮齿动物（检测器）",
+    "unidentifiedBird": "鸟（检测器）",
+    "unidentifiedRodent": "啮齿动物（检测器）",
     "errorLoad": "加载数据时出错。检查 API 是否可用。",
     "checkApi": "检查：在浏览器中打开 /api/ui/health — 应返回 {status: ok}。",
     "bySource": "按检测源分",
@@ -151,8 +155,9 @@
     "topSpecies": "主要物种分布",
     "uniqueSpecies": "独特的物种",
     "uniqueSpeciesHint": "选定日期检测到的不同鸟类物种",
-    "totalVisits": "总访问量",
-    "totalVisitsHint": "所选日期的访问次数（SpeciesVisit 会话）。一次访问可能包括多个剪辑和多个识别片段。",
+    "totalVisits": "总活动量",
+    "totalVisitsHint": "已识别物种的访问次数，加上所选日期内检测器-only 的鸟/啮齿动物分段",
+    "totalVisitsBreakdown": "{{named}} 已识别 · {{bird}} 鸟（检测器） · {{rodent}} 啮齿动物",
     "visitsLastHour": "访问量（最后一小时）",
     "visitsLastHourHint": "从现在起过去 60 分钟的访问重叠（与 API 时钟相同）。",
     "meanDuration": "平均录音持续时间",
@@ -198,8 +203,9 @@
     "advancedDesc": "YOLO（鸟类检测）用于处理器-processor.models 配置中的模型。这里只记录params和filters。",
     "modeOverview": "概览",
     "modeWorkspace": "工作区",
+    "modeExpert": "专家",
     "modeAria": "设置页面模式",
-    "simpleModeHint": "显示常用设置。切换到「工作区」可展开处理器与物种目录相关的高级项。",
+    "simpleModeHint": "显示常用设置。「工作区」展开处理器与物种目录高级项；「专家」含 YAML 导入/导出。",
     "accordionGeneral": "常规",
     "accordionGeneralDesc": "Hub 系统级设置、天气、MCP、性能与备份控制。",
     "accordionConnection": "连接",
@@ -290,7 +296,8 @@
     "streamNamePlaceholder": "main_stream",
     "detectStreamName": "Detect 流 (Go2RTC)",
     "detectStreamNamePlaceholder": "例如 yard_detect",
-    "detectStreamNameHint": "可选：第二个 Go2RTC 流，用于运动检测、YOLO 与预览 — 通常为分辨率与帧率更低的子流（类似 Frigate detect）。留空则与录制使用同一流。",
+    "detectStreamNameHint": "Go2RTC 必填：运动检测、YOLO 与跟踪仅使用此流。上方的 stream_name 仅用于主 MP4 录制。",
+    "detectStreamNameSameAsRecordError": "Detect 流必须是单独的低清流，不能与录制流相同。",
     "cameraName": "相机名称",
     "cameraPlaceholder": "喂食器",
     "addCamera": "+ 添加相机",
@@ -423,14 +430,14 @@
     "go2rtcPassword": "Go2RTC 密码",
     "encodingLabel": "录音编码",
     "encodingCpu": "中央处理器",
-    "encodingIntel": "英特尔 GPU（集成）",
-    "encodingHint": "Intel — 任何 Intel 集成 GPU 上的 VA-API。需要容器中的 /dev/dri/renderD128。",
-    "recordWithVaapiLabel": "用 VA-API 编码录制文件（h264_vaapi）",
-    "recordWithVaapiHint": "关闭则仅对 MP4 使用 libx264（在部分 iGPU 上更稳定：损坏的 moov / encode error 24）。捕获后端为“自动”时，实时抓取仍可使用 VA-API。OpenVINO 推理不变。",
+    "encodingJetson": "Jetson NVENC (Orin)",
+    "encodingHint": "Jetson — Orin 硬件编码 (NVENC/NVMPI)。CPU — libx264 回退。",
+    "recordHwEncodeLabel": "硬件编码录制 (NVENC)",
+    "recordHwEncodeHint": "关闭则 MP4 使用 libx264 (CPU)。捕获后端为“自动”时仍可使用 NVDEC/NVENC。",
     "recordStreamCodecLabel": "将流录制为",
     "recordStreamCodecH264": "H.264（浏览器安全）",
     "recordStreamCodecCopy": "从流复制（快速，可能是 HEVC）",
-    "recordStreamCodecHint": "当编码为“cpu”时，H.264 在 CPU 上重新编码； Intel GPU 路径已输出 H.264。仅新录音 - 旧剪辑保留其编解码器。",
+    "recordStreamCodecHint": "当编码为“cpu”时，H.264 在 CPU 上重新编码；Jetson NVENC 已输出 H.264。仅新录音 — 旧剪辑保留其编解码器。",
     "videoPreRecordSeconds": "触发前缓冲（秒）",
     "videoPreRecordSecondsHint": "在可用时将触发前的若干秒加入片段。设为 0 可关闭 pre-roll。",
     "videoAutoReconnect": "自动重连视频流",
@@ -472,6 +479,17 @@
     "triggerSource": "触发来源",
     "opencvDiffThreshold": "画面差异阈值",
     "opencvMinContourArea": "最小轮廓面积",
+    "opencvMasksLiveHint": "OpenCV 触发排除掩码在「直播」全屏编辑器中按摄像头单独设置，不影响 YOLO。",
+    "opencvMasksLiveLink": "打开直播",
+    "yoloDetectionZonesTitle": "YOLO 区域（非 OpenCV）",
+    "yoloDetectionZonesDesc": "会话开始后的 YOLO 过滤全局多边形：掩码内忽略和/或兴趣区。格式 [[[x,y],...], ...]，坐标 0..1。",
+    "yoloIgnoreMasks": "YOLO 忽略掩码",
+    "yoloIgnoreMasksHint": "bbox 中心在多边形内则丢弃。",
+    "yoloInterestZones": "YOLO 兴趣区",
+    "yoloInterestZonesHint": "可选：仅保留区内检测。",
+    "yoloInterestZonesRequired": "要求兴趣区（区外丢弃）",
+    "yoloPolygonsInvalidJson": "JSON 无效。",
+    "yoloPolygonsInvalidShape": "应为多边形数组。",
     "motionCheckEveryNFrames": "每 N 帧检查一次运动",
     "motionCheckEveryNFramesHint": "仅限 OpenCV：1 = 每帧，3 = 每 3 帧。降低高 FPS 时的 CPU 负载。",
     "mqttSensorAlert": "MQTT 传感器：订阅主题。ON/1 时启动片段会话（相机取帧 + 检测）。Tasmota：stat/NAME/STATE 或 stat/NAME/PIR。",
@@ -616,7 +634,7 @@
     "processorDetectorPipelineTitle": "Detector pipeline & performance",
     "processorDetectorPipelineDesc": "YOLO size, lores, blur, scheduling, slow-detect warn.",
     "processorBinaryImgsz": "检测头输入尺寸（imgsz）",
-    "processorBinaryImgszHint": "须与 OpenVINO IR 导出一致（`processor.binary_imgsz`，常见 **640**）。越大占用 CPU/GPU 越高。",
+    "processorBinaryImgszHint": "须与检测器 ONNX 导出一致（`processor.binary_imgsz`，常见 **704**）。越大占用 GPU/CPU 越高。",
     "processorInferenceLoresPx": "Live inference lores width (px)",
     "processorInferenceLoresPxHint": "Keep ≤ binary_imgsz.",
     "processorFrameProcessingWarnMs": "Slow detect warning (ms)",
@@ -687,12 +705,9 @@
     "processorBehaviorReviewThreshold": "Review threshold",
     "processorBehaviorReviewThresholdHint": "0–1. Below this, first detection may be flagged for review (behavior_uncertainty).",
     "processorBehaviorInferenceBackend": "Behavior inference backend",
-    "processorBehaviorInferenceBackendHint": "auto: ONNX/IR when processor.models.behavior_openvino is set (labels from weights_path), else logistic JSON.",
-    "processorBehaviorInferenceAuto": "Auto (OpenVINO if model exists)",
+    "processorBehaviorInferenceBackendHint": "auto: ONNX when processor.models.behavior weights_path points to ONNX, else logistic JSON.",
+    "processorBehaviorInferenceAuto": "Auto (ONNX when model exists)",
     "processorBehaviorInferenceLogisticJson": "Logistic JSON",
-    "processorBehaviorInferenceOpenvino": "OpenVINO (ONNX/IR)",
-    "processorBehaviorOpenvinoFallback": "OpenVINO 失败时回退 logistic JSON",
-    "processorBehaviorOpenvinoFallbackHint": "关闭后 IR 加载失败不会从同一 weights_path 填 logistic。",
     "processorBehaviorMaxRuntimeDets": "特征用的检测上限",
     "processorBehaviorMaxRuntimeDetsHint": "finalize 时参与 proxy 特征的检测数量 (1–500)。",
     "processorModelsScopeTitle": "Models, scope & generic Bird",
@@ -701,14 +716,15 @@
     "processorModelsSupportLink": "权重上传、文件指纹与维护操作现在位于 <syslink>系统 → 服务模式</syslink>。",
     "processorWeightsIntroInline": "上面路径对应的文件状态：镜像内置或上传后的副本。上传/重置会更新 user_config 并请求重启处理器。",
     "processorInferenceBackend": "Detector inference backend",
-    "processorInferenceBackendAuto": "Auto (prefer OpenVINO, fallback to Torch)",
+    "processorInferenceBackendAuto": "Auto (prefer ONNX Runtime, fallback to Torch)",
     "processorInferenceBackendTorch": "Torch / Ultralytics",
-    "processorInferenceBackendOpenvino": "OpenVINO IR",
-    "processorInferenceBackendHint": "Auto prefers OpenVINO when IR path and runtime are available, otherwise falls back to Torch. OpenVINO uses processor.models.binary_openvino or BIRDLENSE_BINARY_OPENVINO_PATH. ONNX Runtime stays YAML-only until implemented.",
+    "processorInferenceBackendOnnxruntime": "ONNX Runtime",
+    "processorInferenceBackendTensorrt": "TensorRT",
+    "processorInferenceBackendHint": "Auto prefers ONNX Runtime when .onnx weights exist, otherwise Torch. Model paths are managed in service mode.",
     "processorClassifierInferenceBackend": "Classifier inference backend",
-    "processorClassifierInferenceBackendHint": "Separate backend for species classifier. Auto prefers OpenVINO classifier IR when available, otherwise uses Torch checkpoint.",
+    "processorClassifierInferenceBackendHint": "Separate backend for species classifier. Auto prefers Birder ONNX when available, otherwise Torch checkpoint.",
     "processorInferenceDevice": "Detector inference device",
-    "processorInferenceDeviceHint": "Optional device override (e.g. intel:gpu). Leave empty for auto; BIRDLENSE_INFERENCE_DEVICE in .env overrides at runtime.",
+    "processorInferenceDeviceHint": "Optional device override (e.g. cuda:0). Leave empty for auto; BIRDLENSE_INFERENCE_DEVICE in .env overrides at runtime.",
     "processorClassifierInferenceDevice": "Classifier inference device",
     "processorClassifierInferenceDeviceHint": "Optional classifier device; empty follows detector or BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE.",
     "processorDetectorWeightContract": "Detector class contract",
@@ -716,10 +732,6 @@
     "processorDetectorWeightContractWarn": "Warn",
     "processorDetectorWeightContractEnforce": "Enforce",
     "processorDetectorWeightContractHint": "Checks model class names against detector_scope; enforce fails fast on mismatch.",
-    "processorModelBinaryOpenvinoPath": "OpenVINO 检测头路径",
-    "processorModelBinaryOpenvinoPathHint": "Directory or .xml export from YOLO/OpenVINO. Leave empty unless inference backend is OpenVINO.",
-    "processorModelClassifierOpenvinoPath": "OpenVINO classifier path",
-    "processorModelClassifierOpenvinoPathHint": "Directory or .xml export from YOLO/OpenVINO for species classifier. Used when classifier backend is OpenVINO/Auto.",
     "processorDetectionStrategy": "Detection strategy",
     "processorDetectionStrategyValue": {
       "two_stage": "两阶段：检测器 + 分类器",
@@ -897,6 +909,7 @@
     "birdFamilies": "鸟类家族",
     "resolution": "录音分辨率",
     "resolutionHint": "用于捕捉和记录的帧大小。影响质量和负载。",
+    "recordingResolutionAuto": "录制分辨率从各摄像头 main/record RTSP 流自动检测（支持高于 Full HD）。离线 file-replay 需固定尺寸时，请在 YAML 中设置 video.force_recording_resolution 与 video_width/height。",
     "go2rtcUrlLabel": "Go2RTC 网址",
     "weatherSource": "天气来源",
     "weatherOpenWeather": "开放天气",
@@ -942,7 +955,7 @@
     "restartFailed": "无法重新启动处理器",
     "savedRestarting": "设置已保存。处理器正在重新启动。",
     "saveError": "无法保存设置。检查您的连接或重试。",
-    "processorOpenvinoPathsManagedHint": "OpenVINO 路径在 UI 中已隐藏，由服务模式/服务器配置管理。设置里用户只选择 detector 与 classifier 的 backend。"
+    "processorOnnxPathsManagedHint": "ONNX 模型路径在 UI 中已隐藏，由服务模式管理。此处仅选择 detector 与 classifier 的 backend。"
   },
   "live": {
     "title": "直播 — 所有摄像机",
@@ -950,9 +963,61 @@
     "streamTitle": "直播",
     "loading": "加载中...",
     "errorLoad": "无法加载摄像机列表。",
-    "modeGo2rtc": "实时时钟/MSE",
-    "modeMjpeg": "MJPEG",
-    "streamModeAria": "直播传输方式：WebRTC/MSE 或 MJPEG 备用"
+    "sourceGo2rtc": "Go2RTC",
+    "sourceProcessorDetect": "检测流",
+    "streamSourceAria": "视频源：Go2RTC 或处理器 MJPEG（detect）",
+    "streamGo2rtcProtocolAria": "Go2RTC：自动 (MSE→MJPEG)、WebRTC、MSE 或 MJPEG",
+    "streamGo2rtcAuto": "自动",
+    "streamGo2rtcWebrtc": "WebRTC",
+    "streamGo2rtcMse": "MSE",
+    "streamGo2rtcMjpeg": "MJPEG",
+    "streamTransport": {
+      "processor_detect": "检测流",
+      "go2rtc_mse": "MSE",
+      "go2rtc_mjpeg": "MJPEG",
+      "go2rtc_mjpeg_fallback": "MJPEG（回退）",
+      "go2rtc_webrtc": "WebRTC"
+    },
+    "streamUnavailable": "流不可用",
+    "openEditor": "配置摄像头与叠加层",
+    "editorTitle": "{{name}} — 直播",
+    "overlaysSection": "视频叠加",
+    "showOpencvMotion": "触发 (OpenCV)",
+    "showYoloDetections": "检测 (YOLO)",
+    "overlaysHint": "黄色矩形：OpenCV 触发候选框（红色掩码外）。绿色：录制时 YOLO。浏览器与 detect 流可能不同。",
+    "overlaysHowTo": "1) 点击相机瓦片上的齿轮。2) 开启「触发 (OpenCV)」。3) 等待画面运动 — 黄框约每 2 秒刷新。",
+    "opencvNoContours": "无轮廓",
+    "opencvContourCount": "轮廓：{{count}}",
+    "opencvStatus": "OpenCV: {{reason}} — {{detail}}",
+    "saveClosePolygonFirst": "请先闭合多边形（「闭合多边形」），然后再保存。",
+    "masksSection": "区域编辑器",
+    "layerTriggerMask": "触发掩码",
+    "layerDetectorZone": "检测区域",
+    "masksHint": "红色多边形：OpenCV 忽略运动的区域。编辑：点击画面 → 闭合多边形 → 保存。下方列表可删除，或清空图层重绘。",
+    "detectorZonesHint": "蓝色多边形：该摄像头 YOLO 检测兴趣区。区域外检测会被丢弃。",
+    "maskItem": "掩码 {{n}}（{{points}} 点）",
+    "deleteMask": "删除",
+    "noMasksYet": "无掩码 — 点击画面添加多边形。",
+    "closePolygon": "闭合多边形",
+    "undoPoint": "撤销点",
+    "clearLayer": "清空图层",
+    "saveLayer": "保存",
+    "saveFailed": "保存失败。",
+    "saveOk": "图层已保存。",
+    "overlayLoadFailed": "无法加载叠加层（API 错误）。请刷新页面。",
+    "overlayNoProcessorData": "处理器尚未发布 live 轮廓。红色掩码外的运动将显示黄色轮廓。",
+    "exitFullscreen": "退出全屏"
+  },
+  "birdProfiles": {
+    "catalogTitle": "鸟类昵称 (ReID)",
+    "catalogHint": "删除将从目录中移除昵称并解除所有访问关联。仅解除关联只影响当前录像。",
+    "manageButton": "管理昵称",
+    "empty": "目录中暂无昵称。",
+    "deleteAction": "删除昵称",
+    "deleteTooltip": "从目录中删除昵称",
+    "deleteConfirm": "确定从目录中删除「{{name}}」？所有访问关联将被移除，且无法撤销。",
+    "deleteFailed": "删除昵称失败",
+    "deletedSuccess": "已删除昵称「{{name}}」（已解除 {{count}} 处关联）"
   },
   "timeline": {
     "intro": "选择有录像的日期，打开片段，需要时再进入物种页或识别复核。",
@@ -986,14 +1051,30 @@
     "timeEvening": "晚上（18-22）",
     "nicknameFilter": "昵称",
     "nicknameFilterPlaceholder": "按昵称筛选",
+    "birdProfileFilter": "鸟类",
+    "birdProfileFilterAll": "全部鸟类",
     "behaviorFilter": "行为",
     "behaviorFilterPlaceholder": "按行为筛选",
+    "behaviorFilterAll": "全部行为",
+    "triggerSource": "触发来源",
+    "triggerSourceAll": "全部触发器",
+    "triggerSourceOpencv": "OpenCV",
+    "triggerSourceFrigate": "Frigate",
+    "triggerSourceMotionSensor": "运动传感器",
+    "triggerSourceScales": "重量传感器",
+    "triggerSourceUnknown": "未知",
     "sortBy": "排序方式",
     "sortDateDesc": "日期/时间：最新优先",
     "sortDateAsc": "日期/时间：最早优先",
     "sortSpecies": "物种名称",
     "sortNickname": "昵称",
+    "sortConfidence": "置信度：高到低",
+    "sortDuration": "时长：长到短",
     "sortBehavior": "行为",
+    "runtimeCpu": "CPU {{value}}%",
+    "runtimeMemory": "内存 {{value}}%",
+    "runtimeGpu": "GPU {{value}}%",
+    "runtimeEncoding": "编码：{{value}}",
     "hourFilterChip": "小时：{{from}}–{{to}}",
     "expandVisitDetails": "展开参观详情",
     "collapseVisitDetails": "折叠访问详情"
@@ -1197,8 +1278,10 @@
     "viewMode": "查看模式",
     "simpleMode": "简单",
     "advancedMode": "高级",
+    "expertMode": "专家",
     "simpleModeHint": "只显示主要模块，隐藏服务噪音。",
     "advancedModeHint": "显示诊断、维护和危险操作。",
+    "expertModeHint": "完整 YAML 导入/导出及原始配置工具（管理员）。",
     "iNaturalist": "分享到 iNaturalist",
     "skipToContent": "跳至主要内容",
     "pageNotFoundTitle": "未找到页面",
@@ -1218,6 +1301,7 @@
     "catalogMenuHintObserved": "仅显示所选时段内有访问记录的物种。",
     "catalogMenuHintDataset": "出现在本地数据集中的物种（如 train/ 等目录）。",
     "catalogMenuHintFullEu": "完整 EU 白名单——表格中可能大量为 0。",
+    "catalogMenuHintAll": "完整分类器目录（白名单），含所选时段内无访问记录的物种。",
     "species": "物种",
     "startDate": "开始日期",
     "endDate": "迄今为止",
@@ -1229,14 +1313,15 @@
     "noDataset": "所选时期的本地数据集中没有物种。",
     "noSpeciesInDb": "目录中还没有物种。",
     "catalogLabel": "品种范围",
-    "catalogObserved": "观察到（选定范围内的活动）",
+    "catalogObserved": "已观察",
+    "catalogAll": "全部",
     "catalogDataset": "存在于本地数据集中",
     "catalogFullEu": "完整的欧盟目录（来自许可名单）",
     "evidenceLabel": "统计访问次数",
     "evidenceAll": "全部（同一会话中的相机 + BirdNET）",
     "evidenceCamera": "仅相机",
     "evidenceBirdnet": "仅限鸟网",
-    "catalogEvidenceHint": "“观察到”仅列出有访问的物种。 “存在于本地数据集中”列出了在数据/数据集文件夹中找到的物种。 “完整欧盟目录”列出了所有许可名单类别，包括零行。",
+    "catalogEvidenceHint": "「已观察」— 所选时段内有访问记录的物种。「全部」— 完整分类器目录（白名单）；无访问的行显示为 0。",
     "errorLoad": "无法加载季节性表格。",
     "filterSectionTitle": "时段与目录",
     "tableCaption": "按月列出的物种：每个细胞的访问次数；最后一列是行总计。"
@@ -1247,8 +1332,26 @@
     "viewVideo": "观看视频",
     "correctSpecies": "正确的物种",
     "reviewStatePending": "待审核",
-    "reviewReasonLowConfidence": "低置信度",
+    "reviewReasonLowConfidence": "模型对物种不确定",
     "reviewReasonGenericBird": "通用 Bird 标签",
+    "reviewReasonClassifierUncertainty": "模型预测不一致",
+    "reviewReasonSemanticConflict": "需要专家复核",
+    "reviewReasonOperatorFlagged": "操作员标记了错误",
+    "reviewReasonBboxRejected": "检测框有误",
+    "reviewReasonReidNoMatch": "ReID：未匹配个体",
+    "reviewReasonWelfareAnomaly": "Welfare：与健康基线异常",
+    "reviewReasonFilter": "复核原因",
+    "reviewReasonFilterAll": "全部原因",
+    "reviewReasonUnknownLabel": "未解析物种标签",
+    "reviewReasonDetectFirstAnchor": "Detect-first 锚点（复核）",
+    "reviewStateExpert": "专家复核",
+    "reviewStateReviewed": "已复核",
+    "expertTaskDone": "任务已完成，列表已更新。",
+    "roleSplitTitle": "复核模式 = 快速运营分流",
+    "roleSplitHint": "几何框修正在「标注」页面；语义冲突进入专家队列。",
+    "openGeometryQueue": "打开几何标注队列",
+    "guestBrowseTitle": "复核队列（仅浏览）",
+    "guestBrowseHint": "打开片段查看检测。修正需操作员登录。",
     "confirmCorrect": "正确的",
     "confirmCorrectHelp": "物种正确 - 从列表中删除",
     "confirmBlockedPendingApply": "选择不同的物种 - 单击“应用”保存它，或清除下拉列表以确认当前标签。",
@@ -1313,15 +1416,33 @@
     "spectrogram": "频谱图",
     "mediaViewTabs": "在视频与频谱图之间切换",
     "speciesInVideo": "本视频中的物种",
+    "welfareAnomalyChip": "健康异常已标记",
+    "welfareDistanceChip": "健康距离 {{distance}}",
+    "welfareAnomalyHint": "相对健康基线的马氏距离；数值越高越需要人工复核（不是诊断）。",
+    "welfareUnavailableChip": "健康状态不可用",
+    "welfareUnavailableHint": "此录像没有健康评分；通常是旧录像、仅 Frigate 挽救记录，或轨迹没有可用裁剪。重新处理或新会话后会显示。",
+    "speciesEmptyTitle": "本录像中无物种",
+    "speciesEmptyHint": "尚无视频检测：仍在处理、仅 Frigate 挽救且无 YOLO 轨迹，或物种未保存。重新处理后卡片会出现在此处。",
     "mergeAllToSpecies": "适用于视频中的所有内容",
     "mergeAllHint": "不同的神经网络或中断创建了多张卡片——选择正确的物种并合并所有检测。",
     "detection": "检测",
     "detections": "检测",
+    "detectionTracksTitle": "本剪辑上的轨迹",
+    "detectionTrackRow": "轨迹 {{track}} · {{start}}–{{end}} · {{conf}}%",
+    "deleteDetection": "删除 bbox",
+    "deleteDetectionConfirm": "删除检测（轨迹 {{track}}，{{start}}–{{end}}）？视频文件保留。",
+    "deleteDetectionSuccess": "检测已删除",
+    "deleteDetectionHint": "仅删除此 bbox/轨迹；剪辑上的其他检测保留。",
     "detectionProviderYolo": "优洛",
     "detectionProviderFrigate": "护卫舰",
     "detectionProviderBirdnetMqtt": "鸟网",
+    "detectionProviderYoloPublic": "录像检测",
+    "detectionProviderFrigatePublic": "外部 MQTT",
+    "detectionProviderBirdnetPublic": "声音识别",
     "detectionSource": "来源",
-    "timelineHint": "彩色条=物种。将鼠标悬停即可查看来源：YOLO、Frigate 或 BirdNET。",
+    "behavior": "行为",
+    "timelineHint": "彩色条=物种。将鼠标悬停即可查看来源：YOLO、外部 MQTT 或 BirdNET。",
+    "timelineHintPublic": "彩色条表示物种。悬停可查看识别方式（录像分析、外部 MQTT 或声音）。",
     "noTrackFramesHint": "此剪辑上没有 YOLO bbox（覆盖层隐藏）。默认值被收紧，以便鸟类保留在记录中；使用管理→“为此剪辑重建轨道”或设置中较低的processor.min_track_duration / min_confidence_to_process。",
     "regenerateTracksThisVideo": "为此剪辑重建轨道",
     "tracksMissingHint": "该剪辑在数据库中还没有每帧框 - 重建轨道以使叠加出现。",
@@ -1360,12 +1481,23 @@
     "neighborsDayHint": "当地日历日；可以继续到午夜之后。上一个/下一个步骤浏览该日历日的所有剪辑。",
     "localDayLabel": "当地时间",
     "serviceToolsTitle": "此记录的服务工具",
-    "nicknameField": "鸟类昵称",
-    "nicknameFieldPlaceholder": "例如：小灰",
-    "nicknameLabel": "昵称",
-    "nicknameSaveButton": "保存昵称",
-    "nicknameCancelButton": "取消",
-    "nicknameSaved": "昵称已保存",
+    "profileField": "鸟类档案",
+    "profileFieldPlaceholder": "搜索档案或输入新名称",
+    "profileLinkButton": "关联档案",
+    "unlinkBirdProfile": "解除关联",
+    "unlinkBirdProfileTooltip": "移除此访问与鸟类档案的关联",
+    "unlinkBirdProfileConfirm": "确定要从此访问解除「{{name}}」的关联吗？此操作无法撤销。",
+    "unlinkBirdProfileAction": "解除关联",
+    "unlinkBirdProfileFailed": "解除鸟类档案关联失败",
+    "profileCreateAndLinkButton": "创建并关联",
+    "profileLinkedInVideo": "已在本视频中关联档案",
+    "profileMaybeSameBird": "可能是同一只鸟",
+    "profileAutoLinkTier": "高置信度",
+    "profileMergeButton": "合并",
+    "profileMergeSuccess": "已合并到「{{name}}」（{{count}} 条检测）",
+    "profileDismissSuggest": "不是同一只",
+    "semanticReviewButton": "标记语义问题",
+    "semanticReviewQueued": "案例已加入专家队列",
     "possibleSameBird": "可能是同一只鸟",
     "reidCrossCameraHint": "跨相机/目录更严格",
     "similarityPercent": "相似度：{{value}}%",
@@ -1389,6 +1521,7 @@
     "scaleTareFail": "去皮失败",
     "supportTitle": "支持项目",
     "dispenseFeed": "分配饲料",
+    "dispenseViewOnly": "投喂由站点管理员配置。",
     "dispensing": "分配...",
     "feedDispensed": "饲料分配",
     "lastDispense": "最后一次分配",
@@ -1445,7 +1578,17 @@
     "adminRegenTracksHelp": "仅限管理员。 YOLO+ByteTrack 仅适用于此文件；重型CPU。等待作业完成，然后刷新。",
     "adminRegenSpectrogramHelp": "仅限管理员。从视频文件重建频谱图图像。等待作业完成，然后刷新。",
     "adminRegenRunning": "跑步…",
-    "adminRegenFailed": "无法开始工作"
+    "adminRegenFailed": "无法开始工作",
+    "deleteVisit": "删除整个访问",
+    "deleteVisitConfirm": "删除“{{name}}”整个访问？视频保留，仅删除该访问的检测。",
+    "deleteVisitSuccess": "访问已删除",
+    "deleteDetection": "删除检测",
+    "deleteDetectionConfirm": "从录音中删除“{{name}}”检测？",
+    "deleteDetectionSuccess": "检测已删除",
+    "bestConfidence": "最佳：{{value}}%",
+    "detectionsCount": "检测数：{{count}}",
+    "sourceMix": "视频 {{video}} · 音频 {{audio}}",
+    "sourceVideoOnly": "视频：{{count}}"
   },
   "fusionTrace": {
     "openButton": "融合痕迹",
@@ -1522,18 +1665,37 @@
     "scalesEstimateTitle": "尺度（估计）",
     "scalesEstimateValue": "{{value}}{{unit}}",
     "scalesEstimateHint": "当存在视频检测时，剪辑期间刻度读数发生变化；风、噪音或多只鸟都会影响准确性。",
+    "weightChangeTitle": "体重变化",
+    "weightChangeUnit": "克",
+    "weightChangeTooltip": "访问期间的体重差（传感器数据）",
+    "behaviorEditHint": "此片段的行为标签；模型训练在操作员区域。",
     "visitSpeciesMismatch": "一些检测与不同物种的访问有关——通常是在手动数据库编辑或轨迹再生之后。视频标签显示该剪辑中存储的内容。",
-    "behaviorTitle": "行为（识别）",
+    "behaviorTitle": "行为",
     "behaviorNone": "此剪辑尚未存储行为标签。",
     "behaviorEdit": "编辑行为",
     "behaviorDialogTitle": "行为标签",
     "behaviorLabelField": "标签",
     "behaviorLabelHint": "小写 id（如 feeding、flying）。留空则清除已存行为。",
+    "behaviorTagNone": "无标签",
+    "behaviorTags": {
+      "feeding": "进食",
+      "food_handling": "处理食物",
+      "drinking": "饮水",
+      "bathing": "洗澡",
+      "self_maintenance": "自我整理",
+      "resting": "休息",
+      "vigilance": "警戒",
+      "agonistic": "对抗/驱离",
+      "alarm_or_flee": "警报/逃离",
+      "transport_food": "搬运食物",
+      "parent_offspring": "亲鸟与幼鸟",
+      "pair_or_courtship": "配对/求偶"
+    },
     "behaviorConfField": "置信度（0–1）",
     "behaviorConfHint": "可选手动置信度。清除标签时一并清除。",
     "behaviorSaving": "保存中…",
     "behaviorSave": "保存",
-    "behaviorTrainingNotInUi": "此处不能训练模型或构建数据集——仅本剪辑的标签。行为 baseline：设置 → 处理器；训练见 GitHub README（CSV + Makefile）。"
+    "behaviorTrainingNotInUi": "行为模型已启用。这里仅编辑当前片段的行为标签。"
   },
   "weather": {
     "title": "天气",
@@ -1605,7 +1767,7 @@
     "processorWeightsTitle": "处理器权重（检测与物种分类）",
     "processorWeightsIntro": "路径在「设置」→「处理器」→模型区块编辑。此卡片反映真实文件（内置 vs data/custom_weights）、上传、SHA256、重置与重启。检测头（默认 BRG .pt）与物种分类器是两个不同的 .pt。上传写入 data/custom_weights 并以绝对路径更新 user_config。每次上传或重置后会置重启标志 — 点「重新启动处理器」或等待看门狗。",
     "processorWeightsBinary": "二元探测器",
-    "processorWeightsBinaryHint": "默认套件：BRG 三类检测 — best.pt 与 OpenVINO 目录 best_openvino_model（来自镜像/仓库）；可选 last.pt 作为回滚快照。遗留 COCO yolo11n.pt 且仅类别 14 allowlist 仅用于自定义配置。",
+    "processorWeightsBinaryHint": "Orin：Trapper AI v02.2024 ONNX — models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx（CUDA EP）。",
     "processorWeightsClassifier": "物种分类器",
     "processorWeightsClassifierHint": "细粒度物种头（默认：models/classification/weights/best.pt，来自 Hugging Face gfermoto/birdlense-birds-eu）。当类计数不同时，与匹配的 class_names.txt 配对。",
     "processorWeightsAllowlist": "class_names.txt（白名单）",
@@ -1662,11 +1824,10 @@
     "encoding": "录音编码",
     "encodingUsed": "使用中",
     "encodingCpu": "中央处理器",
-    "encodingVaapi": "英特尔 GPU (VA-API)",
-    "encodingGpuUnavailable": "在设置中选择了 Intel GPU，但该设备在容器中不可用。添加要撰写的设备（请参阅 docker-compose.intel.example.yml）。",
+    "encodingGpuUnavailable": "设置中选择了硬件编码器，但设备在容器中不可用。请检查 runtime: nvidia 和 compose 中的 devices。",
     "processorMqtt": "处理器 MQTT (Frigate/BirdNET)",
     "gpu": "图形处理器",
-    "gpuNoData": "无 GPU 负载数据（sysfs 和 Intel 探针不可用）。如果 Intel 录制失败，请在“设置”→“视频”中切换到 CPU。",
+    "gpuNoData": "无 GPU 负载数据（nvidia-smi 不可用）。若 NVENC 失败，请在“设置”→“视频”中切换到 CPU。",
     "uniqueVisitors": "访客",
     "speciesVisitSessions": "参观会议",
     "uniqueVisitorsPeriod": "公制周期",
@@ -1686,6 +1847,17 @@
     "configAuditRuntimeDetectP95": "检测延迟 p95 ≈ {{p95}} ms，对比告警阈值 {{warnMs}} ms — 帧经常超过慢帧阈值。",
     "configAuditFrigateStandaloneOff": "Frigate 已开且 MQTT 可用，但 detection.frigate_standalone_when_no_yolo=false：YOLO 零轨迹时 Frigate MQTT 不会成为最终检测（日志 «ByteTrack: 0 YOLO tracks…»）。在设置 → 处理器 → Frigate fusion 中开启，或调整 YOLO/light gate。",
     "configAuditLoadError": "加载配置审核失败",
+    "tuningWorkbenchTitle": "调优工作台",
+    "tuningWorkbenchHint": "安全预设、按摄像头覆盖、护栏检查、自动评估与回滚。",
+    "tuningWorkbenchLoadError": "加载调优工作台数据失败",
+    "tuningWorkbenchGlobal": "全局配置",
+    "tuningWorkbenchPresets": "安全预设",
+    "tuningWorkbenchPerCamera": "按摄像头配置覆盖",
+    "tuningWorkbenchCameraHint": "覆盖项继承全局处理器配置，仅替换选定键。",
+    "tuningWorkbenchAutoEval": "修改后自动评估",
+    "tuningWorkbenchRollback": "回滚到上一个配置",
+    "tuningWorkbenchMutationError": "调优操作失败",
+    "cameraLabel": "摄像头",
     "configAuditWarningsTitle": "警告",
     "configAuditRecallHintsTitle": "召回 / 灵敏度提示（参考）",
     "configAuditRecallHintsHint": "这些是调优建议，不是配置错误；仅在需要更高运动召回时再调整。",
@@ -1715,6 +1887,7 @@
     "catalogRepairTitle": "目录卡抛光",
     "catalogRepairLoadError": "无法加载目录抛光状态",
     "catalogRepairStart": "开始抛光",
+    "catalogRepairOpenQualityList": "问题卡片列表",
     "catalogRepairRunning": "波兰跑步",
     "catalogRepairCompletion": "已填字段：{{p}}%",
     "catalogRepairSpeciesMatched": "Allowlist → 数据库：{{lines}} / {{total}} 行（唯一物种 {{unique}}）",
@@ -1828,6 +2001,23 @@
     "automationBirdnetFifoAgoMinutes": "{{n}} 分钟前",
     "automationBirdnetFifoAgoHoursOnly": "{{n}} 小时前",
     "automationBirdnetFifoAgoHoursMinutes": "{{h}} 小时 {{m}} 分钟前",
+    "birdnetFifoStatus": {
+      "disabled": "未配置 BirdNET MQTT — FIFO 缓冲区未使用（正常）。",
+      "reportingOff": "处理器配置中已关闭 FIFO 快照/持久化。",
+      "unavailable": "BirdNET 队列不可用：无快照且无数据库记录。请检查处理器与 MQTT。",
+      "stale": "FIFO 快照已过期 — 长时间未更新（安静或 MQTT 问题）。",
+      "mqttDown": "MQTT 未连接 — 未收到 BirdNET 事件。",
+      "empty": "队列为空 — TTL 窗口内无事件（安静时正常）。",
+      "active": "BirdNET 队列活跃。"
+    },
+    "processorLogsFilter": {
+      "all": "全部",
+      "error": "错误",
+      "warning": "警告",
+      "info": "INFO",
+      "debug": "DEBUG"
+    },
+    "processorLogsFilterEmpty": "在最近 {{lines}} 行中无「{{filter}}」级别日志（请选「全部」）。",
     "processorActivityTitle": "处理器心跳",
     "processorActivityLoading": "正在加载处理器心跳...",
     "processorActivityLoadFailed": "无法加载处理器检测信号活动。",
@@ -1871,6 +2061,18 @@
     "retentionMinAgeHoursHelper": "避免刚生成的录制被立即清理。",
     "retentionBatch": "批次",
     "retentionBatchHelper": "每次运行处理的录制数量，避免磁盘操作过重。",
+    "retentionMaxDeletesPerRun": "每次运行最大删除数",
+    "retentionMaxDeletesPerRunHelper": "调度或手动运行时的级联删除上限（1–5000）。",
+    "retentionAutoRunEnabled": "定时自动运行",
+    "retentionAutoRunEnabledHelper": "按间隔检查 days/max_gb；超限时只删过期或最旧会话（受单次上限约束），不会清空整个归档。",
+    "retentionAutoRunIntervalHours": "检查间隔（小时）",
+    "retentionAutoRunIntervalHoursHelper": "两次检查之间的间隔；单次最多删 max_deletes_per_run 条，直到再次违反阈值。",
+    "retentionOrphanFilesSummary": "磁盘上有 video.mp4 但无 DB 行的会话：{{n}}（约 {{gb}} GB）。扫描/导入不会自动修复；清理需单独管理操作。",
+    "retentionOrphanPurgePreview": "预览 orphan 清理",
+    "retentionOrphanPurgeApply": "清理 orphan（磁盘）",
+    "retentionOrphanPurgeConfirm": "删除无 DB 行的磁盘会话？收藏/受保护会话会跳过。不可撤销。",
+    "retentionOrphanPurgePreviewResult": "将删除 {{n}} 个会话，约 {{mb}} MB",
+    "retentionOrphanPurgeApplyResult": "已删除 {{n}} 个会话，释放约 {{mb}} MB",
     "retentionResultCounts": "条目：{{n}}，释放约 {{mb}} MB",
     "retentionLastRun": "上次运行",
     "retentionLastStats": "模式：{{mode}}，删除：{{n}}，约 {{mb}} MB",
@@ -1961,7 +2163,43 @@
     },
     "readinessState": {
       "ok": "正常",
+      "warn": "警告",
       "error": "错误"
+    },
+    "readinessFunnelTitle": "Persist 漏斗（近期会话）",
+    "readinessFunnelHint": "滚动窗口：最近 {{hours}} 小时（session_runtime_metrics）。",
+    "readinessFunnelStatus": "流水线漏斗",
+    "readinessFunnelState": {
+      "ok": "健康",
+      "degraded": "降级 — 请查看下方失败模式",
+      "unknown": "未知"
+    },
+    "readinessFunnelSessions": "会话：{{total}} · 健康 persist：{{healthy}} · fusion drop：{{fusionDrop}}",
+    "readinessFunnelTopCauses": "主要失败模式",
+    "readinessFunnelByCamera": "各摄像头主导模式",
+    "readinessFunnelFailureMode": {
+      "detector_silent_raw0": "YOLO 无输出 — 无 raw 框",
+      "confidence_gate_collapse_raw_gt_0_accepted_0": "置信度门槛 — 有 raw 无 accepted",
+      "quality_filter_collapse_raw_gt_0_tracks_0": "质量过滤 — 有 accepted 无轨迹",
+      "decision_fusion_drop_tracks_gt_0_persisted_0": "Fusion 丢弃 — 有轨迹未 persist",
+      "healthy_persisted_gt_0": "健康 — 已写入 persist"
+    },
+    "readinessOperatorTitle": "运维快照（磁盘 · 配额 · 孤儿文件）",
+    "readinessOperatorHint": "主机磁盘、已索引录像大小、保留配额余量及磁盘孤儿文件 — 无需 SSH。",
+    "readinessOperator": {
+      "disk": "主机磁盘",
+      "diskValue": "{{used}} / {{total}} GB（{{percent}}%）",
+      "recordings": "已索引录像",
+      "recordingsValue": "{{size}} · {{files}} 个文件",
+      "quota": "保留配额",
+      "quotaValue": "上限 {{maxGb}} GB · 余量 {{headroom}}",
+      "quotaUnlimited": "未配置 max_gb",
+      "orphan": "磁盘孤儿文件",
+      "orphanValue": "{{count}} 个会话 · {{size}}",
+      "unavailable": "不可用",
+      "linkStorage": "Library → 存储与保留",
+      "linkCatalogReconcile": "Catalog ops 与 reconcile",
+      "linkYoloBlind": "YOLO blind runbook"
     },
     "domainTrustTitle": "数据质量与发布门禁（24 小时）",
     "domainTrustHint": "说明为何自动化部署可能返回非零退出码而 Hub 仍在线：strict_quality 检查近期录像与检测行，而非存活探针。",
@@ -1972,11 +2210,17 @@
     "domainTrustStatusDegraded": "快照失败",
     "domainTrustSnapshotDegraded": "快照未生成（{{err}}）。请稍后重试或检查数据库/日志。",
     "domainTrustChipPass": "通过",
+    "domainTrustChipSkipped": "24 小时无样本",
     "domainTrustChipFail": "复查",
     "domainTrustMetricsHeading": "关键计数（滚动窗口）",
     "domainTrustMetricDupClipCandidates": "近似重复片段对：{{n}}",
     "domainTrustMetricYoloPrimary": "YOLO 为主的比例：{{pct}}%",
     "domainTrustMetricFramesCoverage": "含帧证据的行：{{pct}}%",
+    "domainTrustMetricTrackStability": "轨迹稳定度：{{pct}}%",
+    "domainTrustMetricTrackFragmentation": "轨迹碎片化：{{pct}}%",
+    "domainTrustMetricLifecycleEnterRate": "Lifecycle 进入窗口占比：{{pct}}%",
+    "domainTrustMetricLifecycleRejectedRate": "仅拒绝窗口占比：{{pct}}%",
+    "domainTrustTrackRegressionAlert": "检测到相较前一 24h 窗口的轨迹质量回归，请检查 unstable examples 与 tracker 配置。",
     "domainTrustAttentionHeading": "未通过项及含义",
     "domainTrustThresholdsLine": "门禁参考：片段间隔 ≤ {{gap}} 秒视为重复对；YOLO 为主占比门禁 ≥ {{yolo}}%；含帧证据占比门禁 ≥ {{frames}}%。",
     "domainTrustGateFailGeneric": "该项未通过——请查看上方指标或时间线上的近期片段。",
@@ -2055,7 +2299,10 @@
   "food": {
     "food": "食物",
     "description": "当前食槽中的饲料类型；系统会把它与到访记录关联。",
-    "active": "积极的",
+    "active": "使用中",
+    "activeYes": "在食槽中",
+    "activeNo": "未使用",
+    "activeToggle": "使用中：{{name}}",
     "tableAria": "喂食器可用饲料 — 勾选当前在用的种类",
     "noDescription": "无可用描述",
     "loginRequired": "登录以更换喂食器中的食物"
@@ -2121,211 +2368,803 @@
   },
   "help": {
     "overview": {
-      "title": "鸟类活动概述",
-      "description": "查看喂食器处鸟类活动的实时和每日统计数据。该仪表板提供关键指标、当前天气状况和 24 小时活动模式可视化。",
-      "details": [
-        {
-          "title": "活动统计",
-          "content": "跟踪独特鸟类的访问量、总检测数和最后一小时的活动。该系统对视频和音频检测进行计数，利用计算机视觉和音频分析来区分不同的物种。"
-        },
-        {
-          "title": "访问指标",
-          "content": "监测平均访问持续时间并确定鸟类活动最繁忙的时间。该系统将连续一段时间的检测视为一次访问，有助于了解鸟类的进食模式。"
-        },
-        {
-          "title": "音视频比例",
-          "content": "显示通过音频与视频检测到的鸟类的比例。比率小于 1 表示视频检测较多，大于 1 表示音频检测较多。这有助于评估探测器的性能。"
-        },
-        {
-          "title": "天气信息",
-          "content": "当前可能影响鸟类活动的天气条件，包括温度、云量、湿度和风速。每次检测时天气数据都会自动更新和存储。"
-        },
-        {
-          "title": "每日活动模式",
-          "content": "24 小时循环可视化显示不同物种何时访问喂食器。该图表使用颜色编码来区分物种，每个片段的长度表示检测的数量。"
-        },
-        {
-          "title": "日期选择",
-          "content": "使用日期选择器查看任何特定日期的历史数据。这使您可以跟踪一段时间内的模式并比较不同日期的活动水平。"
-        }
-      ]
+      "guest": {
+        "title": "鸟类活动概述",
+        "description": "当日喂鸟器活动概览：物种、访问次数、天气与日节律。",
+        "details": [
+          {
+            "title": "活动统计",
+            "content": "跟踪独特鸟类的访问量、总检测数和最后一小时的活动。该系统对视频和音频检测进行计数，利用计算机视觉和音频分析来区分不同的物种。"
+          },
+          {
+            "title": "访问指标",
+            "content": "监测平均访问持续时间并确定鸟类活动最繁忙的时间。该系统将连续一段时间的检测视为一次访问，有助于了解鸟类的进食模式。"
+          },
+          {
+            "title": "音视频比例",
+            "content": "显示通过音频与视频检测到的鸟类的比例。比率小于 1 表示视频检测较多，大于 1 表示音频检测较多。这有助于评估探测器的性能。"
+          },
+          {
+            "title": "天气信息",
+            "content": "当前可能影响鸟类活动的天气条件，包括温度、云量、湿度和风速。每次检测时天气数据都会自动更新和存储。"
+          },
+          {
+            "title": "每日活动模式",
+            "content": "24 小时循环可视化显示不同物种何时访问喂食器。该图表使用颜色编码来区分物种，每个片段的长度表示检测的数量。"
+          },
+          {
+            "title": "日期选择",
+            "content": "使用日期选择器查看任何特定日期的历史数据。这使您可以跟踪一段时间内的模式并比较不同日期的活动水平。"
+          }
+        ]
+      },
+      "operator": {
+        "title": "鸟类活动概述",
+        "description": "活动仪表板，用于日常数据质量检查。",
+        "details": [
+          {
+            "title": "活动统计",
+            "content": "跟踪独特鸟类的访问量、总检测数和最后一小时的活动。该系统对视频和音频检测进行计数，利用计算机视觉和音频分析来区分不同的物种。"
+          },
+          {
+            "title": "访问指标",
+            "content": "监测平均访问持续时间并确定鸟类活动最繁忙的时间。该系统将连续一段时间的检测视为一次访问，有助于了解鸟类的进食模式。"
+          },
+          {
+            "title": "音视频比例",
+            "content": "显示通过音频与视频检测到的鸟类的比例。比率小于 1 表示视频检测较多，大于 1 表示音频检测较多。这有助于评估探测器的性能。"
+          },
+          {
+            "title": "天气信息",
+            "content": "当前可能影响鸟类活动的天气条件，包括温度、云量、湿度和风速。每次检测时天气数据都会自动更新和存储。"
+          },
+          {
+            "title": "每日活动模式",
+            "content": "24 小时循环可视化显示不同物种何时访问喂食器。该图表使用颜色编码来区分物种，每个片段的长度表示检测的数量。"
+          },
+          {
+            "title": "日期选择",
+            "content": "使用日期选择器查看任何特定日期的历史数据。这使您可以跟踪一段时间内的模式并比较不同日期的活动水平。"
+          }
+        ]
+      },
+      "admin": {
+        "title": "鸟类活动概述",
+        "description": "站点总览；异常请查看「服务」日志与站点设置。",
+        "details": [
+          {
+            "title": "活动统计",
+            "content": "跟踪独特鸟类的访问量、总检测数和最后一小时的活动。该系统对视频和音频检测进行计数，利用计算机视觉和音频分析来区分不同的物种。"
+          },
+          {
+            "title": "访问指标",
+            "content": "监测平均访问持续时间并确定鸟类活动最繁忙的时间。该系统将连续一段时间的检测视为一次访问，有助于了解鸟类的进食模式。"
+          },
+          {
+            "title": "音视频比例",
+            "content": "显示通过音频与视频检测到的鸟类的比例。比率小于 1 表示视频检测较多，大于 1 表示音频检测较多。这有助于评估探测器的性能。"
+          },
+          {
+            "title": "天气信息",
+            "content": "当前可能影响鸟类活动的天气条件，包括温度、云量、湿度和风速。每次检测时天气数据都会自动更新和存储。"
+          },
+          {
+            "title": "每日活动模式",
+            "content": "24 小时循环可视化显示不同物种何时访问喂食器。该图表使用颜色编码来区分物种，每个片段的长度表示检测的数量。"
+          },
+          {
+            "title": "日期选择",
+            "content": "使用日期选择器查看任何特定日期的历史数据。这使您可以跟踪一段时间内的模式并比较不同日期的活动水平。"
+          }
+        ]
+      }
     },
     "food": {
-      "title": "鸟类食物管理",
-      "description": "管理和跟踪喂鸟器中可用的不同类型的食物。该系统利用这些信息来分析哪些食物吸引特定的鸟类。",
-      "details": [
-        {
-          "title": "食物选择",
-          "content": "切换喂食器中当前可用的食物类型。活性食物将与鸟类的访问联系起来，并帮助建立进食模式数据。"
-        },
-        {
-          "title": "食品目录",
-          "content": "常见鸟类食物的综合列表，详细说明它们通常吸引哪些物种。每种食物类型都包含图像、描述和推荐用法。"
-        },
-        {
-          "title": "使用情况分析",
-          "content": "该系统会跟踪鸟类访问期间出现的食物，帮助您了解哪些食物最能有效地吸引特定物种。"
-        },
-        {
-          "title": "活跃状态",
-          "content": "使用复选框来指示您的喂食器中当前有哪些食物。只有活性食物才会与新鸟类检测相关。"
-        },
-        {
-          "title": "食品信息",
-          "content": "每个食物条目包括：\n- 易于识别的名称和图像\n- 食物类型的详细描述\n- 通常被这种食物吸引的鸟类列表\n- 特殊处理或储存建议"
-        },
-        {
-          "title": "食品功效",
-          "content": "通过鸟类检测系统，您可以跟踪哪些食物最能成功地吸引目标物种。这些数据有助于优化您的喂养策略。"
-        }
-      ]
+      "guest": {
+        "title": "鸟类食物管理",
+        "description": "当前标记为活跃的饲料类型，用于访问上下文。",
+        "details": [
+          {
+            "title": "食物选择",
+            "content": "切换喂食器中当前可用的食物类型。活性食物将与鸟类的访问联系起来，并帮助建立进食模式数据。"
+          },
+          {
+            "title": "食品目录",
+            "content": "常见鸟类食物的综合列表，详细说明它们通常吸引哪些物种。每种食物类型都包含图像、描述和推荐用法。"
+          },
+          {
+            "title": "使用情况分析",
+            "content": "该系统会跟踪鸟类访问期间出现的食物，帮助您了解哪些食物最能有效地吸引特定物种。"
+          },
+          {
+            "title": "活跃状态",
+            "content": "使用复选框来指示您的喂食器中当前有哪些食物。只有活性食物才会与新鸟类检测相关。"
+          },
+          {
+            "title": "食品信息",
+            "content": "每个食物条目包括：\n- 易于识别的名称和图像\n- 食物类型的详细描述\n- 通常被这种食物吸引的鸟类列表\n- 特殊处理或储存建议"
+          },
+          {
+            "title": "食品功效",
+            "content": "通过鸟类检测系统，您可以跟踪哪些食物最能成功地吸引目标物种。这些数据有助于优化您的喂养策略。"
+          }
+        ]
+      },
+      "operator": {
+        "title": "鸟类食物管理",
+        "description": "管理饲料类型；活跃饲料与新访问关联。",
+        "details": [
+          {
+            "title": "食物选择",
+            "content": "切换喂食器中当前可用的食物类型。活性食物将与鸟类的访问联系起来，并帮助建立进食模式数据。"
+          },
+          {
+            "title": "食品目录",
+            "content": "常见鸟类食物的综合列表，详细说明它们通常吸引哪些物种。每种食物类型都包含图像、描述和推荐用法。"
+          },
+          {
+            "title": "使用情况分析",
+            "content": "该系统会跟踪鸟类访问期间出现的食物，帮助您了解哪些食物最能有效地吸引特定物种。"
+          },
+          {
+            "title": "活跃状态",
+            "content": "使用复选框来指示您的喂食器中当前有哪些食物。只有活性食物才会与新鸟类检测相关。"
+          },
+          {
+            "title": "食品信息",
+            "content": "每个食物条目包括：\n- 易于识别的名称和图像\n- 食物类型的详细描述\n- 通常被这种食物吸引的鸟类列表\n- 特殊处理或储存建议"
+          },
+          {
+            "title": "食品功效",
+            "content": "通过鸟类检测系统，您可以跟踪哪些食物最能成功地吸引目标物种。这些数据有助于优化您的喂养策略。"
+          }
+        ]
+      },
+      "admin": {
+        "title": "鸟类食物管理",
+        "description": "饲料目录与吸引物种分析。",
+        "details": [
+          {
+            "title": "食物选择",
+            "content": "切换喂食器中当前可用的食物类型。活性食物将与鸟类的访问联系起来，并帮助建立进食模式数据。"
+          },
+          {
+            "title": "食品目录",
+            "content": "常见鸟类食物的综合列表，详细说明它们通常吸引哪些物种。每种食物类型都包含图像、描述和推荐用法。"
+          },
+          {
+            "title": "使用情况分析",
+            "content": "该系统会跟踪鸟类访问期间出现的食物，帮助您了解哪些食物最能有效地吸引特定物种。"
+          },
+          {
+            "title": "活跃状态",
+            "content": "使用复选框来指示您的喂食器中当前有哪些食物。只有活性食物才会与新鸟类检测相关。"
+          },
+          {
+            "title": "食品信息",
+            "content": "每个食物条目包括：\n- 易于识别的名称和图像\n- 食物类型的详细描述\n- 通常被这种食物吸引的鸟类列表\n- 特殊处理或储存建议"
+          },
+          {
+            "title": "食品功效",
+            "content": "通过鸟类检测系统，您可以跟踪哪些食物最能成功地吸引目标物种。这些数据有助于优化您的喂养策略。"
+          }
+        ]
+      }
     },
     "library": {
-      "title": "数据与归档",
-      "description": "磁盘归档日历、训练导出与存储维护。观看片段请用「记录」。",
-      "details": [
-        {
-          "title": "日历意味着什么",
-          "content": "日历是根据数据/记录下的真实文件构建的，因此突出显示的日期意味着磁盘上存在该日期的记录。"
-        },
-        {
-          "title": "为什么这很重要",
-          "content": "这有助于将归档问题与检测问题分开。如果此处突出显示某一天，但概述或时间线为空，则表示存在记录，但检测或访问缺失。"
-        },
-        {
-          "title": "本页能做什么",
-          "content": "浏览归档、从磁盘扫描/导入、导出数据集、备份与存储概览——都在菜单「数据」下。"
-        },
-        {
-          "title": "与「服务」的关系",
-          "content": "「服务」侧重监控、处理器日志与深度诊断；基于文件的归档工作集中在此。"
-        },
-        {
-          "title": "关于维护",
-          "content": "导入、重建、清理等重操作前，建议先确认归档里已有哪些日期；日历按磁盘文件反映。"
-        }
-      ]
+      "guest": {
+        "title": "数据与归档",
+        "description": "磁盘上有录像文件的日期日历。",
+        "details": [
+          {
+            "title": "日历意味着什么",
+            "content": "日历是根据数据/记录下的真实文件构建的，因此突出显示的日期意味着磁盘上存在该日期的记录。"
+          },
+          {
+            "title": "为什么这很重要",
+            "content": "这有助于将归档问题与检测问题分开。如果此处突出显示某一天，但概述或时间线为空，则表示存在记录，但检测或访问缺失。"
+          },
+          {
+            "title": "本页能做什么",
+            "content": "浏览归档、从磁盘扫描/导入、导出数据集、备份与存储概览——都在菜单「数据」下。"
+          },
+          {
+            "title": "与「服务」的关系",
+            "content": "「服务」侧重监控、处理器日志与深度诊断；基于文件的归档工作集中在此。"
+          },
+          {
+            "title": "关于维护",
+            "content": "导入、重建、清理等重操作前，建议先确认归档里已有哪些日期；日历按磁盘文件反映。"
+          }
+        ]
+      },
+      "operator": {
+        "title": "数据与归档",
+        "description": "归档、磁盘导入、数据集导出；在「记录」中观看片段。",
+        "details": [
+          {
+            "title": "日历意味着什么",
+            "content": "日历是根据数据/记录下的真实文件构建的，因此突出显示的日期意味着磁盘上存在该日期的记录。"
+          },
+          {
+            "title": "为什么这很重要",
+            "content": "这有助于将归档问题与检测问题分开。如果此处突出显示某一天，但概述或时间线为空，则表示存在记录，但检测或访问缺失。"
+          },
+          {
+            "title": "本页能做什么",
+            "content": "浏览归档、从磁盘扫描/导入、导出数据集、备份与存储概览——都在菜单「数据」下。"
+          },
+          {
+            "title": "与「服务」的关系",
+            "content": "「服务」侧重监控、处理器日志与深度诊断；基于文件的归档工作集中在此。"
+          },
+          {
+            "title": "关于维护",
+            "content": "导入、重建、清理等重操作前，建议先确认归档里已有哪些日期；日历按磁盘文件反映。"
+          }
+        ]
+      },
+      "admin": {
+        "title": "数据与归档",
+        "description": "存储维护与备份；重型操作前先查看日历中的磁盘占用。",
+        "details": [
+          {
+            "title": "日历意味着什么",
+            "content": "日历是根据数据/记录下的真实文件构建的，因此突出显示的日期意味着磁盘上存在该日期的记录。"
+          },
+          {
+            "title": "为什么这很重要",
+            "content": "这有助于将归档问题与检测问题分开。如果此处突出显示某一天，但概述或时间线为空，则表示存在记录，但检测或访问缺失。"
+          },
+          {
+            "title": "本页能做什么",
+            "content": "浏览归档、从磁盘扫描/导入、导出数据集、备份与存储概览——都在菜单「数据」下。"
+          },
+          {
+            "title": "与「服务」的关系",
+            "content": "「服务」侧重监控、处理器日志与深度诊断；基于文件的归档工作集中在此。"
+          },
+          {
+            "title": "关于维护",
+            "content": "导入、重建、清理等重操作前，建议先确认归档里已有哪些日期；日历按磁盘文件反映。"
+          }
+        ]
+      }
     },
     "timeline": {
-      "title": "记录",
-      "description": "选择日期、筛选到访、打开片段；需要时可进入物种页或识别复核。",
-      "details": [
-        {
-          "title": "访问控制",
-          "content": "Filter and navigate visits using:\n- Date/time picker to select viewing period\n- 物种下拉菜单可按特定鸟类类型进行过滤\n- 显示独特物种数量、总访问量和总持续时间的汇总统计数据"
-        },
-        {
-          "title": "日间导航",
-          "content": "日期旁边的 V 形符号会跳转到磁盘上录音存档中包含文件的最近一天（会跳过空白日期）。在选择器中选择日期仍然会在当天打开。"
-        },
-        {
-          "title": "参观信息",
-          "content": "每张访问卡显示：\n- 鸟类种类及其图像和名称\n- 同时看到的鸟类数量（以人物图标显示）\n- 访问持续时间（以秒为单位）（用时钟图标显示）\n- 访问期间的体温（以温度计图标显示）\n- 详细检测时间线的可扩展视图"
-        },
-        {
-          "title": "检测类型",
-          "content": "在每次访问中，检测结果显示为：\n- 视频检测（相机图标） - 鸟类的视觉确认\n- 音频检测（麦克风图标） - 鸟叫声和歌曲\n- 每次检测的置信百分比\n- 每次观察的精确时间戳\n- 每次检测的持续时间（以秒为单位）"
-        },
-        {
-          "title": "视觉时间轴",
-          "content": "垂直时间线显示：\n- 带有时间标记的访问时间顺序\n- 连接点表示连续监控\n- 可展开/折叠的访问详细信息\n- 不同访问之间的明确区分"
-        },
-        {
-          "title": "检测置信度",
-          "content": "每次检测都会显示置信度：\n- 视频检测通常显示 95-100% 的置信度\n- 音频检测可能具有不同的置信度\n- 高置信度的绿色指标（100%）\n- 蓝色指标表示良好的置信度（95% 及以上）"
-        },
-        {
-          "title": "天气背景",
-          "content": "每次访问都会记录温度数据，以帮助将鸟类活动与天气条件联系起来。这有助于识别与环境因素相关的鸟类行为模式。"
-        }
-      ]
+      "guest": {
+        "title": "记录",
+        "description": "所选日期的访问列表：物种、时长、天气及卡片上的体重。",
+        "details": [
+          {
+            "title": "访问控制",
+            "content": "Filter and navigate visits using:\n- Date/time picker to select viewing period\n- 物种下拉菜单可按特定鸟类类型进行过滤\n- 显示独特物种数量、总访问量和总持续时间的汇总统计数据"
+          },
+          {
+            "title": "日间导航",
+            "content": "日期旁边的 V 形符号会跳转到磁盘上录音存档中包含文件的最近一天（会跳过空白日期）。在选择器中选择日期仍然会在当天打开。"
+          },
+          {
+            "title": "参观信息",
+            "content": "每张访问卡显示：\n- 鸟类种类及其图像和名称\n- 同时看到的鸟类数量（以人物图标显示）\n- 访问持续时间（以秒为单位）（用时钟图标显示）\n- 访问期间的体温（以温度计图标显示）\n- 详细检测时间线的可扩展视图"
+          },
+          {
+            "title": "检测类型",
+            "content": "在每次访问中，检测结果显示为：\n- 视频检测（相机图标） - 鸟类的视觉确认\n- 音频检测（麦克风图标） - 鸟叫声和歌曲\n- 每次检测的置信百分比\n- 每次观察的精确时间戳\n- 每次检测的持续时间（以秒为单位）"
+          },
+          {
+            "title": "视觉时间轴",
+            "content": "垂直时间线显示：\n- 带有时间标记的访问时间顺序\n- 连接点表示连续监控\n- 可展开/折叠的访问详细信息\n- 不同访问之间的明确区分"
+          },
+          {
+            "title": "检测置信度",
+            "content": "每次检测都会显示置信度：\n- 视频检测通常显示 95-100% 的置信度\n- 音频检测可能具有不同的置信度\n- 高置信度的绿色指标（100%）\n- 蓝色指标表示良好的置信度（95% 及以上）"
+          },
+          {
+            "title": "天气背景",
+            "content": "每次访问都会记录温度数据，以帮助将鸟类活动与天气条件联系起来。这有助于识别与环境因素相关的鸟类行为模式。"
+          },
+          {
+            "title": "访问卡片",
+            "content": "物种、时长、温度；展开可查看时间线上的检测；点击片段查看详情。"
+          }
+        ]
+      },
+      "operator": {
+        "title": "记录",
+        "description": "当日访问：按物种与行为筛选；在访问卡片上修正并绑定 Re-ID 昵称。",
+        "details": [
+          {
+            "title": "访问控制",
+            "content": "Filter and navigate visits using:\n- Date/time picker to select viewing period\n- 物种下拉菜单可按特定鸟类类型进行过滤\n- 显示独特物种数量、总访问量和总持续时间的汇总统计数据"
+          },
+          {
+            "title": "日间导航",
+            "content": "日期旁边的 V 形符号会跳转到磁盘上录音存档中包含文件的最近一天（会跳过空白日期）。在选择器中选择日期仍然会在当天打开。"
+          },
+          {
+            "title": "参观信息",
+            "content": "每张访问卡显示：\n- 鸟类种类及其图像和名称\n- 同时看到的鸟类数量（以人物图标显示）\n- 访问持续时间（以秒为单位）（用时钟图标显示）\n- 访问期间的体温（以温度计图标显示）\n- 详细检测时间线的可扩展视图"
+          },
+          {
+            "title": "检测类型",
+            "content": "在每次访问中，检测结果显示为：\n- 视频检测（相机图标） - 鸟类的视觉确认\n- 音频检测（麦克风图标） - 鸟叫声和歌曲\n- 每次检测的置信百分比\n- 每次观察的精确时间戳\n- 每次检测的持续时间（以秒为单位）"
+          },
+          {
+            "title": "视觉时间轴",
+            "content": "垂直时间线显示：\n- 带有时间标记的访问时间顺序\n- 连接点表示连续监控\n- 可展开/折叠的访问详细信息\n- 不同访问之间的明确区分"
+          },
+          {
+            "title": "检测置信度",
+            "content": "每次检测都会显示置信度：\n- 视频检测通常显示 95-100% 的置信度\n- 音频检测可能具有不同的置信度\n- 高置信度的绿色指标（100%）\n- 蓝色指标表示良好的置信度（95% 及以上）"
+          },
+          {
+            "title": "天气背景",
+            "content": "每次访问都会记录温度数据，以帮助将鸟类活动与天气条件联系起来。这有助于识别与环境因素相关的鸟类行为模式。"
+          },
+          {
+            "title": "Re-ID",
+            "content": "启用 Re-ID 后可在访问卡片上绑定或解绑鸟类档案（昵称）。"
+          }
+        ]
+      },
+      "admin": {
+        "title": "记录",
+        "description": "访问时间线；若某日为空，请检查「数据」归档与处理器状态。",
+        "details": [
+          {
+            "title": "访问控制",
+            "content": "Filter and navigate visits using:\n- Date/time picker to select viewing period\n- 物种下拉菜单可按特定鸟类类型进行过滤\n- 显示独特物种数量、总访问量和总持续时间的汇总统计数据"
+          },
+          {
+            "title": "日间导航",
+            "content": "日期旁边的 V 形符号会跳转到磁盘上录音存档中包含文件的最近一天（会跳过空白日期）。在选择器中选择日期仍然会在当天打开。"
+          },
+          {
+            "title": "参观信息",
+            "content": "每张访问卡显示：\n- 鸟类种类及其图像和名称\n- 同时看到的鸟类数量（以人物图标显示）\n- 访问持续时间（以秒为单位）（用时钟图标显示）\n- 访问期间的体温（以温度计图标显示）\n- 详细检测时间线的可扩展视图"
+          },
+          {
+            "title": "检测类型",
+            "content": "在每次访问中，检测结果显示为：\n- 视频检测（相机图标） - 鸟类的视觉确认\n- 音频检测（麦克风图标） - 鸟叫声和歌曲\n- 每次检测的置信百分比\n- 每次观察的精确时间戳\n- 每次检测的持续时间（以秒为单位）"
+          },
+          {
+            "title": "视觉时间轴",
+            "content": "垂直时间线显示：\n- 带有时间标记的访问时间顺序\n- 连接点表示连续监控\n- 可展开/折叠的访问详细信息\n- 不同访问之间的明确区分"
+          },
+          {
+            "title": "检测置信度",
+            "content": "每次检测都会显示置信度：\n- 视频检测通常显示 95-100% 的置信度\n- 音频检测可能具有不同的置信度\n- 高置信度的绿色指标（100%）\n- 蓝色指标表示良好的置信度（95% 及以上）"
+          },
+          {
+            "title": "天气背景",
+            "content": "每次访问都会记录温度数据，以帮助将鸟类活动与天气条件联系起来。这有助于识别与环境因素相关的鸟类行为模式。"
+          }
+        ]
+      }
     },
     "unknowns": {
-      "title": "校对队列",
-      "description": "检查低置信度或过于笼统的识别，确认物种，并把修正反馈到识别改进流程。",
-      "details": [
-        {
-          "title": "目的",
-          "content": "低置信度检测可能会被错误识别。通过此页面，您可以在物种影响统计数据之前对其进行验证和更正。"
-        },
-        {
-          "title": "临界点",
-          "content": "阈值在「站点」→ 处理器/识别（不确定检测）中设置。发行默认常约为 0.48，低于此的候选会出现在这里。"
-        },
-        {
-          "title": "纠正物种",
-          "content": "从下拉列表中选择正确的物种，然后单击“应用”。如果已配置，则需要设置密码。"
-        },
-        {
-          "title": "观看视频",
-          "content": "单击“查看视频”打开录制并在纠正之前目视验证检测结果。"
-        },
-        {
-          "title": "与视频页面相同的修正",
-          "content": "在此处应用会更新与在视频详细信息 → 检测到的物种（一个底层 API）下进行更正时相同的检测记录。当您想首先查看剪辑时，请使用“查看视频”。"
-        },
-        {
-          "title": "期间选择",
-          "content": "默认情况下，显示全天。当您选择一个时间（非 00:00）时，仅显示该小时的检测结果 - 当有很多记录时非常有用。"
-        }
-      ]
+      "guest": {
+        "title": "校对队列",
+        "description": "不确定检测的复核队列。浏览录像请用「记录」与视频详情。",
+        "details": [
+          {
+            "title": "目的",
+            "content": "低置信度检测可能会被错误识别。通过此页面，您可以在物种影响统计数据之前对其进行验证和更正。"
+          },
+          {
+            "title": "临界点",
+            "content": "阈值在「站点」→ 处理器/识别（不确定检测）中设置。发行默认常约为 0.48，低于此的候选会出现在这里。"
+          },
+          {
+            "title": "纠正物种",
+            "content": "从下拉列表中选择正确的物种，然后单击“应用”。如果已配置，则需要设置密码。"
+          },
+          {
+            "title": "观看视频",
+            "content": "单击“查看视频”打开录制并在纠正之前目视验证检测结果。"
+          },
+          {
+            "title": "与视频页面相同的修正",
+            "content": "在此处应用会更新与在视频详细信息 → 检测到的物种（一个底层 API）下进行更正时相同的检测记录。当您想首先查看剪辑时，请使用“查看视频”。"
+          },
+          {
+            "title": "期间选择",
+            "content": "默认情况下，显示全天。当您选择一个时间（非 00:00）时，仅显示该小时的检测结果 - 当有很多记录时非常有用。"
+          }
+        ]
+      },
+      "operator": {
+        "title": "校对队列",
+        "description": "低置信度检测：选择物种并应用。与视频页「修正物种」相同 API。",
+        "details": [
+          {
+            "title": "目的",
+            "content": "低置信度检测可能会被错误识别。通过此页面，您可以在物种影响统计数据之前对其进行验证和更正。"
+          },
+          {
+            "title": "临界点",
+            "content": "阈值在「站点」→ 处理器/识别（不确定检测）中设置。发行默认常约为 0.48，低于此的候选会出现在这里。"
+          },
+          {
+            "title": "纠正物种",
+            "content": "从下拉列表中选择正确的物种，然后单击“应用”。如果已配置，则需要设置密码。"
+          },
+          {
+            "title": "观看视频",
+            "content": "单击“查看视频”打开录制并在纠正之前目视验证检测结果。"
+          },
+          {
+            "title": "与视频页面相同的修正",
+            "content": "在此处应用会更新与在视频详细信息 → 检测到的物种（一个底层 API）下进行更正时相同的检测记录。当您想首先查看剪辑时，请使用“查看视频”。"
+          },
+          {
+            "title": "期间选择",
+            "content": "默认情况下，显示全天。当您选择一个时间（非 00:00）时，仅显示该小时的检测结果 - 当有很多记录时非常有用。"
+          },
+          {
+            "title": "专家队列",
+            "content": "语义案例进入标注；本页用于快速修正物种。"
+          }
+        ]
+      },
+      "admin": {
+        "title": "校对队列",
+        "description": "队列阈值在「站点」配置。管道问题请查处理器日志与 behavior/检测指标。",
+        "details": [
+          {
+            "title": "目的",
+            "content": "低置信度检测可能会被错误识别。通过此页面，您可以在物种影响统计数据之前对其进行验证和更正。"
+          },
+          {
+            "title": "临界点",
+            "content": "阈值在「站点」→ 处理器/识别（不确定检测）中设置。发行默认常约为 0.48，低于此的候选会出现在这里。"
+          },
+          {
+            "title": "纠正物种",
+            "content": "从下拉列表中选择正确的物种，然后单击“应用”。如果已配置，则需要设置密码。"
+          },
+          {
+            "title": "观看视频",
+            "content": "单击“查看视频”打开录制并在纠正之前目视验证检测结果。"
+          },
+          {
+            "title": "与视频页面相同的修正",
+            "content": "在此处应用会更新与在视频详细信息 → 检测到的物种（一个底层 API）下进行更正时相同的检测记录。当您想首先查看剪辑时，请使用“查看视频”。"
+          },
+          {
+            "title": "期间选择",
+            "content": "默认情况下，显示全天。当您选择一个时间（非 00:00）时，仅显示该小时的检测结果 - 当有很多记录时非常有用。"
+          }
+        ]
+      }
     },
     "migrationCalendar": {
-      "title": "季节性",
-      "description": "按月查看：各物种在您的数据中于喂食器出现的频率。",
-      "details": [
-        {
-          "title": "每月模式",
-          "content": "每行显示一个物种；列是月份（一月至十二月）。数字表示访问次数。较暗的细胞=该月的活动较多。 Σ 列是您所选年份范围内的物种总数 - 这是您的生活清单风格摘要；没有单独的重复清单。"
-        },
-        {
-          "title": "数据来源",
-          "content": "使用所有历史 SpeciesVisit 数据。多年来的更多数据提供了更清晰的迁移模式。"
-        },
-        {
-          "title": "物种链接",
-          "content": "单击物种名称可打开其摘要页面，其中包含统计数据和最近访问次数。"
-        }
-      ]
+      "guest": {
+        "title": "季节性",
+        "description": "季节性：物种在哪些月份最常出现。",
+        "details": [
+          {
+            "title": "每月模式",
+            "content": "每行显示一个物种；列是月份（一月至十二月）。数字表示访问次数。较暗的细胞=该月的活动较多。 Σ 列是您所选年份范围内的物种总数 - 这是您的生活清单风格摘要；没有单独的重复清单。"
+          },
+          {
+            "title": "数据来源",
+            "content": "使用所有历史 SpeciesVisit 数据。多年来的更多数据提供了更清晰的迁移模式。"
+          },
+          {
+            "title": "物种链接",
+            "content": "单击物种名称可打开其摘要页面，其中包含统计数据和最近访问次数。"
+          }
+        ]
+      },
+      "operator": {
+        "title": "季节性",
+        "description": "按月访问热力图；点击物种打开汇总页。",
+        "details": [
+          {
+            "title": "每月模式",
+            "content": "每行显示一个物种；列是月份（一月至十二月）。数字表示访问次数。较暗的细胞=该月的活动较多。 Σ 列是您所选年份范围内的物种总数 - 这是您的生活清单风格摘要；没有单独的重复清单。"
+          },
+          {
+            "title": "数据来源",
+            "content": "使用所有历史 SpeciesVisit 数据。多年来的更多数据提供了更清晰的迁移模式。"
+          },
+          {
+            "title": "物种链接",
+            "content": "单击物种名称可打开其摘要页面，其中包含统计数据和最近访问次数。"
+          }
+        ]
+      },
+      "admin": {
+        "title": "季节性",
+        "description": "全部 SpeciesVisit 历史；报告请单独导出汇总。",
+        "details": [
+          {
+            "title": "每月模式",
+            "content": "每行显示一个物种；列是月份（一月至十二月）。数字表示访问次数。较暗的细胞=该月的活动较多。 Σ 列是您所选年份范围内的物种总数 - 这是您的生活清单风格摘要；没有单独的重复清单。"
+          },
+          {
+            "title": "数据来源",
+            "content": "使用所有历史 SpeciesVisit 数据。多年来的更多数据提供了更清晰的迁移模式。"
+          },
+          {
+            "title": "物种链接",
+            "content": "单击物种名称可打开其摘要页面，其中包含统计数据和最近访问次数。"
+          }
+        ]
+      }
     },
     "videoDetails": {
-      "title": "记录详情",
-      "description": "把这页当作证据页：观看录像、检查检测结果，并在需要时修正物种。",
-      "details": [
-        {
-          "title": "媒体播放器",
-          "content": "播放器上方：箭头在浏览器本地日历日的录音之间移动（按开始时间排序）。午夜过后，导航可以在第二天或前一天继续。\n\n当您从时间轴访问卡中打开剪辑时，使用每次访问的主要剪辑，通过当天的同级访问执行上一个/下一步（每个访问卡一个步骤），以便计数器与您在时间轴上看到的内容相匹配。\n\n两种观看模式：\n- 视频选项卡：录制的镜头\n- 音频选项卡：频谱图\n时间轴滑块可在剪辑内精确导航。"
-        },
-        {
-          "title": "检测时间线",
-          "content": "播放器上方：\n- 当前检测结果以鸟类缩略图和置信度显示\n- 绿色徽章 (100%) 表示最高置信度检测\n- 蓝色徽章 (95%+) 显示高置信度检测\n- 标签指示检测源（视频/音频）"
-        },
-        {
-          "title": "检测到的物种",
-          "content": "检测到的物种：次数、置信度、时长、物种页链接。在此更正物种与复核页上对同一检测的更正相同。"
-        },
-        {
-          "title": "一般信息",
-          "content": "有关录音的技术细节：\n- 用于分析的处理器版本\n- 开始和结束时间戳\n- 总录音时长\n- 处理细节和设置"
-        },
-        {
-          "title": "天气背景",
-          "content": "录制时的天气条件：\n- 摄氏温度\n- 云层覆盖百分比\n- 湿度水平\n- 风速\n- 天气描述（例如，薄雾）\n帮助将鸟类活动与环境条件联系起来"
-        },
-        {
-          "title": "音频分析",
-          "content": "频谱图可视化显示：\n- 鸟鸣声和歌曲作为颜色图案\n- 垂直轴上的频率范围\n- 水平轴上的时间进展\n- 可视化上标记的已识别物种\n帮助验证基于音频的物种识别"
-        }
-      ]
+      "guest": {
+        "title": "记录详情",
+        "description": "自动记录的访问：视频、识别到的物种、行为及喂鸟器重量变化（如有）。",
+        "details": [
+          {
+            "title": "媒体播放器",
+            "content": "播放器上方：箭头在浏览器本地日历日的录音之间移动（按开始时间排序）。午夜过后，导航可以在第二天或前一天继续。\n\n当您从时间轴访问卡中打开剪辑时，使用每次访问的主要剪辑，通过当天的同级访问执行上一个/下一步（每个访问卡一个步骤），以便计数器与您在时间轴上看到的内容相匹配。\n\n两种观看模式：\n- 视频选项卡：录制的镜头\n- 音频选项卡：频谱图\n时间轴滑块可在剪辑内精确导航。"
+          },
+          {
+            "title": "检测时间线",
+            "content": "进度条下方的彩色条表示各物种的时间段。悬停可查看物种、时间范围及识别方式（录像分析、外部 MQTT 或声音）。\n\n播放器上方为当前检测及缩略图与置信度；绿色徽章 (100%)、蓝色 (95%+)。"
+          },
+          {
+            "title": "检测到的物种",
+            "content": "本录像上系统识别到的物种：次数、置信度、时长；链接可打开物种页。"
+          },
+          {
+            "title": "一般信息",
+            "content": "开始/结束时间与时长。有喂鸟器秤数据时显示体重变化。"
+          },
+          {
+            "title": "天气背景",
+            "content": "录制时的天气条件：\n- 摄氏温度\n- 云层覆盖百分比\n- 湿度水平\n- 风速\n- 天气描述（例如，薄雾）\n帮助将鸟类活动与环境条件联系起来"
+          },
+          {
+            "title": "音频分析",
+            "content": "频谱图可视化显示：\n- 鸟鸣声和歌曲作为颜色图案\n- 垂直轴上的频率范围\n- 水平轴上的时间进展\n- 可视化上标记的已识别物种\n帮助验证基于音频的物种识别"
+          },
+          {
+            "title": "物种",
+            "content": "系统从视频中估计的物种名称。"
+          },
+          {
+            "title": "行为",
+            "content": "识别到的简短活动标签（进食、休息、飞行等）。"
+          },
+          {
+            "title": "体重变化",
+            "content": "绿色向上表示访问期间增重，红色向下表示减轻；约 5 克以内的波动不显示。"
+          }
+        ]
+      },
+      "operator": {
+        "title": "记录详情",
+        "description": "查看片段、物种、行为与体重。在此修正物种；昵称（Re-ID）在访问卡片上操作。",
+        "details": [
+          {
+            "title": "媒体播放器",
+            "content": "播放器上方：箭头在浏览器本地日历日的录音之间移动（按开始时间排序）。午夜过后，导航可以在第二天或前一天继续。\n\n当您从时间轴访问卡中打开剪辑时，使用每次访问的主要剪辑，通过当天的同级访问执行上一个/下一步（每个访问卡一个步骤），以便计数器与您在时间轴上看到的内容相匹配。\n\n两种观看模式：\n- 视频选项卡：录制的镜头\n- 音频选项卡：频谱图\n时间轴滑块可在剪辑内精确导航。"
+          },
+          {
+            "title": "检测时间线",
+            "content": "播放器上方：\n- 当前检测结果以鸟类缩略图和置信度显示\n- 绿色徽章 (100%) 表示最高置信度检测\n- 蓝色徽章 (95%+) 显示高置信度检测\n- 标签指示检测源（视频/音频）"
+          },
+          {
+            "title": "检测到的物种",
+            "content": "检测到的物种：次数、置信度、时长、物种页链接。在此更正物种与复核页上对同一检测的更正相同。"
+          },
+          {
+            "title": "一般信息",
+            "content": "开始/结束时间与时长。有喂鸟器秤数据时显示体重变化。"
+          },
+          {
+            "title": "天气背景",
+            "content": "录制时的天气条件：\n- 摄氏温度\n- 云层覆盖百分比\n- 湿度水平\n- 风速\n- 天气描述（例如，薄雾）\n帮助将鸟类活动与环境条件联系起来"
+          },
+          {
+            "title": "音频分析",
+            "content": "频谱图可视化显示：\n- 鸟鸣声和歌曲作为颜色图案\n- 垂直轴上的频率范围\n- 水平轴上的时间进展\n- 可视化上标记的已识别物种\n帮助验证基于音频的物种识别"
+          },
+          {
+            "title": "修正物种",
+            "content": "在「检测到的物种」中使用「修正物种」，与「检查」页相同，需操作员权限。"
+          },
+          {
+            "title": "Behavior v2.1",
+            "content": "可编辑片段行为标签；auto 模式下 v2.1 在处理时自动标注，操作员可覆盖。"
+          },
+          {
+            "title": "专家队列",
+            "content": "复杂语义案例进入标注/专家复核；框几何在「标注」，物种/行为在此。"
+          }
+        ]
+      },
+      "admin": {
+        "title": "记录详情",
+        "description": "完整录像卡片及管理员字段：处理器版本、融合轨迹、「站点」阈值。",
+        "details": [
+          {
+            "title": "媒体播放器",
+            "content": "播放器上方：箭头在浏览器本地日历日的录音之间移动（按开始时间排序）。午夜过后，导航可以在第二天或前一天继续。\n\n当您从时间轴访问卡中打开剪辑时，使用每次访问的主要剪辑，通过当天的同级访问执行上一个/下一步（每个访问卡一个步骤），以便计数器与您在时间轴上看到的内容相匹配。\n\n两种观看模式：\n- 视频选项卡：录制的镜头\n- 音频选项卡：频谱图\n时间轴滑块可在剪辑内精确导航。"
+          },
+          {
+            "title": "检测时间线",
+            "content": "播放器上方：\n- 当前检测结果以鸟类缩略图和置信度显示\n- 绿色徽章 (100%) 表示最高置信度检测\n- 蓝色徽章 (95%+) 显示高置信度检测\n- 标签指示检测源（视频/音频）"
+          },
+          {
+            "title": "检测到的物种",
+            "content": "检测到的物种：次数、置信度、时长、物种页链接。在此更正物种与复核页上对同一检测的更正相同。"
+          },
+          {
+            "title": "一般信息",
+            "content": "开始/结束时间与时长。有喂鸟器秤数据时显示体重变化。"
+          },
+          {
+            "title": "天气背景",
+            "content": "录制时的天气条件：\n- 摄氏温度\n- 云层覆盖百分比\n- 湿度水平\n- 风速\n- 天气描述（例如，薄雾）\n帮助将鸟类活动与环境条件联系起来"
+          },
+          {
+            "title": "音频分析",
+            "content": "频谱图可视化显示：\n- 鸟鸣声和歌曲作为颜色图案\n- 垂直轴上的频率范围\n- 水平轴上的时间进展\n- 可视化上标记的已识别物种\n帮助验证基于音频的物种识别"
+          },
+          {
+            "title": "站点与模型",
+            "content": "检测阈值、behavior 引擎（auto/shadow/canary）、ONNX 后端 — 站点 → 识别与处理器。"
+          },
+          {
+            "title": "融合轨迹",
+            "content": "检测管道轨迹合并调试，仅管理员。"
+          }
+        ]
+      }
+    }
+  },
+  "labelling": {
+    "title": "标注",
+    "description": "此页仅复核边框几何。语义（物种/档案/行为）请在视频详情中编辑。",
+    "language": "语言",
+    "progressLabel": "已复核 {{done}} / {{total}}",
+    "caseTitle": "案例 #{{id}}",
+    "minerResult": "挖掘结果：新建 {{created}}，跳过 {{skipped}}",
+    "exportDone": "导出完成：{{format}} {{version}}（{{path}}）",
+    "status": {
+      "pending": "待处理",
+      "approved": "已完成",
+      "rejected": "已拒绝",
+      "semantic_review_required": "需要专家复核",
+      "preApproved": "预通过"
+    },
+    "filters": {
+      "status": "状态",
+      "workflow": "流程",
+      "camera": "摄像头",
+      "all": "全部",
+      "onlyNew": "仅新项",
+      "onlyError": "仅检测错误"
+    },
+    "view": {
+      "snapshot": "快照",
+      "video": "视频"
+    },
+    "meta": {
+      "time": "时间",
+      "camera": "摄像头",
+      "reason": "原因",
+      "species": "物种",
+      "nickname": "档案",
+      "behavior": "行为"
+    },
+    "predictions": {
+      "main": "主模型",
+      "shadow": "影子模型"
+    },
+    "fields": {
+      "behaviorTag": "行为",
+      "speciesTag": "物种",
+      "empty": "（空）",
+      "current": "（当前）"
+    },
+    "actions": {
+      "runMiner": "运行挖掘",
+      "confirm": "确认",
+      "reject": "拒绝",
+      "skip": "跳过",
+      "prev": "上一条",
+      "next": "下一条",
+      "tagSpecies": "标记物种",
+      "approveAll": "全部通过",
+      "approveAndNext": "通过并下一条",
+      "rejectAndNext": "拒绝并下一条",
+      "flagSemanticError": "标记语义错误"
+    },
+    "export": {
+      "title": "导出",
+      "approved": "导出已通过数据"
+    },
+    "states": {
+      "loading": "加载中...",
+      "error": "队列不可用。请使用操作员/管理员账号登录。",
+      "empty": "暂无数据。请运行挖掘器或先填充队列。",
+      "noFiltered": "当前筛选下没有案例。"
+    },
+    "media": {
+      "noMedia": "此案例没有可用媒体。",
+      "noOverlayData": "没有可绘制的边框数据。",
+      "unavailable": "此案例媒体不可用，请点击“跳过”。"
+    },
+    "box": {
+      "main": "主框",
+      "shadow": "影子框",
+      "groundTruth": "已确认",
+      "rejected": "已拒绝",
+      "detection": "检测框"
+    },
+    "shortcuts": {
+      "confirm": "Enter / Space",
+      "reject": "Backspace",
+      "quickSpecies": "快速选择物种（1/2/3）",
+      "behavior": "切换行为（B）"
+    },
+    "labels": {
+      "species": "物种",
+      "behavior": "行为",
+      "speciesUnknown": "未知物种"
+    },
+    "panels": {
+      "boxActions": "当前目标操作",
+      "sessionActions": "几何复核"
+    },
+    "hints": {
+      "trainingPurpose": "这里仅复核边框几何；物种、档案、行为请在视频详情中修改。"
+    },
+    "reasons": {
+      "blind": "YOLO 盲区",
+      "fallback": "Frigate 回退",
+      "lowConfidence": "低置信度"
+    },
+    "help": {
+      "guest": {
+        "title": "标注",
+        "step1": "此区域用于检测框复核。浏览录像请用「记录」与视频详情。",
+        "step2": "",
+        "step3": ""
+      },
+      "operator": {
+        "title": "如何使用标注",
+        "step1": "仅复核边框几何；物种、昵称与行为在视频详情中修改。",
+        "step2": "正确点「确认」；框错误点「拒绝」。语义案例进入专家队列。",
+        "step3": "方向键切换案例（焦点不在输入框时）。"
+      },
+      "admin": {
+        "title": "标注与队列",
+        "step1": "操作员修框；管理员关注 semantic_review_required 与数据集导出。",
+        "step2": "检测阈值与 Behavior v2.1 在「站点」。批量挖掘案例 — 页眉按钮。",
+        "step3": "队列积压时检查处理器日志与 behavior 模式（auto/shadow）。"
+      },
+      "gotIt": "知道了"
     }
   },
   "speciesDirectory": {
-    "title": "物种",
-    "description": "本站点已出现过的鸟类：按录像统计、物种卡片并可回到原片段。",
+    "title": "卡片质量",
+    "description": "用于完善物种卡片照片、说明和音频覆盖率的系统工具。普通物种视图在「物种」菜单中。",
+    "scopeHint": "模型类别：{{engine}}，{{classCount}}。仲裁词表：约 {{arbCount}} 个键。SQLite Species：{{db}}。Allowlist 不完整卡片：{{incomplete}}。",
+    "scopeProject": "项目",
+    "scopeAllowlist": "模型类别",
+    "scopeObserved": "已观测",
+    "scopeAllDb": "全库（管理）",
+    "allowlistModelCount": "模型：{{count}}",
+    "incompleteAllowlistCount": "不完整（allowlist）：{{count}}",
+    "badgeIncomplete": "卡片不完整",
+    "backToCatalog": "← 返回物种",
+    "backToSystem": "返回系统",
+    "colSpecies": "物种",
+    "colStatus": "状态",
+    "colActions": "操作",
     "search": "搜索物种",
     "searchPlaceholder": "输入物种名称或说明",
     "loadError": "无法加载物种目录",
-    "totalCount": "目录中共有 {{count}} 个物种",
+    "totalCount": "列表中 {{count}} 条",
     "filteredCount": "显示 {{count}} 个",
     "empty": "当前搜索没有匹配的物种。",
     "activeNow": "最近见过",
@@ -2334,6 +3173,12 @@
     "openSpecies": "打开物种卡片",
     "openRecordingsForSpecies": "打开记录",
     "openSpeciesTooltip": "物种详情：说明、出现频率、相关录像。",
-    "openRecordingsTooltip": "仅筛选该物种的录像与检测。"
+    "openRecordingsTooltip": "仅筛选该物种的录像与检测。",
+    "filterAll": "全部",
+    "filterIncomplete": "不完整",
+    "filterMissingAudio": "无目录音频",
+    "audioKpi": "音频：{{withAudio}} 有来源，{{missing}} 缺失",
+    "badgeNoImage": "无照片",
+    "badgeNoDescription": "无说明"
   }
 }

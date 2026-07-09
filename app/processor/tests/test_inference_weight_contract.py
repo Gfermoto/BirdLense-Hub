@@ -47,6 +47,17 @@ class TestWeightContract(unittest.TestCase):
             log,
         )
 
+    def test_validate_empty_scope_skips_checks(self):
+        from inference.weight_contract import validate_detector_weight_contract
+
+        log = logging.getLogger("test_validate_empty_scope_skips_checks")
+        validate_detector_weight_contract(
+            {0: "Bird", 5: "Eurasian Red Squirrel"},
+            set(),
+            "enforce",
+            log,
+        )
+
     def test_validate_enforce_raises(self):
         from inference.weight_contract import validate_detector_weight_contract
 

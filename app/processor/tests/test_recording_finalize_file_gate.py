@@ -17,6 +17,19 @@ from recording_file_gate import _is_playable_video_file as is_playable_video_fil
 from recording_finalize import finalize_motion_recording  # noqa: E402
 
 
+def _decision_trace_payload(api):
+    for log_name in ("activity_log", "activity_log_async"):
+        log = getattr(api, log_name, None)
+        for call in reversed(getattr(log, "call_args_list", []) or []):
+            args = call.args
+            kwargs = call.kwargs
+            if len(args) >= 2 and args[0] == "decision_trace":
+                return args[1]
+            if kwargs.get("type") == "decision_trace":
+                return kwargs.get("data")
+    raise AssertionError("decision_trace activity log call not found")
+
+
 class TestRecordingFinalizeFileGate(unittest.TestCase):
     def test_is_playable_video_file_direct_module_rejects_missing_path(self):
         self.assertFalse(is_playable_video_file_direct('/tmp/birdlense-missing-video.mp4'))
@@ -44,7 +57,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             out_dir = os.path.join(tmp, 'session')
             os.makedirs(out_dir, exist_ok=True)
             missing_video = os.path.join(out_dir, 'missing.mp4')
-            with patch('recording_finalize.generate_spectrogram', return_value=False):
+            with patch('recording_finalize._is_playable_video_file', return_value=False):  
                 finalize_motion_recording(
                     api,
                     motion_detector,
@@ -90,9 +103,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
         def fake_cfg_get(key, default=None):
             mapping = {
                 'detection.merge_window_seconds': 5,
-                'processor.min_track_duration': 1,
-                'processor.generate_spectrogram_always': False,
-                'processor.save_dataset_crops': False,
+                'processor.min_track_duration': 1,                'processor.save_dataset_crops': False,
                 'integrations.scales.enabled': False,
                 'processor.min_confidence_to_notify': 0.55,
                 'processor.min_confidence_to_process': 0.30,
@@ -120,9 +131,12 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             ), patch(
                 'recording_finalize.build_fused_video_detections',
                 side_effect=lambda det, *a, **k: det,
-            ), patch('recording_finalize.generate_spectrogram', return_value=False), patch(
+            ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
+            ), patch(
+                'recording_finalize.linear_skip_legacy_fusion_safeguards',
+                return_value=False,
             ):
                 finalize_motion_recording(
                     api,
@@ -146,11 +160,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
 
         api.create_video.assert_called_once()
         api.notify_species.assert_not_called()
-        api.activity_log.assert_any_call(
-            'decision_trace',
-            unittest.mock.ANY,
-        )
-        trace_payload = api.activity_log.call_args_list[-1].args[1]
+        trace_payload = _decision_trace_payload(api)
         self.assertEqual(trace_payload['decision_contract_version'], '2026-04-yolo-first-v1')
         self.assertEqual(trace_payload['outcome_summary']['persisted_track_count'], 1)
         self.assertEqual(trace_payload['outcome_summary']['review_only_count'], 0)
@@ -169,9 +179,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
         def fake_cfg_get(key, default=None):
             mapping = {
                 'detection.merge_window_seconds': 5,
-                'processor.min_track_duration': 1,
-                'processor.generate_spectrogram_always': False,
-                'processor.save_dataset_crops': False,
+                'processor.min_track_duration': 1,                'processor.save_dataset_crops': False,
                 'integrations.scales.enabled': False,
                 'detection.min_confidence_to_store': 0.36,
                 'processor.keep_recording_when_no_detections': True,
@@ -199,7 +207,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             ), patch(
                 'recording_finalize.build_fused_video_detections',
                 side_effect=lambda det, *a, **k: det,
-            ), patch('recording_finalize.generate_spectrogram', return_value=False), patch(
+            ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
             ):
@@ -254,9 +262,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
         def fake_cfg_get(key, default=None):
             mapping = {
                 'detection.merge_window_seconds': 5,
-                'processor.min_track_duration': 1,
-                'processor.generate_spectrogram_always': False,
-                'processor.save_dataset_crops': False,
+                'processor.min_track_duration': 1,                'processor.save_dataset_crops': False,
                 'integrations.scales.enabled': False,
                 'processor.min_confidence_to_notify': 0.55,
                 'processor.min_confidence_to_process': 0.30,
@@ -284,7 +290,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             ), patch(
                 'recording_finalize.build_fused_video_detections',
                 return_value=fused,
-            ), patch('recording_finalize.generate_spectrogram', return_value=False), patch(
+            ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
             ):
@@ -304,7 +310,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                     data_dir=tmp,
                 )
 
-        trace_payload = api.activity_log.call_args_list[-1].args[1]
+        trace_payload = _decision_trace_payload(api)
         persisted = trace_payload['persisted_tracks']
         self.assertEqual(len(persisted), 1)
         self.assertEqual(persisted[0]['decision_reason'], 'absorbed_generic_into_frigate_species')
@@ -353,9 +359,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
             def fake_cfg_get(key, default=None):
                 mapping = {
                     'detection.merge_window_seconds': 5,
-                    'processor.min_track_duration': 1,
-                    'processor.generate_spectrogram_always': False,
-                    'processor.save_dataset_crops': False,
+                    'processor.min_track_duration': 1,                    'processor.save_dataset_crops': False,
                     'processor.min_confidence_to_notify': 0.30,
                     'processor.min_confidence_to_process': 0.30,
                     'processor.min_seconds_between_recordings': 8,
@@ -394,9 +398,6 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                 'recording_finalize.build_fused_video_detections',
                 side_effect=lambda det, *a, **k: det,
             ), patch(
-                'recording_finalize.generate_spectrogram',
-                return_value=False,
-            ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
             ), patch(
@@ -430,7 +431,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                         },
                     },
                 )
-        trace_payload = api.activity_log.call_args_list[-1].args[1]
+        trace_payload = _decision_trace_payload(api)
         self.assertIn('pipeline_fingerprint', trace_payload)
         self.assertEqual(trace_payload['pipeline_fingerprint']['fusion']['enabled'], True)
         self.assertIn('binary_model', trace_payload['pipeline_fingerprint'])
@@ -501,9 +502,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
         def fake_cfg_get(key, default=None):
             mapping = {
                 'detection.merge_window_seconds': 5,
-                'processor.min_track_duration': 1,
-                'processor.generate_spectrogram_always': False,
-                'processor.save_dataset_crops': False,
+                'processor.min_track_duration': 1,                'processor.save_dataset_crops': False,
                 'integrations.scales.enabled': False,
                 'processor.min_confidence_to_notify': 0.3,
                 'processor.min_confidence_to_process': 0.3,
@@ -534,11 +533,11 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                 'recording_finalize.build_fused_video_detections',
                 return_value=fused_rows,
             ), patch(
-                'recording_finalize.generate_spectrogram',
-                return_value=False,
-            ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
+            ), patch(
+                'recording_finalize.linear_skip_legacy_fusion_safeguards',
+                return_value=False,
             ):
                 finalize_motion_recording(
                     api,
@@ -637,9 +636,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
         def fake_cfg_get(key, default=None):
             mapping = {
                 'detection.merge_window_seconds': 5,
-                'processor.min_track_duration': 1,
-                'processor.generate_spectrogram_always': False,
-                'processor.save_dataset_crops': False,
+                'processor.min_track_duration': 1,                'processor.save_dataset_crops': False,
                 'integrations.scales.enabled': False,
                 'processor.min_confidence_to_notify': 0.3,
                 'processor.min_confidence_to_process': 0.3,
@@ -670,9 +667,6 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                 'recording_finalize.build_fused_video_detections',
                 return_value=fused_rows,
             ), patch(
-                'recording_finalize.generate_spectrogram',
-                return_value=False,
-            ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
             ):
@@ -694,10 +688,14 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
 
         persisted = api.create_video.call_args.args[0]
         self.assertGreater(len(persisted), 0)
-        self.assertFalse(any(item.get('decision_kind') == 'frigate_standalone' and not item.get('frames') for item in persisted))
         self.assertFalse(any(item.get('detection_provider') == 'yolo' and not item.get('frames') for item in persisted))
+        frigate_frameless = [
+            item for item in persisted
+            if item.get('decision_kind') == 'frigate_standalone' and not item.get('frames')
+        ]
+        self.assertEqual(len(frigate_frameless), 1)
 
-    def test_keeps_frameless_frigate_standalone_when_no_yolo_frames_exist(self):
+    def test_allows_frameless_frigate_standalone_under_bbox_track_contract(self):
         api = MagicMock()
         api.create_video.return_value = {'video_id': 1021}
         motion_detector = MagicMock()
@@ -727,16 +725,14 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
         def fake_cfg_get(key, default=None):
             mapping = {
                 'detection.merge_window_seconds': 5,
-                'processor.min_track_duration': 1,
-                'processor.generate_spectrogram_always': False,
-                'processor.save_dataset_crops': False,
+                'processor.min_track_duration': 1,                'processor.save_dataset_crops': False,
                 'integrations.scales.enabled': False,
                 'processor.min_confidence_to_notify': 0.3,
                 'processor.min_confidence_to_process': 0.3,
                 'detection.min_confidence_to_store': 0.05,
                 'processor.dataset_min_confidence': 0.5,
                 'detection.yolo_core_anchor_enabled': True,
-                'detection.persist_video_detections_require_frames': True,
+                'detection.require_bbox_tracks_for_persisted_rows': True,
             }
             return mapping.get(key, default)
 
@@ -760,9 +756,6 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                 'recording_finalize.build_fused_video_detections',
                 return_value=fused_rows,
             ), patch(
-                'recording_finalize.generate_spectrogram',
-                return_value=False,
-            ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
             ):
@@ -782,8 +775,154 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                     data_dir=tmp,
                 )
 
+        self.assertIsNotNone(api.create_video.call_args)
         persisted = api.create_video.call_args.args[0]
-        self.assertTrue(any(item.get('decision_kind') == 'frigate_standalone' and not item.get('frames') for item in persisted))
+        self.assertEqual(len(persisted), 1)
+        self.assertEqual(persisted[0].get("detection_provider"), "frigate")
+        self.assertEqual(persisted[0].get("frames"), [])
+
+    def test_linear_skips_weak_yolo_salvage_when_fused_empty(self):
+        api = MagicMock()
+        api.create_video.return_value = {'video_id': 199}
+        motion_detector = MagicMock()
+        mqtt_aggregator = None
+        frame = np.zeros((32, 32, 3), dtype=np.uint8)
+        frame_processor = MagicMock(
+            tracks={
+                11: {
+                    'start_time': 0.0,
+                    'end_time': 3.2,
+                    'frames': [{'t': 0.0, 'bbox': [0.0, 0.0, 1.0, 1.0]}],
+                    'detector_events': [{'label': 'Bird', 'confidence': 0.19}],
+                    'best_frame': frame,
+                    'best_frame_score': 7.2,
+                }
+            }
+        )
+        decision_maker = MagicMock()
+        decision_maker.get_decisions.return_value = []
+
+        def fake_cfg_get(key, default=None):
+            mapping = {
+                'processor.pipeline_mode': 'linear',
+                'detection.merge_window_seconds': 5,
+                'processor.min_track_duration': 1,
+                'processor.save_dataset_crops': False,
+                'integrations.scales.enabled': False,
+                'processor.min_confidence_to_notify': 0.3,
+                'processor.min_confidence_to_process': 0.3,
+                'detection.min_confidence_to_store': 0.22,
+                'processor.dataset_min_confidence': 0.5,
+                'detection.yolo_weak_track_salvage_enabled': True,
+                'detection.yolo_weak_track_salvage_min_confidence': 0.1,
+            }
+            return mapping.get(key, default)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = os.path.join(tmp, 'session')
+            os.makedirs(out_dir, exist_ok=True)
+            video_path = os.path.join(out_dir, 'clip.mp4')
+            vw = cv2.VideoWriter(
+                video_path,
+                cv2.VideoWriter_fourcc(*'mp4v'),
+                2.0,
+                (32, 32),
+            )
+            vw.write(frame)
+            vw.release()
+            with patch.object(
+                recording_finalize_mod.app_config,
+                'get',
+                side_effect=fake_cfg_get,
+            ), patch(
+                'recording_finalize.build_fused_video_detections',
+                return_value=[],
+            ), patch(
+                'recording_finalize._is_playable_video_file',
+                return_value=True,
+            ):
+                finalize_motion_recording(
+                    api,
+                    motion_detector,
+                    mqtt_aggregator,
+                    frame_processor,
+                    decision_maker,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    output_path_physical=out_dir,
+                    output_path_logical='data/recordings/2026/05/11/210500',
+                    video_output=video_path,
+                    video_path_for_api='data/recordings/2026/05/11/210500/video.mp4',
+                    scales_topic_arg=None,
+                    data_dir=tmp,
+                )
+
+        api.create_video.assert_not_called()
+
+    def test_linear_skips_detect_first_persist_restore(self):
+        api = MagicMock()
+        motion_detector = MagicMock()
+        mqtt_aggregator = None
+        frame_processor = MagicMock(tracks={})
+        decision_maker = MagicMock()
+        decision_maker.get_decisions.return_value = []
+
+        def fake_cfg_get(key, default=None):
+            mapping = {
+                'processor.pipeline_mode': 'linear',
+                'detection.merge_window_seconds': 5,
+                'processor.min_track_duration': 1,
+                'processor.save_dataset_crops': False,
+                'integrations.scales.enabled': False,
+            }
+            return mapping.get(key, default)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = os.path.join(tmp, 'session')
+            os.makedirs(out_dir, exist_ok=True)
+            video_path = os.path.join(out_dir, 'clip.mp4')
+            frame = np.zeros((32, 32, 3), dtype=np.uint8)
+            vw = cv2.VideoWriter(
+                video_path,
+                cv2.VideoWriter_fourcc(*'mp4v'),
+                2.0,
+                (32, 32),
+            )
+            vw.write(frame)
+            vw.release()
+            with patch.object(
+                recording_finalize_mod.app_config,
+                'get',
+                side_effect=fake_cfg_get,
+            ), patch(
+                'recording_finalize.build_fused_video_detections',
+                return_value=[],
+            ), patch(
+                'recording_finalize._is_playable_video_file',
+                return_value=True,
+            ), patch(
+                'recording_finalize.restore_detect_first_persist_rows',
+            ) as restore_mock:
+                finalize_motion_recording(
+                    api,
+                    motion_detector,
+                    mqtt_aggregator,
+                    frame_processor,
+                    decision_maker,
+                    start_time=datetime.now(timezone.utc),
+                    end_time=datetime.now(timezone.utc),
+                    output_path_physical=out_dir,
+                    output_path_logical='data/recordings/2026/06/10/120000',
+                    video_output=video_path,
+                    video_path_for_api='data/recordings/2026/06/10/120000/video.mp4',
+                    scales_topic_arg=None,
+                    data_dir=tmp,
+                    recording_context={
+                        'detect_first_confirmed': True,
+                        'detect_first_anchor': {'track_id': 1, 'bbox': [0.1, 0.2, 0.3, 0.4]},
+                    },
+                )
+                restore_mock.assert_not_called()
 
     def test_salvages_weak_yolo_track_as_review_only_when_fused_empty(self):
         api = MagicMock()
@@ -809,9 +948,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
         def fake_cfg_get(key, default=None):
             mapping = {
                 'detection.merge_window_seconds': 5,
-                'processor.min_track_duration': 1,
-                'processor.generate_spectrogram_always': False,
-                'processor.save_dataset_crops': False,
+                'processor.min_track_duration': 1,                'processor.save_dataset_crops': False,
                 'integrations.scales.enabled': False,
                 'processor.min_confidence_to_notify': 0.3,
                 'processor.min_confidence_to_process': 0.3,
@@ -844,11 +981,11 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                 'recording_finalize.build_fused_video_detections',
                 return_value=[],
             ), patch(
-                'recording_finalize.generate_spectrogram',
-                return_value=False,
-            ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
+            ), patch(
+                'recording_finalize.linear_skip_legacy_fusion_safeguards',
+                return_value=False,
             ):
                 finalize_motion_recording(
                     api,
@@ -882,9 +1019,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
 
         def fake_cfg_get(key, default=None):
             mapping = {
-                'detection.merge_window_seconds': 6,
-                'processor.generate_spectrogram_always': False,
-                'processor.keep_recording_when_no_detections': True,
+                'detection.merge_window_seconds': 6,                'processor.keep_recording_when_no_detections': True,
                 'video.source': 'file',
             }
             return mapping.get(key, default)
@@ -904,9 +1039,6 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                 'recording_finalize.build_fused_video_detections',
                 return_value=[],
             ) as mocked_fusion, patch(
-                'recording_finalize.generate_spectrogram',
-                return_value=False,
-            ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
             ):
@@ -948,9 +1080,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
 
         def fake_cfg_get(key, default=None):
             mapping = {
-                'detection.merge_window_seconds': 6,
-                'processor.generate_spectrogram_always': False,
-                'processor.keep_recording_when_no_detections': True,
+                'detection.merge_window_seconds': 6,                'processor.keep_recording_when_no_detections': True,
                 'video.source': 'file',
             }
             return mapping.get(key, default)
@@ -970,9 +1100,6 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                 'recording_finalize.build_fused_video_detections',
                 return_value=[],
             ) as mocked_fusion, patch(
-                'recording_finalize.generate_spectrogram',
-                return_value=False,
-            ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
             ):
@@ -1021,9 +1148,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
         def fake_cfg_get(key, default=None):
             mapping = {
                 'detection.merge_window_seconds': 5,
-                'processor.min_track_duration': 1,
-                'processor.generate_spectrogram_always': False,
-                'processor.save_dataset_crops': False,
+                'processor.min_track_duration': 1,                'processor.save_dataset_crops': False,
                 'integrations.scales.enabled': False,
                 'processor.min_confidence_to_notify': 0.3,
                 'processor.min_confidence_to_process': 0.3,
@@ -1063,11 +1188,11 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                 'recording_finalize.build_fused_video_detections',
                 return_value=[],
             ), patch(
-                'recording_finalize.generate_spectrogram',
-                return_value=False,
-            ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
+            ), patch(
+                'recording_finalize.linear_skip_frigate_salvage_paths',
+                return_value=False,
             ):
                 finalize_motion_recording(
                     api,
@@ -1116,9 +1241,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
         def fake_cfg_get(key, default=None):
             mapping = {
                 'detection.merge_window_seconds': 5,
-                'processor.min_track_duration': 1,
-                'processor.generate_spectrogram_always': False,
-                'processor.save_dataset_crops': False,
+                'processor.min_track_duration': 1,                'processor.save_dataset_crops': False,
                 'integrations.scales.enabled': False,
                 'processor.min_confidence_to_notify': 0.3,
                 'processor.min_confidence_to_process': 0.3,
@@ -1157,12 +1280,11 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                 'recording_finalize.build_fused_video_detections',
                 return_value=[],
             ), patch(
-                'recording_finalize.generate_spectrogram',
-                return_value=False,
-            ), patch(
                 'recording_finalize._is_playable_video_file',
                 return_value=True,
-            ):
+            ), patch(
+                'recording_finalize.build_decision_trace_payload',
+            ) as build_trace:
                 finalize_motion_recording(
                     api,
                     motion_detector,
@@ -1192,6 +1314,7 @@ class TestRecordingFinalizeFileGate(unittest.TestCase):
                 )
 
         api.create_video.assert_not_called()
+        build_trace.assert_not_called()
 
 
 if __name__ == '__main__':

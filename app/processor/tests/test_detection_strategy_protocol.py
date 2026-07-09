@@ -22,7 +22,15 @@ class _StubStrategy:
     def __init__(self):
         self.detect_calls = []
 
-    def detect(self, frame, tracker_config, *, min_confidence, profile_overrides=None):
+    def detect(
+        self,
+        frame,
+        tracker_config,
+        *,
+        min_confidence,
+        profile_overrides=None,
+        classification_frame=None,
+    ):
         self.detect_calls.append(
             {
                 "tracker": tracker_config,

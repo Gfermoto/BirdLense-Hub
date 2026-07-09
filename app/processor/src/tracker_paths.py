@@ -19,4 +19,8 @@ def resolve_tracker_config_path(raw: str | None) -> str:
     candidate = os.path.join(root, t.lstrip("/\\"))
     if os.path.isfile(candidate):
         return candidate
+    if t.endswith(".yaml") and "/" not in t and "\\" not in t:
+        under_tracker = os.path.join(root, "models", "tracker", t)
+        if os.path.isfile(under_tracker):
+            return under_tracker
     return t

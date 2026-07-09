@@ -9,34 +9,47 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
 import CardActions from '@mui/material/CardActions';
+import Autocomplete from '@mui/material/Autocomplete';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Share from '@mui/icons-material/Share';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
 import Chip from '@mui/material/Chip';
 import { Link as RouterLink } from 'react-router-dom';
 import { VideoSpecies } from '../../types';
 import { labelToUniqueHexColor } from '../../util';
+import { detectionProviderLabel } from '../../util/detectionProviderLabel';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
+import { UnlinkBirdProfileButton } from '../../components/UnlinkBirdProfileButton';
+import { DeleteBirdProfileButton } from '../../components/DeleteBirdProfileButton';
+import { formatBirdProfileOptionLabel } from '../../components/filters/BirdProfileFilterAutocomplete';
+import { SpeciesCorrectionAutocomplete } from '../../components/filters/SpeciesCorrectionAutocomplete';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
+import { SettingsPasswordDialog } from '../../components/SettingsPasswordDialog';
 import { getApiErrorMessage, resolveImageUrl } from '../../api/api';
 import { downloadDetectionCropForINaturalist } from '../../api/dataset';
 import {
-  fetchBirdDirectory,
-  updateDetectionNickname,
+  assignDetectionBirdProfile,
+  createBirdProfile,
+  fetchBirdProfileSuggestLinks,
+  fetchBirdProfiles,
+  mergeBirdProfiles,
+  recordBirdProfileLinkFeedback,
+  setDetectionSemanticReview,
   updateDetectionSpecies,
+  deleteDetection,
+  type BirdProfileLinkCandidate,
 } from '../../api/speciesOverviewDetections';
 import { mergeVideoSpecies, type VideoReidMatchItem } from '../../api/video';
 import { queryKeys } from '../../api/queryKeys';
 import { invalidateLocalSpeciesEditCaches } from '../../api/invalidateLocalSpeciesCaches';
+import { formatTimeMmSs } from '../../utils/timeUtils';
 
 interface GroupedSpecies {
   species_id: number;
@@ -118,6 +131,148 @@ interface DetectedSpeciesProps {
   reidMatchByDetectionId?: Record<number, VideoReidMatchItem>;
 }
 
+const ProfileSuggestLinksBlock = ({
+  detectionId,
+  speciesId,
+  anchorProfileId,
+  dismissed,
+  onDismiss,
+  onMerged,
+}: {
+  detectionId: number;
+  speciesId: number;
+  anchorProfileId: number | null;
+  dismissed: boolean;
+  onDismiss: () => void;
+  onMerged: (message: string) => void;
+}) => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: queryKeys.birdProfiles.suggestLinks(detectionId, anchorProfileId),
+    queryFn: () =>
+      fetchBirdProfileSuggestLinks(anchorProfileId, {
+        video_species_id: detectionId,
+        species_id: speciesId,
+        limit: 6,
+      }),
+    enabled: !dismissed,
+    staleTime: 30_000,
+  });
+  const mergeMutation = useMutation({
+    mutationFn: ({
+      targetProfileId,
+      sourceProfileId,
+    }: {
+      targetProfileId: number;
+      sourceProfileId: number;
+    }) => mergeBirdProfiles(targetProfileId, sourceProfileId),
+    onSuccess: (payload) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.birdProfiles.all });
+      onMerged(
+        t('video.profileMergeSuccess', {
+          name: payload.display_name,
+          count: payload.merged_detections,
+        }),
+      );
+    },
+  });
+  const feedbackMutation = useMutation({
+    mutationFn: recordBirdProfileLinkFeedback,
+  });
+
+  if (dismissed || isLoading || !data?.available || !data.candidates?.length) {
+    return null;
+  }
+
+  const handleReject = async (candidate: BirdProfileLinkCandidate) => {
+    await feedbackMutation.mutateAsync({
+      action: 'reject',
+      candidate_profile_id: candidate.profile_id,
+      anchor_profile_id: anchorProfileId,
+      video_species_id: detectionId,
+      similarity: candidate.similarity,
+    });
+    onDismiss();
+  };
+
+  const handleMerge = async (candidate: BirdProfileLinkCandidate) => {
+    const targetId = anchorProfileId ?? candidate.profile_id;
+    const sourceId =
+      anchorProfileId && anchorProfileId !== candidate.profile_id
+        ? candidate.profile_id
+        : null;
+    if (!sourceId || targetId === sourceId) {
+      await assignDetectionBirdProfile(detectionId, candidate.profile_id);
+      await feedbackMutation.mutateAsync({
+        action: 'confirm',
+        candidate_profile_id: candidate.profile_id,
+        anchor_profile_id: anchorProfileId,
+        video_species_id: detectionId,
+        similarity: candidate.similarity,
+      });
+      onMerged(t('video.profileLinkedInVideo', { count: 1 }));
+      return;
+    }
+    await mergeMutation.mutateAsync({
+      targetProfileId: targetId,
+      sourceProfileId: sourceId,
+    });
+    await feedbackMutation.mutateAsync({
+      action: 'confirm',
+      candidate_profile_id: candidate.profile_id,
+      anchor_profile_id: anchorProfileId,
+      video_species_id: detectionId,
+      similarity: candidate.similarity,
+    });
+  };
+
+  return (
+    <Alert severity="info" variant="outlined" sx={{ mt: 0.5 }}>
+      <Typography variant="caption" display="block" fontWeight={700}>
+        {t('video.profileMaybeSameBird')}
+      </Typography>
+      <Stack spacing={0.75} sx={{ mt: 0.75 }}>
+        {data.candidates.map((candidate) => (
+          <Box
+            key={`suggest-${candidate.profile_id}`}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Typography variant="caption">
+              {candidate.display_name} • {candidate.similarity_percent}%
+              {candidate.tier === 'auto' ? ` • ${t('video.profileAutoLinkTier')}` : ''}
+            </Typography>
+            <Stack direction="row" spacing={0.5}>
+              <Button
+                size="small"
+                variant="contained"
+                disabled={mergeMutation.isPending || feedbackMutation.isPending}
+                onClick={() => handleMerge(candidate)}
+              >
+                {t('video.profileMergeButton')}
+              </Button>
+              <Button
+                size="small"
+                variant="text"
+                disabled={feedbackMutation.isPending}
+                onClick={() => handleReject(candidate)}
+              >
+                {t('video.profileDismissSuggest')}
+              </Button>
+            </Stack>
+          </Box>
+        ))}
+      </Stack>
+    </Alert>
+  );
+};
+
 export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   species = [],
   videoId,
@@ -125,14 +280,19 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
 }) => {
   const { t } = useTranslation();
   const safeSpecies = species ?? [];
-  const { canEdit } = useProtectedArea();
+  const { canEdit, requiresPassword, setUnlocked } = useProtectedArea();
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const quickCorrectionOnly = true;
+  const allowNicknameEdit = canEdit;
   const queryClient = useQueryClient();
 
-  const { data: speciesList = [] } = useQuery({
-    queryKey: queryKeys.species.directory,
-    queryFn: () => fetchBirdDirectory(),
-    staleTime: 5 * 60 * 1000,
+  const { data: birdProfilesResponse } = useQuery({
+    queryKey: queryKeys.birdProfiles.videoDetails,
+    queryFn: () => fetchBirdProfiles({ limit: 200 }),
+    enabled: canEdit,
+    staleTime: 60 * 1000,
   });
+  const birdProfiles = birdProfilesResponse?.items ?? [];
 
   const correctMutation = useMutation({
     mutationFn: ({
@@ -166,17 +326,62 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
     },
   });
 
-  const nicknameMutation = useMutation({
+  const assignProfileMutation = useMutation({
+    mutationFn: ({ detectionId, profileId }: { detectionId: number; profileId: number }) =>
+      assignDetectionBirdProfile(detectionId, profileId),
+    onSuccess: (data) => {
+      invalidateLocalSpeciesEditCaches(queryClient, videoId);
+      setCorrectSuccess(
+        t('video.profileLinkedInVideo', { count: Number(data?.updated_count || 1) }),
+      );
+    },
+  });
+  const createProfileMutation = useMutation({
     mutationFn: ({
-      detectionId,
-      nickname,
+      displayName,
+      speciesId,
+      avatarUrl,
     }: {
-      detectionId: number;
-      nickname: string | null;
-    }) => updateDetectionNickname(detectionId, nickname),
+      displayName: string;
+      speciesId?: number | null;
+      avatarUrl?: string | null;
+    }) =>
+      createBirdProfile({
+        display_name: displayName,
+        species_id: speciesId,
+        avatar_url: avatarUrl,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.birdProfiles.all });
+    },
+  });
+  const semanticReviewMutation = useMutation({
+    mutationFn: ({ detectionId }: { detectionId: number }) =>
+      setDetectionSemanticReview(detectionId, {
+        semantic_review_required: true,
+        source: 'video_details',
+      }),
     onSuccess: () => {
       invalidateLocalSpeciesEditCaches(queryClient, videoId);
-      setCorrectSuccess(t('video.nicknameSaved'));
+      queryClient.invalidateQueries({ queryKey: queryKeys.unknowns.all });
+      setCorrectSuccess(t('video.semanticReviewQueued'));
+    },
+  });
+
+  const deleteDetectionMutation = useMutation({
+    mutationFn: (detectionId: number) =>
+      deleteDetection(detectionId, { source: 'video', reason: 'false_positive' }),
+    onSuccess: () => {
+      invalidateLocalSpeciesEditCaches(queryClient, videoId);
+      if (videoId != null) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.video.detectionFrames(String(videoId)),
+        });
+      }
+      setCorrectSuccess(t('video.deleteDetectionSuccess'));
+    },
+    onError: (err) => {
+      setCorrectError(getApiErrorMessage(err, t('errors.loadSightings')));
     },
   });
 
@@ -185,7 +390,9 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   const [mergeSpeciesId, setMergeSpeciesId] = useState<number | ''>('');
   const [correctError, setCorrectError] = useState<string | null>(null);
   const [correctSuccess, setCorrectSuccess] = useState<string | null>(null);
-  const [nicknameDraft, setNicknameDraft] = useState<Record<string, string>>({});
+  const [profileDraft, setProfileDraft] = useState<Record<string, string>>({});
+  const [profileSelection, setProfileSelection] = useState<Record<string, number | null>>({});
+  const [dismissedSuggestKeys, setDismissedSuggestKeys] = useState<Record<string, boolean>>({});
 
   const handleCorrectGroup = async (group: GroupedSpecies) => {
     if (selectedSpeciesId === '') return;
@@ -258,7 +465,19 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   });
 
   if (groupedSpecies.length === 0) {
-    return null;
+    return (
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          {t('video.speciesInVideo')}
+        </Typography>
+        <Alert severity="info" variant="outlined">
+          <Typography variant="subtitle2">{t('video.speciesEmptyTitle')}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            {t('video.speciesEmptyHint')}
+          </Typography>
+        </Alert>
+      </Box>
+    );
   }
 
   return (
@@ -267,7 +486,33 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
         <Typography variant="h6" gutterBottom>
           {t('video.speciesInVideo')}
         </Typography>
-        {groupedSpecies.length >= 2 && videoId && canEdit && (
+        {!canEdit && requiresPassword && groupedSpecies.length > 0 && (
+          <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              justifyContent="space-between"
+            >
+              <Box>
+                <Typography variant="body2" fontWeight={600}>
+                  {t('video.guestCorrectionTitle')}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {t('video.guestCorrectionHint')}
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setShowPasswordDialog(true)}
+              >
+                {t('video.unlockToCorrect')}
+              </Button>
+            </Stack>
+          </Alert>
+        )}
+        {groupedSpecies.length >= 2 && videoId && canEdit && !quickCorrectionOnly && (
           <Box
             sx={{
               mb: 2,
@@ -295,27 +540,15 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
             >
               <FormControl
                 size="small"
-                sx={{ minWidth: 200 }}
+                sx={{ minWidth: 240, flex: 1 }}
                 disabled={!canEdit}
               >
-                <InputLabel id="video-merge-species-label">
-                  {t('video.mergeAllToSpecies')}
-                </InputLabel>
-                <Select
-                  labelId="video-merge-species-label"
+                <SpeciesCorrectionAutocomplete
                   value={mergeSpeciesId}
+                  onChange={setMergeSpeciesId}
+                  disabled={!canEdit}
                   label={t('video.mergeAllToSpecies')}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setMergeSpeciesId(v === '' ? '' : Number(v));
-                  }}
-                >
-                  {speciesList.map((s) => (
-                    <MenuItem key={s.id} value={s.id}>
-                      {s.name}
-                    </MenuItem>
-                  ))}
-                </Select>
+                />
               </FormControl>
               <Button
                 size="small"
@@ -374,7 +607,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   )}
                 </Box>
                 <CardContent sx={{ py: 1.5 }}>
-                  <Typography variant="subtitle1" noWrap>
+                  <Typography variant="subtitle1" noWrap title={group.species_name}>
                     {group.species_name}
                   </Typography>
                   {(() => {
@@ -403,16 +636,17 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                           .filter(Boolean),
                       ),
                     ];
-                    const providerLabels: Record<string, string> = {
-                      yolo: t('video.detectionProviderYolo'),
-                      frigate: t('video.detectionProviderFrigate'),
-                      birdnet_mqtt: t('video.detectionProviderBirdnetMqtt'),
-                    };
                     return providers.length > 0 ? (
                       <Typography variant="body2" color="text.secondary">
                         {t('video.detectionSource')}:{' '}
                         {providers
-                          .map((p) => (p ? (providerLabels[p] ?? p) : ''))
+                          .map((p) =>
+                            p
+                              ? detectionProviderLabel(t, p, {
+                                  technical: canEdit,
+                                })
+                              : '',
+                          )
                           .filter(Boolean)
                           .join(', ')}
                       </Typography>
@@ -421,6 +655,162 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   <Typography variant="body2" color="text.secondary">
                     {t('video.confidence')}: {group.confidenceRange}
                   </Typography>
+                  {(() => {
+                    const videoDetections = group.detections.filter(
+                      (d) => d.source === 'video',
+                    );
+                    if (videoDetections.length === 0) return null;
+                    const distances = videoDetections
+                      .map((d) => d.welfare_distance)
+                      .filter(
+                        (v): v is number =>
+                          v != null && Number.isFinite(Number(v)),
+                      );
+                    const maxDistance =
+                      distances.length > 0
+                        ? Math.max(...distances.map(Number))
+                        : null;
+                    const hasAnomaly = videoDetections.some(
+                      (d) => d.review_reason === 'welfare_anomaly',
+                    );
+                    const label =
+                      maxDistance != null
+                        ? t('video.welfareDistanceChip', {
+                            distance: maxDistance.toFixed(1),
+                          })
+                        : hasAnomaly
+                          ? t('video.welfareAnomalyChip')
+                          : t('video.welfareUnavailableChip');
+                    const scoringHint = group.detections[0]?.scoring_hint;
+                    return (
+                      <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                        <Tooltip
+                          title={
+                            maxDistance != null || hasAnomaly
+                              ? t('video.welfareAnomalyHint')
+                              : t('video.welfareUnavailableHint')
+                          }
+                          placement="top"
+                        >
+                          <Chip
+                            size="small"
+                            color={maxDistance != null || hasAnomaly ? 'warning' : 'default'}
+                            variant="outlined"
+                            label={label}
+                            sx={{ alignSelf: 'flex-start' }}
+                          />
+                        </Tooltip>
+                        {scoringHint ? (
+                          <Tooltip
+                            title={
+                              <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
+                                {t('video.scoringHintTooltip', {
+                                  provider: scoringHint.primary_provider ?? '—',
+                                  weights: Object.entries(
+                                    scoringHint.arbiter_weights ?? {},
+                                  )
+                                    .map(([k, v]) => `${k}=${v}`)
+                                    .join(', '),
+                                })}
+                              </Box>
+                            }
+                          >
+                            <Typography
+                              component="button"
+                              type="button"
+                              variant="caption"
+                              color="text.secondary"
+                              display="block"
+                              aria-label={t('video.scoringWhySpecies')}
+                              sx={{
+                                p: 0,
+                                m: 0,
+                                border: 0,
+                                background: 'none',
+                                font: 'inherit',
+                                textAlign: 'left',
+                                cursor: 'help',
+                                textDecoration: 'underline dotted',
+                                textUnderlineOffset: 2,
+                              }}
+                            >
+                              {t('video.scoringWhySpecies')}
+                            </Typography>
+                          </Tooltip>
+                        ) : null}
+                      </Stack>
+                    );
+                  })()}
+                  {canEdit &&
+                  group.detections.filter((d) => d.source === 'video' && d.id).length >
+                    0 ? (
+                    <Box sx={{ mt: 1.5, width: '100%' }}>
+                      <Typography variant="subtitle2" gutterBottom>
+                        {t('video.detectionTracksTitle')}
+                      </Typography>
+                      <Stack spacing={0.75}>
+                        {[...group.detections]
+                          .filter((d) => d.source === 'video' && d.id)
+                          .sort((a, b) => a.start_time - b.start_time)
+                          .map((det) => (
+                            <Stack
+                              key={det.id}
+                              direction="row"
+                              alignItems="center"
+                              spacing={1}
+                              flexWrap="wrap"
+                              sx={{
+                                py: 0.5,
+                                px: 1,
+                                borderRadius: 1,
+                                bgcolor: 'action.hover',
+                              }}
+                            >
+                              <Typography variant="body2" sx={{ flex: 1, minWidth: 0 }}>
+                                {t('video.detectionTrackRow', {
+                                  track:
+                                    det.track_id != null ? String(det.track_id) : '—',
+                                  start: formatTimeMmSs(det.start_time),
+                                  end: formatTimeMmSs(det.end_time),
+                                  conf: Math.round((det.confidence || 0) * 100),
+                                })}
+                              </Typography>
+                              <Button
+                                size="small"
+                                color="error"
+                                variant="outlined"
+                                startIcon={<DeleteOutline fontSize="small" />}
+                                disabled={deleteDetectionMutation.isPending}
+                                onClick={() => {
+                                  const did = det.id;
+                                  if (!did) return;
+                                  if (
+                                    !window.confirm(
+                                      t('video.deleteDetectionConfirm', {
+                                        track:
+                                          det.track_id != null
+                                            ? String(det.track_id)
+                                            : '—',
+                                        start: formatTimeMmSs(det.start_time),
+                                        end: formatTimeMmSs(det.end_time),
+                                      }),
+                                    )
+                                  ) {
+                                    return;
+                                  }
+                                  deleteDetectionMutation.mutate(did);
+                                }}
+                              >
+                                {t('video.deleteDetection')}
+                              </Button>
+                            </Stack>
+                          ))}
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                        {t('video.deleteDetectionHint')}
+                      </Typography>
+                    </Box>
+                  ) : null}
                   {(() => {
                     const bestDet = group.detections
                       .filter((d) => d.source === 'video' && d.id)
@@ -438,7 +828,8 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                             {t('video.similarityPercent', {
                               value: Math.round(match.similarity * 100),
                             })}
-                            {typeof match.effective_threshold === 'number'
+                            {canEdit &&
+                            typeof match.effective_threshold === 'number'
                               ? ` • τ≈${Math.round(match.effective_threshold * 100)}%`
                               : ''}
                             {match.cross_camera ? ` • ${t('video.reidCrossCameraHint')}` : ''}
@@ -489,81 +880,48 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                     >
                       {t('video.learnMore')}
                     </Button>
-                    {(() => {
-                      const bestDet = group.detections
-                        .filter((d) => d.source === 'video' && d.id)
-                        .sort(
-                          (a, b) => (b.confidence || 0) - (a.confidence || 0),
-                        )[0];
-                      return bestDet ? (
-                        <INaturalistButton
-                          detectionId={bestDet.id!}
-                          speciesName={group.species_name}
-                          disabled={!canEdit}
-                        />
-                      ) : null;
-                    })()}
-                    {editingGroupKey !== String(group.species_id) && (
-                      <Tooltip
-                        title={canEdit ? t('unknowns.correctSpecies') : ''}
-                      >
-                        <span>
-                          <Button
-                            size="small"
-                            startIcon={<EditIcon fontSize="small" />}
-                            onClick={() => {
-                              setEditingGroupKey(String(group.species_id));
-                              setSelectedSpeciesId(group.species_id);
-                            }}
-                            disabled={!canEdit}
-                          >
-                            {t('unknowns.correctSpecies')}
-                          </Button>
-                        </span>
-                      </Tooltip>
-                    )}
+                    {!quickCorrectionOnly &&
+                      canEdit &&
+                      (() => {
+                        const bestDet = group.detections
+                          .filter((d) => d.source === 'video' && d.id)
+                          .sort(
+                            (a, b) =>
+                              (b.confidence || 0) - (a.confidence || 0),
+                          )[0];
+                        return bestDet ? (
+                          <INaturalistButton
+                            detectionId={bestDet.id!}
+                            speciesName={group.species_name}
+                          />
+                        ) : null;
+                      })()}
+                    {canEdit &&
+                      editingGroupKey !== String(group.species_id) && (
+                        <Button
+                          size="small"
+                          startIcon={<EditIcon fontSize="small" />}
+                          onClick={() => {
+                            setEditingGroupKey(String(group.species_id));
+                            setSelectedSpeciesId(group.species_id);
+                          }}
+                        >
+                          {t('unknowns.correctSpecies')}
+                        </Button>
+                      )}
                   </Box>
                   {editingGroupKey === String(group.species_id) && (
                     <Stack
                       spacing={1}
                       sx={{ width: '100%', minWidth: 0, mt: 0.5 }}
                     >
-                      <FormControl
-                        fullWidth
-                        size="small"
+                      <SpeciesCorrectionAutocomplete
+                        value={selectedSpeciesId}
+                        onChange={setSelectedSpeciesId}
                         disabled={!canEdit}
-                        sx={{ minWidth: 0 }}
-                      >
-                        <InputLabel
-                          id={`video-correct-species-${group.species_id}`}
-                        >
-                          {t('unknowns.correctSpecies')}
-                        </InputLabel>
-                        <Select
-                          labelId={`video-correct-species-${group.species_id}`}
-                          value={selectedSpeciesId}
-                          label={t('unknowns.correctSpecies')}
-                          renderValue={(v: number | string) => {
-                            if (v === '' || v === undefined) return '';
-                            const id = Number(v);
-                            const row = speciesList.find(
-                              (s) => Number(s.id) === id,
-                            );
-                            return row?.name ?? `#${id}`;
-                          }}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setSelectedSpeciesId(v === '' ? '' : Number(v));
-                          }}
-                          MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
-                        >
-                          {speciesList.map((s) => (
-                            <MenuItem key={s.id} value={s.id}>
-                              {s.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
+                        excludeSpeciesId={group.species_id}
+                        label={t('unknowns.correctSpecies')}
+                      />
                       <Stack
                         direction="row"
                         spacing={1}
@@ -600,55 +958,210 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                       </Stack>
                     </Stack>
                   )}
-                  {(() => {
+                  {allowNicknameEdit && (() => {
                     const bestDet = group.detections
                       .filter((d) => d.source === 'video' && d.id)
                       .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))[0];
-                    if (!bestDet?.id || !canEdit) return null;
+                    if (!bestDet?.id) return null;
                     const key = String(bestDet.id);
-                    const current = bestDet.individual_nickname ?? '';
-                    const draft = nicknameDraft[key] ?? current;
+                    const selectedProfileId =
+                      profileSelection[key] ?? bestDet.bird_profile_id ?? null;
+                    const selectedProfile =
+                      birdProfiles.find((p) => Number(p.id) === Number(selectedProfileId)) ||
+                      null;
+                    const draftName =
+                      profileDraft[key] ??
+                      selectedProfile?.display_name ??
+                      bestDet.bird_profile_name ??
+                      bestDet.individual_nickname ??
+                      '';
+                    const filteredOptions = birdProfiles.filter(
+                      (p) =>
+                        !draftName ||
+                        p.display_name.toLowerCase().includes(draftName.toLowerCase()),
+                    );
                     return (
                       <Stack spacing={1} sx={{ width: '100%', minWidth: 0, mt: 1 }}>
-                        <TextField
-                          size="small"
-                          label={t('video.nicknameField')}
-                          value={draft}
-                          onChange={(e) =>
-                            setNicknameDraft((prev) => ({
+                        <Autocomplete
+                          freeSolo
+                          options={filteredOptions}
+                          value={selectedProfile}
+                          getOptionLabel={(option) =>
+                            typeof option === 'string' ? option : option.display_name
+                          }
+                          onChange={(_, value) => {
+                            if (value && typeof value !== 'string') {
+                              setProfileSelection((prev) => ({ ...prev, [key]: value.id }));
+                              setProfileDraft((prev) => ({
+                                ...prev,
+                                [key]: value.display_name,
+                              }));
+                            } else {
+                              setProfileSelection((prev) => ({ ...prev, [key]: null }));
+                            }
+                          }}
+                          inputValue={draftName}
+                          onInputChange={(_, value) =>
+                            setProfileDraft((prev) => ({
                               ...prev,
-                              [key]: e.target.value,
+                              [key]: value,
                             }))
                           }
-                          placeholder={t('video.nicknameFieldPlaceholder')}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              size="small"
+                              label={t('video.profileField')}
+                              placeholder={t('video.profileFieldPlaceholder')}
+                            />
+                          )}
                         />
-                        <Box sx={{ display: 'flex', gap: 1 }}>
+                        {selectedProfile ? (
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            {selectedProfile.avatar_url ? (
+                              <CardMedia
+                                component="img"
+                                image={resolveImageUrl(selectedProfile.avatar_url)}
+                                alt={selectedProfile.display_name}
+                                sx={{ width: 28, height: 28, borderRadius: 1 }}
+                              />
+                            ) : null}
+                            <Chip
+                              size="small"
+                              label={`${selectedProfile.display_name} • ${selectedProfile.status}`}
+                              color="info"
+                              variant="outlined"
+                            />
+                            <UnlinkBirdProfileButton
+                              detectionId={bestDet.id!}
+                              videoId={
+                                videoId != null ? Number(videoId) : undefined
+                              }
+                              profileName={selectedProfile.display_name}
+                              onUnlinked={() => {
+                                setProfileSelection((prev) => ({
+                                  ...prev,
+                                  [key]: null,
+                                }));
+                                setProfileDraft((prev) => ({
+                                  ...prev,
+                                  [key]: '',
+                                }));
+                                invalidateLocalSpeciesEditCaches(queryClient, videoId);
+                              }}
+                            />
+                            <DeleteBirdProfileButton
+                              profileId={Number(selectedProfile.id)}
+                              profileName={formatBirdProfileOptionLabel(
+                                selectedProfile,
+                              )}
+                              onDeleted={() => {
+                                setProfileSelection((prev) => ({
+                                  ...prev,
+                                  [key]: null,
+                                }));
+                                setProfileDraft((prev) => ({
+                                  ...prev,
+                                  [key]: '',
+                                }));
+                                invalidateLocalSpeciesEditCaches(queryClient, videoId);
+                              }}
+                            />
+                          </Stack>
+                        ) : null}
+                        <ProfileSuggestLinksBlock
+                          detectionId={bestDet.id!}
+                          speciesId={group.species_id}
+                          anchorProfileId={
+                            profileSelection[key] ?? bestDet.bird_profile_id ?? null
+                          }
+                          dismissed={!!dismissedSuggestKeys[key]}
+                          onDismiss={() =>
+                            setDismissedSuggestKeys((prev) => ({ ...prev, [key]: true }))
+                          }
+                          onMerged={(message) => {
+                            setCorrectSuccess(message);
+                            invalidateLocalSpeciesEditCaches(queryClient, videoId);
+                            queryClient.invalidateQueries({ queryKey: queryKeys.birdProfiles.all });
+                          }}
+                        />
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                           <Button
                             size="small"
-                            variant="outlined"
-                            disabled={nicknameMutation.isPending}
+                            variant="contained"
+                            disabled={
+                              assignProfileMutation.isPending ||
+                              !Number.isFinite(Number(profileSelection[key] ?? selectedProfileId))
+                            }
                             onClick={() =>
-                              nicknameMutation.mutate({
+                              assignProfileMutation.mutate({
                                 detectionId: bestDet.id!,
-                                nickname: draft.trim() ? draft.trim() : null,
+                                profileId: Number(profileSelection[key] ?? selectedProfileId),
                               })
                             }
                           >
-                            {t('video.nicknameSaveButton', { defaultValue: t('common.save') })}
+                            {t('video.profileLinkButton')}
                           </Button>
                           <Button
                             size="small"
-                            disabled={nicknameMutation.isPending}
+                            variant="outlined"
+                            disabled={
+                              createProfileMutation.isPending ||
+                              !draftName.trim()
+                            }
+                            onClick={async () => {
+                              const created = await createProfileMutation.mutateAsync({
+                                displayName: draftName.trim(),
+                                speciesId: group.species_id,
+                                avatarUrl: group.image_url || null,
+                              });
+                              setProfileSelection((prev) => ({ ...prev, [key]: created.id }));
+                              await assignProfileMutation.mutateAsync({
+                                detectionId: bestDet.id!,
+                                profileId: created.id,
+                              });
+                            }}
+                          >
+                            {t('video.profileCreateAndLinkButton')}
+                          </Button>
+                          <Button
+                            size="small"
+                            color="warning"
+                            variant="outlined"
+                            disabled={semanticReviewMutation.isPending}
                             onClick={() =>
-                              setNicknameDraft((prev) => ({
-                                ...prev,
-                                [key]: current,
-                              }))
+                              semanticReviewMutation.mutate({ detectionId: bestDet.id! })
                             }
                           >
-                            {t('video.nicknameCancelButton', { defaultValue: t('common.cancel') })}
+                            {t('video.semanticReviewButton')}
                           </Button>
                         </Box>
+                        {bestDet.semantic_conflict ? (
+                          <Alert severity="warning" variant="outlined">
+                            <Typography variant="caption" display="block">
+                              {bestDet.review_reason === 'semantic_review_required'
+                                ? t('unknowns.reviewReasonOperatorFlagged')
+                                : bestDet.review_reason === 'classifier_uncertainty'
+                                  ? t('unknowns.reviewReasonClassifierUncertainty')
+                                  : bestDet.review_reason === 'low_confidence'
+                                    ? t('unknowns.reviewReasonLowConfidence')
+                                    : bestDet.review_reason === 'reid_no_match'
+                                      ? t('unknowns.reviewReasonReidNoMatch')
+                                    : bestDet.review_reason === 'welfare_anomaly'
+                                      ? t('unknowns.reviewReasonWelfareAnomaly')
+                                      : bestDet.review_reason === 'generic_bird'
+                                        ? t('unknowns.reviewReasonGenericBird')
+                                        : bestDet.review_reason === 'bbox_rejected'
+                                          ? t('unknowns.reviewReasonBboxRejected')
+                                          : bestDet.review_reason === 'unknown_label'
+                                            ? t('unknowns.reviewReasonUnknownLabel')
+                                            : bestDet.review_reason ===
+                                                'detect_first_anchor_only'
+                                              ? t('unknowns.reviewReasonDetectFirstAnchor')
+                                              : t('video.semanticReviewQueued')}
+                            </Typography>
+                          </Alert>
+                        ) : null}
                       </Stack>
                     );
                   })()}
@@ -658,6 +1171,14 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
           ))}
         </Grid>
       </Box>
+      <SettingsPasswordDialog
+        open={showPasswordDialog}
+        onSuccess={(role) => {
+          setUnlocked(true, role);
+          setShowPasswordDialog(false);
+        }}
+        onClose={() => setShowPasswordDialog(false)}
+      />
       <Snackbar
         open={!!correctError}
         autoHideDuration={6000}

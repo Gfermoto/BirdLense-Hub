@@ -17,6 +17,11 @@ import { Settings as SettingsType } from '../../types';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import { ProtectedRoute } from '../../components/ProtectedRoute';
 import { PageModeToggle, type PageMode } from '../../components/PageModeToggle';
+import {
+  loadSettingsTier,
+  saveSettingsTier,
+  type SettingsTier,
+} from './settingsTier';
 import { PageHeader } from '../../components/PageHeader';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -27,7 +32,14 @@ export const Settings: React.FC = () => {
   useDocumentTitle(t('nav.settings'));
   const queryClient = useQueryClient();
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
-  const [mode, setMode] = useState<PageMode>('simple');
+  const [deprecatedKeysAlert, setDeprecatedKeysAlert] = useState<string[] | null>(
+    null,
+  );
+  const [mode, setMode] = useState<PageMode>(() => loadSettingsTier());
+  const handleModeChange = (next: PageMode) => {
+    setMode(next);
+    saveSettingsTier(next as SettingsTier);
+  };
   const [restartMessage, setRestartMessage] = useState<{
     type: 'success' | 'error';
     textKey: string;
@@ -44,7 +56,14 @@ export const Settings: React.FC = () => {
 
   const updateMutation = useMutation({
     mutationFn: updateSettings,
-    onSuccess: async () => {
+    onSuccess: async (data: Record<string, unknown> | undefined) => {
+      const warnings = data?._settings_warnings as
+        | { deprecated_keys_present?: string[] }
+        | undefined;
+      const deprecated = warnings?.deprecated_keys_present;
+      setDeprecatedKeysAlert(
+        Array.isArray(deprecated) && deprecated.length > 0 ? deprecated : null,
+      );
       queryClient.invalidateQueries({ queryKey: queryKeys.settings.all });
       setShowSuccessAlert(true);
       const result = await restartProcessor();
@@ -79,9 +98,8 @@ export const Settings: React.FC = () => {
 
   useEffect(() => {
     const h = location.hash.replace(/^#/, '');
-    if (h !== 'processor-weights' && h !== 'processor-models') return;
-    const id =
-      h === 'processor-models' ? 'processor-models' : 'processor-weights';
+    if (h !== 'processor-models') return;
+    const id = 'processor-models';
     requestAnimationFrame(() => {
       document
         .getElementById(id)
@@ -111,9 +129,11 @@ export const Settings: React.FC = () => {
             actions={
               <PageModeToggle
                 value={mode}
-                onChange={setMode}
+                onChange={handleModeChange}
+                showExpert
                 simpleLabel={t('settings.modeOverview')}
                 advancedLabel={t('settings.modeWorkspace')}
+                expertLabel={t('settings.modeExpert')}
                 ariaLabel={t('settings.modeAria')}
               />
             }
@@ -132,6 +152,19 @@ export const Settings: React.FC = () => {
               {restartMessage.apiMessage || t(restartMessage.textKey)}
             </Alert>
           )}
+          {deprecatedKeysAlert && deprecatedKeysAlert.length > 0 && (
+            <Alert
+              severity="warning"
+              variant="outlined"
+              sx={{ mb: 2 }}
+              onClose={() => setDeprecatedKeysAlert(null)}
+            >
+              {t('settings.deprecatedKeysAfterSave', {
+                count: deprecatedKeysAlert.length,
+                keys: deprecatedKeysAlert.join(', '),
+              })}
+            </Alert>
+          )}
           <SettingsForm
             key={formKey}
             currentSettings={settings as SettingsType}
@@ -139,7 +172,7 @@ export const Settings: React.FC = () => {
             onSubmit={updateMutation.mutate}
             yamlSafeExportEnabled={canEdit}
             yamlAdminBackupEnabled={isAdmin}
-            simpleMode={mode === 'simple'}
+            settingsTier={mode}
           />
           <Snackbar
             open={showSuccessAlert}

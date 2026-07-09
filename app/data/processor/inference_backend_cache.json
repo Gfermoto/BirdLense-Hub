@@ -1,8 +1,8 @@
 {
   "backend": "openvino",
   "detector_backend": "openvino",
-  "binary_model_path": "/app/processor/models/detection/weights/best_openvino_model",
-  "resolved_at_unix": 1778733979.2989879,
+  "binary_model_path": "/app/processor/models/detection/weights/trapper_ai_v02_2024_openvino_model",
+  "resolved_at_unix": 1781364925.3645434,
   "classifier_backend": "openvino",
-  "classifier_model_path": "/app/processor/models/classification/weights/best_openvino_model"
+  "classifier_model_path": "/app/processor/models/classification/weights/convnext_v2_tiny_eu-common256px_openvino_model"
 }

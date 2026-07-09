@@ -3,10 +3,44 @@
 from __future__ import annotations
 
 import os
+import subprocess
 
 import psutil
 
 from app_config.app_config import app_config
+from encoding_utils import normalize_video_encoding
+
+
+def _normalize_encoding_setting(raw: str | None) -> str:
+    return normalize_video_encoding(raw, "jetson")
+
+
+def _platform_id() -> str:
+    return (os.environ.get("BIRDLENSE_PLATFORM") or "orin").strip().lower()
+
+
+def _nvidia_gpu_percent() -> float | None:
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+        if result.returncode != 0:
+            return None
+        line = (result.stdout or "").strip().splitlines()[0].strip()
+        if not line or line.upper() == "N/A":
+            return None
+        val = float(line)
+        return round(val, 1) if 0 <= val <= 100 else None
+    except (OSError, ValueError, subprocess.TimeoutExpired, IndexError):
+        return None
 
 
 def collect_live_system_metrics(app):
@@ -39,17 +73,9 @@ def collect_live_system_metrics(app):
                 break
         except (OSError, ValueError):
             continue
-    encoding_setting = (app_config.get("video.encoding") or "cpu").strip().lower()
-    if encoding_setting not in ("cpu", "intel"):
-        encoding_setting = "cpu"
-    intel_gpu = encoding_setting == "intel" or os.path.exists("/dev/dri/renderD128")
-    if gpu_percent is None and intel_gpu:
-        try:
-            from gpu_stats import get_intel_gpu_percent
-
-            gpu_percent = get_intel_gpu_percent()
-        except Exception as e:
-            app.logger.warning("gpu_stats: %s", e)
+    encoding_setting = _normalize_encoding_setting(app_config.get("video.encoding"))
+    if gpu_percent is None:
+        gpu_percent = _nvidia_gpu_percent()
 
     return {
         "cpu": {"percent": cpu_percent},

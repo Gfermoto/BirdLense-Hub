@@ -9,7 +9,9 @@ from models import BirdnetFifoEvent, db
 
 def test_build_birdnet_fifo_snapshot_prefers_db(app):
     with app.app_context():
-        from services.system_diagnostics_service import build_birdnet_fifo_snapshot_response
+        from services.system_diagnostics_service import (
+            build_birdnet_fifo_snapshot_response,
+        )
 
         now = datetime.now(timezone.utc)
         ev = {
@@ -28,6 +30,7 @@ def test_build_birdnet_fifo_snapshot_prefers_db(app):
         snap = body.get("snapshot") or {}
         assert snap.get("queue_len", 0) >= 1
         assert snap.get("persist_source") == "sqlite"
+        assert snap.get("mqtt_connected") is None
         recent = snap.get("recent") or []
         assert any(r.get("species") == "DB Finch" for r in recent)
         assert "species_hearing" in snap
@@ -49,7 +52,7 @@ def test_build_birdnet_fifo_snapshot_prefers_db(app):
 
 
 def test_birdnet_fifo_table_accumulates_via_orm(app):
-    """Строки в birdnet_fifo_event накапливаются при последовательных INSERT."""
+    """Строки birdnet_fifo_event накапливаются при последовательных INSERT."""
     with app.app_context():
         from models import BirdnetFifoEvent, db
 

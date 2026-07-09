@@ -16,7 +16,11 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
-import TextField from '@mui/material/TextField';
+import { BirdProfileFilterAutocomplete } from '../../components/filters/BirdProfileFilterAutocomplete';
+import { CameraFilterMultiSelect } from '../../components/filters/CameraFilterMultiSelect';
+import { BirdProfilesCatalogDialog } from '../../components/BirdProfilesCatalogDialog';
+import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
+import { fetchBirdProfiles } from '../../api/speciesOverviewDetections';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import DownloadIcon from '@mui/icons-material/Download';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -33,7 +37,13 @@ import {
   fetchTimelineForObserverDate,
 } from '../../api/timeline';
 import { fetchNearestRecordingDay } from '../../api/video';
-import { fetchOverviewData } from '../../api/speciesOverviewDetections';
+import {
+  fetchBirdDirectory,
+  fetchOverviewData,
+  speciesDirectoryItems,
+} from '../../api/speciesOverviewDetections';
+import { fetchStatus } from '../../api/camerasHealth';
+import { fetchSystemMetricsLive } from '../../api/systemAuditMetrics';
 import { queryKeys } from '../../api/queryKeys';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Checkbox from '@mui/material/Checkbox';
@@ -43,6 +53,12 @@ import { PageHelp } from '../../components/PageHelp';
 import { PageLoadingState, PageMessageState } from '../../components/PageState';
 import { timelineHelpConfig } from '../../page-help-config';
 import { type TimeOfDay } from '../../utils/timeUtils';
+import {
+  getVisitNickname,
+  visitMatchesBirdProfile,
+  visitMatchesCameras,
+  parseCameraIdsFromSearchParams,
+} from './timelineFilters';
 import { useProtectedArea } from '../../contexts/ProtectedAreaContext';
 import Chip from '@mui/material/Chip';
 import { UnknownsPage } from '../Unknowns';
@@ -50,7 +66,13 @@ import { RecordingsModeSwitcher } from '../../components/RecordingsModeSwitcher'
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import Snackbar from '@mui/material/Snackbar';
 
-function useSpeciesList(visits: SpeciesVisit[] | undefined) {
+function useSpeciesList(
+  catalogSpecies: Partial<Species>[] | undefined,
+  visits: SpeciesVisit[] | undefined,
+) {
+  if (catalogSpecies && catalogSpecies.length > 0) {
+    return catalogSpecies;
+  }
   return visits
     ? visits.reduce((acc: Partial<Species>[], visit) => {
         const sp = visit.species;
@@ -74,24 +96,40 @@ function useFilteredVisits(
   );
 }
 
-type TimelineSortBy = 'date_desc' | 'date_asc' | 'species' | 'nickname' | 'behavior';
+type TimelineSortBy =
+  | 'date_desc'
+  | 'date_asc'
+  | 'species'
+  | 'nickname'
+  | 'confidence'
+  | 'duration';
+type TimelineTriggerSource =
+  | 'all'
+  | 'opencv'
+  | 'frigate'
+  | 'motion_sensor'
+  | 'scales';
 
-function getVisitBehaviorLabels(visit: SpeciesVisit): string[] {
-  return [
-    ...new Set(
-      (visit.behavior_events ?? [])
-        .map((event) => String(event.label || '').trim().toLowerCase())
-        .filter((label) => Boolean(label)),
-    ),
-  ];
+function getVisitMaxConfidence(visit: SpeciesVisit): number {
+  const detections = visit.detections ?? [];
+  if (detections.length === 0) return 0;
+  return Math.max(...detections.map((d) => Number(d.confidence) || 0));
 }
 
-function getVisitBehaviorSortValue(visit: SpeciesVisit): string {
-  return getVisitBehaviorLabels(visit).join(', ');
+function getVisitDurationSeconds(visit: SpeciesVisit): number {
+  if (visit.video_duration_seconds != null && visit.video_duration_seconds > 0) {
+    return visit.video_duration_seconds;
+  }
+  return visit.total_recording_seconds ?? 0;
 }
 
-function getVisitNickname(visit: SpeciesVisit): string {
-  return String(visit.individual_nickname || '').trim();
+function parseBirdProfileIdFromSearchParams(
+  searchParams: URLSearchParams,
+): number | null {
+  const raw = searchParams.get('bird_profile_id');
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 function parseHourFromSearchParams(
@@ -146,12 +184,19 @@ export function TimelinePage() {
   );
   const [selectedSpeciesIds, setSelectedSpeciesIds] = useState<number[]>([]);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('all');
-  const [nicknameFilter, setNicknameFilter] = useState('');
-  const [behaviorFilter, setBehaviorFilter] = useState('');
+  const [birdProfileFilterId, setBirdProfileFilterId] = useState<number | null>(
+    () => parseBirdProfileIdFromSearchParams(searchParams),
+  );
+  const [cameraFilterIds, setCameraFilterIds] = useState<string[]>(() =>
+    parseCameraIdsFromSearchParams(searchParams),
+  );
+  const [triggerSource, setTriggerSource] =
+    useState<TimelineTriggerSource>('all');
   const [sortBy, setSortBy] = useState<TimelineSortBy>('date_desc');
   const [exportAnchor, setExportAnchor] = useState<null | HTMLElement>(null);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [birdCatalogOpen, setBirdCatalogOpen] = useState(false);
   const [jumpPending, setJumpPending] = useState(false);
   const jumpRequestSeqRef = useRef(0);
   const selectedDate = useMemo(() => {
@@ -161,11 +206,109 @@ export function TimelinePage() {
       : dayjs().startOf('date');
     return parsed.isValid() ? parsed : dayjs().startOf('date');
   }, [searchParams]);
+  const { data: birdProfilesForFilter = [] } = useQuery({
+    queryKey: queryKeys.birdProfiles.timelineFilterMap,
+    queryFn: async () => (await fetchBirdProfiles({ limit: 200 })).items,
+    staleTime: 1000 * 60 * 5,
+    enabled: !isReviewMode,
+  });
+  const birdProfilesById = useMemo(
+    () => new Map(birdProfilesForFilter.map((profile) => [Number(profile.id), profile])),
+    [birdProfilesForFilter],
+  );
+
+  const updateBirdProfileFilter = useCallback(
+    (profileId: number | null) => {
+      setBirdProfileFilterId(profileId);
+      const next = new URLSearchParams(searchParams);
+      if (profileId) {
+        next.set('bird_profile_id', String(profileId));
+      } else {
+        next.delete('bird_profile_id');
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const updateCameraFilter = useCallback(
+    (cameraIds: string[]) => {
+      setCameraFilterIds(cameraIds);
+      const next = new URLSearchParams(searchParams);
+      if (cameraIds.length) {
+        next.set('camera_ids', cameraIds.join(','));
+      } else {
+        next.delete('camera_ids');
+        next.delete('camera_id');
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  useEffect(() => {
+    setBirdProfileFilterId(parseBirdProfileIdFromSearchParams(searchParams));
+    setCameraFilterIds(parseCameraIdsFromSearchParams(searchParams));
+  }, [searchParams]);
+
   const { data: observerOverview } = useQuery({
     queryKey: queryKeys.timeline.observerTimezone,
     queryFn: () => fetchOverviewData(dayjs().format('YYYY-MM-DD')),
     staleTime: 1000 * 60 * 30,
   });
+  const { data: systemMetricsLive } = useQuery({
+    queryKey: queryKeys.system.metricsLive,
+    queryFn: fetchSystemMetricsLive,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+    retry: 1,
+  });
+  const { data: statusData } = useQuery({
+    queryKey: queryKeys.health.status,
+    queryFn: fetchStatus,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
+    retry: 1,
+  });
+  const activeTriggerSources = useMemo(() => {
+    const raw = statusData?.active_triggers;
+    if (!Array.isArray(raw)) return [] as TimelineTriggerSource[];
+    const allowed = new Set<TimelineTriggerSource>([
+      'opencv',
+      'frigate',
+      'motion_sensor',
+      'scales',
+    ]);
+    return raw
+      .map((x) => String(x || '').trim().toLowerCase())
+      .filter(
+        (x): x is TimelineTriggerSource =>
+          allowed.has(x as TimelineTriggerSource),
+      );
+  }, [statusData]);
+  const triggerOptions = useMemo(
+    () =>
+      ([
+        { value: 'all', label: t('timeline.triggerSourceAll') },
+        { value: 'opencv', label: t('timeline.triggerSourceOpencv') },
+        { value: 'frigate', label: t('timeline.triggerSourceFrigate') },
+        {
+          value: 'motion_sensor',
+          label: t('timeline.triggerSourceMotionSensor'),
+        },
+        { value: 'scales', label: t('timeline.triggerSourceScales') },
+      ] as const).filter(
+        (opt) =>
+          opt.value === 'all' || activeTriggerSources.includes(opt.value),
+      ),
+    [activeTriggerSources, t],
+  );
+  useEffect(() => {
+    if (triggerSource === 'all') return;
+    if (!activeTriggerSources.includes(triggerSource)) {
+      setTriggerSource('all');
+    }
+  }, [activeTriggerSources, triggerSource]);
   const observerToday = useMemo(() => {
     const timezone = observerOverview?.observer_timezone;
     if (!timezone) {
@@ -189,6 +332,18 @@ export function TimelinePage() {
       return dayjs().startOf('day');
     }
   }, [observerOverview?.observer_timezone]);
+  const { data: timelineSpeciesCatalog = [] } = useQuery({
+    queryKey: queryKeys.species.directory,
+    queryFn: async () =>
+      speciesDirectoryItems(
+        await fetchBirdDirectory({
+          scope: 'observed',
+          meta: false,
+        }),
+      ),
+    staleTime: 1000 * 60 * 5,
+    enabled: !isReviewMode,
+  });
 
   const {
     data: visits,
@@ -201,6 +356,7 @@ export function TimelinePage() {
       timeOfDay,
       filterHour,
       isFavoritesMode,
+      triggerSource,
     ),
     queryFn: () => {
       if (!selectedDate) return [];
@@ -208,6 +364,7 @@ export function TimelinePage() {
       return fetchTimelineForObserverDate(selectedDate.format('YYYY-MM-DD'), {
         ...base,
         favoritesOnly: isFavoritesMode,
+        triggerSource,
       });
     },
     enabled: !isReviewMode,
@@ -273,18 +430,16 @@ export function TimelinePage() {
     [jumpPending, selectedDate, updateSelectedDate],
   );
 
-  const speciesList = useSpeciesList(visits);
+  const speciesList = useSpeciesList(timelineSpeciesCatalog, visits);
   const selectedBySpeciesVisits = useFilteredVisits(visits, selectedSpeciesIds);
   const filteredVisits = useMemo(() => {
-    const nicknameNeedle = nicknameFilter.trim().toLowerCase();
-    const behaviorNeedle = behaviorFilter.trim().toLowerCase();
     const rows = (selectedBySpeciesVisits ?? []).filter((visit) => {
-      const nickname = getVisitNickname(visit).toLowerCase();
-      const behavior = getVisitBehaviorSortValue(visit).toLowerCase();
-      if (nicknameNeedle && !nickname.includes(nicknameNeedle)) {
+      if (
+        !visitMatchesBirdProfile(visit, birdProfileFilterId, birdProfilesById)
+      ) {
         return false;
       }
-      if (behaviorNeedle && !behavior.includes(behaviorNeedle)) {
+      if (!visitMatchesCameras(visit, cameraFilterIds)) {
         return false;
       }
       return true;
@@ -313,17 +468,22 @@ export function TimelinePage() {
         );
         return cmp !== 0 ? cmp : bStart - aStart;
       }
-      const cmp = getVisitBehaviorSortValue(a).localeCompare(
-        getVisitBehaviorSortValue(b),
-        i18n.language,
-      );
-      return cmp !== 0 ? cmp : bStart - aStart;
+      if (sortBy === 'confidence') {
+        const confDiff = getVisitMaxConfidence(b) - getVisitMaxConfidence(a);
+        return confDiff !== 0 ? confDiff : bStart - aStart;
+      }
+      if (sortBy === 'duration') {
+        const durDiff = getVisitDurationSeconds(b) - getVisitDurationSeconds(a);
+        return durDiff !== 0 ? durDiff : bStart - aStart;
+      }
+      return bStart - aStart;
     });
     return sorted;
   }, [
     selectedBySpeciesVisits,
-    nicknameFilter,
-    behaviorFilter,
+    birdProfileFilterId,
+    birdProfilesById,
+    cameraFilterIds,
     sortBy,
     i18n.language,
   ]);
@@ -355,6 +515,7 @@ export function TimelinePage() {
         {
           ...(filterHour !== null ? { hour: filterHour } : { timeOfDay }),
           favoritesOnly: isFavoritesMode,
+          triggerSource,
         },
       );
     } catch (err) {
@@ -404,6 +565,43 @@ export function TimelinePage() {
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               {t('timeline.reportsAndSharingHint')}
             </Typography>
+          ) : null}
+          {systemMetricsLive ? (
+            <Stack
+              direction="row"
+              spacing={1}
+              useFlexGap
+              flexWrap="wrap"
+              sx={{ mb: 2 }}
+            >
+              <Chip
+                size="small"
+                label={t('timeline.runtimeCpu', {
+                  value: Math.round(systemMetricsLive.cpu.percent),
+                })}
+              />
+              <Chip
+                size="small"
+                label={t('timeline.runtimeMemory', {
+                  value: Math.round(systemMetricsLive.memory.percent),
+                })}
+              />
+              {systemMetricsLive.gpu_percent != null ? (
+                <Chip
+                  size="small"
+                  label={t('timeline.runtimeGpu', {
+                    value: Math.round(systemMetricsLive.gpu_percent),
+                  })}
+                />
+              ) : null}
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t('timeline.runtimeEncoding', {
+                  value: systemMetricsLive.encoding || 'auto',
+                })}
+              />
+            </Stack>
           ) : null}
           {filterHour !== null && (
             <Chip
@@ -554,24 +752,16 @@ export function TimelinePage() {
                 justifySelf: { xs: 'end', md: 'start' },
               }}
             >
-              <Tooltip
-                title={
-                  !canEdit
-                    ? t('common.loginRequiredForExport')
-                    : t('timeline.export')
-                }
-              >
-                <span>
-                  <IconButton
-                    onClick={(e) => setExportAnchor(e.currentTarget)}
-                    disabled={exporting || !canEdit}
-                    aria-label={t('timeline.export')}
-                    data-testid="timeline-export-menu-trigger"
-                  >
-                    <DownloadIcon />
-                  </IconButton>
-                </span>
-              </Tooltip>
+              {canEdit && (
+                <IconButton
+                  onClick={(e) => setExportAnchor(e.currentTarget)}
+                  disabled={exporting}
+                  aria-label={t('timeline.export')}
+                  data-testid="timeline-export-menu-trigger"
+                >
+                  <DownloadIcon />
+                </IconButton>
+              )}
             </Box>
             <Menu
               anchorEl={exportAnchor}
@@ -596,22 +786,55 @@ export function TimelinePage() {
             spacing={2}
             sx={{ mb: 3 }}
           >
-            <TextField
-              size="small"
-              label={t('timeline.nicknameFilter')}
-              value={nicknameFilter}
-              onChange={(event) => setNicknameFilter(event.target.value)}
-              placeholder={t('timeline.nicknameFilterPlaceholder')}
-              sx={{ minWidth: { xs: '100%', md: 240 } }}
+            <Stack
+              direction="row"
+              spacing={0.5}
+              alignItems="flex-start"
+              sx={{ minWidth: { xs: '100%', md: 320 } }}
+            >
+              <BirdProfileFilterAutocomplete
+                value={birdProfileFilterId}
+                onChange={updateBirdProfileFilter}
+                sx={{ flex: 1, minWidth: 0 }}
+              />
+              {canEdit ? (
+                <Tooltip title={t('birdProfiles.manageButton')}>
+                  <IconButton
+                    size="small"
+                    aria-label={t('birdProfiles.manageButton')}
+                    data-testid="bird-profiles-catalog-open"
+                    onClick={() => setBirdCatalogOpen(true)}
+                    sx={{ mt: 0.5 }}
+                  >
+                    <FormatListBulletedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              ) : null}
+            </Stack>
+            <CameraFilterMultiSelect
+              value={cameraFilterIds}
+              onChange={updateCameraFilter}
+              sx={{ minWidth: { xs: '100%', md: 280 } }}
             />
-            <TextField
-              size="small"
-              label={t('timeline.behaviorFilter')}
-              value={behaviorFilter}
-              onChange={(event) => setBehaviorFilter(event.target.value)}
-              placeholder={t('timeline.behaviorFilterPlaceholder')}
-              sx={{ minWidth: { xs: '100%', md: 240 } }}
-            />
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>
+              <InputLabel id="timeline-trigger-source-label">
+                {t('timeline.triggerSource')}
+              </InputLabel>
+              <Select
+                labelId="timeline-trigger-source-label"
+                value={triggerSource}
+                label={t('timeline.triggerSource')}
+                onChange={(event) =>
+                  setTriggerSource(event.target.value as TimelineTriggerSource)
+                }
+              >
+                {triggerOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>
               <InputLabel id="timeline-sort-by-label">
                 {t('timeline.sortBy')}
@@ -632,8 +855,11 @@ export function TimelinePage() {
                 <MenuItem value="nickname">
                   {t('timeline.sortNickname')}
                 </MenuItem>
-                <MenuItem value="behavior">
-                  {t('timeline.sortBehavior')}
+                <MenuItem value="confidence">
+                  {t('timeline.sortConfidence')}
+                </MenuItem>
+                <MenuItem value="duration">
+                  {t('timeline.sortDuration')}
                 </MenuItem>
               </Select>
             </FormControl>
@@ -644,6 +870,15 @@ export function TimelinePage() {
           <Timeline visits={filteredVisits ?? []} />
         </>
       )}
+      <BirdProfilesCatalogDialog
+        open={birdCatalogOpen}
+        onClose={() => setBirdCatalogOpen(false)}
+        onDeleted={(profileId) => {
+          if (birdProfileFilterId === profileId) {
+            updateBirdProfileFilter(null);
+          }
+        }}
+      />
       <Snackbar
         open={!!exportError}
         autoHideDuration={8000}

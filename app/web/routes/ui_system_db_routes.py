@@ -13,6 +13,7 @@ from services.system_sqlite_admin_api_service import (
     restore_sqlite_database_from_upload,
     run_retention_and_bust_caches,
 )
+from services.recording_orphan_purge_service import purge_orphan_recording_files
 
 _RETENTION_ALLOWED_MODES = {"cascade", "files_only", "disabled"}
 
@@ -45,6 +46,9 @@ def _validate_retention_update(data: dict) -> tuple[dict, dict | None]:
         "protect_favorites",
         "min_age_hours",
         "batch_size",
+        "max_deletes_per_run",
+        "auto_run_enabled",
+        "auto_run_interval_hours",
     }
     extra = sorted(set(data) - allowed)
     if extra:
@@ -69,6 +73,8 @@ def _validate_retention_update(data: dict) -> tuple[dict, dict | None]:
         ("migration_max_age_days", 0),
         ("min_age_hours", 0),
         ("batch_size", 1),
+        ("max_deletes_per_run", 1),
+        ("auto_run_interval_hours", 1),
     ):
         if field in data:
             value, error = _non_negative_int(data[field], field=field, minimum=minimum)
@@ -80,6 +86,11 @@ def _validate_retention_update(data: dict) -> tuple[dict, dict | None]:
         if not isinstance(data["protect_favorites"], bool):
             return {}, {"error": "protect_favorites must be a boolean"}
         update["protect_favorites"] = data["protect_favorites"]
+
+    if "auto_run_enabled" in data:
+        if not isinstance(data["auto_run_enabled"], bool):
+            return {}, {"error": "auto_run_enabled must be a boolean"}
+        update["auto_run_enabled"] = data["auto_run_enabled"]
 
     return update, None
 
@@ -125,18 +136,7 @@ def register_ui_system_db_routes(app):
         """Get retention configuration and last run stats."""
         from app_config.app_config import app_config as cfg
 
-        rc = cfg.get("retention", {})
-        # safe public values
-        safe = {
-            "mode": rc.get("mode", "cascade"),
-            "days": rc.get("days"),
-            "max_gb": rc.get("max_gb"),
-            "dataset_max_age_days": rc.get("dataset_max_age_days", 0),
-            "migration_max_age_days": rc.get("migration_max_age_days", 0),
-            "protect_favorites": rc.get("protect_favorites", True),
-            "min_age_hours": rc.get("min_age_hours", 1),
-            "batch_size": rc.get("batch_size", 50),
-        }
+        safe = cfg.build_retention_safe_public_config()
         # add last-run metrics
         try:
             from services.retention_service import _fetch_metrics
@@ -148,6 +148,17 @@ def register_ui_system_db_routes(app):
             safe["last_mode"] = m.get("retention_mode", "cascade")
         except Exception:
             app.logger.debug("retention last_run metrics unavailable", exc_info=True)
+        try:
+            from services.recording_orphan_inventory import summarize_orphan_recording_files
+
+            safe["orphan_recording_files"] = summarize_orphan_recording_files()
+        except Exception:
+            app.logger.debug("retention orphan file inventory unavailable", exc_info=True)
+            safe["orphan_recording_files"] = {
+                "orphan_session_count": 0,
+                "orphan_bytes": 0,
+                "sample_paths": [],
+            }
         return safe, 200
 
     @app.route("/api/ui/system/retention", methods=["PUT"])
@@ -180,3 +191,12 @@ def register_ui_system_db_routes(app):
             if not isinstance(mode, str) or mode not in _RETENTION_ALLOWED_MODES:
                 return {"error": "Invalid mode (allowed: cascade, files_only, disabled)"}, 400
         return run_retention_and_bust_caches(dry_run=dry_run, mode=mode)
+
+    @app.route("/api/ui/system/retention/orphan-files/purge", methods=["POST"])
+    @require_ui_settings_password
+    def purge_orphan_recording_files_route():
+        """Delete disk-only recording sessions (no Video row). Default dry_run=true."""
+        data = request.get_json(silent=True) or {}
+        if not isinstance(data, dict):
+            return {"error": "JSON object required"}, 400
+        return purge_orphan_recording_files(data)

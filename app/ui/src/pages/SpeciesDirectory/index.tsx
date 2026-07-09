@@ -4,33 +4,75 @@ import { Link as RouterLink } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Card from '@mui/material/Card';
-import CardActions from '@mui/material/CardActions';
-import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
-import Grid from '@mui/material/Grid2';
+import Link from '@mui/material/Link';
+import Paper from '@mui/material/Paper';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 import { resolveImageUrl } from '../../api/api';
-import { fetchBirdDirectory } from '../../api/speciesOverviewDetections';
+import {
+  fetchBirdDirectory,
+  type SpeciesCatalogScope,
+  type SpeciesDirectoryResponse,
+} from '../../api/speciesOverviewDetections';
 import { queryKeys } from '../../api/queryKeys';
 import { PageHeader } from '../../components/PageHeader';
+import { PageHelp } from '../../components/PageHelp';
+import { speciesDirectoryHelpConfig } from '../../page-help-config';
 import { SpeciesIcon } from '../../components/SpeciesIcon';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+import type { Species } from '../../types';
+
+type CatalogQualityFilter = 'all' | 'incomplete' | 'missing_audio';
+
+function isDirectoryPayload(
+  data: Species[] | SpeciesDirectoryResponse | undefined,
+): data is SpeciesDirectoryResponse {
+  return Boolean(data && typeof data === 'object' && 'items' in data);
+}
 
 export function SpeciesDirectoryPage() {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
-  useDocumentTitle(t('nav.species'));
+  const [qualityFilter, setQualityFilter] =
+    useState<CatalogQualityFilter>('incomplete');
+  const scope: SpeciesCatalogScope = 'allowlist';
+  useDocumentTitle(t('speciesDirectory.title'));
 
   const speciesQ = useQuery({
-    queryKey: queryKeys.speciesDirectory.list,
-    queryFn: fetchBirdDirectory,
+    queryKey: [
+      ...queryKeys.speciesDirectory.list,
+      scope,
+      qualityFilter === 'missing_audio' ? 'ma' : qualityFilter,
+    ],
+    queryFn: () =>
+      fetchBirdDirectory({
+        scope,
+        meta: true,
+        missing_audio: qualityFilter === 'missing_audio',
+        catalog_incomplete: qualityFilter === 'incomplete',
+      }),
     staleTime: 5 * 60 * 1000,
   });
+
+  const rows = useMemo(() => {
+    const data = speciesQ.data;
+    if (isDirectoryPayload(data)) return data.items;
+    return (data as Species[] | undefined) ?? [];
+  }, [speciesQ.data]);
+
+  const meta = isDirectoryPayload(speciesQ.data) ? speciesQ.data.meta : undefined;
 
   const filtered = useMemo(() => {
     const normalizeNeedle = (value: string) =>
@@ -40,20 +82,36 @@ export function SpeciesDirectoryPage() {
         .replace(/\s+/g, ' ')
         .trim();
     const needle = normalizeNeedle(query);
-    const rows = speciesQ.data ?? [];
     const sorted = [...rows].sort((a, b) => {
       const aCount = Number(a.count ?? 0);
       const bCount = Number(b.count ?? 0);
       if (bCount !== aCount) return bCount - aCount;
       return a.name.localeCompare(b.name);
     });
-    if (!needle) return sorted;
-    return sorted.filter((row) => {
-      const name = normalizeNeedle(String(row.name || ''));
-      const desc = normalizeNeedle(String(row.description || ''));
-      return name.includes(needle) || desc.includes(needle);
-    });
-  }, [query, speciesQ.data]);
+    const bySearch = !needle
+      ? sorted
+      : sorted.filter((row) => {
+          const name = normalizeNeedle(String(row.name || ''));
+          const dbName = normalizeNeedle(String((row as { db_name?: string }).db_name || ''));
+          const sci = normalizeNeedle(String((row as { scientific_name?: string }).scientific_name || ''));
+          const desc = normalizeNeedle(String(row.description || ''));
+          return (
+            name.includes(needle) ||
+            dbName.includes(needle) ||
+            sci.includes(needle) ||
+            desc.includes(needle)
+          );
+        });
+    if (qualityFilter === 'incomplete') {
+      return bySearch.filter((row) => Boolean(row.catalog_card_incomplete));
+    }
+    if (qualityFilter === 'missing_audio') {
+      return bySearch.filter(
+        (row) => !(row as { catalog_has_audio?: boolean }).catalog_has_audio,
+      );
+    }
+    return bySearch;
+  }, [query, qualityFilter, rows]);
 
   return (
     <Box display="grid" gap={3} sx={{ pb: 5 }}>
@@ -61,7 +119,48 @@ export function SpeciesDirectoryPage() {
         title={t('speciesDirectory.title')}
         description={t('speciesDirectory.description')}
         titleVariant="h3"
+        actions={<PageHelp {...speciesDirectoryHelpConfig} />}
       />
+
+      <Typography variant="body2" color="text.secondary">
+        <Link component={RouterLink} to="/species" underline="hover">
+          {t('speciesDirectory.backToCatalog')}
+        </Link>
+        {' · '}
+        <Link component={RouterLink} to="/system" underline="hover">
+          {t('speciesDirectory.backToSystem')}
+        </Link>
+      </Typography>
+
+      {meta ? (
+        <Alert severity="info" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+          {t('speciesDirectory.scopeHint', {
+            engine: meta.classifier_engine ?? '—',
+            classCount: meta.classifier_class_count ?? meta.allowlist_total,
+            arbCount: meta.arbitration_vocabulary_total ?? 0,
+            db: meta.db_species_total,
+            incomplete: meta.allowlist_incomplete,
+          })}
+        </Alert>
+      ) : null}
+
+      <ToggleButtonGroup
+        exclusive
+        size="small"
+        value={qualityFilter}
+        onChange={(_e, value: CatalogQualityFilter | null) => {
+          if (value) setQualityFilter(value);
+        }}
+        sx={{ flexWrap: 'wrap' }}
+      >
+        <ToggleButton value="all">{t('speciesDirectory.filterAll')}</ToggleButton>
+        <ToggleButton value="incomplete">
+          {t('speciesDirectory.filterIncomplete')}
+        </ToggleButton>
+        <ToggleButton value="missing_audio">
+          {t('speciesDirectory.filterMissingAudio')}
+        </ToggleButton>
+      </ToggleButtonGroup>
 
       <TextField
         type="search"
@@ -83,11 +182,30 @@ export function SpeciesDirectoryPage() {
           <Stack direction="row" flexWrap="wrap" gap={1}>
             <Chip
               label={t('speciesDirectory.totalCount', {
-                count: speciesQ.data?.length ?? 0,
+                count: rows.length,
               })}
               size="small"
               color="primary"
             />
+            {meta?.catalog_missing_audio != null ? (
+              <Chip
+                size="small"
+                variant="outlined"
+                label={t('speciesDirectory.audioKpi', {
+                  withAudio: meta.catalog_with_audio ?? 0,
+                  missing: meta.catalog_missing_audio ?? 0,
+                })}
+              />
+            ) : null}
+            {scope === 'allowlist' && meta ? (
+              <Chip
+                label={t('speciesDirectory.allowlistModelCount', {
+                  count: meta.allowlist_total,
+                })}
+                size="small"
+                variant="outlined"
+              />
+            ) : null}
             <Chip
               label={t('speciesDirectory.filteredCount', {
                 count: filtered.length,
@@ -95,39 +213,54 @@ export function SpeciesDirectoryPage() {
               size="small"
               variant="outlined"
             />
+            {qualityFilter === 'incomplete' && meta && scope === 'allowlist' ? (
+              <Chip
+                label={t('speciesDirectory.incompleteAllowlistCount', {
+                  count: meta.allowlist_incomplete,
+                })}
+                size="small"
+                color="warning"
+                variant="outlined"
+              />
+            ) : null}
           </Stack>
 
           {filtered.length === 0 ? (
             <Alert severity="info">{t('speciesDirectory.empty')}</Alert>
           ) : (
-            <Grid container spacing={2}>
-              {filtered.map((species) => (
-                <Grid key={species.id} size={{ xs: 12, md: 6, xl: 4 }}>
-                  <Card sx={{ height: '100%' }}>
-                    <CardContent>
-                      <Stack
-                        direction="row"
-                        spacing={2}
-                        alignItems="flex-start"
-                      >
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell width={52} />
+                    <TableCell>{t('speciesDirectory.colSpecies')}</TableCell>
+                    <TableCell>{t('speciesDirectory.colStatus')}</TableCell>
+                    <TableCell align="right">
+                      {t('speciesDirectory.colActions')}
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filtered.map((species) => (
+                    <TableRow key={species.id} hover>
+                      <TableCell>
                         <Box
                           sx={{
-                            width: 56,
-                            height: 56,
-                            borderRadius: 2,
+                            width: 40,
+                            height: 40,
+                            borderRadius: 1,
                             overflow: 'hidden',
                             bgcolor: 'action.hover',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            flexShrink: 0,
                           }}
                         >
                           {species.image_url ? (
                             <Box
                               component="img"
                               src={resolveImageUrl(species.image_url)}
-                              alt={species.name}
+                              alt=""
                               sx={{
                                 width: '100%',
                                 height: '100%',
@@ -135,71 +268,74 @@ export function SpeciesDirectoryPage() {
                               }}
                             />
                           ) : (
-                            <SpeciesIcon speciesName={species.name} size={34} />
+                            <SpeciesIcon speciesName={species.name} size={28} />
                           )}
                         </Box>
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography variant="h6">{species.name}</Typography>
-                          <Stack
-                            direction="row"
-                            flexWrap="wrap"
-                            gap={1}
-                            sx={{ mt: 1 }}
-                          >
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={600}>
+                          {species.name}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" flexWrap="wrap" gap={0.5}>
+                          <Chip
+                            size="small"
+                            color={species.active ? 'success' : 'default'}
+                            label={
+                              species.active
+                                ? t('speciesDirectory.activeNow')
+                                : t('speciesDirectory.inHistory')
+                            }
+                          />
+                          {typeof species.count === 'number' ? (
                             <Chip
                               size="small"
-                              color={species.active ? 'success' : 'default'}
-                              label={
-                                species.active
-                                  ? t('speciesDirectory.activeNow')
-                                  : t('speciesDirectory.inHistory')
-                              }
+                              variant="outlined"
+                              label={t('speciesDirectory.recordsCount', {
+                                count: species.count,
+                              })}
                             />
-                            {typeof species.count === 'number' ? (
-                              <Chip
-                                size="small"
-                                variant="outlined"
-                                label={t('speciesDirectory.recordsCount', {
-                                  count: species.count,
-                                })}
-                              />
-                            ) : null}
-                          </Stack>
-                          {species.description ? (
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{ mt: 1.5 }}
-                            >
-                              {species.description}
-                            </Typography>
                           ) : null}
-                        </Box>
-                      </Stack>
-                    </CardContent>
-                    <CardActions>
-                      <Button
-                        component={RouterLink}
-                        to={`/species/${species.id}`}
-                        size="small"
-                        title={t('speciesDirectory.openSpeciesTooltip')}
-                      >
-                        {t('speciesDirectory.openSpecies')}
-                      </Button>
-                      <Button
-                        component={RouterLink}
-                        to={`/timeline?speciesId=${species.id}`}
-                        size="small"
-                        color="inherit"
-                        title={t('speciesDirectory.openRecordingsTooltip')}
-                      >
-                        {t('speciesDirectory.openRecordingsForSpecies')}
-                      </Button>
-                    </CardActions>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
+                          {species.catalog_card_incomplete ? (
+                            <Chip
+                              size="small"
+                              color="warning"
+                              variant="outlined"
+                              label={t('speciesDirectory.badgeIncomplete')}
+                            />
+                          ) : null}
+                        </Stack>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          justifyContent="flex-end"
+                          flexWrap="wrap"
+                        >
+                          <Button
+                            component={RouterLink}
+                            to={`/species/${species.id}`}
+                            size="small"
+                          >
+                            {t('speciesDirectory.openSpecies')}
+                          </Button>
+                          <Button
+                            component={RouterLink}
+                            to={`/timeline?speciesId=${species.id}`}
+                            size="small"
+                            color="inherit"
+                          >
+                            {t('speciesDirectory.openRecordingsForSpecies')}
+                          </Button>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           )}
         </>
       ) : null}

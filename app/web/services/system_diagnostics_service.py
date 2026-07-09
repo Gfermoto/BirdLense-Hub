@@ -205,6 +205,89 @@ def delete_broken_video_rows(payload) -> tuple[dict, int]:
         return {"error": "Failed to delete broken video rows"}, 500
 
 
+def preview_broken_video_rows_purge(*, limit: int = 100, max_scan: int = 100_000) -> dict:
+    """Dry-run: report broken Video rows reconcile would delete."""
+    max_scan = max(1000, min(max_scan, 500_000))
+    limit = max(1, min(limit, 5000))
+    inv = scan_broken_videos_inventory(
+        max_scan=max_scan,
+        collect_ids_limit=limit,
+    )
+    video_ids = inv["ids_to_delete"]
+    if video_ids:
+        _log.info(
+            "broken db purge dry-run: would_delete=%s sample_video_ids=%s",
+            len(video_ids),
+            video_ids[:5],
+        )
+    return {
+        "dry_run": True,
+        "would_delete_count": len(video_ids),
+        "deleted_count": 0,
+        "sample_video_ids": video_ids[:10],
+        "scanned": inv["scanned"],
+        "broken_total": inv["broken_total"],
+        "by_reason": inv["by_reason"],
+        "more_batches_suggested": len(video_ids) >= limit,
+    }
+
+
+def apply_broken_video_rows_purge(*, limit: int = 100, max_scan: int = 100_000) -> dict:
+    """Remove broken Video rows (missing/unreadable file); reconcile internal path."""
+    max_scan = max(1000, min(max_scan, 500_000))
+    limit = max(1, min(limit, 5000))
+    inv = scan_broken_videos_inventory(
+        max_scan=max_scan,
+        collect_ids_limit=limit,
+    )
+    video_ids = inv["ids_to_delete"]
+    if not video_ids:
+        return {
+            "deleted_count": 0,
+            "scanned": inv["scanned"],
+            "more_batches_suggested": False,
+        }
+
+    videos = Video.query.filter(Video.id.in_(video_ids)).all()
+    by_id = {v.id: v for v in videos}
+    not_broken = [vid for vid in video_ids if vid not in by_id or broken_video_row_payload(by_id[vid]) is None]
+    if not_broken:
+        return {
+            "deleted_count": 0,
+            "skipped_not_broken": sorted(not_broken),
+            "scanned": inv["scanned"],
+        }
+
+    ordered = [by_id[vid] for vid in video_ids if vid in by_id]
+    deleted_video_ids, deleted_dirs = _cascade_delete_videos_collect_dirs(ordered)
+
+    cleanup_log = ActivityLog(
+        type="admin_diagnostics_cleanup",
+        data=json.dumps(
+            {
+                "action": "broken_video_rows_reconcile_purge",
+                "bucket": "broken_video_row",
+                "video_ids": deleted_video_ids,
+                "batch_limit": limit,
+            }
+        ),
+    )
+    db.session.add(cleanup_log)
+    db.session.commit()
+
+    deleted_files, deleted_size = _remove_recording_dirs(deleted_dirs)
+    bust_response_caches()
+    bust_system_response_caches()
+    return {
+        "deleted_count": len(deleted_video_ids),
+        "deleted_video_ids": deleted_video_ids,
+        "deleted_files": deleted_files,
+        "deleted_size": deleted_size,
+        "scanned": inv["scanned"],
+        "more_batches_suggested": len(deleted_video_ids) >= limit,
+    }
+
+
 def purge_broken_video_rows(payload) -> tuple[dict, int]:
     try:
         dry_run = bool(payload.get("dry_run", True))
@@ -396,6 +479,7 @@ def purge_no_species_video_rows(payload) -> tuple[dict, int]:
 
 def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
     from services.birdnet_fifo_view_service import try_build_birdnet_fifo_snapshot_from_db
+    from services.system_operational_status import enrich_birdnet_fifo_response
 
     db_snapshot = try_build_birdnet_fifo_snapshot_from_db()
     if db_snapshot is not None:
@@ -405,12 +489,13 @@ def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
         except (TypeError, ValueError):
             stale_sec = 180
         stale_sec = max(30, min(stale_sec, 86_400))
-        return {
+        body = {
             "snapshot_relative_path": rel,
             "snapshot_stale": False,
             "stale_threshold_sec": stale_sec,
             **db_snapshot,
-        }, 200
+        }
+        return enrich_birdnet_fifo_response(body, app_config_get=app_config.get), 200
 
     rel = os.path.join("diagnostics", "birdnet_fifo_snapshot.json").replace("\\", "/")
     path = os.path.join(data_paths.data_dir(), "diagnostics", "birdnet_fifo_snapshot.json")
@@ -424,7 +509,7 @@ def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
         "file_exists": os.path.isfile(path),
     }
     if not meta["file_exists"]:
-        return {
+        body = {
             **meta,
             "available": False,
             "reason": "snapshot_file_missing",
@@ -432,7 +517,8 @@ def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
                 "Файл ещё не создан: нет процессора/MQTT, нет событий BirdNET, "
                 "или отключено processor.birdnet_fifo_snapshot_enabled."
             ),
-        }, 200
+        }
+        return enrich_birdnet_fifo_response(body, app_config_get=app_config.get), 200
     try:
         st = os.stat(path)
         meta["file_size_bytes"] = st.st_size
@@ -448,10 +534,42 @@ def build_birdnet_fifo_snapshot_response() -> tuple[dict, int]:
         return {"error": f"Failed to read snapshot: {e}", **meta}, 500
     except json.JSONDecodeError as e:
         return {"error": f"Invalid snapshot JSON: {e}", **meta}, 500
-    return {
+    body = {
         **meta,
         "available": True,
         "snapshot": snapshot,
+    }
+    return enrich_birdnet_fifo_response(body, app_config_get=app_config.get), 200
+
+
+def build_processor_backpressure_response() -> tuple[dict, int]:
+    """Queue depths and drop counters from processor runtime snapshot (#510)."""
+    body, code = build_processor_runtime_snapshot_response()
+    if code != 200:
+        return body, code
+    snap = body.get("snapshot") if isinstance(body, dict) else None
+    gauges = (snap or {}).get("gauges") if isinstance(snap, dict) else {}
+    counters = (snap or {}).get("counters") if isinstance(snap, dict) else {}
+    keys_g = (
+        "finalize_queue_depth",
+        "finalize_queue_maxsize",
+        "finalize_queue_saturated",
+        "classification_queue_depth",
+        "classification_queue_maxsize",
+        "classification_task_drops_total",
+        "mqtt_events_queue_depth",
+        "mqtt_outbound_queue_depth",
+    )
+    keys_c = (
+        "recording_trigger_deferred_finalize_backpressure_total",
+        "classification_task_drops_total",
+    )
+    return {
+        "available": bool(body.get("available")),
+        "generated_at": (snap or {}).get("generated_at"),
+        "gauges": {k: gauges[k] for k in keys_g if k in gauges},
+        "counters": {k: counters[k] for k in keys_c if k in counters},
+        "snapshot_stale": body.get("file_age_sec", 0) > 120 if body.get("file_age_sec") else None,
     }, 200
 
 

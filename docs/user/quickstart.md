@@ -1,67 +1,42 @@
-# Quickstart — BirdLense Hub
+# Быстрый старт
 
-[Русский](../ru/quickstart.ru.md)
-
-Fastest paths for the three common jobs: run the hub, develop locally, or verify a deploy.
-
-## 1. Run on one machine
-
-From the repository root — **one command** (Docker, `app/.env`, stack, health checks):
-
-```bash
-./install.sh
-```
-
-Pre-built image (no local `docker compose build`):
-
-```bash
-./install.sh --pull
-```
-
-Same via Make: `make install` / `make install-pull`.
-
-What success looks like:
-
-- UI opens at `http://127.0.0.1:8085`
-- Script ends after `verify-stack` (health / readiness / status)
-- Settings page loads even if cameras / MQTT are not configured yet
-
-## 2. Local development
-
-From the repository root:
+## Минимальный запуск
 
 ```bash
 cd app
-make local
+cp .env.example .env
+# отредактировать FLASK_SECRET_KEY и PROCESSOR_SECRET
+make build && make start
+```
+
+## Проверка
+
+```bash
+# Health check
+curl http://localhost:8085/api/health
+# или
 make verify
-make test-web
 ```
 
-UI dependencies use **Node 22** in `app/ui/`. Full details: [LOCAL_DEV](../contributor/local-dev.md).
+## Веб-интерфейс
 
-### Full CI locally (no GitHub push)
+Откройте `http://<orin-ip>:8085/` в браузере.
 
-From the **repository root** (Node **≥ 22** required for the UI step):
+## Первичная настройка
 
-```bash
-make ci-local
-```
+1. System → «Сканировать и импортировать» — найти записи
+2. Настроить источники (RTSP) в конфиге
+3. Проверить, что GPU используется: `docker exec birdlense-hub nvidia-smi`
 
-Adds **`.venv-ci`** / **`.venv-docs`** (gitignored). For Docker image tests + Playwright smoke: `make ci-local-docker`. See [CI_AND_QUALITY](../contributor/ci-and-quality.md).
+## Makefile команды
 
-## 3. Deploy to a server
+| Команда | Описание |
+|---------|----------|
+| `make build` | Собрать Docker образ |
+| `make start` | Запустить контейнеры |
+| `make stop` | Остановить контейнеры |
+| `make logs` | Логи контейнера |
+| `make verify` | Health check |
+| `make deploy` | Деплой на удалённый хост |
 
-From the repository root:
-
-```bash
-make deploy
-BASE_URL=https://YOUR_HOST make verify
-```
-
-Success contract after deploy:
-
-- `/api/ui/health` returns `{"status":"ok"}`
-- `/api/ui/readiness` returns `"ready": true`
-- `/api/ui/status` reports `"web": "ok"`
-
-For the full deploy path, SSH notes, and data-safety details, see [INSTALL](./install.md) and [DEPLOY_SERVER](./deploy-server.md).
+См. [`install.md`](install.md) · [`overview.md`](overview.md).

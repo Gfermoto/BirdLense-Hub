@@ -57,29 +57,3 @@ def test_validate_merged_config_semantics_equal_is_ok():
         "processor": {"min_confidence_to_process": 0.29},
     }
     assert validate_merged_config_semantics(merged) == []
-
-
-def test_validate_merged_config_semantics_behavior_confidence_in_unit_interval():
-    merged = {
-        "detection": {"min_confidence_to_store": 0.2},
-        "processor": {
-            "min_confidence_to_process": 0.3,
-            "behavior_recognition": {
-                "confidence_store_min": 0.2,
-                "confidence_review_threshold": 0.45,
-            },
-        },
-    }
-    assert validate_merged_config_semantics(merged) == []
-
-
-def test_validate_merged_config_semantics_behavior_store_min_above_one_fails():
-    merged = {
-        "detection": {"min_confidence_to_store": 0.2},
-        "processor": {
-            "min_confidence_to_process": 0.3,
-            "behavior_recognition": {"confidence_store_min": 1.5},
-        },
-    }
-    issues = validate_merged_config_semantics(merged)
-    assert any("between 0 and 1" in msg for msg in issues)

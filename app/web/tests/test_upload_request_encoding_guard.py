@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 
-def test_upload_rejects_gzip_content_encoding(client):
+def test_file_upload_rejects_gzip_content_encoding(client):
     """gzip в заголовке → 415 до декораторов auth."""
     r = client.post(
-        "/api/ui/system/processor-weights/upload",
+        "/api/ui/system/file-test/upload",
         headers={"Content-Encoding": "gzip"},
         data=b"x",
     )
@@ -15,9 +15,9 @@ def test_upload_rejects_gzip_content_encoding(client):
     assert body.get("error")
 
 
-def test_upload_allows_missing_content_encoding(client):
+def test_file_upload_allows_missing_content_encoding(client):
     """Без Content-Encoding доходит до вью (не 415)."""
-    r = client.post("/api/ui/system/processor-weights/upload", data={})
+    r = client.post("/api/ui/system/file-test/upload", data={})
     assert r.status_code != 415
 
 

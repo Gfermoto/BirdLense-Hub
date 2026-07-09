@@ -48,12 +48,18 @@ class OrMotionDetector:
         """Block until any detector fires. Returns True."""
         poll_interval = 0.05
         while True:
-            for name, detector in self._detectors:
-                if self._check_detector(detector):
-                    self._triggered_by = name
-                    logger.info("Motion: %s trigger", name)
-                    return True
+            if self.check():
+                logger.info("Motion: %s trigger", self._triggered_by)
+                return True
             time.sleep(poll_interval)
+
+    def check(self) -> bool:
+        """Non-blocking poll: True when any child detector fires."""
+        for name, detector in self._detectors:
+            if self._check_detector(detector):
+                self._triggered_by = name
+                return True
+        return False
 
     def get_triggered_camera(self):
         """Return triggered camera when current detector exposes it."""
@@ -100,6 +106,17 @@ class OrMotionDetector:
             if callable(fn):
                 payload = fn()
                 if isinstance(payload, dict) and payload:
+                    return payload
+        return None
+
+    def get_opencv_diagnostics(self):
+        for name, detector in self._detectors:
+            if name not in {"opencv", "additional"}:
+                continue
+            fn = getattr(detector, "diagnostics", None)
+            if callable(fn):
+                payload = fn()
+                if isinstance(payload, dict):
                     return payload
         return None
 

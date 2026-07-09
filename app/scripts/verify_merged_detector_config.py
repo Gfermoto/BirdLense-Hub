@@ -1,0 +1,358 @@
+#!/usr/bin/env python3
+"""Merged detector config guards — post-deploy / CI parity (#YOLO-blind circle-break)."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+from typing import Any
+
+_DAHUA_DETECT_MAIN = re.compile(
+    r"realmonitor.*subtype\s*=\s*0\b",
+    re.IGNORECASE,
+)
+_MAX_BIRD_OVERRIDE = 0.1
+_LORES_TOLERANCE_PX = 2
+
+
+def capture_wh_matches_inference_lores(
+    capture_wh: tuple[int, int],
+    lores_wh: tuple[int, int],
+    *,
+    tolerance_px: int = _LORES_TOLERANCE_PX,
+) -> bool:
+    """True when live detect capture WxH matches processor.inference_lores_wh."""
+    cw, ch = int(capture_wh[0]), int(capture_wh[1])
+    lw, lh = int(lores_wh[0]), int(lores_wh[1])
+    tol = max(0, int(tolerance_px))
+    return abs(cw - lw) <= tol and abs(ch - lh) <= tol
+
+
+def _parse_lores_wh(proc: dict[str, Any]) -> tuple[int, int] | None:
+    raw = proc.get("inference_lores_wh")
+    if isinstance(raw, (list, tuple)) and len(raw) >= 2:
+        try:
+            return int(raw[0]), int(raw[1])
+        except (TypeError, ValueError):
+            return None
+    px = proc.get("inference_lores_px")
+    if px is not None:
+        try:
+            side = int(px)
+            return side, side
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def _collect_detect_rtsp_urls(cfg: dict[str, Any]) -> list[str]:
+    out: list[str] = []
+    video = cfg.get("video") or {}
+    for cam in video.get("cameras") or []:
+        if not isinstance(cam, dict):
+            continue
+        val = cam.get("detect_stream_name")
+        if isinstance(val, str) and val.strip().lower().startswith("rtsp"):
+            out.append(val.strip())
+    proc = cfg.get("processor") or {}
+    overrides = proc.get("camera_overrides") or {}
+    if isinstance(overrides, dict):
+        for cam_cfg in overrides.values():
+            if not isinstance(cam_cfg, dict):
+                continue
+            val = cam_cfg.get("detect_stream_name")
+            if isinstance(val, str) and val.strip().lower().startswith("rtsp"):
+                out.append(val.strip())
+    return out
+
+
+def _repo_layout() -> tuple[Path, Path, Path]:
+    """Return (repo_root, default_config_path, user_config_path) for host or container."""
+    here = Path(__file__).resolve()
+    repo = here.parents[1]
+    if (repo / "app_config").is_dir():
+        return (
+            repo,
+            repo / "app_config/default_config.yaml",
+            repo / "app_config/user_config.yaml",
+        )
+    return (
+        repo,
+        repo / "app/app_config/default_config.yaml",
+        repo / "app/app_config/user_config.yaml",
+    )
+
+
+REPO, _DEFAULT, _USER = _repo_layout()
+
+
+def _load_yaml(path: Path) -> dict[str, Any]:
+    import yaml
+
+    if not path.is_file():
+        return {}
+    payload = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _merge(default: dict[str, Any], user: dict[str, Any]) -> dict[str, Any]:
+    app_root = REPO if (REPO / "app_config").is_dir() else REPO / "app"
+    sys.path.insert(0, str(app_root))
+    from app_config.app_config import AppConfig
+
+    return AppConfig.merge_dicts(default, user)
+
+
+def _as_bool(value: Any, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    if text in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
+def _collect_rtsp_strings(cfg: dict[str, Any]) -> list[str]:
+    out: list[str] = []
+    video = cfg.get("video") or {}
+    for cam in video.get("cameras") or []:
+        if not isinstance(cam, dict):
+            continue
+        for key in ("detect_stream_name", "stream_name", "rtsp_url", "url"):
+            val = cam.get(key)
+            if isinstance(val, str) and val.strip():
+                out.append(val.strip())
+    proc = cfg.get("processor") or {}
+    overrides = proc.get("camera_overrides") or {}
+    if isinstance(overrides, dict):
+        for cam_cfg in overrides.values():
+            if not isinstance(cam_cfg, dict):
+                continue
+            for key in ("detect_stream_name", "stream_name"):
+                val = cam_cfg.get(key)
+                if isinstance(val, str) and val.strip():
+                    out.append(val.strip())
+    return out
+
+
+def evaluate_detector_guards(
+    *,
+    default: dict[str, Any],
+    user: dict[str, Any],
+) -> dict[str, Any]:
+    merged = _merge(default, user)
+    proc = merged.get("processor") or {}
+    default_proc = default.get("processor") or {}
+    issues: list[dict[str, Any]] = []
+    warns: list[dict[str, Any]] = []
+
+    overrides = proc.get("species_confidence_overrides") or {}
+    bird_val: float | None = None
+    if isinstance(overrides, dict) and overrides.get("Bird") is not None:
+        try:
+            bird_val = float(overrides["Bird"])
+        except (TypeError, ValueError):
+            bird_val = None
+    if bird_val is not None and bird_val > _MAX_BIRD_OVERRIDE:
+        issues.append(
+            {
+                "key": "processor.species_confidence_overrides.Bird",
+                "merged": bird_val,
+                "severity": "critical",
+                "reason": f"Bird override must be <= {_MAX_BIRD_OVERRIDE}",
+            }
+        )
+
+    for text in _collect_detect_rtsp_urls(merged):
+        if _DAHUA_DETECT_MAIN.search(text):
+            warns.append(
+                {
+                    "key": "video.cameras[].detect_stream_name",
+                    "value": text[:120],
+                    "severity": "warn",
+                    "reason": "Dahua detect must use subtype=1 (704×576); subtype=0 is main → YOLO blind",
+                }
+            )
+
+    return {
+        "schema": "merged_detector_guards@v1",
+        "ok": len(issues) == 0,
+        "critical_count": len(issues),
+        "warn_count": len(warns),
+        "issues": issues,
+        "warnings": warns,
+        "merged_snapshot": {
+            "species_confidence_overrides.Bird": bird_val,
+        },
+    }
+
+
+def evaluate_detect_probe_resolution(cfg: dict[str, Any]) -> list[dict[str, Any]]:
+    """Probe detect RTSP URLs; fail when WxH ≠ inference_lores_wh."""
+    proc = cfg.get("processor") or {}
+    lores_wh = _parse_lores_wh(proc)
+    if lores_wh is None:
+        return []
+    issues: list[dict[str, Any]] = []
+    for text in _collect_detect_rtsp_urls(cfg):
+        try:
+            import cv2
+
+            cap = cv2.VideoCapture(text)
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            frame = None
+            for _ in range(25):
+                ok, fr = cap.read()
+                if ok and fr is not None:
+                    frame = fr
+                    break
+            cap.release()
+            if frame is None:
+                issues.append(
+                    {
+                        "key": "detect_probe_resolution",
+                        "value": text[:80],
+                        "severity": "critical",
+                        "reason": "detect RTSP probe: no frame",
+                    }
+                )
+                continue
+            wh = (int(frame.shape[1]), int(frame.shape[0]))
+            if not capture_wh_matches_inference_lores(wh, lores_wh):
+                issues.append(
+                    {
+                        "key": "detect_probe_resolution",
+                        "capture_wh": list(wh),
+                        "expected_lores_wh": list(lores_wh),
+                        "severity": "critical",
+                        "reason": "detect capture resolution must match inference_lores_wh",
+                    }
+                )
+        except Exception as exc:  # noqa: BLE001
+            issues.append(
+                {
+                    "key": "detect_probe_resolution",
+                    "value": text[:80],
+                    "severity": "critical",
+                    "reason": f"probe failed: {type(exc).__name__}",
+                }
+            )
+    return issues
+
+
+def _yolo_one_frame_smoke() -> dict[str, Any]:
+    """Optional in-container smoke: one predict on bundled or latest recording frame."""
+    import cv2
+
+    weights = Path("/app/processor/models/detection/trapper_ai_v02_2024")
+    if not weights.is_dir():
+        weights = (
+            REPO / "processor/models/detection/trapper_ai_v02_2024"
+            if (REPO / "processor").is_dir()
+            else REPO / "app/processor/models/detection/trapper_ai_v02_2024"
+        )
+    model_path: Path | None = None
+    for cand in (
+        weights / "trapper_ai_v02_2024.onnx",
+        weights / "trapper_ai_v02_2024.pt",
+    ):
+        if cand.exists():
+            model_path = cand
+            break
+    if model_path is None:
+        return {"status": "skipped", "reason": "no_detector_weights"}
+
+    frame = None
+    test_images = [
+        REPO / "app/processor/tests/fixtures/bird_frame.jpg",
+        Path("/app/processor/tests/fixtures/bird_frame.jpg"),
+    ]
+    for img in test_images:
+        if img.is_file():
+            frame = cv2.imread(str(img))
+            if frame is not None:
+                break
+    if frame is None:
+        rec_root = Path("/app/data/recordings") if Path("/app/data").is_dir() else REPO / "app/data/recordings"
+        if rec_root.is_dir():
+            for mp4 in sorted(rec_root.rglob("video.mp4"), reverse=True)[:5]:
+                cap = cv2.VideoCapture(str(mp4))
+                ok, frame = cap.read()
+                cap.release()
+                if ok and frame is not None:
+                    break
+    if frame is None:
+        return {"status": "skipped", "reason": "no_test_frame"}
+
+    try:
+        from ultralytics import YOLO
+
+        model = YOLO(str(model_path))
+        res = model.predict(frame, conf=0.08, imgsz=704, verbose=False)[0]
+        boxes = len(res.boxes) if res.boxes is not None else 0
+        return {
+            "status": "ok" if boxes > 0 else "warn",
+            "model": str(model_path.name),
+            "boxes": boxes,
+            "reason": "boxes>=1" if boxes > 0 else "zero_boxes_on_smoke_frame",
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Merged detector config guards")
+    ap.add_argument("--default-config", type=Path, default=_DEFAULT)
+    ap.add_argument("--user-config", type=Path, default=_USER)
+    ap.add_argument("--yolo-smoke", action="store_true", help="optional one-frame detector smoke")
+    ap.add_argument(
+        "--probe-resolution",
+        action="store_true",
+        help="probe detect RTSP and assert WxH matches inference_lores_wh",
+    )
+    ap.add_argument("--json", action="store_true")
+    args = ap.parse_args()
+
+    default = _load_yaml(args.default_config)
+    user = _load_yaml(args.user_config) if args.user_config.is_file() else {}
+    report = evaluate_detector_guards(default=default, user=user)
+    merged = _merge(default, user)
+    if args.probe_resolution:
+        probe_issues = evaluate_detect_probe_resolution(merged)
+        report["issues"] = list(report.get("issues") or []) + probe_issues
+        report["critical_count"] = len(report.get("issues") or [])
+        report["ok"] = report["critical_count"] == 0
+    if args.yolo_smoke:
+        report["yolo_smoke"] = _yolo_one_frame_smoke()
+
+    if args.json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        print(f"merged_detector_guards: ok={report['ok']} critical={report['critical_count']} warn={report['warn_count']}")
+        for item in report.get("issues") or []:
+            print(f"  CRITICAL {item['key']}: {item.get('reason')}")
+        for item in report.get("warnings") or []:
+            print(f"  WARN {item['key']}: {item.get('reason')}")
+        if "yolo_smoke" in report:
+            ys = report["yolo_smoke"]
+            print(f"  yolo_smoke: {ys.get('status')} ({ys.get('reason') or ys.get('error', '')})")
+
+    fail = not report["ok"]
+    if args.yolo_smoke:
+        ys = report.get("yolo_smoke") or {}
+        if ys.get("status") == "error":
+            fail = True
+    return 1 if fail else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

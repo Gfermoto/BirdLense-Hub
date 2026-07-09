@@ -10,7 +10,7 @@ USE_PULL=0
 NON_INTERACTIVE=0
 UI_PORT="${BIRDLENSE_PORT:-8085}"
 DATA_DIR="${APP_DIR}/data"
-GPU_PROFILE="${BIRDLENSE_PROFILE:-cpu}"
+GPU_PROFILE="${BIRDLENSE_PROFILE:-nvidia}"
 BACKUP_PATH="${ROOT_DIR}/birdlense-backup-$(date +%Y%m%d_%H%M%S).tgz"
 RESTORE_PATH=""
 
@@ -23,7 +23,7 @@ usage() {
 BirdLense Hub installer
 
 Usage:
-  ./install.sh [--pull] [--dry-run] [--yes] [--port N] [--data-dir PATH] [--gpu cpu|intel|nvidia]
+  ./install.sh [--pull] [--dry-run] [--yes] [--port N] [--data-dir PATH] [--gpu nvidia]
   ./install.sh --update [--pull] [--dry-run]
   ./install.sh --uninstall [--dry-run]
   ./install.sh --backup [--backup-file PATH]
@@ -124,8 +124,8 @@ validate_port() {
 
 validate_gpu() {
   case "${GPU_PROFILE}" in
-    cpu|intel|nvidia) ;;
-    *) die "Unsupported GPU profile: ${GPU_PROFILE}. Use cpu|intel|nvidia." ;;
+    nvidia) ;;
+    *) die "Unsupported GPU profile: ${GPU_PROFILE}. Use nvidia (Orin-only platform)." ;;
   esac
 }
 
@@ -137,7 +137,7 @@ interactive_wizard() {
   [[ -n "${ans_port}" ]] && UI_PORT="${ans_port}"
   read -r -p "Data directory [${DATA_DIR}]: " ans_data
   [[ -n "${ans_data}" ]] && DATA_DIR="${ans_data}"
-  read -r -p "GPU profile cpu|intel|nvidia [${GPU_PROFILE}]: " ans_gpu
+  read -r -p "GPU profile nvidia [${GPU_PROFILE}]: " ans_gpu
   [[ -n "${ans_gpu}" ]] && GPU_PROFILE="${ans_gpu}"
   read -r -p "Use prebuilt image (--pull) y/N: " ans_pull
   case "${ans_pull:-N}" in

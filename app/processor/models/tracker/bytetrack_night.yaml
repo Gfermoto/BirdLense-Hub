@@ -1,9 +1,0 @@
-# Deprecated night preset — новые установки: bytetrack_birdlense_night.yaml (строже, меньше ghost-tracks).
-
-tracker_type: bytetrack
-track_high_thresh: 0.45
-track_low_thresh: 0.08
-new_track_thresh: 0.45
-track_buffer: 60
-match_thresh: 0.85
-fuse_score: true

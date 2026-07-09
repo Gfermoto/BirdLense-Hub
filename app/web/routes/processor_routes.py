@@ -10,11 +10,16 @@ import json
 import threading
 from datetime import timezone
 
+from services.processor_ingest.ingest_timing import (
+    IngestTimingRecorder,
+    merge_ingest_timing_response,
+)
+
 from flask import request
 from sqlalchemy.exc import IntegrityError
 
 from models import db, BirdFood, Video, VideoSpecies, Species
-from util import fetch_weather, notify, filter_feeder_species
+from util import fetch_weather_for_ingest, notify, filter_feeder_species
 from services.visit_processor import VisitProcessor
 from app_config.app_config import app_config
 from services.api_json_validation import (
@@ -27,12 +32,15 @@ from services.processor_ingest.gateway import (
     check_processor_secret_token,
     fire_webhook,
     is_safe_webhook_url,
+    log_ingest_activity,
 )
 from services.runtime_env import is_production_runtime
 from services.processor_ingest.activity_log_ingest import upsert_activity_log_from_processor
 from services.processor_ingest.notify_ingest import process_processor_notify_detections
 from services.processor_ingest.video_ingest import prepare_processor_video
+from services.active_learning_service import mine_hard_examples
 from recording_layout_paths import RECORDING_VIDEO_PATH_RE
+from timeline_payloads import _infer_trigger_source_from_detections
 
 # Path traversal protection (см. recording_layout_paths + SECURITY.md).
 VIDEO_PATH_RE = RECORDING_VIDEO_PATH_RE
@@ -103,6 +111,65 @@ def _canonical_detection_row(row: dict) -> dict:
         "individual_nickname": str(row.get("individual_nickname") or "").strip(),
         "frames": _canonical_frames(row.get("frames")),
     }
+
+
+def _is_valid_norm_bbox(value) -> bool:
+    if not isinstance(value, (list, tuple)) or len(value) < 4:
+        return False
+    try:
+        x1, y1, x2, y2 = [float(v) for v in value[:4]]
+    except (TypeError, ValueError):
+        return False
+    if not (x2 > x1 and y2 > y1):
+        return False
+    low, high = -0.05, 1.05
+    return all(low <= v <= high for v in (x1, y1, x2, y2))
+
+
+def _enforce_video_bbox_track_contract(species_list: list[dict]) -> tuple[list[dict], dict]:
+    """Prune invalid video detections for provider rows that must have track frames."""
+    kept: list[dict] = []
+    stats = {
+        "dropped_missing_frames": 0,
+        "dropped_empty_bbox": 0,
+        "pruned_invalid_bbox_frames": 0,
+    }
+    providers_requiring_frames = {
+        "yolo",
+        "opencv",
+        "detector",
+        "binary",
+        "motion_detector",
+        "or_motion",
+    }
+    for row in species_list or []:
+        source = str((row or {}).get("source") or "").strip().lower()
+        provider = str((row or {}).get("detection_provider") or "").strip().lower()
+        require_contract = source == "video" and (
+            provider in providers_requiring_frames or bool((row or {}).get("yolo_track_present"))
+        )
+        if not require_contract:
+            kept.append(row)
+            continue
+        frames = row.get("frames")
+        if isinstance(frames, str):
+            try:
+                frames = json.loads(frames)
+            except (TypeError, ValueError):
+                frames = None
+        if not isinstance(frames, list) or not frames:
+            stats["dropped_missing_frames"] += 1
+            continue
+        valid_frames = [fr for fr in frames if isinstance(fr, dict) and _is_valid_norm_bbox(fr.get("bbox"))]
+        if not valid_frames:
+            stats["dropped_empty_bbox"] += 1
+            continue
+        if len(valid_frames) != len(frames):
+            stats["pruned_invalid_bbox_frames"] += int(len(frames) - len(valid_frames))
+            row = dict(row)
+            row["frames"] = valid_frames
+        kept.append(row)
+    return kept, stats
 
 
 def _build_species_payload_hash(*, species_list: list[dict]) -> str:
@@ -207,26 +274,54 @@ def register_routes(app):
     def create_video():
         if not _check_processor_secret():
             return {"error": "Forbidden"}, 403
+        timing = IngestTimingRecorder()
         data, perr = parse_request_json_dict(request)
+        timing.lap("parse_ms")
         if perr is not None:
             return perr, 400
         if not data:
             return {"error": "JSON body required"}, 400
         min_conf = float(app_config.get("detection.min_confidence_to_store") or 0.05)
         prep = prepare_processor_video(data, min_confidence=min_conf)
+        timing.lap("prepare_ms")
         if prep[0] is False:
             return prep[1], prep[2]
         pv = prep[1]
+        pruned_species_list, prune_stats = _enforce_video_bbox_track_contract(pv.species_list)
+        timing.lap("contract_ms")
+        if not pruned_species_list:
+            return {
+                "error": ("No valid video detections after bbox/track contract validation"),
+                "reason": "video_bbox_track_contract_empty",
+            }, 400
+        if any(int(v or 0) > 0 for v in prune_stats.values()):
+            app.logger.warning(
+                "processor_ingest pruned invalid video rows: missing_frames=%s empty_bbox=%s pruned_frames=%s",
+                int(prune_stats.get("dropped_missing_frames") or 0),
+                int(prune_stats.get("dropped_empty_bbox") or 0),
+                int(prune_stats.get("pruned_invalid_bbox_frames") or 0),
+            )
+            log_ingest_activity(
+                "ingest_gate",
+                {
+                    "reason": "video_bbox_track_contract_pruned",
+                    "video_path": str(pv.video_path or "").strip(),
+                    "dropped_missing_frames": int(prune_stats.get("dropped_missing_frames") or 0),
+                    "dropped_empty_bbox": int(prune_stats.get("dropped_empty_bbox") or 0),
+                    "pruned_invalid_bbox_frames": int(prune_stats.get("pruned_invalid_bbox_frames") or 0),
+                },
+            )
         clip_key = _build_clip_idempotency_key(
             processor_version=data["processor_version"],
             pv=pv,
         )
-        payload_hash = _build_species_payload_hash(species_list=pv.species_list)
+        payload_hash = _build_species_payload_hash(species_list=pruned_species_list)
         existing_video = _find_existing_video_for_idempotent_ingest(
             processor_version=data["processor_version"],
             pv=pv,
             clip_key=clip_key,
         )
+        timing.lap("idempotency_ms")
         if existing_video is not None:
             existing_payload_hash = str(existing_video.ingest_payload_hash or "").strip()
             if not existing_payload_hash:
@@ -240,13 +335,18 @@ def register_routes(app):
                     video_id=existing_video.id,
                     reason="payload_hash_mismatch",
                 )
-            return {
-                "message": "Video already ingested.",
-                "video_id": existing_video.id,
-                "duplicate": True,
-            }, 200
+            return merge_ingest_timing_response(
+                {
+                    "message": "Video already ingested.",
+                    "video_id": existing_video.id,
+                    "duplicate": True,
+                },
+                timing.finish(),
+            ), 200
 
         try:
+            weather = fetch_weather_for_ingest()
+            timing.lap("weather_ms")
             video = Video(
                 processor_version=data["processor_version"],
                 start_time=pv.start_time,
@@ -254,9 +354,32 @@ def register_routes(app):
                 video_path=pv.video_path,
                 idempotency_key=clip_key,
                 ingest_payload_hash=payload_hash,
-                spectrogram_path=pv.spectrogram_path,
-                **fetch_weather(),
+                **weather,
             )
+            raw_trigger_source = str(data.get("trigger_source") or "").strip().lower()
+            inferred_trigger_source = None
+            if not raw_trigger_source:
+                inferred = _infer_trigger_source_from_detections(pruned_species_list)
+                if inferred in {
+                    "opencv",
+                    "frigate",
+                    "motion_sensor",
+                    "scales",
+                }:
+                    inferred_trigger_source = inferred
+            if raw_trigger_source in {
+                "opencv",
+                "frigate",
+                "motion_sensor",
+                "scales",
+                "unknown",
+            }:
+                video.trigger_source = raw_trigger_source
+            elif inferred_trigger_source is not None:
+                video.trigger_source = inferred_trigger_source
+            raw_camera_id = str(data.get("camera_id") or "").strip()
+            if raw_camera_id:
+                video.camera_id = raw_camera_id[:64]
             raw_sw = data.get("scales_weight_delta_kg")
             if raw_sw is not None and app_config.get("integrations.scales.enabled"):
                 try:
@@ -267,40 +390,60 @@ def register_routes(app):
                     pass
             db.session.add(video)
 
-            raw_bl = data.get("behavior_label")
-            raw_bc = data.get("behavior_confidence")
-            if isinstance(raw_bl, str) and raw_bl.strip():
-                video.behavior_label = raw_bl.strip()[:32]
-            if raw_bc is not None:
-                try:
-                    video.behavior_confidence = float(raw_bc)
-                except (TypeError, ValueError):
-                    pass
-
             # Add active bird foods
             active_bird_foods = BirdFood.query.filter_by(active=True).all()
             video.food.extend(active_bird_foods)
 
             visit_timeout = int(app_config.get("detection.dedup_window_seconds") or 60)
             visit_processor = VisitProcessor(db, app.logger, visit_timeout=visit_timeout)
-            visit_processor.process_detections(video, pv.species_list)
+            visit_processor.process_detections(video, pruned_species_list)
+            timing.lap("visit_processor_ms")
 
             db.session.commit()
+            timing.lap("commit_ms")
             bust_all_api_caches()
+            if bool(app_config.get("experimental.active_learning_auto_mine_enabled", True)):
+
+                def _mine_hard_examples_async() -> None:
+                    try:
+                        mine_hard_examples(
+                            lookback_hours=int(
+                                app_config.get("experimental.active_learning_auto_mine_lookback_hours") or 6
+                            ),
+                            max_rows=int(app_config.get("experimental.active_learning_auto_mine_max_rows") or 200),
+                            blind_score_threshold=float(
+                                app_config.get("experimental.active_learning_blind_score_threshold") or 0.5
+                            ),
+                            fallback_ratio_threshold=float(
+                                app_config.get("experimental.active_learning_fallback_ratio_threshold") or 0.35
+                            ),
+                            conf_min=float(app_config.get("experimental.active_learning_conf_min") or 0.20),
+                            conf_max=float(app_config.get("experimental.active_learning_conf_max") or 0.35),
+                        )
+                    except Exception:
+                        app.logger.debug("active learning auto-mine skipped", exc_info=True)
+
+                threading.Thread(target=_mine_hard_examples_async, daemon=True).start()
 
             # Webhook: fire-and-forget
             webhook_url = (app_config.get("webhook.url") or "").strip()
-            if webhook_url and pv.species_list:
+            if webhook_url and pruned_species_list:
                 if is_safe_webhook_url(webhook_url):
                     threading.Thread(
                         target=fire_webhook,
-                        args=(webhook_url, pv.species_list, pv.start_time, app.logger),
+                        args=(webhook_url, pruned_species_list, pv.start_time, app.logger),
                         daemon=True,
                     ).start()
                 else:
                     app.logger.warning("Unsafe webhook.url blocked: %s", webhook_url)
 
-            return {"message": "Video and associated data inserted successfully.", "video_id": video.id}, 201
+            return merge_ingest_timing_response(
+                {
+                    "message": "Video and associated data inserted successfully.",
+                    "video_id": video.id,
+                },
+                timing.finish(),
+            ), 201
 
         except IntegrityError:
             db.session.rollback()
@@ -320,11 +463,14 @@ def register_routes(app):
                         video_id=raced_video.id,
                         reason="payload_hash_mismatch_race",
                     )
-                return {
-                    "message": "Video already ingested.",
-                    "video_id": raced_video.id,
-                    "duplicate": True,
-                }, 200
+                return merge_ingest_timing_response(
+                    {
+                        "message": "Video already ingested.",
+                        "video_id": raced_video.id,
+                        "duplicate": True,
+                    },
+                    timing.finish(),
+                ), 200
             return {"error": "Failed to process video"}, 500
         except Exception as e:
             db.session.rollback()

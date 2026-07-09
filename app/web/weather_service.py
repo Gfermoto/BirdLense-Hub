@@ -5,6 +5,7 @@ Extracted from util.py. util.py re-exports everything here for backward compatib
 
 import logging
 import os
+import threading
 import time
 from datetime import timedelta, datetime
 
@@ -198,6 +199,16 @@ def fetch_weather():
     """Fetch weather using current app_config (picks up settings changes without restart)."""
     fetcher = _get_weather_fetcher()
     return fetcher.fetch()
+
+
+def fetch_weather_for_ingest(*, warm_cache_async: bool = True) -> dict:
+    """Return cached weather only; never block processor finalize on HTTP (#586)."""
+    fetcher = _get_weather_fetcher()
+    if fetcher._is_cache_valid():
+        return dict(fetcher.cached_data or {})
+    if warm_cache_async:
+        threading.Thread(target=fetch_weather, daemon=True).start()
+    return {}
 
 
 # Backward compatibility: ``compat_reexports`` imports this symbol.

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -22,8 +23,53 @@ from services.feedback_loop_service import (
     build_feedback_loop_status as _build_feedback_loop_status,
     export_feedback_learning_dataset as _export_feedback_learning_dataset,
 )
+from services.classifier_calibration_report import (
+    build_report as _build_classifier_calibration_report,
+)
 
 _log = logging.getLogger(__name__)
+
+
+def _safe_div(n: float, d: float) -> float:
+    if d <= 0.0:
+        return 0.0
+    return float(n / d)
+
+
+def _p95(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    arr = sorted(float(v) for v in values)
+    idx = int(math.ceil(0.95 * len(arr))) - 1
+    idx = min(max(idx, 0), len(arr) - 1)
+    return float(arr[idx])
+
+
+def _macro_f1_from_rows(rows: list[tuple[str, str]]) -> tuple[float, list[dict[str, Any]]]:
+    if not rows:
+        return 0.0, []
+    labels = sorted({truth for truth, _ in rows})
+    out: list[dict[str, Any]] = []
+    f1_vals: list[float] = []
+    for label in labels:
+        tp = sum(1 for truth, pred in rows if truth == label and pred == label)
+        fp = sum(1 for truth, pred in rows if truth != label and pred == label)
+        fn = sum(1 for truth, pred in rows if truth == label and pred != label)
+        precision = _safe_div(float(tp), float(tp + fp))
+        recall = _safe_div(float(tp), float(tp + fn))
+        f1 = _safe_div(2.0 * precision * recall, precision + recall)
+        f1_vals.append(f1)
+        out.append(
+            {
+                "label": label,
+                "support": int(sum(1 for truth, _ in rows if truth == label)),
+                "precision": round(precision, 6),
+                "recall": round(recall, 6),
+                "f1": round(f1, 6),
+            }
+        )
+    macro = _safe_div(sum(f1_vals), float(len(f1_vals)))
+    return round(macro, 6), out
 
 
 def build_active_learning_pool_preview(session, *, limit: int = 100) -> tuple[dict[str, Any], int]:
@@ -268,13 +314,130 @@ def build_reid_summary(session) -> tuple[dict[str, Any], int]:
     }, 200
 
 
+def build_similarity_summary_payload(
+    session,
+    *,
+    top_k: int = 5,
+    max_rows: int = 500,
+) -> tuple[dict[str, Any], int]:
+    """Track-level ReID similarity snapshot (S7). Behavior removed — Orin branch."""
+    k = max(1, min(int(top_k or 5), 20))
+    lim = max(20, min(int(max_rows or 500), 5000))
+    try:
+        guardrail_ms = float(app_config.get("processor.reid_similarity_p95_guardrail_ms") or 500.0)
+    except (TypeError, ValueError):
+        guardrail_ms = 500.0
+    has_reid = bool(
+        session.execute(text("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reid_embedding'")).scalar()
+    )
+    payload: dict[str, Any] = {
+        "schema": "similarity_summary@v1",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "top_k": k,
+        "max_rows": lim,
+        "similarity": {
+            "available": bool(has_reid),
+            "backend": "cosine_flat_track_level_v1",
+            "embedding_rows": 0,
+            "anchors_evaluated": 0,
+            "top1_hit_rate": 0.0,
+            "topk_hit_rate": 0.0,
+            "p95_query_ms": 0.0,
+        },
+        "runtime_cost": {
+            "guardrail_p95_query_ms": guardrail_ms,
+            "retrieval_p95_ok": True,
+        },
+    }
+    if has_reid:
+        rows = (
+            session.execute(
+                text(
+                    """
+                    SELECT
+                        video_species_id,
+                        species_id,
+                        individual_label,
+                        embedding_json
+                    FROM reid_embedding
+                    WHERE embedding_json IS NOT NULL
+                    ORDER BY id DESC
+                    LIMIT :lim
+                    """
+                ),
+                {"lim": lim},
+            )
+            .mappings()
+            .all()
+        )
+        parsed: list[dict[str, Any]] = []
+        for row in rows:
+            emb = _parse_embedding(row.get("embedding_json"))
+            if not emb:
+                continue
+            parsed.append(
+                {
+                    "video_species_id": int(row["video_species_id"]),
+                    "species_id": int(row["species_id"]) if row.get("species_id") is not None else None,
+                    "individual_label": str(row.get("individual_label") or "").strip().lower(),
+                    "embedding": emb,
+                }
+            )
+        label_support: dict[str, int] = {}
+        for row in parsed:
+            lbl = row["individual_label"]
+            if lbl:
+                label_support[lbl] = label_support.get(lbl, 0) + 1
+        eval_rows = [
+            row for row in parsed if row["individual_label"] and label_support.get(row["individual_label"], 0) >= 2
+        ]
+        latencies: list[float] = []
+        top1 = 0
+        topk = 0
+        for anchor in eval_rows:
+            t0 = time.perf_counter()
+            scored: list[tuple[float, str]] = []
+            for cand in parsed:
+                if cand["video_species_id"] == anchor["video_species_id"]:
+                    continue
+                if cand["species_id"] != anchor["species_id"]:
+                    continue
+                score = _cosine(anchor["embedding"], cand["embedding"])
+                if score < 0:
+                    continue
+                scored.append((score, cand["individual_label"]))
+            scored.sort(key=lambda x: x[0], reverse=True)
+            elapsed_ms = (time.perf_counter() - t0) * 1000.0
+            latencies.append(elapsed_ms)
+            if not scored:
+                continue
+            if scored[0][1] == anchor["individual_label"]:
+                top1 += 1
+            if any(lbl == anchor["individual_label"] for _, lbl in scored[:k]):
+                topk += 1
+        n = len(eval_rows)
+        p95_ms = _p95(latencies)
+        payload["similarity"] = {
+            "available": True,
+            "backend": "cosine_flat_track_level_v1",
+            "embedding_rows": len(parsed),
+            "anchors_evaluated": n,
+            "top1_hit_rate": round(_safe_div(float(top1), float(n)), 6),
+            "topk_hit_rate": round(_safe_div(float(topk), float(n)), 6),
+            "p95_query_ms": round(p95_ms, 3),
+        }
+        payload["runtime_cost"]["retrieval_p95_ok"] = bool(p95_ms <= guardrail_ms)
+
+    return payload, 200
+
+
 def build_ml_runtime_status() -> tuple[dict[str, Any], int]:
     """Operator-facing ML/CV runtime config state (#373/#372)."""
     return {
         "schema": "ml_runtime_status@v1",
         "video": {
             "encoding": app_config.get("video.encoding"),
-            "record_with_vaapi": app_config.get("video.record_with_vaapi"),
+            "record_hw_encode": app_config.get("video.record_hw_encode"),
             "capture_backend_config": app_config.get("video.capture_backend"),
         },
         "processor": {
@@ -283,8 +446,185 @@ def build_ml_runtime_status() -> tuple[dict[str, Any], int]:
             "detector_weight_contract": app_config.get("processor.detector_weight_contract"),
             "binary_imgsz": app_config.get("processor.binary_imgsz"),
             "frame_processing_warn_ms": app_config.get("processor.frame_processing_warn_ms"),
+            "inference_device": app_config.get("processor.inference_device"),
+            "classifier_inference_device": app_config.get("processor.classifier_inference_device"),
+            "reid_runtime_enabled": app_config.get("processor.reid.runtime_enabled"),
+            "welfare_runtime_enabled": app_config.get("processor.welfare.runtime_enabled"),
         },
     }, 200
+
+
+def _read_json_file(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _dataset_contract_paths() -> tuple[Path, Path]:
+    """Registry JSON: repo root in dev, ``/workspace`` mount in docker test-web."""
+    from services.fusion_training_service import repo_root
+
+    rel = Path("docs") / "reports" / "datasets"
+    candidates = [
+        repo_root() / rel,
+        Path("/workspace") / rel,
+        Path(__file__).resolve().parents[3] / rel,
+    ]
+    seen: set[Path] = set()
+    for base in candidates:
+        try:
+            resolved = base.resolve()
+        except OSError:
+            continue
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        contract = resolved / "dataset_contract_registry.json"
+        if contract.is_file():
+            latest = resolved / "dataset_contract_registry_latest.json"
+            return contract, latest
+    fallback = candidates[0]
+    return fallback / "dataset_contract_registry.json", fallback / "dataset_contract_registry_latest.json"
+
+
+def build_dataset_streams_summary() -> tuple[dict[str, Any], int]:
+    """Expose detector/classifier/reid dataset stream contracts (#557)."""
+    contract_file, latest_file = _dataset_contract_paths()
+    contract_payload = _read_json_file(contract_file)
+    latest_payload = _read_json_file(latest_file)
+
+    rows = []
+    for row in list(contract_payload.get("contracts") or []):
+        if not isinstance(row, dict):
+            continue
+        stream = str(row.get("stream") or "").strip()
+        if not stream:
+            continue
+        split_policy = row.get("split_policy")
+        split_required_keys = []
+        if isinstance(split_policy, dict):
+            split_required_keys = sorted(
+                {str(item).strip() for item in list(split_policy.get("required_keys") or []) if str(item).strip()}
+            )
+        export_policy = row.get("export_policy")
+        if not isinstance(export_policy, dict):
+            export_policy = {
+                "community_export_allowed": stream != "reid",
+                "private_backup_only": stream == "reid",
+            }
+        rows.append(
+            {
+                "stream": stream,
+                "contract_schema": str(row.get("contract_schema") or ""),
+                "required_fields_count": len(
+                    {str(item).strip() for item in list(row.get("required_fields") or []) if str(item).strip()}
+                ),
+                "split_required_keys": split_required_keys,
+                "versioning": row.get("versioning") or {},
+                "provenance_required_keys": sorted(
+                    {
+                        str(item).strip()
+                        for item in list((row.get("provenance") or {}).get("required_keys") or [])
+                        if str(item).strip()
+                    }
+                ),
+                "export_policy": export_policy,
+                "ui_panel_route": f"/system#dataset-streams-{stream}",
+            }
+        )
+
+    required_streams = sorted(
+        {str(item).strip() for item in list(contract_payload.get("required_streams") or []) if str(item).strip()}
+    )
+    checks = latest_payload.get("checks") or {}
+    summary = latest_payload.get("summary") or {}
+    drift = latest_payload.get("drift") or {}
+    api_jobs = [
+        {
+            "stream": "detector",
+            "operations": [
+                "package_dataset_bundle",
+                "version_snapshot",
+                "export_to_community",
+            ],
+        },
+        {
+            "stream": "classifier",
+            "operations": [
+                "package_dataset_bundle",
+                "version_snapshot",
+                "export_to_community",
+            ],
+        },
+        {
+            "stream": "reid",
+            "operations": [
+                "package_dataset_bundle",
+                "version_snapshot",
+                "private_backup_only",
+            ],
+        },
+    ]
+    return {
+        "schema": "dataset_streams_summary@v1",
+        "contract_file": str(contract_file),
+        "report_file": str(latest_file),
+        "required_streams": required_streams,
+        "streams": rows,
+        "api_jobs": api_jobs,
+        "gate": {
+            "ok": bool(latest_payload.get("ok")),
+            "generated_at": latest_payload.get("generated_at"),
+            "checks": checks,
+            "summary": summary,
+            "drift": drift,
+        },
+    }, 200
+
+
+def build_classifier_calibration_report_payload(
+    *,
+    pair_limit: int = 15,
+) -> tuple[dict[str, Any], int]:
+    """Classifier confusion/calibration summary from operator corrections."""
+    data_dir = str(app_config.get("directories.data") or "data")
+    db_path = Path(data_dir) / "db" / "birdlense.db"
+    limit = max(1, min(int(pair_limit or 15), 100))
+    if not db_path.exists():
+        return {
+            "schema": "classifier_calibration_report@v1",
+            "available": False,
+            "db": str(db_path),
+            "message": "db_not_found",
+            "corrections_analyzed": 0,
+            "top_confusion_pairs": [],
+            "corrections_by_source": {},
+            "threshold_recommendations": {},
+        }, 200
+    try:
+        report = _build_classifier_calibration_report(db_path, pair_limit=limit)
+        return {
+            "schema": "classifier_calibration_report@v1",
+            "available": True,
+            **report,
+        }, 200
+    except Exception as exc:
+        _log.exception("classifier calibration report build failed")
+        return {
+            "schema": "classifier_calibration_report@v1",
+            "available": False,
+            "db": str(db_path),
+            "message": "report_build_failed",
+            "error": str(exc),
+            "corrections_analyzed": 0,
+            "top_confusion_pairs": [],
+            "corrections_by_source": {},
+            "threshold_recommendations": {},
+        }, 200
 
 
 def build_feedback_loop_status_payload(session) -> tuple[dict[str, Any], int]:

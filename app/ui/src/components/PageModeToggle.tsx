@@ -2,14 +2,17 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import { useTranslation } from 'react-i18next';
 
-export type PageMode = 'simple' | 'advanced';
+export type PageMode = 'basic' | 'advanced' | 'expert';
 
 type PageModeToggleProps = {
   value: PageMode;
   onChange: (value: PageMode) => void;
   simpleLabel?: string;
   advancedLabel?: string;
+  expertLabel?: string;
   ariaLabel?: string;
+  /** When false, only basic + advanced toggles (System/Library). */
+  showExpert?: boolean;
 };
 
 export function PageModeToggle({
@@ -17,11 +20,14 @@ export function PageModeToggle({
   onChange,
   simpleLabel,
   advancedLabel,
+  expertLabel,
   ariaLabel,
+  showExpert = false,
 }: PageModeToggleProps) {
   const { t } = useTranslation();
-  const resolvedSimpleLabel = simpleLabel ?? t('common.simpleMode');
+  const resolvedBasicLabel = simpleLabel ?? t('common.simpleMode');
   const resolvedAdvancedLabel = advancedLabel ?? t('common.advancedMode');
+  const resolvedExpertLabel = expertLabel ?? t('common.expertMode');
 
   return (
     <ToggleButtonGroup
@@ -41,11 +47,11 @@ export function PageModeToggle({
       }}
     >
       <ToggleButton
-        value="simple"
-        aria-label={resolvedSimpleLabel}
+        value="basic"
+        aria-label={resolvedBasicLabel}
         title={t('common.simpleModeHint')}
       >
-        {resolvedSimpleLabel}
+        {resolvedBasicLabel}
       </ToggleButton>
       <ToggleButton
         value="advanced"
@@ -54,6 +60,15 @@ export function PageModeToggle({
       >
         {resolvedAdvancedLabel}
       </ToggleButton>
+      {showExpert ? (
+        <ToggleButton
+          value="expert"
+          aria-label={resolvedExpertLabel}
+          title={t('common.expertModeHint')}
+        >
+          {resolvedExpertLabel}
+        </ToggleButton>
+      ) : null}
     </ToggleButtonGroup>
   );
 }

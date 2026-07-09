@@ -1,90 +1,42 @@
-# Recovering configuration
+# Восстановление конфигурации
 
-If the UI shows wrong defaults or empty cameras after an edit, restore from backup or re-sync from the server.
+## Симптом
 
-[Русский](../ru/recovery-config.ru.md)
+- user_config.yaml повреждён
+- система не стартует из-за ошибки в конфиге
+- случайно удалён user_config.yaml
 
----
+## Восстановление
 
-> **Placeholders:** `YOUR_SSH_HOST` — SSH host alias (`~/.ssh/config` or `DEPLOY_HOST`); `YOUR_REMOTE_DIR` — app root on the server (**default deploy:** `/root/BirdLense` = `DEPLOY_REMOTE_DIR`; `/opt/birdlense` is a legacy example).
-
----
-
-## Fast path: `restore-config.sh`
+### Из бэкапа (рекомендуется)
 
 ```bash
-# Restore from .bak on the server (if present)
-./scripts/restore-config.sh
-
-# Push a known-good local file to the server
-./scripts/restore-config.sh from-local
+make restore-config
+# ищет app/app_config/user_config.yaml.bak.*
+# восстанавливает последний бэкап
 ```
 
-Then restart:
+### Из шаблона
 
 ```bash
-ssh YOUR_SSH_HOST "cd YOUR_REMOTE_DIR/app && make stop && make start"
+cp app/app_config/user_config.orin.example.yaml app/app_config/user_config.yaml
+# затем отредактировать под свою конфигурацию
 ```
 
----
-
-## Automatic `.bak` file
-
-Each save can create `app/app_config/user_config.yaml.bak` next to `user_config.yaml`.
-
-**Local:**
+### Если нет ни бэкапа, ни шаблона
 
 ```bash
-cp app/app_config/user_config.yaml.bak app/app_config/user_config.yaml
+# Временно запустить с default_config.yaml
+# (содержит безопасные значения по умолчанию)
+# затем настроить через веб-UI
 ```
 
-**Remote:**
+## Предотвращение
+
+Система автоматически создаёт бэкап `user_config.yaml.bak.YYYYMMDD_<reason>` при изменении конфига через веб-UI.
+
+Перед ручным редактированием:
 
 ```bash
-ssh YOUR_SSH_HOST "cp YOUR_REMOTE_DIR/app/app_config/user_config.yaml.bak YOUR_REMOTE_DIR/app/app_config/user_config.yaml"
+cp user_config.yaml user_config.yaml.bak.$(date +%Y%m%d)
 ```
-
-Restart the hub: `cd app && docker compose restart birdlense`, or `cd app && make stop && make start`, or wait for processor reload per your setup.
-
----
-
-## Deploy does not wipe `user_config.yaml`
-
-Standard deploy syncs code but **keeps** server-side `user_config.yaml`. If settings “vanished” locally, the server copy may still be intact:
-
-```bash
-ssh YOUR_SSH_HOST "cat YOUR_REMOTE_DIR/app/app_config/user_config.yaml"
-```
-
-Copy the content back or edit via **Settings** in the UI.
-
----
-
-## Git (discouraged for secrets)
-
-If you accidentally committed `user_config.yaml`:
-
-```bash
-git checkout app/app_config/user_config.yaml
-```
-
-Prefer **not** storing API keys or tokens in git — use env vars documented in [CONFIGURATION](./configuration.md).
-
----
-
-## Manual rebuild
-
-Re-enter critical keys in **Settings** or edit YAML directly:
-
-- `video.cameras`, `video.go2rtc_url`
-- `mqtt.broker`, `mqtt.password`
-- `notifications.telegram_bot_token`, `notifications.telegram_chat_id`
-- `general.settings_password`, `general.contributor_password`
-
-Full reference: [CONFIGURATION](./configuration.md).
-
----
-
-## See also
-
-[INSTALL](./install.md) · [CONFIGURATION](./configuration.md) · [TROUBLESHOOTING](./troubleshooting.md)

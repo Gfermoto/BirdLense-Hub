@@ -19,14 +19,18 @@ import queue
 import random
 import threading
 import time
+from copy import deepcopy
 from collections import deque
 from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 
 from app_config.app_config import app_config
+from app_config.trigger_config import get_effective_trigger_config
 from birdnet_merge_key import birdnet_merge_key
 from frigate_bbox import frigate_after_to_normalized_xyxy
+from frigate_live_track import update_frigate_live_track
+from species_mapping_config import build_species_mapping
 from mqtt_event_parsers import (
     _frigate_after_has_tracked_geometry,
     _frigate_labels_match_exclude,
@@ -433,10 +437,10 @@ class MQTTEventAggregator:
             ttl_h = max(1.0, min(ttl_h, 168.0))
             self._prune_birdnet_events_locked(now=prune_now, ttl_hours=ttl_h, sync_persist=True)
             if self._birdnet_fifo_persist is not None and any(e is ev for e in self._birdnet_events):
-                try:
-                    frozen = json.loads(json.dumps(ev, default=str))
-                except (TypeError, ValueError):
-                    frozen = dict(ev)
+                frozen = deepcopy(ev)
+                for key, value in list(frozen.items()):
+                    if isinstance(value, datetime):
+                        frozen[key] = value.isoformat()
                 self._birdnet_fifo_persist.enqueue_insert(frozen)
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
@@ -618,12 +622,23 @@ class MQTTEventAggregator:
     def _enqueue_publish(self, topic: str, payload: str | bytes, qos: int = 0, retain: bool = False) -> None:
         if self._stopped:
             return
+        item = (topic, payload, qos, retain)
         try:
-            self._publish_queue.put_nowait((topic, payload, qos, retain))
+            self._publish_queue.put_nowait(item)
             set_gauge("mqtt_outbound_queue_depth", self._publish_queue.qsize())
         except queue.Full:
-            inc_counter("mqtt_outbound_drops_total")
-            logger.warning("MQTT outbound queue full; dropping publish to %s", topic)
+            # W1 hygiene (#644): drop oldest publish to make room for fresher state.
+            try:
+                self._publish_queue.get_nowait()
+                inc_counter("mqtt_outbound_drops_total")
+            except queue.Empty:
+                pass
+            try:
+                self._publish_queue.put_nowait(item)
+                set_gauge("mqtt_outbound_queue_depth", self._publish_queue.qsize())
+            except queue.Full:
+                inc_counter("mqtt_outbound_drops_total")
+                logger.warning("MQTT outbound queue full; dropping publish to %s", topic)
 
     def _drain_publish_queue(self, max_items: int = 500) -> None:
         """Flush queued outbound messages (only from the MQTT loop thread)."""
@@ -664,6 +679,23 @@ class MQTTEventAggregator:
                     bbox_norm = frigate_after_to_normalized_xyxy(after)
                     if bbox_norm:
                         ev["frigate_bbox_norm"] = bbox_norm
+                    ev_type_raw = str(fdata.get("type") or "").strip().lower()
+                    try:
+                        trigger_score_live = float(ev.get("confidence") or 0.0)
+                    except (TypeError, ValueError):
+                        trigger_score_live = 0.0
+                    update_frigate_live_track(
+                        str(ev.get("camera") or ""),
+                        bbox_norm=bbox_norm,
+                        score=trigger_score_live,
+                        event_id=str(after.get("id") or fdata.get("id") or ""),
+                        event_type=ev_type_raw,
+                        labels={
+                            str(ev.get("label") or ""),
+                            str(ev.get("sub_label") or ""),
+                            str(ev.get("species") or ""),
+                        },
+                    )
                 label = ev.get("label", "")
                 sub_label = ev.get("sub_label", "")
                 species = ev.get("species", "")
@@ -776,7 +808,13 @@ class MQTTEventAggregator:
                     elif not lbl_ok and relaxed and has_geometry and geometry_blocked_reason:
                         inc_counter("frigate_geometry_fallback_rejected_total")
                     score_ok = trigger_score >= max(0.0, min_trigger_score)
-                    if cam_ok and lbl_ok and score_ok:
+                    ev_type = str(fdata.get("type") or "").strip().lower()
+                    frigate_runtime = get_effective_trigger_config(app_config).get("frigate") or {}
+                    trigger_on_update = bool(frigate_runtime.get("trigger_on_update", False))
+                    motion_ok = not ev_type or ev_type == "new" or trigger_on_update
+                    if ev_type in ("update", "end") and not trigger_on_update:
+                        motion_ok = False
+                    if cam_ok and lbl_ok and score_ok and motion_ok:
                         logger.info(
                             "Frigate trigger accepted: reason=%s camera=%s label=%s sub_label=%s "
                             "score=%.3f min_score=%.3f merge_suppressed=%s has_geometry=%s filter_empty=%s",
@@ -1015,6 +1053,7 @@ class MQTTEventAggregator:
                 self._client.will_set("birdlense/status", "offline", qos=1, retain=True)
                 self._client.connect(self.broker, self.port, 60)
                 self._client.subscribe(self.frigate_topic, qos=1)
+                logger.info("MQTT: subscribed Frigate events topic %s", self.frigate_topic)
                 if self._frigate_snapshot_topic and self._frigate_snapshot_topic != self.frigate_topic:
                     self._client.subscribe(self._frigate_snapshot_topic, qos=0)
                     logger.info(
@@ -1272,7 +1311,7 @@ class MQTTEventAggregator:
         low_epoch = now.timestamp() - (window_hours * 3600.0)
         decay_base = 0.5
         out: dict[str, dict] = {}
-        species_mapping = app_config.get("detection.species_mapping") or {}
+        species_mapping = build_species_mapping(app_config)
 
         with self._lock:
             self._prune_birdnet_events_locked(now=now, ttl_hours=ttl_hours)

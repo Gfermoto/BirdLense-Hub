@@ -8,4 +8,4 @@ This page moved to **current documentation**:
 
 ---
 
-[Documentation index](index.md) · [Contributor guide](contributor/documentation.md)
+[Documentation index](index.md) · [Strategy: Orin setup](strategy/orin-setup-and-migration.md)

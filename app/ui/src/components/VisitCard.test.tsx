@@ -20,7 +20,7 @@ vi.mock('../contexts/ProtectedAreaContext', () => ({
 }));
 
 describe('VisitCard', () => {
-  it('renders nickname and behavior labels when present', () => {
+  it('renders nickname when present', () => {
     const qc = new QueryClient();
     const visit: SpeciesVisit = {
       id: 1,
@@ -33,9 +33,6 @@ describe('VisitCard', () => {
         name: 'Great Tit',
       },
       individual_nickname: 'Nova',
-      behavior_events: [
-        { label: 'feeding' },
-      ],
       detections: [
         {
           id: 100,
@@ -58,10 +55,46 @@ describe('VisitCard', () => {
 
     expect(screen.getByText(/Nova/)).toBeInTheDocument();
     expect(
-      screen.getByText(/(feeding|кормление)/i),
+      screen.getByRole('button', {
+        name: /(Set nickname|Задать кличку|Unlink bird)/i,
+      }),
     ).toBeInTheDocument();
+  });
+
+  it('shows delete detection action for unlinked video items', () => {
+    const qc = new QueryClient();
+    const visit: SpeciesVisit = {
+      id: -1,
+      start_time: '2026-03-25T15:00:00Z',
+      end_time: '2026-03-25T15:05:00Z',
+      max_simultaneous: 1,
+      timeline_kind: 'unlinked_video',
+      species: {
+        id: 11,
+        name: 'Sparrow',
+      },
+      detections: [
+        {
+          id: 101,
+          video_id: 201,
+          start_time: '2026-03-25T15:00:01Z',
+          end_time: '2026-03-25T15:00:04Z',
+          confidence: 0.71,
+          source: 'video',
+        },
+      ],
+    };
+
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter future={memoryRouterFuture}>
+          <VisitCard visit={visit} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
     expect(
-      screen.getByRole('button', { name: /(Set nickname|Задать кличку)/i }),
+      screen.getByRole('button', { name: /(Delete detection|Удалить детекцию)/i }),
     ).toBeInTheDocument();
   });
 });

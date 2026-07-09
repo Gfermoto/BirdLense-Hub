@@ -43,9 +43,7 @@ _CONFIG_DIGEST_KEYS = (
     "processor.inference_backend",
     "processor.classifier_inference_backend",
     "processor.models.binary",
-    "processor.models.binary_openvino",
     "processor.models.classifier",
-    "processor.models.classifier_openvino",
     "detection.merge_window_seconds",
     "detection.dedup_window_seconds",
     "detection.min_confidence_to_store",
@@ -109,10 +107,8 @@ def _model_record(path: str | None) -> dict[str, Any]:
 
 
 def _binary_detector_record(app_config) -> dict[str, Any]:
-    """Снимок бинарного детектора: torch ``.pt`` или OpenVINO IR (#371)."""
+    """Снимок бинарного детектора (.pt / .onnx)."""
     from inference.binary_paths import (
-        detector_weights_available,
-        openvino_bundle_fingerprint,
         processor_package_root,
         resolve_binary_detector_weight_path,
     )
@@ -121,61 +117,25 @@ def _binary_detector_record(app_config) -> dict[str, Any]:
     backend = resolve_inference_backend(app_config)
     root = processor_package_root()
     path, _ = resolve_binary_detector_weight_path(app_config, root)
-    rec: dict[str, Any] = {
-        "inference_backend": backend,
-        "path": path or None,
-    }
-    if backend != "openvino":
-        merged = _model_record(app_config.get("processor.models.binary"))
-        merged["inference_backend"] = backend
-        return merged
-    rec["exists"] = bool(path and detector_weights_available(path))
-    rec["bundle_sha256"] = openvino_bundle_fingerprint(path)
-    if path and os.path.isfile(path):
-        stat = os.stat(path)
-        rec["size_bytes"] = int(stat.st_size)
-        rec["mtime_epoch_seconds"] = float(stat.st_mtime)
-    elif path and os.path.isdir(path):
-        try:
-            xmls = sorted(f for f in os.listdir(path) if f.endswith(".xml"))
-        except OSError:
-            xmls = []
-        rec["xml_files"] = xmls
-    return rec
+    merged = _model_record(app_config.get("processor.models.binary"))
+    merged["inference_backend"] = backend
+    if path:
+        merged["path"] = path
+    return merged
 
 
 def _classifier_record(app_config) -> dict[str, Any]:
-    """Classifier snapshot: torch checkpoint or OpenVINO IR."""
-    from inference.binary_paths import (
-        openvino_bundle_fingerprint,
-        processor_package_root,
-    )
+    """Classifier snapshot (.pt / .onnx)."""
+    from inference.binary_paths import processor_package_root
     from inference.classifier_paths import resolve_classifier_weight_path
 
     root = processor_package_root()
     path, backend = resolve_classifier_weight_path(app_config, root)
-    rec: dict[str, Any] = {
-        "inference_backend": backend,
-        "path": path or None,
-    }
-    if backend != "openvino":
-        merged = _model_record(app_config.get("processor.models.classifier"))
-        merged["inference_backend"] = backend
-        return merged
-
-    rec["exists"] = bool(path and os.path.exists(path))
-    rec["bundle_sha256"] = openvino_bundle_fingerprint(path)
-    if path and os.path.isfile(path):
-        stat = os.stat(path)
-        rec["size_bytes"] = int(stat.st_size)
-        rec["mtime_epoch_seconds"] = float(stat.st_mtime)
-    elif path and os.path.isdir(path):
-        try:
-            xmls = sorted(f for f in os.listdir(path) if f.endswith(".xml"))
-        except OSError:
-            xmls = []
-        rec["xml_files"] = xmls
-    return rec
+    merged = _model_record(app_config.get("processor.models.classifier"))
+    merged["inference_backend"] = backend
+    if path:
+        merged["path"] = path
+    return merged
 
 
 def resolve_processor_version() -> tuple[str, str]:

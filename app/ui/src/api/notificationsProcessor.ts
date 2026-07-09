@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { BASE_API_URL, csrfFetch } from './client';
+import { BASE_API_URL, ApiHttpError, apiFetch, csrfFetch } from './client';
 
 /** Web Push: get VAPID public key for subscription. */
 export const fetchVapidPublicKey = async (): Promise<string> => {
@@ -38,27 +37,40 @@ export const subscribePush = async (
   }
 };
 
+function processorActionErrorMessage(e: unknown, fallback: string): string {
+  if (e instanceof ApiHttpError) {
+    const err = (e.data as { error?: string } | null)?.error;
+    if (typeof err === 'string' && err.trim()) {
+      return err;
+    }
+    if (e.message.trim()) {
+      return e.message;
+    }
+  }
+  return fallback;
+}
+
 export const sendTestNotification = async (): Promise<{
   success: boolean;
   message?: string;
 }> => {
   try {
-    const response = await axios.post(
+    const data = await apiFetch<{ message?: string }>(
       `${BASE_API_URL}/notify/test`,
-      {},
       {
-        withCredentials: true,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
       },
     );
     return {
       success: true,
-      message: response.data?.message || 'Sent',
+      message: data?.message || 'Sent',
     };
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } };
     return {
       success: false,
-      message: err.response?.data?.error || 'Failed',
+      message: processorActionErrorMessage(e, 'Failed'),
     };
   }
 };
@@ -68,22 +80,22 @@ export const refreshTelegramProxy = async (): Promise<{
   message?: string;
 }> => {
   try {
-    const response = await axios.post(
+    const data = await apiFetch<{ message?: string }>(
       `${BASE_API_URL}/system/telegram-proxy/refresh`,
-      {},
       {
-        withCredentials: true,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
       },
     );
     return {
       success: true,
-      message: response.data?.message || 'Started',
+      message: data?.message || 'Started',
     };
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } };
     return {
       success: false,
-      message: err.response?.data?.error || 'Failed',
+      message: processorActionErrorMessage(e, 'Failed'),
     };
   }
 };
@@ -93,116 +105,19 @@ export const restartProcessor = async (): Promise<{
   message?: string;
 }> => {
   try {
-    const response = await axios.post(
+    const data = await apiFetch<{ message?: string }>(
       `${BASE_API_URL}/restart-processor`,
-      {},
       {
-        withCredentials: true,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
       },
     );
-    return { success: true, message: response.data?.message };
+    return { success: true, message: data?.message };
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } };
     return {
       success: false,
-      message: err.response?.data?.error || 'Failed to restart',
-    };
-  }
-};
-
-export type ProcessorWeightsSlotStatus = {
-  path: string | null;
-  uses_custom_dir: boolean;
-  default_path: string;
-  bytes: number | null;
-  mtime_unix: number | null;
-  /** First 16 hex chars of SHA256 over file bytes (matches CLI validate report). */
-  fingerprint_sha256_16?: string | null;
-};
-
-export type ProcessorWeightsAllowlistStatus = {
-  path: string | null;
-  uses_custom_dir: boolean;
-  bytes: number | null;
-  mtime_unix: number | null;
-  fingerprint_sha256_16?: string | null;
-};
-
-export type ProcessorWeightsStatusResponse = {
-  custom_weights_dir: string;
-  binary: ProcessorWeightsSlotStatus;
-  classifier: ProcessorWeightsSlotStatus;
-  allowlist: ProcessorWeightsAllowlistStatus;
-};
-
-export const fetchProcessorWeightsStatus =
-  async (): Promise<ProcessorWeightsStatusResponse> => {
-    const response = await axios.get(
-      `${BASE_API_URL}/system/processor-weights/status`,
-      {
-        withCredentials: true,
-      },
-    );
-    return response.data as ProcessorWeightsStatusResponse;
-  };
-
-const _PROCESSOR_WEIGHTS_UPLOAD_TIMEOUT_MS = 3_600_000; // 1 h
-
-export const uploadProcessorWeight = async (
-  role: 'binary' | 'classifier' | 'class_names',
-  file: File,
-  options?: { acknowledgeClassifierOnly?: boolean },
-): Promise<{
-  ok: boolean;
-  error?: string;
-  status?: ProcessorWeightsStatusResponse;
-}> => {
-  const form = new FormData();
-  form.append('file', file);
-  const params: Record<string, string> = { role };
-  if (options?.acknowledgeClassifierOnly) {
-    params.acknowledge_classifier_only = '1';
-  }
-  try {
-    const response = await axios.post(
-      `${BASE_API_URL}/system/processor-weights/upload`,
-      form,
-      {
-        withCredentials: true,
-        params,
-        timeout: _PROCESSOR_WEIGHTS_UPLOAD_TIMEOUT_MS,
-        headers: { 'Content-Type': 'multipart/form-data' },
-      },
-    );
-    return { ok: true, status: response.data?.status };
-  } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } };
-    return {
-      ok: false,
-      error: err.response?.data?.error || 'upload_failed',
-    };
-  }
-};
-
-export const resetProcessorWeights = async (
-  roles: Array<'binary' | 'classifier' | 'class_names' | 'all'>,
-): Promise<{
-  ok: boolean;
-  error?: string;
-  status?: ProcessorWeightsStatusResponse;
-}> => {
-  try {
-    const response = await axios.post(
-      `${BASE_API_URL}/system/processor-weights/reset`,
-      { roles },
-      { withCredentials: true },
-    );
-    return { ok: true, status: response.data?.status };
-  } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } };
-    return {
-      ok: false,
-      error: err.response?.data?.error || 'reset_failed',
+      message: processorActionErrorMessage(e, 'Failed to restart'),
     };
   }
 };

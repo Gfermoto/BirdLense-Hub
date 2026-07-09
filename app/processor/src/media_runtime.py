@@ -11,7 +11,9 @@ from typing import Any, Callable, Dict, List
 
 from api import API
 from app_config.app_config import app_config
-from processor_support import check_restart_flag
+from app_config.cameras import get_valid_cameras, validate_go2rtc_detect_streams
+from encoding_utils import normalize_capture_backend, normalize_video_encoding
+from processor_support import check_restart_flag, processor_status
 from file_test_paths import scan_video_files_in_dir
 from sources.go2rtc_stream_source import Go2RTCStreamSource, _build_stream_url
 from sources.video_file_source import FileTestIdleSource, VideoFileSource, VideoPlaylistSource
@@ -26,6 +28,56 @@ class ProcessorMediaSetup:
     media_sources_cache: Dict[Any, Any] = field(default_factory=dict)
     default_camera_id: Any = None
     cameras: List[Any] = field(default_factory=list)
+
+
+def parse_single_rtsp_read_flag(app_config) -> bool:
+    """Return processor.single_rtsp_read; default False (dual-stream detect substream)."""
+    sr = app_config.get("processor.single_rtsp_read")
+    if sr is None:
+        return False
+    if isinstance(sr, bool):
+        return sr
+    s = str(sr).strip().lower()
+    return s not in ("0", "false", "no", "off")
+
+
+def _wait_until_detect_streams_configured(api: API, cameras: list) -> None:
+    """Block until every Go2RTC camera has a distinct detect_stream_name (dual-stream migration)."""
+    hb_id = None
+    while True:
+        issues = validate_go2rtc_detect_streams(cameras, video_source="go2rtc")
+        if not issues:
+            processor_status.pop("bootstrap_error", None)
+            processor_status.pop("bootstrap_error_code", None)
+            return
+        msg = "; ".join(issues)
+        processor_status["bootstrap_error"] = msg
+        processor_status["bootstrap_error_code"] = "detect_stream_name_required"
+        logging.error(
+            "video.cameras: %s. Add detect_stream_name per camera in Settings (lores YOLO stream).",
+            msg,
+        )
+        check_restart_flag()
+        try:
+            hb_id = api.activity_log(
+                type="heartbeat",
+                data={
+                    "status": "config_error",
+                    "bootstrap_error": msg,
+                    "bootstrap_error_code": "detect_stream_name_required",
+                },
+                id=hb_id,
+            )
+        except Exception as e:
+            logging.error("Heartbeat (detect_stream config) failed: %s", e)
+        time.sleep(60)
+        from app_config.cameras import cameras_for_processor
+
+        video_config = app_config.get("video") or {}
+        valid = get_valid_cameras(video_config=video_config)
+        refreshed = cameras_for_processor(valid)
+        cameras.clear()
+        cameras.extend(refreshed)
 
 
 def _wait_until_cameras_configured(api: API, cameras: list, go2rtc_url: str) -> None:
@@ -92,8 +144,8 @@ def setup_processor_media(
     from app_config.cameras import cameras_for_processor, get_valid_cameras
 
     source = (app_config.get("video.source") or "go2rtc").strip().lower()
-    cameras_config = app_config.get("video.cameras") or []
-    valid = get_valid_cameras(cameras_config)
+    video_config = app_config.get("video") or {}
+    valid = get_valid_cameras(video_config=video_config)
     cameras = cameras_for_processor(valid)
     go2rtc_url = (os.environ.get("GO2RTC_URL") or app_config.get("video.go2rtc_url") or "").strip()
 
@@ -172,6 +224,23 @@ def setup_processor_media(
         )
 
     _wait_until_cameras_configured(api, cameras, go2rtc_url)
+    _wait_until_detect_streams_configured(api, cameras)
+
+    try:
+        from stream_probe import probe_go2rtc_record_streams, publish_probe_gauges
+
+        for cam_id, caps in probe_go2rtc_record_streams(app_config):
+            publish_probe_gauges(caps)
+            logging.info(
+                "Bootstrap record stream probe camera=%s: %sx%s @ %.2f fps (%s)",
+                cam_id,
+                caps.width,
+                caps.height,
+                caps.fps or 0.0,
+                caps.source,
+            )
+    except Exception:
+        logging.debug("bootstrap multi-camera record probe skipped", exc_info=True)
 
     default_camera_id = cameras[0]["id"]
     media_sources_cache: Dict[Any, Any] = {}
@@ -192,30 +261,60 @@ def setup_processor_media(
                 username=app_config.get("video.go2rtc_username"),
                 password=app_config.get("video.go2rtc_password"),
             )
+            if not capture_url:
+                cid = str(cam.get("id") or "").strip() or "?"
+                raise RuntimeError(
+                    f"video.cameras: detect_stream_name required for camera {cid!r} "
+                    "(lores motion/YOLO; main stream is record-only)"
+                )
             idx = next(
                 (i for i, c in enumerate(cameras) if c["id"] == camera_id),
                 0,
             )
-            encoding = (app_config.get("video.encoding") or "cpu").strip().lower()
-            if encoding not in ("cpu", "intel"):
-                encoding = "cpu"
+            encoding = normalize_video_encoding(app_config.get("video.encoding"), "jetson")
             rcodec = (app_config.get("video.record_stream_codec") or "h264").strip().lower()
             if rcodec not in ("h264", "copy"):
                 rcodec = "h264"
-            capture_backend = (app_config.get("video.capture_backend") or "auto").strip().lower()
-            if capture_backend not in ("auto", "opencv", "ffmpeg_vaapi"):
-                capture_backend = "auto"
-            rwv = app_config.get("video.record_with_vaapi")
-            if rwv is None:
-                record_with_vaapi = True
-            elif isinstance(rwv, bool):
-                record_with_vaapi = rwv
-            else:
-                s = str(rwv).strip().lower()
-                record_with_vaapi = s not in ("0", "false", "no", "off")
+            capture_backend = normalize_capture_backend(app_config.get("video.capture_backend"), "auto")
+            single_rtsp_read = parse_single_rtsp_read_flag(app_config)
+            from encoding_utils import resolve_record_hw_encode
+
+            record_hw_encode = resolve_record_hw_encode(app_config)
+            cam_main_size = main_size
+            cam_override = None
+            try:
+                from stream_probe import (
+                    force_recording_resolution,
+                    parse_camera_record_size,
+                    probe_stream_url,
+                    resolve_main_size,
+                )
+
+                cam_override = parse_camera_record_size(cam)
+                if cam_override is not None:
+                    cam_main_size = cam_override
+                else:
+                    cam_probe = probe_stream_url(record_url)
+                    cam_main_size = resolve_main_size(app_config, cam_probe)
+            except Exception:
+                if force_recording_resolution(app_config):
+                    cam_main_size = main_size
+                    logging.debug(
+                        "Go2RTC camera %s record stream probe failed; using forced main_size",
+                        camera_id,
+                        exc_info=True,
+                    )
+                else:
+                    cam_main_size = main_size
+                    logging.warning(
+                        "Go2RTC camera %s record stream probe failed at bootstrap; "
+                        "refresh_record_stream_geometry will retry (global video_width/height ignored)",
+                        camera_id,
+                        exc_info=True,
+                    )
             media_sources_cache[camera_id] = Go2RTCStreamSource(
                 stream_url=record_url,
-                main_size=main_size,
+                main_size=cam_main_size,
                 lores_size=lores_size,
                 auto_reconnect=app_config.get("video.auto_reconnect", True),
                 mjpeg_port=mjpeg_base_port + idx,
@@ -223,7 +322,8 @@ def setup_processor_media(
                 record_stream_codec=rcodec,
                 capture_backend=capture_backend,
                 capture_stream_url=capture_url,
-                record_with_vaapi=record_with_vaapi,
+                record_hw_encode=record_hw_encode,
+                single_rtsp_read=single_rtsp_read,
             )
         return media_sources_cache[camera_id]
 

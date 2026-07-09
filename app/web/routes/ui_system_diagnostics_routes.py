@@ -12,6 +12,7 @@ from services.api_json_validation import parse_request_json_object_allow_empty
 from services.system_diagnostics_service import (
     build_birdnet_fifo_snapshot_response,
     build_broken_videos_list_response,
+    build_processor_backpressure_response,
     build_processor_runtime_snapshot_response,
     build_review_only_noise_candidates_response,
     delete_broken_video_rows,
@@ -93,6 +94,13 @@ def register_ui_system_diagnostics_routes(app):
     @require_ui_settings_password
     def diagnostics_processor_runtime_snapshot():
         body, code = build_processor_runtime_snapshot_response()
+        return body, code
+
+    @app.route("/api/ui/system/diagnostics/backpressure", methods=["GET"])
+    @require_ui_settings_password
+    def diagnostics_processor_backpressure():
+        """W1 queue depths and drop counters for live processor (#510)."""
+        body, code = build_processor_backpressure_response()
         return body, code
 
     @app.route("/api/ui/system/diagnostics/review-only-noise-candidates", methods=["GET"])

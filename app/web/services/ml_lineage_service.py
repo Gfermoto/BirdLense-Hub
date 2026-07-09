@@ -6,10 +6,7 @@ import os
 
 from app_config.app_config import app_config
 
-from inference.binary_paths import (
-    openvino_bundle_fingerprint,
-    resolve_binary_detector_weight_path,
-)
+from inference.binary_paths import resolve_binary_detector_weight_path
 from inference.classifier_paths import resolve_classifier_weight_path
 from inference.selector import (
     resolve_classifier_inference_backend,
@@ -40,10 +37,8 @@ def current_model_lineage_snapshot() -> dict:
             "classifier_inference_backend": app_config.get(
                 "processor.classifier_inference_backend",
             ),
-            "models_binary_openvino": app_config.get("processor.models.binary_openvino"),
-            "models_classifier_openvino": app_config.get(
-                "processor.models.classifier_openvino",
-            ),
+            "models_binary": app_config.get("processor.models.binary"),
+            "models_classifier": app_config.get("processor.models.classifier"),
             "min_confidence_to_process": app_config.get("processor.min_confidence_to_process"),
             "min_confidence_to_notify": app_config.get("processor.min_confidence_to_notify"),
             "min_track_duration": app_config.get("processor.min_track_duration"),
@@ -58,33 +53,10 @@ def current_model_lineage_snapshot() -> dict:
         },
     }
     processor_root = os.path.join(repo_root_path(), "app", "processor")
-    backend = resolve_inference_backend(app_config)
-    classifier_backend = resolve_classifier_inference_backend(app_config)
-    if backend in ("openvino", "auto"):
-        det_path, resolved_backend = resolve_binary_detector_weight_path(app_config, processor_root)
-    else:
-        resolved_backend = "torch"
-        binary_rel = (
-            app_config.get("processor.models.binary")
-            or app_config.get("processor.detector_model_path")
-            or app_config.get("detection.detector_model_path")
-            or "models/detection/weights/yolo11n.pt"
-        )
-        det_path = resolve_artifact_path(binary_rel)
-    if classifier_backend in ("openvino", "auto"):
-        cls_path, resolved_cls_backend = resolve_classifier_weight_path(
-            app_config,
-            processor_root,
-        )
-    else:
-        resolved_cls_backend = "torch"
-        classifier_rel = (
-            app_config.get("processor.models.classifier")
-            or app_config.get("processor.classifier_model_path")
-            or app_config.get("classification.model_path")
-            or "models/classification/weights/best.pt"
-        )
-        cls_path = resolve_artifact_path(classifier_rel)
+    resolve_inference_backend(app_config)
+    resolve_classifier_inference_backend(app_config)
+    det_path, resolved_backend = resolve_binary_detector_weight_path(app_config, processor_root)
+    cls_path, resolved_cls_backend = resolve_classifier_weight_path(app_config, processor_root)
     artifacts = {
         "detector": det_path,
         "classifier": cls_path,
@@ -95,13 +67,7 @@ def current_model_lineage_snapshot() -> dict:
     }
     resolved = {}
     for name, path in artifacts.items():
-        digest = None
-        if name == "detector" and resolved_backend == "openvino":
-            digest = openvino_bundle_fingerprint(path)
-        elif name == "classifier" and resolved_cls_backend == "openvino":
-            digest = openvino_bundle_fingerprint(path)
-        else:
-            digest = sha256_file(path)
+        digest = sha256_file(path)
         resolved[name] = {
             "configured_path": path,
             "exists": bool(path and os.path.exists(path)),

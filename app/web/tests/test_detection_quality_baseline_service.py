@@ -3,16 +3,16 @@ from datetime import datetime, timedelta, timezone
 
 
 def test_build_detection_quality_baseline_summarizes_traces_and_slices(app):
-    from models import ActivityLog, Species, Video, VideoSpecies, db
+    from models import ActivityLog, Video, VideoSpecies, db
     from services.detection_quality_baseline_service import (
         build_detection_quality_baseline,
     )
 
+    from tests.conftest import get_or_create_species
+
     with app.app_context():
-        great_tit = Species(name="Great Tit")
-        bird = Species(name="Bird")
-        db.session.add_all([great_tit, bird])
-        db.session.flush()
+        great_tit = get_or_create_species("Great Tit")
+        bird = get_or_create_species("Bird")
 
         now_utc = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
         day_start = (now_utc - timedelta(days=1)).replace(hour=10)

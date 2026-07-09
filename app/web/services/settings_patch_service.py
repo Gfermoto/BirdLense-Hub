@@ -10,6 +10,7 @@ from app_config.app_config import (
     validate_merged_config,
     validate_merged_config_semantics,
 )
+from app_config.config_schema import validate_merged_config_pydantic
 from services.cache import cache_delete_prefix, reset_redis_client
 from services.ui_password_service import hash_password_fields_in_updates
 from services.http_response_cache import bust_response_caches
@@ -67,13 +68,17 @@ def validate_settings_patch_updates(normalized_updates: dict) -> None:
     AppConfig._cleanup_legacy_processor_keys(folded)
     issues = validate_merged_config(folded)
     issues.extend(validate_merged_config_semantics(folded))
+    issues.extend(validate_merged_config_pydantic(folded))
     if issues:
         raise SettingsPatchValidationError(issues)
 
 
 def apply_settings_patch_and_refresh_caches(normalized_updates: dict) -> dict:
     """Смержить в live config, save, сброс кэшей. Возвращает payload для ответа API."""
+    from app_config.config_migrations import deprecated_keys_present
+
     validate_settings_patch_updates(normalized_updates)
+    deprecated = deprecated_keys_present(app_config.load_raw_user_config_dict())
     to_merge = hash_password_fields_in_updates(normalized_updates)
     app_config.config = app_config.merge_dicts(
         app_config.config,
@@ -88,7 +93,10 @@ def apply_settings_patch_and_refresh_caches(normalized_updates: dict) -> dict:
     cache_delete_prefix("ebird_region_comparison:")
     reset_redis_client()
 
-    return app_config.prepare_settings_for_api(app_config.config)
+    payload = app_config.prepare_settings_for_api(app_config.config)
+    if deprecated:
+        payload["settings_warnings"] = {"deprecated_keys_present": deprecated}
+    return payload
 
 
 def apply_settings_patch_from_request(

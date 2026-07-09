@@ -16,6 +16,7 @@
     "system": "Сервис",
     "systemHint": "Сводка работы станции, каталог видов и редкие инструменты обслуживания.",
     "library": "Данные",
+    "labelling": "Разметка",
     "libraryHint": "Файлы архива на диске, выгрузки для обучения и уход за хранилищем. Просмотр роликов — в «Записи».",
     "supportProject": "Поддержать",
     "logout": "Выйти",
@@ -138,12 +139,19 @@
     "serviceNotice": "Архив и обслуживание данных. Повседневный просмотр роликов — в разделе «Записи»."
   },
   "overview": {
-    "lastBird": "Последняя птица сегодня",
-    "lastBirdUnknown": "Птица (вид не определён)",
+    "lastBird": "Последняя активность сегодня",
+    "lastBirdUnknown": "Птица (детектор, вид не определён)",
+    "lastRodentUnknown": "Грызун (детектор)",
+    "unidentifiedBird": "Птица (детектор)",
+    "unidentifiedRodent": "Грызун (детектор)",
     "errorLoad": "Ошибка загрузки данных. Проверьте, что API доступен.",
     "checkApi": "Проверка: откройте /api/ui/health в браузере — должен вернуть {status: ok}.",
-    "bySource": "По источникам распознавания",
-    "bySourceHint": "Сколько визитов содержат хотя бы один сегмент с этим провайдером. Сумма по строкам может превышать «всего визитов», если в одном визите участвовали несколько источников.",
+    "bySource": "По источникам срабатывания триггера",
+    "bySourceHint": "Сколько визитов связаны с этим источником запуска записи (trigger source).",
+    "byDetectionProvider": "По провайдеру детекции",
+    "byDetectionProviderHint": "Кто фактически дал вид визиту (YOLO, Frigate, BirdNET MQTT и т.д.) — не путать с trigger source.",
+    "detectionProviderLegacy": "Устаревшие записи",
+    "detectionProviderUnknown": "Неизвестно",
     "volunteerDataLabelingHint": "Волонтёры могут помочь с разметкой данных — свяжитесь с нами.",
     "noData": "Нет данных за выбранный день",
     "hourlyActivity": "Активность по часам",
@@ -151,8 +159,9 @@
     "topSpecies": "Топ видов",
     "uniqueSpecies": "Уникальных видов",
     "uniqueSpeciesHint": "Число разных видов птиц с детекциями за выбранный день",
-    "totalVisits": "Всего визитов",
-    "totalVisitsHint": "Число визитов (сессий SpeciesVisit) за выбранный день. В одном визите может быть несколько роликов и несколько сегментов распознавания.",
+    "totalVisits": "Вся активность",
+    "totalVisitsHint": "Визиты с определённым видом плюс сегменты «Птица»/«Грызун» только от детектора за выбранный день",
+    "totalVisitsBreakdown": "{{named}} с видом · {{bird}} птица (детектор) · {{rodent}} грызун",
     "visitsLastHour": "Визитов (последний час)",
     "visitsLastHourHint": "Визиты, пересекающиеся с последними 60 минутами от текущего момента (локальное время сервера/БД — как в API).",
     "meanDuration": "Средняя длительность записи",
@@ -198,8 +207,9 @@
     "advancedDesc": "YOLO (детекция птиц) используется в processor — модели в конфиге processor.models. Здесь только параметры записи и фильтры.",
     "modeOverview": "Обзор",
     "modeWorkspace": "Рабочая область",
+    "modeExpert": "Эксперт",
     "modeAria": "Режим страницы настроек",
-    "simpleModeHint": "Показаны основные параметры. Режим «Рабочая область» — тонкая настройка процессора и инструментов каталога видов.",
+    "simpleModeHint": "Показаны основные параметры. «Рабочая область» — тонкая настройка процессора и каталога. «Эксперт» — YAML import/export.",
     "accordionGeneral": "Общее",
     "accordionGeneralDesc": "Системные параметры хаба, погода, MCP, производительность и резервные копии.",
     "accordionConnection": "Подключение",
@@ -288,9 +298,10 @@
     "streamNameHint": "Основной поток для записи клипа. Название — подпись на Live.",
     "streamName": "Имя потока записи",
     "streamNamePlaceholder": "main_stream",
-    "detectStreamName": "Поток детекции (опционально)",
-    "detectStreamNamePlaceholder": "напр. yard_detect",
-    "detectStreamNameHint": "Необязательно: отдельный поток для motion, YOLO и превью — обычно с меньшим разрешением и FPS. Можно указывать отдельный прямой поток камеры или отдельный ретрансляционный поток. Пусто = тот же поток, что и для записи.",
+    "detectStreamName": "Поток детекции (lores)",
+    "detectStreamNamePlaceholder": "напр. Forest_detect или RTSP substream",
+    "detectStreamNameHint": "Обязательно для Go2RTC: motion, YOLO и трек — только этот поток. stream_name выше — только запись MP4.",
+    "detectStreamNameSameAsRecordError": "Поток детекции должен быть отдельным lores-потоком, не потоком записи.",
     "cameraName": "Название камеры",
     "cameraPlaceholder": "Кормушка",
     "addCamera": "+ Добавить камеру",
@@ -423,19 +434,19 @@
     "go2rtcPassword": "Go2RTC пароль",
     "encodingLabel": "Кодирование записи",
     "encodingCpu": "CPU",
-    "encodingIntel": "Intel GPU (встроенная)",
-    "encodingHint": "Intel — VA-API на любой встроенной графике Intel. Нужен проброс /dev/dri/renderD128 в контейнер.",
-    "recordWithVaapiLabel": "Кодировать файл записи через VA-API (h264_vaapi)",
-    "recordWithVaapiHint": "Выкл. — для MP4 только libx264 (стабильнее на части iGPU: битый moov, encode error 24). Захват кадров при «Авто» по-прежнему может идти через VA-API. OpenVINO/инференс не трогаем.",
+    "encodingJetson": "Jetson NVENC (Orin)",
+    "encodingHint": "Jetson — аппаратное кодирование на Orin (NVENC/NVMPI). CPU — libx264.",
+    "recordHwEncodeLabel": "Аппаратное кодирование записи (NVENC)",
+    "recordHwEncodeHint": "Выкл. — для MP4 только libx264 (CPU). При «Авто» захват может использовать NVDEC/NVENC.",
     "recordStreamCodecLabel": "Запись потока как",
     "recordStreamCodecH264": "H.264 (для браузера)",
     "recordStreamCodecCopy": "Копировать как в потоке (быстро, может быть HEVC)",
-    "recordStreamCodecHint": "H.264 перекодирует CPU при режиме «cpu»; Intel уже даёт H.264. Только новые записи — старые ролики не меняются.",
+    "recordStreamCodecHint": "H.264 перекодирует CPU при режиме «cpu»; Jetson NVENC уже даёт H.264. Только новые записи — старые ролики не меняются.",
     "captureBackendLabel": "Захват live-кадров",
     "captureBackendAuto": "Авто",
     "captureBackendOpenCv": "OpenCV / CPU",
-    "captureBackendFfmpegVaapi": "FFmpeg VA-API",
-    "captureBackendHint": "Авто оставляет OpenCV в CPU-режиме и пробует FFmpeg VA-API для кадров motion/детектора, когда кодирование записи — Intel и /dev/dri работает.",
+    "captureBackendFfmpegNvmpi": "FFmpeg NVMPI (NVDEC)",
+    "captureBackendHint": "Авто: NVMPI на Orin при encoding=jetson; OpenCV при CPU.",
     "videoPreRecordSeconds": "Буфер до триггера (сек)",
     "videoPreRecordSecondsHint": "Добавляет указанное число секунд до момента триггера в клип (если доступно). 0 — без pre-roll.",
     "videoAutoReconnect": "Автопереподключение видеопотока",
@@ -477,6 +488,17 @@
     "triggerSource": "Источник триггера",
     "opencvDiffThreshold": "Порог изменения кадра",
     "opencvMinContourArea": "Мин. площадь контура",
+    "opencvMasksLiveHint": "Маски исключения для OpenCV-триггера задаются отдельно для каждой камеры в «Прямой эфир» (полноэкранный редактор). Они не влияют на YOLO.",
+    "opencvMasksLiveLink": "Открыть прямой эфир",
+    "yoloDetectionZonesTitle": "Зоны YOLO (не OpenCV)",
+    "yoloDetectionZonesDesc": "Глобальные полигоны для фильтрации детекций YOLO после старта сессии: игнор внутри маски и/или зоны интереса. Формат: [[[x,y],...], ...], координаты 0..1.",
+    "yoloIgnoreMasks": "Маски игнорирования YOLO",
+    "yoloIgnoreMasksHint": "Центр bbox внутри полигона — детекция отбрасывается.",
+    "yoloInterestZones": "Зоны интереса YOLO",
+    "yoloInterestZonesHint": "Опционально: учитывать только детекции внутри зон.",
+    "yoloInterestZonesRequired": "Требовать зоны интереса (вне зон — отбрасывать)",
+    "yoloPolygonsInvalidJson": "Некорректный JSON.",
+    "yoloPolygonsInvalidShape": "Ожидается массив полигонов.",
     "motionCheckEveryNFrames": "Проверять движение раз в N кадров",
     "motionCheckEveryNFramesHint": "Только для OpenCV: 1 = каждый кадр, 3 = каждый 3-й. Снижает нагрузку на CPU при высоком FPS.",
     "mqttSensorAlert": "MQTT-датчик: подписка на топик. При ON/1 — старт сессии клипа (захват с камеры и детектор). Tasmota: stat/ИМЯ/STATE или stat/ИМЯ/PIR.",
@@ -621,9 +643,107 @@
     "processorDetectorPipelineTitle": "Пайплайн детектора и производительность",
     "processorDetectorPipelineDesc": "Размер входа YOLO, даунскейл live, blur-gate, планировщик классификации, порог предупреждения о медленном detect().",
     "processorBinaryImgsz": "Размер входа головы детекции (imgsz)",
-    "processorBinaryImgszHint": "Должен совпадать с экспортом OpenVINO IR (`processor.binary_imgsz`, обычно **640**). Больше — тяжелее CPU/GPU.",
-    "processorInferenceLoresPx": "Ширина lores для live (px)",
-    "processorInferenceLoresPxHint": "Декод/resize перед детекцией. Держите ≤ binary_imgsz.",
+    "processorBinaryImgszHint": "Должен совпадать с экспортом IR (`processor.binary_imgsz`, на площадке часто **704**). Больше — тяжелее CPU/GPU.",
+    "processorInferenceLoresPx": "Ширина lores для live (px, legacy)",
+    "processorInferenceLoresPxHint": "Квадратный даунскейл, если не задано inference_lores_wh. Держите согласованным с detect substream.",
+    "processorStreamGeometryTitle": "Геометрия detect-потока",
+    "processorStreamGeometryDesc": "Размер substream и fallback FPS (если probe/RTSP не отдаёт FPS). См. также video.detect_fps в «Захват».",
+    "processorDetectUseNativeResolution": "Нативное разрешение detect (без letterbox на capture)",
+    "processorDetectUseNativeResolutionHint": "true — YOLO letterbox только внутри детектора; false — inference_lores_wh / px.",
+    "processorInferenceLoresWidth": "Detect ширина (ширина×высота, px)",
+    "processorInferenceLoresHeight": "Detect высота (ширина×высота, px)",
+    "processorInferenceLoresWhHint": "Формат ширина×высота (W×H), типично 704×576 для Go2RTC substream. Приоритет над inference_lores_px.",
+    "processorDetectionQualityAssumedFps": "Assumed FPS (fallback)",
+    "processorDetectionQualityAssumedFpsHint": "Если probe и video.detect_fps=0 не дали FPS — для temporal/MOG2 фильтров.",
+    "processorDetectFirstTitle": "Detect-first (lores до записи)",
+    "processorDetectFirstDesc": "YOLO на detect-substream должен подтвердить трек до старта FFmpeg на main. Без anchor запись не начинается (см. лог detect_first).",
+    "processorDetectFirstEnabled": "Detect-first включён",
+    "processorDetectFirstWindowSeconds": "Окно detect-first (сек)",
+    "processorDetectFirstWindowSecondsHint": "Сколько секунд крутить lores YOLO после триггера.",
+    "processorDetectFirstMaxFrames": "Макс. кадров detect-first",
+    "processorDetectFirstConfirmMinHits": "Мин. YOLO-хитов для anchor",
+    "processorDetectFirstConfirmMinHitsHint": "Кадров с детекцией до проверки трека.",
+    "processorDetectFirstConfirmMinTrackSeconds": "Мин. длительность трека для anchor (сек)",
+    "processorCameraProfilesTitle": "Пороги по камерам",
+    "processorCameraProfilesDesc": "Переопределения processor.camera_overrides.<id> — сильнее роли камеры. Пустое поле = наследовать.",
+    "processorCameraProfilesRoleHint": "Роль камеры (ближний / общий план) задаётся в «Захват → Камеры» и в пресетах ролей ниже.",
+    "processorCameraProfilesEmpty": "Добавьте камеры в разделе «Захват и кормушка».",
+    "processorRolePresetsTitle": "Пресеты ролей камер",
+    "processorRolePresetsDesc": "Базовые пороги для «Ближний план» и «Общий план» (processor.camera_tuning_by_role).",
+    "cameraTuningRole": "Роль настройки",
+    "cameraTuningRoleDefault": "Без роли",
+    "cameraTuningRoleHint": "Ближний план — камера крупным планом в кормушке; общий план — обзорная камера. Задаёт базовые пороги до переопределения по id камеры.",
+    "cameraTuningRole_feeder_close": "Ближний план",
+    "cameraTuningRole_feeder_far": "Общий план",
+    "cameraTuningRoleFeederClose": "Ближний план",
+    "cameraTuningRoleFeederFar": "Общий план",
+    "cameraTuningMinConfidenceBinary": "min_confidence_binary",
+    "cameraTuningMinConfidenceBinaryBird": "min_confidence_binary_bird",
+    "cameraTuningMinConfidenceToProcess": "min_confidence_to_process",
+    "cameraTuningMinTrackDuration": "min_track_duration (сек)",
+    "cameraTuningMinBoxSizePx": "min_box_size_px",
+    "cameraTuningMaxBoxAreaNorm": "max_box_area_norm",
+    "cameraTuningMaxBoxAreaNormHint": "Отсечь боксы > доли кадра (крупная птица в кормушке).",
+    "cameraTuningScoringGiantBoxAreaFrac": "scoring_giant_box_area_frac",
+    "cameraTuningScoringGiantBoxAreaFracHint": "Reject в scoring при bbox > доли кадра.",
+    "cameraTuningDetectRecordTimeOffsetSec": "detect_record_time_offset_sec",
+    "cameraTuningDetectRecordTimeOffsetSecHint": "Сдвиг seek main MP4 для TG-кропа (сек).",
+    "cameraTuningTrackStaticRejectEnabled": "track_static_reject_enabled",
+    "cameraTuningTrackStaticRejectMinDurationSec": "track_static_reject_min_duration_sec",
+    "cameraTuningTrackStaticRejectMinFrames": "track_static_reject_min_frames",
+    "cameraTuningLightGateEnabled": "light_gate_enabled",
+    "cameraTuningBinaryImgsz": "binary_imgsz",
+    "processorNotifyPreviewSource": "Источник превью TG",
+    "processorNotifyPreviewSourceHint": "auto — main MP4, fallback lores best_frame.",
+    "processorNotifyPreviewSourceAuto": "auto",
+    "processorNotifyPreviewSourceRecord": "record_hires (main)",
+    "processorNotifyPreviewSourceLores": "best_frame_lores",
+    "processorDetectRecordTimeOffsetSecGlobal": "Сдвиг detect↔record (глобально, сек)",
+    "processorDetectRecordTimeOffsetSecGlobalHint": "Per-camera — в порогах по камерам.",
+    "processorMog2Title": "MOG2 (фон)",
+    "processorMog2Desc": "Отсечение боксов на статическом фоне кормушки.",
+    "processorMog2Enabled": "Включить background subtraction",
+    "processorMog2EnabledHint": "processor.background_subtraction_enabled",
+    "processorMog2History": "MOG2 history",
+    "processorMog2HistoryHint": "Длина истории фона (кадры).",
+    "processorMog2VarThreshold": "MOG2 varThreshold",
+    "processorMog2VarThresholdHint": "Чувствительность к изменению пикселей.",
+    "processorMog2MinFgRatio": "Мин. доля foreground в bbox",
+    "processorMog2MinFgRatioHint": "Ниже — отброс как «на фоне».",
+    "processorMog2WarmupFrames": "Warmup кадров",
+    "processorMog2WarmupFramesHint": "Кадры до включения фильтра.",
+    "processorMog2DetectShadows": "Детектировать тени MOG2",
+    "motionCalibrationTitle": "Калибровка движения и статики",
+    "motionCalibrationDesc": "Настройка MOG2 и фильтра статических объектов с превью. MOG2 детекции применяется на следующем кадре без рестарта; триггер OpenCV MOG2 после сохранения может потребовать перезапуск процессора.",
+    "motionCalibrationTriggerTitle": "Триггер OpenCV (MOG2 / hybrid)",
+    "motionCalibrationDetectionMethod": "Метод детекции движения",
+    "motionCalibrationDetectionMethodHint": "triggers.opencv.detection_method — frame_diff, mog2 или hybrid.",
+    "motionCalibrationMog2VarThreshold": "MOG2 varThreshold (триггер)",
+    "motionCalibrationMog2VarThresholdHint": "Ниже — чувствительнее к движению (больше FP от ветки/IR).",
+    "motionCalibrationMog2MinArea": "MOG2 min contour area",
+    "motionCalibrationMog2MinAreaHint": "Выше — игнор мелких пятен (риск FN для дальних птиц).",
+    "motionCalibrationMog2Shadows": "MOG2 detect shadows (триггер)",
+    "motionCalibrationStaticTitle": "Фильтр статических объектов",
+    "motionCalibrationStaticEnabled": "Подавление статических объектов",
+    "motionCalibrationStaticConfFloor": "Порог conf птицы на статике",
+    "motionCalibrationStaticConfFloorHint": "processor.static_scene_bird_min_confidence",
+    "motionCalibrationStaticJitter": "Макс. джиттер трека (px)",
+    "motionCalibrationStaticJitterHint": "processor.static_temporal_max_jitter_px — малые значения повышают риск FN.",
+    "motionCalibrationPreviewMode": "Режим превью",
+    "motionCalibrationPreviewDetection": "MOG2 детекции (YOLO)",
+    "motionCalibrationPreviewTrigger": "MOG2 триггера",
+    "motionCalibrationPreviewStatic": "Статика + MOG2 детекции",
+    "motionCalibrationPreviewBtn": "Тест / превью",
+    "motionCalibrationPreviewLoading": "Загрузка…",
+    "motionCalibrationPreviewOverlay": "Кадр + маска",
+    "motionCalibrationPreviewMask": "Маска foreground",
+    "processorTrackRegenLoresWidth": "Regen ширина (px)",
+    "processorTrackRegenLoresHeight": "Regen высота (px)",
+    "processorTrackRegenLoresWhHint": "Приоритет над track_regen_lores_px; обычно как live detect.",
+    "processorTrackRegenBinaryOnly": "Regen только binary (без классификатора)",
+    "resolutionDetect704": "704×576 (detect substream)",
+    "videoDetectFps": "Detect FPS (0 = авто)",
+    "videoDetectFpsHint": "0 — из stream probe / ffprobe. Явное значение перекрывает probe.",
     "processorFrameProcessingWarnMs": "Порог «медленный detect» (мс)",
     "processorFrameProcessingWarnMsHint": "Если один вызов detect() дольше — пишется метрика-предупреждение.",
     "processorClassificationScheduler": "Планировщик классификации видов",
@@ -692,12 +812,9 @@
     "processorBehaviorReviewThreshold": "Порог для ревью",
     "processorBehaviorReviewThresholdHint": "0–1. Если сохранённая уверенность ниже порога, первая детекция может быть помечена на ревью (behavior_uncertainty).",
     "processorBehaviorInferenceBackend": "Backend инференса поведения",
-    "processorBehaviorInferenceBackendHint": "auto: ONNX/IR при processor.models.behavior_openvino и метках из weights_path, иначе logistic JSON. Устройство OpenVINO берётся из настройки классификатора / BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE.",
-    "processorBehaviorInferenceAuto": "Авто (OpenVINO при наличии модели)",
+    "processorBehaviorInferenceBackendHint": "auto: ONNX при processor.models.behavior weights_path на ONNX, иначе logistic JSON.",
+    "processorBehaviorInferenceAuto": "Авто (ONNX при наличии модели)",
     "processorBehaviorInferenceLogisticJson": "Логистика из JSON (numpy)",
-    "processorBehaviorInferenceOpenvino": "OpenVINO (ONNX/IR)",
-    "processorBehaviorOpenvinoFallback": "При ошибке OpenVINO — logistic JSON",
-    "processorBehaviorOpenvinoFallbackHint": "Если выключено, при сбое загрузки IR процессор не заполнит поведение логистикой из того же weights_path.",
     "processorBehaviorMaxRuntimeDets": "Лимит треков для признаков",
     "processorBehaviorMaxRuntimeDetsHint": "Сколько детекций учитывать при расчёте proxy-признаков на финализации (1–500).",
     "processorModelsScopeTitle": "Модели, регион и generic Bird",
@@ -706,14 +823,15 @@
     "processorModelsSupportLink": "Загрузка весов, отпечатки файлов и обслуживающие операции теперь живут в <syslink>Система → Сервисный режим</syslink>.",
     "processorWeightsIntroInline": "Статус файлов по путям выше: встроенные в образ или копии после загрузки. Загрузка и сброс меняют user_config и запрашивают перезапуск процессора.",
     "processorInferenceBackend": "Бэкенд инференса детектора",
-    "processorInferenceBackendAuto": "Auto (предпочесть OpenVINO, fallback на Torch)",
+    "processorInferenceBackendAuto": "Auto (предпочесть ONNX Runtime, fallback на Torch)",
     "processorInferenceBackendTorch": "Torch / Ultralytics",
-    "processorInferenceBackendOpenvino": "OpenVINO IR",
-    "processorInferenceBackendHint": "Auto использует OpenVINO при наличии IR-пути и runtime, иначе уходит на Torch. OpenVINO берёт processor.models.binary_openvino или BIRDLENSE_BINARY_OPENVINO_PATH. ONNX Runtime остаётся YAML-only до реализации.",
+    "processorInferenceBackendOnnxruntime": "ONNX Runtime",
+    "processorInferenceBackendTensorrt": "TensorRT",
+    "processorInferenceBackendHint": "Auto использует ONNX Runtime при наличии .onnx, иначе Torch. Пути к весам — в сервисном режиме.",
     "processorClassifierInferenceBackend": "Бэкенд инференса классификатора",
-    "processorClassifierInferenceBackendHint": "Отдельный бэкенд для классификатора видов. Auto предпочитает OpenVINO IR классификатора при наличии, иначе использует Torch-чекпоинт.",
+    "processorClassifierInferenceBackendHint": "Отдельный бэкенд для классификатора видов. Auto предпочитает Birder ONNX при наличии, иначе Torch-чекпоинт.",
     "processorInferenceDevice": "Устройство инференса детектора",
-    "processorInferenceDeviceHint": "Опциональный override устройства (например intel:gpu для OpenVINO). Пусто — авто; в рантайме приоритет у BIRDLENSE_INFERENCE_DEVICE в .env.",
+    "processorInferenceDeviceHint": "Опциональный override устройства (например cuda:0). Пусто — авто; в рантайме приоритет у BIRDLENSE_INFERENCE_DEVICE в .env.",
     "processorClassifierInferenceDevice": "Устройство инференса классификатора",
     "processorClassifierInferenceDeviceHint": "Опциональный override классификатора; пусто — как у детектора или BIRDLENSE_CLASSIFIER_INFERENCE_DEVICE.",
     "processorDetectorWeightContract": "Контракт классов детектора",
@@ -721,10 +839,6 @@
     "processorDetectorWeightContractWarn": "Предупреждать",
     "processorDetectorWeightContractEnforce": "Строго",
     "processorDetectorWeightContractHint": "Сверяет имена классов модели с detector_scope; strict/enforce падает сразу при рассинхроне.",
-    "processorModelBinaryOpenvinoPath": "Путь OpenVINO для головы детекции",
-    "processorModelBinaryOpenvinoPathHint": "Каталог или .xml экспорт YOLO/OpenVINO. Оставьте пустым, если бэкенд не OpenVINO.",
-    "processorModelClassifierOpenvinoPath": "Путь OpenVINO классификатора",
-    "processorModelClassifierOpenvinoPathHint": "Каталог или .xml экспорт YOLO/OpenVINO для классификатора видов. Используется при classifier backend=OpenVINO/Auto.",
     "processorDetectionStrategy": "Стратегия детекции",
     "processorDetectionStrategyValue": {
       "two_stage": "Два шага: детектор + классификатор",
@@ -877,6 +991,32 @@
     "confidenceAdvanced": "Дополнительно",
     "falsePositiveGuardrailsTitle": "Защита от ложных срабатываний",
     "falsePositiveGuardrailsDesc": "Ужесточаем первый детектор и общий fallback, чтобы мусор у кормушки реже превращался в фальшивых птиц.",
+    "processorScoringTitle": "Пороги ScoringEngine",
+    "processorScoringDesc": "SOTA 2.0: нижняя/верхняя полоса score, relaxed-порог, бонус Frigate и motion-gate для движущегося ROI.",
+    "processorScoringDefaultLowThreshold": "Нижний порог scoring",
+    "processorScoringDefaultLowThresholdHint": "processor.scoring_default_low_threshold — ниже отбрасывается, если не сработали relaxed-правила.",
+    "processorScoringDefaultHighThreshold": "Верхний порог scoring",
+    "processorScoringDefaultHighThresholdHint": "processor.scoring_default_high_threshold — полоса уверенного принятия в live scoring.",
+    "processorScoringRelaxedMinConfidence": "Relaxed min confidence",
+    "processorScoringRelaxedMinConfidenceHint": "processor.scoring_relaxed_min_confidence — пол при ослаблении порогов ролью/камерой.",
+    "processorScoringFrigatePriorBoost": "Бонус Frigate prior",
+    "processorScoringFrigatePriorBoostHint": "processor.scoring_frigate_prior_boost — бонус при согласии Frigate и YOLO в одном ролике.",
+    "processorScoringMovingRoiMinMotionScore": "Moving ROI: мин. motion score",
+    "processorScoringMovingRoiMinMotionScoreHint": "processor.scoring_moving_roi_min_motion_score — боксы в движущемся ROI должны иметь не ниже этого motion score.",
+    "processorSceneAdaptiveTitle": "Scene-adaptive confidence",
+    "processorSceneAdaptiveDesc": "Поднимает пол confidence для птиц на статичных/ночных/малодвижных сценах.",
+    "processorSceneAdaptiveConfEnabled": "Scene-adaptive confidence",
+    "processorSceneAdaptiveConfEnabledHint": "processor.scene_adaptive_conf_enabled",
+    "processorBboxIouGateTitle": "Bbox geometry IoU gate",
+    "processorBboxIouGateDesc": "Проверка letterbox roundtrip — отсекает фантомные full-frame боксы при низком IoU с перемапленной геометрией.",
+    "processorBboxIouGateEnabled": "Bbox IoU gate",
+    "processorBboxIouGateEnabledHint": "detection.bbox_iou_gate_enabled",
+    "processorBboxIouGateMin": "Мин. roundtrip IoU",
+    "processorBboxIouGateMinHint": "detection.bbox_iou_gate_min — обычно 0.85.",
+    "processorBboxIouGateAction": "Действие gate",
+    "processorBboxIouGateActionWarn": "warn (только лог)",
+    "processorBboxIouGateActionReject": "reject (отбросить боксы)",
+    "processorBboxIouGateActionHint": "detection.bbox_iou_gate_action — reject убирает фантомные letterbox-боксы.",
     "speciesConfidenceOverrides": "Пороги по видам (редкие)",
     "speciesConfidenceOverridesHint": "Имя как в каталоге: порог по строке (напр. **Rodent**: 0.28 для белок). Ниже — для редких видов.",
     "minBoxSizePx": "Мин. размер бокса (px)",
@@ -907,6 +1047,7 @@
     "birdFamilies": "Семейства птиц",
     "resolution": "Разрешение записи",
     "resolutionHint": "Размер кадра при захвате и записи видео. Влияет на качество записи и нагрузку.",
+    "recordingResolutionAuto": "Разрешение записи определяется автоматически из main/record RTSP каждой камеры (в т.ч. выше Full HD). Для принудительного фиксированного размера при офлайн file-replay задайте video.force_recording_resolution и video_width/height в YAML.",
     "go2rtcUrlLabel": "Go2RTC URL",
     "weatherSource": "Источник погоды",
     "weatherOpenWeather": "OpenWeather",
@@ -948,11 +1089,12 @@
     "updateTitle": "Настройки станции",
     "restartInfo": "После сохранения процессор автоматически перезапустится для применения изменений.",
     "pageDescription": "Параметры сгруппированы по смыслу: общие настройки станции, подключения и видео, захват и кормушка, уведомления, интеграции и распознавание. Откройте нужный блок и читайте подсказки у полей.",
+    "deprecatedKeysAfterSave": "Сохранено, но в user_config остались устаревшие ключи ({{count}}): {{keys}}. Удалите их в разделе «Система → Аудит конфигурации».",
     "savedRestart": "Настройки сохранены. Процессор перезапустится в течение ~60 секунд.",
     "restartFailed": "Не удалось перезапустить процессор",
     "savedRestarting": "Настройки сохранены. Процессор перезапускается.",
     "saveError": "Не удалось сохранить настройки. Проверьте соединение или попробуйте ещё раз.",
-    "processorOpenvinoPathsManagedHint": "Пути OpenVINO скрыты в UI и управляются сервисным режимом/конфигом сервера. Пользователь в интерфейсе выбирает только backend для детектора и классификатора."
+    "processorOnnxPathsManagedHint": "Пути ONNX-моделей скрыты в UI и управляются в сервисном режиме. Здесь выбираются только backend детектора и классификатора."
   },
   "live": {
     "title": "Live — все камеры",
@@ -960,9 +1102,61 @@
     "streamTitle": "Прямой эфир",
     "loading": "Загрузка...",
     "errorLoad": "Не удалось загрузить список камер.",
-    "modeGo2rtc": "RTC/MSE",
-    "modeMjpeg": "MJPEG",
-    "streamModeAria": "Транспорт видео: WebRTC/MSE или запасной MJPEG"
+    "sourceGo2rtc": "Go2RTC",
+    "sourceProcessorDetect": "Поток детекции",
+    "streamSourceAria": "Источник видео: Go2RTC или MJPEG процессора (как detect)",
+    "streamGo2rtcProtocolAria": "Транспорт Go2RTC: авто (MSE→MJPEG), WebRTC, MSE или MJPEG",
+    "streamGo2rtcAuto": "Авто",
+    "streamGo2rtcWebrtc": "WebRTC",
+    "streamGo2rtcMse": "MSE",
+    "streamGo2rtcMjpeg": "MJPEG",
+    "streamTransport": {
+      "processor_detect": "Поток детекции",
+      "go2rtc_mse": "MSE",
+      "go2rtc_mjpeg": "MJPEG",
+      "go2rtc_mjpeg_fallback": "MJPEG (fallback)",
+      "go2rtc_webrtc": "WebRTC"
+    },
+    "streamUnavailable": "Поток недоступен",
+    "openEditor": "Настроить камеру и оверлеи",
+    "editorTitle": "{{name}} — прямой эфир",
+    "overlaysSection": "Что показать на видео",
+    "showOpencvMotion": "Триггер (OpenCV)",
+    "showYoloDetections": "Детекция (YOLO)",
+    "overlaysHint": "Жёлтые прямоугольники — bbox кандидатов OpenCV-триггера (вне красных масок). Зелёные — YOLO во время записи. Поток в браузере и detect-поток могут отличаться.",
+    "overlaysHowTo": "1) Иконка настройки (шестерёнка) на плитке камеры. 2) Включите «Триггер (OpenCV)». 3) Дождитесь движения в кадре — жёлтые рамки обновляются ~раз в 2 с.",
+    "opencvNoContours": "контуров нет",
+    "opencvContourCount": "контуров: {{count}}",
+    "opencvStatus": "OpenCV: {{reason}} — {{detail}}",
+    "saveClosePolygonFirst": "Сначала замкните полигон («Замкнуть полигон»), затем сохраните.",
+    "masksSection": "Редактор зон",
+    "layerTriggerMask": "Маски триггера",
+    "layerDetectorZone": "Зона детектора",
+    "masksHint": "Красные полигоны — зоны, где OpenCV игнорирует движение. Редактирование: клики по кадру → «Замкнуть полигон» → «Сохранить». Удалить маску — кнопка у списка ниже или «Очистить слой» и нарисовать заново.",
+    "detectorZonesHint": "Синие полигоны — зона интереса детектора YOLO для этой камеры. Детекции вне зоны отбрасываются.",
+    "maskItem": "Маска {{n}} ({{points}} точек)",
+    "deleteMask": "Удалить",
+    "noMasksYet": "Масок нет — кликайте по кадру, чтобы добавить полигон.",
+    "closePolygon": "Замкнуть полигон",
+    "undoPoint": "Отменить точку",
+    "clearLayer": "Очистить слой",
+    "saveLayer": "Сохранить",
+    "saveFailed": "Не удалось сохранить изменения.",
+    "saveOk": "Слой сохранён.",
+    "overlayLoadFailed": "Не удалось загрузить оверлей (ошибка API). Обновите страницу.",
+    "overlayNoProcessorData": "Процессор ещё не прислал live-контуры. Жёлтые рамки появятся при движении вне красных масок.",
+    "exitFullscreen": "Выйти из полноэкранного режима"
+  },
+  "birdProfiles": {
+    "catalogTitle": "Клички (ReID)",
+    "catalogHint": "Удаление убирает кличку из каталога и снимает привязку со всех визитов. Отвязка только у текущего ролика — кнопка «разорвать связь».",
+    "manageButton": "Управление кличками",
+    "empty": "В каталоге пока нет кличек.",
+    "deleteAction": "Удалить кличку",
+    "deleteTooltip": "Удалить кличку из каталога",
+    "deleteConfirm": "Удалить кличку «{{name}}» из каталога? Все привязки к визитам будут сняты. Это нельзя отменить.",
+    "deleteFailed": "Не удалось удалить кличку",
+    "deletedSuccess": "Кличка «{{name}}» удалена (отвязано визитов: {{count}})"
   },
   "timeline": {
     "intro": "Выберите день с записями, откройте ролик и при необходимости перейдите к виду или к проверке распознавания.",
@@ -996,14 +1190,32 @@
     "timeEvening": "Вечер (18–22)",
     "nicknameFilter": "Кличка",
     "nicknameFilterPlaceholder": "Фильтр по кличке",
+    "birdProfileFilter": "Птица",
+    "birdProfileFilterAll": "Все птицы",
     "behaviorFilter": "Поведение",
     "behaviorFilterPlaceholder": "Фильтр по поведению",
+    "behaviorFilterAll": "Все поведения",
+    "cameraFilter": "Камера",
+    "cameraFilterPlaceholder": "Все камеры",
+    "triggerSource": "Источник триггера",
+    "triggerSourceAll": "Все триггеры",
+    "triggerSourceOpencv": "OpenCV",
+    "triggerSourceFrigate": "Frigate",
+    "triggerSourceMotionSensor": "Датчик движения",
+    "triggerSourceScales": "Весы",
+    "triggerSourceUnknown": "Неизвестно",
     "sortBy": "Сортировать по",
     "sortDateDesc": "Дата/время: сначала новые",
     "sortDateAsc": "Дата/время: сначала старые",
     "sortSpecies": "Название вида",
     "sortNickname": "Кличка",
+    "sortConfidence": "Уверенность: сначала выше",
+    "sortDuration": "Длительность: сначала длинные",
     "sortBehavior": "Поведение",
+    "runtimeCpu": "CPU {{value}}%",
+    "runtimeMemory": "RAM {{value}}%",
+    "runtimeGpu": "GPU {{value}}%",
+    "runtimeEncoding": "Кодек: {{value}}",
     "hourFilterChip": "Час: {{from}}–{{to}}",
     "expandVisitDetails": "Развернуть детали визита",
     "collapseVisitDetails": "Свернуть детали визита"
@@ -1207,8 +1419,10 @@
     "viewMode": "Режим страницы",
     "simpleMode": "Простой",
     "advancedMode": "Расширенный",
+    "expertMode": "Эксперт",
     "simpleModeHint": "Показывает только основные блоки без сервисного шума.",
     "advancedModeHint": "Открывает диагностику, обслуживание и опасные операции.",
+    "expertModeHint": "Полный YAML import/export и сырые ключи для админов.",
     "iNaturalist": "Отправить в iNaturalist",
     "skipToContent": "Перейти к основному содержимому",
     "pageNotFoundTitle": "Страница не найдена",
@@ -1228,6 +1442,7 @@
     "catalogMenuHintObserved": "Только виды с визитами за выбранный период.",
     "catalogMenuHintDataset": "Виды, которые есть в локальном датасете (папки train/ и т.д.).",
     "catalogMenuHintFullEu": "Полный список EU allowlist — в таблице могут быть нули.",
+    "catalogMenuHintAll": "Все классы каталога (allowlist классификатора), в т.ч. без визитов за период.",
     "species": "Вид",
     "startDate": "С даты",
     "endDate": "По дату",
@@ -1239,14 +1454,15 @@
     "noDataset": "Нет видов из локального датасета за выбранный период.",
     "noSpeciesInDb": "В каталоге нет видов (кроме служебных).",
     "catalogLabel": "Каталог видов",
-    "catalogObserved": "Наблюдаемые (с активностью за период)",
+    "catalogObserved": "Наблюдаемые",
+    "catalogAll": "Все",
     "catalogDataset": "В локальном датасете",
     "catalogFullEu": "Полный EU-каталог (из allowlist)",
     "evidenceLabel": "Учитывать визиты",
     "evidenceAll": "Все (камера + BirdNET в тех же сессиях)",
     "evidenceCamera": "Только камера",
     "evidenceBirdnet": "Только BirdNET",
-    "catalogEvidenceHint": "«Наблюдаемые» — только виды с визитами. «В локальном датасете» — виды, присутствующие в data/dataset. «Полный EU-каталог» — все классы allowlist, даже с нулями.",
+    "catalogEvidenceHint": "«Наблюдаемые» — только виды с визитами за выбранный период. «Все» — полный каталог классификатора (allowlist), строки без визитов показываются с нулями.",
     "errorLoad": "Не удалось загрузить таблицу сезонности.",
     "filterSectionTitle": "Период и каталог",
     "tableCaption": "Виды по месяцам: в ячейке — число визитов; последний столбец — сумма по строке."
@@ -1254,16 +1470,34 @@
   "unknowns": {
     "title": "Проверка распознавания",
     "intro": "Детекции с низкой уверенностью: откройте запись, подтвердите или исправьте вид.",
+    "roleSplitTitle": "Режим «На проверке» = быстрый оперативный triage",
+    "roleSplitHint": "Здесь быстро фильтруйте кейсы и переходите к записи. Геометрию подтверждайте в «Разметка», семантику (вид/профиль/поведение) правьте в карточке видео.",
+    "openGeometryQueue": "Открыть очередь геометрии",
+    "guestBrowseTitle": "Просмотр сомнительных распознаваний",
+    "guestBrowseHint": "Откройте запись и посмотрите ролик. Исправления доступны операторам после входа.",
     "viewVideo": "Смотреть видео",
     "correctSpecies": "Исправить вид",
     "reviewStatePending": "На проверке",
-    "reviewReasonLowConfidence": "Низкая уверенность",
+    "reviewReasonLowConfidence": "Модель не уверена в виде",
     "reviewReasonGenericBird": "Общая метка Bird",
-    "reviewReasonClassifierUncertainty": "Неуверенный классификатор",
+    "reviewReasonClassifierUncertainty": "Разные предсказания моделей",
+    "reviewReasonSemanticConflict": "Требует проверки эксперта",
+    "reviewReasonOperatorFlagged": "Оператор отметил ошибку",
+    "reviewReasonBboxRejected": "Ошибочная рамка детекции",
+    "reviewReasonReidNoMatch": "ReID: особь не узнана",
+    "reviewReasonWelfareAnomaly": "Welfare: отклонение от нормы (скрининг)",
+    "reviewReasonFilter": "Причина проверки",
+    "reviewReasonFilterAll": "Все причины",
+    "reviewReasonUnknownLabel": "Неопределённый вид",
+    "reviewReasonDetectFirstAnchor": "Detect-first якорь (проверка)",
+    "reviewStateExpert": "Экспертная проверка",
+    "reviewStateReviewed": "Проверено",
+    "expertTaskDone": "Задача выполнена. Список обновлён.",
     "confirmCorrect": "Верно",
     "confirmCorrectHelp": "Вид определён верно — убрать из списка",
     "confirmBlockedPendingApply": "В списке выбран другой вид — нажмите «Применить», чтобы сохранить, или сбросьте выбор в списке, чтобы нажать «Верно».",
     "speciesSelectPlaceholder": "Выберите вид…",
+    "speciesSearchPlaceholder": "Поиск по полному каталогу…",
     "apply": "Применить",
     "empty": "Нет детекций с низкой уверенностью за выбранный период. Попробуйте другой день или час. Вид «Птица» (Bird) всегда показывается здесь для проверки.",
     "count": "{{count}} детекций на проверку",
@@ -1324,19 +1558,40 @@
     "spectrogram": "Спектрограмма",
     "mediaViewTabs": "Переключение: видео или спектрограмма",
     "speciesInVideo": "Виды в этом видео",
+    "guestCorrectionTitle": "Коррекция вида требует входа оператора",
+    "guestCorrectionHint": "Разблокируйте станцию паролем, чтобы менять вид, объединять детекции и привязывать профили.",
+    "unlockToCorrect": "Войти для коррекции",
+    "welfareAnomalyChip": "Аномалия здоровья",
+    "welfareDistanceChip": "Дистанция здоровья {{distance}}",
+    "welfareAnomalyHint": "Расстояние Махаланобиса от baseline «здоровых»; высокие значения — на ручной просмотр (не диагноз).",
+    "welfareUnavailableChip": "Здоровье не рассчитано",
+    "welfareUnavailableHint": "Оценка здоровья недоступна для этой записи: обычно это старый ролик, salvage только по Frigate или трек без подходящего crop. Появится после переобработки или новых сессий.",
+    "speciesEmptyTitle": "Видов в записи нет",
+    "speciesEmptyHint": "Видео-детекций нет: ролик ещё обрабатывается, Frigate-only salvage без YOLO-трека, или виды не сохранены. После переобработки карточки появятся здесь.",
+    "speciesWithoutOverlayHint": "Вид указан, но рамки на ролике не сохранены (часто salvage только по Frigate или отклонённый короткий YOLO-трек). Видео воспроизводится; оператор может пересчитать треки в служебных инструментах.",
     "mergeAllToSpecies": "Применить ко всем в видео",
     "mergeAllHint": "Разные нейросети или прерывания дали несколько карточек — выберите правильный вид и объедините все детекции.",
     "detection": "обнаружение",
     "detections": "обнаружений",
+    "detectionTracksTitle": "Треки на этом ролике",
+    "detectionTrackRow": "Трек {{track}} · {{start}}–{{end}} · {{conf}}%",
+    "deleteDetection": "Удалить bbox",
+    "deleteDetectionConfirm": "Удалить детекцию (трек {{track}}, {{start}}–{{end}})? Файл видео останется.",
+    "deleteDetectionSuccess": "Детекция удалена",
+    "deleteDetectionHint": "Удаляет только этот bbox/трек; остальные детекции на ролике не трогаются.",
     "detectionProviderYolo": "YOLO",
     "detectionProviderFrigate": "Внешний MQTT",
     "detectionProviderBirdnetMqtt": "BirdNET",
+    "detectionProviderYoloPublic": "Детекция на ролике",
+    "detectionProviderFrigatePublic": "Внешний MQTT",
+    "detectionProviderBirdnetPublic": "Распознавание по звуку",
     "detectionSource": "Источник",
     "nickname": "Кличка",
     "editNickname": "Задать кличку",
     "nicknameSaved": "Кличка сохранена",
     "behavior": "Поведение",
     "timelineHint": "Полосы = виды. Наведите курсор — источник: YOLO, внешний MQTT или BirdNET.",
+    "timelineHintPublic": "Цветные полосы — виды. Наведите курсор: способ определения (анализ ролика, внешний MQTT или звук).",
     "noTrackFramesHint": "Нет bbox YOLO на этом ролике (оверлей скрыт). В настройках снижены пороги, чтобы птица чаще попадала в запись; админ может нажать «Пересчитать треки для этого ролика» или подправить processor.min_track_duration / min_confidence_to_process.",
     "regenerateTracksThisVideo": "Пересчитать треки для этого ролика",
     "tracksMissingHint": "У этого ролика ещё нет кадров с рамками в БД — пересчитайте треки, чтобы появился оверлей.",
@@ -1364,6 +1619,8 @@
     "regenerateSpectrogramThisVideoFailed": "Не удалось запустить пересборку спектрограммы",
     "specRegenDone": "Спектрограмма: задача завершена.",
     "confidence": "Уверенность",
+    "scoringWhySpecies": "Почему этот вид?",
+    "scoringHintTooltip": "Провайдер: {{provider}}. Веса арбитра: {{weights}}. Полная трассировка — «Fusion» в карточке ролика.",
     "learnMore": "Подробнее",
     "correctedInVideos": "Вид исправлен в {{count}} видео",
     "speciesUnchanged": "Этот вид уже выбран — обновлять нечего.",
@@ -1378,9 +1635,26 @@
     "nicknameField": "Кличка птицы",
     "nicknameFieldPlaceholder": "например, Синичка Соня",
     "nicknameLabel": "Кличка",
+    "profileField": "Профиль птицы",
+    "profileFieldPlaceholder": "Найдите профиль или введите имя для нового",
+    "profileLinkButton": "Привязать профиль",
+    "unlinkBirdProfile": "Отвязать птицу",
+    "unlinkBirdProfileTooltip": "Удалить привязку птицы к этому визиту",
+    "unlinkBirdProfileConfirm": "Вы уверены, что хотите отвязать птицу «{{name}}» от этого визита? Это действие нельзя отменить.",
+    "unlinkBirdProfileAction": "Отвязать",
+    "unlinkBirdProfileFailed": "Не удалось отвязать птицу",
+    "profileCreateAndLinkButton": "Создать и привязать",
+    "profileLinkedInVideo": "Профиль привязан к {{count}} детекциям в видео",
+    "profileMaybeSameBird": "Возможно, это та же птица",
+    "profileAutoLinkTier": "высокая уверенность",
+    "profileMergeButton": "Объединить",
+    "profileMergeSuccess": "Объединено в «{{name}}» ({{count}} детекций)",
+    "profileDismissSuggest": "Не та же",
+    "semanticReviewButton": "На проверку семантики",
+    "semanticReviewQueued": "Кейс отправлен в очередь эксперта",
+    "semanticConflictTitle": "Конфликт семантики",
     "nicknameSaveButton": "Сохранить кличку",
     "nicknameCancelButton": "Отменить",
-    "nicknameSaved": "Кличка сохранена",
     "possibleSameBird": "Возможно, это та же птица",
     "reidCrossCameraHint": "строже для другой камеры/папки записи",
     "similarityPercent": "Сходство: {{value}}%",
@@ -1404,6 +1678,7 @@
     "scaleTareFail": "Не удалось отправить тару",
     "supportTitle": "Поддержка проекта",
     "dispenseFeed": "Выдать корм",
+    "dispenseViewOnly": "Выдача корма настраивается администратором станции.",
     "dispensing": "Выдача...",
     "feedDispensed": "Корм выдан",
     "lastDispense": "Последняя выдача",
@@ -1460,7 +1735,17 @@
     "adminRegenTracksHelp": "Только админ. YOLO+ByteTrack только для этого файла; нагрузка на CPU. Дождитесь окончания задачи и обновите страницу.",
     "adminRegenSpectrogramHelp": "Только админ. Заново строит картинку спектрограммы из видео. Дождитесь окончания задачи и обновите страницу.",
     "adminRegenRunning": "Выполняется…",
-    "adminRegenFailed": "Не удалось запустить задачу"
+    "adminRegenFailed": "Не удалось запустить задачу",
+    "deleteVisit": "Удалить визит",
+    "deleteVisitConfirm": "Удалить визит «{{name}}» целиком? Видео останутся, удалятся только детекции визита.",
+    "deleteVisitSuccess": "Визит удалён",
+    "deleteDetection": "Удалить детекцию",
+    "deleteDetectionConfirm": "Удалить детекцию «{{name}}» из записи?",
+    "deleteDetectionSuccess": "Детекция удалена",
+    "bestConfidence": "Лучший: {{value}}%",
+    "detectionsCount": "Детекций: {{count}}",
+    "sourceMix": "Видео {{video}} · Аудио {{audio}}",
+    "sourceVideoOnly": "Видео: {{count}}"
   },
   "fusionTrace": {
     "openButton": "Трассировка fusion",
@@ -1537,18 +1822,37 @@
     "scalesEstimateTitle": "Весы (оценка)",
     "scalesEstimateValue": "{{value}} {{unit}}",
     "scalesEstimateHint": "Разница показаний за время записи при видео-детекции; шум, ветер и несколько птиц искажают результат.",
+    "weightChangeTitle": "Изменение веса",
+    "weightChangeUnit": "г",
+    "weightChangeTooltip": "Разница веса за время визита (по данным датчика)",
+    "behaviorEditHint": "Метка поведения для этого ролика; обучение модели — в разделе для операторов.",
     "visitSpeciesMismatch": "Часть детекций привязана к визиту другого вида — часто после ручных правок БД или перегенерации треков. Подписи на странице — то, что сохранено именно для этого ролика.",
-    "behaviorTitle": "Поведение (распознавание)",
+    "behaviorTitle": "Поведение",
     "behaviorNone": "Для этого ролика пока нет метки поведения.",
     "behaviorEdit": "Изменить поведение",
     "behaviorDialogTitle": "Метка поведения",
     "behaviorLabelField": "Метка",
-    "behaviorLabelHint": "Строчные идентификаторы (например feeding, flying). Пусто — сбросить.",
+    "behaviorLabelHint": "Выберите из практического словаря поведения. Пусто — сбросить.",
+    "behaviorTagNone": "Без метки",
+    "behaviorTags": {
+      "feeding": "Кормление",
+      "food_handling": "Обработка корма",
+      "drinking": "Питьё",
+      "bathing": "Купание",
+      "self_maintenance": "Уход за собой",
+      "resting": "Отдых",
+      "vigilance": "Бдительность",
+      "agonistic": "Конфликт / вытеснение",
+      "alarm_or_flee": "Тревога / побег",
+      "transport_food": "Унос корма",
+      "parent_offspring": "Родитель и птенцы",
+      "pair_or_courtship": "Пара / ухаживание"
+    },
     "behaviorConfField": "Уверенность (0–1)",
     "behaviorConfHint": "Опционально. Сбрасывается при очистке метки.",
     "behaviorSaving": "Сохранение…",
     "behaviorSave": "Сохранить",
-    "behaviorTrainingNotInUi": "Обучение новой модели и разметка датасета здесь не делаются — только метка для этого ролика. Baseline: Настройки → Процессор; свои веса — офлайн (CSV и Makefile, см. README на GitHub)."
+    "behaviorTrainingNotInUi": "Модель поведения активна. Здесь вы меняете только метку поведения для этого ролика."
   },
   "weather": {
     "title": "Погода",
@@ -1565,6 +1869,40 @@
     "noon": "Полдень"
   },
   "system": {
+    "triggerGraph": {
+      "title": "Граф триггеров",
+      "description": "Кто запустил запись, кто определил вид, FP/FN по источнику (Frigate, OpenCV, YOLO, BirdNET, Scale).",
+      "loadError": "Не удалось загрузить метрики триггеров.",
+      "noData": "Нет сессий с trigger_graph в окне — новые появятся после записей с обновлённым процессором.",
+      "bySource": "По источнику",
+      "sessions": "сессий",
+      "init": "старт",
+      "species": "виды",
+      "fpEmpty": "пустая запись",
+      "fpReject": "шум",
+      "fnSilent": "детектор молчит",
+      "fnNoSpecies": "без вида",
+      "recentSessions": "Последние сессии",
+      "colTime": "Время",
+      "colCamera": "Камера",
+      "colInit": "Триггер",
+      "colSpecies": "Виды"
+    },
+    "yoloDetector": {
+      "title": "YOLO — детектор",
+      "description": "Живой статус детектора: слепота при движении Frigate без треков YOLO. См. runbook при Blind.",
+      "statusHealthy": "Healthy",
+      "statusDegraded": "Degraded",
+      "statusBlind": "Blind",
+      "phase": "фаза",
+      "tracksSession": "кадры с треками",
+      "frigateOnly": "Frigate-only",
+      "alertActive": "Активен алерт yolo_blind_alert: Frigate без YOLO дольше порога.",
+      "noSnapshot": "Нет processor_runtime_stats.json — процессор не писал gauges или другой DATA_DIR.",
+      "loadError": "Не удалось загрузить статус детектора.",
+      "reasons": "Причины",
+      "runbookHint": "Runbook:"
+    },
     "pageDescription": "Сводка состояния, каталог и диагностика. Расширенный режим — для логов, обслуживания и редких операций.",
     "pageModeToggleHint": "Эта страница открыта из пункта меню «Сервис». Вкладки меняют только плотность: «Обзор» — сжатый вид; «Рабочая область» — диагностика, автоматизация, журналы и инструменты моделей.",
     "modeOverview": "Обзор",
@@ -1619,6 +1957,10 @@
     "heroLoadError": "Не удалось собрать сводку по системе",
     "heroHealthy": "В норме",
     "heroNeedsAttention": "Нужно внимание",
+    "heroInfoDeprecated": "В user_config есть {{count}} устаревших ключей — не ошибка, при обновлении можно убрать.",
+    "heroInfoDeprecated_one": "В user_config есть {{count}} устаревший ключ — не ошибка.",
+    "heroInfoDeprecated_few": "В user_config есть {{count}} устаревших ключа — не ошибка.",
+    "heroInfoDeprecated_many": "В user_config есть {{count}} устаревших ключей — не ошибка.",
     "heroSummaryHealthy": "Базовые проверки выглядят здоровыми. Дальше можно сверить тренды, интеграции и админские операции.",
     "heroSummaryDegraded": "Есть сигналы, которые стоит проверить. Сначала разберите предупреждения ниже, а уже потом запускайте обслуживание.",
     "heroActionOverview": "К обзору",
@@ -1662,7 +2004,7 @@
     "processorWeightsTitle": "Веса процессора (детекция и классификатор)",
     "processorWeightsIntro": "Пути задаются в «Настройки» → «Процессор» → блок моделей. Эта карточка показывает реальные файлы (встроенные vs data/custom_weights), загрузку, SHA256, сброс и перезапуск. Голова детекции (по умолчанию BRG .pt) и классификатор видов — два разных .pt. Загрузка пишет в data/custom_weights и прописывает в user_config абсолютные пути. После загрузки или сброса выставляется флаг перезапуска процессора — нажмите «Перезапуск процессора» или дождитесь watchdog.",
     "processorWeightsBinary": "Бинарный детектор",
-    "processorWeightsBinaryHint": "Дефолтный комплект: BRG три класса — best.pt и каталог OpenVINO best_openvino_model (из образа/репозитория); при наличии last.pt — снимок для отката. Вариант COCO yolo11n.pt с allowlist только класса 14 — для особых конфигураций.",
+    "processorWeightsBinaryHint": "Orin: Trapper AI v02.2024 ONNX — models/detection/trapper_ai_v02_2024/trapper_ai_v02_2024.onnx (CUDA EP).",
     "processorWeightsClassifier": "Классификатор видов",
     "processorWeightsClassifierHint": "Голова видов (по умолчанию: models/classification/weights/best.pt с HF gfermoto/birdlense-birds-eu). Согласуйте с class_names.txt, если число классов другое.",
     "processorWeightsAllowlist": "class_names.txt (allowlist)",
@@ -1719,11 +2061,10 @@
     "encoding": "Кодирование записи",
     "encodingUsed": "Сейчас",
     "encodingCpu": "CPU",
-    "encodingVaapi": "Intel GPU (VA-API)",
-    "encodingGpuUnavailable": "В настройках выбран Intel GPU, но устройство недоступно в контейнере. Добавьте devices в compose (см. docker-compose.intel.example.yml).",
+    "encodingGpuUnavailable": "В настройках выбран аппаратный энкодер, но устройство недоступно в контейнере. Проверьте runtime: nvidia и devices в compose.",
     "processorMqtt": "MQTT процессора (внешние события/BirdNET)",
     "gpu": "GPU",
-    "gpuNoData": "Нет данных по загрузке GPU (ни sysfs, ни опрос Intel). Если запись с Intel не идёт — в Настройках → Видео выберите CPU.",
+    "gpuNoData": "Нет данных по загрузке GPU (nvidia-smi недоступен). Если NVENC не работает — в Настройках → Видео выберите CPU.",
     "uniqueVisitors": "Посетители",
     "speciesVisitSessions": "Сессии посещений",
     "uniqueVisitorsPeriod": "Период метрики",
@@ -1745,7 +2086,19 @@
     "configAuditRuntimeDetectP95": "Задержка детектора p95 ≈ {{p95}} мс при пороге предупреждения {{warnMs}} мс — кадры часто пересекают порог медленной обработки.",
     "configAuditFrigateStandaloneOff": "Источник внешних MQTT-событий включён, но detection.frigate_standalone_when_no_yolo=false: при нуле треков YOLO MQTT-события не попадают в финальные детекции.",
     "configAuditNeedsReview": "Нужна проверка",
+    "configAuditInfoOnly": "Справка",
     "configAuditLoadError": "Не удалось загрузить ревизию конфигурации",
+    "tuningWorkbenchTitle": "Tuning workbench",
+    "tuningWorkbenchHint": "Безопасные пресеты, per-camera override'ы, guardrails, auto-eval и rollback.",
+    "tuningWorkbenchLoadError": "Не удалось загрузить данные tuning workbench",
+    "tuningWorkbenchGlobal": "Глобальный профиль",
+    "tuningWorkbenchPresets": "Безопасные пресеты",
+    "tuningWorkbenchPerCamera": "Per-camera профили",
+    "tuningWorkbenchCameraHint": "Override'ы наследуют глобальные настройки processor и переопределяют только выбранные ключи.",
+    "tuningWorkbenchAutoEval": "Auto-eval после изменения",
+    "tuningWorkbenchRollback": "Откатить предыдущий профиль",
+    "tuningWorkbenchMutationError": "Операция tuning не выполнена",
+    "cameraLabel": "Камера",
     "configAuditWarningsTitle": "Предупреждения",
     "configAuditRecallHintsTitle": "Подсказки по чувствительности (информация)",
     "configAuditRecallHintsHint": "Это не ошибки конфигурации — правьте только если нужна большая полнота по движению.",
@@ -1772,9 +2125,19 @@
     "catalogFullEuCount": "Allowlist: {{n}}",
     "catalogTuningCandidates": "К тюнингу: {{n}}",
     "catalogTuningHint": "Кандидаты на дообучение считаются автоматически: вид наблюдался, но отсутствует в реальных локальных папках dataset.",
+    "catalogOpsHubTitle": "Каталог и детекция",
+    "catalogOpsHubDescription": "Сводка: полнота карточек allowlist, аудио, YOLO health и фоновые задачи.",
+    "catalogOpsCompletion": "Карточки: {{complete}}/{{total}} ({{pct}}%)",
+    "catalogOpsAudio": "Аудио в каталоге: {{with}} / без: {{missing}}",
+    "catalogOpsRunningJobs": "Выполняются задачи: {{jobs}}",
+    "catalogOpsOpenCatalog": "Оглавление каталога",
+    "catalogOpsOpenQuality": "Качество карточек",
+    "backpressureClassifierQueue": "Classifier queue: {{depth}}/{{max}}",
+    "backpressureFinalizeQueue": "Finalize queue: {{depth}}",
     "catalogRepairTitle": "Полировка карточек каталога",
     "catalogRepairLoadError": "Не удалось загрузить статус полировки каталога",
     "catalogRepairStart": "Запустить полировку",
+    "catalogRepairOpenQualityList": "Список проблемных карточек",
     "catalogRepairStartFailed": "Не удалось запустить полировку каталога",
     "catalogRepairRunning": "Полировка идёт",
     "catalogRepairReady": "Готово",
@@ -1897,6 +2260,23 @@
     "automationBirdnetFifoAgoMinutes": "{{n}} мин назад",
     "automationBirdnetFifoAgoHoursOnly": "{{n}} ч назад",
     "automationBirdnetFifoAgoHoursMinutes": "{{h}} ч {{m}} мин назад",
+    "birdnetFifoStatus": {
+      "disabled": "BirdNET по MQTT не настроен — буфер FIFO не используется (норма).",
+      "reportingOff": "Снимок/персист FIFO отключены в конфиге процессора.",
+      "unavailable": "Очередь BirdNET недоступна: нет снимка и нет данных в БД. Проверьте процессор и MQTT.",
+      "stale": "Снимок FIFO устарел — давно не было обновления (тишина или сбой MQTT).",
+      "mqttDown": "MQTT не подключён — события BirdNET не поступают.",
+      "empty": "Очередь пуста — за окно TTL не было событий (норма при тишине).",
+      "active": "Очередь BirdNET активна."
+    },
+    "processorLogsFilter": {
+      "all": "Все",
+      "error": "Ошибки",
+      "warning": "Предупр.",
+      "info": "INFO",
+      "debug": "DEBUG"
+    },
+    "processorLogsFilterEmpty": "Нет строк уровня «{{filter}}» в выбранной выборке ({{lines}} строк). Откройте «Все».",
     "processorActivityTitle": "Heartbeat процессора",
     "processorActivityLoading": "Загрузка heartbeat процессора...",
     "processorActivityLoadFailed": "Не удалось загрузить активность heartbeat процессора.",
@@ -1940,6 +2320,18 @@
     "retentionMinAgeHoursHelper": "Защита свежих записей от удаления сразу после появления.",
     "retentionBatch": "Пакет",
     "retentionBatchHelper": "Сколько записей обрабатывать за один запуск, чтобы не перегружать диск.",
+    "retentionMaxDeletesPerRun": "Макс. удалений за запуск",
+    "retentionMaxDeletesPerRunHelper": "Верхняя граница каскадных удалений за один запуск планировщика или вручную (1–5000).",
+    "retentionAutoRunEnabled": "Плановый auto-run",
+    "retentionAutoRunEnabledHelper": "Периодически проверяет пороги days/max_gb; при нарушении удаляет только просроченные или старейшие записи (до лимита за прогон), не весь архив.",
+    "retentionAutoRunIntervalHours": "Интервал проверки (ч)",
+    "retentionAutoRunIntervalHoursHelper": "Часы между проверками; один прогон — не более max_deletes_per_run, пока снова не нарушен порог.",
+    "retentionOrphanFilesSummary": "Сессии на диске без строки в БД: {{n}} (~{{gb}} ГБ). Scan/import не чинит автоматически; очистка — отдельное admin-действие.",
+    "retentionOrphanPurgePreview": "Предпросмотр purge",
+    "retentionOrphanPurgeApply": "Удалить orphan (диск)",
+    "retentionOrphanPurgeConfirm": "Удалить сессии на диске без строк в БД? Избранное и protected sessions пропускаются. Необратимо.",
+    "retentionOrphanPurgePreviewResult": "Будет удалено {{n}} сессий, ~{{mb}} МБ",
+    "retentionOrphanPurgeApplyResult": "Удалено {{n}} сессий, освобождено ~{{mb}} МБ",
     "retentionResultCounts": "Записей: {{n}}, освобождено ~{{mb}} МБ",
     "retentionLastRun": "Последний запуск",
     "retentionLastStats": "Режим: {{mode}}, удалено: {{n}}, ~{{mb}} МБ",
@@ -2042,6 +2434,41 @@
       "warn": "предупреждение",
       "error": "ошибка"
     },
+    "readinessFunnelTitle": "Воронка persist (последние сессии)",
+    "readinessFunnelHint": "Окно: последние {{hours}} ч по session_runtime_metrics.",
+    "readinessFunnelStatus": "Воронка пайплайна",
+    "readinessFunnelState": {
+      "ok": "Норма",
+      "degraded": "Деградация — см. режимы сбоев ниже",
+      "unknown": "Неизвестно"
+    },
+    "readinessFunnelSessions": "Сессий: {{total}} · healthy persist: {{healthy}} · fusion drop: {{fusionDrop}}",
+    "readinessFunnelTopCauses": "Частые режимы сбоев",
+    "readinessFunnelByCamera": "Доминирующий режим по камере",
+    "readinessFunnelFailureMode": {
+      "detector_silent_raw0": "YOLO слепой — нет raw-боксов",
+      "confidence_gate_collapse_raw_gt_0_accepted_0": "Порог confidence — raw есть, accepted нет",
+      "quality_filter_collapse_raw_gt_0_tracks_0": "Фильтр качества — accepted есть, треков нет",
+      "decision_fusion_drop_tracks_gt_0_persisted_0": "Fusion drop — треки есть, persist пустой",
+      "healthy_persisted_gt_0": "Норма — строки в persist"
+    },
+    "readinessOperatorTitle": "Снимок для оператора (диск · квота · orphans)",
+    "readinessOperatorHint": "Диск хоста, размер проиндексированных записей, запас по квоте retention и orphan-файлы на диске — без SSH.",
+    "readinessOperator": {
+      "disk": "Диск хоста",
+      "diskValue": "{{used}} / {{total}} GB ({{percent}}%)",
+      "recordings": "Проиндексированные записи",
+      "recordingsValue": "{{size}} · {{files}} файлов",
+      "quota": "Квота retention",
+      "quotaValue": "Лимит {{maxGb}} GB · запас {{headroom}}",
+      "quotaUnlimited": "max_gb не задан",
+      "orphan": "Orphan-файлы на диске",
+      "orphanValue": "{{count}} сессий · {{size}}",
+      "unavailable": "Недоступно",
+      "linkStorage": "Library → хранение и retention",
+      "linkCatalogReconcile": "Catalog ops и reconcile",
+      "linkYoloBlind": "Runbook YOLO blind"
+    },
     "domainTrustTitle": "Качество данных и release gate (24 ч)",
     "domainTrustHint": "Зачем deploy может завершиться с ошибкой при живом хабе: strict_quality смотрит на недавние записи и строки детекций, а не на liveness.",
     "domainTrustLoadError": "Не удалось загрузить снимок domain-health",
@@ -2051,11 +2478,17 @@
     "domainTrustStatusDegraded": "Снимок недоступен",
     "domainTrustSnapshotDegraded": "Снимок не собран ({{err}}). Повторите позже или проверьте БД/логи.",
     "domainTrustChipPass": "ок",
+    "domainTrustChipSkipped": "нет выборки 24 ч",
     "domainTrustChipFail": "разбор",
     "domainTrustMetricsHeading": "Ключевые счётчики (окно)",
     "domainTrustMetricDupClipCandidates": "Пары «почти дубликатов» клипов: {{n}}",
     "domainTrustMetricYoloPrimary": "Доля YOLO-primary: {{pct}}%",
     "domainTrustMetricFramesCoverage": "Строки с кадрами: {{pct}}%",
+    "domainTrustMetricTrackStability": "Стабильность треков: {{pct}}%",
+    "domainTrustMetricTrackFragmentation": "Фрагментированные треки: {{pct}}%",
+    "domainTrustMetricLifecycleEnterRate": "Окна с входом (entered): {{pct}}%",
+    "domainTrustMetricLifecycleRejectedRate": "Окна только с reject: {{pct}}%",
+    "domainTrustTrackRegressionAlert": "Обнаружена регрессия track quality относительно предыдущего окна 24ч. Проверьте unstable examples и профиль трекера.",
     "domainTrustAttentionHeading": "Что не прошло и почему это важно",
     "domainTrustThresholdsLine": "Ориентиры gate: интервал ≤ {{gap}} с считается парой дубликатов; доля YOLO-primary ≥ {{yolo}}%; доля строк с кадрами ≥ {{frames}}%.",
     "domainTrustGateFailGeneric": "Проверка не прошла — смотрите счётчики выше или свежие клипы в Timeline.",
@@ -2134,6 +2567,9 @@
     "food": "Корм",
     "description": "Какой корм сейчас в кормушке: система связывает это с визитами для учёта.",
     "active": "Активен",
+    "activeYes": "В кормушке",
+    "activeNo": "Не используется",
+    "activeToggle": "Активен: {{name}}",
     "tableAria": "Корма для кормушки — отметьте, какие сейчас активны",
     "noDescription": "Описание отсутствует",
     "loginRequired": "Войдите для изменения состава корма в кормушке"
@@ -2199,211 +2635,830 @@
   },
   "help": {
     "overview": {
-      "title": "Обзор активности птиц",
-      "description": "Просматривайте статистику активности птиц у кормушки в реальном времени и по дням. На панели отображаются ключевые показатели, текущая погода и круговая диаграмма активности за 24 часа.",
-      "details": [
-        {
-          "title": "Статистика активности",
-          "content": "Отслеживайте визиты уникальных видов, общее число обнаружений и активность за последний час. Система учитывает как видео-, так и аудиодетекции, различая виды с помощью компьютерного зрения и анализа звука."
-        },
-        {
-          "title": "Метрики визитов",
-          "content": "Наблюдайте среднюю длительность визита и определяйте самый активный час. Система считает непрерывный период обнаружений одним визитом, что помогает понять паттерны кормления."
-        },
-        {
-          "title": "Соотношение аудио/видео",
-          "content": "Показывает долю птиц, обнаруженных по звуку и по видео. Коэффициент меньше 1 — больше видеодетекций, больше 1 — больше аудиодетекций. Помогает оценить работу детекторов."
-        },
-        {
-          "title": "Погода",
-          "content": "Текущие погодные условия, влияющие на активность птиц: температура, облачность, влажность, скорость ветра. Данные обновляются и сохраняются с каждым обнаружением."
-        },
-        {
-          "title": "Суточный паттерн",
-          "content": "Круговая диаграмма за 24 часа показывает, когда разные виды посещают кормушку. Цветовая кодировка различает виды, длина сегмента — число обнаружений."
-        },
-        {
-          "title": "Выбор даты",
-          "content": "Используйте выбор даты для просмотра данных за любой день. Это позволяет отслеживать паттерны во времени и сравнивать активность по дням."
-        }
-      ]
+      "guest": {
+        "title": "Обзор активности птиц",
+        "description": "Сводка активности у кормушки за выбранный день: сколько видов и визитов, погода и суточный ритм.",
+        "details": [
+          {
+            "title": "Статистика активности",
+            "content": "Отслеживайте визиты уникальных видов, общее число обнаружений и активность за последний час. Система учитывает как видео-, так и аудиодетекции, различая виды с помощью компьютерного зрения и анализа звука."
+          },
+          {
+            "title": "Метрики визитов",
+            "content": "Наблюдайте среднюю длительность визита и определяйте самый активный час. Система считает непрерывный период обнаружений одним визитом, что помогает понять паттерны кормления."
+          },
+          {
+            "title": "Соотношение аудио/видео",
+            "content": "Показывает долю птиц, обнаруженных по звуку и по видео. Коэффициент меньше 1 — больше видеодетекций, больше 1 — больше аудиодетекций. Помогает оценить работу детекторов."
+          },
+          {
+            "title": "Погода",
+            "content": "Текущие погодные условия, влияющие на активность птиц: температура, облачность, влажность, скорость ветра. Данные обновляются и сохраняются с каждым обнаружением."
+          },
+          {
+            "title": "Суточный паттерн",
+            "content": "Круговая диаграмма за 24 часа показывает, когда разные виды посещают кормушку. Цветовая кодировка различает виды, длина сегмента — число обнаружений."
+          },
+          {
+            "title": "Выбор даты",
+            "content": "Используйте выбор даты для просмотра данных за любой день. Это позволяет отслеживать паттерны во времени и сравнивать активность по дням."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Обзор активности птиц",
+        "description": "Дашборд активности: метрики визитов, топ видов, соотношение аудио/видео. Используйте для ежедневного контроля качества данных.",
+        "details": [
+          {
+            "title": "Статистика активности",
+            "content": "Отслеживайте визиты уникальных видов, общее число обнаружений и активность за последний час. Система учитывает как видео-, так и аудиодетекции, различая виды с помощью компьютерного зрения и анализа звука."
+          },
+          {
+            "title": "Метрики визитов",
+            "content": "Наблюдайте среднюю длительность визита и определяйте самый активный час. Система считает непрерывный период обнаружений одним визитом, что помогает понять паттерны кормления."
+          },
+          {
+            "title": "Соотношение аудио/видео",
+            "content": "Показывает долю птиц, обнаруженных по звуку и по видео. Коэффициент меньше 1 — больше видеодетекций, больше 1 — больше аудиодетекций. Помогает оценить работу детекторов."
+          },
+          {
+            "title": "Погода",
+            "content": "Текущие погодные условия, влияющие на активность птиц: температура, облачность, влажность, скорость ветра. Данные обновляются и сохраняются с каждым обнаружением."
+          },
+          {
+            "title": "Суточный паттерн",
+            "content": "Круговая диаграмма за 24 часа показывает, когда разные виды посещают кормушку. Цветовая кодировка различает виды, длина сегмента — число обнаружений."
+          },
+          {
+            "title": "Выбор даты",
+            "content": "Используйте выбор даты для просмотра данных за любой день. Это позволяет отслеживать паттерны во времени и сравнивать активность по дням."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Обзор активности птиц",
+        "description": "Обзор станции и качества пайплайна; при аномалиях — «Сервис», очереди и настройки на «Станции».",
+        "details": [
+          {
+            "title": "Статистика активности",
+            "content": "Отслеживайте визиты уникальных видов, общее число обнаружений и активность за последний час. Система учитывает как видео-, так и аудиодетекции, различая виды с помощью компьютерного зрения и анализа звука."
+          },
+          {
+            "title": "Метрики визитов",
+            "content": "Наблюдайте среднюю длительность визита и определяйте самый активный час. Система считает непрерывный период обнаружений одним визитом, что помогает понять паттерны кормления."
+          },
+          {
+            "title": "Соотношение аудио/видео",
+            "content": "Показывает долю птиц, обнаруженных по звуку и по видео. Коэффициент меньше 1 — больше видеодетекций, больше 1 — больше аудиодетекций. Помогает оценить работу детекторов."
+          },
+          {
+            "title": "Погода",
+            "content": "Текущие погодные условия, влияющие на активность птиц: температура, облачность, влажность, скорость ветра. Данные обновляются и сохраняются с каждым обнаружением."
+          },
+          {
+            "title": "Суточный паттерн",
+            "content": "Круговая диаграмма за 24 часа показывает, когда разные виды посещают кормушку. Цветовая кодировка различает виды, длина сегмента — число обнаружений."
+          },
+          {
+            "title": "Выбор даты",
+            "content": "Используйте выбор даты для просмотра данных за любой день. Это позволяет отслеживать паттерны во времени и сравнивать активность по дням."
+          }
+        ]
+      }
     },
     "food": {
-      "title": "Управление кормом",
-      "description": "Управляйте и отслеживайте типы корма в кормушке. Система использует эти данные для анализа того, какой корм привлекает те или иные виды птиц.",
-      "details": [
-        {
-          "title": "Выбор корма",
-          "content": "Включайте и выключайте типы корма, доступные в кормушке. Активный корм связывается с визитами птиц и помогает строить данные о паттернах кормления."
-        },
-        {
-          "title": "Каталог корма",
-          "content": "Список распространённых кормов с указанием, какие виды они обычно привлекают. Каждый тип включает изображение, описание и рекомендации по использованию."
-        },
-        {
-          "title": "Аналитика использования",
-          "content": "Система отслеживает, какой корм был в кормушке во время визитов, помогая понять, какой корм эффективнее привлекает нужные виды."
-        },
-        {
-          "title": "Активный статус",
-          "content": "Используйте флажки, чтобы указать, какой корм сейчас в кормушке. Только активный корм будет связываться с новыми обнаружениями."
-        },
-        {
-          "title": "Информация о корме",
-          "content": "Каждая запись включает:\n- Название и изображение для идентификации\n- Подробное описание типа корма\n- Список видов птиц, которых он привлекает\n- Рекомендации по хранению и использованию"
-        },
-        {
-          "title": "Эффективность корма",
-          "content": "Система детекции позволяет отслеживать, какой корм лучше привлекает целевые виды. Эти данные помогают оптимизировать стратегию подкормки."
-        }
-      ]
+      "guest": {
+        "title": "Корм в кормушке",
+        "description": "Справочник кормов: что сейчас отмечено активным. Это контекст для визитов, а не панель управления.",
+        "details": [
+          {
+            "title": "Что здесь показано",
+            "content": "Список типов корма и отметка «в кормушке» / «не используется». Состав меняет только администратор станции."
+          },
+          {
+            "title": "Каталог корма",
+            "content": "Краткое описание и типичные гости для каждого корма — ориентир, какие виды чаще прилетают."
+          },
+          {
+            "title": "Связь с визитами",
+            "content": "Активный корм подставляется к новым визитам, чтобы потом сравнивать активность птиц."
+          },
+          {
+            "title": "Активный статус",
+            "content": "Зелёная метка — корм сейчас в кормушке. Серый — в каталоге, но не используется."
+          },
+          {
+            "title": "Информация о корме",
+            "content": "Каждая запись включает:\n- Название и изображение для идентификации\n- Подробное описание типа корма\n- Список видов птиц, которых он привлекает\n- Рекомендации по хранению и использованию"
+          },
+          {
+            "title": "Эффективность корма",
+            "content": "Система детекции позволяет отслеживать, какой корм лучше привлекает целевые виды. Эти данные помогают оптимизировать стратегию подкормки."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Управление кормом",
+        "description": "Управление типами корма в кормушке; активный корм связывается с новыми визитами.",
+        "details": [
+          {
+            "title": "Выбор корма",
+            "content": "Включайте и выключайте типы корма, доступные в кормушке. Активный корм связывается с визитами птиц и помогает строить данные о паттернах кормления."
+          },
+          {
+            "title": "Каталог корма",
+            "content": "Список распространённых кормов с указанием, какие виды они обычно привлекают. Каждый тип включает изображение, описание и рекомендации по использованию."
+          },
+          {
+            "title": "Аналитика использования",
+            "content": "Система отслеживает, какой корм был в кормушке во время визитов, помогая понять, какой корм эффективнее привлекает нужные виды."
+          },
+          {
+            "title": "Активный статус",
+            "content": "Используйте флажки, чтобы указать, какой корм сейчас в кормушке. Только активный корм будет связываться с новыми обнаружениями."
+          },
+          {
+            "title": "Информация о корме",
+            "content": "Каждая запись включает:\n- Название и изображение для идентификации\n- Подробное описание типа корма\n- Список видов птиц, которых он привлекает\n- Рекомендации по хранению и использованию"
+          },
+          {
+            "title": "Эффективность корма",
+            "content": "Система детекции позволяет отслеживать, какой корм лучше привлекает целевые виды. Эти данные помогают оптимизировать стратегию подкормки."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Управление кормом",
+        "description": "Справочник кормов и аналитика привлекаемых видов.",
+        "details": [
+          {
+            "title": "Выбор корма",
+            "content": "Включайте и выключайте типы корма, доступные в кормушке. Активный корм связывается с визитами птиц и помогает строить данные о паттернах кормления."
+          },
+          {
+            "title": "Каталог корма",
+            "content": "Список распространённых кормов с указанием, какие виды они обычно привлекают. Каждый тип включает изображение, описание и рекомендации по использованию."
+          },
+          {
+            "title": "Аналитика использования",
+            "content": "Система отслеживает, какой корм был в кормушке во время визитов, помогая понять, какой корм эффективнее привлекает нужные виды."
+          },
+          {
+            "title": "Активный статус",
+            "content": "Используйте флажки, чтобы указать, какой корм сейчас в кормушке. Только активный корм будет связываться с новыми обнаружениями."
+          },
+          {
+            "title": "Информация о корме",
+            "content": "Каждая запись включает:\n- Название и изображение для идентификации\n- Подробное описание типа корма\n- Список видов птиц, которых он привлекает\n- Рекомендации по хранению и использованию"
+          },
+          {
+            "title": "Эффективность корма",
+            "content": "Система детекции позволяет отслеживать, какой корм лучше привлекает целевые виды. Эти данные помогают оптимизировать стратегию подкормки."
+          }
+        ]
+      }
     },
     "library": {
-      "title": "Данные и архив",
-      "description": "Календарь архива на диске, выгрузки для обучения и обслуживание хранилища. Для просмотра роликов откройте «Записи».",
-      "details": [
-        {
-          "title": "Что означает календарь",
-          "content": "Календарь строится по реальным файлам в data/recordings, поэтому подсвеченные дни означают, что на диске действительно есть записи за эту дату."
-        },
-        {
-          "title": "Почему это важно",
-          "content": "Так проще отделить проблему архива от проблемы детекций. Если день подсвечен здесь, а в Overview или Timeline пусто, значит записи есть, но отсутствуют детекции или визиты."
-        },
-        {
-          "title": "Что на этой странице",
-          "content": "Просмотр архива, импорт с диска, экспорт датасета, резервные копии и обзор занятого места — в одном разделе меню «Данные»."
-        },
-        {
-          "title": "Связь с «Сервис»",
-          "content": "«Сервис» — мониторинг, логи процессора и глубокая диагностика. Работа с файлами архива сосредоточена здесь."
-        },
-        {
-          "title": "Про обслуживание",
-          "content": "Тяжёлые операции (импорт, пересборка, очистка) лучше делать, когда вы понимаете, какие дни уже есть в архиве; календарь показывает это по файлам на диске."
-        }
-      ]
+      "guest": {
+        "title": "Данные и архив",
+        "description": "Календарь дней, когда на диске есть файлы записей (архив).",
+        "details": [
+          {
+            "title": "Что означает календарь",
+            "content": "Календарь строится по реальным файлам в data/recordings, поэтому подсвеченные дни означают, что на диске действительно есть записи за эту дату."
+          },
+          {
+            "title": "Почему это важно",
+            "content": "Так проще отделить проблему архива от проблемы детекций. Если день подсвечен здесь, а в Overview или Timeline пусто, значит записи есть, но отсутствуют детекции или визиты."
+          },
+          {
+            "title": "Что на этой странице",
+            "content": "Просмотр архива, импорт с диска, экспорт датасета, резервные копии и обзор занятого места — в одном разделе меню «Данные»."
+          },
+          {
+            "title": "Связь с «Сервис»",
+            "content": "«Сервис» — мониторинг, логи процессора и глубокая диагностика. Работа с файлами архива сосредоточена здесь."
+          },
+          {
+            "title": "Про обслуживание",
+            "content": "Тяжёлые операции (импорт, пересборка, очистка) лучше делать, когда вы понимаете, какие дни уже есть в архиве; календарь показывает это по файлам на диске."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Данные и архив",
+        "description": "Архив записей, импорт с диска, экспорт датасетов. Ролики смотрите в «Записях».",
+        "details": [
+          {
+            "title": "Что означает календарь",
+            "content": "Календарь строится по реальным файлам в data/recordings, поэтому подсвеченные дни означают, что на диске действительно есть записи за эту дату."
+          },
+          {
+            "title": "Почему это важно",
+            "content": "Так проще отделить проблему архива от проблемы детекций. Если день подсвечен здесь, а в Overview или Timeline пусто, значит записи есть, но отсутствуют детекции или визиты."
+          },
+          {
+            "title": "Что на этой странице",
+            "content": "Просмотр архива, импорт с диска, экспорт датасета, резервные копии и обзор занятого места — в одном разделе меню «Данные»."
+          },
+          {
+            "title": "Связь с «Сервис»",
+            "content": "«Сервис» — мониторинг, логи процессора и глубокая диагностика. Работа с файлами архива сосредоточена здесь."
+          },
+          {
+            "title": "Про обслуживание",
+            "content": "Тяжёлые операции (импорт, пересборка, очистка) лучше делать, когда вы понимаете, какие дни уже есть в архиве; календарь показывает это по файлам на диске."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Данные и архив",
+        "description": "Обслуживание хранилища, бэкапы, импорт. Тяжёлые операции — при понимании занятости диска по календарю.",
+        "details": [
+          {
+            "title": "Что означает календарь",
+            "content": "Календарь строится по реальным файлам в data/recordings, поэтому подсвеченные дни означают, что на диске действительно есть записи за эту дату."
+          },
+          {
+            "title": "Почему это важно",
+            "content": "Так проще отделить проблему архива от проблемы детекций. Если день подсвечен здесь, а в Overview или Timeline пусто, значит записи есть, но отсутствуют детекции или визиты."
+          },
+          {
+            "title": "Что на этой странице",
+            "content": "Просмотр архива, импорт с диска, экспорт датасета, резервные копии и обзор занятого места — в одном разделе меню «Данные»."
+          },
+          {
+            "title": "Связь с «Сервис»",
+            "content": "«Сервис» — мониторинг, логи процессора и глубокая диагностика. Работа с файлами архива сосредоточена здесь."
+          },
+          {
+            "title": "Про обслуживание",
+            "content": "Тяжёлые операции (импорт, пересборка, очистка) лучше делать, когда вы понимаете, какие дни уже есть в архиве; календарь показывает это по файлам на диске."
+          }
+        ]
+      }
     },
     "timeline": {
-      "title": "Записи",
-      "description": "Выбор дня, фильтры и карточки визитов; из записи — к виду или к исправлению распознавания.",
-      "details": [
-        {
-          "title": "Управление визитами",
-          "content": "Фильтрация и навигация:\n- Выбор даты и времени для просмотра периода\n- Выпадающий список видов для фильтрации\n- Сводная статистика: уникальные виды, всего визитов, общая длительность"
-        },
-        {
-          "title": "Переключение дня",
-          "content": "Стрелки рядом с датой переводят на ближайший день, где в архиве записей на диске действительно есть файлы (пустые дни пропускаются). Выбор даты в календаре по-прежнему открывает именно этот день."
-        },
-        {
-          "title": "Информация о визите",
-          "content": "На каждой карточке визита:\n- Вид птицы с изображением и названием\n- Количество птиц одновременно (иконка человека)\n- Длительность визита в секундах (иконка часов)\n- Температура во время визита (иконка термометра)\n- Раскрываемая шкала времени детекций"
-        },
-        {
-          "title": "Типы обнаружений",
-          "content": "В каждом визите отображаются:\n- Видеодетекции (иконка камеры) — визуальное подтверждение\n- Аудиодетекции (иконка микрофона) — голоса и песни\n- Процент уверенности для каждого обнаружения\n- Точная метка времени\n- Длительность в секундах"
-        },
-        {
-          "title": "Визуальная шкала",
-          "content": "Вертикальная шкала показывает:\n- Хронологическую последовательность визитов с метками времени\n- Соединённые точки — непрерывный мониторинг\n- Раскрываемые детали визитов\n- Разделение между разными визитами"
-        },
-        {
-          "title": "Уверенность детекции",
-          "content": "Уровни уверенности:\n- Видеодетекции обычно 95–100%\n- Аудиодетекции могут варьироваться\n- Зелёный — высокая уверенность (100%)\n- Синий — хорошая уверенность (95% и выше)"
-        },
-        {
-          "title": "Погодный контекст",
-          "content": "Температура записывается для каждого визита, чтобы соотносить активность птиц с погодой. Помогает выявить паттерны поведения в зависимости от условий."
-        }
-      ]
+      "guest": {
+        "title": "Записи",
+        "description": "Лента визитов за выбранный день: кто прилетал, как долго, погода и оценка веса на карточке.",
+        "details": [
+          {
+            "title": "Управление визитами",
+            "content": "Фильтрация и навигация:\n- Выбор даты и времени для просмотра периода\n- Выпадающий список видов для фильтрации\n- Сводная статистика: уникальные виды, всего визитов, общая длительность"
+          },
+          {
+            "title": "Переключение дня",
+            "content": "Стрелки рядом с датой переводят на ближайший день, где в архиве записей на диске действительно есть файлы (пустые дни пропускаются). Выбор даты в календаре по-прежнему открывает именно этот день."
+          },
+          {
+            "title": "Информация о визите",
+            "content": "На каждой карточке визита:\n- Вид птицы с изображением и названием\n- Количество птиц одновременно (иконка человека)\n- Длительность визита в секундах (иконка часов)\n- Температура во время визита (иконка термометра)\n- Раскрываемая шкала времени детекций"
+          },
+          {
+            "title": "Типы обнаружений",
+            "content": "В каждом визите отображаются:\n- Видеодетекции (иконка камеры) — визуальное подтверждение\n- Аудиодетекции (иконка микрофона) — голоса и песни\n- Процент уверенности для каждого обнаружения\n- Точная метка времени\n- Длительность в секундах"
+          },
+          {
+            "title": "Визуальная шкала",
+            "content": "Вертикальная шкала показывает:\n- Хронологическую последовательность визитов с метками времени\n- Соединённые точки — непрерывный мониторинг\n- Раскрываемые детали визитов\n- Разделение между разными визитами"
+          },
+          {
+            "title": "Уверенность детекции",
+            "content": "Уровни уверенности:\n- Видеодетекции обычно 95–100%\n- Аудиодетекции могут варьироваться\n- Зелёный — высокая уверенность (100%)\n- Синий — хорошая уверенность (95% и выше)"
+          },
+          {
+            "title": "Погодный контекст",
+            "content": "Температура записывается для каждого визита, чтобы соотносить активность птиц с погодой. Помогает выявить паттерны поведения в зависимости от условий."
+          },
+          {
+            "title": "Карточка визита",
+            "content": "Вид, длительность, температура. Раскройте карточку — отдельные срабатывания по времени. Клик по ролику откроет детали записи."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Записи",
+        "description": "Записи за день: фильтры по виду и поведению, исправления, привязка клички (Re-ID) с карточки визита.",
+        "details": [
+          {
+            "title": "Управление визитами",
+            "content": "Фильтрация и навигация:\n- Выбор даты и времени для просмотра периода\n- Выпадающий список видов для фильтрации\n- Сводная статистика: уникальные виды, всего визитов, общая длительность"
+          },
+          {
+            "title": "Переключение дня",
+            "content": "Стрелки рядом с датой переводят на ближайший день, где в архиве записей на диске действительно есть файлы (пустые дни пропускаются). Выбор даты в календаре по-прежнему открывает именно этот день."
+          },
+          {
+            "title": "Информация о визите",
+            "content": "На каждой карточке визита:\n- Вид птицы с изображением и названием\n- Количество птиц одновременно (иконка человека)\n- Длительность визита в секундах (иконка часов)\n- Температура во время визита (иконка термометра)\n- Раскрываемая шкала времени детекций"
+          },
+          {
+            "title": "Типы обнаружений",
+            "content": "В каждом визите отображаются:\n- Видеодетекции (иконка камеры) — визуальное подтверждение\n- Аудиодетекции (иконка микрофона) — голоса и песни\n- Процент уверенности для каждого обнаружения\n- Точная метка времени\n- Длительность в секундах"
+          },
+          {
+            "title": "Визуальная шкала",
+            "content": "Вертикальная шкала показывает:\n- Хронологическую последовательность визитов с метками времени\n- Соединённые точки — непрерывный мониторинг\n- Раскрываемые детали визитов\n- Разделение между разными визитами"
+          },
+          {
+            "title": "Уверенность детекции",
+            "content": "Уровни уверенности:\n- Видеодетекции обычно 95–100%\n- Аудиодетекции могут варьироваться\n- Зелёный — высокая уверенность (100%)\n- Синий — хорошая уверенность (95% и выше)"
+          },
+          {
+            "title": "Погодный контекст",
+            "content": "Температура записывается для каждого визита, чтобы соотносить активность птиц с погодой. Помогает выявить паттерны поведения в зависимости от условий."
+          },
+          {
+            "title": "Re-ID и кличка",
+            "content": "На карточке визита можно привязать или отвязать профиль птицы (кличку), если включён Re-ID."
+          },
+          {
+            "title": "Фильтры",
+            "content": "Фильтр по виду и по метке поведения; параметры попадают в URL — удобно делиться ссылкой с коллегой."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Записи",
+        "description": "Таймлайн визитов и диагностика: при пустом дне смотрите «Данные» (архив на диске) и статус процессора.",
+        "details": [
+          {
+            "title": "Управление визитами",
+            "content": "Фильтрация и навигация:\n- Выбор даты и времени для просмотра периода\n- Выпадающий список видов для фильтрации\n- Сводная статистика: уникальные виды, всего визитов, общая длительность"
+          },
+          {
+            "title": "Переключение дня",
+            "content": "Стрелки рядом с датой переводят на ближайший день, где в архиве записей на диске действительно есть файлы (пустые дни пропускаются). Выбор даты в календаре по-прежнему открывает именно этот день."
+          },
+          {
+            "title": "Информация о визите",
+            "content": "На каждой карточке визита:\n- Вид птицы с изображением и названием\n- Количество птиц одновременно (иконка человека)\n- Длительность визита в секундах (иконка часов)\n- Температура во время визита (иконка термометра)\n- Раскрываемая шкала времени детекций"
+          },
+          {
+            "title": "Типы обнаружений",
+            "content": "В каждом визите отображаются:\n- Видеодетекции (иконка камеры) — визуальное подтверждение\n- Аудиодетекции (иконка микрофона) — голоса и песни\n- Процент уверенности для каждого обнаружения\n- Точная метка времени\n- Длительность в секундах"
+          },
+          {
+            "title": "Визуальная шкала",
+            "content": "Вертикальная шкала показывает:\n- Хронологическую последовательность визитов с метками времени\n- Соединённые точки — непрерывный мониторинг\n- Раскрываемые детали визитов\n- Разделение между разными визитами"
+          },
+          {
+            "title": "Уверенность детекции",
+            "content": "Уровни уверенности:\n- Видеодетекции обычно 95–100%\n- Аудиодетекции могут варьироваться\n- Зелёный — высокая уверенность (100%)\n- Синий — хорошая уверенность (95% и выше)"
+          },
+          {
+            "title": "Погодный контекст",
+            "content": "Температура записывается для каждого визита, чтобы соотносить активность птиц с погодой. Помогает выявить паттерны поведения в зависимости от условий."
+          },
+          {
+            "title": "Расхождение архива и UI",
+            "content": "День есть в «Данные», но пусто здесь — нет детекций или визитов; проверьте логи процессора и импорт."
+          }
+        ]
+      }
     },
     "unknowns": {
-      "title": "Проверка",
-      "description": "Проверяйте неуверенные или слишком общие распознавания, подтверждайте вид и накапливайте исправления для улучшения модели.",
-      "details": [
-        {
-          "title": "Назначение",
-          "content": "Детекции с низкой уверенностью могут быть ошибочно определены. Эта страница позволяет проверить и исправить вид до учёта в статистике."
-        },
-        {
-          "title": "Порог",
-          "content": "Порог задаётся в «Станция» → распознавание и процессор (блок про неуверенные детекции). Значение по умолчанию в поставке часто около 0,48 — ниже попадают сюда."
-        },
-        {
-          "title": "Исправление вида",
-          "content": "Выберите правильный вид в выпадающем списке и нажмите «Применить». Требуется пароль настроек, если он задан."
-        },
-        {
-          "title": "Просмотр видео",
-          "content": "Нажмите «Смотреть видео», чтобы открыть запись и визуально проверить детекцию перед исправлением."
-        },
-        {
-          "title": "То же исправление, что на странице видео",
-          "content": "«Применить» здесь обновляет ту же детекцию в БД, что и исправление в Детали видео → Обнаруженные виды (один и тот же API). «Смотреть видео» — если сначала нужен кадр."
-        },
-        {
-          "title": "Выбор периода",
-          "content": "По умолчанию показывается весь день. При выборе времени (не 00:00) отображаются только детекции за выбранный час — удобно при большом количестве записей."
-        }
-      ]
+      "guest": {
+        "title": "Проверка",
+        "description": "Раздел проверки сомнительных распознаваний. Для просмотра записей используйте «Записи» и карточку видео.",
+        "details": [
+          {
+            "title": "Назначение",
+            "content": "Детекции с низкой уверенностью могут быть ошибочно определены. Эта страница позволяет проверить и исправить вид до учёта в статистике."
+          },
+          {
+            "title": "Порог",
+            "content": "Порог задаётся в «Станция» → распознавание и процессор (блок про неуверенные детекции). Значение по умолчанию в поставке часто около 0,48 — ниже попадают сюда."
+          },
+          {
+            "title": "Исправление вида",
+            "content": "Выберите правильный вид в выпадающем списке и нажмите «Применить». Требуется пароль настроек, если он задан."
+          },
+          {
+            "title": "Просмотр видео",
+            "content": "Нажмите «Смотреть видео», чтобы открыть запись и визуально проверить детекцию перед исправлением."
+          },
+          {
+            "title": "То же исправление, что на странице видео",
+            "content": "«Применить» здесь обновляет ту же детекцию в БД, что и исправление в Детали видео → Обнаруженные виды (один и тот же API). «Смотреть видео» — если сначала нужен кадр."
+          },
+          {
+            "title": "Выбор периода",
+            "content": "По умолчанию показывается весь день. При выборе времени (не 00:00) отображаются только детекции за выбранный час — удобно при большом количестве записей."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Проверка",
+        "description": "Очередь неуверенных детекций: выберите правильный вид и «Применить». Тот же API, что «Исправить вид» в карточке ролика.",
+        "details": [
+          {
+            "title": "Назначение",
+            "content": "Детекции с низкой уверенностью могут быть ошибочно определены. Эта страница позволяет проверить и исправить вид до учёта в статистике."
+          },
+          {
+            "title": "Порог",
+            "content": "Порог задаётся в «Станция» → распознавание и процессор (блок про неуверенные детекции). Значение по умолчанию в поставке часто около 0,48 — ниже попадают сюда."
+          },
+          {
+            "title": "Исправление вида",
+            "content": "Выберите правильный вид в выпадающем списке и нажмите «Применить». Требуется пароль настроек, если он задан."
+          },
+          {
+            "title": "Просмотр видео",
+            "content": "Нажмите «Смотреть видео», чтобы открыть запись и визуально проверить детекцию перед исправлением."
+          },
+          {
+            "title": "То же исправление, что на странице видео",
+            "content": "«Применить» здесь обновляет ту же детекцию в БД, что и исправление в Детали видео → Обнаруженные виды (один и тот же API). «Смотреть видео» — если сначала нужен кадр."
+          },
+          {
+            "title": "Выбор периода",
+            "content": "По умолчанию показывается весь день. При выборе времени (не 00:00) отображаются только детекции за выбранный час — удобно при большом количестве записей."
+          },
+          {
+            "title": "Expert Queue",
+            "content": "Сложные семантические кейсы уходят в разметку / expert review; здесь — быстрые исправления вида по порогу уверенности."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Проверка",
+        "description": "Порог попадания в очередь задаётся на «Станции». Массовые сбои — логи процессора и метрики behavior/detector.",
+        "details": [
+          {
+            "title": "Назначение",
+            "content": "Детекции с низкой уверенностью могут быть ошибочно определены. Эта страница позволяет проверить и исправить вид до учёта в статистике."
+          },
+          {
+            "title": "Порог",
+            "content": "Порог задаётся в «Станция» → распознавание и процессор (блок про неуверенные детекции). Значение по умолчанию в поставке часто около 0,48 — ниже попадают сюда."
+          },
+          {
+            "title": "Исправление вида",
+            "content": "Выберите правильный вид в выпадающем списке и нажмите «Применить». Требуется пароль настроек, если он задан."
+          },
+          {
+            "title": "Просмотр видео",
+            "content": "Нажмите «Смотреть видео», чтобы открыть запись и визуально проверить детекцию перед исправлением."
+          },
+          {
+            "title": "То же исправление, что на странице видео",
+            "content": "«Применить» здесь обновляет ту же детекцию в БД, что и исправление в Детали видео → Обнаруженные виды (один и тот же API). «Смотреть видео» — если сначала нужен кадр."
+          },
+          {
+            "title": "Выбор периода",
+            "content": "По умолчанию показывается весь день. При выборе времени (не 00:00) отображаются только детекции за выбранный час — удобно при большом количестве записей."
+          }
+        ]
+      }
     },
     "migrationCalendar": {
-      "title": "Сезонность",
-      "description": "По месяцам: насколько часто каждый вид появлялся у кормушки в ваших данных.",
-      "details": [
-        {
-          "title": "Паттерн по месяцам",
-          "content": "Каждая строка — вид; столбцы — месяцы (янв–дек). Числа — количество визитов. Тёмные ячейки — больше активности в этом месяце. Столбец Σ — сумма за выбранный диапазон лет; это и есть сводка «какие виды за период», отдельный дублирующий чеклист не показываем."
-        },
-        {
-          "title": "Источник данных",
-          "content": "Используются все исторические данные SpeciesVisit. Больше данных за несколько лет даёт более чёткую картину миграций."
-        },
-        {
-          "title": "Ссылка на вид",
-          "content": "Клик по названию вида открывает сводную страницу со статистикой и недавними визитами."
-        }
-      ]
+      "guest": {
+        "title": "Сезонность",
+        "description": "Сезонность: в какие месяцы вид чаще появлялся у кормушки.",
+        "details": [
+          {
+            "title": "Паттерн по месяцам",
+            "content": "Каждая строка — вид; столбцы — месяцы (янв–дек). Числа — количество визитов. Тёмные ячейки — больше активности в этом месяце. Столбец Σ — сумма за выбранный диапазон лет; это и есть сводка «какие виды за период», отдельный дублирующий чеклист не показываем."
+          },
+          {
+            "title": "Источник данных",
+            "content": "Используются все исторические данные SpeciesVisit. Больше данных за несколько лет даёт более чёткую картину миграций."
+          },
+          {
+            "title": "Ссылка на вид",
+            "content": "Клик по названию вида открывает сводную страницу со статистикой и недавними визитами."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Сезонность",
+        "description": "Тепловая карта визитов по месяцам; клик по виду — сводная страница.",
+        "details": [
+          {
+            "title": "Паттерн по месяцам",
+            "content": "Каждая строка — вид; столбцы — месяцы (янв–дек). Числа — количество визитов. Тёмные ячейки — больше активности в этом месяце. Столбец Σ — сумма за выбранный диапазон лет; это и есть сводка «какие виды за период», отдельный дублирующий чеклист не показываем."
+          },
+          {
+            "title": "Источник данных",
+            "content": "Используются все исторические данные SpeciesVisit. Больше данных за несколько лет даёт более чёткую картину миграций."
+          },
+          {
+            "title": "Ссылка на вид",
+            "content": "Клик по названию вида открывает сводную страницу со статистикой и недавними визитами."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Сезонность",
+        "description": "Данные из SpeciesVisit за все годы; для отчётов экспортируйте сводки отдельно.",
+        "details": [
+          {
+            "title": "Паттерн по месяцам",
+            "content": "Каждая строка — вид; столбцы — месяцы (янв–дек). Числа — количество визитов. Тёмные ячейки — больше активности в этом месяце. Столбец Σ — сумма за выбранный диапазон лет; это и есть сводка «какие виды за период», отдельный дублирующий чеклист не показываем."
+          },
+          {
+            "title": "Источник данных",
+            "content": "Используются все исторические данные SpeciesVisit. Больше данных за несколько лет даёт более чёткую картину миграций."
+          },
+          {
+            "title": "Ссылка на вид",
+            "content": "Клик по названию вида открывает сводную страницу со статистикой и недавними визитами."
+          }
+        ]
+      }
     },
     "videoDetails": {
-      "title": "Детали записи",
-      "description": "Используйте запись как основное доказательство: смотрите ролик, проверяйте детекции и исправляйте вид при необходимости.",
-      "details": [
-        {
-          "title": "Медиаплеер",
-          "content": "Над плеером — стрелки «предыдущий / следующий» в пределах локального календарного дня браузера (порядок по времени начала записи). За полночь навигация может продолжиться на соседние сутки.\n\nЕсли ролик открыт из карточки визита на странице «Записи», стрелки переключают соседние визиты за этот день (один шаг на одну карточку), используя основной клип визита — счётчик совпадает с тем, что вы видели в списке.\n\nДва режима:\n- «Видео» — запись\n- «Аудио» — спектрограмма\nПолзунок — навигация внутри текущего ролика."
-        },
-        {
-          "title": "Шкала детекций",
-          "content": "Над плеером:\n- Текущие детекции с миниатюрой и уровнем уверенности\n- Зелёный бейдж (100%) — максимальная уверенность\n- Синий бейдж (95%+) — высокая уверенность\n- Метка источника (видео/аудио)"
-        },
-        {
-          "title": "Обнаруженные виды",
-          "content": "В блоке обнаруженных видов: число срабатываний, уверенность, длительность, ссылка на карточку вида. Исправление вида здесь то же, что на странице проверки для этой детекции."
-        },
-        {
-          "title": "Общая информация",
-          "content": "Технические детали записи:\n- Версия процессора для анализа\n- Время начала и конца\n- Общая длительность записи\n- Параметры обработки"
-        },
-        {
-          "title": "Погодный контекст",
-          "content": "Погода во время записи:\n- Температура в °C\n- Облачность в %\n- Влажность\n- Скорость ветра\n- Описание (напр., туман)\nПомогает соотнести активность с условиями."
-        },
-        {
-          "title": "Аудиоанализ",
-          "content": "Спектрограмма показывает:\n- Голоса и песни как цветовые паттерны\n- Частота по вертикали\n- Время по горизонтали\n- Обозначенные виды на визуализации\nПомогает проверить идентификацию по звуку."
-        }
-      ]
+      "guest": {
+        "title": "Детали записи",
+        "description": "Автоматическая запись визита: ролик, какие птицы попали в кадр, что они делали и как изменился вес на кормушке.",
+        "details": [
+          {
+            "title": "Медиаплеер",
+            "content": "Над плеером — стрелки «предыдущий / следующий» в пределах локального календарного дня браузера (порядок по времени начала записи). За полночь навигация может продолжиться на соседние сутки.\n\nЕсли ролик открыт из карточки визита на странице «Записи», стрелки переключают соседние визиты за этот день (один шаг на одну карточку), используя основной клип визита — счётчик совпадает с тем, что вы видели в списке.\n\nДва режима:\n- «Видео» — запись\n- «Аудио» — спектрограмма\nПолзунок — навигация внутри текущего ролика."
+          },
+          {
+            "title": "Шкала детекций",
+            "content": "Под полосой прогресса — цветные отрезки по видам. Наведите курсор: вид, время и способ определения (анализ ролика, внешний MQTT или звук).\n\nНад плеером — текущие срабатывания с миниатюрой и уверенностью; зелёный бейдж (100%) и синий (95%+)."
+          },
+          {
+            "title": "Обнаруженные виды",
+            "content": "Список видов, которые система заметила на ролике: сколько раз, насколько уверенно и как долго. Ссылка ведёт на страницу вида."
+          },
+          {
+            "title": "Общая информация",
+            "content": "Время начала и конца, длительность записи. Изменение веса — при данных с датчика кормушки."
+          },
+          {
+            "title": "Погодный контекст",
+            "content": "Погода во время записи:\n- Температура в °C\n- Облачность в %\n- Влажность\n- Скорость ветра\n- Описание (напр., туман)\nПомогает соотнести активность с условиями."
+          },
+          {
+            "title": "Аудиоанализ",
+            "content": "Спектрограмма показывает голоса и песни: частота по вертикали, время по горизонтали. Подписи видов помогают сопоставить звук с картинкой."
+          },
+          {
+            "title": "Вид",
+            "content": "Название вида, который система увидела на записи. Это оценка модели, а не ручная подпись."
+          },
+          {
+            "title": "Поведение",
+            "content": "Короткая метка активности (кормление, отдых, полёт и т.п.), если модель её распознала."
+          },
+          {
+            "title": "Изменение веса",
+            "content": "Зелёная стрелка вверх — птица прибавила в весе на платформе за визит, красная вниз — убавила. Мелкие колебания (до ~5 г) не показываются."
+          }
+        ]
+      },
+      "operator": {
+        "title": "Детали записи",
+        "description": "Проверка записи: ролик, виды, поведение, вес. Исправления вида и метки поведения — здесь; клички (Re-ID) — в карточке визита или профиле птицы.",
+        "details": [
+          {
+            "title": "Медиаплеер",
+            "content": "Над плеером — стрелки «предыдущий / следующий» в пределах локального календарного дня браузера (порядок по времени начала записи). За полночь навигация может продолжиться на соседние сутки.\n\nЕсли ролик открыт из карточки визита на странице «Записи», стрелки переключают соседние визиты за этот день (один шаг на одну карточку), используя основной клип визита — счётчик совпадает с тем, что вы видели в списке.\n\nДва режима:\n- «Видео» — запись\n- «Аудио» — спектрограмма\nПолзунок — навигация внутри текущего ролика."
+          },
+          {
+            "title": "Шкала детекций",
+            "content": "Над плеером:\n- Текущие детекции с миниатюрой и уровнем уверенности\n- Зелёный бейдж (100%) — максимальная уверенность\n- Синий бейдж (95%+) — высокая уверенность\n- Метка источника (видео/аудио)"
+          },
+          {
+            "title": "Обнаруженные виды",
+            "content": "В блоке обнаруженных видов: число срабатываний, уверенность, длительность, ссылка на карточку вида. Исправление вида здесь то же, что на странице проверки для этой детекции."
+          },
+          {
+            "title": "Общая информация",
+            "content": "Время начала и конца, длительность записи. Изменение веса — при данных с датчика кормушки."
+          },
+          {
+            "title": "Погодный контекст",
+            "content": "Погода во время записи:\n- Температура в °C\n- Облачность в %\n- Влажность\n- Скорость ветра\n- Описание (напр., туман)\nПомогает соотнести активность с условиями."
+          },
+          {
+            "title": "Аудиоанализ",
+            "content": "Спектрограмма показывает:\n- Голоса и песни как цветовые паттерны\n- Частота по вертикали\n- Время по горизонтали\n- Обозначенные виды на визуализации\nПомогает проверить идентификацию по звуку."
+          },
+          {
+            "title": "Исправление вида",
+            "content": "В блоке «Обнаруженные виды» — «Исправить вид». То же действие, что на странице «Проверка». Нужен доступ оператора."
+          },
+          {
+            "title": "Поведение и Behavior v2.1",
+            "content": "Метка поведения на ролике (кнопка «Изменить поведение»). Модель v2.1 в режиме auto подставляет метку при обработке; оператор может поправить вручную."
+          },
+          {
+            "title": "Очередь эксперта",
+            "content": "Спорные случаи (семантика, Re-ID) попадают в Expert Queue / разметку. Геометрия рамки — в «Разметке», вид и поведение — здесь."
+          }
+        ]
+      },
+      "admin": {
+        "title": "Детали записи",
+        "description": "Полная карточка записи плюс служебные поля для админа: версия процессора, трассировка слияния треков, пороги на «Станции».",
+        "details": [
+          {
+            "title": "Медиаплеер",
+            "content": "Над плеером — стрелки «предыдущий / следующий» в пределах локального календарного дня браузера (порядок по времени начала записи). За полночь навигация может продолжиться на соседние сутки.\n\nЕсли ролик открыт из карточки визита на странице «Записи», стрелки переключают соседние визиты за этот день (один шаг на одну карточку), используя основной клип визита — счётчик совпадает с тем, что вы видели в списке.\n\nДва режима:\n- «Видео» — запись\n- «Аудио» — спектрограмма\nПолзунок — навигация внутри текущего ролика."
+          },
+          {
+            "title": "Шкала детекций",
+            "content": "Над плеером:\n- Текущие детекции с миниатюрой и уровнем уверенности\n- Зелёный бейдж (100%) — максимальная уверенность\n- Синий бейдж (95%+) — высокая уверенность\n- Метка источника (видео/аудио)"
+          },
+          {
+            "title": "Обнаруженные виды",
+            "content": "В блоке обнаруженных видов: число срабатываний, уверенность, длительность, ссылка на карточку вида. Исправление вида здесь то же, что на странице проверки для этой детекции."
+          },
+          {
+            "title": "Общая информация",
+            "content": "Время начала и конца, длительность записи. Изменение веса — при данных с датчика кормушки."
+          },
+          {
+            "title": "Погодный контекст",
+            "content": "Погода во время записи:\n- Температура в °C\n- Облачность в %\n- Влажность\n- Скорость ветра\n- Описание (напр., туман)\nПомогает соотнести активность с условиями."
+          },
+          {
+            "title": "Аудиоанализ",
+            "content": "Спектрограмма показывает:\n- Голоса и песни как цветовые паттерны\n- Частота по вертикали\n- Время по горизонтали\n- Обозначенные виды на визуализации\nПомогает проверить идентификацию по звуку."
+          },
+          {
+            "title": "Станция и модели",
+            "content": "Пороги детекции, behavior engine (auto / shadow / canary), ONNX-бэкенды — «Станция» → распознавание и процессор."
+          },
+          {
+            "title": "Fusion trace",
+            "content": "Кнопка трассировки слияния треков — отладка пайплайна детектора. Только для администратора."
+          }
+        ]
+      }
+    },
+    "speciesDirectory": {
+      "operator": {
+        "title": "Качество карточек каталога",
+        "description": "Служебный список для полировки фото и описаний. Оглавление с наблюдениями — «Каталог» (/species).",
+        "details": [
+          {
+            "title": "Фильтры",
+            "content": "«Неполные» — без фото или описания. «Без аудио» — нет ссылки на Xeno-canto в метаданных."
+          }
+        ]
+      }
+    },
+    "speciesCatalog": {
+      "operator": {
+        "title": "Каталог видов",
+        "description": "Оглавление: наблюдаемые виды и EU allowlist. Полировка карточек — «Качество карточек» (/species-directory).",
+        "details": []
+      }
+    }
+  },
+  "labelling": {
+    "title": "Разметка",
+    "description": "Проверьте только геометрию рамки. Семантика (вид/кличка/поведение) редактируется в карточке видео.",
+    "language": "Язык",
+    "progressLabel": "Размечено {{done}} из {{total}}",
+    "caseTitle": "Кейс #{{id}}",
+    "minerResult": "Майнер: создано {{created}}, пропущено {{skipped}}",
+    "exportDone": "Экспорт готов: {{format}} {{version}} ({{path}})",
+    "status": {
+      "pending": "На проверке",
+      "approved": "Готово",
+      "rejected": "Ошибка",
+      "semantic_review_required": "Требует проверки эксперта",
+      "preApproved": "Предодобрено"
+    },
+    "filters": {
+      "status": "Статус",
+      "workflow": "Поток",
+      "camera": "Камера",
+      "all": "Все",
+      "onlyNew": "Только новые",
+      "onlyError": "Только с ошибкой детекции"
+    },
+    "view": {
+      "snapshot": "Кадр",
+      "video": "Видео"
+    },
+    "meta": {
+      "time": "Время",
+      "camera": "Камера",
+      "reason": "Причина",
+      "species": "Вид",
+      "nickname": "Кличка",
+      "behavior": "Поведение"
+    },
+    "predictions": {
+      "main": "Основная модель",
+      "shadow": "Теневая модель"
+    },
+    "fields": {
+      "behaviorTag": "Поведение",
+      "speciesTag": "Вид",
+      "empty": "(пусто)",
+      "current": "(текущее)"
+    },
+    "actions": {
+      "runMiner": "Запустить майнер",
+      "confirm": "Подтвердить",
+      "reject": "Отклонить",
+      "skip": "Пропустить",
+      "prev": "Предыдущий",
+      "next": "Следующий",
+      "tagSpecies": "Отметить вид",
+      "approveAll": "Подтвердить всё",
+      "approveAndNext": "Подтвердить и далее",
+      "rejectAndNext": "Отклонить и далее",
+      "flagSemanticError": "Флаг ошибки семантики"
+    },
+    "export": {
+      "title": "Экспорт",
+      "approved": "Экспортировать подтверждённые"
+    },
+    "states": {
+      "loading": "Загрузка...",
+      "error": "Очередь недоступна. Проверьте, что вы вошли как оператор/администратор.",
+      "empty": "Нет данных. Запустите майнер или сидирование очереди.",
+      "noFiltered": "По текущим фильтрам кейсов нет."
+    },
+    "media": {
+      "noMedia": "Нет медиа для кейса.",
+      "noOverlayData": "Нет данных для отрисовки рамок.",
+      "unavailable": "Медиа недоступно для этого кейса. Нажмите «Пропустить»."
+    },
+    "box": {
+      "main": "Main",
+      "shadow": "Shadow",
+      "groundTruth": "Подтверждено",
+      "rejected": "Отклонено",
+      "detection": "Детекция"
+    },
+    "shortcuts": {
+      "confirm": "Enter / Space",
+      "reject": "Backspace",
+      "quickSpecies": "Быстрый выбор вида (1/2/3)",
+      "behavior": "Переключить поведение (B)"
+    },
+    "labels": {
+      "species": "Вид",
+      "behavior": "Поведение",
+      "speciesUnknown": "Неопознанный"
+    },
+    "panels": {
+      "boxActions": "Действия для выбранного объекта",
+      "sessionActions": "Проверка геометрии"
+    },
+    "hints": {
+      "trainingPurpose": "Здесь проверяется только геометрия рамки. Вид, кличка и поведение задаются в карточке видео."
+    },
+    "reasons": {
+      "blind": "Слепота YOLO",
+      "fallback": "Frigate fallback",
+      "lowConfidence": "Низкая уверенность"
+    },
+    "help": {
+      "guest": {
+        "title": "Разметка",
+        "step1": "Этот раздел для проверки рамок детекции. Просмотр записей — в «Записях» и карточке видео.",
+        "step2": "",
+        "step3": ""
+      },
+      "operator": {
+        "title": "Как работать с разметкой",
+        "step1": "Проверьте только геометрию рамки. Вид, кличка и поведение — в карточке видео.",
+        "step2": "«Подтвердить» — рамка верна; «Отклонить» — ошибка детекции. Кейсы с семантикой уходят в Expert Queue.",
+        "step3": "Стрелки ← → — соседние кейсы. Горячие клавиши работают, когда фокус не в поле ввода."
+      },
+      "admin": {
+        "title": "Разметка и очереди",
+        "step1": "Операторы правят рамки; админ смотрит статусы semantic_review_required и экспорт датасетов.",
+        "step2": "Пороги детекции и поведение v2.1 — «Станция». Массовый майнинг кейсов — кнопки в шапке раздела.",
+        "step3": "При росте очереди проверьте логи процессора и режим behavior (auto/shadow)."
+      },
+      "gotIt": "Понятно"
     }
   },
   "speciesDirectory": {
-    "title": "Виды",
-    "description": "Виды, которые уже встречались на станции: счётчики по записям, карточка вида и переход к роликам.",
+    "title": "Качество карточек",
+    "description": "Системный инструмент для полировки фото, описаний и аудио в карточках видов. Обычный видовой раздел — в меню «Каталог».",
+    "scopeHint": "Классы модели: {{engine}}, {{classCount}}. Словарь арбитража: ~{{arbCount}} ключей. Species в SQLite: {{db}}. Неполных карточек allowlist: {{incomplete}}.",
+    "scopeProject": "Проект (классификатор + арбитраж)",
+    "scopeAllowlist": "Только классификатор",
+    "scopeObserved": "Наблюдаемые",
+    "scopeAllDb": "Вся БД (служебно)",
+    "allowlistModelCount": "Модель: {{count}}",
+    "incompleteAllowlistCount": "Неполных (allowlist): {{count}}",
+    "badgeIncomplete": "Неполная карточка",
+    "backToCatalog": "← К каталогу",
+    "backToSystem": "К системе",
+    "colSpecies": "Вид",
+    "colStatus": "Статус",
+    "colActions": "Действия",
     "search": "Найти вид",
     "searchPlaceholder": "Введите название вида или заметку",
     "loadError": "Не удалось загрузить список видов",
-    "totalCount": "В каталоге {{count}} видов",
+    "totalCount": "В списке {{count}}",
     "filteredCount": "Показано {{count}}",
     "empty": "По этому запросу виды пока не найдены.",
     "activeNow": "Есть недавние записи",
@@ -2412,6 +3467,14 @@
     "openSpecies": "Открыть карточку вида",
     "openRecordingsForSpecies": "Открыть записи",
     "openSpeciesTooltip": "Страница вида: описание, частота, связанные записи.",
-    "openRecordingsTooltip": "Записи и детекции с фильтром только по этому виду."
+    "openRecordingsTooltip": "Записи и детекции с фильтром только по этому виду.",
+    "filterAll": "Все",
+    "filterNoImage": "Без фото",
+    "filterNoDescription": "Без описания",
+    "filterIncomplete": "Неполные",
+    "filterMissingAudio": "Без аудио (каталог)",
+    "audioKpi": "Аудио: {{withAudio}} с источником, {{missing}} без",
+    "badgeNoImage": "Нет фото",
+    "badgeNoDescription": "Нет описания"
   }
 }

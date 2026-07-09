@@ -1,0 +1,12 @@
+{
+  "imgsz": 640,
+  "conf": 0.08,
+  "bird_class_id": 0,
+  "frames": [
+    {
+      "id": "bus_smoke",
+      "image": "datasets/nabirds_parity_golden/fixtures/bus_smoke.jpg",
+      "frame_index": 0
+    }
+  ]
+}

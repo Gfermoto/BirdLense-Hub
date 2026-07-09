@@ -90,8 +90,7 @@ def settings_check_access():
         return True
 
     if not admin_pw and not contrib_pw:
-        if _is_production_runtime():
-            return False
+        # Свободный вход пока пароль не задан (даже в production)
         return True
     role = session.get("access_role")
     if role == "admin":
@@ -144,8 +143,7 @@ def contributor_or_admin_access():
     admin_pw = (app_config.get("general.settings_password") or "").strip()
     contrib_pw = (app_config.get("general.contributor_password") or "").strip()
     if not admin_pw and not contrib_pw:
-        if _is_production_runtime():
-            return False
+        # Свободный вход пока пароль не задан (даже в production)
         return True
     role = session.get("access_role")
     if role in ("admin", "contributor"):

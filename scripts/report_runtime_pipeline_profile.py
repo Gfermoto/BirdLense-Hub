@@ -1,0 +1,483 @@
+#!/usr/bin/env python3
+"""Build runtime pipeline profile (finalize/fusion/persist/first-bbox latencies)."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+REPO = Path(__file__).resolve().parents[1]
+
+
+def _safe_float(value: Any) -> float | None:
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return None
+    return num if num >= 0 else None
+
+
+def _percentile(values: list[float], pct: float) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(float(v) for v in values)
+    idx = int((len(ordered) - 1) * max(0.0, min(100.0, pct)) / 100.0)
+    return float(ordered[idx])
+
+
+def _summary(values: list[float]) -> dict[str, Any]:
+    if not values:
+        return {"n": 0, "p50": None, "p95": None, "max": None, "mean": None}
+    n = len(values)
+    return {
+        "n": int(n),
+        "p50": round(float(_percentile(values, 50.0) or 0.0), 6),
+        "p95": round(float(_percentile(values, 95.0) or 0.0), 6),
+        "max": round(float(max(values)), 6),
+        "mean": round(float(sum(values) / float(n)), 6),
+    }
+
+
+def _load_rows(db_path: Path, lookback_hours: int) -> list[sqlite3.Row]:
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        return list(
+            conn.execute(
+                """
+                SELECT
+                  payload_json,
+                  trigger_to_first_bbox_latency_s,
+                  finalize_duration_ms
+                FROM session_runtime_metrics
+                WHERE datetime(created_at) >= datetime('now', ?)
+                ORDER BY id DESC
+                """,
+                (f"-{max(1, int(lookback_hours))} hours",),
+            )
+        )
+    finally:
+        conn.close()
+
+
+def _extract_payload(raw_payload: Any) -> dict[str, Any]:
+    if not isinstance(raw_payload, str) or not raw_payload.strip():
+        return {}
+    try:
+        payload = json.loads(raw_payload)
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def build_profile(
+    rows: list[sqlite3.Row],
+    *,
+    lookback_hours: int,
+    first_bbox_warn_s: float,
+    first_bbox_fail_s: float | None,
+    finalize_warn_ms: float,
+    create_video_warn_ms: float,
+    create_video_fail_ms: float | None,
+    legacy_spectrogram_finalize_ms: float = 15000.0,
+) -> dict[str, Any]:
+    first_bbox_s: list[float] = []
+    first_bbox_wall_s: list[float] = []
+    first_track_wall_s: list[float] = []
+    finalize_ms: list[float] = []
+    finalize_kpi_ms: list[float] = []
+    legacy_spectrogram_excluded = 0
+    fusion_ms: list[float] = []
+    persist_ms: list[float] = []
+    create_video_ms: list[float] = []
+    behavior_ms: list[float] = []
+    scales_ms: list[float] = []
+    dataset_crops_ms: list[float] = []
+    reid_enrich_ms: list[float] = []
+    by_slot_finalize: dict[str, list[float]] = {}
+
+    pre_fusion_ms: list[float] = []
+    critical_path_ms: list[float] = []
+    ingest_visit_ms: list[float] = []
+    ingest_commit_ms: list[float] = []
+    ingest_weather_ms: list[float] = []
+
+    for row in rows:
+        payload = _extract_payload(row["payload_json"])
+        slot = str(payload.get("camera_slot") or "legacy:no-slot").strip() or "legacy:no-slot"
+
+        latency_s = _safe_float(row["trigger_to_first_bbox_latency_s"])
+        if latency_s is None:
+            latency_s = _safe_float(
+                payload.get("trigger_to_first_bbox_latency_s")
+                or payload.get("first_bbox_latency_s")
+            )
+        if latency_s is not None and latency_s > 0:
+            first_bbox_s.append(latency_s)
+
+        wall_bbox = _safe_float(payload.get("trigger_to_first_bbox_wall_s"))
+        if wall_bbox is not None and wall_bbox > 0:
+            first_bbox_wall_s.append(wall_bbox)
+
+        wall_track = _safe_float(payload.get("trigger_to_first_track_wall_s"))
+        if wall_track is not None and wall_track > 0:
+            first_track_wall_s.append(wall_track)
+
+        fin_ms = _safe_float(row["finalize_duration_ms"])
+        if fin_ms is None:
+            fin_ms = _safe_float(payload.get("finalize_duration_ms"))
+        if fin_ms is not None and fin_ms > 0:
+            finalize_ms.append(fin_ms)
+            by_slot_finalize.setdefault(slot, []).append(fin_ms)
+            legacy_tail = float(fin_ms) >= float(legacy_spectrogram_finalize_ms) and (
+                _safe_float(payload.get("create_video_duration_ms")) is None
+                and _safe_float(payload.get("finalize_critical_path_ms")) is None
+            )
+            if legacy_tail:
+                legacy_spectrogram_excluded += 1
+            else:
+                finalize_kpi_ms.append(fin_ms)
+
+        f_ms = _safe_float(payload.get("fusion_duration_ms"))
+        if f_ms is not None and f_ms > 0:
+            fusion_ms.append(f_ms)
+
+        p_ms = _safe_float(payload.get("persist_duration_ms"))
+        if p_ms is not None and p_ms > 0:
+            persist_ms.append(p_ms)
+
+        for key, bucket in (
+            ("create_video_duration_ms", create_video_ms),
+            ("behavior_duration_ms", behavior_ms),
+            ("scales_duration_ms", scales_ms),
+            ("dataset_crops_duration_ms", dataset_crops_ms),
+            ("reid_enrich_duration_ms", reid_enrich_ms),
+        ):
+            stage_ms = _safe_float(payload.get(key))
+            if stage_ms is not None and stage_ms > 0:
+                bucket.append(stage_ms)
+
+        pre_ms = _safe_float(payload.get("pre_fusion_duration_ms"))
+        if pre_ms is not None and pre_ms > 0:
+            pre_fusion_ms.append(pre_ms)
+
+        crit_ms = _safe_float(payload.get("finalize_critical_path_ms"))
+        if crit_ms is not None and crit_ms > 0:
+            critical_path_ms.append(crit_ms)
+
+        ingest_timing = payload.get("create_video_ingest_timing_ms")
+        if isinstance(ingest_timing, dict):
+            for key, bucket in (
+                ("visit_processor_ms", ingest_visit_ms),
+                ("commit_ms", ingest_commit_ms),
+                ("weather_ms", ingest_weather_ms),
+            ):
+                stage_ms = _safe_float(ingest_timing.get(key))
+                if stage_ms is not None and stage_ms > 0:
+                    bucket.append(stage_ms)
+
+    first_bbox_p95 = _percentile(first_bbox_s, 95.0)
+    first_bbox_wall_p95 = _percentile(first_bbox_wall_s, 95.0)
+    finalize_p95 = _percentile(finalize_ms, 95.0)
+    finalize_kpi_p95 = _percentile(finalize_kpi_ms, 95.0) if finalize_kpi_ms else finalize_p95
+    fusion_p95 = _percentile(fusion_ms, 95.0)
+    persist_p95 = _percentile(persist_ms, 95.0)
+
+    create_video_p95 = _percentile(create_video_ms, 95.0)
+    critical_path_p95 = _percentile(critical_path_ms, 95.0)
+
+    bottleneck = "unknown"
+    stage_p95 = {
+        "finalize_duration_ms": finalize_p95 or 0.0,
+        "finalize_critical_path_ms": critical_path_p95 or 0.0,
+        "fusion_duration_ms": fusion_p95 or 0.0,
+        "persist_duration_ms": persist_p95 or 0.0,
+        "create_video_duration_ms": create_video_p95 or 0.0,
+    }
+    if any(v > 0 for v in stage_p95.values()):
+        bottleneck = max(stage_p95.items(), key=lambda item: float(item[1]))[0]
+
+    warnings: list[str] = []
+    failures: list[str] = []
+    kpi_bbox_p95 = first_bbox_wall_p95 if first_bbox_wall_p95 is not None else first_bbox_p95
+    kpi_source = (
+        "wall_clock"
+        if first_bbox_wall_p95 is not None
+        else ("resolved_video_offset" if first_bbox_p95 is not None else "missing")
+    )
+    if kpi_bbox_p95 is not None and float(kpi_bbox_p95) > float(first_bbox_warn_s):
+        warnings.append(
+            f"first_bbox_latency_p95 {float(kpi_bbox_p95):.3f}s > {float(first_bbox_warn_s):.3f}s"
+            + (
+                " (wall-clock)"
+                if first_bbox_wall_p95 is not None
+                else " (resolved/video offset)"
+            )
+        )
+    bbox_kpi_ok: bool | None = None
+    if first_bbox_fail_s is not None:
+        if kpi_bbox_p95 is None:
+            bbox_kpi_ok = False
+            failures.append(
+                f"first_bbox_wall_p95 missing (need trigger_to_first_bbox_wall_s in payload; #579)"
+            )
+        else:
+            bbox_kpi_ok = float(kpi_bbox_p95) <= float(first_bbox_fail_s)
+            if not bbox_kpi_ok:
+                failures.append(
+                    f"first_bbox_wall_p95 {float(kpi_bbox_p95):.3f}s > KPI {float(first_bbox_fail_s):.3f}s (#579)"
+                )
+    if finalize_kpi_p95 is not None and float(finalize_kpi_p95) > float(finalize_warn_ms):
+        warnings.append(
+            f"finalize_duration_p95 {float(finalize_kpi_p95):.2f}ms > {float(finalize_warn_ms):.2f}ms"
+            + (
+                f" (excl {legacy_spectrogram_excluded} legacy spectrogram tails >= "
+                f"{float(legacy_spectrogram_finalize_ms):.0f}ms; #584)"
+                if legacy_spectrogram_excluded > 0
+                else ""
+            )
+        )
+    create_video_kpi_ok: bool | None = None
+    if create_video_p95 is not None and float(create_video_p95) > float(create_video_warn_ms):
+        warnings.append(
+            f"create_video_duration_p95 {float(create_video_p95):.2f}ms > "
+            f"{float(create_video_warn_ms):.2f}ms (#578)"
+        )
+    if create_video_fail_ms is not None:
+        if create_video_p95 is None:
+            create_video_kpi_ok = True
+        else:
+            create_video_kpi_ok = float(create_video_p95) <= float(create_video_fail_ms)
+            if not create_video_kpi_ok:
+                failures.append(
+                    f"create_video_duration_p95 {float(create_video_p95):.2f}ms > "
+                    f"KPI {float(create_video_fail_ms):.2f}ms (#578)"
+                )
+
+    finalize_tail_dominant: str | None = None
+    if critical_path_p95 is not None and critical_path_p95 > 0:
+        tail_candidates = {
+            "create_video": create_video_p95 or 0.0,
+            "persist": persist_p95 or 0.0,
+            "fusion": fusion_p95 or 0.0,
+        }
+        dominant = max(tail_candidates.items(), key=lambda item: float(item[1]))
+        if dominant[1] > 0:
+            finalize_tail_dominant = dominant[0]
+            share = float(dominant[1]) / float(critical_path_p95)
+            if share >= 0.5 and float(critical_path_p95) > float(finalize_warn_ms):
+                warnings.append(
+                    f"finalize tail dominated by {dominant[0]} "
+                    f"({share:.0%} of critical_path p95 {float(critical_path_p95):.0f}ms; #586/I12)"
+                )
+
+    by_slot = {
+        slot: _summary(vals)
+        for slot, vals in sorted(by_slot_finalize.items())
+    }
+
+    return {
+        "schema": "runtime_pipeline_profile@v2",
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "window_hours": int(max(1, lookback_hours)),
+        "profile": {
+            "trigger_to_first_bbox_latency_s": _summary(first_bbox_s),
+            "trigger_to_first_bbox_wall_s": _summary(first_bbox_wall_s),
+            "trigger_to_first_track_wall_s": _summary(first_track_wall_s),
+            "finalize_duration_ms": _summary(finalize_ms),
+            "finalize_duration_ms_kpi_excl_legacy": _summary(finalize_kpi_ms),
+            "finalize_critical_path_ms": _summary(critical_path_ms),
+            "pre_fusion_duration_ms": _summary(pre_fusion_ms),
+            "fusion_duration_ms": _summary(fusion_ms),
+            "persist_duration_ms": _summary(persist_ms),
+            "create_video_duration_ms": _summary(create_video_ms),
+            "create_video_ingest_visit_processor_ms": _summary(ingest_visit_ms),
+            "create_video_ingest_commit_ms": _summary(ingest_commit_ms),
+            "create_video_ingest_weather_ms": _summary(ingest_weather_ms),
+            "behavior_duration_ms": _summary(behavior_ms),
+            "scales_duration_ms": _summary(scales_ms),
+            "dataset_crops_duration_ms": _summary(dataset_crops_ms),
+            "reid_enrich_duration_ms": _summary(reid_enrich_ms),
+        },
+        "by_slot_finalize_duration_ms": by_slot,
+        "bottleneck_stage_p95": bottleneck,
+        "kpi": {
+            "first_bbox_wall_p95_s": (
+                round(float(kpi_bbox_p95), 6) if kpi_bbox_p95 is not None else None
+            ),
+            "first_bbox_fail_threshold_s": first_bbox_fail_s,
+            "first_bbox_warn_threshold_s": float(first_bbox_warn_s),
+            "source": kpi_source,
+            "ok": bbox_kpi_ok,
+            "create_video_p95_ms": (
+                round(float(create_video_p95), 3) if create_video_p95 is not None else None
+            ),
+            "create_video_fail_threshold_ms": create_video_fail_ms,
+            "create_video_warn_threshold_ms": float(create_video_warn_ms),
+            "create_video_ok": create_video_kpi_ok,
+            "finalize_critical_path_p95_ms": (
+                round(float(critical_path_p95), 3) if critical_path_p95 is not None else None
+            ),
+            "persist_p95_ms": (
+                round(float(persist_p95), 3) if persist_p95 is not None else None
+            ),
+            "finalize_tail_dominant": finalize_tail_dominant,
+        },
+        "legacy_spectrogram_finalize": {
+            "threshold_ms": float(legacy_spectrogram_finalize_ms),
+            "excluded_sessions": int(legacy_spectrogram_excluded),
+        },
+        "warnings": warnings,
+        "failures": failures,
+        "ok": len(rows) > 0 and not failures,
+    }
+
+
+def _to_md(report: dict[str, Any]) -> str:
+    lines = [
+        "# Runtime Pipeline Profile",
+        "",
+        f"- generated_at: `{report.get('generated_at')}`",
+        f"- window_hours: `{report.get('window_hours')}`",
+        f"- bottleneck_stage_p95: `{report.get('bottleneck_stage_p95')}`",
+        f"- ok: `{report.get('ok')}`",
+        "",
+        "## Profile",
+        "",
+        f"`{report.get('profile')}`",
+        "",
+        "## By slot (finalize_duration_ms)",
+        "",
+        f"`{report.get('by_slot_finalize_duration_ms')}`",
+        "",
+        "## Warnings",
+        "",
+    ]
+    for item in report.get("warnings") or []:
+        lines.append(f"- {item}")
+    if not (report.get("warnings") or []):
+        lines.append("- none")
+    lines.append("")
+    lines.append("## KPI (#579 wall first-bbox)")
+    lines.append("")
+    lines.append(f"`{report.get('kpi')}`")
+    lines.append("")
+    lines.append("## Failures")
+    lines.append("")
+    for item in report.get("failures") or []:
+        lines.append(f"- {item}")
+    if not (report.get("failures") or []):
+        lines.append("- none")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--db-path", default="app/data/db/birdlense.db")
+    parser.add_argument("--lookback-hours", type=int, default=24)
+    parser.add_argument("--first-bbox-warn-s", type=float, default=5.0)
+    parser.add_argument(
+        "--first-bbox-fail-s",
+        type=float,
+        default=None,
+        help="Hard KPI threshold for wall first-bbox p95 (#579); omit to skip fail gate",
+    )
+    parser.add_argument("--finalize-warn-ms", type=float, default=5000.0)
+    parser.add_argument(
+        "--legacy-spectrogram-finalize-ms",
+        type=float,
+        default=15000.0,
+        help="Exclude pre-instrumentation finalize tails from KPI warn (#584)",
+    )
+    parser.add_argument("--create-video-warn-ms", type=float, default=30000.0)
+    parser.add_argument(
+        "--create-video-fail-ms",
+        type=float,
+        default=None,
+        help="Hard KPI for create_video p95 (#578); omit to skip fail gate",
+    )
+    parser.add_argument(
+        "--fail-on-stage-kpi",
+        action="store_true",
+        help="Exit 1 when any KPI failure (bbox or create_video)",
+    )
+    parser.add_argument(
+        "--fail-on-bbox-kpi",
+        action="store_true",
+        help="Deprecated alias for --fail-on-stage-kpi",
+    )
+    parser.add_argument(
+        "--out-json",
+        default="docs/reports/perf/runtime_pipeline_profile_latest.json",
+    )
+    parser.add_argument(
+        "--out-md",
+        default="docs/reports/perf/runtime_pipeline_profile_latest.md",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = _args()
+    db_path = Path(args.db_path).expanduser()
+    if not db_path.is_absolute():
+        db_path = REPO / db_path
+    if not db_path.exists():
+        raise SystemExit(f"db file not found: {db_path}")
+
+    fail_s = args.first_bbox_fail_s
+    if fail_s is not None:
+        fail_s = float(max(0.1, fail_s))
+
+    rows = _load_rows(db_path, int(max(1, args.lookback_hours)))
+    report = build_profile(
+        rows,
+        lookback_hours=int(max(1, args.lookback_hours)),
+        first_bbox_warn_s=float(max(0.1, args.first_bbox_warn_s)),
+        first_bbox_fail_s=fail_s,
+        finalize_warn_ms=float(max(100.0, args.finalize_warn_ms)),
+        legacy_spectrogram_finalize_ms=float(max(1000.0, args.legacy_spectrogram_finalize_ms)),
+        create_video_warn_ms=float(max(100.0, args.create_video_warn_ms)),
+        create_video_fail_ms=(
+            float(max(100.0, args.create_video_fail_ms))
+            if args.create_video_fail_ms is not None
+            else None
+        ),
+    )
+
+    out_json = Path(args.out_json).expanduser()
+    if not out_json.is_absolute():
+        out_json = REPO / out_json
+    out_md = Path(args.out_md).expanduser()
+    if not out_md.is_absolute():
+        out_md = REPO / out_md
+    out_json.parent.mkdir(parents=True, exist_ok=True)
+    out_md.parent.mkdir(parents=True, exist_ok=True)
+    out_json.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    out_md.write_text(_to_md(report), encoding="utf-8")
+
+    print(
+        json.dumps(
+            {
+                "ok": bool(report.get("ok")),
+                "json": str(out_json),
+                "md": str(out_md),
+                "bottleneck_stage_p95": report.get("bottleneck_stage_p95"),
+                "kpi_ok": (report.get("kpi") or {}).get("ok"),
+                "create_video_kpi_ok": (report.get("kpi") or {}).get("create_video_ok"),
+            }
+        )
+    )
+    fail_kpi = bool(args.fail_on_stage_kpi or args.fail_on_bbox_kpi)
+    if fail_kpi and (report.get("failures") or []):
+        return 1
+    return 0 if bool(report.get("ok")) else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

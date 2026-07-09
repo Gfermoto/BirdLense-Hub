@@ -4,8 +4,8 @@
 
 This page moved to **current documentation**:
 
-**[ru/install.ru.md](ru/install.ru.md)**
+**[user/install.md](user/install.md)**
 
 ---
 
-[Documentation index](index.md) · [Contributor guide](contributor/documentation.md)
+[Documentation index](index.md) · [User guide](user/install.md)

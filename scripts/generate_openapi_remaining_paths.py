@@ -335,8 +335,6 @@ PATHS: dict[str, dict[str, Any]] = {
     "/system/observability": _get("Observability snapshot", "Combined observability JSON for System page."),
     "/system/realign-visit-times": _post("Realign visit times", "Admin: adjust visit timestamps per rules."),
     "/system/recordings/scan": _post("Scan and import recordings", "Admin: scan recordings directory and import metadata."),
-    "/system/regenerate-spectrograms": _post("Bulk regenerate spectrograms", "Admin: start batch spectrogram job."),
-    "/system/regenerate-spectrograms/status": _get("Spectrogram batch status", "Poll batch spectrogram job."),
     "/system/regenerate-tracks/status": _get("Track batch status", "Poll batch track regeneration job."),
     "/system/retention": _post("Run retention policy", "Admin: apply configured retention rules."),
     "/system/review-queue/delete": _post("Execute review-queue delete", "Admin: apply bulk delete."),
@@ -361,11 +359,6 @@ PATHS: dict[str, dict[str, Any]] = {
     "/videos/{video_id}/merge-species": _post(
         "Merge species on recording",
         "Admin: merge duplicate species rows for a video.",
-        params=_path_int("video_id"),
-    ),
-    "/videos/{video_id}/regenerate-spectrogram": _post_nb(
-        "Regenerate spectrogram",
-        "Admin: queue spectrogram regeneration for one recording.",
         params=_path_int("video_id"),
     ),
     "/videos/{video_id}/regenerate-tracks": _post_nb(

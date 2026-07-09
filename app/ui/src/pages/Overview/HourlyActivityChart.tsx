@@ -8,6 +8,7 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
+import { overviewSpeciesLabel } from './overviewSpeciesLabel';
 import { labelToUniqueHexColor } from '../../util';
 
 interface HourlyActivityChartProps {
@@ -73,7 +74,7 @@ export const HourlyActivityChart: React.FC<HourlyActivityChartProps> = ({
             <MenuItem value="all">{t('overviewExtra.allSpecies')}</MenuItem>
             {data.map((species) => (
               <MenuItem key={species.id} value={species.id}>
-                {species.name}
+                {overviewSpeciesLabel(t, species)}
               </MenuItem>
             ))}
           </Select>

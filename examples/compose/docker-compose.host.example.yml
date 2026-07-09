@@ -1,9 +1,0 @@
-# network_mode: host — для стабильной работы с RTSP/потоками камер.
-# Порт: BIRDLENSE_PORT (nginx слушает на нём). По умолчанию 8085.
-# Скопировать в docker-compose.override.yml на сервере.
-#
-# cp docker-compose.host.example.yml docker-compose.override.yml
-
-services:
-  birdlense:
-    network_mode: host

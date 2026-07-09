@@ -1,0 +1,30 @@
+# TrapperAI v02.2024 (YOLOv8-m) — прод: только птица + белка (остальные id в ignore_class_ids).
+model_id: trapper_ai_v02_2024
+weights_onnx: models/detection/trapper_ai_v02_2024/weights/trapper_ai_v02_2024.onnx
+export_imgsz: 704
+our_scope:
+  - bird
+  - squirrel
+class_to_scope:
+  bird: [0]
+  squirrel: [5]
+ignore_class_ids: [1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+native_names:
+  0: Bird
+  1: Cat
+  2: Chamois
+  3: Dog
+  4: Eurasian Lynx
+  5: Eurasian Red Squirrel
+  6: European Badger
+  7: European Mouflon
+  8: Fallow Deer
+  9: Gray Wolf
+  10: Hare
+  11: Marten
+  12: Moose
+  13: Red Deer
+  14: Red Fox
+  15: Reindeer
+  16: Roe Deer
+  17: Wild Boar

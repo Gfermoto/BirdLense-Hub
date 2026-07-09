@@ -1,21 +1,20 @@
-# Troubleshooting BirdLense Hub
+# Устранение проблем
 
 [Русский](../ru/troubleshooting.ru.md)
 
 ---
 
-## Video: Intel GPU recording falls back to CPU
+## Video: Jetson NVENC recording falls back to CPU
 
-**Settings → Video → Recording encode** can target CPU or Intel GPU. If logs show `Starting FFmpeg recording ... (CPU)` while Intel is selected, the container cannot access `/dev/dri/renderD128`.
+**Settings → Video → Recording encode** can target Jetson (NVENC) or CPU. If logs show `Recording ... (CPU)` while Jetson is selected, the container cannot access NVIDIA GPU.
 
-**Fix:** install the Intel override and restart:
+**Fix:** verify NVIDIA runtime, `nvidia-smi` in container:
 
 ```bash
-cp app/docker-compose.intel.example.yml app/docker-compose.override.yml
-make stop && make start
+docker exec birdlense nvidia-smi
 ```
 
-Re-select **Intel GPU** in settings. **System** should show **Intel GPU (VA-API)** as active.
+Re-select **Jetson** in settings. **System** should show GPU metrics via `nvidia-smi`.
 
 ---
 
@@ -33,7 +32,7 @@ Notification tuning: [CONFIGURATION](./configuration.md) → Notifications.
 
 ## Single-container startup (entrypoint): if stuck {#single-container-startup-stuck}
 
-The container runs **`app/scripts/entrypoint.sh`**: nginx → gunicorn → wait for **`GET /api/ui/health`** (up to ~400s) → optional MCP → **processor** loop (`processor/src/main.py`). See [ARCHITECTURE](../contributor/architecture.md#runtime-processes-ports-and-health-signals) and [RUNTIME_COUPLING](../../archive/internal/docs-legacy/RUNTIME_COUPLING.md).
+The container runs **`app/scripts/entrypoint.sh`**: nginx → gunicorn → wait for **`GET /api/ui/health`** (up to ~400s) → optional MCP → **processor** loop (`processor/src/main.py`). See [ARCHITECTURE](../contributor/architecture.md#runtime-processes-ports-and-health-signals) and [RUNTIME_COUPLING](../archive/internal/docs-legacy/RUNTIME_COUPLING.md).
 
 | Symptom | Where to look |
 | -------- | ---------------- |
@@ -45,21 +44,19 @@ The container runs **`app/scripts/entrypoint.sh`**: nginx → gunicorn → wait 
 Quick probes (from host, default port):
 
 ```bash
-curl -sf "http://127.0.0.1:${BIRDLENSE_PORT:-8085}/api/ui/health"
-curl -sf "http://127.0.0.1:${BIRDLENSE_PORT:-8085}/api/ui/readiness" | head -c 400
+diff app/.env.example app/.env
 ```
 
-Inside the container, gunicorn listens on **`127.0.0.1:8000`** (not published); nginx on **`8080`**.
+## 403 Forbidden на API
 
----
-
-## Restarts, hangs, exit codes
-
-One container runs nginx, gunicorn, and the processor loop. The processor can restart **inside** the container. nginx and gunicorn run in the background; if they die, the container may stay up but become unhealthy or partially broken. The container exits when the foreground entrypoint / processor loop exits or the runtime stops it.
+PROCESSOR_SECRET не совпадает:
 
 ```bash
-docker inspect birdlense --format '{{.State.ExitCode}} {{.State.Error}}'
-docker logs birdlense --tail 200 2>&1
+# Проверить
+grep PROCESSOR_SECRET app/.env
+# Сгенерировать
+python3 -c "import secrets; print(secrets.token_hex(16))"
+# Обновить в .env и перезапустить
 ```
 
 | Signal | Meaning |
@@ -88,9 +85,9 @@ docker logs birdlense --tail 200 2>&1
 
 **Not a crash** when `processor.detector_weight_contract` is `warn` (default). In `enforce` mode startup fails until weights and scope align.
 
-**What to do:** (1) Set `processor.detector_scope` to match `model.names` / your training manifest. (2) Or deploy weights that include every scoped label, then restart the processor. (3) Do not put `Background` in scope — see [CV_ML_PREP.md](../../archive/internal/docs-legacy/CV_ML_PREP.md).
+**What to do:** (1) Set `processor.detector_scope` to match `model.names` / your training manifest. (2) Or deploy weights that include every scoped label, then restart the processor. (3) Do not put `Background` in scope — see [CV_ML_PREP.md](../archive/internal/docs-legacy/CV_ML_PREP.md).
 
-**Related:** [CV_ML_ROADMAP_PHASES.md](../../archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.md) (#368).
+**Related:** [CV_ML_ROADMAP_PHASES.md](../archive/internal/docs-legacy/CV_ML_ROADMAP_PHASES.md) (#368).
 
 ---
 
@@ -118,7 +115,7 @@ docker logs birdlense --tail 200 2>&1
 
 **What to try:**
 
-1. **Docker resources** — default in `app/docker-compose.yml` is **4 CPUs / 4G RAM**. Raise `cpus` and `mem_limit` via `docker-compose.override.yml` (see `docker-compose.intel.example.yml` as an override pattern).
+1. **Docker resources** — default in `app/docker-compose.yml` is **4 CPUs / 4G RAM**. Raise `cpus` and `mem_limit` via `docker-compose.override.yml`.
 2. **API cache** — **Settings → Performance**: enable Redis (`performance.cache_redis_enabled`), confirm `REDIS_URL` in `.env` (compose default: `redis://redis:6379/0`). Without Redis, cache is in-process only.
 3. **Concurrent requests** — single gunicorn worker with `gthread` (default **16** threads). Increase further: set `GUNICORN_THREADS=24` (or higher if the host allows) in `app/.env`, then restart the app container: `cd app && docker compose restart birdlense` (or `make stop && make start`).
 4. **Disk / DB** — a very large `birdlense.db` or slow storage increases latency; **System** shows load. If needed, back up (**System → Storage**), stop the hub, then maintain SQLite (e.g. `sqlite3 birdlense.db "VACUUM;"`).
@@ -137,89 +134,41 @@ Typical upstream noise: `non monotonically increasing dts`, timeouts, `404`, `No
 **Quick checks:**
 
 ```bash
-mosquitto_sub -t 'frigate/#' -v
-curl -s http://YOUR_GO2RTC_HOST:1984/api/streams
+nvidia-smi                           # на хосте
+docker run --rm --gpus all nvidia/cuda:12.2-base nvidia-smi   # в контейнере
 ```
 
-**Fallback:** If Frigate is flaky, use **OpenCV** or **ESPHome** as an alternate motion source (**Settings → Motion**).
-
-### Checklist: Frigate sees a bird, BirdLense does not record
-
-| # | Cause | What to verify |
-|---|--------|----------------|
-| 1 | Frigate-триггер выключен | `user_config.yaml` → включите **`triggers.frigate.enabled: true`** и настройте **`mqtt.broker`** (и при необходимости OpenCV-параллель **`triggers.opencv.enabled`**) |
-| 2 | Frigate camera not in `video.cameras` | `id` must match Frigate camera name |
-| 3 | `frigate_label_filter` empty | Default `["bird","Bird"]`; empty list drops all events |
-| 4 | MQTT unavailable for a long time (broker/network) | Logs `MQTT aggregator disconnected` / `MQTT aggregator connected`; reconnect uses backoff (`mqtt.reconnect_min_delay` → `mqtt.reconnect_max_delay`) |
-| 5 | Topic mismatch | Frigate `mqtt.topic_prefix` → events on `PREFIX/events` |
-| 6 | QoS 0 + bad network | Events can be lost on reconnect |
-
-**Order:** motion source → camera ids → logs (`Frigate trigger` / `Frigate event skipped`) → `GET /api/ui/status` (`mqtt: ok`).
-
-### BirdNET: FIFO fills but video merge / audio evidence does not match
-
-Symptom: **System → Automation → BirdNET FIFO** shows events, but fusion with YOLO never shows `support` or BirdNET auto-thresholds do not apply.
-
-| # | Cause | What to do |
-|---|--------|------------|
-| 1 | MQTT payload has **no scientific name** (`ScientificName` or equivalent), only a localized label | Prefer **BirdNET-Go** (usually sends Latin name). Otherwise add a **species alias** in the Hub registry for that MQTT string → taxon, or a `detection.species_mapping` entry. |
-| 2 | Taxon **scientific name** in Hub does not match the MQTT value | Check `species_taxon.scientific_name` for typos/extra spaces. |
-| 3 | Hub on **PostgreSQL** without a shared `birdlense.db` for the processor | SQLite-catalog auto-match is unavailable — use **`detection.species_mapping`** for MQTT strings. |
-| 4 | Resolved name still differs from **video classifier** output | After catalog resolution, the merge key must match `normalize()` on video detections (see [CONFIGURATION.md](./configuration.md) § MQTT). |
-
-**On-server checks:** `GET /api/ui/health` — `mqtt: ok`; processor logs — `MQTT aggregator connected`; for verbose BirdNET path set `processor.birdnet_mqtt_observability_level: debug`. FIFO UI: **System → Automation → BirdNET FIFO snapshot** (admin password required).
-
----
-
-## Processor: trigger / MQTT degradation (metrics) {#processor-trigger-metrics}
-
-Symptom: clips rarely start while **`triggers.frigate.enabled`** (or MQTT-only motion) is on, without an obvious traceback.
-
-On the hub host open **`data/diagnostics/processor_runtime_stats.json`** (processor snapshot):
-
-| Signal | Meaning |
-|--------|---------|
-| `trigger_frigate_degraded_no_mqtt` = **1** | Frigate is enabled in config but MQTT is configured and **not** live (`trigger_mqtt_live` = 0). |
-| `trigger_degraded_effective_lt_configured` = **1** | Effective motion paths while MQTT is down are fewer than configured (MQTT-only triggers stripped). |
-| `trigger_motion_factory_frigate_fallback_opencv_total` | Factory fell back to OpenCV motion because Frigate detector could not be wired. |
-
-Pair with **`mqtt_connected`** and queue counters documented in [PROCESSOR_PERFORMANCE](./processor-performance.md) § Trigger path observability / Queues & backpressure. Trigger YAML keys: [CONFIGURATION](./configuration.md) § MQTT / triggers inventory.
-
----
-
-## SQLite restore failed
-
-Feature location: **System → Storage → Restore from file**.
-
-- Only valid SQLite files are accepted (`.db/.sqlite`).
-- Restore replaces the current DB, but creates an automatic `*.pre_restore_*.bak` next to `birdlense.db` first.
-- `Invalid SQLite database file` means the upload is corrupt or not an SQLite DB.
-
-Validate backup file before upload:
+Если не работает:
 
 ```bash
-sqlite3 "/path/to/backup.db" "PRAGMA integrity_check;"
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
 ```
 
-Expected output: `ok`.
+## Пустые записи (нет детекций)
 
----
+1. RTSP поток работает? `ffplay rtsp://...`
+2. Пути к ONNX файлам правильные? `ls -la app/processor/models/detection/trapper_ai_v02_2024/`
+3. GStreamer pipeline корректный? (проверить в логах)
 
-## Live view: 502 or black screen
+## Процессор не стартует (FileNotFoundError)
 
-**502** — UI cannot reach go2rtc from inside the container.
+```bash
+# Проверить пути в user_config.yaml
+# Путь — относительно app/processor/
+# Абсолютные пути должны существовать внутри контейнера
+```
 
-| Network mode | Typical go2rtc URL |
-|--------------|-------------------|
-| `network_mode: host` | `http://localhost:1984` |
-| bridge | `http://172.17.0.1:1984` or `http://YOUR_HOST_LAN_IP:1984` |
+## Высокая загрузка CPU/GPU
 
-go2rtc must listen on `0.0.0.0:1984`. Test from host/container: `curl -s -o /dev/null -w "%{http_code}" http://...:1984/api/streams` → `200`.
+- Уменьшить число RTSP потоков
+- Проверить `binary_imgsz` в конфиге (640 рекомендуется)
+- Убедиться, что NVDEC/NVENC используются (проверить логи GStreamer)
 
-**Workaround:** On **Live**, use **MJPEG** — stream is proxied through the processor.
+## Ошибка сборки Docker
 
----
+```bash
+docker build -f Dockerfile.orin -t birdlense-hub:orin . --no-cache
+```
 
-## See also
-
-[INSTALL](./install.md) · [CONFIGURATION](./configuration.md) · [SCENARIOS](./scenarios.md) · [GLOSSARY](./glossary.md)
+См. [`../TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) · [`runbooks.md`](runbooks.md).

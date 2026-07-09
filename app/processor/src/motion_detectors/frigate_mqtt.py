@@ -54,10 +54,16 @@ class FrigateMotionFromAggregator:
             "_frigate_has_geometry": bool(payload.get("_frigate_has_geometry", True)),
         }
         with self._lock:
-            if len(self._pending_events) >= self._pending_events.maxlen:
-                self._pending_events.popleft()
+            # Coalesce MQTT bursts: one pending trigger per camera (latest wins).
+            kept = deque(
+                (e for e in self._pending_events if str(e.get("camera") or "") != str(camera)),
+                maxlen=self._pending_events.maxlen,
+            )
+            if len(kept) >= kept.maxlen:
+                kept.popleft()
                 inc_counter("motion_trigger_queue_drop_total")
-            self._pending_events.append(dict(self._last_event_payload))
+            kept.append(dict(self._last_event_payload))
+            self._pending_events = kept
         logger.info(
             "Frigate motion: camera=%s, label=%s, confidence=%.3f",
             camera,
@@ -242,10 +248,15 @@ class FrigateMQTTMotionDetector:
             "_frigate_has_geometry": has_geometry,
         }
         with self._lock:
-            if len(self._pending_events) >= self._pending_events.maxlen:
-                self._pending_events.popleft()
+            kept = deque(
+                (e for e in self._pending_events if str(e.get("camera") or "") != str(camera)),
+                maxlen=self._pending_events.maxlen,
+            )
+            if len(kept) >= kept.maxlen:
+                kept.popleft()
                 inc_counter("motion_trigger_queue_drop_total")
-            self._pending_events.append(dict(self._last_event_payload))
+            kept.append(dict(self._last_event_payload))
+            self._pending_events = kept
         logger.info(
             "Frigate event: camera=%s, label=%s, sub_label=%s, confidence=%.3f",
             camera,

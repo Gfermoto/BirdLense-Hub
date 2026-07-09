@@ -1,9 +1,15 @@
 .PHONY: all clean build start stop logs verify deploy pull setup test test-processor-light test-web test-web-contract-local test-web-local venv-web venv-web-reset test-e2e test-coverage test-report local local-build docs docs-python docs-ui docs-check
 
+# Platform: orin — см. scripts/platform-profile.sh
+BIRDLENSE_PLATFORM ?= orin
+COMPOSE ?= docker compose
+COMPOSE_FILES := docker-compose.yml docker-compose.orin.yml
+COMPOSE_CMD = $(COMPOSE) $(foreach f,$(COMPOSE_FILES),-f $(f))
+
 all: build
 
 clean:
-	@docker compose down --remove-orphans 2>/dev/null || true
+	@$(COMPOSE_CMD) down --remove-orphans 2>/dev/null || true
 	@rm -rf htmlcov .coverage
 
 # Локальный venv для pytest без Docker (тот же requirements, что в CI openapi job).
@@ -21,23 +27,34 @@ local: setup local-build start
 	@echo "BirdLense Hub: http://localhost:$${BIRDLENSE_PORT:-8085}"
 	@echo "Логи: make logs"
 
+# Orin: L4T apt в Dockerfile.orin требует docker build --privileged (см. scripts/orin/docker-build.sh).
+ORIN_BUILD_SCRIPT := ../scripts/orin/docker-build.sh
+
 # Полная сборка для локального запуска: UI + Docker-образ
 local-build:
 	@echo "1. Сборка UI..."
 	@(cd ui && npm ci && npm run build) || { echo "Ошибка: npm ci / npm run build. Проверьте Node/npm (см. app/ui/package.json engines)."; exit 1; }
-	@echo "2. Сборка Docker-образа..."
-	@docker compose build
+	@echo "2. Сборка Docker-образа (platform=${BIRDLENSE_PLATFORM})..."
+	@if [ "${BIRDLENSE_PLATFORM}" = "orin" ]; then \
+		chmod +x "$(ORIN_BUILD_SCRIPT)" && "$(ORIN_BUILD_SCRIPT)"; \
+	else \
+		$(COMPOSE_CMD) build; \
+	fi
 	@echo "Build finished."
 
 # Сборка и запуск
 build:
-	@echo "Building BirdLense Hub..."
-	@docker compose build
+	@echo "Building BirdLense Hub (platform=${BIRDLENSE_PLATFORM})..."
+	@if [ "${BIRDLENSE_PLATFORM}" = "orin" ]; then \
+		chmod +x "$(ORIN_BUILD_SCRIPT)" && "$(ORIN_BUILD_SCRIPT)"; \
+	else \
+		$(COMPOSE_CMD) build; \
+	fi
 	@echo "Build finished."
 
 start: setup
 	@echo "Starting BirdLense Hub..."
-	@docker compose up -d
+	@$(COMPOSE_CMD) up -d
 	@echo "BirdLense Hub on port $${BIRDLENSE_PORT:-8085}. Logs: make logs"
 
 # Запуск из готового образа (без сборки)
@@ -47,10 +64,10 @@ pull: setup
 	@echo "BirdLense Hub on port $${BIRDLENSE_PORT:-8085}. Logs: make logs"
 
 stop:
-	@docker compose down
+	@$(COMPOSE_CMD) down
 
 logs:
-	@docker compose logs -f --tail=200
+	@$(COMPOSE_CMD) logs -f --tail=200
 
 verify:
 	@set -e; \
@@ -110,7 +127,7 @@ venv-web-reset:
 # Pytest на хосте (без sqlalchemy в системном python тесты падают — используйте этот таргет или Docker test-web).
 # PYTHONNOUSERSITE=1 — не подмешивать пакеты из ~/.local (иначе версии Flask и др. отличаются от venv).
 test-web-local: venv-web
-	$(WEB_VENV_ENV) PYTHONPATH=$(CURDIR):$(CURDIR)/web "$(VENV)/bin/python" -m pytest web/tests/ -q --tb=line
+	$(WEB_VENV_ENV) PYTHONPATH=$(CURDIR)/web:$(CURDIR):$(CURDIR)/processor/src "$(VENV)/bin/python" -m pytest web/tests/ -q --tb=line
 
 # Тесты с измерением покрытия (processor + web)
 # -v монтирует локальный код (см. test выше). Требует make build (coverage в web/requirements.txt)

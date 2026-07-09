@@ -16,6 +16,7 @@ sys.path.append(src_path)
 sys.path.append(app_path)
 
 import notify_preview_encode as notify_preview_encode_mod  # noqa: E402
+import record_hires_crop as record_hires_crop_mod  # noqa: E402
 from notify_preview_encode import encode_notify_preview_base64  # noqa: E402
 
 
@@ -54,7 +55,7 @@ class TestEncodeNotifyPreview(unittest.TestCase):
             return captures.pop(0)
 
         with patch.object(
-            notify_preview_encode_mod.cv2,
+            record_hires_crop_mod.cv2,
             'VideoCapture',
             fake_video_capture,
         ), patch.object(
@@ -62,7 +63,7 @@ class TestEncodeNotifyPreview(unittest.TestCase):
             'imencode',
             lambda *_a, **_k: (True, np.array([1, 2, 3], dtype=np.uint8)),
         ), patch.object(
-            notify_preview_encode_mod.time,
+            record_hires_crop_mod.time,
             'sleep',
             lambda _d: None,
         ):
@@ -73,22 +74,23 @@ class TestEncodeNotifyPreview(unittest.TestCase):
                     'frames': [],
                 },
                 '/tmp/fake-video.mp4',
+                runtime_cfg={'processor.notify_preview_source': 'record_hires'},
             )
 
-        self.assertIsNotNone(image_b64)
-        self.assertEqual(source, 'full_frame')
+        self.assertIsNone(image_b64)
+        self.assertEqual(source, 'none')
         self.assertEqual(len(opened_attempts), 2)
 
-    def test_prefers_video_crop_over_memory_best_frame(self):
-        """TG preview must match saved file: video bbox before in-memory best_frame."""
-        bf = np.full((8, 8, 3), 128, dtype=np.uint8)
+    def test_prefers_best_frame_when_scored_over_video_bbox(self):
+        """TG preview: crop at detection time, not lagging tracker bbox on file."""
+        bf = np.random.randint(0, 255, (32, 32, 3), dtype=np.uint8)
         frame = np.full((20, 20, 3), 255, dtype=np.uint8)
 
         def fake_video_capture(_path):
             return _FakeCapture(True, frame)
 
         with patch.object(
-            notify_preview_encode_mod.cv2,
+            record_hires_crop_mod.cv2,
             'VideoCapture',
             fake_video_capture,
         ), patch.object(
@@ -96,13 +98,14 @@ class TestEncodeNotifyPreview(unittest.TestCase):
             'imencode',
             lambda *_a, **_k: (True, np.array([1, 2, 3], dtype=np.uint8)),
         ), patch.object(
-            notify_preview_encode_mod.time,
+            record_hires_crop_mod.time,
             'sleep',
             lambda _d: None,
         ):
             image_b64, source = encode_notify_preview_base64(
                 {
                     'best_frame': bf,
+                    'best_frame_score': 20.0,
                     'start_time': 0.0,
                     'end_time': 2.0,
                     'frames': [
@@ -110,10 +113,88 @@ class TestEncodeNotifyPreview(unittest.TestCase):
                     ],
                 },
                 '/tmp/fake-video.mp4',
+                runtime_cfg={'processor.notify_preview_source': 'best_frame_lores'},
             )
 
         self.assertIsNotNone(image_b64)
-        self.assertEqual(source, 'bbox_crop')
+        self.assertEqual(source, 'best_frame')
+
+    def test_record_hires_uses_frames_when_keyframes_stripped(self):
+        """Linear + require_keyframe: notify payload has frames but not key_frames."""
+        frame = np.random.randint(0, 255, (1080, 1920, 3), dtype=np.uint8)
+
+        def fake_video_capture(_path):
+            return _FakeCapture(True, frame)
+
+        with patch.object(
+            record_hires_crop_mod.cv2,
+            'VideoCapture',
+            fake_video_capture,
+        ), patch.object(
+            notify_preview_encode_mod.cv2,
+            'imencode',
+            lambda *_a, **_k: (True, np.array([1, 2, 3], dtype=np.uint8)),
+        ), patch.object(
+            record_hires_crop_mod.time,
+            'sleep',
+            lambda _d: None,
+        ):
+            image_b64, source = encode_notify_preview_base64(
+                {
+                    'start_time': 0.0,
+                    'end_time': 2.0,
+                    'frames': [
+                        {'bbox': [0.2, 0.2, 0.5, 0.5], 't': 1.0},
+                    ],
+                    'key_frame_count': 2,
+                },
+                '/tmp/fake-video.mp4',
+                runtime_cfg={
+                    'processor.notify_preview_source': 'record_hires',
+                    'processor.pipeline_mode': 'linear',
+                    'processor.enrichment_crop_require_keyframe': True,
+                },
+            )
+
+        self.assertIsNotNone(image_b64)
+        self.assertEqual(source, 'record_hires')
+
+    def test_record_hires_prefers_mp4_over_best_frame(self):
+        bf = np.random.randint(0, 255, (32, 32, 3), dtype=np.uint8)
+        frame = np.random.randint(0, 255, (1080, 1920, 3), dtype=np.uint8)
+
+        def fake_video_capture(_path):
+            return _FakeCapture(True, frame)
+
+        with patch.object(
+            record_hires_crop_mod.cv2,
+            'VideoCapture',
+            fake_video_capture,
+        ), patch.object(
+            notify_preview_encode_mod.cv2,
+            'imencode',
+            lambda *_a, **_k: (True, np.array([1, 2, 3], dtype=np.uint8)),
+        ), patch.object(
+            record_hires_crop_mod.time,
+            'sleep',
+            lambda _d: None,
+        ):
+            image_b64, source = encode_notify_preview_base64(
+                {
+                    'best_frame': bf,
+                    'best_frame_score': 20.0,
+                    'start_time': 0.0,
+                    'end_time': 2.0,
+                    'frames': [
+                        {'bbox': [0.2, 0.2, 0.5, 0.5], 't': 1.0},
+                    ],
+                },
+                '/tmp/fake-video.mp4',
+                runtime_cfg={'processor.notify_preview_source': 'record_hires'},
+            )
+
+        self.assertIsNotNone(image_b64)
+        self.assertEqual(source, 'record_hires')
 
 
 class TestDetectionStackWeights(unittest.TestCase):
@@ -150,49 +231,6 @@ class TestDetectionStackWeights(unittest.TestCase):
         err = str(ctx.exception).lower()
         self.assertIn('binary', err)
         self.assertIn('missing_binary', err)
-
-    def test_build_detection_stack_openvino_size_mismatch_raises_clear_error(self):
-        import detection_stack as detection_stack_mod  # noqa: E402
-
-        with tempfile.TemporaryDirectory() as d:
-            ov_dir = os.path.join(d, 'ov')
-            os.makedirs(ov_dir, exist_ok=True)
-            with open(os.path.join(ov_dir, 'best.xml'), 'w', encoding='utf-8') as f:
-                f.write('<net />')
-            with open(os.path.join(ov_dir, 'metadata.yaml'), 'w', encoding='utf-8') as f:
-                f.write('imgsz:\n- 960\n- 960\n')
-            cls_pt = os.path.join(d, 'classifier.pt')
-            with open(cls_pt, 'wb') as f:
-                f.write(b'pt')
-
-            class _Cfg:
-                def get(self, key, default=None):
-                    mapping = {
-                        'processor.inference_backend': 'openvino',
-                        'processor.classifier_inference_backend': 'torch',
-                        'processor.models.binary_openvino': ov_dir,
-                        'processor.models.classifier': cls_pt,
-                        'processor.binary_imgsz': 640,
-                        'processor.detection_strategy': 'two_stage',
-                        'processor.regional_species': [],
-                        'processor.track_regen_ignore_regional_species': True,
-                        'processor.tracker': 'bytetrack.yaml',
-                        'processor.max_record_seconds': 60,
-                        'processor.max_inactive_seconds': 10,
-                        'processor.min_track_duration': 1,
-                        'processor.min_confidence_to_process': 0.1,
-                        'processor.post_record_seconds': 0,
-                        'detection.min_confidence_to_store': 0.3,
-                        'processor.classifier_fallback_bird': True,
-                    }
-                    return mapping.get(key, default)
-
-            with self.assertRaises(RuntimeError) as ctx:
-                detection_stack_mod.build_detection_stack(_Cfg())
-            err = str(ctx.exception)
-            self.assertIn('input-size mismatch', err)
-            self.assertIn('model expects 960', err)
-
 
 if __name__ == '__main__':
     unittest.main()

@@ -6,11 +6,11 @@ import shutil
 import yaml
 
 from app_config.secret_env import apply_secret_env_overrides
+from app_config.config_schema import validate_merged_config_pydantic
 from app_config.trigger_config import (
     build_motion_settings_mirror_for_api,
     copy_legacy_topic_if_missing,
     fold_legacy_motion_out_of_merged_config,
-    migrate_legacy_motion_block,
 )
 
 logger = logging.getLogger(__name__)
@@ -19,14 +19,18 @@ logger = logging.getLogger(__name__)
 # Слишком жёсткие полы (1.0s / 0.30 confidence) режут ByteTrack-треки, которые реально есть.
 # detection.min_confidence_to_store должно быть <= processor.min_confidence_to_process для согласованного fusion.
 CONFIDENCE_FLOORS = {
-    "detection.min_confidence_to_store": 0.22,
-    "processor.min_confidence_to_process": 0.24,
+    "detection.min_confidence_to_store": 0.08,
+    "processor.min_confidence_to_process": 0.20,
     "processor.min_confidence_to_notify": 0.28,
-    "processor.min_confidence_binary": 0.22,
-    "processor.min_track_duration": 0.35,
+    "processor.min_confidence_binary": 0.08,
+    "processor.min_track_duration": 0.15,
     # Small-object / distant scenes: keep floor usable without site-specific camera hacks.
-    "processor.min_box_size_px": 24,
+    "processor.min_box_size_px": 12,
 }
+
+# Global min_confidence_to_process floor shrinks to min(role presets) so default 0.08
+# is not raised to 0.20 when feeder_close/feeder_far ship at 0.04.
+ROLE_AWARE_CONFIDENCE_FLOOR_PATHS = frozenset({"processor.min_confidence_to_process"})
 
 # Ключи с секретами — маскируются в API, не перезаписываются при сохранении placeholder
 SENSITIVE_KEYS = frozenset(
@@ -152,35 +156,16 @@ def validate_merged_config_semantics(merged: dict) -> list[str]:
         )
     proc_root = merged.get("processor")
     if isinstance(proc_root, dict):
-        br = proc_root.get("behavior_recognition")
-        if isinstance(br, dict):
-            for path, label in (
-                (
-                    "processor.behavior_recognition.confidence_store_min",
-                    "processor.behavior_recognition.confidence_store_min",
-                ),
-                (
-                    "processor.behavior_recognition.confidence_review_threshold",
-                    "processor.behavior_recognition.confidence_review_threshold",
-                ),
-            ):
-                v = _semantic_float_or_issue(merged, path, label, issues)
-                if v is not None and (v < 0.0 or v > 1.0 + 1e-9):
-                    issues.append("%s must be between 0 and 1, got %s" % (label, v))
-            raw_md = br.get("max_runtime_detections")
-            if raw_md is not None:
-                try:
-                    md_i = int(raw_md)
-                    if md_i < 1 or md_i > 500:
-                        issues.append(
-                            "processor.behavior_recognition.max_runtime_detections must be 1..500, got %s"
-                            % (md_i,)
-                        )
-                except (TypeError, ValueError):
-                    issues.append(
-                        "processor.behavior_recognition.max_runtime_detections must be int, got %r"
-                        % (raw_md,)
-                    )
+        pass
+    video = merged.get("video")
+    if isinstance(video, dict):
+        from app_config.cameras import get_valid_cameras, validate_go2rtc_detect_streams
+
+        source = str(video.get("source") or "go2rtc").strip().lower()
+        valid = get_valid_cameras(video_config=video)
+        issues.extend(
+            validate_go2rtc_detect_streams(valid, video_source=source),
+        )
     return issues
 
 
@@ -295,12 +280,7 @@ def migrate_legacy_trigger_topics(user_config: dict) -> bool:
 
 
 def migrate_processor_classifier_best_eu_path(user_config: dict) -> bool:
-    """Заменяет ошибочный путь best_EU.pt на канонический best.pt.
-
-    В образе и в HF EU-веса лежат как models/classification/weights/best.pt.
-    Старые подсказки UI упоминали best_EU.pt как «пример» — часть user_config
-    могла сохраниться с этим именем.
-    """
+    """Migrate legacy classifier paths (best.pt, birder_*, old keys) to #516 layout."""
     if not isinstance(user_config, dict):
         return False
     processor = user_config.get("processor")
@@ -309,20 +289,122 @@ def migrate_processor_classifier_best_eu_path(user_config: dict) -> bool:
     models = processor.get("models")
     if not isinstance(models, dict):
         return False
-    cur = models.get("classifier")
-    if not isinstance(cur, str):
+
+    variant = str(processor.get("birder_eu_variant") or "convnext_v2_tiny_eu-common256px").strip()
+    canon_torch = f"models/classification/{variant}/{variant}.pt"
+    canon_onnx = f"models/classification/{variant}/{variant}.onnx"
+    canon_bundle = f"models/classification/{variant}"
+
+    replacements = {
+        "models/classification/weights/best.pt": canon_onnx,
+        f"models/classification/weights/{variant}": canon_onnx,
+        f"models/classification/weights/{variant}.onnx": canon_onnx,
+        f"models/classification/weights/{variant}.pt": canon_torch,
+        f"models/classification/{variant}": canon_onnx,
+        f"models/classification/weights/birder_{variant.replace('-', '_')}": canon_onnx,
+        f"models/classification/weights/birder_{variant.replace('-', '_')}_openvino": canon_bundle,
+        f"models/classification/weights/{variant}_openvino": canon_bundle,
+        f"models/classification/weights/{variant}_openvino_model": canon_bundle,
+        "models/classification/weights/best_openvino_model": canon_bundle,
+        canon_torch: canon_onnx,
+    }
+
+    changed = False
+    for key in ("classifier", "classifier_openvino", "classifier_birder_eu", "classifier_birder_eu_openvino"):
+        cur = models.get(key)
+        if not isinstance(cur, str) or not cur.strip():
+            continue
+        s = cur.strip().replace("\\", "/")
+        if s.endswith("/best_EU.pt") or s.endswith("best_EU.pt"):
+            models["classifier"] = canon_torch
+            if key != "classifier":
+                models.pop(key, None)
+            changed = True
+            continue
+        if s in replacements:
+            new_key = "classifier" if key.startswith("classifier_birder") and "openvino" not in key else key
+            if "openvino" in key or "birder_eu_openvino" in key:
+                models.pop(key, None)
+            else:
+                models["classifier"] = replacements[s]
+                if key != "classifier":
+                    models.pop(key, None)
+            changed = True
+
+    eng = str(processor.get("classifier_engine") or "birder_eu").strip().lower()
+    if eng in ("birder", "birder_eu", "birder-eu", "eu-common", "eu_common"):
+        cur_cls = str(models.get("classifier") or "").strip().replace("\\", "/")
+        if not cur_cls or cur_cls in (
+            "models/classification/weights/best.pt",
+            f"models/classification/weights/{variant}",
+            f"models/classification/weights/{variant}.onnx",
+            f"models/classification/weights/{variant}.pt",
+            canon_torch,
+        ) or "birder_convnext" in cur_cls or cur_cls.endswith(".pt"):
+            models["classifier"] = canon_onnx
+            changed = True
+        models.pop("classifier_openvino", None)
+    return changed
+
+
+def migrate_processor_models_layout(user_config: dict) -> bool:
+    """Flatten legacy paths: detection/.../weights/, classification/weights/, tracker lowfps yaml."""
+    if not isinstance(user_config, dict):
         return False
-    s = cur.strip()
-    if not s:
+    processor = user_config.get("processor")
+    if not isinstance(processor, dict):
         return False
-    canon = "models/classification/weights/best.pt"
-    if s == "models/classification/weights/best_EU.pt":
-        models["classifier"] = canon
-        return True
-    if s.replace("\\", "/").endswith("/models/classification/weights/best_EU.pt"):
-        models["classifier"] = canon
-        return True
-    return False
+    changed = False
+
+    models = processor.get("models")
+    if isinstance(models, dict):
+        binary = str(models.get("binary") or "").strip().replace("\\", "/")
+        if "/trapper_ai_v02_2024/weights/" in binary:
+            models["binary"] = binary.replace(
+                "/trapper_ai_v02_2024/weights/",
+                "/trapper_ai_v02_2024/",
+            )
+            changed = True
+
+    def _fix_tracker_path(raw: object) -> object:
+        nonlocal changed
+        if not isinstance(raw, str):
+            return raw
+        s = raw.strip().replace("\\", "/")
+        if "bytetrack_birdlense_lowfps.yaml" in s:
+            changed = True
+            return s.replace(
+                "bytetrack_birdlense_lowfps.yaml",
+                "bytetrack_birdlense.yaml",
+            )
+        return raw
+
+    for key in ("tracker", "auto_unstick_tracker", "auto_unstick_tracker_night"):
+        if key in processor:
+            fixed = _fix_tracker_path(processor.get(key))
+            if fixed != processor.get(key):
+                processor[key] = fixed
+
+    for nested_key in ("tracker_profiles", "tracker_fps_profiles"):
+        profiles = processor.get(nested_key)
+        if not isinstance(profiles, dict):
+            continue
+        for pk, pv in list(profiles.items()):
+            fixed = _fix_tracker_path(pv)
+            if fixed != pv:
+                profiles[pk] = fixed
+
+    species = user_config.get("species")
+    if isinstance(species, dict):
+        allow = str(species.get("catalog_allowlist_file") or "").strip().replace("\\", "/")
+        if allow and "/classification/weights/" in allow:
+            species["catalog_allowlist_file"] = allow.replace(
+                "/classification/weights/",
+                "/classification/",
+            )
+            changed = True
+
+    return changed
 
 
 class AppConfig:
@@ -349,56 +431,28 @@ class AppConfig:
 
         user_config = {}
         if os.path.exists(self.user_config_file):
+            user_yaml_ok = False
             try:
                 with open(self.user_config_file, "r") as file:
                     user_config = yaml.safe_load(file) or {}
+                user_yaml_ok = True
             except yaml.YAMLError as e:
                 logger.error("Invalid YAML in %s: %s", self.user_config_file, e)
-            if migrate_legacy_scales_source(user_config):
-                try:
-                    self._persist_raw_user_config(user_config)
-                    logger.info(
-                        "Migrated integrations.scales.source legacy values in %s",
-                        self.user_config_file,
-                    )
-                except OSError as e:
-                    logger.warning("Could not persist scales source migration: %s", e)
-            if migrate_legacy_trigger_topics(user_config):
-                try:
-                    self._persist_raw_user_config(user_config)
-                    logger.info(
-                        "Migrated legacy mqtt.frigate_topic / mqtt.birdnet_topic into grouped/domain config in %s",
-                        self.user_config_file,
-                    )
-                except OSError as e:
-                    logger.warning("Could not persist trigger topic migration: %s", e)
-            if migrate_legacy_homeassistant_from_weather(user_config):
-                try:
-                    self._persist_raw_user_config(user_config)
-                    logger.info(
-                        "Migrated weather.ha_url / weather.ha_token to homeassistant.* in %s",
-                        self.user_config_file,
-                    )
-                except OSError as e:
-                    logger.warning("Could not persist HA legacy key migration: %s", e)
-            if migrate_processor_classifier_best_eu_path(user_config):
-                try:
-                    self._persist_raw_user_config(user_config)
-                    logger.info(
-                        "Migrated processor.models.classifier best_EU.pt → best.pt in %s",
-                        self.user_config_file,
-                    )
-                except OSError as e:
-                    logger.warning("Could not persist classifier path migration: %s", e)
-            if migrate_legacy_motion_block(user_config):
-                try:
-                    self._persist_raw_user_config(user_config)
-                    logger.info(
-                        "Persisted motion→triggers migration to %s",
-                        self.user_config_file,
-                    )
-                except OSError as e:
-                    logger.warning("Could not persist motion→triggers migration: %s", e)
+                user_config = {}
+                user_yaml_ok = False
+            if user_yaml_ok:
+                from app_config.config_migrations import run_user_config_migrations
+
+                if run_user_config_migrations(user_config):
+                    try:
+                        self._persist_raw_user_config(user_config)
+                        logger.info(
+                            "Applied user_config migrations (schema v%s) to %s",
+                            user_config.get("_meta", {}).get("schema_version"),
+                            self.user_config_file,
+                        )
+                    except OSError as e:
+                        logger.warning("Could not persist user_config migrations: %s", e)
 
         # Merge configs (user_config overrides default_config)
         merged = self.merge_dicts(default_config, user_config)
@@ -408,6 +462,7 @@ class AppConfig:
         apply_secret_env_overrides(merged)
         config_issues = validate_merged_config(merged)
         config_issues.extend(validate_merged_config_semantics(merged))
+        config_issues.extend(validate_merged_config_pydantic(merged))
         for msg in config_issues:
             logger.error("Config structure validation: %s", msg)
         strict = (os.environ.get("BIRDLENSE_STRICT_CONFIG") or "").strip().lower() in (
@@ -479,15 +534,47 @@ class AppConfig:
                         overrides["min_confidence_binary_rodent"] = legacy_r
 
     @classmethod
+    def _role_preset_min_for_key(cls, config, short_key: str) -> float | None:
+        roles = cls._get_nested(config, "processor.camera_tuning_by_role")
+        if not isinstance(roles, dict):
+            return None
+        vals: list[float] = []
+        for preset in roles.values():
+            if not isinstance(preset, dict) or short_key not in preset:
+                continue
+            try:
+                vals.append(float(preset[short_key]))
+            except (TypeError, ValueError):
+                continue
+        return min(vals) if vals else None
+
+    @classmethod
+    def _effective_confidence_floor(cls, config, path: str, nominal_floor: float) -> float:
+        if path not in ROLE_AWARE_CONFIDENCE_FLOOR_PATHS:
+            return nominal_floor
+        short_key = path.rsplit(".", 1)[-1]
+        role_min = cls._role_preset_min_for_key(config, short_key)
+        if role_min is None:
+            return nominal_floor
+        return min(float(nominal_floor), float(role_min))
+
+    @classmethod
     def _enforce_confidence_floors(cls, config):
         """Clamp stale low-confidence settings to safe minimums."""
         source = str(cls._get_nested(config, "video.source") or "").strip().lower()
         if source == "file":
             logger.info("Skip confidence floors in file mode (test source) to allow low-threshold tuning.")
             return False
+        skip = (os.environ.get("BIRDLENSE_SKIP_CONFIDENCE_FLOORS") or "").strip().lower()
+        if skip in ("1", "true", "yes", "on"):
+            logger.info(
+                "Skip confidence floors (BIRDLENSE_SKIP_CONFIDENCE_FLOORS) for site tuning."
+            )
+            return False
         changed = False
         adjusted: list[str] = []
-        for path, floor in CONFIDENCE_FLOORS.items():
+        for path, nominal_floor in CONFIDENCE_FLOORS.items():
+            floor = cls._effective_confidence_floor(config, path, nominal_floor)
             current = cls._get_nested(config, path)
             if current is None:
                 continue
@@ -550,6 +637,8 @@ class AppConfig:
             w.pop("ha_url", None)
             w.pop("ha_token", None)
         out["motion"] = build_motion_settings_mirror_for_api(out)
+        out.pop("_meta", None)
+        out.pop("_settings_warnings", None)
         return cls.mask_config_for_api(out)
 
     @classmethod
@@ -654,6 +743,7 @@ class AppConfig:
         self._cleanup_legacy_processor_keys(merged)
         issues = validate_merged_config(merged)
         issues.extend(validate_merged_config_semantics(merged))
+        issues.extend(validate_merged_config_pydantic(merged))
         return issues
 
     def _persist_raw_user_config(self, data: dict) -> None:
@@ -668,6 +758,46 @@ class AppConfig:
         with open(save_file, "w", encoding="utf-8") as file:
             yaml.safe_dump(data, file, allow_unicode=True)
 
+    def _default_retention_section(self) -> dict:
+        cached = getattr(self, "_cached_default_retention", None)
+        if cached is not None:
+            return cached
+        try:
+            with open(self.default_config_file, encoding="utf-8") as file:
+                root = yaml.safe_load(file) or {}
+        except (OSError, yaml.YAMLError):
+            root = {}
+        section = root.get("retention") if isinstance(root, dict) else {}
+        self._cached_default_retention = section if isinstance(section, dict) else {}
+        return self._cached_default_retention
+
+    def build_retention_safe_public_config(self) -> dict:
+        """Public retention fields for API; defaults aligned with default_config.yaml."""
+        merged = self.get("retention")
+        if not isinstance(merged, dict):
+            merged = {}
+        defaults = self._default_retention_section()
+
+        def pick(key: str, fallback=None):
+            val = merged.get(key)
+            if val is None:
+                val = defaults.get(key, fallback)
+            return val
+
+        return {
+            "mode": pick("mode", "cascade") or "cascade",
+            "days": pick("days"),
+            "max_gb": pick("max_gb"),
+            "dataset_max_age_days": pick("dataset_max_age_days", 0),
+            "migration_max_age_days": pick("migration_max_age_days", 0),
+            "protect_favorites": bool(pick("protect_favorites", True)),
+            "min_age_hours": int(pick("min_age_hours", 1) or 1),
+            "batch_size": int(pick("batch_size", 50) or 50),
+            "max_deletes_per_run": int(pick("max_deletes_per_run", 500) or 500),
+            "auto_run_enabled": bool(pick("auto_run_enabled", False)),
+            "auto_run_interval_hours": int(pick("auto_run_interval_hours", 6) or 6),
+        }
+
     def update_retention_config(self, retention: dict) -> dict:
         """Обновить retention в user_config.yaml и перезагрузить конфиг.
 
@@ -679,20 +809,7 @@ class AppConfig:
             raw["retention"].update(retention)
         self._persist_raw_user_config(raw)
         self.reload()
-        rc = self.get("retention", {})
-        safe = {
-            "mode": rc.get("mode", "cascade"),
-            "days": rc.get("days"),
-            "max_gb": rc.get("max_gb"),
-            "dataset_max_age_days": rc.get("dataset_max_age_days", 0),
-            "migration_max_age_days": rc.get(
-                "migration_max_age_days",
-                0,
-            ),
-            "protect_favorites": rc.get("protect_favorites", True),
-            "min_age_hours": rc.get("min_age_hours", 1),
-            "batch_size": rc.get("batch_size", 50),
-        }
+        safe = self.build_retention_safe_public_config()
         try:
             from services.retention_service import _fetch_metrics
 

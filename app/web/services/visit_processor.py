@@ -2,10 +2,12 @@
 
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Tuple
+import hashlib
 import json
 
 from models import Video, Species, VideoSpecies, SpeciesVisit
 from sqlalchemy import text
+from services.reid_contract import EMBEDDING_SCHEMA_V1
 from services.species_identity_service import SpeciesIdentityService
 
 
@@ -24,6 +26,56 @@ def _review_reason_from_detection(det: dict) -> str | None:
     if bool(det.get("classifier_needs_review")):
         return "classifier_uncertainty"
     return None
+
+
+def _welfare_distance_from_detection(det: dict) -> float | None:
+    val = det.get("welfare_distance")
+    if val is None:
+        return None
+    try:
+        return round(float(val), 4)
+    except (TypeError, ValueError):
+        return None
+
+
+def _audio_evidence_from_detection(det: dict) -> str | None:
+    raw = str(det.get("audio_evidence") or "").strip().lower()
+    return raw or None
+
+
+def _birdnet_prior_from_detection(det: dict) -> float | None:
+    val = det.get("birdnet_prior", det.get("_birdnet_prior"))
+    if val is None:
+        return None
+    try:
+        return round(float(val), 6)
+    except (TypeError, ValueError):
+        return None
+
+
+def _weighted_arbiter_score_from_detection(det: dict) -> float | None:
+    val = det.get("weighted_arbiter_score", det.get("_weighted_arbiter_score"))
+    if val is None:
+        return None
+    try:
+        return round(float(val), 6)
+    except (TypeError, ValueError):
+        return None
+
+
+def _hint_trace_from_detection(det: dict) -> str | None:
+    trace = det.get("hint_trace")
+    if trace is None:
+        return None
+    if isinstance(trace, str):
+        return trace.strip() or None
+    try:
+        return json.dumps(trace, ensure_ascii=False, separators=(",", ":"))
+    except (TypeError, ValueError):
+        return None
+
+
+_reid_embedding_table_ready = False
 
 
 class VisitProcessor:
@@ -59,6 +111,11 @@ class VisitProcessor:
         classifier_top1_top2_margin: float | None = None,
         classifier_needs_review: bool = False,
         review_reason: str | None = None,
+        welfare_distance: float | None = None,
+        audio_evidence: str | None = None,
+        birdnet_prior: float | None = None,
+        weighted_arbiter_score: float | None = None,
+        hint_trace: str | None = None,
         individual_nickname: str | None = None,
     ) -> Tuple[SpeciesVisit, VideoSpecies]:
         """
@@ -83,6 +140,11 @@ class VisitProcessor:
             classifier_top1_top2_margin=classifier_top1_top2_margin,
             classifier_needs_review=bool(classifier_needs_review),
             review_reason=review_reason,
+            welfare_distance=welfare_distance,
+            audio_evidence=audio_evidence,
+            birdnet_prior=birdnet_prior,
+            weighted_arbiter_score=weighted_arbiter_score,
+            hint_trace=hint_trace,
             individual_nickname=individual_nickname,
             created_at=detection_time,
             species_visit=visit,
@@ -108,6 +170,11 @@ class VisitProcessor:
         classifier_top1_top2_margin: float | None = None,
         classifier_needs_review: bool = False,
         review_reason: str | None = None,
+        welfare_distance: float | None = None,
+        audio_evidence: str | None = None,
+        birdnet_prior: float | None = None,
+        weighted_arbiter_score: float | None = None,
+        hint_trace: str | None = None,
         individual_nickname: str | None = None,
     ) -> VideoSpecies:
         """Persist a video detection without creating/extending a SpeciesVisit."""
@@ -125,6 +192,11 @@ class VisitProcessor:
             classifier_top1_top2_margin=classifier_top1_top2_margin,
             classifier_needs_review=bool(classifier_needs_review),
             review_reason=review_reason,
+            welfare_distance=welfare_distance,
+            audio_evidence=audio_evidence,
+            birdnet_prior=birdnet_prior,
+            weighted_arbiter_score=weighted_arbiter_score,
+            hint_trace=hint_trace,
             individual_nickname=individual_nickname,
             created_at=detection_time,
             species_visit_id=None,
@@ -133,6 +205,51 @@ class VisitProcessor:
         )
         self.db.session.add(video_species)
         return video_species
+
+    def _ensure_reid_embedding_table(self) -> None:
+        global _reid_embedding_table_ready
+        if _reid_embedding_table_ready:
+            return
+        self.db.session.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS reid_embedding (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    video_species_id INTEGER,
+                    video_id INTEGER,
+                    species_id INTEGER,
+                    track_id INTEGER,
+                    crop_path TEXT NOT NULL UNIQUE,
+                    model TEXT NOT NULL,
+                    dim INTEGER NOT NULL,
+                    embedding_json TEXT NOT NULL,
+                    species_name TEXT,
+                    individual_label TEXT,
+                    embedding_schema TEXT,
+                    embedding_model_id TEXT,
+                    embedding_model_sha16 TEXT,
+                    crop_fingerprint_sha16 TEXT,
+                    jsonl_created_at_utc TEXT,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+        )
+        cols = {
+            str(row[1])
+            for row in self.db.session.execute(text("PRAGMA table_info(reid_embedding)")).fetchall()
+            if len(row) > 1
+        }
+        for name, ddl in {
+            "embedding_schema": "ALTER TABLE reid_embedding ADD COLUMN embedding_schema TEXT",
+            "embedding_model_id": "ALTER TABLE reid_embedding ADD COLUMN embedding_model_id TEXT",
+            "embedding_model_sha16": "ALTER TABLE reid_embedding ADD COLUMN embedding_model_sha16 TEXT",
+            "crop_fingerprint_sha16": "ALTER TABLE reid_embedding ADD COLUMN crop_fingerprint_sha16 TEXT",
+            "jsonl_created_at_utc": "ALTER TABLE reid_embedding ADD COLUMN jsonl_created_at_utc TEXT",
+        }.items():
+            if name not in cols:
+                self.db.session.execute(text(ddl))
+        _reid_embedding_table_ready = True
 
     def _upsert_reid_embedding_from_detection(
         self,
@@ -153,44 +270,36 @@ class VisitProcessor:
         dim = int(detection_row.get("reid_dim") or len(vals))
         if dim <= 0 or dim != len(vals):
             return
-        model = str(detection_row.get("reid_model") or "dinov2_vits14").strip()
+        model = str(detection_row.get("reid_model") or "ornimetrics_reid").strip()
         if not model:
-            model = "dinov2_vits14"
+            model = "ornimetrics_reid"
         crop_key = str(detection_row.get("reid_crop_key") or "").strip()
         if not crop_key:
             crop_key = f"runtime://video/{video_species.video_id}/vs/{video_species.id}"
+        model_sha16 = str(detection_row.get("reid_model_sha16") or "").strip()
+        if not model_sha16:
+            model_sha16 = hashlib.sha256(model.encode("utf-8")).hexdigest()[:16]
+        crop_fingerprint_sha16 = str(detection_row.get("reid_crop_fingerprint_sha16") or "").strip()
+        if not crop_fingerprint_sha16:
+            crop_fingerprint_sha16 = hashlib.sha256(crop_key.encode("utf-8")).hexdigest()[:16]
+        created_at_utc = datetime.now(timezone.utc).isoformat()
 
-        self.db.session.execute(
-            text(
-                """
-                CREATE TABLE IF NOT EXISTS reid_embedding (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    video_species_id INTEGER,
-                    video_id INTEGER,
-                    species_id INTEGER,
-                    track_id INTEGER,
-                    crop_path TEXT NOT NULL UNIQUE,
-                    model TEXT NOT NULL,
-                    dim INTEGER NOT NULL,
-                    embedding_json TEXT NOT NULL,
-                    species_name TEXT,
-                    individual_label TEXT,
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
-        )
+        self._ensure_reid_embedding_table()
         self.db.session.execute(
             text(
                 """
                 INSERT INTO reid_embedding (
                     video_species_id, video_id, species_id, track_id,
                     crop_path, model, dim, embedding_json,
-                    species_name, individual_label
+                    species_name, individual_label,
+                    embedding_schema, embedding_model_id, embedding_model_sha16,
+                    crop_fingerprint_sha16, jsonl_created_at_utc
                 ) VALUES (
                     :video_species_id, :video_id, :species_id, :track_id,
                     :crop_path, :model, :dim, :embedding_json,
-                    :species_name, :individual_label
+                    :species_name, :individual_label,
+                    :embedding_schema, :embedding_model_id, :embedding_model_sha16,
+                    :crop_fingerprint_sha16, :jsonl_created_at_utc
                 )
                 ON CONFLICT(crop_path) DO UPDATE SET
                     video_species_id=excluded.video_species_id,
@@ -201,7 +310,12 @@ class VisitProcessor:
                     dim=excluded.dim,
                     embedding_json=excluded.embedding_json,
                     species_name=excluded.species_name,
-                    individual_label=excluded.individual_label
+                    individual_label=excluded.individual_label,
+                    embedding_schema=excluded.embedding_schema,
+                    embedding_model_id=excluded.embedding_model_id,
+                    embedding_model_sha16=excluded.embedding_model_sha16,
+                    crop_fingerprint_sha16=excluded.crop_fingerprint_sha16,
+                    jsonl_created_at_utc=excluded.jsonl_created_at_utc
                 """
             ),
             {
@@ -215,6 +329,11 @@ class VisitProcessor:
                 "embedding_json": json.dumps(vals, separators=(",", ":")),
                 "species_name": str(video_species.species.name),
                 "individual_label": (video_species.individual_nickname or None),
+                "embedding_schema": EMBEDDING_SCHEMA_V1,
+                "embedding_model_id": model,
+                "embedding_model_sha16": model_sha16,
+                "crop_fingerprint_sha16": crop_fingerprint_sha16,
+                "jsonl_created_at_utc": created_at_utc,
             },
         )
 
@@ -257,11 +376,33 @@ class VisitProcessor:
         video_species_records = []
         visits_to_update = {}  # Map (species_id, start_time) to visit data
         deduped_detections = self._deduplicate_detections(detections)
+        species_cache: dict[str, Species | None] = {}
 
         # First pass: Process all detections
         for det in deduped_detections:
             visit_eligible = bool(det.get("visit_eligible", True))
-            species = self.get_or_create_species(det["species_name"])
+            species_label = str(det.get("species_name") or det.get("species") or "").strip()
+            if visit_eligible and species_label.strip().lower() in {"unknown"}:
+                visit_eligible = False
+                if not det.get("review_reason"):
+                    det = {**det, "review_reason": "unknown_label"}
+            provider = str(det.get("detection_provider") or det.get("source") or "ingest").strip().lower()
+            species_key = str(det.get("species_name") or "").strip().lower()
+            species = species_cache.get(species_key)
+            if species_key not in species_cache:
+                raw_aliases = [
+                    *(det.get("source_aliases") or []),
+                    det.get("species_name_raw"),
+                    det.get("species"),
+                ]
+                scientific_aliases = list(det.get("source_scientific_names") or [])
+                species = self.species_identity.resolve_or_create_species(
+                    det["species_name"],
+                    source=f"ingest:{provider}" if provider else "ingest",
+                    audit_aliases=[str(x).strip() for x in raw_aliases if str(x or "").strip()],
+                    audit_scientific_names=[str(x).strip() for x in scientific_aliases if str(x or "").strip()],
+                )
+                species_cache[species_key] = species
             if not species:
                 self.logger.warning(f'Could not create species "{det["species_name"]}"')
                 continue
@@ -281,6 +422,11 @@ class VisitProcessor:
                         classifier_top1_top2_margin=det.get("classifier_top1_top2_margin"),
                         classifier_needs_review=bool(det.get("classifier_needs_review")),
                         review_reason=_review_reason_from_detection(det),
+                        welfare_distance=_welfare_distance_from_detection(det),
+                        audio_evidence=_audio_evidence_from_detection(det),
+                        birdnet_prior=_birdnet_prior_from_detection(det),
+                        weighted_arbiter_score=_weighted_arbiter_score_from_detection(det),
+                        hint_trace=_hint_trace_from_detection(det),
                         individual_nickname=(det.get("individual_nickname") or None),
                     )
                     self._upsert_reid_embedding_from_detection(
@@ -306,6 +452,11 @@ class VisitProcessor:
                         classifier_top1_top2_margin=det.get("classifier_top1_top2_margin"),
                         classifier_needs_review=bool(det.get("classifier_needs_review")),
                         review_reason=_review_reason_from_detection(det),
+                        welfare_distance=_welfare_distance_from_detection(det),
+                        audio_evidence=_audio_evidence_from_detection(det),
+                        birdnet_prior=_birdnet_prior_from_detection(det),
+                        weighted_arbiter_score=_weighted_arbiter_score_from_detection(det),
+                        hint_trace=_hint_trace_from_detection(det),
                         individual_nickname=(det.get("individual_nickname") or None),
                     )
                     self._upsert_reid_embedding_from_detection(

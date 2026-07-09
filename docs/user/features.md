@@ -1,119 +1,32 @@
-# BirdLense Hub — Features
+# Возможности BirdLense Hub
 
-Capability overview. Per-version notes: [Changelog](https://github.com/Gfermoto/BirdLense-Hub/blob/main/CHANGELOG.md).
+## Основные функции
 
-[Русский](../ru/features.ru.md)
+- **Детекция** — Trapper AI (YOLO ONNX GPU) находит птиц и грызунов
+- **Классификация** — Birder ConvNeXt EU-707 (ONNX GPU), ~707 видов Европы
+- **ReID** — Ornimetrics (ONNX GPU) — идентификация особи
+- **Welfare** — Ornimetrics (ONNX GPU) — оценка состояния птицы
+- **Трекер** — ByteTrack unstick — стабильное отслеживание в кадре
 
----
+## Интерфейс
 
-## Core (always on)
+- Timeline (дата + время суток)
+- Экспорт CSV / JSON / eBird
+- PDF-отчёт
+- «Неизвестные» птицы
+- iNaturalist, Xeno-canto интеграция
+- Prometheus метрики
 
-| Feature | Description |
-|---------|-------------|
-| **Live video** | Go2RTC integration, MJPEG overlay with detections |
-| **YOLO + ByteTrack** | Two-stage path: binary detector + species classifier |
-| **EU model default** | ~491 species (birds-525 + iNaturalist). US (NABirds) weights available |
-| **Motion triggers** | OpenCV, Frigate, MQTT, ESPHome |
-| **BirdNET** | Merge audio sightings via MQTT |
-| **Frigate** | Bird Classification `sub_label` merged with video ML |
-| **Timeline** | Visits by date, playback, spectrograms |
-| **Overview** | Stats, activity charts |
-| **Species** | Seasonality table: **`/species`** (same UI as **`/migration-calendar`**) + card directory **`/species-directory`** + per-species summary **`/species/:id`** |
-| **Weather** | OpenWeather or Home Assistant |
-| **Telegram** | Detection alerts, optional best-frame photo |
-| **Feeder** | Relay via MQTT (Tasmota) or ESPHome on detection |
-| **MCP** | [Model Context Protocol](https://modelcontextprotocol.io/) — optional server for **authorized clients** to call hub tools (see [MCP_SETUP](../contributor/mcp-setup.md)) |
+## Интеграции
 
----
+- MQTT (BirdNET, Frigate)
+- Go2RTC
+- Frigate events
+- MCP API для внешних агентов
 
-## Export & analytics
+## Платформа
 
-| Feature | API / UI | Since |
-|---------|----------|-------|
-| **CSV / JSON** | `GET /api/ui/timeline/export?format=csv|json` | 0.1.2 |
-| **eBird** | `GET /api/ui/timeline/export?format=ebird` | 0.1.4 |
-| **Region comparison** | `GET /api/ui/region-comparison` — your species vs regional eBird top list (Overview) | 0.1.9 |
-| **PDF report** | `GET /api/ui/report/pdf?month=YYYY-MM` | 0.1.3 |
-| **Prometheus** | `GET /metrics`, `GET /api/metrics` | 0.1.3 |
-| **System metrics history** | `GET /api/ui/system/metrics/history` — SQLite samples for hub UI charts | — |
-| **iNaturalist** | `GET /api/ui/detections/:id/crop` | 0.1.4 |
-| **Dataset export** | `GET /api/ui/dataset/export` — ZIP train/val + `dataset_info.json` | 0.1.5 |
-
----
-
-## UI highlights
-
-| Feature | Description |
-|---------|-------------|
-| **Timeline: time of day** | Date picker + Morning / Day / Evening / Night (22–06) |
-| **Timeline review mode** | `/timeline?review=1` — low-confidence detections with manual correction; legacy `/unknowns` redirects |
-| **Playback speed** | 0.5×, 2× in player |
-| **Last bird widget** | Overview |
-| **PWA** | Install prompt, offline cache |
-| **Detection source** | YOLO / Frigate / BirdNET badges on cards |
-| **Migration calendar / Species table** | **`/species`** and **`/migration-calendar`** — same seasonality grid (visits by species × month); **`/species-directory`** — card browser |
-| **Xeno-canto** | Calls on species page |
-| **Per-species thresholds** | `processor.species_confidence_overrides` |
-| **Training crops** | `processor.save_dataset_crops`; ZIP + relabel from System |
-| **Download video** | Video details — Admin/Contributor after password |
-| **Video prev/next** | Same UTC calendar day: arrows + counter on video details; `GET /api/ui/videos/:id/neighbors` |
-| **System: resources & visitors** | `/system` charts (server history + live tail, window 6/24/48 h), unique visitors over selectable period; tune via `BIRDLENSE_SYSTEM_METRICS_*` — [CONFIGURATION](./configuration.md) |
-| **Library** | `/library` — recordings calendar, dataset exports, file-replay controls when **`video.source: file`**; **System → Scan and import** for clips already on disk |
-
----
-
-## Integrations
-
-| Feature | Config | Description |
-|---------|--------|-------------|
-| **Webhook** | `webhook.url` | POST JSON on each detection (IFTTT, Zapier, custom) |
-| **eBird** | `ebird.country`, `ebird.state`, `ebird.location_name` | Checklist export |
-| **Home Assistant** | `mqtt.ha_discovery`, `mqtt.broker` | Observe-only MQTT discovery — last species / confidence / detection time, feeder presence, feeder weight (via MQTT scales), availability |
-| **Grafana** | Prometheus scrape | Dashboards from Hub metrics |
-
----
-
-## Notable config keys
-
-| Section | Keys |
-|---------|------|
-| `processor` | `species_confidence_overrides`, `min_confidence_to_process` |
-| `ui` | `unknown_confidence_threshold` |
-| `webhook` | `url` |
-| `ebird` | `country`, `state`, `location_name` |
-| `secrets` | `xeno_canto_api_key`, `ebird_api_key` |
-
-Full reference: [CONFIGURATION](./configuration.md).
-
----
-
-## Representative API routes
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/api/ui/health` | Health |
-| GET | `/api/ui/readiness` | Readiness (DB, dirs, components) |
-| GET | `/api/ui/timeline` | Visits in range |
-| GET | `/api/ui/timeline/export` | CSV, JSON, eBird |
-| GET | `/api/ui/unknowns` | Low confidence (`start_time`, `end_time`, `limit`) |
-| GET | `/api/ui/region-comparison` | Region vs your list (needs `secrets.ebird_api_key`) |
-| PATCH | `/api/ui/detections/:id` | Correct species |
-| GET | `/api/ui/detections/:id/crop` | Crop for iNaturalist |
-| GET | `/api/ui/videos/:id/download` | Download clip (role-gated) |
-| GET | `/api/ui/videos/:id/neighbors` | Previous/next video IDs for the same UTC day as `start_time` |
-| GET | `/api/ui/dataset/export` | Dataset ZIP |
-| GET | `/api/ui/system/metrics` | Live CPU / RAM / disk / GPU |
-| GET | `/api/ui/system/metrics/history` | Metrics time series for UI (`hours`, `max_points`) |
-| GET | `/api/ui/system/visitors` | Visitor stats (`days`) |
-| GET | `/api/ui/migration-calendar` | Migration calendar data |
-| GET | `/api/ui/report/pdf` | PDF report |
-| GET | `/api/ui/species/:id/xeno-canto` | Xeno-canto proxy |
-| GET | `/metrics` | Prometheus |
-
-Full spec: [OpenAPI (YAML)](https://github.com/Gfermoto/BirdLense-Hub/blob/main/app/web/openapi.yaml) · narrative: [API](../contributor/api.md).
-
----
-
-## See also
-
-[API](../contributor/api.md) · [CONFIGURATION](./configuration.md) · [GLOSSARY](./glossary.md) · [ROADMAP](../contributor/roadmap.md) · [OVERVIEW](./overview.md) · [PUBLIC_RELEASE_CHECKLIST](../../archive/internal/docs-legacy/PUBLIC_RELEASE_CHECKLIST.md)
+- Jetson Orin NX 16GB / Orin NANO 8GB
+- ONNX Runtime CUDA EP
+- NVDEC/NVENC аппаратное кодирование
+- Docker контейнеризация

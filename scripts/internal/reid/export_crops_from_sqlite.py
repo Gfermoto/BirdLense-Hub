@@ -13,7 +13,7 @@
     python3 scripts/reid/export_crops_from_sqlite.py \\
       --db app/data/db/birdlense.db --output-dir /tmp/reid_crops --limit 100
 
-Дальше: ``embed_dinov2_crop.py --glob '/tmp/reid_crops/*.jpg' -o embed.jsonl`` и
+Дальше: импорт эмбеддингов через ``reid_runtime`` / ML ops API.
 ``embed_cosine_report.py``.
 
 Зависимости: **ffmpeg** в PATH, **opencv-python** (``cv2``) для кропа кадра.

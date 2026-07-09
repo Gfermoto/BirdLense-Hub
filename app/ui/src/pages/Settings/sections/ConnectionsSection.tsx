@@ -359,8 +359,8 @@ export function ConnectionsSection({ form }: Props) {
                         <MenuItem value="cpu">
                           {t('settings.encodingCpu')}
                         </MenuItem>
-                        <MenuItem value="intel">
-                          {t('settings.encodingIntel')}
+                        <MenuItem value="jetson">
+                          {t('settings.encodingJetson')}
                         </MenuItem>
                       </Select>
                       <FormHelperText>
@@ -370,40 +370,24 @@ export function ConnectionsSection({ form }: Props) {
                   )}
                 </form.Field>
               </Grid>
-              <form.Subscribe
-                selector={(state) =>
-                  [state.values.video?.source, state.values.video?.encoding] as const
-                }
-              >
-                {([videoSource, encoding]) =>
-                  (videoSource ?? 'go2rtc').toLowerCase() !== 'file' &&
-                  (encoding ?? 'cpu').toLowerCase() === 'intel' ? (
-                    <Grid size={{ xs: 12 }}>
-                      <form.Field name="video.record_with_vaapi">
-                        {(field) => (
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                checked={Boolean(field.state.value ?? true)}
-                                onChange={(_, checked) => field.handleChange(checked)}
-                              />
-                            }
-                            label={t('settings.recordWithVaapiLabel')}
-                          />
-                        )}
-                      </form.Field>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        display="block"
-                        sx={{ pl: 4.5, mt: -0.5 }}
-                      >
-                        {t('settings.recordWithVaapiHint')}
-                      </Typography>
-                    </Grid>
-                  ) : null
-                }
-              </form.Subscribe>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <form.Field name="video.record_hw_encode">
+                  {(field) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={Boolean(field.state.value)}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                        />
+                      }
+                      label={t('settings.recordHwEncodeLabel')}
+                    />
+                  )}
+                </form.Field>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: -1, ml: 0.5 }}>
+                  {t('settings.recordHwEncodeHint')}
+                </Typography>
+              </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <form.Field name="video.record_stream_codec">
                   {(field) => (
@@ -449,11 +433,11 @@ export function ConnectionsSection({ form }: Props) {
                         <MenuItem value="auto">
                           {t('settings.captureBackendAuto')}
                         </MenuItem>
+                        <MenuItem value="ffmpeg_nvmpi">
+                          {t('settings.captureBackendFfmpegNvmpi')}
+                        </MenuItem>
                         <MenuItem value="opencv">
                           {t('settings.captureBackendOpenCv')}
-                        </MenuItem>
-                        <MenuItem value="ffmpeg_vaapi">
-                          {t('settings.captureBackendFfmpegVaapi')}
                         </MenuItem>
                       </Select>
                       <FormHelperText>

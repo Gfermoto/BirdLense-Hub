@@ -31,6 +31,19 @@ def test_no_strict_allows_any_name(app, monkeypatch):
         assert sp.name != "Unknown"
 
 
+def _narrow_vocab_snapshot(*, classifier_keys: frozenset[str] | None = None):
+    from services.species_catalog.vocabulary import SpeciesVocabularySnapshot
+
+    keys = classifier_keys or frozenset({"parus major (great tit)"})
+    return SpeciesVocabularySnapshot(
+        classifier_engine="test",
+        classifier_class_count=len(keys),
+        classifier_norm_keys=keys,
+        arbitration_norm_keys=frozenset(),
+        project_norm_keys=keys,
+    )
+
+
 def test_strict_allowlist_routes_unknown_placeholder_to_bird_review(app, monkeypatch):
     """Classifier Unknown placeholder must become generic Bird for manual review."""
     import services.species_identity_service as identity_mod
@@ -39,8 +52,8 @@ def test_strict_allowlist_routes_unknown_placeholder_to_bird_review(app, monkeyp
         app_config.set("species.catalog_strict_ingest", True)
         monkeypatch.setattr(
             identity_mod,
-            "load_catalog_allowlist_norm_keys",
-            lambda _get: frozenset({"parus major (great tit)"}),
+            "get_species_vocabulary_snapshot",
+            lambda: _narrow_vocab_snapshot(),
         )
         if not Species.query.filter_by(name="Birds").first():
             db.session.add(Species(name="Birds"))
@@ -68,8 +81,8 @@ def test_strict_allowlist_fails_closed_when_allowlist_missing(app, monkeypatch):
         app_config.set("species.catalog_strict_ingest", True)
         monkeypatch.setattr(
             identity_mod,
-            "load_catalog_allowlist_norm_keys",
-            lambda _get: None,
+            "get_species_vocabulary_snapshot",
+            lambda: _narrow_vocab_snapshot(classifier_keys=frozenset()),
         )
         if not Species.query.filter_by(name="Birds").first():
             db.session.add(Species(name="Birds"))
@@ -97,8 +110,8 @@ def test_strict_allowlist_still_blocks_real_off_allowlist_species(app, monkeypat
         app_config.set("species.catalog_strict_ingest", True)
         monkeypatch.setattr(
             identity_mod,
-            "load_catalog_allowlist_norm_keys",
-            lambda _get: frozenset({"parus major (great tit)"}),
+            "get_species_vocabulary_snapshot",
+            lambda: _narrow_vocab_snapshot(),
         )
         if not Species.query.filter_by(name="Birds").first():
             db.session.add(Species(name="Birds"))
@@ -121,9 +134,9 @@ def test_strict_allowlist_still_blocks_real_off_allowlist_species(app, monkeypat
 def test_out_of_order_video_ingest_does_not_attach_to_future_visit(app):
     """Older detections must not attach to a visit created from a later clip."""
     with app.app_context():
-        species = Species(name="Eurasian Jay")
-        db.session.add(species)
-        db.session.flush()
+        from tests.conftest import get_or_create_species
+
+        species = get_or_create_species("Eurasian Jay")
 
         later_video = Video(
             processor_version="test",
@@ -165,9 +178,9 @@ def test_out_of_order_video_ingest_does_not_attach_to_future_visit(app):
 def test_out_of_order_video_ingest_within_timeout_rewinds_visit_start(app):
     """Near out-of-order detections may reuse a visit, but start_time must rewind."""
     with app.app_context():
-        species = Species(name="Great Tit")
-        db.session.add(species)
-        db.session.flush()
+        from tests.conftest import get_or_create_species
+
+        species = get_or_create_species("Great Tit")
 
         later_video = Video(
             processor_version="test",
@@ -282,3 +295,46 @@ def test_process_detections_drops_duplicate_rows(app):
 
         assert VideoSpecies.query.filter_by(video_id=video.id).count() == 1
         assert SpeciesVisit.query.count() == 1
+
+
+def test_process_detections_persists_multimodal_evidence(app):
+    """Fusion evidence should survive ingest for audit/training."""
+    with app.app_context():
+        species = Species(name="Evidence Tit")
+        video = Video(
+            processor_version="test",
+            start_time=datetime(2026, 4, 7, 12, 0, 0),
+            end_time=datetime(2026, 4, 7, 12, 0, 10),
+            video_path="data/recordings/2026/04/07/120011/video.mp4",
+        )
+        db.session.add_all([species, video])
+        db.session.commit()
+
+        vp = VisitProcessor(db, app.logger, visit_timeout=60)
+        vp.process_detections(
+            video,
+            [
+                {
+                    "species_name": species.name,
+                    "start_time": 1.0,
+                    "end_time": 2.5,
+                    "confidence": 0.62,
+                    "source": "video",
+                    "visit_eligible": True,
+                    "track_id": 11,
+                    "frames": [],
+                    "detection_provider": "yolo",
+                    "audio_evidence": "support",
+                    "_birdnet_prior": 0.73,
+                    "_weighted_arbiter_score": 0.68,
+                    "hint_trace": [{"source": "birdnet", "score": 0.73}],
+                }
+            ],
+        )
+        db.session.commit()
+
+        row = VideoSpecies.query.filter_by(video_id=video.id).one()
+        assert row.audio_evidence == "support"
+        assert row.birdnet_prior == 0.73
+        assert row.weighted_arbiter_score == 0.68
+        assert '"birdnet"' in row.hint_trace

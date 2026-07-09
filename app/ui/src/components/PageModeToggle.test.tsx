@@ -7,7 +7,7 @@ describe('PageModeToggle', () => {
   it('calls onChange when switching to another mode', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    render(<PageModeToggle value="simple" onChange={onChange} />);
+    render(<PageModeToggle value="basic" onChange={onChange} />);
 
     await user.click(screen.getByRole('button', { name: /advanced/i }));
 
@@ -27,7 +27,7 @@ describe('PageModeToggle', () => {
   it('renders custom labels when provided', () => {
     render(
       <PageModeToggle
-        value="simple"
+        value="basic"
         onChange={vi.fn()}
         simpleLabel="Overview"
         advancedLabel="Admin tools"
@@ -40,5 +40,22 @@ describe('PageModeToggle', () => {
     expect(
       screen.getByRole('button', { name: 'Admin tools' }),
     ).toBeInTheDocument();
+  });
+
+  it('renders expert tier when showExpert is true', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <PageModeToggle
+        value="advanced"
+        onChange={onChange}
+        showExpert
+        expertLabel="Expert"
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Expert' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Expert' }));
+    expect(onChange).toHaveBeenCalledWith('expert');
   });
 });

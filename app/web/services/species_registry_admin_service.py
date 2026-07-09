@@ -255,7 +255,10 @@ def repair_catalog_cards_status_snapshot() -> dict:
 
 
 def species_data_quality_report(duplicate_limit: int) -> tuple[dict, int]:
-    from services.species_data_quality_service import build_data_quality_report
+    from services.species_data_quality_service import (
+        build_catalog_polish_report,
+        build_data_quality_report,
+    )
 
     dup_limit = max(10, min(duplicate_limit, 500))
     try:
@@ -263,6 +266,8 @@ def species_data_quality_report(duplicate_limit: int) -> tuple[dict, int]:
             db.session,
             duplicate_group_limit=dup_limit,
         )
+        body["catalog_polish"] = build_catalog_polish_report(db.session)
+        body["coverage_now"] = catalog_cards_coverage_snapshot(app_config.get)
         return body, 200
     except Exception as e:
         _log.exception("Species data quality report failed: %s", e)

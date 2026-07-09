@@ -7,6 +7,7 @@ from datetime import timezone
 
 from typing import Any
 
+from app_config.app_config import app_config
 from services.feeder_scale import video_scales_estimate_payload
 
 
@@ -22,10 +23,66 @@ def _species_row(vs) -> dict:
         "track_id": vs.track_id,
         "image_url": vs.species.image_url,
         "individual_nickname": vs.individual_nickname,
+        "bird_profile_id": vs.bird_profile_id,
+        "bird_profile_name": (vs.bird_profile.display_name if getattr(vs, "bird_profile", None) else None),
+        "bird_profile_avatar_url": (vs.bird_profile.avatar_url if getattr(vs, "bird_profile", None) else None),
+        "bird_profile_status": (vs.bird_profile.status if getattr(vs, "bird_profile", None) else None),
+        "classifier_needs_review": bool(getattr(vs, "classifier_needs_review", False)),
+        "review_reason": getattr(vs, "review_reason", None),
     }
+    welfare_distance = getattr(vs, "welfare_distance", None)
+    if welfare_distance is not None:
+        data["welfare_distance"] = round(float(welfare_distance), 4)
     if vs.detection_provider:
         data["detection_provider"] = vs.detection_provider
+    ent = getattr(vs, "classifier_entropy", None)
+    if ent is not None:
+        data["classifier_entropy"] = round(float(ent), 4)
+    margin = getattr(vs, "classifier_top1_top2_margin", None)
+    if margin is not None:
+        data["classifier_top1_top2_margin"] = round(float(margin), 4)
+    data["scoring_hint"] = _detection_scoring_hint(vs)
+    audio_ev = getattr(vs, "audio_evidence", None)
+    if audio_ev:
+        data["audio_evidence"] = audio_ev
+    bn = getattr(vs, "birdnet_prior", None)
+    if bn is not None:
+        data["birdnet_prior"] = round(float(bn), 6)
+    was = getattr(vs, "weighted_arbiter_score", None)
+    if was is not None:
+        data["weighted_arbiter_score"] = round(float(was), 6)
+    ht = getattr(vs, "hint_trace", None)
+    if ht:
+        data["hint_trace"] = ht
     return data
+
+
+def _weighted_arbiter_weights() -> dict[str, float]:
+    det = app_config.get("detection") or {}
+    return {
+        "confidence": float(det.get("weighted_arbiter_conf_weight") or 0.55),
+        "detector": float(det.get("weighted_arbiter_detector_weight") or 0.15),
+        "classifier": float(det.get("weighted_arbiter_classifier_weight") or 0.12),
+        "birdnet": float(det.get("weighted_arbiter_birdnet_weight") or 0.08),
+        "regional": float(det.get("weighted_arbiter_regional_weight") or 0.05),
+        "multicamera": float(det.get("weighted_arbiter_multicamera_weight") or 0.05),
+    }
+
+
+def _detection_scoring_hint(vs) -> dict[str, Any]:
+    """Compact breakdown for UI tooltips (SOTA-17); full trace via fusion-trace API."""
+    provider = (vs.detection_provider or vs.source or "unknown").strip()
+    hint: dict[str, Any] = {
+        "primary_provider": provider,
+        "confidence": round(float(vs.confidence or 0.0), 4),
+        "source": vs.source,
+        "weighted_arbiter_enabled": bool(app_config.get("detection.weighted_arbiter_enabled", True)),
+        "arbiter_weights": _weighted_arbiter_weights(),
+    }
+    if getattr(vs, "classifier_needs_review", False):
+        hint["needs_review"] = True
+        hint["review_reason"] = getattr(vs, "review_reason", None)
+    return hint
 
 
 def build_video_detail_dict(video) -> dict:
@@ -37,7 +94,6 @@ def build_video_detail_dict(video) -> dict:
         "start_time": video.start_time.astimezone(timezone.utc).isoformat(),
         "end_time": video.end_time.astimezone(timezone.utc).isoformat(),
         "video_path": video.video_path,
-        "spectrogram_path": video.spectrogram_path,
         "favorite": video.favorite,
         "weather": {
             "main": video.weather_main,
@@ -52,15 +108,6 @@ def build_video_detail_dict(video) -> dict:
         "food": [{"id": bf.id, "name": bf.name, "image_url": bf.image_url} for bf in video.food],
         "scales": video_scales_estimate_payload(video),
     }
-    bl = getattr(video, "behavior_label", None)
-    if bl:
-        out["behavior_label"] = str(bl).strip()
-    bc = getattr(video, "behavior_confidence", None)
-    if bc is not None:
-        try:
-            out["behavior_confidence"] = round(float(bc), 6)
-        except (TypeError, ValueError):
-            pass
     return out
 
 

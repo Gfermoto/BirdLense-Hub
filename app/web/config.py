@@ -3,7 +3,7 @@
 import logging
 import os
 
-from services.runtime_env import env_flag_enabled, is_production_runtime
+from services.runtime_env import is_production_runtime
 
 
 # Secret key for Flask session (settings unlock)
@@ -17,8 +17,9 @@ if not _SECRET_KEY:
 if _is_production:
     if not (os.environ.get("PROCESSOR_SECRET") or "").strip():
         raise RuntimeError("PROCESSOR_SECRET is required in production. Set it in app/.env or environment.")
-    if not env_flag_enabled(os.environ.get("BIRDLENSE_STRICT_API_AUTH")):
-        raise RuntimeError("BIRDLENSE_STRICT_API_AUTH=1 is required in production.")
+    # STRICT_API_AUTH не требуется принудительно — middleware включается
+    # только при явном BIRDLENSE_STRICT_API_AUTH=1. Без пароля в user_config
+    # UI работает свободно; после задания пароля — авторизация.
 
 # Локальная разработка (Vite, LAN): не хранить в app.py — один источник для CORS.
 _CORS_LOCAL_DEV_ORIGINS_DEV = (

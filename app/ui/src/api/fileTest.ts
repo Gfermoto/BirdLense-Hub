@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, apiFetch } from './client';
 
 export type FileTestFileRow = {
   name: string;
@@ -22,61 +21,40 @@ export type FileTestStatusPayload = {
   file_test_max_upload_mb?: number;
 };
 
-export const fetchFileTestFiles = async (): Promise<FileTestFilesResponse> => {
-  const response = await axios.get(`${BASE_API_URL}/system/file-test/files`, {
-    withCredentials: true,
+export const fetchFileTestFiles = async (): Promise<FileTestFilesResponse> =>
+  apiFetch(`${BASE_API_URL}/system/file-test/files`);
+
+export const fetchFileTestStatus = async (): Promise<FileTestStatusPayload> =>
+  apiFetch(`${BASE_API_URL}/system/file-test/status`);
+
+export const fileTestRun = async (body: { armed?: boolean; loop?: boolean }) =>
+  apiFetch(`${BASE_API_URL}/system/file-test/run`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
-  return response.data;
-};
 
-export const fetchFileTestStatus = async (): Promise<FileTestStatusPayload> => {
-  const response = await axios.get(`${BASE_API_URL}/system/file-test/status`, {
-    withCredentials: true,
+export const fileTestStop = async () =>
+  apiFetch(`${BASE_API_URL}/system/file-test/stop`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
   });
-  return response.data;
-};
-
-export const fileTestRun = async (body: {
-  armed?: boolean;
-  loop?: boolean;
-}) => {
-  const response = await axios.post(
-    `${BASE_API_URL}/system/file-test/run`,
-    body,
-    {
-      withCredentials: true,
-    },
-  );
-  return response.data;
-};
-
-export const fileTestStop = async () => {
-  const response = await axios.post(
-    `${BASE_API_URL}/system/file-test/stop`,
-    {},
-    { withCredentials: true },
-  );
-  return response.data;
-};
 
 export const fileTestDeleteFile = async (name: string) => {
-  await axios.delete(
-    `${BASE_API_URL}/system/file-test/files/${encodeURIComponent(name)}`,
-    {
-      withCredentials: true,
-    },
-  );
+  await apiFetch(`${BASE_API_URL}/system/file-test/files/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+  });
 };
 
 export const fileTestUpload = async (file: File) => {
   const fd = new FormData();
   fd.append('file', file);
-  const response = await axios.post(
+  return apiFetch<{ ok: boolean; name?: string }>(
     `${BASE_API_URL}/system/file-test/upload`,
-    fd,
     {
-      withCredentials: true,
+      method: 'POST',
+      body: fd,
     },
   );
-  return response.data as { ok: boolean; name?: string };
 };

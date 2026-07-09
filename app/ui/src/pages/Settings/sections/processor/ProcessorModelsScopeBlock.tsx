@@ -1,4 +1,4 @@
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import type { ReactFormExtendedApi } from '@tanstack/react-form';
 import Grid from '@mui/material/Grid2';
 import FormControl from '@mui/material/FormControl';
@@ -14,9 +14,7 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
-import MuiLink from '@mui/material/Link';
 import Box from '@mui/material/Box';
-import { Link as RouterLink } from 'react-router-dom';
 import { ServiceBlock } from '../../shared/ServiceBlock';
 import type { Settings } from '../../../../types';
 
@@ -38,21 +36,6 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           {t('settings.processorModelsScopeDesc')}
         </Typography>
-        <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
-          <Typography variant="body2" component="div">
-            <Trans
-              i18nKey="settings.processorModelsSupportLink"
-              components={{
-                syslink: (
-                  <MuiLink
-                    component={RouterLink}
-                    to="/system#system-workspace"
-                  />
-                ),
-              }}
-            />
-          </Typography>
-        </Alert>
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 6 }}>
             <form.Field name="processor.inference_backend">
@@ -63,18 +46,18 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                   </InputLabel>
                   <Select
                     labelId="processor-inference-backend-label"
-                    value={(field.state.value ?? 'torch').toLowerCase()}
+                    value={(field.state.value ?? 'onnxruntime').toLowerCase()}
                     label={t('settings.processorInferenceBackend')}
                     onChange={(e) => field.handleChange(e.target.value)}
                   >
                     <MenuItem value="auto">
                       {t('settings.processorInferenceBackendAuto')}
                     </MenuItem>
-                    <MenuItem value="torch">
-                      {t('settings.processorInferenceBackendTorch')}
+                    <MenuItem value="onnxruntime">
+                      {t('settings.processorInferenceBackendOnnxruntime')}
                     </MenuItem>
-                    <MenuItem value="openvino">
-                      {t('settings.processorInferenceBackendOpenvino')}
+                    <MenuItem value="tensorrt">
+                      {t('settings.processorInferenceBackendTensorrt')}
                     </MenuItem>
                   </Select>
                   <FormHelperText>
@@ -93,18 +76,18 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                   </InputLabel>
                   <Select
                     labelId="processor-classifier-inference-backend-label"
-                    value={(field.state.value ?? 'torch').toLowerCase()}
+                    value={(field.state.value ?? 'onnxruntime').toLowerCase()}
                     label={t('settings.processorClassifierInferenceBackend')}
                     onChange={(e) => field.handleChange(e.target.value)}
                   >
                     <MenuItem value="auto">
                       {t('settings.processorInferenceBackendAuto')}
                     </MenuItem>
-                    <MenuItem value="torch">
-                      {t('settings.processorInferenceBackendTorch')}
+                    <MenuItem value="onnxruntime">
+                      {t('settings.processorInferenceBackendOnnxruntime')}
                     </MenuItem>
-                    <MenuItem value="openvino">
-                      {t('settings.processorInferenceBackendOpenvino')}
+                    <MenuItem value="tensorrt">
+                      {t('settings.processorInferenceBackendTensorrt')}
                     </MenuItem>
                   </Select>
                   <FormHelperText>
@@ -123,7 +106,7 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
                   value={field.state.value ?? ''}
                   onChange={(e) => field.handleChange(e.target.value || undefined)}
                   helperText={t('settings.processorInferenceDeviceHint')}
-                  placeholder="intel:gpu"
+                  placeholder="cuda:0"
                 />
               )}
             </form.Field>
@@ -174,7 +157,7 @@ export function ProcessorModelsScopeBlock({ form }: Props) {
           </Grid>
           <Grid size={{ xs: 12 }}>
             <Alert severity="info" variant="outlined">
-              {t('settings.processorOpenvinoPathsManagedHint')}
+              {t('settings.processorOnnxPathsManagedHint')}
             </Alert>
           </Grid>
           <Grid size={{ xs: 12 }}>

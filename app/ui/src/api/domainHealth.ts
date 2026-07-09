@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { BASE_API_URL } from './client';
+import { BASE_API_URL, apiFetch } from './client';
 
 /** Ответ `GET /system/domain-health` (см. `system_domain_health_service.build_domain_health_payload`). */
 export type DomainStrictQuality = {
@@ -26,9 +25,5 @@ export type DomainHealthPayload = {
   strict_quality?: DomainStrictQuality;
 };
 
-export const fetchDomainHealth = async (): Promise<DomainHealthPayload> => {
-  const response = await axios.get(`${BASE_API_URL}/system/domain-health`, {
-    withCredentials: true,
-  });
-  return response.data as DomainHealthPayload;
-};
+export const fetchDomainHealth = async (): Promise<DomainHealthPayload> =>
+  apiFetch(`${BASE_API_URL}/system/domain-health`);

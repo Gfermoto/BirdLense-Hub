@@ -42,6 +42,15 @@ export const queryKeys = {
     processorLogs: (lines: number) =>
       ['system', 'processorLogs', lines] as const,
     retentionConfig: ['system', 'retention-config'] as const,
+    qualityTimeseries: (bucket: 'hour' | 'day') =>
+      ['system', 'quality-timeseries', bucket] as const,
+    qualityHealth: (hours: number) =>
+      ['system', 'quality-health', hours] as const,
+    yoloDetectorHealth: (hours: number) =>
+      ['system', 'yolo-detector-health', hours] as const,
+    triggerGraph: (hours: number) => ['system', 'trigger-graph', hours] as const,
+    jobs: ['system', 'jobs'] as const,
+    backpressure: ['system', 'backpressure'] as const,
   },
   /** Карточки страницы «Система» с плоскими ключами кэша (legacy-строки). */
   systemPanels: {
@@ -55,12 +64,15 @@ export const queryKeys = {
     speciesDataQuality: ['species-data-quality'] as const,
     catalogCoverageMetrics: ['catalog-coverage-metrics'] as const,
     classifierDatasetAlignment: ['classifier-dataset-alignment'] as const,
-    processorWeightsStatus: ['processor-weights-status'] as const,
     mlRuntimeStatus: ['ml-runtime-status'] as const,
+    datasetStreamsSummary: ['dataset-streams-summary'] as const,
+    classifierCalibrationReport: ['classifier-calibration-report'] as const,
+    tuningWorkbench: ['tuning-workbench'] as const,
     feedbackLoopStatus: ['feedback-loop-status'] as const,
     fusionExportStatus: ['fusion-export-status'] as const,
     fusionEvalStatus: ['fusion-eval-status'] as const,
     domainHealth: ['system-domain-health'] as const,
+    birdnetFifo: ['system-birdnet-fifo'] as const,
   },
   feed: {
     info: ['feed-info'] as const,
@@ -71,6 +83,7 @@ export const queryKeys = {
   },
   live: {
     cameras: ['cameras'] as const,
+    overlays: (cameraId: string) => ['live-overlays', cameraId] as const,
   },
   birdFood: {
     all: ['birdFood'] as const,
@@ -82,6 +95,9 @@ export const queryKeys = {
   /** Страница каталога видов (отдельно от `bird-directory`). */
   speciesDirectory: {
     list: ['species-directory'] as const,
+    allowlistHub: ['species-directory', 'allowlist', 'hub'] as const,
+    /** Classifier allowlist for manual species correction (scope=allowlist). */
+    correctionCatalog: ['species-directory', 'correction', 'allowlist'] as const,
   },
   favorites: {
     bySpecies: ['favorites', 'by-species'] as const,
@@ -94,6 +110,7 @@ export const queryKeys = {
       timeOfDay: string,
       filterHour: number | null,
       favoritesOnly: boolean,
+      triggerSource: string,
     ) =>
       [
         'speciesVisits',
@@ -101,6 +118,7 @@ export const queryKeys = {
         timeOfDay,
         filterHour,
         favoritesOnly ? 1 : 0,
+        triggerSource,
       ] as const,
     /** Префикс для invalidateQueries — все окна таймлайна. */
     speciesVisitsAll: ['speciesVisits'] as const,
@@ -112,9 +130,16 @@ export const queryKeys = {
     unknownsCountAll: ['unknowns-count'] as const,
   },
   unknowns: {
-    list: (date: string, timeOfDay: string) =>
-      ['unknowns', date, timeOfDay] as const,
+    list: (date: string, timeOfDay: string, queue: string = 'default', reviewReason: string = 'all') =>
+      ['unknowns', date, timeOfDay, queue, reviewReason] as const,
     all: ['unknowns'] as const,
+  },
+  labelling: {
+    cases: (
+      status: 'pending' | 'approved' | 'rejected' | 'semantic_review_required' | 'all',
+      withMediaOnly = true,
+    ) => ['labelling-cases', status, withMediaOnly ? 'media-only' : 'all-cases'] as const,
+    casesAll: ['labelling-cases'] as const,
   },
   corrections: {
     recent: ['corrections-recent'] as const,
@@ -130,11 +155,25 @@ export const queryKeys = {
     listAll: ['videos'] as const,
     trackRegenStatusUi: (videoId: number | null, nonce: number) =>
       ['track-regen-status-ui', videoId, nonce] as const,
-    specRegenStatusUi: (videoId: number | null, nonce: number) =>
-      ['spec-regen-status-ui', videoId, nonce] as const,
   },
   birdDirectory: {
     all: ['bird-directory'] as const,
+  },
+  birdProfiles: {
+    all: ['bird-profiles'] as const,
+    catalog: ['bird-profiles', 'catalog'] as const,
+    timelineFilter: ['bird-profiles', 'timeline-filter'] as const,
+    timelineFilterMap: ['bird-profiles', 'timeline-filter-map'] as const,
+    videoDetails: ['bird-profiles', 'video-details'] as const,
+    suggestLinks: (detectionId: number | string, anchorProfileId?: number | string | null) =>
+      ['bird-profile-suggest-links', detectionId, anchorProfileId ?? null] as const,
+  },
+  reid: {
+    status: ['reid', 'status'] as const,
+    gallery: ['reid', 'gallery'] as const,
+  },
+  expert: {
+    queue: ['expert', 'queue'] as const,
   },
   speciesSummary: {
     all: ['speciesSummary'] as const,

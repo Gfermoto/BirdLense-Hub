@@ -4,7 +4,7 @@ set -euo pipefail
 # Production smoke for CV/ML pipeline without waiting for live feeder events.
 # Uses existing recordings from DB and dry-run checks only (no config mutation).
 
-ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 DEPLOY_LOCAL="${ROOT_DIR}/scripts/deploy.local.sh"
 
 if [[ ! -f "${DEPLOY_LOCAL}" ]]; then

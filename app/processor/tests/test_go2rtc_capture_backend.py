@@ -1,4 +1,4 @@
-"""Go2RTC live capture backend helpers (#373)."""
+"""Go2RTC live capture backend helpers (#373) — Orin-only paths."""
 
 import os
 import sys
@@ -20,47 +20,25 @@ class _FakeStderr:
         return self._text
 
 
-class _FakeProc:
-    def __init__(self, rc=1, stderr=b""):
-        self.stderr = _FakeStderr(stderr)
-        self._rc = rc
-
-    def terminate(self):
-        return None
-
-    def wait(self, timeout=None):
-        return self._rc
-
-
 class TestGo2RTCCaptureBackend(unittest.TestCase):
     def test_normalize_capture_backend(self):
         from sources.go2rtc_stream_source import _normalize_capture_backend
 
         self.assertEqual(_normalize_capture_backend(None), "auto")
         self.assertEqual(_normalize_capture_backend("opencv"), "opencv")
-        self.assertEqual(_normalize_capture_backend("ffmpeg_vaapi"), "ffmpeg_vaapi")
+        self.assertEqual(_normalize_capture_backend("ffmpeg_nvmpi"), "ffmpeg_nvmpi")
+        self.assertEqual(_normalize_capture_backend("ffmpeg_vaapi"), "auto")  # not valid on Orin
         self.assertEqual(_normalize_capture_backend("broken"), "auto")
 
-    def test_ffmpeg_vaapi_capture_cmd_outputs_raw_bgr24(self):
-        from sources.go2rtc_stream_source import _ffmpeg_vaapi_capture_cmd
-
-        cmd = _ffmpeg_vaapi_capture_cmd("rtsp://example/stream", (640, 640))
-        joined = " ".join(cmd)
-        self.assertIn("-hwaccel vaapi", joined)
-        self.assertIn("scale_vaapi=w=640:h=640", joined)
-        self.assertIn("force_original_aspect_ratio=decrease", joined)
-        self.assertIn("pad=w=640:h=640", joined)
-        self.assertIn("-pix_fmt bgr24", joined)
-        self.assertEqual(cmd[-2:], ["rawvideo", "pipe:1"])
-
-    def test_ffmpeg_record_cmd_for_vaapi_contains_ts_and_audio_guards(self):
+    def test_ffmpeg_record_cmd_for_jetson_uses_nvmpi_codec(self):
         from sources.go2rtc_stream_source import _ffmpeg_record_cmd
 
         cmd = _ffmpeg_record_cmd(
             stream_url="rtsp://example/stream",
             output="/tmp/out.mp4",
-            use_vaapi=True,
+            use_jetson_hw_encode=True,
             record_stream_codec="h264",
+            encoding_mode="jetson",
         )
         joined = " ".join(cmd)
         self.assertIn("+genpts+igndts", joined)
@@ -69,8 +47,22 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         self.assertIn("-vsync 2", joined)
         self.assertIn("-map 0:v:0 -map 0:a:0?", joined)
         self.assertIn("-af aresample=async=1:first_pts=0", joined)
-        self.assertIn("-c:v h264_vaapi", joined)
         self.assertIn("-c:a aac", joined)
+
+    def test_ffmpeg_record_cmd_jetson_without_hw_uses_libx264(self):
+        from sources.go2rtc_stream_source import _ffmpeg_record_cmd
+
+        cmd = _ffmpeg_record_cmd(
+            stream_url="rtsp://example/stream",
+            output="/tmp/out.mp4",
+            use_jetson_hw_encode=False,
+            record_stream_codec="h264",
+            encoding_mode="jetson",
+        )
+        joined = " ".join(cmd)
+        self.assertIn("-c:v libx264", joined)
+        self.assertNotIn("h264_nvenc", joined)
+        self.assertNotIn("h264_vaapi", joined)
 
     def test_ffmpeg_record_cmd_for_copy_uses_copy_video(self):
         from sources.go2rtc_stream_source import _ffmpeg_record_cmd
@@ -78,8 +70,9 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         cmd = _ffmpeg_record_cmd(
             stream_url="rtsp://example/stream",
             output="/tmp/out.mp4",
-            use_vaapi=False,
+            use_jetson_hw_encode=True,
             record_stream_codec="copy",
+            encoding_mode="jetson",
         )
         joined = " ".join(cmd)
         self.assertIn("-c:v copy", joined)
@@ -101,34 +94,6 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
             "rtsp://nohost/path",
         )
 
-    def test_capture_fallback_reason_matrix(self):
-        from sources.go2rtc_stream_source import _capture_fallback_reason
-
-        self.assertEqual(
-            _capture_fallback_reason(
-                requested_backend="opencv",
-                encoding_mode="cpu",
-                vaapi_available=False,
-            ),
-            "requested_opencv",
-        )
-        self.assertEqual(
-            _capture_fallback_reason(
-                requested_backend="ffmpeg_vaapi",
-                encoding_mode="intel",
-                vaapi_available=False,
-            ),
-            "vaapi_unavailable",
-        )
-        self.assertEqual(
-            _capture_fallback_reason(
-                requested_backend="auto",
-                encoding_mode="cpu",
-                vaapi_available=True,
-            ),
-            "auto_prefers_opencv_for_non_intel_encoding",
-        )
-
     def test_capture_reconnect_path_has_no_recursion(self):
         from sources.go2rtc_stream_source import Go2RTCStreamSource
 
@@ -141,7 +106,7 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         src._read_lock = threading.Lock()
         src._frame_count = 0
         src._last_frame_time = 0
-        src._capture_backend_used = "ffmpeg_vaapi"
+        src._capture_backend_used = "opencv"
         src._ffmpeg_capture_failures = 0
         src._force_opencv_until_ts = 0.0
         src.lores_size = (640, 640)
@@ -164,168 +129,53 @@ class TestGo2RTCCaptureBackend(unittest.TestCase):
         self.assertEqual(calls["reconnect"], 1)
         self.assertEqual(calls["read"], 2)
 
-    def test_should_use_ffmpeg_blocked_during_cooldown(self):
-        from sources.go2rtc_stream_source import Go2RTCStreamSource
+    def test_capture_fallback_reason_orin_only(self):
+        from sources.go2rtc_stream_source import _capture_fallback_reason
 
-        src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
-        src._capture_backend = "ffmpeg_vaapi"
-        src._encoding_mode = "intel"
-        src._force_opencv_until_ts = time.time() + 30
-        self.assertFalse(src._should_use_ffmpeg_vaapi_capture())
-
-    def test_capture_forces_opencv_after_repeated_ffmpeg_failures(self):
-        from sources.go2rtc_stream_source import Go2RTCStreamSource
-
-        class _Logger:
-            def warning(self, *_args, **_kwargs):
-                return None
-
-        src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
-        src.logger = _Logger()
-        src._read_lock = threading.Lock()
-        src._frame_count = 0
-        src._last_frame_time = 0
-        src._capture_backend_used = "ffmpeg_vaapi"
-        src._ffmpeg_capture_failures = 3
-        src._force_opencv_until_ts = 0.0
-        src.lores_size = (640, 640)
-        src._read_frame = lambda: (None, False)
-        src._reconnect_if_needed = lambda: False
-        src._update_streaming_output = lambda _frame: None
-
-        self.assertIsNone(src.capture())
-        self.assertGreater(src._force_opencv_until_ts, time.time())
-        self.assertEqual(src._ffmpeg_capture_failures, 0)
-
-    def test_start_recording_intel_record_with_vaapi_false_uses_libx264_cmd(self):
-        from unittest.mock import patch
-
-        from sources.go2rtc_stream_source import Go2RTCStreamSource
-
-        captured: list[list[str]] = []
-
-        class _P:
-            stderr = _FakeStderr(b"")
-            rc = 0
-
-            def terminate(self):
-                return None
-
-            def wait(self, timeout=None):
-                return self.rc
-
-        def _popen(cmd, **_kwargs):
-            captured.append(cmd)
-            return _P()
-
-        class _Log:
-            def info(self, *_a, **_k):
-                return None
-
-            def debug(self, *_a, **_k):
-                return None
-
-        src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
-        src.logger = _Log()
-        src.stream_url = "rtsp://example/stream"
-        src._encoding_mode = "intel"
-        src._record_with_vaapi = False
-        src._vaapi_record_available = True
-        src._record_stream_codec = "h264"
-        src._use_intel_vaapi = lambda: True
-        src._recording = False
-        src._ffmpeg_process = None
-
-        with patch("sources.go2rtc_stream_source.subprocess.Popen", side_effect=_popen):
-            src.start_recording("/tmp/out.mp4")
-
-        self.assertTrue(captured)
-        joined = " ".join(captured[0])
-        self.assertIn("libx264", joined)
-        self.assertNotIn("h264_vaapi", joined)
-        self.assertFalse(src._recording_used_vaapi)
-
-    def test_recording_vaapi_failure_disables_record_only(self):
-        from sources.go2rtc_stream_source import Go2RTCStreamSource
-
-        class _FakeStderr:
-            def __init__(self, text=b""):
-                self._text = text
-
-            def read(self):
-                return self._text
-
-        class _FakeProc:
-            def __init__(self, rc=1, stderr=b""):
-                self.stderr = _FakeStderr(stderr)
-                self._rc = rc
-
-            def terminate(self):
-                return None
-
-            def wait(self, timeout=None):
-                return self._rc
-
-        class _Logger:
-            def info(self, *_args, **_kwargs):
-                return None
-
-            def error(self, *_args, **_kwargs):
-                return None
-
-            def warning(self, *_args, **_kwargs):
-                return None
-
-            def debug(self, *_args, **_kwargs):
-                return None
-
-        src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
-        src.logger = _Logger()
-        src._ffmpeg_process = _FakeProc()
-        src._recording_used_vaapi = True
-        src._vaapi_record_available = True
-        src._vaapi_available = True
-        src._recording = True
-
-        src.stop_recording()
-
-        self.assertFalse(src._vaapi_record_available)
-        self.assertTrue(src._vaapi_available)
-
-    def test_recording_vaapi_sigterm_255_is_not_failure(self):
-        from sources.go2rtc_stream_source import Go2RTCStreamSource
-
-        class _Logger:
-            def info(self, *_args, **_kwargs):
-                return None
-
-            def error(self, *_args, **_kwargs):
-                return None
-
-            def warning(self, *_args, **_kwargs):
-                return None
-
-            def debug(self, *_args, **_kwargs):
-                return None
-
-            def log(self, *_args, **_kwargs):
-                return None
-
-        src = Go2RTCStreamSource.__new__(Go2RTCStreamSource)
-        src.logger = _Logger()
-        src._ffmpeg_process = _FakeProc(
-            rc=255,
-            stderr=b"Exiting normally, received signal 15.\n",
+        self.assertEqual(
+            _capture_fallback_reason(requested_backend="opencv", encoding_mode="jetson"),
+            "requested_opencv",
         )
-        src._recording_used_vaapi = True
-        src._vaapi_record_available = True
-        src._vaapi_available = True
-        src._recording = True
+        self.assertEqual(
+            _capture_fallback_reason(
+                requested_backend="ffmpeg_nvmpi",
+                encoding_mode="jetson",
+                nvmpi_available=False,
+            ),
+            "nvmpi_unavailable",
+        )
+        self.assertEqual(
+            _capture_fallback_reason(
+                requested_backend="auto",
+                encoding_mode="jetson",
+                nvmpi_available=False,
+            ),
+            "auto_nvmpi_probe_failed",
+        )
+        self.assertEqual(
+            _capture_fallback_reason(requested_backend="auto", encoding_mode="cpu"),
+            "auto_prefers_opencv_for_cpu_encoding",
+        )
 
-        src.stop_recording()
+    def test_encoding_utils_normalize_video_encoding(self):
+        from encoding_utils import normalize_video_encoding
 
-        self.assertTrue(src._vaapi_record_available)
-        self.assertTrue(src._vaapi_available)
+        self.assertEqual(normalize_video_encoding(None), "jetson")
+        self.assertEqual(normalize_video_encoding("jetson"), "jetson")
+        self.assertEqual(normalize_video_encoding("orin"), "jetson")
+        self.assertEqual(normalize_video_encoding("nvenc"), "jetson")
+        self.assertEqual(normalize_video_encoding("nvmpi"), "jetson")
+        self.assertEqual(normalize_video_encoding("cpu"), "cpu")
+        self.assertEqual(normalize_video_encoding("intel"), "jetson")  # fallback
+
+    def test_encoding_utils_normalize_capture_backend(self):
+        from encoding_utils import normalize_capture_backend
+
+        self.assertEqual(normalize_capture_backend(None), "auto")
+        self.assertEqual(normalize_capture_backend("auto"), "auto")
+        self.assertEqual(normalize_capture_backend("opencv"), "opencv")
+        self.assertEqual(normalize_capture_backend("ffmpeg_nvmpi"), "ffmpeg_nvmpi")
+        self.assertEqual(normalize_capture_backend("ffmpeg_vaapi"), "auto")  # fallback
 
 
 if __name__ == "__main__":

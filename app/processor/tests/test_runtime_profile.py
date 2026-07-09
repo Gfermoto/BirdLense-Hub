@@ -17,7 +17,15 @@ class _DummyStrategy:
     def __init__(self):
         self.calls = []
 
-    def detect(self, frame, tracker_config, *, min_confidence, profile_overrides=None):
+    def detect(
+        self,
+        frame,
+        tracker_config,
+        *,
+        min_confidence,
+        profile_overrides=None,
+        classification_frame=None,
+    ):
         self.calls.append(
             {
                 "tracker_config": tracker_config,
@@ -94,12 +102,15 @@ class TestRuntimeProfile(unittest.TestCase):
                 },
                 "processor.tracker": "bytetrack.yaml",
                 "processor.tracker_profiles": {
-                    "night": "models/tracker/bytetrack_night.yaml",
+                    "night": "models/tracker/bytetrack_birdlense.yaml",
                 },
             }
             return mapping.get(key, default)
 
-        with patch("frame_processor.app_config.get", side_effect=cfg_get):
+        with patch("frame_processor.app_config.get", side_effect=cfg_get), patch(
+            "frame_processor.resolve_adaptive_tracker_path",
+            side_effect=lambda path, _fps, **kwargs: path,
+        ):
             fp = FrameProcessor(strategy)
             fp.light_detector = _FakeLightDetector(brightness=10.0, contrast=8.0)
 
@@ -110,7 +121,7 @@ class TestRuntimeProfile(unittest.TestCase):
         self.assertAlmostEqual(strategy.calls[0]["min_confidence"], 0.18)
         self.assertEqual(
             strategy.calls[0]["tracker_config"],
-            resolve_tracker_config_path("models/tracker/bytetrack_night.yaml"),
+            resolve_tracker_config_path("models/tracker/bytetrack_birdlense.yaml"),
         )
         self.assertEqual(strategy.calls[0]["profile_overrides"]["min_box_size_px"], 32)
         self.assertEqual(fp.last_run_stats["runtime_profile"], "night")

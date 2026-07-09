@@ -1,0 +1,121 @@
+# BirdLense Hub — Orin NX / NANO (aarch64, JetPack 7 / L4T r39.2, Ubuntu 24.04)
+#
+# Native L4T GStreamer 1.24: nvv4l2decoder, nvvidconv, nvv4l2h264enc (apt r39.2).
+# ONNX Runtime GPU (CUDA 13 EP).
+#
+# Сборка только на Jetson (make build / scripts/orin/docker-build.sh, --privileged).
+# BIRDLENSE_PLATFORM=orin
+
+FROM ubuntu:24.04
+
+ARG L4T_REPO=r39.2
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN echo exit 0 > /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d
+
+COPY app/docker/orin/jetson-ota-public.asc /etc/apt/trusted.gpg.d/jetson-ota-public.asc
+
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN printf 'deb https://repo.download.nvidia.com/jetson/common %s main\n' "${L4T_REPO}" \
+        > /etc/apt/sources.list.d/nvidia-jetson.list \
+    && printf 'deb https://repo.download.nvidia.com/jetson/som %s main\n' "${L4T_REPO}" \
+        >> /etc/apt/sources.list.d/nvidia-jetson.list \
+    && printf 'deb https://repo.download.nvidia.com/jetson/ffmpeg %s main\n' "${L4T_REPO}" \
+        >> /etc/apt/sources.list.d/nvidia-jetson.list
+
+# Python 3.12, nginx, ffmpeg, GStreamer 1.24 (Ubuntu) — ABI match with L4T plugins.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 python3.12-venv python3.12-dev python3-pip \
+    ffmpeg nginx curl unzip gosu git ca-certificates \
+    libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 \
+    build-essential \
+    libnginx-mod-http-brotli-filter libnginx-mod-http-brotli-static \
+    gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
+    python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 \
+    && ln -sf /usr/bin/python3.12 /usr/local/bin/python3 \
+    && ln -sf /usr/bin/python3.12 /usr/local/bin/python \
+    && python3.12 -m pip install --upgrade pip setuptools wheel --break-system-packages --ignore-installed pip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# PyGObject и libav для GStreamer RTSP — отдельный шаг (не попадает в docker cache).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-gi gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 gstreamer1.0-libav \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# L4T multimedia: selective extract (полный dpkg ломает /bin в docker build).
+RUN apt-get update && apt-get install -y --no-install-recommends binutils zstd \
+    && mkdir -p /tmp/l4t-debs /tmp/l4t-extract \
+    && apt-get install -y --download-only -o Dir::Cache::archives=/tmp/l4t-debs \
+        nvidia-l4t-gstreamer nvidia-l4t-multimedia nvidia-l4t-multimedia-nvgpu \
+    && for deb in /tmp/l4t-debs/*.deb; do \
+         find /tmp/l4t-extract -mindepth 1 -delete 2>/dev/null || true; \
+         (cd /tmp/l4t-extract && ar x "$deb") && \
+         if [ -f /tmp/l4t-extract/data.tar.zst ]; then \
+           zstd -dc /tmp/l4t-extract/data.tar.zst | tar -xf - -C / \
+             usr/lib/aarch64-linux-gnu/gstreamer-1.0 \
+             usr/lib/aarch64-linux-gnu/nvidia \
+             usr/lib/aarch64-linux-gnu/tegra \
+             opt/nvidia 2>/dev/null || true; \
+         elif [ -f /tmp/l4t-extract/data.tar.xz ]; then \
+           tar -xJf /tmp/l4t-extract/data.tar.xz -C / \
+             usr/lib/aarch64-linux-gnu/gstreamer-1.0 \
+             usr/lib/aarch64-linux-gnu/nvidia \
+             usr/lib/aarch64-linux-gnu/tegra \
+             opt/nvidia 2>/dev/null || true; \
+         fi; \
+       done \
+    && ldconfig \
+    && find /tmp/l4t-debs -mindepth 1 -delete \
+    && find /tmp/l4t-extract -mindepth 1 -delete 2>/dev/null || true \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY app/processor/requirements.txt ./processor/requirements.txt
+COPY app/web/requirements.txt ./web/requirements.txt
+RUN python3.12 -m pip install --default-timeout=600 --no-cache-dir --break-system-packages \
+    -r web/requirements.txt \
+    -r processor/requirements.txt \
+    && python3.12 -m pip uninstall -y opencv-python opencv-contrib-python 2>/dev/null || true \
+    && apt-get install -y --no-install-recommends python3-opencv 2>/dev/null || true
+
+RUN python3.12 -m pip install --default-timeout=600 --no-cache-dir --break-system-packages \
+    flatbuffers numpy packaging protobuf sympy coloredlogs \
+    && python3.12 -m pip install --pre --no-cache-dir --break-system-packages \
+        --index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-13/pypi/simple/ \
+        onnxruntime-gpu \
+    && python3.12 -c "import onnxruntime; print('ONNX Runtime:', onnxruntime.__version__)"
+
+COPY app/data/images /app/_bundled_data/images
+COPY app/ebird_region_core.py ./
+COPY app/web/ ./web/
+COPY app/shared/ ./shared/
+COPY app/processor/ ./processor/
+COPY app/app_config/ ./app_config/
+COPY app/scripts/ ./scripts/
+
+COPY app/ui/dist /usr/share/nginx/html
+COPY app/nginx/standalone.conf.template /etc/nginx/conf.d/default.conf.template
+COPY app/nginx/docker-nginx-main.conf /app/nginx/docker-nginx-main.conf
+
+RUN groupadd -r birdlense 2>/dev/null || true \
+    && (id -u birdlense >/dev/null 2>&1 || useradd -r -g birdlense -d /app -s /bin/bash birdlense) \
+    && (usermod -aG video birdlense 2>/dev/null || true) \
+    && mkdir -p /var/log/nginx \
+    && chown -R birdlense:birdlense /app /usr/share/nginx/html /etc/nginx/conf.d /var/log/nginx
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -sf http://127.0.0.1:8000/api/ui/health > /dev/null || exit 1
+
+EXPOSE 8080
+ENV API_URL_BASE=http://127.0.0.1:8000/api/processor
+ENV DATA_DIR=/app/data
+ENV YOLO_CONFIG_DIR=/app/data/.ultralytics
+ENV OPENCV_LOG_LEVEL=ERROR
+ENV OPENCV_FFMPEG_LOGLEVEL=quiet
+ENV BIRDLENSE_PLATFORM=orin
+ENV ORT_PROVIDER=CUDAExecutionProvider
+
+CMD ["/bin/bash", "/app/scripts/entrypoint.sh"]

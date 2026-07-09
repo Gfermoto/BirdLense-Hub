@@ -1,13 +1,12 @@
-"""Runtime DINOv2 Re-ID enrichment for video detections."""
+"""Runtime Re-ID enrichment for video detections (Ornimetrics ONNX on Orin)."""
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import logging
 import os
 import re
-import socket
 import sqlite3
 import threading
 import time
@@ -22,6 +21,8 @@ _LOG = logging.getLogger(__name__)
 _MODEL_LOCK = threading.Lock()
 _MODEL_STATE: dict[str, Any] | None = None
 _MODEL_FAILED = False
+_CANDIDATE_CACHE_LOCK = threading.Lock()
+_CANDIDATE_CACHE: dict[str, tuple[float, list[tuple[np.ndarray, str]]]] = {}
 
 
 def _cfg_get(key: str, default: Any) -> Any:
@@ -63,113 +64,20 @@ def _resolve_reid_device() -> str:
     env = (os.environ.get("BIRDLENSE_REID_DEVICE") or "").strip()
     if env:
         return env
-    cfg = str(_cfg_get("processor.reid.device", "auto") or "auto").strip()
+    cfg = str(_cfg_get("processor.reid.device", "cuda:0") or "cuda:0").strip()
     if cfg and cfg.lower() != "auto":
         return cfg
     inferred = (os.environ.get("BIRDLENSE_INFERENCE_DEVICE") or "").strip()
     if not inferred:
-        inferred = str(_cfg_get("processor.inference_device", "") or "").strip()
-    if inferred.lower().startswith("intel:"):
-        return inferred
-    try:
-        import torch
-    except ImportError:
-        _LOG.debug("reid: torch unavailable, device=cpu")
-        return "cpu"
-    return "cuda" if torch.cuda.is_available() else "cpu"
+        inferred = str(_cfg_get("processor.inference_device", "cuda:0") or "cuda:0").strip()
+    return inferred or "cuda:0"
 
 
-def _resolve_reid_backend(device: str) -> str:
-    env = (os.environ.get("BIRDLENSE_REID_BACKEND") or "").strip().lower()
-    if env in ("torch", "openvino"):
-        return env
-    cfg = str(_cfg_get("processor.reid.inference_backend", "auto") or "auto").strip().lower()
-    if cfg in ("torch", "openvino"):
-        return cfg
-    # auto
-    if str(device or "").strip().lower().startswith("intel:"):
-        return "openvino"
-    return "torch"
-
-
-def _resolve_torch_device_name(device: str) -> str:
+def _ort_providers(device: str) -> list[str]:
     d = str(device or "").strip().lower()
-    if not d or d == "auto":
-        try:
-            import torch
-
-            return "cuda" if torch.cuda.is_available() else "cpu"
-        except Exception:
-            return "cpu"
-    if d.startswith("intel:"):
-        return "cpu"
-    return d
-
-
-def _resolve_openvino_device_name(device: str) -> str:
-    d = str(device or "").strip().lower()
-    if d in ("", "auto", "gpu", "intel:gpu"):
-        return "GPU"
-    if d in ("cpu", "intel:cpu"):
-        return "CPU"
-    if d in ("npu", "intel:npu"):
-        return "NPU"
-    return d.upper()
-
-
-def _hub_cache_dir() -> str:
-    env = (os.environ.get("BIRDLENSE_REID_HUB_CACHE_DIR") or "").strip()
-    if env:
-        return env
-    cfg = str(_cfg_get("processor.reid.hub_cache_dir", "") or "").strip()
-    return cfg
-
-
-def _hub_repo_local_path() -> str:
-    env = (os.environ.get("BIRDLENSE_REID_HUB_REPO_LOCAL_PATH") or "").strip()
-    if env:
-        return env
-    return str(_cfg_get("processor.reid.hub_repo_local_path", "") or "").strip()
-
-
-def _hub_download_timeout_seconds() -> float:
-    try:
-        val = float(_cfg_get("processor.reid.hub_download_timeout_seconds", 15.0))
-    except (TypeError, ValueError):
-        val = 15.0
-    return max(1.0, val)
-
-
-def _pick_cls_embedding(features: Any) -> Any:
-    import torch
-
-    if isinstance(features, torch.Tensor):
-        if features.dim() == 3:
-            return features[:, 0, :]
-        if features.dim() == 2:
-            return features
-        raise RuntimeError(f"unexpected tensor shape {tuple(features.shape)}")
-    if isinstance(features, dict):
-        for key in ("x_norm_clstoken", "x_prenorm_clstoken", "cls_token"):
-            t = features.get(key)
-            if torch.is_tensor(t):
-                return t.squeeze(1) if t.dim() == 3 else t
-        for value in features.values():
-            if torch.is_tensor(value) and value.dim() in (2, 3):
-                return value.squeeze(1) if value.dim() == 3 else value
-    raise RuntimeError("cannot interpret DINOv2 forward_features output")
-
-
-def _infer_input_side(model: Any) -> int:
-    patch_embed = getattr(model, "patch_embed", None)
-    if patch_embed is None:
-        return 518
-    img_size = getattr(patch_embed, "img_size", None)
-    if isinstance(img_size, tuple) and img_size:
-        return int(img_size[0])
-    if isinstance(img_size, int):
-        return int(img_size)
-    return 518
+    if d.startswith("cuda") or d.startswith("gpu"):
+        return ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    return ["CPUExecutionProvider"]
 
 
 def _ensure_model_state() -> dict[str, Any] | None:
@@ -186,95 +94,42 @@ def _ensure_model_state() -> dict[str, Any] | None:
             return _MODEL_STATE
         if _MODEL_FAILED:
             return None
-        model_name = str(_cfg_get("processor.reid.model", "dinov2_vits14") or "dinov2_vits14").strip()
+
         raw_device = _resolve_reid_device()
-        backend = _resolve_reid_backend(raw_device)
         started = time.time()
         try:
-            import torch
-            import torch.nn.functional as F
+            from inference.binary_paths import processor_package_root, resolve_relative_to_processor_root
 
-            hub_cache = _hub_cache_dir()
-            if hub_cache:
-                try:
-                    torch.hub.set_dir(hub_cache)
-                except Exception:
-                    _LOG.warning("Cannot set torch.hub dir to %s", hub_cache)
-            local_repo = _hub_repo_local_path()
-            if local_repo and os.path.isdir(local_repo):
-                model = torch.hub.load(  # nosec B614: local_repo is operator-controlled.
-                    local_repo,
-                    model_name,
-                    source="local",
-                )
-                set_gauge("reid.runtime.hub_source", "local")
-            else:
-                prev_timeout = socket.getdefaulttimeout()
-                socket.setdefaulttimeout(_hub_download_timeout_seconds())
-                try:
-                    model = torch.hub.load(  # nosec B614: fallback is official upstream DINOv2 entrypoint.
-                        "facebookresearch/dinov2",
-                        model_name,
-                    )
-                finally:
-                    socket.setdefaulttimeout(prev_timeout)
-                set_gauge("reid.runtime.hub_source", "remote")
-            model.eval()
-            side = _infer_input_side(model)
-            if backend == "openvino":
-                import openvino as ov
+            raw_path = str(_cfg_get("processor.models.reid_embedder", "") or "").strip()
+            model_path = (
+                resolve_relative_to_processor_root(raw_path, processor_package_root()) if raw_path else ""
+            )
+            if not model_path or not os.path.isfile(model_path):
+                raise FileNotFoundError("Ornimetrics ReID ONNX not found: %s" % model_path)
 
-                class _EmbeddingWrapper(torch.nn.Module):
-                    def __init__(self, base_model):
-                        super().__init__()
-                        self.base_model = base_model
+            import onnxruntime as ort
 
-                    def forward(self, x):
-                        feats = self.base_model.forward_features(x)
-                        vec = _pick_cls_embedding(feats)
-                        return F.normalize(vec.float(), dim=-1)
-
-                wrapper = _EmbeddingWrapper(model.to(torch.device("cpu")).eval())
-                example = torch.zeros((1, 3, side, side), dtype=torch.float32)
-                ov_model = ov.convert_model(wrapper, example_input=example)
-                core = ov.Core()
-                ov_device = _resolve_openvino_device_name(raw_device)
-                try:
-                    compiled = core.compile_model(ov_model, ov_device)
-                    effective_device = ov_device
-                except Exception:
-                    compiled = core.compile_model(ov_model, "CPU")
-                    effective_device = "CPU"
-                _MODEL_STATE = {
-                    "model_name": model_name,
-                    "device": raw_device,
-                    "backend": "openvino",
-                    "effective_device": effective_device,
-                    "compiled_model": compiled,
-                    "input_name": compiled.inputs[0].any_name,
-                    "side": side,
-                }
-            else:
-                torch_device = _resolve_torch_device_name(raw_device)
-                model.to(torch.device(torch_device))
-                _MODEL_STATE = {
-                    "model_name": model_name,
-                    "device": torch_device,
-                    "backend": "torch",
-                    "effective_device": torch_device,
-                    "model": model,
-                    "side": side,
-                }
+            session = ort.InferenceSession(model_path, providers=_ort_providers(raw_device))
+            inp = session.get_inputs()[0]
+            side = int(inp.shape[-1]) if inp.shape[-1] else 224
+            _MODEL_STATE = {
+                "model_name": "ornimetrics_reid",
+                "device": raw_device,
+                "backend": "onnxruntime",
+                "ort_session": session,
+                "input_name": inp.name,
+                "side": side,
+            }
             observe_timing("reid_model_load", (time.time() - started) * 1000.0)
             set_gauge("reid.runtime.enabled", True)
-            set_gauge("reid.runtime.device", _MODEL_STATE.get("effective_device"))
-            set_gauge("reid.runtime.backend", _MODEL_STATE.get("backend"))
-            set_gauge("reid.runtime.model", model_name)
+            set_gauge("reid.runtime.device", raw_device)
+            set_gauge("reid.runtime.backend", "onnxruntime")
+            set_gauge("reid.runtime.model", "ornimetrics_reid")
             return _MODEL_STATE
         except Exception as exc:
             _MODEL_FAILED = True
             set_gauge("reid.runtime.enabled", False)
-            _LOG.warning("Runtime DINOv2 disabled: failed to load model (%s)", exc)
+            _LOG.warning("Runtime ReID disabled: failed to load model (%s)", exc)
             return None
 
 
@@ -308,7 +163,7 @@ def _to_embedding(crop: Any, *, state: dict[str, Any]) -> np.ndarray | None:
     try:
         import cv2
     except Exception:
-        _LOG.debug("reid: cv2/torch import failed for embedding", exc_info=True)
+        _LOG.debug("reid: cv2 import failed for embedding", exc_info=True)
         return None
 
     rgb = arr[:, :, ::-1]
@@ -320,33 +175,16 @@ def _to_embedding(crop: Any, *, state: dict[str, Any]) -> np.ndarray | None:
     x = (x - mean) / std
     x = np.transpose(x, (2, 0, 1))
     x4 = np.expand_dims(x, axis=0).astype(np.float32)
-    backend = str(state.get("backend") or "torch").strip().lower()
-    if backend == "openvino":
-        try:
-            out_data = state["compiled_model"]({state["input_name"]: x4})
-            if hasattr(out_data, "values"):
-                out = np.asarray(next(iter(out_data.values())), dtype=np.float32)
-            elif isinstance(out_data, (list, tuple)):
-                out = np.asarray(out_data[0], dtype=np.float32)
-            else:
-                out = np.asarray(out_data, dtype=np.float32)
-            out = np.squeeze(out).astype(np.float32)
-        except Exception:
-            _LOG.debug("reid: openvino embedding inference failed", exc_info=True)
-            return None
-    else:
-        try:
-            import torch
-            import torch.nn.functional as F
-        except Exception:
-            _LOG.debug("reid: torch import failed for embedding", exc_info=True)
-            return None
-        t = torch.from_numpy(x4).to(torch.device(state["device"]))
-        with torch.inference_mode():
-            feats = state["model"].forward_features(t)
-            vec = _pick_cls_embedding(feats)
-            vec = F.normalize(vec.float(), dim=-1).squeeze(0)
-        out = vec.detach().cpu().numpy().astype(np.float32)
+    try:
+        from onnx_runtime_guard import ort_run
+
+        ort_session = state["ort_session"]
+        inp_name = state["input_name"]
+        out = ort_run(ort_session, None, {inp_name: x4})[0]
+        out = np.squeeze(out).astype(np.float32)
+    except Exception:
+        _LOG.debug("reid: onnxruntime embedding inference failed", exc_info=True)
+        return None
     if out.ndim != 1 or out.shape[0] <= 0:
         return None
     return out
@@ -430,6 +268,28 @@ def _load_species_candidates(species_name: str) -> list[tuple[np.ndarray, str]]:
     return out
 
 
+def _load_species_candidates_cached(species_name: str) -> list[tuple[np.ndarray, str]]:
+    key = str(species_name or "").strip()
+    if not key:
+        return []
+    try:
+        ttl_s = float(_cfg_get("processor.reid.candidate_cache_ttl_seconds", 120.0))
+    except (TypeError, ValueError):
+        ttl_s = 120.0
+    ttl_s = max(1.0, ttl_s)
+    now = time.time()
+    with _CANDIDATE_CACHE_LOCK:
+        hit = _CANDIDATE_CACHE.get(key)
+        if hit and now - float(hit[0]) <= ttl_s:
+            inc_counter("reid_runtime_candidate_cache_hit_total", 1)
+            return list(hit[1])
+    rows = _load_species_candidates(key)
+    with _CANDIDATE_CACHE_LOCK:
+        _CANDIDATE_CACHE[key] = (now, list(rows))
+    inc_counter("reid_runtime_candidate_cache_miss_total", 1)
+    return rows
+
+
 def _best_match_nickname(
     embedding: np.ndarray,
     candidates: list[tuple[np.ndarray, str]],
@@ -472,7 +332,23 @@ def apply_runtime_reid_metadata(
     candidate_cache: dict[str, list[tuple[np.ndarray, str]]] = {}
     known_names_cache: dict[str, set[str]] = {}
     auto_generate_nickname = _cfg_bool("processor.reid.auto_generate_nickname_enabled", True)
+    include_embedding_payload = _cfg_bool(
+        "processor.reid.include_embedding_payload",
+        True,
+    )
+    try:
+        max_runtime_ms = float(_cfg_get("processor.reid.max_runtime_ms", 250.0))
+    except (TypeError, ValueError):
+        max_runtime_ms = 250.0
+    max_runtime_ms = max(1.0, max_runtime_ms)
+    started = time.perf_counter()
+    timed_out = False
     for det in detections:
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        if elapsed_ms >= max_runtime_ms:
+            timed_out = True
+            inc_counter("reid_runtime_timeout_total", 1)
+            break
         if processed >= max(0, int(max_detections)):
             break
         if str(det.get("source") or "").strip().lower() != "video":
@@ -480,6 +356,35 @@ def apply_runtime_reid_metadata(
         if float(det.get("best_frame_score") or 0.0) < float(min_best_frame_score):
             continue
         crop = det.get("best_frame")
+        crop_source = "best_frame_lores"
+        try:
+            from record_hires_crop import resolve_enrichment_crop, resolve_enrichment_crop_source
+
+            runtime_cfg = None
+            try:
+                from app_config.app_config import app_config as _cfg
+
+                runtime_cfg = getattr(_cfg, "config", None) or _cfg
+            except ImportError:
+                pass
+            mode = resolve_enrichment_crop_source(
+                runtime_cfg,
+                config_key="processor.reid_crop_source",
+                default="auto",
+            )
+            if video_path:
+                resolved, crop_source = resolve_enrichment_crop(
+                    det,
+                    video_path=video_path,
+                    mode=mode,
+                    lores_crop=crop,
+                    runtime_cfg=runtime_cfg,
+                )
+                if resolved is not None:
+                    crop = resolved
+                    det["reid_crop_source"] = crop_source
+        except ImportError:
+            pass
         if crop is None:
             continue
         embedding = embed_crop(crop)
@@ -508,7 +413,8 @@ def apply_runtime_reid_metadata(
         crop_key = f"runtime://{video_path}#track={track_id if track_id is not None else 'na'}:{st:.3f}-{et:.3f}"
         det["reid_model"] = model_name
         det["reid_dim"] = int(emb.shape[0])
-        det["reid_embedding"] = [round(float(v), 6) for v in emb.tolist()]
+        if include_embedding_payload:
+            det["reid_embedding"] = [round(float(v), 6) for v in emb.tolist()]
         det["reid_crop_key"] = crop_key
         det["reid_similarity"] = round(float(score), 4)
 
@@ -536,6 +442,10 @@ def apply_runtime_reid_metadata(
 
     inc_counter("reid_runtime_embeddings_total", processed)
     inc_counter("reid_runtime_auto_nickname_total", auto_named)
+    if timed_out:
+        set_gauge("reid.runtime.last_timeout", True)
+    else:
+        set_gauge("reid.runtime.last_timeout", False)
     set_gauge("reid.runtime.last_processed_count", processed)
     set_gauge("reid.runtime.last_auto_named_count", auto_named)
     return detections
@@ -548,6 +458,13 @@ def enrich_runtime_reid_detections(
 ) -> list[dict]:
     if not _reid_runtime_enabled():
         return detections
+    try:
+        from bbox_slo import bbox_layers_allowed
+
+        if not bbox_layers_allowed(app_config):
+            return detections
+    except ImportError:
+        pass
     state = _ensure_model_state()
     if state is None:
         return detections
@@ -556,7 +473,7 @@ def enrich_runtime_reid_detections(
     out = apply_runtime_reid_metadata(
         detections,
         embed_crop=lambda crop: _to_embedding(crop, state=state),
-        load_candidates=_load_species_candidates,
+        load_candidates=_load_species_candidates_cached,
         model_name=str(state["model_name"]),
         similarity_threshold=_cfg_float("processor.reid.nickname_similarity_threshold", 0.9),
         max_detections=_cfg_int("processor.reid.max_detections_per_recording", 6),

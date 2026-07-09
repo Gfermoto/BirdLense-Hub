@@ -1,7 +1,7 @@
 """Species summary data for /api/ui/species/:id/summary."""
 
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import func
+from sqlalchemy import func, exists
 from sqlalchemy.orm import joinedload
 
 from models import Video, SpeciesVisit, VideoSpecies, BirdFood, video_bird_food_association
@@ -20,6 +20,12 @@ def metadata_trust_for_species(sp) -> str:
     return "unbound"
 
 
+def _visits_with_detections(query):
+    """Exclude orphan SpeciesVisit rows (no VideoSpecies) from summary stats."""
+    has_detection = exists().where(VideoSpecies.species_visit_id == SpeciesVisit.id)
+    return query.filter(has_detection)
+
+
 def build_species_summary(session, species, children, all_species_ids: list) -> dict:
     """Build species summary response: stats, hourlyActivity, weather, food, subspecies, recentVisits."""
     now = datetime.now(timezone.utc)
@@ -29,9 +35,11 @@ def build_species_summary(session, species, children, all_species_ids: list) -> 
 
     def get_visit_stats(since):
         rows = (
-            session.query(
-                SpeciesVisit.species_id,
-                func.sum(SpeciesVisit.max_simultaneous).label("count"),
+            _visits_with_detections(
+                session.query(
+                    SpeciesVisit.species_id,
+                    func.sum(SpeciesVisit.max_simultaneous).label("count"),
+                )
             )
             .filter(
                 SpeciesVisit.species_id.in_(all_species_ids),
@@ -47,19 +55,23 @@ def build_species_summary(session, species, children, all_species_ids: list) -> 
     stats_30d = get_visit_stats(last_30d)
 
     sightings = (
-        session.query(
-            func.min(SpeciesVisit.start_time).label("first"),
-            func.max(SpeciesVisit.end_time).label("last"),
+        _visits_with_detections(
+            session.query(
+                func.min(SpeciesVisit.start_time).label("first"),
+                func.max(SpeciesVisit.end_time).label("last"),
+            )
         )
         .filter(SpeciesVisit.species_id.in_(all_species_ids))
         .first()
     )
 
     hourly_rows = (
-        session.query(
-            SpeciesVisit.species_id,
-            SpeciesVisit.start_time.label("start_time"),
-            SpeciesVisit.max_simultaneous.label("count"),
+        _visits_with_detections(
+            session.query(
+                SpeciesVisit.species_id,
+                SpeciesVisit.start_time.label("start_time"),
+                SpeciesVisit.max_simultaneous.label("count"),
+            )
         )
         .filter(
             SpeciesVisit.species_id.in_(all_species_ids),
@@ -111,7 +123,7 @@ def build_species_summary(session, species, children, all_species_ids: list) -> 
     )
 
     recent_visits = (
-        session.query(SpeciesVisit)
+        _visits_with_detections(session.query(SpeciesVisit))
         .options(
             joinedload(SpeciesVisit.video_species).joinedload(VideoSpecies.video),
             joinedload(SpeciesVisit.species),
