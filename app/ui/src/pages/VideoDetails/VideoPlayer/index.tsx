@@ -215,9 +215,15 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       window.clearTimeout(timeoutRef.current);
     }
     if (playing) {
+      // Touch / coarse pointer: keep controls longer so pause/speed stay reachable.
+      const hideMs =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(pointer: coarse)').matches
+          ? 3500
+          : 1000;
       timeoutRef.current = window.setTimeout(() => {
         setShowControls(false);
-      }, 1000);
+      }, hideMs);
     }
   }, [playing]);
 

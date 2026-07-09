@@ -140,12 +140,12 @@ export function LiveMediaStage({
           sx={mediaSx}
         />
       )}
-      {layout && frameLabel ? (
+      {frameLabel ? (
         <Box
           sx={{
             position: 'absolute',
-            left: layout.left + 8,
-            top: layout.top + 8,
+            left: layout ? layout.left + 8 : 8,
+            top: layout ? layout.top + 8 : 8,
             zIndex: 3,
             px: 1,
             py: 0.35,
@@ -156,8 +156,11 @@ export function LiveMediaStage({
             fontWeight: 700,
             letterSpacing: 0.02,
             lineHeight: 1.2,
+            minHeight: '1.5em',
+            minWidth: '3.5em',
             pointerEvents: 'none',
             userSelect: 'none',
+            opacity: layout ? 1 : 0.55,
           }}
         >
           {frameLabel}

@@ -465,7 +465,19 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
   });
 
   if (groupedSpecies.length === 0) {
-    return null;
+    return (
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          {t('video.speciesInVideo')}
+        </Typography>
+        <Alert severity="info" variant="outlined">
+          <Typography variant="subtitle2">{t('video.speciesEmptyTitle')}</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            {t('video.speciesEmptyHint')}
+          </Typography>
+        </Alert>
+      </Box>
+    );
   }
 
   return (
@@ -595,7 +607,7 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                   )}
                 </Box>
                 <CardContent sx={{ py: 1.5 }}>
-                  <Typography variant="subtitle1" noWrap>
+                  <Typography variant="subtitle1" noWrap title={group.species_name}>
                     {group.species_name}
                   </Typography>
                   {(() => {
@@ -669,50 +681,66 @@ export const DetectedSpecies: React.FC<DetectedSpeciesProps> = ({
                         : hasAnomaly
                           ? t('video.welfareAnomalyChip')
                           : t('video.welfareUnavailableChip');
+                    const scoringHint = group.detections[0]?.scoring_hint;
                     return (
-                      <Tooltip
-                        title={
-                          maxDistance != null || hasAnomaly
-                            ? t('video.welfareAnomalyHint')
-                            : t('video.welfareUnavailableHint')
-                        }
-                        placement="top"
-                      >
-                        <Chip
-                          size="small"
-                          color={maxDistance != null || hasAnomaly ? 'warning' : 'default'}
-                          variant="outlined"
-                          label={label}
-                          sx={{ mt: 0.5, alignSelf: 'flex-start' }}
-                        />
-                      </Tooltip>
+                      <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                        <Tooltip
+                          title={
+                            maxDistance != null || hasAnomaly
+                              ? t('video.welfareAnomalyHint')
+                              : t('video.welfareUnavailableHint')
+                          }
+                          placement="top"
+                        >
+                          <Chip
+                            size="small"
+                            color={maxDistance != null || hasAnomaly ? 'warning' : 'default'}
+                            variant="outlined"
+                            label={label}
+                            sx={{ alignSelf: 'flex-start' }}
+                          />
+                        </Tooltip>
+                        {scoringHint ? (
+                          <Tooltip
+                            title={
+                              <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
+                                {t('video.scoringHintTooltip', {
+                                  provider: scoringHint.primary_provider ?? '—',
+                                  weights: Object.entries(
+                                    scoringHint.arbiter_weights ?? {},
+                                  )
+                                    .map(([k, v]) => `${k}=${v}`)
+                                    .join(', '),
+                                })}
+                              </Box>
+                            }
+                          >
+                            <Typography
+                              component="button"
+                              type="button"
+                              variant="caption"
+                              color="text.secondary"
+                              display="block"
+                              aria-label={t('video.scoringWhySpecies')}
+                              sx={{
+                                p: 0,
+                                m: 0,
+                                border: 0,
+                                background: 'none',
+                                font: 'inherit',
+                                textAlign: 'left',
+                                cursor: 'help',
+                                textDecoration: 'underline dotted',
+                                textUnderlineOffset: 2,
+                              }}
+                            >
+                              {t('video.scoringWhySpecies')}
+                            </Typography>
+                          </Tooltip>
+                        ) : null}
+                      </Stack>
                     );
                   })()}
-                  {group.detections[0]?.scoring_hint ? (
-                    <Tooltip
-                      title={
-                        <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
-                          {t('video.scoringHintTooltip', {
-                            provider:
-                              group.detections[0].scoring_hint?.primary_provider ?? '—',
-                            weights: Object.entries(
-                              group.detections[0].scoring_hint?.arbiter_weights ?? {},
-                            )
-                              .map(([k, v]) => `${k}=${v}`)
-                              .join(', '),
-                          })}
-                        </Box>
-                      }
-                    >
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ textDecoration: 'underline', cursor: 'help' }}
-                      >
-                        {t('video.scoringWhySpecies')}
-                      </Typography>
-                    </Tooltip>
-                  ) : null}
                   {canEdit &&
                   group.detections.filter((d) => d.source === 'video' && d.id).length >
                     0 ? (

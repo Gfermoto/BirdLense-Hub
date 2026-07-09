@@ -319,8 +319,7 @@ export const LivePage = () => {
     });
   };
 
-  const numCols =
-    cams.length <= 1 ? 1 : cams.length <= 2 ? 2 : cams.length <= 4 ? 4 : 6;
+  const numCols = Math.min(cams.length <= 1 ? 1 : cams.length <= 2 ? 2 : 4, 4);
   const gridSize = 12 / numCols;
 
   if (isLoading) {
@@ -521,11 +520,26 @@ export const LivePage = () => {
                   {t('live.overlaysHowTo')}
                 </Typography>
                 {showOpencvMotion && runtimeOverlaysQuery.data?.opencv_last_decision_reason ? (
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    OpenCV: {runtimeOverlaysQuery.data.opencv_last_decision_reason}
-                    {opencvMotionPolygons.length === 0
-                      ? ` — ${t('live.opencvNoContours')}`
-                      : ` — ${t('live.opencvContourCount', { count: opencvMotionPolygons.length })}`}
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    display="block"
+                    sx={{
+                      minHeight: '1.25em',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {t('live.opencvStatus', {
+                      reason: runtimeOverlaysQuery.data.opencv_last_decision_reason,
+                      detail:
+                        opencvMotionPolygons.length === 0
+                          ? t('live.opencvNoContours')
+                          : t('live.opencvContourCount', {
+                              count: opencvMotionPolygons.length,
+                            }),
+                    })}
                   </Typography>
                 ) : null}
                 {runtimeOverlaysQuery.isError ? (
@@ -624,6 +638,11 @@ export const LivePage = () => {
                     {t('live.saveLayer')}
                   </Button>
                 </Stack>
+                {draftCurrent.length > 0 ? (
+                  <Typography variant="caption" color="warning.main" display="block">
+                    {t('live.saveClosePolygonFirst')}
+                  </Typography>
+                ) : null}
                 {patchMutation.isError ? (
                   <Alert severity="error" variant="outlined">
                     {t('live.saveFailed')}
